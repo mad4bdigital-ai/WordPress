@@ -1138,7 +1138,7 @@
         "PLATFORM-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-connection-stage-diagnostics-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-connection-stage-regression.py"
       ],
       "owner_role": "Repository source reviewer — CI-only; no WordPress Site Owner or Production authorization",
       "review_rationale": "New read-only diagnostic projection preserves not_checked for absent OAuth evidence, tracks explicit observed local blockers, and never infers remote bearer/MCP acceptance or any mutation authority.",
@@ -1146,7 +1146,8 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "needs_new_control": false,
-      "coverage_reuse_rationale": "Existing MCP identity, platform projection, and security controls already cover the non-authorizing read-only diagnostic; no new permission boundary or protected route is introduced."
+      "coverage_reuse_rationale": "Existing MCP identity, platform projection, and security controls already cover the non-authorizing read-only diagnostic; no new permission boundary or protected route is introduced.",
+      "execution_note": "Exact HEAD CI runs this committed Python bridge, executing PHP lint, behavioral stage-classifier tests, and static MCP protocol contract. Disposable WordPress HTTP proof runs separately in MCP Client Compatibility CI; no live runtime or owner approval is inferred."
     }
   ],
   "lifecycle": [],
@@ -4455,7 +4456,7 @@
         "OAUTH-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-connection-stage-diagnostics-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-connection-stage-regression.py"
       ],
       "owner_role": "Repository source reviewer — CI-only; no WordPress Site Owner or Production authorization",
       "status": "reviewed_for_ci_only",
@@ -4464,7 +4465,7 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing reviewed WordPress OAuth, MCP materialization, platform and policy boundary controls apply to this narrowly scoped non-authorizing change, without any Production runtime certification.",
       "review_rationale": "Admin connection screen now reports missing OAuth prerequisites as unknown rather than falsely blocked and explicitly defers unmeasured deep Bootstrap/Catalog; users cannot grant authority here.",
-      "execution_note": "Connection Governance runs the changed local classifier PHP regression, while OAuth and transport are still verified separately on the real remote site."
+      "execution_note": "Exact HEAD CI runs this committed Python bridge, executing PHP lint, behavioral stage-classifier tests, and static MCP protocol contract. Disposable WordPress HTTP proof runs separately in MCP Client Compatibility CI; no live runtime or owner approval is inferred."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-connection-stage-diagnostics.php",
@@ -4475,7 +4476,7 @@
         "PLATFORM-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-connection-stage-diagnostics-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-connection-stage-regression.py"
       ],
       "owner_role": "Repository source reviewer — CI-only; no WordPress Site Owner or Production authorization",
       "status": "reviewed_for_ci_only",
@@ -4484,7 +4485,7 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing reviewed WordPress OAuth, MCP materialization, platform and policy boundary controls apply to this narrowly scoped non-authorizing change, without any Production runtime certification.",
       "review_rationale": "Local diagnostic classifier distinguishes blocked, ready_local and not_checked using real typed evidence; unknown cannot be promoted to a verified external connection.",
-      "execution_note": "Connection Governance runs the changed local classifier PHP regression, while OAuth and transport are still verified separately on the real remote site."
+      "execution_note": "Exact HEAD CI runs this committed Python bridge, executing PHP lint, behavioral stage-classifier tests, and static MCP protocol contract. Disposable WordPress HTTP proof runs separately in MCP Client Compatibility CI; no live runtime or owner approval is inferred."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
@@ -4496,7 +4497,7 @@
         "PERFORMANCE-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-client-compatibility-smoke.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-connection-stage-regression.py"
       ],
       "owner_role": "Repository source reviewer — CI-only; no WordPress Site Owner or Production authorization",
       "status": "reviewed_for_ci_only",
@@ -4505,7 +4506,7 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing reviewed WordPress OAuth, MCP materialization, platform and policy boundary controls apply to this narrowly scoped non-authorizing change, without any Production runtime certification.",
       "review_rationale": "Exact RFC9728 metadata URLs no longer impersonate protocol routes during target classification; route-only registration avoids expensive eager MCP tool materialization while preserving real MCP transport permissions.",
-      "execution_note": "MCP Client Compatibility CI runs the changed native WordPress regression and an anonymous RFC9728 HTTP metadata probe. Live ETG and ARE rollout remains separately uncertified."
+      "execution_note": "Exact HEAD CI runs this committed Python bridge, executing PHP lint, behavioral stage-classifier tests, and static MCP protocol contract. Disposable WordPress HTTP proof runs separately in MCP Client Compatibility CI; no live runtime or owner approval is inferred."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
@@ -4516,7 +4517,7 @@
         "SECURITY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-client-compatibility-smoke.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-connection-stage-regression.py"
       ],
       "owner_role": "Repository source reviewer — CI-only; no WordPress Site Owner or Production authorization",
       "status": "reviewed_for_ci_only",
@@ -4525,7 +4526,7 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing reviewed WordPress OAuth, MCP materialization, platform and policy boundary controls apply to this narrowly scoped non-authorizing change, without any Production runtime certification.",
       "review_rationale": "The existing connection diagnostics module is loaded on the same established WordPress plugin bootstrap; no authentication, write grants, production switches or route permissions are modified.",
-      "execution_note": "MCP Client Compatibility CI runs the changed native WordPress regression and an anonymous RFC9728 HTTP metadata probe. Live ETG and ARE rollout remains separately uncertified."
+      "execution_note": "Exact HEAD CI runs this committed Python bridge, executing PHP lint, behavioral stage-classifier tests, and static MCP protocol contract. Disposable WordPress HTTP proof runs separately in MCP Client Compatibility CI; no live runtime or owner approval is inferred."
     }
   ],
   "code_change_rules": {
