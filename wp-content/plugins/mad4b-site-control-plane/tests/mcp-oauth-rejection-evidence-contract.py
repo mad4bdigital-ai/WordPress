@@ -34,6 +34,7 @@ for marker in ("function authenticate_rest_request_impl(", "mad4b_oauth_evaluati
 for marker in ("observe_rejection( 'transport', $status, $code )",
                "observe_rejection( 'jsonrpc', 200, 'mcp_json_rpc_error' )",
                "REJECTION_MAX_EVENTS = 12", "REJECTION_OPTION",
+               "rejection_status_valid", "mad4b_http_rate_limited", "X-MAD4B-MCP-Correlation",
                "'staging' !== wp_get_environment_type()"):
     assert marker in admission, f"Transport evidence contract drift: {marker}"
 assert "'mcp_rejections'" in native, "Governed Diagnostics lacks denial readback"

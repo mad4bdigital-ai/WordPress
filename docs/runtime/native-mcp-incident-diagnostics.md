@@ -44,3 +44,23 @@ Source fixtures validate the recorder, adapter interface, callback correlation,
 DB failure containment, capture budget, stored-data sanitization and policy
 WP_Error denial. They do not certify deployment or establish the live -32603
 root cause on any site.
+
+## Final REST rejection coverage
+
+The existing MCP transport admission response filter also records final HTTP
+400–599 failures that bypass its permission callback, including 429 and
+500/502/504. It reuses `mad4b_scp_mcp_rejections_v1` and the existing Staging-only
+UI/readback, twelve-entry retention and 15-second aggregate throttle. Precise
+OAuth/transport evidence captured earlier in the request takes precedence.
+Fallback entries use stage `http`, the actual status and a fixed generic code;
+foreign response messages and codes are never copied. The observer preserves
+the response object, body, HTTP status and authentication challenge, and contains
+its own failures. OPTIONS and unrelated routes are excluded.
+
+`X-MAD4B-MCP-Correlation` uses the existing recorder-generated identifier only on
+active Staging. It can join a response to its stored event, but does not guarantee
+persistence when throttled or when the database fails. A valid JSON-RPC error
+object in HTTP 200 remains recorded as `jsonrpc`; successful/malformed envelopes
+are not misclassified. Responses intercepted before WordPress, opaque streaming
+bodies and HTTP-200 tool-level failures still need their own transport evidence.
+No live-site recovery or installation is certified by these source tests.

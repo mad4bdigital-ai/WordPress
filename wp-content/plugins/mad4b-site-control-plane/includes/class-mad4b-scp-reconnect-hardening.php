@@ -809,7 +809,25 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		$bridge_registration = class_exists( 'MAD4B_SCP_MCP_Registration_Bridge' ) ? MAD4B_SCP_MCP_Registration_Bridge::status() : array();
 		$blockers = array();
 		$restart_grace = self::restart_grace_status();
-		if ( ! empty( $restart_grace['active'] ) ) $blockers[] = 'runtime_restart_grace';
+		// Operator/read-ability projection only: inspect Cron scheduling here, never
+		// on the pre-auth MCP request guard or in a background retry loop.
+		if ( ! empty( $restart_grace['active'] ) ) {
+			$passive_admin = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+				&& method_exists( 'MAD4B_SCP_MCP_Request_Scope', 'current_request_is_passive_admin_hotpath' )
+				&& MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath();
+			if ( $passive_admin ) {
+				$restart_grace['resume_cron_inspection_deferred'] = true;
+			} else {
+				$next = class_exists( 'MAD4B_SCP_Runtime_Convergence' ) && function_exists( 'wp_next_scheduled' )
+					? wp_next_scheduled( MAD4B_SCP_Runtime_Convergence::CRON_HOOK ) : false;
+				$restart_grace['resume_cron_inspection_deferred'] = false;
+				$restart_grace['resume_cron_scheduled'] = false !== $next;
+				$restart_grace['resume_cron_next_at_unix'] = false === $next ? 0 : absint( $next );
+				$restart_grace['resume_cron_overdue_seconds'] = false === $next ? null : max( 0, time() - (int) $next );
+				$restart_grace['wp_cron_disabled'] = defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON;
+			}
+			$blockers[] = 'runtime_restart_grace';
+		}
 		$maintenance_lease = self::maintenance_lease_status();
 		if ( ! empty( $maintenance_lease['active'] ) ) $blockers[] = 'runtime_maintenance_busy';
 

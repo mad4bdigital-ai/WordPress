@@ -70,12 +70,28 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$active = $convergence_pending;
 		$retryable = $active && ! $operator_action_required;
 		$retry_after = $retryable ? ( $quiet_period_active ? max( 1, $not_before - $now ) : 5 ) : 0;
+		// Passive evidence distinguishes a brief quiet period from a stuck checkpoint.
+		// These persisted timestamps never authorize a retry, clear a barrier or write an option.
+		$created = isset( $checkpoint['created_at'] ) && is_string( $checkpoint['created_at'] ) ? strtotime( $checkpoint['created_at'] ) : false;
+		$updated = isset( $checkpoint['updated_at'] ) && is_string( $checkpoint['updated_at'] ) ? strtotime( $checkpoint['updated_at'] ) : false;
+		$classification = ! $active ? 'inactive' : ( $operator_action_required ? 'operator_action_required'
+			: ( $quiet_period_active ? 'post_update_quiet_period' : ( ! $identity_match ? 'runtime_identity_unverified' : 'safe_phases_pending' ) ) );
 		return array(
 			'contract' => 'mad4b.runtime-restart-grace.v2',
 			'active' => $active,
 			'state' => $state,
 			'convergence_pending' => $convergence_pending,
 			'quiet_period_active' => $quiet_period_active,
+			'diagnostic_classification' => $classification,
+			'checkpoint_created_at_utc' => false !== $created && $created > 0 ? gmdate( 'c', $created ) : '',
+			'checkpoint_updated_at_utc' => false !== $updated && $updated > 0 ? gmdate( 'c', $updated ) : '',
+			'checkpoint_age_seconds' => false !== $created && $created > 0 ? max( 0, $now - $created ) : null,
+			'checkpoint_update_age_seconds' => false !== $updated && $updated > 0 ? max( 0, $now - $updated ) : null,
+			'quiet_period_elapsed_but_pending' => $active && ! $quiet_period_active,
+			'operator_action_required' => $operator_action_required,
+			'resume_blocker' => is_array( $checkpoint ) ? sanitize_key( (string) ( $checkpoint['resume_blocker'] ?? '' ) ) : '',
+			'last_error_code' => is_array( $checkpoint ) ? sanitize_key( (string) ( $checkpoint['last_error_code'] ?? '' ) ) : '',
+			'transient_retry_count' => is_array( $checkpoint ) ? absint( $checkpoint['transient_retry_count'] ?? 0 ) : 0,
 			'exact_runtime_identity_match' => $identity_match,
 			'current_identity' => self::bounded_identity( $current ),
 			'retryable' => $retryable,

@@ -18,6 +18,7 @@ final class MAD4B_SCP_Operator_Control_Center {
 	public static function boot() {
 		if ( self::$booted ) return;
 		self::$booted = true;
+		add_action( 'wp_ajax_mad4b_admin_report', array( __CLASS__, 'ajax_report' ) );
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 39 );
 		MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'register_menu' ), 32 );
 	}
@@ -316,13 +317,17 @@ final class MAD4B_SCP_Operator_Control_Center {
 		return $out;
 	}
 
-	public static function render_page() {
-		if ( ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'You do not have permission to inspect operator state.', 'mad4b-site-control-plane' ) );
-		$snapshot = self::execute();
-		$adaptive = class_exists( 'MAD4B_SCP_Adaptive_Runtime_Convergence', false )
-			? MAD4B_SCP_Adaptive_Runtime_Convergence::status( array( 'include_capabilities' => true ) ) : array();
-		MAD4B_SCP_Operator_Workspace::render( $snapshot, is_array( $adaptive ) ? $adaptive : array() );
+	public static function ajax_report() {
+		require_once __DIR__ . '/class-mad4b-scp-deferred-admin-reports.php';
+		MAD4B_SCP_Deferred_Admin_Reports::ajax();
 	}
+
+	public static function render_page() {
+		if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Administrator capability required.' );
+		require_once __DIR__ . '/class-mad4b-scp-deferred-admin-reports.php';
+		MAD4B_SCP_Deferred_Admin_Reports::render( 'operator' );
+	}
+
 }
 
 // Routes are declared without booting menus or provider lifecycle on frontend requests.
