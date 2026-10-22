@@ -165,7 +165,7 @@ final class MAD4B_SCP_Execution_Fence {
 		if ( ! is_object( $ability ) || empty( self::$trusted_final_boundaries[ $ability_name ] ) ) return false;
 		try {
 			$property = ( new ReflectionObject( $ability ) )->getProperty( 'execute_callback' );
-			$property->setAccessible( true );
+			if ( PHP_VERSION_ID < 80100 ) $property->setAccessible( true );
 			$callback = $property->getValue( $ability );
 			return $callback instanceof Closure && in_array( $callback, self::$trusted_final_boundaries[ $ability_name ], true );
 		} catch ( Throwable $error ) {
