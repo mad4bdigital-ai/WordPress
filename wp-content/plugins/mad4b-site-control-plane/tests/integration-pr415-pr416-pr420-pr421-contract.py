@@ -81,6 +81,28 @@ for source in watched:
     data = source.read_bytes()
     fingerprints[source.as_posix()] = (hashlib.sha256(data).hexdigest(), len(data))
 
+# Historical Feature 007 manifests remain immutable audit snapshots. A
+# separately reviewed integration source may supersede a historical file hash,
+# but only when its exact current Git blob is registered under the guarded
+# non-authorizing Production Readiness registry.
+coverage = json.loads(Path("governance/production-readiness/capability-coverage.json").read_text(encoding="utf-8"))
+reviewed_exact_blobs = {
+    (entry["path"], entry["source_blob_sha"])
+    for entry in coverage["reviewed_changes"]
+    if entry.get("status") == "reviewed_for_ci_only"
+    and entry.get("production_authorized") is False
+    and entry.get("live_evidence_required") is True
+    and isinstance(entry.get("regression_tests"), list)
+    and bool(entry["regression_tests"])
+}
+
+def reviewed_source_supersedes_snapshot(path):
+    data = Path(path).read_bytes()
+    raw = b"blob " + str(len(data)).encode("ascii") + b"\\0" + data
+    blob_sha = hashlib.sha1(raw).hexdigest()
+    return (path, blob_sha) in reviewed_exact_blobs
+
+
 verified = 0
 def check_evidence(node):
     global verified
@@ -91,8 +113,18 @@ def check_evidence(node):
         path = node.get("path")
         if isinstance(path, str) and path in fingerprints and isinstance(node.get("sha256"), str):
             digest, nbytes = fingerprints[path]
-            if node["sha256"] != digest or ("bytes" in node and node["bytes"] != nbytes):
-                raise SystemExit(f"INTEGRATION CONTRACT FAIL: stale SHA/bytes for {path}")
+            historical_sha = node["sha256"]
+            historical_bytes = node.get("bytes")
+            if historical_sha != digest or (historical_bytes is not None and historical_bytes != nbytes):
+                # Do not silently re-sign old delivery records to match newer
+                # PHP source. Fail closed unless the replacement source has an
+                # exact-blob source review with required executable regressions.
+                if not isinstance(historical_sha, str) or len(historical_sha) != 64 or any(c not in "0123456789abcdef" for c in historical_sha.lower()):
+                    raise SystemExit(f"INTEGRATION CONTRACT FAIL: malformed historical SHA for {path}")
+                if historical_bytes is not None and (not isinstance(historical_bytes, int) or historical_bytes <= 0):
+                    raise SystemExit(f"INTEGRATION CONTRACT FAIL: malformed historical byte count for {path}")
+                if not reviewed_source_supersedes_snapshot(path):
+                    raise SystemExit(f"INTEGRATION CONTRACT FAIL: unreviewed successor source for {path}")
             verified += 1
         else:
             for item in node.values():
