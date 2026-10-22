@@ -600,13 +600,15 @@ final class MAD4B_SCP_Servers {
 			$step_up
 		);
 		$candidates = array_merge( $core, $bootstrap, $profile_tools );
-		$direct_mutation_transport = array_merge(
-			self::chatgpt_dispatch_transport_tools(), $step_up,
-			class_exists( 'MAD4B_SCP_Direct_Profile' ) ? MAD4B_SCP_Direct_Profile::write_tools() : array()
-		);
+		$direct_mutation_transport = array_merge( self::chatgpt_dispatch_transport_tools(), $step_up );
+		// Preserve the pre-existing governed step-up invariant, then extend
+		// ONLY the isolated Direct post tools (never generic write providers).
+		if ( class_exists( 'MAD4B_SCP_Direct_Profile' ) )
+			$direct_mutation_transport = array_merge( $direct_mutation_transport, MAD4B_SCP_Direct_Profile::write_tools() );
 		$direct_mutation_transport = array_values( array_unique( array_merge( $direct_mutation_transport, $approval_bootstrap ) ) );
-		$direct_read_transport = array_merge( self::chatgpt_direct_read_transport_tools(),
-			class_exists( 'MAD4B_SCP_Direct_Profile' ) ? MAD4B_SCP_Direct_Profile::read_tools() : array() );
+		$direct_read_transport = self::chatgpt_direct_read_transport_tools();
+		if ( class_exists( 'MAD4B_SCP_Direct_Profile' ) )
+			$direct_read_transport = array_merge( $direct_read_transport, MAD4B_SCP_Direct_Profile::read_tools() );
 
 		$tools = array();
 		foreach ( array_values( array_unique( array_map( 'strval', $candidates ) ) ) as $ability_name ) {
