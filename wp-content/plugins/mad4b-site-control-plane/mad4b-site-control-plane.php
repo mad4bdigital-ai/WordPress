@@ -572,6 +572,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-endpoint-diagnostic.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-host-identity-live.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-autopilot.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-site-profile-admin.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-connection-stage-diagnostics.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-chatgpt-connection-admin-ui.php';
 MAD4B_SCP_Admin_Surface_Coverage::boot();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adapter-coverage-admin-ui.php';
