@@ -346,7 +346,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 
 	private static function property_value( $object, $name ) {
 		$property = ( new ReflectionObject( $object ) )->getProperty( $name );
-		$property->setAccessible( true );
+		if ( PHP_VERSION_ID < 80100 ) $property->setAccessible( true );
 		return $property->getValue( $object );
 	}
 
