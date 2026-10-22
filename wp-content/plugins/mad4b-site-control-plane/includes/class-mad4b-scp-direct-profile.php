@@ -23,11 +23,10 @@ final class MAD4B_SCP_Direct_Profile {
         if ( self::$booted ) return;
         self::$booted = true;
         add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 32 );
-        if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry' ) ) {
+        // Do not bypass the parent-menu ordering registry: on a partial
+        // bootstrap the controls stay unavailable rather than misregistering.
+        if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry' ) )
             MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'register_page' ), 26 );
-        } else {
-            add_action( 'admin_menu', array( __CLASS__, 'register_page' ) );
-        }
         add_action( 'admin_post_' . self::SAVE_ACTION, array( __CLASS__, 'save' ) );
     }
 
