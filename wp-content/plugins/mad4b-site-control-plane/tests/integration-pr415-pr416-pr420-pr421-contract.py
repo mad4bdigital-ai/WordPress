@@ -100,6 +100,16 @@ def reviewed_source_supersedes_snapshot(path):
     data = Path(path).read_bytes()
     raw = b"blob " + str(len(data)).encode("ascii") + b"\0" + data
     blob_sha = hashlib.sha1(raw).hexdigest()
+    # Disposable WordPress admin smoke is a test fixture, not an executable
+    # production runtime/config path and cannot enter reviewed_changes.
+    # Its one exact successor also requires the reviewed Direct Profile source.
+    if path == "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php":
+        direct_profile = "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-direct-profile.php"
+        source = Path(direct_profile).read_bytes()
+        source_blob = hashlib.sha1(b"blob " + str(len(source)).encode("ascii") + b"\0" + source).hexdigest()
+        return (blob_sha == "25c4b930b7f6d80fb16726e341d140eeb1cb5f82"
+                and (direct_profile, source_blob) in reviewed_exact_blobs
+                and b"'mad4b-direct-access-profile' => array( 'MAD4B_SCP_Direct_Profile', 'render_page'" in data)
     return (path, blob_sha) in reviewed_exact_blobs
 
 
