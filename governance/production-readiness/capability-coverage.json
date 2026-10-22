@@ -5144,6 +5144,29 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing MCP, PHP runtime compatibility, guarded execution and Security controls apply; no policy or authority change.",
       "review_rationale": "PHP_VERSION_ID < 80100 guards the legacy ReflectionProperty::setAccessible call on pre-8.1 PHP; PHP 8.5 skips deprecated no-op while preserving private property read semantics. All nine guarded call sites are validated by executable reflection compatibility regression. No production deployment permission inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-direct-profile.php",
+      "source_blob_sha": "56dc515d683434c1bf58e7db5c1af0c2b3e4efce",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "PLATFORM-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/direct-mcp-same-endpoint-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no WordPress Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuses existing certified MCP transport, OAuth bearer, enrollment, plugin safety and user-capability review controls without granting Production or new mutation authority.",
+      "review_rationale": "Unified same-endpoint Direct Profile continues to require OAuth bearer, exact tool allowlist, WordPress permissions and the existing admin route registry manage_options guard. The admin submenu registers only when MAD4B_SCP_Admin_Route_Registry accepts the route; invalid or absent registry fails closed. Supersedes old source blob review; no Production authority or new endpoints authorized."
     }
   ],
   "code_change_rules": {
