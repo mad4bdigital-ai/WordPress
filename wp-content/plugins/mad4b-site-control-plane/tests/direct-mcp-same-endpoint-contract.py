@@ -45,6 +45,8 @@ def main() -> None:
     assert "MAD4B_SCP_Policy::can_connect_user" in direct
     assert "verified_bearer_active()" in direct
     assert "current_user_can( 'edit_post', $id )" in direct
+    assert "MAD4B_SCP_Admin_Route_Registry::register( self::PAGE, 'manage_options' )" in direct
+    assert "current_user_can( 'manage_options' )" in direct
     assert "mad4b_execution_boundary" not in direct
     assert "MAD4B_SCP_Authorization::claim_mutation" not in direct
     print(php_output.strip())
