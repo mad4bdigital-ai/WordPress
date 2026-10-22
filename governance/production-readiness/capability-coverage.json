@@ -4982,6 +4982,28 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Reuses existing certified MCP transport, OAuth bearer, enrollment, plugin safety and user-capability review controls without granting Production or new mutation authority.",
       "review_rationale": "This consolidated exact-source review resolves overlapping Direct MCP branch proposals. Only the OAuth-bound same-endpoint profile is bootstrapped, native user capabilities are required, Production direct writes are denied, and runtime catalog maintenance reserves previously reviewed dynamic tools ahead of optional profile tools. No Site Owner consent or Production approval is granted by CI."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-convergence.php",
+      "source_blob_sha": "9060e5483012ff581b0ec4ba720159b438856e2e",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PERFORMANCE-01",
+        "AUTOMATION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-superseded-restart-checkpoint-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no WordPress Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP, runtime-convergence, security, performance, and automation controls are sufficient for a historical checkpoint read-only exception without new authorities.",
+      "review_rationale": "Read-only fail-closed exception for strictly newer Staging runtime blocked ONLY by a cached release target identical to the superseded pending_manual_resume checkpoint. Requires exact cached source, identical old version, trusted cache manifestation, no additional required phase blockers, valid phase graph, official historical classifier, and no replay. Preserves checkpoint, kill switch, OAuth, production barrier and full update workflow. No live-site readiness inferred from CI.",
+      "execution_note": "MAD4B Post Update Continuation Guards CI executes a new hermetic PHP fixture across PHP 7.4/8.1/8.3; additional verified local PHP 8.3 container runs cover syntax, unchanged quiet/manual/blocked barriers, and guided convergence. No live production or foreign OAuth acceptance claimed."
     }
   ],
   "code_change_rules": {
