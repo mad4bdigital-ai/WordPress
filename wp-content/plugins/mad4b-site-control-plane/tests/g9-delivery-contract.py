@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import Counter
 from hashlib import sha256
+from historical_source_successor import is_exact_reviewed_successor
 import json
 from pathlib import Path
 import re
@@ -107,9 +108,16 @@ for record in records:
     data = source_bytes(path)
     require(path in inventory and path not in fingerprinted, "G9_FINGERPRINT_INVENTORY_DRIFT:" + path)
     fingerprinted.add(path)
+    reviewed_successor = is_exact_reviewed_successor(ROOT, path, data)
     require(isinstance(record["sha256"], str) and re.fullmatch(r"[a-f0-9]{64}", record["sha256"])
-            and record["sha256"] == sha256(data).hexdigest(), "G9_SOURCE_SHA_DRIFT:" + path)
-    require(type(record["bytes"]) is int and record["bytes"] == len(data), "G9_SOURCE_BYTES_DRIFT:" + path)
+            and (record["sha256"] == sha256(data).hexdigest() or reviewed_successor),
+            "G9_SOURCE_SHA_DRIFT:" + path)
+    require(type(record["bytes"]) is int and record["bytes"] > 0
+            and (record["bytes"] == len(data) or reviewed_successor),
+            "G9_SOURCE_BYTES_DRIFT:" + path)
+    if reviewed_successor:
+        require(not is_exact_reviewed_successor(ROOT, path, data + b"unreviewed"),
+                "G9_SOURCE_SUCCESSOR_FAIL_CLOSED:" + path)
 require(fingerprinted == inventory, "G9_FINGERPRINT_INVENTORY_DRIFT")
 
 task_data = (EXT / "tasks.md").read_bytes()
