@@ -90,6 +90,23 @@ final class MAD4B_SCP_Direct_Profile {
         return array( self::STATUS, self::LIST_POSTS, self::GET_POST, self::CREATE_POST, self::UPDATE_POST );
     }
 
+    /** Stable at registration: only site policy changes the optional inventory. */
+    public static function catalog_tools() {
+        $state = self::state();
+        if ( empty( $state['valid'] ) || in_array( $state['mode'], array( 'governed', 'maintenance_lock' ), true ) )
+            return array();
+        return 'read_only' === $state['mode']
+            ? array( self::STATUS, self::LIST_POSTS, self::GET_POST )
+            : self::tools();
+    }
+
+    public static function read_tools() {
+        return array( self::STATUS, self::LIST_POSTS, self::GET_POST );
+    }
+    public static function write_tools() {
+        return array( self::CREATE_POST, self::UPDATE_POST );
+    }
+
     private static function schema( array $properties = array(), array $required = array() ) {
         $s = array( 'type'=>'object', 'properties'=>$properties, 'additionalProperties'=>false );
         if ( $required ) $s['required'] = $required;
