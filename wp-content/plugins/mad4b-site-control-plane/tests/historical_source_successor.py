@@ -128,18 +128,18 @@ def is_exact_ci_history_checkout_successor(root, path, contents, historic_sha, h
         return False
     original_text = original.decode("utf-8")
     only_allowed = original_text
-    anchor = "          ref: ${{ github.event.pull_request.head.sha || github.sha }}\\n"
+    anchor = "          ref: ${{ github.event.pull_request.head.sha || github.sha }}\n"
     for job in ("g6-runtime:", "g9-resilience:"):
-        start = only_allowed.find("\\n  " + job)
+        start = only_allowed.find("\n  " + job)
         if start < 0:
             return False
-        next_job = re.search(r"\\n  [a-zA-Z0-9][a-zA-Z0-9_-]*:\\n", only_allowed[start+len(job):])
+        next_job = re.search(r"\n  [a-zA-Z0-9][a-zA-Z0-9_-]*:\n", only_allowed[start+len(job):])
         end = len(only_allowed) if next_job is None else start + len(job) + next_job.start()
         section = only_allowed[start:end]
         if section.count(anchor) != 1:
             return False
-        changed = section.replace(anchor, anchor + "          fetch-depth: 0\\n", 1)
+        changed = section.replace(anchor, anchor + "          fetch-depth: 0\n", 1)
         only_allowed = only_allowed[:start] + changed + only_allowed[end:]
     expected = only_allowed.encode("utf-8")
-    blob = hashlib.sha1(b"blob " + str(len(contents)).encode("ascii") + b"\\0" + contents).hexdigest()
+    blob = hashlib.sha1(b"blob " + str(len(contents)).encode("ascii") + b"\0" + contents).hexdigest()
     return expected == contents and git_blob == blob
