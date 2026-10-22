@@ -5188,6 +5188,117 @@
       "coverage_reuse_rationale": "Existing MCP, runtime-convergence, security, performance, and automation controls are sufficient for a historical checkpoint read-only exception without new authorities.",
       "review_rationale": "Restored ARE Staging evidence (read-only WP-CLI options, 22 Oct 2026) identifies old self-update checkpoint rc.102 SHA 268d9b31 and a distinct, fully identified, cached rc.102 release SHA 12199d0e. The exact non-Production exception activates only when the installed runtime is strictly newer than both complete obsolete identities; deployment:pending is the ONLY required blocker, the phase graph is valid, every other required phase is ready and the official checkpoint classifier is historical audit-only with no replay. Keeps production, active updates, schema, skills, OAuth and authority fail closed; historical records and kill switch remain untouched. No site deployment acceptance or owner authorization inferred.",
       "execution_note": "MAD4B Post Update Continuation Guards CI executes a new hermetic PHP fixture across PHP 7.4/8.1/8.3; additional verified local PHP 8.3 container runs cover syntax, unchanged quiet/manual/blocked barriers, and guided convergence. No live production or foreign OAuth acceptance claimed."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema-lifecycle.php",
+      "source_blob_sha": "33e0fe901b26d2e19e20f4a0c4a3d4d8fa79c1d7",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PERFORMANCE-01",
+        "AUTOMATION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-runtime-oauth-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Staging Write Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing OAuth, Schema, MCP, Runtime, Security, performance, and governed authority controls apply. No Production, Write, Developer, or Breakglass authority is granted.",
+      "review_rationale": "ARE Staging measured a frontend init priority-2 stall in Schema_Lifecycle::maybe_schedule while self_update pending_manual_resume and a persisted automation kill switch were active. Read-only fast rejection prevents redundant expensive recursive Runtime graph inspection solely for automatic scheduling; the checkpoint, explicit reconciliation path, and manual operator block remain unchanged.",
+      "execution_note": "Five exact PHP sources were first applied and verified on isolated staging.allroyalegypt.com. Verified: home 200, REST 200, MCP Read anonymous 403, MCP ChatGPT anonymous 401, RFC9728 well-known 200, anonymous initialize 401 plus WWW-Authenticate; executable PHP regressions in this PR fail closed. Live authenticated MCP acceptance and Production/ETG deployment remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-convergence.php",
+      "source_blob_sha": "13829b70e2326dbded568dd1fd1e96add001c51e",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PERFORMANCE-01",
+        "AUTOMATION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-runtime-oauth-recovery-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-superseded-restart-checkpoint-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Staging Write Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing OAuth, Schema, MCP, Runtime, Security, performance, and governed authority controls apply. No Production, Write, Developer, or Breakglass authority is granted.",
+      "review_rationale": "Exact fail-closed historical checkpoint observation for the dedicated Staging MCP Read transport only. Requires a newer fully pinned runtime, official non-replay historical classifier, no quiet period, exact manual kill-switch blocker, valid phases, all independent Schema/OAuth/Skills/deployment requirements ready, and sole authority_binding:owner_gate; does not clear restart_grace for Write, ChatGPT, Developer, or Production.",
+      "execution_note": "Five exact PHP sources were first applied and verified on isolated staging.allroyalegypt.com. Verified: home 200, REST 200, MCP Read anonymous 403, MCP ChatGPT anonymous 401, RFC9728 well-known 200, anonymous initialize 401 plus WWW-Authenticate; executable PHP regressions in this PR fail closed. Live authenticated MCP acceptance and Production/ETG deployment remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-reconnect-hardening.php",
+      "source_blob_sha": "01f52baade2832f35da7524d7ac23a4cc7111a72",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PERFORMANCE-01",
+        "AUTOMATION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-runtime-oauth-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Staging Write Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing OAuth, Schema, MCP, Runtime, Security, performance, and governed authority controls apply. No Production, Write, Developer, or Breakglass authority is granted.",
+      "review_rationale": "Only the literal /mcp/mad4b-read route may skip the historical restart-grace 503 when the separately verified historical_mcp_read_safe decision is true. The existing per-route authenticated WordPress read-capability policy, OAuth protection, and all non-read MCP barriers remain enforced.",
+      "execution_note": "Five exact PHP sources were first applied and verified on isolated staging.allroyalegypt.com. Verified: home 200, REST 200, MCP Read anonymous 403, MCP ChatGPT anonymous 401, RFC9728 well-known 200, anonymous initialize 401 plus WWW-Authenticate; executable PHP regressions in this PR fail closed. Live authenticated MCP acceptance and Production/ETG deployment remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-client-compatibility.php",
+      "source_blob_sha": "970941623267829ba01cfb2ec7395e14ef360456",
+      "control_ids": [
+        "OAUTH-01",
+        "MCP-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-runtime-oauth-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Staging Write Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing OAuth, Schema, MCP, Runtime, Security, performance, and governed authority controls apply. No Production, Write, Developer, or Breakglass authority is granted.",
+      "review_rationale": "RFC9728 anonymous protected-resource discovery consumes fail-closed OAuth runtime identity rather than expensive diagnostic public-JWK/store status. Presence/authority policy and environment checks are retained; actual bearer verification and key validation are unchanged. ARE Staging external evidence changed well-known timeout to HTTP 200.",
+      "execution_note": "Five exact PHP sources were first applied and verified on isolated staging.allroyalegypt.com. Verified: home 200, REST 200, MCP Read anonymous 403, MCP ChatGPT anonymous 401, RFC9728 well-known 200, anonymous initialize 401 plus WWW-Authenticate; executable PHP regressions in this PR fail closed. Live authenticated MCP acceptance and Production/ETG deployment remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-resource-bridge.php",
+      "source_blob_sha": "11e00fcadf2f242de88dea661943cbfaf9d702be",
+      "control_ids": [
+        "OAUTH-01",
+        "MCP-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-runtime-oauth-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Staging Write Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing OAuth, Schema, MCP, Runtime, Security, performance, and governed authority controls apply. No Production, Write, Developer, or Breakglass authority is granted.",
+      "review_rationale": "On exact RFC9728 well-known paths, local authority readiness uses the existing bounded protocol runtime projection. Scope advertisement short-circuits once any eligible reviewed step-up tool is found rather than running expensive unnecessary candidate plans; every actual scope grant continues through ordinary OAuth authorization. ARE Staging measured full metadata HTTP 200 with valid resource and advertised issuer.",
+      "execution_note": "Five exact PHP sources were first applied and verified on isolated staging.allroyalegypt.com. Verified: home 200, REST 200, MCP Read anonymous 403, MCP ChatGPT anonymous 401, RFC9728 well-known 200, anonymous initialize 401 plus WWW-Authenticate; executable PHP regressions in this PR fail closed. Live authenticated MCP acceptance and Production/ETG deployment remain unverified."
     }
   ],
   "code_change_rules": {
