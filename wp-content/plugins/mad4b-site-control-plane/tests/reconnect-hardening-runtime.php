@@ -168,8 +168,13 @@ $bearer_request=new class {
     public function get_route(){return '/mcp/mad4b-chatgpt';}
     public function get_header($name){return 'authorization'===strtolower((string)$name)?'Bearer test-token':'';}
 };
-$bearer_guard=MAD4B_SCP_Reconnect_Hardening::guard_mcp_rest_dispatch(null,null,$bearer_request);
-ok(is_wp_error($bearer_guard)&&'mad4b_mcp_runtime_maintenance_busy'===$bearer_guard->get_error_code(),'bearer MCP execution must remain fenced during maintenance');
+$preauth_bearer_guard=MAD4B_SCP_Reconnect_Hardening::guard_mcp_rest_dispatch(null,null,$bearer_request);
+ok(null===$preauth_bearer_guard,'Bearer authorization must reach OAuth verifier before restart/maintenance');
+$oauth_rejected=new WP_REST_Response(array('error'=>'mad4b_oauth_jwt_malformed'),401);
+$rejected_after_oauth=MAD4B_SCP_Reconnect_Hardening::guard_mcp_authenticated_rest_dispatch($oauth_rejected,null,$bearer_request);
+ok($rejected_after_oauth===$oauth_rejected,'invalid Bearer 401 must not be overwritten by restart grace');
+$bearer_guard=MAD4B_SCP_Reconnect_Hardening::guard_mcp_authenticated_rest_dispatch(null,null,$bearer_request);
+ok(is_wp_error($bearer_guard)&&'mad4b_mcp_runtime_maintenance_busy'===$bearer_guard->get_error_code(),'valid Bearer work stays fenced by maintenance after OAuth');
 MAD4B_SCP_Runtime_Convergence::$maintenance=array('active'=>false,'retry_after_seconds'=>0,'owner'=>'');
 
 MAD4B_SCP_Servers::$status['mad4b-chatgpt']=array('registered'=>false,'error'=>'chatgpt_registration_failed'); $s=MAD4B_SCP_Reconnect_Hardening::reconnect_status();
