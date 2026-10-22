@@ -39,6 +39,9 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		add_action( 'admin_notices', array( __CLASS__, 'connection_admin_notice' ), 1 );
 		add_filter( 'rest_pre_dispatch', array( __CLASS__, 'reset_session_policy_scope' ), -200, 3 );
 		add_filter( 'rest_pre_dispatch', array( __CLASS__, 'guard_mcp_rest_dispatch' ), -100, 3 );
+		// Authenticate bearer tokens before classifying Runtime restart grace.
+		// A late phase still checks all gates before execution.
+		add_filter( 'rest_pre_dispatch', array( __CLASS__, 'guard_mcp_authenticated_rest_dispatch' ), 4, 3 );
 
 		// MCP Adapter 0.6.x uses a user-meta backed session map shared by MCP servers.
 		// Do not override its global capacity/timeout knobs from a ChatGPT-only fix;
@@ -898,7 +901,18 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		return array_values( array_unique( array_filter( array_map( 'sanitize_key', $blockers ) ) ) );
 	}
 
-	public static function guard_mcp_rest_dispatch( $result, $server, $request ) {
+	public static function guard_mcp_authenticated_rest_dispatch( $result, $server, $request ) {
+		if ( null !== $result || ! is_object( $request ) || ! method_exists( $request, 'get_route' ) ) return $result;
+		$route = '/' . ltrim( rtrim( (string) $request->get_route(), '/' ), '/' );
+		if ( '/mcp/mad4b-chatgpt' !== $route || ! method_exists( $request, 'get_header' ) ) return $result;
+		$authorization = trim( (string) $request->get_header( 'authorization' ) );
+		if ( '' === $authorization ) return $result;
+		// OAuth already rejected the invalid token or mapped its approved subject.
+		// The late check still enforces restart, maintenance and reconnect gates.
+		return self::guard_mcp_rest_dispatch( $result, $server, $request, true );
+	}
+
+	public static function guard_mcp_rest_dispatch( $result, $server, $request, $post_auth_phase = false ) {
 		if ( null !== $result || ! is_object( $request ) || ! method_exists( $request, 'get_route' ) ) return $result;
 		$route = (string) $request->get_route();
 		$is_chatgpt_resource = self::is_resource_request_path( $route );
@@ -918,6 +932,14 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			&& function_exists( 'is_user_logged_in' )
 			&& ! is_user_logged_in();
 		if ( $remote_preauth_probe ) return $result;
+		// Defer ONLY bearer-bearing ChatGPT REST resources to the OAuth bridge
+		// (priority 1); authenticated requests are gated again at priority 4.
+		// No authority is granted by this ordering change.
+		if ( ! $post_auth_phase
+			&& '/mcp/mad4b-chatgpt' === $route
+			&& '' !== $authorization
+			&& class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', false ) )
+			return $result;
 
 		$restart_grace = self::restart_grace_status();
 		// A historical Staging checkpoint can be safe for the dedicated
