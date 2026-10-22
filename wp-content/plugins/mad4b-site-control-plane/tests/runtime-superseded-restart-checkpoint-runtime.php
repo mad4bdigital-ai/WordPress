@@ -98,10 +98,32 @@ $stale['checkpoint_operator_state'] = MAD4B_SCP_Runtime_Convergence::checkpoint_
 	$previous, $new, $stale['required_blockers']
 );
 must( $eligible( $previous, $new, $now - 40, $stale ), 'exact stale cache-only blocker releases historical grace' );
+// Live restored ARE evidence: self-update checkpoint SHA and validated cached
+// manifest SHA differ, but both certified identities are for old rc.102.
+// This must release only after installing rc.103 with no other blockers.
+$dual_old_releases = $stale;
+$dual_old_releases['phases']['deployment']['details']['target_identity']['source_commit_sha'] = str_repeat( '9', 40 );
+$dual_old_releases['phases']['deployment']['details']['target_identity']['build_fingerprint'] = str_repeat( '1', 64 );
+$dual_old_releases['phases']['deployment']['details']['target_identity']['package_manifest_digest'] = str_repeat( '2', 64 );
+must( $eligible( $previous, $new, $now - 40, $dual_old_releases ),
+	'different complete old release SHA at same rc.102 cannot block a strictly newer rc.103 with deployment-only blocker' );
+$missing_cache_fingerprint = $dual_old_releases;
+unset( $missing_cache_fingerprint['phases']['deployment']['details']['target_identity']['build_fingerprint'] );
+must( ! $eligible( $previous, $new, $now - 40, $missing_cache_fingerprint ),
+	'different old release SHA without complete fingerprint stays blocked' );
+$missing_checkpoint_digest = $dual_old_releases;
+unset( $missing_checkpoint_digest['checkpoint']['target_identity']['package_manifest_digest'] );
+must( ! $eligible( $previous, $new, $now - 40, $missing_checkpoint_digest ),
+	'different old release SHA without complete checkpoint digest stays blocked' );
+$independent_schema = $dual_old_releases;
+$independent_schema['required_blockers'][] = 'schema:pending';
+$independent_schema['phases']['schema']['state'] = 'pending';
+must( ! $eligible( $previous, $new, $now - 40, $independent_schema ),
+	'independent schema blocker cannot be bypassed by different historical SHA' );
 $cache_cases = array(
 	'no_cache_certification' => static function ( &$g ) { $g['phases']['deployment']['details']['cached_release_target_present'] = false; },
 	'unready_manifest' => static function ( &$g ) { $g['phases']['deployment']['details']['manifest_state'] = 'not_cached'; },
-	'different_cached_target' => static function ( &$g ) { $g['phases']['deployment']['details']['target_identity']['source_commit_sha'] = str_repeat( '9', 40 ); },
+	'invalid_cached_sha' => static function ( &$g ) { $g['phases']['deployment']['details']['target_identity']['source_commit_sha'] = 'not-a-sha'; },
 	'different_cached_version' => static function ( &$g ) { $g['phases']['deployment']['details']['target_identity']['version'] = '0.4.0-rc.100'; },
 	'independent_schema_blocker' => static function ( &$g ) { $g['required_blockers'][] = 'schema:pending'; $g['phases']['schema']['state'] = 'pending'; },
 	'phase_graph_invalid' => static function ( &$g ) { $g['phase_graph_valid'] = false; },
