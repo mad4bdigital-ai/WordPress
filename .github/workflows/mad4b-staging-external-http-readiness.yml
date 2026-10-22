@@ -38,7 +38,7 @@ jobs:
           getent ahostsv4 "$TARGET_HOST" | head -n 2 || true
           baseline_exit=1
           baseline_code=000
-          for path in / /wp-json/ /wp-json/wp/v2/types /.well-known/oauth-protected-resource/wp-json/mcp/mad4b-chatgpt /wp-json/mcp/mad4b-chatgpt; do
+          for path in / /wp-json/ /wp-json/wp/v2/types /.well-known/oauth-protected-resource /.well-known/oauth-protected-resource/wp-json/mcp/mad4b-chatgpt /wp-json/mad4b/v1/oauth-protected-resource /wp-json/mcp/mad4b-chatgpt; do
             set +e
             metrics="$(curl --silent --show-error --output /dev/null --max-redirs 0 --connect-timeout 5 --max-time 12 --write-out '%{http_code}|%{remote_ip}|%{time_namelookup}|%{time_connect}|%{time_appconnect}|%{time_starttransfer}|%{time_total}' "https://${TARGET_HOST}${path}" 2>evidence/curl-stderr.tmp)"
             rc=$?
