@@ -13,6 +13,8 @@ RUNTIME = ROOT / "includes" / "class-mad4b-scp-runtime-convergence.php"
 CASES = {
     "runtime-superseded-restart-checkpoint-runtime.php":
         "RUNTIME_SUPERSEDED_RESTART_CHECKPOINT: PASS",
+    "runtime-historical-read-isolation-runtime.php":
+        "RUNTIME_HISTORICAL_READ_ISOLATION: PASS",
     "runtime-restart-grace-readonly-runtime.php":
         "RUNTIME_RESTART_GRACE_READONLY: PASS",
     "guided-runtime-convergence-runtime.php":
