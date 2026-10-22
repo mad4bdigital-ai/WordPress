@@ -8,9 +8,9 @@ class WP_Error {
     public function get_error_message() { return $this->message; }
     public function get_error_code() { return $this->code; }
 }
-function get_current_user_id() { return 1; }
-function get_current_blog_id() { return 1; }
-function home_url( $path = '/' ) { return 'https://example.test' . $path; }
+function get_current_user_id() { return $GLOBALS['mock_actor_id'] ?? 1; }
+function get_current_blog_id() { return $GLOBALS['mock_blog_id'] ?? 1; }
+function home_url( $path = '/' ) { return ( $GLOBALS['mock_site_origin'] ?? 'https://example.test' ) . $path; }
 $GLOBALS['operating_mode'] = 'SINGLE_OWNER_HARDENED';
 class MAD4B_SCP_Policy_Resolution {
     public static function current_operating_mode() { return $GLOBALS['operating_mode']; }
@@ -113,7 +113,9 @@ $invalid = $cls::project( $hard, array() );
 expect( $invalid['degraded'] === $hard && ! $invalid['active_policy'], 'Invalid options must fail closed' );
 // Save-path regression: an append-only audit failure after the first-ever
 // persistence must remove the newly added option, not leave it half applied.
-function current_user_can( $capability ) { return 'manage_options' === $capability; }
+function current_user_can( $capability ) {
+    return 'manage_options' === $capability && ( $GLOBALS['mock_admin_allowed'] ?? true );
+}
 $unauthorized = $remote::apply(array( 'policy_id'=>'developer_lane','mode'=>'off',
     'confirmation'=>$remote::CONFIRM,'expected_plan_sha256'=>$remote_plan['plan_sha256'] ));
 expect( is_wp_error($unauthorized) &&
@@ -206,16 +208,20 @@ function enable_optional_remote_owner_fixture() {
         public static function user_is_enrolled( $id ) { return 1 === $id; }
     }
     class MAD4B_SCP_Policy {
-        public static function can_mutate() { return true; }
+        public static $write_allowed = true;
+        public static function can_mutate() { return self::$write_allowed; }
     }
     class MAD4B_SCP_OAuth_Resource_Bridge {
         const AUTHORITY_STEP_UP_SCOPE = 'mad4b:authority:step-up';
-        public static function verified_bearer_active() { return true; }
+        public static $bearer_valid = true;
+        public static $scope_valid = true;
+        public static $client_valid = true;
+        public static function verified_bearer_active() { return self::$bearer_valid; }
         public static function verified_bearer_has_scope( $scope ) {
-            return $scope === self::AUTHORITY_STEP_UP_SCOPE;
+            return self::$scope_valid && $scope === self::AUTHORITY_STEP_UP_SCOPE;
         }
         public static function verified_bearer_client_is( $id ) {
-            return $id === MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID;
+            return self::$client_valid && $id === MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID;
         }
     }
     class MAD4B_SCP_Local_OAuth_Server {
@@ -374,4 +380,141 @@ try { $cls::save_ajax(); } catch ( RuntimeException $error ) {
 expect( $admin_bulk_ok && $cls::status()['effective_profile'] === 'off'
     && $cls::status()['revision'] === 4,
     'Admin options page must bulk-save Off with revision, nonce and readback' );
-echo "OPTIONAL_GOVERNANCE: PASS (fresh Off default, bulk admin/MCP profile, exact ticket, CAS, audit, Production denial)\n";
+// Selected batch: target subset only, deterministic order, exact approval plan.
+$selection = array( 'machine_ingress', 'developer_lane' );
+$select_plan = $remote::plan( array( 'policy_id'=>$remote::SELECTED,
+    'mode'=>'advisory', 'policy_ids'=>$selection ) );
+$permuted = $remote::plan( array( 'policy_id'=>$remote::SELECTED,
+    'mode'=>'advisory', 'policy_ids'=>array_reverse($selection) ) );
+expect( ! is_wp_error($select_plan) && $select_plan['change_required']
+    && $select_plan['changed_optional_notices'] === 2
+    && $select_plan['affected_optional_notices'] === 2
+    && $select_plan['plan_sha256'] === $permuted['plan_sha256'],
+    'Selected batch must hash canonical target order and count changed policies' );
+$before_select = $cls::status();
+$selected = governed_optional_apply_fixture( array( 'policy_id'=>$remote::SELECTED,
+    'mode'=>'advisory', 'policy_ids'=>array_reverse($selection),
+    'expected_plan_sha256'=>$select_plan['plan_sha256'], 'confirmation'=>$remote::CONFIRM ) );
+expect( ! is_wp_error($selected) && $selected['revision'] === 5
+    && $remote::verify(array( 'policy_id'=>$remote::SELECTED,
+        'policy_ids'=>$selection, 'mode'=>'advisory' ))['verified'],
+    'Selected plan Apply/Verify must persist exactly the requested subset' );
+$after_select = $cls::status();
+foreach( $after_select['gates'] as $row ) {
+    if ( in_array($row['id'],$selection,true) ) expect( $row['mode']==='advisory',
+        'Targeted selected notice did not change' );
+    else expect( $row['configured_mode']==='off',
+        'Unselected optional notice must keep its prior configuration' );
+}
+$select_diff = $remote::verify(array( 'policy_id'=>$remote::SELECTED,
+    'policy_ids'=>array('developer_lane','machine_ingress','machine_ingress_evidence'),
+    'mode'=>'advisory' ));
+expect( !$select_diff['verified']
+    && $select_diff['mismatched_policy_ids']===array('machine_ingress_evidence'),
+    'Scoped readback must identify mismatched optional policy IDs' );
+
+// Fail-closed selection validation: unknown, duplicate, reserved, empty, non-list,
+// over-limit, malformed, extraneous selector, incorrect mode and no-op.
+foreach ( array(
+    array( 'policy_id'=>$remote::SELECTED, 'mode'=>'off', 'policy_ids'=>array() ),
+    array( 'policy_id'=>$remote::SELECTED, 'mode'=>'off', 'policy_ids'=>array('developer_lane','developer_lane') ),
+    array( 'policy_id'=>$remote::SELECTED, 'mode'=>'off', 'policy_ids'=>array('developer_lane','unknown_policy') ),
+    array( 'policy_id'=>$remote::SELECTED, 'mode'=>'off', 'policy_ids'=>array($remote::ALL) ),
+    array( 'policy_id'=>$remote::SELECTED, 'mode'=>'off', 'policy_ids'=>array('wrong pattern') ),
+    array( 'policy_id'=>$remote::SELECTED, 'mode'=>'off', 'policy_ids'=>array('developer_lane'=>1) ),
+    array( 'policy_id'=>$remote::SELECTED, 'mode'=>'off', 'policy_ids'=>array_fill(0,65,'developer_lane') ),
+    array( 'policy_id'=>'developer_lane','mode'=>'off','policy_ids'=>array('developer_lane') ),
+    array( 'policy_id'=>$remote::ALL,'mode'=>'off','policy_ids'=>array('developer_lane') ),
+    array( 'policy_id'=>$remote::SELECTED,'mode'=>'bypass_auth','policy_ids'=>array('developer_lane') ),
+    array( 'policy_id'=>$remote::SELECTED, 'mode'=>'off', 'policy_ids'=>array('developer_lane'), 'unexpected'=>'x' ),
+) as $invalid_case ) {
+    $rejected = $remote::plan( $invalid_case );
+    expect( is_wp_error($rejected), 'Malformed or unsafe selected policy input must be refused' );
+}
+$no_op_batch = $remote::plan( array('policy_id'=>$remote::SELECTED,
+    'mode'=>'advisory','policy_ids'=>$selection ) );
+expect( !$no_op_batch['change_required'], 'Selected no-op must be detectable at plan time' );
+$no_op_before = MAD4B_SCP_Authorization::$preflight_calls;
+$no_op_result = governed_optional_apply_fixture( array('policy_id'=>$remote::SELECTED,
+    'mode'=>'advisory','policy_ids'=>$selection,
+    'expected_plan_sha256'=>$no_op_batch['plan_sha256'], 'confirmation'=>$remote::CONFIRM ) );
+expect( is_wp_error($no_op_result)
+    && $no_op_result->get_error_code()==='mad4b_optional_remote_no_change_use_verify'
+    && MAD4B_SCP_Authorization::$preflight_calls===$no_op_before,
+    'No-op selected batch must not use an approved mutation ticket' );
+
+// The site/blog/actor and revision belong to the exact plan SHA.
+$cross_site = $remote::plan(array('policy_id'=>$remote::SELECTED,
+    'mode'=>'off','policy_ids'=>$selection));
+$GLOBALS['mock_site_origin']='https://other-site.example.test';
+$foreign = governed_optional_apply_fixture(array('policy_id'=>$remote::SELECTED,
+    'mode'=>'off','policy_ids'=>$selection,
+    'expected_plan_sha256'=>$cross_site['plan_sha256'], 'confirmation'=>$remote::CONFIRM));
+expect( is_wp_error($foreign) && $foreign->get_error_code()==='mad4b_optional_remote_plan_stale',
+    'Reviewed plan must not be replayed against another WordPress site' );
+unset($GLOBALS['mock_site_origin']);
+$GLOBALS['mock_blog_id']=2;
+$foreign_blog = governed_optional_apply_fixture(array('policy_id'=>$remote::SELECTED,
+    'mode'=>'off','policy_ids'=>$selection,
+    'expected_plan_sha256'=>$cross_site['plan_sha256'], 'confirmation'=>$remote::CONFIRM));
+expect( is_wp_error($foreign_blog) && $foreign_blog->get_error_code()==='mad4b_optional_remote_plan_stale',
+    'Reviewed plan must not cross multisite blog context' );
+unset($GLOBALS['mock_blog_id']);
+
+$security_target = $remote::plan(array('policy_id'=>$remote::SELECTED,
+    'mode'=>'off','policy_ids'=>$selection));
+$secure_input = array('policy_id'=>$remote::SELECTED,'mode'=>'off','policy_ids'=>$selection,
+    'expected_plan_sha256'=>$security_target['plan_sha256'],'confirmation'=>$remote::CONFIRM);
+$before_security = get_option($cls::OPTION,null);
+$GLOBALS['mock_admin_allowed']=false;
+$actor_denied=$remote::can_apply($secure_input);
+expect( is_wp_error($actor_denied)
+    && $actor_denied->get_error_code()==='mad4b_optional_remote_staging_authority_denied',
+    'Insufficient WordPress administrator capability must prevent remote Apply' );
+unset($GLOBALS['mock_admin_allowed']);
+$GLOBALS['mock_actor_id']=2;
+$not_enrolled=$remote::can_apply($secure_input);
+expect( is_wp_error($not_enrolled)
+    && $not_enrolled->get_error_code()==='mad4b_optional_remote_staging_authority_denied',
+    'Unenrolled actor must not remotely edit optional policy' );
+unset($GLOBALS['mock_actor_id']);
+MAD4B_SCP_Policy::$write_allowed=false;
+$write_denied=$remote::can_apply($secure_input);
+expect( is_wp_error($write_denied)
+    && $write_denied->get_error_code()==='mad4b_optional_remote_staging_authority_denied',
+    'Missing governed Write permission must deny even an advisory option' );
+MAD4B_SCP_Policy::$write_allowed=true;
+foreach ( array('bearer_valid','scope_valid','client_valid') as $property ) {
+    MAD4B_SCP_OAuth_Resource_Bridge::$$property=false;
+    $blocked=$remote::can_apply($secure_input);
+    expect( is_wp_error($blocked)
+        && $blocked->get_error_code()==='mad4b_optional_remote_step_up_missing',
+        'Remote mutation must enforce bearer validity, step-up and client binding' );
+    MAD4B_SCP_OAuth_Resource_Bridge::$$property=true;
+}
+expect( get_option($cls::OPTION,null)===$before_security,
+    'Denied remote writes must leave stored options untouched' );
+MAD4B_SCP_Site_Profile::$environment='production';
+$prod_batch=governed_optional_apply_fixture($secure_input);
+expect( is_wp_error($prod_batch)
+    && $prod_batch->get_error_code()==='mad4b_optional_remote_staging_authority_denied'
+    && get_option($cls::OPTION,null)===$before_security,
+    'Production remote selected batch must remain denied' );
+MAD4B_SCP_Site_Profile::$environment='staging';
+
+// Stale revision from a concurrent local admin save: no replay of reviewed plan.
+$stale_plan=$remote::plan(array('policy_id'=>$remote::SELECTED,
+    'mode'=>'off','policy_ids'=>$selection));
+$changed_modes=array();
+foreach ($cls::status()['gates'] as $row) $changed_modes[$row['id']]=$row['configured_mode'];
+$changed_modes['machine_ingress_evidence']='advisory';
+$current_status=$cls::status();
+$local_edit=$cls::persist_modes($changed_modes,$current_status['revision'],$current_status['definitions_sha256']);
+expect( ! is_wp_error($local_edit), 'Fixture local change for concurrency regression failed' );
+$stale_apply=governed_optional_apply_fixture(array('policy_id'=>$remote::SELECTED,
+    'mode'=>'off','policy_ids'=>$selection,
+    'expected_plan_sha256'=>$stale_plan['plan_sha256'],'confirmation'=>$remote::CONFIRM));
+expect( is_wp_error($stale_apply)
+    && $stale_apply->get_error_code()==='mad4b_optional_remote_plan_stale',
+    'Concurrent preference update must invalidate earlier remote plans' );
+echo "OPTIONAL_GOVERNANCE: PASS (fresh Off, single/all/selected, validation, tenancy, stale revisions, admin/MCP, OAuth/Write, CAS, audit, Production denial)\n";
