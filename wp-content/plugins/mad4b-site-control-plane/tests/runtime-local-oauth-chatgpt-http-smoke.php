@@ -76,13 +76,11 @@ foreach ( $preauth_tools as $dto ) {
 // the 36-tool budget. Compare against the same deterministic selection as
 // registration: only budget-retained tools must be bound. Missing optional
 // tools must be explicitly excluded by that policy, not silently disappear.
-$dynamic_optional = class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' )
-    ? MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names() : array();
 $all_requested = MAD4B_SCP_Servers::chatgpt_tools();
-$optional = array_values( array_intersect(
-    array_values( array_unique( array_merge( $dynamic_optional, $reviewed_step_up_abilities ) ) ),
-    $all_requested
-) );
+// Use the authoritative server-side optional classification. Reconstructing
+// it without the Direct Profile/management priority can mark a registered
+// reviewed step-up as "excluded" when it was legitimately retained.
+$optional = MAD4B_SCP_Servers::chatgpt_materialization_optional_tools( $all_requested );
 $budget = MAD4B_SCP_MCP_Catalog_Diagnostics::budget_projection( $all_requested, $optional );
 if ( empty( $budget['ready'] ) ) $fail( 'Reviewed direct-step-up catalog budget itself is invalid.', $budget );
 foreach ( $reviewed_step_up_abilities as $ability_name ) {
