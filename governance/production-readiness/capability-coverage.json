@@ -5166,6 +5166,26 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Reuses existing certified MCP transport, OAuth bearer, enrollment, plugin safety and user-capability review controls without granting Production or new mutation authority.",
       "review_rationale": "Unified same-endpoint Direct Profile continues to require OAuth bearer, exact tool allowlist, WordPress permissions and the existing admin route registry manage_options guard. The admin submenu registers only when MAD4B_SCP_Admin_Route_Registry accepts the route; invalid or absent registry fails closed. Supersedes old source blob review; no Production authority or new endpoints authorized."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",
+      "source_blob_sha": "25c4b930b7f6d80fb16726e341d140eeb1cb5f82",
+      "control_ids": [
+        "ADMIN-01",
+        "SECURITY-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/direct-mcp-same-endpoint-contract.py"
+      ],
+      "owner_role": "Repository source review — CI-only; no site authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Admin Route Registry, WordPress capability, and fully disposable page smoke controls apply.",
+      "review_rationale": "The existing admin-pages WordPress smoke inventory now includes mad4b-direct-access-profile with its exact callback. It verifies canonical route, manage_options capability and non-authorizing page rendering; no site mutation or Production acceptance is granted."
     }
   ],
   "code_change_rules": {
