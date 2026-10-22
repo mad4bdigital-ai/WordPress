@@ -4427,6 +4427,28 @@
       "coverage_reuse_rationale": "Existing fail-closed MCP and Runtime Convergence controls cover exact read-only checkpoint and Cron diagnostics; no authority, session, restart or mutation gate is changed.",
       "review_rationale": "Expose bounded persisted checkpoint age/state, operator blockers and retries without clearing gate or mutating options; executable PHP regression covers quiet period, manual, blocked and terminal phases.",
       "execution_note": "Trusted Spec 008 CI executes the changed runtime-convergence-contract.py, which runs php -l and the hermetic restart-grace PHP fixture. No direct PHP artifact is misrepresented as an independent trusted PHPUnit runner. External MCP/host acceptance remains separate."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-convergence.php",
+      "source_blob_sha": "b649177c32c3426317a4d10bbdc253285fc72914",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PERFORMANCE-01",
+        "AUTOMATION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-superseded-restart-checkpoint-runtime.php"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no WordPress Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP, runtime-convergence, security, performance, and automation controls are sufficient for a historical checkpoint read-only exception without new authorities.",
+      "review_rationale": "A restored ETG database can retain an obsolete self-update pending_manual_resume checkpoint with a kill-switch blocker after a newer on-disk package is independently READY. Release the protocol-only restart-grace barrier only when the current non-Production runtime graph is ready, has no required blockers, has exact identity, and the official historical classifier marks the old checkpoint superseded_audit_only. Preserve option state, kill switch, permissions, bearer policy, and all live/blocked self-update barriers.",
+      "execution_note": "MAD4B Post Update Continuation Guards CI executes a new hermetic PHP fixture across PHP 7.4/8.1/8.3; additional verified local PHP 8.3 container runs cover syntax, unchanged quiet/manual/blocked barriers, and guided convergence. No live production or foreign OAuth acceptance claimed."
     }
   ],
   "code_change_rules": {
