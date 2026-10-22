@@ -53,7 +53,9 @@ assert "self::superseded_restart_checkpoint_ready( $checkpoint, $current, $not_b
 assert "'historical_checkpoint_audit_only' => $historical_audit_only" in runtime
 assert "'persisted_checkpoint_pending' => $convergence_pending" in runtime
 assert "'operator_action_required' => $operator_action_required" in runtime
-assert "return 'superseded_audit_only' === ( $graph['checkpoint_operator_state']['state'] ?? '' )" in runtime
+assert "'superseded_audit_only' === ( $graph['checkpoint_operator_state']['state'] ?? '' )" in runtime
+assert "self::superseded_cached_release_only( $checkpoint, $current, $graph )" in runtime
+assert "array( 'deployment:pending' ) !== ( $graph['required_blockers'] ?? null )" in runtime
 
 assert "'waiting_for_exact_runtime_restart'" in runtime
 assert "'pending_manual_resume'" in runtime
