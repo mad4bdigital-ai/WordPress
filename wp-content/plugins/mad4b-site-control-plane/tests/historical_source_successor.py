@@ -102,3 +102,44 @@ def is_exact_historical_test_successor(root, path, contents, historic_sha, histo
     if path.endswith("g9-delivery-contract.py"):
         return b"G9_SOURCE_SHA_DRIFT" in contents and b"is_exact_reviewed_successor" in contents
     return False
+
+
+def is_exact_ci_history_checkout_successor(root, path, contents, historic_sha, historic_bytes):
+    """Allow only two full-history fetch-depth lines, without re-signing G9."""
+    root = Path(root)
+    if path != ".github/workflows/feature-007-spec-ci.yml":
+        return False
+    if not isinstance(contents, bytes):
+        return False
+    try:
+        original = subprocess.check_output(
+            ["git", "show", f"{FEATURE_007_REVIEWED_BASE}:{path}"],
+            cwd=root, stderr=subprocess.DEVNULL, timeout=8
+        )
+        current = (root / path).read_bytes()
+        git_blob = subprocess.check_output(
+            ["git", "rev-parse", f"HEAD:{path}"],
+            cwd=root, stderr=subprocess.DEVNULL, timeout=8,
+        ).decode().strip()
+    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        return False
+    if (hashlib.sha256(original).hexdigest() != historic_sha
+        or len(original) != historic_bytes or current != contents):
+        return False
+    original_text = original.decode("utf-8")
+    only_allowed = original_text
+    anchor = "          ref: ${{ github.event.pull_request.head.sha || github.sha }}\\n"
+    for job in ("g6-runtime:", "g9-resilience:"):
+        start = only_allowed.find("\\n  " + job)
+        if start < 0:
+            return False
+        next_job = re.search(r"\\n  [a-zA-Z0-9][a-zA-Z0-9_-]*:\\n", only_allowed[start+len(job):])
+        end = len(only_allowed) if next_job is None else start + len(job) + next_job.start()
+        section = only_allowed[start:end]
+        if section.count(anchor) != 1:
+            return False
+        changed = section.replace(anchor, anchor + "          fetch-depth: 0\\n", 1)
+        only_allowed = only_allowed[:start] + changed + only_allowed[end:]
+    expected = only_allowed.encode("utf-8")
+    blob = hashlib.sha1(b"blob " + str(len(contents)).encode("ascii") + b"\\0" + contents).hexdigest()
+    return expected == contents and git_blob == blob
