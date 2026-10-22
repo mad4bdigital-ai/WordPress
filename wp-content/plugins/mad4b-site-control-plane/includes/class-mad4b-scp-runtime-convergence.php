@@ -119,10 +119,11 @@ final class MAD4B_SCP_Runtime_Convergence {
 	 * readiness against the restart barrier they are evaluating.
 	 */
 	private static function superseded_restart_checkpoint_ready( $checkpoint, $current, $not_before ) {
+		// Only inspect the expensive independent graph when the record is
+		// provably a different, well-identified build, and outside quiet time.
 		if ( ! is_array( $checkpoint ) || 'self_update' !== ( $checkpoint['source'] ?? '' )
 			|| 'pending_manual_resume' !== ( $checkpoint['state'] ?? '' )
 			|| $not_before > time() || ! is_array( $current ) ) return false;
-
 		$target = isset( $checkpoint['target_identity'] ) && is_array( $checkpoint['target_identity'] )
 			? self::bounded_identity( $checkpoint['target_identity'] ) : array();
 		$current_sha = strtolower( trim( (string) ( $current['source_commit_sha'] ?? '' ) ) );
@@ -136,24 +137,42 @@ final class MAD4B_SCP_Runtime_Convergence {
 		if ( $inspecting ) return false;
 		$inspecting = true;
 		try {
-			$graph = self::status();
-			if ( ! is_array( $graph ) || 'ready' !== ( $graph['state'] ?? '' )
-				|| empty( $graph['ready'] ) || ! empty( $graph['required_blockers'] )
-				|| ! in_array( $graph['environment'] ?? '', array( 'staging', 'development', 'local' ), true )
-				|| ! self::identity_matches( $current, $graph['current_identity'] ?? array() ) ) return false;
-			$observed_checkpoint = $graph['checkpoint'] ?? array();
-			if ( ! is_array( $observed_checkpoint ) || 'pending_manual_resume' !== ( $observed_checkpoint['state'] ?? '' )
-				|| 'self_update' !== ( $observed_checkpoint['source'] ?? '' )
-				|| ! isset( $observed_checkpoint['target_identity'] ) || ! is_array( $observed_checkpoint['target_identity'] )
-				|| ! hash_equals( $target_sha, strtolower( trim( (string) ( $observed_checkpoint['target_identity']['source_commit_sha'] ?? '' ) ) ) ) )
-				return false;
-			return 'superseded_audit_only' === ( $graph['checkpoint_operator_state']['state'] ?? '' )
-				&& empty( $graph['checkpoint_operator_state']['replay_old_checkpoint_allowed'] );
+			return self::superseded_checkpoint_graph_safe( $checkpoint, $current, $not_before, self::status() );
 		} catch ( Throwable $error ) {
 			return false;
 		} finally {
 			$inspecting = false;
 		}
+	}
+
+	/**
+	 * Pure decision seam for regression fixtures. Checking build SHA without
+	 * independent ready graph evidence is never sufficient to release 503.
+	 */
+	private static function superseded_checkpoint_graph_safe( $checkpoint, $current, $not_before, $graph ) {
+		if ( ! is_array( $checkpoint ) || 'self_update' !== ( $checkpoint['source'] ?? '' )
+			|| 'pending_manual_resume' !== ( $checkpoint['state'] ?? '' )
+			|| $not_before > time() || ! is_array( $current ) ) return false;
+		$target = isset( $checkpoint['target_identity'] ) && is_array( $checkpoint['target_identity'] )
+			? self::bounded_identity( $checkpoint['target_identity'] ) : array();
+		$current_sha = strtolower( trim( (string) ( $current['source_commit_sha'] ?? '' ) ) );
+		$target_sha = strtolower( trim( (string) ( $target['source_commit_sha'] ?? '' ) ) );
+		if ( ! preg_match( '/^[a-f0-9]{40}$/D', $current_sha )
+			|| ! preg_match( '/^[a-f0-9]{40}$/D', $target_sha )
+			|| hash_equals( $current_sha, $target_sha )
+			|| empty( $current['build_fingerprint'] ) || empty( $current['package_manifest_digest'] ) ) return false;
+		if ( ! is_array( $graph ) || 'ready' !== ( $graph['state'] ?? '' )
+			|| empty( $graph['ready'] ) || ! empty( $graph['required_blockers'] )
+			|| ! in_array( $graph['environment'] ?? '', array( 'staging', 'development', 'local' ), true )
+			|| ! self::identity_matches( $current, $graph['current_identity'] ?? array() ) ) return false;
+		$observed_checkpoint = $graph['checkpoint'] ?? array();
+		if ( ! is_array( $observed_checkpoint ) || 'pending_manual_resume' !== ( $observed_checkpoint['state'] ?? '' )
+			|| 'self_update' !== ( $observed_checkpoint['source'] ?? '' )
+			|| ! isset( $observed_checkpoint['target_identity'] ) || ! is_array( $observed_checkpoint['target_identity'] )
+			|| ! hash_equals( $target_sha, strtolower( trim( (string) ( $observed_checkpoint['target_identity']['source_commit_sha'] ?? '' ) ) ) ) )
+			return false;
+		return 'superseded_audit_only' === ( $graph['checkpoint_operator_state']['state'] ?? '' )
+			&& empty( $graph['checkpoint_operator_state']['replay_old_checkpoint_allowed'] );
 	}
 
 	public static function maintenance_lease_status() {
