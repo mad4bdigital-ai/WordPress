@@ -146,6 +146,7 @@ final class MAD4B_SCP_Optional_Governance {
             $effective_modes[$id] = 'inherit' === $mode ? self::$profile_defaults[$operating_mode] : $mode;
         }
         return array( 'revision' => $revision, 'modes' => $modes, 'effective_modes' => $effective_modes,
+            'configuration_source' => $new_install ? 'fresh_default' : 'persisted_options',
             'operating_mode' => $operating_mode,
             'definitions_sha256' => self::signature( array( 'definitions' => $definitions,
                 'profile_defaults' => self::$profile_defaults,
@@ -172,6 +173,7 @@ final class MAD4B_SCP_Optional_Governance {
         return array( 'contract' => self::CONTRACT, 'valid' => true,
             'revision' => $state['revision'],
             'default_mode' => self::$catalog_default_mode,
+            'configuration_source' => $state['configuration_source'],
             'configured_profile' => $configured_profile,
             'effective_profile' => $effective_profile, 'definitions_sha256' => $state['definitions_sha256'],
             'operating_mode' => $state['operating_mode'], 'profile_defaults' => self::$profile_defaults,
@@ -262,6 +264,8 @@ final class MAD4B_SCP_Optional_Governance {
         echo '<p>Owner intent does not replace exact-target approval. The controls below change only advisory severity.</p>';
         echo '<p><strong>Default on a fresh installation:</strong> Disabled optional warnings (Off). Existing saved preferences are preserved.</p>';
         echo '<p><strong>Current profile:</strong> ' . esc_html( $state['effective_modes'] && count( array_unique( $state['effective_modes'] ) ) === 1 ? reset( $state['effective_modes'] ) : 'mixed' ) . '.</p>';
+        echo '<p><strong>Profile source:</strong> ' . esc_html( $state['configuration_source'] )
+            . '. <strong>Revision:</strong> ' . esc_html( (string) $state['revision'] ) . '.</p>';
         echo '<form class="mad4b-settings-ajax-form" method="post" action="' .
             esc_url( admin_url( 'admin-post.php' ) ) .
             '" data-mad4b-refresh-selector="#mad4b-optional-governance-control"' .
