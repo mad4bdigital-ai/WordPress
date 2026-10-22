@@ -5004,6 +5004,146 @@
       "coverage_reuse_rationale": "Existing MCP, runtime-convergence, security, performance, and automation controls are sufficient for a historical checkpoint read-only exception without new authorities.",
       "review_rationale": "Read-only fail-closed exception for strictly newer Staging runtime blocked ONLY by a cached release target identical to the superseded pending_manual_resume checkpoint. Requires exact cached source, identical old version, trusted cache manifestation, no additional required phase blockers, valid phase graph, official historical classifier, and no replay. Preserves checkpoint, kill switch, OAuth, production barrier and full update workflow. No live-site readiness inferred from CI.",
       "execution_note": "MAD4B Post Update Continuation Guards CI executes a new hermetic PHP fixture across PHP 7.4/8.1/8.3; additional verified local PHP 8.3 container runs cover syntax, unchanged quiet/manual/blocked barriers, and guided convergence. No live production or foreign OAuth acceptance claimed."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-jetengine-features-registration-diagnostics-adapter.php",
+      "source_blob_sha": "a42c30e4674f5da75f0be565fd93e300d5d581ec",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/php85-reflection-compatibility-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no WordPress Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP, PHP runtime compatibility, guarded execution and Security controls apply; no policy or authority change.",
+      "review_rationale": "PHP_VERSION_ID < 80100 guards the legacy ReflectionProperty::setAccessible call on pre-8.1 PHP; PHP 8.5 skips deprecated no-op while preserving private property read semantics. All nine guarded call sites are validated by executable reflection compatibility regression. No production deployment permission inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php",
+      "source_blob_sha": "ab0098754cd16d33bf4e55cbfb8b3e541466c866",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/php85-reflection-compatibility-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no WordPress Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP, PHP runtime compatibility, guarded execution and Security controls apply; no policy or authority change.",
+      "review_rationale": "PHP_VERSION_ID < 80100 guards the legacy ReflectionProperty::setAccessible call on pre-8.1 PHP; PHP 8.5 skips deprecated no-op while preserving private property read semantics. All nine guarded call sites are validated by executable reflection compatibility regression. No production deployment permission inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-tool-projection.php",
+      "source_blob_sha": "6d72b989d53e9bb9b543f242dee66b24e024cf76",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/php85-reflection-compatibility-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no WordPress Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP, PHP runtime compatibility, guarded execution and Security controls apply; no policy or authority change.",
+      "review_rationale": "PHP_VERSION_ID < 80100 guards the legacy ReflectionProperty::setAccessible call on pre-8.1 PHP; PHP 8.5 skips deprecated no-op while preserving private property read semantics. All nine guarded call sites are validated by executable reflection compatibility regression. No production deployment permission inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-fence.php",
+      "source_blob_sha": "9130ab80530a3cad16abc9594c66a8c642169031",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/php85-reflection-compatibility-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no WordPress Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP, PHP runtime compatibility, guarded execution and Security controls apply; no policy or authority change.",
+      "review_rationale": "PHP_VERSION_ID < 80100 guards the legacy ReflectionProperty::setAccessible call on pre-8.1 PHP; PHP 8.5 skips deprecated no-op while preserving private property read semantics. All nine guarded call sites are validated by executable reflection compatibility regression. No production deployment permission inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-ability-census.php",
+      "source_blob_sha": "89efa8aa222f0c400e5d0e7bd3c56f378005646c",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/php85-reflection-compatibility-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no WordPress Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP, PHP runtime compatibility, guarded execution and Security controls apply; no policy or authority change.",
+      "review_rationale": "PHP_VERSION_ID < 80100 guards the legacy ReflectionProperty::setAccessible call on pre-8.1 PHP; PHP 8.5 skips deprecated no-op while preserving private property read semantics. All nine guarded call sites are validated by executable reflection compatibility regression. No production deployment permission inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-hybrid-authority.php",
+      "source_blob_sha": "850ea5fe6c913bacf9accaeffbd41fa80821a9c3",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/php85-reflection-compatibility-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no WordPress Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP, PHP runtime compatibility, guarded execution and Security controls apply; no policy or authority change.",
+      "review_rationale": "PHP_VERSION_ID < 80100 guards the legacy ReflectionProperty::setAccessible call on pre-8.1 PHP; PHP 8.5 skips deprecated no-op while preserving private property read semantics. All nine guarded call sites are validated by executable reflection compatibility regression. No production deployment permission inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-local-ability-trust.php",
+      "source_blob_sha": "263528d66f5c0337ee87a07f84e14cad18ab1c63",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/php85-reflection-compatibility-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no WordPress Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP, PHP runtime compatibility, guarded execution and Security controls apply; no policy or authority change.",
+      "review_rationale": "PHP_VERSION_ID < 80100 guards the legacy ReflectionProperty::setAccessible call on pre-8.1 PHP; PHP 8.5 skips deprecated no-op while preserving private property read semantics. All nine guarded call sites are validated by executable reflection compatibility regression. No production deployment permission inferred."
     }
   ],
   "code_change_rules": {
