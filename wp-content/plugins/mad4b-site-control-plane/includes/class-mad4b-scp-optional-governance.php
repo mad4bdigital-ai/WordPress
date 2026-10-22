@@ -17,6 +17,7 @@ final class MAD4B_SCP_Optional_Governance {
     const LOCK = 'mad4b_scp_optional_governance_settings_lock_v1';
     private static $catalog = null;
     private static $profile_defaults = null;
+    private static $catalog_default_mode = 'off';
     private static $protected_gates = array(
         'Owner identity and OAuth',
         'Exact operation owner approval',
@@ -70,6 +71,9 @@ final class MAD4B_SCP_Optional_Governance {
             || ( $data['scope'] ?? '' ) !== 'operator_advisory_only'
             || ! isset( $data['gates'] ) || ! is_array( $data['gates'] )
             || count( $data['gates'] ) > 64 ) return self::$catalog;
+        if ( ! isset( $data['default_mode'] ) || ! in_array( $data['default_mode'], array( 'inherit', 'off' ), true ) )
+            return self::$catalog;
+        self::$catalog_default_mode = $data['default_mode'];
         $defaults = $data['operating_mode_defaults'] ?? null;
         if ( ! is_array( $defaults ) || count( $defaults ) !== 3 ) return self::$catalog;
         foreach ( array( 'ENTERPRISE_MULTI_OPERATOR', 'SINGLE_OWNER_HARDENED', 'EMERGENCY_RECOVERY' ) as $profile )
@@ -120,7 +124,11 @@ final class MAD4B_SCP_Optional_Governance {
         if ( is_wp_error( $definitions ) ) return $definitions;
         $operating_mode = self::operating_mode();
         if ( is_wp_error( $operating_mode ) ) return $operating_mode;
-        $raw = function_exists( 'get_option' ) ? get_option( self::OPTION, array() ) : array();
+        // Fresh sites default to OFF for optional operator warnings. An existing
+        // persisted configuration keeps its exact modes (including legacy inherit).
+        $raw = function_exists( 'get_option' ) ? get_option( self::OPTION, null ) : null;
+        $new_install = null === $raw;
+        if ( $new_install ) $raw = array();
         if ( ! is_array( $raw ) || ( isset( $raw['contract'] ) && $raw['contract'] !== self::CONTRACT ) )
             return new WP_Error( 'mad4b_optional_options_invalid', 'Optional governance configuration is malformed.' );
         $revision = isset( $raw['revision'] ) ? $raw['revision'] : 0;
@@ -130,7 +138,8 @@ final class MAD4B_SCP_Optional_Governance {
         $modes = array();
         $effective_modes = array();
         foreach ( $definitions as $id => $row ) {
-            $mode = isset( $saved[$id] ) ? $saved[$id] : 'inherit';
+            $mode = isset( $saved[$id] ) ? $saved[$id] :
+                ( $new_install ? self::$catalog_default_mode : 'inherit' );
             if ( ! in_array( $mode, array( 'inherit', 'enforced', 'advisory', 'off' ), true ) )
                 return new WP_Error( 'mad4b_optional_mode_invalid', 'An optional setting is invalid.' );
             $modes[$id] = $mode;
@@ -139,7 +148,8 @@ final class MAD4B_SCP_Optional_Governance {
         return array( 'revision' => $revision, 'modes' => $modes, 'effective_modes' => $effective_modes,
             'operating_mode' => $operating_mode,
             'definitions_sha256' => self::signature( array( 'definitions' => $definitions,
-                'profile_defaults' => self::$profile_defaults ) ) );
+                'profile_defaults' => self::$profile_defaults,
+                'default_mode' => self::$catalog_default_mode ) ) );
     }
 
     public static function status() {
@@ -155,8 +165,15 @@ final class MAD4B_SCP_Optional_Governance {
                 'label' => $row['label'], 'configured_mode' => $state['modes'][$id],
                 'mode' => $state['effective_modes'][$id],
                 'scope' => 'operator_advisory_only' );
+        $configured_profile = count( array_unique( array_values( $state['modes'] ) ) ) === 1
+            ? reset( $state['modes'] ) : 'mixed';
+        $effective_profile = count( array_unique( array_values( $state['effective_modes'] ) ) ) === 1
+            ? reset( $state['effective_modes'] ) : 'mixed';
         return array( 'contract' => self::CONTRACT, 'valid' => true,
-            'revision' => $state['revision'], 'definitions_sha256' => $state['definitions_sha256'],
+            'revision' => $state['revision'],
+            'default_mode' => self::$catalog_default_mode,
+            'configured_profile' => $configured_profile,
+            'effective_profile' => $effective_profile, 'definitions_sha256' => $state['definitions_sha256'],
             'operating_mode' => $state['operating_mode'], 'profile_defaults' => self::$profile_defaults,
             'gates' => $rows, 'locked_security_gates' => self::$protected_gates, 'settings_only' => true, 'governed_authorization_modified' => false,
             'production_authorized' => false, 'permission_created' => false,
@@ -243,6 +260,8 @@ final class MAD4B_SCP_Optional_Governance {
         echo '<p><strong>Operating profile:</strong> ' . esc_html( $state['operating_mode'] ) .
             '. Inherited optional warning mode: ' . esc_html( self::$profile_defaults[$state['operating_mode']] ) . '.</p>';
         echo '<p>Owner intent does not replace exact-target approval. The controls below change only advisory severity.</p>';
+        echo '<p><strong>Default on a fresh installation:</strong> Disabled optional warnings (Off). Existing saved preferences are preserved.</p>';
+        echo '<p><strong>Current profile:</strong> ' . esc_html( $state['effective_modes'] && count( array_unique( $state['effective_modes'] ) ) === 1 ? reset( $state['effective_modes'] ) : 'mixed' ) . '.</p>';
         echo '<form class="mad4b-settings-ajax-form" method="post" action="' .
             esc_url( admin_url( 'admin-post.php' ) ) .
             '" data-mad4b-refresh-selector="#mad4b-optional-governance-control"' .
@@ -252,6 +271,15 @@ final class MAD4B_SCP_Optional_Governance {
         echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION ) . '">';
         echo '<input type="hidden" name="revision" value="' . esc_attr( (string) $state['revision'] ) . '">';
         echo '<input type="hidden" name="definitions_sha256" value="' . esc_attr( $state['definitions_sha256'] ) . '">';
+        echo '<p><label for="mad4b-optional-bulk-mode"><strong>Apply to all optional notices:</strong></label> ';
+        echo '<select id="mad4b-optional-bulk-mode" name="bulk_mode">';
+        foreach ( array( 'keep'=>'Keep individual settings', 'off'=>'Off — hide optional warnings',
+            'enforced'=>'Governed — enforce optional warning severity',
+            'advisory'=>'Advisory — show optional notices',
+            'inherit'=>'Inherit the operating profile' ) as $value => $label )
+            echo '<option value="' . esc_attr( $value ) . '">' . esc_html( $label ) . '</option>';
+        echo '</select></p>';
+        echo '<p class="description">This is an operator-warning profile, not an authentication, authorization, approval, audit or release bypass.</p>';
         echo '<table class="widefat striped"><thead><tr><th>Policy</th><th>Mode</th><th>Scope</th></tr></thead><tbody>';
         foreach ( $definitions as $id => $row ) {
             echo '<tr><td><strong>' . esc_html( $row['label'] ) . '</strong><p>' . esc_html( $row['description'] ) . '</p></td><td>';
@@ -412,13 +440,16 @@ final class MAD4B_SCP_Optional_Governance {
         if ( count( $posted ) !== count( $definitions ) ||
             array_diff( array_keys( $posted ), array_keys( $definitions ) ) )
             return new WP_Error( 'mad4b_optional_bad_fields', 'Unexpected optional policy fields.' );
+        $bulk = isset( $_POST['bulk_mode'] ) ? wp_unslash( $_POST['bulk_mode'] ) : 'keep';
+        if ( ! is_string( $bulk ) || ! in_array( $bulk, array( 'keep', 'off', 'enforced', 'advisory', 'inherit' ), true ) )
+            return new WP_Error( 'mad4b_optional_bad_bulk_profile', 'Invalid bulk advisory profile.' );
         $modes = array();
         foreach ( $definitions as $id => $row ) {
             $mode = $posted[$id] ?? null;
             if ( ! is_string( $mode ) ||
                 ! in_array( $mode, array( 'inherit', 'enforced', 'advisory', 'off' ), true ) )
                 return new WP_Error( 'mad4b_optional_bad_mode', 'Invalid optional policy mode.' );
-            $modes[$id] = $mode;
+            $modes[$id] = 'keep' === $bulk ? $mode : $bulk;
         }
         return array( 'modes'=>$modes, 'revision'=>$revision,
             'definitions_sha256'=>$fingerprint );
