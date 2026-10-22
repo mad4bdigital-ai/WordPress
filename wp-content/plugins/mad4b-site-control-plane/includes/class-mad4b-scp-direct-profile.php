@@ -64,10 +64,11 @@ final class MAD4B_SCP_Direct_Profile {
         // The existing OAuth resource bridge verifies remote tokens at the
         // original ChatGPT transport. Reject a forged WP current-user context
         // when no authenticated bearer/cookie authentication exists.
-        $bearer = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
+        // MCP tools may not infer authorization from a server-side WP user
+        // that some other plugin populated. The bearer must be verified on
+        // this exact request by the existing OAuth resource bridge.
+        return class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
             && MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active();
-        $cookie = function_exists( 'is_user_logged_in' ) && is_user_logged_in();
-        return $bearer || $cookie;
     }
 
     public static function can_transport() {
