@@ -130,8 +130,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "sha256": "22134cfccd02024d040c8af251cec89e4e7447fcb49bf2ab0f39a7a0117d5b20",
-      "bytes": 52878
+      "sha256": "a8242a9035c6896834751c3448d324f3d67577ad0e5a7aba452c14c6ec4e4063",
+      "bytes": 52972
     }
   ],
   "test_paths": [
