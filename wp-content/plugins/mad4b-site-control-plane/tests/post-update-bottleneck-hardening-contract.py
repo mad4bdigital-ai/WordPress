@@ -49,7 +49,7 @@ assert "mad4b.runtime-restart-grace.v2" in runtime
 # Historical self-update checkpoints are not live protocol barriers after
 # an independent READY graph proves the current build superseded them.
 assert "$active = $convergence_pending && ! $historical_audit_only;" in runtime
-assert "self::superseded_restart_checkpoint_ready( $checkpoint, $current, $not_before )" in runtime
+assert "self::superseded_restart_checkpoint_ready( $checkpoint, $current, $not_before, $historical_read_safe )" in runtime
 assert "'historical_checkpoint_audit_only' => $historical_audit_only" in runtime
 assert "'persisted_checkpoint_pending' => $convergence_pending" in runtime
 assert "'operator_action_required' => $operator_action_required" in runtime
