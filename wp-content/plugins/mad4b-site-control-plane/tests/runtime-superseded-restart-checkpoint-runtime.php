@@ -111,9 +111,11 @@ $missing_cache_fingerprint = $dual_old_releases;
 unset( $missing_cache_fingerprint['phases']['deployment']['details']['target_identity']['build_fingerprint'] );
 must( ! $eligible( $previous, $new, $now - 40, $missing_cache_fingerprint ),
 	'different old release SHA without complete fingerprint stays blocked' );
-$missing_checkpoint_digest = $dual_old_releases;
-unset( $missing_checkpoint_digest['checkpoint']['target_identity']['package_manifest_digest'] );
-must( ! $eligible( $previous, $new, $now - 40, $missing_checkpoint_digest ),
+$missing_checkpoint_digest = $previous;
+unset( $missing_checkpoint_digest['target_identity']['package_manifest_digest'] );
+$missing_checkpoint_graph = $dual_old_releases;
+$missing_checkpoint_graph['checkpoint'] = $missing_checkpoint_digest;
+must( ! $eligible( $missing_checkpoint_digest, $new, $now - 40, $missing_checkpoint_graph ),
 	'different old release SHA without complete checkpoint digest stays blocked' );
 $independent_schema = $dual_old_releases;
 $independent_schema['required_blockers'][] = 'schema:pending';
