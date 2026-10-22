@@ -299,31 +299,39 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			$tools = MAD4B_SCP_Site_Profile_Enrollment::chatgpt_step_up_tools();
 			$feature_reenrollment = is_array( $tools ) && in_array( MAD4B_SCP_Site_Profile_Enrollment::ABILITY, $tools, true );
 		}
+		// Scope advertisement is existential; do not evaluate unrelated
+		// costly candidates after an eligible step-up tool is already found.
+		if ( $feature_reenrollment ) return true;
 		$write_enablement = false;
 		if ( class_exists( 'MAD4B_SCP_Site_Profile_Write_Enablement' ) && method_exists( 'MAD4B_SCP_Site_Profile_Write_Enablement', 'chatgpt_step_up_tools' ) ) {
 			$tools = MAD4B_SCP_Site_Profile_Write_Enablement::chatgpt_step_up_tools();
 			$write_enablement = is_array( $tools ) && in_array( MAD4B_SCP_Site_Profile_Write_Enablement::ABILITY, $tools, true );
 		}
+		if ( $write_enablement ) return true;
 		$write_reconciliation = false;
 		if ( class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' ) && method_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation', 'chatgpt_step_up_tools' ) ) {
 			$tools = MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools();
 			$write_reconciliation = is_array( $tools ) && in_array( MAD4B_SCP_Staging_Write_Grant_Reconciliation::ABILITY, $tools, true );
 		}
+		if ( $write_reconciliation ) return true;
 		$candidate_binding = false;
 		if ( class_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding' ) && method_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding', 'chatgpt_step_up_tools' ) ) {
 			$tools = MAD4B_SCP_Staging_Write_Candidate_Binding::chatgpt_step_up_tools();
 			$candidate_binding = is_array( $tools ) && in_array( MAD4B_SCP_Staging_Write_Candidate_Binding::ABILITY, $tools, true );
 		}
+		if ( $candidate_binding ) return true;
 		$full_authority = false;
 		if ( class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) && method_exists( 'MAD4B_SCP_Full_Staging_Authority', 'chatgpt_step_up_tools' ) ) {
 			$tools = MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools();
 			$full_authority = is_array( $tools ) && in_array( MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY, $tools, true );
 		}
+		if ( $full_authority ) return true;
 		$enrollment_dispatch = false;
 		if ( class_exists( 'MAD4B_SCP_Enrollment_Dispatch' ) && method_exists( 'MAD4B_SCP_Enrollment_Dispatch', 'chatgpt_tools' ) ) {
 			$tools = MAD4B_SCP_Enrollment_Dispatch::chatgpt_tools();
 			$enrollment_dispatch = is_array( $tools ) && in_array( MAD4B_SCP_Enrollment_Dispatch::EXECUTE_ABILITY, $tools, true );
 		}
+		if ( $enrollment_dispatch ) return true;
 		$runtime_gates = false;
 		if ( class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) && method_exists( 'MAD4B_SCP_Governed_Runtime_Gates', 'chatgpt_step_up_tools' ) ) {
 			$tools = MAD4B_SCP_Governed_Runtime_Gates::chatgpt_step_up_tools();
@@ -1052,7 +1060,16 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			if ( class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) ) {
 				$protocol_hotpath = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
 					&& MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath();
-				if ( ( $identity_only || $protocol_hotpath ) && method_exists( 'MAD4B_SCP_Local_OAuth_Server', 'runtime_identity_status' ) ) {
+				// OAuth protected-resource metadata is a public protocol hot path.
+				// It uses the bounded, fail-closed runtime projection, not the
+				// deep key/store diagnostic reserved for explicit status requests.
+				$request_uri = isset( $_SERVER['REQUEST_URI'] ) && is_string( $_SERVER['REQUEST_URI'] )
+					? $_SERVER['REQUEST_URI'] : '';
+				$request_path = '' !== $request_uri ? wp_parse_url( $request_uri, PHP_URL_PATH ) : '';
+				$protected_resource_discovery = is_string( $request_path )
+					&& class_exists( 'MAD4B_SCP_MCP_Client_Compatibility', false )
+					&& MAD4B_SCP_MCP_Client_Compatibility::is_well_known_path( $request_path );
+				if ( ( $identity_only || $protocol_hotpath || $protected_resource_discovery ) && method_exists( 'MAD4B_SCP_Local_OAuth_Server', 'runtime_identity_status' ) ) {
 					$local_status = MAD4B_SCP_Local_OAuth_Server::runtime_identity_status();
 				} elseif ( method_exists( 'MAD4B_SCP_Local_OAuth_Server', 'status' ) ) {
 					$local_status = MAD4B_SCP_Local_OAuth_Server::status();
