@@ -350,7 +350,7 @@ assert "$approval_bootstrap = self::chatgpt_approval_bootstrap_tools();" in chat
 assert "if ( ! self::chatgpt_unified_catalog_enabled() )" in chatgpt_base
 assert "array_diff( $tools, $breakglass, array( 'mad4b/database-raw-query' ) )" in chatgpt_base
 assert "'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'" in chatgpt_map
-assert "$candidates = array_merge( $core, $bootstrap )" in chatgpt_base
+assert "$candidates = array_merge( $core, $bootstrap, $profile_tools )" in chatgpt_base
 assert "MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names()" in chatgpt_tools
 assert "array_merge( $base, $dynamic )" in chatgpt_tools
 
