@@ -163,13 +163,27 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 			self::$status_cache['connection_stage_diagnostics'] =
 				MAD4B_SCP_MCP_Connection_Stage_Diagnostics::project( array(
 					'oauth' => array(
-						'environment_ready' => (bool) $environment_ready,
-						'local_oauth_effective' => ! empty( $local['effective'] ),
-						'bridge_effective' => ! empty( $bridge['effective'] ),
-						'cimd_ready' => (bool) $cimd_ready,
+						'environment_ready' => (
+                            class_exists( 'MAD4B_SCP_Staging_OAuth_Autoconfig' )
+                            || class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' )
+                        ) ? (bool) $environment_ready : null,
+                        'local_oauth_effective' => is_array( $local )
+                            && isset( $local['effective'] ) && is_bool( $local['effective'] )
+                                ? $local['effective'] : null,
+                        'bridge_effective' => is_array( $bridge )
+                            && isset( $bridge['effective'] ) && is_bool( $bridge['effective'] )
+                                ? $bridge['effective'] : null,
+                        'cimd_ready' => is_array( $local )
+                            && isset( $local['client_id_metadata_document_supported'] )
+                            && is_bool( $local['client_id_metadata_document_supported'] )
+                                ? (bool) $cimd_ready : null,
 					),
 					'registration' => $gateway_registration,
-				) );
+                    // These expensive deep checks are intentionally deferred
+                    // here rather than estimated from an identity-only snapshot.
+                    'bootstrap' => array(),
+                    'catalog' => array(),
+                ) );
 		}
 		return self::$status_cache;
 	}

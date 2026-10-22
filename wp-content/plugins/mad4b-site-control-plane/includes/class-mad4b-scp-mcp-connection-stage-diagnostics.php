@@ -11,20 +11,26 @@ final class MAD4B_SCP_MCP_Connection_Stage_Diagnostics {
 
     private static function stage( $status, $reason ) {
         return array( 'status' => $status, 'reason' => $reason,
+            'source' => 'not_checked' === $status ? 'not_observed' : 'local_snapshot',
             'independently_verified' => false );
     }
 
     private static function readiness( array $input, array $fields, $failure ) {
+        // Preserve three-valued evidence: an observed false is a local
+        // blocker; an absent or non-boolean value is unknown, not false.
+        $unknown = false;
         foreach ( $fields as $field ) {
             if ( ! array_key_exists( $field, $input )
-                || ! is_bool( $input[$field] ) )
-                return self::stage( 'not_checked', 'local_evidence_not_available' );
-        }
-        foreach ( $fields as $field ) {
+                || ! is_bool( $input[$field] ) ) {
+                $unknown = true;
+                continue;
+            }
             if ( false === $input[$field] )
                 return self::stage( 'blocked', $failure . '_' . $field );
         }
-        return self::stage( 'ready_local', 'local_prerequisites_observed' );
+        return $unknown
+            ? self::stage( 'not_checked', 'local_evidence_not_available' )
+            : self::stage( 'ready_local', 'local_prerequisites_observed' );
     }
 
     public static function project( array $evidence ) {

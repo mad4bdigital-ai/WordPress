@@ -25,6 +25,21 @@ foreach ( array('external_bearer_validation','mcp_initialize','mcp_tools_list','
     check($ready['stages'][$key]['status']==='not_checked', 'External call falsely certified: '.$key);
 check( !$ready['authorizing'] && !$ready['mutating'] && !$ready['external_connection_certified']
     && !$ready['profile_comparison_proven'], 'Diagnostic may not grant or certify anything' );
+$partial = $inputs;
+unset( $partial['oauth']['bridge_effective'] );
+$partial_result = $class::project( $partial );
+check( $partial_result['stages']['oauth_configuration']['status'] === 'not_checked'
+    && $partial_result['stages']['oauth_configuration']['source'] === 'not_observed',
+    'Missing local OAuth evidence must remain unknown' );
+$partial['oauth']['local_oauth_effective'] = false;
+$blocked_partial = $class::project( $partial );
+check( $blocked_partial['stages']['oauth_configuration']['status'] === 'blocked'
+    && $blocked_partial['stages']['oauth_configuration']['source'] === 'local_snapshot',
+    'An observed false must not be hidden by missing evidence' );
+$invalid = $inputs;
+$invalid['oauth']['bridge_effective'] = 'false';
+check( $class::project( $invalid )['stages']['oauth_configuration']['status'] === 'not_checked',
+    'A string must not be coerced into boolean failure' );
 $registration_deferred = $inputs;
 $registration_deferred['registration'] = array( 'actual_registered'=>false, 'deep_registration_deferred'=>true );
 $reg = $class::project( $registration_deferred );
