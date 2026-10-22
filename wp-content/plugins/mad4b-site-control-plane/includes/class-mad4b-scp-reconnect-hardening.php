@@ -920,7 +920,12 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		if ( $remote_preauth_probe ) return $result;
 
 		$restart_grace = self::restart_grace_status();
-		if ( ! empty( $restart_grace['active'] ) ) {
+		// A historical Staging checkpoint can be safe for the dedicated
+		// read-only endpoint while the independent write-owner gate remains closed.
+		// Never relax ChatGPT, write, content, admin or Developer MCP routes here.
+		$historical_read_admission = '/mcp/mad4b-read' === $route
+			&& ! empty( $restart_grace['historical_mcp_read_safe'] );
+		if ( ! empty( $restart_grace['active'] ) && ! $historical_read_admission ) {
 			$retryable = ! array_key_exists( 'retryable', $restart_grace ) || ! empty( $restart_grace['retryable'] );
 			$retry = isset( $restart_grace['retry_after_seconds'] ) ? min( 120, absint( $restart_grace['retry_after_seconds'] ) ) : 0;
 			return new WP_Error( 'mad4b_mcp_runtime_restart_grace', 'MAD4B runtime is completing governed post-update convergence.', array(
