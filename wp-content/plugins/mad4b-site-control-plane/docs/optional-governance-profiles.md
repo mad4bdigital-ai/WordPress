@@ -62,3 +62,108 @@ No site configuration is changed by merging this PR. Staging validation and
 the independently governed plugin release/installation workflow remain
 separate. Remote mutation of the underlying real authorization/governance
 engine is **not** part of this feature.
+
+## Scenario and failure-mode coverage
+
+The controller supports three **targets** and four **modes**. Profiles apply
+only to vetted optional operator notices, never to mandatory safety controls.
+
+| Target | Input | Behavior |
+| --- | --- | --- |
+| One notice | `policy_id=developer_lane` | Change exactly that notice |
+| Explicit subset | `policy_id=selected_optional_notices` and a unique `policy_ids` list | Change those notice IDs atomically |
+| Entire catalog | `policy_id=all_optional_notices` | Change every registered optional notice, including validated extension notices |
+| Mixed configured profile | Per-notice modes, or separate approved edits | Persist exact individual settings |
+| Site default | Bulk Off on first install | No option mutation until explicitly saved |
+| Existing legacy saved settings | Missing per-notice IDs inherit | Never overwrite an installed site's configuration on upgrade |
+
+The four modes: `off` (mute only optional operator warnings),
+`enforced` (optional warnings count as degraded), `advisory` (notice only),
+and `inherit` (compute from the site's authoritative operating profile).
+A bulk or selected profile is **not a bypass of a core gate**.
+
+### End-to-end behavioral scenarios
+
+| Case | Expected behavior / safety invariant |
+| --- | --- |
+| Fresh install without saved option | Off effective and configured for optional notices; raw mandatory blockers unchanged |
+| Existing options or upgrade | Preserve revision and each saved mode; missing keys continue legacy inheritance |
+| Single notice | Modify only that policy, not other configured values |
+| Entire catalog | Update all current optional notices in one revision and one audited transaction |
+| Chosen subset | Update an explicit unique, validated list; leave unselected notices untouched |
+| Partial subset where some entries already match | Count affected and changed independently; skip unchanged entries |
+| Empty, duplicate, unknown, reserved, malformed, non-list or over-limit IDs | Fail before authorization or option mutation |
+| Extra fields, list with non-selected selector, unsupported mode | Reject with typed failure; never interpret as an implicit wildcard |
+| Different ID order, same selected set | Canonicalize selection so plan digest remains stable |
+| No-op selected, single or all change | Refuse Apply; use read-only Verify without spending approval |
+| Mixed effective profile | Show mixed rather than incorrectly claiming all Governed or Off |
+| Admin partial edit | Keep individual changes when bulk selector is Keep |
+| Admin bulk change | Explicit save overrides individual selectors only at that submission |
+| Admin invalid bulk, stale revision or catalog fingerprint | Reject and require fresh page/plan |
+| Non-administrator admin POST/AJAX, invalid nonce | Deny before persistence |
+| Anonymous or unenrolled remote actor | Deny Apply; no bypass through Plan/Verify |
+| Invalid bearer, missing authority step-up or wrong OAuth client | Deny Apply before a ticket is claimed |
+| Missing governed Write or inactive execution fence | Deny Apply |
+| Remote direct PHP callback (without Ability wrapper) | Reject even when its inputs resemble an approved request |
+| Stale plan after another local/remote save | Reject based on revision/hash and require re-plan |
+| Wrong site origin, multisite blog, actor or catalog identity | Reject exact plan replay; no cross-tenant change |
+| Staging authorized owner + valid ticket | Apply through native Ability fence, audit, CAS lease and persisted readback |
+| Production remote Apply | Denied by existing policy; Production read-only inspection may remain available |
+| Existing Production local administrator settings | Continue using protected wp-admin capability/nonce and site audit only; no remote Production mutation |
+| Lease lost while recording audit | Refuse mutation; release owned lock |
+| Persisted readback fails or audit recording fails | Attempt CAS-compensated rollback; otherwise return uncertain outcome and request inspection |
+| Transport timeout after Apply | Do not blindly retry; call Verify to discover persisted state and revision |
+| Invalid options file, bad catalog, unknown operating mode | Keep raw warnings, return strict/invalid status; never grant privileges |
+| Dynamic optional extension | Only a validated namespaced advisory definition is configurable; core safety reasons cannot be shadowed |
+| Reinstall / import / removal of a notice | Re-evaluate the source catalog; do not auto-import untrusted policy IDs |
+| Two sites with different profiles | Independent WordPress option state, plan site hash and blog ID |
+| Repeated read or admin page GET | Do not write options, advance revision, or imply an approval |
+| Staging package upgrade / rollback | Revalidate schema, catalog digest, source build and independent WordPress runtime |
+| GitHub CI or release approval missing | PR remains unmerged and does not change running sites |
+
+### Remote selected-batch request
+
+Read the site status first, then use the following **shape** to obtain a plan:
+
+```json
+{
+  "policy_id": "selected_optional_notices",
+  "policy_ids": ["developer_lane", "machine_ingress"],
+  "mode": "advisory"
+}
+```
+
+The response carries an exact `selected_policy_ids_sha256`,
+`affected_optional_notices`, `changed_optional_notices`, `revision`,
+`catalog_sha256`, `site_origin_sha256`, and `plan_sha256`.
+The caller must review that exact plan and obtain a centrally authorized
+one-time Write ticket. Apply reuses the *same* `policy_ids`, mode and
+`expected_plan_sha256`; Verify reports `mismatched_policy_ids`.
+
+A temporary MCP outage does not prove whether an Apply succeeded.
+Resume with a read-only status/Verify; if uncertain, **never** replay an old
+approval ticket or infer that the original mutation rolled back.
+
+### Protected governance inventory
+
+The following are deliberately **not** controlled by Off, Governed, selected
+batches, optional extensions, or any remote preference Apply:
+
+- OAuth authentication, access-token scope validation and WP user/capability
+  permissions;
+- exact owner operation approval, GitHub branch policies, CI and release verdicts;
+- Write/Developer/Breakglass grants, Production authorization and execution
+  fences;
+- provider certification, transport endpoint admission and rate/abuse limits;
+- audit integrity, CAS/rollback, backup/recovery, incident kill switches, and
+  exact environment/runtime identity checking.
+
+A future *operating model* selector for these capabilities must be separately
+designed and security-reviewed. This PR does not secretly introduce it.
+
+### Test evidence boundaries
+
+CI's hermetic PHP behavior suite and trusted Python launcher exercise source
+contracts without live WordPress credentials. Passing CI does **not** prove
+external OAuth/MCP transport, installation, hosting reachability, per-site
+Production approval, or a signed Staging acceptance result.
