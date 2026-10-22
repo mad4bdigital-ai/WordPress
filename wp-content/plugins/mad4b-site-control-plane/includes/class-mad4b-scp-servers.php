@@ -42,7 +42,7 @@ final class MAD4B_SCP_Servers {
 	}
 
 	public static function expected_server_ids() {
-		return array( 'mad4b-read', 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-developer', 'mad4b-developer-breakglass', 'mad4b-breakglass' );
+		return array( 'mad4b-direct', 'mad4b-read', 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-developer', 'mad4b-developer-breakglass', 'mad4b-breakglass' );
 	}
 
 	/** Core declarations before dynamically mounted Admin tools are added. */
@@ -856,6 +856,9 @@ final class MAD4B_SCP_Servers {
 	public static function registration_status() {
 		$status = array(); foreach ( self::expected_server_ids() as $id ) $status[ $id ] = isset( self::$registrations[ $id ] ) ? self::$registrations[ $id ] : array( 'registered' => false, 'error' => 'not_registered' ); return $status;
 	}
+	public static function can_direct_transport( $request = null ) {
+		return self::transport_permission( 'mad4b-direct', $request, array( 'MAD4B_SCP_Direct_Mode', 'can_transport' ) );
+	}
 	public static function can_read_transport( $request = null ) { return self::transport_permission( 'mad4b-read', $request, array( 'MAD4B_SCP_Policy', 'can_read' ) ); }
 	public static function can_chatgpt_transport( $request = null ) {
 		$permission = self::transport_permission( 'mad4b-chatgpt', $request, array( 'MAD4B_SCP_Policy', 'can_read' ) );
@@ -956,6 +959,9 @@ final class MAD4B_SCP_Servers {
 			return is_array( $tools ) ? array_values( array_unique( $tools ) ) : array();
 		};
 
+		$direct_tools = $materialize( 'mad4b-direct', static function () {
+			return class_exists( 'MAD4B_SCP_Direct_Mode' ) ? MAD4B_SCP_Direct_Mode::tools() : array();
+		} );
 		$read_tools = $materialize( 'mad4b-read', static function () use ( $registry_for_surface ) { $registry = $registry_for_surface(); return array_merge( self::core_tools( 'mad4b-read' ), $registry->ability_names( 'read' ) ); } );
 		$chatgpt_tools = $materialize( 'mad4b-chatgpt', static function () { return self::chatgpt_tools(); } );
 		$enrollment_tools = $materialize( 'mad4b-enrollment', static function () { return self::chatgpt_enrollment_candidates(); } );
@@ -973,6 +979,7 @@ final class MAD4B_SCP_Servers {
 			$chatgpt_description = $chatgpt_write_ready ? 'ChatGPT governed gateway with compact read/write discovery transports. Provider writes remain fail-closed until runtime eligible, exactly granted and approved. Generic filesystem/database introspection and breakglass remain excluded.' : 'ChatGPT-safe read gateway. Generic filesystem/database inspection and all content/write/admin/breakglass mutation surfaces are excluded.';
 		}
 
+		$this->create( $adapter, 'mad4b-direct', 'MAD4B Direct Authenticated MCP', 'WordPress-authenticated post reads and writes based on per-user native capabilities. No MAD4B per-mutation approval; no plugins, code, users, filesystem or SQL tools.', $direct_tools, array( __CLASS__, 'can_direct_transport' ), $transport, $error_handler, $observability, self::should_materialize_server_tools( 'mad4b-direct', $target_server_id ) );
 		$this->create( $adapter, 'mad4b-read', 'MAD4B Read MCP', 'Read-only discovery and diagnostics for WordPress, plugin adapters, files and database.', $read_tools, array( __CLASS__, 'can_read_transport' ), $transport, $error_handler, $observability, self::should_materialize_server_tools( 'mad4b-read', $target_server_id ) );
 		$this->create( $adapter, 'mad4b-chatgpt', 'MAD4B ChatGPT MCP', $chatgpt_description, $chatgpt_tools, array( __CLASS__, 'can_chatgpt_transport' ), $transport, $error_handler, $observability, self::should_materialize_server_tools( 'mad4b-chatgpt', $target_server_id ) );
 		$this->create( $adapter, 'mad4b-enrollment', 'MAD4B Enrollment MCP', 'Bounded exact Site Profile feature/App/write bootstrap for Staging or Production. Production mutation requires explicit profile confirmation and exact one-time approvals; Developer and Breakglass remain non-Production.', $enrollment_tools, array( __CLASS__, 'can_enrollment_transport' ), $transport, $error_handler, $observability, self::should_materialize_server_tools( 'mad4b-enrollment', $target_server_id ) );
