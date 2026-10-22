@@ -4490,6 +4490,48 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing OAuth resource bridge verifies the request bearer and WordPress user. Native per-post capabilities guard bounded post CRUD; governed write and breakglass permissions are not modified. Catalog required diagnostic entries remain fail-closed.",
       "review_rationale": "Same existing mad4b-chatgpt transport and 9-server topology, stable optional Direct tool inventory in both modes, OAuth authority step-up scope for Direct post writes, per-call authentication and role checks. Exact PHP behavioral regression proves local acceptance only; independent ETG/ARE live MCP A/B is still required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "0d4fa98c7bbf58bed7809087cde221478e875dc1",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "EXECUTION-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/direct-mcp-same-endpoint-contract.py"
+      ],
+      "owner_role": "Repository security reviewer — CI evidence, no Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing WordPress ability registration priority, bounded ChatGPT catalog, verified OAuth identity and per-post capability checks remain; original nine server topology is unchanged.",
+      "review_rationale": "Follow-up hardening preserves exact governed direct step-up and read-tool allowlist declarations and canonical Admin submenu lifecycle, without disabling Catalog fail-closed or OAuth gates."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-direct-profile.php",
+      "source_blob_sha": "4da571b12b8c0819a06d47508a975c24c85f4a21",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "EXECUTION-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/direct-mcp-same-endpoint-contract.py"
+      ],
+      "owner_role": "Repository security reviewer — CI evidence, no Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing WordPress ability registration priority, bounded ChatGPT catalog, verified OAuth identity and per-post capability checks remain; original nine server topology is unchanged.",
+      "review_rationale": "Follow-up hardening preserves exact governed direct step-up and read-tool allowlist declarations and canonical Admin submenu lifecycle, without disabling Catalog fail-closed or OAuth gates."
     }
   ],
   "code_change_rules": {
