@@ -1,0 +1,63 @@
+name: MAD4B ETG ARE Staging External HTTP Readiness
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/mad4b-staging-external-http-readiness.yml'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-connection-stage-diagnostics.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-connection-admin-ui.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-staging-http-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  reachability:
+    name: External HTTPS and REST / ${{ matrix.host }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        host: ['staging.egypttourgates.com', 'staging.allroyalegypt.com']
+    env:
+      TARGET_HOST: ${{ matrix.host }}
+    steps:
+      - name: Read-only DNS, HTTPS and anonymous REST measurements
+        shell: bash
+        run: |
+          set -u
+          mkdir -p evidence
+          out="evidence/${TARGET_HOST}.tsv"
+          printf 'path\texit_code\thttp_code\tremote_ip\tdns_seconds\ttcp_seconds\ttls_seconds\tttfb_seconds\ttotal_seconds\n' > "$out"
+          echo "DNS IPv4 for ${TARGET_HOST}:"
+          getent ahostsv4 "$TARGET_HOST" | head -n 2 || true
+          baseline_exit=1
+          baseline_code=000
+          for path in / /wp-json/ /wp-json/wp/v2/types /.well-known/oauth-protected-resource/wp-json/mcp/mad4b-chatgpt /wp-json/mcp/mad4b-chatgpt; do
+            set +e
+            metrics="$(curl --silent --show-error --output /dev/null --max-redirs 0 --connect-timeout 5 --max-time 12 --write-out '%{http_code}|%{remote_ip}|%{time_namelookup}|%{time_connect}|%{time_appconnect}|%{time_starttransfer}|%{time_total}' "https://${TARGET_HOST}${path}" 2>evidence/curl-stderr.tmp)"
+            rc=$?
+            set -e
+            IFS='|' read -r code remote dns tcp tls ttfb total <<< "$metrics"
+            printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$path" "$rc" "$code" "$remote" "$dns" "$tcp" "$tls" "$ttfb" "$total" >> "$out"
+            printf '%s -> exit=%s http=%s ttfb=%s total=%s\n' "$path" "$rc" "$code" "$ttfb" "$total"
+            if [ "$path" = /wp-json/ ]; then baseline_exit="$rc"; baseline_code="$code"; fi
+          done
+          rm -f evidence/curl-stderr.tmp
+          if [ "$baseline_exit" != 0 ] || [ "$baseline_code" != 200 ]; then
+            echo "::error::External WordPress REST Index could not be verified as HTTP 200 from this GitHub runner. This does not prove the WordPress site is down from every network."
+            exit 1
+          fi
+      - name: Retain bounded site-specific evidence even on probe failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-staging-http-${{ matrix.host }}
+          path: evidence/*.tsv
+          if-no-files-found: warn
+          retention-days: 14
