@@ -9,6 +9,7 @@ $GLOBALS['mock_user'] = 1;
 $GLOBALS['mock_caps'] = array('manage_options','edit_posts','publish_posts','create_posts');
 $GLOBALS['mock_registered'] = array();
 $GLOBALS['mock_configured'] = false;
+$GLOBALS['mock_environment'] = 'staging';
 
 class WP_Error {
     private $code;
@@ -60,6 +61,7 @@ class MAD4B_SCP_OAuth_Resource_Bridge {
 }
 class MAD4B_SCP_Site_Profile {
     public static function configured(){return $GLOBALS['mock_configured'];}
+    public static function current_environment(){return $GLOBALS['mock_environment'];}
 }
 class MAD4B_SCP_Policy {
     public static function can_connect_user($uid){return 1===$uid;}
@@ -115,12 +117,24 @@ expect(count($c::catalog_tools())===5,'Governed and Direct must have identical t
 $GLOBALS['mock_options'][$c::OPTION]=array('contract'=>$c::CONTRACT,'mode'=>'direct_authenticated','revision'=>1);
 expect($c::state()['mode']==='direct_authenticated'&&$c::can_transport(),'Explicit opt-in must permit direct authenticated transport');
 expect(count($c::catalog_tools())===5,'Explicit Direct must expose exactly the bounded direct tool set');
+// Direct mutation must never be enabled on Production, regardless of admin
+// user privileges and the supplied bearer step-up scope.
+$GLOBALS['mock_environment']='production';
+$prod=$c::create_post(array('title'=>'Must never publish to Production'));
+expect(is_wp_error($prod)&&$prod->get_error_code()==='mad4b_direct_production_write_denied',
+    'Direct Production write must be independently denied');
+$GLOBALS['mock_environment']='staging';
 $GLOBALS['mock_options'][$c::OPTION]=array('contract'=>$c::CONTRACT,'mode'=>'read_only','revision'=>2);
 expect($c::can_transport(),'Read only should allow authenticated transport');
 expect(count($c::catalog_tools())===5,'A/B tool list must remain stable on read-only mode');
 $readonly=$c::create_post(array('title'=>'Denied while read only'));
 expect(is_wp_error($readonly)&&$readonly->get_error_code()==='mad4b_direct_read_only','Read-only profile must deny mutation');
-$GLOBALS['mock_options'][$c::OPTION]=array('contract'=>$c::CONTRACT,'mode'=>'governed','revision'=>3);
+$GLOBALS['mock_options'][$c::OPTION]=array('contract'=>$c::CONTRACT,'mode'=>'maintenance_lock','revision'=>3);
+expect(!$c::can_transport(),'Maintenance lock must deny Direct tool transport');
+$lock_read=$c::list_posts(array('limit'=>2));
+expect(is_wp_error($lock_read)&&$lock_read->get_error_code()==='mad4b_direct_connection_denied',
+    'Maintenance lock must deny Direct reads, not only writes');
+$GLOBALS['mock_options'][$c::OPTION]=array('contract'=>$c::CONTRACT,'mode'=>'governed','revision'=>4);
 expect(!$c::can_transport(),'Governed toggle must revoke direct transport');
 $GLOBALS['mock_options'][$c::OPTION]=array('contract'=>'invalid','mode'=>'direct_authenticated','revision'=>4);
 expect(!$c::state()['valid']&&!$c::can_transport(),'Corrupt setting must not create direct authority');

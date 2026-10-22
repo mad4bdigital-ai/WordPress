@@ -72,7 +72,7 @@ final class MAD4B_SCP_Direct_Profile {
 
     public static function can_transport() {
         $state = self::state();
-        if ( empty( $state['valid'] ) || 'governed' === $state['mode'] ) return false;
+        if ( empty( $state['valid'] ) || ! in_array( $state['mode'], array( 'direct_authenticated', 'read_only' ), true ) ) return false;
         return self::can_user();
     }
 
@@ -81,6 +81,14 @@ final class MAD4B_SCP_Direct_Profile {
             'Authenticated and enrolled WordPress administrator required.', array( 'status'=>403 ) );
         if ( $write && 'direct_authenticated' !== self::state()['mode'] )
             return new WP_Error( 'mad4b_direct_read_only', 'Direct content writes are disabled by the current profile.', array( 'status'=>403 ) );
+        // Ordinary direct-write operations have NO production rollout contract.
+        // Fail closed independently of WordPress user capabilities and OAuth
+        // scope: Production continues to use its separate governed write path.
+        if ( $write && ( ! class_exists( 'MAD4B_SCP_Site_Profile' )
+            || ! method_exists( 'MAD4B_SCP_Site_Profile', 'current_environment' )
+            || 'production' === MAD4B_SCP_Site_Profile::current_environment() ) )
+            return new WP_Error( 'mad4b_direct_production_write_denied',
+                'Direct content writes are not certified for Production.', array( 'status'=>403 ) );
         // A read-only OAuth bearer must never be promoted to a write bearer merely
         // by flipping the local site profile. No per-operation MAD4B ticket is
         // needed, but write-capable OAuth scope must be held by this subject.
