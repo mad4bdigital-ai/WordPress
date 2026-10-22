@@ -5299,6 +5299,29 @@
       "coverage_reuse_rationale": "Existing OAuth, Schema, MCP, Runtime, Security, performance, and governed authority controls apply. No Production, Write, Developer, or Breakglass authority is granted.",
       "review_rationale": "On exact RFC9728 well-known paths, local authority readiness uses the existing bounded protocol runtime projection. Scope advertisement short-circuits once any eligible reviewed step-up tool is found rather than running expensive unnecessary candidate plans; every actual scope grant continues through ordinary OAuth authorization. ARE Staging measured full metadata HTTP 200 with valid resource and advertised issuer.",
       "execution_note": "Five exact PHP sources were first applied and verified on isolated staging.allroyalegypt.com. Verified: home 200, REST 200, MCP Read anonymous 403, MCP ChatGPT anonymous 401, RFC9728 well-known 200, anonymous initialize 401 plus WWW-Authenticate; executable PHP regressions in this PR fail closed. Live authenticated MCP acceptance and Production/ETG deployment remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-reconnect-hardening.php",
+      "source_blob_sha": "58226ca9702e9282aef8e79958b87be495d942e6",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PERFORMANCE-01",
+        "AUTOMATION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/reconnect-hardening-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-runtime-oauth-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Staging Write Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing OAuth, Schema, MCP, Runtime, Security, performance, and governed authority controls apply. No Production, Write, Developer, or Breakglass authority is granted.",
+      "review_rationale": "ARE Staging proved a malformed/invalid Bearer was incorrectly classified as 503 restart_grace before OAuth evaluation. An exact early rest_pre_dispatch guard now defers only bearer-bearing /mcp/mad4b-chatgpt to the existing OAuth bridge at priority 1, then an additional guard at priority 4 gates the verified subject against restart, maintenance and reconnect. Invalid or missing Bearer receives 401 + WWW-Authenticate, valid authenticated mutations are not authorized by this change. Tested live for Bearer malformed/invalid/missing; PHP reconnect-hardening runtime proves early defer, preserved OAuth 401, and late 503 maintenance guard. Production and ETG unchanged.",
+      "execution_note": "Five exact PHP sources were first applied and verified on isolated staging.allroyalegypt.com. Verified: home 200, REST 200, MCP Read anonymous 403, MCP ChatGPT anonymous 401, RFC9728 well-known 200, anonymous initialize 401 plus WWW-Authenticate; executable PHP regressions in this PR fail closed. Live authenticated MCP acceptance and Production/ETG deployment remain unverified."
     }
   ],
   "code_change_rules": {
