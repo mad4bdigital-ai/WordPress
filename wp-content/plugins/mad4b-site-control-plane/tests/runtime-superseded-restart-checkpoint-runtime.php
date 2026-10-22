@@ -11,7 +11,7 @@ function must( $condition, $reason ) {
 	if ( ! $condition ) { fwrite( STDERR, 'FAIL: ' . $reason . PHP_EOL ); exit( 1 ); }
 }
 $method = new ReflectionMethod( 'MAD4B_SCP_Runtime_Convergence', 'superseded_checkpoint_graph_safe' );
-$method->setAccessible( true );
+if ( PHP_VERSION_ID < 80100 ) $method->setAccessible( true );
 $now = time();
 $current = array(
 	'version' => '0.4.0-test',
@@ -69,4 +69,57 @@ $drift = $graph; $drift['checkpoint_operator_state']['state'] = 'historical_chec
 must( ! $eligible( $old, $current, $now - 40, $drift ), 'official checkpoint classifier remains authoritative' );
 $drift = $graph; $drift['checkpoint_operator_state']['replay_old_checkpoint_allowed'] = true;
 must( ! $eligible( $old, $current, $now - 40, $drift ), 'historical update must never be replayable' );
+// A cached release from the superseded checkpoint must not indefinitely
+// block a strictly newer installed package when it is the ONLY core blocker.
+$new = $current; $new['version'] = '0.4.0-rc.103';
+$previous = $old; $previous['target_identity']['version'] = '0.4.0-rc.102';
+$stale = $graph;
+$stale['state'] = 'convergence_required';
+$stale['ready'] = false;
+$stale['environment'] = 'staging';
+$stale['current_identity'] = $new;
+$stale['checkpoint'] = $previous;
+$stale['required_blockers'] = array( 'deployment:pending' );
+$stale['phase_graph_valid'] = true;
+$stale['phases'] = array(
+	'deployment' => array(
+		'required' => true, 'state' => 'pending',
+		'details' => array(
+			'cached_release_target_present' => true,
+			'manifest_state' => 'ready',
+			'target_identity' => $previous['target_identity'],
+		),
+	),
+	'schema' => array( 'required' => true, 'state' => 'ready' ),
+	'managed_skills' => array( 'required' => true, 'state' => 'ready' ),
+	'performance_advisory' => array( 'required' => false, 'state' => 'advisory' ),
+);
+$stale['checkpoint_operator_state'] = MAD4B_SCP_Runtime_Convergence::checkpoint_operator_state(
+	$previous, $new, $stale['required_blockers']
+);
+must( $eligible( $previous, $new, $now - 40, $stale ), 'exact stale cache-only blocker releases historical grace' );
+$cache_cases = array(
+	'no_cache_certification' => static function ( &$g ) { $g['phases']['deployment']['details']['cached_release_target_present'] = false; },
+	'unready_manifest' => static function ( &$g ) { $g['phases']['deployment']['details']['manifest_state'] = 'not_cached'; },
+	'different_cached_target' => static function ( &$g ) { $g['phases']['deployment']['details']['target_identity']['source_commit_sha'] = str_repeat( '9', 40 ); },
+	'different_cached_version' => static function ( &$g ) { $g['phases']['deployment']['details']['target_identity']['version'] = '0.4.0-rc.100'; },
+	'independent_schema_blocker' => static function ( &$g ) { $g['required_blockers'][] = 'schema:pending'; $g['phases']['schema']['state'] = 'pending'; },
+	'phase_graph_invalid' => static function ( &$g ) { $g['phase_graph_valid'] = false; },
+	'not_really_pending' => static function ( &$g ) { $g['phases']['deployment']['state'] = 'ready'; },
+	'production_environment' => static function ( &$g ) { $g['environment'] = 'production'; },
+	'no_other_required_ready' => static function ( &$g ) { $g['phases']['managed_skills']['state'] = 'pending'; },
+	'readiness_not_classified' => static function ( &$g ) { $g['checkpoint_operator_state']['state'] = 'checkpoint_identity_unverified'; },
+	'replay_enabled' => static function ( &$g ) { $g['checkpoint_operator_state']['replay_old_checkpoint_allowed'] = true; },
+);
+foreach ( $cache_cases as $label => $mutate ) {
+	$invalid = $stale;
+	$mutate( $invalid );
+	must( ! $eligible( $previous, $new, $now - 40, $invalid ), 'cache exception must fail closed: ' . $label );
+}
+$not_newer = $new; $not_newer['version'] = '0.4.0-rc.102';
+$same_graph = $stale; $same_graph['current_identity'] = $not_newer;
+must( ! $eligible( $previous, $not_newer, $now - 40, $same_graph ), 'equal version cannot bypass active checkpoint' );
+$no_old_version = $previous; $no_old_version['target_identity']['version'] = '';
+$no_old_graph = $stale; $no_old_graph['checkpoint'] = $no_old_version;
+must( ! $eligible( $no_old_version, $new, $now - 40, $no_old_graph ), 'unknown checkpoint version remains blocked' );
 echo "RUNTIME_SUPERSEDED_RESTART_CHECKPOINT: PASS\n";
