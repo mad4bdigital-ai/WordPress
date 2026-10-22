@@ -5166,6 +5166,28 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Reuses existing certified MCP transport, OAuth bearer, enrollment, plugin safety and user-capability review controls without granting Production or new mutation authority.",
       "review_rationale": "Unified same-endpoint Direct Profile continues to require OAuth bearer, exact tool allowlist, WordPress permissions and the existing admin route registry manage_options guard. The admin submenu registers only when MAD4B_SCP_Admin_Route_Registry accepts the route; invalid or absent registry fails closed. Supersedes old source blob review; no Production authority or new endpoints authorized."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-convergence.php",
+      "source_blob_sha": "d482d72ba5f25a41ff9e041a27a4140f64522c5c",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PERFORMANCE-01",
+        "AUTOMATION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-superseded-restart-checkpoint-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no WordPress Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP, runtime-convergence, security, performance, and automation controls are sufficient for a historical checkpoint read-only exception without new authorities.",
+      "review_rationale": "Restored ARE Staging evidence (read-only WP-CLI options, 22 Oct 2026) identifies old self-update checkpoint rc.102 SHA 268d9b31 and a distinct, fully identified, cached rc.102 release SHA 12199d0e. The exact non-Production exception activates only when the installed runtime is strictly newer than both complete obsolete identities; deployment:pending is the ONLY required blocker, the phase graph is valid, every other required phase is ready and the official checkpoint classifier is historical audit-only with no replay. Keeps production, active updates, schema, skills, OAuth and authority fail closed; historical records and kill switch remain untouched. No site deployment acceptance or owner authorization inferred.",
+      "execution_note": "MAD4B Post Update Continuation Guards CI executes a new hermetic PHP fixture across PHP 7.4/8.1/8.3; additional verified local PHP 8.3 container runs cover syntax, unchanged quiet/manual/blocked barriers, and guided convergence. No live production or foreign OAuth acceptance claimed."
     }
   ],
   "code_change_rules": {
