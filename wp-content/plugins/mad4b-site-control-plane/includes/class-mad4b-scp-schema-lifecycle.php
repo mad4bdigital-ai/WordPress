@@ -70,6 +70,18 @@ final class MAD4B_SCP_Schema_Lifecycle {
 
 	public static function maybe_schedule() {
 		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false ) && MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) return;
+		// A self-update that requires manual operator resumption must not
+		// repeatedly construct the full Runtime readiness graph on normal
+		// frontend init merely to discover the already-persisted STOP state.
+		// Keep the checkpoint, kill switch, explicit reconciler and other
+		// authority gates intact. Only defer automatic schema scheduling.
+		if ( class_exists( 'MAD4B_SCP_Runtime_Convergence', false ) ) {
+			$checkpoint = get_option( MAD4B_SCP_Runtime_Convergence::CHECKPOINT_OPTION, array() );
+			if ( is_array( $checkpoint )
+				&& 'self_update' === ( $checkpoint['source'] ?? '' )
+				&& 'pending_manual_resume' === ( $checkpoint['state'] ?? '' )
+				&& ! empty( $checkpoint['resume_blocker'] ) ) return;
+		}
 		$grace = self::restart_grace();
 		if ( ! empty( $grace['active'] ) ) return;
 		if ( ! self::needs_reconciliation() || ! self::retry_due() ) return;
