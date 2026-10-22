@@ -217,14 +217,26 @@ final class MAD4B_SCP_Runtime_Convergence {
 		if ( empty( $details['cached_release_target_present'] )
 			|| 'ready' !== ( $details['manifest_state'] ?? '' )
 			|| ! preg_match( '/^[a-f0-9]{40}$/D', $old_sha )
-			|| ! hash_equals( $old_sha, $cached_sha )
+			|| ! preg_match( '/^[a-f0-9]{40}$/D', $cached_sha )
 			|| '' === $old_version || '' === $cached_version || '' === $current_version
 			|| ! hash_equals( $old_version, $cached_version )
+			|| ! version_compare( $current_version, $old_version, '>' )
 			|| ! version_compare( $current_version, $cached_version, '>' ) ) return false;
+		// Migration may preserve an old self-update checkpoint while a later
+		// *different* certified release of the same old version is cached.
+		// Identity SHA drift alone cannot release a barrier. Both obsolete
+		// identities must be complete, the installed version strictly newer,
+		// and the only required blocker must already be deployment:pending.
+		$distinct_old_release = ! hash_equals( $old_sha, $cached_sha );
 		foreach ( array( 'build_fingerprint', 'package_manifest_digest' ) as $field ) {
-			if ( ! empty( $checkpoint_target[ $field ] )
-				&& ( empty( $cached[ $field ] ) || ! hash_equals( $checkpoint_target[ $field ], (string) $cached[ $field ] ) ) )
+			$checkpoint_value = strtolower( trim( (string) ( $checkpoint_target[ $field ] ?? '' ) ) );
+			$cached_value = strtolower( trim( (string) ( $cached[ $field ] ?? '' ) ) );
+			if ( $distinct_old_release ) {
+				if ( ! preg_match( '/^[a-f0-9]{64}$/D', $checkpoint_value )
+					|| ! preg_match( '/^[a-f0-9]{64}$/D', $cached_value ) ) return false;
+			} elseif ( '' !== $checkpoint_value && ( '' === $cached_value || ! hash_equals( $checkpoint_value, $cached_value ) ) ) {
 				return false;
+			}
 		}
 		return true;
 	}
