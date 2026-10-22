@@ -50,6 +50,14 @@ function wp_update_post($args,$wp_error=false) {
 }
 function get_post($id){return $GLOBALS['mock_posts'][$id]??null;}
 function get_posts($args){return array_values($GLOBALS['mock_posts']);}
+class MAD4B_SCP_OAuth_Resource_Bridge {
+    public static $bearer=true;
+    public static $step_up=true;
+    public static function verified_bearer_active(){ return self::$bearer; }
+    public static function verified_bearer_has_scope($scope){
+        return self::$step_up && $scope==='mad4b:authority:step-up';
+    }
+}
 class MAD4B_SCP_Site_Profile {
     public static function configured(){return $GLOBALS['mock_configured'];}
 }
@@ -71,6 +79,7 @@ expect($c::SERVER==='mad4b-chatgpt','Direct must keep existing MCP server');
 expect(count($c::catalog_tools())===5,'Fresh Direct must expose optional content tools');
 $create=$GLOBALS['mock_registered'][$c::CREATE_POST];
 expect($create['meta']['annotations']['readonly']===false,'Create ability is not marked write');
+expect($create['meta']['annotations']['idempotent']===false,'Create cannot claim idempotency');
 expect(empty($create['meta']['mcp']['mad4b_governed_write_authority']),'Direct tool must not inherit a privileged governed grant');
 expect($create['permission_callback'](array('title'=>'Draft'))===true,'Permission should allow the WordPress author');
 $post=$c::create_post(array('title'=>'Draft','content'=>'<p>hello</p>'));
@@ -82,6 +91,11 @@ $updated=$c::update_post(array('post_id'=>9,'expected_modified_gmt'=>$old,'title
 expect(!is_wp_error($updated)&&$updated['title']==='New Title','Direct update failed');
 $read=$c::get_post(array('post_id'=>9));expect(!is_wp_error($read),'Direct read failed');
 $rows=$c::list_posts(array('limit'=>10));expect(count($rows['items'])===1,'Direct list failed');
+MAD4B_SCP_OAuth_Resource_Bridge::$step_up=false;
+$denied_scope=$c::create_post(array('title'=>'No OAuth write scope'));
+expect(is_wp_error($denied_scope) && $denied_scope->get_error_code()==='mad4b_direct_write_scope_required',
+    'Read-scoped bearer cannot gain write merely by changing the site profile');
+MAD4B_SCP_OAuth_Resource_Bridge::$step_up=true;
 $GLOBALS['mock_caps']=array('manage_options','edit_posts','create_posts');
 $publish=$c::create_post(array('title'=>'No Publish','status'=>'publish'));
 expect(is_wp_error($publish)&&$publish->get_error_code()==='mad4b_direct_publish_denied','Publish capability not enforced');
@@ -97,13 +111,13 @@ $GLOBALS['mock_user']=1;
 $GLOBALS['mock_configured']=true;
 expect($c::default_mode()==='governed','Existing enrolled site must not gain Direct on upgrade');
 expect($c::state()['mode']==='governed'&&!$c::can_transport(),'Governed default must prevent direct transport');
-expect($c::catalog_tools()===array(),'Existing governed site must not change its MCP tool catalog');
+expect(count($c::catalog_tools())===5,'Governed and Direct must have identical tool list');
 $GLOBALS['mock_options'][$c::OPTION]=array('contract'=>$c::CONTRACT,'mode'=>'direct_authenticated','revision'=>1);
 expect($c::state()['mode']==='direct_authenticated'&&$c::can_transport(),'Explicit opt-in must permit direct authenticated transport');
 expect(count($c::catalog_tools())===5,'Explicit Direct must expose exactly the bounded direct tool set');
 $GLOBALS['mock_options'][$c::OPTION]=array('contract'=>$c::CONTRACT,'mode'=>'read_only','revision'=>2);
 expect($c::can_transport(),'Read only should allow authenticated transport');
-expect(count($c::catalog_tools())===3,'Read-only must not advertise direct mutation tools');
+expect(count($c::catalog_tools())===5,'A/B tool list must remain stable on read-only mode');
 $readonly=$c::create_post(array('title'=>'Denied while read only'));
 expect(is_wp_error($readonly)&&$readonly->get_error_code()==='mad4b_direct_read_only','Read-only profile must deny mutation');
 $GLOBALS['mock_options'][$c::OPTION]=array('contract'=>$c::CONTRACT,'mode'=>'governed','revision'=>3);
