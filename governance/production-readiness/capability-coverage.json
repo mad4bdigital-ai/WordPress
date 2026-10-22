@@ -4439,7 +4439,7 @@
         "AUTOMATION-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-superseded-restart-checkpoint-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-superseded-restart-checkpoint-contract.py"
       ],
       "owner_role": "Repository source reviewer — CI-only; no WordPress Site Owner or Production authorization",
       "status": "reviewed_for_ci_only",
