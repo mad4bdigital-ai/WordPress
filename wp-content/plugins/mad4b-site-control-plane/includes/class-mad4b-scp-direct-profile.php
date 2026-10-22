@@ -266,6 +266,8 @@ final class MAD4B_SCP_Direct_Profile {
     }
 
     public static function register_page() {
+        if ( ! class_exists( 'MAD4B_SCP_Admin_Route_Registry' )
+            || ! MAD4B_SCP_Admin_Route_Registry::register( self::PAGE, 'manage_options' ) ) return;
         add_submenu_page( 'mad4b-control-plane', 'MCP Access Profile',
             'MCP Access Profile', 'manage_options', self::PAGE, array( __CLASS__, 'render_page' ) );
     }
