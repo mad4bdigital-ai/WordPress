@@ -555,6 +555,10 @@ final class MAD4B_SCP_Servers {
 		$cacheable = self::catalog_cacheable();
 		if ( $cacheable && is_array( self::$chatgpt_tools_cache ) ) return self::$chatgpt_tools_cache;
 		$core = self::core_tools( 'mad4b-chatgpt' );
+		// Site preference only: do not branch on the bearer before OAuth runs.
+		// Profile tools are optional and never displace required diagnostics.
+		$profile_tools = class_exists( 'MAD4B_SCP_Direct_Profile' )
+			? MAD4B_SCP_Direct_Profile::catalog_tools() : array();
 		$breakglass = self::core_tools( 'mad4b-breakglass' );
 		$approval_bootstrap = self::chatgpt_approval_bootstrap_tools();
 
@@ -562,8 +566,8 @@ final class MAD4B_SCP_Servers {
 			$runtime_gate_step_up = class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' )
 				? MAD4B_SCP_Governed_Runtime_Gates::chatgpt_step_up_tools()
 				: array();
-			$direct_allowlist = array_merge( self::chatgpt_direct_read_transport_tools(), self::chatgpt_dispatch_transport_tools(), $runtime_gate_step_up, $approval_bootstrap );
-			$fallback_candidates = array_merge( $core, $runtime_gate_step_up, $approval_bootstrap );
+			$direct_allowlist = array_merge( self::chatgpt_direct_read_transport_tools(), self::chatgpt_dispatch_transport_tools(), $runtime_gate_step_up, $approval_bootstrap, $profile_tools );
+			$fallback_candidates = array_merge( $core, $runtime_gate_step_up, $approval_bootstrap, $profile_tools );
 			$tools = array_values( array_intersect( $fallback_candidates, $direct_allowlist ) );
 			$tools = array_values( array_diff( $tools, $breakglass, array( 'mad4b/database-raw-query' ) ) );
 			$tools = array_values( array_unique( array_map( 'strval', $tools ) ) );
@@ -595,10 +599,14 @@ final class MAD4B_SCP_Servers {
 			$runtime_gate_read,
 			$step_up
 		);
-		$candidates = array_merge( $core, $bootstrap );
-		$direct_mutation_transport = array_merge( self::chatgpt_dispatch_transport_tools(), $step_up );
+		$candidates = array_merge( $core, $bootstrap, $profile_tools );
+		$direct_mutation_transport = array_merge(
+			self::chatgpt_dispatch_transport_tools(), $step_up,
+			class_exists( 'MAD4B_SCP_Direct_Profile' ) ? MAD4B_SCP_Direct_Profile::write_tools() : array()
+		);
 		$direct_mutation_transport = array_values( array_unique( array_merge( $direct_mutation_transport, $approval_bootstrap ) ) );
-		$direct_read_transport = self::chatgpt_direct_read_transport_tools();
+		$direct_read_transport = array_merge( self::chatgpt_direct_read_transport_tools(),
+			class_exists( 'MAD4B_SCP_Direct_Profile' ) ? MAD4B_SCP_Direct_Profile::read_tools() : array() );
 
 		$tools = array();
 		foreach ( array_values( array_unique( array_map( 'strval', $candidates ) ) ) as $ability_name ) {
@@ -646,9 +654,11 @@ final class MAD4B_SCP_Servers {
 		$management = array_values( array_intersect(
 			array( 'mad4b/chatgpt-tool-projection-apply' ), $reviewed
 		) );
+		$profile_tools = class_exists( 'MAD4B_SCP_Direct_Profile' )
+			? MAD4B_SCP_Direct_Profile::catalog_tools() : array();
 		return array_values( array_intersect(
 			array_values( array_unique( array_merge(
-				$management, $dynamic_optional, $reviewed
+				$management, $profile_tools, $dynamic_optional, $reviewed
 			) ) ),
 			$requested_tools
 		) );
