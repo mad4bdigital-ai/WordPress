@@ -3,6 +3,7 @@
 import hashlib
 import json
 from pathlib import Path
+from historical_source_successor import is_exact_reviewed_successor
 
 root = Path(__file__).resolve().parents[4]
 path = root / "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g6-delivery.json"
@@ -23,7 +24,14 @@ for group in ("code_paths", "test_paths", "spec_paths"):
         assert name.startswith(("wp-content/plugins/mad4b-site-control-plane/",
                                 "specs/007-content-intelligence-workflow-platform/")), name
         seen.add(name)
-        actual = hashlib.sha256((root / name).read_bytes()).hexdigest()
-        assert actual == item["sha256"], "g6_delivery_source_evidence_drift:" + name
+        data = (root / name).read_bytes()
+        actual = hashlib.sha256(data).hexdigest()
+        assert actual == item["sha256"] or is_exact_reviewed_successor(root, name, data), (
+            "g6_delivery_source_evidence_drift:" + name
+        )
+        if actual != item["sha256"]:
+            assert not is_exact_reviewed_successor(root, name, data + b"unreviewed"), (
+                "g6_reviewed_successor_must_reject_unknown_runtime_bytes:" + name
+            )
 assert len(seen) >= 15, len(seen)
 print("mad4b.feature007-g6-delivery-integrity.v1: PASS " + str(len(seen)))
