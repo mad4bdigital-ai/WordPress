@@ -1129,6 +1129,24 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing administrator access, browser, bounded performance and runtime controls cover explicit read-only reports without new grants.",
       "review_rationale": "Defer expensive Operator and ChatGPT admin reports until an administrator requests a nonce-protected, closed-selector POST. Preserve source contracts and permissions; test initial GET, dispatch guards, query/time metrics, output redaction, timeout and HTTP 504. No live acceptance claim."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-connection-stage-diagnostics.php",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-connection-stage-diagnostics-runtime.php"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no WordPress Site Owner or Production authorization",
+      "review_rationale": "New read-only diagnostic projection preserves not_checked for absent OAuth evidence, tracks explicit observed local blockers, and never infers remote bearer/MCP acceptance or any mutation authority.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP identity, platform projection, and security controls already cover the non-authorizing read-only diagnostic; no new permission boundary or protected route is introduced."
     }
   ],
   "lifecycle": [],
@@ -4427,6 +4445,87 @@
       "coverage_reuse_rationale": "Existing fail-closed MCP and Runtime Convergence controls cover exact read-only checkpoint and Cron diagnostics; no authority, session, restart or mutation gate is changed.",
       "review_rationale": "Expose bounded persisted checkpoint age/state, operator blockers and retries without clearing gate or mutating options; executable PHP regression covers quiet period, manual, blocked and terminal phases.",
       "execution_note": "Trusted Spec 008 CI executes the changed runtime-convergence-contract.py, which runs php -l and the hermetic restart-grace PHP fixture. No direct PHP artifact is misrepresented as an independent trusted PHPUnit runner. External MCP/host acceptance remains separate."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-connection-admin-ui.php",
+      "source_blob_sha": "af065c33954804a3c767efcfff4eb1da5ad97739",
+      "control_ids": [
+        "ADMIN-01",
+        "MCP-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-connection-stage-diagnostics-runtime.php"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no WordPress Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing reviewed WordPress OAuth, MCP materialization, platform and policy boundary controls apply to this narrowly scoped non-authorizing change, without any Production runtime certification.",
+      "review_rationale": "Admin connection screen now reports missing OAuth prerequisites as unknown rather than falsely blocked and explicitly defers unmeasured deep Bootstrap/Catalog; users cannot grant authority here.",
+      "execution_note": "Connection Governance runs the changed local classifier PHP regression, while OAuth and transport are still verified separately on the real remote site."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-connection-stage-diagnostics.php",
+      "source_blob_sha": "433f1d3ef81596c7d656c209bc5a1031b32abed5",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-connection-stage-diagnostics-runtime.php"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no WordPress Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing reviewed WordPress OAuth, MCP materialization, platform and policy boundary controls apply to this narrowly scoped non-authorizing change, without any Production runtime certification.",
+      "review_rationale": "Local diagnostic classifier distinguishes blocked, ready_local and not_checked using real typed evidence; unknown cannot be promoted to a verified external connection.",
+      "execution_note": "Connection Governance runs the changed local classifier PHP regression, while OAuth and transport are still verified separately on the real remote site."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "bd2ee18aee8f5ec671a0207fdecfbc0d8560f5e3",
+      "control_ids": [
+        "PLATFORM-01",
+        "MCP-01",
+        "SECURITY-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-client-compatibility-smoke.php"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no WordPress Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing reviewed WordPress OAuth, MCP materialization, platform and policy boundary controls apply to this narrowly scoped non-authorizing change, without any Production runtime certification.",
+      "review_rationale": "Exact RFC9728 metadata URLs no longer impersonate protocol routes during target classification; route-only registration avoids expensive eager MCP tool materialization while preserving real MCP transport permissions.",
+      "execution_note": "MCP Client Compatibility CI runs the changed native WordPress regression and an anonymous RFC9728 HTTP metadata probe. Live ETG and ARE rollout remains separately uncertified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "a9453940da846b40f665c80c5efc96e27bb376e7",
+      "control_ids": [
+        "PLATFORM-01",
+        "MCP-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-client-compatibility-smoke.php"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no WordPress Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing reviewed WordPress OAuth, MCP materialization, platform and policy boundary controls apply to this narrowly scoped non-authorizing change, without any Production runtime certification.",
+      "review_rationale": "The existing connection diagnostics module is loaded on the same established WordPress plugin bootstrap; no authentication, write grants, production switches or route permissions are modified.",
+      "execution_note": "MCP Client Compatibility CI runs the changed native WordPress regression and an anonymous RFC9728 HTTP metadata probe. Live ETG and ARE rollout remains separately uncertified."
     }
   ],
   "code_change_rules": {
