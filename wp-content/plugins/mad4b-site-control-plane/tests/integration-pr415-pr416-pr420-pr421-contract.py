@@ -98,7 +98,7 @@ reviewed_exact_blobs = {
 
 def reviewed_source_supersedes_snapshot(path):
     data = Path(path).read_bytes()
-    raw = b"blob " + str(len(data)).encode("ascii") + b"\\0" + data
+    raw = b"blob " + str(len(data)).encode("ascii") + b"\0" + data
     blob_sha = hashlib.sha1(raw).hexdigest()
     return (path, blob_sha) in reviewed_exact_blobs
 
