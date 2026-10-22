@@ -43,6 +43,12 @@ jobs:
         run: php wp-content/plugins/mad4b-site-control-plane/tests/self-update-candidate-drift-bootstrap-runtime.php
       - name: Verify runtime maintenance preflight classifications
         run: php wp-content/plugins/mad4b-site-control-plane/tests/runtime-maintenance-lease-runtime.php
+      - name: Verify migrated superseded checkpoint never bypasses active runtime gates
+        run: |
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-convergence.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/runtime-superseded-restart-checkpoint-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/runtime-restart-grace-readonly-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/guided-runtime-convergence-runtime.php
       - name: Verify actual MCP catalog and credential-free discovery evidence
         run: php wp-content/plugins/mad4b-site-control-plane/tests/mcp-catalog-evidence-runtime.php
       - name: Verify bounded MCP registration diagnostic rendering

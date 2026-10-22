@@ -157,6 +157,34 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 			'admin_status_projection' => 'runtime_identity',
 			'deep_oauth_status_deferred' => true,
 		);
+		// Shallow admin evidence only: never imply that a remote ChatGPT
+		// initialize/tools/list or the running host has been externally checked.
+		if ( class_exists( 'MAD4B_SCP_MCP_Connection_Stage_Diagnostics' ) ) {
+			self::$status_cache['connection_stage_diagnostics'] =
+				MAD4B_SCP_MCP_Connection_Stage_Diagnostics::project( array(
+					'oauth' => array(
+						'environment_ready' => (
+                            class_exists( 'MAD4B_SCP_Staging_OAuth_Autoconfig' )
+                            || class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' )
+                        ) ? (bool) $environment_ready : null,
+                        'local_oauth_effective' => is_array( $local )
+                            && isset( $local['effective'] ) && is_bool( $local['effective'] )
+                                ? $local['effective'] : null,
+                        'bridge_effective' => is_array( $bridge )
+                            && isset( $bridge['effective'] ) && is_bool( $bridge['effective'] )
+                                ? $bridge['effective'] : null,
+                        'cimd_ready' => is_array( $local )
+                            && isset( $local['client_id_metadata_document_supported'] )
+                            && is_bool( $local['client_id_metadata_document_supported'] )
+                                ? (bool) $cimd_ready : null,
+					),
+					'registration' => $gateway_registration,
+                    // These expensive deep checks are intentionally deferred
+                    // here rather than estimated from an identity-only snapshot.
+                    'bootstrap' => array(),
+                    'catalog' => array(),
+                ) );
+		}
 		return self::$status_cache;
 	}
 
@@ -267,6 +295,18 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 			<h2><?php echo esc_html__( 'Gateway safety boundary', 'mad4b-site-control-plane' ); ?></h2>
 			<p><?php echo esc_html__( 'The ChatGPT gateway excludes generic filesystem/database inspection and raw Breakglass. Portable Production mode remains read-only; an exact Production Site Profile may enable only governed, exactly granted mutations with one-time approval. Developer and Developer Breakglass remain non-Production.', 'mad4b-site-control-plane' ); ?></p>
 
+			<h2><?php echo esc_html__( 'MCP connection stages (local observation only)', 'mad4b-site-control-plane' ); ?></h2>
+			<p><?php echo esc_html__( 'A local prerequisite is not an externally verified ChatGPT session. Not checked means that this page has not issued the corresponding remote client operation. Changing the write-governance profile cannot repair an earlier bootstrap, OAuth, transport or catalog failure.', 'mad4b-site-control-plane' ); ?></p>
+			<table class="widefat striped" style="max-width:1100px">
+				<thead><tr><th>Stage</th><th>Local status</th><th>Evidence / limitation</th></tr></thead>
+				<tbody>
+				<?php foreach ( (array) ( $status['connection_stage_diagnostics']['stages'] ?? array() ) as $stage_id => $stage ) : ?>
+				<tr><th><?php echo esc_html( (string) $stage_id ); ?></th>
+					<td><?php echo esc_html( (string) ( $stage['status'] ?? 'not_checked' ) ); ?></td>
+					<td><?php echo esc_html( (string) ( $stage['reason'] ?? 'local_evidence_not_available' ) ); ?></td></tr>
+				<?php endforeach; ?>
+				</tbody>
+			</table>
 			<h2><?php echo esc_html__( 'Current readiness', 'mad4b-site-control-plane' ); ?></h2>
 			<table class="widefat striped" style="max-width:900px">
 				<tbody>

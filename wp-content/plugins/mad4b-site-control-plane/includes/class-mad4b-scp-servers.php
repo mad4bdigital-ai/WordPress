@@ -555,6 +555,10 @@ final class MAD4B_SCP_Servers {
 		$cacheable = self::catalog_cacheable();
 		if ( $cacheable && is_array( self::$chatgpt_tools_cache ) ) return self::$chatgpt_tools_cache;
 		$core = self::core_tools( 'mad4b-chatgpt' );
+		// Site preference only: do not branch on the bearer before OAuth runs.
+		// Profile tools are optional and never displace required diagnostics.
+		$profile_tools = class_exists( 'MAD4B_SCP_Direct_Profile' )
+			? MAD4B_SCP_Direct_Profile::catalog_tools() : array();
 		$breakglass = self::core_tools( 'mad4b-breakglass' );
 		$approval_bootstrap = self::chatgpt_approval_bootstrap_tools();
 
@@ -562,8 +566,8 @@ final class MAD4B_SCP_Servers {
 			$runtime_gate_step_up = class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' )
 				? MAD4B_SCP_Governed_Runtime_Gates::chatgpt_step_up_tools()
 				: array();
-			$direct_allowlist = array_merge( self::chatgpt_direct_read_transport_tools(), self::chatgpt_dispatch_transport_tools(), $runtime_gate_step_up, $approval_bootstrap );
-			$fallback_candidates = array_merge( $core, $runtime_gate_step_up, $approval_bootstrap );
+			$direct_allowlist = array_merge( self::chatgpt_direct_read_transport_tools(), self::chatgpt_dispatch_transport_tools(), $runtime_gate_step_up, $approval_bootstrap, $profile_tools );
+			$fallback_candidates = array_merge( $core, $runtime_gate_step_up, $approval_bootstrap, $profile_tools );
 			$tools = array_values( array_intersect( $fallback_candidates, $direct_allowlist ) );
 			$tools = array_values( array_diff( $tools, $breakglass, array( 'mad4b/database-raw-query' ) ) );
 			$tools = array_values( array_unique( array_map( 'strval', $tools ) ) );
@@ -595,10 +599,16 @@ final class MAD4B_SCP_Servers {
 			$runtime_gate_read,
 			$step_up
 		);
-		$candidates = array_merge( $core, $bootstrap );
+		$candidates = array_merge( $core, $bootstrap, $profile_tools );
 		$direct_mutation_transport = array_merge( self::chatgpt_dispatch_transport_tools(), $step_up );
+		// Preserve the pre-existing governed step-up invariant, then extend
+		// ONLY the isolated Direct post tools (never generic write providers).
+		if ( class_exists( 'MAD4B_SCP_Direct_Profile' ) )
+			$direct_mutation_transport = array_merge( $direct_mutation_transport, MAD4B_SCP_Direct_Profile::write_tools() );
 		$direct_mutation_transport = array_values( array_unique( array_merge( $direct_mutation_transport, $approval_bootstrap ) ) );
 		$direct_read_transport = self::chatgpt_direct_read_transport_tools();
+		if ( class_exists( 'MAD4B_SCP_Direct_Profile' ) )
+			$direct_read_transport = array_merge( $direct_read_transport, MAD4B_SCP_Direct_Profile::read_tools() );
 
 		$tools = array();
 		foreach ( array_values( array_unique( array_map( 'strval', $candidates ) ) ) as $ability_name ) {
@@ -646,9 +656,11 @@ final class MAD4B_SCP_Servers {
 		$management = array_values( array_intersect(
 			array( 'mad4b/chatgpt-tool-projection-apply' ), $reviewed
 		) );
+		$profile_tools = class_exists( 'MAD4B_SCP_Direct_Profile' )
+			? MAD4B_SCP_Direct_Profile::catalog_tools() : array();
 		return array_values( array_intersect(
 			array_values( array_unique( array_merge(
-				$management, $dynamic_optional, $reviewed
+				$management, $dynamic_optional, $reviewed, $profile_tools
 			) ) ),
 			$requested_tools
 		) );
@@ -862,7 +874,22 @@ final class MAD4B_SCP_Servers {
 		if ( true !== $permission ) return $permission;
 		$registered = isset( self::$registrations['mad4b-chatgpt'] ) ? self::$registrations['mad4b-chatgpt'] : array();
 		$catalog = isset( $registered['catalog_evidence'] ) ? $registered['catalog_evidence'] : array();
-		if ( empty( $catalog['ready'] ) ) return new WP_Error( 'mad4b_mcp_catalog_not_ready', 'The materialized MCP catalog does not match the exact requested ability inventory.', array( 'status' => 503, 'blocker' => isset( $catalog['blocker'] ) ? $catalog['blocker'] : 'mcp_catalog_not_observed' ) );
+		if ( empty( $catalog['ready'] ) ) {
+			// A broken catalog is not a broken OAuth session. The adapter has
+			// registered a route-only server with zero tools in this state.
+			// Admit only handshake/list/ping (never tools/call) so the same
+			// registered ChatGPT connector can distinguish Transport from Catalog.
+			$method = '';
+			if ( is_object( $request ) && method_exists( $request, 'get_json_params' ) ) {
+				$json = $request->get_json_params();
+				if ( is_array( $json ) && isset( $json['method'] ) && is_string( $json['method'] ) )
+					$method = $json['method'];
+			}
+			if ( ! empty( $registered['registered'] ) && 0 === (int)( $registered['tool_count'] ?? -1 )
+				&& in_array( $method, array( 'initialize', 'notifications/initialized', 'ping', 'tools/list' ), true ) )
+				return true;
+			return new WP_Error( 'mad4b_mcp_catalog_not_ready', 'The materialized MCP catalog does not match the exact requested ability inventory.', array( 'status' => 503, 'blocker' => isset( $catalog['blocker'] ) ? $catalog['blocker'] : 'mcp_catalog_not_observed' ) );
+		}
 		return true;
 	}
 	public static function can_enrollment_transport( $request = null ) { return self::transport_permission( 'mad4b-enrollment', $request, array( 'MAD4B_SCP_Site_Profile_Enrollment', 'can_access_transport' ) ); }
@@ -885,6 +912,20 @@ final class MAD4B_SCP_Servers {
 	 * hundreds of schemas for sibling servers during ChatGPT tools/list.
 	 */
 	private static function current_request_server_id() {
+        // RFC 9728 appends the canonical MCP resource path after
+        // /.well-known/oauth-protected-resource. The embedded /wp-json/mcp/
+        // segment is NOT a live MCP protocol request. Treating it as one
+        // eagerly builds the entire ChatGPT/Enrollment tool catalog while
+        // serving anonymous OAuth discovery, which can exhaust PHP timeouts.
+        // A reserved non-server target registers route-only server shells:
+        // zero tools, zero mutation authority, unchanged real MCP endpoints.
+        $well_known_uri = isset( $_SERVER['REQUEST_URI'] )
+            ? wp_unslash( (string) $_SERVER['REQUEST_URI'] ) : '';
+        $well_known_path = '' !== $well_known_uri ? wp_parse_url( $well_known_uri, PHP_URL_PATH ) : '';
+        if ( is_string( $well_known_path )
+            && class_exists( 'MAD4B_SCP_MCP_Client_Compatibility', false )
+            && MAD4B_SCP_MCP_Client_Compatibility::is_well_known_path( $well_known_path ) )
+            return '__mad4b_oauth_metadata_only__';
 		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false ) ) {
 			$diagnostic_target = MAD4B_SCP_MCP_Request_Scope::endpoint_diagnostic_server_id();
 			if ( in_array( $diagnostic_target, self::expected_server_ids(), true ) ) return $diagnostic_target;
@@ -988,17 +1029,27 @@ final class MAD4B_SCP_Servers {
 		$requested_tools = $tools;
 		$descriptor_evidence = $materialized ? MAD4B_SCP_Server_Registration_Evidence::capability_descriptor_evidence( $id, $tools ) : array( 'contract' => 'mad4b.server-capability-descriptor-bindings.v1', 'server_id' => (string) $id, 'ready' => true, 'bindings' => array(), 'blockers' => array(), 'authorizing' => false, 'authority_effect' => 'none' );
 		if ( $materialized && empty( $descriptor_evidence['ready'] ) ) {
-			self::$registrations[ $id ] = array(
-				'registered' => false,
-				'error' => 'capability_descriptor_binding_unavailable',
-				'materialized' => false,
-				'tool_count' => 0,
-				'requested_tool_count' => count( $requested_tools ),
-				'capability_descriptor_evidence' => $descriptor_evidence,
-			);
-			return;
+			if ( 'mad4b-chatgpt' !== $id ) {
+				self::$registrations[ $id ] = array(
+					'registered' => false,
+					'error' => 'capability_descriptor_binding_unavailable',
+					'materialized' => false,
+					'tool_count' => 0,
+					'requested_tool_count' => count( $requested_tools ),
+					'capability_descriptor_evidence' => $descriptor_evidence,
+				);
+				return;
+			}
+			// Catalog validation must never silently fail open for tools/call;
+			// preserve only the *authenticated MCP route* so initialize and an
+			// empty tools/list can establish whether OAuth/transport is healthy.
+			// Do not materialize any unverified Ability schema.
+			$preflight = array( 'ready'=>false,
+				'blocker'=>'capability_descriptor_binding_unavailable',
+				'authorizing'=>false );
+			$tools = array();
 		}
-		if ( 'mad4b-chatgpt' === $id && $materialized ) {
+		if ( 'mad4b-chatgpt' === $id && $materialized && null === $preflight ) {
 			// Server registration and client/runtime checks must share this exact order.
 			$reviewed_optional = self::chatgpt_materialization_optional_tools( $tools );
 			$preflight = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( $tools, $reviewed_optional );

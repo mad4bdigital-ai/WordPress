@@ -13,6 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 TESTS = (
+    "native-cron-optin-ui-runtime.php",
     "http-probe-phase-timing-runtime.php",
     "chatgpt-auto-binding-runtime.php",
     "transport-permission-containment-runtime.php",

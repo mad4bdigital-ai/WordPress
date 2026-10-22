@@ -64,12 +64,27 @@
       "input_entry_sha256": "9e4a871b0bcdd14494fed2754c1953540f3584d97b87ac83c9c140f6136ffd76",
       "old": "\t/**\n\t * Register JetEngine macros related to JetSearch.",
       "new": "\t/** Carry the current public search into AJAX requests without copying unrelated query data. */\n\tpublic function preserve_search_context( $data ) {\n\t\tif ( ! is_array( $data ) || ! function_exists( 'jet_search_ajax_handlers' ) ) {\n\t\t\treturn $data;\n\t\t}\n\t\t$key = jet_search_ajax_handlers()->get_custom_search_query_param();\n\t\tif ( ! is_string( $key ) || ! preg_match( '/^[A-Za-z0-9_-]{1,64}$/', $key )\n\t\t\t|| ! isset( $_GET[ $key ] ) || ! is_string( $_GET[ $key ] ) || strlen( $_GET[ $key ] ) > 8192 ) {\n\t\t\treturn $data;\n\t\t}\n\t\t$extra = isset( $data['extra_props'] ) ? (array) $data['extra_props'] : array();\n\t\tforeach ( array( $key, 'jet_ajax_search_settings', 'jet_ajax_search_categories', 'jet_search_suggestions_settings' ) as $param ) {\n\t\t\tif ( ! array_key_exists( $param, $extra ) && isset( $_GET[ $param ] )\n\t\t\t\t&& is_string( $_GET[ $param ] ) && strlen( $_GET[ $param ] ) <= 8192 ) {\n\t\t\t\t$extra[ $param ] = wp_unslash( $_GET[ $param ] );\n\t\t\t}\n\t\t}\n\t\t$data['extra_props'] = $extra;\n\t\treturn $data;\n\t}\n\n\t/**\n\t * Register JetEngine macros related to JetSearch."
+    },
+    {
+      "plugin": "jet-elements",
+      "entry": "jet-elements/includes/addons/jet-elements-lottie.php",
+      "input_entry_sha256": "7cb56f3eb318837acaeaad350a3ff654af240f9072b65223bd10f2a835002c76",
+      "old": "case 'json_file';",
+      "new": "case 'json_file':"
+    },
+    {
+      "plugin": "jet-elements",
+      "entry": "jet-elements/includes/addons/jet-elements-lottie.php",
+      "input_entry_sha256": "7cb56f3eb318837acaeaad350a3ff654af240f9072b65223bd10f2a835002c76",
+      "old": "case 'external_url';",
+      "new": "case 'external_url':"
     }
   ],
   "archives": {
     "elementor": "0de809b0e2d82244576993869b84c7653abbdd20ad19f18254de3429fe0ddc60",
     "jet-engine": "9f7d2711deb0d2b9dac5d07d0bd96000e7bcd698a3614454f53b534e94935e97",
     "jet-search": "4a97fe726293e00807c6133dd00357d80d919225402fa589d5b4dfb993996670",
-    "jet-smart-filters": "9d82887a95728f824f53efa9ac59101ca609dfd1321e4639030e4dff3dcc3354"
+    "jet-smart-filters": "9d82887a95728f824f53efa9ac59101ca609dfd1321e4639030e4dff3dcc3354",
+    "jet-elements": "305c6f6e5873e9d9a6e93044c609d9b683e0fe4569cfab49a35aee721ed9767f"
   }
 }

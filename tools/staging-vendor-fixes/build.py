@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import re
 from pathlib import Path, PurePosixPath
 import stat
 import zipfile
@@ -53,11 +54,15 @@ def build(source, output, recipes):
             raise ValueError('plugin header absent')
         if prefix and plugin + '.php' not in entries:
             raise ValueError('plugin header absent')
-        pending.append((plugin, entries, prefix, patches, archive_pin))
+        header_name = plugin + '/' + plugin + '.php' if not prefix else plugin + '.php'
+        versions = re.findall(rb'^\s*\*?\s*Version:\s*([^\s]+)', entries[header_name][:8192], re.M | re.I)
+        if len(versions) != 1 or not re.fullmatch(rb'[A-Za-z0-9.+_-]{1,80}', versions[0]):
+            raise ValueError('exact plugin version unavailable: ' + plugin)
+        pending.append((plugin, entries, prefix, patches, archive_pin, versions[0].decode('ascii')))
     output.mkdir(parents=True, exist_ok=True)
     manifest = {'contract': 'mad4b.staging-vendor-repair-candidates.v1',
                 'installed': False, 'production_promotion_granted': False, 'plugins': []}
-    for plugin, entries, prefix, patches, archive_pin in pending:
+    for plugin, entries, prefix, patches, archive_pin, version in pending:
         target = output / (plugin + '-mad4b-runtime-fix.zip')
         with zipfile.ZipFile(target, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
             for name, data in sorted(entries.items()):
@@ -66,6 +71,8 @@ def build(source, output, recipes):
                 info.external_attr = 0o100644 << 16
                 archive.writestr(info, data)
         manifest['plugins'].append({'plugin': plugin, 'input_archive_sha256': archive_pin,
+            'plugin_file': plugin + '/' + plugin + '.php', 'input_plugin_version': version,
+            'installed_version_verified': False, 'installed_source_digest_match_required': True,
             'candidate_archive_sha256': sha(target.read_bytes()), 'archive': target.name,
             'modified_entries': [{'path': prefix + name,
                 'before_sha256': next(p['input_entry_sha256'] for p in patches if p['entry'] == name),

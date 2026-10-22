@@ -1,6 +1,6 @@
 {
   "contract": "mad4b.optional-governance-catalog.v1",
-  "default_mode": "inherit",
+  "default_mode": "off",
   "scope": "operator_advisory_only",
   "gates": [
     {
@@ -36,6 +36,8 @@
   "semantics": {
     "presentation_only": true,
     "core_authorization_immutable": true,
-    "clear_intent_never_substitutes_exact_approval": true
+    "clear_intent_never_substitutes_exact_approval": true,
+    "fresh_install_operator_warnings_off": true,
+    "saved_profiles_preserved": true
   }
 }

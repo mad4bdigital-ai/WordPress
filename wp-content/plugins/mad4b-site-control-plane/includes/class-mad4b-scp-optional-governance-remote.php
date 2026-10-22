@@ -10,6 +10,9 @@ final class MAD4B_SCP_Optional_Governance_Remote {
     const PLAN = 'mad4b/optional-governance-plan';
     const APPLY = 'mad4b/optional-governance-apply';
     const VERIFY = 'mad4b/optional-governance-verify';
+    // Virtual bulk selector: not a saved gate and never an authorization bypass.
+    const ALL = 'all_optional_notices';
+    const SELECTED = 'selected_optional_notices';
     const CONFIRM = 'APPLY REVIEWED OPTIONAL ADVISORY PREFERENCE';
     const PLAN_CONTRACT = 'mad4b.optional-governance.remote-plan.v1';
     const RECEIPT_CONTRACT = 'mad4b.optional-governance.remote-receipt.v1';
@@ -23,6 +26,9 @@ final class MAD4B_SCP_Optional_Governance_Remote {
             'policy_id' => array( 'type'=>'string', 'pattern'=>'^[a-z][a-z0-9_]{2,79}$' ),
             'mode' => array( 'type'=>'string',
                 'enum'=>array( 'inherit', 'enforced', 'advisory', 'off' ) ),
+            'policy_ids' => array( 'type'=>'array', 'minItems'=>1, 'maxItems'=>64,
+                'uniqueItems'=>true, 'items'=>array( 'type'=>'string',
+                    'pattern'=>'^[a-z][a-z0-9_]{2,79}$' ) ),
         );
         $required = array( 'policy_id', 'mode' );
         if ( $apply ) {
@@ -73,9 +79,9 @@ final class MAD4B_SCP_Optional_Governance_Remote {
     private static function normalize( $input, $for_apply = false ) {
         if ( ! is_array( $input ) ) return new WP_Error( 'mad4b_optional_remote_input_invalid', 'Expected a typed input object.' );
         $allowed = $for_apply
-            ? array( 'policy_id', 'mode', 'expected_plan_sha256',
+            ? array( 'policy_id', 'mode', 'policy_ids', 'expected_plan_sha256',
                 'confirmation', '_mad4b_approval_ticket_id' )
-            : array( 'policy_id', 'mode' );
+            : array( 'policy_id', 'mode', 'policy_ids' );
         if ( array_diff( array_keys( $input ), $allowed ) )
             return new WP_Error( 'mad4b_optional_remote_extra_keys', 'Remote policy input contains undeclared fields.' );
         // Ticket is transport-only; the central wrapper claims and audits it.
@@ -90,6 +96,28 @@ final class MAD4B_SCP_Optional_Governance_Remote {
             || ! is_string( $mode )
             || ! in_array( $mode, array( 'inherit', 'enforced', 'advisory', 'off' ), true ) )
             return new WP_Error( 'mad4b_optional_remote_policy_invalid', 'Invalid policy or advisory mode.' );
+        if ( self::SELECTED === $id ) {
+            $ids = $input['policy_ids'] ?? null;
+            if ( ! is_array( $ids ) || ! $ids || count( $ids ) > 64
+                || array_values( $ids ) !== $ids )
+                return new WP_Error( 'mad4b_optional_remote_selection_invalid',
+                    'A selected batch requires a list of 1 to 64 optional policy IDs.' );
+            foreach ( $ids as $item ) {
+                if ( ! is_string( $item )
+                    || ! preg_match( '/^[a-z][a-z0-9_]{2,79}$/D', $item )
+                    || $item === self::ALL || $item === self::SELECTED )
+                    return new WP_Error( 'mad4b_optional_remote_selection_invalid',
+                        'Selected IDs must be valid, nonreserved optional policies.' );
+            }
+            if ( count( array_unique( $ids, SORT_STRING ) ) !== count( $ids ) )
+                return new WP_Error( 'mad4b_optional_remote_selection_duplicate',
+                    'Duplicate optional policy IDs are not allowed.' );
+            sort( $ids, SORT_STRING );
+            return array( 'policy_id'=>$id, 'mode'=>$mode, 'policy_ids'=>$ids );
+        }
+        if ( array_key_exists( 'policy_ids', $input ) )
+            return new WP_Error( 'mad4b_optional_remote_unexpected_selection',
+                'policy_ids is allowed only for selected_optional_notices.' );
         return array( 'policy_id'=>$id, 'mode'=>$mode );
     }
 
@@ -99,15 +127,27 @@ final class MAD4B_SCP_Optional_Governance_Remote {
         $status = MAD4B_SCP_Optional_Governance::status();
         if ( empty( $status['valid'] ) ) return new WP_Error(
             'mad4b_optional_remote_catalog_unavailable', 'Current policy state is not valid.' );
-        $row = null;
+        $bulk = self::ALL === $values['policy_id'];
+        $selected = self::SELECTED === $values['policy_id'];
         $all = array();
-        foreach ( $status['gates'] as $gate ) {
-            $all[$gate['id']] = $gate['configured_mode'];
-            if ( $gate['id'] === $values['policy_id'] ) $row = $gate;
+        foreach ( $status['gates'] as $gate ) $all[$gate['id']] = $gate['configured_mode'];
+        $targets = $bulk ? array_keys( $all )
+            : ( $selected ? $values['policy_ids'] : array( $values['policy_id'] ) );
+        if ( ! $targets ) return new WP_Error(
+            'mad4b_optional_remote_empty_catalog', 'There are no optional policies to configure.' );
+        $prior_targets = array();
+        $changed_count = 0;
+        foreach ( $targets as $target ) {
+            if ( ! array_key_exists( $target, $all ) )
+                return new WP_Error( 'mad4b_optional_remote_unknown_policy',
+                    'A selected policy is not in the validated optional catalog.' );
+            $prior_targets[] = $all[$target];
+            if ( $all[$target] !== $values['mode'] ) $changed_count++;
+            $all[$target] = $values['mode'];
         }
-        if ( null === $row ) return new WP_Error(
-            'mad4b_optional_remote_unknown_policy', 'Policy is not in the validated optional catalog.' );
-        $all[$values['policy_id']] = $values['mode'];
+        $previous_mode = count( array_unique( $prior_targets ) ) === 1
+            ? reset( $prior_targets ) : 'mixed';
+        sort( $targets, SORT_STRING );
         ksort( $all, SORT_STRING );
         $site = function_exists( 'home_url' ) ? (string) home_url( '/' ) : '';
         if ( '' === $site ) return new WP_Error( 'mad4b_optional_site_missing', 'Site origin is unavailable.' );
@@ -115,7 +155,10 @@ final class MAD4B_SCP_Optional_Governance_Remote {
             'contract'=>self::PLAN_CONTRACT,
             'operation'=>'update_optional_operator_notice',
             'policy_id'=>$values['policy_id'], 'target_mode'=>$values['mode'],
-            'previous_mode'=>$row['configured_mode'],
+            'previous_mode'=>$previous_mode,
+            'affected_optional_notices'=>count( $targets ),
+            'changed_optional_notices'=>$changed_count,
+            'selected_policy_ids_sha256'=>hash( 'sha256', (string) wp_json_encode( $targets ) ),
             'operating_mode'=>$status['operating_mode'],
             'revision'=>$status['revision'],
             'catalog_sha256'=>$status['definitions_sha256'],
@@ -124,7 +167,7 @@ final class MAD4B_SCP_Optional_Governance_Remote {
             'blog_id'=>function_exists('get_current_blog_id') ? get_current_blog_id() : 0,
             'new_modes'=>$all, 'scope'=>'operator_advisory_only',
             'owner_approval_required'=>true,
-            'change_required'=>$row['configured_mode'] !== $values['mode'],
+            'change_required'=>$changed_count > 0,
             'authorization_created'=>false, 'production_authorized'=>false,
             'mutation_performed'=>false
         );
@@ -139,6 +182,40 @@ final class MAD4B_SCP_Optional_Governance_Remote {
         $status = MAD4B_SCP_Optional_Governance::status();
         if ( empty( $status['valid'] ) ) return new WP_Error(
             'mad4b_optional_verify_unavailable', 'Cannot verify an invalid policy catalog or option state.' );
+        if ( self::ALL === $values['policy_id'] || self::SELECTED === $values['policy_id'] ) {
+            $by_id = array();
+            foreach ( $status['gates'] as $row ) $by_id[$row['id']] = $row;
+            $targets = self::ALL === $values['policy_id']
+                ? array_keys( $by_id ) : $values['policy_ids'];
+            $configured = array();
+            $effective = array();
+            $mismatched = array();
+            foreach ( $targets as $target ) {
+                if ( ! isset( $by_id[$target] ) )
+                    return new WP_Error( 'mad4b_optional_verify_unknown',
+                        'Selected optional policy is not in the validated catalog.' );
+                $configured[] = $by_id[$target]['configured_mode'];
+                $effective[] = $by_id[$target]['mode'];
+                if ( $by_id[$target]['configured_mode'] !== $values['mode'] )
+                    $mismatched[] = $target;
+            }
+            if ( ! $configured ) return new WP_Error(
+                'mad4b_optional_verify_empty', 'Optional governance catalog is empty.' );
+            sort( $targets, SORT_STRING );
+            return array( 'contract'=>'mad4b.optional-governance.remote-verify.v1',
+                'policy_id'=>$values['policy_id'],
+                'expected_mode'=>$values['mode'],
+                'actual_mode'=>count( array_unique( $configured ) ) === 1 ? $configured[0] : 'mixed',
+                'effective_mode'=>count( array_unique( $effective ) ) === 1 ? $effective[0] : 'mixed',
+                'affected_optional_notices'=>count( $configured ),
+                'selected_policy_ids_sha256'=>hash( 'sha256', (string) wp_json_encode( $targets ) ),
+                'mismatched_policy_ids'=>$mismatched,
+                'revision'=>$status['revision'],
+                'catalog_sha256'=>$status['definitions_sha256'],
+                'verified'=>! $mismatched,
+                'authorization_created'=>false, 'production_authorized'=>false,
+                'mutation_performed'=>false );
+        }
         foreach ( $status['gates'] as $row ) {
             if ( $row['id'] !== $values['policy_id'] ) continue;
             return array( 'contract'=>'mad4b.optional-governance.remote-verify.v1',
@@ -197,7 +274,9 @@ final class MAD4B_SCP_Optional_Governance_Remote {
             || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $input['expected_plan_sha256'] ) )
             return new WP_Error( 'mad4b_optional_remote_confirmation_denied',
                 'An exact policy, mode, reviewed plan SHA and confirmation are required.' );
-        $preview = self::plan( array( 'policy_id'=>$input['policy_id'], 'mode'=>$input['mode'] ) );
+        $plan_input = array( 'policy_id'=>$input['policy_id'], 'mode'=>$input['mode'] );
+        if ( array_key_exists( 'policy_ids', $input ) ) $plan_input['policy_ids'] = $input['policy_ids'];
+        $preview = self::plan( $plan_input );
         if ( is_wp_error( $preview ) ) return $preview;
         if ( ! hash_equals( $preview['plan_sha256'], $input['expected_plan_sha256'] ) )
             return new WP_Error( 'mad4b_optional_remote_plan_stale', 'Reviewed policy plan is stale.' );

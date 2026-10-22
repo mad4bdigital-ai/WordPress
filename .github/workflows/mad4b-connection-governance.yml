@@ -36,6 +36,9 @@ jobs:
         run: |
           set -euo pipefail
           root='wp-content/plugins/mad4b-site-control-plane'
+          php -l "$root/includes/class-mad4b-scp-mcp-connection-stage-diagnostics.php"
+          php -l "$root/tests/mcp-connection-stage-diagnostics-runtime.php"
+          php "$root/tests/mcp-connection-stage-diagnostics-runtime.php"
           php -l "$root/includes/class-mad4b-scp-transport-context.php"
           php -l "$root/includes/class-mad4b-scp-authorization.php"
           php -l "$root/includes/class-mad4b-scp-servers.php"
