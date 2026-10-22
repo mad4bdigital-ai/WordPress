@@ -60,6 +60,7 @@ for fixture, marker in (
     ("staging-schema-manual-resume-runtime.php", "SCHEMA_MANUAL_PAUSE: PASS"),
     ("oauth-stepup-short-circuit-runtime.php", "OAUTH_STEPUP_SHORT_CIRCUIT: PASS"),
     ("runtime-historical-read-isolation-runtime.php", "RUNTIME_HISTORICAL_READ_ISOLATION: PASS"),
+    ("reconnect-hardening-runtime.php", "mad4b.reconnect-hardening.runtime.v1: PASS"),
 ):
     p = subprocess.run(
         ["php", str(root / "tests" / fixture)],
