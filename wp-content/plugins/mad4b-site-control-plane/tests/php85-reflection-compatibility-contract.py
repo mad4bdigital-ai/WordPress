@@ -28,8 +28,9 @@ if (PHP_VERSION_ID < 80100) $p->setAccessible(true);
 if ($p->getValue(new PrivateCallback()) !== 'trusted') exit(3);
 echo 'PHP_REFLECTION_COMPATIBILITY: PASS', PHP_EOL;
 """
-out = subprocess.run(["php", "-d", "error_reporting=-1", "-d", "display_errors=1"],
-                     input=probe, text=True, capture_output=True, timeout=20, check=True)
+out = subprocess.run(["php", "-d", "error_reporting=-1", "-d", "display_errors=1",
+                      "-r", probe.replace("<?php", "", 1)],
+                     text=True, capture_output=True, timeout=20, check=True)
 assert "PHP_REFLECTION_COMPATIBILITY: PASS" in out.stdout
 assert "Deprecated" not in out.stdout + out.stderr
 print("MAD4B_PHP85_REFLECTION_CONTRACT: PASS")
