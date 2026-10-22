@@ -5157,8 +5157,7 @@
         "EXECUTION-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/direct-mcp-same-endpoint-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/direct-mcp-same-endpoint-contract.py"
       ],
       "owner_role": "Repository source reviewer — CI-only; no WordPress Site Owner or Production authorization",
       "status": "reviewed_for_ci_only",
