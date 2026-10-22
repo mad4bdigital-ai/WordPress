@@ -762,7 +762,7 @@ final class MAD4B_SCP_Authorization {
 		try {
 			$name = $ability->get_name();
 			$property = ( new ReflectionObject( $ability ) )->getProperty( 'execute_callback' );
-			$property->setAccessible( true );
+			if ( PHP_VERSION_ID < 80100 ) $property->setAccessible( true );
 			$callback = $property->getValue( $ability );
 			return $callback instanceof Closure
 				&& isset( self::$trusted_execution_boundaries[ $name ] )
