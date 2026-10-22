@@ -166,7 +166,7 @@ jobs:
           mkdir -p "$WP_PATH"
           php /tmp/wp-cli.phar core download --path="$WP_PATH" --version=latest --force
           php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
-          php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='http://127.0.0.1:18766' --title='MAD4B CI MCP Protocol' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
+          php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='https://mad4b-ci-protocol.test' --title='MAD4B CI MCP Protocol' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
           php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
           python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive wp-content/plugins/mcp-adapter.zip --plugins-dir "$WP_PATH/wp-content/plugins" --slug mcp-adapter
           cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
@@ -208,6 +208,10 @@ jobs:
           WP_PATH=/tmp/mad4b-ci-layer-protocol
           cat > "$WP_PATH/ci-router.php" <<'PHP'
           <?php
+          // Disposable TLS-terminating proxy simulation. Preserve HTTPS site identity.
+          $_SERVER['HTTPS'] = 'on';
+          $_SERVER['HTTP_HOST'] = 'mad4b-ci-protocol.test';
+          $_SERVER['SERVER_PORT'] = '443';
           $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
           if (strpos($path, '/wp-json/') === 0) {
               $_GET['rest_route'] = substr($path, strlen('/wp-json'));
@@ -218,11 +222,11 @@ jobs:
           server_pid=$!
           trap 'kill "$server_pid" 2>/dev/null || true' EXIT
           for attempt in 1 2 3 4 5 6 7 8 9 10; do
-            if curl -fsS --max-time 3 'http://127.0.0.1:18766/wp-json/' >/dev/null; then break; fi
+            if curl -fsS --max-time 3 -H 'Host: mad4b-ci-protocol.test' 'http://127.0.0.1:18766/wp-json/' >/dev/null; then break; fi
             sleep 1
           done
           status="$(curl -sS --max-time 12 -o /tmp/mad4b-ci-anonymous.json -w '%{http_code}' \
-            -X POST -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+            -X POST -H 'Host: mad4b-ci-protocol.test' -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
             --data '{"jsonrpc":"2.0","id":50,"method":"initialize","params":{"protocolVersion":"2025-11-25","clientInfo":{"name":"anonymous-ci","version":"1"}}}' \
             'http://127.0.0.1:18766/wp-json/mcp/mad4b-chatgpt')"
           # An unauthenticated transport must not be treated as a healthy client.
