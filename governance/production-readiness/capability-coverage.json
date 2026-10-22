@@ -1129,6 +1129,106 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing administrator access, browser, bounded performance and runtime controls cover explicit read-only reports without new grants.",
       "review_rationale": "Defer expensive Operator and ChatGPT admin reports until an administrator requests a nonce-protected, closed-selector POST. Preserve source contracts and permissions; test initial GET, dispatch guards, query/time metrics, output redaction, timeout and HTTP 504. No live acceptance claim."
+    },
+    {
+      "id": "ability:mad4b-direct/connection-status",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "EXECUTION-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/direct-mcp-contract.py"
+      ],
+      "owner_role": "Repository WordPress/OAuth reviewer, CI-only",
+      "review_rationale": "New isolated authenticated Direct MCP Ability using native per-user WordPress capabilities; underlying write callback does not use MAD4B one-time approval tickets, but does not expose arbitrary code/SQL/users/plugin grants.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing WordPress OAuth subject verification, post ownership capability, server route matching and source-scoped CI tests restrict this operation. Requires Staging read/write smoke test before release."
+    },
+    {
+      "id": "ability:mad4b-direct/list-posts",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "EXECUTION-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/direct-mcp-contract.py"
+      ],
+      "owner_role": "Repository WordPress/OAuth reviewer, CI-only",
+      "review_rationale": "New isolated authenticated Direct MCP Ability using native per-user WordPress capabilities; underlying write callback does not use MAD4B one-time approval tickets, but does not expose arbitrary code/SQL/users/plugin grants.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing WordPress OAuth subject verification, post ownership capability, server route matching and source-scoped CI tests restrict this operation. Requires Staging read/write smoke test before release."
+    },
+    {
+      "id": "ability:mad4b-direct/get-post",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "EXECUTION-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/direct-mcp-contract.py"
+      ],
+      "owner_role": "Repository WordPress/OAuth reviewer, CI-only",
+      "review_rationale": "New isolated authenticated Direct MCP Ability using native per-user WordPress capabilities; underlying write callback does not use MAD4B one-time approval tickets, but does not expose arbitrary code/SQL/users/plugin grants.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing WordPress OAuth subject verification, post ownership capability, server route matching and source-scoped CI tests restrict this operation. Requires Staging read/write smoke test before release."
+    },
+    {
+      "id": "ability:mad4b-direct/create-post",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "EXECUTION-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/direct-mcp-contract.py"
+      ],
+      "owner_role": "Repository WordPress/OAuth reviewer, CI-only",
+      "review_rationale": "New isolated authenticated Direct MCP Ability using native per-user WordPress capabilities; underlying write callback does not use MAD4B one-time approval tickets, but does not expose arbitrary code/SQL/users/plugin grants.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing WordPress OAuth subject verification, post ownership capability, server route matching and source-scoped CI tests restrict this operation. Requires Staging read/write smoke test before release."
+    },
+    {
+      "id": "ability:mad4b-direct/update-post",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "EXECUTION-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/direct-mcp-contract.py"
+      ],
+      "owner_role": "Repository WordPress/OAuth reviewer, CI-only",
+      "review_rationale": "New isolated authenticated Direct MCP Ability using native per-user WordPress capabilities; underlying write callback does not use MAD4B one-time approval tickets, but does not expose arbitrary code/SQL/users/plugin grants.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing WordPress OAuth subject verification, post ownership capability, server route matching and source-scoped CI tests restrict this operation. Requires Staging read/write smoke test before release."
     }
   ],
   "lifecycle": [],
@@ -4427,6 +4527,69 @@
       "coverage_reuse_rationale": "Existing fail-closed MCP and Runtime Convergence controls cover exact read-only checkpoint and Cron diagnostics; no authority, session, restart or mutation gate is changed.",
       "review_rationale": "Expose bounded persisted checkpoint age/state, operator blockers and retries without clearing gate or mutating options; executable PHP regression covers quiet period, manual, blocked and terminal phases.",
       "execution_note": "Trusted Spec 008 CI executes the changed runtime-convergence-contract.py, which runs php -l and the hermetic restart-grace PHP fixture. No direct PHP artifact is misrepresented as an independent trusted PHPUnit runner. External MCP/host acceptance remains separate."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-direct-mode.php",
+      "source_blob_sha": "eceb8dbd3353a270a086bde19867ffb529291aa0",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "EXECUTION-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/direct-mcp-contract.py"
+      ],
+      "owner_role": "Repository source/security reviewer — CI-only, not site-owner activation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing OAuth identity, WordPress native post-specific capability permissions, exact transport binding and final execution frame apply. A separate first-party Direct server does not inherit plugin, file, SQL, user, developer, governed write or breakglass tools.",
+      "review_rationale": "Direct post read/create/update implements authenticated owner-session flow with per-operation WP permissions, stale update denial, read-only and corrupt-option denial. Existing enrolled sites remain Governed by default on upgrade, while sites without enrollment begin Direct. Requires independent live transport/OAuth acceptance before promotion."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "f5e90ebb8ec25d08f47b5915d90a8f02e6381bed",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "EXECUTION-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/direct-mcp-contract.py"
+      ],
+      "owner_role": "Repository source/security reviewer — CI-only, not site-owner activation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing OAuth identity, WordPress native post-specific capability permissions, exact transport binding and final execution frame apply. A separate first-party Direct server does not inherit plugin, file, SQL, user, developer, governed write or breakglass tools.",
+      "review_rationale": "Direct post read/create/update implements authenticated owner-session flow with per-operation WP permissions, stale update denial, read-only and corrupt-option denial. Existing enrolled sites remain Governed by default on upgrade, while sites without enrollment begin Direct. Requires independent live transport/OAuth acceptance before promotion."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "2eaae291e264595726593524ebe37a69aa22d404",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "EXECUTION-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/direct-mcp-contract.py"
+      ],
+      "owner_role": "Repository source/security reviewer — CI-only, not site-owner activation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing OAuth identity, WordPress native post-specific capability permissions, exact transport binding and final execution frame apply. A separate first-party Direct server does not inherit plugin, file, SQL, user, developer, governed write or breakglass tools.",
+      "review_rationale": "Direct post read/create/update implements authenticated owner-session flow with per-operation WP permissions, stale update denial, read-only and corrupt-option denial. Existing enrolled sites remain Governed by default on upgrade, while sites without enrollment begin Direct. Requires independent live transport/OAuth acceptance before promotion."
     }
   ],
   "code_change_rules": {
