@@ -112,7 +112,7 @@ final class MAD4B_SCP_MCP_Local_Ability_Trust {
             || ! hash_equals( $row['php_source_tree_sha256'], $tree ) ) return false;
         try {
             $ref = new ReflectionProperty( $ability, 'execute_callback' );
-            $ref->setAccessible( true );
+            if ( PHP_VERSION_ID < 80100 ) $ref->setAccessible( true );
             $callback = $ref->getValue( $ability );
             $source = MAD4B_SCP_MCP_Hybrid_Authority::callback_file( $callback );
             return is_string( $source ) && realpath( $source ) === $callback_source;
