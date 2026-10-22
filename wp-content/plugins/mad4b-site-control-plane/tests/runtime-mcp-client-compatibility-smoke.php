@@ -121,6 +121,27 @@ $manifest_ids = array();
 foreach ( isset( $manifest['profiles'] ) && is_array( $manifest['profiles'] ) ? $manifest['profiles'] : array() as $profile ) if ( isset( $profile['id'] ) ) $manifest_ids[] = $profile['id'];
 foreach ( array( 'openai-chatgpt', 'anthropic-claude', 'google-gemini', 'manus', 'generic-mcp', 'future-agent' ) as $id ) if ( ! in_array( $id, $manifest_ids, true ) ) mad4b_client_compat_fail( 'Expected dynamic compatibility profile missing from manifest.', $id );
 
+// A path-derived OAuth metadata URL contains /wp-json/mcp/... as a suffix,
+// but it must never trigger eager registration of that MCP server's tools.
+// This is a real WordPress fixture, not a mocked string-only declaration.
+$reflection = new ReflectionMethod( 'MAD4B_SCP_Servers', 'current_request_server_id' );
+$reflection->setAccessible( true );
+$materialize = new ReflectionMethod( 'MAD4B_SCP_Servers', 'should_materialize_server_tools' );
+$materialize->setAccessible( true );
+$old_uri = isset( $_SERVER['REQUEST_URI'] ) ? $_SERVER['REQUEST_URI'] : null;
+foreach ( array( $path_specific, $enrollment_path_specific, $host_alias ) as $metadata_uri ) {
+    $_SERVER['REQUEST_URI'] = $metadata_uri;
+    $target = $reflection->invoke( null );
+    if ( '__mad4b_oauth_metadata_only__' !== $target )
+        mad4b_client_compat_fail( 'OAuth metadata misidentified as MCP transport.', array( 'path'=>$metadata_uri, 'target'=>$target ) );
+    foreach ( array( 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-read' ) as $server_id ) {
+        if ( $materialize->invoke( null, $server_id, $target ) )
+            mad4b_client_compat_fail( 'Anonymous OAuth metadata unexpectedly materializes MCP Ability tools.', $server_id );
+    }
+}
+if ( null === $old_uri ) unset( $_SERVER['REQUEST_URI'] );
+else $_SERVER['REQUEST_URI'] = $old_uri;
+
 $unknown = MAD4B_SCP_MCP_Client_Compatibility::metadata_for_path( '/.well-known/oauth-protected-resource/not-mad4b' );
 if ( ! is_wp_error( $unknown ) || 'mad4b_oauth_resource_metadata_path_unknown' !== $unknown->get_error_code() ) mad4b_client_compat_fail( 'Unknown metadata path must fail closed.', $unknown );
 

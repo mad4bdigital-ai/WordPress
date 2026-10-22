@@ -885,6 +885,20 @@ final class MAD4B_SCP_Servers {
 	 * hundreds of schemas for sibling servers during ChatGPT tools/list.
 	 */
 	private static function current_request_server_id() {
+        // RFC 9728 appends the canonical MCP resource path after
+        // /.well-known/oauth-protected-resource. The embedded /wp-json/mcp/
+        // segment is NOT a live MCP protocol request. Treating it as one
+        // eagerly builds the entire ChatGPT/Enrollment tool catalog while
+        // serving anonymous OAuth discovery, which can exhaust PHP timeouts.
+        // A reserved non-server target registers route-only server shells:
+        // zero tools, zero mutation authority, unchanged real MCP endpoints.
+        $well_known_uri = isset( $_SERVER['REQUEST_URI'] )
+            ? wp_unslash( (string) $_SERVER['REQUEST_URI'] ) : '';
+        $well_known_path = '' !== $well_known_uri ? wp_parse_url( $well_known_uri, PHP_URL_PATH ) : '';
+        if ( is_string( $well_known_path )
+            && class_exists( 'MAD4B_SCP_MCP_Client_Compatibility', false )
+            && MAD4B_SCP_MCP_Client_Compatibility::is_well_known_path( $well_known_path ) )
+            return '__mad4b_oauth_metadata_only__';
 		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false ) ) {
 			$diagnostic_target = MAD4B_SCP_MCP_Request_Scope::endpoint_diagnostic_server_id();
 			if ( in_array( $diagnostic_target, self::expected_server_ids(), true ) ) return $diagnostic_target;
