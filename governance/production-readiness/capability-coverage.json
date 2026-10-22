@@ -5311,7 +5311,6 @@
         "AUTOMATION-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/reconnect-hardening-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/staging-runtime-oauth-recovery-contract.py"
       ],
       "owner_role": "Repository source reviewer — CI-only; no Staging Write Owner or Production authorization",
