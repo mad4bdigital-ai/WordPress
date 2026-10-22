@@ -42,6 +42,17 @@ $cls = 'MAD4B_SCP_Optional_Governance';
 $remote = 'MAD4B_SCP_Optional_Governance_Remote';
 $initial = $cls::status();
 expect( $initial['valid'] && count( $initial['gates'] ) === 5, 'Built-in + dynamic advisory policy catalog missing' );
+expect( $initial['default_mode'] === 'off' && $initial['configured_profile'] === 'off'
+    && $initial['effective_profile'] === 'off', 'Fresh plugin must default optional advisories to off' );
+foreach ( $initial['gates'] as $row ) expect( $row['mode'] === 'off',
+    'Fresh default must disable only optional operator warnings' );
+$raw_default = $cls::project( array( 'developer_lane_not_ready', 'repository_evidence_failed' ), array() );
+expect( ! in_array( 'developer_lane_not_ready', $raw_default['degraded'], true )
+    && in_array( 'repository_evidence_failed', $raw_default['degraded'], true ),
+    'Optional Off may not silence mandatory blockers' );
+// Existing saved installations without explicit gate modes retain inherited behavior.
+$GLOBALS['options'][$cls::OPTION] = array( 'contract'=>$cls::CONTRACT,
+    'revision'=>0, 'modes'=>array() );
 $remote_plan = $remote::plan( array( 'policy_id'=>'developer_lane', 'mode'=>'off' ) );
 expect( ! is_wp_error( $remote_plan ) &&
     preg_match( '/^[a-f0-9]{64}$/', $remote_plan['plan_sha256'] ) &&
@@ -242,37 +253,37 @@ function governed_optional_apply_fixture( $input ) {
     try { return MAD4B_SCP_Optional_Governance_Remote::apply( $input ); }
     finally { MAD4B_SCP_Authorization::$in_claimed_callback = false; }
 }
-$reviewed = $remote::plan( array( 'policy_id'=>'developer_lane', 'mode'=>'off' ) );
+$reviewed = $remote::plan( array( 'policy_id'=>'developer_lane', 'mode'=>'enforced' ) );
 expect( ! is_wp_error( $reviewed ) && $reviewed['revision'] === 0,
     'Remote Staging plan must bind an unchanged revision' );
-$direct = $remote::apply( array( 'policy_id'=>'developer_lane', 'mode'=>'off',
+$direct = $remote::apply( array( 'policy_id'=>'developer_lane', 'mode'=>'enforced', 
     'expected_plan_sha256'=>$reviewed['plan_sha256'], 'confirmation'=>$remote::CONFIRM ) );
 expect( is_wp_error($direct) &&
     $direct->get_error_code()==='mad4b_optional_remote_claimed_execution_required',
     'Calling Apply directly without a central ticket claim must be refused' );
 $auth_calls_before = MAD4B_SCP_Authorization::$preflight_calls;
-$applied = governed_optional_apply_fixture( array( 'policy_id'=>'developer_lane', 'mode'=>'off',
+$applied = governed_optional_apply_fixture( array( 'policy_id'=>'developer_lane', 'mode'=>'enforced', 
     'expected_plan_sha256'=>$reviewed['plan_sha256'], 'confirmation'=>$remote::CONFIRM ) );
 expect( ! is_wp_error($applied) && $applied['readback_verified']
     && $applied['audit_recorded'] && $applied['revision'] === 1
     && false === $applied['authority_created']
     && MAD4B_SCP_Authorization::$preflight_calls === $auth_calls_before + 1,
     'Governed remote apply must use a single central preflight; executor must not replay approval' );
-$stored_verify = $remote::verify( array( 'policy_id'=>'developer_lane', 'mode'=>'off' ) );
+$stored_verify = $remote::verify( array( 'policy_id'=>'developer_lane', 'mode'=>'enforced' ) );
 expect( ! is_wp_error( $stored_verify ) && $stored_verify['verified']
     && $stored_verify['revision'] === 1,
     'Remote persisted readback differs from applied state' );
-$unchanged_plan = $remote::plan( array( 'policy_id'=>'developer_lane', 'mode'=>'off' ) );
+$unchanged_plan = $remote::plan( array( 'policy_id'=>'developer_lane', 'mode'=>'enforced' ) );
 expect( ! is_wp_error($unchanged_plan) && false===$unchanged_plan['change_required'],
     'Remote preview must explicitly identify no-op changes' );
 $audit_before_noop = MAD4B_SCP_Audit::$count;
-$unchanged_apply = governed_optional_apply_fixture(array( 'policy_id'=>'developer_lane', 'mode'=>'off',
+$unchanged_apply = governed_optional_apply_fixture(array( 'policy_id'=>'developer_lane', 'mode'=>'enforced', 
     'expected_plan_sha256'=>$unchanged_plan['plan_sha256'], 'confirmation'=>$remote::CONFIRM ));
 expect( is_wp_error($unchanged_apply) &&
     $unchanged_apply->get_error_code()==='mad4b_optional_remote_no_change_use_verify'
     && MAD4B_SCP_Audit::$count===$audit_before_noop,
     'No-op Write must refuse the provider mutation and direct users to read-only Verify' );
-$stale = governed_optional_apply_fixture( array( 'policy_id'=>'developer_lane', 'mode'=>'off',
+$stale = governed_optional_apply_fixture( array( 'policy_id'=>'developer_lane', 'mode'=>'enforced', 
     'expected_plan_sha256'=>$reviewed['plan_sha256'], 'confirmation'=>$remote::CONFIRM ) );
 expect( is_wp_error($stale) && $stale->get_error_code()==='mad4b_optional_remote_plan_stale',
     'Stale remote plan must reject replay' );
@@ -299,7 +310,7 @@ function wp_send_json_error( $data, $status = 400 ) {
 }
 function wp_send_json_success( $data ) {
     if ( empty($data['persistence_verified']) ||
-        ($data['view_readback']['fields']['revision']??null)!==1 ) throw new RuntimeException('AJAX_BAD_RECEIPT');
+        ($data['view_readback']['fields']['revision']??null)!==($GLOBALS['expected_ajax_revision']??1) ) throw new RuntimeException('AJAX_BAD_RECEIPT');
     throw new RuntimeException( 'AJAX_OK' );
 }
 // Once the requested audit was recorded, a lost lease must deny the
@@ -308,7 +319,7 @@ MAD4B_SCP_Site_Profile::$environment = 'staging';
 $live_before_loss = $cls::status();
 $lost_modes = array();
 foreach ( $live_before_loss['gates'] as $row ) $lost_modes[$row['id']] = $row['configured_mode'];
-$lost_modes['machine_ingress'] = 'off';
+$lost_modes['machine_ingress'] = 'enforced';
 $before_loss = get_option( $cls::OPTION, null );
 MAD4B_SCP_Managed_Skills_Lease::$reject_refresh = true;
 $lost_result = $cls::persist_modes(
@@ -329,4 +340,38 @@ try { $cls::save_ajax(); } catch ( RuntimeException $error ) {
 }
 expect( $ajax_success && $cls::status()['revision'] === 1,
     'No-op Admin AJAX must verify the current view without redundant revision increments' );
-echo "OPTIONAL_GOVERNANCE: PASS (CAS lock, admin AJAX view parity, remote SHA, audit rollback, Production denial)\n";
+// Remote bulk profile uses one exact source-owned plan and one governed claim.
+$bulk = $remote::plan( array( 'policy_id'=>$remote::ALL, 'mode'=>'off' ) );
+expect( ! is_wp_error($bulk) && $bulk['change_required']
+    && $bulk['affected_optional_notices'] === count( $cls::status()['gates'] ),
+    'Bulk remote plan must include every optional gate' );
+$bulk_applied = governed_optional_apply_fixture( array( 'policy_id'=>$remote::ALL, 'mode'=>'off',
+    'expected_plan_sha256'=>$bulk['plan_sha256'], 'confirmation'=>$remote::CONFIRM ) );
+expect( ! is_wp_error( $bulk_applied ) && $bulk_applied['readback_verified']
+    && $bulk_applied['revision'] === 2,
+    'Bulk remote off must persist with one exact ticket-claimed operation' );
+$bulk_verify = $remote::verify( array( 'policy_id'=>$remote::ALL, 'mode'=>'off' ) );
+expect( $bulk_verify['verified'] && $bulk_verify['effective_mode'] === 'off',
+    'Remote verify must confirm every optional warning is off' );
+$enable = $remote::plan( array( 'policy_id'=>$remote::ALL, 'mode'=>'enforced' ) );
+$enabled = governed_optional_apply_fixture( array( 'policy_id'=>$remote::ALL, 'mode'=>'enforced',
+    'expected_plan_sha256'=>$enable['plan_sha256'], 'confirmation'=>$remote::CONFIRM ) );
+expect( ! is_wp_error( $enabled ) && $enabled['revision'] === 3
+    && $remote::verify( array( 'policy_id'=>$remote::ALL, 'mode'=>'enforced' ) )['verified'],
+    'Bulk governed profile must reactivate all optional warnings remotely' );
+// Admin bulk selector must override individual modes only on the explicit save.
+$current = $cls::status();
+$form = array();
+foreach( $current['gates'] as $row ) $form[$row['id']] = $row['configured_mode'];
+$_POST = array( 'revision'=>(string)$current['revision'],
+    'definitions_sha256'=>$current['definitions_sha256'],
+    'modes'=>$form, 'bulk_mode'=>'off' );
+$GLOBALS['expected_ajax_revision'] = 4;
+$admin_bulk_ok = false;
+try { $cls::save_ajax(); } catch ( RuntimeException $error ) {
+    $admin_bulk_ok = 'AJAX_OK' === $error->getMessage();
+}
+expect( $admin_bulk_ok && $cls::status()['effective_profile'] === 'off'
+    && $cls::status()['revision'] === 4,
+    'Admin options page must bulk-save Off with revision, nonce and readback' );
+echo "OPTIONAL_GOVERNANCE: PASS (fresh Off default, bulk admin/MCP profile, exact ticket, CAS, audit, Production denial)\n";
