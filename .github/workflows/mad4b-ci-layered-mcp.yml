@@ -1,0 +1,257 @@
+name: MAD4B CI Layers - MCP
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/mad4b-ci-layered-mcp.yml'
+      - 'tools/ci_layer_contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mcp-adapter.zip'
+      - 'docs/ci-layered-mcp.md'
+  push:
+    branches: [master]
+    paths:
+      - '.github/workflows/mad4b-ci-layered-mcp.yml'
+      - 'tools/ci_layer_contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mcp-adapter.zip'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-ci-layers-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+# Jobs are intentionally independent. A source contract, WordPress behavior,
+# MCP protocol or release-integrity failure must keep its own named status.
+# Existing owner attestation, promotion and production workflows remain intact.
+jobs:
+  l1-source:
+    name: L1 / Source quality and inventory
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: Verify exact checkout and isolated CI architecture
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          python3 tools/ci_layer_contract.py self-test
+          python3 tools/ci_layer_contract.py check
+      - name: Lint protocol source and verify registration behavior contract
+        run: |
+          set -euo pipefail
+          P=wp-content/plugins/mad4b-site-control-plane
+          php -l "$P/includes/class-mad4b-scp-servers.php"
+          php -l "$P/includes/class-mad4b-scp-transport-context.php"
+          php -l "$P/tests/runtime-native-capability-semantics.php"
+          python3 "$P/tests/chatgpt-refresh-hotpath-contract.py"
+
+  l2-hermetic:
+    name: L2 / Fail-closed behavior (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Exercise catalog faults and adapter rejection
+        run: |
+          set -euo pipefail
+          P=wp-content/plugins/mad4b-site-control-plane
+          php "$P/tests/mcp-preflight-registration-failure-runtime.php"
+          php "$P/tests/catalog-transport-runtime.php"
+          php "$P/tests/projection-registration-lifecycle.php"
+          php "$P/tests/gateway-regression-runtime.php"
+
+  l2-native-wordpress:
+    name: L2 / Native WordPress capabilities (${{ matrix.wordpress }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        wordpress: ['6.9', 'latest']
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress
+          MYSQL_USER: wordpress
+          MYSQL_PASSWORD: wordpress
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mysqli, mbstring
+          coverage: none
+      - name: Provision disposable real WordPress
+        env:
+          WP_VERSION: ${{ matrix.wordpress }}
+        run: |
+          set -euo pipefail
+          curl -fsSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp-cli.phar
+          WP_PATH=/tmp/mad4b-ci-layer-native
+          mkdir -p "$WP_PATH"
+          php /tmp/wp-cli.phar core download --path="$WP_PATH" --version="$WP_VERSION" --force
+          php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
+          php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='http://ci-native.invalid' --title='MAD4B CI Native Capabilities' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
+      - name: Verify meta-capability conversion in WordPress, not a mock
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-native-capability-semantics.php" --path=/tmp/mad4b-ci-layer-native --user=mad4b-ci-admin
+
+  l3-mcp-protocol:
+    name: L3 / MCP protocol and HTTP authorization boundary
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress
+          MYSQL_USER: wordpress
+          MYSQL_PASSWORD: wordpress
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mysqli, mbstring, openssl
+          coverage: none
+      - name: Install pinned adapter in disposable WordPress
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-ci-layer-protocol
+          curl -fsSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp-cli.phar
+          mkdir -p "$WP_PATH"
+          php /tmp/wp-cli.phar core download --path="$WP_PATH" --version=latest --force
+          php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
+          php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='http://127.0.0.1:18766' --title='MAD4B CI MCP Protocol' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
+          php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
+          python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive wp-content/plugins/mcp-adapter.zip --plugins-dir "$WP_PATH/wp-content/plugins" --slug mcp-adapter
+          cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
+          php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
+          php /tmp/wp-cli.phar eval '
+          $r = MAD4B_SCP_Site_Profile::save_current_site( array(
+            "expected_revision"=>0, "display_name"=>"CI MCP Protocol",
+            "oauth_user_ids"=>array(get_current_user_id()),
+            "oauth_enabled"=>false, "skills_enabled"=>false, "write_enabled"=>false,
+            "production_write_confirmed"=>false, "provider_isolation_enabled"=>false,
+            "managed_runtime_enabled"=>true, "acceptance_enabled"=>false
+          ) );
+          if ( is_wp_error($r) ) throw new RuntimeException($r->get_error_code().":".$r->get_error_message());
+          ' --path="$WP_PATH" --user=mad4b-ci-admin
+      - name: Authenticated MCP initialize and tools/list over official adapter
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-ci-layer-protocol
+          cat > /tmp/mad4b-ci-layer-rpc.jsonl <<'JSONRPC'
+          {"jsonrpc":"2.0","id":40,"method":"initialize","params":{"protocolVersion":"2025-11-25","clientInfo":{"name":"ci-layer-3","version":"1.0.0"}}}
+          {"jsonrpc":"2.0","id":41,"method":"tools/list","params":{}}
+          JSONRPC
+          php /tmp/wp-cli.phar --path="$WP_PATH" mcp-adapter serve --server=mad4b-chatgpt --user=mad4b-ci-admin < /tmp/mad4b-ci-layer-rpc.jsonl > /tmp/mad4b-ci-layer-rpc-output.jsonl
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          rows = [json.loads(line) for line in Path('/tmp/mad4b-ci-layer-rpc-output.jsonl').read_text().splitlines() if line.strip().startswith('{')]
+          replies = {r['id']: r for r in rows if 'id' in r}
+          assert 40 in replies and 'result' in replies[40], replies
+          assert 41 in replies and 'result' in replies[41], replies
+          tools = replies[41]['result'].get('tools')
+          assert isinstance(tools, list) and len(tools) > 0, 'Empty catalog is not restored connectivity'
+          print('L3_MCP_AUTHENTICATED_CLI_PROTOCOL: PASS')
+          PY
+      - name: Deny unauthenticated HTTP MCP initialize without exposing tools
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-ci-layer-protocol
+          cat > "$WP_PATH/ci-router.php" <<'PHP'
+          <?php
+          $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+          if (strpos($path, '/wp-json/') === 0) {
+              $_GET['rest_route'] = substr($path, strlen('/wp-json'));
+          }
+          require __DIR__ . '/index.php';
+          PHP
+          php -S 127.0.0.1:18766 -t "$WP_PATH" "$WP_PATH/ci-router.php" >/tmp/mad4b-ci-http.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            if curl -fsS --max-time 3 'http://127.0.0.1:18766/wp-json/' >/dev/null; then break; fi
+            sleep 1
+          done
+          status="$(curl -sS --max-time 12 -o /tmp/mad4b-ci-anonymous.json -w '%{http_code}' \
+            -X POST -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+            --data '{"jsonrpc":"2.0","id":50,"method":"initialize","params":{"protocolVersion":"2025-11-25","clientInfo":{"name":"anonymous-ci","version":"1"}}}' \
+            'http://127.0.0.1:18766/wp-json/mcp/mad4b-chatgpt')"
+          # An unauthenticated transport must not be treated as a healthy client.
+          # 404 means a missing route, not a passing negative-auth test.
+          if [ "$status" != 401 ] && [ "$status" != 403 ]; then
+            echo "L3_HTTP_BOUNDARY_FAIL: expected 401/403; got $status" >&2
+            cat /tmp/mad4b-ci-anonymous.json >&2
+            exit 1
+          fi
+          echo 'L3_UNAUTHENTICATED_HTTP_DENIAL: PASS'
+          # A bearer-token OAuth issuance/consent test is deliberately NOT
+          # claimed here; it requires isolated signed issuer fixtures and ETG/ARE Staging.
+
+  l4-release-integrity:
+    name: L4 / Non-authorizing release integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify immutable checkout and readiness policy contracts
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          python3 tools/production_readiness_matrix.py validate
+          python3 tools/production_readiness_registry.py self-test
+          python3 tools/readiness_baseline.py self-test
+          python3 tools/ci_layer_contract.py check
+          echo 'L4_POLICY_CONTRACTS: PASS (non-authorizing; exact owner attestation remains in Release Verdict)'

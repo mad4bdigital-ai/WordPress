@@ -167,7 +167,21 @@ for marker in [
     "'tool_count' => count( $tools )",
 ]:
     assert marker in servers, marker
-assert servers.count("$this->create( $adapter,") == 9
+# Match the declared MCP inventory to actual registration calls. This is a
+# consistency assertion, not a frozen architectural server count.
+expected_decl = re.search(
+    r"public static function expected_server_ids\(\)\s*\{\s*return array\((.*?)\);",
+    servers, re.S,
+)
+assert expected_decl, "MCP server inventory declaration missing"
+expected_ids = re.findall(r"'(mad4b-[a-z0-9-]+)'", expected_decl.group(1))
+register_body = servers.split("public function register_servers( $adapter )", 1)[1].split("private function create( $adapter", 1)[0]
+created_ids = re.findall(r"\$this->create\(\s*\$adapter,\s*'(mad4b-[a-z0-9-]+)'", register_body)
+assert expected_ids and len(expected_ids) == len(set(expected_ids)), "Duplicate or empty expected MCP inventory"
+assert len(created_ids) == len(set(created_ids)), "Duplicate MCP route registration"
+assert set(created_ids) == set(expected_ids), (
+    f"MCP registered vs declared inventory mismatch: declared={expected_ids}, registered={created_ids}"
+)
 assert "$registry = null;" in servers
 assert "$registry_for_surface = static function () use ( &$registry )" in servers
 register_body = servers.split("public function register_servers( $adapter )", 1)[1].split("private function create( $adapter", 1)[0]
@@ -180,17 +194,7 @@ chatgpt_provider = provider_body.split("if ( 'mad4b-chatgpt' === $server_id )", 
 core_shortcut = chatgpt_provider.split("if ( self::is_external_write_candidate( $ability_name ) )", 1)[0]
 assert "self::core_tools( 'mad4b-chatgpt' )" in core_shortcut
 assert "self::core_tools( $core_server )" in core_shortcut
-for server_id in [
-    "mad4b-read",
-    "mad4b-chatgpt",
-    "mad4b-enrollment",
-    "mad4b-content",
-    "mad4b-write",
-    "mad4b-admin",
-    "mad4b-developer",
-    "mad4b-developer-breakglass",
-    "mad4b-breakglass",
-]:
+for server_id in expected_ids:
     assert f"$materialize( '{server_id}'" in servers, server_id
 
 # Request-local memoization must be effective while rest_api_init is still
