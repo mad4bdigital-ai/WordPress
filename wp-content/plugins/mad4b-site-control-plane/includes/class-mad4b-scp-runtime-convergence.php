@@ -161,18 +161,72 @@ final class MAD4B_SCP_Runtime_Convergence {
 			|| ! preg_match( '/^[a-f0-9]{40}$/D', $target_sha )
 			|| hash_equals( $current_sha, $target_sha )
 			|| empty( $current['build_fingerprint'] ) || empty( $current['package_manifest_digest'] ) ) return false;
-		if ( ! is_array( $graph ) || 'ready' !== ( $graph['state'] ?? '' )
-			|| empty( $graph['ready'] ) || ! empty( $graph['required_blockers'] )
+		if ( ! is_array( $graph )
 			|| ! in_array( $graph['environment'] ?? '', array( 'staging', 'development', 'local' ), true )
 			|| ! self::identity_matches( $current, $graph['current_identity'] ?? array() ) ) return false;
+		$independently_ready = 'ready' === ( $graph['state'] ?? '' )
+			&& ! empty( $graph['ready'] ) && empty( $graph['required_blockers'] );
+		// A previous self-update's verified cached release target can be the
+		// only remaining deployment blocker, even after a newer exact package
+		// is installed. Never ignore schema, skills, OAuth or authority gates.
+		$stale_release_cache_only = ! $independently_ready
+			&& self::superseded_cached_release_only( $checkpoint, $current, $graph );
+		if ( ! $independently_ready && ! $stale_release_cache_only ) return false;
 		$observed_checkpoint = $graph['checkpoint'] ?? array();
 		if ( ! is_array( $observed_checkpoint ) || 'pending_manual_resume' !== ( $observed_checkpoint['state'] ?? '' )
 			|| 'self_update' !== ( $observed_checkpoint['source'] ?? '' )
 			|| ! isset( $observed_checkpoint['target_identity'] ) || ! is_array( $observed_checkpoint['target_identity'] )
 			|| ! hash_equals( $target_sha, strtolower( trim( (string) ( $observed_checkpoint['target_identity']['source_commit_sha'] ?? '' ) ) ) ) )
 			return false;
-		return 'superseded_audit_only' === ( $graph['checkpoint_operator_state']['state'] ?? '' )
-			&& empty( $graph['checkpoint_operator_state']['replay_old_checkpoint_allowed'] );
+		if ( ! empty( $graph['checkpoint_operator_state']['replay_old_checkpoint_allowed'] ) ) return false;
+		return $independently_ready
+			? 'superseded_audit_only' === ( $graph['checkpoint_operator_state']['state'] ?? '' )
+			: ( $stale_release_cache_only
+				&& 'historical_checkpoint_independent_blockers' === ( $graph['checkpoint_operator_state']['state'] ?? '' ) );
+	}
+
+	/**
+	 * Exact, read-only exception for a stale cached deployment target only.
+	 * Reject any current update, equal/unknown version or additional required
+	 * blocker. The old self-update checkpoint remains stored for audit.
+	 */
+	private static function superseded_cached_release_only( $checkpoint, $current, $graph ) {
+		if ( ! is_array( $graph )
+			|| 'convergence_required' !== ( $graph['state'] ?? '' )
+			|| ! empty( $graph['ready'] ) || true !== ( $graph['phase_graph_valid'] ?? false )
+			|| array( 'deployment:pending' ) !== ( $graph['required_blockers'] ?? null ) ) return false;
+		$phases = $graph['phases'] ?? null;
+		if ( ! is_array( $phases ) || ! isset( $phases['deployment'] )
+			|| ! is_array( $phases['deployment'] )
+			|| 'pending' !== ( $phases['deployment']['state'] ?? '' )
+			|| empty( $phases['deployment']['required'] ) ) return false;
+		foreach ( $phases as $phase_id => $phase ) {
+			if ( ! is_array( $phase )
+				|| ( 'deployment' !== $phase_id && ! empty( $phase['required'] )
+					&& 'ready' !== ( $phase['state'] ?? '' ) ) ) return false;
+		}
+		$details = $phases['deployment']['details'] ?? array();
+		$cached = is_array( $details['target_identity'] ?? null ) ? $details['target_identity'] : array();
+		$checkpoint_target = is_array( $checkpoint['target_identity'] ?? null )
+			? self::bounded_identity( $checkpoint['target_identity'] ) : array();
+		$old_sha = strtolower( trim( (string) ( $checkpoint_target['source_commit_sha'] ?? '' ) ) );
+		$cached_sha = strtolower( trim( (string) ( $cached['source_commit_sha'] ?? '' ) ) );
+		$old_version = trim( (string) ( $checkpoint_target['version'] ?? '' ) );
+		$cached_version = trim( (string) ( $cached['version'] ?? '' ) );
+		$current_version = trim( (string) ( $current['version'] ?? '' ) );
+		if ( empty( $details['cached_release_target_present'] )
+			|| 'ready' !== ( $details['manifest_state'] ?? '' )
+			|| ! preg_match( '/^[a-f0-9]{40}$/D', $old_sha )
+			|| ! hash_equals( $old_sha, $cached_sha )
+			|| '' === $old_version || '' === $cached_version || '' === $current_version
+			|| ! hash_equals( $old_version, $cached_version )
+			|| ! version_compare( $current_version, $cached_version, '>' ) ) return false;
+		foreach ( array( 'build_fingerprint', 'package_manifest_digest' ) as $field ) {
+			if ( ! empty( $checkpoint_target[ $field ] )
+				&& ( empty( $cached[ $field ] ) || ! hash_equals( $checkpoint_target[ $field ], (string) $cached[ $field ] ) ) )
+				return false;
+		}
+		return true;
 	}
 
 	public static function maintenance_lease_status() {
