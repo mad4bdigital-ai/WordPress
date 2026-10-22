@@ -4427,6 +4427,69 @@
       "coverage_reuse_rationale": "Existing fail-closed MCP and Runtime Convergence controls cover exact read-only checkpoint and Cron diagnostics; no authority, session, restart or mutation gate is changed.",
       "review_rationale": "Expose bounded persisted checkpoint age/state, operator blockers and retries without clearing gate or mutating options; executable PHP regression covers quiet period, manual, blocked and terminal phases.",
       "execution_note": "Trusted Spec 008 CI executes the changed runtime-convergence-contract.py, which runs php -l and the hermetic restart-grace PHP fixture. No direct PHP artifact is misrepresented as an independent trusted PHPUnit runner. External MCP/host acceptance remains separate."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-direct-profile.php",
+      "source_blob_sha": "5e45b3390a1b0e5c7fd9310de292af1e2c160ebf",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "EXECUTION-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/direct-mcp-same-endpoint-contract.py"
+      ],
+      "owner_role": "Repository source/security reviewer — CI evidence only, not owner activation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing OAuth resource bridge verifies the request bearer and WordPress user. Native per-post capabilities guard bounded post CRUD; governed write and breakglass permissions are not modified. Catalog required diagnostic entries remain fail-closed.",
+      "review_rationale": "Same existing mad4b-chatgpt transport and 9-server topology, stable optional Direct tool inventory in both modes, OAuth authority step-up scope for Direct post writes, per-call authentication and role checks. Exact PHP behavioral regression proves local acceptance only; independent ETG/ARE live MCP A/B is still required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "3b1c5753ebfb3f330ab6cff7a283a390c980de57",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "EXECUTION-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/direct-mcp-same-endpoint-contract.py"
+      ],
+      "owner_role": "Repository source/security reviewer — CI evidence only, not owner activation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing OAuth resource bridge verifies the request bearer and WordPress user. Native per-post capabilities guard bounded post CRUD; governed write and breakglass permissions are not modified. Catalog required diagnostic entries remain fail-closed.",
+      "review_rationale": "Same existing mad4b-chatgpt transport and 9-server topology, stable optional Direct tool inventory in both modes, OAuth authority step-up scope for Direct post writes, per-call authentication and role checks. Exact PHP behavioral regression proves local acceptance only; independent ETG/ARE live MCP A/B is still required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "dc9d4313244bafe0fbe06722d2d300493273890e",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "EXECUTION-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/direct-mcp-same-endpoint-contract.py"
+      ],
+      "owner_role": "Repository source/security reviewer — CI evidence only, not owner activation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing OAuth resource bridge verifies the request bearer and WordPress user. Native per-post capabilities guard bounded post CRUD; governed write and breakglass permissions are not modified. Catalog required diagnostic entries remain fail-closed.",
+      "review_rationale": "Same existing mad4b-chatgpt transport and 9-server topology, stable optional Direct tool inventory in both modes, OAuth authority step-up scope for Direct post writes, per-call authentication and role checks. Exact PHP behavioral regression proves local acceptance only; independent ETG/ARE live MCP A/B is still required."
     }
   ],
   "code_change_rules": {
