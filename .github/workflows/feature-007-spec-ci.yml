@@ -190,16 +190,23 @@ jobs:
                   ["git", "show", f"{base}:{path}"], text=True
               ))
               new = json.loads(Path(path).read_text(encoding="utf-8"))
+              workflow_binding_counts = []
               for doc, current in ((old, False), (new, True)):
                   workflow_records = [
                       record for group in groups
                       for record in doc.get(group, [])
                       if isinstance(record, dict) and record.get("path") == workflow
                   ]
-                  if len(workflow_records) != 1 or not all(
-                      key in workflow_records[0] for key in ("sha256", "bytes")
+                  # Existing delivery manifests may have no reference to this
+                  # workflow. Zero is valid only when BOTH versions have zero;
+                  # one must remain one, with its exact hash and byte count.
+                  if len(workflow_records) > 1 or (
+                      workflow_records and not all(
+                          key in workflow_records[0] for key in ("sha256", "bytes")
+                      )
                   ):
                       raise SystemExit("FEATURE007_WORKFLOW_BINDING_INVALID:" + path)
+                  workflow_binding_counts.append(len(workflow_records))
                   for group in groups:
                       for record in doc.get(group, []):
                           if not isinstance(record, dict):
@@ -226,6 +233,8 @@ jobs:
                               record["sha256"] = "<verified-source-hash>"
                               if "bytes" in record:
                                   record["bytes"] = 0
+              if workflow_binding_counts[0] != workflow_binding_counts[1]:
+                  raise SystemExit("FEATURE007_WORKFLOW_BINDING_CARDINALITY_DRIFT:" + path)
               if old != new:
                   raise SystemExit("FEATURE007_UNRELATED_DELIVERY_CHANGE:" + path)
           print("FEATURE007_INHERITED_DRIFT_SCOPE_OK checked_delivery_files=" + str(len(changed)))
