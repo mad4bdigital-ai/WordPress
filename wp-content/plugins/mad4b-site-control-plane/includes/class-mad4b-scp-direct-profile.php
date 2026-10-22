@@ -81,6 +81,14 @@ final class MAD4B_SCP_Direct_Profile {
             'Authenticated and enrolled WordPress administrator required.', array( 'status'=>403 ) );
         if ( $write && 'direct_authenticated' !== self::state()['mode'] )
             return new WP_Error( 'mad4b_direct_read_only', 'Direct content writes are disabled by the current profile.', array( 'status'=>403 ) );
+        // A read-only OAuth bearer must never be promoted to a write bearer merely
+        // by flipping the local site profile. No per-operation MAD4B ticket is
+        // needed, but write-capable OAuth scope must be held by this subject.
+        if ( $write && class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
+            && MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
+            && ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( 'mad4b:authority:step-up' ) )
+            return new WP_Error( 'mad4b_direct_write_scope_required',
+                'The connected OAuth session has no direct-write authority scope.', array( 'status'=>403 ) );
         if ( ! current_user_can( 'edit_posts' ) )
             return new WP_Error( 'mad4b_direct_content_capability', 'The WordPress user cannot edit posts.', array( 'status'=>403 ) );
         return true;
@@ -90,14 +98,12 @@ final class MAD4B_SCP_Direct_Profile {
         return array( self::STATUS, self::LIST_POSTS, self::GET_POST, self::CREATE_POST, self::UPDATE_POST );
     }
 
-    /** Stable at registration: only site policy changes the optional inventory. */
+    /** Stable tool inventory in Direct and Governed makes A/B MCP testing valid.
+     * Profile access decisions are request-time checks, not registration-time
+     * bearer or authority decisions. An invalid option is fail-closed.
+     */
     public static function catalog_tools() {
-        $state = self::state();
-        if ( empty( $state['valid'] ) || in_array( $state['mode'], array( 'governed', 'maintenance_lock' ), true ) )
-            return array();
-        return 'read_only' === $state['mode']
-            ? array( self::STATUS, self::LIST_POSTS, self::GET_POST )
-            : self::tools();
+        return ! empty( self::state()['valid'] ) ? self::tools() : array();
     }
 
     public static function read_tools() {
@@ -140,6 +146,7 @@ final class MAD4B_SCP_Direct_Profile {
             wp_register_ability( $name, array(
                 'label'=>$def[0],
                 'description'=>'WordPress user-scoped direct MCP capability; never anonymous or unrestricted.',
+                'category'=>$def[3] ? 'mad4b-read' : 'mad4b-content',
                 'execute_callback'=>array( __CLASS__, $method ),
                 'permission_callback'=>static function ( $input = null ) use ( $def, $method ) {
                     $base = 'status' === $method ? self::can_user()
@@ -158,7 +165,7 @@ final class MAD4B_SCP_Direct_Profile {
                 'meta'=>array( 'public'=>false, 'show_in_rest'=>false,
                     'mcp'=>array( 'public'=>false, 'type'=>'tool', 'surface'=>'direct' ),
                     'annotations'=>array( 'readonly'=>$def[3], 'destructive'=>! $def[3],
-                        'idempotent'=>true ) ),
+                        'idempotent'=>$def[3] ) ),
             ) );
         }
     }
