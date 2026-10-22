@@ -253,7 +253,7 @@ final class MAD4B_SCP_JetEngine_Features_Registration_Diagnostics_Adapter extend
 				$reflection = new ReflectionObject( $registry_object );
 				foreach ( $reflection->getProperties() as $property ) {
 					try {
-						$property->setAccessible( true );
+						if ( PHP_VERSION_ID < 80100 ) $property->setAccessible( true );
 						$value = $property->getValue( $registry_object );
 						if ( $value instanceof $class ) {
 							$evidence['registry_property_matches'][] = sanitize_key( $property->getName() );
