@@ -196,8 +196,14 @@ jobs:
                       for record in doc.get(group, [])
                       if isinstance(record, dict) and record.get("path") == workflow
                   ]
-                  if len(workflow_records) != 1 or not all(
-                      key in workflow_records[0] for key in ("sha256", "bytes")
+                  # A delivery document may have no spec-CI workflow binding
+                  # in either baseline or HEAD. Preserve that absence; the
+                  # normalized old/new comparison below rejects additions,
+                  # removals and any unrelated authority/metadata changes.
+                  if len(workflow_records) > 1 or (
+                      workflow_records and not all(
+                          key in workflow_records[0] for key in ("sha256", "bytes")
+                      )
                   ):
                       raise SystemExit("FEATURE007_WORKFLOW_BINDING_INVALID:" + path)
                   for group in groups:
