@@ -93,6 +93,8 @@ def main(argv=None):
     ap.add_argument("--expected-target-fingerprint", required=True)
     ap.add_argument("--runner-profile-id", required=True)
     args = ap.parse_args(argv)
+    if not PROFILE_ID.fullmatch(args.runner_profile_id):
+        ap.error("an explicit valid runner profile ID is required")
     jobs = inspect(args.queued_dir, args.expected_target_fingerprint, args.runner_profile_id)
     ok = all(row["state"] == "verified_read_only_eligible" for row in jobs)
     print(json.dumps({
