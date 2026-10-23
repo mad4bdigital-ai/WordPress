@@ -43,6 +43,8 @@ function expect_error($got,$code){if(!is_wp_error($got)||$got->get_error_code()!
 MAD4B_SCP_Search_Context::$profile=base_profile();
 $ok=execute_form('map_provider_location',array('market_id'=>'market-us','provider_id'=>'serpapi','location_id'=>'United States','location_precision'=>'country'));
 expect_error($ok,'provider_location_invalid');
+$bad=execute_form('map_provider_location',array('market_id'=>'market-us','provider_id'=>'dataforseo','location_id'=>'United States','location_precision'=>'country'));
+expect_error($bad,'provider_location_invalid');
 $ok=execute_form('map_provider_location',array('market_id'=>'market-us','provider_id'=>'fake','location_id'=>'2840','location_precision'=>'country'));
 expect_error($ok,'provider_location_invalid');
 $ok=execute_form('map_provider_location',array('market_id'=>'market-unknown','provider_id'=>'serpapi','location_id'=>'2840','location_precision'=>'country'));
