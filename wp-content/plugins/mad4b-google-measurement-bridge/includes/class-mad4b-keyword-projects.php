@@ -4,6 +4,17 @@ if (!defined('ABSPATH')) exit;
 final class MAD4B_Keyword_Projects {
  const CONTRACT='mad4b.keyword-projects.v1';
  const OPTION='mad4b_keyword_projects_v1';
+ public static function boot(){add_action('admin_post_mad4b_keyword_project_save',array(__CLASS__,'save_admin'));}
+ public static function save_admin(){
+  if(!current_user_can('manage_options')||!check_admin_referer('mad4b_keyword_project_save'))wp_die('Owner authorization required.');
+  $raw=isset($_POST['keywords'])?sanitize_textarea_field(wp_unslash($_POST['keywords'])):'';
+  $words=array_values(array_filter(array_map('trim',preg_split('/\\r?\\n/',$raw))));
+  $result=self::run(array('action'=>'save','title'=>isset($_POST['title'])?sanitize_text_field(wp_unslash($_POST['title'])):'',
+   'keywords'=>$words,'nonce'=>wp_create_nonce('mad4b_keyword_project_save')));
+  if(is_wp_error($result))wp_die(esc_html($result->get_error_message()));
+  wp_safe_redirect(admin_url('tools.php?page=mad4b-google-measurement&keyword_saved=1'));exit;
+ }
+
  private static function context(){
   if(!MAD4B_Google_Measurement_Bridge::gate())return new WP_Error('keyword_project_permission','Owner site permission required.');
   $site=class_exists('MAD4B_SCP_Site_Profile')?MAD4B_SCP_Site_Profile::status():array();
