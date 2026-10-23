@@ -208,3 +208,10 @@ To use live SERP: discover a certified Search Profile/provider in the existing c
 4. Verify eligible provider certification, mapped locations, budgets/usage receipts and reviewed unfreeze/resume controls separately.
 5. Run `mad4b/search-capture-plan`; only execute `capture-apply` after exact budget authorization and reconcile ambiguous external effects.
 6. Consume resulting canonical SERP snapshots inside Keyword Research; keep content and Google Ads mutations separately approved.
+
+## Multi-Profile / Multi-Market execution boundary (2026-10-23)
+- Both one-market and up-to-64-market Search Profiles remain valid. Profile IDs describe business strategy (`search-main` or an explicit brand/strategy name), not the initial country. Markets have immutable, separately claimed IDs.
+- **New:** `mad4b/keyword-market-topology-audit` reads an existing Profile, enumerates its markets, reports missing provider-specific location mappings, flags shared allowance ambiguity, and explicitly refuses to certify paid-capture eligibility. It does not mutate the Profile or provide market budget authority.
+- Search Profile market overlays and provider-account budget nodes exist in Feature 007, but no assumption is made that market-specific limits are configured or provably isolated. Budget approval still belongs to existing provider-account authority and exact capture-plan/apply/reconcile.
+- Existing Profiles must never change country for a previously committed Market ID. A country or objective with separately owned permissions/account/budget may use a separate Search Profile; this is a governed business choice, not an automatic migration.
+- ARE Staging Profile creation and rollout remain separately gated. No live market profile, allowance, Google Ads spend, SERP capture or content job was created by this source change.
