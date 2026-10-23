@@ -46,7 +46,10 @@ final class MAD4B_SCP_Operator_Attestation {
         if ( ! is_array( $submission ) ||
              ! class_exists( 'MAD4B_SCP_Operator_Bridge' ) ||
              'staging' !== wp_get_environment_type() ||
-             'https://staging.allroyalegypt.com' !== home_url() ) {
+             ! class_exists( 'MAD4B_SCP_Site_Profile' ) ||
+             ! MAD4B_SCP_Site_Profile::configured() ||
+             ! MAD4B_SCP_Site_Profile::origin_enrolled() ||
+             ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) {
             return new WP_Error( 'mad4b_operator_signing_staging_only', 'Exact ARE Staging environment required.' );
         }
         $plan = $submission['plan'] ?? null;
