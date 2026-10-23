@@ -6,6 +6,7 @@ repo = Path(__file__).resolve().parents[4]
 cp = repo / "wp-content" / "plugins" / "mad4b-site-control-plane"
 main = (cp / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 servers = (cp / "includes" / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
+servers += (cp / "includes" / "class-mad4b-scp-server-core-catalog.php").read_text(encoding="utf-8")
 registry = (cp / "includes" / "class-mad4b-scp-addon-registry.php").read_text(encoding="utf-8")
 catalog = json.loads((cp / "config" / "wordpress-addon-catalog.json").read_text(encoding="utf-8"))
 
