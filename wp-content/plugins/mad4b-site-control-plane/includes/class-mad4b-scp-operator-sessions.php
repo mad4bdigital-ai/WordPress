@@ -86,7 +86,7 @@ final class MAD4B_SCP_Operator_Sessions {
              ! MAD4B_SCP_Site_Profile::origin_enrolled() ||
              ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ||
              ! MAD4B_SCP_Site_Profile::user_is_enrolled( get_current_user_id() ) )
-            return new WP_Error( 'mad4b_operator_enrollment_required', 'Exact enrolled ARE Staging site/user required.' );
+            return new WP_Error( 'mad4b_operator_enrollment_required', 'Exact enrolled Staging site/user required.' );
         $identity = MAD4B_SCP_Identity_Context::current();
         if ( is_wp_error( $identity ) ) return $identity;
         if ( empty( $identity['authenticated'] ) ||

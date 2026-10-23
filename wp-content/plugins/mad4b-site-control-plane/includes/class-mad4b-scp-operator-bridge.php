@@ -104,9 +104,11 @@ final class MAD4B_SCP_Operator_Bridge {
 
     public static function plan( $input ) {
         return self::prepare( $input, static function ( $id, $args ) {
+            $profile_id = MAD4B_SCP_Operator_Runner_Profile::current_id();
+            if ( is_wp_error( $profile_id ) ) return $profile_id;
             return MAD4B_SCP_Host_Bridge::plan( array(
                 'operation_id' => $id,
-                'runner_profile_id' => 'are-staging-unified-v1',
+                'runner_profile_id' => $profile_id,
                 'arguments' => $args,
             ) );
         } );
@@ -114,9 +116,11 @@ final class MAD4B_SCP_Operator_Bridge {
 
     public static function submit( $input ) {
         return self::prepare( $input, static function ( $id, $args, $semantic ) use ( $input ) {
+            $profile_id = MAD4B_SCP_Operator_Runner_Profile::current_id();
+            if ( is_wp_error( $profile_id ) ) return $profile_id;
             $plan = MAD4B_SCP_Host_Bridge::plan( array(
                 'operation_id' => $id,
-                'runner_profile_id' => 'are-staging-unified-v1',
+                'runner_profile_id' => $profile_id,
                 'arguments' => $args,
             ) );
             if ( is_wp_error( $plan ) ) return $plan;

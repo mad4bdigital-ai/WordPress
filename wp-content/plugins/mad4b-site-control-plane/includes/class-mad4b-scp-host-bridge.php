@@ -237,7 +237,9 @@ final class MAD4B_SCP_Host_Bridge {
 		$profile_id = isset( $input['runner_profile_id'] ) ? sanitize_key( (string) $input['runner_profile_id'] ) : '';
 		if ( '' === $profile_id ) return new WP_Error( 'mad4b_host_runner_profile_required', 'Exact Host Runner profile is required.' );
 		if ( 0 === strpos( $operation_id, 'operator.' ) ) {
-			if ( 'are-staging-unified-v1' !== $profile_id ||
+			$expected_profile = MAD4B_SCP_Operator_Runner_Profile::current_id();
+			if ( is_wp_error( $expected_profile ) ) return $expected_profile;
+			if ( ! hash_equals( $expected_profile, $profile_id ) ||
 				! class_exists( 'MAD4B_SCP_Operator_Bridge' ) ||
 				! MAD4B_SCP_Operator_Bridge::request_authority_matches( $operation_id, $args ) )
 				return new WP_Error( 'mad4b_host_operator_scope_required', 'Only a verified request-local OAuth operator session may submit operator jobs.' );
@@ -1013,7 +1015,9 @@ final class MAD4B_SCP_Host_Bridge {
 		if ( (int) $plan['operation_version'] !== (int) self::$operations[ $operation_id ]['version'] ) return new WP_Error( 'mad4b_host_operation_version_stale', 'Host operation version changed.' );
 		if ( 0 === strpos( $operation_id, 'operator.' ) ) {
 			$args = $plan['arguments'] ?? null;
-			if ( ! is_array( $args ) || 'are-staging-unified-v1' !== (string) ( $plan['runner_profile_id'] ?? '' ) ||
+			$expected_profile = MAD4B_SCP_Operator_Runner_Profile::current_id();
+			if ( is_wp_error( $expected_profile ) ) return $expected_profile;
+			if ( ! is_array( $args ) || ! hash_equals( $expected_profile, (string) ( $plan['runner_profile_id'] ?? '' ) ) ||
 				! class_exists( 'MAD4B_SCP_Operator_Bridge' ) ||
 				! MAD4B_SCP_Operator_Bridge::request_authority_matches( $operation_id, $args ) )
 				return new WP_Error( 'mad4b_host_operator_scope_required', 'Operator job must retain the exact authenticated request-local session.' );
