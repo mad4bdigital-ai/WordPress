@@ -161,3 +161,10 @@ Keyword Ideas → Historical Metrics → GSC Organic Queries → Intent/Clusters
 
 ### Closure controls
 Review real SERP API provider contract and licensing, protect against SSRF if server-side fetches are later added, verify query locale/device/date, deduplicate canonical URLs, compare the site's existing WP content, and require editorial review + MAD4B exact one-time ticket before any write. Production mutation and remote Google writes remain disabled.
+
+## Optional paid SERP provider — DataForSEO (2026-10-23)
+- `mad4b/keyword-serp-provider-live` makes one owner-authorized, billable Google Organic Live Regular request to the fixed, allowlisted DataForSEO API endpoint and projects the organic URLs into the existing SERP evidence validator. Requires constants `MAD4B_SERP_PROVIDER_LOGIN` and `MAD4B_SERP_PROVIDER_PASSWORD` in secure server configuration; never commit their values.
+- A WordPress `manage_options` operator and an explicit `mad4b_serp_paid_request` nonce are required. The admin screen exposes a request nonce to that operator. The API endpoint is fixed and request parameters are bounded to keyword, language and Google location ID, preventing arbitrary URL fetches.
+- Provider fields, commercial access and billing have NOT been tested live. The connector fails closed without credentials and consent. No automated crawling, campaign mutation, SEO publication or SERP scheduled job is enabled.
+- Before live acceptance: provider credentials and pricing approval, real API readback, exact locale/device comparison, source/URL canonicalization, retries/rate limits, audit/cost caps and staging browser verification.
+- Keyword clusters still use bounded lexical and synonym heuristics, not an embedding/LLM semantic model. Content Job and Google Ads handoffs remain review-only receipt plans pending the MAD4B one-time execution lane.
