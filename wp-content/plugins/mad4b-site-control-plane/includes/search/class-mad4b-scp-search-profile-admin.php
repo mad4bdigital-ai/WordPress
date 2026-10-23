@@ -283,6 +283,25 @@ final class MAD4B_SCP_Search_Profile_Admin {
 			echo '</select></label></p>';
 			echo '<p><label>Provider location ID <input name="location_id" maxlength="96" pattern="[A-Za-z0-9_.:-]+" required></label> <label>Location precision <select name="location_precision"><option value="country">Country</option><option value="region">Region</option><option value="city">City</option></select></label></p>';
 			echo '<p class="description">Existing mappings for the selected market and provider are replaced after exact-revision verification. Pause observations and freeze spend before saving.</p><button class="button">Save provider location mapping</button></form></details>';
+			echo '<details><summary>Provider account budget readiness (read-only)</summary><p>Budget authority is attached to the certified provider account, not automatically to a Search Profile. Limits below are observational, never an approval to spend.</p>';
+			foreach ( MAD4B_SCP_Search_Providers::adapters() as $provider_id => $adapter ) {
+				$d = $adapter->descriptor();
+				$account = isset( $d['account_id'] ) ? $d['account_id'] : '';
+				$state = '' !== $account ? MAD4B_SCP_Search_Budgets::status( $account ) : null;
+				echo '<h4>' . esc_html( $provider_id ) . '</h4>';
+				if ( ! is_array( $state ) ) { echo '<p>Account budget unavailable. Certification and account allowance must be verified separately.</p>'; continue; }
+				echo '<p>Authority: ' . esc_html( (string) ( $state['authority_scope'] ?? 'unknown' ) ) . ' — Remaining units: ' . esc_html( (string) ( $state['remaining'] ?? 'unknown' ) ) . '</p>';
+				echo '<table class="widefat striped"><thead><tr><th>Rule</th><th>Targeting</th><th>Daily units</th><th>Monthly units</th><th>Money (micro)</th></tr></thead><tbody>';
+				foreach ( (array) ( $state['policy']['nodes'] ?? array() ) as $node ) {
+					if ( ! is_array( $node ) ) continue;
+					$selectors = (array) ( $node['selectors'] ?? array() );
+					$selector_text = array();
+					foreach ( $selectors as $key => $value ) if ( is_scalar( $value ) ) $selector_text[] = (string) $key . '=' . (string) $value;
+					echo '<tr><td>' . esc_html( (string) ( $node['id'] ?? '' ) ) . '</td><td>' . esc_html( implode( ', ', $selector_text ) ?: 'All traffic' ) . '</td><td>' . esc_html( (string) ( $node['daily_units'] ?? '—' ) ) . '</td><td>' . esc_html( (string) ( $node['monthly_units'] ?? '—' ) ) . '</td><td>' . esc_html( (string) ( $node['money_micro'] ?? '—' ) ) . '</td></tr>';
+				}
+				echo '</tbody></table>';
+			}
+			echo '</details>';
 			echo '<details><summary>Edit selected profile policy</summary><p>Markets, provider location mappings, language and budget policies are independent of Site Profile. Observation enablement and spend freeze state cannot be changed through this JSON editor.</p>';
 			self::form_start( 'edit', $id, $p['revision'] );
 			echo '<label for="mad4b-search-profile-json">Profile policy JSON</label><textarea id="mad4b-search-profile-json" name="profile_json" rows="20" class="large-text code">' . esc_textarea( wp_json_encode( $raw, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ) . '</textarea><button class="button button-primary">Save and verify profile</button></form></details>';
