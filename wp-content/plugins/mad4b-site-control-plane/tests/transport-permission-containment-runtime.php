@@ -13,6 +13,7 @@ function add_filter(...$args){}
 function apply_filters($name,$value){if(!empty($GLOBALS['policy_fault']))throw new RuntimeException('PRIVATE policy');return $value;}
 function current_user_can($cap){return $GLOBALS['policy_allow']??true;}
 trait MAD4B_SCP_Server_Write_Catalog {}
+require __DIR__.'/../includes/class-mad4b-scp-server-core-catalog.php';
 class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
     static $fault=false; static $ready=true;
     static function runtime_transaction_gate(){if(self::$fault)throw new RuntimeException('PRIVATE gate');return array('ready'=>self::$ready,'blocker'=>'quarantine');}
