@@ -37,4 +37,24 @@ final class MAD4B_SCP_ChatGPT_Approval_Bootstrap {
         }
         return $result;
     }
+
+    /** Classification used by both catalog preflight and actual registration. */
+    public static function materialization_optional_tools( array $requested_tools ) {
+        $dynamic_optional = class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' )
+            ? MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names() : array();
+        $reviewed = MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools();
+        // Keep a reviewed management escape hatch if projected optional tools
+        // otherwise crowd it out. This never creates execution authority.
+        $management = array_values( array_intersect(
+            array( 'mad4b/chatgpt-tool-projection-apply' ), $reviewed
+        ) );
+        $profile_tools = class_exists( 'MAD4B_SCP_Direct_Profile' )
+            ? MAD4B_SCP_Direct_Profile::catalog_tools() : array();
+        return array_values( array_intersect(
+            array_values( array_unique( array_merge(
+                $management, $dynamic_optional, $reviewed, $profile_tools
+            ) ) ),
+            $requested_tools
+        ) );
+    }
 }
