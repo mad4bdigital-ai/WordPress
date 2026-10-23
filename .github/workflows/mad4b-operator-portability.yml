@@ -1,0 +1,41 @@
+name: MAD4B Remote Execution Portability
+on:
+  pull_request:
+    paths:
+      - 'tools/mad4b-remote-execution/**'
+      - 'tools/check_mad4b_remote_portability.py'
+      - 'tests/remote-execution/**'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-*.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php'
+      - '.github/workflows/mad4b-operator-*.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  portable-bindings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Detect hardcoded tenant bindings
+        run: python3 tools/check_mad4b_remote_portability.py
+      - name: Check portable code syntax
+        run: |
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-runner-profile.php
+          php -l tests/remote-execution/operator-runner-profile-smoke.php
+          python3 -m py_compile tools/mad4b-remote-execution/*.py
+      - name: Test two enrolled Staging profiles
+        run: |
+          MAD4B_TEST_RUNNER_PROFILE_ID=fixture-site-a-runner-v1 php tests/remote-execution/operator-runner-profile-smoke.php
+          MAD4B_TEST_RUNNER_PROFILE_ID=fixture-site-b-runner-v1 php tests/remote-execution/operator-runner-profile-smoke.php
+      - name: Reject missing, malformed or unenrolled runner
+        run: |
+          MAD4B_TEST_EXPECT_DENIED=1 php tests/remote-execution/operator-runner-profile-smoke.php
+          MAD4B_TEST_RUNNER_PROFILE_ID='wrong/site/profile' MAD4B_TEST_EXPECT_DENIED=1 php tests/remote-execution/operator-runner-profile-smoke.php
+          MAD4B_TEST_RUNNER_PROFILE_ID=fixture-site-a-runner-v1 MAD4B_TEST_ENV=production MAD4B_TEST_EXPECT_DENIED=1 php tests/remote-execution/operator-runner-profile-smoke.php
+          MAD4B_TEST_RUNNER_PROFILE_ID=fixture-site-a-runner-v1 MAD4B_TEST_SITE_MATCH=0 MAD4B_TEST_EXPECT_DENIED=1 php tests/remote-execution/operator-runner-profile-smoke.php
