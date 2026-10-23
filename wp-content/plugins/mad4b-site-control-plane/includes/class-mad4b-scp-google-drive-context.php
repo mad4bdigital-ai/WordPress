@@ -388,6 +388,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 			isset( $grants['scopes'] ) && is_array( $grants['scopes'] ) ? $grants['scopes'] : array(), true ) ) return null;
 		$stored = self::token_record();
 		if ( ! is_array( $stored ) || empty( $stored['refresh_token'] ) ||
+			(int)($stored['consent_wp_user_id'] ?? 0) !== (int)get_current_user_id() ||
 			! empty( $stored['revocation_pending'] ) ||
 			! hash_equals( (string)( $grants['grant_sha256'] ?? '' ), (string)( $stored['workspace_grant_sha256'] ?? '' ) ) ||
 			! in_array( $scope, self::scope_items( $stored['scope'] ?? '' ), true ) ) return null;
@@ -872,7 +873,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 			array(),
 			$requested_mode,
 			self::auth_mode(),
-			isset( $stored['requested_scope'] ) ? (string) $stored['requested_scope'] : ''
+			isset( $stored['requested_scope'] ) ? (string) $stored['requested_scope'] : '',
+			array(), get_current_user_id()
 		);
 		if ( is_wp_error( $record ) ) {
 			self::record_scope_rejection( $record );
@@ -1025,7 +1027,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 				'scope_profile' => $stored_profile,
 				'requested_scopes' => $broker_requested_scopes,
 				'previously_granted_scopes' => $broker_previous_scopes,
-			)
+			), get_current_user_id()
 		);
 		if ( is_wp_error( $record ) ) {
 			self::record_scope_rejection( $record );
@@ -3411,7 +3413,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return (string) $persisted['access_token'];
 	}
 
-	private static function persist_tokens( $access_token, $refresh_token, $expires_in, $scope, $existing = array(), $requested_mode = 'read_only', $auth_mode = '', $expected_scope = '', $broker_scope_context = array() ) {
+	private static function persist_tokens( $access_token, $refresh_token, $expires_in, $scope, $existing = array(), $requested_mode = 'read_only', $auth_mode = '', $expected_scope = '', $broker_scope_context = array(), $consent_actor_id = 0 ) {
 		$scope = trim( (string) $scope );
 		$expected_scope = trim( (string) $expected_scope );
 		$auth_mode = sanitize_key( (string) $auth_mode );
@@ -3447,6 +3449,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		}
 		$record = is_array( $existing ) ? $existing : array();
 		$record['contract'] = self::CONTRACT;
+		$record['consent_wp_user_id'] = (int)$consent_actor_id > 0 ? (int)$consent_actor_id : (int)($record['consent_wp_user_id'] ?? 0);
 		$record['access_token'] = trim( (string) $access_token );
 		$record['refresh_token'] = trim( (string) $refresh_token );
 		$record['expires_at'] = time() + max( 60, absint( $expires_in ) );
