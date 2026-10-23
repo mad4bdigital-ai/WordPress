@@ -33,7 +33,7 @@ final class MAD4B_Google_Measurement_API {
     }
     private static function get($base, $path, $scope, $query = array()) {
         if (!in_array($base, array(self::GA_ADMIN,self::GA_ADMIN_ALPHA,self::GA_DATA,self::GTM), true) ||
-            !preg_match('~^[A-Za-z0-9_./-]+$~D', $path)) {
+            !preg_match('~^[A-Za-z0-9_./:-]+$~D', $path)) {
             return new WP_Error('mad4b_measurement_bad_path','Path rejected.');
         }
         $token = self::token($scope);
