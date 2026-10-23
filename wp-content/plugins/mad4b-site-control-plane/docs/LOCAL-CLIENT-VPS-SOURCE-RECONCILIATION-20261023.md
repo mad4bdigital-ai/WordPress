@@ -15,7 +15,9 @@ Local Client loads only when WordPress environment type is local AND MAD4B_LOCAL
 
 MAD4B_LOCAL_CLIENT_PROVISION_ENABLED must separately be set to the boolean true to allow admin-only application-password credential provisioning. Default is disabled. The external vault MAD4B_LOCAL_CLIENT_VAULT_PATH must be absolute and outside WordPress document root, in a writable directory with no group/world-write bits. Requests are nonce, user identity, expiry and existing permission bound.
 
-KNOWN INCOMPLETE WORKFLOW: the VPS code has no producer for the pending request mad4b_local_client_pending_request. This import does not claim operational local MCP connectivity or end-to-end provisioning. Complete producer, audit, credential rotation/revocation and real host-client proof before enablement. Never fabricate a request or credential.
+The original VPS code lacked a producer for the pending request mad4b_local_client_pending_request. This GitHub branch adds a **local administrator-initiated request** and a separate, nonce-protected confirmation step, with a five-minute request TTL, exact user/site-UUID binding, a bounded credential-free event history, and a manual revocation action using the recorded application-password UUID. The isolated regression creates *only fake credentials* in a temporary private fixture.
+
+This does **not** implement an external MCP agent-initiated request, a working Local Client host transport, token rotation, credential theft detection or browser/client proof. The feature remains disabled without an explicit local-only MAD4B_LOCAL_CLIENT_PROVISION_ENABLED=true setting. Do not enable or publish credentials until local owner approval, WP application-password policy review and real host-client acceptance. A dedicated least-privilege application account is preferable to an administrator credential for future production-grade local use.
 
 For a bound local site, unauthenticated frontend GET/HEAD no longer schedules schema reconciliation implicitly. Admin, cron, AJAX, REST, WP-CLI and explicit reconciler calls keep their original paths. Existing passive WP-CLI optimization is independent.
 

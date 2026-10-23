@@ -58,7 +58,7 @@ $GLOBALS['local_test']['policy'] = false;
 expect_local( ! MAD4B_SCP_Local_Client::can_local_admin(), 'Existing policy rejection preserved' );
 $GLOBALS['local_test']['policy'] = true;
 MAD4B_SCP_Local_Client_Admin::boot();
-expect_local( 2 === count( $GLOBALS['local_test']['actions'] ), 'Explicit Local admin hooks registered only on local' );
+expect_local( 4 === count( $GLOBALS['local_test']['actions'] ), 'Local admin hooks bound to local site, including request and revoke' );
 $status = MAD4B_SCP_Local_Client::status();
 foreach ( array( 'oauth_authority_inherited', 'governed_write_convergence_inherited', 'developer_breakglass_inherited' ) as $key ) {
     expect_local( false === $status[ $key ], $key . ' must not be inherited' );
@@ -76,4 +76,15 @@ expect_local( false !== strpos( $bootstrap, "&& 'local' === wp_get_environment_t
 expect_local( false !== strpos( $schema, "MAD4B_SCP_Local_Client::bound()" ), 'Local schema auto scheduling must be bound' );
 expect_local( false !== strpos( $schema, "defined( 'DOING_CRON' ) && DOING_CRON" ), 'Cron remains on full path' );
 expect_local( false !== strpos( $schema, "defined( 'WP_CLI' ) && WP_CLI" ), 'Explicit WP-CLI remains on full schema path' );
+$now = time();
+$sample = array(
+    'intent' => 'local_client_provision',
+    'id' => 'abc123', 'site_uuid' => MAD4B_LOCAL_CLIENT_SITE_UUID,
+    'user_id' => 4, 'created' => $now, 'expires' => $now + 180
+);
+expect_local( MAD4B_SCP_Local_Client_Admin::valid_pending( $sample, 'abc123', 4, MAD4B_LOCAL_CLIENT_SITE_UUID, $now ), 'Exact local pending request accepted' );
+expect_local( ! MAD4B_SCP_Local_Client_Admin::valid_pending( $sample, 'other', 4, MAD4B_LOCAL_CLIENT_SITE_UUID, $now ), 'Mismatched request ID denied' );
+expect_local( ! MAD4B_SCP_Local_Client_Admin::valid_pending( $sample, 'abc123', 5, MAD4B_LOCAL_CLIENT_SITE_UUID, $now ), 'Mismatched requesting user denied' );
+expect_local( ! MAD4B_SCP_Local_Client_Admin::valid_pending( $sample, 'abc123', 4, 'other-local-site', $now ), 'Mismatched site UUID denied' );
+expect_local( ! MAD4B_SCP_Local_Client_Admin::valid_pending( $sample, 'abc123', 4, MAD4B_LOCAL_CLIENT_SITE_UUID, $now + 181 ), 'Expired request denied' );
 echo "mad4b.local-client-vps-port.v1: PASS\n";

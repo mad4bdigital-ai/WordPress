@@ -21,6 +21,7 @@ TESTS = (
     "skill-context-preflight-runtime.php",
     "wpcli-passive-gate-contract.php",
     "local-client-vps-port-runtime.php",
+    "local-client-credential-lifecycle-runtime.php",
 )
 ROOT = Path(__file__).resolve().parent
 php = shutil.which("php")

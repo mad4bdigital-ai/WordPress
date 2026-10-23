@@ -5807,6 +5807,28 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing WordPress, MCP, OAuth, permission and schema reconciliation governance remains authoritative; no authorization or deployment is granted by this source review.",
       "execution_note": "The bounded regression wrapper executes the exact new standalone PHP Local Client isolation and default-denial fixture. Operational host-client acceptance and pending-request producer are not supplied by the VPS source."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-client-admin.php",
+      "source_blob_sha": "7cd965fbe984fb069f072ec25e3133733f9ca0c6",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02",
+        "OAUTH-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-ticket-brand-runtime-regressions.py"
+      ],
+      "owner_role": "Repository security reviewer — CI-only, no Production or Local provisioning activation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing admin, browser, secure credential storage, identity and local-only WordPress scope controls apply; explicit operator action remains mandatory for credential issuance and revocation.",
+      "review_rationale": "Add nonce-protected local administrator pending-request producer, five-minute bounded site/user identity validation, separate application-password issuance and revocation with private-vault metadata, and limited credential-free event auditing. Provisioning remains disabled by default.",
+      "execution_note": "New isolated lifecycle fixture creates fake credentials only in ephemeral PHP test storage; exact-HEAD CI and real host client certification remain required before user enablement."
     }
   ],
   "code_change_rules": {
