@@ -151,7 +151,7 @@ final class MAD4B_Google_Measurement_Reports {
                 'days'=>array('type'=>'integer','minimum'=>1,'maximum'=>365),
                 'limit'=>array('type'=>'integer','minimum'=>1,'maximum'=>500),
                 'event_name'=>array('type'=>'string','maxLength'=>40),
-                'saved_report'=>array('type'=>'string','pattern'=>'^[a-z][a-z0-9_]{1,39}
+                'saved_report'=>array('type'=>'string','pattern'=>'^[a-z][a-z0-9_]{1,39}$')));
         foreach (array('mad4b/google-measurement-report-catalog'=>'catalog',
             'mad4b/google-measurement-report-run'=>'run') as $name=>$method) {
             if (function_exists('wp_has_ability')&&wp_has_ability($name)) continue;
