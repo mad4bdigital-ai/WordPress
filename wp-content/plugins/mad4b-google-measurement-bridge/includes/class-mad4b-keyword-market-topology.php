@@ -12,20 +12,31 @@ final class MAD4B_Keyword_Market_Topology {
    return new WP_Error('market_topology_profile','Choose a valid existing Search Profile.');
   $profile=MAD4B_SCP_Search_Context::profile($id);
   if(is_wp_error($profile))return $profile;
-  $markets=array();$ids=array();$warnings=array();
+  $markets=array();$ids=array();$countries=array();$warnings=array();
   $providers=(array)($profile['provider_policy']['allowed']??array());
   foreach((array)($profile['markets']??array()) as $market){
    if(!is_array($market)||empty($market['id'])||empty($market['country']))return new WP_Error('market_topology_invalid','Malformed market.');
    $market_id=(string)$market['id'];$country=(string)$market['country'];
    if(isset($ids[$market_id]))return new WP_Error('market_topology_duplicate','Duplicate market ID.');
    $ids[$market_id]=true;
+   if(isset($countries[$country]))$warnings[]='Multiple market identities target country '.$country.'; confirm that language/device/purpose segmentation is intentional.';
+   $countries[$country]=true;
    $locations=array_keys((array)($market['provider_locations']??array()));
    $missing=array_values(array_diff($providers,$locations));
    $overlay=(array)($profile['overlays']['market'][$market_id]??array());
+   $budget_nodes=array();
+   foreach((array)($profile['budget_policy']['nodes']??array()) as $node){
+    if(!is_array($node))continue;
+    $selectors=(array)($node['selectors']??array());
+    if(($selectors['market']??null)===$market_id || ($selectors['market_id']??null)===$market_id)
+     $budget_nodes[]=(string)($node['id']??'');
+   }
    $markets[]=array('market_id'=>$market_id,'country'=>$country,'provider_location_mappings'=>$locations,
     'missing_provider_location_mappings'=>$missing,'has_market_overlay'=>!empty($overlay),
+    'profile_market_budget_node_hints'=>$budget_nodes,
     'independent_market_budget_certified'=>false,'market_capture_ready'=>false);
    if($missing)$warnings[]='Location mapping is missing for market '.$market_id;
+   if(!$budget_nodes)$warnings[]='No market-specific budget node declared in Profile policy for '.$market_id.'; provider-account allowance still requires separate verification.';
   }
   if(count($markets)>1)$warnings[]='Shared provider-account budget is not proof of per-market spend isolation.';
   $frozen=!empty($profile['provider_policy']['freeze_spend']);
