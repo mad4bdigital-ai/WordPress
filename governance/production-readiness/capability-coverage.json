@@ -1752,6 +1752,27 @@
       ],
       "coverage_reuse_rationale": "Existing MCP catalog identity, bounded preflight, request-local Site Profile binding, OAuth authorization and execution controls remain intact; the change only alters optional direct presentation budgets.",
       "execution_note": "Default 36/96 KiB preserved before measurement. Healthy authenticated tools/list latency must be measured before expansion; slow sites trim only optional tools. Production rollout, OAuth, Shell/SQL and plugin certification are not authorized."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-preparation-bridge.php",
+      "review_rationale": "Signed, exact-schema Developer preparation receipt and approval classification extracted from overgrown ability facade. No grant, execution or credential side effect; same error codes and output contract.",
+      "owner_role": "Repository source review — CI-only Developer preparation extraction; no deployment authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "control_ids": [
+        "MCP-01",
+        "EXECUTION-01",
+        "OAUTH-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/developer-preparation-bridge-smoke.php"
+      ],
+      "coverage_reuse_rationale": "The existing descriptor registry, exact Schema SHA, signed preparation receipts and approval-lane controls are preserved without changing the callback, bearer checks, grants or dispatch.",
+      "execution_note": "Exact request-local signed preparation and denial tests pass on PHP 7.4/8.3 in isolation. Live OAuth and candidate provenance still require an independently certified Staging release."
     }
   ],
   "lifecycle": [],
@@ -6545,6 +6566,50 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing governance, execution, OAuth, exact-ticket, security and provider controls cover this bounded repository source change; no new Production control or runtime approval is created.",
       "execution_note": "Source-only security fix verified in isolated PHP. Complete Local OAuth matrix on this exact HEAD and certified Staging package before attempting any grants. No site or Production mutations approved."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-preparation-bridge.php",
+      "source_blob_sha": "c6c327600024306b7681f59e054555b696edfc96",
+      "review_rationale": "Independent helper performs same signed Developer preparation checks with exact descriptor/schema/receipt, returning same prepared_dispatch and approval lane.",
+      "owner_role": "Repository source review — CI-only Developer preparation extraction; no deployment authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "control_ids": [
+        "MCP-01",
+        "EXECUTION-01",
+        "OAUTH-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/developer-preparation-bridge-smoke.php"
+      ],
+      "coverage_reuse_rationale": "The existing descriptor registry, exact Schema SHA, signed preparation receipts and approval-lane controls are preserved without changing the callback, bearer checks, grants or dispatch.",
+      "execution_note": "Exact request-local signed preparation and denial tests pass on PHP 7.4/8.3 in isolation. Live OAuth and candidate provenance still require an independently certified Staging release."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+      "source_blob_sha": "c78b4a400c929b85183a6bb9a8687a50814e1cc7",
+      "review_rationale": "Legacy ability facade delegates Developer preparation and approval classification to the helper, preserving tool metadata and outputs while meeting the 1650-line architecture gate.",
+      "owner_role": "Repository source review — CI-only Developer preparation extraction; no deployment authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "control_ids": [
+        "MCP-01",
+        "EXECUTION-01",
+        "OAUTH-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/developer-preparation-bridge-smoke.php"
+      ],
+      "coverage_reuse_rationale": "The existing descriptor registry, exact Schema SHA, signed preparation receipts and approval-lane controls are preserved without changing the callback, bearer checks, grants or dispatch.",
+      "execution_note": "Exact request-local signed preparation and denial tests pass on PHP 7.4/8.3 in isolation. Live OAuth and candidate provenance still require an independently certified Staging release."
     }
   ],
   "code_change_rules": {
