@@ -1446,6 +1446,290 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing local environment isolation, admin UX, WordPress policy and MCP security controls apply. Additional authority would require a separately reviewed and approved operation.",
       "execution_note": "Isolated Local Client denial fixture runs from bounded CI wrapper. No credential provisioning, end-to-end host transport certification or release approval is inferred."
+    },
+    {
+      "id": "ability:mad4b/operator-grants-converge",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/operator-grants-convergence-smoke.php"
+      ],
+      "review_rationale": "OAuth step-up fenced plan/apply reuses canonical authority, requires exactly five missing Staging grants; isolated negative tests prove no premature grant mutation.",
+      "owner_role": "Repository code/security review — CI-only evidence, no Staging deployment or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, execution, OAuth, exact-ticket, security and provider controls cover this bounded repository source change; no new Production control or runtime approval is created.",
+      "execution_note": "Exact-HEAD CI and isolated denial tests constitute source-level evidence only. Fresh signed live MCP to worker receipt, exact OAuth grants, certified package identity and Production approval remain unverified."
+    },
+    {
+      "id": "ability:mad4b/operator-operation-plan",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "OAUTH-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/operator-bridge-admission.php",
+        "tests/remote-execution/operator-operation-policy-smoke.php"
+      ],
+      "review_rationale": "Session-bound semantic planning is read-only and rejects request-local authority drift; Host Bridge remains a non-executing queue boundary.",
+      "owner_role": "Repository code/security review — CI-only evidence, no Staging deployment or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, execution, OAuth, exact-ticket, security and provider controls cover this bounded repository source change; no new Production control or runtime approval is created.",
+      "execution_note": "Exact-HEAD CI and isolated denial tests constitute source-level evidence only. Fresh signed live MCP to worker receipt, exact OAuth grants, certified package identity and Production approval remain unverified."
+    },
+    {
+      "id": "ability:mad4b/operator-operation-submit",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "OAUTH-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/operator-bridge-admission.php",
+        "tests/remote-execution/operator-operation-policy-smoke.php"
+      ],
+      "review_rationale": "Submission requires the same verified OAuth context and signature and cannot admit Shell without its required approval; backend disabled by default.",
+      "owner_role": "Repository code/security review — CI-only evidence, no Staging deployment or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, execution, OAuth, exact-ticket, security and provider controls cover this bounded repository source change; no new Production control or runtime approval is created.",
+      "execution_note": "Exact-HEAD CI and isolated denial tests constitute source-level evidence only. Fresh signed live MCP to worker receipt, exact OAuth grants, certified package identity and Production approval remain unverified."
+    },
+    {
+      "id": "ability:mad4b/operator-session-close",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/operator-oauth-session-smoke.php"
+      ],
+      "review_rationale": "Operator session closure is bounded to a verified Staging session, without granting host execution or Production authority.",
+      "owner_role": "Repository code/security review — CI-only evidence, no Staging deployment or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, execution, OAuth, exact-ticket, security and provider controls cover this bounded repository source change; no new Production control or runtime approval is created.",
+      "execution_note": "Exact-HEAD CI and isolated denial tests constitute source-level evidence only. Fresh signed live MCP to worker receipt, exact OAuth grants, certified package identity and Production approval remain unverified."
+    },
+    {
+      "id": "ability:mad4b/operator-session-open",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/operator-oauth-session-smoke.php"
+      ],
+      "review_rationale": "Opening a time-bound scoped Staging session is OAuth anchored and disabled absent enrollment, scope and explicit confirmation.",
+      "owner_role": "Repository code/security review — CI-only evidence, no Staging deployment or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, execution, OAuth, exact-ticket, security and provider controls cover this bounded repository source change; no new Production control or runtime approval is created.",
+      "execution_note": "Exact-HEAD CI and isolated denial tests constitute source-level evidence only. Fresh signed live MCP to worker receipt, exact OAuth grants, certified package identity and Production approval remain unverified."
+    },
+    {
+      "id": "ability:mad4b/operator-session-status",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/operator-oauth-session-smoke.php"
+      ],
+      "review_rationale": "Read-only session status must not reveal credentials, authorize commands or assume that a session is still valid at worker execution time.",
+      "owner_role": "Repository code/security review — CI-only evidence, no Staging deployment or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, execution, OAuth, exact-ticket, security and provider controls cover this bounded repository source change; no new Production control or runtime approval is created.",
+      "execution_note": "Exact-HEAD CI and isolated denial tests constitute source-level evidence only. Fresh signed live MCP to worker receipt, exact OAuth grants, certified package identity and Production approval remain unverified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-attestation.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/operator-asymmetric-roundtrip.py"
+      ],
+      "review_rationale": "A private-key Staging signer binds submission, plan, target and session to RSA identity; tampered signed payloads are rejected independently.",
+      "owner_role": "Repository code/security review — CI-only evidence, no Staging deployment or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, execution, OAuth, exact-ticket, security and provider controls cover this bounded repository source change; no new Production control or runtime approval is created.",
+      "execution_note": "Exact-HEAD CI and isolated denial tests constitute source-level evidence only. Fresh signed live MCP to worker receipt, exact OAuth grants, certified package identity and Production approval remain unverified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-bridge.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/operator-bridge-admission.php",
+        "tests/remote-execution/operator-runner-profile-smoke.php"
+      ],
+      "review_rationale": "No WordPress PHP command execution: typed planning and submission require exact request-local OAuth scope and an explicit per-site runner profile.",
+      "owner_role": "Repository code/security review — CI-only evidence, no Staging deployment or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, execution, OAuth, exact-ticket, security and provider controls cover this bounded repository source change; no new Production control or runtime approval is created.",
+      "execution_note": "Exact-HEAD CI and isolated denial tests constitute source-level evidence only. Fresh signed live MCP to worker receipt, exact OAuth grants, certified package identity and Production approval remain unverified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-grant-convergence.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/operator-grants-convergence-smoke.php"
+      ],
+      "review_rationale": "Plan/apply broker admits exactly five new Staging grants, with canonical Developer Authority provenance and explicit OAuth step-up; default scope unchanged.",
+      "owner_role": "Repository code/security review — CI-only evidence, no Staging deployment or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, execution, OAuth, exact-ticket, security and provider controls cover this bounded repository source change; no new Production control or runtime approval is created.",
+      "execution_note": "Exact-HEAD CI and isolated denial tests constitute source-level evidence only. Fresh signed live MCP to worker receipt, exact OAuth grants, certified package identity and Production approval remain unverified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-operation-policy.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/operator-operation-policy-smoke.php"
+      ],
+      "review_rationale": "Semantic shell/SQL classifier rejects unsupported payload structure; it neither runs a command nor substitutes for worker-side isolation.",
+      "owner_role": "Repository code/security review — CI-only evidence, no Staging deployment or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, execution, OAuth, exact-ticket, security and provider controls cover this bounded repository source change; no new Production control or runtime approval is created.",
+      "execution_note": "Exact-HEAD CI and isolated denial tests constitute source-level evidence only. Fresh signed live MCP to worker receipt, exact OAuth grants, certified package identity and Production approval remain unverified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-receipt-verifier.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/operator-asymmetric-roundtrip.py"
+      ],
+      "review_rationale": "Readback must verify both enrolled Staging site seal and independently pinned worker RSA receipt before accepting a claimed execution result.",
+      "owner_role": "Repository code/security review — CI-only evidence, no Staging deployment or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, execution, OAuth, exact-ticket, security and provider controls cover this bounded repository source change; no new Production control or runtime approval is created.",
+      "execution_note": "Exact-HEAD CI and isolated denial tests constitute source-level evidence only. Fresh signed live MCP to worker receipt, exact OAuth grants, certified package identity and Production approval remain unverified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-runner-profile.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/operator-runner-profile-smoke.php"
+      ],
+      "review_rationale": "Exact per-site runner identity requires an enrolled Staging Site Profile; no ARE hostname, runner default or Production fallback is permitted.",
+      "owner_role": "Repository code/security review — CI-only evidence, no Staging deployment or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, execution, OAuth, exact-ticket, security and provider controls cover this bounded repository source change; no new Production control or runtime approval is created.",
+      "execution_note": "Exact-HEAD CI and isolated denial tests constitute source-level evidence only. Fresh signed live MCP to worker receipt, exact OAuth grants, certified package identity and Production approval remain unverified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-session-policy.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/unified-operator-session-policy-smoke.php"
+      ],
+      "review_rationale": "Time-bound session scope policy denies absent confirmations and unsupported capability or environment; no host execution granted.",
+      "owner_role": "Repository code/security review — CI-only evidence, no Staging deployment or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, execution, OAuth, exact-ticket, security and provider controls cover this bounded repository source change; no new Production control or runtime approval is created.",
+      "execution_note": "Exact-HEAD CI and isolated denial tests constitute source-level evidence only. Fresh signed live MCP to worker receipt, exact OAuth grants, certified package identity and Production approval remain unverified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-sessions.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/operator-oauth-session-smoke.php",
+        "tests/remote-execution/unified-operator-session-policy-smoke.php"
+      ],
+      "review_rationale": "OAuth-bound sessions are scoped and revokeable; worker requires a fresh host-local check and a claimed approval for mutable operations.",
+      "owner_role": "Repository code/security review — CI-only evidence, no Staging deployment or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, execution, OAuth, exact-ticket, security and provider controls cover this bounded repository source change; no new Production control or runtime approval is created.",
+      "execution_note": "Exact-HEAD CI and isolated denial tests constitute source-level evidence only. Fresh signed live MCP to worker receipt, exact OAuth grants, certified package identity and Production approval remain unverified."
     }
   ],
   "lifecycle": [],
@@ -5831,44 +6115,303 @@
       "execution_note": "New isolated lifecycle fixture creates fake credentials only in ephemeral PHP test storage; exact-HEAD CI and real host client certification remain required before user enablement."
     },
     {
-        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-content-field-contracts.php",
-        "source_blob_sha": "23fbcfabc274b1fcd1f1b9027618c05030c57474",
-        "review_rationale": "Provider-neutral semantic classifier now recognizes the existing Dynamic Content Apply bundle using strict post paths, reused core_meta key contracts, fail-closed unknown metadata, and separate operational versus brand-bearing term semantics. It never authorizes writes.",
-        "control_ids": [
-            "AI-01",
-            "LOCALIZATION-01",
-            "MCP-01",
-            "PROVIDERS-02",
-            "SECURITY-01"
-        ],
-        "regression_tests": ["wp-content/plugins/mad4b-site-control-plane/tests/content-bundle-semantic-contract.py"],
-        "owner_role": "Repository source reviewer — CI-only; neither Staging owner acceptance nor Production approval",
-        "status": "reviewed_for_ci_only",
-        "production_authorized": false,
-        "live_evidence_required": true,
-        "needs_new_control": false,
-        "coverage_reuse_rationale": "Existing AI, Content, Security, MCP, exact-ticket and provider review controls cover this bounded semantic classification change; no new write ability or approval is granted.",
-        "execution_note": "Isolated source regression must pass on exact HEAD; authenticated ARE Staging runtime acceptance and package fingerprints remain outstanding."
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-content-field-contracts.php",
+      "source_blob_sha": "23fbcfabc274b1fcd1f1b9027618c05030c57474",
+      "review_rationale": "Provider-neutral semantic classifier now recognizes the existing Dynamic Content Apply bundle using strict post paths, reused core_meta key contracts, fail-closed unknown metadata, and separate operational versus brand-bearing term semantics. It never authorizes writes.",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "MCP-01",
+        "PROVIDERS-02",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-bundle-semantic-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; neither Staging owner acceptance nor Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing AI, Content, Security, MCP, exact-ticket and provider review controls cover this bounded semantic classification change; no new write ability or approval is granted.",
+      "execution_note": "Isolated source regression must pass on exact HEAD; authenticated ARE Staging runtime acceptance and package fingerprints remain outstanding."
     },
     {
-        "path": "wp-content/plugins/mad4b-site-control-plane/config/semantic-content-field-contracts.json",
-        "source_blob_sha": "e1392e8aa1b42a395ba3b1765244169f85411897",
-        "review_rationale": "The explicit core Dynamic Content Apply contract declares known post content, operational state and exact metadata rules. Unknown keys remain review-required; OAuth, ticket approvals, deployment fences and production authority are unchanged.",
-        "control_ids": [
-            "AI-01",
-            "LOCALIZATION-01",
-            "MCP-01",
-            "PROVIDERS-02",
-            "SECURITY-01"
-        ],
-        "regression_tests": ["wp-content/plugins/mad4b-site-control-plane/tests/content-bundle-semantic-contract.py"],
-        "owner_role": "Repository source reviewer — CI-only; neither Staging owner acceptance nor Production approval",
-        "status": "reviewed_for_ci_only",
-        "production_authorized": false,
-        "live_evidence_required": true,
-        "needs_new_control": false,
-        "coverage_reuse_rationale": "Existing AI, Content, Security, MCP, exact-ticket and provider review controls cover this bounded semantic classification change; no new write ability or approval is granted.",
-        "execution_note": "Isolated source regression must pass on exact HEAD; authenticated ARE Staging runtime acceptance and package fingerprints remain outstanding."
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/semantic-content-field-contracts.json",
+      "source_blob_sha": "e1392e8aa1b42a395ba3b1765244169f85411897",
+      "review_rationale": "The explicit core Dynamic Content Apply contract declares known post content, operational state and exact metadata rules. Unknown keys remain review-required; OAuth, ticket approvals, deployment fences and production authority are unchanged.",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "MCP-01",
+        "PROVIDERS-02",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-bundle-semantic-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; neither Staging owner acceptance nor Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing AI, Content, Security, MCP, exact-ticket and provider review controls cover this bounded semantic classification change; no new write ability or approval is granted.",
+      "execution_note": "Isolated source regression must pass on exact HEAD; authenticated ARE Staging runtime acceptance and package fingerprints remain outstanding."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+      "source_blob_sha": "c5b952b420267c8f4f9eee1b9b919decc29a20b6",
+      "review_rationale": "Developer ability info emits a signed exact-lane preparation receipt rather than leaving OAuth clients unable to dispatch discovered Operator abilities.",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/operator-bridge-admission.php",
+        "tests/remote-execution/operator-grants-convergence-smoke.php"
+      ],
+      "owner_role": "Repository code/security review — CI-only evidence, no Staging deployment or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, execution, OAuth, exact-ticket, security and provider controls cover this bounded repository source change; no new Production control or runtime approval is created.",
+      "execution_note": "Exact-HEAD CI and isolated denial tests constitute source-level evidence only. Fresh signed live MCP to worker receipt, exact OAuth grants, certified package identity and Production approval remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-runtime.php",
+      "source_blob_sha": "49318dcec373e510da72990a83ea4449db653057",
+      "review_rationale": "Operator abilities are staged behind an opt-in grant rollout so legacy Developer exact grants retain 9/9 readiness by default.",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/operator-grant-rollout-smoke.php"
+      ],
+      "owner_role": "Repository code/security review — CI-only evidence, no Staging deployment or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, execution, OAuth, exact-ticket, security and provider controls cover this bounded repository source change; no new Production control or runtime approval is created.",
+      "execution_note": "Exact-HEAD CI and isolated denial tests constitute source-level evidence only. Fresh signed live MCP to worker receipt, exact OAuth grants, certified package identity and Production approval remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php",
+      "source_blob_sha": "69ccfd2fb324c12a5e31127fe2e82a7f7691e279",
+      "review_rationale": "Host Bridge enforces request-local Operator admission, exact site-bound runner identity and signed queued jobs; receipts reject missing or invalid seals.",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/operator-bridge-admission.php",
+        "tests/remote-execution/operator-asymmetric-roundtrip.py"
+      ],
+      "owner_role": "Repository code/security review — CI-only evidence, no Staging deployment or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, execution, OAuth, exact-ticket, security and provider controls cover this bounded repository source change; no new Production control or runtime approval is created.",
+      "execution_note": "Exact-HEAD CI and isolated denial tests constitute source-level evidence only. Fresh signed live MCP to worker receipt, exact OAuth grants, certified package identity and Production approval remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-attestation.php",
+      "source_blob_sha": "9986f3864f1b05ca5e2f385f445fab0cb49f91aa",
+      "review_rationale": "A private-key Staging signer binds submission, plan, target and session to RSA identity; tampered signed payloads are rejected independently.",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/operator-asymmetric-roundtrip.py"
+      ],
+      "owner_role": "Repository code/security review — CI-only evidence, no Staging deployment or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, execution, OAuth, exact-ticket, security and provider controls cover this bounded repository source change; no new Production control or runtime approval is created.",
+      "execution_note": "Exact-HEAD CI and isolated denial tests constitute source-level evidence only. Fresh signed live MCP to worker receipt, exact OAuth grants, certified package identity and Production approval remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-bridge.php",
+      "source_blob_sha": "e6339cf874cbd263a087a5401837e4b0437d3c0f",
+      "review_rationale": "No WordPress PHP command execution: typed planning and submission require exact request-local OAuth scope and an explicit per-site runner profile.",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/operator-bridge-admission.php",
+        "tests/remote-execution/operator-runner-profile-smoke.php"
+      ],
+      "owner_role": "Repository code/security review — CI-only evidence, no Staging deployment or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, execution, OAuth, exact-ticket, security and provider controls cover this bounded repository source change; no new Production control or runtime approval is created.",
+      "execution_note": "Exact-HEAD CI and isolated denial tests constitute source-level evidence only. Fresh signed live MCP to worker receipt, exact OAuth grants, certified package identity and Production approval remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-grant-convergence.php",
+      "source_blob_sha": "01c7b2d233d088d264d3db7386ba3905df5c926a",
+      "review_rationale": "Plan/apply broker admits exactly five new Staging grants, with canonical Developer Authority provenance and explicit OAuth step-up; default scope unchanged.",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/operator-grants-convergence-smoke.php"
+      ],
+      "owner_role": "Repository code/security review — CI-only evidence, no Staging deployment or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, execution, OAuth, exact-ticket, security and provider controls cover this bounded repository source change; no new Production control or runtime approval is created.",
+      "execution_note": "Exact-HEAD CI and isolated denial tests constitute source-level evidence only. Fresh signed live MCP to worker receipt, exact OAuth grants, certified package identity and Production approval remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-operation-policy.php",
+      "source_blob_sha": "6c6e69fb8ea315c5461a1b7d644abe1d60f505a5",
+      "review_rationale": "Semantic shell/SQL classifier rejects unsupported payload structure; it neither runs a command nor substitutes for worker-side isolation.",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/operator-operation-policy-smoke.php"
+      ],
+      "owner_role": "Repository code/security review — CI-only evidence, no Staging deployment or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, execution, OAuth, exact-ticket, security and provider controls cover this bounded repository source change; no new Production control or runtime approval is created.",
+      "execution_note": "Exact-HEAD CI and isolated denial tests constitute source-level evidence only. Fresh signed live MCP to worker receipt, exact OAuth grants, certified package identity and Production approval remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-receipt-verifier.php",
+      "source_blob_sha": "70cc43c01fe8e964e98a0b858c83a914337294e5",
+      "review_rationale": "Readback must verify both enrolled Staging site seal and independently pinned worker RSA receipt before accepting a claimed execution result.",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/operator-asymmetric-roundtrip.py"
+      ],
+      "owner_role": "Repository code/security review — CI-only evidence, no Staging deployment or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, execution, OAuth, exact-ticket, security and provider controls cover this bounded repository source change; no new Production control or runtime approval is created.",
+      "execution_note": "Exact-HEAD CI and isolated denial tests constitute source-level evidence only. Fresh signed live MCP to worker receipt, exact OAuth grants, certified package identity and Production approval remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-runner-profile.php",
+      "source_blob_sha": "841d51e7f3f278eb159be8f23c7b48af4d400604",
+      "review_rationale": "Exact per-site runner identity requires an enrolled Staging Site Profile; no ARE hostname, runner default or Production fallback is permitted.",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/operator-runner-profile-smoke.php"
+      ],
+      "owner_role": "Repository code/security review — CI-only evidence, no Staging deployment or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, execution, OAuth, exact-ticket, security and provider controls cover this bounded repository source change; no new Production control or runtime approval is created.",
+      "execution_note": "Exact-HEAD CI and isolated denial tests constitute source-level evidence only. Fresh signed live MCP to worker receipt, exact OAuth grants, certified package identity and Production approval remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-session-policy.php",
+      "source_blob_sha": "be958ea99e96b20d5380b888e579da78bd1cc963",
+      "review_rationale": "Time-bound session scope policy denies absent confirmations and unsupported capability or environment; no host execution granted.",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/unified-operator-session-policy-smoke.php"
+      ],
+      "owner_role": "Repository code/security review — CI-only evidence, no Staging deployment or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, execution, OAuth, exact-ticket, security and provider controls cover this bounded repository source change; no new Production control or runtime approval is created.",
+      "execution_note": "Exact-HEAD CI and isolated denial tests constitute source-level evidence only. Fresh signed live MCP to worker receipt, exact OAuth grants, certified package identity and Production approval remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-sessions.php",
+      "source_blob_sha": "76df621f375f64b7b21098b0fcb6c7772825b405",
+      "review_rationale": "OAuth-bound sessions are scoped and revokeable; worker requires a fresh host-local check and a claimed approval for mutable operations.",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/operator-oauth-session-smoke.php",
+        "tests/remote-execution/unified-operator-session-policy-smoke.php"
+      ],
+      "owner_role": "Repository code/security review — CI-only evidence, no Staging deployment or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, execution, OAuth, exact-ticket, security and provider controls cover this bounded repository source change; no new Production control or runtime approval is created.",
+      "execution_note": "Exact-HEAD CI and isolated denial tests constitute source-level evidence only. Fresh signed live MCP to worker receipt, exact OAuth grants, certified package identity and Production approval remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "375232ad1a8b66202743f6bbe5f28af6f27a790c",
+      "review_rationale": "WordPress entrypoint now loads Operator classes including the governed exact-grant convergence broker but execution and rollout still default off.",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/operator-grants-convergence-smoke.php",
+        "tests/remote-execution/operator-bridge-admission.php"
+      ],
+      "owner_role": "Repository code/security review — CI-only evidence, no Staging deployment or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, execution, OAuth, exact-ticket, security and provider controls cover this bounded repository source change; no new Production control or runtime approval is created.",
+      "execution_note": "Exact-HEAD CI and isolated denial tests constitute source-level evidence only. Fresh signed live MCP to worker receipt, exact OAuth grants, certified package identity and Production approval remain unverified."
     }
   ],
   "code_change_rules": {
