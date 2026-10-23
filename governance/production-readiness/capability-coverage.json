@@ -5829,6 +5829,57 @@
       "coverage_reuse_rationale": "Existing admin, browser, secure credential storage, identity and local-only WordPress scope controls apply; explicit operator action remains mandatory for credential issuance and revocation.",
       "review_rationale": "Add nonce-protected local administrator pending-request producer, five-minute bounded site/user identity validation, separate application-password issuance and revocation with private-vault metadata, and limited credential-free event auditing. Provisioning remains disabled by default.",
       "execution_note": "New isolated lifecycle fixture creates fake credentials only in ephemeral PHP test storage; exact-HEAD CI and real host client certification remain required before user enablement."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php",
+      "source_blob_sha": "56aabeca6244e57d1e4eca7a4174cc844c314d46",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-oauth-lifecycle-runtime.php"
+      ],
+      "review_rationale": "CI-only source review of expanded Google Workspace Full Apps Suite scope catalog and guarded incremental consent; test covers scope count, missing-scope detection, revocation and least-privilege. No OAuth grant, production authority or token mutation is granted by this entry.",
+      "owner_role": "Plugin maintainer / automated CI source review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-experience.php",
+      "source_blob_sha": "74f8e25d1b5073387ac87d4f0067760d89258955",
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/search-guided-provider-control.php"
+      ],
+      "review_rationale": "CI-only review of provider picker using registered adapters and preserving revision/nonce control gates; no budget reservation, paid provider capture or production authorization.",
+      "owner_role": "Plugin maintainer / automated CI source review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-profile-admin.php",
+      "source_blob_sha": "755378233fdd7bc15704614391cd57d3faaa4787",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-profile-admin-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/search-guided-profile-runtime.php"
+      ],
+      "review_rationale": "CI-only review of neutral Profile naming, immutable Market IDs, paused/frozen market edits, provider location validation and revision-fenced profile-plan/apply/verify; browser acceptance remains separate and mandatory before staging certification.",
+      "owner_role": "Plugin maintainer / automated CI source review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {
