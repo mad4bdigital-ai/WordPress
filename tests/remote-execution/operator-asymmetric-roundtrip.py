@@ -105,7 +105,7 @@ def main():
             verify.verify_job(submission, seal, site_pub.read_bytes(),
                               fingerprint, lambda b, a: True, lambda b, a: False,
                               expected_runner_profile_id=profile_id,
-                              expected_site_uuid="99999999-9999-4999-8999-999999999999")
+                              expected_site_uuid="cccccccc-cccc-4ccc-8ccc-cccccccccccc")
             raise AssertionError("cross-site UUID accepted")
         except verify.AdmissionDenied:
             pass
