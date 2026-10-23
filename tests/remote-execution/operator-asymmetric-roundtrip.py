@@ -74,7 +74,7 @@ def main():
         subprocess.run([
             "php", str(BASE / "tests/remote-execution/operator-receipt-verify-offline.php"),
             str(job_path), str(receipt_path), str(site_pub), str(worker_pub),
-        ], check=True)
+        ], check=True, env=env)
         for label, mod, accepted in (
             ("tampered_sql", dict(submission, plan=dict(submission["plan"],
                 arguments=dict(submission["plan"]["arguments"], payload={"sql":"SELECT 2"}))), False),
