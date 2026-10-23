@@ -88,6 +88,21 @@ final class MAD4B_SCP_Operator_Grant_Convergence {
              ! in_array( 'mad4b:authority:step-up', $identity['token_scopes'] ?? array(), true ) ) {
             return new WP_Error( 'mad4b_operator_grants_step_up_required', 'Enrolled OAuth step-up scope required.' );
         }
+        // This broker can create five Developer grants. The inherited
+        // normal OAuth identity check alone is insufficient: a different
+        // OAuth client with step-up must never execute a ChatGPT-only ability.
+        if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ||
+             ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ||
+             ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( 'mad4b:authority:step-up' ) ) {
+            return new WP_Error( 'mad4b_operator_grants_step_up_required',
+                'Exact verified OAuth authority step-up required.' );
+        }
+        if ( ! class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) ||
+             ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is(
+                 MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID ) ) {
+            return new WP_Error( 'mad4b_operator_grants_chatgpt_client_required',
+                'Only the enrolled ChatGPT OAuth client may authorize Operator grants.' );
+        }
         return true;
     }
 
