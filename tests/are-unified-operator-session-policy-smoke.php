@@ -29,7 +29,7 @@ $count = 0;
 function expect_decision( $name, $session, $operation, $facts, $allowed ) {
     global $count;
     $actual = MAD4B_SCP_Operator_Session_Policy::evaluate( $session, $operation, $facts );
-    if ( $actual['allowed'] !== $allowed ) {
+    if ( $actual['eligible'] !== $allowed || $actual['authorized'] !== false ) {
         fwrite( STDERR, "FAIL $name: " . json_encode( $actual ) . PHP_EOL );
         exit( 1 );
     }
