@@ -44,6 +44,26 @@ final class MAD4B_Google_Measurement_Admin {
         echo '<p><label>GA4 Property (properties/123) <input name="ga4_property" required pattern="properties/[0-9]+" value="'.esc_attr(!empty($b['ready'])?$b['ga4_property']:'').'" size="36"/></label></p>';
         echo '<p><label>GTM Container (accounts/123/containers/456) <input name="gtm_container" required pattern="accounts/[0-9]+/containers/[0-9]+" value="'.esc_attr(!empty($b['ready'])?$b['gtm_container']:'').'" size="55"/></label></p>';
         submit_button('Bind selected resources (no Google mutation)');
+        echo '</form>';
+        echo '<hr/><h2>Custom GA4 Reports</h2>';
+        echo '<p>Definitions are saved in WordPress for this site and GA4 property. They do not create reports inside the Google Analytics interface.</p>';
+        $defs=MAD4B_Google_Measurement_Reports::saved();
+        if ($defs) {
+            echo '<table class="widefat striped"><thead><tr><th>Report</th><th>Dimensions</th><th>Metrics</th></tr></thead><tbody>';
+            foreach ($defs as $key=>$def) {
+                echo '<tr><td>'.esc_html((string)$key).'</td><td>'.esc_html(implode(', ',(array)($def['dimensions']??array()))).'</td><td>'.esc_html(implode(', ',(array)($def['metrics']??array()))).'</td></tr>';
+            }
+            echo '</tbody></table>';
+        }
+        echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
+        echo '<input type="hidden" name="action" value="mad4b_measurement_report_save"/>';
+        wp_nonce_field('mad4b_measurement_report_save');
+        echo '<p><label>Report key <input name="report_name" required pattern="[a-z][a-z0-9_]*" value="tour_performance"/></label></p>';
+        echo '<p><label>Dimensions (comma-separated) <input name="dimensions" required value="eventName" size="65"/></label></p>';
+        echo '<p><label>Metrics (comma-separated) <input name="metrics" required value="eventCount,totalUsers" size="65"/></label></p>';
+        echo '<p><label>Days <input name="days" type="number" min="1" max="365" value="28"/></label></p>';
+        echo '<p><label>Rows <input name="limit" type="number" min="1" max="500" value="100"/></label></p>';
+        submit_button('Save report definition (no Google write)');
         echo '</form></div>';
     }
     public static function save() {
