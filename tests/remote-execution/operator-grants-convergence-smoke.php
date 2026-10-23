@@ -13,6 +13,19 @@ function wp_get_environment_type() { return $GLOBALS['test_env'] ?? 'staging'; }
 class MAD4B_SCP_Site_Profile {
     public static function current_environment() { return $GLOBALS['test_env'] ?? 'staging'; }
 }
+class MAD4B_SCP_Local_OAuth_Server {
+    const CHATGPT_CIMD_CLIENT_ID = 'https://chatgpt.com/connector-client';
+}
+class MAD4B_SCP_OAuth_Resource_Bridge {
+    public static function verified_bearer_active() { return empty( $GLOBALS['test_bearer_revoked'] ); }
+    public static function verified_bearer_has_scope( $scope ) {
+        return empty( $GLOBALS['test_verified_scope_missing'] ) && $scope === 'mad4b:authority:step-up';
+    }
+    public static function verified_bearer_client_is( $client_id ) {
+        return empty( $GLOBALS['test_other_client'] )
+            && $client_id === MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID;
+    }
+}
 class MAD4B_SCP_Identity_Context {
     public static function current() {
         return array( 'token_scopes' => $GLOBALS['test_scopes'] ?? array( 'mad4b:authority:step-up' ) );
@@ -76,6 +89,15 @@ unset( $GLOBALS['test_plan_blocked'] );
 $GLOBALS['test_scopes'] = array( 'mad4b:read' );
 check( 'OAuth step-up missing', MAD4B_SCP_Operator_Grant_Convergence::execute( array( 'action' => 'plan' ) ), 'mad4b_operator_grants_step_up_required' );
 unset( $GLOBALS['test_scopes'] );
+$GLOBALS['test_other_client'] = true;
+check( 'cross-client OAuth denied', MAD4B_SCP_Operator_Grant_Convergence::execute( array( 'action' => 'plan' ) ), 'mad4b_operator_grants_chatgpt_client_required' );
+unset( $GLOBALS['test_other_client'] );
+$GLOBALS['test_bearer_revoked'] = true;
+check( 'revoked bearer denied', MAD4B_SCP_Operator_Grant_Convergence::execute( array( 'action' => 'plan' ) ), 'mad4b_operator_grants_step_up_required' );
+unset( $GLOBALS['test_bearer_revoked'] );
+$GLOBALS['test_verified_scope_missing'] = true;
+check( 'verified scope absent denied', MAD4B_SCP_Operator_Grant_Convergence::execute( array( 'action' => 'plan' ) ), 'mad4b_operator_grants_step_up_required' );
+unset( $GLOBALS['test_verified_scope_missing'] );
 $GLOBALS['test_env'] = 'production';
 check( 'production denied', MAD4B_SCP_Operator_Grant_Convergence::execute( array( 'action' => 'plan' ) ), 'mad4b_operator_grants_staging_only' );
 if ( MAD4B_SCP_Developer_Authority::$apply_calls !== 0 ) {
