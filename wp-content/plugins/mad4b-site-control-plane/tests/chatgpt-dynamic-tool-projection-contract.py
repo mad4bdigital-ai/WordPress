@@ -5,6 +5,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PROJECTION = (ROOT / "includes" / "class-mad4b-scp-chatgpt-tool-projection.php").read_text(encoding="utf-8")
 INSPECTOR = (ROOT / "includes" / "class-mad4b-scp-ability-contract-inspector.php").read_text(encoding="utf-8")
 SERVERS = (ROOT / "includes" / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
+OPTIONAL = (ROOT / "includes" / "class-mad4b-scp-chatgpt-approval-bootstrap.php").read_text(encoding="utf-8")
 DIAG = (ROOT / "includes" / "class-mad4b-scp-mcp-catalog-diagnostics.php").read_text(encoding="utf-8")
 MAIN = (ROOT / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 FENCE = (ROOT / "includes" / "class-mad4b-scp-execution-fence.php").read_text(encoding="utf-8")
@@ -120,9 +121,13 @@ for marker in [
 for marker in [
     "$dynamic_optional",
     "MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names()",
-    "MCP_Catalog_Diagnostics::preflight",
+    "MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools()",
 ]:
-    require(marker in SERVERS, f"dynamic projection preflight isolation missing: {marker}")
+    require(marker in OPTIONAL, f"dynamic optional tool classification missing: {marker}")
+require("MCP_Catalog_Diagnostics::preflight" in SERVERS,
+        "dynamic projection preflight isolation missing")
+require("MAD4B_SCP_ChatGPT_Approval_Bootstrap::materialization_optional_tools" in SERVERS,
+        "isolated optional classifier must be used for server registration")
 
 for marker in [
     "dynamic_projection",
