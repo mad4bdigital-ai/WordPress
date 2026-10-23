@@ -38,6 +38,12 @@ final class MAD4B_Google_Measurement_Mutation {
             return new WP_Error('mad4b_measurement_denied','Owner site permission required.');
         $normalized = self::canonical($input);
         if (is_wp_error($normalized)) return $normalized;
+        $binding = MAD4B_Google_Measurement_Admin::binding();
+        if (empty($binding['ready'])) return new WP_Error('mad4b_measurement_missing_resource_binding','Select exact GA4 property and GTM container first.');
+        if ($normalized['action'] === 'ga4_create_dimension' && $normalized['resource_id'] !== $binding['ga4_property'])
+            return new WP_Error('mad4b_measurement_ga4_resource_mismatch','GA4 property does not match the site binding.');
+        if ($normalized['action'] === 'gtm_create_workspace' && $normalized['resource_id'] !== $binding['gtm_container'])
+            return new WP_Error('mad4b_measurement_gtm_resource_mismatch','GTM container does not match the site binding.');
         $profile = class_exists('MAD4B_SCP_Site_Profile') ? MAD4B_SCP_Site_Profile::status() : array();
         if (!is_array($profile) || empty($profile['origin_match']) ||
             empty($profile['environment_match']) || empty($profile['site_uuid']) ||
