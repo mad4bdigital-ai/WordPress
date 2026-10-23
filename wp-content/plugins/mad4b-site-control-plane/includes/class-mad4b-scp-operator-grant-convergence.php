@@ -136,11 +136,6 @@ final class MAD4B_SCP_Operator_Grant_Convergence {
             $plan = MAD4B_SCP_Developer_Authority::plan();
             if ( is_wp_error( $plan ) ) return $plan;
             if ( 14 !== (int) ( $plan['tool_count'] ?? 0 ) ||
-                 ! empty( $plan['blockers'] ) ||
-                 ! empty( $plan['ready_to_apply'] ) !== false ) {
-                // ready_to_apply must be true, as enforced below.
-            }
-            if ( 14 !== (int) ( $plan['tool_count'] ?? 0 ) ||
                  empty( $plan['ready_to_apply'] ) ||
                  ! empty( $plan['blockers'] ) ) {
                 return new WP_Error( 'mad4b_operator_grants_canonical_plan_blocked',
