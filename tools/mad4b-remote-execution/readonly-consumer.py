@@ -33,9 +33,9 @@ SPOOL = None
 BASE = None
 WPCLI = None
 RUNNER_PROFILE = None
-RUNNER = BASE / "runner.sh"
-SIGNER = BASE / "readonly-receipt-ed25519.key"
-PUB = BASE / "readonly-receipt-ed25519.pub"
+RUNNER = None
+SIGNER = None
+PUB = None
 MAX_OUTPUT_BYTES = 8192
 MAX_JSON = 131072
 
