@@ -76,21 +76,13 @@ final class MAD4B_Google_Measurement_Bridge {
     }
     public static function inventory() {
         if (!self::gate()) return new WP_Error('mad4b_measurement_permission_denied', 'Read authority required.');
-        $gtm4wp_active = (function_exists('is_plugin_active') && is_plugin_active('duracelltomi-google-tag-manager/duracelltomi-google-tag-manager-for-wordpress.php'))
-            || (function_exists('is_plugin_active') && is_plugin_active('gtm4wp/gtm4wp.php'));
-        if (!$gtm4wp_active) {
-            foreach ((array)get_option('active_plugins', array()) as $name) {
-                if (stripos((string)$name, 'duracelltomi-google-tag-manager') !== false || stripos((string)$name, 'gtm4wp') !== false) {
-                    $gtm4wp_active = true; break;
-                }
-            }
-        }
+        $gtm4wp_audit=MAD4B_Google_Measurement_GTM4WP::audit();
         return array(
             'contract' => self::CONTRACT,
             'google' => self::connection_status(),
             'resource_binding' => MAD4B_Google_Measurement_Admin::binding(),
             'site' => array('home_host'=>wp_parse_url(home_url('/'), PHP_URL_HOST)),
-            'gtm4wp' => array('active'=>$gtm4wp_active, 'event_source_policy'=>'gtm4wp_or_companion_not_both'),
+            'gtm4wp' => $gtm4wp_audit,
             'capabilities'=>array(
                 'ga4_property_discovery'=>'oauth_scope_required',
                 'ga4_reports'=>'implemented_requires_authorized_broker_and_binding',
@@ -146,4 +138,5 @@ final class MAD4B_Google_Measurement_Bridge {
 require_once __DIR__ . '/includes/class-mad4b-google-measurement-api.php';
 require_once __DIR__ . '/includes/class-mad4b-google-measurement-mutation.php';
 require_once __DIR__ . '/includes/class-mad4b-google-measurement-admin.php';
+require_once __DIR__ . '/includes/class-mad4b-google-measurement-gtm4wp.php';
 add_action('plugins_loaded', array('MAD4B_Google_Measurement_Bridge','boot'), 20);
