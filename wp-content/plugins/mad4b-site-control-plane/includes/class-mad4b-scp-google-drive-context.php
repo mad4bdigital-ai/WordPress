@@ -69,6 +69,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 	const TAG_MANAGER_EDIT_SCOPE = 'https://www.googleapis.com/auth/tagmanager.edit.containers';
 	const TAG_MANAGER_PUBLISH_SCOPE = 'https://www.googleapis.com/auth/tagmanager.publish';
 	const SEARCH_CONSOLE_READ_SCOPE = 'https://www.googleapis.com/auth/webmasters.readonly';
+	const GOOGLE_ADS_SCOPE = 'https://www.googleapis.com/auth/adwords';
 	const IDENTITY_OPENID_SCOPE = 'openid';
 	const IDENTITY_EMAIL_SCOPE = 'https://www.googleapis.com/auth/userinfo.email';
 	const IDENTITY_PROFILE_SCOPE = 'https://www.googleapis.com/auth/userinfo.profile';
@@ -269,6 +270,14 @@ final class MAD4B_SCP_Google_Drive_Context {
 					'full' => array( 'label' => 'Full', 'scopes' => array( self::GMAIL_FULL_SCOPE, self::GMAIL_SETTINGS_SCOPE, self::GMAIL_SHARING_SCOPE ), 'sensitivity' => 'restricted' ),
 				),
 			),
+			'google_ads' => array(
+				'label' => 'Google Ads',
+				'default' => 'off',
+				'modes' => array(
+					'off' => array('label'=>'Off','scopes'=>array()),
+					'read' => array('label'=>'Account/report access (effective permissions controlled in Google Ads)','scopes'=>array(self::GOOGLE_ADS_SCOPE)),
+				),
+			),
 			'search_console' => array(
 				'label' => 'Google Search Console',
 				'default' => 'off',
@@ -384,7 +393,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$scope = trim( (string) $scope );
 		$allowed = array( self::ANALYTICS_READ_SCOPE, self::ANALYTICS_EDIT_SCOPE,
 			self::TAG_MANAGER_READ_SCOPE, self::TAG_MANAGER_EDIT_SCOPE, self::TAG_MANAGER_PUBLISH_SCOPE,
-			self::SEARCH_CONSOLE_READ_SCOPE );
+			self::SEARCH_CONSOLE_READ_SCOPE, self::GOOGLE_ADS_SCOPE );
 		if ( ! in_array( $scope, $allowed, true ) ||
 			! current_user_can( 'manage_options' ) ||
 			! class_exists( 'MAD4B_SCP_Policy' ) || ! MAD4B_SCP_Policy::can_read() ||
