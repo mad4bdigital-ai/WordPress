@@ -10,6 +10,7 @@ connection = (PLUGIN / "includes/class-mad4b-scp-connection-status.php").read_te
 wpml = (PLUGIN / "includes/class-mad4b-scp-wpml-response-contract.php").read_text(encoding="utf-8")
 plugin = (PLUGIN / "includes/class-mad4b-scp-plugin.php").read_text(encoding="utf-8")
 servers = (PLUGIN / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8")
+servers += (PLUGIN / "includes/class-mad4b-scp-server-core-catalog.php").read_text(encoding="utf-8")
 bootstrap = (PLUGIN / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 
 endpoint_worker = (PLUGIN / 'includes/class-mad4b-scp-endpoint-diagnostic.php').read_text(encoding='utf-8')
