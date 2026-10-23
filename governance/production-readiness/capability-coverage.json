@@ -5829,6 +5829,52 @@
       "coverage_reuse_rationale": "Existing admin, browser, secure credential storage, identity and local-only WordPress scope controls apply; explicit operator action remains mandatory for credential issuance and revocation.",
       "review_rationale": "Add nonce-protected local administrator pending-request producer, five-minute bounded site/user identity validation, separate application-password issuance and revocation with private-vault metadata, and limited credential-free event auditing. Provisioning remains disabled by default.",
       "execution_note": "New isolated lifecycle fixture creates fake credentials only in ephemeral PHP test storage; exact-HEAD CI and real host client certification remain required before user enablement."
+    },
+    {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-content-field-contracts.php",
+        "source_blob_sha": "23fbcfabc274b1fcd1f1b9027618c05030c57474",
+        "review_rationale": "Provider-neutral semantic classifier now recognizes the existing Dynamic Content Apply bundle using strict post paths, reused core_meta key contracts, fail-closed unknown metadata, and separate operational versus brand-bearing term semantics. It never authorizes writes.",
+        "control_ids": [
+            "AI-01",
+            "LOCALIZATION-01",
+            "MCP-01",
+            "PROVIDERS-02",
+            "SECURITY-01"
+        ],
+        "regression_tests": [
+            "wp-content/plugins/mad4b-site-control-plane/tests/content-bundle-semantic-contract-runtime.php",
+            "wp-content/plugins/mad4b-site-control-plane/tests/integration-ticket-brand-runtime-regressions.py"
+        ],
+        "owner_role": "Repository source reviewer — CI-only; neither Staging owner acceptance nor Production approval",
+        "status": "reviewed_for_ci_only",
+        "production_authorized": false,
+        "live_evidence_required": true,
+        "needs_new_control": false,
+        "coverage_reuse_rationale": "Existing AI, Content, Security, MCP, exact-ticket and provider review controls cover this bounded semantic classification change; no new write ability or approval is granted.",
+        "execution_note": "Isolated source regression must pass on exact HEAD; authenticated ARE Staging runtime acceptance and package fingerprints remain outstanding."
+    },
+    {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/semantic-content-field-contracts.json",
+        "source_blob_sha": "e1392e8aa1b42a395ba3b1765244169f85411897",
+        "review_rationale": "The explicit core Dynamic Content Apply contract declares known post content, operational state and exact metadata rules. Unknown keys remain review-required; OAuth, ticket approvals, deployment fences and production authority are unchanged.",
+        "control_ids": [
+            "AI-01",
+            "LOCALIZATION-01",
+            "MCP-01",
+            "PROVIDERS-02",
+            "SECURITY-01"
+        ],
+        "regression_tests": [
+            "wp-content/plugins/mad4b-site-control-plane/tests/content-bundle-semantic-contract-runtime.php",
+            "wp-content/plugins/mad4b-site-control-plane/tests/integration-ticket-brand-runtime-regressions.py"
+        ],
+        "owner_role": "Repository source reviewer — CI-only; neither Staging owner acceptance nor Production approval",
+        "status": "reviewed_for_ci_only",
+        "production_authorized": false,
+        "live_evidence_required": true,
+        "needs_new_control": false,
+        "coverage_reuse_rationale": "Existing AI, Content, Security, MCP, exact-ticket and provider review controls cover this bounded semantic classification change; no new write ability or approval is granted.",
+        "execution_note": "Isolated source regression must pass on exact HEAD; authenticated ARE Staging runtime acceptance and package fingerprints remain outstanding."
     }
   ],
   "code_change_rules": {
