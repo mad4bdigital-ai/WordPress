@@ -77,7 +77,7 @@ final class MAD4B_Google_Measurement_Advanced {
    $result=self::request(self::DATA.$property.':runReport',$read,array(
     'dateRanges'=>array(array('startDate'=>'7daysAgo','endDate'=>'yesterday')),
     'dimensions'=>array(array('name'=>'eventName')),
-    'metrics'=>array(array('name'=>'eventCount'),'limit'=>100)));
+    'metrics'=>array(array('name'=>'eventCount')),'limit'=>100));
    if (is_wp_error($result))return $result;
    $counts=array();
    foreach((array)($result['rows']??array()) as $row)
