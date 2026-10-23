@@ -10,6 +10,7 @@ outbound_guard = (root / 'includes' / 'class-mad4b-scp-oauth-outbound-budget-gua
 alignment = (root / 'includes' / 'class-mad4b-scp-oauth-challenge-alignment.php').read_text(encoding='utf-8')
 overrides = (root / 'includes' / 'class-mad4b-scp-governed-ability-overrides.php').read_text(encoding='utf-8')
 servers = (root / 'includes' / 'class-mad4b-scp-servers.php').read_text(encoding='utf-8')
+servers += (root / 'includes' / 'class-mad4b-scp-server-core-catalog.php').read_text(encoding='utf-8')
 main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 plugin = (root / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
 runtime_context = (root / 'tests' / 'runtime-oauth-context-cooldown-smoke.php').read_text(encoding='utf-8')
