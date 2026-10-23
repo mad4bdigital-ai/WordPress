@@ -52,7 +52,11 @@ final class MAD4B_SCP_Operator_Receipt_Verifier {
 
     public static function verify( $receipt, $seal, $job_id, $current_target ) {
         if ( ! is_array( $receipt ) || ! is_array( $seal ) || ! is_array( $current_target ) ||
-             'staging' !== wp_get_environment_type() || 'https://staging.allroyalegypt.com' !== home_url() )
+             'staging' !== wp_get_environment_type() ||
+             ! class_exists( 'MAD4B_SCP_Site_Profile' ) ||
+             ! MAD4B_SCP_Site_Profile::configured() ||
+             ! MAD4B_SCP_Site_Profile::origin_enrolled() ||
+             ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() )
             return new WP_Error( 'mad4b_operator_receipt_environment_denied', 'Exact Staging receipt required.' );
         $site_seal = self::verify_site_seal( $seal );
         if ( is_wp_error( $site_seal ) ) return $site_seal;
