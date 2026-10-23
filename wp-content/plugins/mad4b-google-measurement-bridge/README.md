@@ -77,3 +77,23 @@ A reviewed MAD4B one-time-ticket authorizer still needs to implement the callbac
 
 ## Scope limits
 This release implements read-only APIs and fail-closed plans. It does **not** yet implement executable audience mutation, GTM tag CRUD, GTM version publish/rollback, WP-Cron report delivery, anomaly-alert delivery, Meta/Google Ads/CRM reconciliation, or Search Console API calls. Those remain explicit follow-up gates and must not be reported as completed.
+
+## Measurement vNext — incremental delivery on PR #481
+### Implemented and PHP-linted
+- GA4 Metadata, Realtime, compatible field checks, Batch/Pivot, aggregated event quality audit
+- Audience definition listing (not member export), owner-bound account selection
+- GTM live-version and workspace status reads; human-readable workspace change inventory
+- Anomaly comparisons over two consecutive 7-day periods and a canonical funnel-event presence audit
+- Fail-closed **planning only** for GA4 audience create/update/archive, GTM tag/trigger/variable edits, version publication/rollback, Custom Dimension sync, recurring report scheduling, anomaly alerts and conversion reconciliation
+- Independent Search Console read OAuth grant (default OFF), authorized Search Console property inventory, redacted Rank Math status/hints
+- Live ARE Staging plugin inventory confirms Rank Math SEO, Rank Math SEO PRO and GTM4WP are active. Their Google external connection state is **not** verified by plugin activation.
+
+### Required closure before actual live management
+- Consent and authorized GA4/GTM/Search Console account readbacks; select exact resources under the verified site
+- Finish one-time MAD4B write-ticket claim/finalization and implement reviewed Google mutation executors, API revisions/diff and readback
+- GTM publish/rollback safety boundary independent of Staging vs Production
+- Schedule delivery and anomaly alerts via dedicated service identity/authority (not an implicit cron token escalation)
+- Independently verify Rank Math Search Console selection, permission and API access; Rank Math's own tokens are never reused
+- Consent, GTM4WP browser events, GA4 reporting compatibility, Meta/Ads/CAPI conversion dedup and CRM acceptance tests
+
+**Do not interpret plans as completed writes.** No live deployment, external Google modification or Search Console reconsent was performed.
