@@ -66,3 +66,14 @@ A reviewed MAD4B one-time-ticket authorizer still needs to implement the callbac
 - Run preset `tour_funnel`; reconcile event names and counts against GA4 UI with matching date ranges/time zone.
 - Verify Custom Reporting report definitions survive a normal WordPress request, remain isolated when property binding switches, and never return personal user-level exports.
 - GA4 query quota, API limitations and reporting thresholds remain in effect.
+
+## Advanced Measurement Operations (this changeset)
+- `mad4b/google-measurement-advanced-read`: GA4 metadata, realtime events, dimension/metric compatibility, batch and pivot reports, aggregate tracking quality check, audience listing, GTM workspace/status and live-version inspection.
+- `mad4b/google-measurement-operation-plan`: **plans only** for audience create/update/archive, GTM tag/trigger/variable operations, workspace versions, publish/rollback, Custom Dimension sync, scheduling, anomaly rules and conversion reconciliation. It does not execute these operations; source code and Google one-time consent do not authorize writes.
+- `mad4b/google-measurement-rankmath-audit`: read-only, redacted Rank Math plugin state and public Search Console property hints (where options expose them), without Rank Math OAuth token inspection or reuse.
+- GA4 tracking-quality read uses aggregated 7-day event counts. Missing/zero events are flags, not proof of browser or CAPI deduplication. A complete event payload audit still needs Tag Assistant and consent-aware client evidence.
+- Rank Math has its **own Google connection** and may expose Search Console configuration; those permissions do not automatically grant Brand Authority access. Google Search Console API requires a separate reviewed `webmasters.readonly` grant.
+- The advanced reporting and audience operations remain source-only pending owner OAuth and exact property binding, Staging deployment, and readback.
+
+## Scope limits
+This release implements read-only APIs and fail-closed plans. It does **not** yet implement executable audience mutation, GTM tag CRUD, GTM version publish/rollback, WP-Cron report delivery, anomaly-alert delivery, Meta/Google Ads/CRM reconciliation, or Search Console API calls. Those remain explicit follow-up gates and must not be reported as completed.
