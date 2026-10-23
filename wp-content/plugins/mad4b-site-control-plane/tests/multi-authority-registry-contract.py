@@ -6,6 +6,7 @@ bridge = (root / "includes" / "class-mad4b-scp-oauth-resource-bridge.php").read_
 registry = (root / "includes" / "class-mad4b-scp-multi-authority-registry.php").read_text(encoding="utf-8")
 main = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 servers = (root / "includes" / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
+servers += (root / "includes" / "class-mad4b-scp-server-core-catalog.php").read_text(encoding="utf-8")
 hybrid = (root / "tests" / "runtime-oauth-hybrid-smoke.php").read_text(encoding="utf-8")
 
 for marker in [
