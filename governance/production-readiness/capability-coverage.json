@@ -5638,6 +5638,49 @@
       "coverage_reuse_rationale": "Existing security, MCP, governance and capability-specific controls apply without broadening authority, modifying environments or enabling Production writes.",
       "review_rationale": "Skill guidance explicitly retains unfinished content job and reports missing Brand Core controls without automatic approval.",
       "execution_note": "Verified unit and contract tests are source-level evidence only; authenticated live acceptance for this GitHub HEAD remains outstanding and no Production promotion is granted."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "678e369a603ac4f2a6e542c6fb975b26c5267ea6",
+      "control_ids": [
+        "PERFORMANCE-01",
+        "MCP-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "review_rationale": "ARE original-hosting Staging passively read wp option get in 2.411/2.213/2.117 seconds instead of the observed ~6s initial run; preserves deactivation-hook registration and runs full bootstrap for HTTP, MCP, writes, eval, unknown and MAD4B commands.",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-ticket-brand-runtime-regressions.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Staging owner write or Production permission",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing WordPress/MCP/OAuth, execution policy, provider isolation and performance controls remain enforced; a passive command fastpath does not grant authority or certify Production.",
+      "execution_note": "Source fixture test is executed under the existing bounded Python CI regression wrapper. ARE original-hosting Staging experiment was restored byte-identically after measurement."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wpcli-passive-gate.php",
+      "source_blob_sha": "ebcd120c82e4e1a33b4ef2a64e699731e48f33c7",
+      "control_ids": [
+        "PERFORMANCE-01",
+        "MCP-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "review_rationale": "Exact allowlist for non-mutating WP-CLI Core reads; URL, user, context, script and unknown commands are rejected, preserving full governed runtime and no authority changes.",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-ticket-brand-runtime-regressions.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Staging owner write or Production permission",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing WordPress/MCP/OAuth, execution policy, provider isolation and performance controls remain enforced; a passive command fastpath does not grant authority or certify Production.",
+      "execution_note": "Source fixture test is executed under the existing bounded Python CI regression wrapper. ARE original-hosting Staging experiment was restored byte-identically after measurement."
     }
   ],
   "code_change_rules": {

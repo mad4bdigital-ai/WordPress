@@ -19,6 +19,7 @@ TESTS = (
     "runtime-restart-grace-readonly-runtime.php",
     "guided-runtime-convergence-runtime.php",
     "skill-context-preflight-runtime.php",
+    "wpcli-passive-gate-contract.php",
 )
 ROOT = Path(__file__).resolve().parent
 php = shutil.which("php")
