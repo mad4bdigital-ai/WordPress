@@ -152,3 +152,12 @@ Keyword Ideas → Historical Metrics → GSC Organic Queries → Intent/Clusters
 - `mad4b/keyword-handoff-plan`: immutable SHA-256 proposal binding project, keyword snapshot, site UUID and destination (`content_job` or `ads_ad_group`). No external API changes or WP CPT creation. Lists required brand context, SERP/cannibalization checks, approval and Google account prerequisites.
 - CI PHP syntax remains only a syntactic gate. Execution/permission testing must run against reviewed ARE Staging runtime after deployment and owner OAuth.
 - Not yet implemented: managed SERP crawler, competitor enrichment, semantic clustering, Content Job creation, Ads ad-group creation, recurring job orchestration, exact one-time Google mutation tickets, AI generated editorial briefs verified against sources. Do not interpret handoff plans as executed operations.
+
+## SERP evidence and multilingual normalization increment
+- `mad4b/keyword-serp-evidence-analyze`: source-attributed SERP evidence intake requiring a provider label, locale, observation date, HTTPS ranked URLs, titles and optionally supplied intent labels. Validates and caps 20 results, groups competitor domains, produces an evidence SHA-256 and intent distribution.
+- **It is not a crawler** and does not assert upstream provider authenticity or execute any external HTTP requests. Domain/intent counts are only as trustworthy as the supplied observations.
+- The keyword clustering heuristics now normalize a bounded synonym dictionary for some English travel terms and Arabic plurals. This is not transformer/embedding-based semantic clustering.
+- Existing `mad4b/keyword-handoff-plan` still produces review-only Content Job and Ads handoffs. There is no authority to create a content job, campaign or ad group automatically.
+
+### Closure controls
+Review real SERP API provider contract and licensing, protect against SSRF if server-side fetches are later added, verify query locale/device/date, deduplicate canonical URLs, compare the site's existing WP content, and require editorial review + MAD4B exact one-time ticket before any write. Production mutation and remote Google writes remain disabled.
