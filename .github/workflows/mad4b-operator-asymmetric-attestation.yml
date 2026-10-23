@@ -40,4 +40,6 @@ jobs:
           python -m py_compile tools/mad4b-remote-execution/operator-worker-receipt.py
           python -m py_compile tests/remote-execution/operator-asymmetric-roundtrip.py
       - name: Sign and independently verify fixture
-        run: python tests/remote-execution/operator-asymmetric-roundtrip.py
+        run: |
+          MAD4B_TEST_RUNNER_PROFILE_ID=fixture-site-a-runner-v1 MAD4B_TEST_SITE_FINGERPRINT=${{ 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' }} python tests/remote-execution/operator-asymmetric-roundtrip.py
+          MAD4B_TEST_RUNNER_PROFILE_ID=fixture-site-b-runner-v1 MAD4B_TEST_SITE_FINGERPRINT=${{ 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' }} python tests/remote-execution/operator-asymmetric-roundtrip.py
