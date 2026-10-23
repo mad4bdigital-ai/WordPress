@@ -68,7 +68,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "sha256": "a8242a9035c6896834751c3448d324f3d67577ad0e5a7aba452c14c6ec4e4063"
+      "sha256": "ff9f2aaabcd6b24eecb40c712a503a8e0f3f263bf2bd20045daa49f69be930c8"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-contracts.php",
