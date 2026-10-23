@@ -6,7 +6,7 @@ root = Path(__file__).resolve().parents[1]
 compat = (root / 'includes/class-mad4b-scp-mcp-client-compatibility.php').read_text(encoding='utf-8')
 challenge = (root / 'includes/class-mad4b-scp-oauth-challenge-alignment.php').read_text(encoding='utf-8')
 registry = (root / 'includes/class-mad4b-scp-mcp-client-profile-registry.php').read_text(encoding='utf-8')
-servers = (root / 'includes/class-mad4b-scp-servers.php').read_text(encoding='utf-8')
+servers = (root / 'includes/class-mad4b-scp-servers.php').read_text(encoding='utf-8') + (root / 'includes/class-mad4b-scp-server-core-catalog.php').read_text(encoding='utf-8')
 catalog_diagnostics = (root / 'includes/class-mad4b-scp-mcp-catalog-diagnostics.php').read_text(encoding='utf-8')
 full_authority = (root / 'includes/class-mad4b-scp-full-staging-authority.php').read_text(encoding='utf-8')
 self_update = (root / 'includes/class-mad4b-scp-self-update.php').read_text(encoding='utf-8')
