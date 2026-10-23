@@ -56,6 +56,15 @@ final class MAD4B_Google_Measurement_Admin {
         submit_button('Bind Google Ads customer (no Ads mutation)');
         echo '</form>';
         echo '<hr/><h2>Keyword Research Projects</h2>';
+        $project_inventory=MAD4B_Keyword_Projects::read_ability(array('action'=>'list'));
+        if(!is_wp_error($project_inventory) && !empty($project_inventory['projects'])) {
+            echo '<h3>Saved drafts</h3><table class="widefat striped"><thead><tr><th>Project</th><th>Keywords</th><th>Updated (UTC)</th></tr></thead><tbody>';
+            foreach($project_inventory['projects'] as $project) {
+                echo '<tr><td>'.esc_html((string)($project['title']??'')).'</td><td>'.esc_html((string)($project['keywords_count']??0)).'</td><td>'.esc_html((string)($project['updated_at']??'')).'</td></tr>';
+            }
+            echo '</tbody></table>';
+        }
+
         echo '<p>Save an owner-scoped draft keyword list; this never creates Ads campaigns or publishes WordPress content.</p>';
         echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
         echo '<input type="hidden" name="action" value="mad4b_keyword_project_save"/>';
