@@ -354,6 +354,16 @@ final class MAD4B_SCP_Host_Bridge {
 			'production_authorized' => false,
 		);
 		$submission['submission_sha256'] = self::digest( $submission );
+        // An Operator job MUST carry a separate asymmetric seal. Do not alter
+        // submission_sha256 semantics; the external worker verifies BOTH.
+        $operator_seal = null;
+        if ( 0 === strpos( $operation_id, 'operator.' ) ) {
+            if ( ! class_exists( 'MAD4B_SCP_Operator_Attestation' ) ) {
+                return new WP_Error( 'mad4b_operator_attestation_missing', 'Staging signing contract missing.' );
+            }
+            $operator_seal = MAD4B_SCP_Operator_Attestation::seal( $submission );
+            if ( is_wp_error( $operator_seal ) ) return $operator_seal;
+        }
 		$path = $spool . '/queued/' . $job_id . '.json';
 		if ( file_exists( $path ) ) {
 			$existing = self::read_json( $path );
@@ -366,7 +376,22 @@ final class MAD4B_SCP_Host_Bridge {
 			$existing['host_verification_pending'] = true;
 			return $existing;
 		}
-		$write = self::atomic_write( $path, $submission );
+		// Persist immutable detached seal before making the queued job visible.
+        $seal_path = '';
+        if ( null !== $operator_seal ) {
+            $seal_dir = $spool . '/attestations';
+            if ( is_link( $seal_dir ) || ( ! is_dir( $seal_dir ) && ! wp_mkdir_p( $seal_dir ) ) ) {
+                return new WP_Error( 'mad4b_operator_attestation_directory_denied', 'Attestation store unavailable.' );
+            }
+            $seal_path = $seal_dir . '/' . $job_id . '.json';
+            if ( file_exists( $seal_path ) || is_link( $seal_path ) ) {
+                return new WP_Error( 'mad4b_operator_attestation_replay_denied', 'Operator seal already exists.' );
+            }
+            $seal_written = self::atomic_write( $seal_path, $operator_seal );
+            if ( is_wp_error( $seal_written ) ) return $seal_written;
+        }
+        $write = self::atomic_write( $path, $submission );
+        if ( is_wp_error( $write ) && '' !== $seal_path ) @unlink( $seal_path );
 		if ( is_wp_error( $write ) ) return $write;
 		$submission['queued'] = true;
 		$submission['replayed'] = false;
