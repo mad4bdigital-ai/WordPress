@@ -196,6 +196,46 @@ final class MAD4B_SCP_Operator_Sessions {
         return $row;
     }
 
+    /**
+     * Trusted host worker recheck. This is deliberately NOT an MCP ability.
+     * It returns no session secret or user profile information. The external
+     * worker must additionally verify its pinned SSH identity and signed job.
+     */
+    public static function worker_live_status( $session_id, $operation, $target_fp, $client_fp, $ticket_id = '' ) {
+        if ( ! defined( 'WP_CLI' ) || ! WP_CLI || 'cli' !== PHP_SAPI ||
+             ! self::enabled() || ! class_exists( 'MAD4B_SCP_Site_Profile' ) ||
+             'staging' !== MAD4B_SCP_Site_Profile::current_environment() ||
+             ! MAD4B_SCP_Site_Profile::origin_enrolled() ||
+             ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) {
+            return array( 'eligible' => false, 'reason' => 'worker_environment_denied' );
+        }
+        $key = self::key( $session_id );
+        $session = '' === $key ? false : get_transient( $key );
+        $current_fp = MAD4B_SCP_Host_Bridge::target_fingerprint_readonly();
+        if ( ! is_array( $session ) || ! is_string( $current_fp ) ||
+             time() >= (int) ( $session['expires_at_epoch'] ?? 0 ) ||
+             ! hash_equals( (string) ( $session['target_fingerprint'] ?? '' ), $target_fp ) ||
+             ! hash_equals( $current_fp, $target_fp ) ||
+             ! hash_equals( (string) ( $session['client_fingerprint'] ?? '' ), $client_fp ) ||
+             ! in_array( $operation, $session['scopes'] ?? array(), true ) ) {
+            return array( 'eligible' => false, 'reason' => 'session_expired_revoked_or_drifted' );
+        }
+        if ( 'sql.read' !== $operation ) {
+            if ( ! class_exists( 'MAD4B_SCP_Approval_Tickets' ) || '' === $ticket_id ) {
+                return array( 'eligible' => false, 'reason' => 'approval_absent' );
+            }
+            $ticket = MAD4B_SCP_Approval_Tickets::get( $ticket_id );
+            if ( ! is_array( $ticket ) || 'executing' !== (string) ( $ticket['status'] ?? '' ) ||
+                 strtotime( (string) ( $ticket['expires_at'] ?? '' ) ) <= time() ) {
+                return array( 'eligible' => false, 'reason' => 'approval_revoked_or_not_claimed' );
+            }
+        }
+        return array( 'eligible' => true, 'session_id' => $session_id,
+            'operation' => $operation, 'environment' => 'staging',
+            'expires_at_epoch' => (int) $session['expires_at_epoch'],
+            'mutation_performed' => false );
+    }
+
     public static function status( $input ) {
         $session = self::verify( $input );
         if ( is_wp_error( $session ) ) return $session;
