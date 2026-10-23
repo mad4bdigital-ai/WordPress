@@ -67,6 +67,8 @@ final class MAD4B_SCP_Semantic_Content_Field_Contracts {
 			} elseif ( self::fallback_brand_evidence( $selector, $value ) ) {
 				$fallback[] = $selector_path . ':' . $selector;
 			}
+		} elseif ( 'content_bundle' === $mode ) {
+			self::classify_content_bundle( $input, $row, $contracts, $matched, $fallback );
 		} elseif ( 'object_fields' === $mode ) {
 			$container = isset( $row['container_path'] ) ? (string) $row['container_path'] : '';
 			$value = self::value_at_path( $input, $container );
@@ -205,6 +207,89 @@ final class MAD4B_SCP_Semantic_Content_Field_Contracts {
 			$fallback, 'governed_nested_provider_semantics',
 			array( 'target_ability' => $ability, 'target_provider' => $provider,
 				'target_contract_sha256' => (string) ( $target['contract_sha256'] ?? '' ) ) );
+	}
+
+	/**
+	 * Classify the exact Dynamic Content Apply payload. Meta keys are dynamic,
+	 * but their semantics are not a blanket exemption: reuse the registered
+	 * keyed-value contract and fail closed on unknown keys, even with short data.
+	 * Evidence, acceptance and validation are non-publishing control data;
+	 * changes to public copy must re-enter through post/meta classification.
+	 */
+	private static function classify_content_bundle( array $input, array $row, array $contracts, array &$matched, array &$fallback ) {
+		$post = isset( $input['post'] ) && is_array( $input['post'] ) ? $input['post'] : array();
+		if ( array_key_exists( 'post', $input ) && ! is_array( $input['post'] ) ) $fallback[] = 'post.invalid_structure';
+		foreach ( self::flatten( $post ) as $relative => $value ) {
+			$path = 'post.' . $relative;
+			if ( self::matches_any_path( $path, (array) ( $row['brand_paths'] ?? array() ) ) ) $matched[] = $path;
+			elseif ( ! self::matches_any_path( $path, (array) ( $row['post_operational_paths'] ?? array() ) ) )
+				$fallback[] = $path; // Unknown post fields are not silently operational.
+		}
+
+		$meta_contract_name = (string) ( $row['meta_key_contract'] ?? '' );
+		$key_contract = isset( $contracts[ $meta_contract_name ] ) && is_array( $contracts[ $meta_contract_name ] )
+			? $contracts[ $meta_contract_name ] : array();
+		$valid_key_contract = 'keyed_value' === (string) ( $key_contract['mode'] ?? '' )
+			&& '' !== (string) ( $key_contract['brand_key_regex'] ?? '' )
+			&& '' !== (string) ( $key_contract['operational_key_regex'] ?? '' );
+		foreach ( array( 'meta', 'meta_entries' ) as $container ) {
+			if ( ! array_key_exists( $container, $input ) ) continue;
+			if ( ! is_array( $input[ $container ] ) ) {
+				$fallback[] = $container . '.invalid_structure';
+				continue;
+			}
+			foreach ( $input[ $container ] as $key => $value ) {
+				$key = (string) $key;
+				$path = $container . '.' . $key;
+				if ( ! $valid_key_contract || '' === $key ) {
+					$fallback[] = $path . '.missing_key_contract';
+					continue;
+				}
+				if ( self::regex_match( $key_contract['brand_key_regex'], $key ) ) {
+					$matched[] = $path; // Includes deletion of brand-bearing metadata.
+					continue;
+				}
+				$operational = self::regex_match( $key_contract['operational_key_regex'], $key )
+					|| self::regex_match( (string) ( $row['meta_operational_key_regex'] ?? '' ), $key );
+				if ( ! $operational ) {
+					$fallback[] = $path . '.unclassified_meta_key';
+					continue;
+				}
+				// Operational keys containing nested editorial text are suspicious.
+				foreach ( self::flatten( $value ) as $relative => $leaf ) {
+					if ( self::fallback_brand_evidence( $relative, $leaf ) )
+						$fallback[] = $path . ( '' !== $relative ? '.' . $relative : '' );
+				}
+			}
+		}
+
+		if ( array_key_exists( 'taxonomies', $input ) ) {
+			if ( ! is_array( $input['taxonomies'] ) ) $fallback[] = 'taxonomies.invalid_structure';
+			else foreach ( $input['taxonomies'] as $taxonomy => $refs ) {
+				$prefix = 'taxonomies.' . (string) $taxonomy;
+				if ( ! is_array( $refs ) ) { $fallback[] = $prefix . '.invalid_references'; continue; }
+				foreach ( $refs as $index => $ref ) {
+					$path = $prefix . '.' . (string) $index;
+					if ( ! is_array( $ref ) ) { $fallback[] = $path . '.invalid_reference'; continue; }
+					$creates_term = ! empty( $ref['create_slug'] );
+					foreach ( $ref as $field => $value ) {
+						$field = (string) $field;
+						$leaf_path = $path . '.' . $field;
+						if ( $creates_term && in_array( $field, array( 'name', 'description' ), true ) )
+							$matched[] = $leaf_path;
+						elseif ( ! in_array( $field, array( 'term_id', 'slug', 'name', 'description', 'create_slug', 'parent' ), true ) )
+							$fallback[] = $leaf_path;
+					}
+				}
+			}
+		}
+
+		foreach ( $input as $key => $value ) {
+			$key = (string) $key;
+			if ( in_array( $key, array( 'post', 'meta', 'meta_entries', 'taxonomies' ), true ) ) continue;
+			if ( in_array( $key, (array) ( $row['root_operational_paths'] ?? array() ), true ) || self::governance_path( $key ) ) continue;
+			$fallback[] = $key . '.unknown_bundle_field';
+		}
 	}
 
 	private static function result( $ability_name, $provider, $known, array $matched, array $fallback, $source, array $row ) {
