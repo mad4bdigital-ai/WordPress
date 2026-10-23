@@ -53,6 +53,8 @@ final class MAD4B_SCP_Developer_Runtime {
 			'mad4b/operator-session-open',
 			'mad4b/operator-session-status',
 			'mad4b/operator-session-close',
+			'mad4b/operator-operation-plan',
+			'mad4b/operator-operation-submit',
 			'mad4b/developer-runtime-status',
 			'mad4b/developer-wp-cli',
 			'mad4b/developer-filesystem',
