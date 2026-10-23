@@ -114,3 +114,18 @@ This release implements read-only APIs and fail-closed plans. It does **not** ye
 - Production campaign mutations and spend changes remain disallowed until separately approved.
 
 **No account connection, campaign change, Ads budget mutation or GTM publication was performed in this source-only branch.**
+
+## Keyword Research / Keyword Planner
+New WordPress Ability: `mad4b/google-ads-keyword-research`.
+
+Two supported, read-only operations:
+- `action=ideas`: seed up to 20 phrases, an HTTPS page URL, or both. GA keyword ideas with historical search metrics and pagination.
+- `action=historical`: up to 1000 explicitly provided keyword phrases, analyzed for monthly search volume trends, Google Ads competition and top-of-page bid range.
+
+Inputs: `keywords`, `page_url` (ideas only), `language_id` (Google criterion ID), `geo_target_ids` (max 10, Google criterion IDs), `network` (Search or Search+Partners), `page_size` (max 200) and `page_token`.
+Endpoint: Google Ads REST v26 KeywordPlanIdeaService, using the connected operator's `adwords` grant and exact Google Ads Customer binding. No developer token header and no campaign mutation.
+
+Results cache (6 hours) is partitioned by Site UUID, operator and Google Ads Customer + MCC + targeting. The OAuth grant is checked before a cache hit is returned. These are estimates from Google Ads, **not** organic SEO keyword difficulty, guaranteed CPC, or current live traffic.
+For SEO priorities, combine query data from Google Search Console, page-level organic performance and actual search intent; never equate Google Ads competition with organic ranking competition.
+
+Future research extension gates: ad group themes and forecasts (request schemas require independent review), search intent classification, keyword clustering, GSC cannibalization, competitor URL seed analysis, multi-country opportunity scoring and governed publishing of campaigns/content plans. None of these is claimed as active live Google integration.
