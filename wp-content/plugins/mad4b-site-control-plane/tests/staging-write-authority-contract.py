@@ -16,6 +16,7 @@ cert = (wp / 'includes' / 'class-mad4b-scp-write-runtime-certification.php').rea
 live_truth = (wp / 'includes' / 'class-mad4b-scp-live-truth.php').read_text(encoding='utf-8')
 rest = (wp / 'includes' / 'class-mad4b-scp-rest-compatibility.php').read_text(encoding='utf-8')
 servers = (wp / 'includes' / 'class-mad4b-scp-servers.php').read_text(encoding='utf-8') + (Path(__file__).resolve().parents[1] / 'includes/class-mad4b-scp-server-write-catalog.php').read_text(encoding='utf-8')
+bootstrap_catalog = (wp / 'includes' / 'class-mad4b-scp-chatgpt-approval-bootstrap.php').read_text(encoding='utf-8')
 transport = (wp / 'includes' / 'class-mad4b-scp-transport-context.php').read_text(encoding='utf-8')
 auth = (wp / 'includes' / 'class-mad4b-scp-authorization.php').read_text(encoding='utf-8') + (Path(__file__).resolve().parents[1] / 'includes/class-mad4b-scp-authority-health-projection.php').read_text(encoding='utf-8')
 plugin = (wp / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
@@ -568,11 +569,12 @@ for marker in (
     if marker not in servers:
         raise SystemExit('reviewed direct ChatGPT step-up invariant missing: ' + marker)
 assert "private static function chatgpt_approval_bootstrap_tools()" in servers
-assert "'staging' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )" in servers
-assert "MAD4B_SCP_Staging_Write_Authority::effective()" in servers
-assert "self::ability_is_mounted( 'mad4b-write', $ability_name )" in servers
-assert "array( 'mad4b/approval-plan' )" in servers
-assert "'mad4b/approval-ai-decide'" in servers
+assert 'MAD4B_SCP_ChatGPT_Approval_Bootstrap::catalog_tools()' in servers
+assert "'staging' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )" in bootstrap_catalog
+assert "MAD4B_SCP_Staging_Write_Authority::effective()" in bootstrap_catalog
+assert "MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability_name )" in bootstrap_catalog
+assert "array( 'mad4b/approval-plan' )" in bootstrap_catalog
+assert "'mad4b/approval-ai-decide'" in bootstrap_catalog
 dispatcher_helper = servers.split('public static function chatgpt_dispatch_transport_tools()', 1)[1].split('public static function chatgpt_reviewed_direct_step_up_tools()', 1)[0]
 for dispatcher in ("'mad4b/write-execute'", "'mad4b/enrollment-execute'"):
     if dispatcher not in dispatcher_helper:
