@@ -11,6 +11,7 @@ self_update = (PLUGIN / "includes/class-mad4b-scp-self-update.php").read_text(en
 main = (PLUGIN / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 plugin = (PLUGIN / "includes/class-mad4b-scp-plugin.php").read_text(encoding="utf-8")
 servers = (PLUGIN / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8")
+servers += (PLUGIN / "includes/class-mad4b-scp-server-core-catalog.php").read_text(encoding="utf-8")
 registry = json.loads((PLUGIN / "config/operation-registry.json").read_text(encoding="utf-8"))
 
 required = [
