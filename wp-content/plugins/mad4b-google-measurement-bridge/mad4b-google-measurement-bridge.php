@@ -45,6 +45,7 @@ final class MAD4B_Google_Measurement_Bridge {
         add_action('wp_abilities_api_init', array('MAD4B_Keyword_Projects', 'register'), 60);
         add_action('wp_abilities_api_init', array('MAD4B_Keyword_Handoff', 'register'), 61);
         add_action('wp_abilities_api_init', array('MAD4B_Keyword_SERP', 'register'), 62);
+        add_action('wp_abilities_api_init', array('MAD4B_Keyword_SERP_Provider', 'register'), 63);
     }
     public static function providers($providers) {
         if (!is_array($providers)) $providers = array();
@@ -176,4 +177,5 @@ require_once __DIR__ . '/includes/class-mad4b-keyword-forecast.php';
 require_once __DIR__ . '/includes/class-mad4b-keyword-projects.php';
 require_once __DIR__ . '/includes/class-mad4b-keyword-handoff.php';
 require_once __DIR__ . '/includes/class-mad4b-keyword-serp.php';
+require_once __DIR__ . '/includes/class-mad4b-keyword-serp-provider.php';
 add_action('plugins_loaded', array('MAD4B_Google_Measurement_Bridge','boot'), 20);
