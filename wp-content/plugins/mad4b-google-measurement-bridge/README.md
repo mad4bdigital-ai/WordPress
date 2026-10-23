@@ -162,9 +162,17 @@ Keyword Ideas → Historical Metrics → GSC Organic Queries → Intent/Clusters
 ### Closure controls
 Review real SERP API provider contract and licensing, protect against SSRF if server-side fetches are later added, verify query locale/device/date, deduplicate canonical URLs, compare the site's existing WP content, and require editorial review + MAD4B exact one-time ticket before any write. Production mutation and remote Google writes remain disabled.
 
-## Optional paid SERP provider — DataForSEO (2026-10-23)
-- `mad4b/keyword-serp-provider-live` makes one owner-authorized, billable Google Organic Live Regular request to the fixed, allowlisted DataForSEO API endpoint and projects the organic URLs into the existing SERP evidence validator. Requires constants `MAD4B_SERP_PROVIDER_LOGIN` and `MAD4B_SERP_PROVIDER_PASSWORD` in secure server configuration; never commit their values.
-- A WordPress `manage_options` operator and an explicit `mad4b_serp_paid_request` nonce are required. The admin screen exposes a request nonce to that operator. The API endpoint is fixed and request parameters are bounded to keyword, language and Google location ID, preventing arbitrary URL fetches.
-- Provider fields, commercial access and billing have NOT been tested live. The connector fails closed without credentials and consent. No automated crawling, campaign mutation, SEO publication or SERP scheduled job is enabled.
-- Before live acceptance: provider credentials and pricing approval, real API readback, exact locale/device comparison, source/URL canonicalization, retries/rate limits, audit/cost caps and staging browser verification.
-- Keyword clusters still use bounded lexical and synonym heuristics, not an embedding/LLM semantic model. Content Job and Google Ads handoffs remain review-only receipt plans pending the MAD4B one-time execution lane.
+## Canonical SERP provider reuse — deduplication correction (2026-10-23)
+The existing Feature 007 Search Intelligence runtime is the **only owner of live SERP provider enrollment, credentials, spending authority, transport, capture, snapshot normalization, retries, reconciliation, and evidence provenance**. Its registered abilities include `mad4b/search-discover`, `mad4b/search-capture-plan`, `mad4b/search-capture-apply` and `mad4b/search-reconcile`.
+
+Source of truth:
+- `mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-search-intelligence.php`
+- `mad4b-site-control-plane/includes/search/adapters/class-mad4b-scp-search-serp-adapters.php`
+- `specs/007-content-intelligence-workflow-platform/contracts/adaptive-search-intelligence-runtime.md`
+
+Keyword Research uses the same underlying Search Intelligence evidence or reviewed imported observations; its `mad4b/keyword-serp-evidence-analyze` operation remains read-only analysis of supplied evidence, **not** another provider transport or certification layer.
+
+**Deleted** the redundant direct `DataForSEO` HTTP client and its owner-paid-request nonce UI. No separate WordPress config keys `MAD4B_SERP_PROVIDER_LOGIN`/`MAD4B_SERP_PROVIDER_PASSWORD`, independent quota path, or ad-hoc DataForSEO authentication are introduced by this plugin.
+
+To use live SERP: discover a certified Search Profile/provider in the existing control-plane and follow its budget/capture plan/apply/reconcile contracts. If the provider is missing or ineligible, fail closed; do not try a separate Keyword Research HTTP request. No new live SERP capture is claimed in this PR.
+
