@@ -35,7 +35,7 @@ mutations = [
     ('receipt nonce requirement removed', 'class-mad4b-scp-preparation-receipt.php', "! isset( $p['nonce'] ) || ! is_string( $p['nonce'] ) || 1 !== preg_match( '/^[a-f0-9]{32}$/D', $p['nonce'] )", 'false', 'preparation-receipt-runtime.php'),
     ('receipt subject ignored', 'class-mad4b-scp-preparation-receipt.php', "! hash_equals( MAD4B_SCP_Ability_Catalog_Transport::current_authority_scope(), $p['authority_scope_sha256'] )", 'false', 'preparation-receipt-runtime.php'),
     ('receipt descriptor ignored', 'class-mad4b-scp-preparation-receipt.php', "! hash_equals( $row['descriptor_sha256'], $p['descriptor_sha256'] )", 'false', 'preparation-receipt-runtime.php'),
-    ('receipt dispatcher verification ignored', 'class-mad4b-scp-developer-preparation-bridge.php', 'if ( is_wp_error( $receipt ) ) return $receipt;', '/* ignored receipt failure */', 'preparation-receipt-runtime.php'),
+    ('receipt dispatcher verification ignored', 'class-mad4b-scp-abilities.php', 'if ( is_wp_error( $receipt ) ) return $receipt;', '/* ignored receipt failure */', 'preparation-receipt-runtime.php'),
     ('execution orphan promoted out of reconciliation', 'class-mad4b-scp-execution-state-view.php', "if ( $orphan || $hazard_signal ) {", 'if ( $hazard_signal ) {', 'execution-state-view-runtime.php'),
     ('execution journal hazard ignored', 'class-mad4b-scp-execution-state-view.php', "if ( $orphan || $hazard_signal ) {", 'if ( $orphan ) {', 'execution-state-view-runtime.php'),
     ('unknown execution reconciliation fail-open', 'class-mad4b-scp-execution-state-view.php', "if ( self::UNKNOWN === $state ) $reconciliation = true;", '/* unknown reconciliation requirement removed */', 'execution-state-view-runtime.php'),
