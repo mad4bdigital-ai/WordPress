@@ -8,6 +8,7 @@ challenge = (root / 'includes/class-mad4b-scp-oauth-challenge-alignment.php').re
 registry = (root / 'includes/class-mad4b-scp-mcp-client-profile-registry.php').read_text(encoding='utf-8')
 servers = (root / 'includes/class-mad4b-scp-servers.php').read_text(encoding='utf-8')
 catalog_diagnostics = (root / 'includes/class-mad4b-scp-mcp-catalog-diagnostics.php').read_text(encoding='utf-8')
+projection = (root / 'includes/class-mad4b-scp-chatgpt-tool-projection.php').read_text(encoding='utf-8')
 full_authority = (root / 'includes/class-mad4b-scp-full-staging-authority.php').read_text(encoding='utf-8')
 self_update = (root / 'includes/class-mad4b-scp-self-update.php').read_text(encoding='utf-8')
 runtime_gates = (root / 'includes/class-mad4b-scp-governed-runtime-gates.php').read_text(encoding='utf-8')
@@ -282,4 +283,11 @@ for forbidden in [
     assert forbidden not in compat, f'forbidden client-specific authority marker: {forbidden}'
     assert forbidden not in registry, f'forbidden registry authority marker: {forbidden}'
 
+# Projection plans and real server registration must use the same optional
+# classification, otherwise a direct profile convenience gets counted as a
+# required transport and exceeds the bounded 36-tool envelope.
+assert "MAD4B_SCP_Servers::chatgpt_materialization_optional_tools( $base )" in projection
+assert "MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools() : array();" not in projection
+assert "MAD4B_SCP_Servers::chatgpt_materialization_optional_tools" in servers
+assert "MAX_TOOLS = 36" in catalog_diagnostics
 print('mad4b.site-control-plane.mcp-client-compatibility.v12: PASS')
