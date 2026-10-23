@@ -31,6 +31,21 @@ unset( $mad4b_scp_boot_provenance_path );
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-catalog-lifecycle.php';
 register_deactivation_hook( __FILE__, array( 'MAD4B_SCP_Catalog_Lifecycle', 'deactivate' ) );
 
+// Passive WP-CLI Core inspection is not an MCP/Abilities request. Avoid
+// loading the heavyweight Control Plane for exact, non-mutating CLI commands.
+// Developer commands, CLI eval/scripts, unknown commands, HTTP and web traffic
+// retain the unchanged full runtime and permission lifecycle.
+if ( defined( 'WP_CLI' ) && WP_CLI ) {
+    require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-wpcli-passive-gate.php';
+    if ( MAD4B_SCP_WPCLI_Passive_Gate::allowed_request() ) {
+        if ( ! defined( 'MAD4B_SCP_EARLY_ZERO_TOUCH_REASON' ) ) {
+            define( 'MAD4B_SCP_EARLY_ZERO_TOUCH_REASON', 'wpcli_passive_core_read' );
+        }
+        return;
+    }
+}
+
+
 // Plain GET/HEAD views of WordPress's native plugin-management screens
 // must not parse hundreds of Control Plane modules or start any MAD4B
 // schema, audit, key recovery, provider discovery or background convergence.
