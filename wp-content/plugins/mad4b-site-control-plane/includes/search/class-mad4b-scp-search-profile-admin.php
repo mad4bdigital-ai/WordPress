@@ -45,7 +45,9 @@ final class MAD4B_SCP_Search_Profile_Admin {
 				$registry = MAD4B_SCP_Search_Store::read( 'registry', 'profiles' );
 				if ( is_wp_error( $registry ) ) return $registry;
 				$ids = is_array( $registry ) && isset( $registry['ids'] ) && is_array( $registry['ids'] ) ? $registry['ids'] : array();
-				$base = 'search-' . strtolower( $market_country );
+				// Profile identity describes a strategy, not a single audience country.
+				// Preserve explicit operator IDs; use a neutral name when omitted.
+				$base = 'search-main';
 				for ( $i = 1; $i <= 100; $i++ ) {
 					$option = 1 === $i ? $base : $base . '-' . $i;
 					if ( ! in_array( $option, $ids, true ) ) { $profile_id = $option; break; }
@@ -53,7 +55,7 @@ final class MAD4B_SCP_Search_Profile_Admin {
 				if ( '' === $profile_id ) return MAD4B_SCP_Search_Contracts::error( 'profile_form_invalid' );
 			}
 			if ( '' === $market_id ) {
-				$prefix = 'search-' . strtolower( $market_country );
+				$prefix = 'search-' . strtolower( $market_country ); // Legacy IDs only; new multi-market profiles are neutral.
 				// Target identities use market_id but not profile_id: generated markets
 				// must not alias one another across Search Profiles.
 				if ( $profile_id === $prefix ) $market_id = 'market-' . strtolower( $market_country );
@@ -284,8 +286,8 @@ final class MAD4B_SCP_Search_Profile_Admin {
 		if ( ! $setup['providers'] ) echo '<p role="alert">' . esc_html__( 'No search provider adapter is registered.', 'mad4b-site-control-plane' ) . '</p>';
 		echo '</fieldset>';
 
-		echo '<details><summary>' . esc_html__( 'Technical identifiers (auto-filled)', 'mad4b-site-control-plane' ) . '</summary><p class="description">' . esc_html__( 'Leave these blank to generate stable identifiers from the target country (for example search-us and market-us). You may specify valid custom IDs.', 'mad4b-site-control-plane' ) . '</p>';
-		echo '<p><label for="mad4b-search-new-profile_id">' . esc_html__( 'Profile ID', 'mad4b-site-control-plane' ) . '</label><br><input id="mad4b-search-new-profile_id" name="profile_id" value="" maxlength="96" placeholder="Auto: search-us"></p>';
+		echo '<details><summary>' . esc_html__( 'Technical identifiers (auto-filled)', 'mad4b-site-control-plane' ) . '</summary><p class="description">' . esc_html__( 'Leave these blank to generate a strategy-neutral profile ID (for example search-main) and a market-specific ID. Use a brand/strategy ID such as are-search-main when appropriate.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<p><label for="mad4b-search-new-profile_id">' . esc_html__( 'Profile ID', 'mad4b-site-control-plane' ) . '</label><br><input id="mad4b-search-new-profile_id" name="profile_id" value="" maxlength="96" placeholder="Auto: search-main"></p>';
 		echo '<p><label for="mad4b-search-new-market_id">' . esc_html__( 'Market ID', 'mad4b-site-control-plane' ) . '</label><br><input id="mad4b-search-new-market_id" name="market_id" value="" maxlength="96" placeholder="Auto: market-us"></p>';
 		echo '<p><label for="mad4b-search-new-brand_id">' . esc_html__( 'Brand ID (optional)', 'mad4b-site-control-plane' ) . '</label><br><input id="mad4b-search-new-brand_id" name="brand_id" value="" maxlength="96"></p></details>';
 		echo '<p><button class="button button-primary"' . ( $setup['engines'] ? '' : ' disabled' ) . '>' . esc_html__( 'Create paused profile', 'mad4b-site-control-plane' ) . '</button></p></form></details>';
