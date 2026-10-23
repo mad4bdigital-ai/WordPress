@@ -15,6 +15,7 @@ final class MAD4B_Google_Keyword_Research {
   if (!in_array($action,array('ideas','historical'),true)) return self::bad('keyword_invalid_action','Invalid keyword operation.');
   $words=$input['keywords']??array();
   if (!is_array($words)||count($words)>1000) return self::bad('keyword_invalid_words','Invalid keyword collection.');
+  foreach($words as $word)if (!is_string($word))return self::bad('keyword_invalid_word','Keywords must be strings.');
   $words=array_values(array_unique(array_map('trim',$words)));
   foreach($words as $word)
    if (!is_string($word)||strlen($word)<2||strlen($word)>80||
@@ -108,7 +109,12 @@ final class MAD4B_Google_Keyword_Research {
   $n=self::normalize($input);
   if (is_wp_error($n))return $n;
   $body=self::body($n);
-  $scope=array('customer'=>$binding['customer_id'],'manager'=>$binding['login_customer_id'],
+  // Cached results never bypass the current OAuth grant and site identity checks.
+  $grant=MAD4B_Google_Measurement_API::token(self::SCOPE);
+  if (is_wp_error($grant))return $grant;
+  unset($grant);
+  $scope=array('site_uuid'=>$binding['site_uuid'],'actor'=>get_current_user_id(),
+   'customer'=>$binding['customer_id'],'manager'=>$binding['login_customer_id'],
    'body'=>$body,'action'=>$n['action']);
   // The cache stores only research results and site/account scope; never OAuth credentials.
   $key='mad4b_kw_'.hash('sha256',wp_json_encode($scope,JSON_UNESCAPED_SLASHES));
