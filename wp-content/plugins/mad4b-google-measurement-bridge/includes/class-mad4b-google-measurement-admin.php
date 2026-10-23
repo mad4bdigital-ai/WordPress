@@ -55,6 +55,9 @@ final class MAD4B_Google_Measurement_Admin {
         echo '<p><label>MCC login customer ID (optional) <input name="login_customer_id" pattern="[0-9]{10}" value="'.esc_attr(!empty($ads['ready'])?$ads['login_customer_id']:'').'" size="20"/></label></p>';
         submit_button('Bind Google Ads customer (no Ads mutation)');
         echo '</form>';
+        echo '<hr/><h2>Live SERP Research</h2>';
+        echo '<p>Requires separately configured DataForSEO credentials. Each execution is billable; this is not an automatic background crawler.</p>';
+        echo '<p>API ability: <code>mad4b/keyword-serp-provider-live</code>. Owner request nonce for this admin session: <code>'.esc_html(wp_create_nonce('mad4b_serp_paid_request')).'</code></p>';
         echo '<hr/><h2>Keyword Research Projects</h2>';
         echo '<p>Save an owner-scoped draft keyword list; this never creates Ads campaigns or publishes WordPress content.</p>';
         echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
