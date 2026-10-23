@@ -42,4 +42,4 @@ jobs:
       - name: Sign and independently verify fixture
         run: |
           MAD4B_TEST_RUNNER_PROFILE_ID=fixture-site-a-runner-v1 MAD4B_TEST_SITE_FINGERPRINT=${{ 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' }} python tests/remote-execution/operator-asymmetric-roundtrip.py
-          MAD4B_TEST_RUNNER_PROFILE_ID=fixture-site-b-runner-v1 MAD4B_TEST_SITE_FINGERPRINT=${{ 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' }} python tests/remote-execution/operator-asymmetric-roundtrip.py
+          MAD4B_TEST_RUNNER_PROFILE_ID=fixture-site-b-runner-v1 MAD4B_TEST_SITE_FINGERPRINT=${{ 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' }} MAD4B_TEST_SITE_UUID=99999999-9999-4999-8999-999999999999 python tests/remote-execution/operator-asymmetric-roundtrip.py
