@@ -20,6 +20,10 @@ on:
         type: string
         required: true
 
+concurrency:
+  group: mad4b-staging-candidate-${{ github.event.inputs.source_sha }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -36,6 +40,7 @@ jobs:
       - name: Checkout trusted master source (never execute PR code)
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.sha }}
           persist-credentials: false
 
       - name: Verify fail-closed publisher contracts
