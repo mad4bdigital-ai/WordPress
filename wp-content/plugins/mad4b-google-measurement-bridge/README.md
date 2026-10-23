@@ -97,3 +97,20 @@ This release implements read-only APIs and fail-closed plans. It does **not** ye
 - Consent, GTM4WP browser events, GA4 reporting compatibility, Meta/Ads/CAPI conversion dedup and CRM acceptance tests
 
 **Do not interpret plans as completed writes.** No live deployment, external Google modification or Search Console reconsent was performed.
+
+## Google Ads (OAuth-only, no Developer Token) — source implementation
+- Brand Authority Google Workspace grant catalog: `google_ads` is **default OFF**, with explicit Google user consent for `https://www.googleapis.com/auth/adwords`. Effective API permissions are controlled by the connected user's Google Ads account rights and Google Cloud OAuth project's Ads API access tier.
+- API version: Google Ads REST **v25**; `GET /customers:listAccessibleCustomers` and allowlisted `POST /customers/{id}/googleAds:searchStream`. No `developer-token` header is sent, per Google developer-token sunset on September 9, 2026.
+- Google Ads Customer ID and optional MCC login customer ID are bound to the exact MAD4B WordPress Site Profile via Tools → Google Measurement. Setting the ID is not verification of Google permission.
+- Read-only ability `mad4b/google-ads-read` supports account discovery and bounded reports: customer profile, campaigns, ad groups, keywords, search terms, budgets, conversion actions, audiences, and last-30-day campaign performance. Queries are fixed allowlisted GAQL; no arbitrary GAQL or user-supplied request URL.
+- `mad4b/google-ads-operation-plan` supports planning campaign, budget, ad group, keyword, negative keyword, ad asset, audience, conversion action and recommendation changes. **It does not write to Google** and has no execution callback.
+- Google Ads API access must be verified via the OAuth project's Google Cloud Google Ads API Overview and actual account readback. HTTP failures are returned without exposing provider credential or raw error payload.
+
+### Open before full Google Ads CRUD
+- Owner Google OAuth reconsent and Cloud-project API production access readback.
+- Account/MCC roles verification; validated GAQL field compatibility against actual v25 API.
+- Add reviewed mutate executors using Google validate-only/dry-run, full resource snapshots, exact owner one-time tickets, budget approval, readbacks and immutable audit receipts.
+- Verification of Google Ads conversions vs GA4/Meta and GTM4WP duplication/consent.
+- Production campaign mutations and spend changes remain disallowed until separately approved.
+
+**No account connection, campaign change, Ads budget mutation or GTM publication was performed in this source-only branch.**
