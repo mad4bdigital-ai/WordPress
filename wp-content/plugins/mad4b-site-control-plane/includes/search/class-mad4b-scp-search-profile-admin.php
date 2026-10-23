@@ -120,6 +120,26 @@ final class MAD4B_SCP_Search_Profile_Admin {
 			$market_id = 'market-' . strtolower( $country ) . '-' . substr( hash( 'sha256', $input['profile_id'] . ':' . $country ), 0, 12 );
 			foreach ( $raw['markets'] as $market ) if ( isset( $market['id'] ) && $market_id === $market['id'] ) return MAD4B_SCP_Search_Contracts::error( 'market_identity_conflict' );
 			$raw['markets'][] = array( 'id' => $market_id, 'country' => $country );
+		} elseif ( 'map_provider_location' === $input['operation'] ) {
+			foreach ( array( 'market_id', 'provider_id', 'location_id', 'location_precision' ) as $field ) if ( ! isset( $input[ $field ] ) || ! is_string( $input[ $field ] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_form_invalid' );
+			if ( 0 === $revision || '' === $input['profile_id'] ) return MAD4B_SCP_Search_Contracts::error( 'profile_form_invalid' );
+			$provider = $input['provider_id']; $market_id = $input['market_id']; $location_id = trim( $input['location_id'] ); $precision = trim( $input['location_precision'] );
+			$adapters = MAD4B_SCP_Search_Providers::adapters();
+			if ( ! isset( $adapters[ $provider ] ) || ! MAD4B_SCP_Search_Contracts::id( $market_id ) || ! preg_match( '/^[A-Za-z0-9_.:-]{1,96}$/D', $location_id ) || ! in_array( $precision, array( 'country', 'region', 'city' ), true ) ) return MAD4B_SCP_Search_Contracts::error( 'provider_location_invalid' );
+			$current = MAD4B_SCP_Search_Context::profile( $input['profile_id'] );
+			if ( is_wp_error( $current ) ) return $current;
+			if ( ! empty( $current['enabled'] ) || empty( $current['provider_policy']['freeze_spend'] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_targeting_requires_pause_and_spend_freeze' );
+			$policy = MAD4B_SCP_Search_Context::policy(); if ( is_wp_error( $policy ) ) return $policy;
+			$raw = array_intersect_key( $current, array_flip( $policy['profile_fields'] ) );
+			$found = false;
+			foreach ( $raw['markets'] as &$market ) {
+				if ( $market['id'] !== $market_id ) continue;
+				if ( ! isset( $market['provider_locations'] ) ) $market['provider_locations'] = array();
+				$market['provider_locations'][ $provider ] = array( 'id' => $location_id, 'precision' => $precision );
+				$found = true; break;
+			}
+			unset( $market );
+			if ( ! $found ) return MAD4B_SCP_Search_Contracts::error( 'market_missing' );
 		} elseif ( 'edit_guided' === $input['operation'] ) {
 			if ( 0 === $revision || '' === $input['profile_id'] ) return MAD4B_SCP_Search_Contracts::error( 'profile_form_invalid' );
 			foreach ( array( 'audience_country', 'audience_languages', 'audience_devices', 'objective' ) as $field ) {
@@ -254,6 +274,15 @@ final class MAD4B_SCP_Search_Profile_Admin {
 			self::form_start( 'add_market', $id, $p['revision'] );
 			echo '<p><label for="mad4b-search-add-market-country">Audience country code</label><br><input id="mad4b-search-add-market-country" name="market_country" maxlength="2" pattern="[A-Za-z]{2}" placeholder="GB" required></p>';
 			echo '<button class="button">Add market and verify</button></form></details>';
+			echo '<details><summary>Map a market to a search provider location</summary><p>Select an existing market and registered provider. Enter the provider-issued location code; this saves only the targeting mapping and does not verify it or authorize capture.</p>';
+			self::form_start( 'map_provider_location', $id, $p['revision'] );
+			echo '<p><label>Market <select name="market_id" required>';
+			foreach ( $p['markets'] as $market ) echo '<option value="' . esc_attr( $market['id'] ) . '">' . esc_html( $market['country'] . ' — ' . $market['id'] ) . '</option>';
+			echo '</select></label> <label>Provider <select name="provider_id" required>';
+			foreach ( MAD4B_SCP_Search_Providers::adapters() as $provider_id => $adapter ) echo '<option value="' . esc_attr( $provider_id ) . '">' . esc_html( $provider_id ) . '</option>';
+			echo '</select></label></p>';
+			echo '<p><label>Provider location ID <input name="location_id" maxlength="96" pattern="[A-Za-z0-9_.:-]+" required></label> <label>Location precision <select name="location_precision"><option value="country">Country</option><option value="region">Region</option><option value="city">City</option></select></label></p>';
+			echo '<p class="description">Existing mappings for the selected market and provider are replaced after exact-revision verification. Pause observations and freeze spend before saving.</p><button class="button">Save provider location mapping</button></form></details>';
 			echo '<details><summary>Edit selected profile policy</summary><p>Markets, provider location mappings, language and budget policies are independent of Site Profile. Observation enablement and spend freeze state cannot be changed through this JSON editor.</p>';
 			self::form_start( 'edit', $id, $p['revision'] );
 			echo '<label for="mad4b-search-profile-json">Profile policy JSON</label><textarea id="mad4b-search-profile-json" name="profile_json" rows="20" class="large-text code">' . esc_textarea( wp_json_encode( $raw, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ) . '</textarea><button class="button button-primary">Save and verify profile</button></form></details>';
