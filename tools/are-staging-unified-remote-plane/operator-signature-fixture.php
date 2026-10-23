@@ -6,7 +6,7 @@
  */
 define( 'ABSPATH', '/home/u948953904/domains/allroyalegypt.com/public_html/staging/' );
 define( 'MAD4B_OPERATOR_SIGNING_KEY_PATH',
-    '/home/u948953904/.mad4b-release-validation/are-staging-remediation-20261023/operator-asymmetric/private.pem' );
+    getenv( 'MAD4B_TEST_SIGNING_KEY_PATH' ) ?: '/home/u948953904/.mad4b-release-validation/are-staging-remediation-20261023/operator-asymmetric/private.pem' );
 class WP_Error {
     public function __construct( public $code ) {}
     public function get_error_code() { return $this->code; }
