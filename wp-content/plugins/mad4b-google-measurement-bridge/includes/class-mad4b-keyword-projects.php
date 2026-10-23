@@ -69,13 +69,25 @@ final class MAD4B_Keyword_Projects {
   update_option(self::OPTION,$all,false);
   return array('contract'=>self::CONTRACT,'project_id'=>$id,'saved'=>true,'published'=>false,'ads_mutation_performed'=>false);
  }
+ /** Ability-specific dispatch prevents read surfaces from selecting a write action. */
+ public static function read_ability($input=array()){
+  if(!is_array($input))return new WP_Error('keyword_project_action','Invalid read request.');
+  $action=(string)($input['action']??'list');
+  if(!in_array($action,array('list','get'),true))return new WP_Error('keyword_project_action','Read ability cannot save a project.');
+  return self::run($input);
+ }
+ public static function save_ability($input=array()){
+  if(!is_array($input)||($input['action']??'')!=='save')
+   return new WP_Error('keyword_project_action','Write ability requires explicit save action.');
+  return self::run($input);
+ }
  public static function register(){
   if(!function_exists('wp_register_ability'))return;
   foreach(array('mad4b/keyword-projects-read'=>'read','mad4b/keyword-projects-save'=>'save') as $name=>$mode){
    if(function_exists('wp_has_ability')&&wp_has_ability($name))continue;
    $read=$mode==='read';
    wp_register_ability($name,array('label'=>$name,'description'=>'Site-bound keyword research project '.($read?'inventory':'draft storage'),
-    'category'=>$read?'mad4b-read':'mad4b-admin','execute_callback'=>array(__CLASS__,'run'),
+    'category'=>$read?'mad4b-read':'mad4b-admin','execute_callback'=>array(__CLASS__,$read?'read_ability':'save_ability'),
     'permission_callback'=>array('MAD4B_Google_Measurement_Bridge','gate'),
     'input_schema'=>array('type'=>'object','additionalProperties'=>false,
      'properties'=>array('action'=>array('type'=>'string','enum'=>$read?array('list','get'):array('save')),
