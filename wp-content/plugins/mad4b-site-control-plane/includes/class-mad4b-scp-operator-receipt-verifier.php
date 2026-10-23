@@ -28,10 +28,34 @@ final class MAD4B_SCP_Operator_Receipt_Verifier {
         return array( 'key' => $key, 'sha256' => hash( 'sha256', $pem ) );
     }
 
+    private static function verify_site_seal( $seal ) {
+        if ( ! defined( 'MAD4B_OPERATOR_SIGNER_PUBLIC_KEY_PATH' ) )
+            return new WP_Error( 'mad4b_operator_site_pubkey_not_pinned', 'Staging signer public key unavailable.' );
+        $path = (string) constant( 'MAD4B_OPERATOR_SIGNER_PUBLIC_KEY_PATH' );
+        if ( is_link( $path ) || ! is_file( $path ) )
+            return new WP_Error( 'mad4b_operator_site_pubkey_invalid', 'Staging signer public key invalid.' );
+        $public = file_get_contents( $path );
+        if ( ! is_string( $public ) || strlen( $public ) > 8192 ||
+             ! hash_equals( hash( 'sha256', $public ), (string) ( $seal['public_key_sha256'] ?? '' ) ) )
+            return new WP_Error( 'mad4b_operator_site_pubkey_mismatch', 'Staging signing key does not match pin.' );
+        $body = $seal['body'] ?? null;
+        if ( ! is_array( $body ) || 'mad4b.operator-queue-attestation.v1' !== (string) ( $seal['contract'] ?? '' ) ||
+             'RSA-SHA256' !== (string) ( $seal['algorithm'] ?? '' ) )
+            return new WP_Error( 'mad4b_operator_site_seal_contract_invalid', 'Staging queue seal contract invalid.' );
+        $sig = base64_decode( (string) ( $seal['signature_b64'] ?? '' ), true );
+        $encoded = wp_json_encode( $body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+        if ( ! is_string( $sig ) || ! is_string( $encoded ) ||
+             1 !== openssl_verify( $encoded, $sig, $public, OPENSSL_ALGO_SHA256 ) )
+            return new WP_Error( 'mad4b_operator_site_seal_signature_invalid', 'Staging queue signature invalid.' );
+        return true;
+    }
+
     public static function verify( $receipt, $seal, $job_id, $current_target ) {
         if ( ! is_array( $receipt ) || ! is_array( $seal ) || ! is_array( $current_target ) ||
              'staging' !== wp_get_environment_type() || 'https://staging.allroyalegypt.com' !== home_url() )
             return new WP_Error( 'mad4b_operator_receipt_environment_denied', 'Exact Staging receipt required.' );
+        $site_seal = self::verify_site_seal( $seal );
+        if ( is_wp_error( $site_seal ) ) return $site_seal;
         $body = $receipt['body'] ?? null;
         $signed = $seal['body'] ?? null;
         if ( ! is_array( $body ) || ! is_array( $signed ) ||
