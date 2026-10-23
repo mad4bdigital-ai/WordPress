@@ -16,7 +16,8 @@ final class MAD4B_SCP_Operator_Session_Policy {
     private static function deny( $reason ) {
         return array(
             'contract' => self::CONTRACT,
-            'allowed' => false,
+            'eligible' => false,
+            'authorized' => false,
             'reason' => (string) $reason,
             'mutation_performed' => false,
             'production_authorized' => false,
@@ -75,7 +76,8 @@ final class MAD4B_SCP_Operator_Session_Policy {
             ? 'operator_mutation_possible' : 'operator_read_or_wpcli';
         return array(
             'contract' => self::CONTRACT,
-            'allowed' => true,
+            'eligible' => true,
+            'authorized' => false,
             'reason' => 'candidate_scoped_session',
             'risk' => $risk,
             'operation' => $operation,
