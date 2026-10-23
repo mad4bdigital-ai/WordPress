@@ -105,6 +105,21 @@ final class MAD4B_SCP_Search_Profile_Admin {
 			// and exact post-apply readback.
 			$raw['enabled'] = $current_enabled;
 			$raw['provider_policy']['freeze_spend'] = $current_freeze_spend;
+		} elseif ( 'add_market' === $input['operation'] ) {
+			if ( 0 === $revision || '' === $input['profile_id'] || ! isset( $input['market_country'] ) || ! is_string( $input['market_country'] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_form_invalid' );
+			$country = strtoupper( trim( $input['market_country'] ) );
+			if ( ! preg_match( '/^[A-Z]{2}$/D', $country ) ) return MAD4B_SCP_Search_Contracts::error( 'market_invalid' );
+			$current = MAD4B_SCP_Search_Context::profile( $input['profile_id'] );
+			if ( is_wp_error( $current ) ) return $current;
+			if ( ! empty( $current['enabled'] ) || empty( $current['provider_policy']['freeze_spend'] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_targeting_requires_pause_and_spend_freeze' );
+			$policy = MAD4B_SCP_Search_Context::policy();
+			if ( is_wp_error( $policy ) ) return $policy;
+			$raw = array_intersect_key( $current, array_flip( $policy['profile_fields'] ) );
+			if ( ! isset( $raw['markets'] ) || ! is_array( $raw['markets'] ) || count( $raw['markets'] ) >= 64 ) return MAD4B_SCP_Search_Contracts::error( 'market_invalid' );
+			foreach ( $raw['markets'] as $market ) if ( isset( $market['country'] ) && $country === $market['country'] ) return MAD4B_SCP_Search_Contracts::error( 'market_duplicate_country' );
+			$market_id = 'market-' . strtolower( $country ) . '-' . substr( hash( 'sha256', $input['profile_id'] . ':' . $country ), 0, 12 );
+			foreach ( $raw['markets'] as $market ) if ( isset( $market['id'] ) && $market_id === $market['id'] ) return MAD4B_SCP_Search_Contracts::error( 'market_identity_conflict' );
+			$raw['markets'][] = array( 'id' => $market_id, 'country' => $country );
 		} elseif ( 'edit_guided' === $input['operation'] ) {
 			if ( 0 === $revision || '' === $input['profile_id'] ) return MAD4B_SCP_Search_Contracts::error( 'profile_form_invalid' );
 			foreach ( array( 'audience_country', 'audience_languages', 'audience_devices', 'objective' ) as $field ) {
@@ -235,6 +250,10 @@ final class MAD4B_SCP_Search_Profile_Admin {
 			echo '</div>';
 			$policy = MAD4B_SCP_Search_Context::policy(); $raw = array_intersect_key( $p, array_flip( $policy['profile_fields'] ) );
 			self::render_guided_edit_form( $p );
+			echo '<details><summary>Add target market to this profile</summary><p>Existing market identities remain unchanged. Observations must be paused and provider spend frozen; this action does not allocate a provider location or budget.</p>';
+			self::form_start( 'add_market', $id, $p['revision'] );
+			echo '<p><label for="mad4b-search-add-market-country">Audience country code</label><br><input id="mad4b-search-add-market-country" name="market_country" maxlength="2" pattern="[A-Za-z]{2}" placeholder="GB" required></p>';
+			echo '<button class="button">Add market and verify</button></form></details>';
 			echo '<details><summary>Edit selected profile policy</summary><p>Markets, provider location mappings, language and budget policies are independent of Site Profile. Observation enablement and spend freeze state cannot be changed through this JSON editor.</p>';
 			self::form_start( 'edit', $id, $p['revision'] );
 			echo '<label for="mad4b-search-profile-json">Profile policy JSON</label><textarea id="mad4b-search-profile-json" name="profile_json" rows="20" class="large-text code">' . esc_textarea( wp_json_encode( $raw, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ) . '</textarea><button class="button button-primary">Save and verify profile</button></form></details>';
