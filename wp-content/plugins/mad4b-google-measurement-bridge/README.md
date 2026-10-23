@@ -1,59 +1,48 @@
-# MAD4B Google Measurement Bridge — Brand Authority
+# MAD4B Google Measurement Bridge — GA4 + GTM
 
-## Current phase: discovery-only (0.1.0)
-Built from WordPress PR #479 exact head ea7b4fcd3b2b8d85caee3eefb0d3ed971c91f971, **without changing that PR**.
-A standalone plugin, not automatically enabled, adds two read-only WordPress Abilities:
-- `mad4b/google-measurement-inventory`
-- `mad4b/google-measurement-plan`
+## Status — source implementation, NOT live activated
+This is a **draft** integration stacked on WordPress PR #479; no deployment, consent exchange, Analytics change, GTM change or publication has occurred. Existing PR #479 Local Client behavior is not activated by this bridge.
 
-It also registers `google_measurement` with the existing Provider Connection Center descriptive provider filter. No connection is claimed, no Google credentials are stored or accessed, and no remote refresh is enabled. This phase does NOT yet manage GA4 or GTM through the user's Google App Connection.
+## Implemented
+- First-party Google Workspace **Brand Authority** grants catalogue extended with **opt-in, default-OFF** Google Analytics and Tag Manager read/edit scopes. GTM publish scope is a distinct explicit choice, excluded from the full-suite default.
+- Existing Google OAuth callback remains the consent route. Measurement access is allowed only when the precise scopes were selected and actually granted, the stored encrypted grant hash matches the selection, the exact enrolled WordPress origin/UUID/profile matches, the Google grant is not revoked, and the current operator is the WordPress owner who completed OAuth consent. Older grants require explicit **owner reconsent**; Drive alone is insufficient.
+- In-process token injection filter: `mad4b_google_measurement_broker_grant`, returning the token only to the allowlisted API client, never to WordPress Abilities or JSON responses.
+- Read-only Google REST API abilities: GA4 accounts, properties, custom dimensions, key events, 28-day event and traffic-source reports; GTM accounts, containers, workspaces, workspace status, live version, tags, triggers, variables. Resource-specific requests require the exact Site Profile binding.
+- WordPress Tools → Google Measurement: nonce-protected binding of a GA4 `properties/<id>` and GTM `accounts/<id>/containers/<id>` to site UUID and profile digest. This records a selection, **not verification of remote ownership**.
+- Read-only GTM4WP audit: public container ID (if available), potential competing tracking plugins and an explicit ownership policy. The audit does not claim duplicates without Tag Assistant evidence.
+- Exact-plan, **Staging-only** GA4 custom-dimension and GTM workspace creation code: plan SHA binds actor, Google encrypted grant identity, selected resources and exact site profile; only approved writes could run.
+- CI workflow `Measurement Bridge Lint` checks bridge PHP syntax and the altered Brand Authority Google OAuth class.
 
-## Next integration contract
-**Binding**: site UUID + exact origin/environment + Brand Authority receipt + user Google OAuth subject + explicitly selected GA4 property and GTM account/container/workspace. Do not reuse Google Drive grants as Analytics or GTM rights.
+## WordPress Abilities
+- `mad4b/google-measurement-inventory` — site connection, binding and GTM4WP hints
+- `mad4b/google-measurement-plan` — required scopes and handoff steps
+- `mad4b/google-measurement-api-read` — exact, allowlisted GA4/GTM REST reads
+- `mad4b/google-measurement-write-plan` — source/site/token-bound dry-run
+- `mad4b/google-measurement-write-apply` — Staging-only, **fail-closed**
 
-**OAuth scopes (incremental owner consent)**:
-- GA4 reporting: `https://www.googleapis.com/auth/analytics.readonly`
-- GA4 configuration: `https://www.googleapis.com/auth/analytics.edit`
-- GTM audit: `https://www.googleapis.com/auth/tagmanager.readonly`
-- GTM drafts: `https://www.googleapis.com/auth/tagmanager.edit.containers`
-- GTM publishing (separate elevated authorization): `https://www.googleapis.com/auth/tagmanager.publish`
-Follow Google API operation-specific scope checks before enabling; do not silently broaden OAuth grants.
+### Deliberate write block
+A reviewed MAD4B one-time-ticket authorizer still needs to implement the callback `mad4b_google_measurement_exact_write_authorized`. Until it does, all Google mutation operations are rejected. Creating a WP plugin file does not grant external Google API authorization. No GTM publish operation is enabled: GTM publication can affect a live site even from a Staging WordPress connection and needs a separately verified target and authorization.
 
-**Read-only operations to implement through an explicit broker**:
-1. list authenticated accessible GA4 properties and GTM accounts/containers;
-2. inspect existing GTM workspaces, tags, triggers, variables, templates, versions, consent configuration;
-3. audit GTM4WP config and active ecommerce/dataLayer event emitters;
-4. query GA4 metadata, existing custom definitions, conversion/key events, linked Ads and event reports;
-5. generate source/version-bound preview of a GTM delta, without import or publication.
+## Owner activation prerequisites
+1. Finish code/CI review and deploy only to **ARE Staging** after approval.
+2. Open the existing MAD4B Google Workspace/Drive connection, enable Analytics and Tag Manager **read** grants explicitly and complete Google owner reconsent. Separate edit scope selection requires a new approval. Do not disclose access/refresh tokens.
+3. Verify GA4/GTM accounts returned by the authenticated APIs, then select exactly one property/container under WordPress Tools → Google Measurement.
+4. Use read inventory to compare GTM4WP bootstrap/events and active existing tags, then generate a workspace plan and explicit approval, with readback before any future publication.
+5. Test GTM Preview, GA4 DebugView, Consent Mode and browser/CAPI deduplication separately.
 
-**Staging gated operations**:
-1. create a workspace tied to exact container + environment;
-2. create/update only approved GA4 custom definitions, or draft GTM entities with exact resource IDs;
-3. re-fetch and compare resources immediately before mutating, reject changed revisions;
-4. run GTM preview/validation, then separately approve publish;
-5. read back version/container identifiers after publish; enable rollback plan and audit receipts.
+## Safeguards
+- Default OFF scopes; no automatic Drive-to-Analytics grant expansion
+- Stored Google tokens remain encrypted using the existing site-bound mechanism
+- No arbitrary Google API request URLs or caller tokens accepted
+- Read requests use strict resource path validation and bounded responses
+- Production remote writes forbidden; Staging writes also blocked until exact approved ticket integration
+- No WooCommerce/Lead event-source duplication or Google container snippet injected by the bridge
+- No personal form values or conversation text in the data layer, API or audit
 
-**Publish is NEVER implied by write authorization**. Production requires an independent explicit approval.
-
-## GTM4WP compatibility / event ownership
-- GTM4WP remains the GTM container bootstrap owner (one snippet per page).
-- MAD4B companion is a provider of travel-specific `dataLayer` business events, not a second GTM bootstrap.
-- WooCommerce: choose **one** event producer per site profile (GTM4WP or MAD4B) after auditing actual emitted events.
-- GA4: one canonical view_item_list, select_item, view_item, generate_lead, purchase per source action; avoid parallel duplicates from enhanced measurement or legacy custom tags.
-- Consent: respect real CMP/Consent Mode; no default consent acceptance.
-- Do not send personal or free-text form fields to the data layer, event attributes or Clarity.
-- Track brand profiles with unique (site_uuid, property_id, container_id) links, never via shared global IDs.
-
-## Acceptance criteria
-- Google connection owner reconsent returns an account-bound identity and adequate scopes (not just Drive).
-- Brand Authority binding identifies exactly one selected GA4 property and GTM container per Site Profile, with explicit switching.
-- Read-only list/diff endpoints work using actual Google APIs with no local token exposure.
-- GTM4WP and MAD4B event ownership matrix is verified against Tag Assistant on Staging.
-- One lead results in one key event per platform; conversion match and dedup evidence retained.
-- GA4 Custom Dimensions read back from Admin API; GA4 events verified in DebugView/reporting.
-- GTM changes go through isolated workspace, dry-run preview, separate publish authorization.
-- All audit and rollback receipts redact OAuth access/refresh tokens and PII.
-- PR #479 local-client behavior remains unchanged.
-
-## Deliberate constraints
-This source-only prototype does not initiate the user's Google OAuth consent, implement Google API HTTP requests, connect GA4/GTM, create Custom Dimensions, or publish a GTM container. Those require the real Google App Connection broker and subsequent reviewed implementation. It does not modify any Staging or Production site.
+## Remaining before claiming end-to-end completion
+- Live Google owner consent and scope selection; site connection currently requires token refresh
+- Independent Google API readbacks, actual property/container ownership verification
+- Exact one-time-ticket approval adapter for Staging draft mutations
+- GTM entity edit/version diff and independently authorized publish/rollback lanes
+- GA4 report/custom definition and GTM4WP live acceptance tests
+- Review and acceptance of the stacked PR before merge/deployment
