@@ -432,6 +432,22 @@ final class MAD4B_SCP_Host_Bridge {
 		if ( ! is_file( $path ) ) return new WP_Error( 'mad4b_host_receipt_missing', 'Host execution receipt is not available.' );
 		$row = self::read_json( $path );
 		if ( is_wp_error( $row ) ) return $row;
+        $seal_path = $spool . '/attestations/' . $job_id . '.json';
+        if ( is_file( $seal_path ) || is_link( $seal_path ) ) {
+            $seal = self::read_json( $seal_path );
+            if ( is_wp_error( $seal ) ) return $seal;
+            if ( ! class_exists( 'MAD4B_SCP_Operator_Receipt_Verifier' ) )
+                return new WP_Error( 'mad4b_operator_receipt_verifier_missing', 'Operator verifier not registered.' );
+            $target = self::target_identity();
+            if ( is_wp_error( $target ) ) return $target;
+            $verified = MAD4B_SCP_Operator_Receipt_Verifier::verify( $row, $seal, $job_id, $target );
+            if ( is_wp_error( $verified ) ) return $verified;
+            return array( 'contract' => 'mad4b.host-operation-receipt-read.v1',
+                'receipt' => $row, 'operator_verification' => $verified, 'mutation_performed' => false );
+        }
+        $claimed_op = (string) ( $row['body']['operation_id'] ?? $row['operation_id'] ?? '' );
+        if ( 0 === strpos( $claimed_op, 'operator.' ) )
+            return new WP_Error( 'mad4b_operator_receipt_seal_missing', 'Operator receipt lacks its original signed job.' );
 		return array( 'contract' => 'mad4b.host-operation-receipt-read.v1', 'receipt' => $row, 'mutation_performed' => false );
 	}
 
