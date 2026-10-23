@@ -5,6 +5,7 @@ parity = (root / 'includes' / 'class-mad4b-scp-remote-operation-parity.php').rea
 skills_lease = (root / 'includes' / 'class-mad4b-scp-managed-skills-lease.php').read_text(encoding='utf-8')
 dispatch = (root / 'includes' / 'class-mad4b-scp-enrollment-dispatch.php').read_text(encoding='utf-8')
 servers = (root / 'includes' / 'class-mad4b-scp-servers.php').read_text(encoding='utf-8') + (Path(__file__).resolve().parents[1] / 'includes/class-mad4b-scp-server-write-catalog.php').read_text(encoding='utf-8')
+servers += (root / 'includes' / 'class-mad4b-scp-server-core-catalog.php').read_text(encoding='utf-8')
 abilities = (root / 'includes' / 'class-mad4b-scp-abilities.php').read_text(encoding='utf-8')
 write_authority = (root / 'includes' / 'class-mad4b-scp-staging-write-authority.php').read_text(encoding='utf-8')
 oauth = (root / 'includes' / 'class-mad4b-scp-oauth-resource-bridge.php').read_text(encoding='utf-8')
