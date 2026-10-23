@@ -115,8 +115,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-convergence.php",
-      "sha256": "54671fdd96d08c0ef201f81da7b94f26cbf71cf4279087711d88caa7f6932e5a",
-      "bytes": 128671
+      "sha256": "588ca53781b269bb15c22695a044ae6757162754f7d1ec71fcdb8bb8031c0d66",
+      "bytes": 140764
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-workspace.php",
@@ -130,8 +130,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "sha256": "a8242a9035c6896834751c3448d324f3d67577ad0e5a7aba452c14c6ec4e4063",
-      "bytes": 52972
+      "sha256": "ff9f2aaabcd6b24eecb40c712a503a8e0f3f263bf2bd20045daa49f69be930c8",
+      "bytes": 54280
     }
   ],
   "test_paths": [
@@ -167,8 +167,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/runtime-convergence-contract.py",
-      "sha256": "5636371cdc87e166915945ae5d9975cb5db485adb40e1b7fdc1978c9fead4d25",
-      "bytes": 8603
+      "sha256": "8f25e9f58598bd33d0ba5d4814d5df59ff799c117235b716ed5a19e65a1927f5",
+      "bytes": 8776
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g8-cron-generation-guard.php",
@@ -211,8 +211,8 @@
   "workflow_paths": [
     {
       "path": ".github/workflows/feature-007-spec-ci.yml",
-      "sha256": "8b594afce5a484ffd1d300db98d244ea4179ff9e66f7d2434bafaa71f9ac365b",
-      "bytes": 60061
+      "sha256": "c7216a6f73d1cf4c461919e1d1085e69479af75b56474db33df473f90f84ad04",
+      "bytes": 60111
     },
     {
       "path": ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
