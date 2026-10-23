@@ -1291,7 +1291,7 @@
         "TICKETS-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/ai-approval-target-context-contract.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-ticket-brand-runtime-regressions.py"
       ],
       "owner_role": "Repository source reviewer — CI-only mapping; neither Staging Write Owner nor Production approval",
       "review_rationale": "Persisted exact ticket input still requires governed risk classification and approved decision.",
@@ -1312,7 +1312,7 @@
         "SECURITY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/ai-approval-target-context-contract.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-ticket-brand-runtime-regressions.py"
       ],
       "owner_role": "Repository source reviewer — CI-only mapping; neither Staging Write Owner nor Production approval",
       "review_rationale": "Brand-bearing post mutation is blocked without an exact Context Receipt even when an AI decision wraps the request.",
@@ -1333,7 +1333,7 @@
         "SECURITY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/content-job-dependency-recovery-contract.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-ticket-brand-runtime-regressions.py"
       ],
       "owner_role": "Repository source reviewer — CI-only mapping; neither Staging Write Owner nor Production approval",
       "review_rationale": "Existing content read operation remains a read-scoped dependency and does not grant publication.",
@@ -1354,7 +1354,7 @@
         "SECURITY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/content-job-dependency-recovery-contract.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-ticket-brand-runtime-regressions.py"
       ],
       "owner_role": "Repository source reviewer — CI-only mapping; neither Staging Write Owner nor Production approval",
       "review_rationale": "An internal nonpublished ContentJob can record the pending tour task while Brand Core is incomplete.",
@@ -1375,7 +1375,7 @@
         "SECURITY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/content-job-dependency-recovery-contract.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-ticket-brand-runtime-regressions.py"
       ],
       "owner_role": "Repository source reviewer — CI-only mapping; neither Staging Write Owner nor Production approval",
       "review_rationale": "The dependency planner is pure read-only and maintains the same job ID and revision for later guarded resume.",
@@ -1396,7 +1396,7 @@
         "SECURITY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/content-job-dependency-recovery-contract.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-ticket-brand-runtime-regressions.py"
       ],
       "owner_role": "Repository source reviewer — CI-only mapping; neither Staging Write Owner nor Production approval",
       "review_rationale": "Skill-get surfaces Brand Core recovery handoff without generating a fraudulent Context Receipt.",
@@ -5459,7 +5459,7 @@
         "SECURITY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/ai-approval-target-context-contract.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-ticket-brand-runtime-regressions.py"
       ],
       "owner_role": "Repository source reviewer — CI-only mapping; neither Staging Write Owner nor Production approval",
       "status": "reviewed_for_ci_only",
@@ -5480,7 +5480,7 @@
         "SECURITY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-native-capability-semantics.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-ticket-brand-runtime-regressions.py"
       ],
       "owner_role": "Repository source reviewer — CI-only mapping; neither Staging Write Owner nor Production approval",
       "status": "reviewed_for_ci_only",
@@ -5501,7 +5501,7 @@
         "SECURITY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/content-job-dependency-recovery-contract.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-ticket-brand-runtime-regressions.py"
       ],
       "owner_role": "Repository source reviewer — CI-only mapping; neither Staging Write Owner nor Production approval",
       "status": "reviewed_for_ci_only",
@@ -5522,7 +5522,7 @@
         "SECURITY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/ai-approval-target-context-contract.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-ticket-brand-runtime-regressions.py"
       ],
       "owner_role": "Repository source reviewer — CI-only mapping; neither Staging Write Owner nor Production approval",
       "status": "reviewed_for_ci_only",
@@ -5564,7 +5564,7 @@
         "SECURITY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/reconnect-hardening-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-ticket-brand-runtime-regressions.py"
       ],
       "owner_role": "Repository source reviewer — CI-only mapping; neither Staging Write Owner nor Production approval",
       "status": "reviewed_for_ci_only",
@@ -5585,7 +5585,7 @@
         "SECURITY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/guided-runtime-convergence-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-ticket-brand-runtime-regressions.py"
       ],
       "owner_role": "Repository source reviewer — CI-only mapping; neither Staging Write Owner nor Production approval",
       "status": "reviewed_for_ci_only",
@@ -5607,7 +5607,7 @@
         "SECURITY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/ai-approval-target-context-contract.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-ticket-brand-runtime-regressions.py"
       ],
       "owner_role": "Repository source reviewer — CI-only mapping; neither Staging Write Owner nor Production approval",
       "status": "reviewed_for_ci_only",
@@ -5628,7 +5628,7 @@
         "SECURITY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/content-job-dependency-recovery-contract.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-ticket-brand-runtime-regressions.py"
       ],
       "owner_role": "Repository source reviewer — CI-only mapping; neither Staging Write Owner nor Production approval",
       "status": "reviewed_for_ci_only",
