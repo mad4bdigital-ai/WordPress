@@ -463,9 +463,17 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 		$dynamic = class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' )
 			? array_fill_keys( MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names(), true )
 			: array();
+		// Reuse the canonical MCP server materialization policy for bounded
+		// profile conveniences. Otherwise those optional tools are counted as
+		// required and cause false mcp_required_catalog_budget_exceeded blocks.
+		// Never classify an unknown provider Ability as optional by metadata alone.
+		$materialized_optional = class_exists( 'MAD4B_SCP_Servers' )
+			&& method_exists( 'MAD4B_SCP_Servers', 'chatgpt_materialization_optional_tools' )
+			? array_fill_keys( MAD4B_SCP_Servers::chatgpt_materialization_optional_tools( $abilities ), true )
+			: array();
 		$optional = array();
 		foreach ( array_values( array_unique( array_map( 'strval', $abilities ) ) ) as $ability_name ) {
-			if ( isset( $dynamic[ $ability_name ] ) ) {
+			if ( isset( $dynamic[ $ability_name ] ) || isset( $materialized_optional[ $ability_name ] ) ) {
 				$optional[] = $ability_name;
 				continue;
 			}
