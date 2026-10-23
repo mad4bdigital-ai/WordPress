@@ -39,11 +39,9 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		add_action( 'admin_notices', array( __CLASS__, 'connection_admin_notice' ), 1 );
 		add_filter( 'rest_pre_dispatch', array( __CLASS__, 'reset_session_policy_scope' ), -200, 3 );
 		add_filter( 'rest_pre_dispatch', array( __CLASS__, 'guard_mcp_rest_dispatch' ), -100, 3 );
-		// Authenticate the bearer, then apply one post-OAuth runtime guard.
 		// Authenticate bearer tokens before classifying Runtime restart grace.
 		// A late phase still checks all gates before execution.
 		add_filter( 'rest_pre_dispatch', array( __CLASS__, 'guard_mcp_authenticated_rest_dispatch' ), 4, 3 );
-
 
 		// MCP Adapter 0.6.x uses a user-meta backed session map shared by MCP servers.
 		// Do not override its global capacity/timeout knobs from a ChatGPT-only fix;
@@ -903,44 +901,6 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		return array_values( array_unique( array_filter( array_map( 'sanitize_key', $blockers ) ) ) );
 	}
 
-	/**
-	 * Only read/discovery traffic can cross a historical checkpoint after
-	 * OAuth subject binding. Existing MCP Ability permission callbacks remain
-	 * mandatory. No write, enrollment, session mutation or grant is permitted.
-	 */
-	public static function guard_historical_mcp_read_after_oauth( $result, $server, $request ) {
-		unset( $server );
-		if ( null !== $result || '/mcp/mad4b-chatgpt' !== self::request_route( $request ) ) return $result;
-		$grace = self::restart_grace_status();
-		if ( empty( $grace['active'] ) || empty( $grace['historical_mcp_read_safe'] ) ) return $result;
-		$authorization = method_exists( $request, 'get_header' )
-			? trim( (string) $request->get_header( 'authorization' ) ) : '';
-		// Preserve the OAuth Resource Bridge's unauthenticated 401 challenge.
-		if ( '' === $authorization && function_exists( 'is_user_logged_in' )
-			&& ! is_user_logged_in() ) return $result;
-		$authenticated = '' !== $authorization
-			&& class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
-			&& MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
-			&& MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is( self::CHATGPT_CLIENT_ID )
-			&& function_exists( 'is_user_logged_in' ) && is_user_logged_in()
-			&& function_exists( 'current_user_can' ) && current_user_can( 'read' );
-		$http_method = method_exists( $request, 'get_method' )
-			? strtoupper( (string) $request->get_method() ) : '';
-		$body = 'POST' === $http_method ? self::request_json( $request ) : array();
-		$rpc_method = is_array( $body ) && isset( $body['method'] ) && is_string( $body['method'] )
-			? $body['method'] : '';
-		$safe_handshake = in_array( $rpc_method, array( 'initialize', 'notifications/initialized' ), true );
-		$read_only = 'GET' === $http_method
-			|| ( 'POST' === $http_method
-				&& ( $safe_handshake || ( is_array( $body ) && self::readonly_transport_request( $body ) ) ) );
-		if ( $authenticated && $read_only ) return $result;
-		return new WP_Error( 'mad4b_mcp_runtime_restart_grace',
-			'Historical Staging checkpoint only permits authenticated diagnostic MCP reads.',
-			array( 'status' => 503, 'retryable' => false,
-				'automatic_retry_allowed' => false, 'client_action' => 'operator_resume_runtime_convergence',
-				'historical_mcp_read_safe' => true, 'mutation_performed' => false ) );
-	}
-
 	public static function guard_mcp_authenticated_rest_dispatch( $result, $server, $request ) {
 		if ( null !== $result || ! is_object( $request ) || ! method_exists( $request, 'get_route' ) ) return $result;
 		$route = '/' . ltrim( rtrim( (string) $request->get_route(), '/' ), '/' );
@@ -952,8 +912,84 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		return self::guard_mcp_rest_dispatch( $result, $server, $request, true );
 	}
 
-	public static function guard_mcp_rest_dispatch( $result, $server, $request, $post_auth_phase = false ) {
 
+	/**
+	 * Allow *only* explicitly classified read/diagnostic MCP methods for an
+	 * already authenticated ChatGPT subject when the sole stale-checkpoint
+	 * obstacle is the independent Staging write-owner gate. Write tools must
+	 * still receive restart_grace until the actual authority is reconciled.
+	 * This is a transport admission, not a tool ability permission grant.
+	 */
+	private static function historical_authenticated_read_tool_admission( $request, $grace, $post_auth_phase ) {
+		if ( ! $post_auth_phase || empty($grace['active']) || empty($grace['historical_mcp_read_safe'])
+			|| ! function_exists('is_user_logged_in') || ! is_user_logged_in()
+			|| ! function_exists('current_user_can') || ! current_user_can('read')
+			|| ! is_object($request) || ! method_exists($request,'get_json_params') ) return false;
+		$rpc = $request->get_json_params();
+		if ( ! is_array($rpc) || ! isset($rpc['method']) || ! is_string($rpc['method']) ) return false;
+		if ( in_array($rpc['method'],array('initialize','notifications/initialized','ping','tools/list'),true) ) return true;
+		if ( 'tools/call' !== $rpc['method'] || ! is_array($rpc['params']??null) ) return false;
+		$name=$rpc['params']['name']??null;
+		if ( ! is_string($name) ) return false;
+		$read_only=array(
+			'mad4b-site-info','mad4b-site-profile-status','mad4b-tool-discover',
+			'mad4b-tool-info','mad4b-read-execute','mad4b-write-discover',
+			'mad4b-write-info','mad4b-operation-discover',
+			'mad4b-provider-closure-matrix','mad4b-session-safe-diagnostics',
+			'mad4b-chatgpt-tool-projection-status','mad4b-chatgpt-tool-projection-discover',
+			'mad4b-chatgpt-tool-projection-plan','mad4b-staging-write-candidate-binding-audit',
+			'mad4b-runtime-gates-handshake','mad4b-full-staging-authority-handshake',
+			'mad4b-enrollment-info','mad4b-enrollment-discover',
+		);
+		if ( in_array( $name, $read_only, true ) ) return true;
+		// A historic self-update may block new Write until the exact Write owner
+		// convergence operation completes. Admit only that purpose-built
+		// recovery tool to its *existing* owner-attested, SHA-pinned executor.
+		// This never admits arbitrary writes, tours, plugin installs or grants.
+		if ( ! in_array( $name, array(
+			'mad4b-staging-write-authority-convergence-apply',
+			'mad4b-enrollment-execute'
+		), true ) || ! current_user_can( 'manage_options' )
+			|| ! class_exists( 'MAD4B_SCP_Environment', false )
+			|| 'staging' !== MAD4B_SCP_Environment::effective()
+			|| ! class_exists( 'MAD4B_SCP_Site_Profile', false )
+			|| ! MAD4B_SCP_Site_Profile::origin_enrolled() ) return false;
+		$dispatch = isset($rpc['params']['arguments']) && is_array($rpc['params']['arguments'])
+			? $rpc['params']['arguments'] : array();
+		$args = $dispatch;
+		if ( 'mad4b-enrollment-execute' === $name ) {
+			if ( 'staging_write_authority_convergence' !== ($dispatch['operation_id']??null)
+				|| ! isset($dispatch['input']) || ! is_array($dispatch['input']) ) return false;
+			foreach( array( 'expected_registration_digest', 'expected_dispatch_policy_digest',
+				'expected_input_schema_sha256' ) as $field ) {
+				if( ! isset($dispatch[$field]) || ! is_string($dispatch[$field])
+					|| 1 !== preg_match( '/^[a-f0-9]{64}$/iD', $dispatch[$field] ) ) return false;
+			}
+			$args = $dispatch['input'];
+		}
+		if ( 'ENABLE GOVERNED STAGING WRITE AUTHORITY' !== ( $args['confirmation'] ?? '' )
+			|| ! isset( $args['expected_plan_sha256'] )
+			|| 1 !== preg_match( '/^[a-f0-9]{64}$/iD', (string)$args['expected_plan_sha256'] ) ) return false;
+		// The exact current runtime identity must match the approved candidate;
+		// the owning apply callback additionally validates site UUID, revision,
+		// profile digest, grants, owner step-up and full plan hash.
+		$identity = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer', false )
+			? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status() : array();
+		if ( empty($identity['identity_ready']) ) return false;
+		foreach( array(
+			'expected_source_commit_sha' => 'source_commit_sha',
+			'expected_build_fingerprint' => 'build_fingerprint',
+			'expected_package_manifest_digest' => 'package_manifest_digest',
+			'expected_artifact_identity' => 'artifact_identity'
+		) as $input => $key ) {
+			if ( ! isset($args[$input], $identity[$key])
+				|| ! is_string($args[$input])
+				|| ! hash_equals((string)$identity[$key], $args[$input]) ) return false;
+		}
+		return true;
+	}
+
+	public static function guard_mcp_rest_dispatch( $result, $server, $request, $post_auth_phase = false ) {
 		if ( null !== $result || ! is_object( $request ) || ! method_exists( $request, 'get_route' ) ) return $result;
 		$route = (string) $request->get_route();
 		$is_chatgpt_resource = self::is_resource_request_path( $route );
@@ -983,14 +1019,14 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			return $result;
 
 		$restart_grace = self::restart_grace_status();
-		// Preserve the dedicated read route; require exact post-OAuth RPC checks
-		// before ChatGPT may read through a verified historical checkpoint.
-		$historical_read_admission = ! empty( $restart_grace['historical_mcp_read_safe'] )
-			&& ( '/mcp/mad4b-read' === $route
-				|| ( $post_auth_phase && '/mcp/mad4b-chatgpt' === $route
-					&& null === self::guard_historical_mcp_read_after_oauth( null, null, $request ) ) );
+		// A historical Staging checkpoint can be safe for the dedicated
+		// read-only endpoint while the independent write-owner gate remains closed.
+		// Never relax ChatGPT, write, content, admin or Developer MCP routes here.
+		$historical_read_admission = ( '/mcp/mad4b-read' === $route
+			&& ! empty( $restart_grace['historical_mcp_read_safe'] ) )
+			|| ( '/mcp/mad4b-chatgpt' === $route
+				&& self::historical_authenticated_read_tool_admission( $request, $restart_grace, $post_auth_phase ) );
 		if ( ! empty( $restart_grace['active'] ) && ! $historical_read_admission ) {
-
 			$retryable = ! array_key_exists( 'retryable', $restart_grace ) || ! empty( $restart_grace['retryable'] );
 			$retry = isset( $restart_grace['retry_after_seconds'] ) ? min( 120, absint( $restart_grace['retry_after_seconds'] ) ) : 0;
 			return new WP_Error( 'mad4b_mcp_runtime_restart_grace', 'MAD4B runtime is completing governed post-update convergence.', array(

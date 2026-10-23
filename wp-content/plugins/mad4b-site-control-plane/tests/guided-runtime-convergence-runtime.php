@@ -68,8 +68,12 @@ $graph = array(
 	'required_blockers' => $blockers,
 	'checkpoint_operator_state' => MAD4B_SCP_Runtime_Convergence::checkpoint_operator_state( $checkpoint, $current_identity, $blockers )
 );
-$can = static function ( $cp, $current, $status, $not_before = 0 ) {
-	return MAD4B_SCP_Runtime_Convergence::historical_mcp_read_safe_snapshot( $cp, $current, $status, $not_before );
+// Test the exact private classifier used by the Staging-certified runtime.
+// Reflection is test-only and does not expose or alter an MCP Ability.
+$historical_classifier = new ReflectionMethod( 'MAD4B_SCP_Runtime_Convergence', 'superseded_checkpoint_mcp_read_safe' );
+$historical_classifier->setAccessible( true );
+$can = static function ( $cp, $current, $status, $not_before = 0 ) use ( $historical_classifier ) {
+	return $historical_classifier->invoke( null, $cp, $current, $not_before, $status );
 };
 assert_guided( $can( $checkpoint, $current_identity, $graph ), 'staging superseded signed release + owner gate allows diagnostics' );
 $changed = $graph;

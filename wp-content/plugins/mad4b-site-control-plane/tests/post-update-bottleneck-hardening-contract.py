@@ -55,7 +55,11 @@ assert "'persisted_checkpoint_pending' => $convergence_pending" in runtime
 assert "'operator_action_required' => $operator_action_required" in runtime
 assert "'superseded_audit_only' === ( $graph['checkpoint_operator_state']['state'] ?? '' )" in runtime
 assert "self::superseded_cached_release_only( $checkpoint, $current, $graph )" in runtime
-assert "array( 'deployment:pending' ) !== ( $graph['required_blockers'] ?? null )" in runtime
+# The Staging-certified gate accepts only an exact owner-only blocker or
+# the exact signed obsolete-release-cache + owner combination.
+assert "array( 'authority_binding:owner_gate' ) !== ( $graph['required_blockers'] ?? null )" in runtime
+assert "array( 'deployment:pending', 'authority_binding:owner_gate' )" in runtime
+assert "self::superseded_cached_release_only( $checkpoint, $current, $graph, true )" in runtime
 
 assert "'waiting_for_exact_runtime_restart'" in runtime
 assert "'pending_manual_resume'" in runtime

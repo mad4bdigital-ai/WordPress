@@ -208,8 +208,15 @@ final class MAD4B_SCP_Runtime_Convergence {
 			|| 'mad4b_automation_automation_kill_switch' !== ( $checkpoint['resume_blocker'] ?? '' )
 			|| 'staging' !== ( $graph['environment'] ?? '' )
 			|| true !== ( $graph['phase_graph_valid'] ?? false )
-			|| array( 'authority_binding:owner_gate' ) !== ( $graph['required_blockers'] ?? null )
 			|| ! self::identity_matches( $current, $graph['current_identity'] ?? array() ) ) return false;
+		// A verified obsolete release cache may add deployment:pending to the
+		// owner-only gate. Permit READ diagnostics, never Write/Enrollment, when
+		// the exact older signed target and all other required phases are safe.
+		$stale_deployment_owner_only = array( 'deployment:pending', 'authority_binding:owner_gate' )
+			=== ( $graph['required_blockers'] ?? null )
+			&& self::superseded_cached_release_only( $checkpoint, $current, $graph, true );
+		if ( array( 'authority_binding:owner_gate' ) !== ( $graph['required_blockers'] ?? null )
+			&& ! $stale_deployment_owner_only ) return false;
 		$target = is_array( $checkpoint['target_identity'] ?? null )
 			? self::bounded_identity( $checkpoint['target_identity'] ) : array();
 		$old_sha = strtolower( trim( (string) ( $target['source_commit_sha'] ?? '' ) ) );
@@ -233,16 +240,20 @@ final class MAD4B_SCP_Runtime_Convergence {
 		foreach ( $phases as $id => $phase ) {
 			if ( ! is_array( $phase )
 				|| ( 'authority_binding' !== $id && ! empty( $phase['required'] )
-					&& 'ready' !== ( $phase['state'] ?? '' ) ) ) return false;
+					&& 'ready' !== ( $phase['state'] ?? '' )
+					&& ! ( $stale_deployment_owner_only && 'deployment' === $id
+						&& 'pending' === ( $phase['state'] ?? '' ) ) ) ) return false;
 		}
 		return true;
 	}
 
-	private static function superseded_cached_release_only( $checkpoint, $current, $graph ) {
+	private static function superseded_cached_release_only( $checkpoint, $current, $graph, $allow_owner_gate = false ) {
 		if ( ! is_array( $graph )
 			|| 'convergence_required' !== ( $graph['state'] ?? '' )
 			|| ! empty( $graph['ready'] ) || true !== ( $graph['phase_graph_valid'] ?? false )
-			|| array( 'deployment:pending' ) !== ( $graph['required_blockers'] ?? null ) ) return false;
+			|| ( $allow_owner_gate
+				? array( 'deployment:pending', 'authority_binding:owner_gate' )
+				: array( 'deployment:pending' ) ) !== ( $graph['required_blockers'] ?? null ) ) return false;
 		$phases = $graph['phases'] ?? null;
 		if ( ! is_array( $phases ) || ! isset( $phases['deployment'] )
 			|| ! is_array( $phases['deployment'] )
@@ -251,7 +262,9 @@ final class MAD4B_SCP_Runtime_Convergence {
 		foreach ( $phases as $phase_id => $phase ) {
 			if ( ! is_array( $phase )
 				|| ( 'deployment' !== $phase_id && ! empty( $phase['required'] )
-					&& 'ready' !== ( $phase['state'] ?? '' ) ) ) return false;
+					&& 'ready' !== ( $phase['state'] ?? '' )
+					&& ! ( $allow_owner_gate && 'authority_binding' === $phase_id
+						&& 'owner_gate' === ( $phase['state'] ?? '' ) ) ) ) return false;
 		}
 		$details = $phases['deployment']['details'] ?? array();
 		$cached = is_array( $details['target_identity'] ?? null ) ? $details['target_identity'] : array();
