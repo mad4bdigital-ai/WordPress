@@ -1,0 +1,27 @@
+name: ARE Unified Operator Session Policy
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-session-policy.php'
+      - 'tests/are-unified-operator-session-policy-smoke.php'
+      - '.github/workflows/are-operator-session-policy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  policy-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show PHP runtime
+        run: php -v
+      - name: PHP syntax check
+        run: |
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-session-policy.php
+          php -l tests/are-unified-operator-session-policy-smoke.php
+      - name: Staging policy smoke test
+        run: php tests/are-unified-operator-session-policy-smoke.php
