@@ -44,7 +44,7 @@ def wordpress_digest(record):
 
 
 def verify_job(submission, seal, public_key_pem, expected_fingerprint,
-               live_session_check, live_approval_check, now=None, expected_runner_profile_id=None):
+               live_session_check, live_approval_check, now=None, expected_runner_profile_id=None, expected_site_uuid=None):
     now = int(time.time()) if now is None else now
     require(callable(live_session_check) and callable(live_approval_check),
             "trusted_live_verifier_required")
@@ -78,6 +78,10 @@ def verify_job(submission, seal, public_key_pem, expected_fingerprint,
             plan.get("production_authorized") is False and
             submission.get("production_authorized") is False,
             "staging_profile_denied")
+    require(isinstance(expected_site_uuid, str) and UUID.fullmatch(expected_site_uuid),
+            "expected_site_uuid_unconfigured")
+    require(plan.get("target", {}).get("site_uuid") == expected_site_uuid,
+            "site_uuid_target_mismatch")
     require(plan.get("target", {}).get("target_fingerprint") == expected_fingerprint,
             "target_fingerprint_drift")
     require(isinstance(plan.get("plan_sha256"), str) and
@@ -94,6 +98,8 @@ def verify_job(submission, seal, public_key_pem, expected_fingerprint,
             isinstance(args.get("payload_sha256"), str) and
             SHA.fullmatch(args["payload_sha256"]), "operator_arguments_invalid")
 
+    require(args.get("site_uuid") == expected_site_uuid,
+            "session_site_uuid_mismatch")
     require(isinstance(args.get("payload"), dict) and
             hashlib.sha256(canonical_json(args["payload"])).hexdigest() ==
             args["payload_sha256"], "signed_semantic_payload_digest_mismatch")
