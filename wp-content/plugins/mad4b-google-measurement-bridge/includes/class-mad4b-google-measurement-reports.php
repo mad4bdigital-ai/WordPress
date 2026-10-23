@@ -17,6 +17,9 @@ final class MAD4B_Google_Measurement_Reports {
         'engagementRate','averageSessionDuration','userEngagementDuration','screenPageViews',
         'keyEvents','sessionKeyEventRate','ecommercePurchases','purchaseRevenue',
         'itemsViewed','itemsClickedInList','itemsViewedInList');
+    public static function boot() {
+        add_action('admin_post_mad4b_measurement_report_save',array(__CLASS__,'save_admin'));
+    }
     public static function presets() {
         return array(
             'tour_funnel'=>array('dimensions'=>array('eventName'),
@@ -61,6 +64,30 @@ final class MAD4B_Google_Measurement_Reports {
         $b=MAD4B_Google_Measurement_Admin::binding();
         return !empty($b['ready'])?$b:false;
     }
+    public static function save_admin() {
+        if (!current_user_can('manage_options') || !check_admin_referer('mad4b_measurement_report_save')) wp_die('Permission denied.');
+        $b=self::gate();
+        if (!$b) wp_die('Exact site and selected GA4 property required.');
+        $name=isset($_POST['report_name'])?sanitize_key(wp_unslash($_POST['report_name'])):'';
+        if (!preg_match('/^[a-z][a-z0-9_]{1,39}$/D',$name)) wp_die('Invalid report key.');
+        $input=array(
+            'dimensions'=>isset($_POST['dimensions'])?array_filter(array_map('trim',explode(',',sanitize_text_field(wp_unslash($_POST['dimensions']))))):array(),
+            'metrics'=>isset($_POST['metrics'])?array_filter(array_map('trim',explode(',',sanitize_text_field(wp_unslash($_POST['metrics']))))):array(),
+            'days'=>isset($_POST['days'])?(int)$_POST['days']:28,
+            'limit'=>isset($_POST['limit'])?(int)$_POST['limit']:100,
+        );
+        $def=self::normalize($input);
+        if (is_wp_error($def)) wp_die('Unsupported report fields.');
+        $all=get_option(self::OPTIONS,array());if (!is_array($all))$all=array();
+        $site=hash('sha256',$b['site_uuid'].':'.$b['ga4_property']);
+        $list=isset($all[$site])&&is_array($all[$site])?$all[$site]:array();
+        if (count($list)>=20&&!isset($list[$name])) wp_die('Report definition quota exceeded.');
+        $list[$name]=$def;
+        $all[$site]=$list;
+        update_option(self::OPTIONS,$all,false);
+        wp_safe_redirect(admin_url('tools.php?page=mad4b-google-measurement&report_saved=1'));
+        exit;
+    }
     public static function catalog($input=array()) {
         if (!self::gate()) return new WP_Error('mad4b_measurement_not_authorized','Exact site binding required.');
         return array('contract'=>self::CONTRACT,'presets'=>self::presets(),
@@ -78,6 +105,12 @@ final class MAD4B_Google_Measurement_Reports {
         $b=self::gate();
         if (!$b) return new WP_Error('mad4b_measurement_not_authorized','Exact site binding required.');
         if (!is_array($input)) return new WP_Error('mad4b_measurement_invalid_report','Expected an object.');
+        $saved_name=isset($input['saved_report'])?(string)$input['saved_report']:'';
+        if ($saved_name!=='') {
+            $saved=self::saved();
+            if (!isset($saved[$saved_name])) return new WP_Error('mad4b_measurement_unknown_saved_report','Saved report key was not found.');
+            $input=$saved[$saved_name];
+        }
         $def=self::normalize($input);
         if (is_wp_error($def)) return $def;
         $token=MAD4B_Google_Measurement_API::token(MAD4B_Google_Measurement_Bridge::SCOPE_GA4_READ);
@@ -117,7 +150,22 @@ final class MAD4B_Google_Measurement_Reports {
                 'metrics'=>array('type'=>'array','items'=>array('type'=>'string','enum'=>self::METRICS),'maxItems'=>5),
                 'days'=>array('type'=>'integer','minimum'=>1,'maximum'=>365),
                 'limit'=>array('type'=>'integer','minimum'=>1,'maximum'=>500),
-                'event_name'=>array('type'=>'string','maxLength'=>40)));
+                'event_name'=>array('type'=>'string','maxLength'=>40),
+                'saved_report'=>array('type'=>'string','pattern'=>'^[a-z][a-z0-9_]{1,39}
+        foreach (array('mad4b/google-measurement-report-catalog'=>'catalog',
+            'mad4b/google-measurement-report-run'=>'run') as $name=>$method) {
+            if (function_exists('wp_has_ability')&&wp_has_ability($name)) continue;
+            wp_register_ability($name,array('label'=>$name,'description'=>'Read-only custom GA4 report definitions and execution.',
+                'category'=>'mad4b-read','execute_callback'=>array(__CLASS__,$method),
+                'permission_callback'=>array('MAD4B_Google_Measurement_Bridge','gate'),
+                'input_schema'=>$schema,'output_schema'=>array('type'=>'object','additionalProperties'=>true),
+                'meta'=>array('public'=>false,'show_in_rest'=>false,
+                    'mcp'=>array('public'=>false,'type'=>'tool','surface'=>'read'),
+                    'annotations'=>array('readonly'=>true,'destructive'=>false,'idempotent'=>true))));
+        }
+    }
+}
+)));
         foreach (array('mad4b/google-measurement-report-catalog'=>'catalog',
             'mad4b/google-measurement-report-run'=>'run') as $name=>$method) {
             if (function_exists('wp_has_ability')&&wp_has_ability($name)) continue;
