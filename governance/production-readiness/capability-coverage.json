@@ -1280,6 +1280,132 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing OAuth, MCP, execution, platform, update and security controls cover this isolated audited Direct operation without new privilege or Production authorization.",
       "execution_note": "Same PR executable Python wrapper invokes hermetic PHP Direct profile fixture. No remote privileged staging/production execution certified."
+    },
+    {
+      "id": "ability:mad4b/approval-plan",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "SECURITY-01",
+        "TICKETS-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-approval-target-context-contract.php"
+      ],
+      "owner_role": "Repository source reviewer — CI-only mapping; neither Staging Write Owner nor Production approval",
+      "review_rationale": "Persisted exact ticket input still requires governed risk classification and approved decision.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP, OAuth, ticket, execution and source-review controls apply; the operation does not grant authority or change Production settings.",
+      "execution_note": "Verified unit and contract tests are source-level evidence only; authenticated live acceptance for this GitHub HEAD remains outstanding and no Production promotion is granted."
+    },
+    {
+      "id": "ability:mad4b/content-create-post",
+      "control_ids": [
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "MCP-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-approval-target-context-contract.php"
+      ],
+      "owner_role": "Repository source reviewer — CI-only mapping; neither Staging Write Owner nor Production approval",
+      "review_rationale": "Brand-bearing post mutation is blocked without an exact Context Receipt even when an AI decision wraps the request.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP, OAuth, ticket, execution and source-review controls apply; the operation does not grant authority or change Production settings.",
+      "execution_note": "Verified unit and contract tests are source-level evidence only; authenticated live acceptance for this GitHub HEAD remains outstanding and no Production promotion is granted."
+    },
+    {
+      "id": "ability:mad4b/content-get-post",
+      "control_ids": [
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "MCP-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-job-dependency-recovery-contract.php"
+      ],
+      "owner_role": "Repository source reviewer — CI-only mapping; neither Staging Write Owner nor Production approval",
+      "review_rationale": "Existing content read operation remains a read-scoped dependency and does not grant publication.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP, OAuth, ticket, execution and source-review controls apply; the operation does not grant authority or change Production settings.",
+      "execution_note": "Verified unit and contract tests are source-level evidence only; authenticated live acceptance for this GitHub HEAD remains outstanding and no Production promotion is granted."
+    },
+    {
+      "id": "ability:mad4b/content-job-create",
+      "control_ids": [
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "MCP-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-job-dependency-recovery-contract.php"
+      ],
+      "owner_role": "Repository source reviewer — CI-only mapping; neither Staging Write Owner nor Production approval",
+      "review_rationale": "An internal nonpublished ContentJob can record the pending tour task while Brand Core is incomplete.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP, OAuth, ticket, execution and source-review controls apply; the operation does not grant authority or change Production settings.",
+      "execution_note": "Verified unit and contract tests are source-level evidence only; authenticated live acceptance for this GitHub HEAD remains outstanding and no Production promotion is granted."
+    },
+    {
+      "id": "ability:mad4b/content-job-dependency-plan",
+      "control_ids": [
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "MCP-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-job-dependency-recovery-contract.php"
+      ],
+      "owner_role": "Repository source reviewer — CI-only mapping; neither Staging Write Owner nor Production approval",
+      "review_rationale": "The dependency planner is pure read-only and maintains the same job ID and revision for later guarded resume.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP, OAuth, ticket, execution and source-review controls apply; the operation does not grant authority or change Production settings.",
+      "execution_note": "Verified unit and contract tests are source-level evidence only; authenticated live acceptance for this GitHub HEAD remains outstanding and no Production promotion is granted."
+    },
+    {
+      "id": "ability:mad4b/skill-get",
+      "control_ids": [
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "MCP-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-job-dependency-recovery-contract.php"
+      ],
+      "owner_role": "Repository source reviewer — CI-only mapping; neither Staging Write Owner nor Production approval",
+      "review_rationale": "Skill-get surfaces Brand Core recovery handoff without generating a fraudulent Context Receipt.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP, OAuth, ticket, execution and source-review controls apply; the operation does not grant authority or change Production settings.",
+      "execution_note": "Verified unit and contract tests are source-level evidence only; authenticated live acceptance for this GitHub HEAD remains outstanding and no Production promotion is granted."
     }
   ],
   "lifecycle": [],
@@ -5321,6 +5447,197 @@
       "coverage_reuse_rationale": "Existing OAuth, Schema, MCP, Runtime, Security, performance, and governed authority controls apply. No Production, Write, Developer, or Breakglass authority is granted.",
       "review_rationale": "ARE Staging proved a malformed/invalid Bearer was incorrectly classified as 503 restart_grace before OAuth evaluation. An exact early rest_pre_dispatch guard now defers only bearer-bearing /mcp/mad4b-chatgpt to the existing OAuth bridge at priority 1, then an additional guard at priority 4 gates the verified subject against restart, maintenance and reconnect. Invalid or missing Bearer receives 401 + WWW-Authenticate, valid authenticated mutations are not authorized by this change. Tested live for Bearer malformed/invalid/missing; PHP reconnect-hardening runtime proves early defer, preserved OAuth 401, and late 503 maintenance guard. Production and ETG unchanged.",
       "execution_note": "Five exact PHP sources were first applied and verified on isolated staging.allroyalegypt.com. Verified: home 200, REST 200, MCP Read anonymous 403, MCP ChatGPT anonymous 401, RFC9728 well-known 200, anonymous initialize 401 plus WWW-Authenticate; executable PHP regressions in this PR fail closed. Live authenticated MCP acceptance and Production/ETG deployment remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/semantic-content-field-contracts.json",
+      "source_blob_sha": "c050249c67d6b811f1f82d94106f2612dc7aead0",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "MCP-01",
+        "PROVIDERS-02",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-approval-target-context-contract.php"
+      ],
+      "owner_role": "Repository source reviewer — CI-only mapping; neither Staging Write Owner nor Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing security, MCP, governance and capability-specific controls apply without broadening authority, modifying environments or enabling Production writes.",
+      "review_rationale": "The approval wrapper resolves the target ability via its persisted ticket and does not blanket-approve unknown nested fields.",
+      "execution_note": "Verified unit and contract tests are source-level evidence only; authenticated live acceptance for this GitHub HEAD remains outstanding and no Production promotion is granted."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-native-provider-bridge-adapter.php",
+      "source_blob_sha": "d51bc2af290ef152ec19645810eb546fc7aac179",
+      "control_ids": [
+        "EXECUTION-01",
+        "MCP-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-native-capability-semantics.php"
+      ],
+      "owner_role": "Repository source reviewer — CI-only mapping; neither Staging Write Owner nor Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing security, MCP, governance and capability-specific controls apply without broadening authority, modifying environments or enabling Production writes.",
+      "review_rationale": "Native WordPress provider checks preserve existing dynamic capability and provider semantics.",
+      "execution_note": "Verified unit and contract tests are source-level evidence only; authenticated live acceptance for this GitHub HEAD remains outstanding and no Production promotion is granted."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php",
+      "source_blob_sha": "df864b1fffd1dd7a460b77d16e4b8a3387e9cec6",
+      "control_ids": [
+        "AUTOMATION-01",
+        "MCP-01",
+        "PERFORMANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-job-dependency-recovery-contract.php"
+      ],
+      "owner_role": "Repository source reviewer — CI-only mapping; neither Staging Write Owner nor Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing security, MCP, governance and capability-specific controls apply without broadening authority, modifying environments or enabling Production writes.",
+      "review_rationale": "Durable content jobs provide read-only Brand Core dependency planning and revision-fenced continuation.",
+      "execution_note": "Verified unit and contract tests are source-level evidence only; authenticated live acceptance for this GitHub HEAD remains outstanding and no Production promotion is granted."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-preflight.php",
+      "source_blob_sha": "82872895ced9e8f834d9409d73202b0c9dee6b8c",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "MCP-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-approval-target-context-contract.php"
+      ],
+      "owner_role": "Repository source reviewer — CI-only mapping; neither Staging Write Owner nor Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing security, MCP, governance and capability-specific controls apply without broadening authority, modifying environments or enabling Production writes.",
+      "review_rationale": "Context preflight rejects unmatched ticket identity and brand text lacking an exact signed receipt.",
+      "execution_note": "Verified unit and contract tests are source-level evidence only; authenticated live acceptance for this GitHub HEAD remains outstanding and no Production promotion is granted."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-truth.php",
+      "source_blob_sha": "6b81a8ae6a774af05f14715be109d685a31d55c1",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "MCP-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-refresh-hotpath-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only mapping; neither Staging Write Owner nor Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing security, MCP, governance and capability-specific controls apply without broadening authority, modifying environments or enabling Production writes.",
+      "review_rationale": "Passive live-truth source reads avoid expensive stale-cache processing while preserving server-side freshness checks.",
+      "execution_note": "Verified unit and contract tests are source-level evidence only; authenticated live acceptance for this GitHub HEAD remains outstanding and no Production promotion is granted."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-reconnect-hardening.php",
+      "source_blob_sha": "42962368f6dfc9d803d8ecaad8280bc4337588ab",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "MCP-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/reconnect-hardening-runtime.php"
+      ],
+      "owner_role": "Repository source reviewer — CI-only mapping; neither Staging Write Owner nor Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing security, MCP, governance and capability-specific controls apply without broadening authority, modifying environments or enabling Production writes.",
+      "review_rationale": "Actual ARE Staging-tested Transport is copied byte-for-byte: OAuth checks run before restricted historical diagnostic admission, while explicit governed write convergence remains SHA and owner gated.",
+      "execution_note": "Verified unit and contract tests are source-level evidence only; authenticated live acceptance for this GitHub HEAD remains outstanding and no Production promotion is granted."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-convergence.php",
+      "source_blob_sha": "1b7cbb97bdc4cad4ffb94c6902c9a58b9727d640",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "MCP-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/guided-runtime-convergence-runtime.php"
+      ],
+      "owner_role": "Repository source reviewer — CI-only mapping; neither Staging Write Owner nor Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing security, MCP, governance and capability-specific controls apply without broadening authority, modifying environments or enabling Production writes.",
+      "review_rationale": "ARE Staging-tested runtime only treats exact obsolete checkpoint and owner/verified obsolete release blockers as safe for diagnostics; it never clears write authority.",
+      "execution_note": "Verified unit and contract tests are source-level evidence only; authenticated live acceptance for this GitHub HEAD remains outstanding and no Production promotion is granted."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-content-field-contracts.php",
+      "source_blob_sha": "0fe583f7e39e2cee27777643ddbaa6e2c7f875c5",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "MCP-01",
+        "PROVIDERS-02",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-approval-target-context-contract.php"
+      ],
+      "owner_role": "Repository source reviewer — CI-only mapping; neither Staging Write Owner nor Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing security, MCP, governance and capability-specific controls apply without broadening authority, modifying environments or enabling Production writes.",
+      "review_rationale": "Ticket-bound semantic classification reuses target abilities, rejects mismatched providers, and preserves brand-bearing guard.",
+      "execution_note": "Verified unit and contract tests are source-level evidence only; authenticated live acceptance for this GitHub HEAD remains outstanding and no Production promotion is granted."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-abilities.php",
+      "source_blob_sha": "d88a31ab5699da49719614426616031bae901df4",
+      "control_ids": [
+        "AUTOMATION-01",
+        "MCP-01",
+        "PERFORMANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-job-dependency-recovery-contract.php"
+      ],
+      "owner_role": "Repository source reviewer — CI-only mapping; neither Staging Write Owner nor Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing security, MCP, governance and capability-specific controls apply without broadening authority, modifying environments or enabling Production writes.",
+      "review_rationale": "Skill guidance explicitly retains unfinished content job and reports missing Brand Core controls without automatic approval.",
+      "execution_note": "Verified unit and contract tests are source-level evidence only; authenticated live acceptance for this GitHub HEAD remains outstanding and no Production promotion is granted."
     }
   ],
   "code_change_rules": {
