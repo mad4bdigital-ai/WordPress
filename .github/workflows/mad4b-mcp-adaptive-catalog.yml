@@ -1,0 +1,37 @@
+name: MAD4B MCP Adaptive Catalog
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-catalog-budget.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-catalog-diagnostics.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/mcp-catalog-adaptive-budget.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/mcp-client-compatibility-contract.py'
+      - '.github/workflows/mad4b-mcp-adaptive-catalog.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  adaptive-budget:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: PHP and policy source validity
+        run: |
+          php -v
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-catalog-budget.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-catalog-diagnostics.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/mcp-catalog-adaptive-budget.php
+      - name: Verify six bounded adaptive budget cases
+        run: |
+          for scenario in default unmeasured healthy slow site_drift invalid; do
+            MAD4B_CATALOG_TEST_SCENARIO="$scenario" php wp-content/plugins/mad4b-site-control-plane/tests/mcp-catalog-adaptive-budget.php
+          done
+      - name: Ensure all MCP catalog integrations use shared policy
+        run: python3 wp-content/plugins/mad4b-site-control-plane/tests/mcp-client-compatibility-contract.py
