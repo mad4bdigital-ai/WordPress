@@ -224,3 +224,6 @@ The topology audit now reports `profile_market_budget_node_hints` when a configu
 - Search Intelligence → Profile settings now guide operators to **Add target market** for ordinary market expansion rather than directing them to manually edit advanced JSON. The existing revision-fenced Profile plan/apply/verify path, original market-identity guards and paused/frozen requirements are retained.
 - Other admin settings still require separate, domain-specific design review. Do not add a parallel configuration store or bypass first-party providers to make a field look simpler.
 - Regression test `tests/guided-admin-forms.php` checks the presence of guided forms and their canonical validation/save routes. This is source-level coverage, not end-to-end Staging browser acceptance.
+
+### Guided Search provider controls
+The Search Intelligence operator-control form now selects a provider from `MAD4B_SCP_Search_Providers::adapters()` rather than asking for a raw provider ID. Exact Target ID entry is retained in an explicit Advanced target control section. The POST action, nonce, revision fencing and typed provider/target control contracts are unchanged. Account quotas and money limits remain read-only indicators; this is not a new budget writer or spending authorization.
