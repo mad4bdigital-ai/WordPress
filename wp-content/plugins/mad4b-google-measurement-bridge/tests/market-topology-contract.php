@@ -10,6 +10,8 @@ $required=array(
  "'mutation_performed'=>false",
  'missing_provider_location_mappings',
  'market_id',
+ 'profile_market_budget_node_hints',
+ 'Multiple market identities target country',
  'profile_id'
 );
 foreach($required as $marker)if(strpos($src,$marker)===false){fwrite(STDERR,"Missing bounded market audit invariant: $marker\n");exit(1);}
