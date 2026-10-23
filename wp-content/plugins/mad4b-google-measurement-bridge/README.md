@@ -145,3 +145,10 @@ Keyword Ideas → Historical Metrics → GSC Organic Queries → Intent/Clusters
 - Validate WordPress Abilities discovery and return envelopes in ARE Staging.
 - Improve semantic clustering with SERP evidence, intent models and multilingual synonym dictionaries; simple token overlap currently may over-segment.
 - Create governed stored research jobs, configurable scoring models, ad-group CSV/export, WP content-job handoff, and approved automation, which are **not implemented** in this increment.
+
+## Persistent Keyword Research Drafts & Handoff Plans (2026-10-23)
+- `mad4b/keyword-projects-read`: list/get drafts scoped to Site Profile UUID + digest + WordPress operator; no public listing.
+- `mad4b/keyword-projects-save`: explicit local draft save only with a valid WordPress owner nonce; 25 projects/operator and 500 keywords/project maximum. Admin form in Tools → Google Measurement obtains a nonce and saves without publishing content.
+- `mad4b/keyword-handoff-plan`: immutable SHA-256 proposal binding project, keyword snapshot, site UUID and destination (`content_job` or `ads_ad_group`). No external API changes or WP CPT creation. Lists required brand context, SERP/cannibalization checks, approval and Google account prerequisites.
+- CI PHP syntax remains only a syntactic gate. Execution/permission testing must run against reviewed ARE Staging runtime after deployment and owner OAuth.
+- Not yet implemented: managed SERP crawler, competitor enrichment, semantic clustering, Content Job creation, Ads ad-group creation, recurring job orchestration, exact one-time Google mutation tickets, AI generated editorial briefs verified against sources. Do not interpret handoff plans as executed operations.
