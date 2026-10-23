@@ -12,7 +12,7 @@ final class MAD4B_Google_Keyword_Research {
  private static function normalize($input) {
   if (!is_array($input)) return self::bad('keyword_bad_request','Expected an object.');
   $action=(string)($input['action']??'ideas');
-  if (!in_array($action,array('ideas','historical','themes'),true)) return self::bad('keyword_invalid_action','Invalid keyword operation.');
+  if (!in_array($action,array('ideas','historical'),true)) return self::bad('keyword_invalid_action','Invalid keyword operation.');
   $words=$input['keywords']??array();
   if (!is_array($words)||count($words)>1000) return self::bad('keyword_invalid_words','Invalid keyword collection.');
   $words=array_values(array_unique(array_map('trim',$words)));
@@ -20,7 +20,7 @@ final class MAD4B_Google_Keyword_Research {
    if (!is_string($word)||strlen($word)<2||strlen($word)>80||
        preg_match('/[\x00-\x1f<>]/',$word))
     return self::bad('keyword_invalid_word','Keywords must be safe bounded phrases.');
-  $max=$action==='ideas'?20:($action==='themes'?20:1000);
+  $max=$action==='ideas'?20:1000;
   if (count($words)>$max) return self::bad('keyword_too_many','Seed/metrics keyword limit exceeded.');
   $url=trim((string)($input['page_url']??''));
   if ($url!=='' && ($action!=='ideas' || strlen($url)>700 ||
@@ -61,12 +61,11 @@ final class MAD4B_Google_Keyword_Research {
    $body['pageSize']=$n['page_size'];
    if ($n['page_token']!=='')$body['pageToken']=$n['page_token'];
   } elseif ($n['action']==='historical') $body['keywords']=$n['keywords'];
-  else $body['keywords']=$n['keywords'];
   return $body;
  }
  private static function call_provider($customer,$manager,$action,$body) {
   $route=$action==='ideas'?'generateKeywordIdeas':
-   ($action==='historical'?'generateKeywordHistoricalMetrics':'generateAdGroupThemes');
+   'generateKeywordHistoricalMetrics';
   $token=MAD4B_Google_Measurement_API::token(self::SCOPE);
   if (is_wp_error($token))return $token;
   $headers=array('Authorization'=>'Bearer '.$token,'Content-Type'=>'application/json','Accept'=>'application/json');
@@ -98,7 +97,6 @@ final class MAD4B_Google_Keyword_Research {
     'close_variants'=>$row['closeVariants']??array());
    if (count($result)>=1000)break;
   }
-  if ($action==='themes')return array('themes'=>$json['adGroupThemes']??$json['results']??array());
   return array('keywords'=>$result,'next_page_token'=>(string)($json['nextPageToken']??''),
     'total_size'=>$json['totalSize']??null);
  }
@@ -132,11 +130,11 @@ final class MAD4B_Google_Keyword_Research {
   $n='mad4b/google-ads-keyword-research';
   if (function_exists('wp_has_ability')&&wp_has_ability($n))return;
   wp_register_ability($n,array('label'=>'Google Ads Keyword Research',
-   'description'=>'Discover keyword ideas, historic demand/competition and grouping themes from explicitly consented Ads customer.',
+   'description'=>'Discover keyword ideas and historic demand/competition from explicitly consented Ads customer.',
    'category'=>'mad4b-read','execute_callback'=>array(__CLASS__,'run'),
    'permission_callback'=>array('MAD4B_Google_Measurement_Bridge','gate'),
    'input_schema'=>array('type'=>'object','additionalProperties'=>false,
-    'properties'=>array('action'=>array('type'=>'string','enum'=>array('ideas','historical','themes')),
+    'properties'=>array('action'=>array('type'=>'string','enum'=>array('ideas','historical')),
       'keywords'=>array('type'=>'array','maxItems'=>1000,'items'=>array('type'=>'string','minLength'=>2,'maxLength'=>80)),
       'page_url'=>array('type'=>'string','maxLength'=>700),
       'language_id'=>array('type'=>'string','pattern'=>'^[0-9]+$'),
