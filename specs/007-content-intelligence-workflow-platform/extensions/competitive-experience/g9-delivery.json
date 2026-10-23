@@ -78,8 +78,8 @@
   "evidence_integrity": [
     {
       "path": ".github/workflows/feature-007-spec-ci.yml",
-      "sha256": "8b594afce5a484ffd1d300db98d244ea4179ff9e66f7d2434bafaa71f9ac365b",
-      "bytes": 60061
+      "sha256": "c7216a6f73d1cf4c461919e1d1085e69479af75b56474db33df473f90f84ad04",
+      "bytes": 60111
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-adversarial-closure.md",
@@ -143,8 +143,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "sha256": "a8242a9035c6896834751c3448d324f3d67577ad0e5a7aba452c14c6ec4e4063",
-      "bytes": 52972
+      "sha256": "ff9f2aaabcd6b24eecb40c712a503a8e0f3f263bf2bd20045daa49f69be930c8",
+      "bytes": 54280
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g9-ability-collision-runtime.php",
@@ -158,8 +158,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g9-delivery-contract.py",
-      "sha256": "5e03735c9bb1fb3e44f7e6222e0fec23c3e8171ec8da1658e0758b809fad26a6",
-      "bytes": 9003
+      "sha256": "9de459975163a8cac67bb71964dbbd74beb089491f0caedff37a00d91c54dfb3",
+      "bytes": 10119
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g9-fleet-rollout-runtime.php",
