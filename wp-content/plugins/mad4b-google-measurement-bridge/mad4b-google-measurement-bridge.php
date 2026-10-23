@@ -25,6 +25,7 @@ final class MAD4B_Google_Measurement_Bridge {
         MAD4B_Google_Measurement_Admin::boot();
         MAD4B_Google_Measurement_Reports::boot();
         MAD4B_Google_Measurement_Ads::boot();
+        MAD4B_Keyword_Projects::boot();
         add_filter('mad4b_google_measurement_broker_grant', array(__CLASS__, 'broker_grant'), 10, 2);
         add_action('wp_abilities_api_init', array(__CLASS__, 'register'), 45);
         add_action('wp_abilities_api_init', array('MAD4B_Google_Measurement_API', 'register'), 46);
