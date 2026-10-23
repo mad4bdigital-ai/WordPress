@@ -28,10 +28,13 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-catalog-budget.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-catalog-diagnostics.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/mcp-catalog-adaptive-budget.php
+          php -l tests/remote-execution/chatgpt-optional-catalog-smoke.php
       - name: Verify six bounded adaptive budget cases
         run: |
           for scenario in default unmeasured healthy slow site_drift invalid; do
             MAD4B_CATALOG_TEST_SCENARIO="$scenario" php wp-content/plugins/mad4b-site-control-plane/tests/mcp-catalog-adaptive-budget.php
           done
+      - name: Verify extracted reviewed optional materialization boundaries
+        run: php tests/remote-execution/chatgpt-optional-catalog-smoke.php
       - name: Ensure all MCP catalog integrations use shared policy
         run: python3 wp-content/plugins/mad4b-site-control-plane/tests/mcp-client-compatibility-contract.py
