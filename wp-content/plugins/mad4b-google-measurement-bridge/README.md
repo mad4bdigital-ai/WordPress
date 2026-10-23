@@ -176,3 +176,19 @@ Keyword Research uses the same underlying Search Intelligence evidence or review
 
 To use live SERP: discover a certified Search Profile/provider in the existing control-plane and follow its budget/capture plan/apply/reconcile contracts. If the provider is missing or ineligible, fail closed; do not try a separate Keyword Research HTTP request. No new live SERP capture is claimed in this PR.
 
+
+## Plugin-wide overlap audit and canonical ownership (2026-10-23)
+| Function | Canonical owner | Google Measurement Bridge responsibility |
+| --- | --- | --- |
+| Google OAuth/token refresh | `MAD4B_SCP_Google_Drive_Context` | Reuse explicit opt-in grants; no new OAuth server |
+| SERP provider configuration, keys, quota, egress, capture | Feature 007 `MAD4B_SCP_Search_*` | **Do not own or duplicate** |
+| SERP immutable snapshots, competitor/evidence storage | Feature 007 Search Intelligence and `MAD4B_SCP_Research_Intelligence` | Analyze supplied evidence in memory only; no alternative persisted evidence ledger |
+| Keyword working projects | Existing Bridge `MAD4B_Keyword_Projects` | Operator-scoped drafts only, not canonical evidence |
+| Content job execution and brand authority | Core Site Control Plane Brand/Content operation providers | Handoff proposals only until exact approved executor exists |
+| Google Ads/GA4/GTM/Search Console HTTP APIs | Dedicated scoped connector clients in Bridge | Bounded public Google API operations; never bypass core OAuth |
+| GTM4WP and Rank Math configuration | Existing WordPress plugins | Redacted, read-only diagnostics only |
+| Production mutations, approval claims, auditing | MAD4B Site Control Plane | No local substitute approval or direct publishing lane |
+
+**New:** `mad4b/keyword-canonical-search-read` delegates `status`, `discover` and `cohort` to canonical `MAD4B_SCP_Search_Runtime`, requires a valid Search Profile for the latter two, makes no paid or external calls, and never stores a competing SERP snapshot. `tests/no-parallel-provider.php` runs in CI to reject direct SERP endpoints, duplicate paid-request abilities or credential constants.
+
+**Observed ARE Staging:** `mad4b/search-status` returned `UNCONFIGURED`, with two provider descriptors and zero fresh observations. The `mad4b/search-discover` attempt without a configured profile failed `mad4b_search_store_key_invalid`; this is not proof of eligible paid capture. Do not fabricate a profile, market, credential or budget. Configure the existing Search Intelligence authority and verify account/provider certification before a `capture-plan`, then apply only with exact authorized admission and reconcile unknown effects.
