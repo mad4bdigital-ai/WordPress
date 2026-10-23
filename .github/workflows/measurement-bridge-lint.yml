@@ -1,0 +1,19 @@
+name: Measurement Bridge Lint
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-google-measurement-bridge/**'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php'
+      - '.github/workflows/measurement-bridge-lint.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  lint-php:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP syntax checks
+        run: |
+          find wp-content/plugins/mad4b-google-measurement-bridge -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php
