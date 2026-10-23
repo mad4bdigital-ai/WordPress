@@ -52,9 +52,25 @@ final class MAD4B_Google_Measurement_Mutation {
         $binding = array('site_uuid'=>(string)$profile['site_uuid'],
             'profile_digest'=>(string)$profile['profile_digest'],
             'environment'=>(string)($profile['configured_environment'] ?? ''));
-        $sha = hash('sha256',wp_json_encode(array('operation'=>$normalized,'site'=>$binding), JSON_UNESCAPED_SLASHES));
+        $google_status=MAD4B_Google_Measurement_Bridge::connection_status();
+        $grant_identity=class_exists('MAD4B_SCP_Google_Drive_Context')
+            ? MAD4B_SCP_Google_Drive_Context::encrypted_grant_identity_sha256() : '';
+        if (is_wp_error($grant_identity)) $grant_identity='';
+        // Approval expires with site/profile, actor, resource selection,
+        // Google connection scope projection, or encrypted grant identity.
+        $basis=array('operation'=>$normalized,'site'=>$binding,
+            'resource_binding'=>$binding['site_uuid'] . ':' .
+                $binding['ga4_property'] . ':' . $binding['gtm_container'],
+            'actor_user_id'=>(int)get_current_user_id(),
+            'google_grant_identity'=>$grant_identity,
+            'google_scope_modes'=>array(
+                'analytics'=>$google_status['analytics_mode'] ?? 'off',
+                'tag_manager'=>$google_status['tag_manager_mode'] ?? 'off'));
+        $sha = hash('sha256',wp_json_encode($basis, JSON_UNESCAPED_SLASHES));
         return array('contract'=>self::CONTRACT,'operation'=>$normalized,'site'=>$binding,
-            'plan_sha256'=>$sha,'write_executed'=>false,'publish_executed'=>false,
+            'plan_sha256'=>$sha,'oauth_scopes_ready'=>!empty($google_status['connected']),
+            'google_grant_identity_bound'=>$grant_identity!=='',
+            'write_executed'=>false,'publish_executed'=>false,
             'requires_separate_ticket'=>true,'dry_run'=>true);
     }
     private static function post($url, $payload, $scope) {
@@ -92,6 +108,8 @@ final class MAD4B_Google_Measurement_Mutation {
         // subject+resource IDs, and decline concurrent/replayed requests.
         if ($approved!==true)
             return new WP_Error('mad4b_measurement_write_authority_unavailable','Exact approval ticket was not verified.');
+        if (empty($plan['oauth_scopes_ready']) || empty($plan['google_grant_identity_bound']))
+            return new WP_Error('mad4b_measurement_google_scope_not_ready','Owner Google OAuth scope and grant identity must be ready.');
         $op=$plan['operation'];
         if ($op['action']==='ga4_create_dimension') {
             $endpoint=MAD4B_Google_Measurement_API::GA_ADMIN.$op['resource_id'].'/customDimensions';
