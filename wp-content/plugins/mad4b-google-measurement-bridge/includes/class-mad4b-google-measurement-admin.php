@@ -55,6 +55,15 @@ final class MAD4B_Google_Measurement_Admin {
         echo '<p><label>MCC login customer ID (optional) <input name="login_customer_id" pattern="[0-9]{10}" value="'.esc_attr(!empty($ads['ready'])?$ads['login_customer_id']:'').'" size="20"/></label></p>';
         submit_button('Bind Google Ads customer (no Ads mutation)');
         echo '</form>';
+        echo '<hr/><h2>Keyword Research Projects</h2>';
+        echo '<p>Save an owner-scoped draft keyword list; this never creates Ads campaigns or publishes WordPress content.</p>';
+        echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
+        echo '<input type="hidden" name="action" value="mad4b_keyword_project_save"/>';
+        wp_nonce_field('mad4b_keyword_project_save');
+        echo '<p><label>Research project title <input name="title" required maxlength="120" size="55"/></label></p>';
+        echo '<p><label>Keywords (one per line) <textarea name="keywords" rows="7" cols="70" required></textarea></label></p>';
+        submit_button('Save Keyword Research draft');
+        echo '</form>';
         echo '<hr/><h2>Custom GA4 Reports</h2>';
         echo '<p>Definitions are saved in WordPress for this site and GA4 property. They do not create reports inside the Google Analytics interface.</p>';
         $defs=MAD4B_Google_Measurement_Reports::saved();
