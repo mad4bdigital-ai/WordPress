@@ -5839,7 +5839,7 @@
         "SECURITY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/context-oauth-lifecycle-runtime.php"
+        "tests/search_guided_readiness_regression.py"
       ],
       "review_rationale": "CI-only source review of expanded Google Workspace Full Apps Suite scope catalog and guarded incremental consent; test covers scope count, missing-scope detection, revocation and least-privilege. No OAuth grant, production authority or token mutation is granted by this entry.",
       "owner_role": "Plugin maintainer / automated CI source review",
@@ -5855,7 +5855,7 @@
         "PERFORMANCE-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/search-guided-provider-control.php"
+        "tests/search_guided_readiness_regression.py"
       ],
       "review_rationale": "CI-only review of provider picker using registered adapters and preserving revision/nonce control gates; no budget reservation, paid provider capture or production authorization.",
       "owner_role": "Plugin maintainer / automated CI source review",
@@ -5872,8 +5872,7 @@
         "SECURITY-02"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-profile-admin-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/search-guided-profile-runtime.php"
+        "tests/search_guided_readiness_regression.py"
       ],
       "review_rationale": "CI-only review of neutral Profile naming, immutable Market IDs, paused/frozen market edits, provider location validation and revision-fenced profile-plan/apply/verify; browser acceptance remains separate and mandatory before staging certification.",
       "owner_role": "Plugin maintainer / automated CI source review",
