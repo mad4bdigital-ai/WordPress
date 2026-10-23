@@ -9,6 +9,7 @@ abilities = (ROOT / "includes/class-mad4b-scp-abilities.php").read_text(encoding
 staging = (ROOT / "includes/class-mad4b-scp-staging-certification.php").read_text(encoding="utf-8")
 parity = (ROOT / "includes/class-mad4b-scp-remote-operation-parity.php").read_text(encoding="utf-8")
 servers = (ROOT / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8")
+servers += (ROOT / "includes/class-mad4b-scp-server-core-catalog.php").read_text(encoding="utf-8")
 main = (ROOT / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 contract = (ROOT.parents[2] / "specs/007-content-intelligence-workflow-platform/contracts/connector-resilience.md").read_text(encoding="utf-8")
 
