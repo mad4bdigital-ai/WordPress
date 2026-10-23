@@ -78,7 +78,8 @@ final class MAD4B_SCP_Operator_Receipt_Verifier {
             return new WP_Error( 'mad4b_operator_receipt_verification_denied', 'Worker receipt is not a verified Staging execution.' );
         if ( ! is_int( $body['completed_at_epoch'] ?? null ) ||
              (int) $body['completed_at_epoch'] < (int) ( $signed['issued_at_epoch'] ?? 0 ) ||
-             (int) $body['completed_at_epoch'] > time() + 30 )
+             (int) $body['completed_at_epoch'] > time() + 30 ||
+             (int) $body['completed_at_epoch'] > (int) ( $signed['session_expires_at_epoch'] ?? 0 ) )
             return new WP_Error( 'mad4b_operator_receipt_time_invalid', 'Worker receipt time is invalid.' );
         $key = self::worker_public_key();
         if ( is_wp_error( $key ) ) return $key;
