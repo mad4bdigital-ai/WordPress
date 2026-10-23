@@ -91,6 +91,10 @@ def verify_job(submission, seal, public_key_pem, expected_fingerprint,
             isinstance(args.get("payload_sha256"), str) and
             SHA.fullmatch(args["payload_sha256"]), "operator_arguments_invalid")
 
+    require(isinstance(args.get("payload"), dict) and
+            hashlib.sha256(canonical_json(args["payload"])).hexdigest() ==
+            args["payload_sha256"], "signed_semantic_payload_digest_mismatch")
+
     expected_body = {
         "contract": CONTRACT,
         "job_id": job,
