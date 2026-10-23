@@ -80,7 +80,7 @@ def run_tests(impact, head, timeout):
             ok = result.returncode == 0
             if name in STANDALONE_PHP_REGRESSIONS:
                 # A zero-exit stub is not sufficient evidence of a test.
-                ok = ok and bool(re.search(r"(?m)^PASS(?::|\\s)", result.stdout))
+                ok = ok and bool(re.search(r"(?m)^PASS(?::|\s)", result.stdout))
             tail = (result.stdout + "\n" + result.stderr)[-5000:]
             outcome = "PASS" if ok else "FAIL"
             code = result.returncode
