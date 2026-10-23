@@ -35,7 +35,7 @@ final class MAD4B_Google_Measurement_Bridge {
         );
         return $providers;
     }
-    private static function gate() {
+    public static function gate() {
         if (!current_user_can('manage_options')) return false;
         if (class_exists('MAD4B_SCP_Policy') && !MAD4B_SCP_Policy::can_read()) return false;
         return true;
@@ -54,8 +54,8 @@ final class MAD4B_Google_Measurement_Bridge {
     }
     public static function inventory() {
         if (!self::gate()) return new WP_Error('mad4b_measurement_permission_denied', 'Read authority required.');
-        $gtm4wp_active = is_plugin_active('duracelltomi-google-tag-manager/duracelltomi-google-tag-manager-for-wordpress.php')
-            || is_plugin_active('gtm4wp/gtm4wp.php');
+        $gtm4wp_active = (function_exists('is_plugin_active') && is_plugin_active('duracelltomi-google-tag-manager/duracelltomi-google-tag-manager-for-wordpress.php'))
+            || (function_exists('is_plugin_active') && is_plugin_active('gtm4wp/gtm4wp.php'));
         if (!$gtm4wp_active) {
             foreach ((array)get_option('active_plugins', array()) as $name) {
                 if (stripos((string)$name, 'duracelltomi-google-tag-manager') !== false || stripos((string)$name, 'gtm4wp') !== false) {
