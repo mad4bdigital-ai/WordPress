@@ -8,6 +8,7 @@ challenge = (root / 'includes/class-mad4b-scp-oauth-challenge-alignment.php').re
 registry = (root / 'includes/class-mad4b-scp-mcp-client-profile-registry.php').read_text(encoding='utf-8')
 servers = (root / 'includes/class-mad4b-scp-servers.php').read_text(encoding='utf-8')
 catalog_diagnostics = (root / 'includes/class-mad4b-scp-mcp-catalog-diagnostics.php').read_text(encoding='utf-8')
+reviewed_bootstrap = (root / 'includes/class-mad4b-scp-chatgpt-approval-bootstrap.php').read_text(encoding='utf-8')
 projection = (root / 'includes/class-mad4b-scp-chatgpt-tool-projection.php').read_text(encoding='utf-8')
 full_authority = (root / 'includes/class-mad4b-scp-full-staging-authority.php').read_text(encoding='utf-8')
 self_update = (root / 'includes/class-mad4b-scp-self-update.php').read_text(encoding='utf-8')
@@ -221,8 +222,10 @@ for marker in [
     assert marker in fallback, f'missing non-Staging session-safe fallback marker: {marker}'
 assert 'self::write_tools()' not in fallback, 'non-Staging fallback must not merge the governed write catalog directly'
 assert '$approval_bootstrap = self::chatgpt_approval_bootstrap_tools();' in servers, 'approval bootstrap must be explicitly reviewed and bounded'
-assert "'staging' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )" in servers, 'approval bootstrap must deny non-Staging exposure'
-assert "self::ability_is_mounted( 'mad4b-write', $ability_name )" in servers, 'approval bootstrap needs governed Write mounting'
+assert "'staging' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )" in reviewed_bootstrap, 'approval bootstrap must deny non-Staging exposure'
+assert "MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability_name )" in reviewed_bootstrap, 'approval bootstrap needs governed Write mounting'
+assert "MAD4B_SCP_ChatGPT_Approval_Bootstrap::catalog_tools()" in servers
+assert "MAD4B_SCP_ChatGPT_Approval_Bootstrap::materialization_optional_tools( $requested_tools )" in servers
 
 direct_read = servers.split('public static function chatgpt_direct_read_transport_tools()', 1)[1].split('public static function chatgpt_dispatch_transport_tools()', 1)[0]
 assert "'mad4b/session-safe-diagnostics'" in direct_read, 'session-safe diagnostics missing from direct ChatGPT read allowlist'
