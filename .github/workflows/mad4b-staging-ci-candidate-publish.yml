@@ -3,7 +3,7 @@ name: MAD4B Exact Staging CI Candidate Publisher
 on:
   workflow_dispatch:
     inputs:
-      pull_request:
+      pr_number:
         description: "Open same-repository PR number"
         type: string
         required: true
