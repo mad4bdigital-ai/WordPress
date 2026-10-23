@@ -32,13 +32,15 @@ def main() -> None:
 
     direct = SOURCES[0].read_text(encoding="utf-8")
     servers = SOURCES[1].read_text(encoding="utf-8")
+    reviewed_optional = (ROOT / "includes/class-mad4b-scp-chatgpt-approval-bootstrap.php").read_text(encoding="utf-8")
     main_plugin = SOURCES[2].read_text(encoding="utf-8")
     assert "MAD4B_SCP_Direct_Profile::boot()" in main_plugin
     assert "self::chatgpt_direct_read_transport_tools()" in servers
     assert "MAD4B_SCP_Direct_Profile::catalog_tools()" in servers
     assert "MAD4B_SCP_Direct_Profile::write_tools()" in servers
     assert "MAD4B_SCP_Direct_Profile::read_tools()" in servers
-    assert "$management, $dynamic_optional, $reviewed, $profile_tools" in servers, "Existing reviewed Dynamic catalog must take precedence over optional Direct profile"
+    assert "$management, $dynamic_optional, $reviewed, $profile_tools" in reviewed_optional, "Existing reviewed Dynamic catalog must take precedence over optional Direct profile"
+    assert "MAD4B_SCP_ChatGPT_Approval_Bootstrap::materialization_optional_tools" in servers
     assert "'mad4b-direct', 'MAD4B Direct Authenticated MCP'" not in servers
     assert "'mad4b-direct'" not in servers
     assert "const SERVER = 'mad4b-chatgpt'" in direct
