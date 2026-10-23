@@ -44,8 +44,8 @@ check( $both === array( 'mad4b/approval-plan', 'mad4b/approval-ai-decide' ), 'on
 $requested = array( 'mad4b/write-execute', 'mad4b/approval-plan', 'mad4b/approval-ai-decide',
     'demo/optional-read', 'mad4b/site-profile-view', 'demo/foreign-ability' );
 $optional = MAD4B_SCP_ChatGPT_Approval_Bootstrap::materialization_optional_tools( $requested );
-check( $optional === array( 'mad4b/approval-plan', 'mad4b/approval-ai-decide',
-    'demo/optional-read', 'mad4b/site-profile-view' ), 'optional classification excludes required transport and foreign ability' );
+check( $optional === array( 'demo/optional-read', 'mad4b/approval-plan',
+    'mad4b/approval-ai-decide', 'mad4b/site-profile-view' ), 'optional classification excludes required transport and foreign ability' );
 $GLOBALS['env'] = 'production';
 check( MAD4B_SCP_ChatGPT_Approval_Bootstrap::catalog_tools() === array(), 'Production approval bootstrap hidden' );
 unset( $GLOBALS['env'] );
