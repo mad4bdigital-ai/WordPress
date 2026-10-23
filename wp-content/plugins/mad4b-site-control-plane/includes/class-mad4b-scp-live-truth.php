@@ -57,6 +57,9 @@ final class MAD4B_SCP_Live_Truth {
 
 	private static function recover_runtime_authority() {
 		if ( self::$recovering ) return;
+		// Passive WP-CLI bootstrap is not an operator authority-status request.
+		// Explicit WP-CLI calls to current_authority_status() remain unaffected.
+		if ( defined( 'WP_CLI' ) && WP_CLI ) return;
 		// Merely materializing the Abilities registry for MCP initialize/tools-list
 		// must not trigger full authority/grant/provider reconciliation reads.
 		// Explicit status/certification tool calls still execute current truth.
