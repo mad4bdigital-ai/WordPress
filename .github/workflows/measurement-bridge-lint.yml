@@ -17,3 +17,5 @@ jobs:
         run: |
           find wp-content/plugins/mad4b-google-measurement-bridge -type f -name '*.php' -print0 | xargs -0 -n1 php -l
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php
+      - name: Reject duplicate SERP providers
+        run: php wp-content/plugins/mad4b-google-measurement-bridge/tests/no-parallel-provider.php
