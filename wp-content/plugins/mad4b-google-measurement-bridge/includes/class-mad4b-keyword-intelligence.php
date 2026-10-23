@@ -10,7 +10,17 @@ final class MAD4B_Keyword_Intelligence {
  private static function tokens($s) {
   $parts=preg_split('/[^\p{L}\p{N}]+/u',self::phrase($s),-1,PREG_SPLIT_NO_EMPTY);
   $stop=array('the','a','an','and','of','in','to','for','في','من','على','عن','الى','إلى','و');
-  return array_values(array_unique(array_diff(is_array($parts)?$parts:array(),$stop)));
+  $synonyms=array(
+    'trips'=>'tour','tours'=>'tour','excursions'=>'tour','excursion'=>'tour',
+    'رحلات'=>'رحلة','الرحلات'=>'رحلة','جولات'=>'جولة','الجولات'=>'جولة',
+    'فنادق'=>'فندق','الفنادق'=>'فندق','حجوزات'=>'حجز','الحجز'=>'حجز',
+    'اسعار'=>'سعر','أسعار'=>'سعر','الاسعار'=>'سعر','prices'=>'price');
+  $normalized=array();
+  foreach((is_array($parts)?$parts:array()) as $part){
+   if(in_array($part,$stop,true))continue;
+   $normalized[]=$synonyms[$part]??$part;
+  }
+  return array_values(array_unique($normalized));
  }
  private static function intent($s) {
   $s=self::phrase($s);
@@ -76,6 +86,7 @@ final class MAD4B_Keyword_Intelligence {
        'suggested_output'=>'editorial_brief_for_review','publish_authorized'=>false);},array_values($clusters)),
    'notes'=>array('Intent is a lexical heuristic, not an ML or SERP validation.',
     'Scores are comparative and provisional, never SEO ranking difficulty.',
+    'Arabic and English synonym mapping is curated and limited; multilingual embeddings and SERP similarity are not active.',
     'No Google data was fetched by this local analysis operation.'),
    'ad_group_drafts'=>array_map(static function($c){
      $keyword_rows=array();
