@@ -87,6 +87,19 @@ final class MAD4B_Google_Measurement_API {
         $page = isset($input['page_token']) ? (string)$input['page_token'] : '';
         if (strlen($page) > 250 || ($page && !preg_match('/^[A-Za-z0-9_=-]+$/D', $page)))
             return new WP_Error('mad4b_measurement_invalid_page_token','Invalid page token.');
+        // Accounts may be discovered pre-binding. Property/container-scoped
+        // reads must match the exact resource selected in Brand Authority.
+        $binding = MAD4B_Google_Measurement_Admin::binding();
+        $ga_scoped = array('ga4_custom_dimensions','ga4_key_events','ga4_events_report','ga4_sources_report');
+        $gtm_scoped = array('gtm_workspaces','gtm_workspace_status','gtm_live_version','gtm_tags','gtm_triggers','gtm_variables','gtm_workspace_status','gtm_live_version');
+        if (in_array($action,$ga_scoped,true)) {
+            if (empty($binding['ready']) || $id !== $binding['ga4_property'])
+                return new WP_Error('mad4b_measurement_property_binding_mismatch','Selected GA4 property does not match Brand Authority.');
+        } else if (in_array($action,$gtm_scoped,true)) {
+            if (empty($binding['ready']) || ($id !== $binding['gtm_container'] &&
+                strpos($id,$binding['gtm_container'].'/') !== 0))
+                return new WP_Error('mad4b_measurement_container_binding_mismatch','Selected GTM container does not match Brand Authority.');
+        }
         $q = array('pageSize'=>50);
         if ($page !== '') $q['pageToken'] = $page;
         switch ($action) {
@@ -110,6 +123,12 @@ final class MAD4B_Google_Measurement_API {
             case 'gtm_containers':
                 if (!preg_match('/^accounts\/([0-9]+)$/D', $id)) return self::invalid();
                 return self::get(self::GTM,$id.'/containers',MAD4B_Google_Measurement_Bridge::SCOPE_GTM_READ,$q);
+            case 'gtm_live_version':
+                if (!preg_match('~^accounts/[0-9]+/containers/[0-9]+$~D',$id)) return self::invalid();
+                return self::get(self::GTM,$id.'/versions:live',MAD4B_Google_Measurement_Bridge::SCOPE_GTM_READ);
+            case 'gtm_workspace_status':
+                if (!preg_match('~^accounts/[0-9]+/containers/[0-9]+/workspaces/[0-9]+$~D',$id)) return self::invalid();
+                return self::get(self::GTM,$id.'/status',MAD4B_Google_Measurement_Bridge::SCOPE_GTM_READ);
             case 'gtm_workspaces':
                 if (!preg_match('/^accounts\/[0-9]+\/containers\/[0-9]+$/D', $id)) return self::invalid();
                 return self::get(self::GTM,$id.'/workspaces',MAD4B_Google_Measurement_Bridge::SCOPE_GTM_READ,$q);
