@@ -6434,6 +6434,28 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Current bounded catalog, MCP execution and security controls cover optional classification alignment. No larger catalog, bearer policy relaxation, grant or deployment exception is introduced.",
       "execution_note": "Source-level test checks classification parity, runtime MCP client compatibility matrix must pass on current exact HEAD before acceptance. No deployment or authority is inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-catalog-diagnostics.php",
+      "source_blob_sha": "9ddec0819dc679a5396b6a43cf21bebd3939bc6b",
+      "review_rationale": "MCP Catalog preflight and final tools/list now classify Direct Profile convenience Abilities using the same reviewed server materialization policy. The existing 36-tool hard budget is unchanged, foreign provider expansion cannot make new required tools and core transport abilities remain non-optional.",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-client-compatibility-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no deployment or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Bounded catalog, policy and security controls already govern optional schema materialization; no increase of catalog cap, admission scope or mutation capability.",
+      "execution_note": "Changed source and invariant checked locally; real Local OAuth and three MCP compatibility integration jobs must execute successfully on exact HEAD before runtime certification."
     }
   ],
   "code_change_rules": {
