@@ -244,6 +244,15 @@ jobs:
               throw new RuntimeException( "OAuth-only enrollment unexpectedly enabled governed write authority." );
           }
           ' --path="$WP_PATH" --user=mad4b-ci-admin
+          # Enrollment occurs during WP-CLI execution, after the request's early OAuth bootstrap.
+          # Re-enter WordPress in a fresh process to materialize the enrolled, guarded
+          # local OAuth configuration before checking its persisted readback.
+          php /tmp/wp-cli.phar eval '
+          $status = MAD4B_SCP_Staging_OAuth_Autoconfig::bootstrap();
+          if ( empty( $status["configured"] ) || (int) $status["wp_user_id"] !== 1 ) {
+              throw new RuntimeException( "Fresh-request local OAuth bootstrap failed after Site Profile enrollment: " . ( $status["blocker"] ?? "unknown" ) );
+          }
+          ' --path="$WP_PATH" --user=mad4b-ci-admin
           test "$(php /tmp/wp-cli.phar option get mad4b_scp_staging_oauth_autoconfig_v1 --format=json --path="$WP_PATH" | php -r '$v=json_decode(stream_get_contents(STDIN),true); echo isset($v["wp_user_id"]) ? (int)$v["wp_user_id"] : 0;')" = "1"
 
       - name: Prove local key, metadata, JWT, token-ledger and Staging canary invariants
