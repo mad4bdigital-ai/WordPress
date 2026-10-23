@@ -218,3 +218,9 @@ To use live SERP: discover a certified Search Profile/provider in the existing c
 
 ### Market budget diagnostics increment
 The topology audit now reports `profile_market_budget_node_hints` when a configured profile budget node explicitly selects the market ID, and warns about duplicate country identities or missing market-specific nodes. These are *hints only*: the true spend authority lives in provider-account budget state and exact reservations, so even a matching profile node does **not** certify market spend isolation. No market capture is authorized by these diagnostics.
+
+## Guided admin UX — incremental rollout
+- Google Measurement → Custom GA4 Reports now offers a **Quick report from template** form backed directly by the existing server-side `MAD4B_Google_Measurement_Reports::presets()` and `normalize()`. The raw dimension/metric lists remain in a collapsed **Advanced GA4 report definition** section. Saved reports are local site/GA4-property definitions; no Google mutation.
+- Search Intelligence → Profile settings now guide operators to **Add target market** for ordinary market expansion rather than directing them to manually edit advanced JSON. The existing revision-fenced Profile plan/apply/verify path, original market-identity guards and paused/frozen requirements are retained.
+- Other admin settings still require separate, domain-specific design review. Do not add a parallel configuration store or bypass first-party providers to make a field look simpler.
+- Regression test `tests/guided-admin-forms.php` checks the presence of guided forms and their canonical validation/save routes. This is source-level coverage, not end-to-end Staging browser acceptance.
