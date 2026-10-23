@@ -74,6 +74,18 @@ final class MAD4B_Google_Measurement_Admin {
             }
             echo '</tbody></table>';
         }
+        echo '<h3>Quick report from template</h3><p>Choose a built-in GA4 report. The server validates dimensions and metrics against the template, with no raw JSON or field-list editing.</p>';
+        echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
+        echo '<input type="hidden" name="action" value="mad4b_measurement_report_save"/>';
+        wp_nonce_field('mad4b_measurement_report_save');
+        echo '<p><label for="mad4b-report-preset">Report template</label> <select id="mad4b-report-preset" name="preset" required>';
+        foreach (MAD4B_Google_Measurement_Reports::presets() as $key=>$preset)
+            echo '<option value="'.esc_attr($key).'">'.esc_html(str_replace('_',' ',ucwords($key,'_'))).' — '.esc_html($preset['description']).'</option>';
+        echo '</select></p>';
+        echo '<p><label>Save as <input name="report_name" required pattern="[a-z][a-z0-9_]*" maxlength="40" value="travel_overview"/></label></p>';
+        echo '<p><label>Period (days) <input name="days" type="number" min="1" max="365" value="28"/></label> <label>Max rows <input name="limit" type="number" min="1" max="500" value="100"/></label></p>';
+        submit_button('Save guided GA4 report (local definition only)');
+        echo '</form><details><summary>Advanced GA4 report definition</summary><p>For custom GA4 dimensions and metrics. Unsupported names are rejected server-side.</p>';
         echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
         echo '<input type="hidden" name="action" value="mad4b_measurement_report_save"/>';
         wp_nonce_field('mad4b_measurement_report_save');
@@ -83,7 +95,7 @@ final class MAD4B_Google_Measurement_Admin {
         echo '<p><label>Days <input name="days" type="number" min="1" max="365" value="28"/></label></p>';
         echo '<p><label>Rows <input name="limit" type="number" min="1" max="500" value="100"/></label></p>';
         submit_button('Save report definition (no Google write)');
-        echo '</form></div>';
+        echo '</form></details></div>';
     }
     public static function save() {
         if (!current_user_can('manage_options') || !check_admin_referer('mad4b_google_measurement_bind'))
