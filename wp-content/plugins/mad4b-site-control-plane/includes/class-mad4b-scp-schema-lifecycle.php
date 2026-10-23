@@ -69,6 +69,21 @@ final class MAD4B_SCP_Schema_Lifecycle {
 	}
 
 	public static function maybe_schedule() {
+		// Isolated VPS local-site frontend GET/HEAD traffic is presentation,
+		// not an implicit schema-migration worker. This optimization is only
+		// active for an explicitly bound Local Client identity. WP-CLI,
+		// scheduled tasks, AJAX, REST, admin and explicit reconciler calls
+		// retain their previous governed scheduling and write boundaries.
+		if ( function_exists( 'wp_get_environment_type' )
+			&& 'local' === wp_get_environment_type()
+			&& class_exists( 'MAD4B_SCP_Local_Client', false )
+			&& ! ( defined( 'WP_CLI' ) && WP_CLI )
+			&& ! ( defined( 'DOING_CRON' ) && DOING_CRON )
+			&& ! ( defined( 'DOING_AJAX' ) && DOING_AJAX )
+			&& ! ( defined( 'REST_REQUEST' ) && REST_REQUEST )
+			&& function_exists( 'is_admin' ) && ! is_admin()
+			&& in_array( strtoupper( (string) ( $_SERVER['REQUEST_METHOD'] ?? 'GET' ) ), array( 'GET', 'HEAD' ), true )
+			&& MAD4B_SCP_Local_Client::bound() ) return;
 		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false ) && MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) return;
 		// A self-update that requires manual operator resumption must not
 		// repeatedly construct the full Runtime readiness graph on normal

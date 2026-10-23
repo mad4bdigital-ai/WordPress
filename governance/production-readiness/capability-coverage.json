@@ -5681,6 +5681,89 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing WordPress/MCP/OAuth, execution policy, provider isolation and performance controls remain enforced; a passive command fastpath does not grant authority or certify Production.",
       "execution_note": "Source fixture test is executed under the existing bounded Python CI regression wrapper. ARE original-hosting Staging experiment was restored byte-identically after measurement."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "e0bb704403d3b79e58dfdcf91af0c0195f0ab931",
+      "control_ids": [
+        "PLATFORM-01",
+        "PERFORMANCE-01",
+        "MCP-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-ticket-brand-runtime-regressions.py"
+      ],
+      "owner_role": "Repository source/security reviewer — CI-only; neither owner provisioning nor Production activation",
+      "review_rationale": "Loads bound local-only Local Client behind explicit local environment plus site UUID; preserves previous WP-CLI/MCP/REST lifecycle and all existing write authority gates.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing WordPress, MCP, OAuth, permission and schema reconciliation governance remains authoritative; no authorization or deployment is granted by this source review.",
+      "execution_note": "The bounded regression wrapper executes the exact new standalone PHP Local Client isolation and default-denial fixture. Operational host-client acceptance and pending-request producer are not supplied by the VPS source."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-client.php",
+      "source_blob_sha": "97b925eb7cee475945324732be13d299cd2b6d57",
+      "control_ids": [
+        "SECURITY-01",
+        "MCP-01",
+        "OAUTH-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-ticket-brand-runtime-regressions.py"
+      ],
+      "owner_role": "Repository source/security reviewer — CI-only; neither owner provisioning nor Production activation",
+      "review_rationale": "VPS local-only identity and exact site origin validation; never inherits OAuth, writing or developer/breakglass permission. Existing site owner policy still governs local reads/writes.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing WordPress, MCP, OAuth, permission and schema reconciliation governance remains authoritative; no authorization or deployment is granted by this source review.",
+      "execution_note": "The bounded regression wrapper executes the exact new standalone PHP Local Client isolation and default-denial fixture. Operational host-client acceptance and pending-request producer are not supplied by the VPS source."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-client-admin.php",
+      "source_blob_sha": "0d8d1100a8c722d1e8151695948571c6d64383f2",
+      "control_ids": [
+        "SECURITY-01",
+        "OAUTH-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-ticket-brand-runtime-regressions.py"
+      ],
+      "owner_role": "Repository source/security reviewer — CI-only; neither owner provisioning nor Production activation",
+      "review_rationale": "Imports local-only admin panel. Credential issue is independently disabled by default, requires admin nonce and exact bound pending request and secure external vault; no request producer is included.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing WordPress, MCP, OAuth, permission and schema reconciliation governance remains authoritative; no authorization or deployment is granted by this source review.",
+      "execution_note": "The bounded regression wrapper executes the exact new standalone PHP Local Client isolation and default-denial fixture. Operational host-client acceptance and pending-request producer are not supplied by the VPS source."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema-lifecycle.php",
+      "source_blob_sha": "9bd664bc838fe91d805dc9eddc0dca51c221624b",
+      "control_ids": [
+        "PERFORMANCE-01",
+        "PLATFORM-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-ticket-brand-runtime-regressions.py"
+      ],
+      "owner_role": "Repository source/security reviewer — CI-only; neither owner provisioning nor Production activation",
+      "review_rationale": "Defers implicit schema scheduling only for an exact bound local frontend GET/HEAD, while preserving cron, admin, AJAX, REST, WP-CLI and explicit reconciler lifecycle.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing WordPress, MCP, OAuth, permission and schema reconciliation governance remains authoritative; no authorization or deployment is granted by this source review.",
+      "execution_note": "The bounded regression wrapper executes the exact new standalone PHP Local Client isolation and default-denial fixture. Operational host-client acceptance and pending-request producer are not supplied by the VPS source."
     }
   ],
   "code_change_rules": {

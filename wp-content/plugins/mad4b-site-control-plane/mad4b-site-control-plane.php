@@ -247,6 +247,15 @@ MAD4B_SCP_Assistant_Solution_Router::boot();
 MAD4B_SCP_Assistant_Operator_Workspace::boot();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-governed-runtime-gates.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-policy.php';
+// The VPS Local Client experiment is opt-in and *only* loads on a local,
+// explicitly site-UUID-pinned installation. No Local Client UI, credential
+// provisioning or local authority is exposed on Staging/Production.
+if ( function_exists( 'wp_get_environment_type' )
+    && 'local' === wp_get_environment_type()
+    && defined( 'MAD4B_LOCAL_CLIENT_SITE_UUID' ) ) {
+    require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-client.php';
+    require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-client-admin.php';
+}
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connector-resilience.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-read-consistency.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-audit.php';
