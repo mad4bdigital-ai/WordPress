@@ -5,6 +5,10 @@ $context=dirname(__DIR__).'/includes/search/class-mad4b-scp-search-context.php';
 $a=file_get_contents($base);$c=file_get_contents($context);
 $need=array(
  'additional_market_countries',
+ "'add_market' === \$input['operation']",
+ 'market_duplicate_country',
+ 'profile_targeting_requires_pause_and_spend_freeze',
+ 'Add market and verify',
  "\$base = 'search-main'",
  'count( $additional ) > 63',
  'isset( $seen_countries[ $country ] )',
