@@ -71,7 +71,22 @@ final class MAD4B_SCP_Search_Profile_Admin {
 			if ( is_wp_error( $languages ) || is_wp_error( $extra ) || is_wp_error( $engines ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_form_invalid' );
 			$languages = array_values( array_unique( array_merge( $languages, $extra ) ) );
 			if ( ! $languages || ! $engines || count( $languages ) > 64 ) return MAD4B_SCP_Search_Contracts::error( 'profile_form_invalid' );
-			$raw = array( 'profile_id' => $profile_id, 'brand_id' => $input['brand_id'], 'enabled' => false, 'markets' => array( array( 'id' => $market_id, 'country' => $market_country ) ), 'language_policy' => array( 'desired' => $languages ), 'provider_policy' => array( 'allowed' => array_values( array_unique( $providers ) ), 'engines' => $engines, 'freeze_spend' => true ) );
+			// Feature 007 accepts up to 64 markets per Profile. Keep the first
+			// market identity unchanged and derive collision-resistant IDs for extras.
+			$markets = array( array( 'id' => $market_id, 'country' => $market_country ) );
+			$extra_countries = isset( $input['additional_market_countries'] ) ? $input['additional_market_countries'] : '';
+			if ( ! is_string( $extra_countries ) || strlen( $extra_countries ) > 512 ) return MAD4B_SCP_Search_Contracts::error( 'profile_form_invalid' );
+			$additional = array_filter( array_map( 'trim', explode( ',', strtoupper( $extra_countries ) ) ) );
+			if ( count( $additional ) > 63 ) return MAD4B_SCP_Search_Contracts::error( 'market_invalid' );
+			$seen_countries = array( $market_country => true );
+			foreach ( $additional as $country ) {
+				if ( ! preg_match( '/^[A-Z]{2}$/D', $country ) || isset( $seen_countries[ $country ] ) ) return MAD4B_SCP_Search_Contracts::error( 'market_invalid' );
+				$seen_countries[ $country ] = true;
+				$extra_id = 'market-' . strtolower( $country ) . '-' . substr( hash( 'sha256', $profile_id . ':' . $country ), 0, 12 );
+				if ( $extra_id === $market_id ) return MAD4B_SCP_Search_Contracts::error( 'market_invalid' );
+				$markets[] = array( 'id' => $extra_id, 'country' => $country );
+			}
+			$raw = array( 'profile_id' => $profile_id, 'brand_id' => $input['brand_id'], 'enabled' => false, 'markets' => $markets, 'language_policy' => array( 'desired' => $languages ), 'provider_policy' => array( 'allowed' => array_values( array_unique( $providers ) ), 'engines' => $engines, 'freeze_spend' => true ) );
 		} elseif ( 'edit' === $input['operation'] ) {
 			if ( 0 === $revision || '' === $input['profile_id'] || ! isset( $input['profile_json'] ) || ! is_string( $input['profile_json'] ) || strlen( $input['profile_json'] ) > 65536 ) return MAD4B_SCP_Search_Contracts::error( 'profile_form_invalid' );
 			$raw = json_decode( $input['profile_json'], true, 32 );
@@ -230,9 +245,9 @@ final class MAD4B_SCP_Search_Profile_Admin {
 	private static function render_guided_edit_form( array $p ) {
 		if ( empty( $p['markets'][0]['country'] ) || empty( $p['profile_id'] ) ) return;
 		echo '<details><summary>Edit audience settings (guided)</summary>';
-		echo '<p class="description">Update audience languages, devices and objective. The country is fixed to its market ID; use a new profile to target a different country. Pause observations and freeze provider spend before changing targeting.</p>';
+		echo '<p class="description">Update audience languages, devices and objective. Existing market IDs remain fixed to their countries. Add new markets using advanced policy JSON while observations are paused and spend frozen, or create a separate profile if governance differs. Pause observations and freeze provider spend before changing targeting.</p>';
 		self::form_start( 'edit_guided', $p['profile_id'], $p['revision'] );
-		echo '<p><label for="mad4b-search-edit-country">Audience country (locked to market ID)</label><br><input id="mad4b-search-edit-country" name="audience_country" value="' . esc_attr( $p['markets'][0]['country'] ) . '" maxlength="2" readonly required><span class="description">Create a new profile for a different country. This preserves historical SERP measurement identity.</span></p>';
+		echo '<p><label for="mad4b-search-edit-country">Audience country (locked to market ID)</label><br><input id="mad4b-search-edit-country" name="audience_country" value="' . esc_attr( $p['markets'][0]['country'] ) . '" maxlength="2" readonly required><span class="description">Existing market identity is immutable; additional markets can be appended using advanced policy JSON.</span></p>';
 		echo '<p><label for="mad4b-search-edit-languages">Audience languages (comma-separated)</label><br><input id="mad4b-search-edit-languages" name="audience_languages" value="' . esc_attr( implode( ', ', $p['language_policy']['desired'] ) ) . '" maxlength="2048" required></p>';
 		echo '<p><label for="mad4b-search-edit-devices">Devices (desktop, mobile, tablet)</label><br><input id="mad4b-search-edit-devices" name="audience_devices" value="' . esc_attr( implode( ', ', $p['provider_policy']['devices'] ) ) . '" maxlength="128" required></p>';
 		echo '<p><label for="mad4b-search-edit-objective">Business objective</label><br><input id="mad4b-search-edit-objective" name="objective" value="' . esc_attr( $p['objective'] ) . '" maxlength="256" required></p>';
@@ -247,7 +262,9 @@ final class MAD4B_SCP_Search_Profile_Admin {
 
 		echo '<fieldset><legend><strong>' . esc_html__( '1. Target market', 'mad4b-site-control-plane' ) . '</strong></legend>';
 		echo '<p><label for="mad4b-search-new-market_country">' . esc_html__( 'Country code', 'mad4b-site-control-plane' ) . '</label><br><input id="mad4b-search-new-market_country" name="market_country" value="" maxlength="2" pattern="[A-Za-z]{2}" placeholder="US" required aria-describedby="mad4b-search-country-help"></p>';
-		echo '<p id="mad4b-search-country-help" class="description">' . esc_html( $setup['country_help'] ) . '</p></fieldset>';
+		echo '<p id="mad4b-search-country-help" class="description">' . esc_html( $setup['country_help'] ) . '</p>';
+		echo '<p><label for="mad4b-search-extra-markets">Additional target countries (optional, comma-separated ISO 3166-1 alpha-2 codes)</label><br><input id="mad4b-search-extra-markets" name="additional_market_countries" maxlength="512" size="55" placeholder="SA, AE, GB" pattern="[A-Za-z, ]*"></p>';
+		echo '<p class="description">One Search Profile can contain up to 64 target markets. Countries are audience locations, not WordPress hosting location. Markets begin paused with spend frozen. Use separate profiles for independently governed objectives, budgets or providers.</p></fieldset>';
 
 		echo '<fieldset><legend><strong>' . esc_html__( '2. Audience languages', 'mad4b-site-control-plane' ) . '</strong></legend><p class="description">' . esc_html( $setup['language_help'] ) . '</p>';
 		foreach ( $setup['languages'] as $code => $label ) echo '<label style="display:inline-block;margin:0 18px 8px 0"><input type="checkbox" name="languages[]" value="' . esc_attr( $code ) . '"> ' . esc_html( $label . ' (' . $code . ')' ) . '</label>';
