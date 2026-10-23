@@ -23,5 +23,7 @@ jobs:
         run: php wp-content/plugins/mad4b-google-measurement-bridge/tests/no-parallel-provider.php
       - name: Market topology spend-isolation regression
         run: php wp-content/plugins/mad4b-google-measurement-bridge/tests/market-topology-contract.php
+      - name: Guided admin form regression
+        run: php wp-content/plugins/mad4b-google-measurement-bridge/tests/guided-admin-forms.php
       - name: Search Profile multi-market guards
         run: php wp-content/plugins/mad4b-site-control-plane/tests/search-multi-market-guided.php
