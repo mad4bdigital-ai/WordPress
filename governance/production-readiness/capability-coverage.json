@@ -1773,6 +1773,27 @@
       ],
       "coverage_reuse_rationale": "The existing descriptor registry, exact Schema SHA, signed preparation receipts and approval-lane controls are preserved without changing the callback, bearer checks, grants or dispatch.",
       "execution_note": "Exact request-local signed preparation and denial tests pass on PHP 7.4/8.3 in isolation. Live OAuth and candidate provenance still require an independently certified Staging release."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-approval-bootstrap.php",
+      "review_rationale": "Extract previously reviewed optional ChatGPT approval bootstrap and materialization priority logic into a site-neutral helper, preserving Write mount and Production isolation and no authority effect.",
+      "owner_role": "Repository code reviewer — source-only optional MCP catalog module extraction",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/chatgpt-optional-catalog-smoke.php"
+      ],
+      "coverage_reuse_rationale": "Required MCP dispatch remains separate; existing enrolled Staging Site Profile, Write-mount check, OAuth visibility, deterministic optional classification and per-site budget guards are preserved.",
+      "execution_note": "PHP Staging denial tests pass isolated; exact integrated OAuth and MCP runtime tests, signed build provenance and Production authorization remain separate."
     }
   ],
   "lifecycle": [],
@@ -6610,6 +6631,50 @@
       ],
       "coverage_reuse_rationale": "The existing descriptor registry, exact Schema SHA, signed preparation receipts and approval-lane controls are preserved without changing the callback, bearer checks, grants or dispatch.",
       "execution_note": "Exact request-local signed preparation and denial tests pass on PHP 7.4/8.3 in isolation. Live OAuth and candidate provenance still require an independently certified Staging release."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "c38a978c98790f6b0aebca84d1e42ff87d1a91b3",
+      "review_rationale": "Server registration facade now calls isolated optional catalog helper for approval conveniences and reviewed optional tools, keeping Staging Write-mount protections and reducing legacy facade size below 1050 lines.",
+      "owner_role": "Repository code reviewer — source-only optional MCP catalog module extraction",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/chatgpt-optional-catalog-smoke.php"
+      ],
+      "coverage_reuse_rationale": "Required MCP dispatch remains separate; existing enrolled Staging Site Profile, Write-mount check, OAuth visibility, deterministic optional classification and per-site budget guards are preserved.",
+      "execution_note": "PHP Staging denial tests pass isolated; exact integrated OAuth and MCP runtime tests, signed build provenance and Production authorization remain separate."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-approval-bootstrap.php",
+      "source_blob_sha": "03274074ce09b6681eefa1010fb6d4d534816abb",
+      "review_rationale": "New optional catalog helper retains deterministic optional priority, excludes nonreviewed tools, blocks Production, unmounted and read-only-tagged approval capabilities, without authorizing calls.",
+      "owner_role": "Repository code reviewer — source-only optional MCP catalog module extraction",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/chatgpt-optional-catalog-smoke.php"
+      ],
+      "coverage_reuse_rationale": "Required MCP dispatch remains separate; existing enrolled Staging Site Profile, Write-mount check, OAuth visibility, deterministic optional classification and per-site budget guards are preserved.",
+      "execution_note": "PHP Staging denial tests pass isolated; exact integrated OAuth and MCP runtime tests, signed build provenance and Production authorization remain separate."
     }
   ],
   "code_change_rules": {
