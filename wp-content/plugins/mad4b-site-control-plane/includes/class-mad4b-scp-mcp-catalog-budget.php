@@ -14,6 +14,7 @@ final class MAD4B_SCP_MCP_Catalog_Budget {
     const HARD_BYTE_LIMIT = 196608;
     const TELEMETRY_TTL = 7200;
     const TELEMETRY_KEY = 'mad4b_scp_mcp_catalog_telemetry_v1';
+    private static $telemetry_cache = null;
 
     private static function bounded_config( $name, $default, $minimum, $maximum ) {
         if ( ! defined( $name ) ) return $default;
@@ -36,14 +37,19 @@ final class MAD4B_SCP_MCP_Catalog_Budget {
     }
 
     public static function telemetry() {
+        if ( null !== self::$telemetry_cache ) return self::$telemetry_cache;
         $data = function_exists( 'get_transient' ) ? get_transient( self::TELEMETRY_KEY ) : false;
         if ( ! is_array( $data ) || ( $data['contract'] ?? '' ) !== self::CONTRACT ||
              ( $data['site_binding'] ?? '' ) !== self::site_binding() ||
              ! is_int( $data['updated_at'] ?? null ) ||
              $data['updated_at'] < time() - self::TELEMETRY_TTL ||
              (int) ( $data['samples'] ?? 0 ) < 1 ||
-             ! is_numeric( $data['ewma_ms'] ?? null ) ) return array();
-        return $data;
+             ! is_numeric( $data['ewma_ms'] ?? null ) ) {
+            self::$telemetry_cache = array();
+            return self::$telemetry_cache;
+        }
+        self::$telemetry_cache = $data;
+        return self::$telemetry_cache;
     }
 
     public static function limits( $required_count = 0 ) {
@@ -53,17 +59,21 @@ final class MAD4B_SCP_MCP_Catalog_Budget {
             self::LEGACY_BYTE_LIMIT, 32768, self::HARD_BYTE_LIMIT );
         $target_ms = self::bounded_config( 'MAD4B_MCP_CATALOG_TARGET_MS', 1200, 300, 5000 );
         $telemetry = self::telemetry();
-        $effective_tools = $configured_tools;
-        $effective_bytes = $configured_bytes;
+        // Expansion beyond the tested legacy envelope requires at least
+        // three real successful authenticated tools/list observations.
+        $effective_tools = min( $configured_tools, self::LEGACY_TOOL_LIMIT );
+        $effective_bytes = min( $configured_bytes, self::LEGACY_BYTE_LIMIT );
         $state = 'unmeasured';
         if ( (int) ( $telemetry['samples'] ?? 0 ) >= 3 ) {
             $latency = (float) $telemetry['ewma_ms'];
             $state = $latency > $target_ms ? 'slow' : 'healthy';
             if ( $latency > $target_ms ) {
-                // Conservative hysteresis: do not erase transport tools, and
-                // do not change grants, visibility filters or the registry.
-                $effective_tools = max( 8, (int) floor( $configured_tools * 0.75 ) );
-                $effective_bytes = max( 32768, (int) floor( $configured_bytes * 0.75 ) );
+                // Conservative backoff: optional only, never required.
+                $effective_tools = max( 8, (int) floor( min( $configured_tools, self::LEGACY_TOOL_LIMIT ) * 0.75 ) );
+                $effective_bytes = max( 32768, (int) floor( min( $configured_bytes, self::LEGACY_BYTE_LIMIT ) * 0.75 ) );
+            } else {
+                $effective_tools = $configured_tools;
+                $effective_bytes = $configured_bytes;
             }
         }
         return array(
@@ -91,13 +101,16 @@ final class MAD4B_SCP_MCP_Catalog_Budget {
         $sample = max( 1.0, (float) $elapsed_ms );
         $old_samples = (int) ( $prior['samples'] ?? 0 );
         $ewma = $old_samples ? ( 0.6 * (float) $prior['ewma_ms'] + 0.4 * $sample ) : $sample;
-        return (bool) set_transient( self::TELEMETRY_KEY, array(
+        $data = array(
             'contract' => self::CONTRACT,
             'site_binding' => self::site_binding(),
             'updated_at' => $now,
             'samples' => min( 10, $old_samples + 1 ),
             'ewma_ms' => round( $ewma, 2 ),
             'tool_count' => $tool_count,
-        ), self::TELEMETRY_TTL );
+        );
+        $stored = (bool) set_transient( self::TELEMETRY_KEY, $data, self::TELEMETRY_TTL );
+        if ( $stored ) self::$telemetry_cache = $data;
+        return $stored;
     }
 }
