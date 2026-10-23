@@ -91,14 +91,15 @@ final class MAD4B_Google_Measurement_Bridge {
             'resource_binding' => MAD4B_Google_Measurement_Admin::binding(),
             'site' => array('home_host'=>wp_parse_url(home_url('/'), PHP_URL_HOST)),
             'gtm4wp' => array('active'=>$gtm4wp_active, 'event_source_policy'=>'gtm4wp_or_companion_not_both'),
-            'capabilities' => array(
-                'ga4_property_discovery'=>'needs_measurement_oauth',
-                'ga4_reports'=>'needs_measurement_oauth',
-                'ga4_custom_dimensions'=>'needs_analytics_edit_and_approval',
-                'gtm_container_discovery'=>'needs_measurement_oauth',
-                'gtm_workspace_plan'=>'needs_measurement_oauth',
-                'gtm_import_publish'=>'disabled_without_exact_approval',
-                'brand_authority_binding'=>'requires_explicit_account_and_site_profile',
+            'capabilities'=>array(
+                'ga4_property_discovery'=>'oauth_scope_required',
+                'ga4_reports'=>'implemented_requires_authorized_broker_and_binding',
+                'ga4_custom_dimensions'=>'staging_exact_ticket_required_for_create',
+                'gtm_container_discovery'=>'oauth_scope_required',
+                'gtm_workspace_plan'=>'implemented_requires_exact_resource_binding',
+                'gtm_workspace_create'=>'staging_exact_ticket_required',
+                'gtm_import_publish'=>'not_enabled',
+                'brand_authority_binding'=>'explicit_site_and_account_selection',
             ),
             'read_only'=>true, 'production_mutation'=>false,
         );
@@ -111,11 +112,14 @@ final class MAD4B_Google_Measurement_Bridge {
         $grants = $mode === 'read' ? array(self::SCOPE_GA4_READ, self::SCOPE_GTM_READ)
             : ($mode === 'draft' ? array(self::SCOPE_GA4_EDIT,self::SCOPE_GTM_EDIT)
             : array(self::SCOPE_GTM_PUBLISH));
+        $connection=self::connection_status();
+        $binding=MAD4B_Google_Measurement_Admin::binding();
+        $ready=!empty($connection['connected']) && !empty($binding['ready']);
         return array(
             'contract'=>self::CONTRACT, 'mode'=>$mode,
             'required_scopes'=>$grants,
             'actions'=>array('owner_google_consent','select_ga4_property','select_gtm_account_container_workspace','bind_exact_site_profile','review_existing_gtm4wp_event_ownership','evaluate_consent','preview_plan','approve_exact_write'),
-            'blocked'=>true, 'reason'=>'measurement_oauth_binding_not_implemented',
+            'blocked'=>!$ready, 'reason'=>$ready?'staging_exact_approval_required_for_mutation':'google_owner_scope_or_resource_binding_missing',
             'write_performed'=>false, 'production_authorized'=>false,
         );
     }
