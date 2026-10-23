@@ -70,12 +70,20 @@ final class MAD4B_Google_Measurement_Reports {
         if (!$b) wp_die('Exact site and selected GA4 property required.');
         $name=isset($_POST['report_name'])?sanitize_key(wp_unslash($_POST['report_name'])):'';
         if (!preg_match('/^[a-z][a-z0-9_]{1,39}$/D',$name)) wp_die('Invalid report key.');
-        $input=array(
-            'dimensions'=>isset($_POST['dimensions'])?array_filter(array_map('trim',explode(',',sanitize_text_field(wp_unslash($_POST['dimensions']))))):array(),
-            'metrics'=>isset($_POST['metrics'])?array_filter(array_map('trim',explode(',',sanitize_text_field(wp_unslash($_POST['metrics']))))):array(),
-            'days'=>isset($_POST['days'])?(int)$_POST['days']:28,
-            'limit'=>isset($_POST['limit'])?(int)$_POST['limit']:100,
-        );
+        $preset=isset($_POST['preset'])?sanitize_key(wp_unslash($_POST['preset'])):'';
+        if ($preset!=='' && !array_key_exists($preset,self::presets())) wp_die('Unsupported report preset.');
+        if ($preset!=='') {
+            // Guided form uses the canonical preset definition, not editable shadow fields.
+            $input=array('preset'=>$preset,
+                'days'=>isset($_POST['days'])?(int)$_POST['days']:28,
+                'limit'=>isset($_POST['limit'])?(int)$_POST['limit']:100);
+        } else {
+            $input=array(
+                'dimensions'=>isset($_POST['dimensions'])?array_filter(array_map('trim',explode(',',sanitize_text_field(wp_unslash($_POST['dimensions']))))):array(),
+                'metrics'=>isset($_POST['metrics'])?array_filter(array_map('trim',explode(',',sanitize_text_field(wp_unslash($_POST['metrics']))))):array(),
+                'days'=>isset($_POST['days'])?(int)$_POST['days']:28,
+                'limit'=>isset($_POST['limit'])?(int)$_POST['limit']:100);
+        }
         $def=self::normalize($input);
         if (is_wp_error($def)) wp_die('Unsupported report fields.');
         $all=get_option(self::OPTIONS,array());if (!is_array($all))$all=array();
