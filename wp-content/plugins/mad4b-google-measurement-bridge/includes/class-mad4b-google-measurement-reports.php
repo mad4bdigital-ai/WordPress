@@ -165,17 +165,3 @@ final class MAD4B_Google_Measurement_Reports {
         }
     }
 }
-)));
-        foreach (array('mad4b/google-measurement-report-catalog'=>'catalog',
-            'mad4b/google-measurement-report-run'=>'run') as $name=>$method) {
-            if (function_exists('wp_has_ability')&&wp_has_ability($name)) continue;
-            wp_register_ability($name,array('label'=>$name,'description'=>'Read-only custom GA4 report definitions and execution.',
-                'category'=>'mad4b-read','execute_callback'=>array(__CLASS__,$method),
-                'permission_callback'=>array('MAD4B_Google_Measurement_Bridge','gate'),
-                'input_schema'=>$schema,'output_schema'=>array('type'=>'object','additionalProperties'=>true),
-                'meta'=>array('public'=>false,'show_in_rest'=>false,
-                    'mcp'=>array('public'=>false,'type'=>'tool','surface'=>'read'),
-                    'annotations'=>array('readonly'=>true,'destructive'=>false,'idempotent'=>true))));
-        }
-    }
-}
