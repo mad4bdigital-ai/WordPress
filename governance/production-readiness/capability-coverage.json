@@ -6524,6 +6524,28 @@
       ],
       "coverage_reuse_rationale": "Existing MCP catalog identity, bounded preflight, request-local Site Profile binding, OAuth authorization and execution controls remain intact; the change only alters optional direct presentation budgets.",
       "execution_note": "Default 36/96 KiB preserved before measurement. Healthy authenticated tools/list latency must be measured before expansion; slow sites trim only optional tools. Production rollout, OAuth, Shell/SQL and plugin certification are not authorized."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-grant-convergence.php",
+      "source_blob_sha": "0faf545c14ed9524aa2539f0ed67b6caef8ed8f6",
+      "review_rationale": "Exact ChatGPT CIMD client binding added to governed Operator five-grant convergence: in addition to canonical normal Developer OAuth validation, require active verified bearer, actual authority step-up scope and independently verified ChatGPT client identity. Reject cross-client OAuth grants, revoked bearer, absent verified scope and Production; no grant mutations during smoke tests.",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/operator-grants-convergence-smoke.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-chatgpt-http-smoke.php"
+      ],
+      "owner_role": "Repository code/security review — CI-only evidence, no Staging deployment or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, execution, OAuth, exact-ticket, security and provider controls cover this bounded repository source change; no new Production control or runtime approval is created.",
+      "execution_note": "Source-only security fix verified in isolated PHP. Complete Local OAuth matrix on this exact HEAD and certified Staging package before attempting any grants. No site or Production mutations approved."
     }
   ],
   "code_change_rules": {
