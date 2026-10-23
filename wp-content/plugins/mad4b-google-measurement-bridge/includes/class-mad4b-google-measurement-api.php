@@ -55,6 +55,30 @@ final class MAD4B_Google_Measurement_API {
         if (!is_array($decoded)) return new WP_Error('mad4b_measurement_bad_response','Unexpected Google JSON response.');
         return $decoded;
     }
+    private static function report($property, $dimension) {
+        if (!preg_match('~^properties/[0-9]+$~D', $property)) return self::invalid();
+        $token=self::token(MAD4B_Google_Measurement_Bridge::SCOPE_GA4_READ);
+        if (is_wp_error($token)) return $token;
+        $body=array(
+            'dateRanges'=>array(array('startDate'=>'28daysAgo','endDate'=>'yesterday')),
+            'dimensions'=>array(array('name'=>$dimension)),
+            'metrics'=>array(array('name'=>'eventCount'),array('name'=>'totalUsers')),
+            'limit'=>100,
+            'keepEmptyRows'=>false,
+        );
+        $resp=wp_remote_post(self::GA_DATA.$property.':runReport',array(
+            'timeout'=>10,'redirection'=>0,
+            'headers'=>array('Authorization'=>'Bearer '.$token,'Content-Type'=>'application/json',
+                'Accept'=>'application/json'),'body'=>wp_json_encode($body)));
+        unset($token);
+        if (is_wp_error($resp)) return new WP_Error('mad4b_measurement_report_transport','GA4 reporting transport failed.');
+        $status=(int)wp_remote_retrieve_response_code($resp);
+        $bytes=(string)wp_remote_retrieve_body($resp);
+        if (strlen($bytes)>self::MAX_RESPONSE || $status!==200)
+            return new WP_Error('mad4b_measurement_report_failed','GA4 reporting API rejected request.',array('http_status'=>$status));
+        $value=json_decode($bytes,true);
+        return is_array($value)?$value:new WP_Error('mad4b_measurement_report_invalid','Unexpected GA4 report.');
+    }
     public static function execute($input = array()) {
         if (!MAD4B_Google_Measurement_Bridge::gate())
             return new WP_Error('mad4b_measurement_permission_denied','Site read authority required.');
@@ -74,6 +98,10 @@ final class MAD4B_Google_Measurement_API {
             case 'ga4_custom_dimensions':
                 if (!preg_match('/^properties\/([0-9]+)$/D', $id)) return self::invalid();
                 return self::get(self::GA_ADMIN,$id.'/customDimensions',MAD4B_Google_Measurement_Bridge::SCOPE_GA4_READ,$q);
+            case 'ga4_events_report':
+                return self::report($id,'eventName');
+            case 'ga4_sources_report':
+                return self::report($id,'sessionSourceMedium');
             case 'ga4_key_events':
                 if (!preg_match('/^properties\/([0-9]+)$/D', $id)) return self::invalid();
                 return self::get(self::GA_ADMIN,$id.'/keyEvents',MAD4B_Google_Measurement_Bridge::SCOPE_GA4_READ,$q);
@@ -107,7 +135,7 @@ final class MAD4B_Google_Measurement_API {
             'input_schema'=>array('type'=>'object','additionalProperties'=>false,
                 'required'=>array('action'),
                 'properties'=>array(
-                    'action'=>array('type'=>'string','enum'=>array('ga4_accounts','ga4_properties','ga4_custom_dimensions','ga4_key_events','gtm_accounts','gtm_containers','gtm_workspaces','gtm_tags','gtm_triggers','gtm_variables')),
+                    'action'=>array('type'=>'string','enum'=>array('ga4_accounts','ga4_properties','ga4_custom_dimensions','ga4_key_events','ga4_events_report','ga4_sources_report','gtm_accounts','gtm_containers','gtm_workspaces','gtm_tags','gtm_triggers','gtm_variables')),
                     'resource_id'=>array('type'=>'string','maxLength'=>150),
                     'page_token'=>array('type'=>'string','maxLength'=>250)
                 )),
