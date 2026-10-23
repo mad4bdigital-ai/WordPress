@@ -23,6 +23,7 @@ final class MAD4B_Google_Measurement_Bridge {
     public static function boot() {
         add_filter('mad4b_provider_connection_adapters', array(__CLASS__, 'providers'));
         add_action('wp_abilities_api_init', array(__CLASS__, 'register'), 45);
+        add_action('wp_abilities_api_init', array('MAD4B_Google_Measurement_API', 'register'), 46);
     }
     public static function providers($providers) {
         if (!is_array($providers)) $providers = array();
@@ -116,4 +117,5 @@ final class MAD4B_Google_Measurement_Bridge {
         }
     }
 }
+require_once __DIR__ . '/includes/class-mad4b-google-measurement-api.php';
 add_action('plugins_loaded', array('MAD4B_Google_Measurement_Bridge','boot'), 20);
