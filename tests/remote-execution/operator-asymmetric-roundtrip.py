@@ -49,9 +49,11 @@ def main():
         worker_priv, worker_pub = pair(tmp, "worker")
         profile_id = os.environ.get('MAD4B_TEST_RUNNER_PROFILE_ID', 'fixture-site-a-runner-v1')
         fingerprint = os.environ.get('MAD4B_TEST_SITE_FINGERPRINT', 'a' * 64)
+        site_uuid = os.environ.get('MAD4B_TEST_SITE_UUID', '88888888-8888-4888-8888-888888888881')
         env = dict(os.environ, MAD4B_TEST_SIGNING_KEY_PATH=str(site_priv),
                    MAD4B_TEST_RUNNER_PROFILE_ID=profile_id,
-                   MAD4B_TEST_SITE_FINGERPRINT=fingerprint)
+                   MAD4B_TEST_SITE_FINGERPRINT=fingerprint,
+                   MAD4B_TEST_SITE_UUID=site_uuid)
         php = subprocess.run(
             ["php", str(MODULES / "operator-signature-fixture.php")],
             env=env, capture_output=True, text=True, check=True)
@@ -60,7 +62,8 @@ def main():
         admitted = verify.verify_job(
             submission, seal, site_pub.read_bytes(), fingerprint,
             lambda b, a: True, lambda b, a: False,
-            expected_runner_profile_id=profile_id)
+            expected_runner_profile_id=profile_id,
+            expected_site_uuid=site_uuid)
         result = receipt_mod.issue_receipt(
             admitted, seal, {
                 "verdict": "PASS", "exit_code": 0, "stdout": "1",
@@ -83,7 +86,8 @@ def main():
             try:
                 verify.verify_job(mod, seal, site_pub.read_bytes(), fingerprint,
                                   lambda b, a: True, lambda b, a: False,
-                                  expected_runner_profile_id=profile_id)
+                                  expected_runner_profile_id=profile_id,
+                                  expected_site_uuid=site_uuid)
                 if not accepted:
                     raise AssertionError(label + " was admitted")
             except verify.AdmissionDenied:
@@ -92,8 +96,17 @@ def main():
         try:
             verify.verify_job(submission, seal, site_pub.read_bytes(),
                               fingerprint, lambda b, a: True, lambda b, a: False,
-                              expected_runner_profile_id="wrong-site-runner-v1")
+                              expected_runner_profile_id="wrong-site-runner-v1",
+                              expected_site_uuid=site_uuid)
             raise AssertionError("cross-site runner profile accepted")
+        except verify.AdmissionDenied:
+            pass
+        try:
+            verify.verify_job(submission, seal, site_pub.read_bytes(),
+                              fingerprint, lambda b, a: True, lambda b, a: False,
+                              expected_runner_profile_id=profile_id,
+                              expected_site_uuid="99999999-9999-4999-8999-999999999999")
+            raise AssertionError("cross-site UUID accepted")
         except verify.AdmissionDenied:
             pass
         for label, checker in (
@@ -103,7 +116,8 @@ def main():
             try:
                 verify.verify_job(submission, seal, site_pub.read_bytes(),
                     fingerprint, checker, lambda b, a: False,
-                    expected_runner_profile_id=profile_id)
+                    expected_runner_profile_id=profile_id,
+                    expected_site_uuid=site_uuid)
                 raise AssertionError(label + " was admitted")
             except verify.AdmissionDenied:
                 pass
