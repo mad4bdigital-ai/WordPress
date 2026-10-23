@@ -51,7 +51,7 @@ def validate_event(env, args):
     check(args.get("confirmation") == CONFIRM, "typed confirmation mismatch")
     head = str(args.get("source_sha", "")).lower()
     package = str(args.get("archive_sha256", "")).lower()
-    pr = str(args.get("pull_request", ""))
+    pr = str(args.get("pr_number", ""))
     check(bool(re.fullmatch("[a-f0-9]{40}", head)), "exact source SHA invalid")
     check(bool(re.fullmatch("[a-f0-9]{64}", package)), "ZIP SHA invalid")
     check(bool(re.fullmatch("[0-9]{1,6}", pr)) and int(pr) > 0, "PR invalid")
