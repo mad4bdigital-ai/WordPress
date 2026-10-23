@@ -192,3 +192,19 @@ To use live SERP: discover a certified Search Profile/provider in the existing c
 **New:** `mad4b/keyword-canonical-search-read` delegates `status`, `discover` and `cohort` to canonical `MAD4B_SCP_Search_Runtime`, requires a valid Search Profile for the latter two, makes no paid or external calls, and never stores a competing SERP snapshot. `tests/no-parallel-provider.php` runs in CI to reject direct SERP endpoints, duplicate paid-request abilities or credential constants.
 
 **Observed ARE Staging:** `mad4b/search-status` returned `UNCONFIGURED`, with two provider descriptors and zero fresh observations. The `mad4b/search-discover` attempt without a configured profile failed `mad4b_search_store_key_invalid`; this is not proof of eligible paid capture. Do not fabricate a profile, market, credential or budget. Configure the existing Search Intelligence authority and verify account/provider certification before a `capture-plan`, then apply only with exact authorized admission and reconcile unknown effects.
+
+## Multi-market Search Profile architecture
+- Core Feature 007 Search Context already supports up to **64 unique market IDs** per Search Profile, each with an audience country and optional provider-location mappings. Language targeting and provider/budget controls are separate dimensions.
+- The **guided creation UI** now accepts a primary country and optional additional comma-separated ISO-3166 alpha-2 countries. It creates deterministic unique IDs per extra country, rejects duplicate/invalid entries, and leaves `enabled=false` and `provider_policy.freeze_spend=true`.
+- For one brand/site with shared objective, Search provider policies and central allowance: use **one multi-market Search Profile**. Split into multiple profiles only if brands, objectives, ownership/approval, accounts, or provider/spend policy need independently revisioned isolation. Individual markets retain separate IDs for observations and historical continuity.
+- Existing markets' IDs must never be reassigned to a different country. On an existing Profile, advanced policy JSON can append unique markets while preserving all previous entries; changing the list still needs the existing exact-revision plan/apply readback and does not bypass spend controls.
+- The guided edit screen continues to display the initial market as immutable. It does **not** silently replace other markets or grant per-market spending capacity.
+- **Live ARE staging remains UNCONFIGURED**: no markets, audience languages, provider credentials/certifications or spending limits have been explicitly approved in this session. Hence no Search Profile was created, spend activated or capture executed.
+
+### Sequential acceptance
+1. Inventory current exact Site Profile/Search Profiles and provider capabilities.
+2. Create a paused, spend-frozen multi-market Search Profile from owner-approved country codes, languages, search engines and objective.
+3. Verify `mad4b/search-profile-verify`, profile market identities and environment binding.
+4. Verify eligible provider certification, mapped locations, budgets/usage receipts and reviewed unfreeze/resume controls separately.
+5. Run `mad4b/search-capture-plan`; only execute `capture-apply` after exact budget authorization and reconcile ambiguous external effects.
+6. Consume resulting canonical SERP snapshots inside Keyword Research; keep content and Google Ads mutations separately approved.
