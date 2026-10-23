@@ -128,10 +128,12 @@ for marker in [
     "dynamic_projection",
     "dynamic_readonly",
     "dynamic_breakglass",
-    "if ( isset( $dynamic[ $ability_name ] ) )",
+    "isset( $dynamic[ $ability_name ] ) || isset( $materialized_optional[ $ability_name ] )",
     "projected_ability_names()",
 ]:
     require(marker in DIAG, f"dynamic projection classification missing: {marker}")
+require("MAD4B_SCP_Servers::chatgpt_materialization_optional_tools( $abilities )" in DIAG,
+        "budget classifier must match actual MCP server optional tool materialization")
 
 # Mutating dynamic projections are hidden without exact ChatGPT step-up;
 # Breakglass additionally needs an exact server/Ability OAuth scope. Readonly
