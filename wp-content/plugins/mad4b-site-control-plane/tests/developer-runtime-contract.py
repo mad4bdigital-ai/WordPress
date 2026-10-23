@@ -10,6 +10,7 @@ developer = (inc / "class-mad4b-scp-developer-runtime.php").read_text(encoding="
 host_caps = (inc / "class-mad4b-scp-developer-host-capabilities.php").read_text(encoding="utf-8")
 workspace = (inc / "class-mad4b-scp-developer-workspace.php").read_text(encoding="utf-8")
 abilities = (inc / "class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
+preparation_bridge = (inc / "class-mad4b-scp-developer-preparation-bridge.php").read_text(encoding="utf-8")
 identity = (inc / "class-mad4b-scp-identity-context.php").read_text(encoding="utf-8")
 planning = (inc / "class-mad4b-scp-staging-write-planning-guard.php").read_text(encoding="utf-8")
 write_authority = (inc / "class-mad4b-scp-staging-write-authority.php").read_text(encoding="utf-8")
@@ -268,8 +269,9 @@ assert "breakglass_allowed'] = false" in abilities
 assert "public function can_developer_dispatch" in abilities
 assert "public function developer_execute" in abilities
 assert "MAD4B_SCP_Transport_Context::with_developer_dispatch_target" in abilities
-assert "private function developer_approval_lane" in abilities
-assert "MAD4B_SCP_Impact_Policy::classify" in abilities
+assert "public static function approval_lane" in preparation_bridge
+assert "MAD4B_SCP_Developer_Preparation_Bridge::approval_lane(" in abilities
+assert "MAD4B_SCP_Impact_Policy::classify" in preparation_bridge
 assert "production_mutation' => false" in abilities
 assert "breakglass_authorized' => false" in abilities
 
