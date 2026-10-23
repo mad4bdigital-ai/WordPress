@@ -25,7 +25,7 @@ $job=json_decode(file_get_contents($argv[1]), true);
 $receipt=json_decode(file_get_contents($argv[2]), true);
 if (!is_array($job) || !is_array($receipt)) { fwrite(STDERR,"fixture_invalid\n"); exit(2); }
 $id=$job['submission']['job_id'];
-$target=array('target_fingerprint'=>str_repeat('a',64));
+$target=array('target_fingerprint'=>(getenv( 'MAD4B_TEST_SITE_FINGERPRINT' ) ?: str_repeat('a',64)));
 $check=function($row,$seal,$allow,$label) use($id,$target) {
     $out=MAD4B_SCP_Operator_Receipt_Verifier::verify($row,$seal,$id,$target);
     $ok=!is_wp_error($out) && !empty($out['verified']);
