@@ -4,6 +4,7 @@
   "default_unknown_policy": "review_if_brand_evidence",
   "fallback_evidence_authorizing": false,
   "abilities": {
+    "mad4b/content-job-create": {"provider": "core", "mode": "exact_paths", "brand_paths": [], "operational_paths": ["brand_id", "subject", "primary_keyword", "language", "country", "content_type", "writer_profile_id", "writer_profile_version", "research_depth", "automation_level", "target_post_type", "desired_publish_at", "reason"]},
     "mad4b/content-create-post": {
       "provider": "core",
       "mode": "exact_paths",
@@ -489,18 +490,17 @@
     },
     "mad4b/approval-ai-decide": {
       "provider": "core",
-      "mode": "exact_paths",
+      "mode": "ticket_bound_target",
       "brand_paths": [],
       "operational_paths": [
         "ticket_id",
         "decision",
         "expected_payload_sha256",
         "expected_classification_sha256",
-        "review_note",
-        "operation_input.expected_head",
-        "operation_input.expected_plan_sha256",
-        "operation_input.confirmation"
-      ]
+        "review_note"
+      ],
+      "nested_input_policy": "resolve_ticket_target_and_reuse_exact_target_semantics",
+      "standing_approval_not_granted": true
     },
     "jetsmartfilters/update-filter-meta": {
       "provider": "jetsmartfilters",

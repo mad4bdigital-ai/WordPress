@@ -5,6 +5,11 @@ description: Build missing Brand Core files from exact live WordPress and approv
 
 Use this skill when Brand Core coverage reports a missing `tone_of_voice` or `editorial_guidelines` category.
 
+## Pending content continuation
+
+When this skill is invoked because a ContentJob is waiting on Brand Core, retain its job_id and job_revision throughout recovery. Call mad4b/content-job-dependency-plan after each approved Context mutation, and return to THAT job once all mandatory categories have a single reviewed exact current authority. The workflow may autonomously collect evidence, build quality-gated drafts and prepare approval plans; a human or separately configured governed AI reviewer must decide each eligible approval. Do not misclassify operational documents as Brand Strategy, invent missing first-party evidence, silently transfer source ownership or replace the original task with a new content job.
+
+
 ## Authority model
 
 Generation is not approval.

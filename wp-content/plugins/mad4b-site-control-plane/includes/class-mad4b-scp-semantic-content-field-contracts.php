@@ -34,6 +34,8 @@ final class MAD4B_SCP_Semantic_Content_Field_Contracts {
 		// Delegation is read-only and never excuses brand-bearing test text.
 		if ( 'mad4b/provider-behavioral-recertify' === $ability_name )
 			return self::classify_behavioral_probe( $input );
+		if ( 'mad4b/approval-ai-decide' === $ability_name )
+			return self::classify_ai_decision( $input );
 		$catalog = self::catalog();
 		$contracts = isset( $catalog['abilities'] ) && is_array( $catalog['abilities'] ) ? $catalog['abilities'] : array();
 		$row = isset( $contracts[ $ability_name ] ) && is_array( $contracts[ $ability_name ] ) ? $contracts[ $ability_name ] : array();
@@ -105,6 +107,65 @@ final class MAD4B_SCP_Semantic_Content_Field_Contracts {
 			'provider_semantic_contract',
 			$row
 		);
+	}
+
+	/**
+	 * The approval decision is an ENVELOPE. Resolve its target from the
+	 * persisted, exact pending ticket; never trust a caller-provided ability,
+	 * guessed field name, or blanket operation_input.* exemption.
+	 *
+	 * Classification is read-only. Ticket payload, OAuth actor, risk lane,
+	 * candidate identity and operation input are checked again independently
+	 * by AI_Approval::delegation_status() before any decision is committed.
+	 */
+	private static function classify_ai_decision( array $input ) {
+		$ticket_id = isset( $input['ticket_id'] ) && is_string( $input['ticket_id'] )
+			? strtolower( trim( $input['ticket_id'] ) ) : '';
+		$expected = isset( $input['expected_payload_sha256'] ) && is_string( $input['expected_payload_sha256'] )
+			? strtolower( trim( $input['expected_payload_sha256'] ) ) : '';
+		$operation = isset( $input['operation_input'] ) && is_array( $input['operation_input'] )
+			? $input['operation_input'] : null;
+		$deny = static function ( $code ) {
+			return self::result( 'mad4b/approval-ai-decide', 'core', false,
+				array(), array( 'operation_input.' . $code ),
+				'governed_ai_decision_target_unavailable', array() );
+		};
+		if ( 1 !== preg_match( '/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/', $ticket_id )
+			|| 1 !== preg_match( '/^[a-f0-9]{64}$/', $expected )
+			|| null === $operation || ! class_exists( 'MAD4B_SCP_Approval_Tickets' ) )
+			return $deny( 'exact_ticket_or_operation_missing' );
+		$ticket = MAD4B_SCP_Approval_Tickets::get( $ticket_id );
+		if ( ! is_array( $ticket ) || 'pending' !== (string) ( $ticket['status'] ?? '' )
+			|| 'mutation' !== (string) ( $ticket['ticket_class'] ?? '' )
+			|| ! hash_equals( $expected, strtolower( (string) ( $ticket['payload_sha256'] ?? '' ) ) ) )
+			return $deny( 'ticket_missing_stale_or_payload_mismatch' );
+		$target = (string) ( $ticket['ability_name'] ?? '' );
+		$provider = sanitize_key( (string) ( $ticket['provider'] ?? '' ) );
+		$server = (string) ( $ticket['server_id'] ?? '' );
+		$bounded_developer = 'mad4b-developer' === $server && 'core' === $provider
+			&& in_array( $target, array( 'mad4b/developer-workspace-apply', 'mad4b/developer-workspace-promote' ), true );
+		if ( ( 'mad4b-write' !== $server && ! $bounded_developer )
+			|| '' === $target || '' === $provider
+			|| in_array( $target, array( 'mad4b/approval-ai-decide', 'mad4b/approval-plan', 'mad4b/database-raw-query' ), true )
+			|| 0 === strpos( $target, 'mad4b/developer-breakglass-' ) )
+			return $deny( 'target_or_server_denied' );
+		$nested = self::classify( $target, $operation );
+		$known = ! empty( $nested['field_contract_known'] )
+			&& $provider === (string) ( $nested['provider_id'] ?? '' );
+		$matched = array_map( static function ( $path ) { return 'operation_input.' . $path; },
+			(array) ( $nested['matched_fields'] ?? array() ) );
+		$fallback = array_map( static function ( $path ) { return 'operation_input.' . $path; },
+			(array) ( $nested['fallback_evidence_fields'] ?? array() ) );
+		// An uncatalogued target with NO brand signal follows the exact
+		// target's existing guarded fallback policy; it does not gain a new
+		// semantic contract from the AI envelope. A declared provider
+		// mismatch, however, is always denied.
+		if ( ! empty( $nested['field_contract_known'] ) && ! $known )
+			$fallback[] = 'operation_input.target_provider_mismatch';
+		return self::result( 'mad4b/approval-ai-decide', 'core', $known, $matched,
+			$fallback, 'governed_ai_decision_target_semantics',
+			array( 'target_ability' => $target, 'target_provider' => $provider,
+				'target_contract_sha256' => (string) ( $nested['contract_sha256'] ?? '' ) ) );
 	}
 
 	/** Preserve exact nested semantics; unknown providers stay review-required. */

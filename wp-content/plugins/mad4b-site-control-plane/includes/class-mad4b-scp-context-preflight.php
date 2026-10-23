@@ -562,6 +562,24 @@ final class MAD4B_SCP_Context_Preflight {
 		// heuristically treating a long approval reason as brand copy.
 		// No privilege or approval is inferred here: the normal planner
 		// guard independently requires a mounted exact grant and candidate.
+		// AI approval is NOT a free-form content writer. It is a decision
+		// envelope for a persisted exact ticket. Classify its real operation,
+		// reject unregistered/ambiguous semantics, and enforce the original
+		// Context Receipt (if brand-bearing) before approving the ticket.
+		// Rejections are non-authorizing and do not require Brand Core.
+		if ( 'mad4b/approval-ai-decide' === $ability_name ) {
+			$classification = self::content_mutation_requirement( $ability_name, $input );
+			if ( is_wp_error( $classification ) ) return $classification;
+			if ( ! empty( $classification['review_required'] ) )
+				return new WP_Error( 'mad4b_content_field_classification_required',
+					'Exact pending ticket target has mismatched or brand-ambiguous semantics.',
+					array( 'fallback_evidence_fields' => (array) ( $classification['fallback_evidence_fields'] ?? array() ) ) );
+			if ( 'reject' === (string) ( $input['decision'] ?? '' ) ) return true;
+			$ticket = MAD4B_SCP_Approval_Tickets::get( (string) $input['ticket_id'] );
+			if ( ! is_array( $ticket ) ) return new WP_Error( 'mad4b_ai_decision_target_unavailable', 'Pending ticket is not available.' );
+			$target = (string) ( $ticket['ability_name'] ?? '' );
+			return self::mutation_context_guard( $target, $input['operation_input'] );
+		}
 		if ( 'mad4b/approval-plan' === $ability_name ) {
 			$target = isset( $input['ability'] ) && is_string( $input['ability'] )
 				? trim( $input['ability'] ) : '';

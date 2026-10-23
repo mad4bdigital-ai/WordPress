@@ -39,9 +39,11 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		add_action( 'admin_notices', array( __CLASS__, 'connection_admin_notice' ), 1 );
 		add_filter( 'rest_pre_dispatch', array( __CLASS__, 'reset_session_policy_scope' ), -200, 3 );
 		add_filter( 'rest_pre_dispatch', array( __CLASS__, 'guard_mcp_rest_dispatch' ), -100, 3 );
+		// Authenticate the bearer, then apply one post-OAuth runtime guard.
 		// Authenticate bearer tokens before classifying Runtime restart grace.
 		// A late phase still checks all gates before execution.
 		add_filter( 'rest_pre_dispatch', array( __CLASS__, 'guard_mcp_authenticated_rest_dispatch' ), 4, 3 );
+
 
 		// MCP Adapter 0.6.x uses a user-meta backed session map shared by MCP servers.
 		// Do not override its global capacity/timeout knobs from a ChatGPT-only fix;
@@ -901,6 +903,44 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		return array_values( array_unique( array_filter( array_map( 'sanitize_key', $blockers ) ) ) );
 	}
 
+	/**
+	 * Only read/discovery traffic can cross a historical checkpoint after
+	 * OAuth subject binding. Existing MCP Ability permission callbacks remain
+	 * mandatory. No write, enrollment, session mutation or grant is permitted.
+	 */
+	public static function guard_historical_mcp_read_after_oauth( $result, $server, $request ) {
+		unset( $server );
+		if ( null !== $result || '/mcp/mad4b-chatgpt' !== self::request_route( $request ) ) return $result;
+		$grace = self::restart_grace_status();
+		if ( empty( $grace['active'] ) || empty( $grace['historical_mcp_read_safe'] ) ) return $result;
+		$authorization = method_exists( $request, 'get_header' )
+			? trim( (string) $request->get_header( 'authorization' ) ) : '';
+		// Preserve the OAuth Resource Bridge's unauthenticated 401 challenge.
+		if ( '' === $authorization && function_exists( 'is_user_logged_in' )
+			&& ! is_user_logged_in() ) return $result;
+		$authenticated = '' !== $authorization
+			&& class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
+			&& MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
+			&& MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is( self::CHATGPT_CLIENT_ID )
+			&& function_exists( 'is_user_logged_in' ) && is_user_logged_in()
+			&& function_exists( 'current_user_can' ) && current_user_can( 'read' );
+		$http_method = method_exists( $request, 'get_method' )
+			? strtoupper( (string) $request->get_method() ) : '';
+		$body = 'POST' === $http_method ? self::request_json( $request ) : array();
+		$rpc_method = is_array( $body ) && isset( $body['method'] ) && is_string( $body['method'] )
+			? $body['method'] : '';
+		$safe_handshake = in_array( $rpc_method, array( 'initialize', 'notifications/initialized' ), true );
+		$read_only = 'GET' === $http_method
+			|| ( 'POST' === $http_method
+				&& ( $safe_handshake || ( is_array( $body ) && self::readonly_transport_request( $body ) ) ) );
+		if ( $authenticated && $read_only ) return $result;
+		return new WP_Error( 'mad4b_mcp_runtime_restart_grace',
+			'Historical Staging checkpoint only permits authenticated diagnostic MCP reads.',
+			array( 'status' => 503, 'retryable' => false,
+				'automatic_retry_allowed' => false, 'client_action' => 'operator_resume_runtime_convergence',
+				'historical_mcp_read_safe' => true, 'mutation_performed' => false ) );
+	}
+
 	public static function guard_mcp_authenticated_rest_dispatch( $result, $server, $request ) {
 		if ( null !== $result || ! is_object( $request ) || ! method_exists( $request, 'get_route' ) ) return $result;
 		$route = '/' . ltrim( rtrim( (string) $request->get_route(), '/' ), '/' );
@@ -913,6 +953,7 @@ final class MAD4B_SCP_Reconnect_Hardening {
 	}
 
 	public static function guard_mcp_rest_dispatch( $result, $server, $request, $post_auth_phase = false ) {
+
 		if ( null !== $result || ! is_object( $request ) || ! method_exists( $request, 'get_route' ) ) return $result;
 		$route = (string) $request->get_route();
 		$is_chatgpt_resource = self::is_resource_request_path( $route );
@@ -942,12 +983,14 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			return $result;
 
 		$restart_grace = self::restart_grace_status();
-		// A historical Staging checkpoint can be safe for the dedicated
-		// read-only endpoint while the independent write-owner gate remains closed.
-		// Never relax ChatGPT, write, content, admin or Developer MCP routes here.
-		$historical_read_admission = '/mcp/mad4b-read' === $route
-			&& ! empty( $restart_grace['historical_mcp_read_safe'] );
+		// Preserve the dedicated read route; require exact post-OAuth RPC checks
+		// before ChatGPT may read through a verified historical checkpoint.
+		$historical_read_admission = ! empty( $restart_grace['historical_mcp_read_safe'] )
+			&& ( '/mcp/mad4b-read' === $route
+				|| ( $post_auth_phase && '/mcp/mad4b-chatgpt' === $route
+					&& null === self::guard_historical_mcp_read_after_oauth( null, null, $request ) ) );
 		if ( ! empty( $restart_grace['active'] ) && ! $historical_read_admission ) {
+
 			$retryable = ! array_key_exists( 'retryable', $restart_grace ) || ! empty( $restart_grace['retryable'] );
 			$retry = isset( $restart_grace['retry_after_seconds'] ) ? min( 120, absint( $restart_grace['retry_after_seconds'] ) ) : 0;
 			return new WP_Error( 'mad4b_mcp_runtime_restart_grace', 'MAD4B runtime is completing governed post-update convergence.', array(

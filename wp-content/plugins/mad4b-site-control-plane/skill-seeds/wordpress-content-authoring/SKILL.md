@@ -5,6 +5,20 @@ description: Create or update brand-bearing WordPress content only after governe
 
 Use this skill for brand-bearing WordPress content creation or editing.
 
+## Recover missing Brand Core before continuing the SAME request
+
+A blocked Context Preflight is a dependency, not a reason to abandon the requested content task.
+
+1. On mad4b_required_brand_context_unavailable or mad4b_content_context_receipt_required, call mad4b/brand-content-gate-triage and context/brand-core-control-loop automatically. Never blindly retry the blocked write.
+2. Create ONE internal mad4b/content-job-create intake record with subject, language, target post type and source reference only; obtain its normal exact approval. This intake is not a WordPress post, Brand approval or publication. If an existing matching ContentJob is already known, reuse its ID instead of creating a duplicate.
+3. Call mad4b/content-job-dependency-plan with the exact job ID. Follow its first unsatisfied recovery step in order. Inspect original governed assets, source scan and review queue before proposing creation; do not promote operational notes or unreviewed third-party content into Brand Strategy.
+4. Existing assets are repaired or approved only through their exact Context Authority review operations. Create missing tone_of_voice and editorial_guidelines drafts using context/brand-gap-plan and context/brand-draft-preflight, then the governed draft/materialization/review abilities. Brand Strategy requires first-party evidence and an independently reviewed authority; do not auto-generate or auto-approve it as fact.
+5. Each mutation requires its own eligible provider, exact approval and readback. Upon failure or pending human review, keep the original ContentJob in BLOCKED or WAITING_REVIEW, report the exact next action, and do not create or publish content as a workaround.
+6. Refresh mad4b/content-job-dependency-plan after each successful step. When resume_ready=true, follow its revision-fenced mad4b/content-job-transition for the same job ID, then get a NEW mad4b/skill-get Context Receipt and create the draft using the separately approved content mutation. Check for an existing post before any retry; publish only with an additional explicit publication approval.
+
+The client/workflow runner may advance automatically through safe reads and evidence preparation. It must not mint owner attestations, invent approved source evidence, or perform a write from read-only endpoints.
+
+
 1. Call `mad4b/skill-get` for this exact Skill before any mutation, supplying the exact `intended_ability` and the task scope when one exists.
 2. Require the Context Preflight to return `ready=true`. Never bypass missing, stale, incomplete, unavailable, conflicting, or unreviewed mandatory Brand Context.
 3. Treat `brand_strategy`, `tone_of_voice`, and `editorial_guidelines` as mandatory Brand Core. Use `terminology`, `claim_policy`, `seo_strategy`, and `writer_reference` when available and relevant.

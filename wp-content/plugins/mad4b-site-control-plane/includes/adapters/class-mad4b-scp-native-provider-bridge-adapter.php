@@ -170,8 +170,18 @@ final class MAD4B_SCP_Native_Provider_Bridge_Adapter extends MAD4B_SCP_Adapter_B
 	private function native_rows() {
 		$rows = array();
 		if ( ! function_exists( 'wp_get_abilities' ) ) return $rows;
+		$owned_names = $this->ability_names();
+		$owned_names = array_fill_keys( array_merge(
+			(array) ( $owned_names['read'] ?? array() ),
+			(array) ( $owned_names['write'] ?? array() )
+		), true );
 		foreach ( wp_get_abilities() as $name => $ability ) {
 			$name = (string) $name;
+			// Filter non-native abilities BEFORE potentially expensive schema hashing.
+			if ( 0 === strpos( $name, 'mad4b/' ) || isset( $owned_names[ $name ] ) ) continue;
+			$category = is_object( $ability ) && method_exists( $ability, 'get_category' )
+				? sanitize_key( (string) $ability->get_category() ) : '';
+			if ( 0 === strpos( $category, 'mad4b-' ) ) continue;
 			$row = $this->ability_row( $name, $ability );
 			if ( $this->mad4b_owned_row( $row ) ) continue;
 			if ( in_array( $name, $this->ability_names()['write'], true ) || in_array( $name, $this->ability_names()['read'], true ) ) continue;

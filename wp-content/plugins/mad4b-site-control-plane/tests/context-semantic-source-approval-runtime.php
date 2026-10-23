@@ -11,18 +11,27 @@ function assert_semantic( $condition, $message ) {
     if ( ! $condition ) { fwrite( STDERR, 'FAIL: ' . $message . PHP_EOL ); exit( 1 ); }
 }
 $c = 'MAD4B_SCP_Semantic_Content_Field_Contracts';
-// Native Staging build AI decisions carry operational confirmation and a
-// human review note; those audit fields must not masquerade as brand copy.
-// Unknown nested post content must STILL fail closed for manual classification.
+// Decision semantics depend on an exact persisted pending ticket, not a
+// standalone field whitelist. This fixture is strictly read-only.
+class MAD4B_SCP_Approval_Tickets {
+    public static $ticket = array();
+    public static function get( $id ) { return self::$ticket; }
+}
+MAD4B_SCP_Approval_Tickets::$ticket = array(
+    'status' => 'pending', 'ticket_class' => 'mutation',
+    'ability_name' => 'mad4b/content-job-create', 'server_id' => 'mad4b-write',
+    'provider' => 'core', 'payload_sha256' => str_repeat( 'a', 64 ),
+);
 $approval_input = array(
     'ticket_id' => '30f924f8-dcdd-4420-8cfa-d7407c1136aa',
     'decision' => 'approve',
     'expected_payload_sha256' => str_repeat( 'a', 64 ),
     'expected_classification_sha256' => str_repeat( 'b', 64 ),
     'operation_input' => array(
-        'expected_head' => str_repeat( 'c', 40 ),
-        'expected_plan_sha256' => str_repeat( 'd', 64 ),
-        'confirmation' => 'BUILD UNVERIFIED STAGING SOURCE',
+        'brand_id' => 'allroyalegypt_wp', 'subject' => 'Royal Lily staging test intake',
+        'language' => 'en', 'country' => 'eg', 'content_type' => 'tour',
+        'target_post_type' => 'tours-and-activities',
+        'reason' => 'Preserve task while Brand Core is reviewed',
     ),
     'review_note' => 'Reviewed exact-source Staging-only Cron build; one-time approval ticket required.',
 );
