@@ -223,6 +223,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operator-session-policy.p
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operator-sessions.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operator-operation-policy.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operator-bridge.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operator-attestation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-identifiers.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-identity-context.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-abuse-budget.php';
