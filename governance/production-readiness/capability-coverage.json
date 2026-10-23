@@ -6536,8 +6536,7 @@
         "SECURITY-01"
       ],
       "regression_tests": [
-        "tests/remote-execution/operator-grants-convergence-smoke.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-chatgpt-http-smoke.php"
+        "tests/remote-execution/operator-grants-convergence-smoke.php"
       ],
       "owner_role": "Repository code/security review — CI-only evidence, no Staging deployment or Production approval",
       "status": "reviewed_for_ci_only",
