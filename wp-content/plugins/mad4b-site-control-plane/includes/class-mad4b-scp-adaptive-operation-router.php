@@ -387,7 +387,8 @@ final class MAD4B_SCP_Adaptive_Operation_Router {
                 }
             }
         }
-        if ( ! class_exists( 'MAD4B_SCP_Policy' ) || ! MAD4B_SCP_Policy::can_mutate() )
+        // WP_Error and other truthy non-boolean results must never grant route readiness.
+        if ( ! class_exists( 'MAD4B_SCP_Policy' ) || true !== MAD4B_SCP_Policy::can_mutate() )
             $blockers[] = 'write_mutation_policy_not_ready';
         $blockers = array_values( array_unique( $blockers ) );
         return array(
