@@ -5,6 +5,11 @@ $context=dirname(__DIR__).'/includes/search/class-mad4b-scp-search-context.php';
 $a=file_get_contents($base);$c=file_get_contents($context);
 $need=array(
  'additional_market_countries',
+ "'map_provider_location' === \$input['operation']",
+ 'Save provider location mapping',
+ 'MAD4B_SCP_Search_Budgets::status',
+ 'Provider account budget readiness (read-only)',
+ 'location_precision',
  "'add_market' === \$input['operation']",
  'market_duplicate_country',
  'profile_targeting_requires_pause_and_spend_freeze',
