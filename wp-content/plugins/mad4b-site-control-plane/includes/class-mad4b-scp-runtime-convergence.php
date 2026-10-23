@@ -47,6 +47,79 @@ final class MAD4B_SCP_Runtime_Convergence {
 		return false === $stamp ? 0 : max( 0, (int) $stamp + self::POST_UPDATE_QUIET_SECONDS );
 	}
 
+	/**
+	 * Narrow, non-authorizing recovery signal for a stale self-update audit
+	 * checkpoint. It does not clear a barrier or allow mutations.
+	 */
+	public static function historical_mcp_read_safe_snapshot( $checkpoint, $current, $graph, $not_before = 0 ) {
+		if ( ! is_array( $checkpoint ) || ! is_array( $current ) || ! is_array( $graph )
+			|| $not_before > time()
+			|| 'self_update' !== ( $checkpoint['source'] ?? '' )
+			|| 'pending_manual_resume' !== ( $checkpoint['state'] ?? '' )
+			|| 'mad4b_automation_automation_kill_switch' !== ( $checkpoint['resume_blocker'] ?? '' )
+			|| 'staging' !== ( $graph['environment'] ?? '' )
+			|| true !== ( $graph['phase_graph_valid'] ?? false )
+			|| ! self::identity_matches( $current, $graph['current_identity'] ?? array() ) )
+			return false;
+		$old = is_array( $checkpoint['target_identity'] ?? null )
+			? self::bounded_identity( $checkpoint['target_identity'] ) : array();
+		$now = self::bounded_identity( $current );
+		if ( ! self::identity_matches( $now, $current )
+			|| 1 !== preg_match( '/^[a-f0-9]{40}$/D', $old['source_commit_sha'] ?? '' )
+			|| hash_equals( $old['source_commit_sha'], $now['source_commit_sha'] )
+			|| '' === ( $old['version'] ?? '' ) || '' === ( $now['version'] ?? '' )
+			|| ! version_compare( $now['version'], $old['version'], '>' ) )
+			return false;
+		$stored = $graph['checkpoint'] ?? null;
+		$operator = $graph['checkpoint_operator_state'] ?? null;
+		if ( ! is_array( $stored ) || ! is_array( $operator )
+			|| 'self_update' !== ( $stored['source'] ?? '' )
+			|| 'pending_manual_resume' !== ( $stored['state'] ?? '' )
+			|| ! hash_equals( $old['source_commit_sha'], (string) ( $stored['target_identity']['source_commit_sha'] ?? '' ) )
+			|| 'historical_checkpoint_independent_blockers' !== ( $operator['state'] ?? '' )
+			|| ! empty( $operator['replay_old_checkpoint_allowed'] ) )
+			return false;
+		$blockers = $graph['required_blockers'] ?? null;
+		$owner_only = array( 'authority_binding:owner_gate' ) === $blockers;
+		$older_cached_release = array( 'deployment:pending', 'authority_binding:owner_gate' ) === $blockers;
+		if ( ! $owner_only && ! $older_cached_release ) return false;
+		$phases = $graph['phases'] ?? null;
+		if ( ! is_array( $phases ) || empty( $phases['authority_binding']['required'] )
+			|| 'owner_gate' !== ( $phases['authority_binding']['state'] ?? '' ) ) return false;
+		foreach ( $phases as $id => $phase ) {
+			if ( ! is_array( $phase ) ) return false;
+			if ( 'authority_binding' === $id || empty( $phase['required'] ) ) continue;
+			if ( $older_cached_release && 'deployment' === $id
+				&& 'pending' === ( $phase['state'] ?? '' ) ) continue;
+			if ( 'ready' !== ( $phase['state'] ?? '' ) ) return false;
+		}
+		if ( $older_cached_release ) {
+			$details = $phases['deployment']['details'] ?? null;
+			if ( ! is_array( $details ) || empty( $details['cached_release_target_present'] )
+				|| 'ready' !== ( $details['manifest_state'] ?? '' ) ) return false;
+			$cached = is_array( $details['target_identity'] ?? null )
+				? self::bounded_identity( $details['target_identity'] ) : array();
+			if ( ! self::identity_matches( $old, $cached )
+				|| ! version_compare( $now['version'], $cached['version'], '>' ) ) return false;
+		}
+		return true;
+	}
+
+	/** Read-only and bounded. Checkpoint remains untouched. */
+	private static function historical_mcp_read_safe( $checkpoint, $current, $not_before ) {
+		static $evaluating = false;
+		if ( $evaluating ) return false;
+		$evaluating = true;
+		try {
+			return self::historical_mcp_read_safe_snapshot(
+				$checkpoint, $current, self::status(), $not_before );
+		} catch ( Throwable $error ) {
+			return false;
+		} finally {
+			$evaluating = false;
+		}
+	}
+
 	public static function restart_grace_status() {
 		$checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
 		$now = time();
@@ -69,6 +142,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 		// must remain fail-closed until an operator repairs/resumes convergence.
 		$active = $convergence_pending;
 		$retryable = $active && ! $operator_action_required;
+		$historical_read_safe = $active && ! empty( $target ) && self::historical_mcp_read_safe( $checkpoint, $current, $not_before );
 		$retry_after = $retryable ? ( $quiet_period_active ? max( 1, $not_before - $now ) : 5 ) : 0;
 		// Passive evidence distinguishes a brief quiet period from a stuck checkpoint.
 		// These persisted timestamps never authorize a retry, clear a barrier or write an option.
@@ -79,6 +153,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 		return array(
 			'contract' => 'mad4b.runtime-restart-grace.v2',
 			'active' => $active,
+			'historical_mcp_read_safe' => $historical_read_safe,
 			'state' => $state,
 			'convergence_pending' => $convergence_pending,
 			'quiet_period_active' => $quiet_period_active,

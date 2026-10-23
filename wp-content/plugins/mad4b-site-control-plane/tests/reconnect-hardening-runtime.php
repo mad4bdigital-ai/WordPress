@@ -61,7 +61,8 @@ final class MAD4B_SCP_MCP_Request_Scope {
     public static $passive=false;
     public static function current_request_is_passive_admin_hotpath(){return self::$passive;}
     public static function current_request_is_protocol_hotpath(){return false;}
-    public static function current_request_is_http_mcp_transport(){return false;}
+    public static $http_transport=false;
+    public static function current_request_is_http_mcp_transport(){return self::$http_transport;}
     public static function current_request_requires_mcp_runtime(){return false;}
     public static function current_request_mcp_server_id(){return '';}
     public static function status(){return array('passive_admin_hotpath'=>self::$passive);}
@@ -431,5 +432,38 @@ $GLOBALS['after_user_meta_update']=static function()use($target){
 ok(!priv('ensure_session_record',array(7,$target,$minimal)),'post-CAS DELETE tombstone converts repair to failure');
 $merged=$GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions'][0];
 ok(!isset($merged[$target]),'post-CAS DELETE race removes the repaired session');
+
+// Historical checkpoint exception must never turn diagnostics into writes.
+MAD4B_SCP_Runtime_Convergence::$restart=array('active'=>true,
+    'historical_mcp_read_safe'=>true,'state'=>'pending_manual_resume','retryable'=>false);
+MAD4B_SCP_MCP_Request_Scope::$http_transport=true;
+$GLOBALS['mad4b_test_logged_in']=true;
+$historical_rpc=static function($method, $params=array(), $auth='Bearer validated') {
+    return new class($method,$params,$auth) {
+        private $method; private $params; private $auth;
+        public function __construct($method,$params,$auth){$this->method=$method;$this->params=$params;$this->auth=$auth;}
+        public function get_route(){return '/mcp/mad4b-chatgpt';}
+        public function get_header($key){return 'authorization'===strtolower($key)?$this->auth:'';}
+        public function get_method(){return 'POST';}
+        public function get_json_params(){return array('jsonrpc'=>'2.0','method'=>$this->method,'params'=>$this->params);}
+    };
+};
+$read=$historical_rpc('tools/list');
+ok(null===MAD4B_SCP_Reconnect_Hardening::guard_mcp_rest_dispatch(null,null,$read),'preauth defers only verified historic reads');
+ok(null===MAD4B_SCP_Reconnect_Hardening::guard_historical_mcp_read_after_oauth(null,null,$read),'authenticated tools/list is a read');
+$init=$historical_rpc('initialize');
+ok(null===MAD4B_SCP_Reconnect_Hardening::guard_historical_mcp_read_after_oauth(null,null,$init),'authenticated initialize is a handshake');
+$write=$historical_rpc('tools/call',array('name'=>'mad4b-enrollment-execute'));
+ok(is_wp_error(MAD4B_SCP_Reconnect_Hardening::guard_historical_mcp_read_after_oauth(null,null,$write)),'owner-gated enrollment is not bypassed');
+$write=$historical_rpc('tools/call',array('name'=>'mad4b-content-create-post'));
+ok(is_wp_error(MAD4B_SCP_Reconnect_Hardening::guard_historical_mcp_read_after_oauth(null,null,$write)),'content mutation denied');
+$unknown=$historical_rpc('arbitrary/execute');
+ok(is_wp_error(MAD4B_SCP_Reconnect_Hardening::guard_historical_mcp_read_after_oauth(null,null,$unknown)),'unknown MCP method denied');
+$missing=$historical_rpc('tools/list',array(),'');
+ok(is_wp_error(MAD4B_SCP_Reconnect_Hardening::guard_historical_mcp_read_after_oauth(null,null,$missing)),'no bearer means no postauth bypass');
+$GLOBALS['mad4b_test_logged_in']=false;
+ok(is_wp_error(MAD4B_SCP_Reconnect_Hardening::guard_historical_mcp_read_after_oauth(null,null,$read)),'unmapped actor denied');
+MAD4B_SCP_MCP_Request_Scope::$http_transport=false;
+MAD4B_SCP_Runtime_Convergence::$restart=array('active'=>false,'state'=>'');
 
 fwrite(STDOUT,"mad4b.reconnect-hardening.runtime.v1: PASS\n");

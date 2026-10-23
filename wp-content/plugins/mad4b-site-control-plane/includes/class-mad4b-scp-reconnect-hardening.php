@@ -39,6 +39,9 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		add_action( 'admin_notices', array( __CLASS__, 'connection_admin_notice' ), 1 );
 		add_filter( 'rest_pre_dispatch', array( __CLASS__, 'reset_session_policy_scope' ), -200, 3 );
 		add_filter( 'rest_pre_dispatch', array( __CLASS__, 'guard_mcp_rest_dispatch' ), -100, 3 );
+		// OAuth subject binding occurs at priority 2. This second, strict
+		// admission gate prevents a pre-auth exemption becoming a bypass.
+		add_filter( 'rest_pre_dispatch', array( __CLASS__, 'guard_historical_mcp_read_after_oauth' ), 3, 3 );
 
 		// MCP Adapter 0.6.x uses a user-meta backed session map shared by MCP servers.
 		// Do not override its global capacity/timeout knobs from a ChatGPT-only fix;
@@ -898,6 +901,44 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		return array_values( array_unique( array_filter( array_map( 'sanitize_key', $blockers ) ) ) );
 	}
 
+	/**
+	 * Only read/discovery traffic can cross a historical checkpoint after
+	 * OAuth subject binding. Existing MCP Ability permission callbacks remain
+	 * mandatory. No write, enrollment, session mutation or grant is permitted.
+	 */
+	public static function guard_historical_mcp_read_after_oauth( $result, $server, $request ) {
+		unset( $server );
+		if ( null !== $result || '/mcp/mad4b-chatgpt' !== self::request_route( $request ) ) return $result;
+		$grace = self::restart_grace_status();
+		if ( empty( $grace['active'] ) || empty( $grace['historical_mcp_read_safe'] ) ) return $result;
+		$authorization = method_exists( $request, 'get_header' )
+			? trim( (string) $request->get_header( 'authorization' ) ) : '';
+		// Preserve the OAuth Resource Bridge's unauthenticated 401 challenge.
+		if ( '' === $authorization && function_exists( 'is_user_logged_in' )
+			&& ! is_user_logged_in() ) return $result;
+		$authenticated = '' !== $authorization
+			&& class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
+			&& MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
+			&& MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is( self::CHATGPT_CLIENT_ID )
+			&& function_exists( 'is_user_logged_in' ) && is_user_logged_in()
+			&& function_exists( 'current_user_can' ) && current_user_can( 'read' );
+		$http_method = method_exists( $request, 'get_method' )
+			? strtoupper( (string) $request->get_method() ) : '';
+		$body = 'POST' === $http_method ? self::request_json( $request ) : array();
+		$rpc_method = is_array( $body ) && isset( $body['method'] ) && is_string( $body['method'] )
+			? $body['method'] : '';
+		$safe_handshake = in_array( $rpc_method, array( 'initialize', 'notifications/initialized' ), true );
+		$read_only = 'GET' === $http_method
+			|| ( 'POST' === $http_method
+				&& ( $safe_handshake || ( is_array( $body ) && self::readonly_transport_request( $body ) ) ) );
+		if ( $authenticated && $read_only ) return $result;
+		return new WP_Error( 'mad4b_mcp_runtime_restart_grace',
+			'Historical Staging checkpoint only permits authenticated diagnostic MCP reads.',
+			array( 'status' => 503, 'retryable' => false,
+				'automatic_retry_allowed' => false, 'client_action' => 'operator_resume_runtime_convergence',
+				'historical_mcp_read_safe' => true, 'mutation_performed' => false ) );
+	}
+
 	public static function guard_mcp_rest_dispatch( $result, $server, $request ) {
 		if ( null !== $result || ! is_object( $request ) || ! method_exists( $request, 'get_route' ) ) return $result;
 		$route = (string) $request->get_route();
@@ -920,6 +961,13 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		if ( $remote_preauth_probe ) return $result;
 
 		$restart_grace = self::restart_grace_status();
+		if ( ! empty( $restart_grace['active'] )
+			&& ! empty( $restart_grace['historical_mcp_read_safe'] )
+			&& $is_chatgpt_resource && '' !== $authorization ) {
+			// ONLY defer the barrier until after OAuth; the later guard makes
+			// the read-only decision using the verified ChatGPT bearer.
+			return $result;
+		}
 		if ( ! empty( $restart_grace['active'] ) ) {
 			$retryable = ! array_key_exists( 'retryable', $restart_grace ) || ! empty( $restart_grace['retryable'] );
 			$retry = isset( $restart_grace['retry_after_seconds'] ) ? min( 120, absint( $restart_grace['retry_after_seconds'] ) ) : 0;
