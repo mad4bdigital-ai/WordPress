@@ -14,6 +14,11 @@ class WP_Error {
 function is_wp_error($x) { return $x instanceof WP_Error; }
 function wp_get_environment_type() { return 'staging'; }
 function home_url() { return 'https://staging.allroyalegypt.com'; }
+class MAD4B_SCP_Site_Profile {
+    public static function configured() { return true; }
+    public static function origin_enrolled() { return true; }
+    public static function site_urls_match_enrollment() { return true; }
+}
 function wp_json_encode($v,$flags=0) { return json_encode($v,$flags); }
 require_once __DIR__ . '/../wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-receipt-verifier.php';
 $job=json_decode(file_get_contents($argv[1]), true);
