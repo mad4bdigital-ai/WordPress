@@ -2,6 +2,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 require_once __DIR__ . '/class-mad4b-scp-server-write-catalog.php';
+require_once __DIR__ . '/class-mad4b-scp-chatgpt-approval-bootstrap.php';
 require_once __DIR__ . '/class-mad4b-scp-governed-ability-census.php';
 require_once __DIR__ . '/class-mad4b-scp-post-identity.php';
 require_once __DIR__ . '/class-mad4b-scp-site-profile-enrollment.php';
@@ -461,43 +462,9 @@ final class MAD4B_SCP_Servers {
         return $tools;
     }
 
-    /**
-     * Expose only the original protected approval bootstrap operations on
-     * enrolled, current-authority Staging. An MCP tool is never an approval.
-     */
+    /** Optional reviewed approval selector, isolated from server orchestration. */
     private static function chatgpt_approval_bootstrap_tools() {
-        // Do not materialize an underlying Write schema merely because a
-        // fresh Staging Site Profile still lacks its host binding. Dynamic
-        // Skills and the generic ChatGPT catalog forbid that exposure.
-        // Use the compact governed write dispatcher for ticket planning,
-        // or the explicit WordPress admin POST for a local first binding.
-        // An untrusted tools/list is never the approval authority.
-        if ( ! class_exists( 'MAD4B_SCP_Site_Profile' )
-            || 'staging' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
-            || ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
-            || ! MAD4B_SCP_Staging_Write_Authority::effective() )
-            return array();
-        $names = array( 'mad4b/approval-plan' );
-        if ( class_exists( 'MAD4B_SCP_AI_Approval' )
-            && MAD4B_SCP_AI_Approval::catalog_eligible() )
-            $names[] = 'mad4b/approval-ai-decide';
-        $result = array();
-        foreach ( $names as $ability_name ) {
-            if ( ! function_exists( 'wp_has_ability' )
-                || ! function_exists( 'wp_get_ability' )
-                || ! wp_has_ability( $ability_name )
-                || ! self::ability_is_mounted( 'mad4b-write', $ability_name ) )
-                continue;
-            $ability = wp_get_ability( $ability_name );
-            $meta = is_object( $ability ) && method_exists( $ability, 'get_meta' )
-                ? $ability->get_meta() : array();
-            $annotations = is_array( $meta ) && isset( $meta['annotations'] )
-                && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
-            if ( array_key_exists( 'readonly', $annotations )
-                && false === $annotations['readonly'] )
-                $result[] = $ability_name;
-        }
-        return $result;
+        return MAD4B_SCP_ChatGPT_Approval_Bootstrap::catalog_tools();
     }
 
     /**
@@ -645,26 +612,8 @@ final class MAD4B_SCP_Servers {
 	 * No bearer validation or authority grants are performed here.
 	 */
 	public static function chatgpt_materialization_optional_tools( array $requested_tools ) {
-		$dynamic_optional = class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' )
-			? MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names() : array();
-		$reviewed = self::chatgpt_reviewed_direct_step_up_tools();
-		// Keep the only direct management tool for editing an oversized optional
-		// catalog reachable *when it is already enrolled and reviewed*. Otherwise
-		// a valid projection can crowd out the very demotion route needed to recover.
-		// Never promote its authority; registration and execution still enforce
-		// exact CIMD bearer, scoped OAuth step-up, Write mount and execution fence.
-		$management = array_values( array_intersect(
-			array( 'mad4b/chatgpt-tool-projection-apply' ), $reviewed
-		) );
-		$profile_tools = class_exists( 'MAD4B_SCP_Direct_Profile' )
-			? MAD4B_SCP_Direct_Profile::catalog_tools() : array();
-		return array_values( array_intersect(
-			array_values( array_unique( array_merge(
-				$management, $dynamic_optional, $reviewed, $profile_tools
-			) ) ),
-			$requested_tools
-		) );
-	}
+        return MAD4B_SCP_ChatGPT_Approval_Bootstrap::materialization_optional_tools( $requested_tools );
+    }
 
 	public static function chatgpt_tools() {
 		$base = self::chatgpt_base_tools();
