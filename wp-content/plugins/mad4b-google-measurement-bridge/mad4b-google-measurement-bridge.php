@@ -41,6 +41,7 @@ final class MAD4B_Google_Measurement_Bridge {
         add_action('wp_abilities_api_init', array('MAD4B_Keyword_Intelligence', 'register'), 57);
         add_action('wp_abilities_api_init', array('MAD4B_Keyword_GSC', 'register'), 58);
         add_action('wp_abilities_api_init', array('MAD4B_Keyword_Forecast', 'register'), 59);
+        add_action('wp_abilities_api_init', array('MAD4B_Keyword_Projects', 'register'), 60);
     }
     public static function providers($providers) {
         if (!is_array($providers)) $providers = array();
@@ -169,4 +170,5 @@ require_once __DIR__ . '/includes/class-mad4b-google-keyword-research.php';
 require_once __DIR__ . '/includes/class-mad4b-keyword-intelligence.php';
 require_once __DIR__ . '/includes/class-mad4b-keyword-gsc.php';
 require_once __DIR__ . '/includes/class-mad4b-keyword-forecast.php';
+require_once __DIR__ . '/includes/class-mad4b-keyword-projects.php';
 add_action('plugins_loaded', array('MAD4B_Google_Measurement_Bridge','boot'), 20);
