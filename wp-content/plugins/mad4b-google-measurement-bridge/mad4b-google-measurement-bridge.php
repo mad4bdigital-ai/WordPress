@@ -23,6 +23,7 @@ final class MAD4B_Google_Measurement_Bridge {
     public static function boot() {
         add_filter('mad4b_provider_connection_adapters', array(__CLASS__, 'providers'));
         MAD4B_Google_Measurement_Admin::boot();
+        add_filter('mad4b_google_measurement_broker_grant', array(__CLASS__, 'broker_grant'), 10, 2);
         add_action('wp_abilities_api_init', array(__CLASS__, 'register'), 45);
         add_action('wp_abilities_api_init', array('MAD4B_Google_Measurement_API', 'register'), 46);
         add_action('wp_abilities_api_init', array('MAD4B_Google_Measurement_Mutation', 'register'), 47);
@@ -43,16 +44,34 @@ final class MAD4B_Google_Measurement_Bridge {
         if (class_exists('MAD4B_SCP_Policy') && !MAD4B_SCP_Policy::can_read()) return false;
         return true;
     }
+    public static function broker_grant($existing, $scope) {
+        if (!class_exists('MAD4B_SCP_Google_Drive_Context') ||
+            !method_exists('MAD4B_SCP_Google_Drive_Context', 'measurement_broker_grant_for_scope'))
+            return $existing;
+        $grant = MAD4B_SCP_Google_Drive_Context::measurement_broker_grant_for_scope($scope);
+        return is_array($grant) ? $grant : $existing;
+    }
     public static function connection_status() {
+        $grants = class_exists('MAD4B_SCP_Google_Drive_Context')
+            ? MAD4B_SCP_Google_Drive_Context::workspace_grants_status() : array();
+        $selection = isset($grants['selection']) && is_array($grants['selection']) ? $grants['selection'] : array();
+        $ga_mode = isset($selection['analytics']) ? $selection['analytics'] : 'off';
+        $gtm_mode = isset($selection['tag_manager']) ? $selection['tag_manager'] : 'off';
+        $configured = !empty($grants['configured']) && ($ga_mode !== 'off' || $gtm_mode !== 'off');
+        $connected = $configured && !empty($grants['connected_grant_present'])
+            && empty($grants['missing_scope_count']);
         return array(
-            'contract' => self::CONTRACT,
-            'provider' => 'google_measurement',
-            'connected' => false,
-            'reason' => 'measurement_oauth_binding_not_implemented',
-            'drive_grant_implies_access' => false,
-            'mutation_supported' => false,
-            'account_selection_required' => true,
-            'scopes' => array('analytics_read'=>self::SCOPE_GA4_READ,'tagmanager_read'=>self::SCOPE_GTM_READ),
+            'contract'=>self::CONTRACT,'provider'=>'google_measurement',
+            'connected'=>$connected,
+            'reason'=>$connected?'scope_projection_present':($configured?'owner_reconsent_or_missing_scopes':'select_measurement_scopes'),
+            'oauth_state_independently_verified'=>false,
+            'drive_grant_implies_access'=>false,
+            'mutation_supported'=>false,
+            'analytics_mode'=>$ga_mode,
+            'tag_manager_mode'=>$gtm_mode,
+            'account_selection_required'=>true,
+            'granted_scope_coverage'=>$connected,
+            'scopes'=>array('analytics_read'=>self::SCOPE_GA4_READ,'tagmanager_read'=>self::SCOPE_GTM_READ),
         );
     }
     public static function inventory() {
