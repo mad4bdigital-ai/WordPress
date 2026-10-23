@@ -77,6 +77,18 @@ final class MAD4B_Keyword_Intelligence {
    'notes'=>array('Intent is a lexical heuristic, not an ML or SERP validation.',
     'Scores are comparative and provisional, never SEO ranking difficulty.',
     'No Google data was fetched by this local analysis operation.'),
+   'ad_group_drafts'=>array_map(static function($c){
+     $keyword_rows=array();
+     foreach(array_slice($c['keywords'],0,50) as $word)
+      $keyword_rows[]=array('text'=>$word,'match_type'=>'PHRASE','status'=>'PROPOSED');
+     return array('name'=>substr($c['seed_keyword'],0,80),'keywords'=>$keyword_rows,
+      'campaign_customer_id'=>null,'create_authorized'=>false,'budget_micros'=>null);
+    },array_values($clusters)),
+   'seo_drafts'=>array_map(static function($c){
+     return array('primary_keyword'=>$c['seed_keyword'],'supporting_keywords'=>array_slice($c['keywords'],1,20),
+      'recommended_action'=>'review_existing_url_and_search_intent_before_new_article',
+      'wordpress_publish_authorized'=>false);
+    },array_values($clusters)),
    'mutation_performed'=>false,'read_only'=>true);
  }
  public static function register() {
