@@ -45,6 +45,16 @@ final class MAD4B_Google_Measurement_Admin {
         echo '<p><label>GTM Container (accounts/123/containers/456) <input name="gtm_container" required pattern="accounts/[0-9]+/containers/[0-9]+" value="'.esc_attr(!empty($b['ready'])?$b['gtm_container']:'').'" size="55"/></label></p>';
         submit_button('Bind selected resources (no Google mutation)');
         echo '</form>';
+        $ads=MAD4B_Google_Measurement_Ads::binding();
+        echo '<hr/><h2>Google Ads Account</h2>';
+        echo '<p>Bind the customer ID returned by an authorized Google Ads account listing. This does not verify account ownership, change an ad, or require a developer token.</p>';
+        echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
+        echo '<input type="hidden" name="action" value="mad4b_google_ads_bind"/>';
+        wp_nonce_field('mad4b_google_ads_bind');
+        echo '<p><label>Customer ID (10 digits) <input name="customer_id" required pattern="[0-9]{10}" value="'.esc_attr(!empty($ads['ready'])?$ads['customer_id']:'').'" size="20"/></label></p>';
+        echo '<p><label>MCC login customer ID (optional) <input name="login_customer_id" pattern="[0-9]{10}" value="'.esc_attr(!empty($ads['ready'])?$ads['login_customer_id']:'').'" size="20"/></label></p>';
+        submit_button('Bind Google Ads customer (no Ads mutation)');
+        echo '</form>';
         echo '<hr/><h2>Custom GA4 Reports</h2>';
         echo '<p>Definitions are saved in WordPress for this site and GA4 property. They do not create reports inside the Google Analytics interface.</p>';
         $defs=MAD4B_Google_Measurement_Reports::saved();
