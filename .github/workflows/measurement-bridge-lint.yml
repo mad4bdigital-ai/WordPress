@@ -21,6 +21,8 @@ jobs:
         run: |
           find wp-content/plugins/mad4b-google-measurement-bridge -type f -name '*.php' -print0 | xargs -0 -n1 php -l
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-profile-admin.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-experience.php
       - name: Reject duplicate SERP providers
         run: php wp-content/plugins/mad4b-google-measurement-bridge/tests/no-parallel-provider.php
       - name: Market topology spend-isolation regression
