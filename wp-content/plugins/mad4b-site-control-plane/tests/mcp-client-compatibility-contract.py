@@ -289,5 +289,7 @@ for forbidden in [
 assert "MAD4B_SCP_Servers::chatgpt_materialization_optional_tools( $base )" in projection
 assert "MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools() : array();" not in projection
 assert "function chatgpt_materialization_optional_tools" in servers
+assert "MAD4B_SCP_Servers::chatgpt_materialization_optional_tools( $abilities )" in catalog_diagnostics
+assert "isset( $materialized_optional[ $ability_name ] )" in catalog_diagnostics
 assert "MAX_TOOLS = 36" in catalog_diagnostics
 print('mad4b.site-control-plane.mcp-client-compatibility.v12: PASS')
