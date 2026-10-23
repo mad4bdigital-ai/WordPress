@@ -1129,6 +1129,26 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing administrator access, browser, bounded performance and runtime controls cover explicit read-only reports without new grants.",
       "review_rationale": "Defer expensive Operator and ChatGPT admin reports until an administrator requests a nonce-protected, closed-selector POST. Preserve source contracts and permissions; test initial GET, dispatch guards, query/time metrics, output redaction, timeout and HTTP 504. No live acceptance claim."
+    },
+    {
+      "id": "ability:mad4b/approval-plan",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/approval-plan-route-preflight-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The existing authorization, OAuth, approval-ticket, security, and MCP controls already govern the pre-existing approval-plan ability. The static source scanner sees a new literal reference in route-preflight code; this is not a new ability registration.",
+      "review_rationale": "Record the static ability:mad4b/approval-plan source candidate introduced by the router's read-only live-authority check. The underlying ability already exists and remains governed by the existing write grant, OAuth, and one-time ticket rules. The same-PR PHP regression verifies denied routing, wrong target server and no ticket creation; production authorization stays false."
     }
   ],
   "lifecycle": [],
