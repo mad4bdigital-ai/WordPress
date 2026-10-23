@@ -68,11 +68,11 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt",
-      "sha256": "9caf4bd06783b377babeae47ea0564d9e901099076e08e004927c76f7f730a1b"
+      "sha256": "c45fe640bc5fa32087f912d6f9505970a64151c942d442928e5b73fc42f1aa8e"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/README.md",
-      "sha256": "bf91c07879f6875e7296cf4f002b9dc949f3bcbe2224476fd56cf33ef40e4f70"
+      "sha256": "47ee170145f213fefa57b105c802d9d75ceb112a43f1030b8e839225f32461e5"
     }
   ],
   "test_paths": [
@@ -90,7 +90,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",
-      "sha256": "e78cf0fdd8e6db766c457e90b069a6e0886ff9c0b5280757c358086c90def009"
+      "sha256": "dac745b1e9617b76a755f690d918ab46be6924b495058cc62bcc542bde4aeab2"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-enrollment-runtime.php",
