@@ -14,6 +14,11 @@ class WP_Error {
 function is_wp_error( $v ) { return $v instanceof WP_Error; }
 function wp_get_environment_type() { return 'staging'; }
 function home_url() { return 'https://staging.allroyalegypt.com'; }
+class MAD4B_SCP_Site_Profile {
+    public static function configured() { return true; }
+    public static function origin_enrolled() { return true; }
+    public static function site_urls_match_enrollment() { return true; }
+}
 function wp_json_encode( $v, $flags = 0 ) { return json_encode( $v, $flags ); }
 class MAD4B_SCP_Operator_Bridge {
     public static function request_authority_matches( $op, $args ) {
