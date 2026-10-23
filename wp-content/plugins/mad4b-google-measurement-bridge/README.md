@@ -129,3 +129,19 @@ Results cache (6 hours) is partitioned by Site UUID, operator and Google Ads Cus
 For SEO priorities, combine query data from Google Search Console, page-level organic performance and actual search intent; never equate Google Ads competition with organic ranking competition.
 
 Future research extension gates: ad group themes and forecasts (request schemas require independent review), search intent classification, keyword clustering, GSC cannibalization, competitor URL seed analysis, multi-country opportunity scoring and governed publishing of campaigns/content plans. None of these is claimed as active live Google integration.
+
+## Keyword Intelligence + Organic Opportunities + Forecast (vNext)
+Three new read-only WordPress Abilities:
+1. `mad4b/keyword-intelligence-plan` — accept up to 500 structured keyword rows from Ads/GSC, deduplicate and cluster by shared normalized Arabic/English tokens, provide heuristic intent, provisional opportunity scores (based on available volumes and GSC observations, **not SEO difficulty**), and draft editorial briefs. No campaign or WordPress content is published.
+2. `mad4b/keyword-gsc-opportunities` — bounded Search Console Search Analytics `query` (query, page, date, country, device), 1–90 days, top 1000 rows, based on an explicit URL-prefix or domain property within the enrolled Site Profile host. Requires new owner consent to `webmasters.readonly`; never borrows Rank Math credentials. Rows can omit low-frequency queries due to GSC privacy/top-row limitations.
+3. `mad4b/google-keyword-forecast` — inline Google Ads API v26 KeywordPlanIdeaService forecast simulation for up to 50 keywords, match type, geographic/language targeting and simulated CPC/budget values. No Google campaign, ad group or budget is created. The API response is an estimate sensitive to account relevance and bidding strategy, not a performance guarantee.
+
+Recommended workflow:
+Keyword Ideas → Historical Metrics → GSC Organic Queries → Intent/Clusters → draft SEO brief or ad-group plan → Forecast → manual approval before publishing. Content briefs are deliberately **not equivalent to researched SERP briefs**: use external SERP evidence and brand editorial QA first.
+
+### Remaining before live acceptance
+- Verify Ads Cloud-project API production permission, Google OAuth and GSC scopes, exact Ads customer / GSC property.
+- Exercise real v26 KeywordPlanIdeaService forecast request and response schemas; validate languages, locations, account currencies, API quotas and rate limits.
+- Validate WordPress Abilities discovery and return envelopes in ARE Staging.
+- Improve semantic clustering with SERP evidence, intent models and multilingual synonym dictionaries; simple token overlap currently may over-segment.
+- Create governed stored research jobs, configurable scoring models, ad-group CSV/export, WP content-job handoff, and approved automation, which are **not implemented** in this increment.
