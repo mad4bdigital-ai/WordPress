@@ -1406,6 +1406,46 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing MCP, OAuth, ticket, execution and source-review controls apply; the operation does not grant authority or change Production settings.",
       "execution_note": "Verified unit and contract tests are source-level evidence only; authenticated live acceptance for this GitHub HEAD remains outstanding and no Production promotion is granted."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-client.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-ticket-brand-runtime-regressions.py"
+      ],
+      "owner_role": "Repository security reviewer — CI-only; Local owner and Production remain unauthorized",
+      "review_rationale": "This local identity service must deny Production/Staging and an unenrolled or UUID-mismatched site. It inherits no OAuth or write grant.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing local environment isolation, admin UX, WordPress policy and MCP security controls apply. Additional authority would require a separately reviewed and approved operation.",
+      "execution_note": "Isolated Local Client denial fixture runs from bounded CI wrapper. No credential provisioning, end-to-end host transport certification or release approval is inferred."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-client-admin.php",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-ticket-brand-runtime-regressions.py"
+      ],
+      "owner_role": "Repository security reviewer — CI-only; Local owner and Production remain unauthorized",
+      "review_rationale": "The local admin-facing service requires exact local scope and pre-existing owner permission; provisioning is disabled by default and no credential is issued without a validated pending request.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing local environment isolation, admin UX, WordPress policy and MCP security controls apply. Additional authority would require a separately reviewed and approved operation.",
+      "execution_note": "Isolated Local Client denial fixture runs from bounded CI wrapper. No credential provisioning, end-to-end host transport certification or release approval is inferred."
     }
   ],
   "lifecycle": [],
@@ -5731,7 +5771,10 @@
         "SECURITY-01",
         "OAUTH-01",
         "GOVERNANCE-01",
-        "PLATFORM-01"
+        "PLATFORM-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/integration-ticket-brand-runtime-regressions.py"
