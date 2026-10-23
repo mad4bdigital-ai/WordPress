@@ -59,6 +59,9 @@ jobs:
           snippets="$root/includes/class-mad4b-scp-code-snippets-runtime-diagnostic.php"
           main="$root/mad4b-site-control-plane.php"
           servers="$root/includes/class-mad4b-scp-servers.php"
+          core_catalog="$root/includes/class-mad4b-scp-server-core-catalog.php"
+          test -f "$core_catalog"
+          grep -Fq "class-mad4b-scp-server-core-catalog.php" "$servers" "$core_catalog"
 
           grep -Fq "const CONTRACT = 'mad4b.runtime-functional-gap-diagnostic.v2'" "$diag"
           grep -Fq "const ABILITY = 'mad4b/runtime-functional-gap-diagnostic'" "$diag"
@@ -85,13 +88,13 @@ jobs:
             exit 1
           fi
 
-          grep -Fq "mad4b/runtime-functional-gap-diagnostic" "$servers"
-          grep -Fq "mad4b/code-snippets-rest-bootstrap-diagnostic" "$servers"
-          grep -Fq "public static function chatgpt_full_catalog_candidates()" "$servers"
-          grep -Fq "self::core_tools( 'mad4b-read' )" "$servers"
-          grep -Fq "'mad4b/tool-discover'" "$servers"
-          grep -Fq "'mad4b/tool-info'" "$servers"
-          grep -Fq "'mad4b/read-execute'" "$servers"
+          grep -Fq "mad4b/runtime-functional-gap-diagnostic" "$servers" "$core_catalog"
+          grep -Fq "mad4b/code-snippets-rest-bootstrap-diagnostic" "$servers" "$core_catalog"
+          grep -Fq "public static function chatgpt_full_catalog_candidates()" "$servers" "$core_catalog"
+          grep -Fq "self::core_tools( 'mad4b-read' )" "$servers" "$core_catalog"
+          grep -Fq "'mad4b/tool-discover'" "$servers" "$core_catalog"
+          grep -Fq "'mad4b/tool-info'" "$servers" "$core_catalog"
+          grep -Fq "'mad4b/read-execute'" "$servers" "$core_catalog"
 
           # These diagnostics remain part of the governed read universe, but
           # their schemas are intentionally not required to be direct tools.
