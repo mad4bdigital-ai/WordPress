@@ -16,7 +16,7 @@ SHARED_TESTS = ROOT / "tests/remote-execution"
 SHARED_WORKFLOWS = sorted((ROOT / ".github/workflows").glob("mad4b-operator-*.yml"))
 
 DENIED = (
-    ("customer_domain", re.compile(r"\\b(?:staging\\.)?(?:allroyalegypt|egypttourgates)\\.com\\b", re.I)),
+    ("customer_domain", re.compile(r"\b(?:staging\.)?(?:allroyalegypt|egypttourgates)\.com\b", re.I)),
     ("hosting_account_path", re.compile(r"/home/u[0-9]{6,}/")),
     ("site_specific_runner", re.compile(r"are-staging-(?:unified|ssh)-v1")),
     ("old_shared_path", re.compile(r"tools/are-staging-unified-remote-plane")),
