@@ -48,6 +48,23 @@
         "expected_post_modified_gmt"
       ]
     },
+    "mad4b/content-apply-bundle": {
+      "provider": "core",
+      "mode": "content_bundle",
+      "brand_paths": ["post.post_title", "post.post_content", "post.post_excerpt"],
+      "post_operational_paths": ["post.post_status", "post.post_parent", "post.post_author"],
+      "root_operational_paths": [
+        "mode", "post_type", "post_id", "operation_key",
+        "expected_state_sha256", "expected_pipeline_settings_sha256",
+        "expected_bundle_sha256", "expected_operation_binding_sha256",
+        "featured_media_id", "evidence", "acceptance_targets", "validation"
+      ],
+      "meta_key_contract": "mad4b/content-set-meta",
+      "meta_operational_key_regex": "^_?(?:(?:tour|booking|adult|child|base|regular|sale|product|item|inventory)_)?(?:price|amount|cost|stock|stock_status|stock_quantity|sku|id|term_id|post_id|supplier_id|quantity|capacity|duration|rating|latitude|longitude|lat|lng)(?:_(?:adult|child|base|sale|regular|total|net|gross|per_person))?$",
+      "unclassified_meta_policy": "review_required",
+      "taxonomy_term_creation_brand_fields": ["name", "description"],
+      "non_authorizing": true
+    },
     "mad4b/content-import-bundle": {
       "provider": "core",
       "mode": "exact_paths",
