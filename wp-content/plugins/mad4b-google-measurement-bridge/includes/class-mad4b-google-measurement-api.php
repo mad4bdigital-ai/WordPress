@@ -9,6 +9,7 @@ if (!defined('ABSPATH')) exit;
 final class MAD4B_Google_Measurement_API {
     const GA_ADMIN = 'https://analyticsadmin.googleapis.com/v1beta/';
     const GA_DATA = 'https://analyticsdata.googleapis.com/v1beta/';
+    const GA_ADMIN_ALPHA = 'https://analyticsadmin.googleapis.com/v1alpha/';
     const GTM = 'https://tagmanager.googleapis.com/tagmanager/v2/';
     const MAX_RESPONSE = 1048576;
 
@@ -31,7 +32,7 @@ final class MAD4B_Google_Measurement_API {
         return $token;
     }
     private static function get($base, $path, $scope, $query = array()) {
-        if (!in_array($base, array(self::GA_ADMIN,self::GA_DATA,self::GTM), true) ||
+        if (!in_array($base, array(self::GA_ADMIN,self::GA_ADMIN_ALPHA,self::GA_DATA,self::GTM), true) ||
             !preg_match('~^[A-Za-z0-9_./-]+$~D', $path)) {
             return new WP_Error('mad4b_measurement_bad_path','Path rejected.');
         }
@@ -90,7 +91,7 @@ final class MAD4B_Google_Measurement_API {
         // Accounts may be discovered pre-binding. Property/container-scoped
         // reads must match the exact resource selected in Brand Authority.
         $binding = MAD4B_Google_Measurement_Admin::binding();
-        $ga_scoped = array('ga4_custom_dimensions','ga4_key_events','ga4_events_report','ga4_sources_report');
+        $ga_scoped = array('ga4_custom_dimensions','ga4_key_events','ga4_audiences','ga4_events_report','ga4_sources_report');
         $gtm_scoped = array('gtm_workspaces','gtm_workspace_status','gtm_live_version','gtm_tags','gtm_triggers','gtm_variables','gtm_workspace_status','gtm_live_version');
         if (in_array($action,$ga_scoped,true)) {
             if (empty($binding['ready']) || $id !== $binding['ga4_property'])
@@ -108,6 +109,9 @@ final class MAD4B_Google_Measurement_API {
             case 'ga4_properties':
                 if (!preg_match('/^accounts\/([0-9]+)$/D', $id)) return self::invalid();
                 return self::get(self::GA_ADMIN,'properties',MAD4B_Google_Measurement_Bridge::SCOPE_GA4_READ,array('filter'=>'parent:'.$id,'pageSize'=>50));
+            case 'ga4_audiences':
+                if (!preg_match('~^properties/[0-9]+$~D', $id)) return self::invalid();
+                return self::get(self::GA_ADMIN_ALPHA,$id.'/audiences',MAD4B_Google_Measurement_Bridge::SCOPE_GA4_READ,$q);
             case 'ga4_custom_dimensions':
                 if (!preg_match('/^properties\/([0-9]+)$/D', $id)) return self::invalid();
                 return self::get(self::GA_ADMIN,$id.'/customDimensions',MAD4B_Google_Measurement_Bridge::SCOPE_GA4_READ,$q);
@@ -154,7 +158,7 @@ final class MAD4B_Google_Measurement_API {
             'input_schema'=>array('type'=>'object','additionalProperties'=>false,
                 'required'=>array('action'),
                 'properties'=>array(
-                    'action'=>array('type'=>'string','enum'=>array('ga4_accounts','ga4_properties','ga4_custom_dimensions','ga4_key_events','ga4_events_report','ga4_sources_report','gtm_accounts','gtm_containers','gtm_workspaces','gtm_tags','gtm_triggers','gtm_variables')),
+                    'action'=>array('type'=>'string','enum'=>array('ga4_accounts','ga4_properties','ga4_custom_dimensions','ga4_key_events','ga4_audiences','ga4_events_report','ga4_sources_report','gtm_accounts','gtm_containers','gtm_workspaces','gtm_tags','gtm_triggers','gtm_variables')),
                     'resource_id'=>array('type'=>'string','maxLength'=>150),
                     'page_token'=>array('type'=>'string','maxLength'=>250)
                 )),
