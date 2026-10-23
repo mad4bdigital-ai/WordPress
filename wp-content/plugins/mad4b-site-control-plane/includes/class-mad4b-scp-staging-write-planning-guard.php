@@ -304,6 +304,10 @@ final class MAD4B_SCP_Staging_Write_Planning_Guard {
 		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ) return new WP_Error( 'mad4b_remote_plan_authority_not_ready', 'Governed write authority is not ready.' );
 
 		$server_id = isset( $input['server_id'] ) ? sanitize_key( (string) $input['server_id'] ) : '';
+		// Reject misrouted approval requests before the expensive authority preflight.
+		// In particular, mad4b-admin is not a remote ticket target server.
+		if ( ! in_array( $server_id, array( 'mad4b-write', 'mad4b-developer' ), true ) )
+			return new WP_Error( 'mad4b_remote_plan_server_denied', 'Remote approval planning targets mad4b-write or the bounded normal Developer plane.' );
 		if ( 'mad4b-developer' !== $server_id ) {
 			$readiness = method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'current_execution_readiness' )
 				? MAD4B_SCP_Staging_Write_Authority::current_execution_readiness( self::ABILITY, $input )
