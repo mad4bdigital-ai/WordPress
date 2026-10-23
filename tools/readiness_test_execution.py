@@ -18,6 +18,20 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 SHA = re.compile(r"^[a-f0-9]{40}$")
 
+# Review-bound CLI PHP scripts, not a blanket PHP execution policy.
+# Each path contains exit-on-failure assertions and a positive PASS marker.
+# Other PHP files continue to require PHPUnit; unknown paths fail closed.
+STANDALONE_PHP_REGRESSIONS = frozenset((
+    "tests/remote-execution/operator-grants-convergence-smoke.php",
+    "tests/remote-execution/operator-grant-rollout-smoke.php",
+    "tests/remote-execution/operator-bridge-admission.php",
+    "tests/remote-execution/operator-operation-policy-smoke.php",
+    "tests/remote-execution/operator-oauth-session-smoke.php",
+    "tests/remote-execution/operator-runner-profile-smoke.php",
+    "tests/remote-execution/unified-operator-session-policy-smoke.php",
+))
+
+
 
 def ensure(ok, message):
     if not ok:
@@ -34,7 +48,10 @@ def command_for(test):
     if path.suffix == ".py":
         return [sys.executable, str(path)]
     if path.suffix == ".php":
-        # Direct php execution is not necessarily a test run. Require PHPUnit.
+        if test in STANDALONE_PHP_REGRESSIONS:
+            ensure(not path.is_symlink(), "Standalone test symlink denied " + test)
+            return ["php", str(path)]
+        # Unreviewed PHP still requires a dedicated trusted PHPUnit runner.
         runner = ROOT / "vendor/bin/phpunit"
         if not runner.is_file():
             runner = ROOT / "wp-content/plugins/mad4b-site-control-plane/vendor/bin/phpunit"
@@ -61,6 +78,9 @@ def run_tests(impact, head, timeout):
             result = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
                                     timeout=timeout, check=False)
             ok = result.returncode == 0
+            if name in STANDALONE_PHP_REGRESSIONS:
+                # A zero-exit stub is not sufficient evidence of a test.
+                ok = ok and bool(re.search(r"(?m)^PASS(?::|\\s)", result.stdout))
             tail = (result.stdout + "\n" + result.stderr)[-5000:]
             outcome = "PASS" if ok else "FAIL"
             code = result.returncode
@@ -89,6 +109,8 @@ def run_tests(impact, head, timeout):
 
 def self_test():
     assert command_for("tests/production_readiness_registry_contract.py")[0] == sys.executable
+    assert command_for("tests/remote-execution/operator-grants-convergence-smoke.php")[0] == "php"
+    assert command_for("tests/remote-execution/operator-bridge-admission.php")[0] == "php"
     for path in ("README.md", "../secrets.py", "tests/does-not-exist.py"):
         try:
             command_for(path)
