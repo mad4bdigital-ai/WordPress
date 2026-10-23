@@ -10,6 +10,10 @@ on:
       - '.github/workflows/are-operator-session-policy.yml'
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -19,6 +23,8 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Show PHP runtime
         run: php -v
       - name: PHP syntax check
