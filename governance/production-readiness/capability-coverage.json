@@ -6412,6 +6412,28 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing governance, execution, OAuth, exact-ticket, security and provider controls cover this bounded repository source change; no new Production control or runtime approval is created.",
       "execution_note": "Exact-HEAD CI and isolated denial tests constitute source-level evidence only. Fresh signed live MCP to worker receipt, exact OAuth grants, certified package identity and Production approval remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-tool-projection.php",
+      "source_blob_sha": "6991f295a4be2b1949748acd67de4a4501d008be",
+      "review_rationale": "Dynamic ChatGPT projection planning now uses the exact optional-tool classification as final materialization, preventing reviewed direct profile conveniences from exhausting the hard 36-tool required-transport budget. The limit is unchanged; core dispatch transport cannot be displaced and optional projection remains non-authorizing.",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-client-compatibility-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; runtime Staging and Production approval not granted",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Current bounded catalog, MCP execution and security controls cover optional classification alignment. No larger catalog, bearer policy relaxation, grant or deployment exception is introduced.",
+      "execution_note": "Source-level test checks classification parity, runtime MCP client compatibility matrix must pass on current exact HEAD before acceptance. No deployment or authority is inferred."
     }
   ],
   "code_change_rules": {
