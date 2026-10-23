@@ -215,3 +215,6 @@ To use live SERP: discover a certified Search Profile/provider in the existing c
 - Search Profile market overlays and provider-account budget nodes exist in Feature 007, but no assumption is made that market-specific limits are configured or provably isolated. Budget approval still belongs to existing provider-account authority and exact capture-plan/apply/reconcile.
 - Existing Profiles must never change country for a previously committed Market ID. A country or objective with separately owned permissions/account/budget may use a separate Search Profile; this is a governed business choice, not an automatic migration.
 - ARE Staging Profile creation and rollout remain separately gated. No live market profile, allowance, Google Ads spend, SERP capture or content job was created by this source change.
+
+### Market budget diagnostics increment
+The topology audit now reports `profile_market_budget_node_hints` when a configured profile budget node explicitly selects the market ID, and warns about duplicate country identities or missing market-specific nodes. These are *hints only*: the true spend authority lives in provider-account budget state and exact reservations, so even a matching profile node does **not** certify market spend isolation. No market capture is authorized by these diagnostics.
