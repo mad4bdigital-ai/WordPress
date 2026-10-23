@@ -5879,6 +5879,46 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "04b12f6d6dcb5f26295a33b7f3219708366cc0e7",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/universal-wordpress-operations-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original private tool-declaration method is preserved verbatim in a required trait, and the public server facade is unchanged; existing MCP authorization, discovery and catalog controls remain applicable.",
+      "review_rationale": "Review of the exact Git blob for non-authorizing method extraction from the legacy facade to a required core catalog trait. Preserve source-level catalog and no expanded remote authority; downstream runtime and staging acceptance are separate."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-core-catalog.php",
+      "source_blob_sha": "9cd9e1c73087fe48c35a126285a3bfb7dd0d9900",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/universal-wordpress-operations-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original private tool-declaration method is preserved verbatim in a required trait, and the public server facade is unchanged; existing MCP authorization, discovery and catalog controls remain applicable.",
+      "review_rationale": "Review of the exact Git blob for non-authorizing method extraction from the legacy facade to a required core catalog trait. Preserve source-level catalog and no expanded remote authority; downstream runtime and staging acceptance are separate."
     }
   ],
   "code_change_rules": {
