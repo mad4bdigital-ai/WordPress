@@ -1446,6 +1446,26 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing local environment isolation, admin UX, WordPress policy and MCP security controls apply. Additional authority would require a separately reviewed and approved operation.",
       "execution_note": "Isolated Local Client denial fixture runs from bounded CI wrapper. No credential provisioning, end-to-end host transport certification or release approval is inferred."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-core-catalog.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/universal-wordpress-operations-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Staging or Production grant",
+      "review_rationale": "Core catalog is an extraction of the existing private declared_core_tools method into a required trait. Tool names, authorization checks and public MCP interface are not expanded by this new file.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The preexisting MCP server, platform bootstrap, OAuth policy and governance controls still apply to the unchanged tool declaration implementation.",
+      "execution_note": "Static exact-source and bounded regression review only; staging browser and live transport evidence remain unverified."
     }
   ],
   "lifecycle": [],
