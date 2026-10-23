@@ -37,5 +37,5 @@ $changed=$receipt;
 $changed['body']['verdict']='FAIL';
 $check($changed,$job['seal'],false,'modified_worker_result_denied');
 $changed=$job['seal'];
-$changed['body']['target_fingerprint']=str_repeat('b',64);
+$changed['body']['target_fingerprint']=str_repeat('c',64);
 $check($receipt,$changed,false,'modified_original_job_denied');
