@@ -3,6 +3,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+require_once __DIR__ . '/class-mad4b-scp-developer-preparation-bridge.php';
+
 final class MAD4B_SCP_Abilities {
 	const MAX_WRITE_DISPATCH_CONTEXT_RECEIPT_BYTES = 65536;
 	private static $write_dispatch_governance_envelope = array();
@@ -567,7 +569,7 @@ final class MAD4B_SCP_Abilities {
 				'category' => $category,
 				'readonly' => isset( $annotations['readonly'] ) && true === $annotations['readonly'],
 				'input_schema_sha256' => $this->ability_input_schema_sha256( $ability ),
-				'approval_lane' => $this->developer_approval_lane( $ability_name, isset( $annotations['readonly'] ) && true === $annotations['readonly'] ),
+				'approval_lane' => MAD4B_SCP_Developer_Preparation_Bridge::approval_lane( $ability_name, isset( $annotations['readonly'] ) && true === $annotations['readonly'] ),
 			);
 			if ( count( $items ) >= $limit ) break;
 		}
@@ -597,48 +599,14 @@ final class MAD4B_SCP_Abilities {
 			'input_schema' => method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null,
 			'input_schema_sha256' => $this->ability_input_schema_sha256( $ability ),
 			'annotations' => $annotations,
-			'approval_lane' => $this->developer_approval_lane( $ability_name, isset( $annotations['readonly'] ) && true === $annotations['readonly'] ),
+			'approval_lane' => MAD4B_SCP_Developer_Preparation_Bridge::approval_lane( $ability_name, isset( $annotations['readonly'] ) && true === $annotations['readonly'] ),
 			'production_authorized' => false,
 			'breakglass_included' => false,
 			'read_only' => true,
 			'mutation_performed' => false,
 		);
-        if ( ! class_exists( 'MAD4B_SCP_Capability_Descriptor_Registry' ) ||
-             ! class_exists( 'MAD4B_SCP_Ability_Catalog_Transport' ) ||
-             ! class_exists( 'MAD4B_SCP_Preparation_Receipt' ) )
-            return new WP_Error( 'mad4b_developer_preparation_runtime_unavailable', 'Signed Developer preparation unavailable.' );
-        $row = MAD4B_SCP_Capability_Descriptor_Registry::describe( $ability_name );
-        if ( is_wp_error( $row ) ) return $row;
-        if ( empty( $row['execution_eligible'] ) || 'developer' !== (string) ( $row['execution_lane'] ?? '' ) )
-            return new WP_Error( 'mad4b_developer_preparation_not_eligible', 'Developer target not eligible.' );
-        if ( ! hash_equals( (string) ( $row['input_schema_sha256'] ?? '' ),
-                (string) $result['input_schema_sha256'] ) ||
-             ! preg_match( '/^[a-f0-9]{64}$/', (string) ( $row['classification_sha256'] ?? '' ) ) )
-            return new WP_Error( 'mad4b_developer_preparation_schema_drift', 'Developer descriptor schema drift.' );
-        $receipt = MAD4B_SCP_Preparation_Receipt::issue( $row );
-        if ( is_wp_error( $receipt ) ) return $receipt;
-        if ( ! is_string( $receipt ) || '' === $receipt )
-            return new WP_Error( 'mad4b_developer_preparation_unavailable', 'Signed Developer preparation unavailable.' );
-        $result['prepared_dispatch'] = array(
-            'expected_input_schema_sha256' => (string) $result['input_schema_sha256'],
-            'expected_execution_lane' => 'developer',
-            'expected_classification_sha256' => (string) $row['classification_sha256'],
-            'expected_authority_scope_sha256' => MAD4B_SCP_Ability_Catalog_Transport::current_authority_scope(),
-            'preparation_receipt' => $receipt,
-        );
-        $result['dispatch_tool'] = 'mad4b/developer-execute';
-        $result['preparation_contract'] = MAD4B_SCP_Preparation_Receipt::CONTRACT;
-        return $result;
+        return MAD4B_SCP_Developer_Preparation_Bridge::enrich( $result, $ability_name );
     }
-
-	private function developer_approval_lane( $ability_name, $readonly ) {
-		if ( $readonly ) return 'none';
-		if ( class_exists( 'MAD4B_SCP_Impact_Policy' ) ) {
-			$classification = MAD4B_SCP_Impact_Policy::classify( (string) $ability_name, 'core', array() );
-			if ( is_array( $classification ) && isset( $classification['approval_lane'] ) && in_array( $classification['approval_lane'], array( 'ai_autonomous', 'human_only' ), true ) ) return (string) $classification['approval_lane'];
-		}
-		return 'human_only';
-	}
 
 	public function developer_execute( $input ) {
 		$abuse = class_exists( 'MAD4B_SCP_Abuse_Budget' ) ? MAD4B_SCP_Abuse_Budget::admit( 'execute', is_array($input)?$input:array() ) : new WP_Error( 'mad4b_abuse_budget_unavailable', 'Execution abuse-budget runtime is unavailable.' );
