@@ -220,6 +220,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operator-doctor.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cli.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-host-bridge.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operator-session-policy.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operator-sessions.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-identifiers.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-identity-context.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-abuse-budget.php';
