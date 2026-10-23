@@ -21,6 +21,7 @@ def require(condition, message):
 package = PACKAGE.read_text(encoding="utf-8")
 bootstrap = BOOTSTRAP.read_text(encoding="utf-8")
 servers = SERVERS.read_text(encoding="utf-8") + (ROOT / "includes/class-mad4b-scp-server-write-catalog.php").read_text(encoding="utf-8")
+servers += (ROOT / "includes/class-mad4b-scp-server-core-catalog.php").read_text(encoding="utf-8")
 registry = REGISTRY.read_text(encoding="utf-8")
 impact = IMPACT.read_text(encoding="utf-8")
 grants = GRANTS.read_text(encoding="utf-8")
