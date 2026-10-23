@@ -145,6 +145,7 @@ $check( is_wp_error($blocked_bootstrap) && 'mad4b_intent_bootstrap_incomplete' =
 $source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-intent-registry.php' );
 $schema = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-schema.php' );
 $servers = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-servers.php' );
+$servers .= file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-server-core-catalog.php' );
 $write_catalog = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-server-write-catalog.php' );
 $main = file_get_contents( dirname( __DIR__ ) . '/mad4b-site-control-plane.php' );
 
