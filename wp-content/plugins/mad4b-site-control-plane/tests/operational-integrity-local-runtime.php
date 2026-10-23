@@ -70,5 +70,6 @@ foreach ( array(
     acceptance( is_wp_error( $result ), 'reject ambiguous, invalid or timezone-free timestamp ' . $unsafe );
 }
 $source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-servers.php' );
+$source .= file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-server-core-catalog.php' );
 acceptance( substr_count( $source, 'MAD4B_SCP_Deployment_Mode_Resolver::mcp_registration_status()' ) >= 2, 'both owned custom server projections are registered' );
 echo "PASS: local operational-integrity synthetic runtime (no live MCP certification)" . PHP_EOL;
