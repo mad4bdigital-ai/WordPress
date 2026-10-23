@@ -11,7 +11,7 @@ import tempfile
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
 
-BASE = Path(__file__).resolve().parents[1]
+BASE = Path(__file__).resolve().parents[2]
 MODULES = BASE / "tools/are-staging-unified-remote-plane"
 
 
@@ -43,19 +43,24 @@ def pair(where, name):
 
 
 def main():
-    with tempfile.TemporaryDirectory(prefix="are-operator-rsa-") as raw:
+    with tempfile.TemporaryDirectory(prefix="mad4b-operator-rsa-") as raw:
         tmp = Path(raw)
         site_priv, site_pub = pair(tmp, "site")
         worker_priv, worker_pub = pair(tmp, "worker")
-        env = dict(os.environ, MAD4B_TEST_SIGNING_KEY_PATH=str(site_priv))
+        profile_id = os.environ.get('MAD4B_TEST_RUNNER_PROFILE_ID', 'fixture-site-a-runner-v1')
+        fingerprint = os.environ.get('MAD4B_TEST_SITE_FINGERPRINT', 'a' * 64)
+        env = dict(os.environ, MAD4B_TEST_SIGNING_KEY_PATH=str(site_priv),
+                   MAD4B_TEST_RUNNER_PROFILE_ID=profile_id,
+                   MAD4B_TEST_SITE_FINGERPRINT=fingerprint)
         php = subprocess.run(
             ["php", str(MODULES / "operator-signature-fixture.php")],
             env=env, capture_output=True, text=True, check=True)
         fixture = json.loads(php.stdout)
         submission, seal = fixture["submission"], fixture["seal"]
         admitted = verify.verify_job(
-            submission, seal, site_pub.read_bytes(), "a"*64,
-            lambda b, a: True, lambda b, a: False)
+            submission, seal, site_pub.read_bytes(), fingerprint,
+            lambda b, a: True, lambda b, a: False,
+            expected_runner_profile_id=profile_id)
         result = receipt_mod.issue_receipt(
             admitted, seal, {
                 "verdict": "PASS", "exit_code": 0, "stdout": "1",
@@ -67,7 +72,7 @@ def main():
         job_path.write_text(json.dumps(fixture, separators=(",", ":")))
         receipt_path.write_text(json.dumps(result, separators=(",", ":")))
         subprocess.run([
-            "php", str(BASE / "tests/are-operator-receipt-verify-offline.php"),
+            "php", str(BASE / "tests/remote-execution/operator-receipt-verify-offline.php"),
             str(job_path), str(receipt_path), str(site_pub), str(worker_pub),
         ], check=True)
         for label, mod, accepted in (
@@ -76,20 +81,29 @@ def main():
             ("valid_unmodified", submission, True),
         ):
             try:
-                verify.verify_job(mod, seal, site_pub.read_bytes(), "a"*64,
-                                  lambda b, a: True, lambda b, a: False)
+                verify.verify_job(mod, seal, site_pub.read_bytes(), fingerprint,
+                                  lambda b, a: True, lambda b, a: False,
+                                  expected_runner_profile_id=profile_id)
                 if not accepted:
                     raise AssertionError(label + " was admitted")
             except verify.AdmissionDenied:
                 if accepted:
                     raise
+        try:
+            verify.verify_job(submission, seal, site_pub.read_bytes(),
+                              fingerprint, lambda b, a: True, lambda b, a: False,
+                              expected_runner_profile_id="wrong-site-runner-v1")
+            raise AssertionError("cross-site runner profile accepted")
+        except verify.AdmissionDenied:
+            pass
         for label, checker in (
             ("revoked_session", lambda b, a: False),
             ("unavailable_check", None),
         ):
             try:
                 verify.verify_job(submission, seal, site_pub.read_bytes(),
-                    "a"*64, checker, lambda b, a: False)
+                    fingerprint, checker, lambda b, a: False,
+                    expected_runner_profile_id=profile_id)
                 raise AssertionError(label + " was admitted")
             except verify.AdmissionDenied:
                 pass

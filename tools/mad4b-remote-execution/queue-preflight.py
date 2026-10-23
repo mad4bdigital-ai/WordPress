@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bounded read-only preflight for an ARE Staging Host Bridge queue.
+"""Bounded read-only preflight for an enrolled Staging Host Bridge queue.
 
 This is not a command executor, authority issuer, or acceptance receipt.
 Before installing a consumer, validate existing submissions without changing
@@ -20,7 +20,7 @@ EXCLUDED = {
     "authorizing", "mutation_performed", "queued", "replayed",
 }
 OPERATIONS = {"health", "wordpress_version", "active_plugin_inventory", "php_lint"}
-RUNNER_PROFILE = "are-staging-ssh-v1"
+PROFILE_ID = re.compile(r"^[a-z][a-z0-9-]{2,63}$")
 MAX_BYTES = 131072
 
 def digest(record):
@@ -29,7 +29,9 @@ def digest(record):
                       ensure_ascii=False, allow_nan=False).encode("utf-8")
     return hashlib.sha256(data).hexdigest()
 
-def check_submission(item, fingerprint, filename):
+def check_submission(item, fingerprint, filename, runner_profile_id):
+    if not isinstance(runner_profile_id, str) or not PROFILE_ID.fullmatch(runner_profile_id):
+        return "runner_profile_unconfigured"
     if not isinstance(item, dict) or item.get("contract") != "mad4b.host-bridge-submission.v1":
         return "invalid_submission_contract"
     id_ = item.get("job_id")
@@ -48,7 +50,7 @@ def check_submission(item, fingerprint, filename):
         return "staging_binding_missing"
     if not isinstance(fingerprint, str) or not SHA256.fullmatch(fingerprint) or target.get("target_fingerprint") != fingerprint:
         return "target_fingerprint_mismatch"
-    if plan.get("runner_profile_id") != RUNNER_PROFILE:
+    if plan.get("runner_profile_id") != runner_profile_id:
         return "runner_profile_mismatch"
     if plan.get("operation_id") != "runtime.status.read" or plan.get("operation_version") != 1:
         return "operation_not_allowlisted"
@@ -70,7 +72,7 @@ def check_submission(item, fingerprint, filename):
         return "unexpected_arguments"
     return "verified_read_only_eligible"
 
-def inspect(directory, fingerprint):
+def inspect(directory, fingerprint, runner_profile_id):
     jobs = []
     if directory.is_symlink() or not directory.is_dir():
         raise ValueError("queue_path_invalid")
@@ -79,7 +81,7 @@ def inspect(directory, fingerprint):
             if f.is_symlink() or not f.is_file() or f.stat().st_size > MAX_BYTES:
                 raise ValueError("invalid_file_type_or_size")
             item = json.loads(f.read_text(encoding="utf-8"))
-            result = check_submission(item, fingerprint, f.name)
+            result = check_submission(item, fingerprint, f.name, runner_profile_id)
         except (OSError, ValueError, TypeError, KeyError) as e:
             result = "invalid_queue_entry:" + type(e).__name__
         jobs.append({"filename": f.name, "state": result})
@@ -89,8 +91,9 @@ def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--queued-dir", type=Path, required=True)
     ap.add_argument("--expected-target-fingerprint", required=True)
+    ap.add_argument("--runner-profile-id", required=True)
     args = ap.parse_args(argv)
-    jobs = inspect(args.queued_dir, args.expected_target_fingerprint)
+    jobs = inspect(args.queued_dir, args.expected_target_fingerprint, args.runner_profile_id)
     ok = all(row["state"] == "verified_read_only_eligible" for row in jobs)
     print(json.dumps({
         "contract": "mad4b.host-queue-preflight.v1",

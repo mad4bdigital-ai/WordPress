@@ -2,7 +2,7 @@
 """Fail-closed Operator admission verifier. It NEVER executes a command or SQL.
 
 Requires separate live session and approval callbacks before admitting any job.
-Trust is pinned to the exact ARE Staging WordPress RSA-3072 public key.
+Trust is pinned to the enrolled Staging site's RSA-3072 public key.
 """
 import base64
 import hashlib
@@ -15,7 +15,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
 CONTRACT = "mad4b.operator-queue-attestation.v1"
-PROFILE = "are-staging-unified-v1"
+PROFILE_ID = re.compile(r"^[a-z][a-z0-9-]{2,63}$")
 SHA = re.compile(r"^[a-f0-9]{64}$")
 UUID = re.compile(r"^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$")
 
@@ -44,7 +44,7 @@ def wordpress_digest(record):
 
 
 def verify_job(submission, seal, public_key_pem, expected_fingerprint,
-               live_session_check, live_approval_check, now=None):
+               live_session_check, live_approval_check, now=None, expected_runner_profile_id=None):
     now = int(time.time()) if now is None else now
     require(callable(live_session_check) and callable(live_approval_check),
             "trusted_live_verifier_required")
@@ -70,7 +70,10 @@ def verify_job(submission, seal, public_key_pem, expected_fingerprint,
     require(isinstance(op, str) and op in
             ("operator.shell", "operator.wp-cli", "operator.sql.read",
              "operator.sql.write", "operator.sql.schema"), "operation_not_admitted")
-    require(plan.get("runner_profile_id") == PROFILE and
+    require(isinstance(expected_runner_profile_id, str) and
+            PROFILE_ID.fullmatch(expected_runner_profile_id),
+            "expected_runner_profile_unconfigured")
+    require(plan.get("runner_profile_id") == expected_runner_profile_id and
             plan.get("target", {}).get("environment") == "staging" and
             plan.get("production_authorized") is False and
             submission.get("production_authorized") is False,

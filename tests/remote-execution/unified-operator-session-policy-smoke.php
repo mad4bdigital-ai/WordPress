@@ -1,16 +1,16 @@
 <?php
 /**
  * Standalone no-WordPress smoke test:
- * php tests/are-unified-operator-session-policy-smoke.php
+ * php tests/remote-execution/unified-operator-session-policy-smoke.php
  */
-define( 'ABSPATH', __DIR__ . '/../' );
-require_once __DIR__ . '/../wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-session-policy.php';
+define( 'ABSPATH', __DIR__ . '/../../' );
+require_once __DIR__ . '/../../wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-session-policy.php';
 
 $now = 1792740000;
 $session = array(
     'contract' => 'mad4b.operator-session.v1',
     'environment' => 'staging',
-    'site_uuid' => 'are-staging-uuid',
+    'site_uuid' => 'fixture-site-uuid',
     'target_fingerprint' => str_repeat( 'a', 64 ),
     'agent_public_id' => 'agent-1',
     'issued_at_epoch' => $now - 15,
@@ -19,7 +19,7 @@ $session = array(
 );
 $facts = array(
     'environment' => 'staging',
-    'site_uuid' => 'are-staging-uuid',
+    'site_uuid' => 'fixture-site-uuid',
     'target_fingerprint' => str_repeat( 'a', 64 ),
     'agent_public_id' => 'agent-1',
     'now_epoch' => $now,

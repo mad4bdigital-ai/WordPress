@@ -1,15 +1,15 @@
-name: ARE Unified Operator Session Policy
+name: MAD4B Unified Operator Session Policy
 
 on:
   pull_request:
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-session-policy.php'
-      - 'tests/are-unified-operator-session-policy-smoke.php'
-      - 'tests/are-operator-oauth-session-smoke.php'
-      - 'tests/are-operator-grant-rollout-smoke.php'
+      - 'tests/remote-execution/unified-operator-session-policy-smoke.php'
+      - 'tests/remote-execution/operator-oauth-session-smoke.php'
+      - 'tests/remote-execution/operator-grant-rollout-smoke.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-sessions.php'
-      - '.github/workflows/are-operator-session-policy.yml'
+      - '.github/workflows/mad4b-operator-session-policy.yml'
   workflow_dispatch:
 
 concurrency:
@@ -32,14 +32,14 @@ jobs:
       - name: PHP syntax check
         run: |
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-session-policy.php
-          php -l tests/are-unified-operator-session-policy-smoke.php
+          php -l tests/remote-execution/unified-operator-session-policy-smoke.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-sessions.php
-          php -l tests/are-operator-oauth-session-smoke.php
+          php -l tests/remote-execution/operator-oauth-session-smoke.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-runtime.php
-          php -l tests/are-operator-grant-rollout-smoke.php
+          php -l tests/remote-execution/operator-grant-rollout-smoke.php
       - name: Staging policy smoke test
         run: |
-          php tests/are-unified-operator-session-policy-smoke.php
-          php tests/are-operator-oauth-session-smoke.php
-          php tests/are-operator-grant-rollout-smoke.php
-          php tests/are-operator-grant-rollout-smoke.php operator
+          php tests/remote-execution/unified-operator-session-policy-smoke.php
+          php tests/remote-execution/operator-oauth-session-smoke.php
+          php tests/remote-execution/operator-grant-rollout-smoke.php
+          php tests/remote-execution/operator-grant-rollout-smoke.php operator

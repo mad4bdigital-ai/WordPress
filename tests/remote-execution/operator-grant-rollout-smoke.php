@@ -1,11 +1,11 @@
 <?php
 /** Standalone side-effect-free Developer authority inventory regression. */
-define( 'ABSPATH', __DIR__ . '/../' );
+define( 'ABSPATH', __DIR__ . '/../../' );
 if ( isset( $argv[1] ) && 'operator' === $argv[1] ) {
     define( 'MAD4B_MCP_OPERATOR_GRANT_ROLLOUT', true );
 }
 function add_action( ...$args ) {}
-require_once __DIR__ . '/../wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-runtime.php';
+require_once __DIR__ . '/../../wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-runtime.php';
 $tools = MAD4B_SCP_Developer_Runtime::tool_names( false );
 $legacy = array(
     'mad4b/developer-runtime-status',

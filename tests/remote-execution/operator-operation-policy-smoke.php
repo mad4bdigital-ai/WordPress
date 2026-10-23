@@ -1,5 +1,5 @@
 <?php
-define( 'ABSPATH', __DIR__ . '/../' );
+define( 'ABSPATH', __DIR__ . '/../../' );
 class WP_Error {
     private $code;
     public function __construct( $code, $message = '' ) { $this->code = $code; }
@@ -7,7 +7,7 @@ class WP_Error {
 }
 function is_wp_error( $v ) { return $v instanceof WP_Error; }
 function wp_json_encode( $v, $flags = 0 ) { return json_encode( $v, $flags ); }
-require_once __DIR__ . '/../wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-operation-policy.php';
+require_once __DIR__ . '/../../wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-operation-policy.php';
 $tests = array(
     array( 'shell', array( 'command' => 'pwd' ), true ),
     array( 'shell', array( 'command' => '' ), false ),

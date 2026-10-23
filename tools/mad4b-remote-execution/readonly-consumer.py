@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Staging-only bounded Host Bridge consumer for previously queued diagnostics.
+"""Bounded Host Bridge consumer for enrolled Staging read-only diagnostics.
 
 No Shell, Raw SQL, WordPress mutation, user-supplied commands or approval
 consumption. A standalone SSH-invoked read-only pilot, NOT the general executor.
@@ -28,9 +28,11 @@ validator = SourceFileLoader(
     "mad4b_readonly_preflight", str(Path(__file__).with_name("queue-preflight.py"))
 ).load_module()
 
-SITE = Path("/home/u948953904/domains/allroyalegypt.com/public_html/staging")
-SPOOL = SITE / "wp-content/mad4b-runner/bridge"
-BASE = Path("/home/u948953904/.mad4b-release-validation/are-staging-remediation-20261023/ssh-developer-alternative")
+SITE = None  # Required from a pinned deployment profile on CLI.
+SPOOL = None
+BASE = None
+WPCLI = None
+RUNNER_PROFILE = None
 RUNNER = BASE / "runner.sh"
 SIGNER = BASE / "readonly-receipt-ed25519.key"
 PUB = BASE / "readonly-receipt-ed25519.pub"
@@ -84,7 +86,7 @@ def stable_identity():
     if not (SITE / "wp-load.php").is_file():
         raise RuntimeError("site identity missing")
     cmd = [
-        "/usr/local/bin/wp", "--path=" + str(SITE),
+        str(WPCLI), "--path=" + str(SITE),
         "--skip-themes", "--quiet", "eval",
         "echo MAD4B_SCP_Host_Bridge::target_fingerprint_readonly();"
     ]
@@ -139,7 +141,7 @@ def write_receipt(path, row):
 
 def handle_readonly_job(path, fingerprint, key, public_sha):
     item = load_job(path)
-    reason = validator.check_submission(item, fingerprint, path.name)
+    reason = validator.check_submission(item, fingerprint, path.name, RUNNER_PROFILE)
     if reason != "verified_read_only_eligible":
         raise RuntimeError("job preflight denied: " + reason)
     job_id = item["job_id"]
@@ -168,7 +170,7 @@ def handle_readonly_job(path, fingerprint, key, public_sha):
     except subprocess.TimeoutExpired:
         exit_code, stdout, stderr, result_state = 124, "", "read-only operation timed out", "FAIL"
     receipt = {
-        "contract": "mad4b.are-host-bridge-readonly-receipt.v1",
+        "contract": "mad4b.host-bridge-readonly-receipt.v1",
         "job_id": job_id,
         "plan_sha256": item["plan_sha256"],
         "submission_sha256": item["submission_sha256"],
@@ -207,7 +209,29 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--inspect-only", action="store_true")
     ap.add_argument("--run-queued-readonly", action="store_true")
+    ap.add_argument("--site-root", type=Path, required=True)
+    ap.add_argument("--runner-directory", type=Path, required=True)
+    ap.add_argument("--wp-cli-binary", type=Path, required=True)
+    ap.add_argument("--runner-profile-id", required=True)
     args = ap.parse_args()
+    if (not args.site_root.is_absolute() or not args.runner_directory.is_absolute()
+            or not args.wp_cli_binary.is_absolute() or
+            not validator.PROFILE_ID.fullmatch(args.runner_profile_id)):
+        raise RuntimeError("explicit_bound_profile_required")
+    if (args.site_root.is_symlink() or args.runner_directory.is_symlink()
+            or not args.site_root.is_dir() or not args.runner_directory.is_dir()):
+        raise RuntimeError("unsafe_site_or_runner_path")
+    global SITE, SPOOL, BASE, RUNNER, SIGNER, PUB, WPCLI, RUNNER_PROFILE
+    SITE = args.site_root.resolve(strict=True)
+    BASE = args.runner_directory.resolve(strict=True)
+    if BASE == SITE or SITE in BASE.parents:
+        raise RuntimeError("runner_workspace_must_be_outside_wordpress")
+    SPOOL = SITE / "wp-content/mad4b-runner/bridge"
+    RUNNER = BASE / "runner.sh"
+    SIGNER = BASE / "readonly-receipt-ed25519.key"
+    PUB = BASE / "readonly-receipt-ed25519.pub"
+    WPCLI = args.wp_cli_binary
+    RUNNER_PROFILE = args.runner_profile_id
     if args.inspect_only == args.run_queued_readonly:
         ap.error("choose exactly one mode")
     if os.geteuid() == 0:
@@ -240,7 +264,7 @@ def main():
         for path in paths:
             results.append(handle_readonly_job(path, fp, key, public_sha))
     print(json.dumps({
-        "contract":"mad4b.are-staging-queue-consumption.v1",
+        "contract":"mad4b.host-bridge-readonly-consumption.v1",
         "mode":"run_queued_readonly",
         "receipt_public_key_sha256":public_sha,
         "results":results,
@@ -255,7 +279,7 @@ if __name__ == "__main__":
     try:
         raise SystemExit(main())
     except Exception as e:
-        print(json.dumps({"contract":"mad4b.are-staging-queue-consumption.v1",
+        print(json.dumps({"contract":"mad4b.host-bridge-readonly-consumption.v1",
                           "failed":True,"error_type":type(e).__name__,
                           "reason":str(e),"blind_retry_allowed":False},
                           sort_keys=True),file=sys.stderr)

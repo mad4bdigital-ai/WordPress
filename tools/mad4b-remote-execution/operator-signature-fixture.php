@@ -6,14 +6,14 @@
  */
 define( 'ABSPATH', realpath( __DIR__ . '/../../' ) . DIRECTORY_SEPARATOR );
 define( 'MAD4B_OPERATOR_SIGNING_KEY_PATH',
-    getenv( 'MAD4B_TEST_SIGNING_KEY_PATH' ) ?: '/home/u948953904/.mad4b-release-validation/are-staging-remediation-20261023/operator-asymmetric/private.pem' );
+    (string) getenv( 'MAD4B_TEST_SIGNING_KEY_PATH' ) );
 class WP_Error {
     public function __construct( public $code ) {}
     public function get_error_code() { return $this->code; }
 }
 function is_wp_error( $v ) { return $v instanceof WP_Error; }
 function wp_get_environment_type() { return 'staging'; }
-function home_url() { return 'https://staging.allroyalegypt.com'; }
+function home_url() { return 'https://fixture-site.example.test'; }
 class MAD4B_SCP_Site_Profile {
     public static function configured() { return true; }
     public static function origin_enrolled() { return true; }
@@ -39,7 +39,7 @@ function digest( $v ) {
     return hash( 'sha256', json_encode( ordered( $v ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) );
 }
 $now = time();
-$fp = str_repeat( 'a', 64 );
+$fp = getenv( 'MAD4B_TEST_SITE_FINGERPRINT' ) ?: str_repeat( 'a', 64 );
 $session_id = '88888888-8888-4888-8888-888888888888';
 $payload = array( 'sql' => 'SELECT 1' );
 $args = array(
@@ -49,7 +49,7 @@ $args = array(
     'operation' => 'sql.read',
     'payload' => $payload,
     'risk' => 'read_only_db_role_required',
-    'site_uuid' => '88888888-8888-4888-8888-888888888881',
+    'site_uuid' => getenv( 'MAD4B_TEST_SITE_UUID' ) ?: '88888888-8888-4888-8888-888888888881',
     'client_fingerprint' => str_repeat( 'b', 64 ),
 );
 $plan = array(
@@ -58,7 +58,7 @@ $plan = array(
     'operation_version' => 1,
     'risk' => 'read_only',
     'approval_required' => false,
-    'runner_profile_id' => 'are-staging-unified-v1',
+    'runner_profile_id' => getenv( 'MAD4B_TEST_RUNNER_PROFILE_ID' ) ?: 'fixture-site-a-runner-v1',
     'target' => array( 'target_fingerprint' => $fp, 'environment' => 'staging' ),
     'arguments' => $args,
     'submission_location' => 'wordpress_request',

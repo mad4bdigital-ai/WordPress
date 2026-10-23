@@ -1,11 +1,11 @@
-name: ARE Operator Bridge Admission
+name: MAD4B Operator Bridge Admission
 on:
   pull_request:
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-bridge.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php'
-      - 'tests/are-operator-bridge-admission.php'
-      - '.github/workflows/are-operator-bridge-admission.yml'
+      - 'tests/remote-execution/operator-bridge-admission.php'
+      - '.github/workflows/mad4b-operator-bridge-admission.yml'
   workflow_dispatch:
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}
@@ -24,6 +24,6 @@ jobs:
         run: |
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-bridge.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php
-          php -l tests/are-operator-bridge-admission.php
+          php -l tests/remote-execution/operator-bridge-admission.php
       - name: OAuth request boundary smoke
-        run: php tests/are-operator-bridge-admission.php
+        run: php tests/remote-execution/operator-bridge-admission.php

@@ -1,16 +1,16 @@
-name: ARE Operator Asymmetric Attestation
+name: MAD4B Operator Asymmetric Attestation
 on:
   pull_request:
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-attestation.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-receipt-verifier.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-sessions.php'
-      - 'tools/are-staging-unified-remote-plane/operator-seal-verifier.py'
-      - 'tools/are-staging-unified-remote-plane/operator-worker-receipt.py'
-      - 'tools/are-staging-unified-remote-plane/operator-signature-fixture.php'
-      - 'tests/are-operator-asymmetric-roundtrip.py'
-      - 'tests/are-operator-receipt-verify-offline.php'
-      - '.github/workflows/are-operator-asymmetric-attestation.yml'
+      - 'tools/mad4b-remote-execution/operator-seal-verifier.py'
+      - 'tools/mad4b-remote-execution/operator-worker-receipt.py'
+      - 'tools/mad4b-remote-execution/operator-signature-fixture.php'
+      - 'tests/remote-execution/operator-asymmetric-roundtrip.py'
+      - 'tests/remote-execution/operator-receipt-verify-offline.php'
+      - '.github/workflows/mad4b-operator-asymmetric-attestation.yml'
   workflow_dispatch:
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}
@@ -34,10 +34,10 @@ jobs:
         run: |
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-attestation.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-receipt-verifier.php
-          php -l tools/are-staging-unified-remote-plane/operator-signature-fixture.php
-          php -l tests/are-operator-receipt-verify-offline.php
-          python -m py_compile tools/are-staging-unified-remote-plane/operator-seal-verifier.py
-          python -m py_compile tools/are-staging-unified-remote-plane/operator-worker-receipt.py
-          python -m py_compile tests/are-operator-asymmetric-roundtrip.py
+          php -l tools/mad4b-remote-execution/operator-signature-fixture.php
+          php -l tests/remote-execution/operator-receipt-verify-offline.php
+          python -m py_compile tools/mad4b-remote-execution/operator-seal-verifier.py
+          python -m py_compile tools/mad4b-remote-execution/operator-worker-receipt.py
+          python -m py_compile tests/remote-execution/operator-asymmetric-roundtrip.py
       - name: Sign and independently verify fixture
-        run: python tests/are-operator-asymmetric-roundtrip.py
+        run: python tests/remote-execution/operator-asymmetric-roundtrip.py

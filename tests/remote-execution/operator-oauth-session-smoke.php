@@ -1,6 +1,6 @@
 <?php
 /** Offline, deterministic operator-session smoke suite. Never executes host commands. */
-define( 'ABSPATH', __DIR__ . '/../' );
+define( 'ABSPATH', __DIR__ . '/../../' );
 define( 'MAD4B_MCP_OPERATOR_SESSIONS_ENABLED', true );
 
 class WP_Error {
@@ -57,7 +57,7 @@ $GLOBALS['identity'] = array(
     'issuer_fingerprint' => str_repeat( 'd', 64 ),
     'token_scopes' => array( 'mad4b:authority:step-up' ),
 );
-require_once __DIR__ . '/../wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-sessions.php';
+require_once __DIR__ . '/../../wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-sessions.php';
 
 function test_check( $condition, $name ) {
     $GLOBALS['passed'] = ( $GLOBALS['passed'] ?? 0 ) + 1;

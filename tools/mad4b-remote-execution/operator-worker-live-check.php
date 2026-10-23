@@ -1,6 +1,6 @@
 <?php
 /**
- * Host-local read-only recheck for the pinned ARE Staging SSH Worker.
+ * Host-local read-only recheck for the pinned enrolled Staging SSH Worker.
  * Invoke ONLY from an authenticated SSH session using WP-CLI eval-file.
  * This script does not accept executable content and never opens an OAuth session.
  */
