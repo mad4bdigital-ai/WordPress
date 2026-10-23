@@ -18,6 +18,11 @@ final class MAD4B_SCP_Host_Bridge {
 
 	private static $operations = array(
 		'runtime.status.read' => array( 'version' => 1, 'risk' => 'read_only', 'approval_required' => false ),
+		'operator.shell' => array( 'version' => 1, 'risk' => 'reversible_write', 'approval_required' => true ),
+		'operator.wp-cli' => array( 'version' => 1, 'risk' => 'reversible_write', 'approval_required' => true ),
+		'operator.sql.read' => array( 'version' => 1, 'risk' => 'read_only', 'approval_required' => false ),
+		'operator.sql.write' => array( 'version' => 1, 'risk' => 'reversible_write', 'approval_required' => true ),
+		'operator.sql.schema' => array( 'version' => 1, 'risk' => 'reversible_write', 'approval_required' => true ),
 		'filesystem.hash.read' => array( 'version' => 1, 'risk' => 'read_only', 'approval_required' => false ),
 		'package.integrity.verify' => array( 'version' => 1, 'risk' => 'read_only', 'approval_required' => false ),
 		'workspace.file.replace' => array( 'version' => 1, 'risk' => 'reversible_write', 'approval_required' => true ),
@@ -231,6 +236,13 @@ final class MAD4B_SCP_Host_Bridge {
 		$args = isset( $input['arguments'] ) && is_array( $input['arguments'] ) ? $input['arguments'] : array();
 		$profile_id = isset( $input['runner_profile_id'] ) ? sanitize_key( (string) $input['runner_profile_id'] ) : '';
 		if ( '' === $profile_id ) return new WP_Error( 'mad4b_host_runner_profile_required', 'Exact Host Runner profile is required.' );
+		if ( 0 === strpos( $operation_id, 'operator.' ) ) {
+			if ( 'are-staging-unified-v1' !== $profile_id ||
+				! class_exists( 'MAD4B_SCP_Operator_Bridge' ) ||
+				! MAD4B_SCP_Operator_Bridge::request_authority_matches( $operation_id, $args ) )
+				return new WP_Error( 'mad4b_host_operator_scope_required', 'Only a verified request-local OAuth operator session may submit operator jobs.' );
+		}
+
 		$target = self::target_identity();
 		if ( is_wp_error( $target ) ) return $target;
 		if ( 'wordpress_plugin_deploy' === $operation_id ) {
@@ -958,6 +970,26 @@ final class MAD4B_SCP_Host_Bridge {
 		$operation_id = isset( $plan['operation_id'] ) ? (string) $plan['operation_id'] : '';
 		if ( ! isset( self::$operations[ $operation_id ] ) ) return new WP_Error( 'mad4b_host_operation_unknown', 'Host operation is not in the bounded registry.' );
 		if ( (int) $plan['operation_version'] !== (int) self::$operations[ $operation_id ]['version'] ) return new WP_Error( 'mad4b_host_operation_version_stale', 'Host operation version changed.' );
+		if ( 0 === strpos( $operation_id, 'operator.' ) ) {
+			$args = $plan['arguments'] ?? null;
+			if ( ! is_array( $args ) || 'are-staging-unified-v1' !== (string) ( $plan['runner_profile_id'] ?? '' ) ||
+				! class_exists( 'MAD4B_SCP_Operator_Bridge' ) ||
+				! MAD4B_SCP_Operator_Bridge::request_authority_matches( $operation_id, $args ) )
+				return new WP_Error( 'mad4b_host_operator_scope_required', 'Operator job must retain the exact authenticated request-local session.' );
+			if ( (int) ( $args['session_expires_at_epoch'] ?? 0 ) <= time() ||
+				( (int) ( $args['session_expires_at_epoch'] ?? 0 ) - time() ) > 900 ||
+				$operation_id !== 'operator.' . (string) ( $args['operation'] ?? '' ) ||
+				! class_exists( 'MAD4B_SCP_Operator_Operation_Policy' ) )
+				return new WP_Error( 'mad4b_host_operator_plan_stale', 'Operator plan expiry or operation binding invalid.' );
+			$inspected = MAD4B_SCP_Operator_Operation_Policy::inspect( array(
+				'operation' => (string) $args['operation'],
+				'payload' => $args['payload'] ?? null,
+			) );
+			if ( is_wp_error( $inspected ) || ! hash_equals( (string) ( $inspected['payload_sha256'] ?? '' ),
+				(string) ( $args['payload_sha256'] ?? '' ) ) )
+				return new WP_Error( 'mad4b_host_operator_payload_changed', 'Operator command or SQL payload changed after OAuth admission.' );
+		}
+
 		$sha = isset( $plan['plan_sha256'] ) ? strtolower( trim( (string) $plan['plan_sha256'] ) ) : '';
 		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $sha ) || ! hash_equals( $sha, self::digest( $plan ) ) ) return new WP_Error( 'mad4b_host_plan_digest_invalid', 'Host plan digest mismatch.' );
 		$current = self::target_identity();
