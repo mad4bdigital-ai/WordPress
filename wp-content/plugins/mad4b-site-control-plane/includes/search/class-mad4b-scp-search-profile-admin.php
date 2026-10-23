@@ -126,6 +126,8 @@ final class MAD4B_SCP_Search_Profile_Admin {
 			$provider = $input['provider_id']; $market_id = $input['market_id']; $location_id = trim( $input['location_id'] ); $precision = trim( $input['location_precision'] );
 			$adapters = MAD4B_SCP_Search_Providers::adapters();
 			if ( ! isset( $adapters[ $provider ] ) || ! MAD4B_SCP_Search_Contracts::id( $market_id ) || ! preg_match( '/^[A-Za-z0-9_.:-]{1,96}$/D', $location_id ) || ! in_array( $precision, array( 'country', 'region', 'city' ), true ) ) return MAD4B_SCP_Search_Contracts::error( 'provider_location_invalid' );
+			// DataForSEO requires the integer location_code used by the original adapter.
+			if ( 'dataforseo' === $provider && ! preg_match( '/^[0-9]+$/D', $location_id ) ) return MAD4B_SCP_Search_Contracts::error( 'provider_location_invalid' );
 			$current = MAD4B_SCP_Search_Context::profile( $input['profile_id'] );
 			if ( is_wp_error( $current ) ) return $current;
 			if ( ! empty( $current['enabled'] ) || empty( $current['provider_policy']['freeze_spend'] ) ) return MAD4B_SCP_Search_Contracts::error( 'profile_targeting_requires_pause_and_spend_freeze' );
@@ -274,7 +276,7 @@ final class MAD4B_SCP_Search_Profile_Admin {
 			self::form_start( 'add_market', $id, $p['revision'] );
 			echo '<p><label for="mad4b-search-add-market-country">Audience country code</label><br><input id="mad4b-search-add-market-country" name="market_country" maxlength="2" pattern="[A-Za-z]{2}" placeholder="GB" required></p>';
 			echo '<button class="button">Add market and verify</button></form></details>';
-			echo '<details><summary>Map a market to a search provider location</summary><p>Select an existing market and registered provider. Enter the provider-issued location code; this saves only the targeting mapping and does not verify it or authorize capture.</p>';
+			echo '<details><summary>Map a market to a search provider location</summary><p>Select an existing market and registered provider. Enter the provider-issued location code (DataForSEO: numeric code; SerpApi: supported location name); this saves only the targeting mapping and does not verify it or authorize capture.</p>';
 			self::form_start( 'map_provider_location', $id, $p['revision'] );
 			echo '<p><label>Market <select name="market_id" required>';
 			foreach ( $p['markets'] as $market ) echo '<option value="' . esc_attr( $market['id'] ) . '">' . esc_html( $market['country'] . ' — ' . $market['id'] ) . '</option>';
