@@ -13,6 +13,7 @@ TESTS = (
     "ai-approval-target-context-contract.php",
     "content-job-dependency-recovery-contract.php",
     "context-semantic-source-approval-runtime.php",
+    "content-bundle-semantic-contract-runtime.php",
     "approval-decision-runtime.php",
     "context-preflight-runtime.php",
     "reconnect-hardening-runtime.php",
