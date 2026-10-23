@@ -12,7 +12,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
 
 BASE = Path(__file__).resolve().parents[2]
-MODULES = BASE / "tools/are-staging-unified-remote-plane"
+MODULES = BASE / "tools/mad4b-remote-execution"
 
 
 def module(name, filename):
