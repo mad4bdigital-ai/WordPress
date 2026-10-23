@@ -341,8 +341,9 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 	/** Freeze reviewed identity/classification once, at server materialization, before OAuth. */
 	public static function capture_classification( $server, array $expected ) {
 		if ( ! is_object( $server ) || ! method_exists( $server, 'get_tools' ) || ! class_exists( 'MAD4B_SCP_MCP_Adapter_Compatibility' ) ) throw new RuntimeException( 'mad4b_catalog_capture_unavailable' );
-        $max_tools = MAD4B_SCP_MCP_Catalog_Budget::limits()['max_tools'];
-		if ( count( $expected ) > $max_tools ) throw new RuntimeException( 'mad4b_catalog_capture_budget_exceeded' );
+        $capture_budget = MAD4B_SCP_MCP_Catalog_Budget::limits( count( $expected ) );
+        $max_tools = $capture_budget['max_tools'];
+		if ( count( $expected ) > $capture_budget['configured_max_tools'] ) throw new RuntimeException( 'mad4b_catalog_capture_budget_exceeded' );
 		$reviewed = MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools();
 		$dynamic_rows = class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' )
 			? MAD4B_SCP_ChatGPT_Tool_Projection::effective_projection_rows()
@@ -506,8 +507,9 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 	public static function inspect( $server, array $expected_abilities ) {
 		$out = array( 'contract' => self::CONTRACT, 'observed' => false, 'ready' => false, 'tool_count' => 0, 'actual_names' => array(), 'actual_abilities' => array(), 'missing_abilities' => array(), 'unexpected_abilities' => array(), 'blocker' => 'mcp_server_not_materialized' );
 		if ( ! is_object( $server ) || ! method_exists( $server, 'get_tools' ) || ! method_exists( $server, 'get_mcp_tool' ) || ! class_exists( 'MAD4B_SCP_MCP_Adapter_Compatibility' ) ) return $out;
-        $max_tools = MAD4B_SCP_MCP_Catalog_Budget::limits()['max_tools'];
-		if ( count( $expected_abilities ) > $max_tools ) { $out['blocker'] = 'mcp_catalog_budget_exceeded'; return $out; }
+        $inspect_budget = MAD4B_SCP_MCP_Catalog_Budget::limits( count( $expected_abilities ) );
+        $max_tools = $inspect_budget['max_tools'];
+		if ( count( $expected_abilities ) > $inspect_budget['configured_max_tools'] ) { $out['blocker'] = 'mcp_catalog_budget_exceeded'; return $out; }
 		try {
 			$tools = MAD4B_SCP_MCP_Adapter_Compatibility::bounded_server_tools( $server, $max_tools );
 			if ( is_wp_error( $tools ) ) {
@@ -588,7 +590,7 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 			$count = is_array( $listed ) ? count( $listed ) : null;
 			if ( null === $count ) $outcome = 'catalog_invalid';
 			elseif ( 0 === $count ) $outcome = 'catalog_empty';
-			elseif ( $count > MAD4B_SCP_MCP_Catalog_Budget::limits()['max_tools'] ) $outcome = 'catalog_budget_exceeded';
+			elseif ( $count > MAD4B_SCP_MCP_Catalog_Budget::limits()['configured_max_tools'] ) $outcome = 'catalog_budget_exceeded';
 		}
         // Server-measured latency includes bootstrap and serialization.
         // No request payload, bearer, client identity or tool arguments persist.
