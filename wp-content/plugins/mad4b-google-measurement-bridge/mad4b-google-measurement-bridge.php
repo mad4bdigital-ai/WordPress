@@ -29,6 +29,7 @@ final class MAD4B_Google_Measurement_Bridge {
         add_action('wp_abilities_api_init', array('MAD4B_Google_Measurement_API', 'register'), 46);
         add_action('wp_abilities_api_init', array('MAD4B_Google_Measurement_Mutation', 'register'), 47);
         add_action('wp_abilities_api_init', array('MAD4B_Google_Measurement_Reports', 'register'), 48);
+        add_action('wp_abilities_api_init', array('MAD4B_Google_Measurement_Advanced', 'register'), 49);
     }
     public static function providers($providers) {
         if (!is_array($providers)) $providers = array();
@@ -144,4 +145,5 @@ require_once __DIR__ . '/includes/class-mad4b-google-measurement-mutation.php';
 require_once __DIR__ . '/includes/class-mad4b-google-measurement-admin.php';
 require_once __DIR__ . '/includes/class-mad4b-google-measurement-gtm4wp.php';
 require_once __DIR__ . '/includes/class-mad4b-google-measurement-reports.php';
+require_once __DIR__ . '/includes/class-mad4b-google-measurement-advanced.php';
 add_action('plugins_loaded', array('MAD4B_Google_Measurement_Bridge','boot'), 20);
