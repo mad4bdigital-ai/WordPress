@@ -46,3 +46,23 @@ A reviewed MAD4B one-time-ticket authorizer still needs to implement the callbac
 - GTM entity edit/version diff and independently authorized publish/rollback lanes
 - GA4 report/custom definition and GTM4WP live acceptance tests
 - Review and acceptance of the stacked PR before merge/deployment
+
+## Audience Listing (GA4)
+- `mad4b/google-measurement-api-read` with `action=ga4_audiences` and the bound `resource_id=properties/<id>` calls `GET https://analyticsadmin.googleapis.com/v1alpha/properties/<id>/audiences`.
+- Supports bounded pages through `page_token`. Lists audience resources and their supported definitions, **not individual audience members**. Some pre-existing/default audiences do not expose filter definitions.
+- Read scope: `analytics.readonly`; no audience create/edit/archive operations are enabled.
+
+## Custom Reporting
+- `mad4b/google-measurement-report-catalog`: available fields, saved definitions, four default presets.
+- `mad4b/google-measurement-report-run`: allowlisted custom dimensions (max 5), metrics (max 5), period (1–365 days), up to 500 rows per request, optional exact event filter. The selected GA4 property is taken exclusively from exact site binding, never arbitrary user input.
+- Presets: `tour_funnel`, `acquisition`, `tour_products`, `returning_visitors`.
+- Saved report definitions: WordPress Tools → Google Measurement, owner-only nonce-protected form; definitions isolated by site UUID and selected GA4 property. Use `saved_report` to execute a stored definition.
+- These are Data API `runReport` queries. They **do not automatically create reports in the GA4 Reports UI**, GA4 explorations, audience memberships, or Google Ads audiences.
+- Unsupported dimensions/metrics, insufficient OAuth scopes, property changes, and invalid requests fail closed. The provider may reject metrics not compatible with the chosen dimensions; such errors are surfaced as non-sensitive status codes.
+
+## Audience/Report QA
+- Reconsent to GA4 `analytics.readonly` before testing.
+- Confirm exact property binding and compare returned audience identifiers to GA4 Admin → Audiences.
+- Run preset `tour_funnel`; reconcile event names and counts against GA4 UI with matching date ranges/time zone.
+- Verify Custom Reporting report definitions survive a normal WordPress request, remain isolated when property binding switches, and never return personal user-level exports.
+- GA4 query quota, API limitations and reporting thresholds remain in effect.
