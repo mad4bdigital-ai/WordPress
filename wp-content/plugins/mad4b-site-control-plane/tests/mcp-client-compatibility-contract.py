@@ -166,7 +166,7 @@ for marker in [
     'public static function budget_projection( array $abilities, array $optional )',
     "'mcp_required_catalog_budget_exceeded'",
     "'mcp_optional_catalog_budget_excluded'",
-    "self::MAX_TOOLS - count( $required )",
+    "$limits['max_tools'] - count( $required )",
     "MAX_SERIALIZED_TOOL_BYTES",
     "'mcp_optional_catalog_size_excluded'",
     "'mcp_required_catalog_size_exceeded'",
@@ -291,5 +291,8 @@ assert "MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools() : array();" n
 assert "function chatgpt_materialization_optional_tools" in servers
 assert "MAD4B_SCP_Servers::chatgpt_materialization_optional_tools( $abilities )" in catalog_diagnostics
 assert "isset( $materialized_optional[ $ability_name ] )" in catalog_diagnostics
-assert "MAX_TOOLS = 36" in catalog_diagnostics
+assert "MAX_TOOLS = 36" in catalog_diagnostics  # legacy default, not fixed active limit
+assert "MAD4B_SCP_MCP_Catalog_Budget::limits" in catalog_diagnostics
+assert "class-mad4b-scp-mcp-catalog-budget.php" in catalog_diagnostics
+assert "MAD4B_SCP_MCP_Catalog_Budget::observe" in catalog_diagnostics
 print('mad4b.site-control-plane.mcp-client-compatibility.v12: PASS')
