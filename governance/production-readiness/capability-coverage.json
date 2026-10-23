@@ -1730,6 +1730,28 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing governance, execution, OAuth, exact-ticket, security and provider controls cover this bounded repository source change; no new Production control or runtime approval is created.",
       "execution_note": "Exact-HEAD CI and isolated denial tests constitute source-level evidence only. Fresh signed live MCP to worker receipt, exact OAuth grants, certified package identity and Production approval remain unverified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-catalog-budget.php",
+      "review_rationale": "Site-scoped adaptive MCP catalog policy uses private bounded configuration, only successful authenticated tools/list metrics, request-local caching and throttled non-sensitive telemetry. It never changes Ability discovery, grants or execution.",
+      "owner_role": "Repository source reviewer — CI-only adaptive catalog policy; no site rollout authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-catalog-adaptive-budget.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-client-compatibility-contract.py"
+      ],
+      "coverage_reuse_rationale": "Existing MCP catalog identity, bounded preflight, request-local Site Profile binding, OAuth authorization and execution controls remain intact; the change only alters optional direct presentation budgets.",
+      "execution_note": "Default 36/96 KiB preserved before measurement. Healthy authenticated tools/list latency must be measured before expansion; slow sites trim only optional tools. Production rollout, OAuth, Shell/SQL and plugin certification are not authorized."
     }
   ],
   "lifecycle": [],
@@ -6456,6 +6478,52 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Bounded catalog, policy and security controls already govern optional schema materialization; no increase of catalog cap, admission scope or mutation capability.",
       "execution_note": "Changed source and invariant checked locally; real Local OAuth and three MCP compatibility integration jobs must execute successfully on exact HEAD before runtime certification."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-catalog-budget.php",
+      "source_blob_sha": "aac77a72cb1cf6c17613cd42d1d4cbe254c7b6d9",
+      "review_rationale": "Measured catalog display budget cannot expand until three site-bound successful authenticated tools/list observations and cannot cross bounded caps; an unconfigured/invalid profile retains 36 tools and 96 KiB.",
+      "owner_role": "Repository source reviewer — CI-only adaptive catalog policy; no site rollout authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-catalog-adaptive-budget.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-client-compatibility-contract.py"
+      ],
+      "coverage_reuse_rationale": "Existing MCP catalog identity, bounded preflight, request-local Site Profile binding, OAuth authorization and execution controls remain intact; the change only alters optional direct presentation budgets.",
+      "execution_note": "Default 36/96 KiB preserved before measurement. Healthy authenticated tools/list latency must be measured before expansion; slow sites trim only optional tools. Production rollout, OAuth, Shell/SQL and plugin certification are not authorized."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-catalog-diagnostics.php",
+      "source_blob_sha": "65e0a98cc49ee1a02997e0f4f03bf93c2fe516d8",
+      "review_rationale": "Catalog preflight, per-request classification capture, runtime inspection and tools/list checks share the effective site budget. Only reviewed optional presentation can back off; required transports obey the separately configured ceiling, preserving governed discovery/execution and error visibility.",
+      "owner_role": "Repository source reviewer — CI-only adaptive catalog policy; no site rollout authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-catalog-adaptive-budget.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-client-compatibility-contract.py"
+      ],
+      "coverage_reuse_rationale": "Existing MCP catalog identity, bounded preflight, request-local Site Profile binding, OAuth authorization and execution controls remain intact; the change only alters optional direct presentation budgets.",
+      "execution_note": "Default 36/96 KiB preserved before measurement. Healthy authenticated tools/list latency must be measured before expansion; slow sites trim only optional tools. Production rollout, OAuth, Shell/SQL and plugin certification are not authorized."
     }
   ],
   "code_change_rules": {
