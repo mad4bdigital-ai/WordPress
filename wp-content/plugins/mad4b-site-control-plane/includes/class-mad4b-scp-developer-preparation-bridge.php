@@ -6,6 +6,17 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * Purely prepares a dispatch identity; never grants or executes authority.
  */
 final class MAD4B_SCP_Developer_Preparation_Bridge {
+    public static function approval_lane( $ability_name, $readonly ) {
+        if ( $readonly ) return 'none';
+        if ( class_exists( 'MAD4B_SCP_Impact_Policy' ) ) {
+            $classification = MAD4B_SCP_Impact_Policy::classify( (string) $ability_name, 'core', array() );
+            if ( is_array( $classification ) && isset( $classification['approval_lane'] )
+                && in_array( $classification['approval_lane'], array( 'ai_autonomous', 'human_only' ), true ) )
+                return (string) $classification['approval_lane'];
+        }
+        return 'human_only';
+    }
+
     public static function enrich( array $result, $ability_name ) {
         if ( ! class_exists( 'MAD4B_SCP_Capability_Descriptor_Registry' ) ||
              ! class_exists( 'MAD4B_SCP_Ability_Catalog_Transport' ) ||
