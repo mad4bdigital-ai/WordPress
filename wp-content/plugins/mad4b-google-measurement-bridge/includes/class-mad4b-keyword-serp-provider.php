@@ -45,7 +45,7 @@ final class MAD4B_Keyword_SERP_Provider {
    if(($item['type']??'')!=='organic')continue;
    $url=(string)($item['url']??'');$rank=(int)($item['rank_absolute']??0);
    if(!preg_match('~^https://~i',$url)||$rank<1||$rank>100)continue;
-   $rows[]=array('url'=>$url,'rank'=>$rank,'title'=>mb_substr((string)($item['title']??''),0,240));
+   $rows[]=array('url'=>$url,'rank'=>$rank,'title'=>substr((string)($item['title']??''),0,240));
    if(count($rows)>=20)break;
   }
   if(!$rows)return new WP_Error('serp_provider_no_organic_results','No eligible organic search results returned.');
