@@ -24,6 +24,7 @@ final class MAD4B_Google_Measurement_Bridge {
         add_filter('mad4b_provider_connection_adapters', array(__CLASS__, 'providers'));
         MAD4B_Google_Measurement_Admin::boot();
         MAD4B_Google_Measurement_Reports::boot();
+        MAD4B_Google_Measurement_Ads::boot();
         add_filter('mad4b_google_measurement_broker_grant', array(__CLASS__, 'broker_grant'), 10, 2);
         add_action('wp_abilities_api_init', array(__CLASS__, 'register'), 45);
         add_action('wp_abilities_api_init', array('MAD4B_Google_Measurement_API', 'register'), 46);
@@ -34,6 +35,8 @@ final class MAD4B_Google_Measurement_Bridge {
         add_action('wp_abilities_api_init', array('MAD4B_Google_Measurement_RankMath', 'register'), 51);
         add_action('wp_abilities_api_init', array('MAD4B_Google_Measurement_Search_Console', 'register'), 52);
         add_action('wp_abilities_api_init', array('MAD4B_Google_Measurement_Intelligence', 'register'), 53);
+        add_action('wp_abilities_api_init', array('MAD4B_Google_Measurement_Ads', 'register'), 54);
+        add_action('wp_abilities_api_init', array('MAD4B_Google_Measurement_Ads_Plans', 'register'), 55);
     }
     public static function providers($providers) {
         if (!is_array($providers)) $providers = array();
@@ -95,6 +98,8 @@ final class MAD4B_Google_Measurement_Bridge {
                 'ga4_reports'=>'implemented_requires_authorized_broker_and_binding',
                 'ga4_custom_dimensions'=>'staging_exact_ticket_required_for_create',
                 'ga4_audience_listing'=>'implemented_requires_analytics_readonly',
+                'google_ads_customer_reporting'=>'oauth_only_cloud_project_access_required',
+                'google_ads_mutations'=>'proposals_only_requires_external_authorization',
                 'ga4_custom_reporting'=>'implemented_bounded_runreport_and_presets',
                 'gtm_container_discovery'=>'oauth_scope_required',
                 'gtm_workspace_plan'=>'implemented_requires_exact_resource_binding',
@@ -154,4 +159,6 @@ require_once __DIR__ . '/includes/class-mad4b-google-measurement-operations.php'
 require_once __DIR__ . '/includes/class-mad4b-google-measurement-rankmath.php';
 require_once __DIR__ . '/includes/class-mad4b-google-measurement-search-console.php';
 require_once __DIR__ . '/includes/class-mad4b-google-measurement-intelligence.php';
+require_once __DIR__ . '/includes/class-mad4b-google-measurement-ads.php';
+require_once __DIR__ . '/includes/class-mad4b-google-measurement-ads-plans.php';
 add_action('plugins_loaded', array('MAD4B_Google_Measurement_Bridge','boot'), 20);
