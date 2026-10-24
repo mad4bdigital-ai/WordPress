@@ -94,7 +94,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g2-permission-reduction-contract.py",
-      "sha256": "456c0c8498a2d7a47768f545141c547dbcbf4cee17c495f69f3ab5c2eab1ccbf"
+      "sha256": "804f75c2f5f3beec73561b68f04fe33a7cea76894e53555e0dc3db8509ee3b8c"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g2-permission-reduction-runtime.php",
