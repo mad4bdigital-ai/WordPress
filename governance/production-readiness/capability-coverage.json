@@ -7293,6 +7293,44 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Exact-source review for newly accepted externally supplied stage observations. A structured external failed/passed MCP call is labeled as unverified external observation only, while an opaque internal_error cannot be interpreted as local failure; no external connection certification, backend root-cause attribution, mutation, OAuth grant or Production permission is enabled. Same-PR trusted Python regression executes the PHP runtime fixture asserting failed external read remains distinct from local initialization and no fabricated root cause; static checks verify source fail-closed markers. Existing historical blob reviews are preserved."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-full-staging-authority.php",
+      "source_blob_sha": "59487649f21362e5fa06c77b030c44bdfc622e58",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/full-staging-authority-handshake-failure-contract.py"
+      ],
+      "owner_role": "Repository source-security reviewer — CI-only; no Site Owner or Production deployment permission",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact source returns a read-only, nonauthorizing, mutation-free read_blocked projection only when the generation-fenced handshake read fails, carrying bounded source-error classification and correlation without inventing an apply-ready plan. Same-PR fail-closed contract checks the error-specific branch, false readiness flags, and unchanged positive handshake response. This is CI review only, not operational evidence or Staging authority."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-package.php",
+      "source_blob_sha": "29ec342ed3a58d41eb57b67eeb9ea24f3fe6c26c",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/package-route-site-profile-authority-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py"
+      ],
+      "owner_role": "Repository source-security reviewer — CI-only; no Site Owner or Production deployment permission",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact source binds package routing to authoritative enrolled MAD4B Site Profile environment_resolution(), rejects WordPress/profile mismatch and missing authority by retaining unknown environment, and never trusts wp_get_environment_type() or hostname alone for Staging eligibility. Same-PR Site Profile contract and executable governed package regression cover fail-closed routing. The route resolver remains nonmutating; no provider, OAuth or Production grant is added."
     }
   ],
   "code_change_rules": {
