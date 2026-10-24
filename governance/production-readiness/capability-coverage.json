@@ -2001,6 +2001,27 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing Site Profile source-of-authority, update recovery, platform isolation and deployment controls govern this pure read-only environment decision. No grants, consent, package install or site mutation are introduced.",
       "review_rationale": "New nonauthorizing Environment Convergence Policy requires exact authoritative enrolled Site Profile, enrolled origin, matching deployment and WordPress/profile environment before declaring nonproduction auto-convergence eligibility. All outputs retain grant mutation unauthorized, OAuth requirements, package identity and audit requirements. Same-PR trusted Python fixture executes nine pure PHP cases across local, development, staging, production and mismatch/error conditions."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-nonproduction-approved-grants.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "UPDATES-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/nonproduction-approved-grants-contract.py"
+      ],
+      "owner_role": "Repository source-security reviewer — CI-only; no agent/site write grants or Production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Site Profile, exact prior-grant baseline, OAuth identity and governed update/rollback boundaries apply to this pure evaluator. It neither accepts client-supplied approval authority nor executes a grant mutation.",
+      "review_rationale": "New read-only classifier checks non-production environment policy, sealed pre-update audited baseline, exact Site Profile and Agent identities, manifest, trusted fresh grant inventory, no breakglass/wildcards/denies and only exact previously approved server/ability/provider pairs. Its result is non-authorizing and explicitly forbids new grants, Production and mutation. Same-PR Python trusted test executes 7 PHP cases."
     }
   ],
   "lifecycle": [],
@@ -7407,6 +7428,26 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Existing post-update continuation now consults the shared authoritative environment-convergence policy before allowing Staging-only reconciliation; unknown, Production or mismatched Site Profiles are blocked with distinct operator diagnostic instead of inferred hostname authority. Same-PR Python runner checks source integration and executes the nine-case standalone PHP regression. Neither grants nor Production approvals are created."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-nonproduction-approved-grants.php",
+      "source_blob_sha": "a1ac36e9d8d309b4dd459e218f02e5a9477c8126",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "UPDATES-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/nonproduction-approved-grants-contract.py"
+      ],
+      "owner_role": "Repository exact-source reviewer — CI-only; no OAuth or Staging mutation approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact source is a pure non-authorizing previously approved grant gate. It checks authenticated sealed baseline and exact site/agent/profile/source chain with fresh trusted inventory, rejects any unapproved or duplicate grant pair, maintains Production denial and prohibits all mutation. Separate trusted Python wrapper executes the 7-case PHP regression; CI coverage is not live owner approval."
     }
   ],
   "code_change_rules": {
