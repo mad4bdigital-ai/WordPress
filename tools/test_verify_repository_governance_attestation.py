@@ -114,6 +114,82 @@ print("template_binding=sha256")
 print("hidden_protection_binding=bypass+unattributed_approval")
 
 
+# Migration #430: neither canonical source nor template may weaken existing
+# master protections while adding the GitHub-Actions-owned Readiness check.
+spec = importlib.util.spec_from_file_location(
+    "mad4b_repository_ruleset_template",
+    ROOT / "verify_repository_ruleset_template.py",
+)
+ruleset_mod = importlib.util.module_from_spec(spec)
+assert spec.loader is not None
+spec.loader.exec_module(ruleset_mod)
+policy_data = json.loads(Path(".github/mad4b-repository-governance-policy.json").read_text())
+template_data = json.loads(Path(".github/mad4b-master-ruleset-template.json").read_text())
+expected_checks = {
+    ("Repository release verdict", 15368),
+    ("Repository feature boundary", 15368),
+    ("Production readiness matrix contract", 15368),
+}
+assert ruleset_mod.required_checks(policy_data) == expected_checks
+assert ruleset_mod.verify(template_data, policy_data)["ready"] is True
+assert template_data["bypass_actors"] == []
+assert template_data["enforcement"] == "active"
+assert template_data["conditions"]["ref_name"]["include"] == ["refs/heads/master"]
+rules = {row["type"]: row for row in template_data["rules"]}
+assert set(rules) == {"deletion", "non_fast_forward", "pull_request", "required_status_checks"}
+assert rules["required_status_checks"]["parameters"]["strict_required_status_checks_policy"] is True
+assert rules["pull_request"]["parameters"]["allowed_merge_methods"] == ["merge"]
+
+import copy
+for label, mutation in (
+    ("drop_readiness", lambda d: d["rules"][3]["parameters"]["required_status_checks"].pop()),
+    ("wrong_app", lambda d: d["rules"][3]["parameters"]["required_status_checks"][-1].update(integration_id=999)),
+    ("weaken_strict", lambda d: d["rules"][3]["parameters"].update(strict_required_status_checks_policy=False)),
+    ("create_bypass", lambda d: d["bypass_actors"].append({"actor_id": 1, "actor_type": "OrganizationAdmin", "bypass_mode": "always"})),
+):
+    bad = copy.deepcopy(template_data)
+    mutation(bad)
+    try:
+        ruleset_mod.verify(bad, policy_data)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError(f"readiness required-check migration accepted {label}")
+print("MAD4B_READINESS_REQUIRED_CHECK_MIGRATION: PASS")
+
+# Only this exact additive live migration (or a converged 3-check ruleset)
+# may reach the privileged PUT. Noncheck fields must remain identical.
+# The minimal-delta verifier is root-trusted; do not import PR-added helper code.
+mig = ruleset_mod
+before = copy.deepcopy(template_data)
+before.update(id=23968498, source_type="Repository", source=REPOSITORY)
+before["rules"][2]["parameters"]["require_extra_approval_for_unattributed_changes"] = True
+before["rules"][3]["parameters"]["required_status_checks"] = copy.deepcopy(mig.LEGACY)
+assert mig.preflight_readiness_migration(before, template_data, policy_data, REPOSITORY)["transition"] == "append_readiness_only"
+converged = copy.deepcopy(before)
+converged["rules"][3]["parameters"]["required_status_checks"].append(copy.deepcopy(mig.NEW))
+assert mig.preflight_readiness_migration(converged, template_data, policy_data, REPOSITORY)["transition"] == "already_converged"
+for label, mutator in (
+    ("wrong_repository", lambda d: d.update(source="untrusted/WordPress")),
+    ("missing_bypass_evidence", lambda d: d.pop("bypass_actors")),
+    ("missing_unattributed_approval", lambda d: d["rules"][2]["parameters"].pop("require_extra_approval_for_unattributed_changes")),
+    ("injected_bypass", lambda d: d.update(bypass_actors=[{"actor_type":"OrganizationAdmin","actor_id":1,"bypass_mode":"always"}])),
+    ("removed_release", lambda d: d["rules"][3]["parameters"]["required_status_checks"].pop(0)),
+    ("weakened_strict", lambda d: d["rules"][3]["parameters"].update(strict_required_status_checks_policy=False)),
+    ("weakened_review", lambda d: d["rules"][2]["parameters"].update(required_review_thread_resolution=False)),
+    ("different_target", lambda d: d["conditions"]["ref_name"].update(include=["refs/heads/dev"])),
+):
+    mutated = copy.deepcopy(before)
+    mutator(mutated)
+    try:
+        mig.preflight_readiness_migration(mutated, template_data, policy_data, REPOSITORY)
+    except (ValueError, KeyError):
+        pass
+    else:
+        raise AssertionError(f"minimal-delta preflight permitted {label}")
+print("MAD4B_READINESS_MINIMAL_DELTA_NEGATIVE_CONTRACT: PASS")
+
+
 # Trusted bootstrap is an owner-ledger-only, narrow governance migration.
 workflow = Path(".github/workflows/mad4b-governance-remote-apply.yml").read_text(encoding="utf-8")
 assert "bootstrap-readiness-required-check:" in workflow
