@@ -284,8 +284,26 @@ final class MAD4B_SCP_ChatGPT_File_Transfer {
         $s = self::state( $request );
         if ( is_wp_error( $s ) ) return $s;
         $path = self::part( $s );
-        if ( $path ) @unlink( $path );
+        if ( false === $path ) return self::error( 'mad4b_transfer_temp', 'Transfer bytes unavailable.', 404 );
+        $f = @fopen( $path, 'c+b' );
+        if ( false === $f ) return self::error( 'mad4b_transfer_temp', 'Transfer storage unavailable.', 503 );
+        if ( ! flock( $f, LOCK_EX | LOCK_NB ) ) {
+            fclose( $f );
+            return self::error( 'mad4b_transfer_busy', 'Transfer is busy.', 409 );
+        }
+        $latest = get_transient( self::key( $s['id'] ) );
+        if ( ! is_array( $latest ) || 'receiving' !== $latest['status']
+            || (int) $latest['user'] !== get_current_user_id()
+            || ! hash_equals( (string) $latest['site'], hash( 'sha256', home_url( '/' ) ) ) ) {
+            flock( $f, LOCK_UN ); fclose( $f );
+            return self::error( 'mad4b_transfer_conflict', 'Transfer state changed; query status.', 409 );
+        }
+        if ( ! @unlink( $path ) ) {
+            flock( $f, LOCK_UN ); fclose( $f );
+            return self::error( 'mad4b_transfer_temp', 'Could not remove transfer bytes.', 503 );
+        }
         delete_transient( self::key( $s['id'] ) );
+        flock( $f, LOCK_UN ); fclose( $f );
         return array( 'aborted' => true, 'publication_performed' => false );
     }
 }
