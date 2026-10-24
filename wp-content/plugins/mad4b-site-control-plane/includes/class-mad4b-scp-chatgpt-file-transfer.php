@@ -84,7 +84,7 @@ final class MAD4B_SCP_ChatGPT_File_Transfer {
         return new WP_Error( $code, $message, array( 'status' => $status ) );
     }
     private static function root() {
-        $base = realpath( get_temp_dir() );
+        $base = realpath( sys_get_temp_dir() );
         if ( false === $base || ! is_dir( $base ) || ! is_writable( $base ) ) return false;
         $root = $base . '/mad4b-chatgpt-transfer-v1';
         if ( ! is_dir( $root ) && ! @mkdir( $root, 0700 ) && ! is_dir( $root ) ) return false;

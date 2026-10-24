@@ -1846,7 +1846,8 @@
         "PLATFORM-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-permission-runtime.php"
       ],
       "owner_role": "Repository source security and readiness reviewer — CI evidence only, not Production authorizer",
       "status": "reviewed_for_ci_only",
@@ -1866,7 +1867,8 @@
         "PLATFORM-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-permission-runtime.php"
       ],
       "owner_role": "Repository source security and readiness reviewer — CI evidence only, not Production authorizer",
       "status": "reviewed_for_ci_only",
@@ -6954,7 +6956,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-file-transfer.php",
-      "source_blob_sha": "f749fb3a82acd097d25edc0b43ab26bf58f833a7",
+      "source_blob_sha": "59abbfe6a27d0200a0e72718ae9d99f804a6514b",
       "control_ids": [
         "GOVERNANCE-01",
         "PLATFORM-01",
@@ -6963,13 +6965,14 @@
         "EXECUTION-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-permission-runtime.php"
       ],
       "owner_role": "Repository source security/release reviewer — CI only",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
-      "review_rationale": "Exact-source review of scoped Staging-only chunked upload service. Explicit actor capability, site enrollment, global write switch, strict hash/type/size validation, offset-lock replay defense and Media Library-only destination. Source CI only; Staging/Production acceptance remains separate. WordPress requires named-by-reference upload argument; CI includes this regression."
+      "review_rationale": "Exact-source review of scoped Staging-only chunked upload service. Explicit actor capability, site enrollment, global write switch, strict hash/type/size validation, offset-lock replay defense and Media Library-only destination. Source CI only; Staging/Production acceptance remains separate. WordPress requires named-by-reference upload argument; CI includes this regression. Portable PHP sys_get_temp_dir fallback is tested across supported runtimes."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
@@ -7000,7 +7003,8 @@
         "OAUTH-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-permission-runtime.php"
       ],
       "owner_role": "MAD4B repository source reviewer, nonauthorizing CI coverage",
       "review_rationale": "Explicitly register new scoped Staging attachment Ability on the pre-existing governed Write catalog and nested dispatch only. Retain exact OAuth, user capability, tickets, NHI authority, global kill switch and site identity at execution; do not mount as a direct ChatGPT tool or another MCP server.",
