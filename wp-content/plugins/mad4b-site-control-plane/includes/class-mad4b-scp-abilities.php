@@ -3,6 +3,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+require_once __DIR__ . '/class-mad4b-scp-developer-preparation-bridge.php';
+
 final class MAD4B_SCP_Abilities {
 	const MAX_WRITE_DISPATCH_CONTEXT_RECEIPT_BYTES = 65536;
 	private static $write_dispatch_governance_envelope = array();
@@ -567,7 +569,7 @@ final class MAD4B_SCP_Abilities {
 				'category' => $category,
 				'readonly' => isset( $annotations['readonly'] ) && true === $annotations['readonly'],
 				'input_schema_sha256' => $this->ability_input_schema_sha256( $ability ),
-				'approval_lane' => $this->developer_approval_lane( $ability_name, isset( $annotations['readonly'] ) && true === $annotations['readonly'] ),
+				'approval_lane' => MAD4B_SCP_Developer_Preparation_Bridge::approval_lane( $ability_name, isset( $annotations['readonly'] ) && true === $annotations['readonly'] ),
 			);
 			if ( count( $items ) >= $limit ) break;
 		}
@@ -588,7 +590,7 @@ final class MAD4B_SCP_Abilities {
 		if ( is_wp_error( $ability ) ) return $ability;
 		$meta = $ability->get_meta();
 		$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
-		return array(
+		$result = array(
 			'contract' => 'mad4b.chatgpt-developer-ability-info.v1',
 			'ability_name' => $ability_name,
 			'label' => method_exists( $ability, 'get_label' ) ? (string) $ability->get_label() : '',
@@ -597,22 +599,14 @@ final class MAD4B_SCP_Abilities {
 			'input_schema' => method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null,
 			'input_schema_sha256' => $this->ability_input_schema_sha256( $ability ),
 			'annotations' => $annotations,
-			'approval_lane' => $this->developer_approval_lane( $ability_name, isset( $annotations['readonly'] ) && true === $annotations['readonly'] ),
+			'approval_lane' => MAD4B_SCP_Developer_Preparation_Bridge::approval_lane( $ability_name, isset( $annotations['readonly'] ) && true === $annotations['readonly'] ),
 			'production_authorized' => false,
 			'breakglass_included' => false,
 			'read_only' => true,
 			'mutation_performed' => false,
 		);
-	}
-
-	private function developer_approval_lane( $ability_name, $readonly ) {
-		if ( $readonly ) return 'none';
-		if ( class_exists( 'MAD4B_SCP_Impact_Policy' ) ) {
-			$classification = MAD4B_SCP_Impact_Policy::classify( (string) $ability_name, 'core', array() );
-			if ( is_array( $classification ) && isset( $classification['approval_lane'] ) && in_array( $classification['approval_lane'], array( 'ai_autonomous', 'human_only' ), true ) ) return (string) $classification['approval_lane'];
-		}
-		return 'human_only';
-	}
+        return MAD4B_SCP_Developer_Preparation_Bridge::enrich( $result, $ability_name );
+    }
 
 	public function developer_execute( $input ) {
 		$abuse = class_exists( 'MAD4B_SCP_Abuse_Budget' ) ? MAD4B_SCP_Abuse_Budget::admit( 'execute', is_array($input)?$input:array() ) : new WP_Error( 'mad4b_abuse_budget_unavailable', 'Execution abuse-budget runtime is unavailable.' );

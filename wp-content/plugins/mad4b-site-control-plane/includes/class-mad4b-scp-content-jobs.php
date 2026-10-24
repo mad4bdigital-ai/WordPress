@@ -65,6 +65,14 @@ final class MAD4B_SCP_Content_Jobs {
 			true
 		);
 		self::register(
+			'mad4b/content-job-dependency-plan',
+			'Plan Brand Recovery and Resume One Existing Content Job',
+			'dependency_plan',
+			array( 'job_id' => array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36 ) ),
+			array( 'job_id' ),
+			true
+		);
+		self::register(
 			'mad4b/content-job-get',
 			'Get Content Job',
 			'get_job',
@@ -268,6 +276,101 @@ final class MAD4B_SCP_Content_Jobs {
 			'site_wide_inventory_evaluated' => false,
 			'zero_rows_clear_site_wide_doctor' => false,
 			'cross_scope_repair_allowed' => false,
+			'mutation_performed' => false,
+		);
+	}
+
+	/**
+	 * Read-only recovery of the original durable ContentJob.
+	 * Each actual Brand creation/review and Job transition is separately
+	 * dispatched through its current, exact-approved governed Ability.
+	 */
+	public static function dependency_plan( $input ) {
+		$job_id = is_array( $input ) && isset( $input['job_id'] ) ? strtolower( trim( (string) $input['job_id'] ) ) : '';
+		$record = self::get_job( array( 'job_id' => $job_id ) );
+		if ( is_wp_error( $record ) ) return $record;
+		$job = $record['job'] ?? null;
+		if ( ! is_array( $job ) ) return new WP_Error( 'mad4b_content_recovery_job_unavailable', 'Exact ContentJob not found.' );
+		if ( ! class_exists( 'MAD4B_SCP_Context_Authority' ) || ! class_exists( 'MAD4B_SCP_Brand_Core_Control_Loop' ) )
+			return new WP_Error( 'mad4b_content_recovery_dependencies_unavailable', 'Governed Brand Core runtime unavailable.' );
+		$coverage = MAD4B_SCP_Context_Authority::brand_core_coverage();
+		$route = MAD4B_SCP_Brand_Core_Control_Loop::status();
+		if ( is_wp_error( $coverage ) ) return $coverage;
+		if ( is_wp_error( $route ) ) return $route;
+		if ( ! is_array( $coverage ) || ! is_array( $route ) ||
+			empty( $coverage['context_fingerprint'] ) ||
+			! hash_equals( (string) ( $coverage['authority_manifest_fingerprint'] ?? '' ), (string) ( $route['authority_manifest_fingerprint'] ?? '' ) ) ||
+			(int) ( $coverage['registry_revision'] ?? -1 ) !== (int) ( $route['registry_revision'] ?? -2 ) )
+			return new WP_Error( 'mad4b_content_recovery_snapshot_drift', 'Brand coverage changed; obtain a fresh recovery snapshot.' );
+		return self::dependency_reduce( $job, $coverage, $route );
+	}
+
+	/** Pure reducer for fail-closed regression testing. */
+	public static function dependency_reduce( array $job, array $coverage, array $route ) {
+		$id = (string) ( $job['job_id'] ?? '' );
+		$state = (string) ( $job['state'] ?? '' );
+		$revision = (int) ( $job['job_revision'] ?? 0 );
+		$terminal = in_array( $state, array( 'COMPLETED', 'CANCELLED' ), true );
+		$missing = array_values( (array) ( $coverage['missing_required_context_sets'] ?? array() ) );
+		$conflicts = array_values( (array) ( $coverage['conflicting_required_context_sets'] ?? array() ) );
+		$ready = ! $terminal && ! empty( $coverage['ready'] ) && ! empty( $route['ready'] )
+			&& 'READY' === (string) ( $route['state'] ?? '' ) && ! $missing && ! $conflicts;
+		$steps = array();
+		foreach ( (array) ( $route['categories'] ?? array() ) as $c ) {
+			if ( ! is_array( $c ) || 'READY' === (string) ( $c['state'] ?? '' ) ) continue;
+			$category = (string) ( $c['category'] ?? '' );
+			if ( ! in_array( $category, array( 'brand_strategy', 'tone_of_voice', 'editorial_guidelines' ), true ) ) continue;
+			$steps[] = array(
+				'category' => $category,
+				'state' => (string) ( $c['state'] ?? '' ),
+				'depends_on' => array_values( (array) ( $c['dependencies'] ?? array() ) ),
+				'next_ability' => (string) ( $c['next_ability'] ?? 'context/brand-core-coverage' ),
+				'requires_governed_approval' => true, 'readback_after_mutation' => true,
+				'automatically_approve_unreviewed_asset' => false,
+			);
+		}
+		$basis = array( $id, $revision, $state, (string) ( $job['stage'] ?? '' ),
+			(string) ( $coverage['context_fingerprint'] ?? '' ),
+			(string) ( $coverage['authority_manifest_fingerprint'] ?? '' ),
+			(int) ( $coverage['registry_revision'] ?? 0 ), (string) ( $route['snapshot_sha256'] ?? '' ) );
+		$sha = hash( 'sha256', wp_json_encode( $basis ) );
+		$transition = array();
+		if ( ! $terminal && $ready && in_array( $state, array( 'NEW', 'QUEUED', 'BLOCKED', 'WAITING_REVIEW' ), true ) ) {
+			$transition = array(
+				'ability' => 'mad4b/content-job-transition',
+				'input' => array( 'job_id' => $id, 'expected_revision' => $revision,
+					'state' => 'NEW' === $state ? 'QUEUED' : 'RUNNING',
+					'stage' => 'KNOWLEDGE_DISPATCH', 'plan_sha256' => $sha,
+					'reason' => 'Reviewed Brand Core is ready; resume original ContentJob.' ),
+				'exact_approval_required' => true,
+			);
+		} elseif ( ! $terminal && ! $ready && in_array( $state, array( 'QUEUED', 'RUNNING', 'WAITING_REVIEW' ), true ) ) {
+			$transition = array(
+				'ability' => 'mad4b/content-job-transition',
+				'input' => array( 'job_id' => $id, 'expected_revision' => $revision,
+					'state' => 'BLOCKED', 'stage' => 'KNOWLEDGE_DISPATCH',
+					'plan_sha256' => $sha, 'reason' => 'Await governed Brand Core dependency recovery.' ),
+				'exact_approval_required' => true,
+			);
+		}
+		return array(
+			'contract' => 'mad4b.content-job-dependency-recovery.v1',
+			'job_id' => $id, 'job_revision' => $revision,
+			'original_task' => array( 'subject' => (string) ( $job['subject'] ?? '' ),
+				'language' => (string) ( $job['language'] ?? '' ),
+				'target_post_type' => (string) ( $job['target_post_type'] ?? '' ),
+				'target_post_id' => $job['target_post_id'] ?? null ),
+			'state' => $terminal ? 'TERMINAL' : ( $ready ? 'RESUME_READY' : 'RECOVER_BRAND_CORE' ),
+			'resume_ready' => $ready, 'missing_context_sets' => $missing,
+			'conflicting_context_sets' => $conflicts, 'recovery_steps' => $steps,
+			'next_ability' => $terminal ? '' : ( $ready ? 'mad4b/skill-get' : (string) ( $route['next_ability'] ?? 'context/brand-core-control-loop' ) ),
+			'next_transition' => $transition, 'plan_sha256' => $sha,
+			'resume_chain' => array( 'mad4b/skill-get', 'mad4b/approval-plan',
+				'mad4b/content-create-post', 'mad4b/content-get-post', 'mad4b/content-job-transition' ),
+			'original_job_only' => true, 'fresh_context_receipt_required' => true,
+			'exact_approval_per_mutation_required' => true,
+			'no_blind_retry' => true, 'auto_approve_unreviewed_assets' => false,
+			'production_mutation_allowed' => false, 'read_only' => true,
 			'mutation_performed' => false,
 		);
 	}

@@ -112,7 +112,7 @@ for marker in [
     "MAD4B_SCP_Governed_Runtime_Gates::chatgpt_catalog_read_tools()",
     "MAD4B_SCP_Governed_Runtime_Gates::chatgpt_read_tools()",
     "MAD4B_SCP_Governed_Runtime_Gates::chatgpt_step_up_tools()",
-    "$fallback_candidates = array_merge( $core, $runtime_gate_step_up, $approval_bootstrap )",
+    "$fallback_candidates = array_merge( $core, $runtime_gate_step_up, $approval_bootstrap, $profile_tools )",
 ]:
     if marker not in SERVERS:
         raise SystemExit("ChatGPT runtime-gate projection missing: " + marker)

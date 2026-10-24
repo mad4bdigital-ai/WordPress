@@ -48,6 +48,7 @@ $manifest=array('contract'=>'mad4b.control-plane-update-channel.v1',
  'ci_outage_attestation'=>array('claims_b64'=>base64_encode($raw),
   'signature_b64'=>base64_encode(sodium_crypto_sign_detached($raw,$private))));
 $reflection=new ReflectionMethod('MAD4B_SCP_Selected_Head_Update','manifest');
+$reflection->setAccessible(true);
 $GLOBALS['manifest_body']=json_encode($manifest);
 $accepted=$reflection->invoke(null,$sha);
 expect(!is_wp_error($accepted)&&$accepted['evidence_mode']==='owner_signed_ci_outage',

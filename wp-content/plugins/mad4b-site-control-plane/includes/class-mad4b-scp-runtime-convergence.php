@@ -60,27 +60,33 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$current = ! empty( $target ) ? self::current_identity() : array();
 		$identity_match = ! empty( $target ) && self::identity_matches( $target, $current );
 		$convergence_pending = 'self_update' === $source && in_array( $state, $barrier_states, true );
-		$quiet_period_active = $convergence_pending && $not_before > $now;
-		$operator_action_required = $convergence_pending && in_array( $state, array( 'pending_manual_resume', 'blocked' ), true );
 
-		// The quiet period is only the minimum delay. The actual protocol barrier is
-		// identity/convergence bound and remains active until self-update safe
-		// convergence leaves every pending/error state. A terminal safe-phase error
-		// must remain fail-closed until an operator repairs/resumes convergence.
-		$active = $convergence_pending;
+		// A restored database can carry the paused self-update checkpoint of a
+		// previous plugin package. Do not let historical audit state indefinitely
+		// quarantine a later independently-ready build. Never replay or delete it.
+		// All other pending/blocked states remain fail-closed.
+		$historical_read_safe = false;
+		$historical_audit_only = $convergence_pending && 'pending_manual_resume' === $state
+			&& ! $identity_match && self::superseded_restart_checkpoint_ready( $checkpoint, $current, $not_before, $historical_read_safe );
+		$active = $convergence_pending && ! $historical_audit_only;
+		$quiet_period_active = $active && $not_before > $now;
+		$operator_action_required = $active && in_array( $state, array( 'pending_manual_resume', 'blocked' ), true );
 		$retryable = $active && ! $operator_action_required;
 		$retry_after = $retryable ? ( $quiet_period_active ? max( 1, $not_before - $now ) : 5 ) : 0;
 		// Passive evidence distinguishes a brief quiet period from a stuck checkpoint.
 		// These persisted timestamps never authorize a retry, clear a barrier or write an option.
 		$created = isset( $checkpoint['created_at'] ) && is_string( $checkpoint['created_at'] ) ? strtotime( $checkpoint['created_at'] ) : false;
 		$updated = isset( $checkpoint['updated_at'] ) && is_string( $checkpoint['updated_at'] ) ? strtotime( $checkpoint['updated_at'] ) : false;
-		$classification = ! $active ? 'inactive' : ( $operator_action_required ? 'operator_action_required'
-			: ( $quiet_period_active ? 'post_update_quiet_period' : ( ! $identity_match ? 'runtime_identity_unverified' : 'safe_phases_pending' ) ) );
+		$classification = $historical_audit_only ? 'superseded_audit_only' : ( ! $active ? 'inactive' : ( $operator_action_required ? 'operator_action_required'
+			: ( $quiet_period_active ? 'post_update_quiet_period' : ( ! $identity_match ? 'runtime_identity_unverified' : 'safe_phases_pending' ) ) ) );
 		return array(
 			'contract' => 'mad4b.runtime-restart-grace.v2',
 			'active' => $active,
 			'state' => $state,
-			'convergence_pending' => $convergence_pending,
+			'convergence_pending' => $active,
+			'persisted_checkpoint_pending' => $convergence_pending,
+			'historical_checkpoint_audit_only' => $historical_audit_only,
+			'historical_mcp_read_safe' => $historical_read_safe && $active,
 			'quiet_period_active' => $quiet_period_active,
 			'diagnostic_classification' => $classification,
 			'checkpoint_created_at_utc' => false !== $created && $created > 0 ? gmdate( 'c', $created ) : '',
@@ -96,9 +102,9 @@ final class MAD4B_SCP_Runtime_Convergence {
 			'current_identity' => self::bounded_identity( $current ),
 			'retryable' => $retryable,
 			'retry_after_seconds' => $retry_after,
-			'client_action' => 'blocked' === $state
+			'client_action' => $historical_audit_only ? 'none_historical_checkpoint_audit_only' : ( 'blocked' === $state
 				? 'operator_repair_runtime_convergence'
-				: ( $operator_action_required ? 'operator_resume_runtime_convergence' : 'retry_after_runtime_convergence' ),
+				: ( $operator_action_required ? 'operator_resume_runtime_convergence' : 'retry_after_runtime_convergence' ) ),
 			'resume_not_before' => $not_before,
 			'target_identity' => $target,
 			'background_maintenance_deferred' => $active,
@@ -106,6 +112,194 @@ final class MAD4B_SCP_Runtime_Convergence {
 			'mutation_performed' => false,
 			'production_mutation' => false,
 		);
+	}
+
+	/**
+	 * Read-only, fail-closed check for an old self-update manual-resume barrier.
+	 * A SHA mismatch alone is NEVER enough to open the MCP protocol.
+	 * Recursion guard prevents diagnostic providers from resolving their own
+	 * readiness against the restart barrier they are evaluating.
+	 */
+	private static function superseded_restart_checkpoint_ready( $checkpoint, $current, $not_before, &$historical_read_safe = false ) {
+		// Only inspect the expensive independent graph when the record is
+		// provably a different, well-identified build, and outside quiet time.
+		if ( ! is_array( $checkpoint ) || 'self_update' !== ( $checkpoint['source'] ?? '' )
+			|| 'pending_manual_resume' !== ( $checkpoint['state'] ?? '' )
+			|| $not_before > time() || ! is_array( $current ) ) return false;
+		$target = isset( $checkpoint['target_identity'] ) && is_array( $checkpoint['target_identity'] )
+			? self::bounded_identity( $checkpoint['target_identity'] ) : array();
+		$current_sha = strtolower( trim( (string) ( $current['source_commit_sha'] ?? '' ) ) );
+		$target_sha = strtolower( trim( (string) ( $target['source_commit_sha'] ?? '' ) ) );
+		if ( ! preg_match( '/^[a-f0-9]{40}$/D', $current_sha )
+			|| ! preg_match( '/^[a-f0-9]{40}$/D', $target_sha )
+			|| hash_equals( $current_sha, $target_sha )
+			|| empty( $current['build_fingerprint'] ) || empty( $current['package_manifest_digest'] ) ) return false;
+
+		static $inspecting = false;
+		if ( $inspecting ) return false;
+		$inspecting = true;
+		try {
+			$graph = self::status();
+			$historical_read_safe = self::superseded_checkpoint_mcp_read_safe( $checkpoint, $current, $not_before, $graph );
+			return self::superseded_checkpoint_graph_safe( $checkpoint, $current, $not_before, $graph );
+		} catch ( Throwable $error ) {
+			return false;
+		} finally {
+			$inspecting = false;
+		}
+	}
+
+	/**
+	 * Pure decision seam for regression fixtures. Checking build SHA without
+	 * independent ready graph evidence is never sufficient to release 503.
+	 */
+	private static function superseded_checkpoint_graph_safe( $checkpoint, $current, $not_before, $graph ) {
+		if ( ! is_array( $checkpoint ) || 'self_update' !== ( $checkpoint['source'] ?? '' )
+			|| 'pending_manual_resume' !== ( $checkpoint['state'] ?? '' )
+			|| $not_before > time() || ! is_array( $current ) ) return false;
+		$target = isset( $checkpoint['target_identity'] ) && is_array( $checkpoint['target_identity'] )
+			? self::bounded_identity( $checkpoint['target_identity'] ) : array();
+		$current_sha = strtolower( trim( (string) ( $current['source_commit_sha'] ?? '' ) ) );
+		$target_sha = strtolower( trim( (string) ( $target['source_commit_sha'] ?? '' ) ) );
+		if ( ! preg_match( '/^[a-f0-9]{40}$/D', $current_sha )
+			|| ! preg_match( '/^[a-f0-9]{40}$/D', $target_sha )
+			|| hash_equals( $current_sha, $target_sha )
+			|| empty( $current['build_fingerprint'] ) || empty( $current['package_manifest_digest'] ) ) return false;
+		if ( ! is_array( $graph )
+			|| ! in_array( $graph['environment'] ?? '', array( 'staging', 'development', 'local' ), true )
+			|| ! self::identity_matches( $current, $graph['current_identity'] ?? array() ) ) return false;
+		$independently_ready = 'ready' === ( $graph['state'] ?? '' )
+			&& ! empty( $graph['ready'] ) && empty( $graph['required_blockers'] );
+		// A previous self-update's verified cached release target can be the
+		// only remaining deployment blocker, even after a newer exact package
+		// is installed. Never ignore schema, skills, OAuth or authority gates.
+		$stale_release_cache_only = ! $independently_ready
+			&& self::superseded_cached_release_only( $checkpoint, $current, $graph );
+		if ( ! $independently_ready && ! $stale_release_cache_only ) return false;
+		$observed_checkpoint = $graph['checkpoint'] ?? array();
+		if ( ! is_array( $observed_checkpoint ) || 'pending_manual_resume' !== ( $observed_checkpoint['state'] ?? '' )
+			|| 'self_update' !== ( $observed_checkpoint['source'] ?? '' )
+			|| ! isset( $observed_checkpoint['target_identity'] ) || ! is_array( $observed_checkpoint['target_identity'] )
+			|| ! hash_equals( $target_sha, strtolower( trim( (string) ( $observed_checkpoint['target_identity']['source_commit_sha'] ?? '' ) ) ) ) )
+			return false;
+		if ( ! empty( $graph['checkpoint_operator_state']['replay_old_checkpoint_allowed'] ) ) return false;
+		return $independently_ready
+			? 'superseded_audit_only' === ( $graph['checkpoint_operator_state']['state'] ?? '' )
+			: ( $stale_release_cache_only
+				&& 'historical_checkpoint_independent_blockers' === ( $graph['checkpoint_operator_state']['state'] ?? '' ) );
+	}
+
+	/**
+	 * Exact, read-only exception for a stale cached deployment target only.
+	 * Reject any current update, equal/unknown version or additional required
+	 * blocker. The old self-update checkpoint remains stored for audit.
+	 */
+
+	/**
+	 * A historical self-update may not deny read-only MCP solely because the
+	 * Staging *write* authority is waiting for an owner's new exact-head grant.
+	 * This does not release restart_grace for ChatGPT/write/developer routes.
+	 * The usual per-route read capability and OAuth policy remain mandatory.
+	 */
+	private static function superseded_checkpoint_mcp_read_safe( $checkpoint, $current, $not_before, $graph ) {
+		if ( ! is_array( $checkpoint ) || ! is_array( $current ) || ! is_array( $graph )
+			|| $not_before > time() || 'self_update' !== ( $checkpoint['source'] ?? '' )
+			|| 'pending_manual_resume' !== ( $checkpoint['state'] ?? '' )
+			|| 'mad4b_automation_automation_kill_switch' !== ( $checkpoint['resume_blocker'] ?? '' )
+			|| 'staging' !== ( $graph['environment'] ?? '' )
+			|| true !== ( $graph['phase_graph_valid'] ?? false )
+			|| ! self::identity_matches( $current, $graph['current_identity'] ?? array() ) ) return false;
+		// A verified obsolete release cache may add deployment:pending to the
+		// owner-only gate. Permit READ diagnostics, never Write/Enrollment, when
+		// the exact older signed target and all other required phases are safe.
+		$stale_deployment_owner_only = array( 'deployment:pending', 'authority_binding:owner_gate' )
+			=== ( $graph['required_blockers'] ?? null )
+			&& self::superseded_cached_release_only( $checkpoint, $current, $graph, true );
+		if ( array( 'authority_binding:owner_gate' ) !== ( $graph['required_blockers'] ?? null )
+			&& ! $stale_deployment_owner_only ) return false;
+		$target = is_array( $checkpoint['target_identity'] ?? null )
+			? self::bounded_identity( $checkpoint['target_identity'] ) : array();
+		$old_sha = strtolower( trim( (string) ( $target['source_commit_sha'] ?? '' ) ) );
+		$new_sha = strtolower( trim( (string) ( $current['source_commit_sha'] ?? '' ) ) );
+		if ( ! preg_match( '/^[a-f0-9]{40}$/D', $old_sha )
+			|| ! preg_match( '/^[a-f0-9]{40}$/D', $new_sha )
+			|| hash_equals( $old_sha, $new_sha )
+			|| empty( $current['build_fingerprint'] ) || empty( $current['package_manifest_digest'] )
+			|| ! version_compare( (string)( $current['version'] ?? '' ), (string)( $target['version'] ?? '' ), '>' ) ) return false;
+		$operator = is_array( $graph['checkpoint_operator_state'] ?? null ) ? $graph['checkpoint_operator_state'] : array();
+		if ( 'historical_checkpoint_independent_blockers' !== ( $operator['state'] ?? '' )
+			|| ! empty( $operator['replay_old_checkpoint_allowed'] ) ) return false;
+		$stored = is_array( $graph['checkpoint'] ?? null ) ? $graph['checkpoint'] : array();
+		if ( 'pending_manual_resume' !== ( $stored['state'] ?? '' )
+			|| 'self_update' !== ( $stored['source'] ?? '' )
+			|| ! hash_equals( $old_sha, strtolower( trim( (string)( $stored['target_identity']['source_commit_sha'] ?? '' ) ) ) ) ) return false;
+		$phases = $graph['phases'] ?? null;
+		if ( ! is_array( $phases ) || ! isset( $phases['authority_binding'] )
+			|| empty( $phases['authority_binding']['required'] )
+			|| 'owner_gate' !== ( $phases['authority_binding']['state'] ?? '' ) ) return false;
+		foreach ( $phases as $id => $phase ) {
+			if ( ! is_array( $phase )
+				|| ( 'authority_binding' !== $id && ! empty( $phase['required'] )
+					&& 'ready' !== ( $phase['state'] ?? '' )
+					&& ! ( $stale_deployment_owner_only && 'deployment' === $id
+						&& 'pending' === ( $phase['state'] ?? '' ) ) ) ) return false;
+		}
+		return true;
+	}
+
+	private static function superseded_cached_release_only( $checkpoint, $current, $graph, $allow_owner_gate = false ) {
+		if ( ! is_array( $graph )
+			|| 'convergence_required' !== ( $graph['state'] ?? '' )
+			|| ! empty( $graph['ready'] ) || true !== ( $graph['phase_graph_valid'] ?? false )
+			|| ( $allow_owner_gate
+				? array( 'deployment:pending', 'authority_binding:owner_gate' )
+				: array( 'deployment:pending' ) ) !== ( $graph['required_blockers'] ?? null ) ) return false;
+		$phases = $graph['phases'] ?? null;
+		if ( ! is_array( $phases ) || ! isset( $phases['deployment'] )
+			|| ! is_array( $phases['deployment'] )
+			|| 'pending' !== ( $phases['deployment']['state'] ?? '' )
+			|| empty( $phases['deployment']['required'] ) ) return false;
+		foreach ( $phases as $phase_id => $phase ) {
+			if ( ! is_array( $phase )
+				|| ( 'deployment' !== $phase_id && ! empty( $phase['required'] )
+					&& 'ready' !== ( $phase['state'] ?? '' )
+					&& ! ( $allow_owner_gate && 'authority_binding' === $phase_id
+						&& 'owner_gate' === ( $phase['state'] ?? '' ) ) ) ) return false;
+		}
+		$details = $phases['deployment']['details'] ?? array();
+		$cached = is_array( $details['target_identity'] ?? null ) ? $details['target_identity'] : array();
+		$checkpoint_target = is_array( $checkpoint['target_identity'] ?? null )
+			? self::bounded_identity( $checkpoint['target_identity'] ) : array();
+		$old_sha = strtolower( trim( (string) ( $checkpoint_target['source_commit_sha'] ?? '' ) ) );
+		$cached_sha = strtolower( trim( (string) ( $cached['source_commit_sha'] ?? '' ) ) );
+		$old_version = trim( (string) ( $checkpoint_target['version'] ?? '' ) );
+		$cached_version = trim( (string) ( $cached['version'] ?? '' ) );
+		$current_version = trim( (string) ( $current['version'] ?? '' ) );
+		if ( empty( $details['cached_release_target_present'] )
+			|| 'ready' !== ( $details['manifest_state'] ?? '' )
+			|| ! preg_match( '/^[a-f0-9]{40}$/D', $old_sha )
+			|| ! preg_match( '/^[a-f0-9]{40}$/D', $cached_sha )
+			|| '' === $old_version || '' === $cached_version || '' === $current_version
+			|| ! hash_equals( $old_version, $cached_version )
+			|| ! version_compare( $current_version, $old_version, '>' )
+			|| ! version_compare( $current_version, $cached_version, '>' ) ) return false;
+		// Migration may preserve an old self-update checkpoint while a later
+		// *different* certified release of the same old version is cached.
+		// Identity SHA drift alone cannot release a barrier. Both obsolete
+		// identities must be complete, the installed version strictly newer,
+		// and the only required blocker must already be deployment:pending.
+		$distinct_old_release = ! hash_equals( $old_sha, $cached_sha );
+		foreach ( array( 'build_fingerprint', 'package_manifest_digest' ) as $field ) {
+			$checkpoint_value = strtolower( trim( (string) ( $checkpoint_target[ $field ] ?? '' ) ) );
+			$cached_value = strtolower( trim( (string) ( $cached[ $field ] ?? '' ) ) );
+			if ( $distinct_old_release ) {
+				if ( ! preg_match( '/^[a-f0-9]{64}$/D', $checkpoint_value )
+					|| ! preg_match( '/^[a-f0-9]{64}$/D', $cached_value ) ) return false;
+			} elseif ( '' !== $checkpoint_value && ( '' === $cached_value || ! hash_equals( $checkpoint_value, $cached_value ) ) ) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	public static function maintenance_lease_status() {

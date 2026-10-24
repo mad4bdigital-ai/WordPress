@@ -19,6 +19,7 @@ $pages = array(
 	'mad4b-control-plane-context' => array( 'MAD4B_SCP_Context_Admin_UI', 'render_page', array( 'overview', 'google-drive', 'sources', 'assets', 'quality', 'intelligence' ) ),
 	'mad4b-control-plane-connection' => array( 'MAD4B_SCP_Connection_Admin_UI', 'render_page', array( 'readiness', 'oauth', 'endpoints', 'isolation', 'certification' ) ),
 	'mad4b-control-plane-chatgpt' => array( 'MAD4B_SCP_ChatGPT_Connection_Admin_UI', 'render_page', array( '' ) ),
+	'mad4b-direct-access-profile' => array( 'MAD4B_SCP_Direct_Profile', 'render_page', array( '' ) ),
 	'mad4b-control-plane-content-pipeline' => array( 'MAD4B_SCP_Dynamic_Content_Pipeline_Admin', 'render', array( '' ) ),
 	'mad4b-control-plane-site-profile' => array( 'MAD4B_SCP_Site_Profile_Admin', 'render_page', array( '' ) ),
 	'mad4b-control-plane-performance' => array( 'MAD4B_SCP_Admin_Query_Performance_UI', 'render_page', array( '' ) ),

@@ -4,6 +4,7 @@
   "default_unknown_policy": "review_if_brand_evidence",
   "fallback_evidence_authorizing": false,
   "abilities": {
+    "mad4b/content-job-create": {"provider": "core", "mode": "exact_paths", "brand_paths": [], "operational_paths": ["brand_id", "subject", "primary_keyword", "language", "country", "content_type", "writer_profile_id", "writer_profile_version", "research_depth", "automation_level", "target_post_type", "desired_publish_at", "reason"]},
     "mad4b/content-create-post": {
       "provider": "core",
       "mode": "exact_paths",
@@ -46,6 +47,23 @@
         "expected_modified_gmt",
         "expected_post_modified_gmt"
       ]
+    },
+    "mad4b/content-apply-bundle": {
+      "provider": "core",
+      "mode": "content_bundle",
+      "brand_paths": ["post.post_title", "post.post_content", "post.post_excerpt"],
+      "post_operational_paths": ["post.post_status", "post.post_parent", "post.post_author"],
+      "root_operational_paths": [
+        "mode", "post_type", "post_id", "operation_key",
+        "expected_state_sha256", "expected_pipeline_settings_sha256",
+        "expected_bundle_sha256", "expected_operation_binding_sha256",
+        "featured_media_id", "evidence", "acceptance_targets", "validation"
+      ],
+      "meta_key_contract": "mad4b/content-set-meta",
+      "meta_operational_key_regex": "^_?(?:(?:tour|booking|adult|child|base|regular|sale|product|item|inventory)_)?(?:price|amount|cost|stock|stock_status|stock_quantity|sku|id|term_id|post_id|supplier_id|quantity|capacity|duration|rating|latitude|longitude|lat|lng)(?:_(?:adult|child|base|sale|regular|total|net|gross|per_person))?$",
+      "unclassified_meta_policy": "review_required",
+      "taxonomy_term_creation_brand_fields": ["name", "description"],
+      "non_authorizing": true
     },
     "mad4b/content-import-bundle": {
       "provider": "core",
@@ -489,18 +507,17 @@
     },
     "mad4b/approval-ai-decide": {
       "provider": "core",
-      "mode": "exact_paths",
+      "mode": "ticket_bound_target",
       "brand_paths": [],
       "operational_paths": [
         "ticket_id",
         "decision",
         "expected_payload_sha256",
         "expected_classification_sha256",
-        "review_note",
-        "operation_input.expected_head",
-        "operation_input.expected_plan_sha256",
-        "operation_input.confirmation"
-      ]
+        "review_note"
+      ],
+      "nested_input_policy": "resolve_ticket_target_and_reuse_exact_target_semantics",
+      "standing_approval_not_granted": true
     },
     "jetsmartfilters/update-filter-meta": {
       "provider": "jetsmartfilters",

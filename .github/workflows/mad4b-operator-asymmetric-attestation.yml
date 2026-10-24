@@ -1,0 +1,45 @@
+name: MAD4B Operator Asymmetric Attestation
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-attestation.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-receipt-verifier.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-sessions.php'
+      - 'tools/mad4b-remote-execution/operator-seal-verifier.py'
+      - 'tools/mad4b-remote-execution/operator-worker-receipt.py'
+      - 'tools/mad4b-remote-execution/operator-signature-fixture.php'
+      - 'tests/remote-execution/operator-asymmetric-roundtrip.py'
+      - 'tests/remote-execution/operator-receipt-verify-offline.php'
+      - '.github/workflows/mad4b-operator-asymmetric-attestation.yml'
+  workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  dual-asymmetric-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install cryptography for test runner
+        run: python -m pip install --disable-pip-version-check 'cryptography==46.0.3'
+      - name: PHP/Python syntax
+        run: |
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-attestation.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-receipt-verifier.php
+          php -l tools/mad4b-remote-execution/operator-signature-fixture.php
+          php -l tests/remote-execution/operator-receipt-verify-offline.php
+          python -m py_compile tools/mad4b-remote-execution/operator-seal-verifier.py
+          python -m py_compile tools/mad4b-remote-execution/operator-worker-receipt.py
+          python -m py_compile tests/remote-execution/operator-asymmetric-roundtrip.py
+      - name: Sign and independently verify fixture
+        run: |
+          MAD4B_TEST_RUNNER_PROFILE_ID=fixture-site-a-runner-v1 MAD4B_TEST_SITE_FINGERPRINT=${{ 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' }} python tests/remote-execution/operator-asymmetric-roundtrip.py
+          MAD4B_TEST_RUNNER_PROFILE_ID=fixture-site-b-runner-v1 MAD4B_TEST_SITE_FINGERPRINT=${{ 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' }} MAD4B_TEST_SITE_UUID=99999999-9999-4999-8999-999999999999 python tests/remote-execution/operator-asymmetric-roundtrip.py

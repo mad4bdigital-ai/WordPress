@@ -127,7 +127,7 @@ final class MAD4B_SCP_MCP_Hybrid_Authority {
             $adapter_ref = new ReflectionClass( $adapter );
             $adapter_file = realpath( (string) $adapter_ref->getFileName() );
             $property = new ReflectionProperty( $ability, 'execute_callback' );
-            $property->setAccessible( true );
+            if ( PHP_VERSION_ID < 80100 ) $property->setAccessible( true );
             $callback = $property->getValue( $ability );
             $callback_file = self::callback_file( $callback );
             $actual_file = is_string( $callback_file ) ? realpath( $callback_file ) : false;

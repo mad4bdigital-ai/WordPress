@@ -18,6 +18,11 @@ final class MAD4B_SCP_Host_Bridge {
 
 	private static $operations = array(
 		'runtime.status.read' => array( 'version' => 1, 'risk' => 'read_only', 'approval_required' => false ),
+		'operator.shell' => array( 'version' => 1, 'risk' => 'reversible_write', 'approval_required' => true ),
+		'operator.wp-cli' => array( 'version' => 1, 'risk' => 'reversible_write', 'approval_required' => true ),
+		'operator.sql.read' => array( 'version' => 1, 'risk' => 'read_only', 'approval_required' => false ),
+		'operator.sql.write' => array( 'version' => 1, 'risk' => 'reversible_write', 'approval_required' => true ),
+		'operator.sql.schema' => array( 'version' => 1, 'risk' => 'reversible_write', 'approval_required' => true ),
 		'filesystem.hash.read' => array( 'version' => 1, 'risk' => 'read_only', 'approval_required' => false ),
 		'package.integrity.verify' => array( 'version' => 1, 'risk' => 'read_only', 'approval_required' => false ),
 		'workspace.file.replace' => array( 'version' => 1, 'risk' => 'reversible_write', 'approval_required' => true ),
@@ -231,6 +236,15 @@ final class MAD4B_SCP_Host_Bridge {
 		$args = isset( $input['arguments'] ) && is_array( $input['arguments'] ) ? $input['arguments'] : array();
 		$profile_id = isset( $input['runner_profile_id'] ) ? sanitize_key( (string) $input['runner_profile_id'] ) : '';
 		if ( '' === $profile_id ) return new WP_Error( 'mad4b_host_runner_profile_required', 'Exact Host Runner profile is required.' );
+		if ( 0 === strpos( $operation_id, 'operator.' ) ) {
+			$expected_profile = MAD4B_SCP_Operator_Runner_Profile::current_id();
+			if ( is_wp_error( $expected_profile ) ) return $expected_profile;
+			if ( ! hash_equals( $expected_profile, $profile_id ) ||
+				! class_exists( 'MAD4B_SCP_Operator_Bridge' ) ||
+				! MAD4B_SCP_Operator_Bridge::request_authority_matches( $operation_id, $args ) )
+				return new WP_Error( 'mad4b_host_operator_scope_required', 'Only a verified request-local OAuth operator session may submit operator jobs.' );
+		}
+
 		$target = self::target_identity();
 		if ( is_wp_error( $target ) ) return $target;
 		if ( 'wordpress_plugin_deploy' === $operation_id ) {
@@ -342,6 +356,16 @@ final class MAD4B_SCP_Host_Bridge {
 			'production_authorized' => false,
 		);
 		$submission['submission_sha256'] = self::digest( $submission );
+        // An Operator job MUST carry a separate asymmetric seal. Do not alter
+        // submission_sha256 semantics; the external worker verifies BOTH.
+        $operator_seal = null;
+        if ( 0 === strpos( $operation_id, 'operator.' ) ) {
+            if ( ! class_exists( 'MAD4B_SCP_Operator_Attestation' ) ) {
+                return new WP_Error( 'mad4b_operator_attestation_missing', 'Staging signing contract missing.' );
+            }
+            $operator_seal = MAD4B_SCP_Operator_Attestation::seal( $submission );
+            if ( is_wp_error( $operator_seal ) ) return $operator_seal;
+        }
 		$path = $spool . '/queued/' . $job_id . '.json';
 		if ( file_exists( $path ) ) {
 			$existing = self::read_json( $path );
@@ -354,7 +378,22 @@ final class MAD4B_SCP_Host_Bridge {
 			$existing['host_verification_pending'] = true;
 			return $existing;
 		}
-		$write = self::atomic_write( $path, $submission );
+		// Persist immutable detached seal before making the queued job visible.
+        $seal_path = '';
+        if ( null !== $operator_seal ) {
+            $seal_dir = $spool . '/attestations';
+            if ( is_link( $seal_dir ) || ( ! is_dir( $seal_dir ) && ! wp_mkdir_p( $seal_dir ) ) ) {
+                return new WP_Error( 'mad4b_operator_attestation_directory_denied', 'Attestation store unavailable.' );
+            }
+            $seal_path = $seal_dir . '/' . $job_id . '.json';
+            if ( file_exists( $seal_path ) || is_link( $seal_path ) ) {
+                return new WP_Error( 'mad4b_operator_attestation_replay_denied', 'Operator seal already exists.' );
+            }
+            $seal_written = self::atomic_write( $seal_path, $operator_seal );
+            if ( is_wp_error( $seal_written ) ) return $seal_written;
+        }
+        $write = self::atomic_write( $path, $submission );
+        if ( is_wp_error( $write ) && '' !== $seal_path ) @unlink( $seal_path );
 		if ( is_wp_error( $write ) ) return $write;
 		$submission['queued'] = true;
 		$submission['replayed'] = false;
@@ -395,6 +434,22 @@ final class MAD4B_SCP_Host_Bridge {
 		if ( ! is_file( $path ) ) return new WP_Error( 'mad4b_host_receipt_missing', 'Host execution receipt is not available.' );
 		$row = self::read_json( $path );
 		if ( is_wp_error( $row ) ) return $row;
+        $seal_path = $spool . '/attestations/' . $job_id . '.json';
+        if ( is_file( $seal_path ) || is_link( $seal_path ) ) {
+            $seal = self::read_json( $seal_path );
+            if ( is_wp_error( $seal ) ) return $seal;
+            if ( ! class_exists( 'MAD4B_SCP_Operator_Receipt_Verifier' ) )
+                return new WP_Error( 'mad4b_operator_receipt_verifier_missing', 'Operator verifier not registered.' );
+            $target = self::target_identity();
+            if ( is_wp_error( $target ) ) return $target;
+            $verified = MAD4B_SCP_Operator_Receipt_Verifier::verify( $row, $seal, $job_id, $target );
+            if ( is_wp_error( $verified ) ) return $verified;
+            return array( 'contract' => 'mad4b.host-operation-receipt-read.v1',
+                'receipt' => $row, 'operator_verification' => $verified, 'mutation_performed' => false );
+        }
+        $claimed_op = (string) ( $row['body']['operation_id'] ?? $row['operation_id'] ?? '' );
+        if ( 0 === strpos( $claimed_op, 'operator.' ) )
+            return new WP_Error( 'mad4b_operator_receipt_seal_missing', 'Operator receipt lacks its original signed job.' );
 		return array( 'contract' => 'mad4b.host-operation-receipt-read.v1', 'receipt' => $row, 'mutation_performed' => false );
 	}
 
@@ -958,6 +1013,28 @@ final class MAD4B_SCP_Host_Bridge {
 		$operation_id = isset( $plan['operation_id'] ) ? (string) $plan['operation_id'] : '';
 		if ( ! isset( self::$operations[ $operation_id ] ) ) return new WP_Error( 'mad4b_host_operation_unknown', 'Host operation is not in the bounded registry.' );
 		if ( (int) $plan['operation_version'] !== (int) self::$operations[ $operation_id ]['version'] ) return new WP_Error( 'mad4b_host_operation_version_stale', 'Host operation version changed.' );
+		if ( 0 === strpos( $operation_id, 'operator.' ) ) {
+			$args = $plan['arguments'] ?? null;
+			$expected_profile = MAD4B_SCP_Operator_Runner_Profile::current_id();
+			if ( is_wp_error( $expected_profile ) ) return $expected_profile;
+			if ( ! is_array( $args ) || ! hash_equals( $expected_profile, (string) ( $plan['runner_profile_id'] ?? '' ) ) ||
+				! class_exists( 'MAD4B_SCP_Operator_Bridge' ) ||
+				! MAD4B_SCP_Operator_Bridge::request_authority_matches( $operation_id, $args ) )
+				return new WP_Error( 'mad4b_host_operator_scope_required', 'Operator job must retain the exact authenticated request-local session.' );
+			if ( (int) ( $args['session_expires_at_epoch'] ?? 0 ) <= time() ||
+				( (int) ( $args['session_expires_at_epoch'] ?? 0 ) - time() ) > 900 ||
+				$operation_id !== 'operator.' . (string) ( $args['operation'] ?? '' ) ||
+				! class_exists( 'MAD4B_SCP_Operator_Operation_Policy' ) )
+				return new WP_Error( 'mad4b_host_operator_plan_stale', 'Operator plan expiry or operation binding invalid.' );
+			$inspected = MAD4B_SCP_Operator_Operation_Policy::inspect( array(
+				'operation' => (string) $args['operation'],
+				'payload' => $args['payload'] ?? null,
+			) );
+			if ( is_wp_error( $inspected ) || ! hash_equals( (string) ( $inspected['payload_sha256'] ?? '' ),
+				(string) ( $args['payload_sha256'] ?? '' ) ) )
+				return new WP_Error( 'mad4b_host_operator_payload_changed', 'Operator command or SQL payload changed after OAuth admission.' );
+		}
+
 		$sha = isset( $plan['plan_sha256'] ) ? strtolower( trim( (string) $plan['plan_sha256'] ) ) : '';
 		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $sha ) || ! hash_equals( $sha, self::digest( $plan ) ) ) return new WP_Error( 'mad4b_host_plan_digest_invalid', 'Host plan digest mismatch.' );
 		$current = self::target_identity();

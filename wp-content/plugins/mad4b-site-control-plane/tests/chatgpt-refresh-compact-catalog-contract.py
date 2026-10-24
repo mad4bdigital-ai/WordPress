@@ -220,7 +220,16 @@ for marker in ("MAD4B_SCP_Governed_Ability_Census::structural_step_up()", "owner
 for primitive in ("Site_Profile_Enrollment", "Site_Profile_Write_Enablement", "Staging_Write_Grant_Reconciliation", "Staging_Write_Candidate_Binding"):
     require("MAD4B_SCP_" + primitive + "::chatgpt_step_up_tools()" not in base_chatgpt_body, "internal primitive entered required base transport")
 require("'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'" in core_chatgpt, "bounded Enrollment dispatcher must remain in the canonical compact ChatGPT core catalog")
-require("$candidates = array_merge( $core, $bootstrap )" in base_chatgpt_body, "runtime ChatGPT base tools/list must start from the canonical compact core catalog")
+require("$candidates = array_merge( $core, $bootstrap, $profile_tools )" in base_chatgpt_body,
+        "runtime ChatGPT catalog must extend the canonical core/bootstrap with only isolated Direct Profile tools")
+require("MAD4B_SCP_Direct_Profile::catalog_tools()" in base_chatgpt_body,
+        "Direct Profile tools must be sourced from their bounded, explicitly enrolled provider")
+require("in_array( $ability_name, $breakglass, true )" in base_chatgpt_body,
+        "Direct Profile must not bypass the breakglass exclusion")
+require("self::chatgpt_internal_enrollment_mutations()" in base_chatgpt_body,
+        "Direct Profile must not expose internal enrollment mutations")
+require("array_key_exists( 'readonly', $annotations )" in base_chatgpt_body,
+        "Direct Profile must retain exact readonly/write classification")
 dispatcher_helper = SERVERS.split("public static function chatgpt_dispatch_transport_tools()", 1)[1].split("public static function chatgpt_base_tools()", 1)[0]
 for dispatcher in ("'mad4b/write-execute'", "'mad4b/developer-execute'", "'mad4b/enrollment-execute'"):
     require(dispatcher in dispatcher_helper, "canonical ChatGPT mutation dispatcher inventory is incomplete: " + dispatcher)

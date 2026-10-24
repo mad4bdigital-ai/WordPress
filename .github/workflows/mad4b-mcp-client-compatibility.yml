@@ -75,6 +75,7 @@ jobs:
           php -l "$root/tests/runtime-chatgpt-dynamic-tool-projection.php"
           python3 -m json.tool "$root/config/mcp-client-profiles.json" >/dev/null
           python3 "$root/tests/mcp-client-compatibility-contract.py"
+          python3 "$root/tests/php85-reflection-compatibility-contract.py"
           python3 "$root/tests/chatgpt-dynamic-tool-projection-contract.py"
           python3 "$root/tests/unified-capability-gateway-contract.py"
           python3 "$root/tests/gateway-mutation-guards.py"
@@ -230,6 +231,42 @@ jobs:
         run: |
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-client-compatibility-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Prove RFC9728 nested HTTP metadata bypasses MCP tool materialization
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/mad4b-client-http-router.php <<'PHP'
+          <?php
+          $_SERVER['HTTPS'] = 'on';
+          $_SERVER['SERVER_PORT'] = '443';
+          $_SERVER['HTTP_HOST'] = 'mad4b-client.test';
+          require '/tmp/mad4b-wordpress/index.php';
+          PHP
+          php -S 127.0.0.1:18767 -t /tmp/mad4b-wordpress /tmp/mad4b-client-http-router.php > /tmp/mad4b-client-http.log 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          for n in 1 2 3 4 5 6 7 8 9 10; do
+            if curl --silent -o /dev/null --connect-timeout 1 --max-time 2 http://127.0.0.1:18767/; then break; fi
+            sleep 1
+          done
+          curl --fail-with-body --silent --show-error --connect-timeout 4 --max-time 15 \
+            -H 'Host: mad4b-client.test' -H 'Accept: application/json' \
+            -D /tmp/mad4b-oauth-http-headers.txt -o /tmp/mad4b-oauth-http-body.json \
+            http://127.0.0.1:18767/.well-known/oauth-protected-resource/wp-json/mcp/mad4b-chatgpt
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          body=json.loads(Path('/tmp/mad4b-oauth-http-body.json').read_text())
+          assert body.get('resource') == 'https://mad4b-client.test/wp-json/mcp/mad4b-chatgpt', body
+          assert body.get('authorization_servers'), 'No authorization server advertised'
+          assert 'mad4b:read' in body.get('scopes_supported', []), body
+          print('RFC9728_WELL_KNOWN_HTTP: PASS (public metadata delivered without MCP tool materialization)')
+          PY
+          if grep -Ei 'PHP Fatal|Uncaught|out of memory|Maximum execution time' /tmp/mad4b-client-http.log; then
+            echo '::error::MCP metadata route triggered a PHP fatal'
+            exit 1
+          fi
 
       - name: Prove ChatGPT server contains the refresh-safe minimal governed tool inventory
         shell: bash

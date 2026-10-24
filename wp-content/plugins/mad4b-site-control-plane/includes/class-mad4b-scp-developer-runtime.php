@@ -49,6 +49,16 @@ final class MAD4B_SCP_Developer_Runtime {
 				'mad4b/developer-breakglass-wp-eval',
 			);
 		}
+        // Opt-in staged grant rollout: the original Developer surface stays
+        // available while the new Operator abilities lack exact grants.
+        // Flipping this bit does NOT grant authority or enable execution.
+        $operator_rollout = (
+            defined( 'MAD4B_MCP_OPERATOR_GRANT_ROLLOUT' )
+            && true === constant( 'MAD4B_MCP_OPERATOR_GRANT_ROLLOUT' )
+        ) || (
+            class_exists( 'MAD4B_SCP_Operator_Grant_Convergence', false )
+            && MAD4B_SCP_Operator_Grant_Convergence::scoped_rollout_active()
+        ) || '1' === (string) get_option( 'mad4b_scp_operator_grant_rollout_enabled', '0' );
 		$tools = array(
 			'mad4b/developer-runtime-status',
 			'mad4b/developer-wp-cli',
@@ -56,6 +66,15 @@ final class MAD4B_SCP_Developer_Runtime {
 			'mad4b/developer-package-install',
 		);
 		if ( class_exists( 'MAD4B_SCP_Developer_Workspace' ) ) $tools = array_merge( $tools, MAD4B_SCP_Developer_Workspace::tool_names() );
+        if ( $operator_rollout ) {
+            $tools = array_merge( $tools, array(
+                'mad4b/operator-session-open',
+                'mad4b/operator-session-status',
+                'mad4b/operator-session-close',
+                'mad4b/operator-operation-plan',
+                'mad4b/operator-operation-submit',
+            ) );
+        }
 		return array_values( array_unique( $tools ) );
 	}
 

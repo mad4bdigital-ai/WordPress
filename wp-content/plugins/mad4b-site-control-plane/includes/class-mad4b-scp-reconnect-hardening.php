@@ -39,6 +39,9 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		add_action( 'admin_notices', array( __CLASS__, 'connection_admin_notice' ), 1 );
 		add_filter( 'rest_pre_dispatch', array( __CLASS__, 'reset_session_policy_scope' ), -200, 3 );
 		add_filter( 'rest_pre_dispatch', array( __CLASS__, 'guard_mcp_rest_dispatch' ), -100, 3 );
+		// Authenticate bearer tokens before classifying Runtime restart grace.
+		// A late phase still checks all gates before execution.
+		add_filter( 'rest_pre_dispatch', array( __CLASS__, 'guard_mcp_authenticated_rest_dispatch' ), 4, 3 );
 
 		// MCP Adapter 0.6.x uses a user-meta backed session map shared by MCP servers.
 		// Do not override its global capacity/timeout knobs from a ChatGPT-only fix;
@@ -898,7 +901,95 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		return array_values( array_unique( array_filter( array_map( 'sanitize_key', $blockers ) ) ) );
 	}
 
-	public static function guard_mcp_rest_dispatch( $result, $server, $request ) {
+	public static function guard_mcp_authenticated_rest_dispatch( $result, $server, $request ) {
+		if ( null !== $result || ! is_object( $request ) || ! method_exists( $request, 'get_route' ) ) return $result;
+		$route = '/' . ltrim( rtrim( (string) $request->get_route(), '/' ), '/' );
+		if ( '/mcp/mad4b-chatgpt' !== $route || ! method_exists( $request, 'get_header' ) ) return $result;
+		$authorization = trim( (string) $request->get_header( 'authorization' ) );
+		if ( '' === $authorization ) return $result;
+		// OAuth already rejected the invalid token or mapped its approved subject.
+		// The late check still enforces restart, maintenance and reconnect gates.
+		return self::guard_mcp_rest_dispatch( $result, $server, $request, true );
+	}
+
+
+	/**
+	 * Allow *only* explicitly classified read/diagnostic MCP methods for an
+	 * already authenticated ChatGPT subject when the sole stale-checkpoint
+	 * obstacle is the independent Staging write-owner gate. Write tools must
+	 * still receive restart_grace until the actual authority is reconciled.
+	 * This is a transport admission, not a tool ability permission grant.
+	 */
+	private static function historical_authenticated_read_tool_admission( $request, $grace, $post_auth_phase ) {
+		if ( ! $post_auth_phase || empty($grace['active']) || empty($grace['historical_mcp_read_safe'])
+			|| ! function_exists('is_user_logged_in') || ! is_user_logged_in()
+			|| ! function_exists('current_user_can') || ! current_user_can('read')
+			|| ! is_object($request) || ! method_exists($request,'get_json_params') ) return false;
+		$rpc = $request->get_json_params();
+		if ( ! is_array($rpc) || ! isset($rpc['method']) || ! is_string($rpc['method']) ) return false;
+		if ( in_array($rpc['method'],array('initialize','notifications/initialized','ping','tools/list'),true) ) return true;
+		if ( 'tools/call' !== $rpc['method'] || ! is_array($rpc['params']??null) ) return false;
+		$name=$rpc['params']['name']??null;
+		if ( ! is_string($name) ) return false;
+		$read_only=array(
+			'mad4b-site-info','mad4b-site-profile-status','mad4b-tool-discover',
+			'mad4b-tool-info','mad4b-read-execute','mad4b-write-discover',
+			'mad4b-write-info','mad4b-operation-discover',
+			'mad4b-provider-closure-matrix','mad4b-session-safe-diagnostics',
+			'mad4b-chatgpt-tool-projection-status','mad4b-chatgpt-tool-projection-discover',
+			'mad4b-chatgpt-tool-projection-plan','mad4b-staging-write-candidate-binding-audit',
+			'mad4b-runtime-gates-handshake','mad4b-full-staging-authority-handshake',
+			'mad4b-enrollment-info','mad4b-enrollment-discover',
+		);
+		if ( in_array( $name, $read_only, true ) ) return true;
+		// A historic self-update may block new Write until the exact Write owner
+		// convergence operation completes. Admit only that purpose-built
+		// recovery tool to its *existing* owner-attested, SHA-pinned executor.
+		// This never admits arbitrary writes, tours, plugin installs or grants.
+		if ( ! in_array( $name, array(
+			'mad4b-staging-write-authority-convergence-apply',
+			'mad4b-enrollment-execute'
+		), true ) || ! current_user_can( 'manage_options' )
+			|| ! class_exists( 'MAD4B_SCP_Environment', false )
+			|| 'staging' !== MAD4B_SCP_Environment::effective()
+			|| ! class_exists( 'MAD4B_SCP_Site_Profile', false )
+			|| ! MAD4B_SCP_Site_Profile::origin_enrolled() ) return false;
+		$dispatch = isset($rpc['params']['arguments']) && is_array($rpc['params']['arguments'])
+			? $rpc['params']['arguments'] : array();
+		$args = $dispatch;
+		if ( 'mad4b-enrollment-execute' === $name ) {
+			if ( 'staging_write_authority_convergence' !== ($dispatch['operation_id']??null)
+				|| ! isset($dispatch['input']) || ! is_array($dispatch['input']) ) return false;
+			foreach( array( 'expected_registration_digest', 'expected_dispatch_policy_digest',
+				'expected_input_schema_sha256' ) as $field ) {
+				if( ! isset($dispatch[$field]) || ! is_string($dispatch[$field])
+					|| 1 !== preg_match( '/^[a-f0-9]{64}$/iD', $dispatch[$field] ) ) return false;
+			}
+			$args = $dispatch['input'];
+		}
+		if ( 'ENABLE GOVERNED STAGING WRITE AUTHORITY' !== ( $args['confirmation'] ?? '' )
+			|| ! isset( $args['expected_plan_sha256'] )
+			|| 1 !== preg_match( '/^[a-f0-9]{64}$/iD', (string)$args['expected_plan_sha256'] ) ) return false;
+		// The exact current runtime identity must match the approved candidate;
+		// the owning apply callback additionally validates site UUID, revision,
+		// profile digest, grants, owner step-up and full plan hash.
+		$identity = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer', false )
+			? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status() : array();
+		if ( empty($identity['identity_ready']) ) return false;
+		foreach( array(
+			'expected_source_commit_sha' => 'source_commit_sha',
+			'expected_build_fingerprint' => 'build_fingerprint',
+			'expected_package_manifest_digest' => 'package_manifest_digest',
+			'expected_artifact_identity' => 'artifact_identity'
+		) as $input => $key ) {
+			if ( ! isset($args[$input], $identity[$key])
+				|| ! is_string($args[$input])
+				|| ! hash_equals((string)$identity[$key], $args[$input]) ) return false;
+		}
+		return true;
+	}
+
+	public static function guard_mcp_rest_dispatch( $result, $server, $request, $post_auth_phase = false ) {
 		if ( null !== $result || ! is_object( $request ) || ! method_exists( $request, 'get_route' ) ) return $result;
 		$route = (string) $request->get_route();
 		$is_chatgpt_resource = self::is_resource_request_path( $route );
@@ -918,9 +1009,24 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			&& function_exists( 'is_user_logged_in' )
 			&& ! is_user_logged_in();
 		if ( $remote_preauth_probe ) return $result;
+		// Defer ONLY bearer-bearing ChatGPT REST resources to the OAuth bridge
+		// (priority 1); authenticated requests are gated again at priority 4.
+		// No authority is granted by this ordering change.
+		if ( ! $post_auth_phase
+			&& '/mcp/mad4b-chatgpt' === $route
+			&& '' !== $authorization
+			&& class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', false ) )
+			return $result;
 
 		$restart_grace = self::restart_grace_status();
-		if ( ! empty( $restart_grace['active'] ) ) {
+		// A historical Staging checkpoint can be safe for the dedicated
+		// read-only endpoint while the independent write-owner gate remains closed.
+		// Never relax ChatGPT, write, content, admin or Developer MCP routes here.
+		$historical_read_admission = ( '/mcp/mad4b-read' === $route
+			&& ! empty( $restart_grace['historical_mcp_read_safe'] ) )
+			|| ( '/mcp/mad4b-chatgpt' === $route
+				&& self::historical_authenticated_read_tool_admission( $request, $restart_grace, $post_auth_phase ) );
+		if ( ! empty( $restart_grace['active'] ) && ! $historical_read_admission ) {
 			$retryable = ! array_key_exists( 'retryable', $restart_grace ) || ! empty( $restart_grace['retryable'] );
 			$retry = isset( $restart_grace['retry_after_seconds'] ) ? min( 120, absint( $restart_grace['retry_after_seconds'] ) ) : 0;
 			return new WP_Error( 'mad4b_mcp_runtime_restart_grace', 'MAD4B runtime is completing governed post-update convergence.', array(

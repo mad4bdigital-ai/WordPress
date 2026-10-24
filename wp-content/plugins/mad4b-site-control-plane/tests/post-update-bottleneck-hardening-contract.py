@@ -46,7 +46,21 @@ assert "MAD4B_SCP_Schema_Lifecycle::mark_current_package_applied( 'runtime_conve
 assert "POST_UPDATE_QUIET_SECONDS = 20" in runtime
 assert "'resume_not_before' => time() + self::POST_UPDATE_QUIET_SECONDS" in runtime
 assert "mad4b.runtime-restart-grace.v2" in runtime
-assert "$active = $convergence_pending;" in runtime
+# Historical self-update checkpoints are not live protocol barriers after
+# an independent READY graph proves the current build superseded them.
+assert "$active = $convergence_pending && ! $historical_audit_only;" in runtime
+assert "self::superseded_restart_checkpoint_ready( $checkpoint, $current, $not_before, $historical_read_safe )" in runtime
+assert "'historical_checkpoint_audit_only' => $historical_audit_only" in runtime
+assert "'persisted_checkpoint_pending' => $convergence_pending" in runtime
+assert "'operator_action_required' => $operator_action_required" in runtime
+assert "'superseded_audit_only' === ( $graph['checkpoint_operator_state']['state'] ?? '' )" in runtime
+assert "self::superseded_cached_release_only( $checkpoint, $current, $graph )" in runtime
+# The Staging-certified gate accepts only an exact owner-only blocker or
+# the exact signed obsolete-release-cache + owner combination.
+assert "array( 'authority_binding:owner_gate' ) !== ( $graph['required_blockers'] ?? null )" in runtime
+assert "array( 'deployment:pending', 'authority_binding:owner_gate' )" in runtime
+assert "self::superseded_cached_release_only( $checkpoint, $current, $graph, true )" in runtime
+
 assert "'waiting_for_exact_runtime_restart'" in runtime
 assert "'pending_manual_resume'" in runtime
 assert "'blocked'" in runtime

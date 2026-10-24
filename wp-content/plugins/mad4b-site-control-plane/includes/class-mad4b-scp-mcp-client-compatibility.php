@@ -166,7 +166,11 @@ final class MAD4B_SCP_MCP_Client_Compatibility {
 		}
 		if ( '' === $server_id ) return new WP_Error( 'mad4b_oauth_resource_metadata_path_unknown', 'Protected-resource metadata must use an RFC 9728 path-derived location for a governed MAD4B protected resource.' );
 		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) return new WP_Error( 'mad4b_oauth_resource_bridge_unavailable', 'OAuth resource bridge is unavailable.' );
-		$status = MAD4B_SCP_OAuth_Resource_Bridge::status();
+		// RFC 9728 discovery needs the fail-closed OAuth runtime projection,
+		// not a deep diagnostic key/store inspection on an anonymous GET.
+		$status = method_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', 'runtime_identity_status' )
+			? MAD4B_SCP_OAuth_Resource_Bridge::runtime_identity_status()
+			: array();
 		if ( ! self::oauth_discovery_ready( $status ) ) return new WP_Error( 'mad4b_oauth_resource_discovery_not_ready', 'OAuth protected-resource discovery is not configured for this environment.' );
 		$resource = self::resource_identifier( $server_id );
 		$metadata = MAD4B_SCP_OAuth_Resource_Bridge::protected_resource_metadata( $resource );

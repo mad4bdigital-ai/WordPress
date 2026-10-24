@@ -8,6 +8,8 @@ challenge = (root / 'includes/class-mad4b-scp-oauth-challenge-alignment.php').re
 registry = (root / 'includes/class-mad4b-scp-mcp-client-profile-registry.php').read_text(encoding='utf-8')
 servers = (root / 'includes/class-mad4b-scp-servers.php').read_text(encoding='utf-8')
 catalog_diagnostics = (root / 'includes/class-mad4b-scp-mcp-catalog-diagnostics.php').read_text(encoding='utf-8')
+reviewed_bootstrap = (root / 'includes/class-mad4b-scp-chatgpt-approval-bootstrap.php').read_text(encoding='utf-8')
+projection = (root / 'includes/class-mad4b-scp-chatgpt-tool-projection.php').read_text(encoding='utf-8')
 full_authority = (root / 'includes/class-mad4b-scp-full-staging-authority.php').read_text(encoding='utf-8')
 self_update = (root / 'includes/class-mad4b-scp-self-update.php').read_text(encoding='utf-8')
 runtime_gates = (root / 'includes/class-mad4b-scp-governed-runtime-gates.php').read_text(encoding='utf-8')
@@ -165,7 +167,7 @@ for marker in [
     'public static function budget_projection( array $abilities, array $optional )',
     "'mcp_required_catalog_budget_exceeded'",
     "'mcp_optional_catalog_budget_excluded'",
-    "self::MAX_TOOLS - count( $required )",
+    "$limits['max_tools'] - count( $required )",
     "MAX_SERIALIZED_TOOL_BYTES",
     "'mcp_optional_catalog_size_excluded'",
     "'mcp_required_catalog_size_exceeded'",
@@ -174,7 +176,7 @@ for marker in [
     assert marker in catalog_diagnostics, f'missing bounded catalog budget invariant: {marker}'
 # Dynamic projections use the live effective registry so same-request projection
 # changes cannot be hidden by an older registration-classification snapshot.
-assert "if ( isset( $dynamic[ $ability_name ] ) )" in catalog_diagnostics
+assert "isset( $dynamic[ $ability_name ] )" in catalog_diagnostics
 assert "self::ability_is_direct_step_up( $ability_name )" in catalog_diagnostics
 reviewed_helper = servers.split('public static function chatgpt_reviewed_direct_step_up_tools()', 1)[1].split('public static function is_chatgpt_direct_step_up_tool', 1)[0]
 for marker in ['MAD4B_SCP_Governed_Ability_Census::structural_step_up()', 'owner_intent_only', 'self::chatgpt_approval_bootstrap_tools()']:
@@ -209,8 +211,8 @@ assert 'self::chatgpt_internal_enrollment_mutations()' in logical_enrollment
 assert 'if ( ! self::chatgpt_unified_catalog_enabled() )' in servers
 fallback = servers.split('if ( ! self::chatgpt_unified_catalog_enabled() )', 1)[1].split("$narrow_read = class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' )", 1)[0]
 for marker in [
-    "$direct_allowlist = array_merge( self::chatgpt_direct_read_transport_tools(), self::chatgpt_dispatch_transport_tools(), $runtime_gate_step_up, $approval_bootstrap )",
-    "$fallback_candidates = array_merge( $core, $runtime_gate_step_up, $approval_bootstrap )",
+    "$direct_allowlist = array_merge( self::chatgpt_direct_read_transport_tools(), self::chatgpt_dispatch_transport_tools(), $runtime_gate_step_up, $approval_bootstrap, $profile_tools )",
+    "$fallback_candidates = array_merge( $core, $runtime_gate_step_up, $approval_bootstrap, $profile_tools )",
     "$tools = array_values( array_intersect( $fallback_candidates, $direct_allowlist ) )",
     "$tools = array_values( array_diff( $tools, $breakglass, array( 'mad4b/database-raw-query' ) ) )",
     "array_unique( array_map( 'strval', $tools ) )",
@@ -220,8 +222,10 @@ for marker in [
     assert marker in fallback, f'missing non-Staging session-safe fallback marker: {marker}'
 assert 'self::write_tools()' not in fallback, 'non-Staging fallback must not merge the governed write catalog directly'
 assert '$approval_bootstrap = self::chatgpt_approval_bootstrap_tools();' in servers, 'approval bootstrap must be explicitly reviewed and bounded'
-assert "'staging' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )" in servers, 'approval bootstrap must deny non-Staging exposure'
-assert "self::ability_is_mounted( 'mad4b-write', $ability_name )" in servers, 'approval bootstrap needs governed Write mounting'
+assert "'staging' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )" in reviewed_bootstrap, 'approval bootstrap must deny non-Staging exposure'
+assert "MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability_name )" in reviewed_bootstrap, 'approval bootstrap needs governed Write mounting'
+assert "MAD4B_SCP_ChatGPT_Approval_Bootstrap::catalog_tools()" in servers
+assert "MAD4B_SCP_ChatGPT_Approval_Bootstrap::materialization_optional_tools( $requested_tools )" in servers
 
 direct_read = servers.split('public static function chatgpt_direct_read_transport_tools()', 1)[1].split('public static function chatgpt_dispatch_transport_tools()', 1)[0]
 assert "'mad4b/session-safe-diagnostics'" in direct_read, 'session-safe diagnostics missing from direct ChatGPT read allowlist'
@@ -282,4 +286,16 @@ for forbidden in [
     assert forbidden not in compat, f'forbidden client-specific authority marker: {forbidden}'
     assert forbidden not in registry, f'forbidden registry authority marker: {forbidden}'
 
+# Projection plans and real server registration must use the same optional
+# classification, otherwise a direct profile convenience gets counted as a
+# required transport and exceeds the bounded 36-tool envelope.
+assert "MAD4B_SCP_Servers::chatgpt_materialization_optional_tools( $base )" in projection
+assert "MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools() : array();" not in projection
+assert "function chatgpt_materialization_optional_tools" in servers
+assert "MAD4B_SCP_Servers::chatgpt_materialization_optional_tools( $abilities )" in catalog_diagnostics
+assert "isset( $materialized_optional[ $ability_name ] )" in catalog_diagnostics
+assert "MAX_TOOLS = 36" in catalog_diagnostics  # legacy default, not fixed active limit
+assert "MAD4B_SCP_MCP_Catalog_Budget::limits" in catalog_diagnostics
+assert "class-mad4b-scp-mcp-catalog-budget.php" in catalog_diagnostics
+assert "MAD4B_SCP_MCP_Catalog_Budget::observe" in catalog_diagnostics
 print('mad4b.site-control-plane.mcp-client-compatibility.v12: PASS')

@@ -1,0 +1,14 @@
+{
+  "contract": "mad4b.remote-runner-profile.example.v1",
+  "site_alias": "ARE",
+  "environment": "staging",
+  "runner_profile_id": "are-staging-unified-v1",
+  "site_uuid": "<resolve from enrolled MAD4B Site Profile>",
+  "wp_root": "<resolve from site enrollment; never hardcode in executable>",
+  "expected_target_fingerprint": "<fresh Host Bridge identity>",
+  "ssh_target_ref": "<verified registered SSH target>",
+  "wordpress_signing_key_ref": "<private configuration outside web root>",
+  "worker_public_key_ref": "<independently pinned worker identity>",
+  "sql_credentials_ref": "<site-scoped Staging-only secret reference>",
+  "execution_enabled": false
+}

@@ -1,0 +1,32 @@
+name: MAD4B ARE Staging Operations Acceptance
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "wp-content/plugins/mad4b-site-control-plane/includes/**"
+      - "wp-content/plugins/mad4b-site-control-plane/tests/are-staging-operations-http-contract.py"
+      - ".github/workflows/mad4b-are-staging-operations.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-are-staging-operations-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  read-only-mcp-operations:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Public Staging HTTP operations, OAuth challenge, and negative MCP authorization
+        run: python3 wp-content/plugins/mad4b-site-control-plane/tests/are-staging-operations-http-contract.py

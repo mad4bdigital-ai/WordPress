@@ -399,6 +399,7 @@ require("0 === strpos( strtolower( $plugin_file ), 'mcp-adapter/' )" in remote, 
 runtime = (INCLUDES / "class-mad4b-scp-runtime-release-set.php").read_text(encoding="utf-8")
 runtime_ui = (INCLUDES / "class-mad4b-scp-runtime-components-admin-ui.php").read_text(encoding="utf-8")
 servers = (INCLUDES / "class-mad4b-scp-servers.php").read_text(encoding="utf-8") + (Path(__file__).resolve().parents[1] / 'includes/class-mad4b-scp-server-write-catalog.php').read_text(encoding='utf-8')
+reviewed_optional = (INCLUDES / 'class-mad4b-scp-chatgpt-approval-bootstrap.php').read_text(encoding='utf-8')
 projection = (INCLUDES / "class-mad4b-scp-chatgpt-tool-projection.php").read_text(encoding="utf-8")
 catalog_diag = (INCLUDES / "class-mad4b-scp-mcp-catalog-diagnostics.php").read_text(encoding="utf-8")
 for needle in (
@@ -433,9 +434,9 @@ require("array_merge( $optional, $base_optional )" in projection, "explicit dyna
 # Match the actual ordered expression across formatting changes; retain
 # exact reviewed-only management and mandatory dispatcher checks below.
 import re
-require(bool(re.search(r"array_merge\s*\(\s*\$management\s*,\s*\$dynamic_optional\s*,\s*\$reviewed", servers)), "materialization must reserve the reviewed demotion control before dynamic projection slots")
-require("$management = array_values( array_intersect(" in servers, "management reservation must be reviewed-only")
-require("array( 'mad4b/chatgpt-tool-projection-apply' ), $reviewed" in servers, "only the specific enrolled projection-management tool may reserve a slot")
+require(bool(re.search(r"array_merge\s*\(\s*\$management\s*,\s*\$dynamic_optional\s*,\s*\$reviewed", reviewed_optional)), "materialization must reserve the reviewed demotion control before dynamic projection slots")
+require("$management = array_values( array_intersect(" in reviewed_optional, "management reservation must be reviewed-only")
+require("array( 'mad4b/chatgpt-tool-projection-apply' ), $reviewed" in reviewed_optional, "only the specific enrolled projection-management tool may reserve a slot")
 require("MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names() : array(),\n\t\t\t\tMAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools()" in catalog_diag, "shared catalog diagnostics must preserve dynamic-first optional ordering")
 require("add_filter( 'plugin_action_links_'" not in runtime, "runtime release-set mutation must not be injected into the generic Plugins action row")
 plugin_links = runtime.split("public static function plugin_action_links( $links )", 1)[1].split("public static function handle_admin_apply()", 1)[0]

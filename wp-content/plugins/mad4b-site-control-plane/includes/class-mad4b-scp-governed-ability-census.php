@@ -85,7 +85,7 @@ final class MAD4B_SCP_Governed_Ability_Census {
         try {
             foreach ( array( 'execute_callback', 'permission_callback' ) as $property_name ) {
                 $property = new ReflectionProperty( 'WP_Ability', $property_name );
-                $property->setAccessible( true );
+                if ( PHP_VERSION_ID < 80100 ) $property->setAccessible( true );
                 $identity = self::callback_identity( $property->getValue( $ability ) );
                 if ( '' === $identity ) return '';
                 $identities[ $property_name ] = $identity;
@@ -182,7 +182,7 @@ final class MAD4B_SCP_Governed_Ability_Census {
                 foreach ( array( 'execute_callback' => 'bootstrap_apply', 'permission_callback' => 'can_bootstrap_apply' ) as $field => $method ) {
                     try {
                         $property = new ReflectionProperty( 'WP_Ability', $field );
-                        $property->setAccessible( true );
+                        if ( PHP_VERSION_ID < 80100 ) $property->setAccessible( true );
                         $identity = self::callback_identity( $property->getValue( $ability ) );
                         $suffix = 'MAD4B_SCP_Runtime_Release_Set::' . $method . '@class-mad4b-scp-runtime-release-set.php';
                         if ( substr( $identity, -strlen( $suffix ) ) !== $suffix ) continue 2;
@@ -250,7 +250,7 @@ final class MAD4B_SCP_Governed_Ability_Census {
             foreach ( array( 'execute_callback', 'permission_callback' ) as $property_name ) {
                 try {
                     $property = new ReflectionProperty( 'WP_Ability', $property_name );
-                    $property->setAccessible( true );
+                    if ( PHP_VERSION_ID < 80100 ) $property->setAccessible( true );
                     $callback = $property->getValue( $ability );
                     $callbacks[ $property_name ] = self::callback_is_ours( $callback );
                     $callback_profiles[ $property_name ] = self::callback_probe( $callback );
