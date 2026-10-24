@@ -4,6 +4,10 @@ on:
   pull_request:
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-source-pipeline.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wordpress-media-context.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/context-media-inventory-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/integration/context-source-pipeline-local.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-preflight.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-intelligence.php'
@@ -53,6 +57,10 @@ on:
       - master
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-source-pipeline.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wordpress-media-context.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/context-media-inventory-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/integration/context-source-pipeline-local.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-preflight.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-intelligence.php'
@@ -132,6 +140,9 @@ jobs:
         run: |
           set -euo pipefail
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-source-pipeline.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wordpress-media-context.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/integration/context-source-pipeline-local.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-preflight.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-intelligence.php
@@ -163,6 +174,9 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-document-normalization-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-skill-enforcement-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-registry-atomicity-runtime.php
+
+      - name: Enforce scoped Media inventory contract
+        run: python3 wp-content/plugins/mad4b-site-control-plane/tests/context-media-inventory-contract.py
 
       - name: Enforce Context Authority architecture
         shell: bash
