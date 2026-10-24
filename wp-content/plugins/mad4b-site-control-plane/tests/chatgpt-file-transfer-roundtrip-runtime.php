@@ -60,6 +60,7 @@ function attempt($action,$params) {
 }
 function check_ok($ok,$label){if(!$ok){fwrite(STDERR,"TRANSFER_ROUNDTRIP_FAIL:$label\n");exit(1);}}
 try {
+ $cls='MAD4B_SCP_ChatGPT_File_Transfer';
  $data="ChatGPT transfer fixture bytes for WordPress.\n";
  $sha=hash('sha256',$data);
  $start=attempt('begin',array('filename'=>'fixture.txt','size'=>strlen($data),'sha256'=>$sha));

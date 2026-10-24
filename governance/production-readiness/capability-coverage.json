@@ -1877,6 +1877,27 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing MCP dispatch, site policy, actor capabilities, immutable upload constraints and write fence controls cover the new Staging-only file transfer; no new Production or OAuth grant is created.",
       "review_rationale": "The new transfer service implements opt-in Staging REST and Ability interfaces, size/MIME/digest validation, private temporary files and no arbitrary path or Production write. No installed production authority or automatic actor capability grant. Existing security/MCP controls are reused."
+    },
+    {
+      "id": "cron:mad4b_chatgpt_transfer_cleanup",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-regressions.py"
+      ],
+      "owner_role": "Repository source security reviewer; CI-only and no deployment authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing scheduling, environmental isolation and bounded scanning controls apply; no new scheduler permissions or mandatory status checks.",
+      "review_rationale": "WordPress hourly cleanup limited to stale .part files under exact owned temporary root, maximum 200 scanned per run; disabled in Production and when global write kill switch is active, with negative hermetic fixtures."
     }
   ],
   "lifecycle": [],
