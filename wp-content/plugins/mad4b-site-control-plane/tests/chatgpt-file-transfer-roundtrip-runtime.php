@@ -89,8 +89,11 @@ try {
  attempt('abort',array('transfer_id'=>$id2));
  echo "CHATGPT_TRANSFER_ROUNDTRIP: PASS\n";
 } finally {
- foreach (glob(sys_get_temp_dir().'/mad4b-chatgpt-transfer-v1/*.part') ?: array() as $p) {
-   if (is_file($p) && preg_match('/^[a-f0-9]{32}\\.part$/',basename($p))) @unlink($p);
+ foreach (array(isset($id)?$id:null,isset($id2)?$id2:null) as $localId) {
+   if (is_string($localId) && preg_match('/^[a-f0-9]{32}$/',$localId)) {
+     $p=sys_get_temp_dir().'/mad4b-chatgpt-transfer-v1/'.$localId.'.part';
+     if (is_file($p) && !is_link($p)) @unlink($p);
+   }
  }
  foreach (array('file.php','media.php','image.php') as $name) @unlink($fakeRoot.'/wp-admin/includes/'.$name);
  @rmdir($fakeRoot.'/wp-admin/includes'); @rmdir($fakeRoot.'/wp-admin'); @rmdir($fakeRoot);
