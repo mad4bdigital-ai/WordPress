@@ -1427,11 +1427,11 @@ final class MAD4B_SCP_Context_Authority {
 
 				$provider = sanitize_key( isset( $input['provider'] ) ? $input['provider'] : '' );
 				$mode = sanitize_key( isset( $input['mode'] ) ? $input['mode'] : 'governed' );
-				if ( ! in_array( $provider, array( 'google_drive', 'wordpress_media' ), true ) || ( 'wordpress_media' === $provider && wp_get_environment_type() !== 'local' ) ) return new WP_Error( 'mad4b_context_source_provider_invalid', 'Provider is unavailable in this environment.' );
+				if ( ! in_array( $provider, array( 'google_drive', 'wordpress_media' ), true ) ) return new WP_Error( 'mad4b_context_source_provider_invalid', 'Provider is unavailable in this environment.' );
 				if ( ! in_array( $mode, array( 'governed', 'task_attachment' ), true ) ) return new WP_Error( 'mad4b_context_source_mode_invalid', 'Context source mode must be governed or task_attachment.' );
 
 				$external_root_id = self::bounded_external_id( isset( $input['external_root_id'] ) ? $input['external_root_id'] : '' );
-				if ( '' === $external_root_id ) return new WP_Error( 'mad4b_context_source_root_required', 'A canonical Google Drive folder ID is required.' );
+				if ( '' === $external_root_id ) return new WP_Error( 'mad4b_context_source_root_required', 'A canonical source root ID is required.' );
 				if ( 'root' === strtolower( $external_root_id ) ) return new WP_Error( 'mad4b_context_source_root_forbidden', 'My Drive root is browse-only. Select a specific Google Drive folder as the Context source boundary.' );
 				$label = trim( sanitize_text_field( isset( $input['label'] ) ? $input['label'] : '' ) );
 				if ( '' === $label ) $label = 'wordpress_media' === $provider ? 'WordPress Media Library' : 'Google Drive Folder';
