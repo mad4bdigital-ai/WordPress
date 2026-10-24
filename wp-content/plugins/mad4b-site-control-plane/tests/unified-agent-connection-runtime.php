@@ -27,8 +27,9 @@ class MAD4B_SCP_Site_Profile {
 }
 class WP_Application_Passwords {
  static $issued=0;
+ static $revoked=0;
  static function create_new_application_password($id,$a){self::$issued++;return ['vault-only-secret',['uuid'=>'11111111-2222-4333-8444-555555555555']];}
- static function delete_application_password($id,$uuid){return true;}
+ static function delete_application_password($id,$uuid){self::$revoked++;return true;}
 }
 require __DIR__.'/../includes/class-mad4b-scp-unified-agent-connection.php';
 function check_uac($v,$name){if(!$v){echo 'UNIFIED_CONNECTION_RUNTIME_FAIL:'.$name.PHP_EOL;exit(1);}}
@@ -43,6 +44,11 @@ check_uac(!is_wp_error($res)&&is_file($file),'credential vault');
 check_uac((fileperms($file)&0077)===0,'0600 file mode');
 check_uac($f->invoke(null,['public_id'=>'a1111111-b222-4333-8444-c55555555555']) instanceof WP_Error,'no overwrite');
 check_uac(WP_Application_Passwords::$issued===1,'no duplicate WP credential');
+$rollback=new ReflectionMethod($c,'rollback_issued_credential');$rollback->setAccessible(true);
+check_uac(is_wp_error($rollback->invoke(null,'wrong-uuid'))&&is_file($file)
+    && WP_Application_Passwords::$revoked===0,'wrong credential rollback denied');
+check_uac($rollback->invoke(null,'11111111-2222-4333-8444-555555555555')===true
+    && !is_file($file)&&WP_Application_Passwords::$revoked===1,'failed activation removes exact issued secret');
 // The separate Context Review delegation can never silently alter permissions.
 function sanitize_title($value){return strtolower((string)$value);}
 class MAD4B_SCP_Agent_Registry {
@@ -75,5 +81,5 @@ check_uac(!is_wp_error($delegated)&&$delegated['mode']==='ai_only'
 $human=$c::configure_review_policy('human_only',false);
 check_uac(!is_wp_error($human)&&$human['agent']===''&&MAD4B_SCP_Context_Authority::$writes===2,'human fallback independent');
 
-unlink($file);rmdir($base.'/vault');rmdir($base.'/www');rmdir($base);
+rmdir($base.'/vault');rmdir($base.'/www');rmdir($base);
 echo "UNIFIED_CONNECTION_RUNTIME: PASS".PHP_EOL;
