@@ -6988,6 +6988,25 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Two-line exact-source bootstrap update wires existing scoped transfer service only; preserves all other registered abilities, environment gates, OAuth and release controls. Source coverage does not authorize a role capability, deployment or Production."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php",
+      "source_blob_sha": "d2a76a34d32a8120401a1f7170dc8fa9983e37bb",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-contract.py"
+      ],
+      "owner_role": "MAD4B repository source reviewer, nonauthorizing CI coverage",
+      "review_rationale": "Explicitly register new scoped Staging attachment Ability on the pre-existing governed Write catalog and nested dispatch only. Retain exact OAuth, user capability, tickets, NHI authority, global kill switch and site identity at execution; do not mount as a direct ChatGPT tool or another MCP server.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {
