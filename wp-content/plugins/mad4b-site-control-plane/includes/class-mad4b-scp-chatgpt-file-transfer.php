@@ -12,15 +12,23 @@ final class MAD4B_SCP_ChatGPT_File_Transfer {
     const CHUNK_BYTES = 131072;
     const TTL = 3600;
     const NS = 'mad4b-chatgpt-transfer/v1';
+    const ABILITY = 'mad4b/attachment-transfer';
+    const CAPABILITY = 'mad4b_attachment_transfer';
 
     public static function boot() {
         add_action( 'rest_api_init', array( __CLASS__, 'register_routes' ) );
+    }
+    /** Separate grant from broad MAD4B mutation authority, but never bypass the global kill switch. */
+    public static function attachment_transfer_granted() {
+        if ( ! current_user_can( self::CAPABILITY ) ) return false;
+        $gate = MAD4B_SCP_Policy::mutation_gate_status();
+        return is_array( $gate ) && ! empty( $gate['effective'] ) && empty( $gate['explicit_kill_switch'] );
     }
     public static function permitted() {
         return is_user_logged_in() && current_user_can( 'upload_files' )
             && class_exists( 'MAD4B_SCP_Policy', false )
             && true === MAD4B_SCP_Policy::can_read()
-            && true === MAD4B_SCP_Policy::can_mutate()
+            && self::attachment_transfer_granted()
             && true === MAD4B_SCP_Policy::can_connect_user( get_current_user_id() )
             && class_exists( 'MAD4B_SCP_Site_Profile', false )
             && MAD4B_SCP_Site_Profile::configured()
