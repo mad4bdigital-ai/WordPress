@@ -18,4 +18,15 @@ for value in (
 assert "'production_allowed' => false" in s
 assert r.index("MAD4B_SCP_Post_Update_Approved_Grant_Recovery::attempt()") < r.index("$baseline = class_exists( 'MAD4B_SCP_Post_Update_Continuation' )",r.index("MAD4B_SCP_Post_Update_Approved_Grant_Recovery::attempt()"))
 assert "'approved_grant_recovery' => $approved_grant_recovery" in r
+# Execute the hermetic behavior fixture, not just static source markers.
+# Permission-denied and Production branches must not reach mutation.
+import subprocess
+fixture = Path(__file__).resolve().parent / "post-update-approved-grant-recovery-runtime.php"
+for cmd in (["php", "-l", str(fixture)], ["php", str(fixture)]):
+    result = subprocess.run(cmd, cwd=fixture.parent, capture_output=True, text=True, timeout=45)
+    if result.returncode:
+        raise RuntimeError("Recovery runtime failed: " + result.stdout + result.stderr)
+    if len(cmd) == 2:
+        assert "POST_UPDATE_APPROVED_GRANT_RECOVERY_RUNTIME: PASS" in result.stdout, result.stdout
+
 print("POST_UPDATE_APPROVED_GRANT_RECOVERY: PASS")
