@@ -205,6 +205,7 @@ jobs:
         run: |
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/context-ai-only-review-contract.py
 
       - name: Execute Skill Context preflight runtime
         shell: bash
