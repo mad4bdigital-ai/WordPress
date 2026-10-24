@@ -308,6 +308,13 @@ final class MAD4B_SCP_Abilities {
 		return array( 'MAD4B_SCP_Policy', 'can_content' );
 	}
 
+	/** An omitted dispatcher input is {} for object schemas, including nullable objects. */
+	private static function input_schema_accepts_object( $schema ) {
+		if ( ! is_array( $schema ) ) return false;
+		$type = $schema['type'] ?? null;
+		return 'object' === $type || ( is_array( $type ) && in_array( 'object', $type, true ) );
+	}
+
 	private function schema( array $properties, array $required = array() ) {
 		$schema = array( 'type' => 'object', 'properties' => $properties, 'additionalProperties' => false );
 		if ( $required ) $schema['required'] = $required;
@@ -488,8 +495,7 @@ final class MAD4B_SCP_Abilities {
 		// An omitted dispatcher envelope is the empty object for an object
 		// target, not JSON null. Leave explicit null/invalid values and required
 		// target fields to the original Ability validator; never supply them.
-		if ( ! array_key_exists( 'input', $input ) && is_array( $target_input_schema )
-			&& 'object' === ( $target_input_schema['type'] ?? '' ) ) $params = array();
+		if ( ! array_key_exists( 'input', $input ) && self::input_schema_accepts_object( $target_input_schema ) ) $params = array();
 		if ( ( null === $target_input_schema || empty( $target_input_schema ) ) && is_array( $params ) && empty( $params ) ) $params = null;
 
 		$execute_target = static function () use ( $ability, $params ) {
