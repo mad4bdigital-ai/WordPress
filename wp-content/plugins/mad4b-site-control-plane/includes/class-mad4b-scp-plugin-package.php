@@ -293,7 +293,8 @@ final class MAD4B_SCP_Plugin_Package {
 		return array(
 			'contract' => 'mad4b.plugin-package-route-guidance.v1',
 			'route' => $control_plane ? 'governed_control_plane_self_update' : 'certified_provider_inventory',
-			'next_read_ability' => $control_plane ? 'mad4b/control-plane-selected-head-plan' : 'mad4b/provider-contracts-status',
+			'next_read_ability' => $control_plane ? 'mad4b/control-plane-selected-head-plan' : '',
+			'certified_inventory_path' => $control_plane ? '' : 'config/certified-providers.json',
 			'alternative_read_ability' => $control_plane ? 'mad4b/control-plane-upload-plan' : '',
 			'reason' => $reason,
 			'caller_supplied_package_allowed' => false,
