@@ -7137,6 +7137,27 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Uses established WordPress admin permissions, exact Site Profile, Agent Registry, authenticated OAuth, reviewed Context integrity, existing MCP Ability and safe credential storage controls.",
       "review_rationale": "Supports explicit ai_only policy and three exact-bound AI decisions, logging reasons and optional classification proposals without metadata mutation. Existing Staging identity and source SHA checks remain; Python regression invokes real PHP fixture. No live ETG document review, publication or external authorization is asserted."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-package.php",
+      "source_blob_sha": "a29eea8f6cbcaab27ec4b022885b8d330854723e",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-self-update-route-runtime.php"
+      ],
+      "owner_role": "Repository scoped package source reviewer — CI evidence only, not WordPress or Production owner authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governed control-plane self-update coordinator, certified third-party package authority and fail-closed provider selection controls apply; no new provider/grant/installation authority is created.",
+      "review_rationale": "Exact source denies mad4b, mad4b-site-control-plane and mad4b_site_control_plane as third-party package provider aliases before provider selection, returning mad4b_control_plane_self_update_route_required. Direct PHP reflection fixture asserts all three denied aliases, while scoped Python contract asserts the relevant authority and denied-route markers. Package workflow executes both regressions. CI source coverage is not a live self-update certification or deployment approval."
     }
   ],
   "code_change_rules": {
