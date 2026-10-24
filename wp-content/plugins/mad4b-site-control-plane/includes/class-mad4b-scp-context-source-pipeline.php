@@ -3,6 +3,40 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 /** Provider-neutral context pipeline. Discovery is read-only; approval is NEVER implicit. */
 final class MAD4B_SCP_Context_Source_Pipeline {
     const CONTRACT = 'mad4b.context-source-pipeline.v1';
+    /** Shared complete-inventory entrypoint. Provider scanners must prove completeness. */
+    public static function scan_complete( $source_id, array $input = array() ) {
+        if ( ! current_user_can( 'manage_options' ) || ! class_exists( 'MAD4B_SCP_Policy' ) || ! MAD4B_SCP_Policy::can_connect_user( get_current_user_id() ) )
+            return new WP_Error( 'mad4b_pipeline_scan_denied', 'Authorized administrator required.' );
+        $source = MAD4B_SCP_Context_Authority::source( $source_id );
+        if ( ! is_array( $source ) || ! $source )
+            return new WP_Error( 'mad4b_pipeline_source_missing', 'Registered source required.' );
+        $provider = (string) ( $source['provider'] ?? '' );
+        if ( 'wordpress_media' === $provider ) {
+            if ( ! class_exists( 'MAD4B_SCP_WordPress_Media_Context' ) )
+                return new WP_Error( 'mad4b_pipeline_media_unavailable', 'WordPress Media scanner unavailable.' );
+            $types = isset( $input['mime_types'] ) && is_array( $input['mime_types'] )
+                ? $input['mime_types'] : array( 'application/pdf', 'text/plain', 'text/markdown' );
+            $scan = MAD4B_SCP_WordPress_Media_Context::inventory( $types, $source_id );
+        } elseif ( 'google_drive' === $provider ) {
+            if ( empty( $input['allow_live_scan'] ) )
+                return new WP_Error( 'mad4b_pipeline_drive_scan_explicit', 'Explicit Drive scan required.' );
+            $scan = MAD4B_SCP_Google_Drive_Context::scan_folder( (string) $source['external_root_id'], ! empty( $source['recursive'] ) );
+        } else {
+            return new WP_Error( 'mad4b_pipeline_provider_unknown', 'Unsupported source provider.' );
+        }
+        if ( is_wp_error( $scan ) ) return $scan;
+        if ( 'wordpress_media' === $provider && true !== ( $scan['content_complete'] ?? null ) )
+            return new WP_Error( 'mad4b_pipeline_content_normalization_required', 'Inventory completed but attachment content normalization is required before registry apply.' );
+        if ( ! is_array( $scan ) || true !== ( $scan['complete'] ?? null ) || ! isset( $scan['assets'] ) || ! is_array( $scan['assets'] ) )
+            return new WP_Error( 'mad4b_pipeline_scan_incomplete', 'Incomplete source inventory cannot be committed.' );
+        if ( ! class_exists( 'MAD4B_SCP_Brand_Context_Builder' ) || ! method_exists( 'MAD4B_SCP_Brand_Context_Builder', 'source_scan_apply_admission' ) )
+            return new WP_Error( 'mad4b_pipeline_scan_admission_missing', 'Scan admission unavailable.' );
+        $admission = MAD4B_SCP_Brand_Context_Builder::source_scan_apply_admission(
+            array( 'scan_complete' => true ), $scan );
+        if ( is_wp_error( $admission ) ) return $admission;
+        $scan['expected_registry_revision'] = MAD4B_SCP_Context_Authority::registry_revision();
+        return MAD4B_SCP_Context_Authority::replace_source_assets( $source_id, $scan['assets'], $scan );
+    }
     public static function plan( $source_id, array $input = array() ) {
         $source = MAD4B_SCP_Context_Authority::source( $source_id );
         if ( ! is_array( $source ) || empty( $source ) ) return new WP_Error( 'mad4b_pipeline_source_missing', 'Registered source is required.' );
@@ -68,6 +102,8 @@ final class MAD4B_SCP_Context_Source_Pipeline {
         if ( ! is_array( $source ) || empty( $source ) || ! hash_equals( (string) ( $plan['source_fingerprint'] ?? '' ), hash( 'sha256', wp_json_encode( $source ) ) ) )
             return new WP_Error( 'mad4b_pipeline_source_changed', 'Source changed after discovery. Replan required.' );
         if ( ( $plan['provider'] ?? '' ) !== ( $source['provider'] ?? '' ) ) return new WP_Error( 'mad4b_pipeline_provider_changed', 'Provider changed.' );
+        if ( 'wordpress_media' === ( $plan['provider'] ?? '' ) )
+            return new WP_Error( 'mad4b_pipeline_media_use_complete_scan', 'Use the complete scoped inventory scan; partial asset upserts can invalidate normalized content.' );
         if ( ! empty( $plan['missing_candidates'] ) && ! empty( $plan['absence_mutation_allowed'] ) ) return new WP_Error( 'mad4b_pipeline_absence_mutation_denied', 'Absence requires certified complete-scan workflow.' );
         if ( ! isset( $plan['registry_revision'] ) || (int) $plan['registry_revision'] !== MAD4B_SCP_Context_Authority::registry_revision() )
             return new WP_Error( 'mad4b_pipeline_registry_stale', 'Registry changed; regenerate the plan.' );
