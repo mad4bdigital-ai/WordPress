@@ -220,6 +220,14 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			'current_grant_snapshot_ready' => ! empty( $plan['current_ready'] ),
 			'candidate_binding_required' => ! empty( $binding['required'] ),
 			'candidate_binding_match' => ! empty( $binding['match'] ),
+			// Separate independently evaluated sources of truth. Package provenance
+			// never grants authority, and historical grants cannot attest to a
+			// different installed candidate.
+			'package_binding_drift' => ! empty( $binding['required'] ) && empty( $binding['match'] ),
+			'write_grant_drift' => empty( $plan['current_ready'] ),
+			'next_reconciliation' => ( ! empty( $binding['required'] ) && empty( $binding['match'] ) )
+				? 'review_exact_installed_candidate_before_binding'
+				: ( empty( $plan['current_ready'] ) ? 'review_exact_live_write_grants' : 'none' ),
 			'grant_rows_fingerprint' => isset( $plan['grant_rows_fingerprint'] ) ? (string) $plan['grant_rows_fingerprint'] : '',
 			'blockers' => $blockers,
 			'read_only' => true,
