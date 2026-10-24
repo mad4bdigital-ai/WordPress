@@ -1981,6 +1981,26 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing update-coordinator, cross-plugin isolation, recovery, rollout, governance and security controls apply. The introduced source only mentions the established Ability as non-authorizing routing guidance; this review does not register, grant, invoke, install or certify it.",
       "review_rationale": "Static source scanner identifies the literal mad4b/control-plane-upload-plan in the new package route guidance. It is a pointer to an independent already-governed Control Plane planning surface, NOT a newly registered Ability or an executable provider-package action. Same-PR hermetic PHP test validates fail-closed MAD4B provider rejection, read-only guidance and no auto-apply/Production permission. Runtime discovery remains unverified. The same-PR Python regression contract executes both fixed PHP CLI fixtures with bounded timeout, checks nonzero exit codes and requires positive PASS markers; neither fixture is counted as a trusted standalone PHPUnit test."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-environment-convergence-policy.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "RECOVERY-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/environment-convergence-policy-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only, no Staging authority, no WordPress grants or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Site Profile source-of-authority, update recovery, platform isolation and deployment controls govern this pure read-only environment decision. No grants, consent, package install or site mutation are introduced.",
+      "review_rationale": "New nonauthorizing Environment Convergence Policy requires exact authoritative enrolled Site Profile, enrolled origin, matching deployment and WordPress/profile environment before declaring nonproduction auto-convergence eligibility. All outputs retain grant mutation unauthorized, OAuth requirements, package identity and audit requirements. Same-PR trusted Python fixture executes nine pure PHP cases across local, development, staging, production and mismatch/error conditions."
     }
   ],
   "lifecycle": [],
@@ -7351,6 +7371,42 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Exact Staging Write Authority source maintains independent read-only projections of installed package candidate binding mismatch versus live write-grant reconciliation drift; each identifies distinct operator inspection/remediation instead of assuming one causes the other. The readiness output remains nonauthorizing and reports mutation_performed false. Same-PR regression inspects all distinct source markers. No change to granted scopes, application passwords, write execution, or Production authorization is certified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-environment-convergence-policy.php",
+      "source_blob_sha": "13f49188582b63ed5df28548f46946f914bf17b5",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/environment-convergence-policy-contract.py"
+      ],
+      "owner_role": "Repository exact-source reviewer — CI only, no runtime mutation consent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Pure, fail-closed Site Profile environment resolver with nine executed PHP cases; a Staging label alone is not authority. Auto-grant mutation stays false. Same-PR Python runner checks source integration and executes the nine-case standalone PHP regression. Neither grants nor Production approvals are created."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-post-update-continuation.php",
+      "source_blob_sha": "36f3ddcb83b389dd079da8ceb3250978c354799b",
+      "control_ids": [
+        "UPDATES-01",
+        "RECOVERY-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/environment-convergence-policy-contract.py"
+      ],
+      "owner_role": "Repository exact-source reviewer — CI only, no runtime mutation consent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Existing post-update continuation now consults the shared authoritative environment-convergence policy before allowing Staging-only reconciliation; unknown, Production or mismatched Site Profiles are blocked with distinct operator diagnostic instead of inferred hostname authority. Same-PR Python runner checks source integration and executes the nine-case standalone PHP regression. Neither grants nor Production approvals are created."
     }
   ],
   "code_change_rules": {
