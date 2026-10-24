@@ -10,6 +10,7 @@ checks = {
     "no_anonymous": "is_user_logged_in()" in source,
     "wp_upload_capability": "current_user_can( 'upload_files' )" in source,
     "site_profile": "site_urls_match_enrollment()" in source and "origin_enrolled()" in source,
+    "governed_write": "MAD4B_SCP_Policy::can_mutate()" in source,
     "governed_user": "MAD4B_SCP_Policy::can_connect_user" in source,
     "bounded_chunks": "const CHUNK_BYTES = 131072;" in source,
     "bounded_total": "const MAX_BYTES = 16777216;" in source,
