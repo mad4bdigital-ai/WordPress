@@ -4,8 +4,8 @@
   "reviewed_base_sha": "ea7b4fcd3b2b8d85caee3eefb0d3ed971c91f971",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 91,
-  "changed_paths_sha256": "733cfb9323f35cb6e3426743e2e53cdcfb9a8733c975689b3e75cb99b6c8d858",
+  "changed_file_count": 94,
+  "changed_paths_sha256": "4afeeae474b35a2fc454a8ae80b8345473f898886b6976810bda12ac81c3f102",
   "slices": [
     {
       "id": "source-evidence-and-ci",
@@ -176,6 +176,17 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/transport-permission-containment-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-addon-registry-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/g2-permission-reduction-contract.py"
+      ]
+    },
+    {
+      "id": "native-update-orphan-source-recovery",
+      "semantic_unit": "Bounded read-only orphaned installed commit diagnostics with fail-closed native update admission and exact executable regression.",
+      "revert_boundary": "Revert native source relationship classifier and both isolated regression fixtures as a single reviewed unit; preserve owner approval, HTTPS bounds, no automatic apply and immutable provenance.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/self-update-orphan-sha-readonly-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/self-update-orphan-sha-readonly-runtime.php"
       ]
     }
   ]
