@@ -1898,6 +1898,28 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing scheduling, environmental isolation and bounded scanning controls apply; no new scheduler permissions or mandatory status checks.",
       "review_rationale": "WordPress hourly cleanup limited to stale .part files under exact owned temporary root, maximum 200 scanned per run; disabled in Production and when global write kill switch is active, with negative hermetic fixtures."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-agent-connection.php",
+      "control_ids": [
+        "MCP-01",
+        "ADMIN-01",
+        "OAUTH-01",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-agent-connection-contract.py"
+      ],
+      "owner_role": "Source security reviewer — CI-only",
+      "review_rationale": "New internal WordPress admin service reuses existing Agent Registry/OAuth and strictly opt-in private-vault Application Passwords. No connector credentials are displayed, no write/Production grants are issued, and external activation is unverified.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing administrator role, OAuth consent, MCP execution fences, vault protection, Site Profile binding, capability and mutation permissions cover this internal service.",
+      "execution_note": "No external Vault, application password, site grant, WordPress mutation or OAuth consent was issued as part of GitHub source CI."
     }
   ],
   "lifecycle": [],
@@ -7032,6 +7054,109 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-agent-connection.php",
+      "source_blob_sha": "35ef9396d930c75a319598dd1ecd46925d7fa272",
+      "control_ids": [
+        "ADMIN-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "MCP-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-agent-connection-contract.py"
+      ],
+      "owner_role": "MAD4B repository source reviewer — code regression only; no owner site credential or Production grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Uses established WordPress admin permissions, exact Site Profile, Agent Registry, authenticated OAuth, reviewed Context integrity, existing MCP Ability and safe credential storage controls.",
+      "review_rationale": "Introduces UI-guided site-scoped agent selection, explicit OAuth or optional current-user Application Password issuance to a private external Vault, readonly grants, and revocation with no credential disclosed in UI. Python regression runs sandboxed PHP fixture; never deploys or provisions live credentials. Adds separately confirmed AI-only / Human+AI Review settings through the existing audited Context Authority, canonical Staging Site Profile Agent, and no automatic write grant, with explicit negative runtime checks for Production and absent consent."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-connection-admin-ui.php",
+      "source_blob_sha": "9c13fe993c7a32c1f4e872536faebe0109f8df65",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-agent-connection-contract.py"
+      ],
+      "owner_role": "MAD4B repository source reviewer — code regression only; no owner site credential or Production grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Uses established WordPress admin permissions, exact Site Profile, Agent Registry, authenticated OAuth, reviewed Context integrity, existing MCP Ability and safe credential storage controls.",
+      "review_rationale": "Introduces UI-guided site-scoped agent selection, explicit OAuth or optional current-user Application Password issuance to a private external Vault, readonly grants, and revocation with no credential disclosed in UI. Python regression runs sandboxed PHP fixture; never deploys or provisions live credentials."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "9dd750be28cc7fce7df012064b90da990fb31902",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-agent-connection-contract.py"
+      ],
+      "owner_role": "MAD4B repository source reviewer — code regression only; no owner site credential or Production grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Uses established WordPress admin permissions, exact Site Profile, Agent Registry, authenticated OAuth, reviewed Context integrity, existing MCP Ability and safe credential storage controls.",
+      "review_rationale": "Introduces UI-guided site-scoped agent selection, explicit OAuth or optional current-user Application Password issuance to a private external Vault, readonly grants, and revocation with no credential disclosed in UI. Python regression runs sandboxed PHP fixture; never deploys or provisions live credentials. Reconciled exact merged bootstrap retains PR #490's scoped ChatGPT attachment-transfer wiring and adds the unified Agent connection loader with no additional grant or publishing permission."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php",
+      "source_blob_sha": "6f794a8bb1c8ca629edbd01d1f036653c1197ed5",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "SECURITY-01",
+        "TICKETS-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-ai-only-review-contract.py"
+      ],
+      "owner_role": "MAD4B repository source reviewer — code regression only; no owner site credential or Production grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Uses established WordPress admin permissions, exact Site Profile, Agent Registry, authenticated OAuth, reviewed Context integrity, existing MCP Ability and safe credential storage controls.",
+      "review_rationale": "Supports explicit ai_only policy and three exact-bound AI decisions, logging reasons and optional classification proposals without metadata mutation. Existing Staging identity and source SHA checks remain; Python regression invokes real PHP fixture. No live ETG document review, publication or external authorization is asserted."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-admin-ui.php",
+      "source_blob_sha": "07903e984e9c84cb56a1245f03db15c60ba1eb1a",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-ai-only-review-contract.py"
+      ],
+      "owner_role": "MAD4B repository source reviewer — code regression only; no owner site credential or Production grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Uses established WordPress admin permissions, exact Site Profile, Agent Registry, authenticated OAuth, reviewed Context integrity, existing MCP Ability and safe credential storage controls.",
+      "review_rationale": "Supports explicit ai_only policy and three exact-bound AI decisions, logging reasons and optional classification proposals without metadata mutation. Existing Staging identity and source SHA checks remain; Python regression invokes real PHP fixture. No live ETG document review, publication or external authorization is asserted."
     }
   ],
   "code_change_rules": {
