@@ -18,7 +18,7 @@ foreach ( $cases as $case ) {
     $method->invoke( $instance, $name, $name, 'mad4b-read', 'site_info', $readonly ? 'read' : 'admin', $input, false, $readonly, false, true );
     $result = $GLOBALS['mad4b_registered_abilities'][ $name ];
     if ( $expects_empty ) {
-        if ( ( $result['input_schema']['type'] ?? '' ) !== 'object' || ( $result['input_schema']['properties'] ?? null ) !== array() || ( $result['input_schema']['additionalProperties'] ?? null ) !== false ) throw new Exception( 'Empty schema missing: ' . $name );
+        if ( ( $result['input_schema']['type'] ?? null ) !== array( 'object', 'null' ) || ( $result['input_schema']['properties'] ?? null ) !== array() || ( $result['input_schema']['additionalProperties'] ?? null ) !== false ) throw new Exception( 'Empty schema missing: ' . $name );
     } elseif ( null === $input && array_key_exists( 'input_schema', $result ) ) throw new Exception( 'Write schema unexpectedly modified' );
     elseif ( is_array( $input ) && $result['input_schema'] !== $input ) throw new Exception( 'Parameterized schema changed' );
 }
