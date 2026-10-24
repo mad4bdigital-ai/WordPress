@@ -264,6 +264,7 @@ if ( function_exists( 'wp_get_environment_type' )
     require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-client.php';
     require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-client-admin.php';
 }
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-passwordless-connection.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connector-resilience.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-read-consistency.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-audit.php';
@@ -339,6 +340,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-resource-bridge.php
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-chatgpt-auto-binding.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-multi-authority-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-subject-user-bridge.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-application-password-agent-bridge.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-external-handshake-evidence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-frontend-origin-diagnostic.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-security-diagnostics.php';
