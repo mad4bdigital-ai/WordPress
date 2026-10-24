@@ -23,7 +23,7 @@ final class MAD4B_SCP_WordPress_Media_Context {
         echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="mad4b_context_wp_media_sync">';
         wp_nonce_field( 'mad4b_context_wp_media_sync' );
         echo '<p><label>Attachment IDs (comma-separated, maximum 25): <input name="attachment_ids" type="text" class="large-text" required placeholder="66145,66146,66147"></label></p>';
-        submit_button( 'Register or refresh selected attachments' );
+        submit_button( 'Scan all Media files matching these attachment types' );
         echo '</form></div>';
     }
     public static function attachment_record( $id ) {
@@ -38,6 +38,35 @@ final class MAD4B_SCP_WordPress_Media_Context {
         return array( 'file_id' => (string) $id, 'parent_folder_id' => self::ROOT, 'title' => (string) $post->post_title,
             'path' => (string) get_post_meta( $id, '_wp_attached_file', true ), 'mimeType' => $mime, 'content_hash' => $hash,
             'content_complete' => false, 'modifiedTime' => get_post_modified_time( 'c', true, $post ) );
+    }
+    /** Complete inventory of eligible attachments within an explicit MIME scope. */
+    public static function inventory( array $mime_types = array( 'application/pdf', 'text/plain', 'text/markdown' ), $source_id = '' ) {
+        $allowed = array( 'application/pdf', 'text/plain', 'text/markdown' );
+        $mime_types = array_values( array_unique( array_map( 'strval', $mime_types ) ) );
+        if ( ! $mime_types || array_diff( $mime_types, $allowed ) )
+            return new WP_Error( 'mad4b_media_inventory_scope_invalid', 'Select supported MIME types.' );
+        global $wpdb;
+        $placeholders = implode( ',', array_fill( 0, count( $mime_types ), '%s' ) );
+        $query = $wpdb->prepare( "SELECT ID FROM {$wpdb->posts} WHERE post_type = 'attachment' AND post_status <> 'trash' AND post_mime_type IN ($placeholders) ORDER BY ID ASC LIMIT 1001", $mime_types );
+        $ids = $wpdb->get_col( $query );
+        if ( count( $ids ) > 1000 ) return new WP_Error( 'mad4b_media_inventory_capacity', 'Matching inventory exceeds the 1000-asset registry limit; no complete scan is possible.' );
+        $assets = array();
+        $known = MAD4B_SCP_Context_Authority::assets();
+        foreach ( $ids as $id ) {
+            $record = self::attachment_record( $id );
+            if ( is_wp_error( $record ) ) return $record;
+            $asset_id = hash( 'sha256', (string) $source_id . '|' . (string) $id );
+            $prior = $known[ $asset_id ] ?? array();
+            if ( $prior && ! empty( $prior['content_complete'] ) && ! empty( $prior['content_hash'] )
+                && hash_equals( (string) $prior['content_hash'], (string) $record['content_hash'] )
+                && hash_equals( (string) ( $prior['version'] ?? '' ), (string) $record['modifiedTime'] ) ) {
+                $record['reuse_existing'] = true;
+                $record['content_complete'] = true;
+            }
+            $assets[] = $record;
+        }
+        return array( 'assets' => $assets, 'complete' => true, 'content_complete' => count( array_filter( $assets, static function ( $asset ) { return ! empty( $asset['content_complete'] ); } ) ) === count( $assets ), 'scoped_inventory' => true,
+            'mime_types' => $mime_types, 'started_at' => gmdate( 'c' ), 'completed_at' => gmdate( 'c' ) );
     }
     public static function sync_ids( array $ids ) {
         if ( ! self::allowed() ) return new WP_Error( 'mad4b_media_denied', 'Not authorized.' );
@@ -56,11 +85,11 @@ final class MAD4B_SCP_WordPress_Media_Context {
         if ( '' === $id ) return new WP_Error( 'mad4b_media_source_result_invalid', 'Source ID unavailable.' );
         if ( ! class_exists( 'MAD4B_SCP_Context_Source_Pipeline' ) )
             return new WP_Error( 'mad4b_media_pipeline_unavailable', 'Shared source pipeline is unavailable.' );
-        $plan = MAD4B_SCP_Context_Source_Pipeline::plan( $id, array( 'attachment_ids' => $ids ) );
-        if ( is_wp_error( $plan ) ) return $plan;
-        $result = MAD4B_SCP_Context_Source_Pipeline::sync( $plan );
+        $types = array_values( array_unique( array_column( $records, 'mimeType' ) ) );
+        $result = MAD4B_SCP_Context_Source_Pipeline::scan_complete( $id, array( 'mime_types' => $types ) );
+
         if ( is_wp_error( $result ) ) return $result;
-        return array( 'source_id'=>$id, 'refreshed'=>(int) $result['synced'], 'non_destructive'=>true );
+        return array( 'source_id'=>$id, 'refreshed'=>(int) $result['asset_count'], 'non_destructive'=>true );
     }
     public static function submit() {
         if ( ! self::allowed() ) wp_die( 'Access denied', '', array( 'response' => 403 ) );
