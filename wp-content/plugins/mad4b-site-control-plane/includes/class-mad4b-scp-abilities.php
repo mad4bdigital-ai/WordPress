@@ -270,13 +270,14 @@ final class MAD4B_SCP_Abilities {
 				),
 			),
 		);
-		// MCP clients commonly send {} for no-argument tools. Explicitly accept
-		// the empty object so WordPress does not reject it as a missing schema.
+		// MCP clients commonly send {} for no-argument tools. Keep a root
+		// object schema (required by the MCP adapter), with a default so both
+		// legacy null and empty-object requests normalize to an empty array.
 		// Keep every parameterized ability's original schema and write gates.
 		if ( is_array( $input ) ) {
 			$args['input_schema'] = $input;
 		} elseif ( $readonly && null === $input ) {
-			$args['input_schema'] = array( 'type' => array( 'object', 'null' ), 'properties' => array(), 'additionalProperties' => false );
+			$args['input_schema'] = array( 'type' => 'object', 'properties' => array(), 'additionalProperties' => false, 'default' => array() );
 		}
 		wp_register_ability( $name, $args );
 	}
