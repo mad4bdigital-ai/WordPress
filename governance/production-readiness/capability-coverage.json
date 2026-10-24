@@ -7057,7 +7057,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-agent-connection.php",
-      "source_blob_sha": "35ef9396d930c75a319598dd1ecd46925d7fa272",
+      "source_blob_sha": "71a79336cb192d64126df7ef92fccd343bc385ea",
       "control_ids": [
         "ADMIN-01",
         "SECURITY-01",
@@ -7075,7 +7075,7 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Uses established WordPress admin permissions, exact Site Profile, Agent Registry, authenticated OAuth, reviewed Context integrity, existing MCP Ability and safe credential storage controls.",
-      "review_rationale": "Introduces UI-guided site-scoped agent selection, explicit OAuth or optional current-user Application Password issuance to a private external Vault, readonly grants, and revocation with no credential disclosed in UI. Python regression runs sandboxed PHP fixture; never deploys or provisions live credentials. Adds separately confirmed AI-only / Human+AI Review settings through the existing audited Context Authority, canonical Staging Site Profile Agent, and no automatic write grant, with explicit negative runtime checks for Production and absent consent."
+      "review_rationale": "Introduces UI-guided site-scoped agent selection, explicit OAuth or optional current-user Application Password issuance to a private external Vault, readonly grants, and revocation with no credential disclosed in UI. Python regression runs sandboxed PHP fixture; never deploys or provisions live credentials. Adds separately confirmed AI-only / Human+AI Review settings through the existing audited Context Authority, canonical Staging Site Profile Agent, and no automatic write grant, with explicit negative runtime checks for Production and absent consent. Failed Agent activation now revokes only the matching newly issued Application Password and cleans its private Vault file; mismatched rollback refuses to revoke an unrelated password. Hermetic negative runtime checks cover both cases."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-connection-admin-ui.php",
