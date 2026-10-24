@@ -1,0 +1,24 @@
+name: MAD4B ChatGPT Attachment Transfer
+on:
+  pull_request:
+  push:
+    branches: [master]
+permissions:
+  contents: read
+concurrency:
+  group: mad4b-chatgpt-transfer-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+jobs:
+  attachment-transfer-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate bounded transfer bridge
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-file-transfer.php
+          php -l wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-contract.py
