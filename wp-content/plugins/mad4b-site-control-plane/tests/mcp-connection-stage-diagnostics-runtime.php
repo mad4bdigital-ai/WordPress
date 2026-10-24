@@ -67,4 +67,16 @@ $invalid_reg = $inputs;
 $invalid_reg['registration'] = array('actual_registered'=>'no');
 check( $class::project($invalid_reg)['stages']['server_registration']['status']==='not_checked',
     'Untrusted evidence type must not be treated as boolean verification' );
+$external_failure = $inputs;
+$external_failure['external'] = array( 'mcp_read_call' => array( 'status' => 'failed' ) );
+$observed = $class::project( $external_failure );
+check( $observed['stages']['mcp_read_call']['status'] === 'failed_external'
+    && $observed['stages']['mcp_read_call']['source'] === 'external_observation'
+    && $observed['stages']['mcp_initialize']['status'] === 'not_checked'
+    && !$observed['root_cause_determined'] && !$observed['external_connection_certified'],
+    'An externally failed read must not be reclassified as a local root cause' );
+$invalid_external = $inputs;
+$invalid_external['external'] = array( 'mcp_read_call' => array( 'status' => 'internal_error' ) );
+check( $class::project( $invalid_external )['stages']['mcp_read_call']['status'] === 'not_checked',
+    'Opaque errors cannot be promoted into verified stage failures' );
 echo "MCP_CONNECTION_STAGES: PASS (bootstrap/OAuth/registration/catalog separation and external not-checked)\n";
