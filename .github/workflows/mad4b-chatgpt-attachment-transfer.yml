@@ -35,3 +35,7 @@ jobs:
           php wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-permission-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-roundtrip-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-roundtrip-runtime.php
+          python3 -m py_compile tools/mad4b_chatgpt_attachment_sender.py
+          printf 'transfer fixture' > /tmp/mad4b-transfer-sender.txt
+          python3 tools/mad4b_chatgpt_attachment_sender.py --file /tmp/mad4b-transfer-sender.txt --site https://staging.example.test --dry-run
+          rm -f /tmp/mad4b-transfer-sender.txt
