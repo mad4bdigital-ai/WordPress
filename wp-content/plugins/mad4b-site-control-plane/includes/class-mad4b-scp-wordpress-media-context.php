@@ -54,11 +54,13 @@ final class MAD4B_SCP_WordPress_Media_Context {
         if ( is_wp_error( $source ) ) return $source;
         $id = isset( $source['source_id'] ) ? (string) $source['source_id'] : '';
         if ( '' === $id ) return new WP_Error( 'mad4b_media_source_result_invalid', 'Source ID unavailable.' );
-        foreach ( $records as $record ) {
-            $result = MAD4B_SCP_Context_Authority::upsert_asset_from_provider( $id, $record );
-            if ( is_wp_error( $result ) ) return $result;
-        }
-        return array( 'source_id'=>$id, 'refreshed'=>count( $records ), 'non_destructive'=>true );
+        if ( ! class_exists( 'MAD4B_SCP_Context_Source_Pipeline' ) )
+            return new WP_Error( 'mad4b_media_pipeline_unavailable', 'Shared source pipeline is unavailable.' );
+        $plan = MAD4B_SCP_Context_Source_Pipeline::plan( $id, array( 'attachment_ids' => $ids ) );
+        if ( is_wp_error( $plan ) ) return $plan;
+        $result = MAD4B_SCP_Context_Source_Pipeline::sync( $plan );
+        if ( is_wp_error( $result ) ) return $result;
+        return array( 'source_id'=>$id, 'refreshed'=>(int) $result['synced'], 'non_destructive'=>true );
     }
     public static function submit() {
         if ( ! self::allowed() ) wp_die( 'Access denied', '', array( 'response' => 403 ) );
