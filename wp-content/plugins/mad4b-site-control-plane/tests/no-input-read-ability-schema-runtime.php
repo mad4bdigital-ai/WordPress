@@ -22,4 +22,4 @@ foreach ( $cases as $case ) {
     } elseif ( null === $input && array_key_exists( 'input_schema', $result ) ) throw new Exception( 'Write schema unexpectedly modified' );
     elseif ( is_array( $input ) && $result['input_schema'] !== $input ) throw new Exception( 'Parameterized schema changed' );
 }
-echo "NO_INPUT_READ_ABILITY_SCHEMA_RUNTIME: PASS (4 cases)\n";
+echo "PASS: NO_INPUT_READ_ABILITY_SCHEMA_RUNTIME (4 cases)\n";
