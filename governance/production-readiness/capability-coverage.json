@@ -5939,6 +5939,29 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The original private tool-declaration method is preserved verbatim in a required trait, and the public server facade is unchanged; existing MCP authorization, discovery and catalog controls remain applicable.",
       "review_rationale": "Review of the exact Git blob for non-authorizing method extraction from the legacy facade to a required core catalog trait. Preserve source-level catalog and no expanded remote authority; downstream runtime and staging acceptance are separate."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php",
+      "source_blob_sha": "1039e81d525d2ac267ac69a11c3f33c913f8cbd8",
+      "control_ids": [
+        "CROSSPLUGIN-01",
+        "GOVERNANCE-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/self-update-orphan-sha-readonly-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; not ETG owner consent or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing native WordPress update ancestry, bounded external source verification, owner OAuth approval, rollback and fail-closed recovery controls cover this read-only orphan-SHA diagnostic. No install, grant, cross-environment mutation, or permissive lineage decision is added.",
+      "review_rationale": "On compare HTTP 404, probe only the pinned installed commit SHA over GitHub HTTPS with bounded response and no redirect. A verified HTTP 422 gives a specific nonauthorizing installed-source-unresolvable state. Network failures, malformed responses, generic 404, older versions and unknown lineage remain blocked. The mapped same-PR Python runner executes actual isolated PHP scenarios (404+422, 404+404, 429, verified ahead, older, denied native replacement) and checks syntax. Repository evidence is not an ETG Staging install or owner grant approval."
     }
   ],
   "code_change_rules": {
