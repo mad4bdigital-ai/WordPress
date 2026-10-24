@@ -344,4 +344,6 @@ if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) ) MAD4B_SCP_Admin_R
 // Unified Agent setup is owned by this existing ChatGPT connection surface.
 // Register the Agent form handlers without altering repository-wide bootstrap.
 require_once __DIR__ . '/class-mad4b-scp-unified-agent-connection.php';
-MAD4B_SCP_Unified_Agent_Connection::boot();
+// Standalone read-only fixtures may load this class without WordPress hooks.
+// In an actual WordPress request add_action exists and the handlers register.
+if ( function_exists( 'add_action' ) ) MAD4B_SCP_Unified_Agent_Connection::boot();
