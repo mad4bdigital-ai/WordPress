@@ -8,8 +8,7 @@ SERVERS = ROOT / "includes/class-mad4b-scp-servers.php"
 PLUGIN = ROOT / "mad4b-site-control-plane.php"
 
 src = SOURCE.read_text(encoding="utf-8")
-servers = "
-".join(
+servers = "\n".join(
     (ROOT / "includes" / name).read_text(encoding="utf-8")
     for name in (
         "class-mad4b-scp-servers.php",
