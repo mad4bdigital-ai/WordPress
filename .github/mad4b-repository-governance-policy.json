@@ -32,10 +32,6 @@
       {
         "context": "Repository feature boundary",
         "integration_id": 15368
-      },
-      {
-        "context": "Production readiness matrix contract",
-        "integration_id": 15368
       }
     ],
     "strict_required_status_checks_policy": true

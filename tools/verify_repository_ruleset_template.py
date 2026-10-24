@@ -4,19 +4,11 @@
 from __future__ import annotations
 
 import argparse
-import copy
 import json
 from pathlib import Path
 
 CONTRACT = "mad4b.repository-ruleset-template.v1"
 EXPECTED_NAME = "MAD4B master release governance"
-
-NEW = {"context": "Production readiness matrix contract", "integration_id": 15368}
-LEGACY = [
-    {"context": "Repository release verdict", "integration_id": 15368},
-    {"context": "Repository feature boundary", "integration_id": 15368},
-]
-
 
 
 def load(path: Path) -> dict:
@@ -237,84 +229,20 @@ def verify(template: dict, policy: dict, readback: dict | None = None) -> dict:
     }
 
 
-def preflight_readiness_migration(before: dict, template: dict, policy: dict, repository: str) -> dict:
-    verify(template, policy)
-    if not isinstance(before, dict) or "bypass_actors" not in before:
-        raise ValueError("current ruleset or bypass evidence missing")
-    if before["bypass_actors"] != []:
-        raise ValueError("current ruleset contains bypass actors")
-    if before.get("source_type") != "Repository" or before.get("source") != repository:
-        raise ValueError("current ruleset is not repository-owned")
-    if not isinstance(before.get("id"), int) or before["id"] < 1:
-        raise ValueError("current ruleset identity is missing")
-    if policy.get("required_repository_ruleset_name") != "MAD4B master release governance":
-        raise ValueError("canonical ruleset name mismatch")
-    live_pr = next(
-        (row for row in (before.get("rules") or []) if row.get("type") == "pull_request"),
-        None,
-    )
-    if not isinstance(live_pr, dict) or (
-        (live_pr.get("parameters") or {}).get("require_extra_approval_for_unattributed_changes")
-        is not True
-    ):
-        raise ValueError("live unattributed-change approval protection is not independently visible")
-    target = mutable_ruleset(template)
-    required = next(x for x in target["rules"] if x["type"] == "required_status_checks")
-    expected = sorted(LEGACY + [NEW], key=lambda x: (x["context"], x["integration_id"]))
-    if required["parameters"]["required_status_checks"] != expected:
-        raise ValueError("target is not exact two-to-three readiness addition")
-    observed = mutable_ruleset(before)
-    old_expected = copy.deepcopy(target)
-    old_required = next(x for x in old_expected["rules"] if x["type"] == "required_status_checks")
-    old_required["parameters"]["required_status_checks"] = sorted(
-        LEGACY, key=lambda x: (x["context"], x["integration_id"])
-    )
-    if observed == target:
-        transition = "already_converged"
-    elif observed == old_expected:
-        transition = "append_readiness_only"
-    else:
-        raise ValueError("live ruleset differs from template beyond the one allowed check addition")
-    return {
-        "contract": "mad4b.ruleset-readiness-minimal-delta.v1",
-        "ready": True,
-        "ruleset_id": before["id"],
-        "exact_repository": repository,
-        "transition": transition,
-        "allowed_addition": NEW,
-        "preserved_checks": LEGACY,
-        "other_mutable_fields_identical": True,
-        "mutation_performed": False,
-        "production_authorized": False,
-    }
-
-
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--template", required=True, type=Path)
     parser.add_argument("--policy", required=True, type=Path)
     parser.add_argument("--readback", type=Path)
-    parser.add_argument("--before-minimal-delta", type=Path)
-    parser.add_argument("--repository")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     try:
-        if args.before_minimal_delta:
-            if args.readback or not args.repository:
-                raise ValueError("minimal-delta preflight needs --repository and no --readback")
-            result = preflight_readiness_migration(
-                load(args.before_minimal_delta),
-                load(args.template),
-                load(args.policy),
-                args.repository,
-            )
-        else:
-            result = verify(
-                load(args.template),
-                load(args.policy),
-                load(args.readback) if args.readback else None,
-            )
-    except (ValueError, OSError, json.JSONDecodeError, KeyError, TypeError, StopIteration) as exc:
+        result = verify(
+            load(args.template),
+            load(args.policy),
+            load(args.readback) if args.readback else None,
+        )
+    except (ValueError, OSError, json.JSONDecodeError) as exc:
         print(f"RULESET_TEMPLATE: FAIL: {exc}")
         return 1
     encoded = json.dumps(result, indent=2, sort_keys=True) + "\n"
