@@ -5952,8 +5952,7 @@
         "UPDATES-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/self-update-orphan-sha-readonly-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/self-update-orphan-sha-readonly-contract.py"
       ],
       "owner_role": "Repository source reviewer — CI-only; not ETG owner consent or Production authorization",
       "status": "reviewed_for_ci_only",
