@@ -187,7 +187,7 @@
   "implementation_closure_ledger": "implementation-closure.json",
   "implementation_closure_contract": "mad4b.feature007-implementation-closure.v2",
   "baseline_model": "mad4b.feature007-reviewed-parent-and-runtime-release.v1",
-  "last_reviewed_master_parent_sha": "b176971a43922f56f4f8e39547501049a16c1bdc",
+  "last_reviewed_master_parent_sha": "17a447839bd091f95d964153814bc4382677a8c8",
   "repository_baseline_semantics": "committed metadata records the exact master parent reviewed by the PR; current master HEAD is external evidence and is intentionally not self-referential",
   "runtime_release_identity": {
     "contract": "mad4b.runtime-release-identity.v1",
@@ -350,7 +350,7 @@
     "contract": "mad4b.feature007.inherited-source-reconciliation.v1",
     "review_scope": "G2-G9 SHA-256/bytes of two shared files changed by PR #490; only CI-source fingerprints, not historic product acceptance",
     "previous_reviewed_parent": "35a7141b10ff0270959c9231123f99e238788e5b",
-    "base_sha": "b176971a43922f56f4f8e39547501049a16c1bdc",
+    "base_sha": "17a447839bd091f95d964153814bc4382677a8c8",
     "changed_runtime_paths": [
       "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
       "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php"
