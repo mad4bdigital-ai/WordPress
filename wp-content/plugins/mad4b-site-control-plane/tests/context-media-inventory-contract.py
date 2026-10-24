@@ -16,9 +16,10 @@ contracts = {
     'complete_scan_admission': 'source_scan_apply_admission(' in pipeline,
     'registry_version_guard': "'expected_registry_revision'" in pipeline,
     'unsafe_partial_media_sync_denied': 'mad4b_pipeline_media_use_complete_scan' in pipeline,
-    'scoped_absence_guard': "empty( $scan['scoped_inventory'] )" in authority,
+    'scoped_absence_guard': 'scan_includes_absence' in authority and 'mad4b_context_scan_scope_missing' in authority,
     'scoped_mime_evidence': 'last_scan_scope_mime_types' in authority,
-    'ui_mime_checkboxes': 'name="mime_types[]"' in admin,
+    'ui_mime_checkboxes': 'name="mime_types[]"' in admin and 'name="mime_types[]"' in media,
+    'standalone_ui_no_attachment_list': 'Attachment IDs (comma-separated' not in media,
     'ui_source_dispatch': 'MAD4B_SCP_Context_Source_Pipeline::scan_complete(' in admin,
 }
 for label, valid in contracts.items():
