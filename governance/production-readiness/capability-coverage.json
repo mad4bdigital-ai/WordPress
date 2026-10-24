@@ -7558,6 +7558,41 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Runtime Convergence now invokes the checked approved-grant recovery coordinator and reports its state separately; existing reconciliation, grant policy and audit boundaries are preserved. Same-PR contract checks source ordering and trusted executable PHP tests exercise the denied and allowed prior-grant classifier; certification remains read-only CI evidence."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+      "source_blob_sha": "7bbfbf8eda450b7ba0f0e62df5aa25aae648c2ea",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/no-input-read-ability-schema-runtime.php"
+      ],
+      "owner_role": "Repository source/security reviewer — CI coverage only; no live OAuth/Production grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "No-argument read abilities now explicitly accept both legacy null and empty-object MCP calls, while disallowing unexpected parameters and preserving write schemas. Regression exercises four guarded registration cases; WordPress REST validation checked on ETG staging in read-only mode."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-connector-resilience.php",
+      "source_blob_sha": "850b2990f36b9bdcb88aab429267a897b61c81fe",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/generation-snapshot-exception-guards-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/generation-snapshot-exception-runtime.php"
+      ],
+      "owner_role": "Repository source/security reviewer — CI coverage only; no live OAuth/Production grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Generation-fenced compact reads now contain exceptions from both pre-read and post-read snapshot headers, returning nonauthorizing structured errors. Same-PR contract and runtime tests cover both fail-closed exception boundaries."
     }
   ],
   "code_change_rules": {
