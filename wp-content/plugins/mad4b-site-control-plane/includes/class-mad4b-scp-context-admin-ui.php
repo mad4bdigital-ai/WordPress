@@ -1489,7 +1489,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			$public_id = isset( $agent['public_id'] ) ? strtolower( trim( (string) $agent['public_id'] ) ) : '';
 			$environment = isset( $agent['environment'] ) ? sanitize_key( (string) $agent['environment'] ) : '';
 			$agent_slug = isset( $agent['slug'] ) ? sanitize_key( (string) $agent['slug'] ) : '';
-			if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', $public_id ) || 'staging' !== $environment || '' === $profile_agent_slug || $profile_agent_slug !== $agent_slug ) continue;
+			if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', $public_id ) || ! in_array( $environment, array( 'staging', 'all' ), true ) || '' === $profile_agent_slug || $profile_agent_slug !== $agent_slug ) continue;
 			$agents[] = array(
 				'public_id' => $public_id,
 				'label' => isset( $agent['label'] ) && '' !== trim( (string) $agent['label'] ) ? (string) $agent['label'] : ( isset( $agent['slug'] ) ? (string) $agent['slug'] : $public_id ),
