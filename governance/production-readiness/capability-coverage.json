@@ -2022,6 +2022,28 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing Site Profile, exact prior-grant baseline, OAuth identity and governed update/rollback boundaries apply to this pure evaluator. It neither accepts client-supplied approval authority nor executes a grant mutation.",
       "review_rationale": "New read-only classifier checks non-production environment policy, sealed pre-update audited baseline, exact Site Profile and Agent identities, manifest, trusted fresh grant inventory, no breakglass/wildcards/denies and only exact previously approved server/ability/provider pairs. Its result is non-authorizing and explicitly forbids new grants, Production and mutation. Same-PR Python trusted test executes 7 PHP cases."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-post-update-approved-grant-recovery.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "OAUTH-01",
+        "RECOVERY-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/post-update-approved-grant-recovery-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/nonproduction-approved-grants-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no site grants or Production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing sealed prior-grant recovery, OAuth bearer/step-up, exact Staging Site Profile, plan revision and audited rollback-controlled reconciliation policies apply. The coordinator cannot mint identity or bypass grant/Production safety gates.",
+      "review_rationale": "New guarded recovery coordinator defaults DEFER, requires authoritative Staging Site Profile, sealed pre-update grant baseline and continuation permit, verified OAuth step-up and eligible exact plan, denies stale grants and invokes the existing audited reconciliation operation only with nonproduction_approved_auto=true. No independent mutation authority is introduced. Static integration contract and actual PHP gate test cover this source for CI-only review."
     }
   ],
   "lifecycle": [],
@@ -7492,6 +7514,50 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Exact grant reconciler adds opt-in nonproduction_approved_auto mode without weakening existing explicit confirmation for other requests. Production auto is denied before any writes, and previously approved exact server/ability/provider pairs must pass a sealed prior-baseline evaluator, current OAuth/step-up, exact plan and inventory and absence of stale/deny/wildcard authority before recording pre-mutation intent audit. Mutations remain guarded by existing exact postconditions and rollback. These are source/CI reviews only, not owner or Production authorization."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-post-update-approved-grant-recovery.php",
+      "source_blob_sha": "795fdede40e6370c3e0661810f19933c9342c275",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "OAUTH-01",
+        "UPDATES-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/post-update-approved-grant-recovery-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/nonproduction-approved-grants-contract.py"
+      ],
+      "owner_role": "Repository source/security reviewer — CI only; no live OAuth/Production grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "New recovery coordinator checks exact authenticated nonproduction environment, sealed previous grant baseline and live verified OAuth before invoking existing rollback-capable grant reconciler. Cron without OAuth defers; Production and stale grants are blocked. Same-PR contract checks source ordering and trusted executable PHP tests exercise the denied and allowed prior-grant classifier; certification remains read-only CI evidence."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-convergence.php",
+      "source_blob_sha": "69a32f84b58d3103daf6b5c67ef34a8d32c6fddb",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "OAUTH-01",
+        "UPDATES-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/post-update-approved-grant-recovery-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/nonproduction-approved-grants-contract.py"
+      ],
+      "owner_role": "Repository source/security reviewer — CI only; no live OAuth/Production grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Runtime Convergence now invokes the checked approved-grant recovery coordinator and reports its state separately; existing reconciliation, grant policy and audit boundaries are preserved. Same-PR contract checks source ordering and trusted executable PHP tests exercise the denied and allowed prior-grant classifier; certification remains read-only CI evidence."
     }
   ],
   "code_change_rules": {
