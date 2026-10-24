@@ -51,6 +51,30 @@ MAD4B_SCP_WordPress_Media_Context::page();
 $page = ob_get_clean();
 $check('media_admin_mime_controls', strpos($page, 'mime_types[]') !== false && strpos($page, '_wpnonce') !== false);
 $check('media_admin_no_id_list', strpos($page, 'attachment_ids') === false);
+$source_records = get_option('mad4b_scp_context_sources_v1', []);
+if (is_array($source_records)) {
+    foreach ($source_records as &$source) {
+        if (($source['provider']??'')==='wordpress_media') $source['last_scan_scope_mime_types']=['application/pdf'];
+    }
+    unset($source);
+    $scope_filter=static function()use($source_records){return $source_records;};
+    add_filter('pre_option_mad4b_scp_context_sources_v1',$scope_filter);
+    $scope_status=MAD4B_SCP_Context_Authority::status();
+    $check('required_txt_blocked_by_pdf_scope',($scope_status['required_outside_scan_scope_count']??-1)===3
+      && in_array('governed_context_required_mime_not_scanned',$scope_status['blockers']??[],true));
+    remove_filter('pre_option_mad4b_scp_context_sources_v1',$scope_filter);
+    foreach ($source_records as &$source) {
+        if (($source['provider']??'')==='wordpress_media') $source['last_scan_scope_mime_types']=['text/plain'];
+    }
+    unset($source);
+    $scope_filter=static function()use($source_records){return $source_records;};
+    add_filter('pre_option_mad4b_scp_context_sources_v1',$scope_filter);
+    $scope_status=MAD4B_SCP_Context_Authority::status();
+    $check('required_txt_covered_by_txt_scope',($scope_status['required_outside_scan_scope_count']??-1)===0
+      && !in_array('governed_context_required_mime_not_scanned',$scope_status['blockers']??[],true));
+    remove_filter('pre_option_mad4b_scp_context_sources_v1',$scope_filter);
+}
+
 
 wp_set_current_user(0);
 echo "SUMMARY pass=$pass fail=$fail\n";
