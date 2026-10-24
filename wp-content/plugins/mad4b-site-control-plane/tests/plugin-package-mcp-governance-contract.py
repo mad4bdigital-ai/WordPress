@@ -74,6 +74,17 @@ for marker in [
 ]:
     require(marker in package, f"plugin package governance marker missing: {marker}")
 
+# A control-plane self-update is categorically outside the third-party package
+# provider inventory. An explicit deny code must guide callers to the existing
+# self-update route instead of encouraging an unsafe synthetic provider record.
+for token in [
+    "mad4b_control_plane_self_update_route_required",
+    "'mad4b-site-control-plane'",
+    "'mad4b_site_control_plane'",
+    "governed control-plane update coordinator",
+]:
+    require(token in package, f"self-update route diagnostic missing: {token}")
+
 for forbidden in [
     "'download_url'",
     "'archive_path'",
