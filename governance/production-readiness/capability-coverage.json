@@ -7274,6 +7274,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Uses established WordPress admin permissions, exact Site Profile, Agent Registry, authenticated OAuth, reviewed Context integrity, existing MCP Ability and safe credential storage controls.",
       "review_rationale": "Exact-source UI registration fix: retain module inclusion inside existing ChatGPT connection UI but call Unified Agent boot only when WordPress hook API add_action exists. This preserves runtime form routes in WordPress and avoids PHP fatal when standalone deferred-admin fixture includes the UI without WordPress. Updated same-PR contract asserts the conditional guard; CI deferred-admin runtime independently exercises the failure mode. No site grant, OAuth consent, Production enablement, publisher authority or deployment is inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-connection-stage-diagnostics.php",
+      "source_blob_sha": "9191861f283b9bec389802e9eb8cbcf73811695e",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-connection-stage-regression.py"
+      ],
+      "owner_role": "Repository diagnostics source reviewer — CI-only; no staging or Production operator authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact-source review for newly accepted externally supplied stage observations. A structured external failed/passed MCP call is labeled as unverified external observation only, while an opaque internal_error cannot be interpreted as local failure; no external connection certification, backend root-cause attribution, mutation, OAuth grant or Production permission is enabled. Same-PR trusted Python regression executes the PHP runtime fixture asserting failed external read remains distinct from local initialization and no fabricated root cause; static checks verify source fail-closed markers. Existing historical blob reviews are preserved."
     }
   ],
   "code_change_rules": {
