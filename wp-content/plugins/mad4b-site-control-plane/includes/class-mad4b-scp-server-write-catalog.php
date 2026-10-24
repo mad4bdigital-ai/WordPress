@@ -14,6 +14,12 @@ trait MAD4B_SCP_Server_Write_Catalog {
                 // Existing Host Bridge is native signed-job and exact-approval
                 // fenced; cataloguing this does not grant Host authority.
                 'mad4b/host-operation-apply', 'mad4b/optional-governance-apply',
+                // Existing ChatGPT write-execute still enforces the governed
+                // Write authority, exact OAuth/actor grants and approval ticket.
+                // The transfer Ability itself additionally enforces scoped
+                // Staging-only media permission and the global write kill switch.
+                // Never surface this as an unreviewed direct ChatGPT step-up.
+                'mad4b/attachment-transfer',
                 'mad4b/native-recovery-start', 'mad4b/native-recovery-cleanup',
                 'mad4b/deployment-binding-setup-apply', 'mad4b/deployment-binding-native-apply',
                 // Exact Staging-native bootstrap was previously visible only

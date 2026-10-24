@@ -43,7 +43,7 @@ certify a working external MCP session. Write remains unverified/unready.
 ## Baseline
 
 - target branch: `master`
-- reviewed repository parent: `35a7141b10ff0270959c9231123f99e238788e5b` (integration PR #486 source review; not release attestation)
+- reviewed repository parent: `17a447839bd091f95d964153814bc4382677a8c8` (scoped CI-source reconciliation for PR #490 against the immutable master parent; not release attestation, runtime acceptance, or historical feature recertification; prior integration review: `35a7141b10ff0270959c9231123f99e238788e5b`)
 - Control Plane line: `0.4.0-rc.59`
 - MCP Adapter line: `0.6.1`
 - Production authorization: false
