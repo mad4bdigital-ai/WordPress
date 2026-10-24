@@ -78,6 +78,12 @@ try {
  $second=substr($data,15);
  $written=attempt('chunk',array('transfer_id'=>$id,'offset'=>15,'data_base64'=>base64_encode($second)));
  check_ok(!is_wp_error($written)&&$written['next_offset']===strlen($data),'resume_chunk');
+ $stateKey='mad4b_transfer_'.hash('sha256',$id);
+ $originalState=$GLOBALS['transients'][$stateKey];
+ $GLOBALS['transients'][$stateKey]['offset']=0;
+ $stale=attempt('finish',array('transfer_id'=>$id));
+ check_ok(is_wp_error($stale)&&$stale->get_error_code()==='mad4b_transfer_integrity','stale_persisted_offset_denied');
+ $GLOBALS['transients'][$stateKey]=$originalState;
  $done=attempt('finish',array('transfer_id'=>$id));
  check_ok(!is_wp_error($done)&&$done['verified']===true&&$done['attachment_id']===2026,'complete');
  check_ok($GLOBALS['last_hash']===$sha&&$done['sha256']===$sha,'verified_bytes');
