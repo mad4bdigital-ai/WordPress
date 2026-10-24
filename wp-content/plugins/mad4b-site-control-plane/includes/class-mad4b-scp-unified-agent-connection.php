@@ -97,7 +97,10 @@ final class MAD4B_SCP_Unified_Agent_Connection {
         $result = WP_Application_Passwords::create_new_application_password( $user->ID, array( 'name' => 'MAD4B Agent Connection — ' . self::site_id() ) );
         if ( is_wp_error( $result ) ) return $result;
         $uuid = isset( $result[1]['uuid'] ) ? (string) $result[1]['uuid'] : '';
-        if ( ! preg_match( '/^[a-f0-9-]{36}$/iD', $uuid ) ) return new WP_Error( 'mad4b_connection_credential_invalid', 'Credential metadata unavailable; review WordPress Application Passwords.' );
+        if ( ! preg_match( '/^[a-f0-9-]{36}$/iD', $uuid ) ) {
+            if ( '' !== $uuid ) WP_Application_Passwords::delete_application_password( $user->ID, $uuid );
+            return new WP_Error( 'mad4b_connection_credential_invalid', 'Credential metadata unavailable; review WordPress Application Passwords.' );
+        }
         $record = wp_json_encode( array(
             'site' => self::site_id(), 'user_id' => (int) $user->ID,
             'agent_public_id' => (string) $agent['public_id'], 'uuid' => $uuid,
@@ -110,7 +113,7 @@ final class MAD4B_SCP_Unified_Agent_Connection {
         $ok = $handle && is_string( $record ) && strlen( $record ) === fwrite( $handle, $record ) && fflush( $handle );
         if ( $handle ) fclose( $handle );
         if ( ! $ok ) {
-            if ( is_file( $file ) ) @unlink( $file );
+            if ( $handle && is_file( $file ) ) @unlink( $file );
             WP_Application_Passwords::delete_application_password( $user->ID, $uuid );
             return new WP_Error( 'mad4b_connection_vault_write', 'Vault write failed; issued password revoked.' );
         }
@@ -167,11 +170,11 @@ final class MAD4B_SCP_Unified_Agent_Connection {
         $allowed = array();
         foreach ( self::available_agents() as $row ) $allowed[ (string) $row['public_id'] ] = $row;
         if ( 'new' === $selected ) {
-            $existing = MAD4B_SCP_Agent_Registry::get_agent_by_slug( self::SLUG );
+            $existing = MAD4B_SCP_Agent_Registry::get_agent_by_slug( self::SLUG . '-u' . get_current_user_id() );
             if ( $existing && (int) ( $existing['wp_user_id'] ?? 0 ) !== get_current_user_id() )
                 self::fail( 'An agent with this name belongs to another user.', 409 );
             $agent = $existing ?: MAD4B_SCP_Agent_Registry::create_agent( array(
-                'slug' => self::SLUG, 'label' => 'ChatGPT Governed Agent', 'wp_user_id' => get_current_user_id(),
+                'slug' => self::SLUG . '-u' . get_current_user_id(), 'label' => 'ChatGPT Governed Agent', 'wp_user_id' => get_current_user_id(),
                 'environment' => 'all', 'status' => 'disabled',
             ) );
         } elseif ( isset( $allowed[ $selected ] ) ) {
@@ -197,7 +200,8 @@ final class MAD4B_SCP_Unified_Agent_Connection {
             $provider = MAD4B_SCP_Servers::provider_for_ability( 'mad4b-chatgpt', $ability );
             if ( ! is_string( $provider ) || '' === $provider ) continue;
             $prior = MAD4B_SCP_Agent_Registry::exact_grant( $agent['id'], 'mad4b-chatgpt', $ability, $provider );
-            if ( $prior ) continue;
+            if ( ! is_wp_error( $prior ) ) continue;
+            if ( 'mad4b_nhi_grant_missing' !== $prior->get_error_code() ) continue;
             $granted = MAD4B_SCP_Agent_Registry::grant_ability( $agent['public_id'], 'mad4b-chatgpt', $ability,
                 $provider, array(), 'allow', self::environment() );
             if ( true === $granted ) ++$read_grants;
