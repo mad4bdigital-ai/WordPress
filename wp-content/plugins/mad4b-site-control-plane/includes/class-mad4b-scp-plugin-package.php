@@ -287,14 +287,34 @@ final class MAD4B_SCP_Plugin_Package {
 		);
 	}
 
+	/** Static, non-authorizing resolution hints; never returns URLs or usable grants. */
+	private static function package_route_guidance( $reason ) {
+		$control_plane = 'control_plane' === $reason;
+		return array(
+			'contract' => 'mad4b.plugin-package-route-guidance.v1',
+			'route' => $control_plane ? 'governed_control_plane_self_update' : 'certified_provider_inventory',
+			'next_read_ability' => $control_plane ? 'mad4b/control-plane-selected-head-plan' : 'mad4b/provider-contracts-status',
+			'alternative_read_ability' => $control_plane ? 'mad4b/control-plane-upload-plan' : '',
+			'reason' => $reason,
+			'caller_supplied_package_allowed' => false,
+			'auto_apply_allowed' => false,
+			'production_allowed' => false,
+			'mutation_performed' => false,
+		);
+	}
+
 	private static function authority( $provider, $component ) {
 		// The core control plane owns its separate, exact-artifact self-update workflow.
 		// Never route it through third-party provider installation or silently widen
 		// the certified-provider catalog to make a self-replacement appear eligible.
 		if ( in_array( $provider, array( 'mad4b', 'mad4b-site-control-plane', 'mad4b_site_control_plane' ), true ) ) {
-			return new WP_Error( 'mad4b_control_plane_self_update_route_required', 'The MAD4B control plane must use the governed control-plane update coordinator, not the certified third-party plugin-package pipeline.' );
+			return new WP_Error(
+				'mad4b_control_plane_self_update_route_required',
+				'The MAD4B control plane must use the governed control-plane update coordinator, not the certified third-party plugin-package pipeline.',
+				self::package_route_guidance( 'control_plane' )
+			);
 		}
-		if ( '' === $provider || ! class_exists( 'MAD4B_SCP_Provider_Contracts' ) ) return new WP_Error( 'mad4b_plugin_package_provider_required', 'A cataloged provider_id is required.' );
+		if ( '' === $provider || ! class_exists( 'MAD4B_SCP_Provider_Contracts' ) ) return new WP_Error( 'mad4b_plugin_package_provider_required', 'A cataloged provider_id is required.', self::package_route_guidance( 'missing_provider' ) );
 		$target_version = class_exists( 'MAD4B_SCP_Runtime_Release_Set', false )
 			&& MAD4B_SCP_Runtime_Release_Set::component_apply_in_progress( $provider )
 			? MAD4B_SCP_Runtime_Release_Set::active_component_target_version( $provider )
@@ -302,7 +322,7 @@ final class MAD4B_SCP_Plugin_Package {
 		$contract = '' !== $target_version && method_exists( 'MAD4B_SCP_Provider_Contracts', 'get_for_version' )
 			? MAD4B_SCP_Provider_Contracts::get_for_version( $provider, $target_version )
 			: MAD4B_SCP_Provider_Contracts::get( $provider );
-		if ( ! is_array( $contract ) || empty( $contract ) ) return new WP_Error( 'mad4b_plugin_package_provider_uncertified', 'Provider has no exact repository certification authority for the requested runtime release-set version.' );
+		if ( ! is_array( $contract ) || empty( $contract ) ) return new WP_Error( 'mad4b_plugin_package_provider_uncertified', 'Provider has no exact repository certification authority for the requested runtime release-set version.', self::package_route_guidance( 'uncertified_provider' ) );
 
 		$authority = $contract;
 		if ( '' !== $component ) {
