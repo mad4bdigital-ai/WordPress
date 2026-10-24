@@ -110,6 +110,7 @@ def transfer(site: str, source: Path, token: str, resume_id: str | None = None) 
         transfer_id = state.get("transfer_id")
         if not isinstance(transfer_id, str) or not TRANSFER_ID.fullmatch(transfer_id):
             raise TransferError("Server returned invalid transfer identity")
+    print("TRANSFER_RESUME_ID: " + transfer_id, file=sys.stderr, flush=True)
     offset = state.get("next_offset")
     if not isinstance(offset, int) or isinstance(offset, bool) or not 0 <= offset <= size:
         raise TransferError("Server returned out-of-range offset")
