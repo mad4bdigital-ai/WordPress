@@ -239,6 +239,25 @@ final class MAD4B_SCP_Unified_Agent_Connection {
         self::redirect( 'revoked' );
     }
 
+    /** Request-local health projection; no network or credential disclosure. */
+    public static function health() {
+        $oauth = MAD4B_SCP_ChatGPT_Connection_Admin_UI::status();
+        $receipt = self::receipt();
+        $fingerprint = hash( 'sha256', self::site_id() . '|' . home_url( '/' ) );
+        $matches = $receipt && isset( $receipt['site_fingerprint'] )
+            && hash_equals( $fingerprint, (string) $receipt['site_fingerprint'] );
+        return array(
+            'Identity' => self::site_ready() ? 'Enrolled site ready' : 'Enroll Site Profile first',
+            'Authentication' => ! empty( $oauth['ready_for_chatgpt_draft'] ) ? 'OAuth ready for consent' : 'OAuth needs setup',
+            'Grants' => $matches ? 'Agent configured; verified per request' : 'Setup pending',
+            'Tools' => ! empty( $oauth['gateway_registration_identity_ready'] ) ? 'Gateway registered' : 'Gateway not ready',
+            'Functional test' => ! empty( $oauth['external_connection_previously_verified'] )
+                ? 'Previously verified — live recheck required' : 'External test not yet verified',
+            'Credential Vault' => self::credential_record() ? 'Stored on server' : ( self::credential_available()
+                ? 'Available on explicit approval' : 'Not configured or unavailable' ),
+        );
+    }
+
     public static function render() {
         if ( ! self::allowed() ) return;
         $agents = self::available_agents();
@@ -257,6 +276,11 @@ final class MAD4B_SCP_Unified_Agent_Connection {
                 . ' · ' . esc_html( $receipt['environment'] ?? '' )
                 . '. OAuth is only ready for external consent until ChatGPT completes authorization. No live remote session is certified by this receipt.</p></div>';
         }
+        echo '<h3>Connection health</h3><ol>';
+        foreach ( self::health() as $stage => $message ) {
+            echo '<li><strong>' . esc_html( $stage ) . ':</strong> ' . esc_html( $message ) . '</li>';
+        }
+        echo '</ol>';
         echo '<p><strong>Detected environment:</strong> ' . esc_html( $env )
             . ' · <strong>Site identity:</strong> ' . ( $ready ? 'enrolled' : 'needs enrollment' )
             . ' · <strong>OAuth:</strong> ' . ( ! empty( $oauth['ready_for_chatgpt_draft'] ) ? 'ready for consent' : 'needs setup' )
