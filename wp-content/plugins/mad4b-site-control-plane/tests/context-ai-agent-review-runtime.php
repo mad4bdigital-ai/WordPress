@@ -31,6 +31,7 @@ function wp_register_ability( $name, $args ) {
 }
 function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $value ) ); }
 function sanitize_text_field( $value ) { return trim( strip_tags( (string) $value ) ); }
+function sanitize_textarea_field( $value ) { return trim( strip_tags( (string) $value ) ); }
 function absint( $value ) { return abs( (int) $value ); }
 function get_current_user_id() { return 42; }
 function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
@@ -107,6 +108,7 @@ class MAD4B_SCP_Agent_Registry {
 	public static $grant_enabled = false;
 	public static $configured_public_id = '22222222-2222-4222-8222-222222222222';
 	public static $wrong_public_id = '33333333-3333-4333-8333-333333333333';
+    public static $configured_environment = 'staging';
 
 	private static function configured_agent() {
 		return array(
@@ -115,7 +117,7 @@ class MAD4B_SCP_Agent_Registry {
 			'slug' => 'context-review-ai',
 			'label' => 'Context Review AI',
 			'status' => 'enabled',
-			'environment' => 'staging',
+			'environment' => self::$configured_environment,
 		);
 	}
 
@@ -731,7 +733,7 @@ echo "mad4b.site-control-plane.context-human-review.runtime.v12: PASS\n";
 
 // --- rc.54 delegated AI Agent approval mode ---
 
-function mad4b_ai_review_input( $asset_id, $decision = 'approve', $note = '' ) {
+function mad4b_ai_review_input( $asset_id, $decision = 'approve', $note = 'AI checked current source and classification evidence.' ) {
 	$asset = MAD4B_SCP_Context_Authority::asset( $asset_id );
 	mad4b_review_assert( ! empty( $asset ), 'AI review input requires a live Context asset.', $asset_id );
 	return array(
@@ -886,6 +888,79 @@ mad4b_review_assert( is_wp_error( $task_ai_review ), 'Task-local Context must re
 mad4b_review_assert( 'mad4b_context_review_source_mode_forbidden' === $task_ai_review->get_error_code(), 'Task-local AI review must fail with the shared governed-source boundary.', $task_ai_review->get_error_code() );
 mad4b_review_assert( $task_ai_revision === MAD4B_SCP_Context_Authority::registry_revision(), 'Denied task-local AI review must not mutate registry state.' );
 
+// AI-only is an independently selected review policy, not a new auth mechanism.
+// OAuth, exact Staging Agent/Ability grant, revision and SHA-256 still apply.
+$ai_only_before = MAD4B_SCP_Context_Authority::asset( $asset_id );
+$no_consent_ai_only = MAD4B_SCP_Context_Authority::set_review_policy(
+    'ai_only', MAD4B_SCP_Agent_Registry::$configured_public_id, false
+);
+mad4b_review_assert( is_wp_error( $no_consent_ai_only )
+    && 'mad4b_context_ai_review_confirmation_required' === $no_consent_ai_only->get_error_code(),
+    'AI-only delegation must require one-time administrator consent.', $no_consent_ai_only );
+$ai_only_policy = MAD4B_SCP_Context_Authority::set_review_policy(
+    'ai_only', MAD4B_SCP_Agent_Registry::$configured_public_id, true
+);
+MAD4B_SCP_Agent_Registry::$configured_environment = 'all';
+mad4b_review_assert( ! is_wp_error( $ai_only_policy ) && 'ai_only' === $ai_only_policy['mode'],
+    'AI-only review policy must persist after one initial confirmation.', $ai_only_policy );
+$ai_only_status = MAD4B_SCP_Context_Authority::ai_review_policy_status();
+mad4b_review_assert( MAD4B_SCP_Agent_Registry::$configured_environment === 'all', 'Reusable Agent is not fixed to Staging.' );
+mad4b_review_assert( ! empty( $ai_only_status['ready'] )
+    && ! empty( $ai_only_status['ai_only_final_review'] )
+    && ! empty( $ai_only_status['catalog_eligible'] ),
+    'AI-only still requires exact Agent grant and active Staging profile.', $ai_only_status );
+mad4b_review_assert( MAD4B_SCP_Context_Authority::asset( $asset_id ) === $ai_only_before,
+    'Saving AI-only policy must never review the document itself.' );
+$missing_evidence = MAD4B_SCP_Context_Authority::review_asset_by_agent(
+    mad4b_ai_review_input( $asset_id, 'approve' )
+);
+mad4b_review_assert( is_wp_error( $missing_evidence )
+    && 'mad4b_context_ai_only_evidence_required' === $missing_evidence->get_error_code(),
+    'AI-only approval without cited evidence must be denied.', $missing_evidence );
+$raw_before_ai_only = $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][ $asset_id ];
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][ $asset_id ]['classification_confidence'] = 0.30;
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][ $asset_id ]['classification_source'] = 'automatic';
+$low_confidence_approval = mad4b_ai_review_input( $asset_id, 'approve' );
+$low_confidence_approval['review_evidence'] = 'Evidence: cited source review completed.';
+$denied_low = MAD4B_SCP_Context_Authority::review_asset_by_agent( $low_confidence_approval );
+mad4b_review_assert( is_wp_error( $denied_low )
+    && 'mad4b_context_ai_review_classification_confirmation_required' === $denied_low->get_error_code(),
+    'AI-only cannot approve low-confidence automatically classified sources.', $denied_low );
+$needs_changes = mad4b_ai_review_input( $asset_id, 'needs_changes', 'Classification needs source confirmation.' );
+$needs_changes['classification_proposal'] = 'Verify editorial_guidelines against WooCommerce publishing policy';
+$needs_changes['review_evidence'] = 'Current imported source has unverified classification.';
+$ai_only_changes = MAD4B_SCP_Context_Authority::review_asset_by_agent( $needs_changes );
+mad4b_review_assert( ! is_wp_error( $ai_only_changes )
+    && 'needs_changes' === $ai_only_changes['review_status']
+    && 'automatic' === $ai_only_changes['classification_source'],
+    'AI-only must record needs_changes without silently recategorizing.', $ai_only_changes );
+$ai_only_reject = MAD4B_SCP_Context_Authority::review_asset_by_agent(
+    mad4b_ai_review_input( $asset_id, 'reject', 'Insufficient verified source authority.' )
+);
+mad4b_review_assert( ! is_wp_error( $ai_only_reject )
+    && 'rejected' === $ai_only_reject['review_status'],
+    'AI-only Agent must be able to reject a deficient source.', $ai_only_reject );
+// Hermetic fixture models an independent classification correction; the AI
+// review itself never mutates source classification or authority.
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][ $asset_id ]['classification_confidence'] = $raw_before_ai_only['classification_confidence'];
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][ $asset_id ]['classification_source'] = $raw_before_ai_only['classification_source'];
+$ready_ai_only = mad4b_ai_review_input( $asset_id, 'approve', 'Source and category independently verified.' );
+$ready_ai_only['review_evidence'] = 'Verified source ownership, complete normalized content, SHA-256 and registered classification.';
+$approved_ai_only = MAD4B_SCP_Context_Authority::review_asset_by_agent( $ready_ai_only );
+mad4b_review_assert( ! is_wp_error( $approved_ai_only )
+    && 'approved' === $approved_ai_only['review_status']
+    && 'ai_agent' === $approved_ai_only['review_actor_type']
+    && 0 === (int) $approved_ai_only['reviewed_by'],
+    'AI-only approve is final without impersonating human approval.', $approved_ai_only );
+$ai_only_events = array_values( array_filter( $GLOBALS['mad4b_context_audit'], static function ( $row ) {
+    return 'mad4b/context-asset-ai-review' === $row['event'];
+} ) );
+$last_ai_only_event = end( $ai_only_events );
+mad4b_review_assert( 'ai_only' === $last_ai_only_event['data']['review_policy_mode']
+    && ! empty( $last_ai_only_event['data']['review_evidence'] )
+    && 'approve' === $last_ai_only_event['data']['decision'],
+    'AI-only final decision must retain audited evidence and policy mode.', $last_ai_only_event );
+
 MAD4B_SCP_Site_Profile::$environment = 'production';
 $production_review = MAD4B_SCP_Context_Authority::review_asset_by_agent( mad4b_ai_review_input( $asset_id ) );
 mad4b_review_assert( is_wp_error( $production_review ), 'AI Agent approval must remain fail-closed in Production.', $production_review );
@@ -893,6 +968,7 @@ mad4b_review_assert( 'mad4b_context_ai_review_staging_only' === $production_revi
 mad4b_review_assert( empty( MAD4B_SCP_Context_Authority::ai_review_catalog_eligible() ), 'Production must never expose AI review as runtime catalog-eligible.' );
 MAD4B_SCP_Site_Profile::$environment = 'staging';
 
+MAD4B_SCP_Agent_Registry::$configured_environment = 'staging';
 $human_only = MAD4B_SCP_Context_Authority::set_review_policy( 'human_only', '', false );
 mad4b_review_assert( ! is_wp_error( $human_only ), 'Administrator must be able to disable AI review without extra confirmation.', $human_only );
 mad4b_review_assert( 'human_only' === $human_only['mode'], 'Disabling AI review must restore human_only mode.', $human_only );
@@ -901,7 +977,7 @@ $final_asset = MAD4B_SCP_Context_Authority::asset( $asset_id );
 mad4b_review_assert( 'approved' === $final_asset['review_status'], 'Disabling AI mode must not erase the current reviewed state.', $final_asset );
 
 $policy_events = array_values( array_filter( $GLOBALS['mad4b_context_audit'], static function ( $row ) { return 'mad4b/context-review-policy-save' === $row['event']; } ) );
-mad4b_review_assert( 2 === count( $policy_events ), 'AI mode enable and disable must each append one policy audit event.', $policy_events );
+mad4b_review_assert( 3 === count( $policy_events ), 'Human + AI, AI-only, and human-only transitions must each append one policy audit event.', $policy_events );
 mad4b_review_assert( empty( $policy_events[0]['data']['grant_reconciliation_called'] ) && empty( $policy_events[1]['data']['grant_reconciliation_called'] ), 'Review policy changes must never reconcile grants automatically.', $policy_events );
 
 echo "mad4b.site-control-plane.context-ai-agent-review.runtime.v1: PASS\n";
