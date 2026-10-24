@@ -20,6 +20,7 @@ final class MAD4B_SCP_ChatGPT_File_Transfer {
         return is_user_logged_in() && current_user_can( 'upload_files' )
             && class_exists( 'MAD4B_SCP_Policy', false )
             && true === MAD4B_SCP_Policy::can_read()
+            && true === MAD4B_SCP_Policy::can_mutate()
             && true === MAD4B_SCP_Policy::can_connect_user( get_current_user_id() )
             && class_exists( 'MAD4B_SCP_Site_Profile', false )
             && MAD4B_SCP_Site_Profile::configured()
