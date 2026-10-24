@@ -21,4 +21,10 @@ checks = {
 }
 for key, ok in checks.items():
     if not ok: raise SystemExit("UNIFIED_CONNECTION_CONTRACT_FAIL:" + key)
+import subprocess
+fixture = root / "tests/unified-agent-connection-runtime.php"
+for command in (["php", "-l", str(fixture)], ["php", str(fixture)]):
+    result = subprocess.run(command, cwd=root, text=True, capture_output=True, timeout=60, check=False)
+    if result.returncode or (len(command) == 2 and "UNIFIED_CONNECTION_RUNTIME: PASS" not in result.stdout):
+        raise SystemExit("UNIFIED_CONNECTION_RUNTIME_FAIL\n" + result.stdout + result.stderr)
 print("UNIFIED_CONNECTION_CONTRACT: PASS", len(checks))
