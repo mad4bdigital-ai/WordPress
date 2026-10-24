@@ -82,6 +82,8 @@ final class MAD4B_SCP_Context_Authority {
 							'asset_id' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
 							'decision' => array( 'type' => 'string', 'enum' => array( 'approve', 'needs_changes', 'reject' ) ),
 							'review_note' => array( 'type' => 'string', 'maxLength' => 1000, 'default' => '' ),
+                            'review_evidence' => array( 'type' => 'string', 'maxLength' => 2000, 'default' => '' ),
+                            'classification_proposal' => array( 'type' => 'string', 'maxLength' => 200, 'default' => '' ),
 							'expected_content_hash' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
 							'expected_registry_revision' => array( 'type' => 'integer', 'minimum' => 0 ),
 							'expected_authority_manifest_fingerprint' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
