@@ -1431,6 +1431,9 @@ final class MAD4B_SCP_Context_Authority {
 				if ( ! in_array( $mode, array( 'governed', 'task_attachment' ), true ) ) return new WP_Error( 'mad4b_context_source_mode_invalid', 'Context source mode must be governed or task_attachment.' );
 
 				$external_root_id = self::bounded_external_id( isset( $input['external_root_id'] ) ? $input['external_root_id'] : '' );
+				// WordPress Media is one site-wide library, not an arbitrary folder root.
+				// Normalize legacy aliases before computing the stable source identity.
+				if ( 'wordpress_media' === $provider ) $external_root_id = 'site_media_library';
 				if ( '' === $external_root_id ) return new WP_Error( 'mad4b_context_source_root_required', 'A canonical source root ID is required.' );
 				if ( 'root' === strtolower( $external_root_id ) ) return new WP_Error( 'mad4b_context_source_root_forbidden', 'My Drive root is browse-only. Select a specific Google Drive folder as the Context source boundary.' );
 				$label = trim( sanitize_text_field( isset( $input['label'] ) ? $input['label'] : '' ) );
