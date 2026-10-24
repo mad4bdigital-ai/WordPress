@@ -1884,7 +1884,9 @@
         "MCP-01",
         "GOVERNANCE-01",
         "SECURITY-01",
-        "PLATFORM-01"
+        "PLATFORM-01",
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-contract.py",
@@ -1897,7 +1899,7 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing OAuth, Staging Site Profile, scoped WordPress capability, Media Library and global write kill switch remain mandatory; no automatic grant or Production ability.",
-      "review_rationale": "Scoped upload interface and bounded private transfer housekeeping with exact ownership, isolated PHP permissions and content-integrity fixtures. Live ChatGPT attachment access, MCP discovery and WordPress origin acceptance are not certified."
+      "review_rationale": "Scoped upload interface and bounded private transfer housekeeping with exact ownership, isolated PHP permissions and content-integrity fixtures. Live ChatGPT attachment access, MCP discovery and WordPress origin acceptance are not certified. Cron cleanup is bounded to exact private temporary transfer files; automation and performance checklist controls are explicitly mapped without extending authority."
     }
   ],
   "lifecycle": [],
