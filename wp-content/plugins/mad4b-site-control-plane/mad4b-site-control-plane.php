@@ -672,6 +672,8 @@ MAD4B_SCP_Automation_SLO::boot();
 MAD4B_SCP_G7_Read_Surfaces::boot();
 MAD4B_SCP_Security_Diagnostics::boot();
 MAD4B_SCP_Upload_Execution_Guard::boot();
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-chatgpt-file-transfer.php';
+MAD4B_SCP_ChatGPT_File_Transfer::boot();
 MAD4B_SCP_Security_Forensics::boot();
 MAD4B_SCP_ACI01_Intake_Preview::boot();
 MAD4B_SCP_ACI01_Evidence_Preview::boot();
