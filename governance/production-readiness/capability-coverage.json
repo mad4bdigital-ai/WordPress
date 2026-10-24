@@ -1920,6 +1920,26 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing administrator role, OAuth consent, MCP execution fences, vault protection, Site Profile binding, capability and mutation permissions cover this internal service.",
       "execution_note": "No external Vault, application password, site grant, WordPress mutation or OAuth consent was issued as part of GitHub source CI."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-package-route-resolver.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/package-route-resolver-runtime.php"
+      ],
+      "owner_role": "Repository source security reviewer; CI-only, not WordPress operator or Production authorizer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Staging isolation, certified provider boundaries, WordPress control-plane self-update routing, and no-mutation policy cover this read-only route classifier without granting new authority.",
+      "review_rationale": "New deterministic PHP class classifies Control Plane self-update separately from certified external provider packages, rejects missing providers and non-Staging eligibility, and reports no auto-apply or caller-supplied packages. Same-PR Python and PHP fixtures test negative and positive branches. Source CI is not live WordPress acceptance."
     }
   ],
   "lifecycle": [],
@@ -7158,6 +7178,44 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing governed control-plane self-update coordinator, certified third-party package authority and fail-closed provider selection controls apply; no new provider/grant/installation authority is created.",
       "review_rationale": "Exact source denies mad4b, mad4b-site-control-plane and mad4b_site_control_plane as third-party package provider aliases before provider selection, returning mad4b_control_plane_self_update_route_required. Direct PHP reflection fixture asserts all three denied aliases, while scoped Python contract asserts the relevant authority and denied-route markers. Package workflow executes both regressions. CI source coverage is not a live self-update certification or deployment approval."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-package-route-resolver.php",
+      "source_blob_sha": "f98fd2e968224cde7dd191c377e040105905c703",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/package-route-resolver-runtime.php"
+      ],
+      "owner_role": "Repository source security reviewer — CI-only; no site deployment or grant authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Reviewed exact new router source. Target aliases for MAD4B select the independent selected-head planner, registered providers select the third-party planner, unknown targets and Production are not eligible. No network, filesystem mutation, authorization, arbitrary package selection or auto-apply. Regression contract and hermetic PHP cases are present in this PR."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-package.php",
+      "source_blob_sha": "42c9c279fdccbfd71cecd7592a34f8449619e671",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-self-update-route-runtime.php"
+      ],
+      "owner_role": "Repository package-source reviewer — CI-only; no permission or deployment grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "New exact package-planning source uses the non-authorizing route resolver before provider authority, fails closed for uncatalogued providers, and returns structured safe guidance for MAD4B self-update aliases without entering third-party installation. The existing independent provider authority, Staging mutation policy and explicit apply fences remain in place. Same-PR Python and PHP regression fixtures cover the routing denials."
     }
   ],
   "code_change_rules": {
