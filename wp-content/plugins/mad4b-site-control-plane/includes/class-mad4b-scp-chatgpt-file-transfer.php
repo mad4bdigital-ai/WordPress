@@ -206,8 +206,11 @@ final class MAD4B_SCP_ChatGPT_File_Transfer {
         require_once ABSPATH . 'wp-admin/includes/file.php';
         require_once ABSPATH . 'wp-admin/includes/media.php';
         require_once ABSPATH . 'wp-admin/includes/image.php';
-        $upload = wp_handle_sideload( array( 'name' => $s['filename'], 'type' => $check['type'],
-            'tmp_name' => $path, 'error' => 0, 'size' => $s['size'] ), array( 'test_form' => false ) );
+        // WordPress declares the file argument by reference: a temporary
+        // variable is required (passing an inline array causes a PHP fatal).
+        $sideload_file = array( 'name' => $s['filename'], 'type' => $check['type'],
+            'tmp_name' => $path, 'error' => 0, 'size' => $s['size'] );
+        $upload = wp_handle_sideload( $sideload_file, array( 'test_form' => false ) );
         if ( ! is_array( $upload ) || isset( $upload['error'] ) ) {
             $s['status'] = 'receiving'; set_transient( self::key( $s['id'] ), $s, self::TTL );
             flock( $f, LOCK_UN ); fclose( $f );
