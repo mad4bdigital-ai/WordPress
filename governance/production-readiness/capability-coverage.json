@@ -7593,6 +7593,23 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Generation-fenced compact reads now contain exceptions from both pre-read and post-read snapshot headers, returning nonauthorizing structured errors. Same-PR contract and runtime tests cover both fail-closed exception boundaries."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+      "source_blob_sha": "dc7add578d47ef74691778652b2594a56e895bfe",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/no-input-read-ability-schema-runtime.php"
+      ],
+      "owner_role": "Repository source/security reviewer — CI only; no Production grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Follow-on exact-source review: governed read_execute now initializes an omitted parameter envelope as {} for both object and nullable-object schemas. Hermetic PHP runtime test checks 10 registration and dispatch cases; write schemas and authorization boundaries are unchanged."
     }
   ],
   "code_change_rules": {
