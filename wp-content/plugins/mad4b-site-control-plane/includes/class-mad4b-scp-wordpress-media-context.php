@@ -44,6 +44,49 @@ final class MAD4B_SCP_WordPress_Media_Context {
             'path' => (string) get_post_meta( $id, '_wp_attached_file', true ), 'mimeType' => $mime, 'content_hash' => $hash,
             'content_complete' => false, 'modifiedTime' => get_post_modified_time( 'c', true, $post ) );
     }
+    /** Normalize raw, bounded local bytes. Never treat metadata or OCR-needed PDFs as complete. */
+    public static function normalize_bytes( $mime, $binary ) {
+        $mime = (string) $mime;
+        $binary = (string) $binary;
+        if ( '' === $binary ) return new WP_Error( 'mad4b_media_empty_content', 'Empty Context attachments require review.' );
+        if ( 'application/pdf' === $mime ) {
+            if ( ! class_exists( 'MAD4B_SCP_Google_Drive_Context' ) || ! method_exists( 'MAD4B_SCP_Google_Drive_Context', 'normalize_local_pdf_bytes' ) )
+                return new WP_Error( 'mad4b_media_pdf_parser_unavailable', 'Shared local PDF text normalizer unavailable.' );
+            $parsed = MAD4B_SCP_Google_Drive_Context::normalize_local_pdf_bytes( $binary );
+            if ( is_wp_error( $parsed ) ) return $parsed;
+            if ( ! is_array( $parsed ) || true !== ( $parsed['complete'] ?? null ) || '' === trim( (string) ( $parsed['content'] ?? '' ) ) )
+                return new WP_Error( 'mad4b_media_pdf_extractor_required', 'PDF text is incomplete or OCR is required.' );
+            return array( 'normalized_text' => (string) $parsed['content'], 'content_complete' => true,
+                'content_bytes' => strlen( $binary ), 'normalization_status' => 'ready',
+                'normalization_reason' => 'local_pdf_text' );
+        }
+        if ( ! in_array( $mime, array( 'text/plain', 'text/markdown' ), true ) )
+            return new WP_Error( 'mad4b_media_mime_unsupported', 'Unsupported Context MIME type.' );
+        if ( strlen( $binary ) > 262144 ) return new WP_Error( 'mad4b_media_text_limit', 'Text exceeds the certified 256 KiB normalization limit.' );
+        if ( false !== strpos( $binary, "\x00" ) || ! function_exists( 'wp_check_invalid_utf8' ) )
+            return new WP_Error( 'mad4b_media_invalid_text', 'Attachment is not valid UTF-8 text.' );
+        $validated = wp_check_invalid_utf8( $binary, true );
+        if ( ! is_string( $validated ) || $validated !== $binary || '' === trim( $validated ) )
+            return new WP_Error( 'mad4b_media_invalid_text', 'Attachment must contain readable UTF-8 text.' );
+        return array( 'normalized_text' => $validated, 'content_complete' => true,
+            'content_bytes' => strlen( $binary ), 'normalization_status' => 'ready',
+            'normalization_reason' => 'local_text' );
+    }
+    private static function normalize_attachment_record( array $record ) {
+        $id = (int) ( $record['file_id'] ?? 0 );
+        $path = get_attached_file( $id );
+        if ( ! is_string( $path ) || ! is_file( $path ) || ! is_readable( $path ) )
+            return new WP_Error( 'mad4b_media_file_unavailable', 'Attachment cannot be read for normalization.' );
+        $bytes = file_get_contents( $path );
+        if ( ! is_string( $bytes ) || strlen( $bytes ) > 10485760 )
+            return new WP_Error( 'mad4b_media_file_unavailable', 'Attachment exceeds the bounded 10 MiB read.' );
+        $current_hash = hash( 'sha256', $bytes );
+        if ( ! hash_equals( (string) $record['content_hash'], $current_hash ) )
+            return new WP_Error( 'mad4b_media_changed_during_scan', 'Attachment changed while scanning. Retry.' );
+        $normalized = self::normalize_bytes( (string) $record['mimeType'], $bytes );
+        if ( is_wp_error( $normalized ) ) return $normalized;
+        return array_merge( $record, $normalized );
+    }
     /** Complete inventory of eligible attachments within an explicit MIME scope. */
     public static function inventory( array $mime_types = array( 'application/pdf', 'text/plain', 'text/markdown' ), $source_id = '' ) {
         $allowed = array( 'application/pdf', 'text/plain', 'text/markdown' );
@@ -67,6 +110,9 @@ final class MAD4B_SCP_WordPress_Media_Context {
                 && hash_equals( (string) ( $prior['version'] ?? '' ), (string) $record['modifiedTime'] ) ) {
                 $record['reuse_existing'] = true;
                 $record['content_complete'] = true;
+            } else {
+                $record = self::normalize_attachment_record( $record );
+                if ( is_wp_error( $record ) ) return $record;
             }
             $assets[] = $record;
         }

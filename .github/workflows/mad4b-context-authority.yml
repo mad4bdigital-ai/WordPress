@@ -143,6 +143,7 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-source-pipeline.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wordpress-media-context.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/integration/context-source-pipeline-local.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/context-media-normalization-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-preflight.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-intelligence.php
@@ -174,6 +175,9 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-document-normalization-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-skill-enforcement-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-registry-atomicity-runtime.php
+
+      - name: Verify local WordPress Media content normalization (no WordPress mutation)
+        run: php wp-content/plugins/mad4b-site-control-plane/tests/context-media-normalization-runtime.php
 
       - name: Enforce scoped Media inventory contract
         run: python3 wp-content/plugins/mad4b-site-control-plane/tests/context-media-inventory-contract.py

@@ -3012,6 +3012,13 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return trim( implode( ' ', $out ) );
 	}
 
+	/** Pure local PDF normalization facade shared with WordPress Media; no Google API calls. */
+	public static function normalize_local_pdf_bytes( $binary ) {
+		if ( ! is_string( $binary ) || strlen( $binary ) > 10485760 )
+			return new WP_Error( 'mad4b_context_local_pdf_limit', 'Local PDF exceeds the certified 10 MiB limit.' );
+		return self::normalize_pdf( $binary );
+	}
+
 	private static function normalize_pdf( $binary ) {
 		$binary = (string) $binary;
 		if ( 0 !== strpos( $binary, '%PDF-' ) ) return new WP_Error( 'mad4b_context_pdf_invalid', 'PDF signature is invalid.' );
