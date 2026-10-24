@@ -361,6 +361,9 @@ jobs:
         run: python specs/007-content-intelligence-workflow-platform/reconcile_task_ledger.py --check
 
       - name: Verify non-authorizing cumulative delivery fingerprints
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           python specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_rebind_delivery.py
           if git diff --quiet "$BASE"...HEAD -- 'specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/*-delivery.json'; then
