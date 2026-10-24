@@ -18,12 +18,17 @@ final class MAD4B_SCP_WordPress_Media_Context {
     }
     public static function page() {
         if ( ! self::allowed() ) wp_die( 'Access denied', '', array( 'response' => 403 ) );
-        echo '<div class="wrap"><h1>WordPress Media Library → Brand Context</h1><p>Register or refresh selected local attachment IDs. Read-only source; content review and publication require separate authority.</p>';
-        if ( isset( $_GET['mad4b_media_result'] ) ) echo '<p>' . esc_html( sanitize_text_field( wp_unslash( $_GET['mad4b_media_result'] ) ) ) . '</p>';
-        echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="mad4b_context_wp_media_sync">';
+        echo '<div class="wrap"><h1>WordPress Media Library → Brand Context</h1>';
+        echo '<p>Complete inventory of selected file types. Content is read-only; review and approval remain separate.</p>';
+        if ( isset( $_GET['mad4b_media_result'] ) )
+            echo '<p>' . esc_html( sanitize_text_field( wp_unslash( $_GET['mad4b_media_result'] ) ) ) . '</p>';
+        echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+        echo '<input type="hidden" name="action" value="mad4b_context_wp_media_sync">';
+        echo '<input type="hidden" name="media_mime_scope" value="1">';
         wp_nonce_field( 'mad4b_context_wp_media_sync' );
-        echo '<p><label>Attachment IDs (comma-separated, maximum 25): <input name="attachment_ids" type="text" class="large-text" required placeholder="66145,66146,66147"></label></p>';
-        submit_button( 'Scan all Media files matching these attachment types' );
+        foreach ( array( 'application/pdf' => 'PDF', 'text/plain' => 'TXT', 'text/markdown' => 'Markdown' ) as $mime => $name )
+            echo '<p><label><input type="checkbox" name="mime_types[]" value="' . esc_attr( $mime ) . '" checked> ' . esc_html( $name ) . '</label></p>';
+        submit_button( 'Scan all matching media files' );
         echo '</form></div>';
     }
     public static function attachment_record( $id ) {
@@ -94,12 +99,24 @@ final class MAD4B_SCP_WordPress_Media_Context {
     public static function submit() {
         if ( ! self::allowed() ) wp_die( 'Access denied', '', array( 'response' => 403 ) );
         check_admin_referer( 'mad4b_context_wp_media_sync' );
-        $raw = isset( $_POST['attachment_ids'] ) && is_string( $_POST['attachment_ids'] ) ? wp_unslash( $_POST['attachment_ids'] ) : '';
-        if ( ! preg_match( '/^\s*\d+(?:\s*,\s*\d+){0,24}\s*$/D', $raw ) ) wp_die( 'Invalid attachment list', '', array( 'response' => 400 ) );
-        $result = self::sync_ids( explode( ',', $raw ) );
-        $message = is_wp_error( $result ) ? $result->get_error_code() : 'updated_' . (int) $result['refreshed'];
-        wp_safe_redirect( add_query_arg( 'mad4b_media_result', sanitize_key( $message ), admin_url( 'tools.php?page=mad4b-wp-media-context' ) ) );
+        $types = isset( $_POST['mime_types'] ) && is_array( $_POST['mime_types'] )
+            ? array_map( 'sanitize_text_field', wp_unslash( $_POST['mime_types'] ) ) : array();
+        $allowed = array( 'application/pdf', 'text/plain', 'text/markdown' );
+        if ( ! isset( $_POST['media_mime_scope'] ) || ! $types || array_diff( $types, $allowed ) )
+            wp_die( 'Choose one or more supported MIME types.', '', array( 'response' => 400 ) );
+        $source = MAD4B_SCP_Context_Authority::upsert_source( array(
+            'provider' => 'wordpress_media', 'mode' => 'governed',
+            'external_root_id' => 'site_media_library', 'label' => 'WordPress Media Library',
+            'write_policy' => 'read_only', 'recursive' => false,
+        ) );
+        $result = is_wp_error( $source ) ? $source :
+            MAD4B_SCP_Context_Source_Pipeline::scan_complete( (string) $source['source_id'], array( 'mime_types' => $types ) );
+        $message = is_wp_error( $result ) ? $result->get_error_code() :
+            'scanned_' . (int) ( $result['asset_count'] ?? 0 );
+        wp_safe_redirect( add_query_arg( 'mad4b_media_result', sanitize_key( $message ),
+            admin_url( 'tools.php?page=mad4b-wp-media-context' ) ) );
         exit;
     }
+
 }
 MAD4B_SCP_WordPress_Media_Context::boot();
