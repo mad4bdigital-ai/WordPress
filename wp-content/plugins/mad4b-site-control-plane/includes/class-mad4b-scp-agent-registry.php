@@ -158,7 +158,16 @@ final class MAD4B_SCP_Agent_Registry {
 		if ( class_exists( 'MAD4B_SCP_Servers' ) ) {
 			if ( ! in_array( $server_id, MAD4B_SCP_Servers::expected_server_ids(), true ) ) return new WP_Error( 'mad4b_grant_server_unknown', 'Cannot grant an unknown MAD4B MCP server.' );
 			$expected_provider = MAD4B_SCP_Servers::provider_for_ability( $server_id, $ability_name );
-			if ( null === $expected_provider ) return new WP_Error( 'mad4b_grant_server_ability_mismatch', 'Cannot grant an ability on a server that does not mount it.' );
+			// Provision the declared core AI review permission before its runtime policy
+            // enables the write mount. This does NOT mount or execute the ability;
+            // the runtime still enforces exact identity, environment and policy.
+            if ( null === $expected_provider && 'mad4b-write' === $server_id
+                && 'mad4b/context-ai-review' === $ability_name
+                && class_exists( 'MAD4B_SCP_Context_Authority' )
+                && function_exists( 'wp_has_ability' ) && wp_has_ability( $ability_name ) ) {
+                $expected_provider = 'core';
+            }
+            if ( null === $expected_provider ) return new WP_Error( 'mad4b_grant_server_ability_mismatch', 'Cannot grant an ability on a server that does not mount it.' );
 			if ( $provider !== $expected_provider ) return new WP_Error( 'mad4b_grant_provider_mismatch', 'Grant provider does not match the certified provider.', array( 'expected_provider' => $expected_provider ) );
 		}
 		if ( 'mad4b-breakglass' === $server_id && ! apply_filters( 'mad4b_scp_allow_breakglass_grant_creation', false, $agent, $ability_name, $provider, $environment ) ) return new WP_Error( 'mad4b_breakglass_grant_creation_denied', 'Breakglass grants require an explicit exceptional administration path.' );
@@ -194,7 +203,8 @@ final class MAD4B_SCP_Agent_Registry {
 		if ( ! $row ) return new WP_Error( 'mad4b_nhi_subject_unbound', 'Authenticated subject is not bound to an enabled MAD4B agent.' );
 		if ( 'enabled' !== $row['status'] ) return new WP_Error( 'mad4b_nhi_agent_disabled', 'MAD4B agent is disabled.' );
 		$current = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'unknown' );
-		if ( ! in_array( $row['environment'], array( 'all', 'unknown', $current ), true ) ) return new WP_Error( 'mad4b_nhi_environment_denied', 'MAD4B agent is not enabled for this environment.' );
+		// Agent identity is environment-independent; exact per-ability grants
+		// remain environment-scoped and deny-first in exact_grant().
 		return $row;
 	}
 
