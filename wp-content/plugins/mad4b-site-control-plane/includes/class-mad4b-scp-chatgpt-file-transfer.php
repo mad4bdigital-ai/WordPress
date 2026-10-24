@@ -232,7 +232,11 @@ final class MAD4B_SCP_ChatGPT_File_Transfer {
         $f = fopen( $path, 'c+b' );
         if ( ! $f || ! flock( $f, LOCK_EX | LOCK_NB ) ) { if ($f) fclose($f); return self::error( 'mad4b_transfer_busy', 'Transfer is busy.', 409 ); }
         $latest = get_transient( self::key( $s['id'] ) );
-        if ( ! is_array( $latest ) || 'receiving' !== $latest['status'] || filesize( $path ) !== (int) $s['size']
+        if ( ! is_array( $latest ) || 'receiving' !== $latest['status']
+            || (int) $latest['offset'] !== (int) $s['size']
+            || (int) $latest['user'] !== get_current_user_id()
+            || ! hash_equals( (string) $latest['site'], hash( 'sha256', home_url( '/' ) ) )
+            || filesize( $path ) !== (int) $s['size']
             || ! hash_equals( $s['sha256'], hash_file( 'sha256', $path ) ) ) {
             flock( $f, LOCK_UN ); fclose( $f );
             return self::error( 'mad4b_transfer_integrity', 'Transfer size or SHA-256 mismatch.', 409 );
