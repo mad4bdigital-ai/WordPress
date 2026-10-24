@@ -6954,7 +6954,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-file-transfer.php",
-      "source_blob_sha": "3d9294aa57ed127179154e02d1e781f3efe593fb",
+      "source_blob_sha": "f749fb3a82acd097d25edc0b43ab26bf58f833a7",
       "control_ids": [
         "GOVERNANCE-01",
         "PLATFORM-01",
@@ -6969,7 +6969,7 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
-      "review_rationale": "Exact-source review of scoped Staging-only chunked upload service. Explicit actor capability, site enrollment, global write switch, strict hash/type/size validation, offset-lock replay defense and Media Library-only destination. Source CI only; Staging/Production acceptance remains separate."
+      "review_rationale": "Exact-source review of scoped Staging-only chunked upload service. Explicit actor capability, site enrollment, global write switch, strict hash/type/size validation, offset-lock replay defense and Media Library-only destination. Source CI only; Staging/Production acceptance remains separate. WordPress requires named-by-reference upload argument; CI includes this regression."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
