@@ -30,6 +30,7 @@ final class MAD4B_SCP_Context_Source_Pipeline {
             $records = $scan['assets'];
             if ( count( $records ) > 25 ) return new WP_Error( 'mad4b_pipeline_scan_batch_limit', 'Complete Drive inventory exceeds bounded sync capacity. Use certified paged inventory workflow.' );
         }
+        $registry_revision = MAD4B_SCP_Context_Authority::registry_revision();
         $known = MAD4B_SCP_Context_Authority::assets();
         if ( count( $records ) > 25 ) return new WP_Error( 'mad4b_pipeline_batch_limit', 'Plan exceeds bounded record capacity.' );
         $changes = array();
@@ -55,7 +56,7 @@ final class MAD4B_SCP_Context_Source_Pipeline {
         return array( 'review_queue_snapshot' => isset($review_queue['counts']) ? $review_queue['counts'] : array(), 'missing_candidates'=> $missing_candidates, 'absence_mutation_allowed'=>false, 'contract'=>self::CONTRACT, 'source_id'=>$source_id, 'provider'=>$provider,
             'stages'=>array( 'discover'=>'complete', 'validate'=>'complete', 'sync'=>'pending', 'diff'=>'complete', 'review'=>'pending', 'approve'=>'manual_only' ),
             'changes'=>$changes, 'records'=>$records, 'destructive_changes'=>false,
-            'source_fingerprint'=>hash( 'sha256', wp_json_encode( $source ) ) );
+            'registry_revision'=>$registry_revision, 'records_fingerprint'=>hash( 'sha256', wp_json_encode( $records ) ), 'source_fingerprint'=>hash( 'sha256', wp_json_encode( $source ) ) );
     }
     public static function sync( array $plan ) {
         if ( ! current_user_can( 'manage_options' ) || ! class_exists( 'MAD4B_SCP_Policy' ) || ! MAD4B_SCP_Policy::can_connect_user( get_current_user_id() ) )
@@ -68,6 +69,12 @@ final class MAD4B_SCP_Context_Source_Pipeline {
             return new WP_Error( 'mad4b_pipeline_source_changed', 'Source changed after discovery. Replan required.' );
         if ( ( $plan['provider'] ?? '' ) !== ( $source['provider'] ?? '' ) ) return new WP_Error( 'mad4b_pipeline_provider_changed', 'Provider changed.' );
         if ( ! empty( $plan['missing_candidates'] ) && ! empty( $plan['absence_mutation_allowed'] ) ) return new WP_Error( 'mad4b_pipeline_absence_mutation_denied', 'Absence requires certified complete-scan workflow.' );
+        if ( ! isset( $plan['registry_revision'] ) || (int) $plan['registry_revision'] !== MAD4B_SCP_Context_Authority::registry_revision() )
+            return new WP_Error( 'mad4b_pipeline_registry_stale', 'Registry changed; regenerate the plan.' );
+        if ( empty( $plan['records_fingerprint'] ) || ! hash_equals( (string) $plan['records_fingerprint'], hash( 'sha256', wp_json_encode( $plan['records'] ) ) ) )
+            return new WP_Error( 'mad4b_pipeline_records_modified', 'Planned records changed after discovery.' );
+        if ( 'google_drive' === $plan['provider'] )
+            return new WP_Error( 'mad4b_pipeline_drive_requires_certified_apply', 'Drive updates require the existing certified source-scan apply workflow and fresh provider verification.' );
         $count = 0;
         foreach ( $plan['records'] as $record ) {
             if ( ! is_array( $record ) ) return new WP_Error( 'mad4b_pipeline_record_invalid', 'Invalid record.' );
