@@ -7448,6 +7448,50 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Exact source is a pure non-authorizing previously approved grant gate. It checks authenticated sealed baseline and exact site/agent/profile/source chain with fresh trusted inventory, rejects any unapproved or duplicate grant pair, maintains Production denial and prohibits all mutation. Separate trusted Python wrapper executes the 7-case PHP regression; CI coverage is not live owner approval."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-post-update-continuation.php",
+      "source_blob_sha": "b538efd66cbb0258a2d8acb9f9ab01dffd9999c1",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "UPDATES-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/nonproduction-approved-grants-integration-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/nonproduction-approved-grants-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/environment-convergence-policy-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no site grants or Production permission",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact read-only sealed baseline now gathers exact already-authorized grant pairs from the enrolled Agent Registry, rejects non-exact, duplicate or count-drift grants, seals that snapshot before replacement and only serves it after verifying baseline integrity, consumed exact release identity and original continuation permit. Source remains guarded by existing audit/OAuth and independent nonproduction environment checks. The same-PR integration checker, pure PHP grant gate and environment runtime runner cover the new source boundaries; no live deployment/grant permission is certified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation.php",
+      "source_blob_sha": "786679d90864a6363be60d4990e9e35902b0a4d3",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "OAUTH-01",
+        "UPDATES-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/nonproduction-approved-grants-integration-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/nonproduction-approved-grants-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no site grants or Production permission",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact grant reconciler adds opt-in nonproduction_approved_auto mode without weakening existing explicit confirmation for other requests. Production auto is denied before any writes, and previously approved exact server/ability/provider pairs must pass a sealed prior-baseline evaluator, current OAuth/step-up, exact plan and inventory and absence of stale/deny/wildcard authority before recording pre-mutation intent audit. Mutations remain guarded by existing exact postconditions and rollback. These are source/CI reviews only, not owner or Production authorization."
     }
   ],
   "code_change_rules": {
