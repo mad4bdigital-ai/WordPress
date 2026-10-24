@@ -40,6 +40,18 @@ $check('unknown_source_denied',is_wp_error(MAD4B_SCP_Context_Source_Pipeline::pl
 $check('duplicate_ids_deduplicated',is_array(MAD4B_SCP_Context_Source_Pipeline::plan($source_id,['attachment_ids'=>[66145,66145]])));
 $check('oversized_batch_rejected',is_wp_error(MAD4B_SCP_Context_Source_Pipeline::plan($source_id,['attachment_ids'=>range(1,26)])));
 $check('no_absence_mutation',empty($plan['absence_mutation_allowed']));
+$missingScope = MAD4B_SCP_WordPress_Media_Context::inventory([], $source_id);
+$check('empty_mime_scope_denied', is_wp_error($missingScope));
+$reflect = new ReflectionMethod('MAD4B_SCP_Context_Authority', 'scan_includes_absence');
+$check('scoped_pdf_missing_eligible', $reflect->invoke(null, ['scoped_inventory'=>true, 'mime_types'=>['application/pdf']], ['mime_type'=>'application/pdf']) === true);
+$check('scoped_txt_excluded', $reflect->invoke(null, ['scoped_inventory'=>true, 'mime_types'=>['application/pdf']], ['mime_type'=>'text/plain']) === false);
+$check('unscoped_absence_eligible', $reflect->invoke(null, [], ['mime_type'=>'text/plain']) === true);
+ob_start();
+MAD4B_SCP_WordPress_Media_Context::page();
+$page = ob_get_clean();
+$check('media_admin_mime_controls', strpos($page, 'mime_types[]') !== false && strpos($page, '_wpnonce') !== false);
+$check('media_admin_no_id_list', strpos($page, 'attachment_ids') === false);
+
 wp_set_current_user(0);
 echo "SUMMARY pass=$pass fail=$fail\n";
 exit($fail?1:0);
