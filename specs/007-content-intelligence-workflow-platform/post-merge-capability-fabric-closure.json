@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.capability-fabric-post-merge-closure.v1",
   "phase": 37,
-  "baseline_merge_commit": "35a7141b10ff0270959c9231123f99e238788e5b",
+  "baseline_merge_commit": "17a447839bd091f95d964153814bc4382677a8c8",
   "production_authorized": false,
   "breakglass_widened": false,
   "generic_shell_authorized": false,
@@ -933,5 +933,11 @@
   },
   "dimension_ownership_contract": "mad4b.capability-fabric-dimension-ownership.v1",
   "open_priority_policy": "P0_P1_REQUIRE_EXPLICIT_DEPENDENCIES_FAIL_CLOSED_INTERIM_AND_EVIDENCE_PATH",
-  "traceability_family": "CAPFAB"
+  "traceability_family": "CAPFAB",
+  "baseline_source_review": {
+    "previous_commit": "35a7141b10ff0270959c9231123f99e238788e5b",
+    "reconciled_repository_parent": "17a447839bd091f95d964153814bc4382677a8c8",
+    "scope": "PR #490 source-only alignment; no terminal acceptance, runtime deployment or Production authorization",
+    "authorizing": false
+  }
 }

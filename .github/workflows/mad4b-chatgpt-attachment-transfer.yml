@@ -1,0 +1,41 @@
+name: MAD4B ChatGPT Attachment Transfer
+on:
+  pull_request:
+  push:
+    branches: [master]
+permissions:
+  contents: read
+concurrency:
+  group: mad4b-chatgpt-transfer-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+jobs:
+  attachment-transfer-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Validate bounded transfer bridge
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-file-transfer.php
+          php -l wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-contract.py
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-permission-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-permission-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-roundtrip-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-roundtrip-runtime.php
+          python3 -m py_compile tools/mad4b_chatgpt_attachment_sender.py
+          printf 'transfer fixture' > /tmp/mad4b-transfer-sender.txt
+          python3 tools/mad4b_chatgpt_attachment_sender.py --file /tmp/mad4b-transfer-sender.txt --site https://staging.example.test --dry-run
+          rm -f /tmp/mad4b-transfer-sender.txt
