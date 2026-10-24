@@ -43,13 +43,15 @@ certify a working external MCP session. Write remains unverified/unready.
 ## Baseline
 
 - target branch: `master`
-- reviewed repository parent: `926995305eeb97a3d30600c0e479f261bcf479ad`
+- reviewed repository parent: `38d2ad6bb4fb46858f437788c6bc983b17be6fc3` (repository-source review for PR #485; not release attestation)
 - Control Plane line: `0.4.0-rc.59`
 - MCP Adapter line: `0.6.1`
 - Production authorization: false
 - Architecture Freeze: active
 - repository ruleset: `23968498` active on `refs/heads/master`, no bypass actors
 - governance bootstrap exception: retired in PR #64
+
+Repository baseline reconciliation (24 October 2026): integration PR #485 merges reviewed PR #482 source with the already merged PR #484 Staging approval-plan fix. The exact current `master` parent above replaces the historical review pointer for repository-bound source checks only. The `0.4.0-rc.104` candidate still requires independent exact-head CI, owner attestation, and live Staging install approval; the historical `rc.59` release-root evidence below remains historical and is not a new release authorization.
 
 Any descendant synchronization MUST update the exact reviewed-parent identity (`feature.json.last_reviewed_master_parent_sha`), this document and the machine-readable closure ledger together. Deployable runtime-release identity remains separately evidenced and MUST NOT be rewritten merely because repository-only changes landed.
 
