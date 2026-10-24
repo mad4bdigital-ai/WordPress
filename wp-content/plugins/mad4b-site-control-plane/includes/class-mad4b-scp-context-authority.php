@@ -1723,6 +1723,9 @@ final class MAD4B_SCP_Context_Authority {
 				$sources[ $source_id ]['status'] = $scan_complete ? 'ready' : 'partial_scan';
 				$sources[ $source_id ]['last_synced_at'] = $scan_completed_at;
 				$sources[ $source_id ]['last_scan_complete'] = (bool) $scan_complete;
+                if ( ! empty( $scan['scoped_inventory'] ) && isset( $scan['mime_types'] ) && is_array( $scan['mime_types'] ) )
+                    $sources[ $source_id ]['last_scan_scope_mime_types'] = array_values( array_unique( array_map( 'sanitize_text_field', $scan['mime_types'] ) ) );
+                else unset( $sources[ $source_id ]['last_scan_scope_mime_types'] );
 				$sources[ $source_id ]['last_scan_generation'] = $scan_generation;
 				$sources[ $source_id ]['last_scan_truncation_reasons'] = $truncation_reasons;
 				if ( $scan_complete ) {
