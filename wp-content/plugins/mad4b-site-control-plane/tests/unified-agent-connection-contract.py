@@ -13,6 +13,7 @@ checks = {
     "auth_modes": all("'" + x + "'" in s for x in ("oauth","both","application_password")),
     "app_password": "WP_Application_Passwords::create_new_application_password( $user->ID" in s,
     "revocation": "WP_Application_Passwords::delete_application_password" in s,
+    "activation_rollback": "rollback_issued_credential( $issued )" in s and "mad4b_connection_rollback_mismatch" in s,
     "external_vault": "MAD4B_AGENT_CONNECTION_VAULT_DIR" in s and "realpath( ABSPATH )" in s and "fopen( $file, 'x' )" in s,
     "no_password_echo": "echo $result[0]" not in s and "echo $record['password']" not in s,
     "runtime_policy": "MAD4B_SCP_Site_Profile::origin_enrolled()" in s and "can_connect_user( get_current_user_id() )" in s,
