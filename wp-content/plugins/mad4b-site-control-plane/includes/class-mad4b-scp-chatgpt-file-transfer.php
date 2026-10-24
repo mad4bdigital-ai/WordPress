@@ -17,6 +17,7 @@ final class MAD4B_SCP_ChatGPT_File_Transfer {
 
     public static function boot() {
         add_action( 'rest_api_init', array( __CLASS__, 'register_routes' ) );
+        add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 45 );
     }
     /** Separate grant from broad MAD4B mutation authority, but never bypass the global kill switch. */
     public static function attachment_transfer_granted() {
@@ -35,6 +36,40 @@ final class MAD4B_SCP_ChatGPT_File_Transfer {
             && 'staging' === sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
             && MAD4B_SCP_Site_Profile::origin_enrolled()
             && MAD4B_SCP_Site_Profile::site_urls_match_enrollment();
+    }
+    public static function register_ability() {
+        if ( ! function_exists( 'wp_register_ability' ) || ! function_exists( 'wp_has_ability' ) || wp_has_ability( self::ABILITY ) ) return;
+        wp_register_ability( self::ABILITY, array(
+            'label' => 'ChatGPT Attachment Transfer',
+            'description' => 'Scoped, authenticated Staging file transfer into WordPress Media Library; no publishing.',
+            'category' => 'mad4b-write',
+            'execute_callback' => array( __CLASS__, 'execute_ability' ),
+            'permission_callback' => array( __CLASS__, 'permitted' ),
+            'input_schema' => array( 'type' => 'object', 'properties' => array(
+                'action' => array( 'type' => 'string', 'enum' => array( 'begin', 'chunk', 'status', 'finish', 'abort' ) ),
+                'transfer_id' => array( 'type' => 'string' ),
+                'filename' => array( 'type' => 'string' ),
+                'size' => array( 'type' => 'integer' ),
+                'sha256' => array( 'type' => 'string' ),
+                'offset' => array( 'type' => 'integer' ),
+                'data_base64' => array( 'type' => 'string' ),
+            ), 'required' => array( 'action' ), 'additionalProperties' => false ),
+            'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+            'meta' => array( 'public' => false, 'show_in_rest' => false,
+                'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'write' ),
+                'annotations' => array( 'readonly' => false, 'destructive' => false, 'idempotent' => false ) ),
+        ) );
+    }
+    public static function execute_ability( $input ) {
+        if ( ! self::permitted() ) return self::error( 'mad4b_transfer_denied', 'Scoped file transfer grant required.', 403 );
+        if ( ! is_array( $input ) ) return self::error( 'mad4b_transfer_input', 'Invalid input.' );
+        $action = isset( $input['action'] ) ? $input['action'] : '';
+        if ( ! in_array( $action, array( 'begin', 'chunk', 'status', 'finish', 'abort' ), true ) ) return self::error( 'mad4b_transfer_action', 'Invalid action.' );
+        $request = new WP_REST_Request( 'POST', '/' . self::NS . '/' . $action );
+        foreach ( $input as $key => $value ) {
+            if ( 'action' !== $key ) $request->set_param( $key, $value );
+        }
+        return self::$action( $request );
     }
     public static function register_routes() {
         foreach ( array( 'begin', 'chunk', 'finish', 'status', 'abort' ) as $method ) {
