@@ -3095,6 +3095,17 @@ final class MAD4B_SCP_Context_Authority {
 			if ( 'ready' === $asset['status'] && $content_complete && $review_exact ) ++$approved_required;
 		}
 
+        // A complete MIME-scoped scan must cover every required asset in that source.
+        // A PDF-only scan cannot certify mandatory TXT guidance as freshly observed.
+        $required_outside_scan_scope = 0;
+        foreach ( $required as $asset ) {
+            $source_id = (string) ( $asset['source_id'] ?? '' );
+            $scope = isset( $sources[ $source_id ]['last_scan_scope_mime_types'] )
+                ? $sources[ $source_id ]['last_scan_scope_mime_types'] : null;
+            if ( is_array( $scope ) && ! in_array( (string) ( $asset['mime_type'] ?? '' ), $scope, true ) )
+                ++$required_outside_scan_scope;
+        }
+
 		$blockers = array();
 		$warnings = array();
 		if ( empty( $site_status['configured'] ) || empty( $site_status['origin_match'] ) || empty( $site_status['environment_match'] ) ) $blockers[] = 'site_profile_not_enrolled';
@@ -3103,6 +3114,7 @@ final class MAD4B_SCP_Context_Authority {
 		if ( count( $raw_assets ) > self::MAX_ASSETS ) $blockers[] = 'context_asset_registry_capacity_exceeded';
 		if ( empty( $governed_sources ) ) $blockers[] = 'governed_context_source_missing';
 		if ( $partial_sources > 0 ) $blockers[] = 'governed_context_source_scan_incomplete';
+		if ( $required_outside_scan_scope > 0 ) $blockers[] = 'governed_context_required_mime_not_scanned';
 		if ( empty( $governed_assets ) ) $blockers[] = 'governed_context_assets_missing';
 		if ( ! empty( $governed_assets ) && empty( $required ) ) $blockers[] = 'mandatory_context_unclassified';
 		if ( count( $required ) !== $ready_required ) $blockers[] = 'mandatory_context_not_ready';
@@ -3176,6 +3188,7 @@ final class MAD4B_SCP_Context_Authority {
 			'governed_source_count' => count( $governed_sources ),
 			'task_source_count' => count( $task_sources ),
 			'partial_source_count' => $partial_sources,
+            'required_outside_scan_scope_count' => $required_outside_scan_scope,
 			'source_binding_diagnostics' => $source_diagnostics,
 			'google_connection_diagnostics' => $google_connection,
 			'diagnostics_authorizing' => false,
