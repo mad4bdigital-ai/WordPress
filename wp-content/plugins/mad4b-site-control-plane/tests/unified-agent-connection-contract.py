@@ -18,6 +18,11 @@ checks = {
     "runtime_policy": "MAD4B_SCP_Site_Profile::origin_enrolled()" in s and "can_connect_user( get_current_user_id() )" in s,
     "exact_read_only": "array( 'mad4b/site-info', 'mad4b/site-profile-status' )" in s and "'write_grants_added' => 0" in s,
     "receipt": "'external_session_verified' => false" in s,
+    "ai_only_policy_form": "mad4b_unified_agent_review_policy" in s and "name=\"review_mode\"" in s,
+    "separate_review_consent": "confirm_review_delegation" in s and "mad4b_unified_review_consent_required" in s,
+    "authority_reuse": "MAD4B_SCP_Context_Authority::set_review_policy(" in s and "MAD4B_SCP_Context_Authority::ai_review_policy_status()" in s,
+    "canonical_staging_agent": "MAD4B_SCP_Site_Profile::agent_slug()" in s and "mad4b_unified_review_staging_only" in s,
+    "no_review_auto_grant": "'write_grants_added' => 0" in s and "MAD4B_SCP_Agent_Registry::grant_ability( $agent['public_id'], 'mad4b-write'" not in s,
 }
 for key, ok in checks.items():
     if not ok: raise SystemExit("UNIFIED_CONNECTION_CONTRACT_FAIL:" + key)
