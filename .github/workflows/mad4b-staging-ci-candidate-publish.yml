@@ -1,0 +1,58 @@
+name: MAD4B Exact Staging CI Candidate Publisher
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Open same-repository PR number"
+        type: string
+        required: true
+      source_sha:
+        description: "Reviewed exact PR HEAD (40 lowercase hex)"
+        type: string
+        required: true
+      archive_sha256:
+        description: "Canonical package ZIP SHA-256 (64 lowercase hex)"
+        type: string
+        required: true
+      confirmation:
+        description: "PUBLISH EXACT STAGING CI CANDIDATE"
+        type: string
+        required: true
+
+concurrency:
+  group: mad4b-staging-candidate-${{ github.event.inputs.source_sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish-exact-staging-candidate:
+    name: Owner-approved immutable Staging candidate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      actions: read
+      pull-requests: read
+    steps:
+      - name: Checkout trusted master source (never execute PR code)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Verify fail-closed publisher contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -B tools/mad4b_publish_ci_staging_candidate.py --self-test
+
+      - name: Verify and publish two immutable Staging-only assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 -B tools/mad4b_publish_ci_staging_candidate.py

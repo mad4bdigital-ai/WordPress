@@ -3,7 +3,7 @@
  * Plugin Name: MAD4B Site Control Plane
  * Plugin URI: https://github.com/mad4bdigital-ai/WordPress
  * Description: Governed WordPress Abilities and MCP control surfaces for site, content, plugins, filesystem, database, diagnostics, adapters, and breakglass recovery.
- * Version: 0.4.0-rc.103
+ * Version: 0.4.0-rc.104
  * Requires at least: 6.9
  * Requires PHP: 7.4
  * Author: MAD4B
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 // attribution; this does not claim to measure other plugins or proxy latency.
 if ( ! defined( 'MAD4B_SCP_BOOT_START_AT' ) ) define( 'MAD4B_SCP_BOOT_START_AT', microtime( true ) );
 
-define( 'MAD4B_SCP_VERSION', '0.4.0-rc.103' );
+define( 'MAD4B_SCP_VERSION', '0.4.0-rc.104' );
 define( 'MAD4B_SCP_FILE', __FILE__ );
 define( 'MAD4B_SCP_DIR', plugin_dir_path( __FILE__ ) );
 define( 'MAD4B_SCP_BOOT_RUNTIME_FILE_SHA256', is_readable( __FILE__ ) ? hash_file( 'sha256', __FILE__ ) : '' );
