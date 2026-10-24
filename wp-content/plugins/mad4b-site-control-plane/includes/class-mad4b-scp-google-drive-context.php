@@ -3315,6 +3315,45 @@ final class MAD4B_SCP_Google_Drive_Context {
 	}
 
 
+    /** Read-only Google Calendar adapter reusing this provider's existing encrypted OAuth grant. */
+    public static function calendar_read_request( $resource, $args = array() ) {
+        if ( ! in_array( $resource, array( 'calendar_list', 'events' ), true ) )
+            return new WP_Error( 'mad4b_calendar_resource_invalid', 'Unsupported Calendar operation.' );
+        $status = self::connection_status();
+        if ( empty( $status['connected'] ) || ! empty( $status['token_unreadable'] ) || ! empty( $status['revocation_pending'] ) )
+            return new WP_Error( 'mad4b_calendar_google_connection_unavailable', 'Reconnect the existing Google authorization in MAD4B Brand Context.' );
+        $scopes = self::scope_items( (string) ( $status['scope'] ?? '' ) );
+        if ( self::uncovered_scopes( array( self::CALENDAR_READ_SCOPE ), $scopes ) )
+            return new WP_Error( 'mad4b_calendar_scope_missing', 'Google Calendar read permission must be authorized for this connection.' );
+        if ( 'calendar_list' === $resource ) {
+            $url = 'https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=250&fields=items(id,summary,accessRole),nextPageToken';
+        } else {
+            $id = (string) ( $args['calendar_id'] ?? '' );
+            if ( '' === $id || strlen( $id ) > 256 || ! preg_match( '/^[a-zA-Z0-9._@#-]+$/D', $id ) )
+                return new WP_Error( 'mad4b_calendar_id_invalid', 'Invalid Google Calendar ID.' );
+            $min = (string) ( $args['time_min'] ?? '' );$max = (string) ( $args['time_max'] ?? '' );
+            if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}T/', $min ) || ! preg_match( '/^\d{4}-\d{2}-\d{2}T/', $max ) || ! strtotime( $min ) || ! strtotime( $max ) || strtotime( $max ) <= strtotime( $min ) || strtotime( $max ) - strtotime( $min ) > 370 * DAY_IN_SECONDS )
+                return new WP_Error( 'mad4b_calendar_window_invalid', 'Calendar window must be date-bounded to 370 days.' );
+            $url = 'https://www.googleapis.com/calendar/v3/calendars/' . rawurlencode( $id ) . '/events?' . http_build_query( array(
+                'singleEvents' => 'true', 'showDeleted' => 'false', 'maxResults' => 250, 'timeMin' => $min,
+                'timeMax' => $max, 'fields' => 'items(id,summary,status,description,start,end,recurringEventId,originalStartTime),nextPageToken',
+            ), '', '&', PHP_QUERY_RFC3986 );
+        }
+        $all = array();$page_url = $url;
+        for ( $page = 0; $page < 5; $page++ ) {
+            $response = self::api_get( $page_url );
+            if ( is_wp_error( $response ) ) return $response;
+            if ( ! is_array( $response ) || ! is_array( $response['items'] ?? null ) )
+                return new WP_Error( 'mad4b_calendar_response_invalid', 'Invalid Calendar API event/calendar list.' );
+            $all = array_merge( $all, array_slice( $response['items'], 0, 250 ) );
+            $token = (string)( $response['nextPageToken'] ?? '' );
+            if ( '' === $token ) return array( 'items' => $all, 'complete' => true, 'pages' => $page+1 );
+            if ( strlen( $token ) > 2048 ) return new WP_Error( 'mad4b_calendar_page_token_invalid', 'Invalid Calendar page token.' );
+            $page_url = add_query_arg( 'pageToken', $token, $url );
+        }
+        return new WP_Error( 'mad4b_calendar_pagination_limit', 'More than five Calendar API pages; bounded fetch aborted without partial import.' );
+    }
+
 	private static function api_get( $url ) {
 		$token = self::access_token();
 		if ( is_wp_error( $token ) ) return $token;
