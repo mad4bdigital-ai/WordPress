@@ -365,6 +365,49 @@ final class MAD4B_SCP_Adaptive_Operation_Router {
     public static function discover( $input = array() ) {
         return self::resolve( $input, false );
     }
+    /**
+     * Read-only live preflight for the remote approval bootstrap. Schema
+     * projection alone does not prove an approved or executable write path.
+     * Never creates a ticket, grants authority, or opens a replay window.
+     */
+    public static function approval_plan_execution_preflight( $ability_name, $phase ) {
+        if ( 'mad4b/approval-plan' !== (string) $ability_name || 'execute' !== (string) $phase ) return null;
+        $blockers = array();
+        if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ||
+            ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'current_execution_readiness' ) ) {
+            $blockers[] = 'write_current_readiness_unavailable';
+        } else {
+            $result = MAD4B_SCP_Staging_Write_Authority::current_execution_readiness(
+                'mad4b/approval-plan', array( 'server_id' => 'mad4b-write' ) );
+            if ( ! is_array( $result ) || empty( $result['ready'] ) ) {
+                $reported = is_array( $result ) && ! empty( $result['blockers'] ) && is_array( $result['blockers'] )
+                    ? $result['blockers'] : array( 'write_current_authority_not_ready' );
+                foreach ( $reported as $item ) {
+                    if ( is_string( $item ) && '' !== $item ) $blockers[] = sanitize_key( $item );
+                }
+            }
+        }
+        // WP_Error and other truthy non-boolean results must never grant route readiness.
+        if ( ! class_exists( 'MAD4B_SCP_Policy' ) || true !== MAD4B_SCP_Policy::can_mutate() )
+            $blockers[] = 'write_mutation_policy_not_ready';
+        $blockers = array_values( array_unique( $blockers ) );
+        return array(
+            'contract' => 'mad4b.approval-plan-route-preflight.v1',
+            'ready' => empty( $blockers ),
+            'blockers' => $blockers,
+            'required_target_server' => 'mad4b-write',
+            'required_target_provider' => 'core_or_certified_mount',
+            'client_action' => empty( $blockers )
+                ? 'reauthorize_owner_step_up_and_prepare_exact_pending_ticket'
+                : 'reconcile_current_staging_write_authority_before_approval_plan',
+            'oauth_step_up_verified' => false,
+            'ticket_created' => false,
+            'authorizing' => false,
+            'read_only' => true,
+            'mutation_performed' => false,
+        );
+    }
+
     public static function plan( $input = array() ) {
         return self::resolve( $input, true );
     }
@@ -443,7 +486,18 @@ final class MAD4B_SCP_Adaptive_Operation_Router {
             );
         }
         $best = $selected[0] ?? null;
+        $approval_preflight = is_array( $best )
+            ? self::approval_plan_execution_preflight( $best['ability_name'], $request['phase'] ) : null;
+        if ( is_array( $approval_preflight ) && empty( $approval_preflight['ready'] ) ) {
+            foreach ( $rows as &$candidate_row ) {
+                if ( 'mad4b/approval-plan' !== $candidate_row['ability_name'] ) continue;
+                $candidate_row['execution_eligible'] = false;
+                $candidate_row['blocker'] = 'approval_plan_live_authority_not_ready';
+            }
+            unset( $candidate_row );
+        }
         $ready = is_array( $best ) && ! empty( $best['eligible'] );
+        if ( is_array( $approval_preflight ) && empty( $approval_preflight['ready'] ) ) $ready = false;
         if ( '' !== $dependency_blocker || ( is_array( $dependency_plan )
             && ! empty( $dependency_plan['missing_registered_abilities'] ) ) ) $ready = false;
         $write_in_doubt = in_array( $request['failed_transport'],
@@ -523,6 +577,7 @@ final class MAD4B_SCP_Adaptive_Operation_Router {
                     $best['ability_name'], $base, true ),
                 'direct_tool_is_execution_authority' => false,
             ) : null,
+            'approval_plan_preflight' => $approval_preflight,
             'candidates' => $rows,
             'candidate_count' => count( $rows ),
             'dependency_graph' => $dependency_plan,
