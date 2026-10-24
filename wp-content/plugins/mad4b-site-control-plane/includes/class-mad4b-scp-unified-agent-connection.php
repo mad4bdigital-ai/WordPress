@@ -143,12 +143,20 @@ final class MAD4B_SCP_Unified_Agent_Connection {
         if ( ! self::allowed() || ! class_exists( 'MAD4B_SCP_Schema', false ) || ! MAD4B_SCP_Schema::is_ready() ) return array();
         global $wpdb;
         $tables = MAD4B_SCP_Schema::tables();
+        $canonical = class_exists( 'MAD4B_SCP_Site_Profile', false ) && method_exists( 'MAD4B_SCP_Site_Profile', 'agent_slug' )
+            ? sanitize_title( (string) MAD4B_SCP_Site_Profile::agent_slug() ) : '';
         $rows = $wpdb->get_results( $wpdb->prepare(
             "SELECT public_id, slug, label, status, environment, wp_user_id FROM {$tables['agents']}
-             WHERE (wp_user_id = %d OR wp_user_id IS NULL OR wp_user_id = 0) ORDER BY id DESC LIMIT 30",
-            get_current_user_id()
+             WHERE wp_user_id = %d OR ((wp_user_id IS NULL OR wp_user_id = 0) AND slug = %s)
+             ORDER BY id DESC LIMIT 30",
+            get_current_user_id(), $canonical
         ), ARRAY_A );
-        return is_array( $rows ) ? $rows : array();
+        if ( ! is_array( $rows ) ) return array();
+        usort( $rows, static function ( $left, $right ) use ( $canonical ) {
+            return ( (string) ( $right['slug'] ?? '' ) === $canonical ? 1 : 0 )
+                - ( (string) ( $left['slug'] ?? '' ) === $canonical ? 1 : 0 );
+        } );
+        return $rows;
     }
 
     public static function activate() {
@@ -170,11 +178,14 @@ final class MAD4B_SCP_Unified_Agent_Connection {
         $allowed = array();
         foreach ( self::available_agents() as $row ) $allowed[ (string) $row['public_id'] ] = $row;
         if ( 'new' === $selected ) {
-            $existing = MAD4B_SCP_Agent_Registry::get_agent_by_slug( self::SLUG . '-u' . get_current_user_id() );
-            if ( $existing && (int) ( $existing['wp_user_id'] ?? 0 ) !== get_current_user_id() )
+            $canonical = class_exists( 'MAD4B_SCP_Site_Profile', false ) && method_exists( 'MAD4B_SCP_Site_Profile', 'agent_slug' )
+                ? sanitize_title( (string) MAD4B_SCP_Site_Profile::agent_slug() ) : '';
+            $slug = '' !== $canonical ? $canonical : self::SLUG . '-u' . get_current_user_id();
+            $existing = MAD4B_SCP_Agent_Registry::get_agent_by_slug( $slug );
+            if ( $existing && ! in_array( (int) ( $existing['wp_user_id'] ?? 0 ), array( 0, get_current_user_id() ), true ) )
                 self::fail( 'An agent with this name belongs to another user.', 409 );
             $agent = $existing ?: MAD4B_SCP_Agent_Registry::create_agent( array(
-                'slug' => self::SLUG . '-u' . get_current_user_id(), 'label' => 'ChatGPT Governed Agent', 'wp_user_id' => get_current_user_id(),
+                'slug' => $slug, 'label' => 'ChatGPT Governed Agent', 'wp_user_id' => get_current_user_id(),
                 'environment' => 'all', 'status' => 'disabled',
             ) );
         } elseif ( isset( $allowed[ $selected ] ) ) {
