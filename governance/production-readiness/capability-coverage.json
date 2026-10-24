@@ -1845,9 +1845,7 @@
         "PLATFORM-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-permission-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-roundtrip-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-contract.py"
       ],
       "owner_role": "Repository reviewer — source only; no new runtime grant, deployment or Production approval",
       "status": "reviewed_for_ci_only",
@@ -1866,9 +1864,7 @@
         "PLATFORM-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-permission-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-roundtrip-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-contract.py"
       ],
       "owner_role": "Repository reviewer — source only; no new runtime grant, deployment or Production approval",
       "status": "reviewed_for_ci_only",
@@ -1889,9 +1885,7 @@
         "PERFORMANCE-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-permission-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-roundtrip-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-contract.py"
       ],
       "owner_role": "Repository reviewer — source only; no new runtime grant, deployment or Production approval",
       "status": "reviewed_for_ci_only",
@@ -6987,9 +6981,7 @@
         "OAUTH-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-permission-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-roundtrip-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-contract.py"
       ],
       "owner_role": "Repository source/security reviewer — CI-only; no authorization to publish or deploy",
       "status": "reviewed_for_ci_only",
