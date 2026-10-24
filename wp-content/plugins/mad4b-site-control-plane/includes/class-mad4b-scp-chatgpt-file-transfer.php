@@ -18,6 +18,32 @@ final class MAD4B_SCP_ChatGPT_File_Transfer {
     public static function boot() {
         add_action( 'rest_api_init', array( __CLASS__, 'register_routes' ) );
         add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 45 );
+        add_action( 'init', array( __CLASS__, 'schedule_cleanup' ), 99 );
+        add_action( 'mad4b_chatgpt_transfer_cleanup', array( __CLASS__, 'cleanup_expired' ) );
+    }
+    /** Internal GC only; never scans or deletes files outside the exact staging transfer root. */
+    public static function schedule_cleanup() {
+        if ( function_exists( 'wp_next_scheduled' ) && function_exists( 'wp_schedule_event' )
+            && ! wp_next_scheduled( 'mad4b_chatgpt_transfer_cleanup' ) )
+            wp_schedule_event( time() + 3600, 'hourly', 'mad4b_chatgpt_transfer_cleanup' );
+    }
+    public static function cleanup_expired() {
+        $root = self::root();
+        if ( false === $root ) return array( 'cleaned' => 0, 'scanned' => 0 );
+        $files = @scandir( $root );
+        if ( ! is_array( $files ) ) return array( 'cleaned' => 0, 'scanned' => 0 );
+        $scanned = 0; $cleaned = 0;
+        foreach ( $files as $entry ) {
+            if ( $scanned >= 200 ) break;
+            if ( ! preg_match( '/^[a-f0-9]{32}\\.part$/D', $entry ) ) continue;
+            ++$scanned;
+            $path = $root . '/' . $entry;
+            if ( is_link( $path ) || ! is_file( $path ) ) continue;
+            $mtime = @filemtime( $path );
+            if ( ! is_int( $mtime ) || $mtime > time() - self::TTL - 3600 ) continue;
+            if ( @unlink( $path ) ) ++$cleaned;
+        }
+        return array( 'cleaned' => $cleaned, 'scanned' => $scanned );
     }
     /** Separate grant from broad MAD4B mutation authority, but never bypass the global kill switch. */
     public static function attachment_transfer_granted() {
