@@ -6987,14 +6987,13 @@
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-regressions.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-roundtrip-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-regressions.py"
       ],
       "owner_role": "Repository source security/release reviewer — CI only",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
-      "review_rationale": "Exact-source review of scoped Staging-only chunked upload service. Explicit actor capability, site enrollment, global write switch, strict hash/type/size validation, offset-lock replay defense and Media Library-only destination. Source CI only; Staging/Production acceptance remains separate. WordPress requires named-by-reference upload argument; CI includes this regression. Portable PHP sys_get_temp_dir fallback is tested across supported runtimes. Background cleanup is strictly Staging, gated by site enrollment and global mutation switch, limited to old 32-hex part files and 200 files per run; two negative runtime tests cover Production and kill-switch denial. Exact-source revision rejects stale persisted transfer offset on finish, with added negative roundtrip regression. Abort now obtains the same per-transfer exclusive lock as chunk/finish, checks current actor/site and receiving state under lock, and only clears state after unlink succeeds. Added runtime fixture verifies a held lock rejects abort and an unlocked abort removes the file. No new authority or Production grant."
+      "review_rationale": "Exact-source review of scoped Staging-only chunked upload service. Explicit actor capability, site enrollment, global write switch, strict hash/type/size validation, offset-lock replay defense and Media Library-only destination. Source CI only; Staging/Production acceptance remains separate. WordPress requires named-by-reference upload argument; CI includes this regression. Portable PHP sys_get_temp_dir fallback is tested across supported runtimes. Background cleanup is strictly Staging, gated by site enrollment and global mutation switch, limited to old 32-hex part files and 200 files per run; two negative runtime tests cover Production and kill-switch denial. Exact-source revision rejects stale persisted transfer offset on finish, with added negative roundtrip regression. Abort now obtains the same per-transfer exclusive lock as chunk/finish, checks current actor/site and receiving state under lock, and only clears state after unlink succeeds. Added runtime fixture verifies a held lock rejects abort and an unlocked abort removes the file. No new authority or Production grant. Both raw PHP fixtures are executed through the trusted Python wrapper; direct PHP file listing is intentionally avoided because readiness requires an executable regression driver."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
