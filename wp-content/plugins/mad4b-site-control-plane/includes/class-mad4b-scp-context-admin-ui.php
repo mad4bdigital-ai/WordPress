@@ -387,6 +387,13 @@ final class MAD4B_SCP_Context_Admin_UI {
 			exit;
 		}
 		$source = $sources[ $source_id ];
+        if ( 'wordpress_media' === ( $source['provider'] ?? '' ) ) {
+            $types = isset( $_POST['mime_types'] ) && is_array( $_POST['mime_types'] )
+                ? array_map( 'sanitize_text_field', wp_unslash( $_POST['mime_types'] ) )
+                : ( isset( $_POST['media_mime_scope'] ) ? array() : array( 'application/pdf', 'text/plain', 'text/markdown' ) );
+            $result = MAD4B_SCP_Context_Source_Pipeline::scan_complete( $source_id, array( 'mime_types' => $types ) );
+            self::redirect_result( $result, 'assets', 'source_scanned' );
+        }
 		$scan = MAD4B_SCP_Google_Drive_Context::scan_folder( $source['external_root_id'], ! empty( $source['recursive'] ) );
 		if ( is_wp_error( $scan ) ) self::redirect_result( $scan, 'sources', '' );
 		// Admin and MCP use the same complete-source admission. A partial
@@ -1466,7 +1473,13 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '<td><form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 			wp_nonce_field( self::ACTION_SCAN_SOURCE );
 			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_SCAN_SOURCE ) . '"><input type="hidden" name="source_id" value="' . esc_attr( $source['source_id'] ) . '">';
+            if ( 'wordpress_media' === ( $source['provider'] ?? '' ) ) {
+                echo '<input type="hidden" name="media_mime_scope" value="1">';
+                foreach ( array( 'application/pdf' => 'PDF', 'text/plain' => 'TXT', 'text/markdown' => 'Markdown' ) as $mime => $caption )
+                    echo ' <label><input type="checkbox" name="mime_types[]" value="' . esc_attr( $mime ) . '" checked> ' . esc_html( $caption ) . '</label>';
+            }
 			submit_button( __( 'Scan now', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
+            if ( 'google_drive' === ( $source['provider'] ?? '' ) )
 			echo ' <button class="button" name="resumable" value="1" type="submit">' . esc_html__( 'Scan in bounded steps', 'mad4b-site-control-plane' ) . '</button>';
 			echo '</form><details class="mad4b-context-remove"><summary>' . esc_html__( 'Remove', 'mad4b-site-control-plane' ) . '</summary><form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 			wp_nonce_field( self::ACTION_REMOVE_SOURCE );
