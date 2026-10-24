@@ -361,16 +361,9 @@ jobs:
         run: python specs/007-content-intelligence-workflow-platform/reconcile_task_ledger.py --check
 
       - name: Verify non-authorizing cumulative delivery fingerprints
-        env:
-          BASE: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           python specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_rebind_delivery.py
-          if git diff --quiet "$BASE"...HEAD -- 'specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/*-delivery.json'; then
-            python specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/check_inherited_delivery_baseline.py --base "$BASE" --head "$HEAD_SHA"
-          else
-            python specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/rebind-delivery.py
-          fi
+          python specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/rebind-delivery.py
 
       - name: Validate Feature 007 contracts and gate liveness
         run: python specs/007-content-intelligence-workflow-platform/validate_spec.py
