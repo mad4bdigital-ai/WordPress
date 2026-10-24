@@ -18,6 +18,19 @@ def require(condition, message):
         raise SystemExit(message)
 
 
+ROUTER = ROOT / "includes" / "class-mad4b-scp-package-route-resolver.php"
+router = ROUTER.read_text(encoding="utf-8")
+require_route = [
+    "class MAD4B_SCP_Package_Route_Resolver",
+    "control_plane_exact_head",
+    "certified_provider_package",
+    "staging_required",
+    "auto_apply_allowed",
+]
+for value in require_route:
+    if value not in router:
+        raise SystemExit("PACKAGE_ROUTE_RESOLVER_MISSING: " + value)
+
 package = PACKAGE.read_text(encoding="utf-8")
 bootstrap = BOOTSTRAP.read_text(encoding="utf-8")
 servers = SERVERS.read_text(encoding="utf-8") + (ROOT / "includes/class-mad4b-scp-server-write-catalog.php").read_text(encoding="utf-8")
