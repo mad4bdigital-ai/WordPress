@@ -9,7 +9,7 @@ include = root / "includes"
 read = {
     "model": (include / "class-mad4b-scp-environment-journey.php").read_text(encoding="utf-8"),
     "abilities": (include / "class-mad4b-scp-abilities.php").read_text(encoding="utf-8"),
-    "servers": (include / "class-mad4b-scp-servers.php").read_text(encoding="utf-8"),
+    "servers": (include / "class-mad4b-scp-servers.php").read_text(encoding="utf-8") + (include / "class-mad4b-scp-server-core-catalog.php").read_text(encoding="utf-8"),
 }
 for code in (
     "'mad4b/environment-journey'",

@@ -36,6 +36,7 @@ print('STAGING_WRITE_CATALOG_PARITY: PASS (source contract only)')
 
 # Only this exact short-lived owner review Ability may bootstrap before Write grants.
 servers=(root/'includes/class-mad4b-scp-servers.php').read_text()
+servers+=(root/'includes/class-mad4b-scp-server-core-catalog.php').read_text()
 assert "MAD4B_SCP_Staging_Write_Owner_Intent::ATTEST_ABILITY" in servers
 assert "public static function can_remote_attest(" in o
 assert "'chatgpt_direct_step_up'=>true" in o

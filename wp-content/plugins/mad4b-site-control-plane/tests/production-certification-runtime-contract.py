@@ -6,6 +6,7 @@ root=Path(__file__).resolve().parents[1]
 src=(root/"includes/class-mad4b-scp-production-certification.php").read_text(encoding="utf-8")
 main=(root/"mad4b-site-control-plane.php").read_text(encoding="utf-8")
 servers=(root/"includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8")
+servers+=(root/"includes/class-mad4b-scp-server-core-catalog.php").read_text(encoding="utf-8")
 evaluator=(root/"includes/class-mad4b-scp-production-readiness-evaluator.php").read_text(encoding="utf-8")
 plan=json.loads((root/"config/production-certification-plan.json").read_text(encoding="utf-8"))
 

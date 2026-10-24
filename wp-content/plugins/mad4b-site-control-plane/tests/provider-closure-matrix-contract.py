@@ -3,6 +3,7 @@ from pathlib import Path
 root = Path(__file__).resolve().parents[1]
 matrix = (root / 'includes' / 'class-mad4b-scp-provider-closure-matrix.php').read_text(encoding='utf-8')
 servers = (root / 'includes' / 'class-mad4b-scp-servers.php').read_text(encoding='utf-8') + (Path(__file__).resolve().parents[1] / 'includes/class-mad4b-scp-server-write-catalog.php').read_text(encoding='utf-8')
+servers += (root / 'includes' / 'class-mad4b-scp-server-core-catalog.php').read_text(encoding='utf-8')
 main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 parity = (root / 'includes' / 'class-mad4b-scp-remote-operation-parity.php').read_text(encoding='utf-8') + (Path(__file__).resolve().parents[1] / 'config/remote-operation-catalog.php').read_text(encoding='utf-8')
 operator = (root / 'includes' / 'class-mad4b-scp-operator-control-center.php').read_text(encoding='utf-8')

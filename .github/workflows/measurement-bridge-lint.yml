@@ -1,0 +1,45 @@
+name: Measurement Bridge Lint
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-google-measurement-bridge/**'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php'
+      - '.github/workflows/measurement-bridge-lint.yml'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-profile-admin.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/search-multi-market-guided.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-experience.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/search-guided-provider-control.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/search-guided-profile-runtime.php'
+  workflow_dispatch:
+permissions:
+  contents: read
+
+concurrency:
+  group: measurement-bridge-lint-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  lint-php:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: PHP syntax checks
+        run: |
+          find wp-content/plugins/mad4b-google-measurement-bridge -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-profile-admin.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-experience.php
+      - name: Reject duplicate SERP providers
+        run: php wp-content/plugins/mad4b-google-measurement-bridge/tests/no-parallel-provider.php
+      - name: Market topology spend-isolation regression
+        run: php wp-content/plugins/mad4b-google-measurement-bridge/tests/market-topology-contract.php
+      - name: Guided admin form regression
+        run: php wp-content/plugins/mad4b-google-measurement-bridge/tests/guided-admin-forms.php
+      - name: Guided provider control regression
+        run: php wp-content/plugins/mad4b-site-control-plane/tests/search-guided-provider-control.php
+      - name: Guided market and provider mapping runtime test
+        run: php wp-content/plugins/mad4b-site-control-plane/tests/search-guided-profile-runtime.php
+      - name: Search Profile multi-market guards
+        run: php wp-content/plugins/mad4b-site-control-plane/tests/search-multi-market-guided.php

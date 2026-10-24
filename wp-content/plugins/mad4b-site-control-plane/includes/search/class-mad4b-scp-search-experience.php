@@ -73,7 +73,11 @@ final class MAD4B_SCP_Search_Experience {
 			wp_nonce_field( 'mad4b_search_control' );
 			echo '<label for="mad4b-search-control">Operator control</label> <select id="mad4b-search-control" name="control">';
 			foreach ( array( 'disable_provider' => 'Disable provider', 'enable_provider' => 'Enable provider', 'pin' => 'Pin target', 'unpin' => 'Unpin target', 'mute' => 'Mute target', 'unmute' => 'Unmute target', 'refresh' => 'Request refresh' ) as $value => $label ) echo '<option value="' . esc_attr( $value ) . '">' . esc_html( $label ) . '</option>';
-			echo '</select> <label>Provider ID <input name="provider_id" maxlength="96"></label> <label>Target ID <input name="target_id" maxlength="64"></label> ';
+			echo '</select> <label for="mad4b-search-control-provider">Search provider</label> <select id="mad4b-search-control-provider" name="provider_id"><option value="">Select provider when applicable</option>';
+			foreach ( MAD4B_SCP_Search_Providers::adapters() as $provider_id => $adapter ) {
+				echo '<option value="' . esc_attr( $provider_id ) . '">' . esc_html( $provider_id ) . '</option>';
+			}
+			echo '</select> <details><summary>Advanced target control</summary><p>Only target pin, mute, unmute and refresh operations require an exact target ID. No target is selected automatically.</p><label>Target ID <input name="target_id" maxlength="64"></label></details> ';
 			submit_button( 'Apply control', 'secondary', 'submit', false ); echo '</form>';
 		}
 		echo '</div>';

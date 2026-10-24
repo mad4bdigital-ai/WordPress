@@ -6,6 +6,7 @@ binding = (ROOT / 'includes/class-mad4b-scp-staging-write-candidate-binding.php'
 authority = (ROOT / 'includes/class-mad4b-scp-staging-write-authority.php').read_text('utf-8')
 audit = (ROOT / 'includes/class-mad4b-scp-audit.php').read_text('utf-8')
 servers = (ROOT / 'includes/class-mad4b-scp-servers.php').read_text('utf-8') + (Path(__file__).resolve().parents[1] / 'includes/class-mad4b-scp-server-write-catalog.php').read_text(encoding='utf-8')
+servers += (ROOT / 'includes/class-mad4b-scp-server-core-catalog.php').read_text(encoding='utf-8')
 identity = (ROOT / 'includes/class-mad4b-scp-identity-context.php').read_text('utf-8')
 oauth = (ROOT / 'includes/class-mad4b-scp-oauth-resource-bridge.php').read_text('utf-8')
 

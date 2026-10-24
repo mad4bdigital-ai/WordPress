@@ -34,7 +34,7 @@ policy = read('includes/class-mad4b-scp-policy.php')
 adapter = read('includes/adapters/class-mad4b-scp-adapter-base.php')
 adapter_registry = read('includes/class-mad4b-scp-adapter-registry.php')
 abilities = read('includes/class-mad4b-scp-abilities.php')
-servers = read('includes/class-mad4b-scp-servers.php') + read('includes/class-mad4b-scp-server-write-catalog.php')
+servers = read('includes/class-mad4b-scp-servers.php') + read('includes/class-mad4b-scp-server-write-catalog.php') + read('includes/class-mad4b-scp-server-core-catalog.php')
 bootstrap = read('mad4b-site-control-plane.php')
 plugin = read('includes/class-mad4b-scp-plugin.php')
 

@@ -4,6 +4,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 ABILITIES = (ROOT / "includes" / "class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
 SERVERS = (ROOT / "includes" / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
+SERVERS += (ROOT / "includes" / "class-mad4b-scp-server-core-catalog.php").read_text(encoding="utf-8")
 GRANT_RECONCILE = (ROOT / "includes" / "class-mad4b-scp-staging-write-grant-reconciliation.php").read_text(encoding="utf-8")
 GRANT_PLAN = (ROOT / "includes" / "class-mad4b-scp-staging-write-grant-reconciliation-plan.php").read_text(encoding="utf-8")
 CANDIDATE_BINDING = (ROOT / "includes" / "class-mad4b-scp-staging-write-candidate-binding.php").read_text(encoding="utf-8")

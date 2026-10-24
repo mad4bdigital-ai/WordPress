@@ -63,8 +63,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
-      "sha256": "2bbcc767bf4ba08e280bb3cd2b6b6e2154ae4265aa24084206d6d78302d9ac91",
-      "bytes": 69921
+      "sha256": "5a8323f4947d3f95bf83bf2dd1806d739fbab886469ca4c222f922fa661ba10e",
+      "bytes": 56563
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
@@ -86,7 +86,7 @@
   "test_paths": [
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g2-governance-experience-contract.py",
-      "sha256": "d0429babbc9a73d6dbc54d054e2d40ae1ac135815a3e0bfd2a6a7bcf26dfdf73"
+      "sha256": "d1337241002b61798eb236ea4f25eac33121dfa3baf020f3582b23baecdf9383"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g2-governance-experience-runtime.php",
@@ -94,7 +94,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g2-permission-reduction-contract.py",
-      "sha256": "456c0c8498a2d7a47768f545141c547dbcbf4cee17c495f69f3ab5c2eab1ccbf"
+      "sha256": "804f75c2f5f3beec73561b68f04fe33a7cea76894e53555e0dc3db8509ee3b8c"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g2-permission-reduction-runtime.php",

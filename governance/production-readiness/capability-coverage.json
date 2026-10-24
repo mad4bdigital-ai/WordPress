@@ -1815,6 +1815,26 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing governed early bootstrap, Site Profile, WP-CLI and MCP noninterference controls cover the passive WP-CLI gate without introducing new grants or privileged operations.",
       "review_rationale": "The passive WP-CLI source was introduced on the PR 482 feature lineage and is detected as a new service when integrated against master. Test the exact PHP source fixture in this same PR, preserving early read-only gate behavior and avoiding write authority changes. No Production certification or Staging install is implied."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-core-catalog.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/universal-wordpress-operations-contract.py"
+      ],
+      "owner_role": "Repository source reviewer \u2014 CI-only; no Staging or Production grant",
+      "review_rationale": "Core catalog is an extraction of the existing private declared_core_tools method into a required trait. Tool names, authorization checks and public MCP interface are not expanded by this new file.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The preexisting MCP server, platform bootstrap, OAuth policy and governance controls still apply to the unchanged tool declaration implementation.",
+      "execution_note": "Static exact-source and bounded regression review only; staging browser and live transport evidence remain unverified."
     }
   ],
   "lifecycle": [],
@@ -6757,6 +6777,140 @@
       "coverage_reuse_rationale": "Existing governed WordPress plugin update, security and MCP controls cover the rc.104 version bump without granting new authority or bypassing exact-owner install approval.",
       "review_rationale": "Advance plugin header and runtime version above current rc.103 after unifying the PR 482 feature source and the master PR 484 approval preflight. The same-PR behavioral test executes the real PHP ticket-preflight fixture and verifies exact version consistency.",
       "execution_note": "Trusted CI runs Python wrapper invoking php -l and real fail-closed PHP preflight. Non-authorizing and independent of live WordPress."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php",
+      "source_blob_sha": "56aabeca6244e57d1e4eca7a4174cc844c314d46",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/search_guided_readiness_regression.py"
+      ],
+      "review_rationale": "CI-only source review of expanded Google Workspace Full Apps Suite scope catalog and guarded incremental consent; test covers scope count, missing-scope detection, revocation and least-privilege. No OAuth grant, production authority or token mutation is granted by this entry.",
+      "owner_role": "Plugin maintainer / automated CI source review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-experience.php",
+      "source_blob_sha": "74f8e25d1b5073387ac87d4f0067760d89258955",
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/search_guided_readiness_regression.py"
+      ],
+      "review_rationale": "CI-only review of provider picker using registered adapters and preserving revision/nonce control gates; no budget reservation, paid provider capture or production authorization.",
+      "owner_role": "Plugin maintainer / automated CI source review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-profile-admin.php",
+      "source_blob_sha": "755378233fdd7bc15704614391cd57d3faaa4787",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/search_guided_readiness_regression.py"
+      ],
+      "review_rationale": "CI-only review of neutral Profile naming, immutable Market IDs, paused/frozen market edits, provider location validation and revision-fenced profile-plan/apply/verify; browser acceptance remains separate and mandatory before staging certification.",
+      "owner_role": "Plugin maintainer / automated CI source review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "04b12f6d6dcb5f26295a33b7f3219708366cc0e7",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/universal-wordpress-operations-contract.py"
+      ],
+      "owner_role": "Repository source reviewer \u2014 CI-only; no Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original private tool-declaration method is preserved verbatim in a required trait, and the public server facade is unchanged; existing MCP authorization, discovery and catalog controls remain applicable.",
+      "review_rationale": "Review of the exact Git blob for non-authorizing method extraction from the legacy facade to a required core catalog trait. Preserve source-level catalog and no expanded remote authority; downstream runtime and staging acceptance are separate."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-core-catalog.php",
+      "source_blob_sha": "9cd9e1c73087fe48c35a126285a3bfb7dd0d9900",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/universal-wordpress-operations-contract.py"
+      ],
+      "owner_role": "Repository source reviewer \u2014 CI-only; no Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original private tool-declaration method is preserved verbatim in a required trait, and the public server facade is unchanged; existing MCP authorization, discovery and catalog controls remain applicable.",
+      "review_rationale": "Review of the exact Git blob for non-authorizing method extraction from the legacy facade to a required core catalog trait. Preserve source-level catalog and no expanded remote authority; downstream runtime and staging acceptance are separate."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php",
+      "source_blob_sha": "1039e81d525d2ac267ac69a11c3f33c913f8cbd8",
+      "control_ids": [
+        "CROSSPLUGIN-01",
+        "GOVERNANCE-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/self-update-orphan-sha-readonly-contract.py"
+      ],
+      "owner_role": "Repository source reviewer \u2014 CI-only; not ETG owner consent or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing native WordPress update ancestry, bounded external source verification, owner OAuth approval, rollback and fail-closed recovery controls cover this read-only orphan-SHA diagnostic. No install, grant, cross-environment mutation, or permissive lineage decision is added.",
+      "review_rationale": "On compare HTTP 404, probe only the pinned installed commit SHA over GitHub HTTPS with bounded response and no redirect. A verified HTTP 422 gives a specific nonauthorizing installed-source-unresolvable state. Network failures, malformed responses, generic 404, older versions and unknown lineage remain blocked. The mapped same-PR Python runner executes actual isolated PHP scenarios (404+422, 404+404, 429, verified ahead, older, denied native replacement) and checks syntax. Repository evidence is not an ETG Staging install or owner grant approval. Historical runtime-update-recovery tests remain independently available; exact-new-source CI coverage is the changed-in-this-PR executable orphan-SHA fixture."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "ef513696aad3ae579f05755f75cef36774503ec9",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "OAUTH-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/universal-wordpress-operations-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py"
+      ],
+      "owner_role": "Integration source reviewer \u2014 CI-only; no staging or Production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP catalog projection, first-party static ability census, OAuth and no-write-mutation controls remain effective when retaining both the master approval bootstrap and PR481 extracted core catalog.",
+      "review_rationale": "Exact merged source keeps both require_once declarations and original static write trait. The Python behavior tests inspect real merged source and verify OAuth, catalog and staging write invariants. No additional abilities, approvals or broader permissions are authorized."
     }
   ],
   "code_change_rules": {

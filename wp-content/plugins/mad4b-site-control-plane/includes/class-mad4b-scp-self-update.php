@@ -1078,8 +1078,28 @@ final class MAD4B_SCP_Self_Update {
                 'User-Agent' => 'MAD4B-Exact-Native-Release-Lineage',
             ),
         ) );
-        if ( is_wp_error( $response ) || 200 !== (int) wp_remote_retrieve_response_code( $response ) )
+        if ( is_wp_error( $response ) ) return 'unknown';
+        $http_code = (int) wp_remote_retrieve_response_code( $response );
+        if ( 404 === $http_code ) {
+            // A compare 404 alone does not establish lineage or a missing commit.
+            // Probe only the immutable installed SHA: GitHub 422 explicitly means
+            // the installed commit cannot be resolved in this owned repository.
+            // This is a DIAGNOSTIC, never an alternative update authorization.
+            $probe_url = 'https://api.github.com/repos/mad4bdigital-ai/WordPress/commits/' . $installed;
+            $probe = wp_safe_remote_get( $probe_url, array(
+                'timeout' => 7, 'redirection' => 0, 'sslverify' => true,
+                'limit_response_size' => 2049,
+                'headers' => array(
+                    'Accept' => 'application/vnd.github+json',
+                    'User-Agent' => 'MAD4B-Exact-Native-Release-Lineage',
+                ),
+            ) );
+            if ( ! is_wp_error( $probe )
+                && 422 === (int) wp_remote_retrieve_response_code( $probe ) )
+                return 'installed_source_unresolvable';
             return 'unknown';
+        }
+        if ( 200 !== $http_code ) return 'unknown';
         $body = wp_remote_retrieve_body( $response );
         if ( ! is_string( $body ) || strlen( $body ) < 10 || strlen( $body ) > 262144 )
             return 'unknown';
@@ -1105,6 +1125,7 @@ final class MAD4B_SCP_Self_Update {
             case 'same': return 'already_on_exact_source_commit';
             case 'target_behind': return 'native_release_target_ancestor_or_older';
             case 'diverged': return 'native_release_source_diverged';
+            case 'installed_source_unresolvable': return 'native_release_installed_source_unresolvable';
             case 'target_ahead': return '';
             default: return 'native_release_source_lineage_unverified';
         }
@@ -1114,12 +1135,26 @@ final class MAD4B_SCP_Self_Update {
     public static function native_release_state( array $manifest, $allow_network = false ) {
         $relationship = self::native_source_relationship( self::installed_identity(), $manifest, $allow_network );
         $blocker = self::native_lineage_blocker( $relationship );
-        return array(
+        $state = array(
             'state' => 'target_ahead' === $relationship ? 'available'
                 : ( 'same' === $relationship ? 'current' : 'needs_review' ),
             'release_source_relationship' => $relationship,
             'blockers' => '' === $blocker || 'same' === $relationship ? array() : array( $blocker ),
         );
+        if ( 'installed_source_unresolvable' === $relationship ) {
+            $state['recovery_guidance'] = array(
+                'state' => 'owner_review_required',
+                'staging_only' => true,
+                'exact_signed_release_required' => true,
+                'rollback_snapshot_required' => true,
+                'owner_oauth_step_up_required' => true,
+                'exact_one_time_approval_required' => true,
+                'repair_current_build_provenance_before_grant_reconciliation' => true,
+                'automatic_apply_allowed' => false,
+                'mutation_performed' => false,
+            );
+        }
+        return $state;
     }
 
     /** Recheck signed native channels under the replacement lease. Explicit

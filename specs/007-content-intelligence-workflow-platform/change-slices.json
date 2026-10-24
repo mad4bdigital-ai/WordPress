@@ -1,11 +1,11 @@
 {
   "contract": "mad4b.change-slices.v2",
   "authorizing": false,
-  "reviewed_base_sha": "38d2ad6bb4fb46858f437788c6bc983b17be6fc3",
+  "reviewed_base_sha": "35a7141b10ff0270959c9231123f99e238788e5b",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 172,
-  "changed_paths_sha256": "94f035e8dded6fdcf035b01a07eafcd528a3fb8561565c26ad35412167382849",
+  "changed_file_count": 91,
+  "changed_paths_sha256": "50c94cb8614e2b39f0533f52d6460e14c9e7a898f511e23ff3e91bc7635a50a2",
   "slices": [
     {
       "id": "source-evidence-and-ci",
@@ -380,6 +380,145 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/staging-runtime-oauth-recovery-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/staging-schema-manual-resume-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/wpcli-passive-gate-contract.php"
+      ]
+    },
+    {
+      "id": "open-pr-integration-governance-and-ci",
+      "semantic_unit": "Repository protection contracts, workflow source and governance review",
+      "revert_boundary": "Revert exact listed GitHub governance templates and CI workflows as a reviewed change unit; no OAuth grant, WordPress install, or Production authority accompanies this CI-only source merge",
+      "certification": "exact_head",
+      "path_globs": [
+        ".github/mad4b-master-ruleset-template.json",
+        ".github/mad4b-repository-governance-policy.json",
+        ".github/workflows/mad4b-apply-nhi-core-gate.yml",
+        ".github/workflows/mad4b-functional-gap-runtime-diagnostic.yml",
+        ".github/workflows/mad4b-governance-remote-apply.yml",
+        ".github/workflows/measurement-bridge-lint.yml"
+      ]
+    },
+    {
+      "id": "open-pr-integration-other-repository-tools",
+      "semantic_unit": "Repository CI helper and source-backed acceptance evidence",
+      "revert_boundary": "Revert exact separately reviewed test/helper source alongside the related workflow changes; no OAuth grant, WordPress install, or Production authority accompanies this CI-only source merge",
+      "certification": "exact_head",
+      "path_globs": [
+        "tests/search_guided_readiness_regression.py",
+        "tools/Apply-Mad4bMasterRuleset.ps1",
+        "tools/mad4b_pre_staging_hybrid_audit.py",
+        "tools/test_verify_repository_governance_attestation.py",
+        "tools/verify_repository_ruleset_template.py"
+      ]
+    },
+    {
+      "id": "open-pr-integration-measurement-provider-core",
+      "semantic_unit": "Google measurement provider adapters and immutable API request contracts",
+      "revert_boundary": "Revert exact Google measurement connector source with credential and OAuth invariants retained; no OAuth grant, WordPress install, or Production authority accompanies this CI-only source merge",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-google-measurement-bridge/README.md",
+        "wp-content/plugins/mad4b-google-measurement-bridge/includes/class-mad4b-google-measurement-admin.php",
+        "wp-content/plugins/mad4b-google-measurement-bridge/includes/class-mad4b-google-measurement-ads-plans.php",
+        "wp-content/plugins/mad4b-google-measurement-bridge/includes/class-mad4b-google-measurement-ads.php",
+        "wp-content/plugins/mad4b-google-measurement-bridge/includes/class-mad4b-google-measurement-advanced.php",
+        "wp-content/plugins/mad4b-google-measurement-bridge/includes/class-mad4b-google-measurement-api.php",
+        "wp-content/plugins/mad4b-google-measurement-bridge/includes/class-mad4b-google-measurement-gtm4wp.php",
+        "wp-content/plugins/mad4b-google-measurement-bridge/includes/class-mad4b-google-measurement-intelligence.php",
+        "wp-content/plugins/mad4b-google-measurement-bridge/includes/class-mad4b-google-measurement-mutation.php",
+        "wp-content/plugins/mad4b-google-measurement-bridge/includes/class-mad4b-google-measurement-operations.php",
+        "wp-content/plugins/mad4b-google-measurement-bridge/includes/class-mad4b-google-measurement-rankmath.php",
+        "wp-content/plugins/mad4b-google-measurement-bridge/includes/class-mad4b-google-measurement-reports.php",
+        "wp-content/plugins/mad4b-google-measurement-bridge/includes/class-mad4b-google-measurement-search-console.php",
+        "wp-content/plugins/mad4b-google-measurement-bridge/mad4b-google-measurement-bridge.php"
+      ]
+    },
+    {
+      "id": "open-pr-integration-measurement-content-research",
+      "semantic_unit": "Keyword and market research integration within the Google measurement module",
+      "revert_boundary": "Revert exact keyword handoff modules, preserving the upstream content and provider boundaries; no OAuth grant, WordPress install, or Production authority accompanies this CI-only source merge",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-google-measurement-bridge/includes/class-mad4b-google-keyword-research.php",
+        "wp-content/plugins/mad4b-google-measurement-bridge/includes/class-mad4b-keyword-forecast.php",
+        "wp-content/plugins/mad4b-google-measurement-bridge/includes/class-mad4b-keyword-gsc.php",
+        "wp-content/plugins/mad4b-google-measurement-bridge/includes/class-mad4b-keyword-handoff.php",
+        "wp-content/plugins/mad4b-google-measurement-bridge/includes/class-mad4b-keyword-intelligence.php",
+        "wp-content/plugins/mad4b-google-measurement-bridge/includes/class-mad4b-keyword-market-topology.php",
+        "wp-content/plugins/mad4b-google-measurement-bridge/includes/class-mad4b-keyword-projects.php",
+        "wp-content/plugins/mad4b-google-measurement-bridge/includes/class-mad4b-keyword-search-bridge.php",
+        "wp-content/plugins/mad4b-google-measurement-bridge/includes/class-mad4b-keyword-serp.php"
+      ]
+    },
+    {
+      "id": "open-pr-integration-measurement-provider-tests",
+      "semantic_unit": "Google measurement adapter and market-topology unit regressions",
+      "revert_boundary": "Revert only source-bound Google measurement tests and their paired provider changes; no OAuth grant, WordPress install, or Production authority accompanies this CI-only source merge",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-google-measurement-bridge/tests/guided-admin-forms.php",
+        "wp-content/plugins/mad4b-google-measurement-bridge/tests/market-topology-contract.php",
+        "wp-content/plugins/mad4b-google-measurement-bridge/tests/no-parallel-provider.php"
+      ]
+    },
+    {
+      "id": "open-pr-integration-core-catalog-and-search",
+      "semantic_unit": "Source-only MCP catalog extraction and search-profile guidance integration",
+      "revert_boundary": "Revert exact core catalog and search-guided admin changes with their dependent regression tests; no OAuth grant, WordPress install, or Production authority accompanies this CI-only source merge",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-core-catalog.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-experience.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-profile-admin.php"
+      ]
+    },
+    {
+      "id": "open-pr-integration-plugin-regressions-a-m",
+      "semantic_unit": "Site Control Plane existing source regressions A through M",
+      "revert_boundary": "Revert exact alphabetically bounded source regression files along with matching runtime fixes; no OAuth grant, WordPress install, or Production authority accompanies this CI-only source merge",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/abilities-category-schema-status-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-profile-admin-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/agent-governance-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/connection-readiness-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/connector-resilience-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-oauth-lifecycle-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g2-governance-experience-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g2-permission-reduction-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/intent-registry-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/multi-authority-registry-contract.py"
+      ]
+    },
+    {
+      "id": "open-pr-integration-plugin-regressions-n-z",
+      "semantic_unit": "Site Control Plane existing source regressions N through Z",
+      "revert_boundary": "Revert exact alphabetically bounded source regression files along with matching runtime fixes; no OAuth grant, WordPress install, or Production authority accompanies this CI-only source merge",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/oauth-resource-bridge-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/operating-model-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/operational-integrity-local-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/optional-governance-adapter-compatibility-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/production-certification-runtime-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-closure-matrix-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-diagnostic-zero-touch-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/remote-operation-parity-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/remote-work-queue-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-convergence-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/search-guided-profile-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/search-guided-provider-control.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/search-multi-market-guided.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/selected-head-update-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/self-update-dual-channel-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/self-update-orphan-sha-readonly-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/self-update-orphan-sha-readonly-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-profile-feature-reenrollment-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/spec-consistency-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-candidate-binding-audit-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-catalog-parity-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/transport-permission-containment-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-addon-registry-contract.py"
       ]
     }
   ]
