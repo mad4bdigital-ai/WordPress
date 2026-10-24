@@ -5,6 +5,9 @@ on:
     branches: [master]
 permissions:
   contents: read
+concurrency:
+  group: mad4b-chatgpt-transfer-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
 jobs:
   attachment-transfer-contract:
     runs-on: ubuntu-latest
