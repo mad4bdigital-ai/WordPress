@@ -15,7 +15,7 @@ checks = {
     "bounded_total": "const MAX_BYTES = 16777216;" in source,
     "sha256_readback": "hash_equals( $s['sha256'], hash_file( 'sha256', $path ) )" in source,
     "strict_base64": "base64_decode( $encoded, true )" in source,
-    "lock_and_offset": "flock( $f, LOCK_EX | LOCK_NB )" in source and "fstat( $f )['size'] !== $offset" in source,
+    "lock_and_offset": "flock( $f, LOCK_EX | LOCK_NB )" in source and "(int) $stat['size'] !== $offset" in source,
     "mime_check": "wp_check_filetype_and_ext" in source,
     "wordpress_media": "wp_handle_sideload" in source and "wp_insert_attachment" in source,
     "not_publish": "'publication_performed' => false" in source,
