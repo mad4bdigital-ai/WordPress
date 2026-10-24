@@ -93,7 +93,14 @@ try {
  attempt('chunk',array('transfer_id'=>$id2,'offset'=>0,'data_base64'=>base64_encode($data)));
  $mismatch=attempt('finish',array('transfer_id'=>$id2));
  check_ok(is_wp_error($mismatch)&&$mismatch->get_error_code()==='mad4b_transfer_integrity','hash_mismatch_denied');
- attempt('abort',array('transfer_id'=>$id2));
+ $lockedPath=sys_get_temp_dir().'/mad4b-chatgpt-transfer-v1/'.$id2.'.part';
+ $lockHandle=fopen($lockedPath,'c+b');
+ check_ok($lockHandle!==false&&flock($lockHandle,LOCK_EX|LOCK_NB),'fixture_lock_acquired');
+ $busyAbort=attempt('abort',array('transfer_id'=>$id2));
+ check_ok(is_wp_error($busyAbort)&&$busyAbort->get_error_code()==='mad4b_transfer_busy'&&is_file($lockedPath),'abort_rejects_busy_transfer');
+ flock($lockHandle,LOCK_UN);fclose($lockHandle);
+ $aborted=attempt('abort',array('transfer_id'=>$id2));
+ check_ok(!is_wp_error($aborted)&&$aborted['aborted']===true&&!is_file($lockedPath),'abort_removes_unlocked_transfer');
  $orphanId=bin2hex(random_bytes(16));
  $orphan=sys_get_temp_dir().'/mad4b-chatgpt-transfer-v1/'.$orphanId.'.part';
  file_put_contents($orphan,'expired disposable bytes');
