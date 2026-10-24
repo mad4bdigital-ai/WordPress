@@ -7079,7 +7079,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-connection-admin-ui.php",
-      "source_blob_sha": "9c13fe993c7a32c1f4e872536faebe0109f8df65",
+      "source_blob_sha": "f2550a52b77ee52a28ac67185ccc60581f6df561",
       "control_ids": [
         "ADMIN-01",
         "BROWSER-01",
@@ -7095,27 +7095,7 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Uses established WordPress admin permissions, exact Site Profile, Agent Registry, authenticated OAuth, reviewed Context integrity, existing MCP Ability and safe credential storage controls.",
-      "review_rationale": "Introduces UI-guided site-scoped agent selection, explicit OAuth or optional current-user Application Password issuance to a private external Vault, readonly grants, and revocation with no credential disclosed in UI. Python regression runs sandboxed PHP fixture; never deploys or provisions live credentials."
-    },
-    {
-      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "source_blob_sha": "9dd750be28cc7fce7df012064b90da990fb31902",
-      "control_ids": [
-        "GOVERNANCE-01",
-        "PLATFORM-01",
-        "SECURITY-01",
-        "MCP-01"
-      ],
-      "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/unified-agent-connection-contract.py"
-      ],
-      "owner_role": "MAD4B repository source reviewer — code regression only; no owner site credential or Production grant",
-      "status": "reviewed_for_ci_only",
-      "production_authorized": false,
-      "live_evidence_required": true,
-      "needs_new_control": false,
-      "coverage_reuse_rationale": "Uses established WordPress admin permissions, exact Site Profile, Agent Registry, authenticated OAuth, reviewed Context integrity, existing MCP Ability and safe credential storage controls.",
-      "review_rationale": "Introduces UI-guided site-scoped agent selection, explicit OAuth or optional current-user Application Password issuance to a private external Vault, readonly grants, and revocation with no credential disclosed in UI. Python regression runs sandboxed PHP fixture; never deploys or provisions live credentials. Reconciled exact merged bootstrap retains PR #490's scoped ChatGPT attachment-transfer wiring and adds the unified Agent connection loader with no additional grant or publishing permission."
+      "review_rationale": "Introduces UI-guided site-scoped agent selection, explicit OAuth or optional current-user Application Password issuance to a private external Vault, readonly grants, and revocation with no credential disclosed in UI. Python regression runs sandboxed PHP fixture; never deploys or provisions live credentials. The existing ChatGPT connection admin UI now loads and registers the scoped Unified Agent service, keeping repository bootstrap bytes and inherited Feature 007 fingerprints unchanged."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php",
