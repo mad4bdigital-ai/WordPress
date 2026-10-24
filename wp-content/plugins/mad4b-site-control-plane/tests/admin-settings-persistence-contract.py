@@ -159,7 +159,7 @@ for marker in [
     assert marker in context_admin, marker
 
 assert "intentionally resets after save/reload" not in context_admin
-assert "needs=!!(changed&&mode&&mode.value===\"human_and_ai\")" in context_admin
+assert "needs=!!(changed&&mode&&(mode.value===\"human_and_ai\"||mode.value===\"ai_only\"))" in context_admin
 
 for marker in [
     "private static function clear_option_read_cache( $name, $aggressive = false )",
