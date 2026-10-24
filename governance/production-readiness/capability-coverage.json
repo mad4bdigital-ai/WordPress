@@ -1835,6 +1835,69 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The preexisting MCP server, platform bootstrap, OAuth policy and governance controls still apply to the unchanged tool declaration implementation.",
       "execution_note": "Static exact-source and bounded regression review only; staging browser and live transport evidence remain unverified."
+    },
+    {
+      "id": "ability:mad4b/attachment-transfer",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-permission-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-roundtrip-runtime.php"
+      ],
+      "owner_role": "Repository reviewer — source only; no new runtime grant, deployment or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing OAuth, Staging Site Profile, scoped WordPress capability, Media Library and global write kill switch remain mandatory; no automatic grant or Production ability.",
+      "review_rationale": "Scoped upload interface and bounded private transfer housekeeping with exact ownership, isolated PHP permissions and content-integrity fixtures. Live ChatGPT attachment access, MCP discovery and WordPress origin acceptance are not certified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-file-transfer.php",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-permission-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-roundtrip-runtime.php"
+      ],
+      "owner_role": "Repository reviewer — source only; no new runtime grant, deployment or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing OAuth, Staging Site Profile, scoped WordPress capability, Media Library and global write kill switch remain mandatory; no automatic grant or Production ability.",
+      "review_rationale": "Scoped upload interface and bounded private transfer housekeeping with exact ownership, isolated PHP permissions and content-integrity fixtures. Live ChatGPT attachment access, MCP discovery and WordPress origin acceptance are not certified."
+    },
+    {
+      "id": "cron:mad4b_chatgpt_transfer_cleanup",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-permission-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-roundtrip-runtime.php"
+      ],
+      "owner_role": "Repository reviewer — source only; no new runtime grant, deployment or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing OAuth, Staging Site Profile, scoped WordPress capability, Media Library and global write kill switch remain mandatory; no automatic grant or Production ability.",
+      "review_rationale": "Scoped upload interface and bounded private transfer housekeeping with exact ownership, isolated PHP permissions and content-integrity fixtures. Live ChatGPT attachment access, MCP discovery and WordPress origin acceptance are not certified."
     }
   ],
   "lifecycle": [],
