@@ -1930,8 +1930,7 @@
         "UPDATES-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/package-route-resolver-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py"
       ],
       "owner_role": "Repository source security reviewer; CI-only, not WordPress operator or Production authorizer",
       "status": "reviewed_for_ci_only",
@@ -1939,7 +1938,7 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing Staging isolation, certified provider boundaries, WordPress control-plane self-update routing, and no-mutation policy cover this read-only route classifier without granting new authority.",
-      "review_rationale": "New deterministic PHP class classifies Control Plane self-update separately from certified external provider packages, rejects missing providers and non-Staging eligibility, and reports no auto-apply or caller-supplied packages. Same-PR Python and PHP fixtures test negative and positive branches. Source CI is not live WordPress acceptance."
+      "review_rationale": "New deterministic PHP class classifies Control Plane self-update separately from certified external provider packages, rejects missing providers and non-Staging eligibility, and reports no auto-apply or caller-supplied packages. Same-PR Python and PHP fixtures test negative and positive branches. Source CI is not live WordPress acceptance. The same-PR Python regression contract executes both fixed PHP CLI fixtures with bounded timeout, checks nonzero exit codes and requires positive PASS markers; neither fixture is counted as a trusted standalone PHPUnit test."
     },
     {
       "id": "ability:mad4b/control-plane-selected-head-plan",
@@ -1952,8 +1951,7 @@
         "SECURITY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-self-update-route-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py"
       ],
       "owner_role": "Repository source-review maintainer — CI-only static candidate audit, not remote authorization or WordPress Site Owner",
       "status": "reviewed_for_ci_only",
@@ -1961,7 +1959,7 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing update-coordinator, cross-plugin isolation, recovery, rollout, governance and security controls apply. The introduced source only mentions the established Ability as non-authorizing routing guidance; this review does not register, grant, invoke, install or certify it.",
-      "review_rationale": "Static source scanner identifies the literal mad4b/control-plane-selected-head-plan in the new package route guidance. It is a pointer to an independent already-governed Control Plane planning surface, NOT a newly registered Ability or an executable provider-package action. Same-PR hermetic PHP test validates fail-closed MAD4B provider rejection, read-only guidance and no auto-apply/Production permission. Runtime discovery remains unverified."
+      "review_rationale": "Static source scanner identifies the literal mad4b/control-plane-selected-head-plan in the new package route guidance. It is a pointer to an independent already-governed Control Plane planning surface, NOT a newly registered Ability or an executable provider-package action. Same-PR hermetic PHP test validates fail-closed MAD4B provider rejection, read-only guidance and no auto-apply/Production permission. Runtime discovery remains unverified. The same-PR Python regression contract executes both fixed PHP CLI fixtures with bounded timeout, checks nonzero exit codes and requires positive PASS markers; neither fixture is counted as a trusted standalone PHPUnit test."
     },
     {
       "id": "ability:mad4b/control-plane-upload-plan",
@@ -1974,8 +1972,7 @@
         "SECURITY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-self-update-route-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py"
       ],
       "owner_role": "Repository source-review maintainer — CI-only static candidate audit, not remote authorization or WordPress Site Owner",
       "status": "reviewed_for_ci_only",
@@ -1983,7 +1980,7 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing update-coordinator, cross-plugin isolation, recovery, rollout, governance and security controls apply. The introduced source only mentions the established Ability as non-authorizing routing guidance; this review does not register, grant, invoke, install or certify it.",
-      "review_rationale": "Static source scanner identifies the literal mad4b/control-plane-upload-plan in the new package route guidance. It is a pointer to an independent already-governed Control Plane planning surface, NOT a newly registered Ability or an executable provider-package action. Same-PR hermetic PHP test validates fail-closed MAD4B provider rejection, read-only guidance and no auto-apply/Production permission. Runtime discovery remains unverified."
+      "review_rationale": "Static source scanner identifies the literal mad4b/control-plane-upload-plan in the new package route guidance. It is a pointer to an independent already-governed Control Plane planning surface, NOT a newly registered Ability or an executable provider-package action. Same-PR hermetic PHP test validates fail-closed MAD4B provider rejection, read-only guidance and no auto-apply/Production permission. Runtime discovery remains unverified. The same-PR Python regression contract executes both fixed PHP CLI fixtures with bounded timeout, checks nonzero exit codes and requires positive PASS markers; neither fixture is counted as a trusted standalone PHPUnit test."
     }
   ],
   "lifecycle": [],
@@ -7212,8 +7209,7 @@
         "UPDATES-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-self-update-route-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py"
       ],
       "owner_role": "Repository scoped package source reviewer — CI evidence only, not WordPress or Production owner authorization",
       "status": "reviewed_for_ci_only",
@@ -7221,7 +7217,7 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing governed control-plane self-update coordinator, certified third-party package authority and fail-closed provider selection controls apply; no new provider/grant/installation authority is created.",
-      "review_rationale": "Exact source denies mad4b, mad4b-site-control-plane and mad4b_site_control_plane as third-party package provider aliases before provider selection, returning mad4b_control_plane_self_update_route_required. Direct PHP reflection fixture asserts all three denied aliases, while scoped Python contract asserts the relevant authority and denied-route markers. Package workflow executes both regressions. CI source coverage is not a live self-update certification or deployment approval."
+      "review_rationale": "Exact source denies mad4b, mad4b-site-control-plane and mad4b_site_control_plane as third-party package provider aliases before provider selection, returning mad4b_control_plane_self_update_route_required. Direct PHP reflection fixture asserts all three denied aliases, while scoped Python contract asserts the relevant authority and denied-route markers. Package workflow executes both regressions. CI source coverage is not a live self-update certification or deployment approval. The same-PR Python regression contract executes both fixed PHP CLI fixtures with bounded timeout, checks nonzero exit codes and requires positive PASS markers; neither fixture is counted as a trusted standalone PHPUnit test."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-package-route-resolver.php",
@@ -7233,14 +7229,13 @@
         "UPDATES-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/package-route-resolver-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py"
       ],
       "owner_role": "Repository source security reviewer — CI-only; no site deployment or grant authorization",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
-      "review_rationale": "Reviewed exact new router source. Target aliases for MAD4B select the independent selected-head planner, registered providers select the third-party planner, unknown targets and Production are not eligible. No network, filesystem mutation, authorization, arbitrary package selection or auto-apply. Regression contract and hermetic PHP cases are present in this PR."
+      "review_rationale": "Reviewed exact new router source. Target aliases for MAD4B select the independent selected-head planner, registered providers select the third-party planner, unknown targets and Production are not eligible. No network, filesystem mutation, authorization, arbitrary package selection or auto-apply. Regression contract and hermetic PHP cases are present in this PR. The same-PR Python regression contract executes both fixed PHP CLI fixtures with bounded timeout, checks nonzero exit codes and requires positive PASS markers; neither fixture is counted as a trusted standalone PHPUnit test."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-package.php",
@@ -7252,14 +7247,13 @@
         "UPDATES-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-self-update-route-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py"
       ],
       "owner_role": "Repository package-source reviewer — CI-only; no permission or deployment grant",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
-      "review_rationale": "New exact package-planning source uses the non-authorizing route resolver before provider authority, fails closed for uncatalogued providers, and returns structured safe guidance for MAD4B self-update aliases without entering third-party installation. The existing independent provider authority, Staging mutation policy and explicit apply fences remain in place. Same-PR Python and PHP regression fixtures cover the routing denials."
+      "review_rationale": "New exact package-planning source uses the non-authorizing route resolver before provider authority, fails closed for uncatalogued providers, and returns structured safe guidance for MAD4B self-update aliases without entering third-party installation. The existing independent provider authority, Staging mutation policy and explicit apply fences remain in place. Same-PR Python and PHP regression fixtures cover the routing denials. The same-PR Python regression contract executes both fixed PHP CLI fixtures with bounded timeout, checks nonzero exit codes and requires positive PASS markers; neither fixture is counted as a trusted standalone PHPUnit test."
     }
   ],
   "code_change_rules": {
