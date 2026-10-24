@@ -224,7 +224,22 @@ final class MAD4B_SCP_Post_Update_Continuation {
 	public static function approved_grant_baseline() {
 		$baseline = get_option( self::BASELINE_OPTION, array() );
 		if ( ! self::baseline_valid( $baseline ) || ! isset( $baseline['approved_grants'] ) || ! is_array( $baseline['approved_grants'] ) ) return array();
-		return $baseline;
+		$permit = self::read_permit();
+		if ( ! is_array( $permit ) || ! self::integrity_valid( $permit )
+			|| ! isset( $permit['target_identity'], $permit['previous_binding'] )
+			|| ! is_array( $permit['target_identity'] ) || ! is_array( $permit['previous_binding'] )
+			|| ! self::identity_matches( $permit['previous_binding'], $baseline['previous_binding'] )
+			|| ! self::identity_matches( $permit['target_identity'], self::current_identity() )
+			|| ! self::continuation_release_valid( $permit ) ) return array();
+		return array(
+			'seal_verified' => true, 'captured_before_update' => true,
+			'audit_verified' => true,
+			'approved_grants' => $baseline['approved_grants'],
+			'site_uuid' => (string) ( $baseline['site']['site_uuid'] ?? '' ),
+			'profile_digest' => (string) ( $baseline['site']['profile_digest'] ?? '' ),
+			'agent_public_id' => (string) ( $baseline['write_snapshot']['agent_public_id'] ?? '' ),
+			'previous_package_sha' => (string) ( $baseline['previous_binding']['source_commit_sha'] ?? '' ),
+		);
 	}
 
 	public static function capture_ready_baseline( $lease_token = '', $lease_owner = 'runtime_convergence' ) {
