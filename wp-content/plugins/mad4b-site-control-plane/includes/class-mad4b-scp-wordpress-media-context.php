@@ -1,0 +1,74 @@
+<?php
+if ( ! defined( 'ABSPATH' ) ) exit;
+/** Explicit, bounded and read-only WordPress attachment Context source across environments. */
+final class MAD4B_SCP_WordPress_Media_Context {
+    const ROOT = 'wordpress-media-library';
+    public static function boot() {
+        add_action( 'admin_menu', array( __CLASS__, 'menu' ) );
+        add_action( 'admin_post_mad4b_context_wp_media_sync', array( __CLASS__, 'submit' ) );
+    }
+    private static function allowed() {
+        return current_user_can( 'manage_options' ) && current_user_can( 'upload_files' )
+            && class_exists( 'MAD4B_SCP_Context_Authority' )
+            && class_exists( 'MAD4B_SCP_Policy' )
+            && MAD4B_SCP_Policy::can_connect_user( get_current_user_id() );
+    }
+    public static function menu() {
+        if ( self::allowed() ) add_management_page( 'MAD4B WordPress Media Context', 'MAD4B Media Context', 'manage_options', 'mad4b-wp-media-context', array( __CLASS__, 'page' ) );
+    }
+    public static function page() {
+        if ( ! self::allowed() ) wp_die( 'Access denied', '', array( 'response' => 403 ) );
+        echo '<div class="wrap"><h1>WordPress Media Library → Brand Context</h1><p>Register or refresh selected local attachment IDs. Read-only source; content review and publication require separate authority.</p>';
+        if ( isset( $_GET['mad4b_media_result'] ) ) echo '<p>' . esc_html( sanitize_text_field( wp_unslash( $_GET['mad4b_media_result'] ) ) ) . '</p>';
+        echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="mad4b_context_wp_media_sync">';
+        wp_nonce_field( 'mad4b_context_wp_media_sync' );
+        echo '<p><label>Attachment IDs (comma-separated, maximum 25): <input name="attachment_ids" type="text" class="large-text" required placeholder="66145,66146,66147"></label></p>';
+        submit_button( 'Register or refresh selected attachments' );
+        echo '</form></div>';
+    }
+    public static function attachment_record( $id ) {
+        $post = get_post( (int) $id );
+        if ( ! $post || 'attachment' !== $post->post_type || 'trash' === $post->post_status ) return new WP_Error( 'mad4b_media_missing', 'Attachment unavailable.' );
+        $path = get_attached_file( (int) $id );
+        $mime = (string) get_post_mime_type( (int) $id );
+        if ( ! in_array( $mime, array( 'application/pdf', 'text/plain', 'text/markdown' ), true ) ) return new WP_Error( 'mad4b_media_mime_unsupported', 'Unsupported Context MIME type.' );
+        if ( ! is_string( $path ) || ! is_file( $path ) || ! is_readable( $path ) || filesize( $path ) > 10485760 ) return new WP_Error( 'mad4b_media_file_unavailable', 'Attachment must be readable and at most 10 MiB.' );
+        $hash = hash_file( 'sha256', $path );
+        if ( ! is_string( $hash ) ) return new WP_Error( 'mad4b_media_hash_failed', 'Cannot hash attachment.' );
+        return array( 'file_id' => (string) $id, 'parent_folder_id' => self::ROOT, 'title' => (string) $post->post_title,
+            'path' => (string) get_post_meta( $id, '_wp_attached_file', true ), 'mimeType' => $mime, 'content_hash' => $hash,
+            'content_complete' => false, 'modifiedTime' => get_post_modified_time( 'c', true, $post ) );
+    }
+    public static function sync_ids( array $ids ) {
+        if ( ! self::allowed() ) return new WP_Error( 'mad4b_media_denied', 'Not authorized.' );
+        $ids = array_values( array_unique( array_map( 'absint', $ids ) ) );
+        if ( ! $ids || count( $ids ) > 25 || in_array( 0, $ids, true ) ) return new WP_Error( 'mad4b_media_id_limit', 'Select 1–25 valid attachment IDs.' );
+        $records = array();
+        foreach ( $ids as $id ) {
+            $record = self::attachment_record( $id );
+            if ( is_wp_error( $record ) ) return $record; // Validate all before mutating the registry.
+            $records[] = $record;
+        }
+        $source = MAD4B_SCP_Context_Authority::upsert_source( array( 'provider'=>'wordpress_media', 'mode'=>'governed',
+            'external_root_id'=>self::ROOT, 'label'=>'WordPress Media Library', 'write_policy'=>'read_only', 'recursive'=>false ) );
+        if ( is_wp_error( $source ) ) return $source;
+        $id = isset( $source['source_id'] ) ? (string) $source['source_id'] : '';
+        if ( '' === $id ) return new WP_Error( 'mad4b_media_source_result_invalid', 'Source ID unavailable.' );
+        foreach ( $records as $record ) {
+            $result = MAD4B_SCP_Context_Authority::upsert_asset_from_provider( $id, $record );
+            if ( is_wp_error( $result ) ) return $result;
+        }
+        return array( 'source_id'=>$id, 'refreshed'=>count( $records ), 'non_destructive'=>true );
+    }
+    public static function submit() {
+        if ( ! self::allowed() ) wp_die( 'Access denied', '', array( 'response' => 403 ) );
+        check_admin_referer( 'mad4b_context_wp_media_sync' );
+        $raw = isset( $_POST['attachment_ids'] ) && is_string( $_POST['attachment_ids'] ) ? wp_unslash( $_POST['attachment_ids'] ) : '';
+        if ( ! preg_match( '/^\s*\d+(?:\s*,\s*\d+){0,24}\s*$/D', $raw ) ) wp_die( 'Invalid attachment list', '', array( 'response' => 400 ) );
+        $result = self::sync_ids( explode( ',', $raw ) );
+        $message = is_wp_error( $result ) ? $result->get_error_code() : 'updated_' . (int) $result['refreshed'];
+        wp_safe_redirect( add_query_arg( 'mad4b_media_result', sanitize_key( $message ), admin_url( 'tools.php?page=mad4b-wp-media-context' ) ) );
+        exit;
+    }
+}
+MAD4B_SCP_WordPress_Media_Context::boot();
