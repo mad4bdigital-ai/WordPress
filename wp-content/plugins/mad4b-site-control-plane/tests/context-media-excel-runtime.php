@@ -20,7 +20,7 @@ $check = static function($label, $ok) use (&$pass) {
     if (!$ok) exit(1);
     $pass++;
 };
-$fixture = file_get_contents(__DIR__.'/fixtures/etg-media-excel-sample.xlsx');
+$fixture = file_get_contents(__DIR__.'/fixtures/context-media-spreadsheet-sample.xlsx');
 $mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 $xlsx = MAD4B_SCP_WordPress_Media_Context::normalize_bytes($mime,$fixture);
 $check('xlsx_structured_complete', is_array($xlsx) && $xlsx['content_complete'] === true);

@@ -75,7 +75,7 @@ if (class_exists('ZipArchive')) {
 	nassert(!is_wp_error($r)&&!empty($r['complete'])&&false!==strpos($r['content'],'Brand Core'),'DOCX normalization must extract document text.',$r);
 
 	// Full OOXML workbook fixture, including workbook relationships and exact cell coordinates.
-	$xlsx = file_get_contents( __DIR__ . '/fixtures/etg-media-excel-sample.xlsx' );
+	$xlsx = file_get_contents( __DIR__ . '/fixtures/context-media-spreadsheet-sample.xlsx' );
 	$r=$normalize->invoke(null,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',$xlsx,'plan.xlsx');
 	nassert(!is_wp_error($r)&&!empty($r['complete'])&&false!==strpos($r['content'],'Tour Revenue')&&false!==strpos($r['content'],'Cairo')&&false!==strpos($r['content'],'Market Notes'),'XLSX normalization must extract named worksheets and values.',$r);
 
