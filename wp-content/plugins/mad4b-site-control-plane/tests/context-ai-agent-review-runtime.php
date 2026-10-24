@@ -31,6 +31,7 @@ function wp_register_ability( $name, $args ) {
 }
 function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $value ) ); }
 function sanitize_text_field( $value ) { return trim( strip_tags( (string) $value ) ); }
+function sanitize_textarea_field( $value ) { return trim( strip_tags( (string) $value ) ); }
 function absint( $value ) { return abs( (int) $value ); }
 function get_current_user_id() { return 42; }
 function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
