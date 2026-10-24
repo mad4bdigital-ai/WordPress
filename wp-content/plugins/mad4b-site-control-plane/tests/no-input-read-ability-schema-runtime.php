@@ -22,4 +22,17 @@ foreach ( $cases as $case ) {
     } elseif ( null === $input && array_key_exists( 'input_schema', $result ) ) throw new Exception( 'Write schema unexpectedly modified' );
     elseif ( is_array( $input ) && $result['input_schema'] !== $input ) throw new Exception( 'Parameterized schema changed' );
 }
-echo "PASS: NO_INPUT_READ_ABILITY_SCHEMA_RUNTIME (4 cases)\n";
+$accepts = new ReflectionMethod( 'MAD4B_SCP_Abilities', 'input_schema_accepts_object' );
+$accepts->setAccessible( true );
+foreach ( array(
+    array( array( 'type' => 'object' ), true ),
+    array( array( 'type' => array( 'object', 'null' ) ), true ),
+    array( array( 'type' => array( 'null', 'object' ) ), true ),
+    array( array( 'type' => 'null' ), false ),
+    array( array( 'type' => 'string' ), false ),
+    array( null, false ),
+) as $test ) {
+    if ( $accepts->invoke( null, $test[0] ) !== $test[1] )
+        throw new Exception( 'Governed read dispatcher object schema compatibility failed' );
+}
+echo "PASS: NO_INPUT_READ_ABILITY_SCHEMA_RUNTIME (10 cases)\\n";
