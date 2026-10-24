@@ -7610,6 +7610,23 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Follow-on exact-source review: governed read_execute now initializes an omitted parameter envelope as {} for both object and nullable-object schemas. Hermetic PHP runtime test checks 10 registration and dispatch cases; write schemas and authorization boundaries are unchanged."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+      "source_blob_sha": "80a6860757197d0f9e8fc9fe534b899a8369ada3",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/no-input-read-ability-schema-runtime.php"
+      ],
+      "owner_role": "Repository source/security reviewer — CI only; no Production grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "MCP adapter 0.7.0 requires object-root tool input schemas; this exact code change uses type object with an empty-array default, allowing both legacy null and empty object normalization through the official WordPress Abilities API without schema wrapping. Same-PR hermetic PHP test verifies ten registration and dispatch cases."
     }
   ],
   "code_change_rules": {
