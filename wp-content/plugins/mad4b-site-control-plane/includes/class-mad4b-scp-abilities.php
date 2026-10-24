@@ -270,7 +270,14 @@ final class MAD4B_SCP_Abilities {
 				),
 			),
 		);
-		if ( is_array( $input ) ) $args['input_schema'] = $input;
+		// MCP clients commonly send {} for no-argument tools. Explicitly accept
+		// the empty object so WordPress does not reject it as a missing schema.
+		// Keep every parameterized ability's original schema and write gates.
+		if ( is_array( $input ) ) {
+			$args['input_schema'] = $input;
+		} elseif ( $readonly && null === $input ) {
+			$args['input_schema'] = $this->schema( array() );
+		}
 		wp_register_ability( $name, $args );
 	}
 
