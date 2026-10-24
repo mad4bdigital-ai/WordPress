@@ -318,6 +318,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 							),
 						),
 						'confirmation' => array( 'type' => 'string', 'enum' => array( self::CONFIRMATION, self::PRODUCTION_CONFIRMATION ) ),
+						'nonproduction_approved_auto' => array( 'type' => 'boolean', 'default' => false ),
 					),
 					'required' => array(
 						'expected_plan_sha256',
@@ -525,7 +526,11 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 		if ( ! is_array( $input ) ) return new WP_Error( 'mad4b_grant_reconcile_input_invalid', 'Input must be an object.' );
 		$environment = self::current_environment();
 		$required_confirmation = self::required_confirmation();
-		if ( ! hash_equals( $required_confirmation, isset( $input['confirmation'] ) ? (string) $input['confirmation'] : '' ) ) return new WP_Error( 'mad4b_grant_reconcile_confirmation_required', 'Exact environment-specific reconciliation confirmation is required.' );
+		$auto_approved = ! empty( $input['nonproduction_approved_auto'] );
+		if ( ! $auto_approved && ! hash_equals( $required_confirmation, isset( $input['confirmation'] ) ? (string) $input['confirmation'] : '' ) )
+			return new WP_Error( 'mad4b_grant_reconcile_confirmation_required', 'Exact environment-specific reconciliation confirmation is required.' );
+		if ( $auto_approved && 'production' === $environment )
+			return new WP_Error( 'mad4b_approved_auto_production_denied', 'Production always requires exact approval.' );
 
 		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan' ) ) return new WP_Error( 'mad4b_grant_reconcile_plan_unavailable', 'Exact reconciliation plan authority is unavailable.' );
 		$plan = MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan::plan();
@@ -662,6 +667,36 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 			}
 			$expected_transport_missing = self::normalized_expected_missing_transport( $input );
 			if ( $transport_missing !== $expected_transport_missing ) return new WP_Error( 'mad4b_grant_reconcile_transport_missing_set_mismatch', 'Live missing transport-grant set changed or does not match the explicit authorization input.', array( 'live_missing' => $transport_missing, 'expected_missing' => $expected_transport_missing ) );
+
+			if ( $auto_approved ) {
+				require_once __DIR__ . '/class-mad4b-scp-environment-convergence-policy.php';
+				require_once __DIR__ . '/class-mad4b-scp-nonproduction-approved-grants.php';
+				$policy = MAD4B_SCP_Environment_Convergence_Policy::current();
+				$baseline = class_exists( 'MAD4B_SCP_Post_Update_Continuation' )
+					? MAD4B_SCP_Post_Update_Continuation::approved_grant_baseline() : array();
+				$pairs = array();
+				foreach ( $missing as $ability ) $pairs[] = array( 'server_id' => 'mad4b-write', 'ability' => $ability, 'provider' => (string) $providers[$ability] );
+				foreach ( $transport_missing as $ability ) $pairs[] = array( 'server_id' => 'mad4b-chatgpt', 'ability' => $ability, 'provider' => (string) $transport_providers[$ability] );
+				$denies = false;
+				foreach ( $existing_rows as $row ) if ( 'deny' === (string) ( $row['effect'] ?? '' ) ) $denies = true;
+				foreach ( MAD4B_SCP_Agent_Registry::grants_for_agent( $agent['id'], 'mad4b-chatgpt' ) as $row )
+					if ( 'deny' === (string) ( $row['effect'] ?? '' ) ) $denies = true;
+				$gate = MAD4B_SCP_Nonproduction_Approved_Grants::evaluate( $policy, $baseline, array(
+					'exact_profile_bound' => ! empty( MAD4B_SCP_Site_Profile::status()['authority_ready'] ),
+					'manifest_verified' => true, 'agent_verified' => true, 'write_inventory_verified' => true,
+					'breakglass_enabled' => false, 'wildcard_grants' => false, 'explicit_denies' => $denies,
+					'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
+					'profile_digest' => $current_digest, 'agent_public_id' => (string) $agent['public_id'],
+					'source_commit_sha' => $current_sha,
+					'approved_update_from_sha' => (string) ( $baseline['previous_package_sha'] ?? '' ),
+				), $pairs );
+				// Automatic mode never retires historical grants, bypasses an explicit
+				// deny, or expands authority outside a sealed previous grant set.
+				if ( ! empty( $stale_ids ) || empty( $gate['eligible'] ) )
+					return new WP_Error( 'mad4b_approved_auto_grants_blocked', 'Automatic grant reuse requires a clean sealed previous authority set.', array(
+						'reason' => ! empty( $stale_ids ) ? 'stale_grants_require_review' : $gate['reason'],
+					) );
+			}
 
 			$intent = MAD4B_SCP_Audit::record( 'mad4b/staging-write-grant-reconciliation-authorized', array(
 				'contract' => self::CONTRACT,
