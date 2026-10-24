@@ -4,6 +4,8 @@ root = Path(__file__).resolve().parents[1]
 queue = (root / "includes" / "class-mad4b-scp-remote-work-queue.php").read_text(encoding="utf-8")
 parity = (root / "includes" / "class-mad4b-scp-remote-operation-parity.php").read_text(encoding="utf-8")
 servers = (root / "includes" / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
+# Declarations moved into a required trait; inspect both source units.
+servers += "\n" + (root / "includes" / "class-mad4b-scp-server-core-catalog.php").read_text(encoding="utf-8")
 main = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 
 for marker in [

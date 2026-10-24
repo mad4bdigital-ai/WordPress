@@ -11,6 +11,7 @@ self_update = (PLUGIN / "includes/class-mad4b-scp-self-update.php").read_text(en
 main = (PLUGIN / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 plugin = (PLUGIN / "includes/class-mad4b-scp-plugin.php").read_text(encoding="utf-8")
 servers = (PLUGIN / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8")
+servers += (PLUGIN / "includes/class-mad4b-scp-server-core-catalog.php").read_text(encoding="utf-8")
 registry = json.loads((PLUGIN / "config/operation-registry.json").read_text(encoding="utf-8"))
 
 required = [
@@ -36,7 +37,8 @@ assert "MAD4B_SCP_Provider_Canary_Execution::" not in runtime
 assert "runtime-convergence.php" in main
 assert "mark_post_update_pending" in self_update
 assert "'mad4b/runtime-convergence-apply'," in servers
-assert servers.index("'mad4b/runtime-convergence-apply',") < servers.index("class_exists( 'MAD4B_SCP_Remote_Operation_Parity' )")
+assert "class-mad4b-scp-server-core-catalog.php" in (PLUGIN / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8")
+assert "class_exists( 'MAD4B_SCP_Remote_Operation_Parity' )" in servers
 
 ops = {row["id"]: row for row in registry["operations"]}
 op = ops["wordpress.runtime.converge"]

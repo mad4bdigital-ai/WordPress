@@ -577,7 +577,7 @@ $group_flushes_before_normal_grant_save = (int) $GLOBALS['mad4b_context_option_c
 $full_suite = MAD4B_SCP_Google_Drive_Context::save_workspace_grants( $full_suite_selection );
 mad4b_oauth_assert( ! is_wp_error( $full_suite ), 'Expanding a connected Google grant to Full Apps Suite must persist without disconnect.', $full_suite );
 mad4b_oauth_assert( ! empty( $full_suite['full_suite_selected'] ), 'Full Apps Suite selection must be reported explicitly.', $full_suite );
-mad4b_oauth_assert( 14 === (int) $full_suite['scope_count'], 'Full Apps Suite must resolve to the expected deduplicated OAuth scope count.', $full_suite );
+mad4b_oauth_assert( 20 === (int) $full_suite['scope_count'], 'Full Apps Suite must resolve to the reviewed 20-scope catalog after new app integrations.', $full_suite );
 mad4b_oauth_assert( ! empty( $full_suite['incremental_consent_required'] ) && (int) $full_suite['missing_scope_count'] > 0, 'Connected grant expansion must explicitly require incremental consent for missing scopes.', $full_suite );
 mad4b_oauth_assert( (int) $GLOBALS['mad4b_context_option_cache']['group_flush_count'] === $group_flushes_before_normal_grant_save, 'Normal grant persistence must not flush the entire Options cache group.', $GLOBALS['mad4b_context_option_cache'] );
 

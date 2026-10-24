@@ -399,6 +399,17 @@ record(
 )
 
 servers = (CP / "includes" / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
+core_catalog_path = CP / "includes/class-mad4b-scp-server-core-catalog.php"
+if (not core_catalog_path.is_file()
+        or "require_once __DIR__ . '/class-mad4b-scp-server-core-catalog.php';" not in servers
+        or not re.search(r"\buse\s+MAD4B_SCP_Server_Core_Catalog\s*;", _mask_php_noncode(servers))):
+    fail("ability_surface_consistency", "extracted core catalog is not loaded by Servers")
+else:
+    core_catalog = core_catalog_path.read_text(encoding="utf-8")
+    if not re.search(r"\btrait\s+MAD4B_SCP_Server_Core_Catalog\b", _mask_php_noncode(core_catalog)):
+        fail("ability_surface_consistency", "extracted core catalog trait declaration is missing")
+    else:
+        servers += "\n" + core_catalog
 read_abilities = [
     "mad4b/capability-trait-profile",
     "mad4b/addon-registry-status",

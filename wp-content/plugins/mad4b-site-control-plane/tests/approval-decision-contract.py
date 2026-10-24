@@ -6,7 +6,7 @@ plugin = (root / 'includes/class-mad4b-scp-plugin.php').read_text(encoding='utf-
 tickets = (root / 'includes/class-mad4b-scp-approval-tickets.php').read_text(encoding='utf-8')
 repository = (root / 'includes/class-mad4b-scp-approval-repository.php').read_text(encoding='utf-8')
 planner = (root / 'includes/class-mad4b-scp-staging-write-planning-guard.php').read_text(encoding='utf-8')
-servers = (root / 'includes/class-mad4b-scp-servers.php').read_text(encoding='utf-8')
+servers = (root / 'includes/class-mad4b-scp-servers.php').read_text(encoding='utf-8') + (root / 'includes/class-mad4b-scp-server-core-catalog.php').read_text(encoding='utf-8')
 handoff = (root / 'includes/adapters/class-mad4b-scp-approval-handoff-adapter.php').read_text(encoding='utf-8')
 ai_approval = (root / 'includes/class-mad4b-scp-ai-approval.php').read_text(encoding='utf-8')
 impact_policy = (root / 'includes/class-mad4b-scp-impact-policy.php').read_text(encoding='utf-8')

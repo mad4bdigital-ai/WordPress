@@ -180,6 +180,10 @@ implementation_files = {
 for label, path in implementation_files.items():
     if not path.is_file(): raise SystemExit(f'FAIL implementation-file-{label}: missing {path.relative_to(REPO)}')
 impl = {name: read(path) for name, path in implementation_files.items()}
+core_catalog = PLUGIN / 'includes/class-mad4b-scp-server-core-catalog.php'
+if not core_catalog.is_file():
+    raise SystemExit('FAIL implementation-core-catalog: missing extracted core catalog')
+impl['servers'] += read(core_catalog)
 
 require(impl['schema'], 'const VERSION = 13;', 'implementation-schema-v13')
 require(impl['schema'], "'budget_windows'", 'implementation-budget-windows')

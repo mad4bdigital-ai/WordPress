@@ -9,6 +9,7 @@ self_update = (root / "includes" / "class-mad4b-scp-self-update.php").read_text(
 continuation = (root / "includes" / "class-mad4b-scp-post-update-continuation.php").read_text(encoding="utf-8")
 peer_governance = (root / "includes" / "class-mad4b-scp-mcp-peer-governance.php").read_text(encoding="utf-8")
 servers = (root / "includes" / "class-mad4b-scp-servers.php").read_text(encoding="utf-8") + (Path(__file__).resolve().parents[1] / 'includes/class-mad4b-scp-server-write-catalog.php').read_text(encoding='utf-8')
+servers += (root / "includes" / "class-mad4b-scp-server-core-catalog.php").read_text(encoding="utf-8")
 grants = (root / "includes" / "class-mad4b-scp-staging-write-grant-reconciliation.php").read_text(encoding="utf-8")
 authority = (root / "includes" / "class-mad4b-scp-staging-write-authority.php").read_text(encoding="utf-8")
 authorization = (root / "includes" / "class-mad4b-scp-authorization.php").read_text(encoding="utf-8")

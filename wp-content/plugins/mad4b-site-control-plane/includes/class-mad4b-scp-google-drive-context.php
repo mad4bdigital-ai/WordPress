@@ -63,6 +63,13 @@ final class MAD4B_SCP_Google_Drive_Context {
 	const GMAIL_SHARING_SCOPE = 'https://www.googleapis.com/auth/gmail.settings.sharing';
 	const CALENDAR_READ_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
 	const CALENDAR_FULL_SCOPE = 'https://www.googleapis.com/auth/calendar';
+	const ANALYTICS_READ_SCOPE = 'https://www.googleapis.com/auth/analytics.readonly';
+	const ANALYTICS_EDIT_SCOPE = 'https://www.googleapis.com/auth/analytics.edit';
+	const TAG_MANAGER_READ_SCOPE = 'https://www.googleapis.com/auth/tagmanager.readonly';
+	const TAG_MANAGER_EDIT_SCOPE = 'https://www.googleapis.com/auth/tagmanager.edit.containers';
+	const TAG_MANAGER_PUBLISH_SCOPE = 'https://www.googleapis.com/auth/tagmanager.publish';
+	const SEARCH_CONSOLE_READ_SCOPE = 'https://www.googleapis.com/auth/webmasters.readonly';
+	const GOOGLE_ADS_SCOPE = 'https://www.googleapis.com/auth/adwords';
 	const IDENTITY_OPENID_SCOPE = 'openid';
 	const IDENTITY_EMAIL_SCOPE = 'https://www.googleapis.com/auth/userinfo.email';
 	const IDENTITY_PROFILE_SCOPE = 'https://www.googleapis.com/auth/userinfo.profile';
@@ -263,6 +270,41 @@ final class MAD4B_SCP_Google_Drive_Context {
 					'full' => array( 'label' => 'Full', 'scopes' => array( self::GMAIL_FULL_SCOPE, self::GMAIL_SETTINGS_SCOPE, self::GMAIL_SHARING_SCOPE ), 'sensitivity' => 'restricted' ),
 				),
 			),
+			'google_ads' => array(
+				'label' => 'Google Ads',
+				'default' => 'off',
+				'modes' => array(
+					'off' => array('label'=>'Off','scopes'=>array()),
+					'read' => array('label'=>'Account/report access (effective permissions controlled in Google Ads)','scopes'=>array(self::GOOGLE_ADS_SCOPE)),
+				),
+			),
+			'search_console' => array(
+				'label' => 'Google Search Console',
+				'default' => 'off',
+				'modes' => array(
+					'off' => array('label'=>'Off','scopes'=>array()),
+					'read' => array('label'=>'Read-only','scopes'=>array(self::SEARCH_CONSOLE_READ_SCOPE)),
+				),
+			),
+			'analytics' => array(
+				'label' => 'Google Analytics 4',
+				'default' => 'off',
+				'modes' => array(
+					'off' => array( 'label' => 'Off', 'scopes' => array() ),
+					'read' => array( 'label' => 'Read-only', 'scopes' => array( self::ANALYTICS_READ_SCOPE ) ),
+					'draft' => array( 'label' => 'Manage configuration', 'scopes' => array( self::ANALYTICS_READ_SCOPE, self::ANALYTICS_EDIT_SCOPE ), 'sensitivity' => 'sensitive' ),
+				),
+			),
+			'tag_manager' => array(
+				'label' => 'Google Tag Manager',
+				'default' => 'off',
+				'modes' => array(
+					'off' => array( 'label' => 'Off', 'scopes' => array() ),
+					'read' => array( 'label' => 'Read-only', 'scopes' => array( self::TAG_MANAGER_READ_SCOPE ) ),
+					'draft' => array( 'label' => 'Manage workspaces', 'scopes' => array( self::TAG_MANAGER_READ_SCOPE, self::TAG_MANAGER_EDIT_SCOPE ) ),
+					'publish' => array( 'label' => 'Publish (separate approval required)', 'scopes' => array( self::TAG_MANAGER_READ_SCOPE, self::TAG_MANAGER_EDIT_SCOPE, self::TAG_MANAGER_PUBLISH_SCOPE ), 'exclude_from_full_suite' => true, 'sensitivity' => 'sensitive' ),
+				),
+			),
 			'calendar' => array(
 				'label' => 'Google Calendar',
 				'default' => 'off',
@@ -281,6 +323,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 			$selected = '';
 			foreach ( isset( $definition['modes'] ) && is_array( $definition['modes'] ) ? $definition['modes'] : array() as $mode => $mode_definition ) {
 				if ( 'off' === (string) $mode ) continue;
+				if ( ! empty( $mode_definition['exclude_from_full_suite'] ) ) continue;
 				$selected = sanitize_key( (string) $mode );
 			}
 			if ( '' === $selected ) $selected = isset( $definition['default'] ) ? sanitize_key( (string) $definition['default'] ) : 'off';
@@ -338,6 +381,41 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'scope_reduction_requires_revoke' => ! empty( $granted_scopes ) && ! empty( $extra_granted_scopes ),
 			'catalog' => $catalog,
 		);
+	}
+
+	/**
+	 * In-process measurement grant for the separately reviewed Google bridge.
+	 * Neither this token nor a refresh token is ever exposed by a WP Ability.
+	 * The existing owner-managed Google OAuth must be reconsented with the
+	 * explicitly selected Analytics/GTM scopes before this will work.
+	 */
+	public static function measurement_broker_grant_for_scope( $scope ) {
+		$scope = trim( (string) $scope );
+		$allowed = array( self::ANALYTICS_READ_SCOPE, self::ANALYTICS_EDIT_SCOPE,
+			self::TAG_MANAGER_READ_SCOPE, self::TAG_MANAGER_EDIT_SCOPE, self::TAG_MANAGER_PUBLISH_SCOPE,
+			self::SEARCH_CONSOLE_READ_SCOPE, self::GOOGLE_ADS_SCOPE );
+		if ( ! in_array( $scope, $allowed, true ) ||
+			! current_user_can( 'manage_options' ) ||
+			! class_exists( 'MAD4B_SCP_Policy' ) || ! MAD4B_SCP_Policy::can_read() ||
+			! class_exists( 'MAD4B_SCP_Site_Profile' ) ) return null;
+		$site = MAD4B_SCP_Site_Profile::status();
+		if ( ! is_array( $site ) || empty( $site['origin_match'] ) ||
+			empty( $site['environment_match'] ) || empty( $site['site_uuid'] ) ||
+			empty( $site['profile_digest'] ) ) return null;
+		$grants = self::workspace_grants_status();
+		if ( empty( $grants['configured'] ) || ! in_array( $scope,
+			isset( $grants['scopes'] ) && is_array( $grants['scopes'] ) ? $grants['scopes'] : array(), true ) ) return null;
+		$stored = self::token_record();
+		if ( ! is_array( $stored ) || empty( $stored['refresh_token'] ) ||
+			(int)($stored['consent_wp_user_id'] ?? 0) !== (int)get_current_user_id() ||
+			! empty( $stored['revocation_pending'] ) ||
+			! hash_equals( (string)( $grants['grant_sha256'] ?? '' ), (string)( $stored['workspace_grant_sha256'] ?? '' ) ) ||
+			! in_array( $scope, self::scope_items( $stored['scope'] ?? '' ), true ) ) return null;
+		$token = self::access_token();
+		if ( is_wp_error( $token ) || ! is_string( $token ) || '' === $token ) return null;
+		return array( 'access_token' => $token, 'scopes' => self::scope_items( $stored['scope'] ),
+			'subject_binding_verified' => true, 'site_binding_verified' => true,
+			'site_uuid' => (string)$site['site_uuid'], 'grant_sha256' => (string)$grants['grant_sha256'] );
 	}
 
 	public static function save_workspace_grants( $selection ) {
@@ -814,7 +892,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 			array(),
 			$requested_mode,
 			self::auth_mode(),
-			isset( $stored['requested_scope'] ) ? (string) $stored['requested_scope'] : ''
+			isset( $stored['requested_scope'] ) ? (string) $stored['requested_scope'] : '',
+			array(), get_current_user_id()
 		);
 		if ( is_wp_error( $record ) ) {
 			self::record_scope_rejection( $record );
@@ -967,7 +1046,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 				'scope_profile' => $stored_profile,
 				'requested_scopes' => $broker_requested_scopes,
 				'previously_granted_scopes' => $broker_previous_scopes,
-			)
+			), get_current_user_id()
 		);
 		if ( is_wp_error( $record ) ) {
 			self::record_scope_rejection( $record );
@@ -3353,7 +3432,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return (string) $persisted['access_token'];
 	}
 
-	private static function persist_tokens( $access_token, $refresh_token, $expires_in, $scope, $existing = array(), $requested_mode = 'read_only', $auth_mode = '', $expected_scope = '', $broker_scope_context = array() ) {
+	private static function persist_tokens( $access_token, $refresh_token, $expires_in, $scope, $existing = array(), $requested_mode = 'read_only', $auth_mode = '', $expected_scope = '', $broker_scope_context = array(), $consent_actor_id = 0 ) {
 		$scope = trim( (string) $scope );
 		$expected_scope = trim( (string) $expected_scope );
 		$auth_mode = sanitize_key( (string) $auth_mode );
@@ -3389,6 +3468,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		}
 		$record = is_array( $existing ) ? $existing : array();
 		$record['contract'] = self::CONTRACT;
+		$record['consent_wp_user_id'] = (int)$consent_actor_id > 0 ? (int)$consent_actor_id : (int)($record['consent_wp_user_id'] ?? 0);
 		$record['access_token'] = trim( (string) $access_token );
 		$record['refresh_token'] = trim( (string) $refresh_token );
 		$record['expires_at'] = time() + max( 60, absint( $expires_in ) );

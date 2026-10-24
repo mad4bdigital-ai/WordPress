@@ -6,6 +6,7 @@ selected=(root/"includes/class-mad4b-scp-selected-head-update.php").read_text()
 native=(root/"includes/class-mad4b-scp-self-update.php").read_text()
 bootstrap=(root/"mad4b-site-control-plane.php").read_text()
 servers=(root/"includes/class-mad4b-scp-servers.php").read_text()
+servers+=(root/"includes/class-mad4b-scp-server-core-catalog.php").read_text()
 fixture=(root/"tests/selected-head-update-runtime.php").read_text()
 workflow=(root.parents[2]/".github/workflows/feature-007-pre-staging-hybrid-audit.yml").read_text() if (root.parents[2]/".github/workflows/feature-007-pre-staging-hybrid-audit.yml").is_file() else ""
 assert "class-mad4b-scp-selected-head-update.php" in bootstrap

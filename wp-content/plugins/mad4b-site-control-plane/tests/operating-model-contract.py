@@ -6,6 +6,7 @@ config=json.loads((root/"config/operating-model-contracts.json").read_text(encod
 impl=(root/"includes/class-mad4b-scp-operating-model.php").read_text(encoding="utf-8")
 main=(root/"mad4b-site-control-plane.php").read_text(encoding="utf-8")
 servers=(root/"includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8")
+servers+=(root/"includes/class-mad4b-scp-server-core-catalog.php").read_text(encoding="utf-8")
 if config.get("contract")!="mad4b.operating-model-contracts.v1" or config.get("site_neutral") is not True: raise SystemExit("operating-model contract must be site-neutral")
 serialized=json.dumps(config,sort_keys=True).lower()
 for forbidden in ("egypttourgates","30843","location_jet","tour-types-jet","tour-styles-jet"):

@@ -9,6 +9,11 @@ SPECS = Path("specs/007-content-intelligence-workflow-platform/extensions/compet
 
 def require(path, *markers):
     source = Path(path).read_text(encoding="utf-8")
+    if Path(path) == ROOT / "includes/class-mad4b-scp-servers.php":
+        core_catalog = ROOT / "includes/class-mad4b-scp-server-core-catalog.php"
+        if "class-mad4b-scp-server-core-catalog.php" not in source or not core_catalog.is_file():
+            raise SystemExit("INTEGRATION CONTRACT FAIL: extracted core catalog is not loaded")
+        source += core_catalog.read_text(encoding="utf-8")
     for marker in markers:
         if marker not in source:
             raise SystemExit(f"INTEGRATION CONTRACT FAIL: {path}: missing {marker}")

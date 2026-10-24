@@ -7,6 +7,7 @@ abilities = (root / "includes" / "class-mad4b-scp-abilities.php").read_text(enco
 executor = (root / "includes" / "class-mad4b-scp-plugin-ability-service.php").read_text(encoding="utf-8")
 policy = (root / "includes" / "class-mad4b-scp-policy.php").read_text(encoding="utf-8")
 servers = (root / "includes" / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
+servers += (root / "includes" / "class-mad4b-scp-server-core-catalog.php").read_text(encoding="utf-8")
 main = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 plugin_boot = (root / "includes" / "class-mad4b-scp-plugin.php").read_text(encoding="utf-8")
 

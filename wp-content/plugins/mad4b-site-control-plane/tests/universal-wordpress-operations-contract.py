@@ -25,6 +25,8 @@ provider_autopilot = (PLUGIN / "includes/class-mad4b-scp-provider-autopilot.php"
 adapter_registry = (PLUGIN / "includes/class-mad4b-scp-adapter-registry.php").read_text(encoding="utf-8")
 transport_registry = (PLUGIN / "includes/class-mad4b-scp-provider-transport-registry.php").read_text(encoding="utf-8")
 servers = (PLUGIN / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8")
+# Declarations moved into a required trait; inspect both source units.
+servers += "\n" + (PLUGIN / "includes/class-mad4b-scp-server-core-catalog.php").read_text(encoding="utf-8")
 all_php = "\n".join(p.read_text(encoding="utf-8", errors="ignore") for p in (PLUGIN / "includes").rglob("*.php"))
 search_runtime = (PLUGIN / "includes/class-mad4b-scp-adaptive-search-intelligence.php").read_text(encoding="utf-8")
 

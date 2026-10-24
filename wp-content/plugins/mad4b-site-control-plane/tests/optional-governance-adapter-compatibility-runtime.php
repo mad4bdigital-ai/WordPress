@@ -10,6 +10,7 @@
 $root = dirname( __DIR__ );
 $plugin = file_get_contents( $root . '/mad4b-site-control-plane.php' );
 $servers = file_get_contents( $root . '/includes/class-mad4b-scp-servers.php' );
+$servers .= file_get_contents( $root . '/includes/class-mad4b-scp-server-core-catalog.php' );
 $workspace = file_get_contents( $root . '/includes/class-mad4b-scp-operator-workspace.php' );
 $nav = file_get_contents( $root . '/includes/class-mad4b-scp-admin-navigation-manifest.php' );
 function assert_contract( $condition, $reason ) {

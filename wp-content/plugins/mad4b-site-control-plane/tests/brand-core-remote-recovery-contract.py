@@ -6,6 +6,7 @@ closure = (root / "includes/class-mad4b-scp-brand-authority-closure.php").read_t
 remediation = (root / "includes/class-mad4b-scp-operational-remediation.php").read_text(encoding="utf-8")
 parity = (root / "includes/class-mad4b-scp-remote-operation-parity.php").read_text(encoding="utf-8") + (Path(__file__).resolve().parents[1] / 'config/remote-operation-catalog.php').read_text(encoding='utf-8')
 servers = (root / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8") + (Path(__file__).resolve().parents[1] / 'includes/class-mad4b-scp-server-write-catalog.php').read_text(encoding='utf-8')
+servers += (root / "includes/class-mad4b-scp-server-core-catalog.php").read_text(encoding="utf-8")
 host_bridge = (root / "includes/class-mad4b-scp-host-bridge.php").read_text(encoding="utf-8")
 workflow = (root.parents[2] / ".github/workflows/feature-007-spec-ci.yml").read_text(encoding="utf-8")
 runbook = (root.parents[2] / "docs/runbooks/brand-core-mcp-complete-recovery.md").read_text(encoding="utf-8")

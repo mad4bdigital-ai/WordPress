@@ -400,6 +400,7 @@ runtime = (INCLUDES / "class-mad4b-scp-runtime-release-set.php").read_text(encod
 runtime_ui = (INCLUDES / "class-mad4b-scp-runtime-components-admin-ui.php").read_text(encoding="utf-8")
 servers = (INCLUDES / "class-mad4b-scp-servers.php").read_text(encoding="utf-8") + (Path(__file__).resolve().parents[1] / 'includes/class-mad4b-scp-server-write-catalog.php').read_text(encoding='utf-8')
 reviewed_optional = (INCLUDES / 'class-mad4b-scp-chatgpt-approval-bootstrap.php').read_text(encoding='utf-8')
+servers += (INCLUDES / "class-mad4b-scp-server-core-catalog.php").read_text(encoding="utf-8")
 projection = (INCLUDES / "class-mad4b-scp-chatgpt-tool-projection.php").read_text(encoding="utf-8")
 catalog_diag = (INCLUDES / "class-mad4b-scp-mcp-catalog-diagnostics.php").read_text(encoding="utf-8")
 for needle in (
@@ -478,6 +479,7 @@ print("mad4b.runtime-release-set-contract.v1: PASS")
 
 # Normal runtime release-set execution must be mounted, but remains governed.
 servers_source = (INCLUDES / "class-mad4b-scp-servers.php").read_text(encoding="utf-8") + (Path(__file__).resolve().parents[1] / 'includes/class-mad4b-scp-server-write-catalog.php').read_text(encoding='utf-8')
+servers_source += (INCLUDES / "class-mad4b-scp-server-core-catalog.php").read_text(encoding="utf-8")
 admin_start = servers_source.find("'mad4b-admin' => array(")
 admin_end = servers_source.find("'mad4b-developer' =>", admin_start)
 require(
