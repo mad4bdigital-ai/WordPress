@@ -193,6 +193,40 @@ final class MAD4B_SCP_Post_Update_Continuation {
 	}
 
 	/** Observe existing exact authority. This creates no permission or update intent. */
+	/**
+	 * Persist exact previously approved grants, never inferred from an ability
+	 * catalog. This sealed snapshot is prepared BEFORE package replacement.
+	 */
+	private static function approved_grant_pairs( array $snapshot ) {
+		if ( ! class_exists( 'MAD4B_SCP_Agent_Registry' ) ) return new WP_Error( 'mad4b_baseline_registry_unavailable', 'Grant registry unavailable.' );
+		$agent = MAD4B_SCP_Agent_Registry::get_agent_by_public_id( (string) ( $snapshot['agent_public_id'] ?? '' ) );
+		if ( is_wp_error( $agent ) || ! is_array( $agent ) || empty( $agent['id'] ) )
+			return new WP_Error( 'mad4b_baseline_agent_unavailable', 'Canonical agent unavailable.' );
+		$rows = MAD4B_SCP_Agent_Registry::grants_for_agent( (int) $agent['id'] );
+		$pairs = array(); $seen = array();
+		foreach ( $rows as $row ) {
+			if ( ! in_array( (string) ( $row['server_id'] ?? '' ), array( 'mad4b-write', 'mad4b-chatgpt' ), true ) ) continue;
+			if ( 'allow' !== (string) ( $row['effect'] ?? '' )
+				|| 'staging' !== (string) ( $row['environment'] ?? '' ) )
+				return new WP_Error( 'mad4b_baseline_nonexact_grant', 'Non-exact or denied grant cannot enter the approved baseline.' );
+			$pair = array( 'server_id' => (string) $row['server_id'], 'ability' => (string) $row['ability_name'], 'provider' => (string) $row['provider'] );
+			$key = implode( "\0", $pair );
+			if ( isset( $seen[$key] ) ) return new WP_Error( 'mad4b_baseline_duplicate_grant', 'Duplicate grants cannot enter the approved baseline.' );
+			$seen[$key] = true; $pairs[] = $pair;
+		}
+		usort( $pairs, static function ( $a, $b ) { return strcmp( implode( "\0", $a ), implode( "\0", $b ) ); } );
+		if ( count( array_filter( $pairs, static function ( $p ) { return 'mad4b-write' === $p['server_id']; } ) )
+			!== (int) ( $snapshot['exact_grants_existing'] ?? -1 ) )
+			return new WP_Error( 'mad4b_baseline_grant_count_mismatch', 'Exact grant evidence differs from the reviewed grant snapshot.' );
+		return $pairs;
+	}
+
+	public static function approved_grant_baseline() {
+		$baseline = get_option( self::BASELINE_OPTION, array() );
+		if ( ! self::baseline_valid( $baseline ) || ! isset( $baseline['approved_grants'] ) || ! is_array( $baseline['approved_grants'] ) ) return array();
+		return $baseline;
+	}
+
 	public static function capture_ready_baseline( $lease_token = '', $lease_owner = 'runtime_convergence' ) {
 		if ( '' !== $lease_token ) {
 			$fence = MAD4B_SCP_Runtime_Maintenance_Lease::refresh( $lease_token, $lease_owner );
@@ -242,7 +276,9 @@ final class MAD4B_SCP_Post_Update_Continuation {
 		if ( empty( $actor['oauth_attribution_complete'] ) ) return new WP_Error( 'mad4b_authority_baseline_actor_missing', 'Previously verified OAuth attribution is required; it cannot be inferred from an admin login.' );
 		$actor_user = get_userdata( (int) $actor['wp_user_id'] );
 		if ( ! $actor_user || ! user_can( $actor_user, 'manage_options' ) || ! MAD4B_SCP_Site_Profile::user_is_enrolled( (int) $actor['wp_user_id'] ) ) return new WP_Error( 'mad4b_authority_baseline_actor_revoked', 'The observed actor must still have enrolled administrator authority.' );
-		$baseline = array( 'contract' => self::BASELINE_CONTRACT,
+		$approved_grants = self::approved_grant_pairs( $snapshot );
+		if ( is_wp_error( $approved_grants ) ) return $approved_grants;
+		$baseline = array( 'contract' => self::BASELINE_CONTRACT, 'approved_grants' => $approved_grants,
 			'site' => array( 'site_uuid' => strtolower( MAD4B_SCP_Site_Profile::site_uuid() ), 'origin' => untrailingslashit( MAD4B_SCP_Site_Profile::current_origin() ), 'environment' => 'staging', 'profile_revision' => MAD4B_SCP_Site_Profile::revision(), 'profile_digest' => MAD4B_SCP_Site_Profile::profile_digest() ),
 			'actor' => $actor, 'previous_binding' => self::bounded_binding( $binding ), 'write_snapshot' => $snapshot, 'transport_snapshot' => $transport,
 			'write_contract_fingerprint' => $contracts, 'captured_at' => time(), 'expires_at' => time() + self::BASELINE_TTL, 'authorizing' => false );
