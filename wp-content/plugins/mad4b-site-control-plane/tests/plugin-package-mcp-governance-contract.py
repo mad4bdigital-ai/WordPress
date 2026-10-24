@@ -181,4 +181,27 @@ subprocess.run(
     check=True,
 )
 
+
+# Exact, trusted Python entrypoint for isolated PHP runtime fixtures.
+# These tests execute real assertions; syntax checks alone never count as a pass.
+for fixture_name, success_marker in (
+    ("package-route-resolver-runtime.php", "package-route-resolver-runtime: PASS"),
+    ("plugin-package-self-update-route-runtime.php", "plugin-package-self-update-route: PASS"),
+):
+    fixture = ROOT / "tests" / fixture_name
+    for args in (["php", "-l", str(fixture)], ["php", str(fixture)]):
+        outcome = subprocess.run(
+            args, cwd=ROOT, text=True, capture_output=True, timeout=45, check=False
+        )
+        require(
+            outcome.returncode == 0,
+            "PACKAGE_RUNTIME_REGRESSION_FAILED: "
+            + fixture_name + "\n" + outcome.stdout + outcome.stderr,
+        )
+        if len(args) == 2:
+            require(
+                success_marker in outcome.stdout,
+                "PACKAGE_RUNTIME_PASS_MARKER_MISSING: " + fixture_name,
+            )
+
 print("mad4b.plugin-package-mcp-governance.v1: PASS")
