@@ -18,4 +18,23 @@ Transfers are bound to a user and enrolled origin; state expires after 1 hour. F
 
 Run the workflow `MAD4B ChatGPT Attachment Transfer`; verify client authentication and exact Staging enrollment; test a disposable image and PDF with exact size/hash, negative tests for incorrect hash, MIME mismatch, wrong user, offset replay, oversized chunk, production origin, and interrupted transfer; verify WordPress Media Library attachment bytes and metadata by independent readback; confirm no PHP execution in uploads using certified **origin-level** host attestation. Delete test media via the regular governed workflow after explicit approval.
 
-A REST-compatible authenticated client can use the bridge. Projection into MAD4B MCP discovery/dispatch and direct ChatGPT attachment-binary access is a separate integration step and is **not** claimed by this source slice.
+A REST-compatible authenticated client can use the bridge. A guarded source-level mapping to the existing governed MAD4B Write discovery/dispatch has been added, but live projection, grant validity and native ChatGPT attachment-byte acquisition remain **unverified** until independent Staging acceptance.
+
+## Explicit client-side sender (no ChatGPT conversation access)
+
+The source tree now includes `tools/mad4b_chatgpt_attachment_sender.py`. The caller must first obtain a user-authorized local copy of an attachment; this script cannot read or discover ChatGPT conversations or retrieve private ChatGPT attachment URLs. It accepts an explicitly provided source file, checks size and SHA-256, verifies TLS to the exact HTTPS WordPress origin, blocks redirects, and sends base64 chunks through the Staging REST transport. OAuth credentials are read only from an explicitly named environment variable, never passed on the command line.
+
+```bash
+export MAD4B_WORDPRESS_OAUTH_TOKEN='<authorized Staging bearer token>'
+python3 tools/mad4b_chatgpt_attachment_sender.py \\
+  --file /path/to/authorized-attachment.pdf \\
+  --site https://staging.example.test
+```
+
+To inspect the local source without network or credentials, add `--dry-run`. If interrupted, the client writes a `TRANSFER_RESUME_ID` to stderr; rerun using `--resume-id <32-hex-id>` within the server's 1-hour expiry. Never share or log the bearer token. Upload size remains capped at 16 MiB. Readback receipts are not independent proof that the public origin safely serves uploads.
+
+## Scoped grant and deployment
+
+`mad4b/attachment-transfer` is a non-public WordPress Ability and requires `current_user_can('mad4b_attachment_transfer')` **plus** the standard `upload_files` WordPress capability, enrolled matching Staging origin, authorized connected identity, and the effective global mutation switch. The specialized capability is **not automatically granted** or exposed to arbitrary users. An authorized Staging administrator must grant it to the exact user after separate review, and later revoke it when not needed. No Production grants or publishing are included.
+
+After certified package deployment on Staging, use MAD4B's authenticated ability discovery and governed write dispatcher to verify that the Ability is actually projected and executable. Native WordPress Ability source registration alone is not an external MCP transport certification. End-to-end validation must include a real attached file, user/role deny tests, host upload execution checks, and a media readback. None of these live facts can be inferred from source CI.
