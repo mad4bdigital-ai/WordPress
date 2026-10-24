@@ -122,6 +122,24 @@ final class MAD4B_SCP_Unified_Agent_Connection {
         return $uuid;
     }
 
+    /** Revoke only the exact credential minted during this activation attempt. */
+    private static function rollback_issued_credential( $uuid ) {
+        $record = self::credential_record();
+        $file = self::vault_path();
+        if ( ! $file || ! is_array( $record ) || ! is_string( $uuid )
+            || ! hash_equals( (string) ( $record['uuid'] ?? '' ), $uuid ) ) {
+            return new WP_Error( 'mad4b_connection_rollback_mismatch', 'Issued credential record does not match; manual reconciliation required.' );
+        }
+        $revoked = WP_Application_Passwords::delete_application_password( get_current_user_id(), $uuid );
+        if ( is_wp_error( $revoked ) || true !== $revoked ) {
+            return new WP_Error( 'mad4b_connection_rollback_revoke_failed', 'Issued credential revocation failed.' );
+        }
+        if ( ! @unlink( $file ) ) {
+            return new WP_Error( 'mad4b_connection_rollback_unlink_failed', 'Issued credential was revoked; private Vault cleanup requires attention.' );
+        }
+        return true;
+    }
+
     /** Read-only snapshot of a user-visible receipt; never read credentials for display. */
     private static function receipt_key() {
         return hash( 'sha256', self::site_id() . '|' . get_current_user_id() );
@@ -201,7 +219,14 @@ final class MAD4B_SCP_Unified_Agent_Connection {
         }
         if ( 'enabled' !== (string) $agent['status'] ) {
             $agent = MAD4B_SCP_Agent_Registry::update_agent( $agent['public_id'], array( 'status' => 'enabled' ), $agent['revision'] );
-            if ( is_wp_error( $agent ) ) self::fail( $agent->get_error_message(), 409 );
+            if ( is_wp_error( $agent ) || ! is_array( $agent ) ) {
+                $failure = is_wp_error( $agent ) ? $agent->get_error_message() : 'Agent activation returned an invalid record.';
+                if ( $use_password && isset( $issued ) && is_string( $issued ) ) {
+                    $rollback = self::rollback_issued_credential( $issued );
+                    if ( is_wp_error( $rollback ) ) self::fail( 'Agent activation failed; credential rollback requires administrator attention.', 500 );
+                }
+                self::fail( $failure, 409 );
+            }
         }
         // Only a discoverable, explicitly mounted read ability is eligible.
         // No wildcard, write, Developer, Production or Breakglass grant is minted here.
