@@ -1940,6 +1940,50 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing Staging isolation, certified provider boundaries, WordPress control-plane self-update routing, and no-mutation policy cover this read-only route classifier without granting new authority.",
       "review_rationale": "New deterministic PHP class classifies Control Plane self-update separately from certified external provider packages, rejects missing providers and non-Staging eligibility, and reports no auto-apply or caller-supplied packages. Same-PR Python and PHP fixtures test negative and positive branches. Source CI is not live WordPress acceptance."
+    },
+    {
+      "id": "ability:mad4b/control-plane-selected-head-plan",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-self-update-route-runtime.php"
+      ],
+      "owner_role": "Repository source-review maintainer — CI-only static candidate audit, not remote authorization or WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing update-coordinator, cross-plugin isolation, recovery, rollout, governance and security controls apply. The introduced source only mentions the established Ability as non-authorizing routing guidance; this review does not register, grant, invoke, install or certify it.",
+      "review_rationale": "Static source scanner identifies the literal mad4b/control-plane-selected-head-plan in the new package route guidance. It is a pointer to an independent already-governed Control Plane planning surface, NOT a newly registered Ability or an executable provider-package action. Same-PR hermetic PHP test validates fail-closed MAD4B provider rejection, read-only guidance and no auto-apply/Production permission. Runtime discovery remains unverified."
+    },
+    {
+      "id": "ability:mad4b/control-plane-upload-plan",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-self-update-route-runtime.php"
+      ],
+      "owner_role": "Repository source-review maintainer — CI-only static candidate audit, not remote authorization or WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing update-coordinator, cross-plugin isolation, recovery, rollout, governance and security controls apply. The introduced source only mentions the established Ability as non-authorizing routing guidance; this review does not register, grant, invoke, install or certify it.",
+      "review_rationale": "Static source scanner identifies the literal mad4b/control-plane-upload-plan in the new package route guidance. It is a pointer to an independent already-governed Control Plane planning surface, NOT a newly registered Ability or an executable provider-package action. Same-PR hermetic PHP test validates fail-closed MAD4B provider rejection, read-only guidance and no auto-apply/Production permission. Runtime discovery remains unverified."
     }
   ],
   "lifecycle": [],
