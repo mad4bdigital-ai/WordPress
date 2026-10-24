@@ -28,19 +28,31 @@ final class MAD4B_SCP_Context_Source_Pipeline {
             if ( ! is_array( $scan ) || empty( $scan['complete'] ) || ! isset( $scan['assets'] ) || ! is_array( $scan['assets'] ) )
                 return new WP_Error( 'mad4b_pipeline_drive_scan_incomplete', 'Incomplete Drive scan must not be published as complete inventory.' );
             $records = $scan['assets'];
+            if ( count( $records ) > 25 ) return new WP_Error( 'mad4b_pipeline_scan_batch_limit', 'Complete Drive inventory exceeds bounded sync capacity. Use certified paged inventory workflow.' );
         }
         $known = MAD4B_SCP_Context_Authority::assets();
+        if ( count( $records ) > 25 ) return new WP_Error( 'mad4b_pipeline_batch_limit', 'Plan exceeds bounded record capacity.' );
         $changes = array();
+        $seen = array();
         foreach ( $records as $record ) {
             $file_id = (string) ( $record['file_id'] ?? '' );
             $asset_id = hash( 'sha256', (string) $source_id . '|' . $file_id );
+            if ( '' === $file_id || isset( $seen[$asset_id] ) ) return new WP_Error( 'mad4b_pipeline_duplicate_asset', 'Empty or duplicate provider file identity.' );
+            $seen[$asset_id] = true;
             $previous = $known[$asset_id] ?? array();
             $old_hash = (string) ( $previous['content_hash'] ?? '' );
             $new_hash = (string) ( $record['content_hash'] ?? '' );
             $changes[] = array( 'file_id'=>$file_id, 'asset_id'=>$asset_id,
                 'action'=>empty( $previous ) ? 'new' : ( '' !== $new_hash && hash_equals( $old_hash, $new_hash ) ? 'unchanged' : 'changed' ) );
         }
-        return array( 'contract'=>self::CONTRACT, 'source_id'=>$source_id, 'provider'=>$provider,
+        $review_queue = MAD4B_SCP_Context_Authority::review_queue();
+        $missing_candidates = array();
+        if ( 'google_drive' === $provider ) {
+            foreach ( $known as $known_id => $existing ) {
+                if ( (string)( $existing['source_id'] ?? '' ) === (string)$source_id && ! isset( $seen[$known_id] ) ) $missing_candidates[] = $known_id;
+            }
+        }
+        return array( 'review_queue_snapshot' => isset($review_queue['counts']) ? $review_queue['counts'] : array(), 'missing_candidates'=> $missing_candidates, 'absence_mutation_allowed'=>false, 'contract'=>self::CONTRACT, 'source_id'=>$source_id, 'provider'=>$provider,
             'stages'=>array( 'discover'=>'complete', 'validate'=>'complete', 'sync'=>'pending', 'diff'=>'complete', 'review'=>'pending', 'approve'=>'manual_only' ),
             'changes'=>$changes, 'records'=>$records, 'destructive_changes'=>false,
             'source_fingerprint'=>hash( 'sha256', wp_json_encode( $source ) ) );
@@ -55,6 +67,7 @@ final class MAD4B_SCP_Context_Source_Pipeline {
         if ( ! is_array( $source ) || empty( $source ) || ! hash_equals( (string) ( $plan['source_fingerprint'] ?? '' ), hash( 'sha256', wp_json_encode( $source ) ) ) )
             return new WP_Error( 'mad4b_pipeline_source_changed', 'Source changed after discovery. Replan required.' );
         if ( ( $plan['provider'] ?? '' ) !== ( $source['provider'] ?? '' ) ) return new WP_Error( 'mad4b_pipeline_provider_changed', 'Provider changed.' );
+        if ( ! empty( $plan['missing_candidates'] ) && ! empty( $plan['absence_mutation_allowed'] ) ) return new WP_Error( 'mad4b_pipeline_absence_mutation_denied', 'Absence requires certified complete-scan workflow.' );
         $count = 0;
         foreach ( $plan['records'] as $record ) {
             if ( ! is_array( $record ) ) return new WP_Error( 'mad4b_pipeline_record_invalid', 'Invalid record.' );
