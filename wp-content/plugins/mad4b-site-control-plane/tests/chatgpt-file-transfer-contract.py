@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Static fail-closed contract for the opt-in ChatGPT file transfer REST bridge."""
 from pathlib import Path
+import subprocess
 
 root = Path(__file__).resolve().parents[1]
 source = (root / "includes/class-mad4b-scp-chatgpt-file-transfer.php").read_text()
@@ -34,3 +35,12 @@ for name, ok in checks.items():
     if not ok:
         raise SystemExit("CHATGPT_TRANSFER_CONTRACT_FAIL:" + name)
 print("CHATGPT_TRANSFER_CONTRACT: PASS (%d assertions)" % len(checks))
+
+# Run the actual isolated PHP permission and resumable-byte fixtures as part of
+# the trusted Python readiness regression. No network or WordPress mutation.
+for fixture in (
+    "chatgpt-file-transfer-permission-runtime.php",
+    "chatgpt-file-transfer-roundtrip-runtime.php",
+):
+    subprocess.run(["php", str(root / "tests" / fixture)], check=True, timeout=30)
+print("CHATGPT_TRANSFER_EXECUTED_RUNTIME: PASS")
