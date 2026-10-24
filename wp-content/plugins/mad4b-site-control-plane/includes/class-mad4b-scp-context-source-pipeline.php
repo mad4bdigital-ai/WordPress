@@ -15,7 +15,7 @@ final class MAD4B_SCP_Context_Source_Pipeline {
             if ( ! class_exists( 'MAD4B_SCP_WordPress_Media_Context' ) )
                 return new WP_Error( 'mad4b_pipeline_media_unavailable', 'WordPress Media scanner unavailable.' );
             $types = isset( $input['mime_types'] ) && is_array( $input['mime_types'] )
-                ? $input['mime_types'] : array( 'application/pdf', 'text/plain', 'text/markdown' );
+                ? $input['mime_types'] : array( 'application/pdf', 'text/plain', 'text/markdown', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel.sheet.macroEnabled.12', 'text/csv' );
             $scan = MAD4B_SCP_WordPress_Media_Context::inventory( $types, $source_id );
         } elseif ( 'google_drive' === $provider ) {
             if ( empty( $input['allow_live_scan'] ) )

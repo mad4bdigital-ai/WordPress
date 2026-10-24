@@ -26,7 +26,7 @@ final class MAD4B_SCP_WordPress_Media_Context {
         echo '<input type="hidden" name="action" value="mad4b_context_wp_media_sync">';
         echo '<input type="hidden" name="media_mime_scope" value="1">';
         wp_nonce_field( 'mad4b_context_wp_media_sync' );
-        foreach ( array( 'application/pdf' => 'PDF', 'text/plain' => 'TXT', 'text/markdown' => 'Markdown' ) as $mime => $name )
+        foreach ( array( 'application/pdf' => 'PDF', 'text/plain' => 'TXT', 'text/markdown' => 'Markdown', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => 'Excel XLSX', 'application/vnd.ms-excel.sheet.macroEnabled.12' => 'Excel XLSM', 'text/csv' => 'Excel CSV' ) as $mime => $name )
             echo '<p><label><input type="checkbox" name="mime_types[]" value="' . esc_attr( $mime ) . '" checked> ' . esc_html( $name ) . '</label></p>';
         submit_button( 'Scan all matching media files' );
         echo '</form></div>';
@@ -36,7 +36,7 @@ final class MAD4B_SCP_WordPress_Media_Context {
         if ( ! $post || 'attachment' !== $post->post_type || 'trash' === $post->post_status ) return new WP_Error( 'mad4b_media_missing', 'Attachment unavailable.' );
         $path = get_attached_file( (int) $id );
         $mime = (string) get_post_mime_type( (int) $id );
-        if ( ! in_array( $mime, array( 'application/pdf', 'text/plain', 'text/markdown' ), true ) ) return new WP_Error( 'mad4b_media_mime_unsupported', 'Unsupported Context MIME type.' );
+        if ( ! in_array( $mime, array( 'application/pdf', 'text/plain', 'text/markdown', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel.sheet.macroEnabled.12', 'text/csv' ), true ) ) return new WP_Error( 'mad4b_media_mime_unsupported', 'Unsupported Context MIME type.' );
         if ( ! is_string( $path ) || ! is_file( $path ) || ! is_readable( $path ) || filesize( $path ) > 10485760 ) return new WP_Error( 'mad4b_media_file_unavailable', 'Attachment must be readable and at most 10 MiB.' );
         $hash = hash_file( 'sha256', $path );
         if ( ! is_string( $hash ) ) return new WP_Error( 'mad4b_media_hash_failed', 'Cannot hash attachment.' );
@@ -49,6 +49,40 @@ final class MAD4B_SCP_WordPress_Media_Context {
         $mime = (string) $mime;
         $binary = (string) $binary;
         if ( '' === $binary ) return new WP_Error( 'mad4b_media_empty_content', 'Empty Context attachments require review.' );
+        if ( in_array( $mime, array( 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel.sheet.macroEnabled.12' ), true ) ) {
+            if ( ! class_exists( 'MAD4B_SCP_Google_Drive_Context' ) || ! method_exists( 'MAD4B_SCP_Google_Drive_Context', 'normalize_local_spreadsheet_bytes' ) )
+                return new WP_Error( 'mad4b_media_excel_parser_unavailable', 'Shared local workbook normalizer unavailable.' );
+            $parsed = MAD4B_SCP_Google_Drive_Context::normalize_local_spreadsheet_bytes( $mime, $binary );
+            if ( is_wp_error( $parsed ) ) return $parsed;
+            if ( ! is_array( $parsed ) || true !== ( $parsed['complete'] ?? null ) || '' === trim( (string) ( $parsed['content'] ?? '' ) ) )
+                return new WP_Error( 'mad4b_media_excel_incomplete', 'Excel workbook normalization is incomplete.' );
+            return array( 'normalized_text' => (string) $parsed['content'], 'content_complete' => true,
+                'content_bytes' => strlen( $binary ), 'normalization_status' => 'ready',
+                'normalization_reason' => 'local_excel_structured' );
+        }
+        if ( 'text/csv' === $mime ) {
+            if ( strlen( $binary ) > 262144 || false !== strpos( $binary, "\x00" ) || !preg_match('//u', $binary) )
+                return new WP_Error( 'mad4b_media_csv_invalid', 'CSV must be bounded UTF-8 text.' );
+            $text = preg_replace( '/^\xEF\xBB\xBF/', '', $binary );
+            $stream = fopen( 'php://temp', 'w+' );
+            if ( ! $stream ) return new WP_Error( 'mad4b_media_csv_stream_failed', 'CSV stream unavailable.' );
+            fwrite( $stream, $text );
+            rewind( $stream );
+            $lines = array();
+            $line = 0;
+            while ( false !== ( $cells = fgetcsv( $stream, 0, ',', '"', '' ) ) ) {
+                ++$line;
+                if ( $line > 2000 || count($cells) > 64 ) { fclose($stream); return new WP_Error( 'mad4b_media_csv_capacity', 'CSV exceeds safe table limits.' ); }
+                $lines[] = $line . "\t" . implode( "\t", array_map( static function ($cell) { return trim( str_replace( array("\r","\n","\t"), ' ', (string)$cell ) ); }, $cells ) );
+            }
+            fclose($stream);
+            if ( ! $lines ) return new WP_Error('mad4b_media_csv_empty', 'CSV has no rows.');
+            $csv_normalized = "[Sheet: CSV; rows=" . count($lines) . "]\nRow\tA..\n" . implode("\n",$lines);
+            if ( strlen($csv_normalized) > 262144 ) return new WP_Error('mad4b_media_csv_output_limit','Normalized CSV exceeds 256 KiB.');
+            return array( 'normalized_text' => $csv_normalized,
+                'content_complete' => true, 'content_bytes' => strlen($binary),
+                'normalization_status' => 'ready', 'normalization_reason' => 'local_csv' );
+        }
         if ( 'application/pdf' === $mime ) {
             if ( ! class_exists( 'MAD4B_SCP_Google_Drive_Context' ) || ! method_exists( 'MAD4B_SCP_Google_Drive_Context', 'normalize_local_pdf_bytes' ) )
                 return new WP_Error( 'mad4b_media_pdf_parser_unavailable', 'Shared local PDF text normalizer unavailable.' );
@@ -88,8 +122,8 @@ final class MAD4B_SCP_WordPress_Media_Context {
         return array_merge( $record, $normalized );
     }
     /** Complete inventory of eligible attachments within an explicit MIME scope. */
-    public static function inventory( array $mime_types = array( 'application/pdf', 'text/plain', 'text/markdown' ), $source_id = '' ) {
-        $allowed = array( 'application/pdf', 'text/plain', 'text/markdown' );
+    public static function inventory( array $mime_types = array( 'application/pdf', 'text/plain', 'text/markdown', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel.sheet.macroEnabled.12', 'text/csv' ), $source_id = '' ) {
+        $allowed = array( 'application/pdf', 'text/plain', 'text/markdown', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel.sheet.macroEnabled.12', 'text/csv' );
         $mime_types = array_values( array_unique( array_map( 'strval', $mime_types ) ) );
         if ( ! $mime_types || array_diff( $mime_types, $allowed ) )
             return new WP_Error( 'mad4b_media_inventory_scope_invalid', 'Select supported MIME types.' );
@@ -147,7 +181,7 @@ final class MAD4B_SCP_WordPress_Media_Context {
         check_admin_referer( 'mad4b_context_wp_media_sync' );
         $types = isset( $_POST['mime_types'] ) && is_array( $_POST['mime_types'] )
             ? array_map( 'sanitize_text_field', wp_unslash( $_POST['mime_types'] ) ) : array();
-        $allowed = array( 'application/pdf', 'text/plain', 'text/markdown' );
+        $allowed = array( 'application/pdf', 'text/plain', 'text/markdown', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel.sheet.macroEnabled.12', 'text/csv' );
         if ( ! isset( $_POST['media_mime_scope'] ) || ! $types || array_diff( $types, $allowed ) )
             wp_die( 'Choose one or more supported MIME types.', '', array( 'response' => 400 ) );
         $source = MAD4B_SCP_Context_Authority::upsert_source( array(

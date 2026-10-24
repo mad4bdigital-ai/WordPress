@@ -390,7 +390,7 @@ final class MAD4B_SCP_Context_Admin_UI {
         if ( 'wordpress_media' === ( $source['provider'] ?? '' ) ) {
             $types = isset( $_POST['mime_types'] ) && is_array( $_POST['mime_types'] )
                 ? array_map( 'sanitize_text_field', wp_unslash( $_POST['mime_types'] ) )
-                : ( isset( $_POST['media_mime_scope'] ) ? array() : array( 'application/pdf', 'text/plain', 'text/markdown' ) );
+                : ( isset( $_POST['media_mime_scope'] ) ? array() : array( 'application/pdf', 'text/plain', 'text/markdown', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel.sheet.macroEnabled.12', 'text/csv' ) );
             $result = MAD4B_SCP_Context_Source_Pipeline::scan_complete( $source_id, array( 'mime_types' => $types ) );
             self::redirect_result( $result, 'assets', 'source_scanned' );
         }
@@ -1475,7 +1475,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_SCAN_SOURCE ) . '"><input type="hidden" name="source_id" value="' . esc_attr( $source['source_id'] ) . '">';
             if ( 'wordpress_media' === ( $source['provider'] ?? '' ) ) {
                 echo '<input type="hidden" name="media_mime_scope" value="1">';
-                foreach ( array( 'application/pdf' => 'PDF', 'text/plain' => 'TXT', 'text/markdown' => 'Markdown' ) as $mime => $caption )
+                foreach ( array( 'application/pdf' => 'PDF', 'text/plain' => 'TXT', 'text/markdown' => 'Markdown', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => 'Excel XLSX', 'application/vnd.ms-excel.sheet.macroEnabled.12' => 'Excel XLSM', 'text/csv' => 'Excel CSV' ) as $mime => $caption )
                     echo ' <label><input type="checkbox" name="mime_types[]" value="' . esc_attr( $mime ) . '" checked> ' . esc_html( $caption ) . '</label>';
             }
 			submit_button( __( 'Scan now', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );

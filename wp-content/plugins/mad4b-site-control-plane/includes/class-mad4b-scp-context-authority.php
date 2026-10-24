@@ -3474,7 +3474,7 @@ final class MAD4B_SCP_Context_Authority {
         if ( ( $source['provider'] ?? '' ) === 'wordpress_media' ) {
             $attachment_id = ctype_digit( (string) $file_id ) ? (int) $file_id : 0;
             $post = $attachment_id ? get_post( $attachment_id ) : null;
-            if ( ! $post || 'attachment' !== $post->post_type || ! wp_attachment_is_image( $attachment_id ) && ! in_array( get_post_mime_type( $attachment_id ), array( 'text/plain', 'application/pdf', 'text/markdown' ), true ) )
+            if ( ! $post || 'attachment' !== $post->post_type || ! wp_attachment_is_image( $attachment_id ) && ! in_array( get_post_mime_type( $attachment_id ), array( 'text/plain', 'application/pdf', 'text/markdown', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel.sheet.macroEnabled.12', 'text/csv' ), true ) )
                 return new WP_Error( 'mad4b_wp_media_attachment_invalid', 'WordPress media attachment must exist and have an allowed type.' );
             if ( (string) ( $asset['content_hash'] ?? '' ) !== hash_file( 'sha256', get_attached_file( $attachment_id ) ) )
                 return new WP_Error( 'mad4b_wp_media_hash_mismatch', 'Attachment content hash mismatch.' );

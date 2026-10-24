@@ -2873,42 +2873,126 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return self::normalization_record( implode( "\n\n", $parts ), true, 'ready', 'docx_local' );
 	}
 
-	private static function normalize_xlsx( $binary ) {
-		$entries = self::zip_entries( $binary );
-		if ( is_wp_error( $entries ) ) return $entries;
-		$shared = array();
-		if ( isset( $entries['xl/sharedStrings.xml'] ) && preg_match_all( '#<si\b[^>]*>(.*?)</si>#is', $entries['xl/sharedStrings.xml'], $matches ) ) {
-			foreach ( $matches[1] as $si ) $shared[] = self::xml_visible_text( $si );
-		}
-		$sheets = array();
-		foreach ( $entries as $name => $xml ) if ( preg_match( '#^xl/worksheets/sheet([0-9]+)\.xml$#i', $name, $m ) ) $sheets[ (int) $m[1] ] = $xml;
-		ksort( $sheets, SORT_NUMERIC );
-		$out = array();
-		foreach ( $sheets as $number => $xml ) {
-			$lines = array();
-			if ( preg_match_all( '#<row\b[^>]*>(.*?)</row>#is', $xml, $rows ) ) {
-				foreach ( $rows[1] as $row ) {
-					$cells = array();
-					if ( preg_match_all( '#<c\b([^>]*)>(.*?)</c>#is', $row, $cell_matches, PREG_SET_ORDER ) ) {
-						foreach ( $cell_matches as $cell ) {
-							$attrs = $cell[1];
-							$body = $cell[2];
-							$value = '';
-							if ( preg_match( '#<is\b[^>]*>(.*?)</is>#is', $body, $inline ) ) $value = self::xml_visible_text( $inline[1] );
-							elseif ( preg_match( '#<v\b[^>]*>(.*?)</v>#is', $body, $v ) ) {
-								$value = html_entity_decode( strip_tags( $v[1] ), ENT_QUOTES | ENT_XML1, 'UTF-8' );
-								if ( preg_match( '/\bt=["\']s["\']/i', $attrs ) ) { $idx = (int) $value; $value = isset( $shared[ $idx ] ) ? $shared[ $idx ] : $value; }
-							}
-							$cells[] = trim( (string) $value );
-						}
-					}
-					if ( $cells ) $lines[] = implode( "\t", $cells );
-				}
-			}
-			$out[] = '[Sheet ' . $number . "]\n" . implode( "\n", $lines );
-		}
-		return self::normalization_record( implode( "\n\n", $out ), true, 'ready', 'xlsx_local' );
-	}
+    /** Read-only workbook analysis. Coordinates, sheet titles and cached formula values remain visible. */
+    private static function workbook_xml( $xml ) {
+        if ( ! is_string( $xml ) || false !== stripos( $xml, '<!DOCTYPE' ) || ! class_exists( 'DOMDocument' ) )
+            return new WP_Error( 'mad4b_context_spreadsheet_xml_invalid', 'Spreadsheet XML is invalid or unsupported.' );
+        $dom = new DOMDocument();
+        if ( ! @$dom->loadXML( $xml, LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING ) )
+            return new WP_Error( 'mad4b_context_spreadsheet_xml_invalid', 'Spreadsheet XML could not be parsed.' );
+        return $dom;
+    }
+    private static function normalize_xlsx( $binary ) {
+        $entries = self::zip_entries( $binary );
+        if ( is_wp_error( $entries ) ) return $entries;
+        if ( empty( $entries['xl/workbook.xml'] ) || empty( $entries['xl/_rels/workbook.xml.rels'] ) )
+            return new WP_Error( 'mad4b_context_spreadsheet_structure_missing', 'Excel workbook and relationships are required.' );
+        $workbook = self::workbook_xml( $entries['xl/workbook.xml'] );
+        $rels = self::workbook_xml( $entries['xl/_rels/workbook.xml.rels'] );
+        if ( is_wp_error( $workbook ) ) return $workbook;
+        if ( is_wp_error( $rels ) ) return $rels;
+        $rx = new DOMXPath( $rels );
+        $targets = array();
+        foreach ( $rx->query( '//*[local-name()="Relationship"]' ) as $rel ) {
+            $id = $rel->getAttribute('Id');
+            $target = $rel->getAttribute('Target');
+            if ( '' === $id || '' === $target || false !== strpos( $target, '..' ) ) continue;
+            $target = ltrim( $target, '/' );
+            $targets[ $id ] = 0 === strpos( $target, 'xl/' ) ? $target : 'xl/' . $target;
+        }
+        $shared = array();
+        if ( isset( $entries['xl/sharedStrings.xml'] ) ) {
+            $strings = self::workbook_xml( $entries['xl/sharedStrings.xml'] );
+            if ( is_wp_error( $strings ) ) return $strings;
+            $sx = new DOMXPath( $strings );
+            foreach ( $sx->query( '//*[local-name()="si"]' ) as $si ) {
+                $text = '';
+                foreach ( $sx->query( './/*[local-name()="t"]', $si ) as $node ) $text .= $node->textContent;
+                $shared[] = $text;
+                if ( count( $shared ) > 20000 )
+                    return new WP_Error( 'mad4b_context_spreadsheet_capacity', 'Excel shared strings exceed the inventory limit.' );
+            }
+        }
+        $wx = new DOMXPath( $workbook );
+        $out = array();
+        $sheet_count = 0;
+        $cell_count = 0;
+        foreach ( $wx->query( '//*[local-name()="sheets"]/*[local-name()="sheet"]' ) as $sheet ) {
+            ++$sheet_count;
+            if ( $sheet_count > 24 )
+                return new WP_Error( 'mad4b_context_spreadsheet_capacity', 'Excel workbook exceeds 24 sheets.' );
+            $name = $sheet->getAttribute( 'name' );
+            $rel_id = $sheet->getAttributeNS( 'http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'id' );
+            $path = $targets[ $rel_id ] ?? '';
+            if ( ! preg_match( '#^xl/worksheets/[a-zA-Z0-9_-]+\.xml$#', $path ) || ! isset( $entries[ $path ] ) )
+                return new WP_Error( 'mad4b_context_spreadsheet_sheet_missing', 'Excel worksheet relationship is missing.' );
+            $dom = self::workbook_xml( $entries[ $path ] );
+            if ( is_wp_error( $dom ) ) return $dom;
+            $xp = new DOMXPath( $dom );
+            $lines = array();
+            $last_row = 0;
+            foreach ( $xp->query( '//*[local-name()="sheetData"]/*[local-name()="row"]' ) as $row ) {
+                $row_number = (int) $row->getAttribute( 'r' );
+                if ( $row_number < 1 || $row_number > 2000 || $row_number <= $last_row )
+                    return new WP_Error( 'mad4b_context_spreadsheet_row_invalid', 'Spreadsheet row number is missing, duplicated or over the limit.' );
+                $last_row = $row_number;
+                $values = array();
+                foreach ( $xp->query( './*[local-name()="c"]', $row ) as $cell ) {
+                    ++$cell_count;
+                    if ( $cell_count > 20000 )
+                        return new WP_Error( 'mad4b_context_spreadsheet_capacity', 'Excel workbook exceeds 20,000 cells.' );
+                    $coord = strtoupper( $cell->getAttribute( 'r' ) );
+                    if ( ! preg_match( '/^([A-Z]{1,3})([0-9]{1,7})$/', $coord, $parts ) || (int)$parts[2] !== $row_number )
+                        return new WP_Error( 'mad4b_context_spreadsheet_cell_invalid', 'Spreadsheet cell reference is invalid.' );
+                    $column = 0;
+                    foreach ( str_split( $parts[1] ) as $letter ) $column = $column * 26 + ord( $letter ) - 64;
+                    if ( $column < 1 || $column > 64 )
+                        return new WP_Error( 'mad4b_context_spreadsheet_capacity', 'Excel workbook exceeds 64 columns.' );
+                    $type = $cell->getAttribute( 't' );
+                    $val_node = $xp->query( './*[local-name()="v"]', $cell )->item(0);
+                    $formula = $xp->query( './*[local-name()="f"]', $cell )->item(0);
+                    if ( $formula && ! $val_node )
+                        return new WP_Error( 'mad4b_context_spreadsheet_formula_uncached', 'Formula has no cached value; no formula execution is permitted.' );
+                    if ( 'e' === $type )
+                        return new WP_Error( 'mad4b_context_spreadsheet_formula_error', 'Excel cached formula contains an error.' );
+                    if ( 'inlineStr' === $type ) {
+                        $value = '';
+                        foreach ( $xp->query( './*[local-name()="is"]//*[local-name()="t"]', $cell ) as $node ) $value .= $node->textContent;
+                    } else {
+                        $value = $val_node ? $val_node->textContent : '';
+                        if ( 's' === $type ) {
+                            if ( ! ctype_digit( (string) $value ) || ! array_key_exists( (int)$value, $shared ) )
+                                return new WP_Error( 'mad4b_context_spreadsheet_shared_string_invalid', 'Excel shared string index is invalid.' );
+                            $value = $shared[ (int)$value ];
+                        } elseif ( 'b' === $type ) $value = '1' === $value ? 'TRUE' : 'FALSE';
+                    }
+                    $value = trim( preg_replace( '/[\r\n\t]+/u', ' ', (string) $value ) );
+                    $values[ $column ] = $value;
+                }
+                if ( $values ) {
+                    $maxcol = max( array_keys($values) );
+                    $ordered = array();
+                    for ( $c=1; $c<=$maxcol; ++$c ) $ordered[] = $values[$c] ?? '';
+                    $lines[] = $row_number . "\t" . implode( "\t", $ordered );
+                }
+            }
+            $out[] = '[Sheet: ' . str_replace( array("\r", "\n", "\t"), ' ', $name ) . '; rows=' . count($lines) . ']' . "\n"
+                . 'Row' . "\t" . 'A..' . "\n" . implode("\n", $lines);
+        }
+        if ( ! $sheet_count || ! $cell_count )
+            return new WP_Error( 'mad4b_context_spreadsheet_empty', 'Excel workbook has no readable cell data.' );
+        return self::normalization_record( implode( "\n\n", $out ), true, 'ready', 'xlsx_structured_local' );
+    }
+    /** Local workbook parser shared with Media; no remote provider request or macro execution. */
+    public static function normalize_local_spreadsheet_bytes( $mime, $binary ) {
+        if ( ! in_array( (string)$mime, array(
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/vnd.ms-excel.sheet.macroEnabled.12'
+        ), true ) ) return new WP_Error( 'mad4b_context_spreadsheet_mime_invalid', 'Only OOXML Excel workbooks are supported.' );
+        if ( ! is_string($binary) || strlen($binary) > 10485760 )
+            return new WP_Error( 'mad4b_context_spreadsheet_size_invalid', 'Excel workbook exceeds 10 MiB.' );
+        return self::normalize_xlsx( $binary );
+    }
 
 	private static function normalize_pptx( $binary ) {
 		$entries = self::zip_entries( $binary );

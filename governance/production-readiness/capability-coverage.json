@@ -7068,6 +7068,99 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php",
+      "source_blob_sha": "074601dc3be33a8c21a812754dacc8bc4cc1cd52",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "AI-01",
+        "PROVIDERS-02",
+        "PROVIDERS-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-media-excel-contract.py"
+      ],
+      "owner_role": "MAD4B repository source reviewer — CI-only, not a site or Production owner",
+      "review_rationale": "CI-only exact-source review: enable Excel XLSX/XLSM and CSV in governed WordPress Media MIME inventory, normalize OOXML workbook via bounded read-only ZIP/XML parser with worksheet names, cell coordinates, shared/inline strings and cached-only formulas, and fail closed for malformed/missing data, oversized spreadsheets and legacy XLS without a certified parser. Tests execute the real PHP implementation with multi-sheet numeric fixtures, sheet-name and sparse-column preservation, malformed workbook, formula-cache denial, CSV, and XLSM without macro execution. Local Lab attachment readback verified. No new Context approvals, source ownership migration or Production authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wordpress-media-context.php",
+      "source_blob_sha": "057ee4b2f5061afc49be0202d24b01c67e3f5e86",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "AI-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-media-excel-contract.py"
+      ],
+      "owner_role": "MAD4B repository source reviewer — CI-only, not a site or Production owner",
+      "review_rationale": "CI-only exact-source review: enable Excel XLSX/XLSM and CSV in governed WordPress Media MIME inventory, normalize OOXML workbook via bounded read-only ZIP/XML parser with worksheet names, cell coordinates, shared/inline strings and cached-only formulas, and fail closed for malformed/missing data, oversized spreadsheets and legacy XLS without a certified parser. Tests execute the real PHP implementation with multi-sheet numeric fixtures, sheet-name and sparse-column preservation, malformed workbook, formula-cache denial, CSV, and XLSM without macro execution. Local Lab attachment readback verified. No new Context approvals, source ownership migration or Production authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-source-pipeline.php",
+      "source_blob_sha": "7a08407a797d5382d0dd3bd49d29116fdb1bc7b2",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "AI-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-media-excel-contract.py"
+      ],
+      "owner_role": "MAD4B repository source reviewer — CI-only, not a site or Production owner",
+      "review_rationale": "CI-only exact-source review: enable Excel XLSX/XLSM and CSV in governed WordPress Media MIME inventory, normalize OOXML workbook via bounded read-only ZIP/XML parser with worksheet names, cell coordinates, shared/inline strings and cached-only formulas, and fail closed for malformed/missing data, oversized spreadsheets and legacy XLS without a certified parser. Tests execute the real PHP implementation with multi-sheet numeric fixtures, sheet-name and sparse-column preservation, malformed workbook, formula-cache denial, CSV, and XLSM without macro execution. Local Lab attachment readback verified. No new Context approvals, source ownership migration or Production authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-admin-ui.php",
+      "source_blob_sha": "904c8bee75d5e7f05b3452ac5d4e3f969705b3a4",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "AI-01",
+        "PROVIDERS-02",
+        "ADMIN-01",
+        "BROWSER-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-media-excel-contract.py"
+      ],
+      "owner_role": "MAD4B repository source reviewer — CI-only, not a site or Production owner",
+      "review_rationale": "CI-only exact-source review: enable Excel XLSX/XLSM and CSV in governed WordPress Media MIME inventory, normalize OOXML workbook via bounded read-only ZIP/XML parser with worksheet names, cell coordinates, shared/inline strings and cached-only formulas, and fail closed for malformed/missing data, oversized spreadsheets and legacy XLS without a certified parser. Tests execute the real PHP implementation with multi-sheet numeric fixtures, sheet-name and sparse-column preservation, malformed workbook, formula-cache denial, CSV, and XLSM without macro execution. Local Lab attachment readback verified. No new Context approvals, source ownership migration or Production authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php",
+      "source_blob_sha": "5e0b818b5354451aa809f42558c86427806f3094",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "AI-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-media-excel-contract.py"
+      ],
+      "owner_role": "MAD4B repository source reviewer — CI-only, not a site or Production owner",
+      "review_rationale": "CI-only exact-source review: enable Excel XLSX/XLSM and CSV in governed WordPress Media MIME inventory, normalize OOXML workbook via bounded read-only ZIP/XML parser with worksheet names, cell coordinates, shared/inline strings and cached-only formulas, and fail closed for malformed/missing data, oversized spreadsheets and legacy XLS without a certified parser. Tests execute the real PHP implementation with multi-sheet numeric fixtures, sheet-name and sparse-column preservation, malformed workbook, formula-cache denial, CSV, and XLSM without macro execution. Local Lab attachment readback verified. No new Context approvals, source ownership migration or Production authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {
