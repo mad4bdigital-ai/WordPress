@@ -266,6 +266,7 @@ if ( function_exists( 'wp_get_environment_type' )
 }
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-passwordless-connection.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-wordpress-media-context.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-source-pipeline.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connector-resilience.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-read-consistency.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-audit.php';
