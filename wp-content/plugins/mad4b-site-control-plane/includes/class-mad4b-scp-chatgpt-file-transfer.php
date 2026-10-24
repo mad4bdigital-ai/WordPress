@@ -97,7 +97,61 @@ final class MAD4B_SCP_ChatGPT_File_Transfer {
         }
         return self::$action( $request );
     }
+    /**
+     * Direct multipart transport: no client-side Base64 requirement. Still uses
+     * the same scoped permission, bounded transfer, SHA-256 and MIME validation.
+     */
+    public static function multipart( $request ) {
+        $files = $request->get_file_params();
+        if ( ! is_array( $files ) || count( $files ) !== 1 || ! isset( $files['file'] ) )
+            return self::error( 'mad4b_transfer_file', 'Exactly one multipart file is required.' );
+        $file = $files['file'];
+        if ( ! is_array( $file ) || ! isset( $file['error'], $file['tmp_name'], $file['name'], $file['size'] )
+            || UPLOAD_ERR_OK !== (int) $file['error'] || ! is_uploaded_file( $file['tmp_name'] ) )
+            return self::error( 'mad4b_transfer_file', 'Invalid uploaded file.' );
+        $size = (int) $file['size'];
+        if ( $size < 1 || $size > self::MAX_BYTES )
+            return self::error( 'mad4b_transfer_size', 'File size is outside the allowed range.' );
+        $expected = strtolower( (string) $request->get_param( 'sha256' ) );
+        if ( ! preg_match( '/^[a-f0-9]{64}$/D', $expected )
+            || ! hash_equals( $expected, (string) hash_file( 'sha256', $file['tmp_name'] ) ) )
+            return self::error( 'mad4b_transfer_digest', 'SHA-256 mismatch.' );
+        $begin = new WP_REST_Request( 'POST', '/' . self::NS . '/begin' );
+        $begin->set_param( 'filename', $file['name'] );
+        $begin->set_param( 'size', $size );
+        $begin->set_param( 'sha256', $expected );
+        $started = self::begin( $begin );
+        if ( is_wp_error( $started ) ) return $started;
+        $id = $started['transfer_id'];
+        $source = @fopen( $file['tmp_name'], 'rb' );
+        $offset = 0;
+        $error = null;
+        if ( ! $source ) $error = self::error( 'mad4b_transfer_file', 'Cannot read multipart upload.' );
+        while ( ! $error && ! feof( $source ) ) {
+            $bytes = fread( $source, self::CHUNK_BYTES );
+            if ( false === $bytes || '' === $bytes ) { $error = self::error( 'mad4b_transfer_file', 'Multipart source truncated.' ); break; }
+            $chunk = new WP_REST_Request( 'POST', '/' . self::NS . '/chunk' );
+            $chunk->set_param( 'transfer_id', $id );
+            $chunk->set_param( 'offset', $offset );
+            $chunk->set_param( 'data_base64', base64_encode( $bytes ) );
+            $result = self::chunk( $chunk );
+            if ( is_wp_error( $result ) ) { $error = $result; break; }
+            $offset += strlen( $bytes );
+        }
+        if ( $source ) fclose( $source );
+        $done = new WP_REST_Request( 'POST', '/' . self::NS . '/finish' );
+        $done->set_param( 'transfer_id', $id );
+        if ( ! $error && $offset === $size ) return self::finish( $done );
+        $abort = new WP_REST_Request( 'POST', '/' . self::NS . '/abort' );
+        $abort->set_param( 'transfer_id', $id );
+        self::abort( $abort );
+        return $error ?: self::error( 'mad4b_transfer_file', 'File length mismatch.' );
+    }
     public static function register_routes() {
+        register_rest_route( self::NS, '/multipart', array(
+            'methods' => 'POST', 'callback' => array( __CLASS__, 'multipart' ),
+            'permission_callback' => array( __CLASS__, 'permitted' ), 'args' => array(),
+        ) );
         foreach ( array( 'begin', 'chunk', 'finish', 'status', 'abort' ) as $method ) {
             register_rest_route( self::NS, '/' . $method, array(
                 'methods' => 'POST', 'callback' => array( __CLASS__, $method ),
