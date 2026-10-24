@@ -120,7 +120,8 @@ final class MAD4B_SCP_ChatGPT_File_Transfer {
         if ( ! flock( $f, LOCK_EX | LOCK_NB ) ) { fclose( $f ); return self::error( 'mad4b_transfer_busy', 'Another chunk is committing.', 409 ); }
         // Recheck persisted offset under the file lock; never accept replay writes.
         $latest = get_transient( self::key( $s['id'] ) );
-        if ( ! is_array( $latest ) || (int) $latest['offset'] !== $offset || fstat( $f )['size'] !== $offset ) {
+        $stat = fstat( $f );
+        if ( ! is_array( $latest ) || (int) $latest['offset'] !== $offset || ! is_array( $stat ) || (int) $stat['size'] !== $offset ) {
             flock( $f, LOCK_UN ); fclose( $f );
             return self::error( 'mad4b_transfer_conflict', 'Transfer state changed; query status.', 409 );
         }
