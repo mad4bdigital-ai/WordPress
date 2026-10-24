@@ -1847,7 +1847,8 @@
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-permission-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-permission-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-roundtrip-runtime.php"
       ],
       "owner_role": "Repository source security and readiness reviewer — CI evidence only, not Production authorizer",
       "status": "reviewed_for_ci_only",
@@ -1868,7 +1869,8 @@
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-permission-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-permission-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-roundtrip-runtime.php"
       ],
       "owner_role": "Repository source security and readiness reviewer — CI evidence only, not Production authorizer",
       "status": "reviewed_for_ci_only",
@@ -6966,7 +6968,8 @@
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-permission-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-permission-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-roundtrip-runtime.php"
       ],
       "owner_role": "Repository source security/release reviewer — CI only",
       "status": "reviewed_for_ci_only",
@@ -7004,7 +7007,8 @@
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-permission-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-permission-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-roundtrip-runtime.php"
       ],
       "owner_role": "MAD4B repository source reviewer, nonauthorizing CI coverage",
       "review_rationale": "Explicitly register new scoped Staging attachment Ability on the pre-existing governed Write catalog and nested dispatch only. Retain exact OAuth, user capability, tickets, NHI authority, global kill switch and site identity at execution; do not mount as a direct ChatGPT tool or another MCP server.",
