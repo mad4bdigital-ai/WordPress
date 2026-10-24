@@ -7331,6 +7331,26 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Exact source binds package routing to authoritative enrolled MAD4B Site Profile environment_resolution(), rejects WordPress/profile mismatch and missing authority by retaining unknown environment, and never trusts wp_get_environment_type() or hostname alone for Staging eligibility. Same-PR Site Profile contract and executable governed package regression cover fail-closed routing. The route resolver remains nonmutating; no provider, OAuth or Production grant is added."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php",
+      "source_blob_sha": "bb4940511332658285070e3d93dc32763d8bcc99",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "UPDATES-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-readiness-source-truth-contract.py"
+      ],
+      "owner_role": "Repository source-integrity reviewer — CI-only, not an authorized site/Production operator",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact Staging Write Authority source maintains independent read-only projections of installed package candidate binding mismatch versus live write-grant reconciliation drift; each identifies distinct operator inspection/remediation instead of assuming one causes the other. The readiness output remains nonauthorizing and reports mutation_performed false. Same-PR regression inspects all distinct source markers. No change to granted scopes, application passwords, write execution, or Production authorization is certified."
     }
   ],
   "code_change_rules": {
