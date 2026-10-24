@@ -1524,6 +1524,13 @@ final class MAD4B_SCP_Context_Authority {
 		);
 	}
 
+    /** A scoped complete scan may mark missing only assets inside its MIME boundary. */
+    private static function scan_includes_absence( array $scan, array $record ) {
+        if ( empty( $scan['scoped_inventory'] ) ) return true;
+        $types = isset( $scan['mime_types'] ) && is_array( $scan['mime_types'] ) ? $scan['mime_types'] : array();
+        return in_array( (string) ( $record['mime_type'] ?? '' ), $types, true );
+    }
+
 	public static function replace_source_assets( $source_id, array $assets, array $scan = array() ) {
 		return self::with_registry_lock(
 			'replace_source_assets',
@@ -1708,8 +1715,13 @@ final class MAD4B_SCP_Context_Authority {
 				// Only a fully observed + normalized + representable scan may create
 				// absence evidence for an asset that was not observed this generation.
 				if ( $scan_complete ) {
+                    $scoped = ! empty( $scan['scoped_inventory'] );
+                    $scoped_types = $scoped && isset( $scan['mime_types'] ) && is_array( $scan['mime_types'] )
+                        ? array_values( array_unique( array_map( 'strval', $scan['mime_types'] ) ) ) : array();
+                    if ( $scoped && ! $scoped_types ) return new WP_Error( 'mad4b_context_scan_scope_missing', 'Scoped inventory requires explicit MIME types.' );
 					foreach ( $previous as $asset_id => $record ) {
 						if ( isset( $selected_assets[ $asset_id ] ) ) continue;
+                        if ( ! self::scan_includes_absence( $scan, $record ) ) continue;
 						$records[ $asset_id ]['status'] = 'unavailable';
 						$records[ $asset_id ]['availability_reason'] = 'not_seen_in_complete_scan';
 						$records[ $asset_id ]['last_missing_at'] = $scan_completed_at;
