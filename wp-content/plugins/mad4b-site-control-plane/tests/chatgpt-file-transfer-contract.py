@@ -5,6 +5,8 @@ from pathlib import Path
 root = Path(__file__).resolve().parents[1]
 source = (root / "includes/class-mad4b-scp-chatgpt-file-transfer.php").read_text()
 bootstrap = (root / "mad4b-site-control-plane.php").read_text()
+write_catalog = (root / "includes/class-mad4b-scp-server-write-catalog.php").read_text()
+chatgpt_servers = (root / "includes/class-mad4b-scp-servers.php").read_text()
 checks = {
     "staging_only": "'staging' === sanitize_key" in source,
     "no_anonymous": "is_user_logged_in()" in source,
@@ -30,6 +32,9 @@ checks = {
     "no_remote_fetch": "wp_remote_get" not in source and "curl_" not in source,
     "rest_permission_callback": "'permission_callback' => array( __CLASS__, 'permitted' )" in source,
     "wired": "MAD4B_SCP_ChatGPT_File_Transfer::boot();" in bootstrap,
+    "governed_write_catalog": "'mad4b/attachment-transfer'" in write_catalog and "function core_write_candidates()" in write_catalog,
+    "no_direct_catalog_bypass": "'mad4b/attachment-transfer'" not in chatgpt_servers,
+    "separate_actor_capability": "current_user_can( self::CAPABILITY )" in source,
 }
 for name, ok in checks.items():
     if not ok:
