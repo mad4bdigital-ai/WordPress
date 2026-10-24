@@ -15,6 +15,7 @@ final class MAD4B_SCP_Unified_Agent_Connection {
     public static function boot() {
         add_action( 'admin_post_mad4b_unified_agent_activate', array( __CLASS__, 'activate' ) );
         add_action( 'admin_post_mad4b_unified_agent_revoke', array( __CLASS__, 'revoke_credential' ) );
+        add_action( 'admin_post_mad4b_unified_agent_review_policy', array( __CLASS__, 'save_review_policy' ) );
     }
 
     private static function allowed() {
@@ -269,6 +270,85 @@ final class MAD4B_SCP_Unified_Agent_Connection {
         );
     }
 
+    /**
+     * Review delegation is independent of Agent provisioning and authentication.
+     * It never provisions AI review write grants or changes any Context asset.
+     */
+    public static function configure_review_policy( $mode, $confirmed ) {
+        if ( ! self::allowed() || ! self::site_ready() )
+            return new WP_Error( 'mad4b_unified_review_connection_denied', 'Enrolled administrator connection is required.' );
+        if ( ! class_exists( 'MAD4B_SCP_Context_Authority', false )
+            || ! class_exists( 'MAD4B_SCP_Agent_Registry', false )
+            || ! class_exists( 'MAD4B_SCP_Site_Profile', false ) )
+            return new WP_Error( 'mad4b_unified_review_authority_unavailable', 'Context Review authority is not loaded.' );
+
+        $mode = sanitize_key( (string) $mode );
+        if ( ! in_array( $mode, array( 'human_only', 'human_and_ai', 'ai_only' ), true ) )
+            return new WP_Error( 'mad4b_unified_review_mode_invalid', 'Unsupported Context Review mode.' );
+        if ( 'human_only' === $mode )
+            return MAD4B_SCP_Context_Authority::set_review_policy( 'human_only', '', true );
+        if ( ! $confirmed )
+            return new WP_Error( 'mad4b_unified_review_consent_required', 'Confirm AI Review delegation explicitly.' );
+        if ( 'staging' !== self::environment() || 'staging' !== MAD4B_SCP_Site_Profile::current_environment() )
+            return new WP_Error( 'mad4b_unified_review_staging_only', 'Delegated AI Review is Staging-only.' );
+
+        // Never silently delegate to a newly created, arbitrary or foreign Agent.
+        $slug = sanitize_title( (string) MAD4B_SCP_Site_Profile::agent_slug() );
+        $agent = '' !== $slug ? MAD4B_SCP_Agent_Registry::get_agent_by_slug( $slug ) : null;
+        if ( ! is_array( $agent ) || 'enabled' !== (string) ( $agent['status'] ?? '' )
+            || ! in_array( (string) ( $agent['environment'] ?? '' ), array( 'all', 'staging' ), true )
+            || '' === (string) ( $agent['public_id'] ?? '' ) )
+            return new WP_Error( 'mad4b_unified_review_canonical_agent_missing', 'Enable the canonical Site Profile governed-write Agent first.' );
+
+        // The existing authority enforces owner-confirmation, exact canonical Agent,
+        // durable policy audit and site binding. Runtime OAuth bearer, exact Staging
+        // write grant, source SHA/revision and classification checks remain mandatory.
+        return MAD4B_SCP_Context_Authority::set_review_policy(
+            $mode, (string) $agent['public_id'], true
+        );
+    }
+
+    public static function save_review_policy() {
+        if ( ! self::allowed() ) self::fail( 'Administrator connection permission required.' );
+        check_admin_referer( 'mad4b_unified_agent_review_policy' );
+        $mode = isset( $_POST['review_mode'] ) ? sanitize_key( wp_unslash( $_POST['review_mode'] ) ) : '';
+        $confirmed = ! empty( $_POST['confirm_review_delegation'] );
+        $result = self::configure_review_policy( $mode, $confirmed );
+        if ( is_wp_error( $result ) ) self::fail( $result->get_error_message(), 409 );
+        $status = MAD4B_SCP_Context_Authority::ai_review_policy_status();
+        self::redirect( ! empty( $status['ready'] ) || 'human_only' === $mode
+            ? 'review_saved' : 'review_saved_pending_grant' );
+    }
+
+    private static function render_review_policy() {
+        if ( ! class_exists( 'MAD4B_SCP_Context_Authority', false ) ) return;
+        $policy = MAD4B_SCP_Context_Authority::review_policy();
+        $status = MAD4B_SCP_Context_Authority::ai_review_policy_status();
+        $current = (string) ( $policy['mode'] ?? 'human_only' );
+        echo '<h3>5. Brand Context Review</h3><p>Choose how Brand Context documents are reviewed. This is separate from OAuth, Application Passwords, publishing and Agent creation.</p>';
+        echo '<p><strong>Current policy:</strong> ' . esc_html( $current )
+            . ' · <strong>Delegated review:</strong> ' . esc_html( ! empty( $status['ready'] ) ? 'Ready' : 'Not ready' ) . '</p>';
+        if ( ! empty( $status['blockers'] ) && 'human_only' !== $current ) {
+            echo '<p><strong>Next requirements:</strong> '
+                . esc_html( implode( ' · ', array_map( 'sanitize_key', $status['blockers'] ) ) ) . '</p>';
+        }
+        echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+        wp_nonce_field( 'mad4b_unified_agent_review_policy' );
+        echo '<input type="hidden" name="action" value="mad4b_unified_agent_review_policy">';
+        echo '<label for="mad4b-review-choice">Review policy</label> <select id="mad4b-review-choice" name="review_mode">';
+        foreach ( array(
+            'human_only' => 'Human review',
+            'human_and_ai' => 'Human + AI review',
+            'ai_only' => 'AI-only review — final Agent decisions with evidence',
+        ) as $mode => $label ) {
+            echo '<option value="' . esc_attr( $mode ) . '"' . selected( $current, $mode, false ) . '>' . esc_html( $label ) . '</option>';
+        }
+        echo '</select><p><label><input type="checkbox" name="confirm_review_delegation" value="1"> I explicitly approve delegated AI review for the canonical Staging Site Profile Agent.</label></p>';
+        echo '<p><small>Approval requires authenticated OAuth Bearer, exact Staging review grant, current source hash and revision, complete content and classification evidence. AI-only can approve, request changes or reject; it never silently changes classification or publishes.</small></p>';
+        submit_button( 'Save Review Policy', 'secondary', 'submit', false );
+        echo '</form>';
+    }
+
     public static function render() {
         if ( ! self::allowed() ) return;
         $agents = self::available_agents();
@@ -323,6 +403,7 @@ final class MAD4B_SCP_Unified_Agent_Connection {
             echo '</form>';
         }
         echo '<p><small>4. Functional test: verify WordPress site identity and OAuth readiness above, then complete external ChatGPT OAuth consent. A connection receipt is not a live handshake result. Credential rotation = revoke and explicitly issue again.</small></p>';
+        self::render_review_policy();
         echo '</section>';
     }
 }
