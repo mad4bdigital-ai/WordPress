@@ -2000,6 +2000,17 @@ final class MAD4B_SCP_Runtime_Convergence {
 				$changed[] = 'post_update_continuation';
 				$changed = array_values( array_unique( $changed ) );
 			}
+			// Recover only grants proven by a sealed pre-update baseline. The
+			// worker never creates OAuth authority for Cron; it defers when the
+			// current request lacks verified permission and step-up.
+			$automatic_gate = self::guard_automatic_ticket( $automatic_ticket );
+			if ( is_wp_error( $automatic_gate ) ) return $automatic_gate;
+			require_once __DIR__ . '/class-mad4b-scp-post-update-approved-grant-recovery.php';
+			$approved_grant_recovery = MAD4B_SCP_Post_Update_Approved_Grant_Recovery::attempt();
+			if ( 'COMPLETED' === ( $approved_grant_recovery['state'] ?? '' ) ) {
+				$changed[] = 'approved_grant_recovery';
+				$changed = array_values( array_unique( $changed ) );
+			}
 			$automatic_gate = self::guard_automatic_ticket( $automatic_ticket );
 			if ( is_wp_error( $automatic_gate ) ) return $automatic_gate;
 			$baseline = class_exists( 'MAD4B_SCP_Post_Update_Continuation' ) && method_exists( 'MAD4B_SCP_Post_Update_Continuation', 'capture_ready_baseline' ) ? MAD4B_SCP_Post_Update_Continuation::capture_ready_baseline( $lock ) : array();
@@ -2063,6 +2074,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 				'continuation' => $final_continuation,
 				'observed_continuation' => is_wp_error( $observed_continuation ) ? array( 'state' => 'EXTERNAL_ACTION_REQUIRED', 'error_code' => $observed_continuation->get_error_code() ) : $observed_continuation,
 				'auto_reconciliation' => $auto_reconciliation,
+				'approved_grant_recovery' => $approved_grant_recovery,
 				'authority_baseline' => is_wp_error( $baseline ) ? array( 'state' => 'NOT_OBSERVED', 'error_code' => $baseline->get_error_code() ) : $baseline,
 				'updated_at' => gmdate( 'c' ),
 				'production_mutation' => false,
