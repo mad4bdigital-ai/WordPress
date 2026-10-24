@@ -636,6 +636,20 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 
 		$status = self::status();
 		if ( empty( $status['effective'] ) ) return self::unauthorized_response( 'mad4b_oauth_resource_bridge_not_effective', 'OAuth resource bridge is not effective for this environment.', 503, $resource );
+		// Local-only REST path: WordPress has independently authenticated this
+		// application's Basic credential. Agent binding and ability grants are
+		// still checked by the downstream MAD4B authorization contract.
+		if ( class_exists( 'MAD4B_SCP_Application_Password_Agent_Bridge' )
+			&& MAD4B_SCP_Application_Password_Agent_Bridge::verified_for_mcp_request( $request ) ) {
+			self::reset_verified_bearer_context( true );
+			return $result;
+		}
+		if ( class_exists( 'MAD4B_SCP_Passwordless_Connection' ) ) {
+			// Clear the previous OAuth identity BEFORE binding the independently verified
+			// local Passwordless user; clearing afterwards loses WordPress capabilities.
+			self::reset_verified_bearer_context( true );
+			if ( MAD4B_SCP_Passwordless_Connection::verify_mcp( $request ) ) return $result;
+		}
 		$authorization = method_exists( $request, 'get_header' ) ? trim( (string) $request->get_header( 'authorization' ) ) : '';
 		if ( '' === $authorization ) {
 			self::reset_verified_bearer_context( false );
