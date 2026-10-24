@@ -108,6 +108,7 @@ class MAD4B_SCP_Agent_Registry {
 	public static $grant_enabled = false;
 	public static $configured_public_id = '22222222-2222-4222-8222-222222222222';
 	public static $wrong_public_id = '33333333-3333-4333-8333-333333333333';
+    public static $configured_environment = 'staging';
 
 	private static function configured_agent() {
 		return array(
@@ -116,7 +117,7 @@ class MAD4B_SCP_Agent_Registry {
 			'slug' => 'context-review-ai',
 			'label' => 'Context Review AI',
 			'status' => 'enabled',
-			'environment' => 'staging',
+			'environment' => self::$configured_environment,
 		);
 	}
 
@@ -899,9 +900,11 @@ mad4b_review_assert( is_wp_error( $no_consent_ai_only )
 $ai_only_policy = MAD4B_SCP_Context_Authority::set_review_policy(
     'ai_only', MAD4B_SCP_Agent_Registry::$configured_public_id, true
 );
+MAD4B_SCP_Agent_Registry::$configured_environment = 'all';
 mad4b_review_assert( ! is_wp_error( $ai_only_policy ) && 'ai_only' === $ai_only_policy['mode'],
     'AI-only review policy must persist after one initial confirmation.', $ai_only_policy );
 $ai_only_status = MAD4B_SCP_Context_Authority::ai_review_policy_status();
+mad4b_review_assert( MAD4B_SCP_Agent_Registry::$configured_environment === 'all', 'Reusable Agent is not fixed to Staging.' );
 mad4b_review_assert( ! empty( $ai_only_status['ready'] )
     && ! empty( $ai_only_status['ai_only_final_review'] )
     && ! empty( $ai_only_status['catalog_eligible'] ),
@@ -965,6 +968,7 @@ mad4b_review_assert( 'mad4b_context_ai_review_staging_only' === $production_revi
 mad4b_review_assert( empty( MAD4B_SCP_Context_Authority::ai_review_catalog_eligible() ), 'Production must never expose AI review as runtime catalog-eligible.' );
 MAD4B_SCP_Site_Profile::$environment = 'staging';
 
+MAD4B_SCP_Agent_Registry::$configured_environment = 'staging';
 $human_only = MAD4B_SCP_Context_Authority::set_review_policy( 'human_only', '', false );
 mad4b_review_assert( ! is_wp_error( $human_only ), 'Administrator must be able to disable AI review without extra confirmation.', $human_only );
 mad4b_review_assert( 'human_only' === $human_only['mode'], 'Disabling AI review must restore human_only mode.', $human_only );
