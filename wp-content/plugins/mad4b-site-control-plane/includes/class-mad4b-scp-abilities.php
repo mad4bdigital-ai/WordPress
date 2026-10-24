@@ -276,7 +276,7 @@ final class MAD4B_SCP_Abilities {
 		if ( is_array( $input ) ) {
 			$args['input_schema'] = $input;
 		} elseif ( $readonly && null === $input ) {
-			$args['input_schema'] = $this->schema( array() );
+			$args['input_schema'] = array( 'type' => array( 'object', 'null' ), 'properties' => array(), 'additionalProperties' => false );
 		}
 		wp_register_ability( $name, $args );
 	}
