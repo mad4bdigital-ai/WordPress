@@ -217,6 +217,7 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 		?>
 		<div class="wrap">
 			<h1><?php echo esc_html__( 'Connect WordPress to ChatGPT', 'mad4b-site-control-plane' ); ?></h1>
+            <?php MAD4B_SCP_Unified_Agent_Connection::render(); ?>
 			<p><?php echo esc_html__( 'Use the dedicated mad4b-chatgpt gateway. ChatGPT discovers OAuth and uses its Client ID Metadata Document automatically; no WordPress-side ChatGPT client secret or manual client registration is required.', 'mad4b-site-control-plane' ); ?></p>
 
 			<?php if ( ! empty( $status['foreign_profile_quarantined'] ) ) : ?>
