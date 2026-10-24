@@ -27,4 +27,11 @@ assert "'__mad4b_oauth_metadata_only__'" in part
 assert "MAD4B_SCP_MCP_Client_Compatibility::is_well_known_path" in part
 assert part.index("is_well_known_path") < part.index("endpoint_diagnostic_server_id")
 assert "return '' === (string) $target_server_id ||" in server
+# Source policy and PHP fixture are both checked: externally supplied observations
+# do not become local PASS evidence or an asserted server-side root cause.
+diagnostic_source = (PLUGIN / "includes/class-mad4b-scp-mcp-connection-stage-diagnostics.php").read_text(encoding="utf-8")
+for token in ("'failed_external'", "'observed_external'", "'external_observation'",
+              "'root_cause_determined' => false", "'external_connection_certified' => false"):
+    assert token in diagnostic_source, "Missing non-authorizing external-evidence boundary: " + token
+
 print("MCP_CONNECTION_STAGE_REGRESSION: PASS (typed evidence, no eager metadata tools, PHP behavior)")

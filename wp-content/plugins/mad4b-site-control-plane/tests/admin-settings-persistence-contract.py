@@ -159,7 +159,7 @@ for marker in [
     assert marker in context_admin, marker
 
 assert "intentionally resets after save/reload" not in context_admin
-assert "needs=!!(changed&&mode&&mode.value===\"human_and_ai\")" in context_admin
+assert "needs=!!(changed&&mode&&(mode.value===\"human_and_ai\"||mode.value===\"ai_only\"))" in context_admin
 
 for marker in [
     "private static function clear_option_read_cache( $name, $aggressive = false )",
@@ -189,7 +189,7 @@ assert "'persistence_verified' => true" in context_admin
 # required only for a state change.
 policy = context.split("public static function set_review_policy", 1)[1].split("public static function sources()", 1)[0]
 assert "Persisted state is authoritative" in policy
-assert policy.index("self::review_policy()") < policy.index("if ( 'human_and_ai' === $mode )")
+assert policy.index("self::review_policy()") < policy.index("if ( in_array( $mode, array( 'human_and_ai', 'ai_only' ), true ) )")
 assert "current['persistence_verified'] = true" in policy
 assert "Changing delegated AI Agent review requires explicit administrator confirmation." in policy
 

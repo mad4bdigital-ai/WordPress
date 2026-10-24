@@ -94,6 +94,30 @@ final class MAD4B_SCP_Plugin_Package {
 		$source = isset( $input['source'] ) ? sanitize_key( (string) $input['source'] ) : 'auto_certified';
 		$reason = isset( $input['reason'] ) ? sanitize_text_field( (string) $input['reason'] ) : '';
 
+		// Resolve route before provider authority. The resolver is pure and
+		// cannot authorize a plan, download a package, or start a mutation.
+		require_once __DIR__ . '/class-mad4b-scp-package-route-resolver.php';
+		$inventory = class_exists( 'MAD4B_SCP_Provider_Contracts' ) ? MAD4B_SCP_Provider_Contracts::all() : array();
+		// Package planning must use the same exact, deployment-bound Site Profile
+		// as write authority. Hostname and raw WordPress environment alone do
+		// not authorize an update, especially on copied staging sandboxes.
+		$environment = 'unknown';
+		if ( class_exists( 'MAD4B_SCP_Site_Profile' )
+			&& method_exists( 'MAD4B_SCP_Site_Profile', 'environment_resolution' ) ) {
+			$resolution = MAD4B_SCP_Site_Profile::environment_resolution();
+			if ( is_array( $resolution ) && ! empty( $resolution['profile_environment_authoritative'] )
+				&& empty( $resolution['wordpress_profile_mismatch'] ) ) {
+				$environment = sanitize_key( (string) ( $resolution['effective_environment'] ?? 'unknown' ) );
+			}
+		}
+		$route = MAD4B_SCP_Package_Route_Resolver::resolve( $provider, $environment, $inventory );
+		if ( 'control_plane_exact_head' === $route['route'] ) {
+			return new WP_Error( 'mad4b_control_plane_self_update_route_required', 'Use the governed Control Plane selected-head planner.', $route );
+		}
+		if ( 'certified_provider_package' !== $route['route'] ) {
+			return new WP_Error( 'mad4b_plugin_package_provider_uncertified', 'Requested plugin provider has no certified package authority.', $route );
+		}
+
 		$authority = self::authority( $provider, $component );
 		if ( is_wp_error( $authority ) ) return $authority;
 
@@ -287,8 +311,35 @@ final class MAD4B_SCP_Plugin_Package {
 		);
 	}
 
+	/** Static, non-authorizing resolution hints; never returns URLs or usable grants. */
+	private static function package_route_guidance( $reason ) {
+		$control_plane = 'control_plane' === $reason;
+		return array(
+			'contract' => 'mad4b.plugin-package-route-guidance.v1',
+			'route' => $control_plane ? 'governed_control_plane_self_update' : 'certified_provider_inventory',
+			'next_read_ability' => $control_plane ? 'mad4b/control-plane-selected-head-plan' : '',
+			'certified_inventory_path' => $control_plane ? '' : 'config/certified-providers.json',
+			'alternative_read_ability' => $control_plane ? 'mad4b/control-plane-upload-plan' : '',
+			'reason' => $reason,
+			'caller_supplied_package_allowed' => false,
+			'auto_apply_allowed' => false,
+			'production_allowed' => false,
+			'mutation_performed' => false,
+		);
+	}
+
 	private static function authority( $provider, $component ) {
-		if ( '' === $provider || ! class_exists( 'MAD4B_SCP_Provider_Contracts' ) ) return new WP_Error( 'mad4b_plugin_package_provider_required', 'A cataloged provider_id is required.' );
+		// The core control plane owns its separate, exact-artifact self-update workflow.
+		// Never route it through third-party provider installation or silently widen
+		// the certified-provider catalog to make a self-replacement appear eligible.
+		if ( in_array( $provider, array( 'mad4b', 'mad4b-site-control-plane', 'mad4b_site_control_plane' ), true ) ) {
+			return new WP_Error(
+				'mad4b_control_plane_self_update_route_required',
+				'The MAD4B control plane must use the governed control-plane update coordinator, not the certified third-party plugin-package pipeline.',
+				self::package_route_guidance( 'control_plane' )
+			);
+		}
+		if ( '' === $provider || ! class_exists( 'MAD4B_SCP_Provider_Contracts' ) ) return new WP_Error( 'mad4b_plugin_package_provider_required', 'A cataloged provider_id is required.', self::package_route_guidance( 'missing_provider' ) );
 		$target_version = class_exists( 'MAD4B_SCP_Runtime_Release_Set', false )
 			&& MAD4B_SCP_Runtime_Release_Set::component_apply_in_progress( $provider )
 			? MAD4B_SCP_Runtime_Release_Set::active_component_target_version( $provider )
@@ -296,7 +347,7 @@ final class MAD4B_SCP_Plugin_Package {
 		$contract = '' !== $target_version && method_exists( 'MAD4B_SCP_Provider_Contracts', 'get_for_version' )
 			? MAD4B_SCP_Provider_Contracts::get_for_version( $provider, $target_version )
 			: MAD4B_SCP_Provider_Contracts::get( $provider );
-		if ( ! is_array( $contract ) || empty( $contract ) ) return new WP_Error( 'mad4b_plugin_package_provider_uncertified', 'Provider has no exact repository certification authority for the requested runtime release-set version.' );
+		if ( ! is_array( $contract ) || empty( $contract ) ) return new WP_Error( 'mad4b_plugin_package_provider_uncertified', 'Provider has no exact repository certification authority for the requested runtime release-set version.', self::package_route_guidance( 'uncertified_provider' ) );
 
 		$authority = $contract;
 		if ( '' !== $component ) {

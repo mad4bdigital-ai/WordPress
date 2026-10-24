@@ -346,7 +346,7 @@ final class MAD4B_SCP_Full_Staging_Authority {
 			return new WP_Error( 'mad4b_full_authority_handshake_resilience_unavailable', 'Shared connector resilience service is unavailable.' );
 		}
 
-		return MAD4B_SCP_Connector_Resilience::generation_fenced_compact_read(
+		$result = MAD4B_SCP_Connector_Resilience::generation_fenced_compact_read(
 			'full_staging_authority_handshake',
 			array( __CLASS__, 'plan' ),
 			static function ( $plan, $before, $after ) {
@@ -435,6 +435,28 @@ final class MAD4B_SCP_Full_Staging_Authority {
 			},
 			8192
 		);
+		if ( is_wp_error( $result ) && 'mad4b_generation_fenced_read_failed' === $result->get_error_code() ) {
+			$data = $result->get_error_data();
+			$data = is_array( $data ) ? $data : array();
+			// No plan or authority is supplied when the underlying read fails.
+			return array(
+				'contract' => 'mad4b.full-staging-authority-handshake.v1',
+				'state' => 'read_blocked',
+				'ready_to_apply' => false,
+				'authority_ready' => false,
+				'operational_ready' => false,
+				'read_only' => true,
+				'authorizing' => false,
+				'mutation_performed' => false,
+				'production_allowed' => false,
+				'error_code' => $result->get_error_code(),
+				'source_error_code' => isset( $data['source_error_code'] ) ? sanitize_key( (string) $data['source_error_code'] ) : '',
+				'category' => isset( $data['category'] ) ? sanitize_key( (string) $data['category'] ) : 'unknown',
+				'correlation_id' => isset( $data['correlation_id'] ) ? (string) $data['correlation_id'] : '',
+				'client_action' => 'inspect_source_error_then_request_fresh_handshake',
+			);
+		}
+		return $result;
 	}
 
 	private static function developer_execution_projection( array $developer_status ) {

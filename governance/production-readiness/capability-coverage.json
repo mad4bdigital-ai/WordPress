@@ -1898,6 +1898,152 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing scheduling, environmental isolation and bounded scanning controls apply; no new scheduler permissions or mandatory status checks.",
       "review_rationale": "WordPress hourly cleanup limited to stale .part files under exact owned temporary root, maximum 200 scanned per run; disabled in Production and when global write kill switch is active, with negative hermetic fixtures."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-agent-connection.php",
+      "control_ids": [
+        "MCP-01",
+        "ADMIN-01",
+        "OAUTH-01",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-agent-connection-contract.py"
+      ],
+      "owner_role": "Source security reviewer — CI-only",
+      "review_rationale": "New internal WordPress admin service reuses existing Agent Registry/OAuth and strictly opt-in private-vault Application Passwords. No connector credentials are displayed, no write/Production grants are issued, and external activation is unverified.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing administrator role, OAuth consent, MCP execution fences, vault protection, Site Profile binding, capability and mutation permissions cover this internal service.",
+      "execution_note": "No external Vault, application password, site grant, WordPress mutation or OAuth consent was issued as part of GitHub source CI."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-package-route-resolver.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py"
+      ],
+      "owner_role": "Repository source security reviewer; CI-only, not WordPress operator or Production authorizer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Staging isolation, certified provider boundaries, WordPress control-plane self-update routing, and no-mutation policy cover this read-only route classifier without granting new authority.",
+      "review_rationale": "New deterministic PHP class classifies Control Plane self-update separately from certified external provider packages, rejects missing providers and non-Staging eligibility, and reports no auto-apply or caller-supplied packages. Same-PR Python and PHP fixtures test negative and positive branches. Source CI is not live WordPress acceptance. The same-PR Python regression contract executes both fixed PHP CLI fixtures with bounded timeout, checks nonzero exit codes and requires positive PASS markers; neither fixture is counted as a trusted standalone PHPUnit test."
+    },
+    {
+      "id": "ability:mad4b/control-plane-selected-head-plan",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py"
+      ],
+      "owner_role": "Repository source-review maintainer — CI-only static candidate audit, not remote authorization or WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing update-coordinator, cross-plugin isolation, recovery, rollout, governance and security controls apply. The introduced source only mentions the established Ability as non-authorizing routing guidance; this review does not register, grant, invoke, install or certify it.",
+      "review_rationale": "Static source scanner identifies the literal mad4b/control-plane-selected-head-plan in the new package route guidance. It is a pointer to an independent already-governed Control Plane planning surface, NOT a newly registered Ability or an executable provider-package action. Same-PR hermetic PHP test validates fail-closed MAD4B provider rejection, read-only guidance and no auto-apply/Production permission. Runtime discovery remains unverified. The same-PR Python regression contract executes both fixed PHP CLI fixtures with bounded timeout, checks nonzero exit codes and requires positive PASS markers; neither fixture is counted as a trusted standalone PHPUnit test."
+    },
+    {
+      "id": "ability:mad4b/control-plane-upload-plan",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py"
+      ],
+      "owner_role": "Repository source-review maintainer — CI-only static candidate audit, not remote authorization or WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing update-coordinator, cross-plugin isolation, recovery, rollout, governance and security controls apply. The introduced source only mentions the established Ability as non-authorizing routing guidance; this review does not register, grant, invoke, install or certify it.",
+      "review_rationale": "Static source scanner identifies the literal mad4b/control-plane-upload-plan in the new package route guidance. It is a pointer to an independent already-governed Control Plane planning surface, NOT a newly registered Ability or an executable provider-package action. Same-PR hermetic PHP test validates fail-closed MAD4B provider rejection, read-only guidance and no auto-apply/Production permission. Runtime discovery remains unverified. The same-PR Python regression contract executes both fixed PHP CLI fixtures with bounded timeout, checks nonzero exit codes and requires positive PASS markers; neither fixture is counted as a trusted standalone PHPUnit test."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-environment-convergence-policy.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "RECOVERY-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/environment-convergence-policy-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only, no Staging authority, no WordPress grants or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Site Profile source-of-authority, update recovery, platform isolation and deployment controls govern this pure read-only environment decision. No grants, consent, package install or site mutation are introduced.",
+      "review_rationale": "New nonauthorizing Environment Convergence Policy requires exact authoritative enrolled Site Profile, enrolled origin, matching deployment and WordPress/profile environment before declaring nonproduction auto-convergence eligibility. All outputs retain grant mutation unauthorized, OAuth requirements, package identity and audit requirements. Same-PR trusted Python fixture executes nine pure PHP cases across local, development, staging, production and mismatch/error conditions."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-nonproduction-approved-grants.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "UPDATES-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/nonproduction-approved-grants-contract.py"
+      ],
+      "owner_role": "Repository source-security reviewer — CI-only; no agent/site write grants or Production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Site Profile, exact prior-grant baseline, OAuth identity and governed update/rollback boundaries apply to this pure evaluator. It neither accepts client-supplied approval authority nor executes a grant mutation.",
+      "review_rationale": "New read-only classifier checks non-production environment policy, sealed pre-update audited baseline, exact Site Profile and Agent identities, manifest, trusted fresh grant inventory, no breakglass/wildcards/denies and only exact previously approved server/ability/provider pairs. Its result is non-authorizing and explicitly forbids new grants, Production and mutation. Same-PR Python trusted test executes 7 PHP cases."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-post-update-approved-grant-recovery.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "OAUTH-01",
+        "RECOVERY-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/post-update-approved-grant-recovery-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/nonproduction-approved-grants-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no site grants or Production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing sealed prior-grant recovery, OAuth bearer/step-up, exact Staging Site Profile, plan revision and audited rollback-controlled reconciliation policies apply. The coordinator cannot mint identity or bypass grant/Production safety gates.",
+      "review_rationale": "New guarded recovery coordinator defaults DEFER, requires authoritative Staging Site Profile, sealed pre-update grant baseline and continuation permit, verified OAuth step-up and eligible exact plan, denies stale grants and invokes the existing audited reconciliation operation only with nonproduction_approved_auto=true. No independent mutation authority is introduced. Static integration contract and actual PHP gate test cover this source for CI-only review."
     }
   ],
   "lifecycle": [],
@@ -7032,6 +7178,386 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-agent-connection.php",
+      "source_blob_sha": "71a79336cb192d64126df7ef92fccd343bc385ea",
+      "control_ids": [
+        "ADMIN-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "MCP-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-agent-connection-contract.py"
+      ],
+      "owner_role": "MAD4B repository source reviewer — code regression only; no owner site credential or Production grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Uses established WordPress admin permissions, exact Site Profile, Agent Registry, authenticated OAuth, reviewed Context integrity, existing MCP Ability and safe credential storage controls.",
+      "review_rationale": "Introduces UI-guided site-scoped agent selection, explicit OAuth or optional current-user Application Password issuance to a private external Vault, readonly grants, and revocation with no credential disclosed in UI. Python regression runs sandboxed PHP fixture; never deploys or provisions live credentials. Adds separately confirmed AI-only / Human+AI Review settings through the existing audited Context Authority, canonical Staging Site Profile Agent, and no automatic write grant, with explicit negative runtime checks for Production and absent consent. Failed Agent activation now revokes only the matching newly issued Application Password and cleans its private Vault file; mismatched rollback refuses to revoke an unrelated password. Hermetic negative runtime checks cover both cases."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-connection-admin-ui.php",
+      "source_blob_sha": "f2550a52b77ee52a28ac67185ccc60581f6df561",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-agent-connection-contract.py"
+      ],
+      "owner_role": "MAD4B repository source reviewer — code regression only; no owner site credential or Production grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Uses established WordPress admin permissions, exact Site Profile, Agent Registry, authenticated OAuth, reviewed Context integrity, existing MCP Ability and safe credential storage controls.",
+      "review_rationale": "Introduces UI-guided site-scoped agent selection, explicit OAuth or optional current-user Application Password issuance to a private external Vault, readonly grants, and revocation with no credential disclosed in UI. Python regression runs sandboxed PHP fixture; never deploys or provisions live credentials. The existing ChatGPT connection admin UI now loads and registers the scoped Unified Agent service, keeping repository bootstrap bytes and inherited Feature 007 fingerprints unchanged."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php",
+      "source_blob_sha": "6f794a8bb1c8ca629edbd01d1f036653c1197ed5",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "SECURITY-01",
+        "TICKETS-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-ai-only-review-contract.py"
+      ],
+      "owner_role": "MAD4B repository source reviewer — code regression only; no owner site credential or Production grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Uses established WordPress admin permissions, exact Site Profile, Agent Registry, authenticated OAuth, reviewed Context integrity, existing MCP Ability and safe credential storage controls.",
+      "review_rationale": "Supports explicit ai_only policy and three exact-bound AI decisions, logging reasons and optional classification proposals without metadata mutation. Existing Staging identity and source SHA checks remain; Python regression invokes real PHP fixture. No live ETG document review, publication or external authorization is asserted."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-admin-ui.php",
+      "source_blob_sha": "07903e984e9c84cb56a1245f03db15c60ba1eb1a",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-ai-only-review-contract.py"
+      ],
+      "owner_role": "MAD4B repository source reviewer — code regression only; no owner site credential or Production grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Uses established WordPress admin permissions, exact Site Profile, Agent Registry, authenticated OAuth, reviewed Context integrity, existing MCP Ability and safe credential storage controls.",
+      "review_rationale": "Supports explicit ai_only policy and three exact-bound AI decisions, logging reasons and optional classification proposals without metadata mutation. Existing Staging identity and source SHA checks remain; Python regression invokes real PHP fixture. No live ETG document review, publication or external authorization is asserted."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-package.php",
+      "source_blob_sha": "a29eea8f6cbcaab27ec4b022885b8d330854723e",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py"
+      ],
+      "owner_role": "Repository scoped package source reviewer — CI evidence only, not WordPress or Production owner authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governed control-plane self-update coordinator, certified third-party package authority and fail-closed provider selection controls apply; no new provider/grant/installation authority is created.",
+      "review_rationale": "Exact source denies mad4b, mad4b-site-control-plane and mad4b_site_control_plane as third-party package provider aliases before provider selection, returning mad4b_control_plane_self_update_route_required. Direct PHP reflection fixture asserts all three denied aliases, while scoped Python contract asserts the relevant authority and denied-route markers. Package workflow executes both regressions. CI source coverage is not a live self-update certification or deployment approval. The same-PR Python regression contract executes both fixed PHP CLI fixtures with bounded timeout, checks nonzero exit codes and requires positive PASS markers; neither fixture is counted as a trusted standalone PHPUnit test."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-package-route-resolver.php",
+      "source_blob_sha": "f98fd2e968224cde7dd191c377e040105905c703",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py"
+      ],
+      "owner_role": "Repository source security reviewer — CI-only; no site deployment or grant authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Reviewed exact new router source. Target aliases for MAD4B select the independent selected-head planner, registered providers select the third-party planner, unknown targets and Production are not eligible. No network, filesystem mutation, authorization, arbitrary package selection or auto-apply. Regression contract and hermetic PHP cases are present in this PR. The same-PR Python regression contract executes both fixed PHP CLI fixtures with bounded timeout, checks nonzero exit codes and requires positive PASS markers; neither fixture is counted as a trusted standalone PHPUnit test."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-package.php",
+      "source_blob_sha": "42c9c279fdccbfd71cecd7592a34f8449619e671",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py"
+      ],
+      "owner_role": "Repository package-source reviewer — CI-only; no permission or deployment grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "New exact package-planning source uses the non-authorizing route resolver before provider authority, fails closed for uncatalogued providers, and returns structured safe guidance for MAD4B self-update aliases without entering third-party installation. The existing independent provider authority, Staging mutation policy and explicit apply fences remain in place. Same-PR Python and PHP regression fixtures cover the routing denials. The same-PR Python regression contract executes both fixed PHP CLI fixtures with bounded timeout, checks nonzero exit codes and requires positive PASS markers; neither fixture is counted as a trusted standalone PHPUnit test."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-connection-admin-ui.php",
+      "source_blob_sha": "1bec33f2f9f4cd2a4148832707425136879a2e58",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-agent-connection-contract.py"
+      ],
+      "owner_role": "MAD4B repository source reviewer — code regression only; no owner site credential or Production grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Uses established WordPress admin permissions, exact Site Profile, Agent Registry, authenticated OAuth, reviewed Context integrity, existing MCP Ability and safe credential storage controls.",
+      "review_rationale": "Exact-source UI registration fix: retain module inclusion inside existing ChatGPT connection UI but call Unified Agent boot only when WordPress hook API add_action exists. This preserves runtime form routes in WordPress and avoids PHP fatal when standalone deferred-admin fixture includes the UI without WordPress. Updated same-PR contract asserts the conditional guard; CI deferred-admin runtime independently exercises the failure mode. No site grant, OAuth consent, Production enablement, publisher authority or deployment is inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-connection-stage-diagnostics.php",
+      "source_blob_sha": "9191861f283b9bec389802e9eb8cbcf73811695e",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-connection-stage-regression.py"
+      ],
+      "owner_role": "Repository diagnostics source reviewer — CI-only; no staging or Production operator authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact-source review for newly accepted externally supplied stage observations. A structured external failed/passed MCP call is labeled as unverified external observation only, while an opaque internal_error cannot be interpreted as local failure; no external connection certification, backend root-cause attribution, mutation, OAuth grant or Production permission is enabled. Same-PR trusted Python regression executes the PHP runtime fixture asserting failed external read remains distinct from local initialization and no fabricated root cause; static checks verify source fail-closed markers. Existing historical blob reviews are preserved."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-full-staging-authority.php",
+      "source_blob_sha": "59487649f21362e5fa06c77b030c44bdfc622e58",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/full-staging-authority-handshake-failure-contract.py"
+      ],
+      "owner_role": "Repository source-security reviewer — CI-only; no Site Owner or Production deployment permission",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact source returns a read-only, nonauthorizing, mutation-free read_blocked projection only when the generation-fenced handshake read fails, carrying bounded source-error classification and correlation without inventing an apply-ready plan. Same-PR fail-closed contract checks the error-specific branch, false readiness flags, and unchanged positive handshake response. This is CI review only, not operational evidence or Staging authority."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-package.php",
+      "source_blob_sha": "29ec342ed3a58d41eb57b67eeb9ea24f3fe6c26c",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/package-route-site-profile-authority-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py"
+      ],
+      "owner_role": "Repository source-security reviewer — CI-only; no Site Owner or Production deployment permission",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact source binds package routing to authoritative enrolled MAD4B Site Profile environment_resolution(), rejects WordPress/profile mismatch and missing authority by retaining unknown environment, and never trusts wp_get_environment_type() or hostname alone for Staging eligibility. Same-PR Site Profile contract and executable governed package regression cover fail-closed routing. The route resolver remains nonmutating; no provider, OAuth or Production grant is added."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php",
+      "source_blob_sha": "bb4940511332658285070e3d93dc32763d8bcc99",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "UPDATES-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-readiness-source-truth-contract.py"
+      ],
+      "owner_role": "Repository source-integrity reviewer — CI-only, not an authorized site/Production operator",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact Staging Write Authority source maintains independent read-only projections of installed package candidate binding mismatch versus live write-grant reconciliation drift; each identifies distinct operator inspection/remediation instead of assuming one causes the other. The readiness output remains nonauthorizing and reports mutation_performed false. Same-PR regression inspects all distinct source markers. No change to granted scopes, application passwords, write execution, or Production authorization is certified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-environment-convergence-policy.php",
+      "source_blob_sha": "13f49188582b63ed5df28548f46946f914bf17b5",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/environment-convergence-policy-contract.py"
+      ],
+      "owner_role": "Repository exact-source reviewer — CI only, no runtime mutation consent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Pure, fail-closed Site Profile environment resolver with nine executed PHP cases; a Staging label alone is not authority. Auto-grant mutation stays false. Same-PR Python runner checks source integration and executes the nine-case standalone PHP regression. Neither grants nor Production approvals are created."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-post-update-continuation.php",
+      "source_blob_sha": "36f3ddcb83b389dd079da8ceb3250978c354799b",
+      "control_ids": [
+        "UPDATES-01",
+        "RECOVERY-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/environment-convergence-policy-contract.py"
+      ],
+      "owner_role": "Repository exact-source reviewer — CI only, no runtime mutation consent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Existing post-update continuation now consults the shared authoritative environment-convergence policy before allowing Staging-only reconciliation; unknown, Production or mismatched Site Profiles are blocked with distinct operator diagnostic instead of inferred hostname authority. Same-PR Python runner checks source integration and executes the nine-case standalone PHP regression. Neither grants nor Production approvals are created."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-nonproduction-approved-grants.php",
+      "source_blob_sha": "a1ac36e9d8d309b4dd459e218f02e5a9477c8126",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "UPDATES-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/nonproduction-approved-grants-contract.py"
+      ],
+      "owner_role": "Repository exact-source reviewer — CI-only; no OAuth or Staging mutation approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact source is a pure non-authorizing previously approved grant gate. It checks authenticated sealed baseline and exact site/agent/profile/source chain with fresh trusted inventory, rejects any unapproved or duplicate grant pair, maintains Production denial and prohibits all mutation. Separate trusted Python wrapper executes the 7-case PHP regression; CI coverage is not live owner approval."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-post-update-continuation.php",
+      "source_blob_sha": "b538efd66cbb0258a2d8acb9f9ab01dffd9999c1",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "UPDATES-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/nonproduction-approved-grants-integration-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/nonproduction-approved-grants-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/environment-convergence-policy-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no site grants or Production permission",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact read-only sealed baseline now gathers exact already-authorized grant pairs from the enrolled Agent Registry, rejects non-exact, duplicate or count-drift grants, seals that snapshot before replacement and only serves it after verifying baseline integrity, consumed exact release identity and original continuation permit. Source remains guarded by existing audit/OAuth and independent nonproduction environment checks. The same-PR integration checker, pure PHP grant gate and environment runtime runner cover the new source boundaries; no live deployment/grant permission is certified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation.php",
+      "source_blob_sha": "786679d90864a6363be60d4990e9e35902b0a4d3",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "OAUTH-01",
+        "UPDATES-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/nonproduction-approved-grants-integration-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/nonproduction-approved-grants-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no site grants or Production permission",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact grant reconciler adds opt-in nonproduction_approved_auto mode without weakening existing explicit confirmation for other requests. Production auto is denied before any writes, and previously approved exact server/ability/provider pairs must pass a sealed prior-baseline evaluator, current OAuth/step-up, exact plan and inventory and absence of stale/deny/wildcard authority before recording pre-mutation intent audit. Mutations remain guarded by existing exact postconditions and rollback. These are source/CI reviews only, not owner or Production authorization."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-post-update-approved-grant-recovery.php",
+      "source_blob_sha": "795fdede40e6370c3e0661810f19933c9342c275",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "OAUTH-01",
+        "UPDATES-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/post-update-approved-grant-recovery-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/nonproduction-approved-grants-contract.py"
+      ],
+      "owner_role": "Repository source/security reviewer — CI only; no live OAuth/Production grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "New recovery coordinator checks exact authenticated nonproduction environment, sealed previous grant baseline and live verified OAuth before invoking existing rollback-capable grant reconciler. Cron without OAuth defers; Production and stale grants are blocked. Same-PR contract checks source ordering and trusted executable PHP tests exercise the denied and allowed prior-grant classifier; certification remains read-only CI evidence."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-convergence.php",
+      "source_blob_sha": "69a32f84b58d3103daf6b5c67ef34a8d32c6fddb",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "OAUTH-01",
+        "UPDATES-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/post-update-approved-grant-recovery-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/nonproduction-approved-grants-contract.py"
+      ],
+      "owner_role": "Repository source/security reviewer — CI only; no live OAuth/Production grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Runtime Convergence now invokes the checked approved-grant recovery coordinator and reports its state separately; existing reconciliation, grant policy and audit boundaries are preserved. Same-PR contract checks source ordering and trusted executable PHP tests exercise the denied and allowed prior-grant classifier; certification remains read-only CI evidence."
     }
   ],
   "code_change_rules": {
