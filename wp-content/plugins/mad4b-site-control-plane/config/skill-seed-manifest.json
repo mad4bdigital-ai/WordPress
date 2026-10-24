@@ -1,6 +1,6 @@
 {
   "contract": "mad4b.skill-seed-manifest.v1",
-  "seed_version": 13,
+  "seed_version": 15,
   "skills": [
     {
       "level": "site",
@@ -73,6 +73,90 @@
         "allow_task_context": true,
         "allowed_mutation_abilities_source": "brand_bearing"
       }
+    },
+    {
+      "level": "workflow",
+      "target": "interface-workflow",
+      "name": "wordpress-interface-workflow",
+      "enabled": true
+    },
+    {
+      "level": "workflow",
+      "target": "filters-workflow",
+      "name": "wordpress-filters-workflow",
+      "enabled": true
+    },
+    {
+      "level": "workflow",
+      "target": "component-development",
+      "name": "wordpress-component-development",
+      "enabled": true
+    },
+    {
+      "level": "workflow",
+      "target": "woocommerce-booking-acceptance",
+      "name": "woocommerce-booking-acceptance",
+      "enabled": true
+    },
+    {
+      "level": "workflow",
+      "target": "interface-release-qa",
+      "name": "wordpress-interface-release-qa",
+      "enabled": true
+    },
+    {
+      "level": "workflow",
+      "target": "ui-discovery",
+      "name": "wordpress-ui-discovery",
+      "enabled": true
+    },
+    {
+      "level": "workflow",
+      "target": "elementor-design-system",
+      "name": "elementor-design-system",
+      "enabled": true
+    },
+    {
+      "level": "workflow",
+      "target": "dynamic-conditions",
+      "name": "wordpress-dynamic-conditions",
+      "enabled": true
+    },
+    {
+      "level": "workflow",
+      "target": "component-registry",
+      "name": "wordpress-component-registry",
+      "enabled": true
+    },
+    {
+      "level": "workflow",
+      "target": "dependency-impact",
+      "name": "wordpress-dependency-impact",
+      "enabled": true
+    },
+    {
+      "level": "workflow",
+      "target": "visual-regression",
+      "name": "wordpress-visual-regression",
+      "enabled": true
+    },
+    {
+      "level": "workflow",
+      "target": "schema-migration",
+      "name": "wordpress-schema-migration",
+      "enabled": true
+    },
+    {
+      "level": "workflow",
+      "target": "performance-regression",
+      "name": "wordpress-performance-regression",
+      "enabled": true
+    },
+    {
+      "level": "workflow",
+      "target": "development-orchestrator",
+      "name": "wordpress-development-orchestrator",
+      "enabled": true
     }
   ]
 }
