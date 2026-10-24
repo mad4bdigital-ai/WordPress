@@ -4,8 +4,8 @@
   "reviewed_base_sha": "ea7b4fcd3b2b8d85caee3eefb0d3ed971c91f971",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 90,
-  "changed_paths_sha256": "e96325ad9a9728ee4daffb0718a9df69a8ab746fa53f86a3d731b88d3e918189",
+  "changed_file_count": 91,
+  "changed_paths_sha256": "733cfb9323f35cb6e3426743e2e53cdcfb9a8733c975689b3e75cb99b6c8d858",
   "slices": [
     {
       "id": "source-evidence-and-ci",
@@ -174,7 +174,8 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-candidate-binding-audit-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-catalog-parity-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/transport-permission-containment-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-addon-registry-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-addon-registry-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/g2-permission-reduction-contract.py"
       ]
     }
   ]
