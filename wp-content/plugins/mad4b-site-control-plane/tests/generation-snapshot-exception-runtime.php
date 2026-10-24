@@ -34,4 +34,4 @@ foreach ( array( 1 => 'before_read', 2 => 'after_read' ) as $step => $phase ) {
         || $project_calls !== 0 || $read_calls !== $step - 1 )
         throw new RuntimeException( 'Snapshot error violated fail-closed guarantees: ' . $phase );
 }
-echo "GENERATION_SNAPSHOT_EXCEPTION_RUNTIME: PASS (2 cases)\n";
+echo "PASS: GENERATION_SNAPSHOT_EXCEPTION_RUNTIME (2 cases)\n";
