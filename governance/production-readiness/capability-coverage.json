@@ -7043,7 +7043,7 @@
         "PROVIDERS-02"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/context-media-normalization-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-media-normalization-contract.py"
       ],
       "owner_role": "Repository source reviewer — nonauthorizing CI coverage",
       "review_rationale": "Exact-source review of a pure local PDF normalization facade that reuses the existing Google Drive PDF text parser without Google credentials, network access or provider mutations. Tests prove a text PDF is normalized and invalid/OCR-required PDFs are rejected. Attachment approval and complete-source admission remain separate; this review is not a Staging or Production certificate.",
@@ -7061,7 +7061,7 @@
         "PROVIDERS-02"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/context-media-normalization-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-media-normalization-contract.py"
       ],
       "owner_role": "Repository source reviewer — nonauthorizing CI coverage",
       "review_rationale": "Exact-source review of fail-closed WordPress Media content normalization for new or modified TXT, Markdown and text-based PDF: raw SHA-256 is compared after bounded local read, invalid or empty UTF-8 and oversized attachments are rejected, PDF OCR-needed/incomplete output is blocked, and unmodified registry-approved content follows the unchanged exact reuse path. Isolated PHP regression and Local Lab read-only acceptance passed. Does not auto-approve Context, modify historical ownership, overcome registry capacity or authorize deployments.",
