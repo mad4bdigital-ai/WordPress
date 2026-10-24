@@ -11,14 +11,24 @@ concurrency:
 jobs:
   attachment-transfer-contract:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
       - name: Validate bounded transfer bridge
         run: |
           set -euo pipefail
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-file-transfer.php
           php -l wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-contract.py
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-permission-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-permission-runtime.php
