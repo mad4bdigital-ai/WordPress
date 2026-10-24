@@ -98,7 +98,8 @@ final class MAD4B_SCP_Plugin_Package {
 		// cannot authorize a plan, download a package, or start a mutation.
 		require_once __DIR__ . '/class-mad4b-scp-package-route-resolver.php';
 		$inventory = class_exists( 'MAD4B_SCP_Provider_Contracts' ) ? MAD4B_SCP_Provider_Contracts::all() : array();
-		$route = MAD4B_SCP_Package_Route_Resolver::resolve( $provider, 'staging', $inventory );
+		$environment = function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'production';
+		$route = MAD4B_SCP_Package_Route_Resolver::resolve( $provider, $environment, $inventory );
 		if ( 'control_plane_exact_head' === $route['route'] ) {
 			return new WP_Error( 'mad4b_control_plane_self_update_route_required', 'Use the governed Control Plane selected-head planner.', $route );
 		}
