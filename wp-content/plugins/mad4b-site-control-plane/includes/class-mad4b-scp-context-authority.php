@@ -132,7 +132,7 @@ final class MAD4B_SCP_Context_Authority {
 		$policy = isset( $profile['review_policy'] ) && is_array( $profile['review_policy'] ) ? $profile['review_policy'] : self::default_review_policy();
 		if ( self::REVIEW_POLICY_CONTRACT !== ( isset( $policy['contract'] ) ? (string) $policy['contract'] : '' ) ) $policy = self::default_review_policy();
 		$mode = isset( $policy['mode'] ) ? sanitize_key( (string) $policy['mode'] ) : 'human_only';
-		if ( ! in_array( $mode, array( 'human_only', 'human_and_ai' ), true ) ) $mode = 'human_only';
+		if ( ! in_array( $mode, array( 'human_only', 'human_and_ai', 'ai_only' ), true ) ) $mode = 'human_only';
 		$policy['mode'] = $mode;
 		$agent_public_id = isset( $policy['ai_agent_public_id'] ) ? strtolower( trim( (string) $policy['ai_agent_public_id'] ) ) : '';
 		$policy['ai_agent_public_id'] = 1 === preg_match( '/^[a-f0-9-]{36}$/', $agent_public_id ) ? $agent_public_id : '';
@@ -152,7 +152,7 @@ final class MAD4B_SCP_Context_Authority {
 
 	public static function ai_review_catalog_eligible() {
 		$policy = self::review_policy();
-		if ( 'human_and_ai' !== (string) $policy['mode'] || empty( $policy['ai_agent_public_id'] ) ) return false;
+		if ( ! in_array( (string) $policy['mode'], array( 'human_and_ai', 'ai_only' ), true ) || empty( $policy['ai_agent_public_id'] ) ) return false;
 		if ( 'staging' !== self::site_profile_environment() ) return false;
 		if ( ! class_exists( 'MAD4B_SCP_Agent_Registry' ) || ! class_exists( 'MAD4B_SCP_Schema' ) || ! MAD4B_SCP_Schema::is_ready() ) return false;
 		$agent = MAD4B_SCP_Agent_Registry::get_agent_by_public_id( (string) $policy['ai_agent_public_id'] );
@@ -169,7 +169,7 @@ final class MAD4B_SCP_Context_Authority {
 		$blockers = array();
 		$agent = array();
 		$grant = null;
-		if ( 'human_and_ai' !== (string) $policy['mode'] ) $blockers[] = 'ai_review_mode_disabled';
+		if ( ! in_array( (string) $policy['mode'], array( 'human_and_ai', 'ai_only' ), true ) ) $blockers[] = 'ai_review_mode_disabled';
 		if ( empty( $policy['ai_agent_public_id'] ) ) $blockers[] = 'ai_review_agent_unconfigured';
 		if ( 'staging' !== self::site_profile_environment() ) $blockers[] = 'ai_review_staging_only';
 		if ( ! class_exists( 'MAD4B_SCP_Agent_Registry' ) || ! class_exists( 'MAD4B_SCP_Schema' ) || ! MAD4B_SCP_Schema::is_ready() ) {
@@ -191,7 +191,8 @@ final class MAD4B_SCP_Context_Authority {
 			'contract' => self::REVIEW_POLICY_CONTRACT,
 			'mode' => (string) $policy['mode'],
 			'human_review_available' => true,
-			'ai_review_enabled' => 'human_and_ai' === (string) $policy['mode'],
+			'ai_review_enabled' => in_array( (string) $policy['mode'], array( 'human_and_ai', 'ai_only' ), true ),
+			'ai_only_final_review' => 'ai_only' === (string) $policy['mode'],
 			'ai_agent_public_id' => (string) $policy['ai_agent_public_id'],
 			'catalog_eligible' => self::ai_review_catalog_eligible(),
 			'exact_grant_ready' => is_array( $grant ) && 'allow' === ( isset( $grant['effect'] ) ? (string) $grant['effect'] : '' ),
@@ -205,7 +206,7 @@ final class MAD4B_SCP_Context_Authority {
 	public static function set_review_policy( $mode, $agent_public_id = '', $confirmed = false ) {
 		$mode = sanitize_key( (string) $mode );
 		$agent_public_id = strtolower( trim( sanitize_text_field( (string) $agent_public_id ) ) );
-		if ( ! in_array( $mode, array( 'human_only', 'human_and_ai' ), true ) ) return new WP_Error( 'mad4b_context_review_mode_invalid', 'Context review mode must be human_only or human_and_ai.' );
+		if ( ! in_array( $mode, array( 'human_only', 'human_and_ai', 'ai_only' ), true ) ) return new WP_Error( 'mad4b_context_review_mode_invalid', 'Context review mode must be human_only, human_and_ai, or ai_only.' );
 		if ( 'human_only' === $mode ) $agent_public_id = '';
 
 		// Persisted state is authoritative. A reload must not force the operator to
@@ -219,7 +220,7 @@ final class MAD4B_SCP_Context_Authority {
 			return $current;
 		}
 
-		if ( 'human_and_ai' === $mode ) {
+		if ( in_array( $mode, array( 'human_and_ai', 'ai_only' ), true ) ) {
 			if ( ! $confirmed ) return new WP_Error( 'mad4b_context_ai_review_confirmation_required', 'Changing delegated AI Agent review requires explicit administrator confirmation.' );
 			if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', $agent_public_id ) ) return new WP_Error( 'mad4b_context_ai_review_agent_required', 'Select one exact enabled MAD4B Agent for AI review delegation.' );
 			if ( 'staging' !== self::site_profile_environment() ) return new WP_Error( 'mad4b_context_ai_review_staging_only', 'AI Agent approval mode is Staging-only in rc.54.' );
@@ -2522,7 +2523,7 @@ final class MAD4B_SCP_Context_Authority {
 			if ( array_key_exists( $forbidden_key, $input ) ) return new WP_Error( 'mad4b_context_ai_review_governance_mutation_forbidden', 'AI Agent review cannot change Context category, authority class, required scope, or quality policy.' );
 		}
 		$policy = self::review_policy();
-		if ( 'human_and_ai' !== (string) $policy['mode'] ) return new WP_Error( 'mad4b_context_ai_review_mode_disabled', 'AI Agent review is disabled. Human Review remains available.' );
+		if ( ! in_array( (string) $policy['mode'], array( 'human_and_ai', 'ai_only' ), true ) ) return new WP_Error( 'mad4b_context_ai_review_mode_disabled', 'AI Agent review is disabled. Human Review remains available.' );
 		if ( 'staging' !== self::site_profile_environment() ) return new WP_Error( 'mad4b_context_ai_review_staging_only', 'AI Agent review is Staging-only in rc.54.' );
 		if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) || ! class_exists( 'MAD4B_SCP_Agent_Registry' ) ) return new WP_Error( 'mad4b_context_ai_review_identity_unavailable', 'AI review identity authority is unavailable.' );
 		$identity = MAD4B_SCP_Identity_Context::current();
@@ -2551,6 +2552,8 @@ final class MAD4B_SCP_Context_Authority {
 			'expected_content_hash' => isset( $input['expected_content_hash'] ) ? (string) $input['expected_content_hash'] : '',
 			'expected_registry_revision' => isset( $input['expected_registry_revision'] ) ? (int) $input['expected_registry_revision'] : -1,
 			'expected_authority_manifest_fingerprint' => isset( $input['expected_authority_manifest_fingerprint'] ) ? (string) $input['expected_authority_manifest_fingerprint'] : '',
+			'review_evidence' => isset( $input['review_evidence'] ) ? (string) $input['review_evidence'] : '',
+			'classification_proposal' => isset( $input['classification_proposal'] ) ? (string) $input['classification_proposal'] : '',
 		);
 		$actor = array(
 			'actor_type' => 'ai_agent',
@@ -2590,7 +2593,8 @@ final class MAD4B_SCP_Context_Authority {
 				);
 			}
 			$normalization_status = isset( $asset['normalization_status'] ) ? sanitize_key( (string) $asset['normalization_status'] ) : ( ! empty( $asset['content_complete'] ) ? 'ready' : 'incomplete' );
-			if ( empty( $asset['content_complete'] ) || ! in_array( $normalization_status, array( 'ready', 'reused' ), true ) ) {
+			if ( 'approve' === sanitize_key( isset( $input['decision'] ) ? (string) $input['decision'] : 'approve' )
+                && ( empty( $asset['content_complete'] ) || ! in_array( $normalization_status, array( 'ready', 'reused' ), true ) ) ) {
 				return new WP_Error(
 					'mad4b_context_review_content_incomplete',
 					'Context Review requires complete normalized source content. Repair or rescan the source before reviewing this asset.',
@@ -2600,7 +2604,10 @@ final class MAD4B_SCP_Context_Authority {
 			$classification_confidence = isset( $asset['classification_confidence'] ) ? (float) $asset['classification_confidence'] : 0.0;
 			$classification_source = isset( $asset['classification_source'] ) ? sanitize_key( (string) $asset['classification_source'] ) : '';
 			$low_confidence_classification = $classification_confidence < 0.60 && 'human' !== $classification_source;
-			if ( $low_confidence_classification ) {
+            // Low confidence blocks approval only; AI may still document
+            // defects using needs_changes or reject without changing classification.
+            $requested_decision = sanitize_key( isset( $input['decision'] ) ? (string) $input['decision'] : 'approve' );
+            if ( $low_confidence_classification && 'approve' === $requested_decision ) {
 				$actor_type = isset( $actor['actor_type'] ) ? sanitize_key( (string) $actor['actor_type'] ) : '';
 				if ( 'ai_agent' === $actor_type ) {
 					return new WP_Error(
@@ -2685,6 +2692,15 @@ final class MAD4B_SCP_Context_Authority {
 				}
 			}
 			$review_note = substr( trim( sanitize_text_field( isset( $input['review_note'] ) ? (string) $input['review_note'] : '' ) ), 0, 1000 );
+            $ai_actor = 'ai_agent' === ( isset( $actor['actor_type'] ) ? (string) $actor['actor_type'] : '' );
+            $review_evidence = $ai_actor ? substr( trim( sanitize_textarea_field( isset( $input['review_evidence'] ) ? (string) $input['review_evidence'] : '' ) ), 0, 2000 ) : '';
+            $classification_proposal = $ai_actor ? substr( trim( sanitize_text_field( isset( $input['classification_proposal'] ) ? (string) $input['classification_proposal'] : '' ) ), 0, 200 ) : '';
+            if ( $ai_actor && '' === $review_note ) return new WP_Error( 'mad4b_context_ai_review_rationale_required', 'An AI review requires a rationale for every decision.' );
+            if ( $ai_actor && 'approve' === $decision
+                && 'ai_only' === (string) self::review_policy()['mode']
+                && '' === $review_evidence ) return new WP_Error( 'mad4b_context_ai_only_evidence_required', 'AI-only approval requires checked evidence references.' );
+            // Classification proposals are audit evidence, not silent category,
+            // authority, required-scope or quality changes.
 			if ( ! isset( $categories[ $category ] ) ) return new WP_Error( 'mad4b_context_category_invalid', 'Context category is invalid.' );
 			if ( ! isset( $authorities[ $authority ] ) ) return new WP_Error( 'mad4b_context_authority_class_invalid', 'Context authority class is invalid.' );
 
@@ -2823,6 +2839,9 @@ final class MAD4B_SCP_Context_Authority {
 					'review_status' => (string) $asset['review_status'],
 					'decision' => $decision,
 					'review_note' => $review_note,
+					'review_evidence' => $review_evidence,
+					'classification_proposal' => $classification_proposal,
+					'review_policy_mode' => (string) self::review_policy()['mode'],
 					'actor_type' => isset( $actor['actor_type'] ) ? (string) $actor['actor_type'] : 'unknown',
 					'wp_user_id' => isset( $actor['wp_user_id'] ) ? absint( $actor['wp_user_id'] ) : 0,
 					'agent_public_id' => isset( $actor['agent_public_id'] ) ? (string) $actor['agent_public_id'] : '',
