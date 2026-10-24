@@ -18,7 +18,48 @@ final class MAD4B_SCP_ChatGPT_File_Transfer {
     public static function boot() {
         add_action( 'rest_api_init', array( __CLASS__, 'register_routes' ) );
         add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 45 );
+        add_action( 'init', array( __CLASS__, 'schedule_cleanup' ), 99 );
+        add_action( 'mad4b_chatgpt_transfer_cleanup', array( __CLASS__, 'cleanup_expired' ) );
     }
+    /** Orphan cleanup is Staging-only and respects the global mutation kill switch. */
+    private static function cleanup_site_ready() {
+        if ( ! class_exists( 'MAD4B_SCP_Site_Profile', false )
+            || ! MAD4B_SCP_Site_Profile::configured()
+            || 'staging' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
+            || ! MAD4B_SCP_Site_Profile::origin_enrolled()
+            || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
+            || ! class_exists( 'MAD4B_SCP_Policy', false ) ) return false;
+        $gate = MAD4B_SCP_Policy::mutation_gate_status();
+        return is_array( $gate ) && ! empty( $gate['effective'] )
+            && empty( $gate['explicit_kill_switch'] );
+    }
+    public static function schedule_cleanup() {
+        if ( ! self::cleanup_site_ready() ) return;
+        if ( function_exists( 'wp_next_scheduled' ) && function_exists( 'wp_schedule_event' )
+            && ! wp_next_scheduled( 'mad4b_chatgpt_transfer_cleanup' ) )
+            wp_schedule_event( time() + self::TTL, 'hourly', 'mad4b_chatgpt_transfer_cleanup' );
+    }
+    public static function cleanup_expired() {
+        $none = array( 'cleaned' => 0, 'scanned' => 0 );
+        if ( ! self::cleanup_site_ready() ) return $none;
+        $root = self::root();
+        if ( false === $root ) return $none;
+        $files = @scandir( $root );
+        if ( ! is_array( $files ) ) return $none;
+        $scanned = 0; $cleaned = 0;
+        foreach ( $files as $name ) {
+            if ( $scanned >= 200 ) break;
+            if ( ! preg_match( '/^[a-f0-9]{32}\\.part$/D', $name ) ) continue;
+            ++$scanned;
+            $part = $root . '/' . $name;
+            if ( is_link( $part ) || ! is_file( $part ) ) continue;
+            $modified = @filemtime( $part );
+            if ( ! is_int( $modified ) || $modified > time() - 2 * self::TTL ) continue;
+            if ( @unlink( $part ) ) ++$cleaned;
+        }
+        return array( 'cleaned' => $cleaned, 'scanned' => $scanned );
+    }
+
     /** Separate grant from broad MAD4B mutation authority, but never bypass the global kill switch. */
     public static function attachment_transfer_granted() {
         if ( ! current_user_can( self::CAPABILITY ) ) return false;

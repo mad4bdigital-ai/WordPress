@@ -28,6 +28,7 @@ checks = {
     "mime_check": "wp_check_filetype_and_ext" in source,
     "wordpress_media": "wp_handle_sideload" in source and "wp_insert_attachment" in source,
     "sideload_argument_is_variable": "wp_handle_sideload( $sideload_file, array(" in source and "$sideload_file = array(" in source,
+    "bounded_staging_cleanup": "function cleanup_site_ready()" in source and "function cleanup_expired()" in source and "if ( $scanned >= 200 ) break;" in source,
     "portable_temp_root": "realpath( sys_get_temp_dir() )" in source and "realpath( get_temp_dir() )" not in source,
     "not_publish": "'publication_performed' => false" in source,
     "no_remote_fetch": "wp_remote_get" not in source and "curl_" not in source,

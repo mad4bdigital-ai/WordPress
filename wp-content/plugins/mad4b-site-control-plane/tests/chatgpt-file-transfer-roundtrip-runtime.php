@@ -45,11 +45,11 @@ class WP_REST_Request {
 class MAD4B_SCP_Policy {
  static function can_read(){return true;}
  static function can_connect_user($id){return $id===81;}
- static function mutation_gate_status(){return array('effective'=>true,'explicit_kill_switch'=>false);}
+ static function mutation_gate_status(){return array('effective'=>!($GLOBALS['mock_kill_switch'] ?? false),'explicit_kill_switch'=>$GLOBALS['mock_kill_switch'] ?? false);}
 }
 class MAD4B_SCP_Site_Profile {
  static function configured(){return true;}
- static function current_environment(){return 'staging';}
+ static function current_environment(){return $GLOBALS['mock_environment'] ?? 'staging';}
  static function origin_enrolled(){return true;}
  static function site_urls_match_enrollment(){return true;}
 }
@@ -87,6 +87,20 @@ try {
  $mismatch=attempt('finish',array('transfer_id'=>$id2));
  check_ok(is_wp_error($mismatch)&&$mismatch->get_error_code()==='mad4b_transfer_integrity','hash_mismatch_denied');
  attempt('abort',array('transfer_id'=>$id2));
+ $orphanId=bin2hex(random_bytes(16));
+ $orphan=sys_get_temp_dir().'/mad4b-chatgpt-transfer-v1/'.$orphanId.'.part';
+ file_put_contents($orphan,'expired disposable bytes');
+ touch($orphan,time()-10000);
+ $GLOBALS['mock_environment']='production';
+ $blocked=$cls::cleanup_expired();
+ check_ok($blocked['cleaned']===0 && is_file($orphan),'production_cleanup_denied');
+ $GLOBALS['mock_environment']='staging';
+ $GLOBALS['mock_kill_switch']=true;
+ $blocked=$cls::cleanup_expired();
+ check_ok($blocked['cleaned']===0 && is_file($orphan),'global_kill_switch_cleanup_denied');
+ $GLOBALS['mock_kill_switch']=false;
+ $result=$cls::cleanup_expired();
+ check_ok($result['cleaned']>=1 && !is_file($orphan),'bounded_staging_orphan_cleanup');
  echo "CHATGPT_TRANSFER_ROUNDTRIP: PASS\n";
 } finally {
  foreach (array(isset($id)?$id:null,isset($id2)?$id2:null) as $localId) {
