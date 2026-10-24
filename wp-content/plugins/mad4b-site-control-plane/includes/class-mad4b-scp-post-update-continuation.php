@@ -314,11 +314,13 @@ final class MAD4B_SCP_Post_Update_Continuation {
 			'retry_after_seconds' => 0,
 		);
 
-		$environment = class_exists( 'MAD4B_SCP_Site_Profile' )
-			? sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
-			: '';
-		if ( 'staging' !== $environment ) {
-			$result['reasons'][] = 'production_or_environment_changed';
+		// Resolve the same authority source used by the site and package
+		// planner. Never infer safe auto-convergence from a hostname alone.
+		require_once __DIR__ . '/class-mad4b-scp-environment-convergence-policy.php';
+		$policy = MAD4B_SCP_Environment_Convergence_Policy::current();
+		$result['environment_policy'] = $policy['mode'];
+		if ( empty( $policy['auto_convergence_eligible'] ) || 'staging' !== $policy['environment'] ) {
+			$result['reasons'][] = 'exact_nonproduction_environment_authority_required';
 			return $result;
 		}
 		if ( self::breakglass_enabled() ) {
