@@ -34,5 +34,5 @@ assert "'confirmation'," not in required, "automatic mode must not require human
 assert "if ( ! $auto_approved && ! hash_equals(" in reconcile
 assert reconcile.index("MAD4B_SCP_Nonproduction_Approved_Grants::evaluate(") < reconcile.index("MAD4B_SCP_Audit::record( 'mad4b/staging-write-grant-reconciliation-authorized'")
 assert reconcile.index("MAD4B_SCP_Nonproduction_Approved_Grants::evaluate(") < reconcile.index("MAD4B_SCP_Agent_Registry::grant_ability(",reconcile.index("public static function reconcile("))
-assert "private static function rollback_transaction(" in reconcile && "self::rollback_transaction(" in reconcile
+assert "private static function rollback_transaction(" in reconcile and "self::rollback_transaction(" in reconcile
 print("NONPRODUCTION_APPROVED_GRANTS_INTEGRATION: PASS")
