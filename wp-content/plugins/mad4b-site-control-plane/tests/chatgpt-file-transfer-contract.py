@@ -25,6 +25,7 @@ checks = {
     "lock_and_offset": "flock( $f, LOCK_EX | LOCK_NB )" in source and "(int) $stat['size'] !== $offset" in source,
     "mime_check": "wp_check_filetype_and_ext" in source,
     "wordpress_media": "wp_handle_sideload" in source and "wp_insert_attachment" in source,
+    "sideload_argument_is_variable": "wp_handle_sideload( $sideload_file, array(" in source and "$sideload_file = array(" in source,
     "not_publish": "'publication_performed' => false" in source,
     "no_remote_fetch": "wp_remote_get" not in source and "curl_" not in source,
     "rest_permission_callback": "'permission_callback' => array( __CLASS__, 'permitted' )" in source,
