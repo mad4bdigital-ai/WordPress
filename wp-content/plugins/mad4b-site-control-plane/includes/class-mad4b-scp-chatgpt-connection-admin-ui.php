@@ -340,3 +340,8 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 
 // Routes are declared without booting menus or provider lifecycle on frontend requests.
 if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) ) MAD4B_SCP_Admin_Route_Registry::register( MAD4B_SCP_ChatGPT_Connection_Admin_UI::PAGE_SLUG, 'manage_options' );
+
+// Unified Agent setup is owned by this existing ChatGPT connection surface.
+// Register the Agent form handlers without altering repository-wide bootstrap.
+require_once __DIR__ . '/class-mad4b-scp-unified-agent-connection.php';
+MAD4B_SCP_Unified_Agent_Connection::boot();
