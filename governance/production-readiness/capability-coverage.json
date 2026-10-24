@@ -7254,6 +7254,26 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "New exact package-planning source uses the non-authorizing route resolver before provider authority, fails closed for uncatalogued providers, and returns structured safe guidance for MAD4B self-update aliases without entering third-party installation. The existing independent provider authority, Staging mutation policy and explicit apply fences remain in place. Same-PR Python and PHP regression fixtures cover the routing denials. The same-PR Python regression contract executes both fixed PHP CLI fixtures with bounded timeout, checks nonzero exit codes and requires positive PASS markers; neither fixture is counted as a trusted standalone PHPUnit test."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-connection-admin-ui.php",
+      "source_blob_sha": "1bec33f2f9f4cd2a4148832707425136879a2e58",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-agent-connection-contract.py"
+      ],
+      "owner_role": "MAD4B repository source reviewer — code regression only; no owner site credential or Production grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Uses established WordPress admin permissions, exact Site Profile, Agent Registry, authenticated OAuth, reviewed Context integrity, existing MCP Ability and safe credential storage controls.",
+      "review_rationale": "Exact-source UI registration fix: retain module inclusion inside existing ChatGPT connection UI but call Unified Agent boot only when WordPress hook API add_action exists. This preserves runtime form routes in WordPress and avoids PHP fatal when standalone deferred-admin fixture includes the UI without WordPress. Updated same-PR contract asserts the conditional guard; CI deferred-admin runtime independently exercises the failure mode. No site grant, OAuth consent, Production enablement, publisher authority or deployment is inferred."
     }
   ],
   "code_change_rules": {
