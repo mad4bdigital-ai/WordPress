@@ -82,7 +82,7 @@ try {
  $originalState=$GLOBALS['transients'][$stateKey];
  $GLOBALS['transients'][$stateKey]['offset']=0;
  $stale=attempt('finish',array('transfer_id'=>$id));
- check_ok(is_wp_error($stale)&&$stale->get_error_code()==='mad4b_transfer_integrity','stale_persisted_offset_denied');
+ check_ok(is_wp_error($stale)&&$stale->get_error_code()==='mad4b_transfer_incomplete'&&$GLOBALS['last_id']===0,'stale_persisted_offset_denied');
  $GLOBALS['transients'][$stateKey]=$originalState;
  $done=attempt('finish',array('transfer_id'=>$id));
  check_ok(!is_wp_error($done)&&$done['verified']===true&&$done['attachment_id']===2026,'complete');
