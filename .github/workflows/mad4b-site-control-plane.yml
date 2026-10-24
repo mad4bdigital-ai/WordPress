@@ -259,7 +259,7 @@ jobs:
           grep -Fq "prepare_backup_root" "$filesystem_owner"
           grep -Fq "chmod( \$backup_path, 0600" "$filesystem_owner"
           grep -Fq "fileperms( \$path ) & 0777" "$filesystem_owner"
-          if grep -Fq ".mad4b-backup-" "$abilities"; then
+          if grep -Fq ".mad4b-backup-" "$abilities" "$filesystem_owner"; then
             echo 'Adjacent webroot backup naming must not return.' >&2
             exit 1
           fi
