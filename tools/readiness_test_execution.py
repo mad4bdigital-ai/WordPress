@@ -29,6 +29,7 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/no-input-read-ability-schema-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/operator-doctor-contract.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/oauth-secondary-diagnostic-exception-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/staging-mcp-skills-recertify-contract.php",
     "tests/remote-execution/operator-grants-convergence-smoke.php",
     "tests/remote-execution/operator-grant-rollout-smoke.php",
     "tests/remote-execution/operator-bridge-admission.php",
