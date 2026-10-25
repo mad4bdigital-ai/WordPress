@@ -162,5 +162,26 @@ $test('DEPARTURE_BELOW_MIN_NOT_PRIVATE',!is_wp_error($below)&&$below['status']==
 $test('DEPARTURE_OVERBOOKED_REJECTED',is_wp_error($tm::assess_departure(8,8,25,30,10)));
 $test('PRIVATE_MODE_NO_TIER_REQUIRED',($tm::advise_booking_mode(8,1,'private',false)['selected_mode']??null)==='private');
 $test('ENTRY_BATCHES_FOR_55',($tm::assess_capacity(8,'private',55)['nationality_entry_batches']??0)===3);
+$untracked=$tm::assess_departure(8,1);
+$test('NO_INVENTORY_DEFAULT_ALLOWS_BOOKING_REQUEST',!is_wp_error($untracked)
+ &&$untracked['status']==='request_allowed_occupancy_unknown'
+ &&$untracked['remaining_seats_after_booking']===null);
+$GLOBALS['unit_meta'][8]['_etg_departure_max_capacity']=30;
+$stillUntracked=$tm::assess_departure(8,1);
+$test('OPTIONAL_CAPACITY_FIELD_NOT_FORCED',!is_wp_error($stillUntracked)
+ &&$stillUntracked['departure_capacity']===null);
+$GLOBALS['unit_meta'][8]['_etg_departure_inventory_mode']='capacity_preview';
+$pending=$tm::assess_departure(8,1);
+$test('NO_CONFIRMED_GUESTS_NOT_ASSUMED_ZERO',!is_wp_error($pending)
+ &&$pending['departure_capacity']===30&&$pending['remaining_seats_after_booking']===null);
+$preview=$tm::assess_departure(8,1,24);
+$test('OPTIONAL_CAPACITY_PREVIEW_NOT_STOCK_RECEIPT',!is_wp_error($preview)
+ &&$preview['remaining_seats_after_booking']===5
+ &&$preview['availability_verified']===false
+ &&$preview['inventory_reserved']===false);
+$requested=$tm::assess_booking_request(8,1,'group');
+$test('GROUP_SEAT_WITHOUT_INVENTORY',$requested['request_allowed_without_stock']===true
+ &&$requested['seat_confirmation']==='requires_separate_booking_confirmation');
+unset($GLOBALS['unit_meta'][8]['_etg_departure_inventory_mode'],$GLOBALS['unit_meta'][8]['_etg_departure_max_capacity']);
 $test('ONLY_TRAVELLER_OPTION_CHANGED',array_keys($GLOBALS['unit_options'])===[$tm::OPTION]);
 echo "UNIFIED_HERMETIC_FAILURES=$fail\n";exit($fail?1:0);

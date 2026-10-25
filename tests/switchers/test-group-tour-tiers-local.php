@@ -9,7 +9,7 @@ if(wp_get_environment_type()!=='local')exit(90);
 $tm='ETG_Traveller_Management';
 $fail=0;$assert=static function($name,$ok)use(&$fail){echo $name.'='.($ok?'PASS':'FAIL').PHP_EOL;if(!$ok)$fail++;};
 $tour=66133;$rate=66139;$created=[];$old=[];
-$departureMeta=['_etg_minimum_departure_participants','_etg_departure_max_capacity','_etg_small_party_routing'];
+$departureMeta=['_etg_minimum_departure_participants','_etg_departure_max_capacity','_etg_small_party_routing','_etg_departure_inventory_mode'];
 $oldDepartureMeta=[];
 foreach($departureMeta as $key)$oldDepartureMeta[$key]=get_post_meta($tour,$key,true);
 $taxonomies=['group-size-tiers','tour_categories_jet'];
@@ -60,6 +60,36 @@ try{
  $seat=$tm::advise_booking_mode($tour,1,'group',true);
  $assert('EXPLICIT_GROUP_SEAT_NOT_CONVERTED_TO_PRIVATE',!is_wp_error($seat)&&$seat['selected_mode']==='group');
  $assert('FIRST_ENABLED_TIER_MINIMUM_TEN',$tm::first_group_minimum($tour)===10);
+ $noStock=$tm::assess_departure($tour,1);
+ $assert('NO_STOCK_DEFAULT_PERMITS_GROUP_REQUEST',!is_wp_error($noStock)
+  &&$noStock['status']==='request_allowed_occupancy_unknown'
+  &&$noStock['inventory_mode']==='untracked'
+  &&$noStock['remaining_seats_after_booking']===null);
+ $seatRequest=$tm::assess_booking_request($tour,1,'group');
+ $assert('NO_STOCK_GROUP_SEAT_ONE_PERMITTED',!is_wp_error($seatRequest)
+  &&$seatRequest['request_allowed_without_stock']===true
+  &&$seatRequest['availability_verified']===false);
+ $metaKeys=get_registered_meta_keys('post','tours-and-activities');
+ $assert('CAPACITY_FIELDS_REGISTERED_IN_WORDPRESS',
+  isset($metaKeys['_etg_departure_inventory_mode'],$metaKeys['_etg_departure_max_capacity'],
+   $metaKeys['_etg_minimum_departure_participants'],$metaKeys['_etg_small_party_routing']));
+ update_post_meta($tour,'_etg_departure_max_capacity',30);
+ $noStockAfterMax=$tm::assess_departure($tour,1);
+ $assert('OPTIONAL_MAX_DOES_NOT_FORCE_INVENTORY',!is_wp_error($noStockAfterMax)
+  &&$noStockAfterMax['departure_capacity']===null
+  &&$noStockAfterMax['remaining_seats_after_booking']===null);
+ update_post_meta($tour,'_etg_departure_inventory_mode','capacity_preview');
+ $unknownStock=$tm::assess_departure($tour,1);
+ $assert('PREVIEW_MODE_WITH_UNKNOWN_GUESTS_ACCEPTS_REQUEST',!is_wp_error($unknownStock)
+  &&$unknownStock['departure_capacity']===30
+  &&$unknownStock['remaining_seats_after_booking']===null
+  &&$unknownStock['request_allowed_without_stock']);
+ $preview=$tm::assess_departure($tour,1,24);
+ $assert('OPTIONAL_PREVIEW_WITH_SUPPLIED_COUNT',$preview['departure_total_after_booking']===25
+  &&$preview['remaining_seats_after_booking']===5
+  &&$preview['availability_verified']===false);
+ update_post_meta($tour,'_etg_departure_inventory_mode','untracked');
+
  update_post_meta($tour,'_etg_small_party_routing','join_group_only');
  $policy=$tm::advise_booking_mode($tour,1,'auto',false);
  $assert('OPTIONAL_NO_AUTOMATIC_PRIVATE_SUGGESTION',!is_wp_error($policy)&&$policy['recommended_mode']===null&&!$policy['automatic_conversion']);

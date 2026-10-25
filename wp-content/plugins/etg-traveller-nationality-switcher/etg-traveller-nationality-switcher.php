@@ -2,7 +2,7 @@
 /**
  * Plugin Name: ETG Traveller Nationality Switcher
  * Description: Passport-country selection for travellers, separate from WooCommerce market, shipping, billing and WCML currency.
- * Version: 0.5.0-local
+ * Version: 0.5.1-local
  * Requires Plugins: woocommerce
  * License: GPL-2.0-or-later
  * Text Domain: etg-traveller-nationality-switcher

@@ -136,8 +136,8 @@ final class ETG_Traveller_Nationality_Checkout_Blocks {
    return $items;
   },90);
   $file=plugin_dir_path(__FILE__).'assets/checkout-blocks.js';
-  wp_enqueue_style('etg-nationality-switcher',plugins_url('assets/nationality.css',__FILE__),[],'0.5.0');
-  wp_enqueue_script('etg-traveller-nationality-checkout-blocks',plugins_url('assets/checkout-blocks.js',__FILE__),['wp-element','wp-plugins','wp-data','wc-blocks-checkout','wc-blocks-data-store'],'0.5.0',true);
+  wp_enqueue_style('etg-nationality-switcher',plugins_url('assets/nationality.css',__FILE__),[],'0.5.1');
+  wp_enqueue_script('etg-traveller-nationality-checkout-blocks',plugins_url('assets/checkout-blocks.js',__FILE__),['wp-element','wp-plugins','wp-data','wc-blocks-checkout','wc-blocks-data-store'],'0.5.1',true);
   $countries=ETG_Traveller_Nationality_Switcher::countries();$options=[];
   foreach($countries as $code=>$label)$options[]=['value'=>$code,'label'=>$label];
   wp_add_inline_script('etg-traveller-nationality-checkout-blocks','window.etgTravellerBlocks='.wp_json_encode(['namespace'=>self::NAMESPACE_ID,'types'=>self::bookable_types(),'countries'=>$options,'max'=>ETG_Traveller_Management::MAX_VERIFIED_PERSONS,'batch_size'=>ETG_Traveller_Management::LEGACY_BATCH_SIZE,'preferred'=>ETG_Traveller_Nationality_Switcher::selected()]).';','before');

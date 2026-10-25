@@ -76,6 +76,8 @@ class ReleaseContracts(unittest.TestCase):
         self.assertIn("ETG_Traveller_Management::registry", blocks)
         self.assertIn("if($verified<1)return 0", blocks)
         self.assertIn("$n===$verified", blocks)
+        for token in ("etg.booking-request.v1", "departure_inventory_mode", "request_allowed_without_stock", "capacity_preview"):
+            self.assertIn(token,src)
         self.assertNotIn("set_price(", src)
         self.assertNotIn("create_order(", src)
         for token in (

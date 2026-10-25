@@ -3,7 +3,7 @@ Contributors: ETG, MAD4B
 Requires at least: 6.9
 Requires PHP: 8.1
 Requires Plugins: woocommerce
-Stable tag: 0.5.0-local
+Stable tag: 0.5.1-local
 License: GPLv2 or later
 
 Local Lab prototype — not certified for public release.
@@ -48,3 +48,11 @@ Business semantics: `booking_party_size` counts seats purchased by this customer
 `assess_departure()` checks optional per-tour `_etg_minimum_departure_participants` and `_etg_departure_max_capacity` plus separately provided confirmed counts. It produces *preview-only* capacity and minimum-to-operate evaluations; no source currently certifies live departure inventory or the aggregation of confirmed bookings. Admins can edit these settings alongside Traveller Preset in the tour CPT editor. A below-minimum departure remains Group pending sufficient guests, not Private.
 
 **Important limits:** Booking v2 independently still supports up to 50 persons and requires `group_size=persons` in its preview schema; multi-booking group departures have not been bridged to Booking v2 financial Checkout. The Passport Checkout plugin successfully handles 55 verified persons in its tested Tour Rate v1 path, but no paid financial order, active departure seat reservation or multi-booking inventory locking has been approved. The 999 schema boundary is not a promise that every checkout or supplier supports a 999-person booking. Production/Staging rollout remains blocked pending broader acceptance.
+
+
+## 0.5.1-local — Inventory not required
+Departure inventory is **OFF by default**. Per-tour `_etg_departure_inventory_mode` defaults to `untracked`; there is no stock, manual seat count or availability requirement to submit a booking request. The optional `capacity_preview` mode uses operator-specified caps and caller-supplied known counts **only for advisory checks**. A missing occupancy count is UNKNOWN, never zero. No fake "seats remaining", no stock holding and no availability guarantee. The system can accept a booking *request* without claiming a confirmed supplier allocation.
+
+Settings are **already available** in the Tour CPT's **Traveller Preset** metabox: Inventory handling, optional Minimum to operate, optional Maximum seats, Small-party routing. They are registered WordPress post-meta keys, not new JetEngine field groups. Empty fields are permitted and do not create a stock restriction. Other travel services and pricing/tier taxonomies remain untouched.
+
+The optional `assess_booking_request()` contract returns a request-admission preview, not a payment or reservation confirmation. `assess_departure()` permits null confirmed counts and null capacity while preserving strict numeric checks on supplied values; explicit maximum+count comparisons are advisory only. Existing Group Tour Tiers are independent of stock and may still be used for pricing/group policy where configured.
