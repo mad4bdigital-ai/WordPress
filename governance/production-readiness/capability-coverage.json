@@ -1937,6 +1937,115 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing original Agent identity, deny-first grant, site profile, audit, admin nonce and protected OAuth controls remain the sole authority; no new external secret or Production grant is introduced.",
       "review_rationale": "Nonproduction exact content-review option is disabled by default and owner-initiated. No self-grants, broad privileged abilities or cross-environment expansion."
+    },
+    {
+      "id": "ability:mad4b/ai-",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01",
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B repository security code reviewer; exact tenant permission not issued",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original deny-first Agent grant checks, App Password identity, Site Profile, append-only audit, exact native owner CAS and existing protected privileges remain mandatory. No direct ability execution, nonlocal writes, owner entitlement grant or publication.",
+      "review_rationale": "Scanner-discovered dynamic PHP namespace prefix; not an independently registered wildcard ability. No wildcard grants permitted."
+    },
+    {
+      "id": "ability:mad4b/ai-native-owner-review-",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01",
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B repository security code reviewer; exact tenant permission not issued",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original deny-first Agent grant checks, App Password identity, Site Profile, append-only audit, exact native owner CAS and existing protected privileges remain mandatory. No direct ability execution, nonlocal writes, owner entitlement grant or publication.",
+      "review_rationale": "Scanner-discovered dynamic PHP namespace prefix; not an independently registered wildcard ability. No wildcard grants permitted."
+    },
+    {
+      "id": "rest:mad4b-local-ai/v1/domain-review",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B repository security code reviewer; exact tenant permission not issued",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original deny-first Agent grant checks, App Password identity, Site Profile, append-only audit, exact native owner CAS and existing protected privileges remain mandatory. No direct ability execution, nonlocal writes, owner entitlement grant or publication.",
+      "review_rationale": "Local-only reviewed original-owner content quality endpoint/service; independently verifies exact original owner source and durable audit receipt; never native publication or privileged mutation."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-native-owner-adapter.php",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01",
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B repository security code reviewer; exact tenant permission not issued",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original deny-first Agent grant checks, App Password identity, Site Profile, append-only audit, exact native owner CAS and existing protected privileges remain mandatory. No direct ability execution, nonlocal writes, owner entitlement grant or publication.",
+      "review_rationale": "Local-only reviewed original-owner content quality endpoint/service; independently verifies exact original owner source and durable audit receipt; never native publication or privileged mutation."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-native-owner-review.php",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B repository security code reviewer; exact tenant permission not issued",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original deny-first Agent grant checks, App Password identity, Site Profile, append-only audit, exact native owner CAS and existing protected privileges remain mandatory. No direct ability execution, nonlocal writes, owner entitlement grant or publication.",
+      "review_rationale": "Local-only reviewed original-owner content quality endpoint/service; independently verifies exact original owner source and durable audit receipt; never native publication or privileged mutation."
     }
   ],
   "lifecycle": [],
@@ -7486,6 +7595,248 @@
       ],
       "owner_role": "MAD4B source security reviewer; Local Lab inference trial only",
       "review_rationale": "Brand Context continues canonical owner-authenticated review path, now with bounded JSON Schema option for local open-model inference. Model output alone cannot issue Agent grant or owner review receipt.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-translation-bridge-adapter.php",
+      "source_blob_sha": "e2fb2fe0505081ec04ee5e8c659972820123b3fb",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01",
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B source governance reviewer; CI-only assessment, not authority grant",
+      "review_rationale": "Source-owner original read/submit/readback content QA, source-hash/revision CAS and audit, with no publishing, pricing, SEO apply, WPML link, browser release, or Production authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-agent-registry.php",
+      "source_blob_sha": "1607f91d731610fd9abd9ca0771dcfff07376bb8",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B source governance reviewer; CI-only assessment, not authority grant",
+      "review_rationale": "No elevation: only exact Local-only nonexecutable review ability identities; deny-first original grant logic persists.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-domain-executors.php",
+      "source_blob_sha": "97c9217643ae9c9ba2c997418f16cc0587497e03",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B source governance reviewer; CI-only assessment, not authority grant",
+      "review_rationale": "Independent original owner receipt verification and decision matching; adapters cannot self-confirm.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-native-owner-adapter.php",
+      "source_blob_sha": "6d9c5e47a10062026431a127dd1d11715f9708f1",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01",
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B source governance reviewer; CI-only assessment, not authority grant",
+      "review_rationale": "Source-owner original read/submit/readback content QA, source-hash/revision CAS and audit, with no publishing, pricing, SEO apply, WPML link, browser release, or Production authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-native-owner-review.php",
+      "source_blob_sha": "234d7f77048edf2454bf111f22de98645cbdeb0f",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B source governance reviewer; CI-only assessment, not authority grant",
+      "review_rationale": "Source-owner original read/submit/readback content QA, source-hash/revision CAS and audit, with no publishing, pricing, SEO apply, WPML link, browser release, or Production authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-only-local-activation.php",
+      "source_blob_sha": "4ade73b4e2d82ceae1ed2f20c5a1c85b75cd03d8",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B source governance reviewer; CI-only assessment, not authority grant",
+      "review_rationale": "Exact local-only POST REST route under original WP Application Password Agent identity with original restrictive authentication.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-audit.php",
+      "source_blob_sha": "fa8ccaf4bff8a962a8d3b6065b55bc688989e973",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B source governance reviewer; CI-only assessment, not authority grant",
+      "review_rationale": "Read-only lookup against original append-only audit chain; SHA/revision/actor provenance validated independently.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-browser-acceptance-core.php",
+      "source_blob_sha": "af98831572619a56fd39aae150f157901c9f9382",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B source governance reviewer; CI-only assessment, not authority grant",
+      "review_rationale": "Source-owner original read/submit/readback content QA, source-hash/revision CAS and audit, with no publishing, pricing, SEO apply, WPML link, browser release, or Production authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-object-store.php",
+      "source_blob_sha": "1ef62e0e54be4ef0502c2121c0150394ee9591a9",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B source governance reviewer; CI-only assessment, not authority grant",
+      "review_rationale": "Source-owner original read/submit/readback content QA, source-hash/revision CAS and audit, with no publishing, pricing, SEO apply, WPML link, browser release, or Production authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php",
+      "source_blob_sha": "cf644515fcee48fdcf1e14d20d88086fa257b777",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01",
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B source governance reviewer; CI-only assessment, not authority grant",
+      "review_rationale": "Source-owner original read/submit/readback content QA, source-hash/revision CAS and audit, with no publishing, pricing, SEO apply, WPML link, browser release, or Production authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g5-seo-provider-families.php",
+      "source_blob_sha": "f1b5d68faeda48926715ca1a7545539a828540ea",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01",
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B source governance reviewer; CI-only assessment, not authority grant",
+      "review_rationale": "Source-owner original read/submit/readback content QA, source-hash/revision CAS and audit, with no publishing, pricing, SEO apply, WPML link, browser release, or Production authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "a234d0e6aaa474cc567e1f92eb1f9dd268ab66b1",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B source governance reviewer; CI-only assessment, not authority grant",
+      "review_rationale": "Source-owner original read/submit/readback content QA, source-hash/revision CAS and audit, with no publishing, pricing, SEO apply, WPML link, browser release, or Production authorization.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true

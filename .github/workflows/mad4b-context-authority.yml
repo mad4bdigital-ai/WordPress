@@ -38,6 +38,9 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/authority-setup-fields-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-setup-coverage-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-domain-executors-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-native-owner-review.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-native-owner-adapter.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-grant-mode-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-grant-mode.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-domain-executors.php'
@@ -113,6 +116,9 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/authority-setup-fields-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-setup-coverage-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-domain-executors-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-native-owner-review.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-native-owner-adapter.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-grant-mode-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-grant-mode.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-domain-executors.php'
@@ -213,6 +219,9 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/tests/authority-setup-fields-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/provider-setup-coverage-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/ai-domain-executors-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-native-owner-review.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-native-owner-adapter.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/ai-grant-mode-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-grant-mode.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-domain-executors.php
@@ -300,6 +309,7 @@ jobs:
           php wp-content/plugins/mad4b-site-control-plane/tests/authority-setup-fields-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/provider-setup-coverage-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/ai-domain-executors-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/ai-grant-mode-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php
 

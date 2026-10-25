@@ -83,6 +83,8 @@ final class MAD4B_SCP_AI_Domain_Executors {
              || !is_string($descriptor['review_method']??null)
              || !preg_match('/^[A-Za-z][A-Za-z0-9_]{2,100}$/D',$descriptor['review_method'])
              || ($descriptor['source_sha256']??'')!==$pin
+             ||($descriptor['owner']??'')!==(self::class_map()[$domain][0]??'')
+             ||($descriptor['review_method']??'')!=='ai_original_review_verify_receipt'
              || !class_exists($descriptor['owner'])
              || !method_exists($descriptor['owner'],$descriptor['review_method']) )
             return new WP_Error('mad4b_ai_domain_descriptor_mismatch','The exact original owner and deployed adapter have not been certified.');
@@ -205,12 +207,19 @@ final class MAD4B_SCP_AI_Domain_Executors {
             $receipt=$adapter->submit_original_review($item,$verdict['decision'],
                 $verdict['review_note'].' [Evidence lines: '.implode(',',$verdict['evidence_lines']).']',$binding);
             if(is_wp_error($receipt))return $receipt;
+            if(!is_array($receipt) ||($receipt['decision']??'')!==$verdict['decision'])
+                return new WP_Error('mad4b_ai_domain_owner_decision_mismatch',
+                    'Original owner receipt must match the exact model recommendation.');
             $verified=$adapter->verify_original_receipt($item,$receipt,$binding);
-            if($verified!==true)
+            $ownerVerified=$verified===true ? call_user_func(array($proof['owner'],$proof['method']),$item,$receipt,$binding) : false;
+            if($verified!==true || $ownerVerified!==true)
                 return new WP_Error('mad4b_ai_domain_owner_receipt_unverified',
                     'Original owner must prove durable exact review acceptance and fresh readback.');
             return array('contract'=>self::CONTRACT,'domain'=>$domain,
-                'state'=>'original_owner_review_verified','processed'=>1,'original_owner_receipt_verified'=>true,
+                'state'=>$verdict['decision']==='approve'?'original_owner_review_verified':'original_owner_changes_required',
+                'processed'=>1,'original_owner_receipt_verified'=>true,
+                'owner_approval_verified'=>$verdict['decision']==='approve',
+                'review_decision'=>$verdict['decision'],
                 'content_hash'=>$item['content_hash'],'publication_authorized'=>false,
                 'deployment_authorized'=>false,'mutation_performed'=>true);
         } catch (Throwable $e) {

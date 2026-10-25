@@ -11,6 +11,18 @@ if ( ! class_exists( 'MAD4B_SCP_Operational_Integrity' ) ) require_once __DIR__ 
  * It does not call providers, publish content, mutate posts, or widen authority.
  */
 final class MAD4B_SCP_Content_Jobs {
+
+    /** Native owner content-QA scope; never a publish/mutation approval. */
+    public static function ai_original_review_evidence($item) {
+        return MAD4B_SCP_AI_Native_Owner_Review::evidence('content_job',$item);
+    }
+    public static function ai_original_review_submit($item,$decision,$note,$binding) {
+        return MAD4B_SCP_AI_Native_Owner_Review::submit('content_job',$item,$decision,$note,$binding);
+    }
+    public static function ai_original_review_verify_receipt($item,$receipt,$binding) {
+        return MAD4B_SCP_AI_Native_Owner_Review::verify('content_job',$item,$receipt,$binding);
+    }
+
 	const CONTRACT = 'mad4b.content-job.v1';
 	const EVENT_CONTRACT = 'mad4b.content-job-event.v1';
 

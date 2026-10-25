@@ -10,6 +10,7 @@ function add_action($name,$callback,$priority=10){}
 function do_action($name){}
 $GLOBALS['env']='local';
 $GLOBALS['receipt_valid']=true;
+$GLOBALS['native_receipt_valid']=true;
 $GLOBALS['model_calls']=0;
 $GLOBALS['submit_calls']=0;
 $GLOBALS['candidate']=array('item_id'=>'draft:42','content_hash'=>str_repeat('a',64),'owner_revision'=>7);
@@ -32,15 +33,15 @@ class MAD4B_SCP_AI_Model_Router {
             'evidence_lines'=>array(1,2)));
     }
 }
-class OwnerDraft {
-    public static function verified_review($scope){return true;}
+class MAD4B_SCP_Content_Jobs {
+    public static function ai_original_review_verify_receipt($item,$receipt,$binding){return !empty($GLOBALS['native_receipt_valid']);}
 }
 require dirname(__DIR__).'/includes/class-mad4b-scp-ai-review-lifecycle.php';
 require dirname(__DIR__).'/includes/class-mad4b-scp-ai-domain-executors.php';
 class MockContentOwner implements MAD4B_SCP_AI_Domain_Executor {
     public function descriptor() {
         return array('contract'=>MAD4B_SCP_AI_Domain_Executors::ADAPTER_CONTRACT,
-            'domain'=>'content_job','owner'=>'OwnerDraft','review_method'=>'verified_review',
+            'domain'=>'content_job','owner'=>'MAD4B_SCP_Content_Jobs','review_method'=>'ai_original_review_verify_receipt',
             'source_sha256'=>hash_file('sha256',__FILE__));
     }
     public function next_review(){return $GLOBALS['candidate'];}
@@ -99,6 +100,11 @@ $GLOBALS['receipt_valid']=false;
 $unverified=MAD4B_SCP_AI_Domain_Executors::run_one('content_job');
 check('owner_receipt_readback_required',is_wp_error($unverified)&&$unverified->get_error_code()==='mad4b_ai_domain_owner_receipt_unverified');
 $GLOBALS['receipt_valid']=true;
+$done=MAD4B_SCP_AI_Domain_Executors::run_one('content_job');
+$GLOBALS['native_receipt_valid']=false;
+$missing=MAD4B_SCP_AI_Domain_Executors::run_one('content_job');
+check('original_owner_independently_blocks_missing_receipt',is_wp_error($missing) && $missing->get_error_code()==='mad4b_ai_domain_owner_receipt_unverified');
+$GLOBALS['native_receipt_valid']=true;
 $done=MAD4B_SCP_AI_Domain_Executors::run_one('content_job');
 check('certified_original_owner_receipt_completes',is_array($done)&&$done['state']==='original_owner_review_verified'&&$done['original_owner_receipt_verified']===true);
 check('domain_review_requests_exact_structured_verdict_contract',

@@ -167,6 +167,15 @@ final class MAD4B_SCP_Agent_Registry {
                 && function_exists( 'wp_has_ability' ) && wp_has_ability( $ability_name ) ) {
                 $expected_provider = 'core';
             }
+            // These five QA-only entitlements are not MCP-mounted. They
+            // authorize ONLY the existing authenticated Local Agent review
+            // route, never direct privileged WordPress Ability execution.
+            if ( null === $expected_provider && 'mad4b-write' === $server_id
+                && class_exists('MAD4B_SCP_AI_Native_Owner_Review')
+                && MAD4B_SCP_AI_Native_Owner_Review::local_ability_allowed($ability_name)
+                && $environment === 'local'
+                && function_exists('wp_has_ability') && wp_has_ability($ability_name) )
+                $expected_provider='core';
             if ( null === $expected_provider ) return new WP_Error( 'mad4b_grant_server_ability_mismatch', 'Cannot grant an ability on a server that does not mount it.' );
 			if ( $provider !== $expected_provider ) return new WP_Error( 'mad4b_grant_provider_mismatch', 'Grant provider does not match the certified provider.', array( 'expected_provider' => $expected_provider ) );
 		}

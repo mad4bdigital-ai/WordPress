@@ -8,6 +8,7 @@ final class MAD4B_SCP_AI_Only_Local_Activation {
     const CONTRACT = 'mad4b.ai-only-local-activation.v1';
     const REVIEW_ABILITY = 'mad4b/context-ai-review';
     const LOCAL_REVIEW_ROUTE = '/mad4b-local-ai/v1/context-review';
+    const LOCAL_DOMAIN_ROUTE = '/mad4b-local-ai/v1/domain-review';
     const USER_META = '_mad4b_ai_only_local_service_site';
     const MAX_LIFETIME = 86400;
     const AUDIT_OPTION = 'mad4b_scp_ai_only_local_activation_audit_v1';
@@ -195,8 +196,8 @@ final class MAD4B_SCP_AI_Only_Local_Activation {
         $uri=(string)($_SERVER['REQUEST_URI']??'');
         $path=(string)parse_url($uri,PHP_URL_PATH);
         $route=isset($_GET['rest_route'])?(string)$_GET['rest_route']:'';
-        if(!preg_match('#/wp-json/mad4b-local-ai/v1/context-review/?$#D',$path)
-           && self::LOCAL_REVIEW_ROUTE!==('/'.trim($route,'/')))
+        if(!preg_match('#/wp-json/mad4b-local-ai/v1/(?:context|domain)-review/?$#D',$path)
+           && !in_array('/'.trim($route,'/'),array(self::LOCAL_REVIEW_ROUTE,self::LOCAL_DOMAIN_ROUTE),true))
             $error->add('mad4b_ai_only_service_rest_scope_denied',
                 'Managed AI-only credential is limited to its local review endpoint.');
     }
@@ -216,8 +217,8 @@ final class MAD4B_SCP_AI_Only_Local_Activation {
         if(!($user instanceof WP_User) || $user->user_login!==self::service_login())return $result;
         if((string)get_user_meta((int)$user->ID,self::USER_META,true)!==(string)MAD4B_SCP_Site_Profile::site_uuid())
             return new WP_Error('mad4b_ai_only_identity_untrusted','Managed local reviewer identity metadata mismatch.',array('status'=>403));
-        if($route!==self::LOCAL_REVIEW_ROUTE)
-            return new WP_Error('mad4b_ai_only_service_mcp_only','Local reviewer credentials may access only the governed MCP route.',array('status'=>403));
+        if(!in_array($route,array(self::LOCAL_REVIEW_ROUTE,self::LOCAL_DOMAIN_ROUTE),true))
+            return new WP_Error('mad4b_ai_only_service_mcp_only','Local reviewer credentials may access only the governed review routes.',array('status'=>403));
         return $result;
     }
     /** Bounded local-only path; invokes the existing exact Agent governance method. */
@@ -230,7 +231,39 @@ final class MAD4B_SCP_AI_Only_Local_Activation {
             'permission_callback'=>array(__CLASS__,'review_permission'),
             'args'=>array(),
         ));
+        register_rest_route('mad4b-local-ai/v1','/domain-review',array(
+            'methods'=>'POST',
+            'callback'=>array(__CLASS__,'execute_local_domain_review'),
+            'permission_callback'=>array(__CLASS__,'review_permission'),
+            'args'=>array(),
+        ));
     }
+    public static function execute_local_domain_review($request) {
+        if(!is_object($request) || !method_exists($request,'get_json_params'))
+            return new WP_Error('mad4b_owner_review_input_required','Structured owner review required.',array('status'=>400));
+        $body=$request->get_json_params();
+        if(!is_array($body) || array_diff(array_keys($body),
+            array('domain','item','decision','review_note','source_binding')))
+            return new WP_Error('mad4b_owner_review_input_invalid','Only exact scoped review inputs allowed.',array('status'=>400));
+        $domain=(string)($body['domain']??'');
+        $owner=class_exists('MAD4B_SCP_AI_Native_Owner_Review')
+            ?MAD4B_SCP_AI_Native_Owner_Review::owner($domain):'';
+        if($owner==='' ||!class_exists($owner)||!method_exists($owner,'ai_original_review_submit'))
+            return new WP_Error('mad4b_owner_review_owner_unavailable','Native domain owner unavailable.',array('status'=>403));
+        $receipt=call_user_func(array($owner,'ai_original_review_submit'),
+            $body['item']??null,$body['decision']??null,
+            $body['review_note']??null,$body['source_binding']??null);
+        if(is_wp_error($receipt))return $receipt;
+        $verified=call_user_func(array($owner,'ai_original_review_verify_receipt'),
+            $body['item'],$receipt,$body['source_binding']);
+        if($verified!==true)return new WP_Error('mad4b_owner_review_receipt_unverified',
+            'Original owner receipt not independently verified.',array('status'=>409));
+        return array('contract'=>'mad4b.ai-native-owner-rest.v1',
+            'domain'=>$domain,'receipt'=>$receipt,
+            'owner_receipt_verified'=>true,
+            'publication_authorized'=>false,'production_mutation'=>false);
+    }
+
     public static function review_permission($request) {
         if(wp_get_environment_type()!=='local')return new WP_Error('mad4b_ai_local_scope_denied','Local only.',array('status'=>403));
         $user=wp_get_current_user();
