@@ -58,6 +58,8 @@ jobs:
           php -l "$root/tests/oauth-secondary-diagnostic-exception-runtime.php"
           php "$root/tests/oauth-secondary-diagnostic-exception-runtime.php"
           python3 "$root/tests/mcp-live-authenticated-gate-contract.py"
+          php -l "$root/includes/class-mad4b-scp-mcp-transport-admission.php"
+          php "$root/tests/mcp-origin-error-preservation-runtime.php"
 
       - name: Capture endpoint and REST index without writes
         shell: bash
