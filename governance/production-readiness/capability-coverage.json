@@ -7826,6 +7826,69 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Pin exact source of the RSA-SHA256 status-only runner transport and plugin registration. All Developer, Shell, SQL, Production, and write authorities remain separately gated. Signed requests target a fixed safe diagnostic; receipts are independently verified and cannot confer execution grants."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-host-capabilities.php",
+      "source_blob_sha": "2df929231c86b2e2ccdc265d762b3a7ffdedcc2b",
+      "control_ids": [
+        "MCP-01",
+        "OAUTH-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "ADMIN-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/developer-runner-lifecycle-fetch-contract.php"
+      ],
+      "owner_role": "Repository security reviewer — CI-only discovery and signed read contract",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Pin current exact source identity for portable runtime Backend discovery including Docker and PHP-compatible cryptographically signed diagnostics. No discovery finding or result authorizes Developer, mutation, Shell, SQL or Production execution."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-backend-registry.php",
+      "source_blob_sha": "6bc57eb6ec32af7ce09323b41c9370b9284894a0",
+      "control_ids": [
+        "MCP-01",
+        "OAUTH-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "ADMIN-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-backend-registry-contract.php"
+      ],
+      "owner_role": "Repository security reviewer — CI-only discovery and signed read contract",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Pin current exact source identity for portable runtime Backend discovery including Docker and PHP-compatible cryptographically signed diagnostics. No discovery finding or result authorizes Developer, mutation, Shell, SQL or Production execution."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-runner-bridge.php",
+      "source_blob_sha": "ce8899094ed08ee3687a53c64bcc879a42703ae3",
+      "control_ids": [
+        "MCP-01",
+        "OAUTH-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "ADMIN-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-runner-bridge-contract.php"
+      ],
+      "owner_role": "Repository security reviewer — CI-only discovery and signed read contract",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Pin current exact source identity for portable runtime Backend discovery including Docker and PHP-compatible cryptographically signed diagnostics. No discovery finding or result authorizes Developer, mutation, Shell, SQL or Production execution."
     }
   ],
   "code_change_rules": {
