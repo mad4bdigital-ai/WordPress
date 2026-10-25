@@ -159,6 +159,7 @@ final class MAD4B_SCP_Developer_Host_Capabilities {
 	}
 
 	public static function maybe_schedule_discovery() {
+		if ( ! defined( 'MAD4B_MCP_DEVELOPER_RUNNER_DISCOVERY_URL' ) || ! defined( 'MAD4B_MCP_DEVELOPER_RUNNER_DISCOVERY_ORIGIN' ) ) return;
 		if ( ! function_exists( 'current_user_can' ) || ! current_user_can( 'manage_options' )
 			|| ! function_exists( 'wp_next_scheduled' ) || ! function_exists( 'wp_schedule_single_event' ) ) return;
 		if ( ! wp_next_scheduled( 'mad4b_developer_runner_refresh' ) ) wp_schedule_single_event( time() + 30, 'mad4b_developer_runner_refresh' );
