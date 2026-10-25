@@ -101,6 +101,7 @@ final class MAD4B_SCP_Developer_Host_Capabilities {
 		$definitions = array(
 			'isolated_vps_runner' => 'MAD4B_MCP_DEVELOPER_VPS_RUNNER_ID',
 			'ssh_host_runner' => 'MAD4B_MCP_DEVELOPER_SSH_RUNNER_ID',
+			'isolated_docker_runner' => 'MAD4B_MCP_DEVELOPER_DOCKER_RUNNER_ID',
 		);
 		$results = array();
 		$cached = function_exists( 'get_transient' ) ? get_transient( 'mad4b_developer_runner_discovery' ) : false;
@@ -143,7 +144,7 @@ final class MAD4B_SCP_Developer_Host_Capabilities {
 		$data = json_decode( (string)$body, true );
 		if ( ! is_array( $data ) || ( $data['contract'] ?? '' ) !== 'mad4b.runner-discovery.v1' || ! is_array( $data['backends'] ?? null ) ) return false;
 		$observed = array();
-		foreach ( array( 'isolated_vps_runner', 'ssh_host_runner' ) as $backend ) {
+		foreach ( array( 'isolated_vps_runner', 'ssh_host_runner', 'isolated_docker_runner' ) as $backend ) {
 			$row = $data['backends'][$backend] ?? null;
 			$observed[$backend] = is_array( $row ) && true === ( $row['available'] ?? null );
 		}
