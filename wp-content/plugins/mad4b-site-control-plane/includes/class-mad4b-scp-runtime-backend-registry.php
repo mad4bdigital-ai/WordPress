@@ -86,8 +86,34 @@ final class MAD4B_SCP_Runtime_Backend_Registry {
   $preset=function_exists('get_option')?(string)get_option('mad4b_runtime_backend_preset','shared_hosting'):'shared_hosting';
   return self::snapshot($candidates,$preset);
  }
+ public static function builtin_candidates($candidates) {
+  if(!is_array($candidates)) $candidates=array();
+  if(!class_exists('MAD4B_SCP_Developer_Host_Capabilities',false))return $candidates;
+  $host=MAD4B_SCP_Developer_Host_Capabilities::snapshot();
+  $candidates['local_host']=array(
+   'type'=>'local_php','operations'=>array('php.lint','runtime.status.read'),
+   'discovered'=>true,'configured'=>true,'reachable'=>true,
+   'certified'=>!empty($host['normal_no_network_execution_ready']),
+   'authorized'=>false,'identity_verified'=>!empty($host['non_root_verified']),
+   'isolation_verified'=>!empty($host['normal_no_network_execution_ready'])
+  );
+  foreach(array('isolated_vps_runner'=>'https_runner','ssh_host_runner'=>'ssh') as $id=>$type) {
+   $row=$host['external_backends'][$id]??array();
+   $candidates[$id]=array(
+    'type'=>$type,'operations'=>array('runtime.status.read','php.lint'),
+    'discovered'=>!empty($row['discovered']),'configured'=>!empty($row['configured']),
+    'reachable'=>!empty($row['live_available_observed']),
+    'certified'=>false,'authorized'=>false,'identity_verified'=>false,'isolation_verified'=>false
+   );
+  }
+  return $candidates;
+ }
  public static function register_lifecycle() {
-  if(function_exists('add_action')) add_action('mad4b_runtime_backend_refresh',array(__CLASS__,'refresh'));
+  if(function_exists('add_filter')) add_filter('mad4b_runtime_backend_candidates',array(__CLASS__,'builtin_candidates'),10,1);
+  if(function_exists('add_action')) {
+   add_action('mad4b_runtime_backend_refresh',array(__CLASS__,'refresh'));
+   add_action('mad4b_developer_runner_refresh',array(__CLASS__,'refresh'),50);
+  }
  }
  public static function refresh() {
   // A plugin lifecycle observation, never a direct execution request.
