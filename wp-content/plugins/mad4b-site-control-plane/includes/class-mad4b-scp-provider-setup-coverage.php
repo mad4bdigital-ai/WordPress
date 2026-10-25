@@ -137,9 +137,35 @@ final class MAD4B_SCP_Provider_Setup_Coverage {
         foreach ( $rows['providers'] as $item ) {
             if ( ! is_array( $item ) ) continue;
             $connected = ! empty( $item['connected'] );
+            $fields = array();
+            $custody = 'original_provider_connection_authority';
+            $credential = 'adapter_credential_status_not_exposed';
+            if ( (string)( $item['provider'] ?? '' ) === 'google_drive'
+                 && class_exists( 'MAD4B_SCP_Google_Drive_Context' ) ) {
+                // Exact OAuth mode is the source of truth, not the Gemini
+                // Connector or an imagined shared client-secret form.
+                $oauth = MAD4B_SCP_Google_Drive_Context::credentials_status();
+                $mode = is_array( $oauth ) ? (string)( $oauth['auth_mode'] ?? '' ) : '';
+                $custody = is_array( $oauth )
+                    ? (string)( $oauth['credential_custody'] ?? 'unknown' ) : 'unknown';
+                if ( $mode === MAD4B_SCP_Google_Drive_Context::AUTH_MODE_MANAGED ) {
+                    $fields = array( 'MAD4B_GOOGLE_MANAGED_OAUTH_BROKER_URL',
+                        'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_KEY_ID',
+                        'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_SECRET', 'owner_consent' );
+                } elseif ( $mode === MAD4B_SCP_Google_Drive_Context::AUTH_MODE_DEDICATED ) {
+                    $fields = array( 'MAD4B_GOOGLE_DEDICATED_CLIENT_ID',
+                        'MAD4B_GOOGLE_DEDICATED_CLIENT_SECRET', 'owner_consent' );
+                } elseif ( $mode === MAD4B_SCP_Google_Drive_Context::AUTH_MODE_CUSTOM ) {
+                    $fields = array( 'MAD4B_GOOGLE_DRIVE_CLIENT_ID',
+                        'MAD4B_GOOGLE_DRIVE_CLIENT_SECRET', 'owner_consent' );
+                }
+                $credential = $mode === '' ? 'oauth_mode_unknown'
+                    : ( ! empty( $oauth['configured'] ) ? $mode.'_credential_configured'
+                        : $mode.'_credential_not_configured' );
+            }
             $out[] = self::row( 'oauth', (string)$item['provider'], (string)$item['label'],
-                'original_provider_oauth_authority', array( 'client_id', 'client_secret', 'owner_consent' ),
-                'oauth_secret_values_not_exposed', (string)( $item['health_state'] ?? 'unknown' ),
+                $custody, $fields, $credential,
+                (string)( $item['health_state'] ?? 'unknown' ),
                 $connected ? 'connected_not_scope_or_write_certified' : 'not_connected',
                 $connected ? 'check_current_scopes_and_exact_refresh_plan' : 'complete_original_owner_oauth_handoff',
                 (string)( $item['owner_handoff_url'] ?? '' ) );

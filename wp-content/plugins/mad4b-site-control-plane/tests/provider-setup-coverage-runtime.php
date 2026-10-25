@@ -40,6 +40,14 @@ class MAD4B_SCP_Provider_Connection_Center {
  'connected'=>false,'health_state'=>'oauth_reconnect_required','owner_handoff_url'=>'http://local.example/wp-admin/admin.php?page=context',
  'injected_secret'=>'SENSITIVE_SHOULD_NEVER_PASS')));}
 }
+class MAD4B_SCP_Google_Drive_Context {
+ const AUTH_MODE_MANAGED='managed_google';
+ const AUTH_MODE_DEDICATED='dedicated_google';
+ const AUTH_MODE_CUSTOM='custom_credentials';
+ public static function credentials_status(){return array('auth_mode'=>$GLOBALS['oauth_mode']??'managed_google',
+    'credential_custody'=>$GLOBALS['oauth_custody']??'mad4b_managed_oauth',
+    'configured'=>!empty($GLOBALS['oauth_configured']));}
+}
 class MAD4B_SCP_G5_External_Providers {
  public static function adapters(){return !empty($GLOBALS['g5_enabled'])?array('new_verified_provider'=>new stdClass()):array();}
  public static function setup_preview($args){return array('provider_id'=>$args['provider_id'],
@@ -64,6 +72,22 @@ ok('openrouter_key_present_not_live_tested',$by_id['mad4b_openrouter']['connecti
 ok('openrouter_key_field_exact',$by_id['mad4b_openrouter']['field_names']===array('connectors_mad4b_openrouter_api_key'));
 ok('search_stored_credential_does_not_certify_paid_execution',$by_id['testsearch']['execution_state']==='account_tested_not_capture_certified');
 ok('oauth_disconnected_distinct_from_credential',$by_id['google_drive']['execution_state']==='not_connected');
+ok('managed_google_broker_fields_are_mode_accurate',
+   $by_id['google_drive']['field_names']===array(
+    'MAD4B_GOOGLE_MANAGED_OAUTH_BROKER_URL','MAD4B_GOOGLE_MANAGED_OAUTH_SITE_KEY_ID',
+    'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_SECRET','owner_consent'));
+$GLOBALS['oauth_mode']='dedicated_google';$GLOBALS['oauth_custody']='dedicated_site_managed';
+$dedicated=array_column(MAD4B_SCP_Provider_Setup_Coverage::inventory()['providers'],null,'provider_id');
+ok('dedicated_oauth_uses_own_credential_fields',
+ $dedicated['google_drive']['field_names']===array(
+    'MAD4B_GOOGLE_DEDICATED_CLIENT_ID','MAD4B_GOOGLE_DEDICATED_CLIENT_SECRET','owner_consent'));
+$GLOBALS['oauth_mode']='custom_credentials';$GLOBALS['oauth_custody']='site_managed';
+$custom=array_column(MAD4B_SCP_Provider_Setup_Coverage::inventory()['providers'],null,'provider_id');
+ok('custom_oauth_uses_own_credential_fields',
+ $custom['google_drive']['field_names']===array(
+    'MAD4B_GOOGLE_DRIVE_CLIENT_ID','MAD4B_GOOGLE_DRIVE_CLIENT_SECRET','owner_consent'));
+$GLOBALS['oauth_mode']='managed_google';$GLOBALS['oauth_custody']='mad4b_managed_oauth';
+
 ok('generic_extractor_source_explicit',$by_id['generic_extractor']['field_names']===array('MAD4B_CONTEXT_EXTRACTOR_URL','MAD4B_CONTEXT_EXTRACTOR_TOKEN'));
 ok('vault_fields_explicit',count($by_id['g6_secret_vault']['field_names'])===2);
 ok('growth_adapter_count_unconfigured',$by_id['g5_adapter_registry']['credential_state']==='no_registered_adapters');
