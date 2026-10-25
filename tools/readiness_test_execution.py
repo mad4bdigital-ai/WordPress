@@ -31,6 +31,7 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-grant-mode-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-model-routing-worker-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-worker-guard-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/generation-snapshot-exception-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/no-input-read-ability-schema-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/operator-doctor-contract.php",
@@ -133,6 +134,7 @@ def self_test():
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/ai-grant-mode-runtime.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/ai-model-routing-worker-runtime.php")[0] == "php"
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/ai-review-worker-guard-hermetic.php")[0] == "php"
     try:
         command_for("wp-content/plugins/mad4b-site-control-plane/tests/runtime-gateway-cookie-http.php")
     except ValueError:
