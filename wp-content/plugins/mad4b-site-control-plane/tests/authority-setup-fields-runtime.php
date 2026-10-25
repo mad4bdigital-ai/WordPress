@@ -3,6 +3,28 @@ define('ABSPATH',__DIR__.'/');
 class WP_Error {private $code; public function __construct($code,$message=''){$this->code=$code;}public function get_error_code(){return $this->code;}}
 function is_wp_error($v){return $v instanceof WP_Error;}
 function add_action($x,$y){}
+$GLOBALS['setup_admin']=false;
+$GLOBALS['setup_enrolled']=false;
+$GLOBALS['setup_environment']='staging';
+function current_user_can($cap){return $cap==='manage_options' && $GLOBALS['setup_admin'];}
+function get_current_user_id(){return 17;}
+function sanitize_key($v){return strtolower(preg_replace('/[^a-z0-9_-]/','',(string)$v));}
+class MAD4B_SCP_Site_Profile {
+ public static function user_is_enrolled($id){return $id===17 && $GLOBALS['setup_enrolled'];}
+ public static function current_environment(){return $GLOBALS['setup_environment'];}
+}
+class MAD4B_SCP_Developer_Authority {
+ public static function status(){return [
+  'developer_enabled'=>false,'direct_execution_enabled'=>false,'kill_switch_enabled'=>true,
+  'normal_authority'=>['ready'=>false,'state'=>'not_granted'],
+  'breakglass_enabled'=>false,'breakglass_authority'=>['ready'=>false,'state'=>'not_granted']
+ ];}
+}
+class MAD4B_SCP_Full_Staging_Authority {
+ public static function status(){return [
+  'authority_ready'=>false,'operational_ready'=>false,'operational_blockers'=>['owner_attest_pending']
+ ];}
+}
 require dirname(__DIR__).'/includes/class-mad4b-scp-authority-setup-ui.php';
 $checks=0;
 function pass($name,$condition){global $checks;if(!$condition){fwrite(STDERR,"FAIL $name\n");exit(1);}++$checks;echo $name.": PASS\n";}
@@ -50,4 +72,20 @@ pass('full_staging_exact_payload_prepared',is_array($r)&&$r['input']['expected_a
 $b['expected_artifact_identity']='x';
 pass('invalid_artifact_denied',is_wp_error(MAD4B_SCP_Authority_Setup_UI::validate_payload('full_staging',$b)));
 pass('unrecognized_workflow_denied',is_wp_error(MAD4B_SCP_Authority_Setup_UI::validate_payload('raw_sql_breakglass',$base)));
+pass('anonymous setup status denied',is_wp_error(MAD4B_SCP_Authority_Setup_UI::project_status()));
+$GLOBALS['setup_admin']=true;
+pass('unregistered admin denied',!MAD4B_SCP_Authority_Setup_UI::authorized());
+pass('unregistered admin status denied',is_wp_error(MAD4B_SCP_Authority_Setup_UI::project_status()));
+$GLOBALS['setup_enrolled']=true;
+pass('enrolled admin allowed to inspect',MAD4B_SCP_Authority_Setup_UI::authorized());
+$projection=MAD4B_SCP_Authority_Setup_UI::project_status();
+pass('status only no grants',is_array($projection)&&$projection['mutation_performed']===false
+ && $projection['no_implicit_apply']===true&&$projection['oauth_bearer_required']===true);
+pass('breakglass excludes SQL',$projection['raw_sql_breakglass_not_included']===true);
+pass('staging status is not ready',!$projection['developer']['authority_ready']
+ && !$projection['full_staging']['authority_ready'] && $projection['full_staging']['eligible_environment']===true);
+$GLOBALS['setup_environment']='production';
+$production=MAD4B_SCP_Authority_Setup_UI::project_status();
+pass('production not staging eligible',is_array($production)
+ && $production['full_staging']['eligible_environment']===false && $production['mutation_performed']===false);
 echo "SUMMARY pass=$checks fail=0\n";

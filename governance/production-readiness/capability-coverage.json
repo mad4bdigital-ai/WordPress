@@ -2554,6 +2554,24 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original WordPress Core Connector custody, browser acceptance registry, source-owned Search enrollment, OAuth connection authority, explicit Policy/admin capability, Provider and Execution controls already govern real operations; this status aggregation grants no new privileges.",
       "review_rationale": "Source reviewed: original provider-setup coverage is read-only and requires manage_options. It enumerates only original adapter field names, never any database or host key bytes, and preserves separation of credential-present, OAuth-connected, plugin-active, model-inference tested, signed browser evidence and execution certification. The original runtime fixture, changed in the same PR, executes 26 PASS checks on network-isolated PHP 7.4 and 8.3 for external runner fields, WP Core Connector source flags, managed/dedicated/custom Google OAuth modes, protected SERP adapter, G5 adapter growth, no secret bytes/handles, absent admin and nonauthorizing inventory. No key issuance, provider API calls, production rights or live acceptance."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-setup-ui.php",
+      "control_ids": [
+        "ADMIN-01",
+        "SECURITY-02",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/authority-setup-fields-runtime.php"
+      ],
+      "owner_role": "Repository original-source admin UI CI security reviewer only, not approved Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing original WordPress enrolled Site Profile and manage_options authorization, OAuth bearer/step-up and exact developer/full-staging plan/apply Ability. The page has no direct grant issuing code, and user-controlled input only prepares unverified CAS shape.",
+      "review_rationale": "Source-reviewed authority UI: three distinct developer/developer-breakglass/full-staging workflows present exact owner-confirmation phrases and SHA/UUID/revision bounds; original validate_payload rejects unknown fields, invalid digests, production Developer selection and raw SQL. Extended same-PR original PHP runtime now includes denial of anonymous/non-enrolled admin, independent site enrollment check, projection-only no-implicit-apply, no mutation, exact staging eligibility and denied production Full Staging. 26 original runtime checks passed on network-isolated PHP 7.4 and 8.3; the source does not mint a grant, authenticate OAuth nor invoke apply. Production mutation or owner confirmation remains strictly unverified."
     }
   ],
   "lifecycle": [],
