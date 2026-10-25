@@ -12,6 +12,7 @@ $bad=$good;$bad['bands'][1]['price_factor']='-2';$out=MAD4B_Age_Occupancy_Admin:
 $checks['negative_price_factor_rejected']=is_wp_error($out)&&$out->get_error_code()==='age_policy_price_factor_invalid';
 $checks['admin_menu_registered']=has_action('admin_menu',[MAD4B_Age_Occupancy_Admin::class,'menu'])!==false;
 $checks['admin_save_endpoint_registered']=has_action('admin_post_mad4b_age_policy_save',[MAD4B_Age_Occupancy_Admin::class,'save'])!==false;
+$checks['form_mapping_save_endpoint_registered']=has_action('admin_post_mad4b_age_forms_save',[MAD4B_Age_Occupancy_Admin::class,'save_forms'])!==false;
 foreach($checks as $name=>$ok)echo $name.'='.($ok?'PASS':'FAIL').PHP_EOL;
 echo 'SUMMARY='.count(array_filter($checks)).'/'.count($checks).PHP_EOL;
 exit(in_array(false,$checks,true)?1:0);
