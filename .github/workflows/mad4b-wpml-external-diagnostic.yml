@@ -63,6 +63,8 @@ jobs:
           php -l "$root/tools/staging-mcp-skills-recertify.php"
           php -l "$root/tests/staging-mcp-skills-recertify-contract.php"
           php "$root/tests/staging-mcp-skills-recertify-contract.php"
+          php -l "$root/includes/class-mad4b-scp-developer-host-capabilities.php"
+          php "$root/tests/developer-external-backend-discovery-contract.php"
 
       - name: Capture endpoint and REST index without writes
         shell: bash
