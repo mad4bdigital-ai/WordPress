@@ -727,8 +727,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$credentials = self::credentials_status();
 		$connection = self::public_connection_status();
 		$gemini_enabled_defined = defined( 'MAD4B_CONTEXT_GEMINI_ENABLED' );
-		$gemini_enabled_effective = $gemini_enabled_defined && true === (bool) constant( 'MAD4B_CONTEXT_GEMINI_ENABLED' );
-		$gemini_key_present = defined( 'MAD4B_CONTEXT_GEMINI_API_KEY' ) && '' !== trim( (string) constant( 'MAD4B_CONTEXT_GEMINI_API_KEY' ) );
+		$gemini_enabled_effective = self::gemini_extractor_enabled();
+		$gemini_key_present = '' !== self::gemini_extractor_key();
 		$gemini_model_present = defined( 'MAD4B_CONTEXT_GEMINI_MODEL' ) && '' !== trim( (string) constant( 'MAD4B_CONTEXT_GEMINI_MODEL' ) );
 		$generic_url_present = defined( 'MAD4B_CONTEXT_EXTRACTOR_URL' ) && '' !== trim( (string) constant( 'MAD4B_CONTEXT_EXTRACTOR_URL' ) );
 		$generic_token_present = defined( 'MAD4B_CONTEXT_EXTRACTOR_TOKEN' ) && '' !== trim( (string) constant( 'MAD4B_CONTEXT_EXTRACTOR_TOKEN' ) );
@@ -3129,15 +3129,33 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return self::normalization_record( $text, ! $unsupported_filter, $unsupported_filter ? 'incomplete' : 'ready', $unsupported_filter ? 'pdf_mixed_filters_not_fully_decoded' : 'pdf_local_text', strlen( $binary ) );
 	}
 
+	private static function gemini_extractor_key() {
+		if ( class_exists( 'MAD4B_SCP_AI_Model_Router' ) )
+			return MAD4B_SCP_AI_Model_Router::gemini_api_key();
+		return defined( 'MAD4B_CONTEXT_GEMINI_API_KEY' )
+			? trim( (string) constant( 'MAD4B_CONTEXT_GEMINI_API_KEY' ) ) : '';
+	}
+
+	private static function gemini_extractor_enabled() {
+		if ( class_exists( 'MAD4B_SCP_AI_Model_Router' ) )
+			return MAD4B_SCP_AI_Model_Router::gemini_extraction_enabled();
+		return defined( 'MAD4B_CONTEXT_GEMINI_ENABLED' )
+			&& true === (bool) constant( 'MAD4B_CONTEXT_GEMINI_ENABLED' );
+	}
+
 	private static function gemini_extractor_configured() {
-		return defined( 'MAD4B_CONTEXT_GEMINI_ENABLED' ) && true === (bool) constant( 'MAD4B_CONTEXT_GEMINI_ENABLED' )
-			&& defined( 'MAD4B_CONTEXT_GEMINI_API_KEY' )
-			&& '' !== trim( (string) constant( 'MAD4B_CONTEXT_GEMINI_API_KEY' ) );
+		return self::gemini_extractor_enabled() && '' !== self::gemini_extractor_key();
 	}
 
 	private static function gemini_model() {
-		$model = defined( 'MAD4B_CONTEXT_GEMINI_MODEL' ) ? trim( (string) constant( 'MAD4B_CONTEXT_GEMINI_MODEL' ) ) : 'gemini-3.8-flash';
-		return preg_match( '/^[A-Za-z0-9._\-]+$/', $model ) ? $model : 'gemini-3.8-flash';
+		$model = defined( 'MAD4B_CONTEXT_GEMINI_MODEL' ) ? trim( (string) constant( 'MAD4B_CONTEXT_GEMINI_MODEL' ) ) : '';
+		if ( '' === $model && class_exists( 'MAD4B_SCP_AI_Model_Router' ) ) {
+			$cfg = MAD4B_SCP_AI_Model_Router::settings();
+			if ( ( $cfg['mode'] ?? '' ) === 'google_dedicated' )
+				$model = trim( (string) ( $cfg['model'] ?? '' ) );
+		}
+		return preg_match( '/^[A-Za-z0-9._\-]+$/D', $model ) && '' !== $model
+			? $model : 'gemini-2.5-flash';
 	}
 
 	private static function generic_extractor_configured() {
@@ -3335,7 +3353,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 				'timeout' => $timeout,
 				'redirection' => 0,
 				'headers' => array(
-					'x-goog-api-key' => trim( (string) constant( 'MAD4B_CONTEXT_GEMINI_API_KEY' ) ),
+					'x-goog-api-key' => self::gemini_extractor_key(),
 					'Content-Type' => 'application/json',
 					'Accept' => 'application/json',
 				),

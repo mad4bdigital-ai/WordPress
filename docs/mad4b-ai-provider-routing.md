@@ -34,3 +34,10 @@ ETG Local Lab only. No staging/production changes. Actual inference cannot be ex
 
 ## Test gates
 ai-model-routing-worker-runtime.php: 20 mocked/deterministic cases, including unsafe URLs and fabricated model outputs. Existing Context Authority, AI-only scope, Excel, PDF/text normalization, and site-neutrality must pass. CI should independently verify after PR creation.
+
+## Configuration discoverability and governed authority setup
+- Settings > MAD4B AI Routing > Gemini API Key contains a write-only password input and separate clear operation. The option is the WordPress Core Connector setting connectors_mad4b_gemini_api_key, not a parallel MAD4B secret store. Native Core Google Connector credentials are reused if no MAD4B-specific override is set. Environment/PHP-constant sources take priority and cannot be overwritten by the UI.
+- The same credential can be used for Gemini document extraction when separately enabled. Drive OAuth consent is never treated as a Gemini generation API key. The routing and extractor model are separately selectable; no key is echoed or logged.
+- Settings > MAD4B Authority Setup shows live Developer grant flags, Developer Breakglass and Full Staging readiness, and the exact required field names for each existing MAD4B governance plan. Its form only validates and prepares a payload for the originally authenticated OAuth Ability. It does not issue a grant or enable Runtime/Breakglass.
+- Full Authority is Staging-only and excludes generic raw-SQL breakglass and Production mutation. Developer authority requires the enrolled, verified normal OAuth subject, exact plan/commit/site revision/digest, and explicit confirmation; Developer Breakglass additionally requires normal Developer authority. Every Apply re-verifies existing Site Profile, bearer, grants, audit, and CAS before mutation.
+- When the site is local, Full Staging fields are visible to explain requirements but submission fails closed. No Authority setup data is stored by the UI.

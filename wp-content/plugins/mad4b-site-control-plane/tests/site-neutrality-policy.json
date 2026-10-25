@@ -207,7 +207,8 @@
     "includes/class-mad4b-scp-ai-model-router.php": {
       "hosts": [
         "openrouter.ai",
-        "generativelanguage.googleapis.com"
+        "generativelanguage.googleapis.com",
+        "aistudio.google.com"
       ],
       "purpose": "Reviewed generic AI service endpoints; no client-specific domain or staging hostname",
       "safeguards": [

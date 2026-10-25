@@ -26,6 +26,9 @@ class FakeRegistry {
 $GLOBALS['connectors']=array();
 function wp_get_connector($id){return $GLOBALS['connectors'][$id]??null;}
 function wp_get_connectors(){return $GLOBALS['connectors'];}
+function _wp_connectors_get_api_key_source($name,$env='',$constant=''){
+    return isset($GLOBALS['options'][$name])?'database':'none';
+}
 require dirname(__DIR__).'/includes/class-mad4b-scp-ai-model-router.php';
 require dirname(__DIR__).'/includes/class-mad4b-scp-ai-review-worker.php';
 require dirname(__DIR__).'/includes/class-mad4b-scp-ai-source-repair.php';
@@ -33,8 +36,9 @@ $pass=0;
 function ok($name,$condition){global $pass;if(!$condition){fwrite(STDERR,"FAILED $name\n");exit(1);}echo $name.": PASS\n";$pass++;}
 $r=new FakeRegistry();
 MAD4B_SCP_AI_Model_Router::register_connectors($r);
-ok('core_registers_two_additive_routes',count($r->items)===2);
+ok('core_registers_two_additive_routes',count($r->items)===3);
 $GLOBALS['connectors']=$r->items;
+ok('gemini_key_in_same_connector_registry',isset($r->items['mad4b_gemini']) && $r->items['mad4b_gemini']['authentication']['setting_name']===MAD4B_SCP_AI_Model_Router::GEMINI_SETTING);
 ok('registered_without_secret_leak',empty(MAD4B_SCP_AI_Model_Router::provider_status()['secrets_exposed']));
 $invalid=MAD4B_SCP_AI_Model_Router::normalize_settings(array('mode'=>'custom','custom_endpoint'=>'http://127.0.0.1/run'));
 ok('reject_local_http',is_wp_error($invalid));
@@ -45,6 +49,21 @@ ok('accept_public_custom_https',MAD4B_SCP_AI_Model_Router::validate_endpoint('ht
 $x=MAD4B_SCP_AI_Model_Router::normalize_settings(array('mode'=>'openrouter'));
 ok('official_free_router_default',$x['model']==='openrouter/free');
 ok('opt_in_disabled_by_default',empty($x['enabled']));
+ok('gemini_extraction_off_by_default',empty(MAD4B_SCP_AI_Model_Router::settings()['gemini_extraction_enabled']));
+ok('gemini_extraction_requires_own_opt_in',MAD4B_SCP_AI_Model_Router::gemini_extraction_enabled()===false);
+$GLOBALS['connectors']['google']=array('type'=>'ai_provider',
+    'authentication'=>array('method'=>'api_key','setting_name'=>'connectors_ai_google_api_key'));
+$GLOBALS['options']['connectors_ai_google_api_key']='native-google-fixture-only';
+ok('native_google_connector_key_reused',MAD4B_SCP_AI_Model_Router::gemini_api_key()==='native-google-fixture-only');
+$GLOBALS['options'][MAD4B_SCP_AI_Model_Router::GEMINI_SETTING]='fake-gemini-fixture-only';
+ok('gemini_key_uses_single_connector_option',MAD4B_SCP_AI_Model_Router::gemini_api_key()==='fake-gemini-fixture-only');
+$GLOBALS['options'][MAD4B_SCP_AI_Model_Router::OPTION]=array_merge(
+    MAD4B_SCP_AI_Model_Router::defaults(),
+    array('mode'=>'google_dedicated','model'=>'gemini-2.5-flash','enabled'=>true,'gemini_extraction_enabled'=>true));
+ok('gemini_extraction_opt_in_active',MAD4B_SCP_AI_Model_Router::gemini_extraction_enabled()===true);
+ok('gemini_status_uses_core_key_source',MAD4B_SCP_AI_Model_Router::provider_status()['credential_ready']===true);
+$GLOBALS['options'][MAD4B_SCP_AI_Model_Router::OPTION]=MAD4B_SCP_AI_Model_Router::defaults();
+
 $x=MAD4B_SCP_AI_Model_Router::generate_text('test prompt');
 ok('disabled_inference_fail_closed',is_wp_error($x)&&$x->get_error_code()==='mad4b_ai_router_disabled');
 $GLOBALS['options'][MAD4B_SCP_AI_Model_Router::OPTION]=array_merge(
