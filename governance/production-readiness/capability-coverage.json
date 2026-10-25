@@ -8891,6 +8891,25 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "P0: reviewed environment-neutral site-bound registration for original-owner content adapters. Exact audited file SHA pin, runtime revalidation and exclusion of protected governance domains remain mandatory. Source-only runtime executes 24 adversarial cases. Tests executed via network-isolated PHP 7.4 and PHP 8.3 container; production live execution, deployment, credentials and owner authorizations remain UNVERIFIED."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "ee38c1f216b22620ff3c58e8a4c9c240d845ce05",
+      "control_ids": [
+        "SECURITY-01",
+        "OAUTH-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-crossenv-scope-hermetic.php"
+      ],
+      "owner_role": "Source/security CI reviewer only; independent WordPress Site Owner attestation is still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact current top-level bootstrap source inspected at Git blob ee38c1f216b22620ff3c58e8a4c9c240d845ce05. The early managed Application Password fence is registered before foreign REST zero-touch return on every WordPress environment, with exact site-bound user meta/route/method and TLS checks; bounded AI review routes are treated as MAD4B-owned so full kernel and original Context Authority permission checks run, while unrelated routes continue to use existing routing. Verified 26 early-auth spoof/HTTP/site tests, 9 opt-in site scope tests, passive Context admin load and 27 Admin route declarations using isolated PHP 7.4 and 8.3. Does not review unrelated changed services, authorize Production deployment, re-sign G6/G9 historical evidence, certify live WordPress app-password authentications or provide owner attestation."
     }
   ],
   "code_change_rules": {

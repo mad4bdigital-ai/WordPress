@@ -4,8 +4,8 @@
   "reviewed_base_sha": "e7f30d944c354c3a4f7346330ad401d995e768c5",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 115,
-  "changed_paths_sha256": "fdc89ce566e7312c2a206b85ebc76c5a917106390e5f7581120999af4bb47a3a",
+  "changed_file_count": 120,
+  "changed_paths_sha256": "ef7c18ad1f80758eb8cf7341faa7ae726c8d935645018ed077ef4d298c5ede0c",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -21,7 +21,9 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-history-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-media-evidence-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tools/ai-review-worker-local.php"
+        "wp-content/plugins/mad4b-site-control-plane/tools/ai-review-worker-local.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-worker-guard-hermetic.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-crossenv-scope-hermetic.php"
       ]
     },
     {
@@ -32,7 +34,9 @@
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php"
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-authority-contract.py"
       ]
     },
     {
@@ -119,7 +123,8 @@
         "docs/mad4b-ai-native-five-owner-receipts.md",
         "docs/mad4b-ai-provider-routing.md",
         "docs/mad4b-open-free-local-ai-five-lane-acceptance.md",
-        "docs/mad4b-provider-setup-gap-audit.md"
+        "docs/mad4b-provider-setup-gap-audit.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/AI-ONLY-CONTEXT-REVIEW.md"
       ]
     },
     {
