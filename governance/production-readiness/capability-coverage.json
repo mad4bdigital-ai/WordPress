@@ -2478,6 +2478,63 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing site-specific WordPress Cron scheduling, approved Market Profile or Source Hub registration, original admin-only policy, original provider and audit guards. No new automation permissions or public write endpoint.",
       "review_rationale": "Original Season Calendar schedule requires enrolled Local site admin and approved country-language Market Profile plus exact Google holiday source. Cron validates approved binding before attempting fetch; provider failure records exact denial without Seasons term creation, financial offer mutation or automatic publishing. Hermetic 22-check fixture on PHP 7.4 and 8.3 tests negative Production/admin/site, invalid market and calendar, positive bounded schedule, offline provider and no campaign writes. No live Google tokens or database terms touched."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-market-profiles.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/market-source-read-abilities-hermetic.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/market-source-calendar-authority-hermetic.php"
+      ],
+      "owner_role": "Source/original-owner CI security reviewer only; independent WordPress Site Owner required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original enrolled Site Profile, admin permission, exact draft/revision source authority and original WordPress/Google provider boundaries; all changes remain subject to existing platform/security and independent owner gates.",
+      "review_rationale": "Market Profiles creates local enrolled-admin country/language drafts from CLDR advisory suggestions only; exact CAS revision on save/approve, distinct review action, duplicate country-language rejection and old site/environment denial are exercised by original-source test. Site-scoped WordPress Ability remains independently Policy::can_read gated and read-only. Tests on PHP 7.4/8.3 PASS 33 original service lifecycle assertions; pre-existing read Ability test adds 23 adversarial checks. Not a claim of live WPML acceptance. Evidence refers to exact source behavior and changed-in-PR executable hermetic fixtures; owner attestation and deployment still blocked."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-source-hub.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/market-source-calendar-cron-hermetic.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/market-source-calendar-authority-hermetic.php"
+      ],
+      "owner_role": "Source/original-owner CI security reviewer only; independent WordPress Site Owner required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original enrolled Site Profile, admin permission, exact draft/revision source authority and original WordPress/Google provider boundaries; all changes remain subject to existing platform/security and independent owner gates.",
+      "review_rationale": "Source Hub original service checks operator-only local registration, source approval as separate action, exact revisions, HTTPS pinned-feed host/adapter and userinfo/IP rejection, cross-site/environment denial, private source inbox that cannot auto-approve or auto-publish. The original Cron admission regression separately tests bounded scheduled approved source import and nonapproved source denial. New integration runs 33 assertions on both PHP 7.4/8.3; no provider credentials or live network calls. Evidence refers to exact source behavior and changed-in-PR executable hermetic fixtures; owner attestation and deployment still blocked."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-season-calendar.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/market-source-calendar-cron-hermetic.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/market-source-calendar-authority-hermetic.php"
+      ],
+      "owner_role": "Source/original-owner CI security reviewer only; independent WordPress Site Owner required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original enrolled Site Profile, admin permission, exact draft/revision source authority and original WordPress/Google provider boundaries; all changes remain subject to existing platform/security and independent owner gates.",
+      "review_rationale": "Season Calendar service accepts only approved country/language Market Profiles and subscribed exact Google holiday calendars; original plan normalizes tentative versus confirmed events, creates pending-only proposals with explicit CAS before individual review, denies tentative and Production term modifications, and never auto-publishes offers. Network-isolated original-source integration PASS 33 cases on PHP 7.4/8.3; supplemental Cron fixture PASS 22 cases per PHP and denies invalid calendar/provider, no live Google authorization asserted. Evidence refers to exact source behavior and changed-in-PR executable hermetic fixtures; owner attestation and deployment still blocked."
     }
   ],
   "lifecycle": [],

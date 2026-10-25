@@ -4,8 +4,8 @@
   "reviewed_base_sha": "e7f30d944c354c3a4f7346330ad401d995e768c5",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 123,
-  "changed_paths_sha256": "de9c9afcb6b84c5b14964f32751172e97e4453122a7e6ca22edf6c81a2aa2d01",
+  "changed_file_count": 124,
+  "changed_paths_sha256": "bc7db8b95d8e558f71f2f313d2d170fa9c21b401d28febc9d3b899758a8a1a08",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -156,7 +156,8 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/market-profiles-language-policy-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/public-holiday-hermetic-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/season-calendar-country-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/market-source-read-abilities-hermetic.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/market-source-read-abilities-hermetic.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/market-source-calendar-authority-hermetic.php"
       ]
     },
     {
