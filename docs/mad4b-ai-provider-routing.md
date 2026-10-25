@@ -22,7 +22,7 @@ WordPress Settings > MAD4B AI Routing: provider choice, model, guarded custom HT
 - Model verdict is not a permission grant. Never bypass SHA/registry CAS, source evidence checks or protected publishing and deployment approvals.
 
 ## Local scheduler
-Host cron every 10 minutes uses flock and a Local-Lab-only CLI entrypoint. DISABLE_WP_CRON is true. The host operator path may reconcile an expired delegated service identity under the original site owner's authorization. Runs are idempotent and closed when provider credentials are absent. No secrets, prompts or original documents are logged.
+Host cron every 10 minutes uses flock and a Local-Lab-only CLI entrypoint. ETG Local Lab intentionally has both WordPress HTTP_BLOCK_EXTERNAL and a separate MU sandbox block. The site-local deployment adds an exact internal Docker service origin for the authenticated review POST, plus a minimal allowlist of approved provider hosts. The sandbox still blocks every other HTTP request. These site-local network allowances must not be installed or enabled automatically in Staging or Production. A newly configured Custom endpoint also requires explicit host approval at the environment's outbound-network policy boundary; entering a URL in the routing page is not sufficient. DISABLE_WP_CRON is true. The host operator path may reconcile an expired delegated service identity under the original site owner's authorization. Runs are idempotent and closed when provider credentials are absent. No secrets, prompts or original documents are logged.
 
 Bit Flows is an optional orchestration caller of the same REST/action interface. Keep only one scheduler for a review queue; do not install a parallel approval system in Bit Flows.
 

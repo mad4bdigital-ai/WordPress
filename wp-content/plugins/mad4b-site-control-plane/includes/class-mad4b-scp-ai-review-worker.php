@@ -85,11 +85,26 @@ final class MAD4B_SCP_AI_Review_Worker {
             'expected_content_hash'=>$evidence['content_hash'],
             'expected_registry_revision'=>$evidence['expected_registry_revision'],
             'expected_authority_manifest_fingerprint'=>$evidence['expected_authority_manifest_fingerprint']);
-        // Site-local URL is derived from the enrolled Site Profile. No user input.
+        // The canonical WP URL may be host-loopback (e.g. localhost:8091),
+        // which is inaccessible from a PHP container. A host-controlled
+        // LOCAL-ONLY constant may select the enrolled Docker service origin.
+        // Never allow request payload or provider output to override this URL.
+        $canonical=home_url();
         $url=home_url('/wp-json/mad4b-local-ai/v1/context-review');
+        if(defined('MAD4B_AI_LOCAL_REVIEW_LOOPBACK_URL')) {
+            $internal=(string)constant('MAD4B_AI_LOCAL_REVIEW_LOOPBACK_URL');
+            if(!preg_match('#^http://[a-z0-9][a-z0-9-]*(?::[0-9]{2,5})?$#D',$internal))
+                return new WP_Error('mad4b_ai_worker_internal_origin_invalid','Local review transport must be an explicit internal service.');
+            $url=$internal.'/wp-json/mad4b-local-ai/v1/context-review';
+        }
+        $site_parts=wp_parse_url($canonical);
+        $canonical_host=(string)($site_parts['host']??'');
+        if($canonical_host==='')
+            return new WP_Error('mad4b_ai_worker_site_origin_invalid','Enrolled canonical site host missing.');
+        $host_header=$canonical_host.(isset($site_parts['port'])?':'.$site_parts['port']:'');
         $res=wp_remote_post($url,array('timeout'=>25,'redirection'=>0,
             'headers'=>array('Authorization'=>'Basic '.base64_encode($r['login'].':'.$r['password']),
-                'Content-Type'=>'application/json'),
+                'Content-Type'=>'application/json','Host'=>$host_header),
             'body'=>wp_json_encode($payload),'limit_response_size'=>32000));
         if(is_wp_error($res))return $res;
         $http=wp_remote_retrieve_response_code($res);
