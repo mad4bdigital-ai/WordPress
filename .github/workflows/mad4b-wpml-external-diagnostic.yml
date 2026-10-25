@@ -57,6 +57,7 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-oauth-resource-bridge.php"
           php -l "$root/tests/oauth-secondary-diagnostic-exception-runtime.php"
           php "$root/tests/oauth-secondary-diagnostic-exception-runtime.php"
+          python3 "$root/tests/mcp-live-authenticated-gate-contract.py"
 
       - name: Capture endpoint and REST index without writes
         shell: bash
