@@ -31,4 +31,11 @@ MAD4B_SCP_MCP_Transport_Admission::annotate_response($r,null,$req);
 $event=$GLOBALS['captured_event'];
 if (!is_array($event) || $event['code']!=='mad4b_oauth_evaluation_exception' || strpos(json_encode($event),'PRIVATE')!==false)
   throw new RuntimeException('First-party origin not recorded safely');
+$GLOBALS['captured_event']=null;
+$foreign=new WP_REST_Response(array('code'=>'mad4b_private_token_abc','message'=>'PRIVATE SECRET'),503);
+MAD4B_SCP_MCP_Transport_Admission::annotate_response($foreign,null,$req);
+$observed=$GLOBALS['captured_event'];
+if (!is_array($observed) || $observed['code']!=='mad4b_http_service_unavailable'
+ || strpos(json_encode($observed),'private_token')!==false)
+ throw new RuntimeException('Untrusted mad4b-prefixed response identifier stored');
 echo "PASS: MCP_ORIGIN_ERROR_PRESERVATION_RUNTIME\n";
