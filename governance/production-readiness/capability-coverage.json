@@ -2591,6 +2591,44 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing immutable original Identity_Context verified transport, Agent Registry exact deny-first grants, enrolled Site Profile and Unified Approval owner Workflow. No expansion of supported authentication method or browser MFA scope.",
       "review_rationale": "Direct original Background Authorization current() + check_qa_grant() and Browser Auth Broker source reviewed on exact Git blob. Mandatory verified upstream Identity_Context fingerprint must be string lowercase SHA-256, original Agent Registry must return enabled Agent with valid numeric ID, Site Profile must be present and have enrolled UUID. Requested QA domain must be registered by Unified Approval original owner, and exact grant must allow this exact environment and ability; all results are review-only and publication-authorized false. Browser login requires human and refuses model-issued sessions/MFA bypass. Network-free PHP 7.4 and 8.3 checks: 23 per interpreter, including malformed identity, unsupported API key, disabled Agent, missing site binding, invalid domain, original deny and different-environment grant, positive app-password/OAuth/passwordless identity, HTTPS-only browser handoff. Original unified-approval-ai-first contract also passes 37 cases on each PHP. No token, owner grant or browser session minted; real WordPress live acceptance remains necessary."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-policy.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-policy-gate-hermetic.php"
+      ],
+      "owner_role": "Repository original-source governance/approval CI reviewer only; not independent Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original Unified Policy original-owner Context Authority rules, WordPress Ability registry, Impact Policy, and separately OAuth-/ticket-governed execution rights; mapping only projects and does not authorize a mutation.",
+      "review_rationale": "Source original Unified Policy resolves configuration as quality-review rules only and inherits stricter original Context Authority. The original AI-only content decision is review-only; pricing, deployment, Developer and Breakglass cannot become AI-final execution. Configured legacy human-first or either-actor saved rules are projected in memory to AI-first without persisted mutation, while new unsafe rules are denied. Owner policy save is denied from CLI; exact scope/mode/TTL/confidence validation and no option mutations are tested. Hermetic original PHP 7.4 and 8.3 each PASS 27 checks. No live WordPress instance was changed; CI-only evidence."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-gate-bridge.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "TICKETS-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-policy-gate-hermetic.php"
+      ],
+      "owner_role": "Repository original-source governance/approval CI reviewer only; not independent Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original Unified Policy original-owner Context Authority rules, WordPress Ability registry, Impact Policy, and separately OAuth-/ticket-governed execution rights; mapping only projects and does not authorize a mutation.",
+      "review_rationale": "Source original Unified Gate Bridge is strictly read-only: it maps a reviewed original owner for the operation, gets the original Policy decision, checks real WordPress Ability registration and original Impact Policy but cannot mint a grant, approval ticket, owner receipt, publication or execution authorization. Unknown owners, unsafe provider names and malformed Ability names reject; even when QA owner and Ability are present, an original owner receipt remains required, while Pricing requires an independently reviewed human Approval Ticket. Hermetic PHP 7.4 and 8.3 each PASS 27 original-source tests and no options writes. No live WordPress instance was changed; CI-only evidence."
     }
   ],
   "lifecycle": [],
@@ -9205,6 +9243,42 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Direct original Background Authorization current() + check_qa_grant() and Browser Auth Broker source reviewed on exact Git blob. Mandatory verified upstream Identity_Context fingerprint must be string lowercase SHA-256, original Agent Registry must return enabled Agent with valid numeric ID, Site Profile must be present and have enrolled UUID. Requested QA domain must be registered by Unified Approval original owner, and exact grant must allow this exact environment and ability; all results are review-only and publication-authorized false. Browser login requires human and refuses model-issued sessions/MFA bypass. Network-free PHP 7.4 and 8.3 checks: 23 per interpreter, including malformed identity, unsupported API key, disabled Agent, missing site binding, invalid domain, original deny and different-environment grant, positive app-password/OAuth/passwordless identity, HTTPS-only browser handoff. Original unified-approval-ai-first contract also passes 37 cases on each PHP. No token, owner grant or browser session minted; real WordPress live acceptance remains necessary. Source change only converts malformed missing-site, credential fingerprint and missing workflow paths to explicit WP_Error fail-closed responses without minting any grant."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-policy.php",
+      "source_blob_sha": "1ddce9dc1c653772438030e061eac1183c8e58c9",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-policy-gate-hermetic.php"
+      ],
+      "owner_role": "Original-source and security CI reviewer only; not independent Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Source original Unified Policy resolves configuration as quality-review rules only and inherits stricter original Context Authority. The original AI-only content decision is review-only; pricing, deployment, Developer and Breakglass cannot become AI-final execution. Configured legacy human-first or either-actor saved rules are projected in memory to AI-first without persisted mutation, while new unsafe rules are denied. Owner policy save is denied from CLI; exact scope/mode/TTL/confidence validation and no option mutations are tested. Hermetic original PHP 7.4 and 8.3 each PASS 27 checks. Source blob is exact; required owner and release gates remain outstanding."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-gate-bridge.php",
+      "source_blob_sha": "28e254182ae8d704ba8f106c300b4c478362d9ef",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "TICKETS-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-policy-gate-hermetic.php"
+      ],
+      "owner_role": "Original-source and security CI reviewer only; not independent Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Source original Unified Gate Bridge is strictly read-only: it maps a reviewed original owner for the operation, gets the original Policy decision, checks real WordPress Ability registration and original Impact Policy but cannot mint a grant, approval ticket, owner receipt, publication or execution authorization. Unknown owners, unsafe provider names and malformed Ability names reject; even when QA owner and Ability are present, an original owner receipt remains required, while Pricing requires an independently reviewed human Approval Ticket. Hermetic PHP 7.4 and 8.3 each PASS 27 original-source tests and no options writes. Source blob is exact; required owner and release gates remain outstanding."
     }
   ],
   "code_change_rules": {
