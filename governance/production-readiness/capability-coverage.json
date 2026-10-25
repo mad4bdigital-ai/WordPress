@@ -7661,6 +7661,23 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Only compacted equivalent registration and dispatcher schema helpers to keep legacy facade within its existing maintainability budget. Regression tests retain null/empty object compatibility without widening write authority."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-resource-bridge.php",
+      "source_blob_sha": "7a2176009b99b5a89511ecca6c80209b582211b8",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/oauth-secondary-diagnostic-exception-runtime.php"
+      ],
+      "owner_role": "Repository source/security reviewer — CI coverage only; no production grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Observed MCP tool errors require fail-closed exception containment. The existing OAuth exception wrapper called optional transport rejection telemetry without its own try/catch, allowing a second exception to escape. This change preserves the existing protected-route 503/no-store response even when optional telemetry throws; hermetic same-PR regression executes that scenario. It does not claim authenticated live MCP acceptance or authorize deployment."
     }
   ],
   "code_change_rules": {
