@@ -7683,9 +7683,12 @@
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-transport-admission.php",
       "source_blob_sha": "17af6022877915e561bc712836a784bf1e8c2df0",
       "control_ids": [
+        "MCP-01",
+        "OAUTH-01",
+        "SECURITY-01",
         "GOVERNANCE-01",
-        "PLATFORM-01",
-        "SECURITY-01"
+        "PERFORMANCE-01",
+        "ADMIN-01"
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/mcp-origin-error-preservation-runtime.php"
