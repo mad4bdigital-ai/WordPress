@@ -103,12 +103,14 @@ final class MAD4B_SCP_Developer_Host_Capabilities {
 			'ssh_host_runner' => 'MAD4B_MCP_DEVELOPER_SSH_RUNNER_ID',
 		);
 		$results = array();
+		$cached = function_exists( 'get_transient' ) ? get_transient( 'mad4b_developer_runner_discovery' ) : false;
 		foreach ( $definitions as $backend => $constant ) {
 			$configured = defined( $constant ) && is_string( constant( $constant ) )
 				&& 1 === preg_match( '/^[a-zA-Z0-9._:-]{8,128}$/D', constant( $constant ) );
 			$results[ $backend ] = array(
 				'configured' => (bool) $configured,
-				'discovered' => (bool) $configured,
+				'discovered' => (bool) $configured || ( is_array( $cached ) && ! empty( $cached['backends'][$backend] ) ),
+				'live_available_observed' => is_array( $cached ) && ! empty( $cached['backends'][$backend] ),
 				'identity_verified' => false,
 				'isolation_verified' => false,
 				'capability_attested' => false,
@@ -118,6 +120,48 @@ final class MAD4B_SCP_Developer_Host_Capabilities {
 			);
 		}
 		return $results;
+	}
+
+	/** A bounded, passive discovery refresh. Never grants execution authority. */
+	public static function lifecycle_refresh() {
+		if ( ! function_exists( 'wp_get_environment_type' ) || ! in_array( wp_get_environment_type(), array( 'staging', 'development', 'local' ), true ) ) return false;
+		if ( ! function_exists( 'get_transient' ) || ! function_exists( 'set_transient' ) || ! function_exists( 'wp_safe_remote_get' ) ) return false;
+		if ( ! defined( 'MAD4B_MCP_DEVELOPER_RUNNER_DISCOVERY_URL' ) || ! defined( 'MAD4B_MCP_DEVELOPER_RUNNER_DISCOVERY_ORIGIN' ) ) return false;
+		$url = (string) MAD4B_MCP_DEVELOPER_RUNNER_DISCOVERY_URL;
+		$origin = (string) MAD4B_MCP_DEVELOPER_RUNNER_DISCOVERY_ORIGIN;
+		$u = function_exists( 'wp_parse_url' ) ? wp_parse_url( $url ) : parse_url( $url );
+		$o = function_exists( 'wp_parse_url' ) ? wp_parse_url( $origin ) : parse_url( $origin );
+		if ( ! is_array( $u ) || ! is_array( $o ) || ( $u['scheme'] ?? '' ) !== 'https' || ( $o['scheme'] ?? '' ) !== 'https'
+			|| empty( $u['host'] ) || ! hash_equals( strtolower( (string)( $o['host'] ?? '' ) ), strtolower( (string)$u['host'] ) )
+			|| isset( $u['user'] ) || isset( $u['pass'] ) || isset( $u['fragment'] ) || isset( $u['port'] ) ) return false;
+		if ( get_transient( 'mad4b_developer_runner_probe_cooldown' ) ) return false;
+		set_transient( 'mad4b_developer_runner_probe_cooldown', 1, 300 );
+		$response = wp_safe_remote_get( $url, array( 'timeout' => 3, 'redirection' => 0, 'limit_response_size' => 2048, 'headers' => array( 'Accept' => 'application/json' ) ) );
+		if ( function_exists( 'is_wp_error' ) && is_wp_error( $response ) ) return false;
+		if ( ! function_exists( 'wp_remote_retrieve_response_code' ) || 200 !== wp_remote_retrieve_response_code( $response ) ) return false;
+		$body = function_exists( 'wp_remote_retrieve_body' ) ? wp_remote_retrieve_body( $response ) : '';
+		$data = json_decode( (string)$body, true );
+		if ( ! is_array( $data ) || ( $data['contract'] ?? '' ) !== 'mad4b.runner-discovery.v1' || ! is_array( $data['backends'] ?? null ) ) return false;
+		$observed = array();
+		foreach ( array( 'isolated_vps_runner', 'ssh_host_runner' ) as $backend ) {
+			$row = $data['backends'][$backend] ?? null;
+			$observed[$backend] = is_array( $row ) && true === ( $row['available'] ?? null );
+		}
+		set_transient( 'mad4b_developer_runner_discovery', array( 'backends' => $observed, 'observed_at' => time() ), 600 );
+		return true;
+	}
+
+	public static function discovery_boot() {
+		if ( function_exists( 'add_action' ) ) {
+			add_action( 'mad4b_developer_runner_refresh', array( __CLASS__, 'lifecycle_refresh' ) );
+			add_action( 'admin_init', array( __CLASS__, 'maybe_schedule_discovery' ), 99 );
+		}
+	}
+
+	public static function maybe_schedule_discovery() {
+		if ( ! function_exists( 'current_user_can' ) || ! current_user_can( 'manage_options' )
+			|| ! function_exists( 'wp_next_scheduled' ) || ! function_exists( 'wp_schedule_single_event' ) ) return;
+		if ( ! wp_next_scheduled( 'mad4b_developer_runner_refresh' ) ) wp_schedule_single_event( time() + 30, 'mad4b_developer_runner_refresh' );
 	}
 
 	public static function wp_cli_binary() {
