@@ -12,7 +12,8 @@ final class MAD4B_SCP_Application_Password_Agent_Bridge {
         if (!($user instanceof WP_User) || empty($item['uuid']) || !is_string($item['uuid'])) return;
         if (!defined('REST_REQUEST') || !REST_REQUEST || !is_ssl() && wp_get_environment_type() !== 'local') return;
         if (!class_exists('MAD4B_SCP_Site_Profile') || !MAD4B_SCP_Site_Profile::origin_enrolled()) return;
-        if (!MAD4B_SCP_Site_Profile::user_is_enrolled((int)$user->ID)) return;
+        if (!MAD4B_SCP_Site_Profile::user_is_enrolled((int)$user->ID)
+            && !(class_exists('MAD4B_SCP_AI_Only_Local_Activation') && MAD4B_SCP_AI_Only_Local_Activation::matches_credential($user,$item))) return;
         $site_uuid = (string) MAD4B_SCP_Site_Profile::site_uuid();
         if (!$site_uuid) return;
         self::$verified = [
@@ -25,11 +26,20 @@ final class MAD4B_SCP_Application_Password_Agent_Bridge {
         ];
     }
     public static function verified_for_mcp_request($request) {
-        if (wp_get_environment_type() !== 'local' || !self::$verified || !is_object($request) || !method_exists($request, 'get_route')) return false;
+        if (wp_get_environment_type() !== 'local' || !is_object($request) || !method_exists($request, 'get_route')) return false;
         if (('/' . trim((string)$request->get_route(), '/')) !== '/mcp/mad4b-chatgpt') return false;
         $authorization = method_exists($request, 'get_header') ? (string)$request->get_header('authorization') : '';
         if (!preg_match('/^Basic [A-Za-z0-9+\/=]+$/D', trim($authorization))) return false;
-        if ((int)get_current_user_id() !== (int)self::$verified['wp_user_id']) return false;
+        // OAuth resource enforcement runs at rest_pre_dispatch, before WP REST
+        // lazily authenticates Basic. Trigger the real WordPress password verifier,
+        // never synthesize an Agent identity or trust headers as proof by themselves.
+        if (!self::$verified && function_exists('wp_validate_application_password')) {
+            $authenticated_user_id = wp_validate_application_password(null);
+            if (is_int($authenticated_user_id) && $authenticated_user_id > 0 && self::$verified
+                && (int)self::$verified['wp_user_id'] === $authenticated_user_id )
+                wp_set_current_user($authenticated_user_id);
+        }
+        if (!self::$verified || (int)get_current_user_id() !== (int)self::$verified['wp_user_id']) return false;
         if (!class_exists('MAD4B_SCP_Agent_Registry')) return false;
         $agent = MAD4B_SCP_Agent_Registry::resolve_agent(self::$verified);
         if (is_wp_error($agent) || !is_array($agent)) return false;

@@ -302,7 +302,16 @@ final class MAD4B_SCP_Content_Jobs {
 			! hash_equals( (string) ( $coverage['authority_manifest_fingerprint'] ?? '' ), (string) ( $route['authority_manifest_fingerprint'] ?? '' ) ) ||
 			(int) ( $coverage['registry_revision'] ?? -1 ) !== (int) ( $route['registry_revision'] ?? -2 ) )
 			return new WP_Error( 'mad4b_content_recovery_snapshot_drift', 'Brand coverage changed; obtain a fresh recovery snapshot.' );
-		return self::dependency_reduce( $job, $coverage, $route );
+		$plan=self::dependency_reduce($job,$coverage,$route);
+		if(is_array($plan) && class_exists('MAD4B_SCP_AI_Review_Lifecycle',false)) {
+			$review_needed=('WAITING_REVIEW'===(string)($job['state']??''));
+			$plan['ai_review_lifecycle']=MAD4B_SCP_AI_Review_Lifecycle::decide('content_job',array(
+				'content_hash'=>strtolower((string)($job['current_artifact_sha256']??'')),
+				'review_status'=>$review_needed?'waiting_review':'unreviewed',
+				'content_complete'=>!empty($job['current_artifact_id']),
+			),array('review_mode'=>(string)(MAD4B_SCP_Context_Authority::review_policy()['mode']??'human_only')));
+		}
+		return $plan;
 	}
 
 	/** Pure reducer for fail-closed regression testing. */

@@ -430,6 +430,13 @@ final class MAD4B_SCP_Context_Admin_UI {
 			isset( $_POST['ai_agent_public_id'] ) ? wp_unslash( $_POST['ai_agent_public_id'] ) : '',
 			! empty( $_POST['confirm_ai_review_delegation'] )
 		);
+        // Re-use the administrator's already verified policy save as consent;
+        // no second Local Client credential wizard is required for AI-only.
+        $ai_activation = null;
+        if ( ! is_wp_error($result) && wp_get_environment_type() === 'local'
+            && 'ai_only' === (string) MAD4B_SCP_Context_Authority::review_policy()['mode']
+            && class_exists('MAD4B_SCP_AI_Only_Local_Activation') )
+            $ai_activation = MAD4B_SCP_AI_Only_Local_Activation::activate('policy_save');
 		if ( self::is_ajax_request() ) {
 			if ( is_wp_error( $result ) ) wp_send_json_error( array( 'code' => sanitize_key( $result->get_error_code() ), 'message' => $result->get_error_message(), 'data' => $result->get_error_data() ), 422 );
 			$policy = MAD4B_SCP_Context_Authority::review_policy();
@@ -459,6 +466,8 @@ final class MAD4B_SCP_Context_Admin_UI {
 						'revision' => isset( $context_profile['revision'] ) ? (int) $context_profile['revision'] : 0,
 					),
 					'review_policy' => $status,
+                    'ai_only_local_activation' => is_wp_error($ai_activation)
+                        ? array('identity_ready'=>false,'reason'=>$ai_activation->get_error_code()) : $ai_activation,
 					'context_status' => MAD4B_SCP_Context_Authority::status(),
 					'one_time_confirmation_persisted' => false,
 				)
@@ -1539,7 +1548,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		echo '<div class="mad4b-context-approval-mode-grid">';
 		echo '<label class="mad4b-context-approval-mode-card"><input type="radio" name="review_mode" value="human_only"' . checked( $mode, 'human_only', false ) . '> <strong>' . esc_html__( 'Human Approval', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Review exact content directly in this workspace.', 'mad4b-site-control-plane' ) . '</span></label>';
 		echo '<label class="mad4b-context-approval-mode-card"><input type="radio" name="review_mode" value="human_and_ai"' . checked( $mode, 'human_and_ai', false ) . '> <strong>' . esc_html__( 'Human + AI', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Adds the canonical Site Profile agent as an exact-bound review path. Governance metadata remains human-controlled.', 'mad4b-site-control-plane' ) . '</span></label>';
-		echo '<label class="mad4b-context-approval-mode-card"><input type="radio" name="review_mode" value="ai_only"' . checked( $mode, 'ai_only', false ) . '> <strong>AI only</strong><span>Authenticated agent review; publication remains separately authorized.</span></label>';
+		echo '<label class="mad4b-context-approval-mode-card"><input type="radio" name="review_mode" value="ai_only"' . checked( $mode, 'ai_only', false ) . '> <strong>AI only</strong><span>Automatically prepares a dedicated local AI-only review identity on policy save; no separate Application Password setup. Actual AI decisions still require an authenticated Agent.</span></label>';
 		echo '</div><div class="mad4b-context-ai-review-settings">';
 		echo '<label><strong>' . esc_html__( 'Delegated AI Agent', 'mad4b-site-control-plane' ) . '</strong><select name="ai_agent_public_id"><option value="">' . esc_html__( 'Select the canonical Site Profile agent', 'mad4b-site-control-plane' ) . '</option>';
 		foreach ( $agents as $agent ) {

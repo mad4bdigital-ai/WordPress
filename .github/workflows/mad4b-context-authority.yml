@@ -30,6 +30,13 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-oauth-lifecycle-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-human-review-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/context-classification-title-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-history-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-review-lifecycle.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-only-local-activation.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-only-early-auth-guard.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-intelligence-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-intelligence-contract.py'
@@ -83,6 +90,13 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-oauth-lifecycle-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-human-review-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/context-classification-title-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-history-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-review-lifecycle.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-only-local-activation.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-only-early-auth-guard.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-intelligence-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-intelligence-contract.py'
@@ -162,6 +176,13 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-oauth-lifecycle-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-human-review-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/context-classification-title-contract.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-history-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-review-lifecycle.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-only-local-activation.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-only-early-auth-guard.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-intelligence-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-source-write-policy-runtime.php
@@ -227,6 +248,10 @@ jobs:
         run: |
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/context-classification-title-contract.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-history-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php
 
       - name: Execute Skill Context preflight runtime
         shell: bash

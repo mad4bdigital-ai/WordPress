@@ -2940,6 +2940,16 @@ final class MAD4B_SCP_Context_Authority {
 			);
 		}
 		usort( $items, static function ( $a, $b ) { $required = (int) ! empty( $b['required'] ) <=> (int) ! empty( $a['required'] ); return 0 !== $required ? $required : strcmp( (string) $a['title'], (string) $b['title'] ); } );
+		if ( class_exists('MAD4B_SCP_AI_Review_Lifecycle',false) ) {
+			$review_policy=self::review_policy();
+			foreach($items as &$item) {
+				$item['ai_review_lifecycle']=MAD4B_SCP_AI_Review_Lifecycle::decide('brand_context',$item,array(
+					'review_mode'=>(string)($review_policy['mode']??'human_only'),
+					'identity_ready'=>!empty(self::ai_review_policy_status()['ready']) ) +
+                    MAD4B_SCP_AI_Review_Lifecycle::read_history((string)($item['asset_id']??''),(string)($item['content_hash']??'')) );
+			}
+			unset($item);
+		}
 		return array( 'contract' => 'mad4b.context-review-queue.v1', 'read_only' => true, 'mutation_performed' => false, 'registry_revision' => self::registry_revision(), 'context_fingerprint' => self::context_fingerprint(), 'authority_manifest_fingerprint' => self::authority_manifest_fingerprint(), 'counts' => $counts, 'count' => count( $items ), 'items' => $items );
 	}
 
@@ -3243,6 +3253,25 @@ final class MAD4B_SCP_Context_Authority {
 			$hits = 0;
 			foreach ( $needles as $needle ) if ( false !== strpos( $haystack, $needle ) ) ++$hits;
 			if ( $hits > $best_hits ) { $best = $category; $best_hits = $hits; }
+		}
+		// Authoritative document titles are stronger evidence of document type
+		// than incidental cross-references in their body. A style guide can quote
+		// Brand Strategy and Tone of Voice without becoming a strategy asset.
+		// Use only explicit multi-word authority identifiers in title or path;
+		// do not infer Brand authority from arbitrary content mentions.
+		$title_path = strtolower( trim( (string) $name . ' ' . (string) $path ) );
+		$named_authority_rules = array(
+			'editorial_guidelines' => array( 'editorial guideline', 'style guide', 'دليل التحرير', 'قواعد المحتوى' ),
+			'tone_of_voice' => array( 'tone of voice', 'tone-of-voice', 'نبرة الصوت', 'نبرة العلامة' ),
+			'brand_strategy' => array( 'brand strategy', 'core brand identity', 'استراتيجية العلامة', 'استراتيجية البراند' ),
+		);
+		foreach ( $named_authority_rules as $category => $names ) {
+			foreach ( $names as $named_phrase ) {
+				if ( false === strpos( $title_path, $named_phrase ) ) continue;
+				$best = $category;
+				$best_hits = max( 2, $best_hits );
+				break 2;
+			}
 		}
 		// Operational/connector inventories often quote "brand strategy" while
 		// describing data plumbing, not the approved commercial Brand Strategy.

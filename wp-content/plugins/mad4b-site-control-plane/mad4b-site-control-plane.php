@@ -12,6 +12,10 @@
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+// Restrict local managed AI credentials before the foreign REST zero-touch return.
+if ( function_exists('wp_get_environment_type') && 'local' === wp_get_environment_type()
+     && defined('MAD4B_LOCAL_CLIENT_SITE_UUID') )
+    require_once __DIR__ . '/includes/class-mad4b-scp-ai-only-early-auth-guard.php';
 
 // Request-local, O(1) bootstrap timing markers. No persistent cache, DB
 // writes, user context, file hashing or authority changes. The registration
@@ -117,7 +121,9 @@ if ( ! ( defined( 'MAD4B_SCP_FORCE_FULL_BOOT' ) && true === constant( 'MAD4B_SCP
 
 	if ( '' !== $mad4b_scp_early_rest_path ) {
 		$mad4b_scp_early_owned = 0 === strpos( $mad4b_scp_early_rest_path, '/mcp/mad4b-' )
-			|| 0 === strpos( $mad4b_scp_early_rest_path, '/mad4b/' );
+			|| 0 === strpos( $mad4b_scp_early_rest_path, '/mad4b/' )
+            || ( function_exists('wp_get_environment_type') && 'local' === wp_get_environment_type()
+                 && '/mad4b-local-ai/v1/context-review' === $mad4b_scp_early_rest_path );
 		if ( ! $mad4b_scp_early_owned ) $mad4b_scp_early_zero_touch_reason = 'foreign_rest';
 	} elseif ( defined( 'DOING_AJAX' ) && DOING_AJAX ) {
 		$mad4b_scp_early_action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( (string) $_REQUEST['action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -389,6 +395,8 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-transport-context.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-transport-admission.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connection-status.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-authority.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-ai-review-lifecycle.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-ai-only-local-activation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-deployment-mode-resolver.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operational-scope-guard.php';
 MAD4B_SCP_Deployment_Mode_Resolver::boot();
