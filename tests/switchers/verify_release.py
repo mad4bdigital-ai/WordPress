@@ -78,6 +78,13 @@ class ReleaseContracts(unittest.TestCase):
         self.assertIn("$n===$verified", blocks)
         self.assertNotIn("set_price(", src)
         self.assertNotIn("create_order(", src)
+        for token in (
+            "shared_product_group_tier_from_taxonomy", "etg.group-capacity.v1",
+            "taxonomy_when_group", "booking_engine_only", "assess_v2_preview",
+            "tier_valid_checkout_capacity_not_certified", "booking_v2_persons_supported",
+            "booking_mode", "group_size"
+        ):
+            self.assertIn(token, src)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

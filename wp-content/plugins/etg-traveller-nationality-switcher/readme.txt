@@ -3,7 +3,7 @@ Contributors: ETG, MAD4B
 Requires at least: 6.9
 Requires PHP: 8.1
 Requires Plugins: woocommerce
-Stable tag: 0.4.0-local
+Stable tag: 0.4.1-local
 License: GPLv2 or later
 
 Local Lab prototype — not certified for public release.
@@ -32,3 +32,9 @@ Unified Traveller Management includes optional presets and per-product overrides
 Open WooCommerce > Traveller Management. Built-in presets can be customized, cloned, reset or selected as the default. Set a per-post preset from the Traveller Preset meta box of supported tour, rate, property or transport CPTs. Presets never independently authorize checkout payment or change WooCommerce price/currency. An explicitly verified booking contract is required for each checkout cart line.
 
 A verified optional service can inherit a subset of travellers from its main booking through etg_traveller_management/verified_service_links, a server-only PHP hook. Do not accept these bindings from user-submitted cart metadata. The default Checkout maximum is still 20 verified people per booking line. No general passport or immigration authority is inferred from country-market settings.
+
+
+## 0.4.1-local — Group Tour Tiers capacity
+The optional `Group Tour Capacity Policy` field supports `taxonomy_when_group` (default for Tour and Automatic) and `booking_engine_only` (opt out of an additional Traveller Management tier check). Only explicitly `group` bookings use the site's existing `group-size-tiers` taxonomy, selecting exactly one enabled tier that contains `quantities.persons == group_size`. Disabled, missing, overlapping or mismatched tiers fail closed. Private bookings, accommodation, transport and regular WooCommerce products are not assigned Group Tour tiers. No new taxonomy, pricing rules, currency source or shopping cart entitlement is created.
+
+`ETG_Traveller_Management::assess_v2_preview($configuration)` validates the native Booking v2 configuration first and provides a nonfinancial capacity verdict; e.g. 25 passengers in an enabled 21–30 tier pass the group-policy preview but `checkout_capacity_certified=false` because Checkout remains QA-certified for up to 20. Existing Booking v2 itself still caps persons at 50, independently from the tier maximum. When a certified Booking v2 adapter is provided in future, `resolve()` rechecks explicit group mode, product identity, tier selection and group-size count. It never trusts Woo Quantity as person count.

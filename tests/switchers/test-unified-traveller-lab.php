@@ -31,6 +31,13 @@ try {
  $test('EDIT_BUILTIN_OPTIONALLY',!is_wp_error($override)&&$t::presets()['tour']['label']==='Custom Tour');
  $restore=$t::mutate('reset','tour',[],5);
  $test('RESTORE_ORIGINAL_BUILTIN',!is_wp_error($restore)&&$t::presets()['tour']['label']==='Tours & Activities');
+ $groupPreset=$t::mutate('save','tour',['label'=>'Optional Group Tour','source'=>'verified',
+  'inherit'=>true,'nationality'=>'service','max'=>50,'group_capacity'=>'booking_engine_only'],6);
+ $test('GROUP_CAPACITY_OPTIONAL_PRESET_SAVED',!is_wp_error($groupPreset)
+   &&$t::presets()['tour']['group_capacity']==='booking_engine_only');
+ $groupReset=$t::mutate('reset','tour',[],7);
+ $test('GROUP_CAPACITY_PRESET_RESET_TO_TAXONOMY',!is_wp_error($groupReset)
+   &&$t::presets()['tour']['group_capacity']==='taxonomy_when_group');
  $quote=shared_product_booking_configuration_quote(66139,'general','double',['quantities'=>['persons'=>3],'options'=>[]]);
  $test('LIVE_SERVER_QUOTE',!is_wp_error($quote));
  $base=['product_id'=>66139,'quantity'=>1,'data'=>wc_get_product(66139),'shared_booking_configuration'=>$quote];
@@ -73,7 +80,8 @@ try {
  remove_filter('etg_traveller_management/verified_service_links',$hook);
  $future=static function($value,$line,$type)use($t){
   return ['contract'=>$t::COUNT_CONTRACT,'authority'=>'server_verified','product_id'=>(int)$line['product_id'],
-   'cart_quantity'=>(int)$line['quantity'],'source'=>'booking_v2_certified','checkout_ready'=>true,'count'=>4];
+   'cart_quantity'=>(int)$line['quantity'],'source'=>'booking_v2_certified','checkout_ready'=>true,
+   'tour_id'=>(int)$line['product_id'],'booking_mode'=>'private','count'=>4];
  };
  add_filter('etg_traveller_management/verified_count',$future,10,3);
  $futureResult=$t::resolve($ordinary);
@@ -86,6 +94,15 @@ try {
  add_filter('etg_traveller_management/verified_count',$wrong,10,3);
  $test('CROSS_PRODUCT_AUTHORITY_CONFUSION_BLOCKED',$t::resolve($ordinary)['status']==='unverified');
  remove_filter('etg_traveller_management/verified_count',$wrong,10);
+ $private=$t::assess_capacity(66133,'private',25);
+ $test('PRIVATE_25_NOT_RESTRICTED_BY_GROUP_TIERS',!is_wp_error($private)&&$private['tier_id']===null
+   &&$private['booking_v2_persons_supported']&&$private['checkout_capacity_certified']===false);
+ $group=$t::assess_capacity(66133,'group',25);
+ $test('GROUP_25_MISSING_TAXONOMY_REJECTED',is_wp_error($group)&&$group->get_error_code()==='group_tier_not_configured');
+ $optout=$t::assess_capacity(66133,'group',25,null,'booking_engine_only');
+ $test('GROUP_TIER_POLICY_OPTIONAL',!is_wp_error($optout)&&$optout['tier_id']===null);
+ $tooLarge=$t::assess_capacity(66133,'private',51);
+ $test('MORE_THAN_BOOKING_V2_MAX_NOT_MISREPRESENTED',!is_wp_error($tooLarge)&&$tooLarge['booking_v2_persons_supported']===false);
  $test('NO_MARKET_CURRENCY_MUTATION',get_woocommerce_currency()==='USD');
 } finally {
  if($original==='__unset__')delete_option($option);

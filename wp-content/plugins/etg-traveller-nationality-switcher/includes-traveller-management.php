@@ -14,11 +14,11 @@ final class ETG_Traveller_Management {
  const TYPES=['tour-rates','tours-and-activities','properties','transportations','product'];
  public static function builtins(){
   return [
-   'automatic'=>['label'=>'Automatic — Verified Source','source'=>'verified','inherit'=>true,'nationality'=>'service','max'=>20],
-   'tour'=>['label'=>'Tours & Activities','source'=>'verified','inherit'=>true,'nationality'=>'service','max'=>20],
-   'accommodation'=>['label'=>'Accommodation','source'=>'verified','inherit'=>true,'nationality'=>'service','max'=>20],
-   'transport'=>['label'=>'Transport','source'=>'verified','inherit'=>true,'nationality'=>'service','max'=>20],
-   'extra'=>['label'=>'Optional Service','source'=>'verified','inherit'=>true,'nationality'=>'service','max'=>20],
+   'automatic'=>['label'=>'Automatic — Verified Source','source'=>'verified','inherit'=>true,'nationality'=>'service','max'=>20,'group_capacity'=>'taxonomy_when_group'],
+   'tour'=>['label'=>'Tours & Activities','source'=>'verified','inherit'=>true,'nationality'=>'service','max'=>20,'group_capacity'=>'taxonomy_when_group'],
+   'accommodation'=>['label'=>'Accommodation','source'=>'verified','inherit'=>true,'nationality'=>'service','max'=>20,'group_capacity'=>'booking_engine_only'],
+   'transport'=>['label'=>'Transport','source'=>'verified','inherit'=>true,'nationality'=>'service','max'=>20,'group_capacity'=>'booking_engine_only'],
+   'extra'=>['label'=>'Optional Service','source'=>'verified','inherit'=>true,'nationality'=>'service','max'=>20,'group_capacity'=>'booking_engine_only'],
   ];
  }
  public static function initial(){
@@ -37,11 +37,13 @@ final class ETG_Traveller_Management {
   $source=(string)($raw['source']??'verified');
   $nationality=(string)($raw['nationality']??'service');
   $max=filter_var($raw['max']??null,FILTER_VALIDATE_INT);
+  $group=(string)($raw['group_capacity']??'taxonomy_when_group');
   if($label===''||strlen($label)>90||!in_array($source,['verified','manual_server_validated'],true)
-   ||!in_array($nationality,['service','required','optional'],true)||!in_array($max,[20,50,100],true))
+   ||!in_array($nationality,['service','required','optional'],true)||!in_array($max,[20,50,100],true)
+   ||!in_array($group,['taxonomy_when_group','booking_engine_only'],true))
     return new WP_Error('etg_traveller_preset_invalid');
   return ['label'=>$label,'source'=>$source,'inherit'=>filter_var($raw['inherit']??false,FILTER_VALIDATE_BOOLEAN),
-   'nationality'=>$nationality,'max'=>$max];
+   'nationality'=>$nationality,'max'=>$max,'group_capacity'=>$group];
  }
  public static function presets(){
   $s=self::state();$all=self::builtins();
@@ -66,6 +68,70 @@ final class ETG_Traveller_Management {
    $id=isset($all[$default])?$default:'automatic';
   }
   return ['id'=>$id,'fields'=>$all[$id]];
+ }
+ /**
+  * Independent capacity assessment; never uses Woo Quantity and never sets a price.
+  * Only explicit group-mode bookings opt into the existing group-size-tiers taxonomy.
+  * A valid group range is a commercial preview, not payment/checkout certification.
+  */
+ public static function assess_capacity($tour_id,$booking_mode,$people,$requested_tier=null,$policy='taxonomy_when_group'){
+  $tour_id=filter_var($tour_id,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+  $people=filter_var($people,FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>999]]);
+  if($tour_id===false||$tour_id===null||$people===false||$people===null||
+   get_post_type($tour_id)!=='tours-and-activities')return new WP_Error('etg_group_capacity_invalid_tour_or_count');
+  if(!in_array($booking_mode,['group','private'],true))
+   return new WP_Error('etg_group_capacity_booking_mode_required');
+  if(!in_array($policy,['taxonomy_when_group','booking_engine_only'],true))
+   return new WP_Error('etg_group_capacity_policy_invalid');
+  $result=['contract'=>'etg.group-capacity.v1','tour_id'=>(int)$tour_id,'booking_mode'=>$booking_mode,
+   'persons'=>$people,'capacity_source'=>$booking_mode==='group'&&$policy==='taxonomy_when_group'?'group-size-tiers':'booking_engine',
+   'tier_id'=>null,'checkout_capacity_certified'=>$people<=self::CERTIFIED_MAX,
+   'booking_v2_persons_supported'=>$people<=50,'financial_checkout_authority'=>false];
+  if($booking_mode==='private'){
+   if($requested_tier!==null)return new WP_Error('etg_group_tier_not_applicable');
+   return $result+['status'=>'booking_engine_policy_only'];
+  }
+  if($policy==='booking_engine_only'){
+   // Booking v2 may have already selected a tier. Do not dispute or certify it:
+   // this optional policy defers to the native booking/pricing engine.
+   if($requested_tier!==null){
+    $given=filter_var($requested_tier,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+    if($given===false)return new WP_Error('etg_group_tier_selection_invalid');
+    $result['tier_id']=$given;
+   }
+   return $result+['status'=>'booking_engine_policy_only'];
+  }
+  if(!function_exists('shared_product_group_tier_from_taxonomy'))
+   return new WP_Error('etg_group_tier_resolver_missing');
+  $tier=shared_product_group_tier_from_taxonomy($tour_id,$people);
+  if(is_wp_error($tier))return $tier; // Includes disabled, gaps and overlapping tiers.
+  $tier=(int)$tier;
+  if($requested_tier!==null){
+   $given=filter_var($requested_tier,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+   if($given===false||$given!==$tier)return new WP_Error('etg_group_tier_selection_mismatch');
+  }
+  return array_replace($result,['tier_id'=>$tier,'status'=>$people>50?
+   'tier_valid_booking_v2_capacity_not_certified':($people>self::CERTIFIED_MAX?
+   'tier_valid_checkout_capacity_not_certified':'tier_valid_preview_only')]);
+ }
+ /**
+  * Assess existing v2 contract without activating its structural-only cart identity.
+  * This is useful for price previews and admin QA of >20-person groups.
+  */
+ public static function assess_v2_preview($configuration){
+  if(!function_exists('shared_product_booking_v2_validate'))
+   return new WP_Error('etg_booking_v2_contract_unavailable');
+  $validated=shared_product_booking_v2_validate($configuration);
+  if(is_wp_error($validated))return $validated;
+  $mode=$validated['booking_mode']??null;
+  if(!in_array($mode,['group','private'],true))return new WP_Error('etg_group_capacity_booking_mode_required');
+  $tour=(int)$validated['tour_id'];$people=(int)$validated['quantities']['persons'];
+  $policy=self::preset_for($tour)['fields']['group_capacity'];
+  if($mode==='group' && ($validated['group_size']??null)!==$people)
+   return new WP_Error('etg_group_capacity_persons_mismatch');
+  $assessment=self::assess_capacity($tour,$mode,$people,$validated['tier_id']??null,$policy);
+  if(is_wp_error($assessment))return $assessment;
+  return $assessment+['quote_source'=>'shared_product_booking_v2_validate','status_financial'=>'preview_only'];
  }
  /** A requested 50/100-person limit never overrides the 20-person certified checkout cap. */
  public static function certified_limit($post_id){
@@ -117,8 +183,19 @@ final class ETG_Traveller_Management {
    &&($candidate['checkout_ready']??false)===true){
    $raw=$candidate['count']??null;
    $count=filter_var($raw,FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>self::certified_limit($id)]]);
-   if($count!==false&&$count!==null)
+   if($count!==false&&$count!==null){
+    if($candidate['source']==='booking_v2_certified'){
+     $mode=$candidate['booking_mode']??null;
+     if(!in_array($mode,['group','private'],true))return ['status'=>'unverified','count'=>0,'source'=>'certified_booking_mode_missing'];
+     if((int)($candidate['tour_id']??0)!==$id)return ['status'=>'unverified','count'=>0,'source'=>'certified_tour_mismatch'];
+     $size=$candidate['group_size']??null;
+     if($mode==='group' && filter_var($size,FILTER_VALIDATE_INT)!==$count)
+      return ['status'=>'unverified','count'=>0,'source'=>'certified_group_size_mismatch'];
+     $cap=self::assess_capacity($id,$mode,$count,$candidate['tier_id']??null,$preset['fields']['group_capacity']);
+     if(is_wp_error($cap))return ['status'=>'unverified','count'=>0,'source'=>'group_capacity_'.$cap->get_error_code()];
+    }
     return ['status'=>'verified','count'=>$count,'source'=>$candidate['source'],'preset'=>$preset['id']];
+   }
   }
   return ['status'=>'unverified','count'=>0,'source'=>$type==='tour-rates'?'missing_or_stale_server_quote':'checkout_adapter_not_certified','preset'=>$preset['id']];
  }
@@ -241,6 +318,10 @@ final class ETG_Traveller_Management {
   echo '<tr><th>Nationality policy</th><td><select name="fields[nationality]">';
   foreach(['service'=>'Service requirements (recommended)','required'=>'Required','optional'=>'Optional only when service permits'] as $value=>$label)echo '<option value="'.$value.'" '.selected($current['nationality'],$value,false).'>'.esc_html($label).'</option>';
   echo '</select><p class="description">These labels do not bypass checkout-required nationalities until the service adapter is certified.</p></td></tr>';
+  echo '<tr><th>Group Tour Capacity Policy</th><td><select name="fields[group_capacity]">';
+  foreach(['taxonomy_when_group'=>'Group-size-tiers Taxonomy (group bookings only)','booking_engine_only'=>'Booking engine policy (optional; never force tiers)'] as $value=>$label)
+   echo '<option value="'.$value.'" '.selected($current['group_capacity']??'taxonomy_when_group',$value,false).'>'.esc_html($label).'</option>';
+  echo '</select><p class="description">A group tier controls group suitability, not technical Checkout person capacity. Private bookings never inherit Group Tiers.</p></td></tr>';
   echo '<tr><th>Requested capacity</th><td><select name="fields[max]">';
   foreach([20,50,100] as $limit)echo '<option value="'.$limit.'" '.selected($current['max'],$limit,false).'>'.$limit.($limit>self::CERTIFIED_MAX?' (requires extended QA)':' (currently certified)').'</option>';
   echo '</select><p>Checkout remains capped at '.self::CERTIFIED_MAX.' until expanded acceptance.</p></td></tr></table>';
