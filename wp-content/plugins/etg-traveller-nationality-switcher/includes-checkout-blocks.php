@@ -6,7 +6,13 @@ final class ETG_Traveller_Nationality_Checkout_Blocks {
  public static function bookable_types(){return (array)apply_filters('etg_traveller_nationality/bookable_types',['tours-and-activities','tour-rates']);}
  public static function is_bookable($cart_item){
   $product=$cart_item['data']??null;
-  return $product instanceof WC_Product && in_array(get_post_type($product->get_id()),self::bookable_types(),true);
+  if(!$product instanceof WC_Product)return false;
+  $type=get_post_type($product->get_id());
+  if(in_array($type,self::bookable_types(),true))return true;
+  // Additional products become bookable only with certified server adapters.
+  if(in_array($type,['properties','transportations'],true)&&class_exists('ETG_Traveller_Management'))
+   return (ETG_Traveller_Management::resolve($cart_item)['status']??'')==='verified';
+  return false;
  }
  /**
   * Resolve people from the EXISTING server-quoted booking contract, not Woo cart units.
@@ -16,36 +22,21 @@ final class ETG_Traveller_Nationality_Checkout_Blocks {
   * from its uncommitted draft/configuration or from browser-supplied counts.
   */
  public static function verified_booking_count($cart_item){
-  $saved=$cart_item['shared_booking_configuration']??null;
-  if(!is_array($saved))return 0;
-  $product=$cart_item['data']??null;
-  if(!$product instanceof WC_Product || get_post_type($product->get_id())!=='tour-rates')return 0;
-  if((int)($cart_item['quantity']??0)!==1 ||
-     (int)($saved['rate_id']??0)!==$product->get_id() ||
-     !function_exists('shared_product_booking_configuration_matches'))return 0;
-  // The source owns server-side recomputation and price-validity decisions.
-  $fresh=shared_product_booking_configuration_matches($saved);
-  if(is_wp_error($fresh) || !is_array($fresh) ||
-     (int)($fresh['rate_id']??0)!==$product->get_id())return 0;
-  $raw=$fresh['quantities']['persons']??null;
-  $n=filter_var($raw,FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>20]]);
-  if($n===false)return 0;
-  $option=$fresh['options']['travelers']??null;
-  if($option!==null){
-   $provided=filter_var($option,FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>20]]);
-   if($provided===false || $provided!==$n)return 0;
-  }
-  return $n;
+  if(!class_exists('ETG_Traveller_Management'))return 0;
+  $resolved=ETG_Traveller_Management::resolve($cart_item);
+  return ($resolved['status']??'')==='verified'?(int)$resolved['count']:0;
  }
  public static function traveller_count($cart_item){
   $verified=self::verified_booking_count($cart_item);
-  // A future booking adapter may return its separately VERIFIED count here.
-  // Never use Woo quantity as an implicit fallback.
+  if($verified<1)return 0; // External filters cannot mint a verified traveller count.
+  // Legacy hook remains for compatibility, but cannot expand/shrink a certified booking.
+  // Source adapters must use etg_traveller_management/verified_count with binding proof.
   $n=apply_filters('etg_traveller_nationality/required_count',$verified,$cart_item);
-  return is_int($n)&&$n>=1&&$n<=20?$n:0;
+  return is_int($n)&&$n===$verified?$verified:0;
  }
  public static function expected_items($cart){
-  $out=[];foreach((array)$cart as $key=>$line)if(self::is_bookable($line)){
+  $linked=class_exists('ETG_Traveller_Management')?ETG_Traveller_Management::registry($cart)['linked_services']:[];
+  $out=[];foreach((array)$cart as $key=>$line)if(self::is_bookable($line)&&!isset($linked[(string)$key])){
    $n=self::traveller_count($line);
    $out[(string)$key]=['product_id'=>(int)$line['product_id'],'variation_id'=>(int)($line['variation_id']??0),'quantity'=>(int)($line['quantity']??1),'travellers'=>$n];
   }
@@ -85,10 +76,30 @@ final class ETG_Traveller_Nationality_Checkout_Blocks {
    if(count($matches)!==1)throw new \Automattic\WooCommerce\StoreApi\Exceptions\RouteException('etg_block_order_line_ambiguous','Unable to match traveller nationalities to an unambiguous booked tour',400);
    $id=array_key_first($matches);$assignments[]=[$matches[$id],$validated[$key]];$used[$id]=true;
   }
-  foreach($assignments as [$item,$codes]){
+  $registry=class_exists('ETG_Traveller_Management')?ETG_Traveller_Management::registry($lines):['bookings'=>[],'linked_services'=>[]];
+  foreach($assignments as $position=>[$item,$codes]){
+   $cart_key=array_keys($expected)[$position];
+   if(isset($registry['bookings'][$cart_key]))
+    $item->update_meta_data('_etg_tm_registry_id',$registry['bookings'][$cart_key]['registry_id']);
    foreach($item->get_meta_data() as $entry){if(preg_match('/^Traveller [0-9]+ passport country \(ISO2\)$/D',(string)$entry->key))$item->delete_meta_data($entry->key);}
    foreach($codes as $i=>$country)$item->add_meta_data('Traveller '.($i+1).' passport country (ISO2)',$country,true);
    // WooCommerce persists item metadata with its checkout order lifecycle; do not save an orphan item early.
+  }
+  // A linked Extra inherits verified persons without collecting passports again.
+  foreach($registry['linked_services'] as $key=>$link){
+   $line=$lines[$key]??null;if(!is_array($line))continue;
+   $matches=[];
+   foreach($order->get_items('line_item') as $id=>$item){
+    if(isset($used[$id]))continue;
+    if((int)$item->get_product_id()===(int)$line['product_id'] &&
+       (int)$item->get_variation_id()===(int)($line['variation_id']??0) &&
+       (int)$item->get_quantity()===(int)($line['quantity']??1))$matches[$id]=$item;
+   }
+   if(count($matches)!==1)throw new \Automattic\WooCommerce\StoreApi\Exceptions\RouteException(
+    'etg_linked_service_ambiguous','Unable to match the verified service to a unique booked item',400);
+   $id=array_key_first($matches);$used[$id]=true;
+   $matches[$id]->update_meta_data('_etg_tm_parent_registry_id',$link['parent_registry_id']);
+   $matches[$id]->update_meta_data('_etg_tm_traveller_indices',$link['traveller_indices']);
   }
  }
  public static function register_cart_source(){
@@ -96,10 +107,20 @@ final class ETG_Traveller_Nationality_Checkout_Blocks {
   woocommerce_store_api_register_endpoint_data([
     'endpoint'=>\Automattic\WooCommerce\StoreApi\Schemas\V1\CartItemSchema::IDENTIFIER,
     'namespace'=>self::NAMESPACE_ID,
-    'data_callback'=>static function($item){return [
-     'bookable'=>self::is_bookable($item),
-     'travellers'=>self::is_bookable($item)?self::traveller_count($item):0,
-    ];},
+    'data_callback'=>static function($item){
+     $linked=false;
+     if(class_exists('ETG_Traveller_Management') && function_exists('has_filter')
+      && has_filter('etg_traveller_management/verified_service_links')
+      && function_exists('WC') && WC()->cart){
+      // Avoid O(n²) repeated server re-quotes when no service-link adapter exists.
+      $registry=ETG_Traveller_Management::registry(WC()->cart->get_cart());
+      $linked=isset($registry['linked_services'][(string)($item['key']??'')]);
+     }
+     return [
+      'bookable'=>self::is_bookable($item)&&!$linked,
+      'travellers'=>self::is_bookable($item)&&!$linked?self::traveller_count($item):0,
+     ];
+    },
     'schema_callback'=>static function(){return ['properties'=>[
      'bookable'=>['type'=>'boolean','readonly'=>true],
      'travellers'=>['type'=>'integer','readonly'=>true]
@@ -115,8 +136,8 @@ final class ETG_Traveller_Nationality_Checkout_Blocks {
    return $items;
   },90);
   $file=plugin_dir_path(__FILE__).'assets/checkout-blocks.js';
-  wp_enqueue_style('etg-nationality-switcher',plugins_url('assets/nationality.css',__FILE__),[],'0.3.0');
-  wp_enqueue_script('etg-traveller-nationality-checkout-blocks',plugins_url('assets/checkout-blocks.js',__FILE__),['wp-element','wp-plugins','wp-data','wc-blocks-checkout','wc-blocks-data-store'],'0.3.0',true);
+  wp_enqueue_style('etg-nationality-switcher',plugins_url('assets/nationality.css',__FILE__),[],'0.4.0');
+  wp_enqueue_script('etg-traveller-nationality-checkout-blocks',plugins_url('assets/checkout-blocks.js',__FILE__),['wp-element','wp-plugins','wp-data','wc-blocks-checkout','wc-blocks-data-store'],'0.4.0',true);
   $countries=ETG_Traveller_Nationality_Switcher::countries();$options=[];
   foreach($countries as $code=>$label)$options[]=['value'=>$code,'label'=>$label];
   wp_add_inline_script('etg-traveller-nationality-checkout-blocks','window.etgTravellerBlocks='.wp_json_encode(['namespace'=>self::NAMESPACE_ID,'types'=>self::bookable_types(),'countries'=>$options,'max'=>20,'preferred'=>ETG_Traveller_Nationality_Switcher::selected()]).';','before');

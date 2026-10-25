@@ -70,7 +70,10 @@ try {
   $meta[66138]->get_meta('Traveller 1 passport country (ISO2)')==='US' &&
   $meta[66138]->get_meta('Traveller 2 passport country (ISO2)')==='EG');
  $c::apply_to_order($order,$request);
- $assert('IDEMPOTENT_ORDER_META',count($meta[66139]->get_meta_data())===3);
+ $keys=array_map(static fn($m)=>(string)$m->key,$meta[66139]->get_meta_data());
+ $nationKeys=array_values(array_filter($keys,static fn($key)=>str_starts_with($key,'Traveller ') && str_ends_with($key,' passport country (ISO2)')));
+ $assert('IDEMPOTENT_ORDER_META',count($nationKeys)===3&&count($keys)===4);
+ $assert('ROOT_BOOKING_REGISTRY_ID',strlen((string)$meta[66139]->get_meta('_etg_tm_registry_id'))===24);
  $assert('ORDER_ID_NOT_PERSISTED',!$order->get_id());
  $assert('CURRENCY_NOT_CHANGED',get_woocommerce_currency()===$oldCurrency);
  $rest=rest_do_request(new WP_REST_Request('GET','/wc/store/v1/cart'));

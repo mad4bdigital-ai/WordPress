@@ -2,7 +2,8 @@
 /**
  * Plugin Name: ETG Traveller Nationality Switcher
  * Description: Passport-country selection for travellers, separate from WooCommerce market, shipping, billing and WCML currency.
- * Version: 0.3.0-local
+ * Version: 0.4.0-local
+ * Requires Plugins: woocommerce
  * License: GPL-2.0-or-later
  * Text Domain: etg-traveller-nationality-switcher
  */
@@ -135,8 +136,10 @@ final class ETG_Traveller_Nationality_Switcher {
  public static function classic_checkout_validate($data,$errors){
   if(!$errors instanceof WP_Error || !function_exists('WC') || !WC()->cart ||
      !class_exists('ETG_Traveller_Nationality_Checkout_Blocks'))return;
-  foreach(WC()->cart->get_cart() as $line){
-   if(!ETG_Traveller_Nationality_Checkout_Blocks::is_bookable($line))continue;
+  $cart=WC()->cart->get_cart();
+  $linked=class_exists('ETG_Traveller_Management')?ETG_Traveller_Management::registry($cart)['linked_services']:[];
+  foreach($cart as $key=>$line){
+   if(isset($linked[(string)$key])||!ETG_Traveller_Nationality_Checkout_Blocks::is_bookable($line))continue;
    $count=ETG_Traveller_Nationality_Checkout_Blocks::traveller_count($line);
    if($count<1){$errors->add('nationality_booking_unverified',__('Traveller count must be confirmed by the booking engine before checkout.','etg-traveller-nationality-switcher'));continue;}
    $countries=self::validate_list($line['etg_traveller_nationalities']??null);
@@ -145,6 +148,16 @@ final class ETG_Traveller_Nationality_Switcher {
   }
  }
  public static function order_item($item,$cart_key,$values,$order){
+  $registry=class_exists('ETG_Traveller_Management')&&function_exists('WC')&&WC()->cart
+   ?ETG_Traveller_Management::registry(WC()->cart->get_cart()):['bookings'=>[],'linked_services'=>[]];
+  if(isset($registry['linked_services'][(string)$cart_key])){
+   $link=$registry['linked_services'][(string)$cart_key];
+   $item->update_meta_data('_etg_tm_parent_registry_id',$link['parent_registry_id']);
+   $item->update_meta_data('_etg_tm_traveller_indices',$link['traveller_indices']);
+   return; // No duplicated passports on a sub-service.
+  }
+  if(isset($registry['bookings'][(string)$cart_key]))
+   $item->update_meta_data('_etg_tm_registry_id',$registry['bookings'][(string)$cart_key]['registry_id']);
   $data=$values['etg_traveller_nationalities']??[];
   $valid=self::validate_list($data);if(is_wp_error($valid))return;
   if(class_exists('ETG_Traveller_Nationality_Checkout_Blocks') && ETG_Traveller_Nationality_Checkout_Blocks::is_bookable($values)){
@@ -201,4 +214,5 @@ final class ETG_Traveller_Nationality_Switcher {
  }
 }
 add_action('plugins_loaded',['ETG_Traveller_Nationality_Switcher','boot'],50);
+require_once __DIR__.'/includes-traveller-management.php';
 require_once __DIR__.'/includes-checkout-blocks.php';

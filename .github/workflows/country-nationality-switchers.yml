@@ -42,6 +42,8 @@ jobs:
         run: php tests/switchers/test-nationality-ajax-fallback.php
       - name: Booking quote traveller-count authority (no Woo Quantity fallback)
         run: php tests/switchers/test-booking-count-contract.php
+      - name: Unified traveller configuration and server authority (hermetic)
+        run: php tests/switchers/test-management-unit.php
       - name: Deterministic QA archives and SHA-256 manifest
         run: |
           python3 tests/switchers/build_release.py

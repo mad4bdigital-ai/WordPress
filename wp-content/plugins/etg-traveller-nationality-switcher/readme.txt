@@ -3,7 +3,7 @@ Contributors: ETG, MAD4B
 Requires at least: 6.9
 Requires PHP: 8.1
 Requires Plugins: woocommerce
-Stable tag: 0.3.0-local
+Stable tag: 0.4.0-local
 License: GPLv2 or later
 
 Local Lab prototype — not certified for public release.
@@ -24,3 +24,11 @@ WooCommerce native Store API and both desktop/mobile React fields passed simulat
 
 ## 0.3.0-local
 Checkout Blocks derives passport-nationality field count from the server-validated shared_booking_configuration.quantities.persons on Tour Rate cart items. A Booking v2 preview-only identity or plain Woo Quantity cannot authorize checkout. Missing/invalid booking config fails closed. Max 20 travellers per line.
+
+## 0.4.0-local
+Unified Traveller Management includes optional presets and per-product overrides, verified source resolver, in-memory booking-scoped registry and trusted linked-service contract. No Woo unit/pricing/currency or paid booking authority changes. Unverified accommodation and transport shadow quotes do not authorize checkout.
+
+### Traveller Management 0.4.0-local usage
+Open WooCommerce > Traveller Management. Built-in presets can be customized, cloned, reset or selected as the default. Set a per-post preset from the Traveller Preset meta box of supported tour, rate, property or transport CPTs. Presets never independently authorize checkout payment or change WooCommerce price/currency. An explicitly verified booking contract is required for each checkout cart line.
+
+A verified optional service can inherit a subset of travellers from its main booking through etg_traveller_management/verified_service_links, a server-only PHP hook. Do not accept these bindings from user-submitted cart metadata. The default Checkout maximum is still 20 verified people per booking line. No general passport or immigration authority is inferred from country-market settings.

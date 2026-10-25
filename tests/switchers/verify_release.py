@@ -58,5 +58,26 @@ class ReleaseContracts(unittest.TestCase):
         self.assertIn("etg_traveller_nationality/required_count", php)
         self.assertTrue((NATIONALITY / "assets/checkout-blocks.js").is_file())
 
+    def test_unified_management_guards(self):
+        src = (NATIONALITY / "includes-traveller-management.php").read_text()
+        main = (NATIONALITY / "etg-traveller-nationality-switcher.php").read_text()
+        blocks = (NATIONALITY / "includes-checkout-blocks.php").read_text()
+        for marker in (
+            "const CERTIFIED_MAX=20", "shared_product_booking_configuration_matches",
+            "etg_traveller_management/verified_count", "checkout_ready",
+            "etg_traveller_management/verified_service_links",
+            "wp_verify_nonce", "manage_woocommerce", "revision",
+            "traveller_indices", "add_meta_box"
+        ):
+            self.assertIn(marker, src)
+        self.assertIn("require_once __DIR__.'/includes-traveller-management.php'", main)
+        self.assertIn("Requires Plugins: woocommerce", main)
+        self.assertIn("ETG_Traveller_Management::resolve", blocks)
+        self.assertIn("ETG_Traveller_Management::registry", blocks)
+        self.assertIn("if($verified<1)return 0", blocks)
+        self.assertIn("$n===$verified", blocks)
+        self.assertNotIn("set_price(", src)
+        self.assertNotIn("create_order(", src)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -2,9 +2,17 @@
 /** No WordPress/DB: verifies Booking v1 authority, not Woo cart quantity. */
 define('ABSPATH', __DIR__);
 function add_action(...$args) {}
-function apply_filters($name, $count, ...$args) {return $count;}
+function apply_filters($name, $count, ...$args) {
+ if($name==='etg_traveller_nationality/required_count'&&($GLOBALS['test_external_count_override']??false))return 2;
+ return $count;
+}
 function get_post_type($id) {return $id===101?'tour-rates':'tours-and-activities';}
 function is_wp_error($v) {return $v instanceof WP_Error;}
+function get_option($key,$default=[]) {return $default;}
+function get_post_meta($id,$key,$single=false) {return '';}
+function sanitize_text_field($v) {return trim((string)$v);}
+function sanitize_key($v) {return strtolower(preg_replace('/[^a-z0-9_-]/','',(string)$v));}
+function wp_salt($key='auth') {return 'test-salt';}
 class WP_Error {function __construct(public $code='invalid'){} }
 class WC_Product {public function __construct(private $id){} public function get_id(){return $this->id;}}
 function shared_product_booking_configuration_matches($saved){
@@ -18,6 +26,7 @@ class ETG_Traveller_Nationality_Switcher {
   return array_values($input);
  }
 }
+require getenv('SWITCHER_MANAGEMENT_FILE') ?: __DIR__ . '/../../wp-content/plugins/etg-traveller-nationality-switcher/includes-traveller-management.php';
 require getenv('SWITCHER_BLOCKS_FILE') ?: __DIR__ . '/../../wp-content/plugins/etg-traveller-nationality-switcher/includes-checkout-blocks.php';
 $c='ETG_Traveller_Nationality_Checkout_Blocks';
 $check=static function($name,$pass){if(!$pass){fwrite(STDERR,$name."=FAIL\n");exit(1);}echo $name."=PASS\n";};
@@ -43,4 +52,8 @@ $bad=$rate;$bad['shared_booking_configuration']['quantities']['persons']=21;
 $check('OVER_20_REJECTED',$c::traveller_count($bad)===0);
 $tour=['product_id'=>102,'quantity'=>4,'data'=>new WC_Product(102)];
 $check('TOUR_QUANTITY_NOT_PERSON_COUNT',$c::traveller_count($tour)===0);
+$GLOBALS['test_external_count_override']=true;
+$check('FILTER_CANNOT_INVENT_COUNT_FROM_MISSING_QUOTE',$c::traveller_count($no)===0);
+$check('FILTER_CANNOT_CHANGE_VERIFIED_COUNT',$c::traveller_count($rate)===0);
+$GLOBALS['test_external_count_override']=false;
 echo "BOOKING_COUNT_FAILURES=0\n";
