@@ -8,6 +8,8 @@ final class MAD4B_SCP_AI_Model_Router {
     const CONTRACT = 'mad4b.ai-model-routing.v1';
     const OPTION = 'mad4b_scp_ai_model_route_v1';
     const CUSTOM_SETTING = 'connectors_mad4b_custom_api_key';
+    const LOCAL_OLLAMA_ENDPOINT = 'http://127.0.0.1:11434/api/chat';
+    const LOCAL_OLLAMA_MODEL = 'qwen2.5:1.5b';
     const GEMINI_SETTING = 'connectors_mad4b_gemini_api_key';
     const OPENROUTER_SETTING = 'connectors_mad4b_openrouter_api_key';
 
@@ -76,12 +78,21 @@ final class MAD4B_SCP_AI_Model_Router {
     public static function normalize_settings($input) {
         if(!is_array($input))return new WP_Error('mad4b_ai_route_invalid','Structured route settings required.');
         $mode=(string)($input['mode']??'wp_core');
-        if(!in_array($mode,array('wp_core','google_dedicated','openrouter','custom'),true))
+        if(!in_array($mode,array('wp_core','google_dedicated','openrouter','custom','local_ollama'),true))
             return new WP_Error('mad4b_ai_route_invalid','Unsupported AI provider route.');
         $model=trim((string)($input['model']??''));
         if(strlen($model)>128 || ($model!=='' && !preg_match('#^[A-Za-z0-9./:_-]+$#D',$model)))
             return new WP_Error('mad4b_ai_model_invalid','Model identifier must be a short provider model slug.');
         if($mode==='openrouter' && $model==='')$model='openrouter/free';
+        if($mode==='local_ollama') {
+            if(!function_exists('wp_get_environment_type') || wp_get_environment_type()!=='local')
+                return new WP_Error('mad4b_local_ollama_environment_denied','Free Ollama may only run inside a Local Lab.');
+            // Host-pinned model. User, model response, Bit Flows and REST
+            // payloads cannot replace the internal transport or model.
+            if($model!=='' && $model!==self::LOCAL_OLLAMA_MODEL)
+                return new WP_Error('mad4b_local_ollama_model_denied','Only the operator-pinned open model is allowed.');
+            $model=self::LOCAL_OLLAMA_MODEL;
+        }
         if($mode==='google_dedicated' && $model==='')$model='gemini-2.5-flash';
         $endpoint=trim((string)($input['custom_endpoint']??''));
         if($mode==='custom' && !self::validate_endpoint($endpoint))
@@ -114,7 +125,11 @@ final class MAD4B_SCP_AI_Model_Router {
         $cfg=self::settings();
         $mode=$cfg['mode'];
         $key_source='none';
-        if($mode==='openrouter'||$mode==='custom') {
+        if($mode==='local_ollama') {
+            $key_source=(function_exists('wp_get_environment_type')
+                && wp_get_environment_type()==='local' && $cfg['model']===self::LOCAL_OLLAMA_MODEL)
+                ?'local_no_api_key_required':'none';
+        } elseif($mode==='openrouter'||$mode==='custom') {
             $id=$mode==='openrouter'?'mad4b_openrouter':'mad4b_custom';
             $con=function_exists('wp_get_connector')?wp_get_connector($id):null;
             $auth=is_array($con)?($con['authentication']??array()):array();
@@ -172,6 +187,17 @@ final class MAD4B_SCP_AI_Model_Router {
         if(!is_string($text)||trim($text)==='')return new WP_Error('mad4b_ai_inference_invalid_response','No model text in chat completion response.');
         return trim($text);
     }
+    /** Ollama-only fixed schema. Never take a schema object or URL from workflows. */
+    public static function review_verdict_schema() {
+        return array('type'=>'object','properties'=>array(
+            'decision'=>array('type'=>'string','enum'=>array('approve','needs_changes')),
+            'confidence'=>array('type'=>'number','minimum'=>0,'maximum'=>1),
+            'review_note'=>array('type'=>'string','minLength'=>45,'maxLength'=>1600),
+            'evidence_lines'=>array('type'=>'array','items'=>array('type'=>'integer','minimum'=>1),
+                'minItems'=>2,'maxItems'=>8,'uniqueItems'=>true),
+        ),'required'=>array('decision','confidence','review_note','evidence_lines'),
+        'additionalProperties'=>false);
+    }
     /** Shared read-only inference facade for MAD4B, Bit Flows, or governed AI workers. */
     public static function generate_text($prompt,$override=null) {
         if(!is_string($prompt) || trim($prompt)==='' || strlen($prompt)>60000)
@@ -187,6 +213,33 @@ final class MAD4B_SCP_AI_Model_Router {
         $model=(string)$config['model'];
         if($model!=='' && (strlen($model)>128 || !preg_match('#^[A-Za-z0-9./:_-]+$#D',$model)))
             return new WP_Error('mad4b_ai_model_invalid','Invalid model name.');
+        if($mode==='local_ollama') {
+            if(!function_exists('wp_get_environment_type') || wp_get_environment_type()!=='local'
+               ||$model!==self::LOCAL_OLLAMA_MODEL
+               ||(isset($override['model']) && $override['model']!==self::LOCAL_OLLAMA_MODEL))
+                return new WP_Error('mad4b_local_ollama_scope_denied','Local model and Local Lab environment are immutable.');
+            // This is NOT a custom endpoint or open proxy. The lab MU-plugin
+            // separately allowlists this one loopback API route; all other
+            // outbound HTTP is blocked.
+            $req=array('model'=>self::LOCAL_OLLAMA_MODEL,'stream'=>false,
+                'messages'=>array(array('role'=>'user','content'=>$prompt)),
+                'options'=>array('temperature'=>0,'num_predict'=>700,
+                    'num_ctx'=>4096));
+            if(is_array($override)&&($override['response_format']??'')==='review_verdict_v1')
+                $req['format']=self::review_verdict_schema();
+            $res=wp_remote_post(self::LOCAL_OLLAMA_ENDPOINT,array(
+                'timeout'=>110,'redirection'=>0,'limit_response_size'=>262144,
+                'headers'=>array('Content-Type'=>'application/json'),
+                'body'=>wp_json_encode($req)));
+            if(is_wp_error($res))return $res;
+            if(wp_remote_retrieve_response_code($res)!==200)
+                return new WP_Error('mad4b_local_ollama_http_error','Loopback inference returned non-200.');
+            $data=json_decode(wp_remote_retrieve_body($res),true);
+            $text=is_array($data)?($data['message']['content']??null):null;
+            if(!is_string($text) ||trim($text)===''||strlen($text)>24000)
+                return new WP_Error('mad4b_local_ollama_invalid_response','Local model returned no bounded text.');
+            return trim($text);
+        }
         if($mode==='wp_core') {
             if(!function_exists('wp_ai_client_prompt') || !function_exists('wp_supports_ai') || !wp_supports_ai())
                 return new WP_Error('mad4b_ai_core_unavailable','WordPress AI Client not available.');
@@ -290,7 +343,7 @@ final class MAD4B_SCP_AI_Model_Router {
         echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
         wp_nonce_field('mad4b_ai_route_save');
         echo '<input type="hidden" name="action" value="mad4b_ai_route_save"/><table class="form-table"><tr><th>Provider</th><td><select name="mad4b_ai_route[mode]">';
-        foreach(array('wp_core'=>'WordPress AI Client','google_dedicated'=>'MAD4B Dedicated Gemini API Key','openrouter'=>'OpenRouter','custom'=>'Custom OpenAI-compatible HTTPS') as $value=>$label)
+        foreach(array('wp_core'=>'WordPress AI Client','local_ollama'=>'Local Lab / Ollama Qwen2.5 1.5B (free, no key)','google_dedicated'=>'MAD4B Dedicated Gemini API Key','openrouter'=>'OpenRouter','custom'=>'Custom OpenAI-compatible HTTPS') as $value=>$label)
             echo '<option value="'.esc_attr($value).'" '.selected($config['mode'],$value,false).'>'.esc_html($label).'</option>';
         echo '</select></td></tr><tr><th>Model</th><td><input class="regular-text" name="mad4b_ai_route[model]" value="'.esc_attr($config['model']).'" placeholder="openrouter/free"/></td></tr>';
         echo '<tr><th>Custom HTTPS chat endpoint</th><td><input class="large-text" name="mad4b_ai_route[custom_endpoint]" value="'.esc_attr($config['custom_endpoint']).'" placeholder="Public HTTPS chat-completions endpoint"/></td></tr>';

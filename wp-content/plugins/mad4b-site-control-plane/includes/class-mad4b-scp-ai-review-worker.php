@@ -145,7 +145,7 @@ final class MAD4B_SCP_AI_Review_Worker {
             if($state!=='review_queued' && !$repair_lane)continue;
             $ev=MAD4B_SCP_AI_Review_Lifecycle::exact_media_evidence((string)$asset['asset_id']);
             if(is_wp_error($ev)){$errors[]=$ev->get_error_code();continue;}
-            $output=MAD4B_SCP_AI_Model_Router::generate_text(self::prompt($ev));
+            $output=MAD4B_SCP_AI_Model_Router::generate_text(self::prompt($ev),array('response_format'=>'review_verdict_v1'));
             if(is_wp_error($output)){$errors[]=$output->get_error_code();break;}
             $verdict=self::parse_verdict($output,$ev);
             if(is_wp_error($verdict)){$errors[]=$verdict->get_error_code();continue;}

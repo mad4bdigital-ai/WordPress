@@ -11,7 +11,13 @@ function add_action($name,$fn,$priority=10,$args=1){$GLOBALS['hooks'][$name]=$fn
 function get_option($id,$fallback=array()){return $GLOBALS['options'][$id]??$fallback;}
 function update_option($id,$value,$autoload=false){$GLOBALS['options'][$id]=$value;return true;}
 function wp_parse_url($url){return parse_url($url);}
+function wp_get_environment_type(){return $GLOBALS['lab_env']??'local';}
 function wp_json_encode($x){return json_encode($x);}
+function wp_remote_post($url,$args=array()){
+    $GLOBALS['last_remote']=array('url'=>$url,'args'=>$args);
+    return array('response'=>array('code'=>200),
+        'body'=>json_encode(array('message'=>array('content'=>'{"decision":"needs_changes"}'))));
+}
 function wp_safe_remote_post($url,$args=array()){
     $GLOBALS['last_remote']=array('url'=>$url,'args'=>$args);
     return array('response'=>array('code'=>200),'body'=>'{"choices":[{"message":{"content":"{\\"decision\\":\\"needs_changes\\"}"}}]}');
@@ -50,6 +56,31 @@ $x=MAD4B_SCP_AI_Model_Router::normalize_settings(array('mode'=>'openrouter'));
 ok('official_free_router_default',$x['model']==='openrouter/free');
 ok('opt_in_disabled_by_default',empty($x['enabled']));
 ok('gemini_extraction_off_by_default',empty(MAD4B_SCP_AI_Model_Router::settings()['gemini_extraction_enabled']));
+$local=MAD4B_SCP_AI_Model_Router::normalize_settings(array('mode'=>'local_ollama','enabled'=>true));
+ok('free_local_ollama_is_fixed_open_model',!is_wp_error($local)
+    &&$local['model']===MAD4B_SCP_AI_Model_Router::LOCAL_OLLAMA_MODEL);
+ok('free_model_rejects_other_model',is_wp_error(
+    MAD4B_SCP_AI_Model_Router::normalize_settings(array('mode'=>'local_ollama','model'=>'qwen2.5:7b'))));
+$GLOBALS['lab_env']='production';
+ok('free_local_route_denied_production',is_wp_error(
+    MAD4B_SCP_AI_Model_Router::normalize_settings(array('mode'=>'local_ollama'))));
+$GLOBALS['lab_env']='local';
+$GLOBALS['options'][MAD4B_SCP_AI_Model_Router::OPTION]=$local;
+ok('no_api_key_needed_for_local_fixed_model',
+    MAD4B_SCP_AI_Model_Router::provider_status()['credential_ready']===true);
+$result=MAD4B_SCP_AI_Model_Router::generate_text('Test review of bounded evidence');
+$schema=MAD4B_SCP_AI_Model_Router::review_verdict_schema();
+ok('local_fixed_review_schema_deny_extra_fields',
+    ($schema['additionalProperties']??null)===false && count($schema['required'])===4);
+$result=MAD4B_SCP_AI_Model_Router::generate_text('Review source',array('response_format'=>'review_verdict_v1'));
+ok('local_review_inference_sends_fixed_schema',
+    is_string($result)&&isset(json_decode($GLOBALS['last_remote']['args']['body'],true)['format']['properties']['evidence_lines']));
+ok('local_inference_routes_only_to_loopback',
+    is_string($result)&&$GLOBALS['last_remote']['url']===MAD4B_SCP_AI_Model_Router::LOCAL_OLLAMA_ENDPOINT);
+ok('local_model_id_cannot_be_overridden',is_wp_error(
+    MAD4B_SCP_AI_Model_Router::generate_text('Test',array('model'=>'qwen2.5:7b'))));
+$GLOBALS['options'][MAD4B_SCP_AI_Model_Router::OPTION]=MAD4B_SCP_AI_Model_Router::defaults();
+
 ok('gemini_extraction_requires_own_opt_in',MAD4B_SCP_AI_Model_Router::gemini_extraction_enabled()===false);
 $GLOBALS['connectors']['google']=array('type'=>'ai_provider',
     'authentication'=>array('method'=>'api_key','setting_name'=>'connectors_ai_google_api_key'));

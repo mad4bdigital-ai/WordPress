@@ -7434,6 +7434,61 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-domain-executors.php",
+      "source_blob_sha": "afc204a650ace83245d849b587bdd48824e040ae",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-domain-executors-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-model-routing-worker-runtime.php"
+      ],
+      "owner_role": "MAD4B source security reviewer; Local Lab inference trial only",
+      "review_rationale": "Original-owner agent review dispatcher requests only the fixed review JSON contract from local open model. Verified owner receipts, source hashes, original guards and nonproduction scope are unchanged; no new local adapter grants are enrolled.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-model-router.php",
+      "source_blob_sha": "76dd0b9e6ac6e082a8943ff00a24cc5fb85568a2",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-model-routing-worker-runtime.php"
+      ],
+      "owner_role": "MAD4B source security reviewer; Local Lab inference trial only",
+      "review_rationale": "Source-reviewed exact Local Lab-only Ollama loopback model/URL, no API key, no custom endpoint or remote internet route, source-pinned fixed structured review schema; provider and production model selection remain independently authorized.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-review-worker.php",
+      "source_blob_sha": "065726ac26093b0bbc9e11c0009af102df61fcb9",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-model-routing-worker-runtime.php"
+      ],
+      "owner_role": "MAD4B source security reviewer; Local Lab inference trial only",
+      "review_rationale": "Brand Context continues canonical owner-authenticated review path, now with bounded JSON Schema option for local open-model inference. Model output alone cannot issue Agent grant or owner review receipt.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {

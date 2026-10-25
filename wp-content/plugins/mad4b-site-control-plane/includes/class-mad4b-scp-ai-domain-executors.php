@@ -197,7 +197,7 @@ final class MAD4B_SCP_AI_Domain_Executors {
                 ."review_note (35-1600 chars), evidence_lines (2-12 distinct line numbers). "
                 ."For missing evidence choose needs_changes. Domain: ".$domain."\nTitle: ".$evidence['title']
                 ."\nSource SHA256: ".$item['content_hash']."\nBEGIN UNTRUSTED:\n".$text."\nEND.";
-            $model=MAD4B_SCP_AI_Model_Router::generate_text($prompt);
+            $model=MAD4B_SCP_AI_Model_Router::generate_text($prompt,array('response_format'=>'review_verdict_v1'));
             if(is_wp_error($model))return $model;
             $verdict=MAD4B_SCP_AI_Review_Worker::parse_verdict($model,array('normalized_text'=>$text));
             if(is_wp_error($verdict))return $verdict;

@@ -23,7 +23,8 @@ class MAD4B_SCP_AI_Review_Worker {
     }
 }
 class MAD4B_SCP_AI_Model_Router {
-    public static function generate_text($prompt) {
+    public static function generate_text($prompt,$override=null) {
+        $GLOBALS['model_contract']=$override;
         ++$GLOBALS['model_calls'];
         if(strpos($prompt,'UNTRUSTED')===false)return new WP_Error('prompt_wrong');
         return json_encode(array('decision'=>'approve','confidence'=>0.98,
@@ -100,6 +101,9 @@ check('owner_receipt_readback_required',is_wp_error($unverified)&&$unverified->g
 $GLOBALS['receipt_valid']=true;
 $done=MAD4B_SCP_AI_Domain_Executors::run_one('content_job');
 check('certified_original_owner_receipt_completes',is_array($done)&&$done['state']==='original_owner_review_verified'&&$done['original_owner_receipt_verified']===true);
+check('domain_review_requests_exact_structured_verdict_contract',
+    ($GLOBALS['model_contract']['response_format']??'')==='review_verdict_v1');
+
 check('no_publication_grant',$done['publication_authorized']===false&&$done['deployment_authorized']===false);
 check('no_protected_owner_called',is_wp_error(MAD4B_SCP_AI_Domain_Executors::run_one('plugin_lifecycle')));
 $cycle=MAD4B_SCP_AI_Domain_Executors::cycle(0);
