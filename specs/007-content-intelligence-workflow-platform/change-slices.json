@@ -4,8 +4,8 @@
   "reviewed_base_sha": "e7f30d944c354c3a4f7346330ad401d995e768c5",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 122,
-  "changed_paths_sha256": "dd0bd7c10a455321d0a00337d2c4266b8a1c465f5c0edd40ae8bf9d2ca0b27d1",
+  "changed_file_count": 123,
+  "changed_paths_sha256": "de9c9afcb6b84c5b14964f32751172e97e4453122a7e6ca22edf6c81a2aa2d01",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -208,7 +208,8 @@
         "wp-content/plugins/mad4b-site-control-plane/docs/source-hub-v1.md",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-source-hub.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/source-hub-open-source-regression.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/source-hub-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/source-hub-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/market-source-calendar-cron-hermetic.php"
       ]
     },
     {

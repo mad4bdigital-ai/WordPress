@@ -2442,6 +2442,42 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing WordPress Cron, Application Passwords revocation and Audit option controls; expiry hook remains its legacy identifier but applies to enrolled service vaults across environments, not authority escalation.",
       "review_rationale": "Hermetic source runtime checks idempotent no-op before expiration, exact WordPress user/password-UUID revocation, denied original WP deletion leaving private 0600 vault for bounded retry, audit of failed deletion, successful retry + deletion/audit, and no reissuance. PHP 7.4 and 8.3 PASS 9 scenarios; test fixture creates only disposable /tmp directories. Not live WP-Cron acceptance or automatic production enrollment."
+    },
+    {
+      "id": "cron:mad4b_scp_source_hub_import",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/market-source-calendar-cron-hermetic.php"
+      ],
+      "owner_role": "CI-only original-source cron security reviewer, not WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing site-specific WordPress Cron scheduling, approved Market Profile or Source Hub registration, original admin-only policy, original provider and audit guards. No new automation permissions or public write endpoint.",
+      "review_rationale": "Original Source Hub cron only runs after explicit site administrator activation; original Site Profile and local lab guard remain required. Draft, non-approved sources produce no inbox ingestion; scheduled work stages only review inbox, denies automatic source approval and publication. Hermetic 22-check fixture (both PHP 7.4 and 8.3) confirms environment, admin enrollment, site binding, duplicate schedule and zero write side effects. No live external source fetch or site-wide cron enablement was performed."
+    },
+    {
+      "id": "cron:mad4b_scp_season_calendar_sync",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/market-source-calendar-cron-hermetic.php"
+      ],
+      "owner_role": "CI-only original-source cron security reviewer, not WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing site-specific WordPress Cron scheduling, approved Market Profile or Source Hub registration, original admin-only policy, original provider and audit guards. No new automation permissions or public write endpoint.",
+      "review_rationale": "Original Season Calendar schedule requires enrolled Local site admin and approved country-language Market Profile plus exact Google holiday source. Cron validates approved binding before attempting fetch; provider failure records exact denial without Seasons term creation, financial offer mutation or automatic publishing. Hermetic 22-check fixture on PHP 7.4 and 8.3 tests negative Production/admin/site, invalid market and calendar, positive bounded schedule, offline provider and no campaign writes. No live Google tokens or database terms touched."
     }
   ],
   "lifecycle": [],
