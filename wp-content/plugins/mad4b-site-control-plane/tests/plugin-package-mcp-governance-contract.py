@@ -18,6 +18,19 @@ def require(condition, message):
         raise SystemExit(message)
 
 
+ROUTER = ROOT / "includes" / "class-mad4b-scp-package-route-resolver.php"
+router = ROUTER.read_text(encoding="utf-8")
+require_route = [
+    "class MAD4B_SCP_Package_Route_Resolver",
+    "control_plane_exact_head",
+    "certified_provider_package",
+    "staging_required",
+    "auto_apply_allowed",
+]
+for value in require_route:
+    if value not in router:
+        raise SystemExit("PACKAGE_ROUTE_RESOLVER_MISSING: " + value)
+
 package = PACKAGE.read_text(encoding="utf-8")
 bootstrap = BOOTSTRAP.read_text(encoding="utf-8")
 servers = SERVERS.read_text(encoding="utf-8") + (ROOT / "includes/class-mad4b-scp-server-write-catalog.php").read_text(encoding="utf-8")
@@ -73,6 +86,17 @@ for marker in [
     "authority_created' => false",
 ]:
     require(marker in package, f"plugin package governance marker missing: {marker}")
+
+# A control-plane self-update is categorically outside the third-party package
+# provider inventory. An explicit deny code must guide callers to the existing
+# self-update route instead of encouraging an unsafe synthetic provider record.
+for token in [
+    "mad4b_control_plane_self_update_route_required",
+    "'mad4b-site-control-plane'",
+    "'mad4b_site_control_plane'",
+    "governed control-plane update coordinator",
+]:
+    require(token in package, f"self-update route diagnostic missing: {token}")
 
 for forbidden in [
     "'download_url'",
@@ -156,5 +180,28 @@ subprocess.run(
     cwd=ROOT.parents[3],
     check=True,
 )
+
+
+# Exact, trusted Python entrypoint for isolated PHP runtime fixtures.
+# These tests execute real assertions; syntax checks alone never count as a pass.
+for fixture_name, success_marker in (
+    ("package-route-resolver-runtime.php", "package-route-resolver-runtime: PASS"),
+    ("plugin-package-self-update-route-runtime.php", "plugin-package-self-update-route: PASS"),
+):
+    fixture = ROOT / "tests" / fixture_name
+    for args in (["php", "-l", str(fixture)], ["php", str(fixture)]):
+        outcome = subprocess.run(
+            args, cwd=ROOT, text=True, capture_output=True, timeout=45, check=False
+        )
+        require(
+            outcome.returncode == 0,
+            "PACKAGE_RUNTIME_REGRESSION_FAILED: "
+            + fixture_name + "\n" + outcome.stdout + outcome.stderr,
+        )
+        if len(args) == 2:
+            require(
+                success_marker in outcome.stdout,
+                "PACKAGE_RUNTIME_PASS_MARKER_MISSING: " + fixture_name,
+            )
 
 print("mad4b.plugin-package-mcp-governance.v1: PASS")

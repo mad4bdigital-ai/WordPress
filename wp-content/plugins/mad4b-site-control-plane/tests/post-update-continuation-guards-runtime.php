@@ -29,8 +29,11 @@ $GLOBALS['wpdb'] = new FixtureDB();
 final class MAD4B_SCP_Connection_Identity_Resolver { public static $build_fingerprint = 'old'; public static function kernel() { return array( 'kernel_fingerprint' => 'stable-kernel', 'oauth' => array( 'issuer' => 'https://staging.example.com/oauth/mcp' ), 'resource' => array( 'url' => 'https://staging.example.com/wp-json/mcp/mad4b-chatgpt' ) ); } public static function fingerprint() { return self::$build_fingerprint; } }
 final class MAD4B_SCP_Site_Profile {
 	public static $environment = 'staging'; public static $revision = 2; public static $uuid = 'site';
+	public static $environment_authoritative = true; public static $environment_mismatch = false;
+	public static $origin_ok = true; public static $deployment_bound = true;
 	public static function current_environment() { return self::$environment; }
-	public static function origin_enrolled() { return true; }
+	public static function environment_resolution() { return array( 'wordpress_environment' => self::$environment_mismatch ? 'production' : self::$environment, 'effective_environment' => self::$environment, 'profile_environment_authoritative' => self::$environment_authoritative, 'wordpress_profile_mismatch' => self::$environment_mismatch ); }
+	public static function origin_enrolled() { return self::$origin_ok; }
 	public static function site_urls_match_enrollment() { return true; }
 	public static function write_enabled() { return true; }
 	public static function revision() { return self::$revision; }
@@ -38,7 +41,18 @@ final class MAD4B_SCP_Site_Profile {
 	public static function site_uuid() { return self::$uuid; }
 	public static function current_origin() { return 'https://staging.example.com'; }
 	public static function user_is_enrolled( $id ) { return $id === 1; }
-	public static function status() { return array( 'site_uuid' => self::$uuid, 'profile_digest' => self::profile_digest(), 'canonical_origin' => self::current_origin() ); }
+	public static function status() { return array( 'site_uuid' => self::$uuid, 'profile_digest' => self::profile_digest(), 'canonical_origin' => self::current_origin(), 'authority_ready' => self::$environment_authoritative, 'deployment_binding_match' => self::$deployment_bound ); }
+}
+// The fixture returns existing exact grants from the authenticated Agent Registry.
+final class MAD4B_SCP_Agent_Registry {
+    public static function get_agent_by_public_id( $id ) { return 'agent' === $id ? array( 'id' => 7 ) : new WP_Error( 'missing_agent' ); }
+    public static function grants_for_agent( $id ) {
+        if ( 7 !== $id ) return array();
+        return array(
+            array( 'server_id' => 'mad4b-write', 'effect' => 'allow', 'environment' => 'staging', 'ability_name' => 'mad4b/test-write', 'provider' => 'core' ),
+            array( 'server_id' => 'mad4b-write', 'effect' => 'allow', 'environment' => 'staging', 'ability_name' => 'mad4b/test-second-write', 'provider' => 'core' ),
+        );
+    }
 }
 final class MAD4B_SCP_WP_Native_Self_Approval { const APPLY = 'mad4b/wp-native-self-approve-install'; }
 final class MAD4B_SCP_Authorization {
@@ -91,7 +105,7 @@ function setup_fixture() {
 	$GLOBALS['wpdb']->value = null; unset( $GLOBALS['baseline_option'] ); $GLOBALS['schema_changed'] = false; $GLOBALS['integrity_failed'] = false; $GLOBALS['wpdb']->reject_cas = false; $GLOBALS['actor_revoked'] = false;
 	MAD4B_SCP_Identity_Context::$cron = false; $GLOBALS['risk_changed'] = false; $GLOBALS['descriptor_throws'] = false;
 	$GLOBALS['self_claim'] = false; $GLOBALS['self_owner'] = true; $GLOBALS['self_oauth'] = true; $GLOBALS['self_scope'] = true; $GLOBALS['self_client'] = true;
-	MAD4B_SCP_Runtime_Maintenance_Lease::$lost = false; MAD4B_SCP_MCP_Peer_Governance::$tools = 'stable'; MAD4B_SCP_Site_Profile::$environment = 'staging'; MAD4B_SCP_Site_Profile::$revision = 2; MAD4B_SCP_Site_Profile::$uuid = 'site'; MAD4B_SCP_Audit::$fail_consumption = false; MAD4B_SCP_Skill_Runtime_Certification::$current = true; MAD4B_SCP_Staging_Write_Authority::$injected_drift = '';
+	MAD4B_SCP_Runtime_Maintenance_Lease::$lost = false; MAD4B_SCP_MCP_Peer_Governance::$tools = 'stable'; MAD4B_SCP_Site_Profile::$environment = 'staging'; MAD4B_SCP_Site_Profile::$revision = 2; MAD4B_SCP_Site_Profile::$uuid = 'site'; MAD4B_SCP_Site_Profile::$environment_authoritative = true; MAD4B_SCP_Site_Profile::$environment_mismatch = false; MAD4B_SCP_Site_Profile::$origin_ok = true; MAD4B_SCP_Site_Profile::$deployment_bound = true; MAD4B_SCP_Audit::$fail_consumption = false; MAD4B_SCP_Skill_Runtime_Certification::$current = true; MAD4B_SCP_Staging_Write_Authority::$injected_drift = '';
 	$plan = array( 'eligible' => true, 'current_ready' => true, 'agent_present' => true, 'read_only' => true, 'agent_public_id' => 'agent', 'write_tool_count' => 2, 'exact_grants_existing' => 2, 'write_inventory_fingerprint' => str_repeat( 'e', 64 ), 'grant_rows_fingerprint' => str_repeat( 'f', 64 ), 'persisted_grant_records_fingerprint' => str_repeat( 'b', 64 ) );
 	foreach ( array( 'exact_grants_missing_count', 'stale_allow_grants_count', 'unreviewed_stale_allow_grants_count', 'broad_environment_grants_count', 'duplicate_exact_allow_grants_count', 'current_agent_wildcard_grants', 'global_registry_wildcard_grants' ) as $key ) $plan[ $key ] = 0;
 	MAD4B_SCP_Staging_Write_Authority::$plan = $plan;
@@ -176,7 +190,7 @@ echo "Observed manual update convergence guards: PASS\n";
 // Read-only auto-reconciliation preflight is centrally classified and cannot
 // create authority.  Scenario discovery may grow independently, but only an
 // exact ZERO_DELTA observation is eligible for AUTO_REBIND.
-foreach ( array( 'healthy', 'baseline_missing', 'baseline_expired', 'production', 'skills_pending', 'active_permit', 'schema_changed', 'grant_drift', 'profile_drift', 'transport_drift', 'integrity_failed', 'package_identity_mismatch', 'untrusted_release' ) as $case ) {
+foreach ( array( 'healthy', 'baseline_missing', 'baseline_expired', 'production', 'site_authority_missing', 'origin_unenrolled', 'deployment_unbound', 'environment_mismatch', 'skills_pending', 'active_permit', 'schema_changed', 'grant_drift', 'profile_drift', 'transport_drift', 'integrity_failed', 'package_identity_mismatch', 'untrusted_release' ) as $case ) {
 	$target = setup_fixture();
 	$baseline = MAD4B_SCP_Post_Update_Continuation::capture_ready_baseline( 'lease' );
 	check( is_array( $baseline ) && 'OBSERVED' === $baseline['state'], 'Preflight baseline setup failed: ' . $case );
@@ -187,6 +201,10 @@ foreach ( array( 'healthy', 'baseline_missing', 'baseline_expired', 'production'
 	if ( 'baseline_missing' === $case ) unset( $GLOBALS['baseline_option'] );
 	if ( 'baseline_expired' === $case ) $GLOBALS['baseline_option']['expires_at'] = time() - 1;
 	if ( 'production' === $case ) MAD4B_SCP_Site_Profile::$environment = 'production';
+	if ( 'site_authority_missing' === $case ) MAD4B_SCP_Site_Profile::$environment_authoritative = false;
+	if ( 'origin_unenrolled' === $case ) MAD4B_SCP_Site_Profile::$origin_ok = false;
+	if ( 'deployment_unbound' === $case ) MAD4B_SCP_Site_Profile::$deployment_bound = false;
+	if ( 'environment_mismatch' === $case ) MAD4B_SCP_Site_Profile::$environment_mismatch = true;
 	if ( 'skills_pending' === $case ) MAD4B_SCP_Skill_Runtime_Certification::$current = false;
 	if ( 'schema_changed' === $case ) $GLOBALS['schema_changed'] = true;
 	if ( 'grant_drift' === $case ) MAD4B_SCP_Staging_Write_Authority::$plan['persisted_grant_records_fingerprint'] = 'changed';
@@ -214,6 +232,10 @@ foreach ( array( 'healthy', 'baseline_missing', 'baseline_expired', 'production'
 		'baseline_missing' => 'REVIEW_REQUIRED',
 		'baseline_expired' => 'REVIEW_REQUIRED',
 		'production' => 'HARD_BLOCK',
+		'site_authority_missing' => 'HARD_BLOCK',
+		'origin_unenrolled' => 'HARD_BLOCK',
+		'deployment_unbound' => 'HARD_BLOCK',
+		'environment_mismatch' => 'HARD_BLOCK',
 		'skills_pending' => 'DEFER',
 		'active_permit' => 'DEFER',
 		'schema_changed' => 'REVIEW_REQUIRED',
@@ -225,6 +247,9 @@ foreach ( array( 'healthy', 'baseline_missing', 'baseline_expired', 'production'
 		'untrusted_release' => 'HARD_BLOCK',
 	);
 	check( $expected[ $case ] === ( $preflight['disposition'] ?? '' ), 'Unexpected observed reconciliation disposition: ' . $case . ' => ' . ( $preflight['disposition'] ?? 'missing' ) );
+	if ( in_array( $case, array( 'site_authority_missing', 'origin_unenrolled', 'deployment_unbound', 'environment_mismatch' ), true ) ) {
+		check( in_array( 'exact_nonproduction_environment_authority_required', $preflight['reasons'], true ), 'Unverified environment authority did not fail closed: ' . $case );
+	}
 	if ( 'skills_pending' === $case ) check( ! empty( $preflight['retryable'] ) && (int) $preflight['retry_after_seconds'] >= 5, 'Skill dependency defer must be bounded-retryable.' );
 	else check( empty( $preflight['retryable'] ), 'Non-transient preflight disposition unexpectedly became retryable: ' . $case );
 }

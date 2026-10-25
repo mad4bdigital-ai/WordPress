@@ -217,6 +217,7 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 		?>
 		<div class="wrap">
 			<h1><?php echo esc_html__( 'Connect WordPress to ChatGPT', 'mad4b-site-control-plane' ); ?></h1>
+            <?php MAD4B_SCP_Unified_Agent_Connection::render(); ?>
 			<p><?php echo esc_html__( 'Use the dedicated mad4b-chatgpt gateway. ChatGPT discovers OAuth and uses its Client ID Metadata Document automatically; no WordPress-side ChatGPT client secret or manual client registration is required.', 'mad4b-site-control-plane' ); ?></p>
 
 			<?php if ( ! empty( $status['foreign_profile_quarantined'] ) ) : ?>
@@ -339,3 +340,10 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 
 // Routes are declared without booting menus or provider lifecycle on frontend requests.
 if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) ) MAD4B_SCP_Admin_Route_Registry::register( MAD4B_SCP_ChatGPT_Connection_Admin_UI::PAGE_SLUG, 'manage_options' );
+
+// Unified Agent setup is owned by this existing ChatGPT connection surface.
+// Register the Agent form handlers without altering repository-wide bootstrap.
+require_once __DIR__ . '/class-mad4b-scp-unified-agent-connection.php';
+// Standalone read-only fixtures may load this class without WordPress hooks.
+// In an actual WordPress request add_action exists and the handlers register.
+if ( function_exists( 'add_action' ) ) MAD4B_SCP_Unified_Agent_Connection::boot();

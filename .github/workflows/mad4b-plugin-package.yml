@@ -56,6 +56,15 @@ jobs:
           php "$root/tests/security-provider-evidence-runtime.php"
           python3 -m json.tool "$root/config/security-operational-providers.json" > /dev/null
 
+      - name: Verify control-plane self-update route isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          php -l "$root/tests/plugin-package-self-update-route-runtime.php"
+          php "$root/tests/plugin-package-self-update-route-runtime.php"
+          python3 "$root/tests/plugin-package-mcp-governance-contract.py"
+
       - name: Verify general-distribution package contract
         shell: bash
         run: |

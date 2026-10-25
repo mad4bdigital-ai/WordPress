@@ -31,6 +31,10 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-grant-mode-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-model-routing-worker-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/generation-snapshot-exception-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/no-input-read-ability-schema-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/operator-doctor-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/oauth-secondary-diagnostic-exception-runtime.php",
     "tests/remote-execution/operator-grants-convergence-smoke.php",
     "tests/remote-execution/operator-grant-rollout-smoke.php",
     "tests/remote-execution/operator-bridge-admission.php",
@@ -119,6 +123,10 @@ def run_tests(impact, head, timeout):
 def self_test():
     assert command_for("tests/production_readiness_registry_contract.py")[0] == sys.executable
     assert command_for("tests/remote-execution/operator-grants-convergence-smoke.php")[0] == "php"
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/generation-snapshot-exception-runtime.php")[0] == "php"
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/no-input-read-ability-schema-runtime.php")[0] == "php"
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/operator-doctor-contract.php")[0] == "php"
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/oauth-secondary-diagnostic-exception-runtime.php")[0] == "php"
     assert command_for("tests/remote-execution/operator-bridge-admission.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/ai-domain-executors-runtime.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php")[0] == "php"

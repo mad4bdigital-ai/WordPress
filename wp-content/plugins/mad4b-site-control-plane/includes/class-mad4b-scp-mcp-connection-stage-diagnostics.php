@@ -72,6 +72,27 @@ final class MAD4B_SCP_MCP_Connection_Stage_Diagnostics {
                 : self::stage( 'blocked', 'ability_descriptor_or_schema_not_ready' );
         }
 
+        // A separate MCP client may observe a failed call while this local
+        // runtime remains healthy. Preserve that evidence without asserting
+        // a server-side root cause or promoting the other stages to PASS.
+        $observed = isset( $evidence['external'] ) && is_array( $evidence['external'] )
+            ? $evidence['external'] : array();
+        foreach ( array( 'external_bearer_validation', 'mcp_initialize', 'mcp_tools_list',
+            'mcp_read_call', 'mcp_write_call' ) as $name ) {
+            $entry = isset( $observed[$name] ) && is_array( $observed[$name] )
+                ? $observed[$name] : array();
+            $status = isset( $entry['status'] ) ? $entry['status'] : '';
+            if ( 'failed' !== $status && 'passed' !== $status ) continue;
+            // Only a structured, independently supplied observation is tagged.
+            // An opaque client "internal error" has unknown stage and cause.
+            $stages[$name] = array(
+                'status' => 'failed' === $status ? 'failed_external' : 'observed_external',
+                'reason' => 'failed' === $status ? 'external_call_failed_cause_unconfirmed' : 'external_call_observed',
+                'source' => 'external_observation',
+                'independently_verified' => false,
+            );
+        }
+
         $first_blocked = '';
         foreach ( $stages as $name => $row ) {
             if ( 'blocked' === $row['status'] ) { $first_blocked = $name; break; }
