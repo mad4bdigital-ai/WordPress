@@ -2424,6 +2424,24 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing Site Profile, WordPress Permissions/Policy, market registry, source inbox and immutable review-approval controls; reads grant neither source ingestion authority nor publication. The first matched impact rule is MCP because these are registered WordPress Ability/MCP read interfaces; MCP-01 covers transport-level read-only admission.",
       "review_rationale": "Source Hub status Ability invokes only original status callback and private Policy::can_read authorization, has no-public read-only annotations, returns review inbox and source counts, and explicitly denies automatic approval or publication; synthetic fixture verifies no option updates or network operations and no cross-environment Site Profile inheritance. Network-disabled hermetic source execution passed 23 read/denial checks under PHP 7.4 and PHP 8.3; installed WPML/live WordPress acceptance remains unverified."
+    },
+    {
+      "id": "cron:mad4b_ai_only_local_expire",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-credential-expiry-hermetic.php"
+      ],
+      "owner_role": "Repository CI source/revocation reviewer only — not independent WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing WordPress Cron, Application Passwords revocation and Audit option controls; expiry hook remains its legacy identifier but applies to enrolled service vaults across environments, not authority escalation.",
+      "review_rationale": "Hermetic source runtime checks idempotent no-op before expiration, exact WordPress user/password-UUID revocation, denied original WP deletion leaving private 0600 vault for bounded retry, audit of failed deletion, successful retry + deletion/audit, and no reissuance. PHP 7.4 and 8.3 PASS 9 scenarios; test fixture creates only disposable /tmp directories. Not live WP-Cron acceptance or automatic production enrollment."
     }
   ],
   "lifecycle": [],
@@ -8984,6 +9002,24 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Exact current top-level bootstrap source inspected at Git blob ee38c1f216b22620ff3c58e8a4c9c240d845ce05. The early managed Application Password fence is registered before foreign REST zero-touch return on every WordPress environment, with exact site-bound user meta/route/method and TLS checks; bounded AI review routes are treated as MAD4B-owned so full kernel and original Context Authority permission checks run, while unrelated routes continue to use existing routing. Verified 26 early-auth spoof/HTTP/site tests, 9 opt-in site scope tests, passive Context admin load and 27 Admin route declarations using isolated PHP 7.4 and 8.3. Does not review unrelated changed services, authorize Production deployment, re-sign G6/G9 historical evidence, certify live WordPress app-password authentications or provide owner attestation."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-only-local-activation.php",
+      "source_blob_sha": "56c63b84fbafec406dd7c578c446e80930c79deb",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "AUTOMATION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-credential-expiry-hermetic.php"
+      ],
+      "owner_role": "Repository security source reviewer only; no Site Owner authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact successor source updated only for fail-closed credential expiration: if original WP_Application_Passwords deletion is not confirmed, preserve owner-only vault and record failure for retry; require successful unlink and persisted revocation audit before reporting success. Existing Agent delegation, site UUID and routing remain governed and unchanged. Executable, network-isolated PHP 7.4/8.3 test provides no authorization for site provisioning or production publication."
     }
   ],
   "code_change_rules": {

@@ -356,9 +356,25 @@ final class MAD4B_SCP_AI_Only_Local_Activation {
     public static function expire() {
         $r=self::record();
         if(!is_array($r) || time()<(int)($r['expires_at']??0))return;
-        WP_Application_Passwords::delete_application_password((int)$r['user_id'],(string)$r['uuid']);
-        @unlink(self::path());
-        self::audit('credential_expired','scheduled_revoke',(int)$r['user_id']);
+        $user_id=(int)($r['user_id']??0);
+        $uuid=(string)($r['uuid']??'');
+        if($user_id<=0 || $uuid==='')return new WP_Error('mad4b_ai_review_revoke_identity_missing','Reviewer credential identity is incomplete.');
+        // A failed original WordPress revocation cannot count as expiry.
+        // Keep the private vault for a later bounded retry; the expired
+        // credential remains unusable by the original reviewer admission gate.
+        $deleted=WP_Application_Passwords::delete_application_password($user_id,$uuid);
+        if($deleted!==true) {
+            self::audit('credential_revoke_failed','scheduled_revoke',$user_id);
+            return new WP_Error('mad4b_ai_review_revoke_failed','WordPress application password revocation was not confirmed.');
+        }
+        $path=self::path();
+        if(!$path || !@unlink($path)) {
+            self::audit('credential_vault_cleanup_failed','scheduled_revoke',$user_id);
+            return new WP_Error('mad4b_ai_review_vault_cleanup_failed','Reviewer credential vault cleanup did not complete.');
+        }
+        if(!self::audit('credential_expired','scheduled_revoke',$user_id))
+            return new WP_Error('mad4b_ai_review_revoke_audit_failed','Reviewer credential revocation audit was not persisted.');
+        return true;
     }
     public static function boot() {
         add_action('wp_authenticate_application_password_errors',array(__CLASS__,'restrict_service_rest'),10,3);

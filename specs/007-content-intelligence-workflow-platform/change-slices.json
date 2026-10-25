@@ -4,8 +4,8 @@
   "reviewed_base_sha": "e7f30d944c354c3a4f7346330ad401d995e768c5",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 121,
-  "changed_paths_sha256": "947bb7d59fa775f5f17d683e249076b418ebc0ab5db0a6bac23457bf201fbc0e",
+  "changed_file_count": 122,
+  "changed_paths_sha256": "dd0bd7c10a455321d0a00337d2c4266b8a1c465f5c0edd40ae8bf9d2ca0b27d1",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -23,7 +23,8 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tools/ai-review-worker-local.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-worker-guard-hermetic.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-crossenv-scope-hermetic.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-crossenv-scope-hermetic.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-credential-expiry-hermetic.php"
       ]
     },
     {
