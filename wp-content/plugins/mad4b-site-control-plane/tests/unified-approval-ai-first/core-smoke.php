@@ -13,7 +13,7 @@ function add_action($hook,$callback,$priority=10){$GLOBALS['actions'][$hook][]=$
 class MAD4B_SCP_Site_Profile {static function current_environment(){return $GLOBALS['environment']??'local';}static function site_uuid(){return '00000000-0000-4000-8000-000000000001';}}
 class MAD4B_SCP_Context_Authority{static function review_policy(){return ['mode'=>$GLOBALS['mode']??'ai_only'];}}
 function check($label,$value){$GLOBALS['checks']++;if(!$value){echo "FAIL $label\n";exit(1);}echo "PASS $label\n";}
-$base=dirname(__DIR__).'/includes/';
+$base=dirname(__DIR__, 2).'/includes/';
 require $base.'class-mad4b-scp-unified-policy.php';
 require $base.'class-mad4b-scp-unified-approval-extensions.php';
 require $base.'class-mad4b-scp-unified-approval-queue-bridge.php';

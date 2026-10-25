@@ -38,10 +38,10 @@ class MAD4B_SCP_AI_Native_Owner_Review {
    &&($item['content_hash']??'')===str_repeat('a',64);}
 }
 function check($label,$value){$GLOBALS['checks']++;if(!$value){$GLOBALS['fails']++;echo "FAIL $label\n";}else echo "PASS $label\n";}
-require __DIR__.'/../includes/class-mad4b-scp-unified-policy.php';
-require __DIR__.'/../includes/class-mad4b-scp-unified-approval-workflow.php';
-require __DIR__.'/../includes/class-mad4b-scp-background-authorization.php';
-require __DIR__.'/../includes/class-mad4b-scp-unified-gate-bridge.php';
+require dirname(__DIR__, 2).'/includes/class-mad4b-scp-unified-policy.php';
+require dirname(__DIR__, 2).'/includes/class-mad4b-scp-unified-approval-workflow.php';
+require dirname(__DIR__, 2).'/includes/class-mad4b-scp-background-authorization.php';
+require dirname(__DIR__, 2).'/includes/class-mad4b-scp-unified-gate-bridge.php';
 check('three_original_modes',MAD4B_SCP_Unified_Policy::MODES===['human_only','human_and_ai','ai_only']);
 check('five_ai_first_finality_rules',count(MAD4B_SCP_Unified_Policy::RULES)===5 && !in_array('human_then_ai',MAD4B_SCP_Unified_Policy::RULES,true));
 check('new_human_first_rule_rejected',is_wp_error(MAD4B_SCP_Unified_Policy::validate_rule(['module'=>'product_catalog','operation'=>'content_review','mode'=>'human_and_ai','decision_rule'=>'human_then_ai'])));

@@ -37,8 +37,8 @@ class MAD4B_SCP_AI_Native_Owner_Review{
 }
 class MAD4B_SCP_Audit{static function record($name,$data,$status){return ['event_id'=>'123e4567-e89b-42d3-a456-426614174001'];}}
 function check($name,$condition){$GLOBALS['checks'][$name]=(bool)$condition;}
-require __DIR__.'/../includes/class-mad4b-scp-unified-policy.php';
-require __DIR__.'/../includes/class-mad4b-scp-unified-approval-workflow.php';
+require dirname(__DIR__, 2).'/includes/class-mad4b-scp-unified-policy.php';
+require dirname(__DIR__, 2).'/includes/class-mad4b-scp-unified-approval-workflow.php';
 $GLOBALS['options']['mad4b_scp_ai_native_owner_review_sources_v1']=['product_catalog'=>'post:1'];
 $receipt=['domain'=>'product_catalog','event_id'=>'123e4567-e89b-42d3-a456-426614174000',
  'entry_hash'=>str_repeat('c',64),'decision'=>'approve'];
