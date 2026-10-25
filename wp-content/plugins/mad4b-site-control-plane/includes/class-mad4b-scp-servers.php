@@ -52,6 +52,13 @@ final class MAD4B_SCP_Servers {
 
 	public static function core_tools( $server_id ) {
 		$tools = self::declared_core_tools( $server_id );
+		// Feature 007 operator diagnostics are registered as read-only Abilities,
+		// and must be mounted on the Read plane, not on a mutation surface.
+		if ( 'mad4b-read' === $server_id && class_exists( 'MAD4B_SCP_Operator_Doctor' ) ) {
+			foreach ( array( 'mad4b/operator-doctor', 'mad4b/operator-dead-letter-status' ) as $doctor_ability ) {
+				if ( function_exists( 'wp_has_ability' ) && wp_has_ability( $doctor_ability ) ) $tools[] = $doctor_ability;
+			}
+		}
 		if ( 'mad4b-admin' === $server_id
 			&& class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) {
 			// Dynamically declared Admin mutations must still be verified on the

@@ -138,6 +138,8 @@ foreach ( array(
 	$check( false !== strpos( $source, $marker ), 'Doctor contract marker missing: ' . $marker );
 }
 $check( false !== strpos( $main, 'class-mad4b-scp-operator-doctor.php' ), 'Doctor runtime is not loaded' );
+$check( false !== strpos( $servers, "'mad4b-read' === \$server_id && class_exists( 'MAD4B_SCP_Operator_Doctor' )" ), 'Doctor tools must be gated to the read plane' );
+$check( false !== strpos( $servers, "wp_has_ability( \$doctor_ability )" ), 'Doctor tools must be registered before mounting' );
 foreach ( array( 'mad4b/operator-doctor', 'mad4b/operator-dead-letter-status' ) as $ability ) {
 	$check( false !== strpos( $servers, "'" . $ability . "'" ), 'Doctor ability not mounted on read plane: ' . $ability );
 }
@@ -157,4 +159,4 @@ foreach ( array(
 	$check( false === strpos( $source, $forbidden ), 'Doctor contains forbidden mutation primitive: ' . $forbidden );
 }
 
-echo "mad4b.operator-doctor.v1: PASS\n";
+echo "PASS: mad4b.operator-doctor.v1\n";

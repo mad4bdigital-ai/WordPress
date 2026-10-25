@@ -7558,6 +7558,126 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Runtime Convergence now invokes the checked approved-grant recovery coordinator and reports its state separately; existing reconciliation, grant policy and audit boundaries are preserved. Same-PR contract checks source ordering and trusted executable PHP tests exercise the denied and allowed prior-grant classifier; certification remains read-only CI evidence."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+      "source_blob_sha": "7bbfbf8eda450b7ba0f0e62df5aa25aae648c2ea",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/no-input-read-ability-schema-runtime.php"
+      ],
+      "owner_role": "Repository source/security reviewer — CI coverage only; no live OAuth/Production grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "No-argument read abilities now explicitly accept both legacy null and empty-object MCP calls, while disallowing unexpected parameters and preserving write schemas. Regression exercises four guarded registration cases; WordPress REST validation checked on ETG staging in read-only mode."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-connector-resilience.php",
+      "source_blob_sha": "850b2990f36b9bdcb88aab429267a897b61c81fe",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/generation-snapshot-exception-guards-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/generation-snapshot-exception-runtime.php"
+      ],
+      "owner_role": "Repository source/security reviewer — CI coverage only; no live OAuth/Production grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Generation-fenced compact reads now contain exceptions from both pre-read and post-read snapshot headers, returning nonauthorizing structured errors. Same-PR contract and runtime tests cover both fail-closed exception boundaries."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+      "source_blob_sha": "dc7add578d47ef74691778652b2594a56e895bfe",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/no-input-read-ability-schema-runtime.php"
+      ],
+      "owner_role": "Repository source/security reviewer — CI only; no Production grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Follow-on exact-source review: governed read_execute now initializes an omitted parameter envelope as {} for both object and nullable-object schemas. Hermetic PHP runtime test checks 10 registration and dispatch cases; write schemas and authorization boundaries are unchanged."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+      "source_blob_sha": "80a6860757197d0f9e8fc9fe534b899a8369ada3",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/no-input-read-ability-schema-runtime.php"
+      ],
+      "owner_role": "Repository source/security reviewer — CI only; no Production grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "MCP adapter 0.7.0 requires object-root tool input schemas; this exact code change uses type object with an empty-array default, allowing both legacy null and empty object normalization through the official WordPress Abilities API without schema wrapping. Same-PR hermetic PHP test verifies ten registration and dispatch cases."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "ad5c239968cf6c2991c40a2d6040d23d462074db",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "MCP-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/operator-doctor-contract.php"
+      ],
+      "owner_role": "Repository source/security reviewer — CI coverage only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Feature 007 diagnostics are mounted only when the associated first-party read-only Abilities are registered; no mutation surface or privilege expansion. Same-PR contract asserts read-plane gate and registration requirement."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+      "source_blob_sha": "2ee30e4485da4e26341699eef6505d4822ee84a8",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/no-input-read-ability-schema-runtime.php"
+      ],
+      "owner_role": "Repository source/security reviewer — CI coverage only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Only compacted equivalent registration and dispatcher schema helpers to keep legacy facade within its existing maintainability budget. Regression tests retain null/empty object compatibility without widening write authority."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-resource-bridge.php",
+      "source_blob_sha": "7a2176009b99b5a89511ecca6c80209b582211b8",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/oauth-secondary-diagnostic-exception-runtime.php"
+      ],
+      "owner_role": "Repository source/security reviewer — CI coverage only; no production grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Observed MCP tool errors require fail-closed exception containment. The existing OAuth exception wrapper called optional transport rejection telemetry without its own try/catch, allowing a second exception to escape. This change preserves the existing protected-route 503/no-store response even when optional telemetry throws; hermetic same-PR regression executes that scenario. It does not claim authenticated live MCP acceptance or authorize deployment."
     }
   ],
   "code_change_rules": {
