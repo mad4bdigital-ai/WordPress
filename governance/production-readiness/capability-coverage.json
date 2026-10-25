@@ -7678,6 +7678,23 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Observed MCP tool errors require fail-closed exception containment. The existing OAuth exception wrapper called optional transport rejection telemetry without its own try/catch, allowing a second exception to escape. This change preserves the existing protected-route 503/no-store response even when optional telemetry throws; hermetic same-PR regression executes that scenario. It does not claim authenticated live MCP acceptance or authorize deployment."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-transport-admission.php",
+      "source_blob_sha": "17af6022877915e561bc712836a784bf1e8c2df0",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-origin-error-preservation-runtime.php"
+      ],
+      "owner_role": "Repository source/security reviewer — CI coverage only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Retain a bounded first-party response code when reporting generic HTTP 503 in Staging. Never retain arbitrary messages or payloads. This improves attribution but does not prove the ChatGPT connector runtime is healthy."
     }
   ],
   "code_change_rules": {
