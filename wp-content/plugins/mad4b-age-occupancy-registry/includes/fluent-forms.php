@@ -3,16 +3,14 @@
 if (!defined('ABSPATH')) exit;
 final class MAD4B_Age_Fluent_Forms {
  const VERSION='age-request.v1';
+ const OPTION='mad4b_age_occupancy_fluent_forms_v1';
  public static function forms(){
-  // IDs discovered from published Local forms. Extend using the filter for other sites.
-  $result=apply_filters('mad4b/age_occupancy/fluent_forms',[
-   5=>['children'=>'numeric_field_1','infants'=>'numeric_field_2','strict'=>false],
-   6=>['children'=>'no_of_children','infants'=>'no_of_infants','strict'=>true],
-   7=>['children'=>'no_of_children','infants'=>'no_of_infants','strict'=>true],
-   8=>['children'=>'no_of_children','infants'=>'no_of_infants','strict'=>true],
-  ]);
+  $configured=get_option(self::OPTION,[]);
+  if(!is_array($configured))$configured=[];
+  $result=apply_filters('mad4b/age_occupancy/fluent_forms',$configured);
   return is_array($result)?$result:[];
  }
+
  public static function config($form){
   $id=absint(is_object($form)?($form->id??0):$form);
   $cfg=self::forms()[$id]??null;
