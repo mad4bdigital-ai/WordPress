@@ -8,7 +8,7 @@ final class MAD4B_SCP_Runtime_Runner_Bridge {
  const CONTRACT='mad4b.runtime-runner.v1';
  public static function canonical($data) {
   if (is_array($data)) {
-   if (array_is_list($data)) return '['.implode(',',array_map(array(__CLASS__,'canonical'),$data)).']';
+   if ($data===array() || array_keys($data)===range(0,count($data)-1)) return '['.implode(',',array_map(array(__CLASS__,'canonical'),$data)).']';
    ksort($data,SORT_STRING);
    $parts=array();
    foreach($data as $key=>$value) $parts[]=json_encode((string)$key,JSON_UNESCAPED_SLASHES).':'.self::canonical($value);
