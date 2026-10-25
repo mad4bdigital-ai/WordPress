@@ -1,0 +1,76 @@
+<?php
+define('ABSPATH',__DIR__.'/');
+class WP_Error {
+    private $code;
+    public function __construct($c,$m='',$d=array()){$this->code=$c;}
+    public function get_error_code(){return $this->code;}
+}
+function is_wp_error($x){return $x instanceof WP_Error;}
+$GLOBALS['hooks']=array();$GLOBALS['options']=array();$GLOBALS['last_remote']=null;
+function add_action($name,$fn,$priority=10,$args=1){$GLOBALS['hooks'][$name]=$fn;}
+function get_option($id,$fallback=array()){return $GLOBALS['options'][$id]??$fallback;}
+function update_option($id,$value,$autoload=false){$GLOBALS['options'][$id]=$value;return true;}
+function wp_parse_url($url){return parse_url($url);}
+function wp_json_encode($x){return json_encode($x);}
+function wp_safe_remote_post($url,$args=array()){
+    $GLOBALS['last_remote']=array('url'=>$url,'args'=>$args);
+    return array('response'=>array('code'=>200),'body'=>'{"choices":[{"message":{"content":"{\\"decision\\":\\"needs_changes\\"}"}}]}');
+}
+function wp_remote_retrieve_response_code($x){return $x['response']['code'];}
+function wp_remote_retrieve_body($x){return $x['body'];}
+class FakeRegistry {
+    public $items=array();
+    public function is_registered($name){return isset($this->items[$name]);}
+    public function register($name,$data){$this->items[$name]=$data;}
+}
+$GLOBALS['connectors']=array();
+function wp_get_connector($id){return $GLOBALS['connectors'][$id]??null;}
+function wp_get_connectors(){return $GLOBALS['connectors'];}
+require dirname(__DIR__).'/includes/class-mad4b-scp-ai-model-router.php';
+require dirname(__DIR__).'/includes/class-mad4b-scp-ai-review-worker.php';
+require dirname(__DIR__).'/includes/class-mad4b-scp-ai-source-repair.php';
+$pass=0;
+function ok($name,$condition){global $pass;if(!$condition){fwrite(STDERR,"FAILED $name\n");exit(1);}echo $name.": PASS\n";$pass++;}
+$r=new FakeRegistry();
+MAD4B_SCP_AI_Model_Router::register_connectors($r);
+ok('core_registers_two_additive_routes',count($r->items)===2);
+$GLOBALS['connectors']=$r->items;
+ok('registered_without_secret_leak',empty(MAD4B_SCP_AI_Model_Router::provider_status()['secrets_exposed']));
+$invalid=MAD4B_SCP_AI_Model_Router::normalize_settings(array('mode'=>'custom','custom_endpoint'=>'http://127.0.0.1/run'));
+ok('reject_local_http',is_wp_error($invalid));
+ok('reject_https_localhost',MAD4B_SCP_AI_Model_Router::validate_endpoint('https://localhost/v1')===false);
+ok('reject_private_ip',MAD4B_SCP_AI_Model_Router::validate_endpoint('https://192.168.1.15/v1')===false);
+ok('reject_embedded_secret',MAD4B_SCP_AI_Model_Router::validate_endpoint('https://u:pass@example.com/v1')===false);
+ok('accept_public_custom_https',MAD4B_SCP_AI_Model_Router::validate_endpoint('https://api.example.org/v1/chat/completions')===true);
+$x=MAD4B_SCP_AI_Model_Router::normalize_settings(array('mode'=>'openrouter'));
+ok('official_free_router_default',$x['model']==='openrouter/free');
+ok('opt_in_disabled_by_default',empty($x['enabled']));
+$x=MAD4B_SCP_AI_Model_Router::generate_text('test prompt');
+ok('disabled_inference_fail_closed',is_wp_error($x)&&$x->get_error_code()==='mad4b_ai_router_disabled');
+$GLOBALS['options'][MAD4B_SCP_AI_Model_Router::OPTION]=array_merge(
+    MAD4B_SCP_AI_Model_Router::defaults(),array('mode'=>'openrouter','model'=>'openrouter/free','enabled'=>true));
+$x=MAD4B_SCP_AI_Model_Router::generate_text('test prompt');
+ok('missing_connector_key_denied',is_wp_error($x)&&$x->get_error_code()==='mad4b_ai_connector_key_missing');
+$GLOBALS['options'][MAD4B_SCP_AI_Model_Router::OPENROUTER_SETTING]='fixture-key';
+$x=MAD4B_SCP_AI_Model_Router::generate_text('test prompt');
+ok('openrouter_single_core_secret_used',is_string($x)&&$GLOBALS['last_remote']['url']==='https://openrouter.ai/api/v1/chat/completions');
+ok('openrouter_model_routing',(json_decode($GLOBALS['last_remote']['args']['body'],true)['model']??'')==='openrouter/free');
+$e=array('normalized_text'=>"Line 1\nLine 2\nLine 3\nLine 4");
+$raw='{"decision":"approve","confidence":0.95,"review_note":"Lines describe the four line document, with evidence boundaries validated.","evidence_lines":[1,3]}';
+$v=MAD4B_SCP_AI_Review_Worker::parse_verdict($raw,$e);
+ok('valid_structured_verdict',is_array($v)&&$v['decision']==='approve');
+$v=MAD4B_SCP_AI_Review_Worker::parse_verdict(str_replace('[1,3]','[1,99]',$raw),$e);
+ok('reject_fake_line_reference',is_wp_error($v));
+$v=MAD4B_SCP_AI_Review_Worker::parse_verdict(str_replace('0.95','0.55',$raw),$e);
+ok('reject_low_confidence_approval',is_wp_error($v));
+$v=MAD4B_SCP_AI_Review_Worker::parse_verdict(str_replace('approve','publish',$raw),$e);
+ok('reject_publication_decision',is_wp_error($v));
+$old="ETG BRAND STRATEGY\nSource: catalog\nEvidence: verified\nSafe editorial context is sufficient for a review. ".str_repeat('This content is sourced and bounded. ',18);
+$next=str_replace('Safe editorial context','Revised editorial context',$old);
+$v=MAD4B_SCP_AI_Source_Repair::validate_revision($old,$next,'text/plain');
+ok('text_revision_accepted',$v===true);
+$v=MAD4B_SCP_AI_Source_Repair::validate_revision($old,str_replace('ETG BRAND STRATEGY','OTHER BRAND',$next),'text/plain');
+ok('reject_source_identity_change',is_wp_error($v));
+$v=MAD4B_SCP_AI_Source_Repair::validate_revision($old,$next."\nhttps://evil.test/fake-evidence",'text/plain');
+ok('reject_model_invented_external_link',is_wp_error($v));
+echo "SUMMARY pass=$pass fail=0\n";

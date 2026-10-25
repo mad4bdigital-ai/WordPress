@@ -203,6 +203,18 @@
         "jsonfeed.org"
       ],
       "rationale": "Literal JSON Feed version identifier checked when validating external feed structure; not a request destination."
+    },
+    "includes/class-mad4b-scp-ai-model-router.php": {
+      "hosts": [
+        "openrouter.ai",
+        "generativelanguage.googleapis.com"
+      ],
+      "purpose": "Reviewed generic AI service endpoints; no client-specific domain or staging hostname",
+      "safeguards": [
+        "WordPress Connectors credential custody",
+        "public HTTPS-only custom endpoint",
+        "WP safe HTTP transport"
+      ]
     }
   },
   "optional_named_tag_integrations": [

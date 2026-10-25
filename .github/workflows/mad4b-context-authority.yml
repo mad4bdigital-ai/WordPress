@@ -33,6 +33,11 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-classification-title-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-history-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-model-routing-worker-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-model-router.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-review-worker.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-source-repair.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tools/ai-review-worker-local.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-review-lifecycle.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-only-local-activation.php'
@@ -93,6 +98,11 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-classification-title-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-history-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-model-routing-worker-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-model-router.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-review-worker.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-source-repair.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tools/ai-review-worker-local.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-review-lifecycle.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-only-local-activation.php'
@@ -179,6 +189,11 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-classification-title-contract.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-history-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/ai-model-routing-worker-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-model-router.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-review-worker.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-source-repair.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tools/ai-review-worker-local.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-review-lifecycle.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-only-local-activation.php
@@ -251,6 +266,7 @@ jobs:
           php wp-content/plugins/mad4b-site-control-plane/tests/context-classification-title-contract.php
           php wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-history-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/ai-model-routing-worker-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php
 
       - name: Execute Skill Context preflight runtime
