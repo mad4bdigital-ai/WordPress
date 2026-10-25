@@ -137,7 +137,20 @@ final class MAD4B_SCP_MCP_Transport_Admission {
 			404=>'mad4b_http_route_unavailable',429=>'mad4b_http_rate_limited',
 			500=>'mad4b_http_internal_error',502=>'mad4b_http_bad_gateway',
 			503=>'mad4b_http_service_unavailable',504=>'mad4b_http_gateway_timeout');
-		self::observe_rejection( 'http', $status, $codes[$status] ?? 'mad4b_http_rejection' );
+		// Preserve an explicitly owned, bounded MAD4B failure code when the REST
+		// response already carries one. Generic HTTP_503 discards the origin
+		// category and makes authenticated MCP failures impossible to triage.
+		// Never read or persist messages, request data, tokens, or foreign codes.
+		$code = $codes[$status] ?? 'mad4b_http_rejection';
+		$data = $response->get_data();
+		if ( is_array( $data ) && isset( $data['code'] ) && is_string( $data['code'] )
+			&& preg_match( '/^mad4b_[a-z0-9_]{3,80}$/D', $data['code'] ) ) {
+			$code = $data['code'];
+		} elseif ( is_array( $data ) && isset( $data['error'] ) && is_string( $data['error'] )
+			&& preg_match( '/^mad4b_[a-z0-9_]{3,80}$/D', $data['error'] ) ) {
+			$code = $data['error'];
+		}
+		self::observe_rejection( 'http', $status, $code );
 		self::annotate_correlation( $response );
 
 		$request_key = self::request_key( $request );
