@@ -270,15 +270,9 @@ final class MAD4B_SCP_Abilities {
 				),
 			),
 		);
-		// MCP clients commonly send {} for no-argument tools. Keep a root
-		// object schema (required by the MCP adapter), with a default so both
-		// legacy null and empty-object requests normalize to an empty array.
-		// Keep every parameterized ability's original schema and write gates.
-		if ( is_array( $input ) ) {
-			$args['input_schema'] = $input;
-		} elseif ( $readonly && null === $input ) {
-			$args['input_schema'] = array( 'type' => 'object', 'properties' => array(), 'additionalProperties' => false, 'default' => array() );
-		}
+		// No-argument reads use an object schema; explicit schemas and write gates are retained.
+		if ( is_array( $input ) ) $args['input_schema'] = $input;
+		elseif ( $readonly && null === $input ) $args['input_schema'] = array( 'type' => 'object', 'properties' => array(), 'additionalProperties' => false, 'default' => array() );
 		wp_register_ability( $name, $args );
 	}
 
@@ -309,10 +303,8 @@ final class MAD4B_SCP_Abilities {
 		return array( 'MAD4B_SCP_Policy', 'can_content' );
 	}
 
-	/** An omitted dispatcher input is {} for object schemas, including nullable objects. */
 	private static function input_schema_accepts_object( $schema ) {
-		if ( ! is_array( $schema ) ) return false;
-		$type = $schema['type'] ?? null;
+		$type = is_array( $schema ) ? ( $schema['type'] ?? null ) : null;
 		return 'object' === $type || ( is_array( $type ) && in_array( 'object', $type, true ) );
 	}
 
