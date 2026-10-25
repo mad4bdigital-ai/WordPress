@@ -2044,28 +2044,6 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing sealed prior-grant recovery, OAuth bearer/step-up, exact Staging Site Profile, plan revision and audited rollback-controlled reconciliation policies apply. The coordinator cannot mint identity or bypass grant/Production safety gates.",
       "review_rationale": "New guarded recovery coordinator defaults DEFER, requires authoritative Staging Site Profile, sealed pre-update grant baseline and continuation permit, verified OAuth step-up and eligible exact plan, denies stale grants and invokes the existing audited reconciliation operation only with nonproduction_approved_auto=true. No independent mutation authority is introduced. Static integration contract and actual PHP gate test cover this source for CI-only review."
-    },
-    {
-      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-restore-epoch.php",
-      "control_ids": [
-        "GOVERNANCE-01",
-        "GOVERNANCE-02",
-        "SECURITY-01",
-        "PLATFORM-01",
-        "RECOVERY-01",
-        "UPDATES-01",
-        "ROLLOUT-01"
-      ],
-      "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/restore-epoch-recovery-contract.py"
-      ],
-      "owner_role": "Repository source/security reviewer — CI-only, no restore approval or Production authority",
-      "status": "reviewed_for_ci_only",
-      "production_authorized": false,
-      "live_evidence_required": true,
-      "needs_new_control": false,
-      "coverage_reuse_rationale": "Existing source-enrollment, restore recovery, guarded mutation, Site Profile identity and rollback controls apply to this new exact-epoch service; it does not grant Production or user approval authority.",
-      "review_rationale": "New monotonic external restore/authority epoch protects against stale database snapshots, validates external record and DB binding against the exact Site Profile, quarantines identity conflicts and only diagnoses recoverable missing evidence. Recovery requires disabled write authority, independent evidence and guarded transaction with no blind retries, grants or automatic publishing. The same-PR trusted Python regression executes the six-case hermetic PHP runtime without authorizing site mutation."
     }
   ],
   "lifecycle": [],
