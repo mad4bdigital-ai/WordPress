@@ -2535,6 +2535,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original enrolled Site Profile, admin permission, exact draft/revision source authority and original WordPress/Google provider boundaries; all changes remain subject to existing platform/security and independent owner gates.",
       "review_rationale": "Season Calendar service accepts only approved country/language Market Profiles and subscribed exact Google holiday calendars; original plan normalizes tentative versus confirmed events, creates pending-only proposals with explicit CAS before individual review, denies tentative and Production term modifications, and never auto-publishes offers. Network-isolated original-source integration PASS 33 cases on PHP 7.4/8.3; supplemental Cron fixture PASS 22 cases per PHP and denies invalid calendar/provider, no live Google authorization asserted. Evidence refers to exact source behavior and changed-in-PR executable hermetic fixtures; owner attestation and deployment still blocked."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-setup-coverage.php",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-setup-coverage-runtime.php"
+      ],
+      "owner_role": "Original-source provider security CI reviewer only; independent Site Owner attestation still needed",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original WordPress Core Connector custody, browser acceptance registry, source-owned Search enrollment, OAuth connection authority, explicit Policy/admin capability, Provider and Execution controls already govern real operations; this status aggregation grants no new privileges.",
+      "review_rationale": "Source reviewed: original provider-setup coverage is read-only and requires manage_options. It enumerates only original adapter field names, never any database or host key bytes, and preserves separation of credential-present, OAuth-connected, plugin-active, model-inference tested, signed browser evidence and execution certification. The original runtime fixture, changed in the same PR, executes 26 PASS checks on network-isolated PHP 7.4 and 8.3 for external runner fields, WP Core Connector source flags, managed/dedicated/custom Google OAuth modes, protected SERP adapter, G5 adapter growth, no secret bytes/handles, absent admin and nonauthorizing inventory. No key issuance, provider API calls, production rights or live acceptance."
     }
   ],
   "lifecycle": [],
@@ -9113,6 +9132,24 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Exact successor source updated only for fail-closed credential expiration: if original WP_Application_Passwords deletion is not confirmed, preserve owner-only vault and record failure for retry; require successful unlink and persisted revocation audit before reporting success. Existing Agent delegation, site UUID and routing remain governed and unchanged. Executable, network-isolated PHP 7.4/8.3 test provides no authorization for site provisioning or production publication."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-setup-coverage.php",
+      "source_blob_sha": "55b66560e4a98280588ed279b1b4e54960429021",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-setup-coverage-runtime.php"
+      ],
+      "owner_role": "Repository source/security CI reviewer only, not live credential custodian",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Source reviewed: original provider-setup coverage is read-only and requires manage_options. It enumerates only original adapter field names, never any database or host key bytes, and preserves separation of credential-present, OAuth-connected, plugin-active, model-inference tested, signed browser evidence and execution certification. The original runtime fixture, changed in the same PR, executes 26 PASS checks on network-isolated PHP 7.4 and 8.3 for external runner fields, WP Core Connector source flags, managed/dedicated/custom Google OAuth modes, protected SERP adapter, G5 adapter growth, no secret bytes/handles, absent admin and nonauthorizing inventory. No key issuance, provider API calls, production rights or live acceptance. Source SHA and same-PR original runtime regression are pinned; historical review and release identities stay immutable."
     }
   ],
   "code_change_rules": {

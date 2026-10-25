@@ -37,6 +37,7 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/market-source-read-abilities-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/market-source-calendar-cron-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/market-source-calendar-authority-hermetic.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/provider-setup-coverage-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/generation-snapshot-exception-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/no-input-read-ability-schema-runtime.php",
@@ -146,6 +147,7 @@ def self_test():
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/market-source-read-abilities-hermetic.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/market-source-calendar-cron-hermetic.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/market-source-calendar-authority-hermetic.php")[0] == "php"
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/provider-setup-coverage-runtime.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php")[0] == "php"
     try:
         command_for("wp-content/plugins/mad4b-site-control-plane/tests/runtime-gateway-cookie-http.php")
