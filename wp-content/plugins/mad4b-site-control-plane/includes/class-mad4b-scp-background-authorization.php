@@ -13,21 +13,30 @@ final class MAD4B_SCP_Background_Authorization {
   $method=(string)($identity['auth_method']??'');
   if(!in_array($method,self::SUPPORTED,true))
    return new WP_Error('mad4b_background_unsupported_method','No reviewed verifier registered for this auth method.');
-  if(empty($identity['subject_fingerprint']))return new WP_Error('mad4b_background_subject_missing','Stable subject binding required.');
+  if(!is_string($identity['subject_fingerprint']??null)
+    || !preg_match('/^[a-f0-9]{64}$/D',$identity['subject_fingerprint']))
+   return new WP_Error('mad4b_background_subject_missing','Stable SHA-256 subject binding required.');
+  if(!class_exists('MAD4B_SCP_Site_Profile'))
+   return new WP_Error('mad4b_background_site_profile_missing','Enrolled site authority unavailable.');
+  $site_uuid=(string)MAD4B_SCP_Site_Profile::site_uuid();
+  if(!preg_match('/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/Di',$site_uuid))
+   return new WP_Error('mad4b_background_site_unbound','Enrolled site UUID is required.');
   if(!class_exists('MAD4B_SCP_Agent_Registry'))
    return new WP_Error('mad4b_background_agent_registry_missing','Agent registry unavailable.');
   $agent=MAD4B_SCP_Agent_Registry::resolve_agent($identity);
-  if(is_wp_error($agent)||!is_array($agent)||($agent['status']??'')!=='enabled')
+  if(is_wp_error($agent)||!is_array($agent)||($agent['status']??'')!=='enabled'
+    ||empty($agent['public_id'])||(int)($agent['id']??0)<=0)
    return new WP_Error('mad4b_background_agent_not_enrolled','No enrolled enabled Agent for identity.');
   return ['contract'=>self::CONTRACT,'method'=>$method,
    'agent_public_id'=>$agent['public_id'], 'agent_id'=>(int)$agent['id'],
    'subject_fingerprint'=>$identity['subject_fingerprint'],
-   'site_uuid'=>MAD4B_SCP_Site_Profile::site_uuid(),
+   'site_uuid'=>$site_uuid,
    'credential_exposed'=>false,'mutation_authorized'=>false];
  }
  public static function check_qa_grant($domain) {
   $who=self::current();if(is_wp_error($who))return $who;
-  if(!in_array($domain, MAD4B_SCP_Unified_Approval_Workflow::DOMAINS,true))
+  if(!is_string($domain)||!class_exists('MAD4B_SCP_Unified_Approval_Workflow')
+    ||!in_array($domain,MAD4B_SCP_Unified_Approval_Workflow::DOMAINS,true))
    return new WP_Error('mad4b_background_domain_denied','Domain requires a reviewed original-owner adapter.');
   $ability='mad4b/ai-'.str_replace('_','-',$domain).'-review';
   $grant=MAD4B_SCP_Agent_Registry::exact_grant($who['agent_id'],'mad4b-write',$ability,'core');

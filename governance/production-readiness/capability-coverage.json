@@ -2572,6 +2572,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing original WordPress enrolled Site Profile and manage_options authorization, OAuth bearer/step-up and exact developer/full-staging plan/apply Ability. The page has no direct grant issuing code, and user-controlled input only prepares unverified CAS shape.",
       "review_rationale": "Source-reviewed authority UI: three distinct developer/developer-breakglass/full-staging workflows present exact owner-confirmation phrases and SHA/UUID/revision bounds; original validate_payload rejects unknown fields, invalid digests, production Developer selection and raw SQL. Extended same-PR original PHP runtime now includes denial of anonymous/non-enrolled admin, independent site enrollment check, projection-only no-implicit-apply, no mutation, exact staging eligibility and denied production Full Staging. 26 original runtime checks passed on network-isolated PHP 7.4 and 8.3; the source does not mint a grant, authenticate OAuth nor invoke apply. Production mutation or owner confirmation remains strictly unverified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-background-authorization.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/background-authorization-verified-identity-hermetic.php"
+      ],
+      "owner_role": "Repository original-source authentication and authorization CI reviewer only; not enrolled Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing immutable original Identity_Context verified transport, Agent Registry exact deny-first grants, enrolled Site Profile and Unified Approval owner Workflow. No expansion of supported authentication method or browser MFA scope.",
+      "review_rationale": "Direct original Background Authorization current() + check_qa_grant() and Browser Auth Broker source reviewed on exact Git blob. Mandatory verified upstream Identity_Context fingerprint must be string lowercase SHA-256, original Agent Registry must return enabled Agent with valid numeric ID, Site Profile must be present and have enrolled UUID. Requested QA domain must be registered by Unified Approval original owner, and exact grant must allow this exact environment and ability; all results are review-only and publication-authorized false. Browser login requires human and refuses model-issued sessions/MFA bypass. Network-free PHP 7.4 and 8.3 checks: 23 per interpreter, including malformed identity, unsupported API key, disabled Agent, missing site binding, invalid domain, original deny and different-environment grant, positive app-password/OAuth/passwordless identity, HTTPS-only browser handoff. Original unified-approval-ai-first contract also passes 37 cases on each PHP. No token, owner grant or browser session minted; real WordPress live acceptance remains necessary."
     }
   ],
   "lifecycle": [],
@@ -9168,6 +9187,24 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Source reviewed: original provider-setup coverage is read-only and requires manage_options. It enumerates only original adapter field names, never any database or host key bytes, and preserves separation of credential-present, OAuth-connected, plugin-active, model-inference tested, signed browser evidence and execution certification. The original runtime fixture, changed in the same PR, executes 26 PASS checks on network-isolated PHP 7.4 and 8.3 for external runner fields, WP Core Connector source flags, managed/dedicated/custom Google OAuth modes, protected SERP adapter, G5 adapter growth, no secret bytes/handles, absent admin and nonauthorizing inventory. No key issuance, provider API calls, production rights or live acceptance. Source SHA and same-PR original runtime regression are pinned; historical review and release identities stay immutable."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-background-authorization.php",
+      "source_blob_sha": "d6130aabe5a193f0e5dc32c055c799b898cd365e",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/background-authorization-verified-identity-hermetic.php"
+      ],
+      "owner_role": "Original source/security CI review only; independent Site Owner and WordPress runtime acceptance required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Direct original Background Authorization current() + check_qa_grant() and Browser Auth Broker source reviewed on exact Git blob. Mandatory verified upstream Identity_Context fingerprint must be string lowercase SHA-256, original Agent Registry must return enabled Agent with valid numeric ID, Site Profile must be present and have enrolled UUID. Requested QA domain must be registered by Unified Approval original owner, and exact grant must allow this exact environment and ability; all results are review-only and publication-authorized false. Browser login requires human and refuses model-issued sessions/MFA bypass. Network-free PHP 7.4 and 8.3 checks: 23 per interpreter, including malformed identity, unsupported API key, disabled Agent, missing site binding, invalid domain, original deny and different-environment grant, positive app-password/OAuth/passwordless identity, HTTPS-only browser handoff. Original unified-approval-ai-first contract also passes 37 cases on each PHP. No token, owner grant or browser session minted; real WordPress live acceptance remains necessary. Source change only converts malformed missing-site, credential fingerprint and missing workflow paths to explicit WP_Error fail-closed responses without minting any grant."
     }
   ],
   "code_change_rules": {
