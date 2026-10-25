@@ -11,7 +11,7 @@
   function readItems(cart) {
     return (cart && Array.isArray(cart.items) ? cart.items : []).filter(function (item) {
       var info = item.extensions && item.extensions[namespace];
-      return info && info.bookable && Number(info.travellers) >= 1;
+      return info && info.bookable;
     });
   }
   function initialState(items) {
@@ -56,6 +56,7 @@
         var codes = values[item.key] || [];
         return el('div', {'className': 'etg-block-travellers__line', key: item.key},
           el('strong', null, item.name),
+          count < 1 ? el('p', {role:'alert'}, 'Traveller count is not yet verified for this booking. Choose a valid booking configuration before checkout.') : null,
           Array.from({length: count}, function (_, i) {
             var id = 'etg-passport-' + item.key.replace(/[^a-z0-9_-]/gi, '') + '-' + i;
             return el('label', {key: i, htmlFor: id, 'className': 'etg-block-travellers__field'},

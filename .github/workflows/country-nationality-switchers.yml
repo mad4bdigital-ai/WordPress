@@ -16,12 +16,18 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: country-nationality-switchers-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
 jobs:
   contract-and-package:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - name: Lint source PHP (no WordPress boot needed)
         shell: bash
         run: |
@@ -34,6 +40,8 @@ jobs:
         run: python3 tests/switchers/verify_release.py
       - name: AJAX guest fallback without MAD4B runtime
         run: php tests/switchers/test-nationality-ajax-fallback.php
+      - name: Booking quote traveller-count authority (no Woo Quantity fallback)
+        run: php tests/switchers/test-booking-count-contract.php
       - name: Deterministic QA archives and SHA-256 manifest
         run: |
           python3 tests/switchers/build_release.py

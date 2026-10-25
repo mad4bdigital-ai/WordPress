@@ -8,9 +8,41 @@ final class ETG_Traveller_Nationality_Checkout_Blocks {
   $product=$cart_item['data']??null;
   return $product instanceof WC_Product && in_array(get_post_type($product->get_id()),self::bookable_types(),true);
  }
+ /**
+  * Resolve people from the EXISTING server-quoted booking contract, not Woo cart units.
+  * Tour Rates currently keep their quote in shared_booking_configuration (v1);
+  * its quantities.persons is independent from Woo quantity (normally one booking).
+  * Booking v2 cart identity is preview-only, so never grant checkout entitlement
+  * from its uncommitted draft/configuration or from browser-supplied counts.
+  */
+ public static function verified_booking_count($cart_item){
+  $saved=$cart_item['shared_booking_configuration']??null;
+  if(!is_array($saved))return 0;
+  $product=$cart_item['data']??null;
+  if(!$product instanceof WC_Product || get_post_type($product->get_id())!=='tour-rates')return 0;
+  if((int)($cart_item['quantity']??0)!==1 ||
+     (int)($saved['rate_id']??0)!==$product->get_id() ||
+     !function_exists('shared_product_booking_configuration_matches'))return 0;
+  // The source owns server-side recomputation and price-validity decisions.
+  $fresh=shared_product_booking_configuration_matches($saved);
+  if(is_wp_error($fresh) || !is_array($fresh) ||
+     (int)($fresh['rate_id']??0)!==$product->get_id())return 0;
+  $raw=$fresh['quantities']['persons']??null;
+  $n=filter_var($raw,FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>20]]);
+  if($n===false)return 0;
+  $option=$fresh['options']['travelers']??null;
+  if($option!==null){
+   $provided=filter_var($option,FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>20]]);
+   if($provided===false || $provided!==$n)return 0;
+  }
+  return $n;
+ }
  public static function traveller_count($cart_item){
-  $n=(int)apply_filters('etg_traveller_nationality/required_count',(int)($cart_item['quantity']??1),$cart_item);
-  return $n>=1&&$n<=20?$n:0;
+  $verified=self::verified_booking_count($cart_item);
+  // A future booking adapter may return its separately VERIFIED count here.
+  // Never use Woo quantity as an implicit fallback.
+  $n=apply_filters('etg_traveller_nationality/required_count',$verified,$cart_item);
+  return is_int($n)&&$n>=1&&$n<=20?$n:0;
  }
  public static function expected_items($cart){
   $out=[];foreach((array)$cart as $key=>$line)if(self::is_bookable($line)){
@@ -83,8 +115,8 @@ final class ETG_Traveller_Nationality_Checkout_Blocks {
    return $items;
   },90);
   $file=plugin_dir_path(__FILE__).'assets/checkout-blocks.js';
-  wp_enqueue_style('etg-nationality-switcher',plugins_url('assets/nationality.css',__FILE__),[],'0.2.0');
-  wp_enqueue_script('etg-traveller-nationality-checkout-blocks',plugins_url('assets/checkout-blocks.js',__FILE__),['wp-element','wp-plugins','wp-data','wc-blocks-checkout','wc-blocks-data-store'],'0.2.0',true);
+  wp_enqueue_style('etg-nationality-switcher',plugins_url('assets/nationality.css',__FILE__),[],'0.3.0');
+  wp_enqueue_script('etg-traveller-nationality-checkout-blocks',plugins_url('assets/checkout-blocks.js',__FILE__),['wp-element','wp-plugins','wp-data','wc-blocks-checkout','wc-blocks-data-store'],'0.3.0',true);
   $countries=ETG_Traveller_Nationality_Switcher::countries();$options=[];
   foreach($countries as $code=>$label)$options[]=['value'=>$code,'label'=>$label];
   wp_add_inline_script('etg-traveller-nationality-checkout-blocks','window.etgTravellerBlocks='.wp_json_encode(['namespace'=>self::NAMESPACE_ID,'types'=>self::bookable_types(),'countries'=>$options,'max'=>20,'preferred'=>ETG_Traveller_Nationality_Switcher::selected()]).';','before');

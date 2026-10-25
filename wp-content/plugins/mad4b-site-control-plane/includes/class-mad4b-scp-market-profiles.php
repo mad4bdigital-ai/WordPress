@@ -178,21 +178,24 @@ final class MAD4B_SCP_Market_Profiles {
  public static function boot(){
   if(self::$booted)return;self::$booted=true;
   add_action('wp_abilities_api_init',[__CLASS__,'register_ability'],9);
-  add_action('admin_menu',[__CLASS__,'admin_menu'],92);
+  if(class_exists('MAD4B_SCP_Admin_Route_Registry',false)) {
+   MAD4B_SCP_Admin_Route_Registry::register('mad4b-market-profiles','manage_options');
+   MAD4B_SCP_Admin_Route_Registry::schedule_submenu([__CLASS__,'admin_menu'],92);
+  }
   add_action('admin_post_mad4b_market_draft',[__CLASS__,'save_action']);
   add_action('admin_post_mad4b_market_approve',[__CLASS__,'approve_action']);
  }
  public static function admin_menu(){add_submenu_page('mad4b-control-plane','Market Profiles','Market Profiles','manage_options','mad4b-market-profiles',[__CLASS__,'admin_page']);}
  public static function admin_page(){
   if(!current_user_can('manage_options'))wp_die('Not authorized');
-  $visibility=self::language_visibility();$languages=$visibility['public'];$selected=sanitize_key((string)($_GET['market_lang']??''));if($selected&&!isset($languages[$selected]))$selected='';
+  $visibility=self::language_visibility();$languages=$visibility['public'];$selected=sanitize_key((string)($_GET['tab']??''));if($selected&&!isset($languages[$selected]))$selected='';
   $suggestions=self::suggestions($selected);
   echo '<div class="wrap"><h1>MAD4B — Market Profiles</h1><p>Country-language suggestions derive from enabled site languages and bundled CLDR language-territory data. They are proposals only. Speaking a language does not make a country an approved commercial market.</p>';
   echo '<p>Contract: <code>'.esc_html(self::CONTRACT).'</code> | Approved: '.count(self::approved_list()).' | Suggested pairs: '.count(self::suggestions()).'</p>';
   if(!empty($visibility['hidden']))echo '<p><strong>Languages hidden by WPML:</strong> '.esc_html(implode(', ',$visibility['hidden'])).'. Installed, but excluded from suggestions, approval and runtime targeting.</p>';
   echo '<h2>Configured markets</h2><table class="widefat striped"><tr><th>Profile</th><th>Country</th><th>Language</th><th>Status</th><th>Revision</th></tr>';
   foreach(self::records() as $p)echo '<tr><td>'.esc_html($p['profile_id']).' — '.esc_html($p['label']).'</td><td>'.esc_html($p['country']).'</td><td>'.esc_html($p['language']??'Needs review').'</td><td>'.esc_html($p['status']).'</td><td>'.(int)$p['revision'].'</td></tr>';
-  echo '</table><h2>Discover suggested markets</h2><form method="get" action="'.esc_url(admin_url('admin.php')).'"><input type="hidden" name="page" value="mad4b-market-profiles"><label>Site language <select name="market_lang"><option value="">All enabled languages</option>';
+  echo '</table><h2>Discover suggested markets</h2><form method="get" action="'.esc_url(admin_url('admin.php')).'"><input type="hidden" name="page" value="mad4b-market-profiles"><label>Site language <select name="tab"><option value="">All enabled languages</option>';
   foreach($languages as $code=>$label)echo '<option value="'.esc_attr($code).'" '.selected($selected,$code,false).'>'.esc_html($label).' ('.esc_html($code).')</option>';
   echo '</select></label> <button class="button" type="submit">Filter suggestions</button></form>';
   echo '<p>Suggestions are not saved or enabled. Choose one country-language pair to create a draft. Approval remains a separate step.</p>';

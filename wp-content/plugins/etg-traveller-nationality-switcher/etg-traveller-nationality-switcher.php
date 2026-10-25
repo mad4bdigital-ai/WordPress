@@ -2,7 +2,7 @@
 /**
  * Plugin Name: ETG Traveller Nationality Switcher
  * Description: Passport-country selection for travellers, separate from WooCommerce market, shipping, billing and WCML currency.
- * Version: 0.2.0-local
+ * Version: 0.3.0-local
  * License: GPL-2.0-or-later
  * Text Domain: etg-traveller-nationality-switcher
  */
@@ -131,9 +131,26 @@ final class ETG_Traveller_Nationality_Switcher {
    $items[]=['key'=>sprintf(__('Traveller %d nationality','etg-traveller-nationality-switcher'),$i+1),'value'=>self::countries()[$iso]??$iso,'display'=>self::countries()[$iso]??$iso];}
   return $items;
  }
+ /** Classic Checkout must also honor the server-confirmed booking count. */
+ public static function classic_checkout_validate($data,$errors){
+  if(!$errors instanceof WP_Error || !function_exists('WC') || !WC()->cart ||
+     !class_exists('ETG_Traveller_Nationality_Checkout_Blocks'))return;
+  foreach(WC()->cart->get_cart() as $line){
+   if(!ETG_Traveller_Nationality_Checkout_Blocks::is_bookable($line))continue;
+   $count=ETG_Traveller_Nationality_Checkout_Blocks::traveller_count($line);
+   if($count<1){$errors->add('nationality_booking_unverified',__('Traveller count must be confirmed by the booking engine before checkout.','etg-traveller-nationality-switcher'));continue;}
+   $countries=self::validate_list($line['etg_traveller_nationalities']??null);
+   if(is_wp_error($countries) || count($countries)!==$count)
+    $errors->add('nationality_booking_count_mismatch',__('Select a passport nationality for every confirmed traveller.','etg-traveller-nationality-switcher'));
+  }
+ }
  public static function order_item($item,$cart_key,$values,$order){
   $data=$values['etg_traveller_nationalities']??[];
   $valid=self::validate_list($data);if(is_wp_error($valid))return;
+  if(class_exists('ETG_Traveller_Nationality_Checkout_Blocks') && ETG_Traveller_Nationality_Checkout_Blocks::is_bookable($values)){
+   $count=ETG_Traveller_Nationality_Checkout_Blocks::traveller_count($values);
+   if($count<1 || count($valid)!==$count)return; // Checkout validation reports a blocking error.
+  }
   foreach($valid as $i=>$iso)$item->add_meta_data('Traveller '.($i+1).' passport country (ISO2)',$iso,true);
  }
  /** Opt-in Fluent Forms integration: only specifically named nationality fields. */
@@ -178,6 +195,7 @@ final class ETG_Traveller_Nationality_Switcher {
   add_filter('woocommerce_add_cart_item_data',[__CLASS__,'cart_data'],10,1);
   add_filter('woocommerce_get_item_data',[__CLASS__,'show_cart_data'],10,2);
   add_action('woocommerce_checkout_create_order_line_item',[__CLASS__,'order_item'],10,4);
+  add_action('woocommerce_after_checkout_validation',[__CLASS__,'classic_checkout_validate'],25,2);
   add_filter('fluentform/validation_errors',[__CLASS__,'fluent_validate'],15,2);
   add_filter('fluentform/insert_response_data',[__CLASS__,'fluent_normalize'],15,1);
  }
