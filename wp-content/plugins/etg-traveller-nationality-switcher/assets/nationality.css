@@ -1,0 +1,12 @@
+.etg-nationality-switcher,.etg-traveller-nationalities{display:flex;align-items:center;gap:9px;flex-wrap:wrap;font:inherit;color:inherit}
+.etg-nationality-switcher label,.etg-traveller-nationality-field{display:inline-flex;align-items:center;flex-wrap:wrap;gap:8px;font:inherit}
+.etg-nationality-switcher select,.etg-traveller-nationality-field select{min-width:160px;max-width:85vw;border-radius:7px;border:1px solid #aec0ce;padding:8px;background:transparent;color:inherit;font:inherit}
+.etg-nationality-switcher button{border:0;border-radius:7px;background:#b5e947;color:#12283a;padding:9px 15px;font-weight:650;cursor:pointer}
+.etg-nationality-switcher select:focus-visible,.etg-traveller-nationality-field select:focus-visible,.etg-nationality-switcher button:focus-visible{outline:2px solid #8eacff;outline-offset:2px}
+.etg-traveller-nationalities{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));width:100%}
+.etg-block-travellers{border:1px solid #cbd5df;border-radius:9px;padding:14px;margin:14px 0;min-width:0}
+.etg-block-travellers legend{font-weight:700;padding:0 5px}
+.etg-block-travellers__line{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:10px;align-items:center;margin-bottom:10px}
+.etg-block-travellers__line>strong{grid-column:1/-1}
+.etg-block-travellers__field{display:grid;gap:5px;font-size:13px}
+.etg-block-travellers__field select{max-width:100%;width:100%;padding:8px;border:1px solid #97a6b8;border-radius:6px}

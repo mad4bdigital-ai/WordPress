@@ -1,0 +1,49 @@
+name: Country and Nationality Switchers (QA release gate)
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/country-nationality-switchers.yml'
+      - 'tests/switchers/**'
+      - 'wp-content/plugins/mad4b-country-switcher/**'
+      - 'wp-content/plugins/etg-traveller-nationality-switcher/**'
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-market-*.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-switcher-sources.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/data/market-language-territories.json'
+  push:
+    branches:
+      - 'feature/country-nationality-switchers-release-*'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contract-and-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint source PHP (no WordPress boot needed)
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -v
+          for f in wp-content/plugins/mad4b-{country-switcher,site-control-plane}/mad4b-*.php wp-content/plugins/etg-traveller-nationality-switcher/*.php wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-{market-*,switcher-sources}.php; do
+            php -l "$f"
+          done
+      - name: Static source and dependency contracts
+        run: python3 tests/switchers/verify_release.py
+      - name: AJAX guest fallback without MAD4B runtime
+        run: php tests/switchers/test-nationality-ajax-fallback.php
+      - name: Deterministic QA archives and SHA-256 manifest
+        run: |
+          python3 tests/switchers/build_release.py
+          python3 tests/switchers/build_release.py /tmp/switchers-second-build
+          cmp dist/country-nationality/qa-dependency-manifest.json /tmp/switchers-second-build/qa-dependency-manifest.json
+          for f in dist/country-nationality/*.zip; do
+            cmp "$f" "/tmp/switchers-second-build/$(basename "$f")"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: country-nationality-qa-candidates
+          path: dist/country-nationality/
+          if-no-files-found: error

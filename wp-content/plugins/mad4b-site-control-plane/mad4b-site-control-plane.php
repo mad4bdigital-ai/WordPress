@@ -153,6 +153,10 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-guided-operator-experienc
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operator-workspace.php';
 MAD4B_SCP_Admin_Route_Registry::boot();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-site-profile.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-market-profiles.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-switcher-sources.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-market-context.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-market-preferences.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connection-identity-resolver.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connection-doctor.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-environment.php';
@@ -656,6 +660,9 @@ unset( $mad4b_upgrade_continuity );
 // request-serving work during the first reconnect after a package replacement.
 MAD4B_SCP_MCP_Request_Scope::bootstrap();
 MAD4B_SCP_Site_Profile::boot();
+MAD4B_SCP_Market_Profiles::boot();
+MAD4B_SCP_Market_Context::boot();
+MAD4B_SCP_Market_Preferences::boot();
 MAD4B_SCP_Staging_Autopilot::boot();
 MAD4B_SCP_Test_Attestation::boot();
 MAD4B_SCP_Production_Automation::boot();
