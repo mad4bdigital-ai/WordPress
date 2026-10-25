@@ -27,6 +27,7 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/mcp-catalog-adaptive-budget.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/generation-snapshot-exception-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/no-input-read-ability-schema-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/operator-doctor-contract.php",
     "tests/remote-execution/operator-grants-convergence-smoke.php",
     "tests/remote-execution/operator-grant-rollout-smoke.php",
     "tests/remote-execution/operator-bridge-admission.php",
@@ -117,6 +118,7 @@ def self_test():
     assert command_for("tests/remote-execution/operator-grants-convergence-smoke.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/generation-snapshot-exception-runtime.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/no-input-read-ability-schema-runtime.php")[0] == "php"
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/operator-doctor-contract.php")[0] == "php"
     assert command_for("tests/remote-execution/operator-bridge-admission.php")[0] == "php"
     for path in ("README.md", "../secrets.py", "tests/does-not-exist.py"):
         try:
