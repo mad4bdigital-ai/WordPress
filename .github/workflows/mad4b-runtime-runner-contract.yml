@@ -1,0 +1,36 @@
+name: MAD4B Runtime Runner Contract
+on:
+  push:
+    branches:
+      - 'fix/postmerge-mcp-live-invocation-diagnostics-*'
+  pull_request:
+    paths:
+      - 'tools/runtime-runner-*.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-runner-bridge.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-runner-bridge-contract.php'
+      - 'tests/runtime_runner_*'
+      - '.github/workflows/mad4b-runtime-runner-contract.yml'
+permissions:
+  contents: read
+jobs:
+  signed-diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install bounded runtime dependency
+        run: python -m pip install 'cryptography>=41,<47'
+      - name: PHP bridge and worker unit contracts
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-runner-bridge.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/runtime-runner-bridge-contract.php
+          python tests/runtime_runner_worker_contract.py
+      - name: Signed real Docker receipt, Gateway and replay
+        run: |
+          set -euo pipefail
+          python tests/runtime_runner_gateway_contract.py
+          bash tests/runtime_runner_crosslang.sh
