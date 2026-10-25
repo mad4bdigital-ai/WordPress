@@ -60,6 +60,9 @@ jobs:
           python3 "$root/tests/mcp-live-authenticated-gate-contract.py"
           php -l "$root/includes/class-mad4b-scp-mcp-transport-admission.php"
           php "$root/tests/mcp-origin-error-preservation-runtime.php"
+          php -l "$root/tools/staging-mcp-skills-recertify.php"
+          php -l "$root/tests/staging-mcp-skills-recertify-contract.php"
+          php "$root/tests/staging-mcp-skills-recertify-contract.php"
 
       - name: Capture endpoint and REST index without writes
         shell: bash
