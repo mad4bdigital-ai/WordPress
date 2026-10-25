@@ -159,4 +159,4 @@ foreach ( array(
 	$check( false === strpos( $source, $forbidden ), 'Doctor contains forbidden mutation primitive: ' . $forbidden );
 }
 
-echo "mad4b.operator-doctor.v1: PASS\n";
+echo "PASS: mad4b.operator-doctor.v1\n";
