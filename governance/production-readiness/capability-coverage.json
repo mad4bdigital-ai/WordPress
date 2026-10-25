@@ -7701,7 +7701,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-host-capabilities.php",
-      "source_blob_sha": "5ebcf93830e159389c6e0425664857eb2aefa4c6",
+      "source_blob_sha": "7ec60a73a59815804ec292f3f9fb0130b7073b15",
       "control_ids": [
         "SECURITY-01",
         "GOVERNANCE-01",
@@ -7715,6 +7715,23 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Discover configuration of two external Developer runner candidates without exposing identities or enabling remote execution; all remote attestation and authority remain false until implemented and certified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "63ec008d889b49412b7618146eb81ba6105585b7",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/developer-external-backend-discovery-contract.php"
+      ],
+      "owner_role": "Repository reviewer — non-authorizing plugin lifecycle registration",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Schedule a bounded and non-authorizing runner-availability observation only when explicitly configured on Staging and an administrator visits; no hot-path network fetch or new execution authority."
     }
   ],
   "code_change_rules": {
