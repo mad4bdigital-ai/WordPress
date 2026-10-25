@@ -7698,6 +7698,23 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Retain a bounded first-party response code when reporting generic HTTP 503 in Staging. Never retain arbitrary messages or payloads. This improves attribution but does not prove the ChatGPT connector runtime is healthy."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-host-capabilities.php",
+      "source_blob_sha": "5ebcf93830e159389c6e0425664857eb2aefa4c6",
+      "control_ids": [
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/developer-external-backend-discovery-contract.php"
+      ],
+      "owner_role": "Repository reviewer; non-authorizing backend discovery only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Discover configuration of two external Developer runner candidates without exposing identities or enabling remote execution; all remote attestation and authority remain false until implemented and certified."
     }
   ],
   "code_change_rules": {
