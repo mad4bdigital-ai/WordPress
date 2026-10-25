@@ -73,3 +73,5 @@ final class MAD4B_Pricing_Quote_Dispatch {
   return ['registry_contract'=>MAD4B_Pricing_Source_Registry::CONTRACT,'source'=>$source,'domain'=>$handler['domain'],'quote'=>$result,'mutation_performed'=>false,'checkout_authorized'=>false];
  }
 }
+
+require_once __DIR__.'/includes/source-arbitration.php';
