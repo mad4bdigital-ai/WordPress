@@ -54,6 +54,9 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-wpml-response-contract.php"
           php -l "$root/tests/wpml-response-contract-runtime.php"
           php "$root/tests/wpml-response-contract-runtime.php"
+          php -l "$root/includes/class-mad4b-scp-oauth-resource-bridge.php"
+          php -l "$root/tests/oauth-secondary-diagnostic-exception-runtime.php"
+          php "$root/tests/oauth-secondary-diagnostic-exception-runtime.php"
 
       - name: Capture endpoint and REST index without writes
         shell: bash
