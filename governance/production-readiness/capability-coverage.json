@@ -7627,6 +7627,40 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "MCP adapter 0.7.0 requires object-root tool input schemas; this exact code change uses type object with an empty-array default, allowing both legacy null and empty object normalization through the official WordPress Abilities API without schema wrapping. Same-PR hermetic PHP test verifies ten registration and dispatch cases."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "ad5c239968cf6c2991c40a2d6040d23d462074db",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "MCP-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/operator-doctor-contract.php"
+      ],
+      "owner_role": "Repository source/security reviewer — CI coverage only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Feature 007 diagnostics are mounted only when the associated first-party read-only Abilities are registered; no mutation surface or privilege expansion. Same-PR contract asserts read-plane gate and registration requirement."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+      "source_blob_sha": "2ee30e4485da4e26341699eef6505d4822ee84a8",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/no-input-read-ability-schema-runtime.php"
+      ],
+      "owner_role": "Repository source/security reviewer — CI coverage only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Only compacted equivalent registration and dispatcher schema helpers to keep legacy facade within its existing maintainability budget. Regression tests retain null/empty object compatibility without widening write authority."
     }
   ],
   "code_change_rules": {
