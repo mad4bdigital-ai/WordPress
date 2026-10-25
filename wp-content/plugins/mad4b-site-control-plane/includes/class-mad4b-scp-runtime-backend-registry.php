@@ -18,6 +18,32 @@ final class MAD4B_SCP_Runtime_Backend_Registry {
  public static function default_preset($name) {
   return self::PRESETS[$name] ?? self::PRESETS['shared_hosting'];
  }
+ public static function normalize_preset($items) {
+  if(!is_array($items)||count($items)>count(self::TYPES))return null;
+  $out=array();
+  foreach($items as $value) {
+   if(!is_string($value)||!in_array($value,self::TYPES,true)||in_array($value,$out,true)) return null;
+   $out[]=$value;
+  }
+  return $out ?: null;
+ }
+ public static function effective_preset($name) {
+  $default=self::default_preset($name);
+  if(!function_exists('get_option'))return $default;
+  $custom=get_option('mad4b_runtime_backend_preset_custom_'.$name,null);
+  return self::normalize_preset($custom)??$default;
+ }
+ public static function save_preset($name,$types,$reset=false) {
+  if(!function_exists('current_user_can')||!current_user_can('manage_options')||!function_exists('update_option'))return false;
+  if(!isset(self::PRESETS[$name]))return false;
+  if($reset) {
+   if(!function_exists('delete_option'))return false;
+   return delete_option('mad4b_runtime_backend_preset_custom_'.$name);
+  }
+  $valid=self::normalize_preset($types);
+  if($valid===null)return false;
+  return update_option('mad4b_runtime_backend_preset_custom_'.$name,$valid,false);
+ }
  public static function sanitize_candidates($candidates) {
   $out=array();
   if (!is_array($candidates)) return $out;
@@ -53,7 +79,7 @@ final class MAD4B_SCP_Runtime_Backend_Registry {
  }
  public static function select($candidates,$operation,$preset='shared_hosting',$now=null) {
   $rows=self::sanitize_candidates($candidates);
-  $order=self::default_preset($preset);
+  $order=self::effective_preset($preset);
   $matching=array();
   foreach($rows as $id=>$row) if(self::ready($row,$operation,$now)) {
    $rank=array_search($row['type'],$order,true);
