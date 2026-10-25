@@ -46,6 +46,9 @@ final class MAD4B_SCP_Developer_Host_Capabilities {
 		sort( $no_network_blockers, SORT_STRING );
 		sort( $lint_blockers, SORT_STRING );
 
+		// External backends are discovered as candidates only. Neither a configured
+		// endpoint nor SSH availability is execution certification.
+		$external = self::external_backends();
 		$fingerprint_payload = array(
 			'proc_open_available' => $proc_open,
 			'wp_cli_available' => '' !== $wp,
@@ -76,6 +79,9 @@ final class MAD4B_SCP_Developer_Host_Capabilities {
 			'network_isolation_backend_certified' => $certified_network_backend,
 			'non_root_verified' => null === $root_state ? null : ! $root_state,
 			'php_binary_available' => $php_binary,
+			'external_backends' => $external,
+			'available_execution_backends' => array_values( array_merge( array( 'local_host' ), array_keys( array_filter( $external, static function ( $row ) { return ! empty( $row['configured'] ); } ) ) ) ),
+			'external_execution_certified' => false,
 			'process_backend_ready' => empty( $process_blockers ),
 			'process_backend_blockers' => $process_blockers,
 			'normal_no_network_execution_ready' => empty( $no_network_blockers ),
@@ -84,6 +90,34 @@ final class MAD4B_SCP_Developer_Host_Capabilities {
 			'workspace_php_lint_blockers' => $lint_blockers,
 			'capability_fingerprint' => hash( 'sha256', is_string( $encoded ) ? $encoded : '' ),
 		);
+	}
+
+	/**
+	 * Report explicitly configured remote backend candidates without claiming
+	 * transport reachability or execution authority. Never expose credentials,
+	 * paths, tokens, usernames or hosts to an MCP status response.
+	 */
+	public static function external_backends() {
+		$definitions = array(
+			'isolated_vps_runner' => 'MAD4B_MCP_DEVELOPER_VPS_RUNNER_ID',
+			'ssh_host_runner' => 'MAD4B_MCP_DEVELOPER_SSH_RUNNER_ID',
+		);
+		$results = array();
+		foreach ( $definitions as $backend => $constant ) {
+			$configured = defined( $constant ) && is_string( constant( $constant ) )
+				&& 1 === preg_match( '/^[a-zA-Z0-9._:-]{8,128}$/D', constant( $constant ) );
+			$results[ $backend ] = array(
+				'configured' => (bool) $configured,
+				'discovered' => (bool) $configured,
+				'identity_verified' => false,
+				'isolation_verified' => false,
+				'capability_attested' => false,
+				'execution_certified' => false,
+				'execution_allowed' => false,
+				'next_action' => $configured ? 'verify_runner_identity_isolation_and_signed_capability_attestation' : 'configure_reviewed_runner_identity',
+			);
+		}
+		return $results;
 	}
 
 	public static function wp_cli_binary() {
