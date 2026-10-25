@@ -220,7 +220,8 @@ final class MAD4B_SCP_Season_Calendar {
  }
  public static function boot(){
   if(self::$booted)return;self::$booted=true;
-  add_action('admin_menu',[__CLASS__,'admin_menu'],93);
+  MAD4B_SCP_Admin_Route_Registry::schedule_submenu([__CLASS__,'admin_menu'],93);
+  MAD4B_SCP_Admin_Route_Registry::register('mad4b-season-calendar','manage_options');
   add_action('mad4b_scp_season_calendar_sync',[__CLASS__,'run_scheduled_sync']);
   add_action('admin_post_mad4b_season_calendar_fetch',[__CLASS__,'fetch_action']);
   add_action('admin_post_mad4b_season_calendar_approve',[__CLASS__,'approve_action']);

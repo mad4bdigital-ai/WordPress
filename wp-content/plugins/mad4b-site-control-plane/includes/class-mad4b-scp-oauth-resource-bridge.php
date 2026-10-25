@@ -644,13 +644,25 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			self::reset_verified_bearer_context( true );
 			return $result;
 		}
+		$authorization = method_exists( $request, 'get_header' ) ? trim( (string) $request->get_header( 'authorization' ) ) : '';
+		// WordPress REST authenticates the first-party cookie and X-WP-Nonce
+		// before rest_pre_dispatch. Preserve that verified user BEFORE the
+		// passwordless fallback clears request-local OAuth identity. An
+		// explicitly supplied Authorization header must NEVER fall back to
+		// cookie credentials if the bearer/Passwordless claim is invalid.
+		$nonce = method_exists( $request, 'get_header' ) ? (string) $request->get_header( 'x-wp-nonce' ) : '';
+		if ( '' === $authorization && '' !== $nonce
+			&& is_user_logged_in() && current_user_can( 'manage_options' )
+			&& wp_verify_nonce( $nonce, 'wp_rest' ) ) {
+			self::reset_verified_bearer_context( false );
+			return $result;
+		}
 		if ( class_exists( 'MAD4B_SCP_Passwordless_Connection' ) ) {
-			// Clear the previous OAuth identity BEFORE binding the independently verified
-			// local Passwordless user; clearing afterwards loses WordPress capabilities.
+			// Clear stale OAuth identity before an independently verified local
+			// Passwordless claim; invalid claims cannot restore cookie authority.
 			self::reset_verified_bearer_context( true );
 			if ( MAD4B_SCP_Passwordless_Connection::verify_mcp( $request ) ) return $result;
 		}
-		$authorization = method_exists( $request, 'get_header' ) ? trim( (string) $request->get_header( 'authorization' ) ) : '';
 		if ( '' === $authorization ) {
 			self::reset_verified_bearer_context( false );
 			if ( is_user_logged_in() && current_user_can( 'manage_options' ) ) return $result;

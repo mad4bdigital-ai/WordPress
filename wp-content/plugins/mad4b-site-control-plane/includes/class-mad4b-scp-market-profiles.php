@@ -157,7 +157,8 @@ final class MAD4B_SCP_Market_Profiles {
  public static function boot(){
   if(self::$booted)return;self::$booted=true;
   add_action('wp_abilities_api_init',[__CLASS__,'register_ability'],9);
-  add_action('admin_menu',[__CLASS__,'admin_menu'],92);
+  MAD4B_SCP_Admin_Route_Registry::schedule_submenu([__CLASS__,'admin_menu'],92);
+  MAD4B_SCP_Admin_Route_Registry::register('mad4b-market-profiles','manage_options');
   add_action('admin_post_mad4b_market_draft',[__CLASS__,'save_action']);
   add_action('admin_post_mad4b_market_approve',[__CLASS__,'approve_action']);
  }

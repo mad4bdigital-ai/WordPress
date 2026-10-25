@@ -84,6 +84,11 @@ $v=MAD4B_SCP_AI_Review_Worker::parse_verdict(str_replace('0.95','0.55',$raw),$e)
 ok('reject_low_confidence_approval',is_wp_error($v));
 $v=MAD4B_SCP_AI_Review_Worker::parse_verdict(str_replace('approve','publish',$raw),$e);
 ok('reject_publication_decision',is_wp_error($v));
+$v=MAD4B_SCP_AI_Review_Worker::parse_verdict('[]',$e);
+ok('reject_json_array_without_php81_helper',is_wp_error($v));
+$v=MAD4B_SCP_AI_Review_Worker::parse_verdict('{}',$e);
+ok('reject_empty_verdict_object',is_wp_error($v));
+
 $old="ETG BRAND STRATEGY\nSource: catalog\nEvidence: verified\nSafe editorial context is sufficient for a review. ".str_repeat('This content is sourced and bounded. ',18);
 $next=str_replace('Safe editorial context','Revised editorial context',$old);
 $v=MAD4B_SCP_AI_Source_Repair::validate_revision($old,$next,'text/plain');

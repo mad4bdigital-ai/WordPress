@@ -38,7 +38,7 @@ final class MAD4B_SCP_AI_Review_Worker {
             $raw=preg_replace('/\s*\x60{3}\s*$/','',$raw);
         }
         $v=json_decode($raw,true);
-        if(!is_array($v) || array_is_list($v))return new WP_Error('mad4b_ai_verdict_json_invalid','Exact JSON object required.');
+        if(!is_array($v) || (array_keys($v)===range(0,count($v)-1)))return new WP_Error('mad4b_ai_verdict_json_invalid','Exact JSON object required.');
         $allowed=array('decision','confidence','review_note','evidence_lines','revised_text');
         if(array_diff(array_keys($v),$allowed))
             return new WP_Error('mad4b_ai_verdict_fields_denied','Unknown verdict fields.');

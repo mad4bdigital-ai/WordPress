@@ -1898,6 +1898,26 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing scheduling, environmental isolation and bounded scanning controls apply; no new scheduler permissions or mandatory status checks.",
       "review_rationale": "WordPress hourly cleanup limited to stale .part files under exact owned temporary root, maximum 200 scanned per run; disabled in Production and when global write kill switch is active, with negative hermetic fixtures."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-domain-executors.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "AI-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-domain-executors-runtime.php"
+      ],
+      "owner_role": "MAD4B repository security reviewer; CI-only review does not enroll executor or approve Production",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing immutable source/owner review, execution, approval and platform controls cover this code-gated local-only non-publishing executor bridge. No new Production ability or broad credential is added.",
+      "review_rationale": "Reviewed original-owner adapter must be explicitly locally deployed with a precise code SHA pin, original source item hash and revision, and durable independent decision receipt; protected grant/mutation domains cannot register, with negative test evidence."
     }
   ],
   "lifecycle": [],
@@ -7158,6 +7178,168 @@
       ],
       "owner_role": "MAD4B repository source reviewer — CI-only, not a site or Production owner",
       "review_rationale": "CI-only exact-source review: enable Excel XLSX/XLSM and CSV in governed WordPress Media MIME inventory, normalize OOXML workbook via bounded read-only ZIP/XML parser with worksheet names, cell coordinates, shared/inline strings and cached-only formulas, and fail closed for malformed/missing data, oversized spreadsheets and legacy XLS without a certified parser. Tests execute the real PHP implementation with multi-sheet numeric fixtures, sheet-name and sparse-column preservation, malformed workbook, formula-cache denial, CSV, and XLSM without macro execution. Local Lab attachment readback verified. No new Context approvals, source ownership migration or Production authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-domain-executors.php",
+      "source_blob_sha": "8fe752245eb04038870042df3e94e3db56c084d4",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-domain-executors-runtime.php"
+      ],
+      "owner_role": "MAD4B repository source security reviewer; CI evidence only, not the site or Production owner",
+      "review_rationale": "Exact source-pinned original-owner execution requires current source hash, owner revision and durable approved receipt; unauthorized and protected domains fail closed in the reviewed local-only workflow.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-model-router.php",
+      "source_blob_sha": "909cac67b174f48b849336ccd5c64ccf9b351ae4",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "AI-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-model-routing-worker-runtime.php"
+      ],
+      "owner_role": "MAD4B repository source security reviewer; CI evidence only, not the site or Production owner",
+      "review_rationale": "Model routing uses WordPress Core connector custody, guarded inference, and existing owner review; current change only provides an administrative read-only domain closure dashboard.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-review-worker.php",
+      "source_blob_sha": "1fd7eead320614f21347aa2d743941a11c0af9ad",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "AI-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-domain-executors-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-model-routing-worker-runtime.php"
+      ],
+      "owner_role": "MAD4B repository source security reviewer; CI evidence only, not the site or Production owner",
+      "review_rationale": "Worker respects original Brand Context authentication, rotates only exact registered content-owner adapters, verifies independent review receipts, and avoids publishing or broad governance approval. PHP 7.4 JSON validation is tested.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php",
+      "source_blob_sha": "0dd956e8815a7f676ed528fce9ebb9cfec7928ee",
+      "control_ids": [
+        "PLATFORM-01",
+        "GOVERNANCE-01",
+        "AI-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-settings-persistence-contract.py"
+      ],
+      "owner_role": "MAD4B repository source security reviewer; CI evidence only, not the site or Production owner",
+      "review_rationale": "AI-only review remains supported with explicit admin confirmation, original Agent binding and exact registry readback; corrected mode error text and a version-aware persistence guard do not expand approval grants.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-market-profiles.php",
+      "source_blob_sha": "7f7b4a63712f883fcf6326cadaf175bbb6c3f35d",
+      "control_ids": [
+        "PLATFORM-01",
+        "ADMIN-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py"
+      ],
+      "owner_role": "MAD4B repository source security reviewer; CI evidence only, not the site or Production owner",
+      "review_rationale": "Market Profiles admin submenu is declared through the shared permission and parent-order registry instead of an independent admin_menu hook; no country-language entitlement or approval changes.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-season-calendar.php",
+      "source_blob_sha": "ed9da6be7fcd8426ccdc06742d91f0c5ef7f490b",
+      "control_ids": [
+        "PLATFORM-01",
+        "ADMIN-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py"
+      ],
+      "owner_role": "MAD4B repository source security reviewer; CI evidence only, not the site or Production owner",
+      "review_rationale": "Season Calendar admin submenu uses the same manage_options registry and ordered parent schedule; original season taxonomy data, field authority and calendar operations remain unchanged.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-source-hub.php",
+      "source_blob_sha": "65c4c54961bdf35b45a212fc4b5197d9279bb80b",
+      "control_ids": [
+        "PLATFORM-01",
+        "ADMIN-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py"
+      ],
+      "owner_role": "MAD4B repository source security reviewer; CI evidence only, not the site or Production owner",
+      "review_rationale": "Source Hub admin submenu uses the original shared manage_options route registry; provider secrets, source trust checks and external connector permissions remain independently enforced.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-resource-bridge.php",
+      "source_blob_sha": "3434ea73f7747dafcda3e5ba5d7185fe301cfbc7",
+      "control_ids": [
+        "PLATFORM-01",
+        "OAUTH-01",
+        "SECURITY-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-gateway-cookie-http.php"
+      ],
+      "owner_role": "MAD4B repository source security reviewer; CI evidence only, not the site or Production owner",
+      "review_rationale": "Before Passwordless clears stale OAuth identity, the native WordPress cookie is preserved only for admin requests with a valid wp_rest nonce and no Authorization header. Nonces and invalid-bearer fallback are negatively tested; no bearer or WordPress capability grants are created.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "a69c483585a4289670f26bf1cd3d9c7d7d1c34fa",
+      "control_ids": [
+        "PLATFORM-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-domain-executors-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py"
+      ],
+      "owner_role": "MAD4B repository source security reviewer; CI evidence only, not the site or Production owner",
+      "review_rationale": "Bootstrap includes the reviewed AI Domain Executor registry after original worker initialization, with Local-only runtime fences and no new Production grants. Preserves existing startup profile, route behavior and controlled plugin lifecycle.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true

@@ -75,6 +75,7 @@ $GLOBALS['env']='local';
 check('exact_pinned_content_adapter_admitted',MAD4B_SCP_AI_Domain_Executors::register('content_job',new MockContentOwner())===true);
 check('duplicate_adapter_denied',is_wp_error(MAD4B_SCP_AI_Domain_Executors::register('content_job',new MockContentOwner())));
 $prop=new ReflectionProperty('MAD4B_SCP_AI_Domain_Executors','certifications');
+$prop->setAccessible(true); // PHP 7.4 requires explicit reflective access to a private static property.
 $proof=$prop->getValue();$valid_proof=$proof['content_job'];
 $proof['content_job']['sha256']=str_repeat('0',64);
 $prop->setValue(null,$proof);

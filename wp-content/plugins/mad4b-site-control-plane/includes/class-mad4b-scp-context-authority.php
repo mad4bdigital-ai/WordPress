@@ -216,7 +216,7 @@ final class MAD4B_SCP_Context_Authority {
 	public static function set_review_policy( $mode, $agent_public_id = '', $confirmed = false ) {
 		$mode = sanitize_key( (string) $mode );
 		$agent_public_id = strtolower( trim( sanitize_text_field( (string) $agent_public_id ) ) );
-		if ( ! in_array( $mode, array( 'human_only', 'human_and_ai', 'ai_only' ), true ) ) return new WP_Error( 'mad4b_context_review_mode_invalid', 'Context review mode must be human_only or human_and_ai.' );
+		if ( ! in_array( $mode, array( 'human_only', 'human_and_ai', 'ai_only' ), true ) ) return new WP_Error( 'mad4b_context_review_mode_invalid', 'Context review mode must be human_only, human_and_ai or ai_only.' );
 		if ( 'human_only' === $mode ) $agent_public_id = '';
 
 		// Persisted state is authoritative. A reload must not force the operator to

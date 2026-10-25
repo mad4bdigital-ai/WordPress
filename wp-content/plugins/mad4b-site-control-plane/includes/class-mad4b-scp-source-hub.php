@@ -245,7 +245,8 @@ final class MAD4B_SCP_Source_Hub {
  }
  public static function boot(){
   if(self::$booted)return;self::$booted=true;
-  add_action('admin_menu',[__CLASS__,'menu'],75);
+  MAD4B_SCP_Admin_Route_Registry::schedule_submenu([__CLASS__,'menu'],75);
+  MAD4B_SCP_Admin_Route_Registry::register('mad4b-source-hub','manage_options');
   add_action('wp_abilities_api_init',[__CLASS__,'register_ability'],9);
   add_action('mad4b_scp_source_hub_import',[__CLASS__,'poll_ingest']);
   add_action('admin_post_mad4b_source_hub_save',[__CLASS__,'save_action']);
