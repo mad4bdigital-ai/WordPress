@@ -126,6 +126,18 @@ if ( ! ( defined( 'MAD4B_SCP_FORCE_FULL_BOOT' ) && true === constant( 'MAD4B_SCP
                  && in_array($mad4b_scp_early_rest_path,array(
                     '/mad4b-local-ai/v1/context-review',
                     '/mad4b-local-ai/v1/domain-review'),true) );
+		// Unified Approval is a Local-only, source-bound MAD4B-owned REST surface.
+		if ( function_exists('wp_get_environment_type') && 'local' === wp_get_environment_type()
+		     && in_array( $mad4b_scp_early_rest_path, array(
+		         '/mad4b-unified/v1/policy',
+		         '/mad4b-unified/v1/gates/plan',
+		         '/mad4b-unified/v1/reviews/open',
+		         '/mad4b-unified/v1/reviews/ai',
+		         '/mad4b-unified/v1/reviews/read',
+		         '/mad4b-unified/v1/browser/plan',
+		         '/mad4b-unified/v1/queue/gate',
+		         '/mad4b-unified/v1/extensions',
+		     ), true ) ) $mad4b_scp_early_owned = true;
 		if ( ! $mad4b_scp_early_owned ) $mad4b_scp_early_zero_touch_reason = 'foreign_rest';
 	} elseif ( defined( 'DOING_AJAX' ) && DOING_AJAX ) {
 		$mad4b_scp_early_action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( (string) $_REQUEST['action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
