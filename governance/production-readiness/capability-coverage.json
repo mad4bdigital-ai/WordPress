@@ -8015,6 +8015,25 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "New MCP read-only status reports bounded request metrics and Query Monitor availability; no plugin exclusion, shell, SQL mutation, production authorization or fabricated differential measurements."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-acceptance-observer.php",
+      "source_blob_sha": "ee7f0689ce8dd75b1ef6a9855dc3985fd3b490b1",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "GOVERNANCE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/performance-differential-diagnostic-contract.php"
+      ],
+      "owner_role": "Repository source reviewer — bounded MCP diagnostics",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "The differential diagnostic catches Query Monitor attribution exceptions without disclosing exception data or altering execution authority. The matching regression tests fail-closed behavior and denies invented comparisons."
     }
   ],
   "code_change_rules": {
