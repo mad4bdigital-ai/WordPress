@@ -22,6 +22,21 @@ FILES = (
     'class-mad4b-scp-unified-approval-queue-bridge.php',
 )
 ANCHOR = "require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-ai-only-local-activation.php';"
+EARLY_GATE_ANCHOR = "\t\tif ( ! $mad4b_scp_early_owned ) $mad4b_scp_early_zero_touch_reason = 'foreign_rest';"
+# Exact Local REST allowlist: preserve rc.102's foreign-REST zero-touch path.
+EARLY_GATE = """\t\t// Unified Approval is a Local-only, source-bound MAD4B-owned REST surface.
+\t\tif ( function_exists('wp_get_environment_type') && 'local' === wp_get_environment_type()
+\t\t     && in_array( $mad4b_scp_early_rest_path, array(
+\t\t         '/mad4b-unified/v1/policy',
+\t\t         '/mad4b-unified/v1/gates/plan',
+\t\t         '/mad4b-unified/v1/reviews/open',
+\t\t         '/mad4b-unified/v1/reviews/ai',
+\t\t         '/mad4b-unified/v1/reviews/read',
+\t\t         '/mad4b-unified/v1/browser/plan',
+\t\t         '/mad4b-unified/v1/queue/gate',
+\t\t         '/mad4b-unified/v1/extensions',
+\t\t     ), true ) ) $mad4b_scp_early_owned = true;
+"""
 TAG = '// MAD4B core: Unified Approval & Agent Authorization (review-only, local pilot).'
 BOOTSTRAP = TAG + '\n' + '\n'.join(
     f"require_once MAD4B_SCP_DIR . 'includes/{name}';" for name in FILES
@@ -50,11 +65,14 @@ def main():
         raise SystemExit('BLOCK: expected exactly one canonical AI activation anchor, found '+str(count))
     if TAG in bootstrap:
         raise SystemExit('BLOCK: already integrated; reconcile existing Core manually')
+    if bootstrap.count(EARLY_GATE_ANCHOR)!=1:
+        raise SystemExit('BLOCK: missing rc.102 exact early-REST fastpath gate')
     src=Path(__file__).resolve().parent.parent/'includes'
     for name in FILES:
         if not (src/name).is_file(): raise SystemExit('BLOCK: package missing '+name)
         if (base/'includes'/name).exists(): raise SystemExit('BLOCK: destination file already exists: '+name)
     newbootstrap=bootstrap.replace(ANCHOR,ANCHOR+'\n'+BOOTSTRAP,1)
+    newbootstrap=newbootstrap.replace(EARLY_GATE_ANCHOR,EARLY_GATE+EARLY_GATE_ANCHOR,1)
     print('MAD4B Core merge target:',base)
     print('Exact bootstrap anchor verified; includes to install:',len(FILES))
     print('Old bootstrap SHA256:',digest(mainfile))
@@ -73,6 +91,8 @@ def main():
     timestamp=datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
     backup=base.parent/('mad4b-unified-core-merge-backup-'+timestamp)
     backup.mkdir(mode=0o700)
+    original_bootstrap_stat=mainfile.stat()
+    original_include_stat=(base/'includes'/'class-mad4b-scp-context-authority.php').stat()
     shutil.copy2(mainfile,backup/mainfile.name)
     copied=[]
     try:
@@ -80,13 +100,21 @@ def main():
             destination=base/'includes'/name
             shutil.copy2(src/name,destination)
             copied.append(destination)
+            os.chown(destination,original_include_stat.st_uid,original_include_stat.st_gid)
+            destination.chmod(original_include_stat.st_mode & 0o777)
         temp=base/(mainfile.name+'.tmp-unified-approval')
         temp.write_text(newbootstrap,encoding='utf-8')
-        temp.chmod(mainfile.stat().st_mode & 0o777)
+        os.chown(temp,original_bootstrap_stat.st_uid,original_bootstrap_stat.st_gid)
+        temp.chmod(original_bootstrap_stat.st_mode & 0o777)
         os.replace(temp,mainfile)
+        if mainfile.stat().st_gid != original_bootstrap_stat.st_gid:
+            raise OSError('Core bootstrap group ownership changed during replacement')
     except BaseException:
         for path in copied:path.unlink(missing_ok=True)
+        if 'temp' in locals(): temp.unlink(missing_ok=True)
         shutil.copy2(backup/mainfile.name,mainfile)
+        os.chown(mainfile,original_bootstrap_stat.st_uid,original_bootstrap_stat.st_gid)
+        mainfile.chmod(original_bootstrap_stat.st_mode & 0o777)
         raise
     print('Installed in Local Core. Rollback bootstrap backup:',backup)
     print('Back out by restoring bootstrap and removing only these exact seven new files.')
