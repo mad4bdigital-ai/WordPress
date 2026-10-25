@@ -19,6 +19,7 @@ function sanitize_text_field($str){return trim((string)$str);}
 function sanitize_key($str){return preg_replace('/[^a-z0-9_\\-]/','',strtolower((string)$str));}
 function wp_salt($mode='auth'){return 'mock-canonical-test-secret';}
 function get_post_type($id){return [7=>'tour-rates',8=>'tours-and-activities',9=>'properties',10=>'transportations',11=>'product'][ $id ]??null;}
+function shared_product_allowed_optional_tour_ids($id){return $id===7?[8]:[];}
 function shared_product_booking_configuration_matches($saved) {
  if(($saved['status']??'')!=='server_validated'||($saved['rate_id']??0)!==7)return new WP_Error('not_verified');
  return $saved;

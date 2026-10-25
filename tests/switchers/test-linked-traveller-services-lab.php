@@ -8,7 +8,7 @@ $quote=shared_product_booking_configuration_quote(66139,'general','double',['qua
 if(is_wp_error($quote))exit(21);
 $base=['key'=>'booking-main','product_id'=>66139,'variation_id'=>0,'variation'=>[],'quantity'=>1,'data'=>wc_get_product(66139),'shared_booking_configuration'=>$quote,
  'etg_traveller_nationalities'=>['EG','SA','US']];
-$extra=['key'=>'activity-linked','product_id'=>66133,'variation_id'=>0,'variation'=>[],'quantity'=>1,'data'=>wc_get_product(66133)];
+$extra=['key'=>'activity-linked','product_id'=>66134,'variation_id'=>0,'variation'=>[],'quantity'=>1,'data'=>wc_get_product(66134)];
 $cart=new WC_Cart();$cart->set_cart_contents(['booking-main'=>$base,'activity-linked'=>$extra]);
 $old=WC()->cart;WC()->cart=$cart;
 $link=static fn($value)=>[['contract'=>$tm::CONTRACT,'authority'=>'server_verified','booking_key'=>'booking-main','service_key'=>'activity-linked','traveller_indices'=>[0,2]]];
@@ -44,7 +44,7 @@ try{
  $json=json_decode(wp_json_encode($response->get_data()),true);
  $byId=[];foreach($json['items']??[] as $item)$byId[$item['id']]=$item;
  $ns=$blocks::NAMESPACE_ID;
- $assert('STORE_API_LINKED_EXTRA_NO_SECOND_FORM',($byId[66133]['extensions'][$ns]['bookable']??true)===false);
+ $assert('STORE_API_LINKED_EXTRA_NO_SECOND_FORM',($byId[66134]['extensions'][$ns]['bookable']??true)===false);
  $assert('STORE_API_MAIN_REQUIRES_THREE',($byId[66139]['extensions'][$ns]['travellers']??0)===3);
  $assert('ORDER_NEVER_SAVED',$order->get_id()===0);
 } finally {

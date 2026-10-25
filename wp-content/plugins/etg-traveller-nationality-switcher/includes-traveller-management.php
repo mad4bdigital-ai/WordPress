@@ -144,7 +144,21 @@ final class ETG_Traveller_Management {
    if(!$parent_preset['fields']['inherit'])continue;
    $service_product=(int)$inputs[$service]['product_id'];
    if($service_product<1 || !get_post_type($service_product))continue;
-   $indices=$link['traveller_indices']??null;$root=$roots[$parent];
+   $root=$roots[$parent];
+   // A server-set flag alone cannot make an arbitrary item a dependent service.
+   // Verify the existing Tour Rate -> Optional Tour relationship at its source.
+   $relationship=false;
+   if(get_post_type($root['product_id'])==='tour-rates' &&
+      get_post_type($service_product)==='tours-and-activities' &&
+      function_exists('shared_product_allowed_optional_tour_ids')){
+    $allowed=shared_product_allowed_optional_tour_ids($root['product_id']);
+    $relationship=!is_wp_error($allowed)&&is_array($allowed)&&in_array($service_product,$allowed,true);
+   }else{
+    // Accommodation / Transport cross-service providers must prove their relationship.
+    $relationship=apply_filters('etg_traveller_management/certified_relationship',false,$root,$inputs[$service],$link)===true;
+   }
+   if(!$relationship)continue;
+   $indices=$link['traveller_indices']??null;
    if(!is_array($indices)||!array_is_list($indices)||!$indices||count($indices)>$root['count'])continue;
    $normalized=[];$valid=true;
    foreach($indices as $idx){

@@ -44,7 +44,8 @@ try {
  $test('SHADOW_ACCOM_COUNT_NOT_AUTHORIZED',($t::resolve($shadow)['count']??1)===0);
  $fake=$ordinary;$fake['shared_booking_v2']=['quantities'=>['persons'=>4],'status'=>'preview'];
  $test('V2_PREVIEW_COUNT_NOT_AUTHORIZED',($t::resolve($fake)['count']??1)===0);
- $cart=['tour-main'=>$base,'extra-activity'=>$ordinary];
+ $allowedExtra=['product_id'=>66134,'quantity'=>1,'data'=>wc_get_product(66134)];
+ $cart=['tour-main'=>$base,'extra-activity'=>$allowedExtra];
  $registry=$t::registry($cart);
  $test('ONE_ROOT_TRAVELLER_REGISTRY',count($registry['bookings'])===1&&count($registry['bookings']['tour-main']['people'])===3);
  $test('NO_AUTO_LINK_WITHOUT_AUTHORITY',count($registry['linked_services'])===0);
@@ -59,6 +60,11 @@ try {
  $linked=$t::registry($cart)['linked_services']['extra-activity']??[];
  $test('LINKED_EXTRA_SUBSET_TWO_PEOPLE',($linked['count']??0)===2&&count(array_unique($linked['traveller_ids']??[]))===2);
  $test('NO_DUPLICATE_PERSON_RECORDS',count($t::registry($cart)['bookings']['tour-main']['people'])===3);
+ remove_filter('etg_traveller_management/verified_service_links',$hook);
+ $unrelatedCart=$cart;$unrelatedCart['extra-activity']=$ordinary;
+ $hook=static function()use($valid){return [$valid];};
+ add_filter('etg_traveller_management/verified_service_links',$hook);
+ $test('UNRELATED_TOUR_IS_NOT_A_VERIFIED_EXTRA',count($t::registry($unrelatedCart)['linked_services'])===0);
  remove_filter('etg_traveller_management/verified_service_links',$hook);
  $bad=$valid;$bad['traveller_indices']=[0,0];
  $hook=static function()use($bad){return [$bad];};
