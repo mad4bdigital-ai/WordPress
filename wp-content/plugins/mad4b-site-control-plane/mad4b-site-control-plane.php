@@ -421,6 +421,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-functional-gap-evidence.p
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-functional-gap-runtime-diagnostic.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-code-snippets-runtime-diagnostic.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-developer-host-capabilities.php';
+MAD4B_SCP_Developer_Host_Capabilities::discovery_boot();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-developer-runtime.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-developer-workspace.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-transport-registry.php';
