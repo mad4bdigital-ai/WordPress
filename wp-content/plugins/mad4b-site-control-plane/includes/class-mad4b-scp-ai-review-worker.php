@@ -126,8 +126,11 @@ final class MAD4B_SCP_AI_Review_Worker {
     }
     public static function run_once($options=array()) {
         $pre=self::preflight();
+        $domain_inventory=class_exists('MAD4B_SCP_AI_Domain_Executors')
+            ?MAD4B_SCP_AI_Domain_Executors::inventory():null;
         if(!$pre['ready'])return array('contract'=>self::CONTRACT,'status'=>'blocked',
-            'blockers'=>$pre['blockers'],'processed'=>0,'decisions'=>array(),'mutation_performed'=>false);
+            'blockers'=>$pre['blockers'],'processed'=>0,'decisions'=>array(),
+            'domain_closure'=>$domain_inventory,'mutation_performed'=>false);
         if(!is_array($options))$options=array();
         $queue=MAD4B_SCP_AI_Review_Lifecycle::brand_context_inbox();
         if(is_wp_error($queue))return $queue;
@@ -173,12 +176,30 @@ final class MAD4B_SCP_AI_Review_Worker {
             // The next item must use a fresh CAS snapshot after every review.
             break;
         }
+        $domain_cycle=null;
+        // The Brand Context queue stays first; only a certified original
+        // content-domain owner may be considered when no Brand item was
+        // handled and no prior error occurred. Never auto-dispatch protected
+        // configuration or grant mutation domains.
+        if(!$done && !$errors && class_exists('MAD4B_SCP_AI_Domain_Executors')) {
+            $cursor=max(0,(int)get_option('mad4b_scp_ai_domain_cycle_cursor_v1',0));
+            $domain_cycle=MAD4B_SCP_AI_Domain_Executors::cycle($cursor);
+            if(isset($domain_cycle['domain'], $domain_cycle['next_cursor'])
+               && is_int($domain_cycle['next_cursor']))
+                update_option('mad4b_scp_ai_domain_cycle_cursor_v1',$domain_cycle['next_cursor'],false);
+        }
+        $domain_completed=is_array($domain_cycle) &&
+            !empty($domain_cycle['result']['original_owner_receipt_verified']);
         $result=array('contract'=>self::CONTRACT,
-            'status'=>$errors?'needs_attention':($done?'submitted':'idle'),
-            'processed'=>count($done),'decisions'=>$done,'errors'=>$errors,
-            'mutation_performed'=>count($done)>0,'publication_authorized'=>false,
+            'status'=>$errors?'needs_attention':($done?'submitted':($domain_completed?'domain_submitted':'idle')),
+            'processed'=>count($done)+($domain_completed?1:0),
+            'decisions'=>$done,'errors'=>$errors,
+            'mutation_performed'=>count($done)>0||$domain_completed,
+            'publication_authorized'=>false,
             'model_mode'=>MAD4B_SCP_AI_Model_Router::settings()['mode'],
-            'review_authority'=>'original_delegated_agent_endpoint');
+            'review_authority'=>'original_delegated_agent_endpoint',
+            'domain_closure'=>$domain_inventory,'domain_cycle'=>$domain_cycle,
+            'original_domain_review_verified'=>$domain_completed);
         update_option(self::LAST_RESULT,$result,false);
         do_action('mad4b/ai/review_cycle_completed',$result);
         return $result;
@@ -191,6 +212,8 @@ final class MAD4B_SCP_AI_Review_Worker {
         if(!self::rest_permission())return new WP_Error('mad4b_ai_cycle_not_authorized','Enrolled administrator required.',array('status'=>403));
         return strtoupper((string)$request->get_method())==='POST'?self::run_once():array(
             'preflight'=>self::preflight(),'last_result'=>get_option(self::LAST_RESULT,array()),
+            'domain_closure'=>class_exists('MAD4B_SCP_AI_Domain_Executors')
+                ?MAD4B_SCP_AI_Domain_Executors::inventory():null,
             'read_only'=>true,'mutation_performed'=>false);
     }
     public static function register_rest() {

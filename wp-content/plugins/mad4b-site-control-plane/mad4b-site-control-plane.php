@@ -398,6 +398,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-authority.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-ai-review-lifecycle.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-ai-model-router.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-ai-review-worker.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-ai-domain-executors.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-ai-source-repair.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-authority-setup-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-ai-only-local-activation.php';

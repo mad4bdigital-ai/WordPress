@@ -317,6 +317,7 @@ final class MAD4B_SCP_AI_Model_Router {
             echo '<button class="button" type="submit" name="mad4b_gemini_credential_action" value="clear" onclick="return confirm(\'Remove Gemini key stored by WordPress?\')">Clear stored key</button>';
             echo '<p class="description">WordPress database connector keys are masked in the UI, not encrypted. Prefer environment variables for production secrets.</p></form>';
         } else echo '<p>Key is externally managed. This page cannot overwrite it.</p>';
+        if(class_exists('MAD4B_SCP_AI_Domain_Executors'))MAD4B_SCP_AI_Domain_Executors::render_admin();
         echo '</div>';
     }
     public static function boot() {
