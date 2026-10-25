@@ -2044,6 +2044,69 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing sealed prior-grant recovery, OAuth bearer/step-up, exact Staging Site Profile, plan revision and audited rollback-controlled reconciliation policies apply. The coordinator cannot mint identity or bypass grant/Production safety gates.",
       "review_rationale": "New guarded recovery coordinator defaults DEFER, requires authoritative Staging Site Profile, sealed pre-update grant baseline and continuation permit, verified OAuth step-up and eligible exact plan, denies stale grants and invokes the existing audited reconciliation operation only with nonproduction_approved_auto=true. No independent mutation authority is introduced. Static integration contract and actual PHP gate test cover this source for CI-only review."
+    },
+    {
+      "id": "cron:mad4b_developer_runner_refresh",
+      "control_ids": [
+        "MCP-01",
+        "OAUTH-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/developer-runner-lifecycle-fetch-contract.php"
+      ],
+      "owner_role": "Repository source security reviewer — CI coverage only, no operational grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP, OAuth, execution boundary, security and platform readiness controls govern diagnostics and prevent unapproved executor activation.",
+      "review_rationale": "Bounded, asynchronous backend-availability probe respects opt-in HTTPS origin and refresh cooldown; it grants no Developer or write authority."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-backend-registry.php",
+      "control_ids": [
+        "MCP-01",
+        "OAUTH-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-backend-registry-contract.php"
+      ],
+      "owner_role": "Repository source security reviewer — CI coverage only, no operational grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP, OAuth, execution boundary, security and platform readiness controls govern diagnostics and prevent unapproved executor activation.",
+      "review_rationale": "Portable registry only classifies read and execution candidates, requires independent identity and isolation certification, and never dispatches commands or grants access."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-runner-bridge.php",
+      "control_ids": [
+        "MCP-01",
+        "OAUTH-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-runner-bridge-contract.php"
+      ],
+      "owner_role": "Repository source security reviewer — CI coverage only, no operational grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP, OAuth, execution boundary, security and platform readiness controls govern diagnostics and prevent unapproved executor activation.",
+      "review_rationale": "Restricted RSA-signed diagnostic bridge verifies exact enrolled site, request hash and signed receipt, with no Production, Shell, SQL or Developer execution grant."
     }
   ],
   "lifecycle": [],
