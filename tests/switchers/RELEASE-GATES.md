@@ -17,3 +17,5 @@
 - GeoLite2: Woo integration is installed but license key and MMDB are absent. No key was created or copied, and Woo default customer location remains `base`.
 - Guest AJAX response has `Cache-Control: no-cache, must-revalidate, max-age=0, no-store, private` and `X-LiteSpeed-Cache-Control: no-cache` in Local Lab. Real CDN edge isolation still needs Staging acceptance.
 - Existing MAD4B release governance checks, including exact reviewed-source provenance, are not waived by this QA change.
+
+- Real plugin React UI loaded in an isolated Chromium harness (without making the Draft QA page public): five verified nationality selectors plus one unverified booking alert at 1440px/390px, with no JavaScript errors or horizontal overflow. Run manually with `python3 tests/switchers/test-blocks-ui-browser.py`; requires Playwright and mounted Local Lab assets. This does not prove a full checkout payment.
