@@ -2192,6 +2192,46 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing sealed prior-grant recovery, OAuth bearer/step-up, exact Staging Site Profile, plan revision and audited rollback-controlled reconciliation policies apply. The coordinator cannot mint identity or bypass grant/Production safety gates.",
       "review_rationale": "New guarded recovery coordinator defaults DEFER, requires authoritative Staging Site Profile, sealed pre-update grant baseline and continuation permit, verified OAuth step-up and eligible exact plan, denies stale grants and invokes the existing audited reconciliation operation only with nonproduction_approved_auto=true. No independent mutation authority is introduced. Static integration contract and actual PHP gate test cover this source for CI-only review."
+    },
+    {
+      "id": "ability:mad4b/season-public-preview",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/public-holiday-hermetic-runtime.php"
+      ],
+      "owner_role": "Repository automated source/security test review — CI only, not WordPress owner or grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing authenticated read-only MCP/provider controls, Site Profile/Market Profile, core security, source trust and audit controls already cover this bounded calendar preview; no new mutation authority or new Production control is granted.",
+      "review_rationale": "Exact Public Holidays source reviewed with hermetic PHP 7.4 and PHP 8.3 regression: fixes two PHP8-only str_contains usages without changing parse semantics. Original Ability exposes a nonpublic read-only endpoint, requires native MAD4B_SCP_Policy::can_read, strict ISO country, visible site language and bounded year, and uses static provider hosts through wp_safe_remote_get with redirects disabled and 2 MB response cap. Nager entries filter national Public type/country; recurrence and oversized iCalendar fail closed; no season terms, offers, or market approvals are mutated. The 19-case same-PR runtime fixture checks successful parsing, wrong country, hidden locale, year, unknown source, unapproved market, redirect rejection and zero publication. This record does not attest live WordPress/Google HTTP acceptance or owner release approval."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-public-holidays.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01",
+        "PROVIDERS-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/public-holiday-hermetic-runtime.php"
+      ],
+      "owner_role": "Repository automated source/security test review — CI only, not WordPress owner or grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing authenticated read-only MCP/provider controls, Site Profile/Market Profile, core security, source trust and audit controls already cover this bounded calendar preview; no new mutation authority or new Production control is granted.",
+      "review_rationale": "Exact Public Holidays source reviewed with hermetic PHP 7.4 and PHP 8.3 regression: fixes two PHP8-only str_contains usages without changing parse semantics. Original Ability exposes a nonpublic read-only endpoint, requires native MAD4B_SCP_Policy::can_read, strict ISO country, visible site language and bounded year, and uses static provider hosts through wp_safe_remote_get with redirects disabled and 2 MB response cap. Nager entries filter national Public type/country; recurrence and oversized iCalendar fail closed; no season terms, offers, or market approvals are mutated. The 19-case same-PR runtime fixture checks successful parsing, wrong country, hidden locale, year, unknown source, unapproved market, redirect rejection and zero publication. This record does not attest live WordPress/Google HTTP acceptance or owner release approval."
     }
   ],
   "lifecycle": [],
@@ -8548,6 +8588,26 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Exact Git bootstrap successor reviewed against merged master: only 57 additions and one replaced early-REST ownership expression, introducing a fixed Local-only allowlist for native AI and unified review paths, guarded Agent application-password early auth, read-source/season/market includes, and governed original-owner AI review modules. The existing foreign REST fastpath, Site Profile, deny-first Admin Route Registry, OAuth scope, and original release gates remain; environment-local checks prevent staging/production Unified Approval REST registration, while source/market/cron mutations remain independently guarded in their original implementation. The named same-PR negative regressions were executed on hermetic PHP 7.4/8.3 (route allowlist, non-owned REST denial, source-owner CAS, admin manage_options) with Python route and owner wiring tests. This is limited CI source review; WordPress live environment, Feature007 external acceptance, owner approval, and Production promotion are NOT asserted."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-public-holidays.php",
+      "source_blob_sha": "3512a46a635de7a0d57a1fc73e5a8e88ea3c7d77",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/public-holiday-hermetic-runtime.php"
+      ],
+      "owner_role": "Repository automated exact-source security review — CI only, nonauthorizing",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact revised source blob 3512a46a is the reviewed immutable Public Holiday preview implementation. The only code change replaces PHP8-only str_contains with strpos existence checks for PHP 7.4 compatibility, preserving the original fail-closed parser logic. Same-PR 19-case hermetic PHP7.4/8.3 test verifies fixed-provider URL, safe HTTP without redirects, 2 MB response cap, read-only registered Ability and rejected unknown/unapproved sources; neither this review nor the parser promotes an approved market or creates season terms."
     }
   ],
   "code_change_rules": {

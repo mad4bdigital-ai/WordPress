@@ -54,7 +54,7 @@ final class MAD4B_SCP_Public_Holidays {
   return str_replace(['\\n','\\N','\\,','\\;','\\\\'],["\n","\n",',',';','\\'],(string)$text);
  }
  public static function parse_google_ics($body,$year){
-  if(!is_string($body)||strlen($body)>2000000||!str_contains($body,'BEGIN:VCALENDAR'))return new WP_Error('mad4b_public_ics_invalid','Invalid Google iCalendar document.');
+  if(!is_string($body)||strlen($body)>2000000||strpos($body,'BEGIN:VCALENDAR')===false)return new WP_Error('mad4b_public_ics_invalid','Invalid Google iCalendar document.');
   $lines=preg_split('/\\r\\n|\\r|\\n/', $body);
   $unfolded=[];
   foreach($lines as $line){if($line!==''&&($line[0]===' '||$line[0]==="\t")&&$unfolded){$unfolded[count($unfolded)-1].=substr($line,1);}else $unfolded[]=$line;}
@@ -74,7 +74,7 @@ final class MAD4B_SCP_Public_Holidays {
     }
     $current=null;continue;
    }
-   if($current===null||!str_contains($line,':'))continue;
+   if($current===null||strpos($line,':')===false)continue;
    [$key,$value]=explode(':',$line,2);
    $key=strtoupper(explode(';',$key,2)[0]);
    if(in_array($key,['RRULE','RECURRENCE-ID','DTSTART','DTEND','UID','SUMMARY','DESCRIPTION','STATUS'],true))$current[$key]=$value;
