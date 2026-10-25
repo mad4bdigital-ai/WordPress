@@ -15,7 +15,7 @@ cat > "$DIR/request.php" <<'PHP'
 <?php
 define('ABSPATH',__DIR__);
 require __DIR__.'/bridge.php';
-$envelope=MAD4B_SCP_Runtime_Runner_Bridge::prepare('etg-staging-proof',str_repeat('a',64),file_get_contents(__DIR__.'/site-private.pem'));
+$envelope=MAD4B_SCP_Runtime_Runner_Bridge::prepare('staging-site-proof',str_repeat('a',64),file_get_contents(__DIR__.'/site-private.pem'));
 if (!$envelope) exit(2);
 echo json_encode($envelope,JSON_UNESCAPED_SLASHES);
 PHP
@@ -35,13 +35,13 @@ if command -v php >/dev/null 2>&1; then
 else
   docker run --rm --network none --read-only --cap-drop ALL -v "$DIR:/work:ro" -w /work php:8.3-cli php request.php > "$DIR/request.json"
 fi
-python3 "$DIR/worker.py" --site-key "$DIR/site-public.pem" --worker-key "$DIR/worker-private.pem" --nonce-dir "$DIR/nonces" --enrolled-site etg-staging-proof < "$DIR/request.json" > "$DIR/receipt.json"
+python3 "$DIR/worker.py" --site-key "$DIR/site-public.pem" --worker-key "$DIR/worker-private.pem" --nonce-dir "$DIR/nonces" --enrolled-site staging-site-proof < "$DIR/request.json" > "$DIR/receipt.json"
 if command -v php >/dev/null 2>&1; then
   php "$DIR/verify.php"
 else
   docker run --rm --network none --read-only --cap-drop ALL -v "$DIR:/work:ro" -w /work php:8.3-cli php verify.php
 fi
-if python3 "$DIR/worker.py" --site-key "$DIR/site-public.pem" --worker-key "$DIR/worker-private.pem" --nonce-dir "$DIR/nonces" --enrolled-site etg-staging-proof < "$DIR/request.json" >/dev/null 2>&1; then
+if python3 "$DIR/worker.py" --site-key "$DIR/site-public.pem" --worker-key "$DIR/worker-private.pem" --nonce-dir "$DIR/nonces" --enrolled-site staging-site-proof < "$DIR/request.json" >/dev/null 2>&1; then
   echo "FAIL: runner replay was accepted"
   exit 1
 fi
