@@ -63,6 +63,14 @@ REVIEWABLE_TEST_FIXTURES = frozenset({
     "wp-content/plugins/mad4b-site-control-plane/tests/g9-delivery-contract.py",
 })
 FEATURE_007_REVIEWED_BASE = "12199d0e8588dcc89d9e35fd8bac98ad6a1cc18f"
+# The G6 admin-page inventory snapshot was independently bound to the
+# integration's original master. G9 continues using the older Feature 007
+# snapshot, so select this alternate ancestor only when the passed evidence
+# is exactly the SHA/size of the original master admin fixture.
+G6_ADMIN_SMOKE_REVIEWED_BASE = "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504"
+G6_ADMIN_SMOKE_HISTORIC_SHA256 = "dac745b1e9617b76a755f690d918ab46be6924b495058cc62bcc542bde4aeab2"
+G6_ADMIN_SMOKE_HISTORIC_BYTES = 18047
+
 
 
 def is_exact_historical_test_successor(root, path, contents, historic_sha, historic_bytes=None):
@@ -72,8 +80,13 @@ def is_exact_historical_test_successor(root, path, contents, historic_sha, histo
     if not isinstance(historic_sha, str) or not re.fullmatch(r"[a-f0-9]{64}", historic_sha):
         return False
     try:
+        baseline = FEATURE_007_REVIEWED_BASE
+        if (path == "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php"
+            and historic_sha == G6_ADMIN_SMOKE_HISTORIC_SHA256
+            and historic_bytes == G6_ADMIN_SMOKE_HISTORIC_BYTES):
+            baseline = G6_ADMIN_SMOKE_REVIEWED_BASE
         old = subprocess.check_output(
-            ["git", "show", f"{FEATURE_007_REVIEWED_BASE}:{path}"],
+            ["git", "show", f"{baseline}:{path}"],
             cwd=root, stderr=subprocess.DEVNULL, timeout=8
         )
         current_commit = subprocess.check_output(

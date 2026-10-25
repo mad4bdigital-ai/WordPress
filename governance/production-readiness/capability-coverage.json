@@ -8526,6 +8526,28 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Observed MCP tool errors require fail-closed exception containment. The existing OAuth exception wrapper called optional transport rejection telemetry without its own try/catch, allowing a second exception to escape. This change preserves the existing protected-route 503/no-store response even when optional telemetry throws; hermetic same-PR regression executes that scenario. It does not claim authenticated live MCP acceptance or authorize deployment."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "81d1ea8229e1db91fa65742a72b22cf1bb1b55f7",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-approval-ai-first/local-rest-fastpath-contract.php"
+      ],
+      "owner_role": "Repository automated source/security review — CI-only evidence, never owner attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact Git bootstrap successor reviewed against merged master: only 57 additions and one replaced early-REST ownership expression, introducing a fixed Local-only allowlist for native AI and unified review paths, guarded Agent application-password early auth, read-source/season/market includes, and governed original-owner AI review modules. The existing foreign REST fastpath, Site Profile, deny-first Admin Route Registry, OAuth scope, and original release gates remain; environment-local checks prevent staging/production Unified Approval REST registration, while source/market/cron mutations remain independently guarded in their original implementation. The named same-PR negative regressions were executed on hermetic PHP 7.4/8.3 (route allowlist, non-owned REST denial, source-owner CAS, admin manage_options) with Python route and owner wiring tests. This is limited CI source review; WordPress live environment, Feature007 external acceptance, owner approval, and Production promotion are NOT asserted."
     }
   ],
   "code_change_rules": {

@@ -4,8 +4,8 @@
   "reviewed_base_sha": "e7f30d944c354c3a4f7346330ad401d995e768c5",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 110,
-  "changed_paths_sha256": "2d9dc5003cef6268db8cb49d65a5d32c3a7e85414981a131fe31f11aa25ec605",
+  "changed_file_count": 112,
+  "changed_paths_sha256": "adffc456bc45a1400a48406c595be6ad90535334f652ad311fc965c57241a4a2",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -126,6 +126,8 @@
       "revert_boundary": "Revert compatibility changes and associated tests together; never infer live environment certification.",
       "certification": "exact_head",
       "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/g6-g9-historical-administration-source-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/historical_source_successor.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/site-neutrality-policy.json"
       ]
