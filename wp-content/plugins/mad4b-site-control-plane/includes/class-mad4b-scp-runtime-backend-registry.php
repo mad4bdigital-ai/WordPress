@@ -123,7 +123,7 @@ final class MAD4B_SCP_Runtime_Backend_Registry {
    'authorized'=>false,'identity_verified'=>!empty($host['non_root_verified']),
    'isolation_verified'=>!empty($host['normal_no_network_execution_ready'])
   );
-  foreach(array('isolated_vps_runner'=>'https_runner','ssh_host_runner'=>'ssh') as $id=>$type) {
+  foreach(array('isolated_vps_runner'=>'https_runner','ssh_host_runner'=>'ssh','isolated_docker_runner'=>'docker') as $id=>$type) {
    $row=$host['external_backends'][$id]??array();
    $candidates[$id]=array(
     'type'=>$type,'operations'=>array('runtime.status.read','php.lint'),
