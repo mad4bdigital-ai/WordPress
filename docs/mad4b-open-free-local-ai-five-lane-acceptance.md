@@ -5,6 +5,8 @@ Ollama runs as an isolated sidecar sharing only the ETG Local Lab PHP network na
 
 The original ETG MU sandbox continues blocking all outbound WordPress requests. An explicit one-path, POST-only exception is installed locally for http://127.0.0.1:11434/api/chat, and WordPress WP_ACCESSIBLE_HOSTS includes only loopback under the already existing block policy. The route is rejected outside wp_get_environment_type() === local, and request data cannot select another host, model, route or privilege. This local MU guard and wp-config adjustment were backed up **only on Local Lab**, not propagated to Staging or Production.
 
+**Post-test operating state:** the Qwen sidecar and fixed local route remain installed, but \`enabled=false\` has been restored in the Local Lab settings after the acceptance run. Two existing Brand Context queue entries were still unreviewed/changed at Registry 77. Disabling automatic inference prevents the 10-minute scheduler from inadvertently submitting an open-model verdict about real site documents. Enabling live owner review requires separately approved, source-bound owner adapters and explicit QA of those queued documents. The free model itself and the five sample tests were verified while inference was enabled, then automatic review was locked again.
+
 The original WordPress router now offers local_ollama as a local-only choice and uses Ollama's official bounded JSON Schema output only when an authorized worker requests response_format=review_verdict_v1. The same exact schema is reused by Brand Context and the shared original-owner AI-domain review dispatcher. Existing WP Core, Gemini, OpenRouter, and Custom HTTPS routes remain independent. A generic source text request does not force JSON.
 
 ## Public test input
