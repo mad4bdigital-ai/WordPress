@@ -24,7 +24,7 @@ if ( 'eligible' !== MAD4B_Staging_MCP_Skills_Recertify::preflight( $valid ) )
     throw new RuntimeException( 'Eligible Staging build unexpectedly blocked.' );
 
 define( 'WP_CLI', true );
-define( 'ABSPATH', '/var/www/example/' );
+define( 'ABSPATH', '/var/tmp/' );
 class WP_CLI {
     static $lines = array();
     static function line( $s ) { self::$lines[] = $s; }
