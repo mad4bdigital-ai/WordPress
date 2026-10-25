@@ -2053,7 +2053,9 @@
         "SECURITY-01",
         "GOVERNANCE-01",
         "PLATFORM-01",
-        "EXECUTION-01"
+        "EXECUTION-01",
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/developer-runner-lifecycle-fetch-contract.php"
