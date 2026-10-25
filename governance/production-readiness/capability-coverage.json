@@ -7767,6 +7767,23 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Expose a portable backend candidate registry and lifecycle hook, retaining independent execution permissions, identity proof and isolation certification. No candidate availability alone grants authorization."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-lifecycle.php",
+      "source_blob_sha": "9b5ee4a0c14680f6c4b2b0f0d9926a652c876454",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-backend-deactivation-contract.php"
+      ],
+      "owner_role": "Repository reviewer — bounded deactivation cleanup only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Safely clear plugin-managed backend discovery refresh schedules across single-site and multisite deactivation without altering credentials, provider configuration, write grants or runtime authority."
     }
   ],
   "code_change_rules": {
