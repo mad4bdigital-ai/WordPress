@@ -7701,14 +7701,15 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-host-capabilities.php",
-      "source_blob_sha": "7ec60a73a59815804ec292f3f9fb0130b7073b15",
+      "source_blob_sha": "4f4343943a1e6321fba4d432a4845cda5ac99eb6",
       "control_ids": [
         "SECURITY-01",
         "GOVERNANCE-01",
         "PLATFORM-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/developer-external-backend-discovery-contract.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/developer-external-backend-discovery-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/developer-runner-lifecycle-fetch-contract.php"
       ],
       "owner_role": "Repository reviewer; non-authorizing backend discovery only",
       "status": "reviewed_for_ci_only",
