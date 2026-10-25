@@ -77,3 +77,9 @@
 - The Store API cart **presentation-only** linked-service registry is memoized for the same Woo session cart object+hash. It avoids repeated linked-service resolution per line on a stable cart. The final Checkout order writer always recalculates the registry without that cache, and in-memory/session-less carts recompute.
 - Preset controls for manual server source, optional nationality and suggested capacity are **not permission grants**; the admin now explicitly explains their advisory nature, while smart suggestion mode has executable behavior and server-confirmed-review checks.
 - This change still does not close paid Booking v2, real departure occupancy, production data-retention legal approval or external WPML/Production Readiness/owner-attestation gates.
+
+
+## 0.5.5-local — real Woo Store API Checkout extension contract
+- Register the existing extension namespace on both **CartItemSchema** (read-only server-derived counts) and **CheckoutSchema** (client `travellers` and `confirmed` maps). This matches Woo's actual `extensions` REST schema rather than relying on unregistered arbitrary payload fields.
+- `test-checkout-schema-local.php` interrogates `OPTIONS /wc/store/v1/checkout`, validates and sanitizes genuine 3-person data, ensures confirmation remains boolean, and rejects malformed ISO2 values.
+- Direct `wp.data.dispatch(CHECKOUT_STORE_KEY).setExtensionData(namespace, data)` uses the native two-argument Woo store action. The similarly named three-argument method provided to some inner blocks through checkout context is NOT this action. Browser harness asserts the native dispatch signature and raises on misuse.

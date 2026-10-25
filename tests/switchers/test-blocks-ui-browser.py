@@ -27,7 +27,12 @@ with sync_playwright() as p:
           window.wp = {
             element: {createElement: React.createElement, useState: React.useState, useEffect: React.useEffect, createRoot: ReactDOM.createRoot},
             plugins: {registerPlugin: (slug,plugin) => {window.__plugin = plugin;}},
-            data: {dispatch: () => ({setExtensionData: (name, value) => {window.__checkoutData[name]=value;}})}
+            data: {dispatch: () => ({setExtensionData: (...args) => {
+              if (args.length !== 2 || !args[1] || !args[1].travellers || !args[1].confirmed) {
+                throw new Error('Woo checkout direct store dispatch requires (namespace, data)');
+              }
+              window.__checkoutData[args[0]]=args[1];
+            }})}
           };
           window.wc = {blocksCheckout: {ExperimentalOrderMeta: () => null}, wcBlocksData: {CHECKOUT_STORE_KEY:'checkout'}};
           window.travelBookingTravellerBlocks = {

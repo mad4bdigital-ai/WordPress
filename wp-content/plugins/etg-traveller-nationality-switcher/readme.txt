@@ -2,7 +2,7 @@
 Requires at least: 6.9
 Requires PHP: 8.1
 Requires Plugins: woocommerce
-Stable tag: 0.5.4-local
+Stable tag: 0.5.5-local
 License: GPLv2 or later
 
 Reusable, site-neutral travel booking extension. QA Draft only; no paid Booking v2, departure inventory, or production certification.
@@ -42,3 +42,9 @@ The ISO2 validation catalogue is cached once per verification call to reduce wor
 The WordPress/WooCommerce native privacy export for authorized order owners now includes all `Traveller n passport country (ISO2)` item metadata, including orders using HPOS. It uses the official `woocommerce_privacy_export_order_personal_data` extension hook; it does not create a separate exporter or expose PII publicly. The WooCommerce store's existing order retention and erasure policies remain authoritative. Manual deletion of individual confirmed traveller data is deliberately NOT automatic, pending the store's legal/operational policy.
 Store API cart presentation caches linked-service identity within a request only when WooCommerce exposes a nonempty cart hash. It invalidates on cart-hash change; payment and order write paths always re-evaluate identity and verified quantities. In-memory test carts with empty cart hashes do not reuse the cache.
 The `source`, `nationality`, and `max` preset fields must be understood as advisory configuration until a certified financial provider consumes them. They never create a verified booking, bypass passport requirements, or set supplier stock by themselves.
+
+
+## 0.5.5-local — official WooCommerce Checkout POST extension schema
+Both endpoints are registered with the original Woo Store API: CartItemSchema exposes verified traveller-count and suggestion policy, while CheckoutSchema accepts the separate client-submitted `travellers` and `confirmed` maps. Previously only the CartItemSchema was registered, which could strip the checkout fields under strict REST schema validation. The server now declares `additionalProperties` for arbitrary cart keys while enforcing ISO2 input shape and boolean review acknowledgements. Full authoritative validation remains in the PHP Checkout callback.
+The plugin dispatches `wp.data.dispatch(CHECKOUT_STORE_KEY).setExtensionData(namespace, {travellers, confirmed})` using the **two-argument direct store-action form**. The three-argument `checkoutExtensionData.setExtensionData(namespace,key,value)` documented for inner block props is a different wrapper and should not be mixed with the store action. The browser test throws if the direct action is called with the wrong argument shape.
+Local Lab read-only acceptance verifies real `OPTIONS /wc/store/v1/checkout` schema, both maps being retained after WordPress REST sanitization, and rejects malformed ISO2 strings and nonboolean review status. This resolves a missing schema registration not covered by the earlier mock checkout tests.

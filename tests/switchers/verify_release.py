@@ -124,6 +124,11 @@ class ReleaseContracts(unittest.TestCase):
         for token in ("setConfirmed", "fillEmpty(", "confirmed: current", "disabled:!complete"):
             self.assertIn(token, js)
         self.assertNotIn("return config.preferred || '';", js)
+        self.assertIn("CheckoutSchema::IDENTIFIER", blocks)
+        self.assertIn("'additionalProperties'=>['type'=>'boolean']", blocks)
+        self.assertIn("'additionalProperties'=>['type'=>'array'", blocks)
+        self.assertIn("CHECKOUT_EXTENSION_REVIEW_NOT_STRIPPED",
+          (Path(__file__).parent / "test-checkout-schema-local.php").read_text())
         self.assertIn("'confirmed'=>", (Path(__file__).parent / "test-large-party-local.php").read_text())
         self.assertIn("HPOS_3_ISO_COUNTRIES_PERSISTED", (Path(__file__).parent / "test-hpos-lifecycle-local.php").read_text())
         self.assertIn("VALIDATION_999_PERFORMANCE", (Path(__file__).parent / "test-999-validation-performance-local.php").read_text())

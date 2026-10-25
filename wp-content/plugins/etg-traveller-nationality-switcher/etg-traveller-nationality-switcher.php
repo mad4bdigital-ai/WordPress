@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Travel Booking Traveller Nationality Switcher
  * Description: Passport-country selection for travellers, separate from WooCommerce market, shipping, billing and WCML currency.
- * Version: 0.5.4-local
+ * Version: 0.5.5-local
  * Requires Plugins: woocommerce
  * License: GPL-2.0-or-later
  * Text Domain: travel-booking-traveller-nationality-switcher
