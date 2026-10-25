@@ -7,8 +7,8 @@ from playwright.sync_api import sync_playwright
 
 SRC = Path(os.environ.get("SWITCHER_JS", "/opt/hostinger-migrations/hosting-3/etg-woocommerce-lab/site-copy/wp-content/plugins/etg-traveller-nationality-switcher/assets/checkout-blocks.js"))
 WP = Path(os.environ.get("WP_SITE", "/opt/hostinger-migrations/hosting-3/etg-woocommerce-lab/site-copy"))
-REACT = WP / "wp-includes/js/dist/vendor/react.min.js"
-REACT_DOM = WP / "wp-includes/js/dist/vendor/react-dom.min.js"
+REACT = Path(os.environ.get("SWITCHER_REACT", str(WP / "wp-includes/js/dist/vendor/react.min.js")))
+REACT_DOM = Path(os.environ.get("SWITCHER_REACT_DOM", str(WP / "wp-includes/js/dist/vendor/react-dom.min.js")))
 CSS = SRC.parent / "nationality.css"
 assert all(p.is_file() for p in (SRC, REACT, REACT_DOM, CSS))
 with sync_playwright() as p:
@@ -54,6 +54,12 @@ with sync_playwright() as p:
         for i, nationality in enumerate(["EG", "US", "SA", "US", "EG"]):
             selects.nth(i).select_option(nationality)
         page.wait_for_function("""() => JSON.stringify(window.__checkoutData['travel-booking-traveller-nationality']?.travellers?.['rate-3']) === '["EG","US","SA"]'""")
+        for checkbox in page.locator("#booking .travel-booking-confirmation input").all():
+            checkbox.check()
+        page.wait_for_function("""() => {
+          const ack=window.__checkoutData['travel-booking-traveller-nationality']?.confirmed;
+          return ack?.['rate-3']===true && ack?.['rate-2']===true;
+        }""")
         data = page.evaluate("window.__checkoutData['travel-booking-traveller-nationality'].travellers")
         assert data["rate-3"] == ["EG", "US", "SA"]
         assert data["rate-2"] == ["US", "EG"]
@@ -86,8 +92,61 @@ with sync_playwright() as p:
           const codes=window.__checkoutData['travel-booking-traveller-nationality']?.travellers?.['party-55'];
           return codes?.length===55 && codes.every(x=>x==='EG');
         }""")
+        page.locator("#booking .travel-booking-confirmation input").check()
+        page.wait_for_function("""() => window.__checkoutData['travel-booking-traveller-nationality']?.confirmed?.['party-55']===true""")
         assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
         assert not errors, errors
         print(f"BROWSER_55_PASS width={width} pages=3 submitted=55 react_errors=0")
+        # Prefill remains a draft, editing must invalidate previously reviewed status.
+        page.evaluate("""() => {
+          window.travelBookingTravellerBlocks.preferred='EG';
+          window.__root.render(React.cloneElement(window.__plugin.render().props.children, {cart: {items: [
+            {key:'smart-3',name:'Three travellers',extensions:{
+              'travel-booking-traveller-nationality':{bookable:true,travellers:3,suggestion:'all'}
+            }}
+          ]}}));
+        }""")
+        page.wait_for_function("""() => document.querySelectorAll('#booking select').length===3""")
+        page.wait_for_function("""() => Array.from(document.querySelectorAll('#booking select')).every(x=>x.value==='EG')""")
+        assert not page.locator("#booking .travel-booking-confirmation input").is_checked()
+        page.locator("#booking select").nth(1).select_option('US')
+        page.locator("#booking .travel-booking-confirmation input").check()
+        page.wait_for_function("""() => window.__checkoutData['travel-booking-traveller-nationality']?.confirmed?.['smart-3']===true""")
+        page.locator("#booking select").nth(2).select_option('SA')
+        page.wait_for_function("""() => window.__checkoutData['travel-booking-traveller-nationality']?.confirmed?.['smart-3']===false""")
+        page.get_by_role('button', name='Use EG for unfilled travellers').click()
+        page.wait_for_function("""() => {
+          const v=window.__checkoutData['travel-booking-traveller-nationality']?.travellers?.['smart-3'];
+          return JSON.stringify(v)==='["EG","US","SA"]';
+        }""")
+        page.locator("#booking .travel-booking-confirmation input").check()
+        assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+        assert not errors, errors
+        print(f"BROWSER_SMART_SUGGESTIONS_PASS width={width} mode=all editable=true reconfirm=true no_overwrite=true")
+        # Policy none does not prefill; first only prepopulates traveller 1.
+        page.evaluate("""() => {
+          window.__root.render(React.cloneElement(window.__plugin.render().props.children, {cart: {items: [
+            {key:'first-3',id:1001,name:'First only',extensions:{
+              'travel-booking-traveller-nationality':{bookable:true,travellers:3,suggestion:'first'}
+            }}
+          ]}}));
+        }""")
+        page.wait_for_function("""() => {
+          const s=Array.from(document.querySelectorAll('#booking select')).map(x=>x.value);
+          return JSON.stringify(s)==='["EG","",""]';
+        }""")
+        assert not page.locator("#booking .travel-booking-confirmation input").is_enabled()
+        page.evaluate("""() => {
+          window.__root.render(React.cloneElement(window.__plugin.render().props.children, {cart: {items: [
+            {key:'none-3',id:1002,name:'Manual only',extensions:{
+              'travel-booking-traveller-nationality':{bookable:true,travellers:3,suggestion:'none'}
+            }}
+          ]}}));
+        }""")
+        page.wait_for_function("""() => {
+          const s=Array.from(document.querySelectorAll('#booking select')).map(x=>x.value);
+          return s.length===3 && s.every(x=>x==='');
+        }""")
+        print(f"BROWSER_POLICY_MODES_PASS width={width} first_only=true none=true")
         page.close()
     browser.close()

@@ -17,9 +17,11 @@ $check=$cl::validate_list($codes);
 $test('NATIONALITY_ALL_55_VALID',!is_wp_error($check)&&count($check)===55);
 $expected=$blk::expected_items(['party55'=>$line]);
 $test('STORE_EXPECTED_55',($expected['party55']['travellers']??0)===55);
-$valid=$blk::validate_request(['travellers'=>['party55'=>$codes]],$expected);
+$valid=$blk::validate_request(['travellers'=>['party55'=>$codes],'confirmed'=>['party55'=>true]],$expected);
 $test('BLOCKS_55_COMPLETE',!is_wp_error($valid));
-$test('BLOCKS_54_REJECTED',is_wp_error($blk::validate_request(['travellers'=>['party55'=>array_slice($codes,0,54)]],$expected)));
+$test('BLOCKS_AUTO_DRAFT_UNCONFIRMED_DENIED',is_wp_error($blk::validate_request(
+ ['travellers'=>['party55'=>$codes]],$expected)));
+$test('BLOCKS_54_REJECTED',is_wp_error($blk::validate_request(['travellers'=>['party55'=>array_slice($codes,0,54)],'confirmed'=>['party55'=>true]],$expected)));
 $test('NATIONALITY_1000_DENIED',is_wp_error($cl::validate_list(array_fill(0,1000,'EG'))));
 $test('NATIONALITY_INDEX_999_DENIED',is_wp_error($cl::validate_list([999=>'EG'])));
 $test('NATIONALITY_SPARSE_ARRAY_DENIED',is_wp_error($cl::validate_list([0=>'EG',2=>'SA'])));
@@ -41,7 +43,7 @@ try{
  $initialCurrency=$order->get_currency();
  $initialTotal=$order->get_total();
  $request=new WP_REST_Request('POST','/wc/store/v1/checkout');
- $request->set_param('extensions',[$blk::NAMESPACE_ID=>['travellers'=>['party55'=>$codes]]]);
+ $request->set_param('extensions',[$blk::NAMESPACE_ID=>['travellers'=>['party55'=>$codes],'confirmed'=>['party55'=>true]]]);
  $blk::apply_to_order($order,$request);
  $meta=array_filter($item->get_meta_data(),static function($e){return str_starts_with((string)$e->key,'Traveller ')&&str_ends_with((string)$e->key,' passport country (ISO2)');});
  $test('ORDER_55_NATIONALITY_METADATA',count($meta)===55);

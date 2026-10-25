@@ -35,7 +35,13 @@ try {
   'inherit'=>true,'nationality'=>'service','max'=>50,'group_capacity'=>'booking_engine_only'],6);
  $test('GROUP_CAPACITY_OPTIONAL_PRESET_SAVED',!is_wp_error($groupPreset)
    &&$t::presets()['tour']['group_capacity']==='booking_engine_only');
- $groupReset=$t::mutate('reset','tour',[],7);
+ $suggestion=$t::mutate('save','tour',['label'=>'Smart Passport Suggestions','source'=>'verified',
+  'inherit'=>true,'nationality'=>'service','max'=>20,'suggestion'=>'all',
+  'group_capacity'=>'taxonomy_when_group'],7);
+ $test('SUGGEST_ALL_PRESET_SAVED',!is_wp_error($suggestion)
+   &&$t::presets()['tour']['suggestion']==='all');
+ $test('DEFAULT_PRESET_FIRST_ONLY',$t::builtins()['automatic']['suggestion']==='first');
+ $groupReset=$t::mutate('reset','tour',[],8);
  $test('GROUP_CAPACITY_PRESET_RESET_TO_TAXONOMY',!is_wp_error($groupReset)
    &&$t::presets()['tour']['group_capacity']==='taxonomy_when_group');
  $quote=shared_product_booking_configuration_quote(66139,'general','double',['quantities'=>['persons'=>3],'options'=>[]]);

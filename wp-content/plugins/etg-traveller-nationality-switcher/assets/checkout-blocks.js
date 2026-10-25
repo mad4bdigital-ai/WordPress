@@ -18,15 +18,25 @@
     var state = {};
     items.forEach(function (item) {
       var count = Math.min(Number(config.max) || 999, Number(item.extensions[namespace].travellers) || 0);
-      state[item.key] = Array.from({length: count}, function () { return config.preferred || ''; });
+      var mode = item.extensions[namespace].suggestion || 'first';
+      state[item.key] = Array.from({length: count}, function (_, i) {
+        return config.preferred && (mode === 'all' || (mode === 'first' && i === 0))
+          ? config.preferred : '';
+      });
     });
     return state;
   }
   function Picker(props) {
     var items = readItems(props.cart);
-    var itemSignature = items.map(function (i) { return i.key + ':' + i.extensions[namespace].travellers; }).join('|');
+    var itemSignature = items.map(function (i) {
+      return i.key + ':' + (i.id || '') + ':' + (i.variation_id || '') + ':' +
+        i.extensions[namespace].travellers + ':' +
+        (i.extensions[namespace].suggestion || 'first');
+    }).join('|');
     var pair = useState(function () { return initialState(items); });
     var values = pair[0], setValues = pair[1];
+    var reviewed = useState({});
+    var confirmed = reviewed[0], setConfirmed = reviewed[1];
     var pager = useState({});
     var pages = pager[0], setPages = pager[1];
     var batch = Math.max(1, Math.min(20, Number(config.batch_size) || 20));
@@ -38,13 +48,38 @@
         });
         return next;
       });
+      // Any change to party identity/count invalidates an earlier confirmation.
+      setConfirmed({});
     }, [itemSignature]);
     useEffect(function () {
       var store = wp.data.dispatch(CheckoutStoreKey);
-      if (store && store.setExtensionData) store.setExtensionData(namespace, { travellers: values });
-    }, [values]);
+      if (store && store.setExtensionData) {
+        var current = {};
+        items.forEach(function (item) { current[item.key] = confirmed[item.key] === true; });
+        store.setExtensionData(namespace, { travellers: values, confirmed: current });
+      }
+    }, [values, confirmed, itemSignature]);
     if (!items.length) return null;
+    function invalidate(key) {
+      setConfirmed(function (prev) {
+        var next = Object.assign({}, prev);
+        next[key] = false;
+        return next;
+      });
+    }
+    function fillEmpty(key, count, code) {
+      if (!code) return;
+      invalidate(key);
+      setValues(function (old) {
+        var next = Object.assign({}, old);
+        var prior = (next[key] || []).slice();
+        for (var i = 0; i < count; i += 1) if (!prior[i]) prior[i] = code;
+        next[key] = prior;
+        return next;
+      });
+    }
     function update(key, index, code) {
+      invalidate(key);
       setValues(function (prev) {
         var next = Object.assign({}, prev);
         next[key] = (next[key] || []).slice();
@@ -57,6 +92,9 @@
       items.map(function (item) {
         var count = Math.min(Number(config.max) || 999, Number(item.extensions[namespace].travellers) || 0);
         var codes = values[item.key] || [];
+        var mode = item.extensions[namespace].suggestion || 'first';
+        var complete = count > 0 && codes.length === count &&
+          codes.every(function (code) { return !!code; });
         var totalPages = Math.ceil(count / batch);
         var page = Math.max(0, Math.min(totalPages - 1, Number(pages[item.key]) || 0));
         var start = page * batch;
@@ -71,6 +109,15 @@
         return el('div', {'className': 'travel-booking-block-travellers__line', key: item.key},
           el('strong', null, item.name),
           count < 1 ? el('p', {role:'alert'}, 'Traveller count is not yet verified for this booking. Choose a valid booking configuration before checkout.') : null,
+          config.preferred && mode !== 'none' && count > 0
+            ? el('p', {'className':'travel-booking-suggestion'}, 'Suggestion: ' + config.preferred +
+                (mode === 'all' ? ' has been prefilled as a draft for all travellers.' :
+                 ' has been prefilled for the first traveller.') +
+                ' Check each passport; these values are not confirmed yet.') : null,
+          config.preferred && count > 0
+            ? el('button', {type:'button','className':'travel-booking-apply-suggestion',
+                onClick:function(){fillEmpty(item.key,count,config.preferred);}},
+                'Use ' + config.preferred + ' for unfilled travellers') : null,
           count > batch ? el('p', {'aria-live':'polite'}, 'Travellers ' + (start + 1) + '–' + (start + visible) + ' of ' + count) : null,
           Array.from({length: Math.max(0, visible)}, function (_, index) {
             var i = start + index;
@@ -88,7 +135,21 @@
             el('button', {type:'button',disabled:page===0,onClick:function(){changePage(page-1);}}, 'Previous 20'),
             el('span', null, ' Page '+(page+1)+' of '+totalPages+' '),
             el('button', {type:'button',disabled:page>=totalPages-1,onClick:function(){changePage(page+1);}}, 'Next 20')
-          ) : null
+          ) : null,
+          count > 0 ? el('label', {'className':'travel-booking-confirmation'},
+            el('input', {type:'checkbox',checked:confirmed[item.key] === true,
+              disabled:!complete,
+              onChange:function (event) {
+                var checked = !!event.target.checked;
+                setConfirmed(function (old) {
+                  var next = Object.assign({}, old);
+                  next[item.key] = checked;
+                  return next;
+                });
+              }}),
+            'I reviewed the passport nationalities of all ' + count + ' travellers in this booking.'
+          ) : null,
+          count > 0 && !complete ? el('p', {role:'status'}, 'Complete all traveller nationalities before confirming.') : null
         );
       })
     );

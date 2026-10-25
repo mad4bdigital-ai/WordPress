@@ -27,7 +27,7 @@ function get_term_meta($id,$key,$single=true){
  return '';
 }
 function shared_product_booking_modes_from_taxonomy($id){
- return ['modes'=>['group','private']];
+ return ['modes'=>($GLOBALS['mock_no_modes']??false)?[]:['group','private']];
 }
 function shared_product_group_tier_from_taxonomy($tour,$people){
  if($tour!==8)return new WP_Error('group_tier_not_configured');
@@ -193,5 +193,16 @@ $test('MINIMUM_PARTY_TWELVE_SUGGESTS_GROUP',!is_wp_error($party)&&$party['recomm
 $test('ONE_SEAT_EXPLICIT_GROUP_NOT_FORCED_PRIVATE',$tm::advise_booking_mode(8,1,'group',true)['selected_mode']==='group');
 unset($GLOBALS['unit_meta'][8]['_travel_booking_group_booking_minimum']);
 $test('CLEAR_GROUP_MINIMUM_INHERITS_TIER',$tm::group_booking_minimum(8)===10);
+$test('SUGGESTION_DEFAULT_FIRST',$tm::builtins()['automatic']['suggestion']==='first');
+$test('SUGGESTION_NONE_ALLOWED',!is_wp_error($tm::clean_fields([
+ 'label'=>'Manual','source'=>'verified','nationality'=>'required','max'=>20,
+ 'group_capacity'=>'booking_engine_only','suggestion'=>'none'])));
+$test('UNKNOWN_SUGGESTION_BLOCKED',is_wp_error($tm::clean_fields([
+ 'label'=>'Untrusted','source'=>'verified','nationality'=>'required','max'=>20,'suggestion'=>'trusted_automatic'])));
+$GLOBALS['mock_no_modes']=true;
+$mode=$tm::assess_booking_request(8,1,'group');
+$GLOBALS['mock_no_modes']=false;
+$test('NO_MODES_MEANS_INQUIRY_ONLY',!($mode['booking_mode_verified']??true)
+ &&($mode['request_status']??'')==='pending_mode_configuration');
 $test('ONLY_TRAVELLER_OPTION_CHANGED',array_keys($GLOBALS['unit_options'])===[$tm::OPTION]);
 echo "UNIFIED_HERMETIC_FAILURES=$fail\n";exit($fail?1:0);

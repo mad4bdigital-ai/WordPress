@@ -34,8 +34,13 @@ $rate=['product_id'=>101,'quantity'=>1,'data'=>new WC_Product(101),'shared_booki
  'status'=>'server_quote','rate_id'=>101,'quantities'=>['persons'=>3],'options'=>[]]];
 $check('QUOTE_PERSONS_3_WC_QUANTITY_1',$c::traveller_count($rate)===3);
 $check('EXPECTED_ITEMS_3',($c::expected_items(['cart-key'=>$rate])['cart-key']['travellers']??null)===3);
-$check('PAYLOAD_3_ACCEPTED',$c::validate_request(['travellers'=>['cart-key'=>['EG','US','SA']]],$c::expected_items(['cart-key'=>$rate]))['cart-key']===['EG','US','SA']);
-$check('PAYLOAD_ONLY_WOO_QUANTITY_REJECTED',is_wp_error($c::validate_request(['travellers'=>['cart-key'=>['EG']]],$c::expected_items(['cart-key'=>$rate]))));
+$check('PAYLOAD_3_ACCEPTED',$c::validate_request(['travellers'=>['cart-key'=>['EG','US','SA']],'confirmed'=>['cart-key'=>true]],$c::expected_items(['cart-key'=>$rate]))['cart-key']===['EG','US','SA']);
+$check('AUTO_DRAFT_REJECTED_WITHOUT_REVIEW',is_wp_error($c::validate_request(
+ ['travellers'=>['cart-key'=>['EG','US','SA']]],$c::expected_items(['cart-key'=>$rate]))));
+$check('EXPLICIT_FALSE_CONFIRMATION_REJECTED',is_wp_error($c::validate_request(
+ ['travellers'=>['cart-key'=>['EG','US','SA']],'confirmed'=>['cart-key'=>false]],
+ $c::expected_items(['cart-key'=>$rate]))));
+$check('PAYLOAD_ONLY_WOO_QUANTITY_REJECTED',is_wp_error($c::validate_request(['travellers'=>['cart-key'=>['EG']],'confirmed'=>['cart-key'=>true]],$c::expected_items(['cart-key'=>$rate]))));
 $no=$rate;unset($no['shared_booking_configuration']);
 $check('NO_QUOTE_FAIL_CLOSED',$c::traveller_count($no)===0);
 $draft=$no;$draft['configuration']=['schema_version'=>2,'quantities'=>['persons'=>3]];

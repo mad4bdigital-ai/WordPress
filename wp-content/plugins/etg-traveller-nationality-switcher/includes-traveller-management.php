@@ -17,11 +17,11 @@ final class Travel_Booking_Traveller_Management {
  const TYPES=['tour-rates','tours-and-activities','properties','transportations','product'];
  public static function builtins(){
   return [
-   'automatic'=>['label'=>'Automatic — Verified Source','source'=>'verified','inherit'=>true,'nationality'=>'service','max'=>20,'group_capacity'=>'taxonomy_when_group'],
-   'tour'=>['label'=>'Tours & Activities','source'=>'verified','inherit'=>true,'nationality'=>'service','max'=>20,'group_capacity'=>'taxonomy_when_group'],
-   'accommodation'=>['label'=>'Accommodation','source'=>'verified','inherit'=>true,'nationality'=>'service','max'=>20,'group_capacity'=>'booking_engine_only'],
-   'transport'=>['label'=>'Transport','source'=>'verified','inherit'=>true,'nationality'=>'service','max'=>20,'group_capacity'=>'booking_engine_only'],
-   'extra'=>['label'=>'Optional Service','source'=>'verified','inherit'=>true,'nationality'=>'service','max'=>20,'group_capacity'=>'booking_engine_only'],
+   'automatic'=>['label'=>'Automatic — Verified Source','source'=>'verified','inherit'=>true,'nationality'=>'service','max'=>20,'suggestion'=>'first','group_capacity'=>'taxonomy_when_group'],
+   'tour'=>['label'=>'Tours & Activities','source'=>'verified','inherit'=>true,'nationality'=>'service','max'=>20,'suggestion'=>'first','group_capacity'=>'taxonomy_when_group'],
+   'accommodation'=>['label'=>'Accommodation','source'=>'verified','inherit'=>true,'nationality'=>'service','max'=>20,'suggestion'=>'first','group_capacity'=>'booking_engine_only'],
+   'transport'=>['label'=>'Transport','source'=>'verified','inherit'=>true,'nationality'=>'service','max'=>20,'suggestion'=>'first','group_capacity'=>'booking_engine_only'],
+   'extra'=>['label'=>'Optional Service','source'=>'verified','inherit'=>true,'nationality'=>'service','max'=>20,'suggestion'=>'first','group_capacity'=>'booking_engine_only'],
   ];
  }
  public static function initial(){
@@ -43,12 +43,14 @@ final class Travel_Booking_Traveller_Management {
   $nationality=(string)($raw['nationality']??'service');
   $max=filter_var($raw['max']??null,FILTER_VALIDATE_INT);
   $group=(string)($raw['group_capacity']??'taxonomy_when_group');
+  $suggestion=(string)($raw['suggestion']??'first');
   if($label===''||strlen($label)>90||!in_array($source,['verified','manual_server_validated'],true)
    ||!in_array($nationality,['service','required','optional'],true)||!in_array($max,[20,50,100],true)
-   ||!in_array($group,['taxonomy_when_group','booking_engine_only'],true))
+   ||!in_array($group,['taxonomy_when_group','booking_engine_only'],true)
+   ||!in_array($suggestion,['none','first','all'],true))
     return new WP_Error('travel_booking_traveller_preset_invalid');
   return ['label'=>$label,'source'=>$source,'inherit'=>filter_var($raw['inherit']??false,FILTER_VALIDATE_BOOLEAN),
-   'nationality'=>$nationality,'max'=>$max,'group_capacity'=>$group];
+   'nationality'=>$nationality,'max'=>$max,'group_capacity'=>$group,'suggestion'=>$suggestion];
  }
  public static function presets(){
   $s=self::state();$all=self::builtins();
@@ -196,11 +198,20 @@ final class Travel_Booking_Traveller_Management {
   $small_policy=(string)self::meta_value($tour_id,'_travel_booking_small_party_routing');
   if(!in_array($small_policy,['offer_private','join_group_only'],true))$small_policy='offer_private';
   $recommend=$below&&!$departure_selected?($small_policy==='offer_private'?'private':null):'group';
-  if($offered && $recommend!==null && !in_array($recommend,$offered,true))$recommend=null;
+  // The recommendation for a new Group requires a usable tier at party size.
+  // Joining an explicitly chosen departure is independent of this party size.
+  $tier_quote_ready=null;
+  if($recommend==='group'&&!$departure_selected&&function_exists('shared_product_group_tier_from_taxonomy')){
+   $tier_quote_ready=shared_product_group_tier_from_taxonomy($tour_id,$party);
+   if(is_wp_error($tier_quote_ready))$recommend=null;
+  }
+  if(!$offered || ($recommend!==null && !in_array($recommend,$offered,true)))$recommend=null;
   return ['contract'=>'travel_booking.party-mode.v1','party_size'=>$party,
    'group_tier_minimum'=>is_wp_error($tier_min)?null:$tier_min,
    'group_booking_minimum'=>$minimum,'below_first_group_tier'=>$below,'requested_mode'=>$requested,'selected_mode'=>$chosen,
-   'small_party_policy'=>$small_policy,'recommended_mode'=>$requested==='auto'?$recommend:$chosen,
+   'small_party_policy'=>$small_policy,
+   'group_tier_matches_party'=>!is_wp_error($tier_quote_ready)&&$tier_quote_ready!==null,
+   'recommended_mode'=>$requested==='auto'?$recommend:$chosen,
    'reason'=>$below?($departure_selected?'join_existing_group_as_individual':'consider_private_below_minimum'):'within_group_range',
    'automatic_conversion'=>false,'financial_checkout_authority'=>false];
  }
@@ -213,12 +224,25 @@ final class Travel_Booking_Traveller_Management {
   $mode=(string)self::meta_value((int)$tour_id,'_travel_booking_departure_inventory_mode');
   return $mode==='capacity_preview'?'capacity_preview':'untracked';
  }
+ /**
+  * Empty or missing booking-mode taxonomy is UNKNOWN, never proof that Group
+  * and Private are both offered. Keep a manual inquiry possible separately.
+  */
+ public static function is_explicit_mode_offered($tour_id,$mode){
+  if(!in_array($mode,['group','private'],true)||!function_exists('shared_product_booking_modes_from_taxonomy'))return false;
+  $allowed=shared_product_booking_modes_from_taxonomy($tour_id);
+  return !is_wp_error($allowed)&&in_array($mode,(array)($allowed['modes']??[]),true);
+ }
  /** Request policy is independent from stock: no departure counter is mandatory. */
  public static function assess_booking_request($tour_id,$party_size,$booking_mode='group'){
   $party=filter_var($party_size,FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>self::MAX_VERIFIED_PERSONS]]);
   if($party===false||$party===null||get_post_type($tour_id)!=='tours-and-activities'||
    !in_array($booking_mode,['group','private'],true))return new WP_Error('travel_booking_request_invalid');
   $offer=($booking_mode==='private')?null:self::advise_booking_mode($tour_id,$party,'group',false);
+  if(!$offer instanceof WP_Error && !self::is_explicit_mode_offered($tour_id,$booking_mode)){
+   // The inquiry is admissible but the requested commercial mode is unverified.
+   $offer=null;
+  }
   if(is_wp_error($offer)){
    // No Group tier is a planning/configuration gap, not an assertion of sold-out inventory.
    if(!in_array($offer->get_error_code(),['travel_booking_group_minimum_missing'],true))return $offer;
@@ -231,6 +255,9 @@ final class Travel_Booking_Traveller_Management {
    'seat_confirmation'=>'requires_separate_booking_confirmation',
    'confirmed_departure_total'=>null,'remaining_seats'=>null,
    'minimum_group_people'=>$offer['group_booking_minimum']??null,
+   'booking_mode_verified'=>self::is_explicit_mode_offered($tour_id,$booking_mode),
+   'request_status'=>self::is_explicit_mode_offered($tour_id,$booking_mode)
+     ?'pending_supplier_confirmation':'pending_mode_configuration',
    'financial_checkout_authority'=>false];
  }
  /**
@@ -503,6 +530,10 @@ final class Travel_Booking_Traveller_Management {
   foreach(['taxonomy_when_group'=>'Group-size-tiers Taxonomy (group bookings only)','booking_engine_only'=>'Booking engine policy (optional; never force tiers)'] as $value=>$label)
    echo '<option value="'.$value.'" '.selected($current['group_capacity']??'taxonomy_when_group',$value,false).'>'.esc_html($label).'</option>';
   echo '</select><p class="description">A group tier controls group suitability, not technical Checkout person capacity. Private bookings never inherit Group Tiers.</p></td></tr>';
+  echo '<tr><th>Passport suggestion</th><td><select name="fields[suggestion]">';
+  foreach(['none'=>'No automatic suggestion','first'=>'Suggest booker nationality for first traveller (default)','all'=>'Draft the same nationality for everyone — review required'] as $value=>$label)
+   echo '<option value="'.esc_attr($value).'" '.selected($current['suggestion']??'first',$value,false).'>'.esc_html($label).'</option>';
+  echo '</select><p class="description">Never treat suggested values as confirmed. Each party must confirm after reviewing the traveller list; changes reset confirmation. Manual edits always take priority.</p></td></tr>';
   echo '<tr><th>Requested capacity</th><td><select name="fields[max]">';
   foreach([20,50,100] as $limit)echo '<option value="'.$limit.'" '.selected($current['max'],$limit,false).'>'.$limit.' (suggested party size only)</option>';
   echo '</select><p>This is a suggested party size, not a Checkout or Group Tour maximum. Verified passport fields display in batches of '.self::LEGACY_BATCH_SIZE.'. Departure capacity is resolved separately.</p></td></tr></table>';

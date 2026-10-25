@@ -35,7 +35,7 @@ try{
  $assert('CLASSIC_CHILD_HAS_NO_DUPLICATE_COUNTRIES',$child->get_meta('Traveller 1 passport country (ISO2)')==='');
  $assert('CLASSIC_CHILD_SUBSET_ASSIGNMENT',$child->get_meta('_travel_booking_tm_traveller_indices')===[0,2]);
  $req=new WP_REST_Request('POST','/wc/store/v1/checkout');
- $req->set_param('extensions',[$blocks::NAMESPACE_ID=>['travellers'=>['booking-main'=>['EG','SA','US']]]]);
+ $req->set_param('extensions',[$blocks::NAMESPACE_ID=>['travellers'=>['booking-main'=>['EG','SA','US']],'confirmed'=>['booking-main'=>true]]]);
  $blocks::apply_to_order($order,$req);
  $assert('BLOCKS_ROOT_STILL_HAS_THREE',$root->get_meta('Traveller 3 passport country (ISO2)')==='US');
  $assert('BLOCKS_CHILD_STILL_REFERENCES_ROOT',$child->get_meta('_travel_booking_tm_parent_registry_id')===$root->get_meta('_travel_booking_tm_registry_id'));

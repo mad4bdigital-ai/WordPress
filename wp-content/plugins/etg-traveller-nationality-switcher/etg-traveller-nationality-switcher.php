@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Travel Booking Traveller Nationality Switcher
  * Description: Passport-country selection for travellers, separate from WooCommerce market, shipping, billing and WCML currency.
- * Version: 0.5.2-local
+ * Version: 0.5.3-local
  * Requires Plugins: woocommerce
  * License: GPL-2.0-or-later
  * Text Domain: travel-booking-traveller-nationality-switcher
@@ -112,10 +112,14 @@ final class Travel_Booking_Traveller_Nationality_Switcher {
  }
  public static function validate_list($input){
   if(!is_array($input)||!$input||count($input)>Travel_Booking_Traveller_Management::MAX_VERIFIED_PERSONS)return new WP_Error('travel_booking_invalid_passengers','Expected valid per-person nationality entries');
-  $result=[];foreach($input as $index=>$iso){
+  // Snapshot Woo's ISO2 catalogue once per request, rather than up to 999 times.
+  $available=self::countries();$result=[];
+  foreach($input as $index=>$iso){
    if(!is_int($index)&&!(is_string($index)&&ctype_digit($index)))return new WP_Error('travel_booking_invalid_passenger_index','Invalid traveller index');
    $i=(int)$index;if($i<0||$i>=Travel_Booking_Traveller_Management::MAX_VERIFIED_PERSONS||isset($result[$i])||!is_string($iso))return new WP_Error('travel_booking_invalid_passenger_entry','Invalid traveller nationality');
-   $country=self::valid($iso);if(!$country)return new WP_Error('travel_booking_invalid_nationality','Invalid ISO2 passport country');
+   $country=strtoupper($iso);
+   if(!preg_match('/^[A-Z]{2}$/D',$country)||!array_key_exists($country,$available))
+    return new WP_Error('travel_booking_invalid_nationality','Invalid ISO2 passport country');
    $result[$i]=$country;
   }
   ksort($result);
@@ -220,6 +224,11 @@ final class Travel_Booking_Traveller_Nationality_Switcher {
   add_action('woocommerce_after_checkout_validation',[__CLASS__,'classic_checkout_validate'],25,2);
   add_filter('fluentform/validation_errors',[__CLASS__,'fluent_validate'],15,2);
   add_filter('fluentform/insert_response_data',[__CLASS__,'fluent_normalize'],15,1);
+  add_action('admin_init',static function(){
+   if(!function_exists('wp_add_privacy_policy_content'))return;
+   wp_add_privacy_policy_content('Travel Booking Traveller Nationalities',
+    '<p>When a traveller booking is completed, an ISO2 passport-issuing country is stored as WooCommerce order-item metadata for each traveller. Suggested values are editable drafts and must be reviewed before checkout. The booking-party preference cookie is kept up to 90 days. Orders follow the store WooCommerce order-data retention, access and export policy; disabling the plugin does not erase historical WooCommerce orders. No passport numbers or scans are collected by this extension.</p>');
+  });
  }
 }
 add_action('plugins_loaded',['Travel_Booking_Traveller_Nationality_Switcher','boot'],50);

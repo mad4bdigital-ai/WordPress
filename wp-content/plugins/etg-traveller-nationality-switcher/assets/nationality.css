@@ -10,3 +10,10 @@
 .travel-booking-block-travellers__line>strong{grid-column:1/-1}
 .travel-booking-block-travellers__field{display:grid;gap:5px;font-size:13px}
 .travel-booking-block-travellers__field select{max-width:100%;width:100%;padding:8px;border:1px solid #97a6b8;border-radius:6px}
+
+.travel-booking-suggestion{grid-column:1/-1;margin:3px 0;font-size:.92em}
+.travel-booking-apply-suggestion{justify-self:start;border:1px solid currentColor;border-radius:7px;padding:8px 12px;background:transparent;color:inherit;cursor:pointer}
+.travel-booking-confirmation{grid-column:1/-1;display:flex;align-items:start;gap:10px;padding:10px 0;font-weight:600}
+.travel-booking-confirmation input{width:18px;height:18px;margin-top:2px}
+.travel-booking-traveller-pager{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.travel-booking-apply-suggestion:focus-visible,.travel-booking-traveller-pager button:focus-visible,.travel-booking-confirmation input:focus-visible{outline:2px solid currentColor;outline-offset:2px}

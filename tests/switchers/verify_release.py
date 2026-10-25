@@ -111,5 +111,22 @@ class ReleaseContracts(unittest.TestCase):
         ):
             self.assertIn(marker, management)
 
+    def test_suggestions_confirmed_server_and_preview_only(self):
+        management = (NATIONALITY / "includes-traveller-management.php").read_text()
+        blocks = (NATIONALITY / "includes-checkout-blocks.php").read_text()
+        js = (NATIONALITY / "assets/checkout-blocks.js").read_text()
+        for token in ("'suggestion'=>'first'", "'none','first','all'", "fields[suggestion]"):
+            self.assertIn(token, management)
+        for token in ("travel_booking_block_confirmation_missing",
+                      "travel_booking_block_confirmation_required",
+                      "($confirmed[$key]??null)!==true"):
+            self.assertIn(token, blocks)
+        for token in ("setConfirmed", "fillEmpty(", "confirmed: current", "disabled:!complete"):
+            self.assertIn(token, js)
+        self.assertNotIn("return config.preferred || '';", js)
+        self.assertIn("'confirmed'=>", (Path(__file__).parent / "test-large-party-local.php").read_text())
+        self.assertIn("HPOS_3_ISO_COUNTRIES_PERSISTED", (Path(__file__).parent / "test-hpos-lifecycle-local.php").read_text())
+        self.assertIn("VALIDATION_999_PERFORMANCE", (Path(__file__).parent / "test-999-validation-performance-local.php").read_text())
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

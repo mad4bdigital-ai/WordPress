@@ -51,10 +51,10 @@ try {
  $errors=new WP_Error();$cCheck::classic_checkout_validate([],$errors);
  $assert('CLASSIC_MISSING_SERVER_QUOTE_BLOCKED',$errors->get_error_code()==='nationality_booking_unverified');
  $cart->set_cart_contents($checkCart);
- $requestData=['travellers'=>['rate-66139'=>['EG','SA','US'],'rate-66138'=>['US','EG']]];
+ $requestData=['travellers'=>['rate-66139'=>['EG','SA','US'],'rate-66138'=>['US','EG']], 'confirmed'=>['rate-66139'=>true,'rate-66138'=>true]];
  $valid=$c::validate_request($requestData,$expected);
  $assert('VALID_MULTI_RATE_NATIONALITIES',!is_wp_error($valid) && count($valid['rate-66139'])===3);
- $badData=['travellers'=>['rate-66139'=>['EG'],'rate-66138'=>['US','EG']]];
+ $badData=['travellers'=>['rate-66139'=>['EG'],'rate-66138'=>['US','EG']], 'confirmed'=>['rate-66139'=>true,'rate-66138'=>true]];
  $assert('BAD_TRAVELLER_COUNT_REJECTED',is_wp_error($c::validate_request($badData,$expected)));
  $order=new WC_Order();
  foreach($items as $row){$item=apply_filters('woocommerce_checkout_create_order_line_item_object',new WC_Order_Item_Product(),'test-cart',['product_id'=>$row['product_id']],$order);$item->set_product_id($row['product_id']);$item->set_quantity(1);$order->add_item($item);}

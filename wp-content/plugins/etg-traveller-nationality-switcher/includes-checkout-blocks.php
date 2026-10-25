@@ -47,9 +47,16 @@ final class Travel_Booking_Traveller_Nationality_Checkout_Blocks {
   if(!$expected)return [];
   if(!is_array($payload)||!isset($payload['travellers'])||!is_array($payload['travellers']))return new WP_Error('travel_booking_block_passengers_missing','Passport nationalities are required for each booked traveller');
   $submitted=$payload['travellers'];
+  // Suggestions are editable drafts only. A deliberate reviewed confirmation is
+  // required for every root booking line, regardless of whether auto-prefilled.
+  $confirmed=$payload['confirmed']??null;
+  if(!is_array($confirmed)||array_diff(array_keys($expected),array_keys($confirmed))||
+     array_diff(array_keys($confirmed),array_keys($expected)))
+   return new WP_Error('travel_booking_block_confirmation_missing','Review and confirm passport nationalities for every booked party');
   if(count($submitted)!==count($expected)||array_diff(array_keys($submitted),array_keys($expected)))return new WP_Error('travel_booking_block_cart_mismatch','Traveller nationality data does not match the current cart');
   $normalized=[];
   foreach($expected as $key=>$line){
+   if(($confirmed[$key]??null)!==true)return new WP_Error('travel_booking_block_confirmation_required','Review and confirm this booking passport nationalities');
    if(!$line['travellers'])return new WP_Error('travel_booking_block_passenger_count','Traveller count is not verified for this booked service');
    $value=Travel_Booking_Traveller_Nationality_Switcher::validate_list($submitted[$key]??null);
    if(is_wp_error($value)||count($value)!==$line['travellers'])return new WP_Error('travel_booking_block_passengers_invalid','Select one valid passport nationality for every traveller');
@@ -117,14 +124,20 @@ final class Travel_Booking_Traveller_Nationality_Checkout_Blocks {
       $registry=Travel_Booking_Traveller_Management::registry(WC()->cart->get_cart());
       $linked=isset($registry['linked_services'][(string)($item['key']??'')]);
      }
+     $bookable=self::is_bookable($item)&&!$linked;
+     $preset=class_exists('Travel_Booking_Traveller_Management')
+      ?Travel_Booking_Traveller_Management::preset_for((int)($item['product_id']??0))['fields']:[];
      return [
-      'bookable'=>self::is_bookable($item)&&!$linked,
-      'travellers'=>self::is_bookable($item)&&!$linked?self::traveller_count($item):0,
+      'bookable'=>$bookable,
+      'travellers'=>$bookable?self::traveller_count($item):0,
+      'suggestion'=>in_array(($preset['suggestion']??'first'),['none','first','all'],true)
+       ?$preset['suggestion']:'first',
      ];
     },
     'schema_callback'=>static function(){return ['properties'=>[
      'bookable'=>['type'=>'boolean','readonly'=>true],
-     'travellers'=>['type'=>'integer','readonly'=>true]
+     'travellers'=>['type'=>'integer','readonly'=>true],
+     'suggestion'=>['type'=>'string','readonly'=>true]
     ]];},'schema_type'=>ARRAY_A
   ]);
  }
@@ -137,8 +150,8 @@ final class Travel_Booking_Traveller_Nationality_Checkout_Blocks {
    return $items;
   },90);
   $file=plugin_dir_path(__FILE__).'assets/checkout-blocks.js';
-  wp_enqueue_style('travel-booking-nationality-switcher',plugins_url('assets/nationality.css',__FILE__),[],'0.5.2');
-  wp_enqueue_script('travel-booking-traveller-nationality-checkout-blocks',plugins_url('assets/checkout-blocks.js',__FILE__),['wp-element','wp-plugins','wp-data','wc-blocks-checkout','wc-blocks-data-store'],'0.5.2',true);
+  wp_enqueue_style('travel-booking-nationality-switcher',plugins_url('assets/nationality.css',__FILE__),[],'0.5.3');
+  wp_enqueue_script('travel-booking-traveller-nationality-checkout-blocks',plugins_url('assets/checkout-blocks.js',__FILE__),['wp-element','wp-plugins','wp-data','wc-blocks-checkout','wc-blocks-data-store'],'0.5.3',true);
   $countries=Travel_Booking_Traveller_Nationality_Switcher::countries();$options=[];
   foreach($countries as $code=>$label)$options[]=['value'=>$code,'label'=>$label];
   wp_add_inline_script('travel-booking-traveller-nationality-checkout-blocks','window.travelBookingTravellerBlocks='.wp_json_encode(['namespace'=>self::NAMESPACE_ID,'types'=>self::bookable_types(),'countries'=>$options,'max'=>Travel_Booking_Traveller_Management::MAX_VERIFIED_PERSONS,'batch_size'=>Travel_Booking_Traveller_Management::LEGACY_BATCH_SIZE,'preferred'=>Travel_Booking_Traveller_Nationality_Switcher::selected()]).';','before');

@@ -61,6 +61,16 @@ try{
  $assert('EXPLICIT_GROUP_SEAT_NOT_CONVERTED_TO_PRIVATE',!is_wp_error($seat)&&$seat['selected_mode']==='group');
  $assert('FIRST_ENABLED_TIER_MINIMUM_TEN',$tm::first_group_minimum($tour)===10);
  $assert('GROUP_MIN_INHERITS_FIRST_TIER',$tm::group_booking_minimum($tour)===10);
+ $verifiedInquiry=$tm::assess_booking_request($tour,1,'group');
+ $assert('OFFERED_GROUP_MODE_VERIFIED',$verifiedInquiry['booking_mode_verified']===true
+   &&$verifiedInquiry['request_status']==='pending_supplier_confirmation');
+ update_post_meta($tour,'_travel_booking_group_booking_minimum',5);
+ $noTier=$tm::advise_booking_mode($tour,7,'auto',false);
+ $assert('CUSTOM_MIN_BELOW_FIRST_TIER_NO_UNPRICEABLE_GROUP_SUGGESTION',
+  !is_wp_error($noTier)&&$noTier['recommended_mode']===null
+  &&$noTier['group_tier_matches_party']===false);
+ delete_post_meta($tour,'_travel_booking_group_booking_minimum');
+
  update_post_meta($tour,'_travel_booking_group_booking_minimum',12);
  $assert('OVERRIDE_MIN_GROUP_TO_TWELVE',$tm::group_booking_minimum($tour)===12);
  $party11=$tm::advise_booking_mode($tour,11,'auto',false);
