@@ -7736,7 +7736,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-backend-registry.php",
-      "source_blob_sha": "891063cc463c1ebba90dcbaef335a6dc1377bb13",
+      "source_blob_sha": "e42bc079d342361d5d3be5d51567fbb0977d2cbe",
       "control_ids": [
         "GOVERNANCE-01",
         "PLATFORM-01",
