@@ -347,7 +347,12 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 		$query_count = function_exists( 'get_num_queries' ) ? (int) get_num_queries() : null;
 		$file_count = count( get_included_files() );
 		$peak = memory_get_peak_usage( true );
-		$attribution = self::query_monitor_db_attribution_status();
+		// Evidence collection must never break the originating MCP request.
+		try {
+			$attribution = self::query_monitor_db_attribution_status();
+		} catch ( Throwable $ignored ) {
+			$attribution = array( 'state' => 'attribution_probe_failed' );
+		}
 		return array(
 			'contract' => 'mad4b.performance-differential-diagnostic.v1',
 			'read_only' => true,
