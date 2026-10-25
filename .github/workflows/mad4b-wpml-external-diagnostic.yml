@@ -65,6 +65,7 @@ jobs:
           php "$root/tests/staging-mcp-skills-recertify-contract.php"
           php -l "$root/includes/class-mad4b-scp-developer-host-capabilities.php"
           php "$root/tests/developer-external-backend-discovery-contract.php"
+          php "$root/tests/developer-runner-lifecycle-fetch-contract.php"
 
       - name: Capture endpoint and REST index without writes
         shell: bash
