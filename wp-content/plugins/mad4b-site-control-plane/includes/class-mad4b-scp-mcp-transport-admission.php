@@ -143,11 +143,13 @@ final class MAD4B_SCP_MCP_Transport_Admission {
 		// Never read or persist messages, request data, tokens, or foreign codes.
 		$code = $codes[$status] ?? 'mad4b_http_rejection';
 		$data = $response->get_data();
+				$trusted_origin_codes = array( 'mad4b_oauth_evaluation_exception', 'mad4b_oauth_bearer_required',
+			'mad4b_oauth_token_expired', 'mad4b_mcp_runtime_restart_grace' );
 		if ( is_array( $data ) && isset( $data['code'] ) && is_string( $data['code'] )
-			&& preg_match( '/^mad4b_[a-z0-9_]{3,80}$/D', $data['code'] ) ) {
+			&& in_array( $data['code'], $trusted_origin_codes, true ) ) {
 			$code = $data['code'];
 		} elseif ( is_array( $data ) && isset( $data['error'] ) && is_string( $data['error'] )
-			&& preg_match( '/^mad4b_[a-z0-9_]{3,80}$/D', $data['error'] ) ) {
+			&& in_array( $data['error'], $trusted_origin_codes, true ) ) {
 			$code = $data['error'];
 		}
 		self::observe_rejection( 'http', $status, $code );
