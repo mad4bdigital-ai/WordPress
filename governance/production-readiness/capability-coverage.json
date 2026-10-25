@@ -7733,6 +7733,40 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Schedule a bounded and non-authorizing runner-availability observation only when explicitly configured on Staging and an administrator visits; no hot-path network fetch or new execution authority."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-backend-registry.php",
+      "source_blob_sha": "891063cc463c1ebba90dcbaef335a6dc1377bb13",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-backend-registry-contract.php"
+      ],
+      "owner_role": "Repository reviewer — no execution authority granted",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Expose a portable backend candidate registry and lifecycle hook, retaining independent execution permissions, identity proof and isolation certification. No candidate availability alone grants authorization."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "8da6719bac98fabbbbc7dbdb222def175fb262aa",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-backend-registry-contract.php"
+      ],
+      "owner_role": "Repository reviewer — no execution authority granted",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Expose a portable backend candidate registry and lifecycle hook, retaining independent execution permissions, identity proof and isolation certification. No candidate availability alone grants authorization."
     }
   ],
   "code_change_rules": {
