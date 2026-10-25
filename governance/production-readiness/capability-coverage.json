@@ -7967,7 +7967,6 @@
         "ADMIN-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-oauth-rejection-evidence-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/mcp-origin-error-preservation-runtime.php"
       ],
       "owner_role": "Repository security source reviewer — CI only",
