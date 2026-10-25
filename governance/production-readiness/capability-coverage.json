@@ -2044,6 +2044,28 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing sealed prior-grant recovery, OAuth bearer/step-up, exact Staging Site Profile, plan revision and audited rollback-controlled reconciliation policies apply. The coordinator cannot mint identity or bypass grant/Production safety gates.",
       "review_rationale": "New guarded recovery coordinator defaults DEFER, requires authoritative Staging Site Profile, sealed pre-update grant baseline and continuation permit, verified OAuth step-up and eligible exact plan, denies stale grants and invokes the existing audited reconciliation operation only with nonproduction_approved_auto=true. No independent mutation authority is introduced. Static integration contract and actual PHP gate test cover this source for CI-only review."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-restore-epoch.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "RECOVERY-01",
+        "UPDATES-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/restore-epoch-recovery-contract.py"
+      ],
+      "owner_role": "Repository source/security reviewer — CI-only, no restore approval or Production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source-enrollment, restore recovery, guarded mutation, Site Profile identity and rollback controls apply to this new exact-epoch service; it does not grant Production or user approval authority.",
+      "review_rationale": "New monotonic external restore/authority epoch protects against stale database snapshots, validates external record and DB binding against the exact Site Profile, quarantines identity conflicts and only diagnoses recoverable missing evidence. Recovery requires disabled write authority, independent evidence and guarded transaction with no blind retries, grants or automatic publishing. The same-PR trusted Python regression executes the six-case hermetic PHP runtime without authorizing site mutation."
     }
   ],
   "lifecycle": [],
@@ -7678,6 +7700,27 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Observed MCP tool errors require fail-closed exception containment. The existing OAuth exception wrapper called optional transport rejection telemetry without its own try/catch, allowing a second exception to escape. This change preserves the existing protected-route 503/no-store response even when optional telemetry throws; hermetic same-PR regression executes that scenario. It does not claim authenticated live MCP acceptance or authorize deployment."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-restore-epoch.php",
+      "source_blob_sha": "90fcaffdc6ffebbc1708e4f3dfbed2feb6a02f68",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "RECOVERY-01",
+        "UPDATES-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/restore-epoch-recovery-contract.py"
+      ],
+      "owner_role": "Repository exact-source reviewer — CI-only, external restore authority and Production not certified",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact Restore Epoch PHP source uses external monotonic record, per-Site Profile binding and fail-closed classified status. Only guarded, audited, explicitly checked evidence reconciliation can advance the epoch; no unconditional authority or grant is produced. Trusted Python runner invokes PHP lint and a six-case recovery/rollback/idempotency fixture. Repository testing is not live filesystem-restore acceptance."
     }
   ],
   "code_change_rules": {
