@@ -2253,6 +2253,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The existing Context Authority, security, original owner review/Audit, source-file identity, nonauthorizing control-plane and auth controls cover review progress without adding a new execution or release control.",
       "review_rationale": "Reviewed complete 201-line lifecycle source: decide() only returns a nonauthorizing plan, never applies actions, loops are capped at 6 rounds/2 unchanged repairs and protected mutation domains reject delegated auto-review. exact_media_evidence() accepts a governed WP Media attachment only within real uploads root and rejects symlinks, stale SHA256, unreadable/oversized assets and incomplete normalization; readback includes original Context revision, remains read_only and publication_authorized=false. record_review_result() writes a bounded derivative history only when current original Context Authority asset receipt matches exact AI actor/decision/content digest and repeats idempotently. Three same-PR hermetic tests were executed on PHP 7.4/8.3: lifecycle reducer 20/20, original receipt/history 8/8, media trust boundary 10/10 including path escape and symlink denial. No external WordPress/Production execution or new grant is claimed."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-only-early-auth-guard.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php"
+      ],
+      "owner_role": "Repository source/security integration review for CI only — not Site Owner attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Site Profile exact UUID, local environment, WordPress application-password pre-authentication hook, OAuth credential-fence and fail-closed transport policies govern this scoped Local service; no additional Production permission.",
+      "review_rationale": "Reviewed exact source for Local-only prefix-scoped service identity, exact Site UUID match, route/method allowlist and independent hook registration before the foreign REST early return. A source-specific adversarial regression exposed a real spoofed rest_route query that previously passed a foreign /wp-json or wp-admin path. Fixed query-style dispatch to the original WordPress index path derived from home_url(), denying conflicting pretty-path/rest_route combinations and malformed/foreign paths while retaining valid root and subdirectory query-mode routing. Hermetic PHP 7.4 and 8.3 test executed all 20 cases with fail-closed negatives. No live authenticated WordPress or Production access is attested."
     }
   ],
   "lifecycle": [],
@@ -8649,6 +8668,24 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Exact new read-only lifecycle source reviewed for signed original-content SHA, original AI actor and owner-authority verification before derivative history writes. It refuses source-path escapes, symbolic links, content-hash drift, incomplete media normalization, delegated decisions on protected operations, source-less approvals and replay/stall. Same-PR hermetic PHP 7.4/8.3 tests execute 38 positive/negative assertions; production approval and external live source execution are explicitly not certified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-only-early-auth-guard.php",
+      "source_blob_sha": "d243aada9c22dce40cbc6ca12ce7fbb6e6d691ac",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php"
+      ],
+      "owner_role": "Repository exact-source CI-only security review — no site execution grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exactly reviewed bounded service authentication source change: wp-authenticate_application_password_errors denies spoofed query-mode rest_route values on foreign REST/admin targets, validates the original home/index.php path including WordPress subdirectory sites, rejects mismatched route aliases and denied HTTP methods, enforces Local Site Profile UUID and managed login only. 20-case network-isolated PHP 7.4/8.3 source-specific runtime test passed, including adversarial reproduction before the fix. No promotion, original owner decision, external end-to-end or other grant issued."
     }
   ],
   "code_change_rules": {

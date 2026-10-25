@@ -6,6 +6,7 @@ $GLOBALS['mock_environment']='local';
 $GLOBALS['mock_user_site']=MAD4B_LOCAL_CLIENT_SITE_UUID;
 $GLOBALS['mock_hooks']=array();
 function wp_get_environment_type(){return $GLOBALS['mock_environment'];}
+function home_url($path='/'){return ($GLOBALS['mock_home']??'https://lab.example/').ltrim((string)$path,'/');}
 function add_action($name,$callback,$priority=10,$args=1){$GLOBALS['mock_hooks'][$name]=$callback;}
 function get_user_meta($id,$key,$single){return $GLOBALS['mock_user_site'];}
 function wp_parse_url($url,$component){return parse_url($url,$component);}
@@ -21,9 +22,9 @@ class WP_Error{
 }
 require_once __DIR__.'/../includes/class-mad4b-scp-ai-only-early-auth-guard.php';
 if(!isset($GLOBALS['mock_hooks']['wp_authenticate_application_password_errors']))exit(1);
-$run=function($label,$path,$method,$login,$site,$expected) {
+$run=function($label,$path,$method,$login,$site,$expected,$rest_route='') {
     $GLOBALS['mock_user_site']=$site;
-    $_GET=array();$_SERVER['REQUEST_URI']=$path;$_SERVER['REQUEST_METHOD']=$method;
+    $_GET=$rest_route!==''?array('rest_route'=>$rest_route):array();$_SERVER['REQUEST_URI']=$path;$_SERVER['REQUEST_METHOD']=$method;
     $error=new WP_Error();$user=new WP_User(44,$login);
     MAD4B_SCP_AI_Only_Early_Auth_Guard::authenticate($error,$user,array('uuid'=>'fixture'));
     $actual=implode(',',$error->codes);
@@ -39,9 +40,20 @@ $run('non_review_route_denied','/wp-json/wp/v2/users/me','GET','mad4b_ai_local_f
 $run('other_mcp_route_denied','/wp-json/mcp/mad4b-chatgpt','POST','mad4b_ai_local_fixture',$site,'mad4b_ai_only_service_route_denied');
 $run('review_queue_get_allowed','/wp-json/mad4b-local-ai/v1/context-review','GET','mad4b_ai_local_fixture',$site,'');
 $run('method_put_denied','/wp-json/mad4b-local-ai/v1/context-review','PUT','mad4b_ai_local_fixture',$site,'mad4b_ai_only_service_route_denied');
+$run('valid_query_route_review','/?rest_route=/mad4b-local-ai/v1/context-review','POST','mad4b_ai_local_fixture',$site,'','/mad4b-local-ai/v1/context-review');
+$run('valid_query_route_domain','/index.php?rest_route=/mad4b-local-ai/v1/domain-review','POST','mad4b_ai_local_fixture',$site,'','/mad4b-local-ai/v1/domain-review');
+$run('foreign_pretty_route_with_spoofed_query_denied','/wp-json/wp/v2/users/me?rest_route=/mad4b-local-ai/v1/context-review','POST','mad4b_ai_local_fixture',$site,'mad4b_ai_only_service_route_denied','/mad4b-local-ai/v1/context-review');
+$run('arbitrary_admin_with_spoofed_query_denied','/wp-admin/admin-ajax.php?rest_route=/mad4b-local-ai/v1/context-review','POST','mad4b_ai_local_fixture',$site,'mad4b_ai_only_service_route_denied','/mad4b-local-ai/v1/context-review');
+$run('pretty_route_with_conflicting_query_denied','/wp-json/mad4b-local-ai/v1/context-review?rest_route=/wp/v2/users/me','POST','mad4b_ai_local_fixture',$site,'mad4b_ai_only_service_route_denied','/wp/v2/users/me');
+$run('query_route_domain_get_denied','/?rest_route=/mad4b-local-ai/v1/domain-review','GET','mad4b_ai_local_fixture',$site,'mad4b_ai_only_service_route_denied','/mad4b-local-ai/v1/domain-review');
+$run('query_route_foreign_denied','/?rest_route=/wp/v2/users/me','POST','mad4b_ai_local_fixture',$site,'mad4b_ai_only_service_route_denied','/wp/v2/users/me');
+$GLOBALS['mock_home']='https://lab.example/lab/';
+$run('subdir_wordpress_query_review_allowed','/lab/?rest_route=/mad4b-local-ai/v1/context-review','POST','mad4b_ai_local_fixture',$site,'','/mad4b-local-ai/v1/context-review');
+$run('wrong_subdir_query_denied','/wrong/?rest_route=/mad4b-local-ai/v1/context-review','POST','mad4b_ai_local_fixture',$site,'mad4b_ai_only_service_route_denied','/mad4b-local-ai/v1/context-review');
+unset($GLOBALS['mock_home']);
 $run('foreign_site_denied','/wp-json/mad4b-local-ai/v1/context-review','POST','mad4b_ai_local_fixture','00000000-0000-0000-0000-000000000000','mad4b_ai_only_service_site_denied');
 $run('ordinary_user_not_impacted','/wp-json/wp/v2/users/me','GET','regular_subscriber',$site,'');
 $GLOBALS['mock_environment']='production';
 $run('production_not_managed','/wp-json/wp/v2/users/me','GET','mad4b_ai_local_fixture',$site,'');
-echo "SUMMARY pass=11 fail=0\n";
+echo "SUMMARY pass=20 fail=0\n";
 echo "PASS: AI_ONLY_EARLY_AUTH_GUARD\n";

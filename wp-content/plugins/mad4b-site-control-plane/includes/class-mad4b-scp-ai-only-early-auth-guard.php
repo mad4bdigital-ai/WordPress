@@ -28,10 +28,21 @@ final class MAD4B_SCP_AI_Only_Early_Auth_Guard {
         $path = (string) wp_parse_url( $url, PHP_URL_PATH );
         $query = isset( $_GET['rest_route'] ) ? (string) $_GET['rest_route'] : '';
         $rest = '/' . trim( $query, '/' );
-        $route = '/wp-json' . self::ROUTE === rtrim( $path, '/' )
-            || self::ROUTE === $rest;
-        $domain = '/wp-json' . self::DOMAIN_ROUTE === rtrim( $path, '/' )
-            || self::DOMAIN_ROUTE === $rest;
+        // rest_route is only authoritative on the site's index route. A
+        // crafted query must never turn a foreign /wp-json or wp-admin
+        // request into an authenticated local review request.
+        $home = function_exists( 'home_url' ) ? wp_parse_url( home_url( '/' ), PHP_URL_PATH ) : '/';
+        $home_path = is_string( $home ) ? rtrim( '/' . trim( $home, '/' ), '/' ) : null;
+        $query_path_ok = $query !== '' && null !== $home_path
+            && ( rtrim( $path, '/' ) === $home_path || $path === $home_path . '/index.php' );
+        // A conflicting rest_route query on a pretty permalink also denies
+        // the managed service rather than relying on route precedence.
+        $route = ( '/wp-json' . self::ROUTE === rtrim( $path, '/' )
+                && ( $query === '' || $rest === self::ROUTE ) )
+            || ( $query_path_ok && $rest === self::ROUTE );
+        $domain = ( '/wp-json' . self::DOMAIN_ROUTE === rtrim( $path, '/' )
+                && ( $query === '' || $rest === self::DOMAIN_ROUTE ) )
+            || ( $query_path_ok && $rest === self::DOMAIN_ROUTE );
         $method = strtoupper((string)($_SERVER['REQUEST_METHOD']??''));
         $accepted = ($route && in_array($method,array('POST','GET'),true))
             || ($domain && $method==='POST');
