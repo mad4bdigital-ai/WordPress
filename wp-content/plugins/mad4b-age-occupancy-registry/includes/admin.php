@@ -6,6 +6,7 @@ final class MAD4B_Age_Occupancy_Admin {
  public static function init(){
   add_action('admin_menu',[__CLASS__,'menu']);
   add_action('admin_post_mad4b_age_policy_save',[__CLASS__,'save']);
+  add_action('admin_post_mad4b_age_forms_save',[__CLASS__,'save_forms']);
  }
  public static function menu(){add_submenu_page('woocommerce','Age & Occupancy Policies','Age & Occupancy','manage_woocommerce',self::PAGE,[__CLASS__,'render']);}
  public static function current_target(){
@@ -60,6 +61,30 @@ final class MAD4B_Age_Occupancy_Admin {
   }else update_post_meta($id,MAD4B_Age_Aware_Stay::META,$policy);
   wp_safe_redirect(add_query_arg(['page'=>self::PAGE,'scope'=>$scope,'domain'=>$domain,'target_id'=>$id,'saved'=>1],admin_url('admin.php')));exit;
  }
+ public static function save_forms(){
+  if(!current_user_can('manage_woocommerce'))wp_die('Permission denied',403);
+  check_admin_referer('mad4b_age_forms_save');
+  $rows=isset($_POST['forms'])?wp_unslash($_POST['forms']):[];
+  if(!is_array($rows)||count($rows)>50)wp_die('Invalid form mappings',400);
+  global $wpdb;$table=$wpdb->prefix.'fluentform_forms';$final=[];
+  foreach($rows as $row){
+   if(!is_array($row))wp_die('Invalid mapping row',400);
+   $id=absint($row['id']??0);if(!$id)continue;
+   $children=sanitize_key((string)($row['children']??''));$infants=sanitize_key((string)($row['infants']??''));
+   if(!$children||!$infants||$children===$infants||isset($final[$id]))wp_die('Invalid form field names',400);
+   $form=$wpdb->get_row($wpdb->prepare("SELECT status,form_fields FROM $table WHERE id=%d",$id));
+   if(!$form||$form->status!=='published')wp_die('Form is not published',400);
+   $definition=json_decode($form->form_fields,true);$names=[];
+   foreach(($definition['fields']??[]) as $field){
+    if(($field['element']??'')==='input_number'&&isset($field['attributes']['name']))$names[]=$field['attributes']['name'];
+   }
+   // For local deployments, passenger counts are existing numeric Fluent Forms inputs.
+   if(!in_array($children,$names,true)||!in_array($infants,$names,true))wp_die('Passenger count fields not found',400);
+   $final[$id]=['children'=>$children,'infants'=>$infants,'strict'=>!empty($row['strict'])];
+  }
+  update_option(MAD4B_Age_Fluent_Forms::OPTION,$final,false);
+  wp_safe_redirect(add_query_arg(['page'=>self::PAGE,'forms_saved'=>1],admin_url('admin.php')));exit;
+ }
  public static function render(){
   if(!current_user_can('manage_woocommerce'))return;
   $target=self::current_target();$scope=$target['scope'];$domain=$target['domain'];$id=$target['id'];
@@ -82,7 +107,19 @@ final class MAD4B_Age_Occupancy_Admin {
    foreach(['id'=>'text','min_age'=>'number','max_age'=>'number','price_factor'=>'number'] as $field=>$type){$default=$field==='price_factor'?'1':'';$value=$v[$field]??$default;echo '<td><input type="'.esc_attr($type).'" name="'.esc_attr($prefix.'['.$field.']').'" value="'.esc_attr($value).'" '.($type==='number'?'step="'.($field==='price_factor'?'0.01':'1').'"':'').'/></td>';}
    echo '<td><input type="checkbox" name="'.esc_attr($prefix.'[count_in_capacity]').'" value="1"'.checked($v['count_in_capacity']??true,true,false).'/></td></tr>';
   }
-  echo '</tbody></table><p><button type="submit" class="button button-primary">Save policy</button></p></form></div>';
+  echo '</tbody></table><p><button type="submit" class="button button-primary">Save policy</button></p></form>';
+  $forms=class_exists('MAD4B_Age_Fluent_Forms')?MAD4B_Age_Fluent_Forms::forms():[];
+  echo '<hr/><h2>Fluent Forms Passenger Age Mapping</h2><p>Specify existing published forms and their numeric child/infant count fields. IDs are site-specific, not hardcoded in the plugin.</p>';
+  if(!empty($_GET['forms_saved']))echo '<div class="notice notice-success"><p>Form mappings saved.</p></div>';
+  echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="mad4b_age_forms_save"/>';
+  wp_nonce_field('mad4b_age_forms_save');
+  echo '<table class="widefat striped"><thead><tr><th>Form ID</th><th>Children count field</th><th>Infants count field</th><th>Require ages on booking submission</th></tr></thead><tbody>';
+  $rows=array_values($forms);$ids=array_keys($forms);$rows[]=['children'=>'','infants'=>'','strict'=>true];$ids[]=0;
+  foreach($rows as $i=>$row){echo '<tr><td><input type="number" min="0" name="forms['.$i.'][id]" value="'.esc_attr($ids[$i]).'"/></td>';
+   foreach(['children','infants'] as $field)echo '<td><input name="forms['.$i.']['.$field.']" value="'.esc_attr($row[$field]??'').'"/></td>';
+   echo '<td><input type="checkbox" name="forms['.$i.'][strict]" value="1"'.checked(!empty($row['strict']),true,false).'/></td></tr>';
+  }
+  echo '</tbody></table><p><button type="submit" class="button">Save form mappings</button></p></form></div>';
  }
 }
 MAD4B_Age_Occupancy_Admin::init();
