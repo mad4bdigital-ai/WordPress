@@ -75,3 +75,5 @@ final class MAD4B_Pricing_Quote_Dispatch {
 }
 
 require_once __DIR__.'/includes/source-arbitration.php';
+
+require_once __DIR__.'/includes/tour-preview.php';
