@@ -8783,6 +8783,114 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Exact Git source 6104dbd2 binds authenticated WordPress app-password callback and site-enrolled subject to separate non-authorizing Agent grant evaluation. Tested 16 positive/negative cases on PHP 7.4/8.3, including original WP verifier lazy bootstrap, revocation and origin mismatch. No header-only identity mint, no new grant, no Production or external site certification."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php",
+      "source_blob_sha": "630b772c438f5535d65c372a3ec7a4c2a10ffd32",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php"
+      ],
+      "owner_role": "Repository automated exact-source and security test review — CI only; not original WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "P0: source reviewed for opt-in site scope on the original AI review authority. Staging/Local remain governed; Production requires explicit true constant and site-bound activation, exact original Agent and environment-matching grant. Original CAS, source integrity and append-only audit remain unchanged. Positive Production status with all-environment grant and negative default/Staging-only grant cases execute in same-PR hermetic test. Tests executed via network-isolated PHP 7.4 and PHP 8.3 container; production live execution, deployment, credentials and owner authorizations remain UNVERIFIED."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-only-local-activation.php",
+      "source_blob_sha": "397b9662bbdfc285cae047183c2759ee0405a05a",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-crossenv-scope-hermetic.php"
+      ],
+      "owner_role": "Repository automated exact-source and security test review — CI only; not original WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "P0: source reviewed for enrolled Site Profile UUID, HTTPS outside Local, explicit host opt-in, original Agent identity, secure owner-only vault, exact policy and grant; legacy Local site remains opt-in compatible. Hermetic positive/negative scope checks, route denial and WordPress app-password worker tests do not substitute for live auth. Tests executed via network-isolated PHP 7.4 and PHP 8.3 container; production live execution, deployment, credentials and owner authorizations remain UNVERIFIED."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-only-early-auth-guard.php",
+      "source_blob_sha": "b3f5492bc9622552913d5c48686b569c9d95db09",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php"
+      ],
+      "owner_role": "Repository automated exact-source and security test review — CI only; not original WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "P0: reviewed managed Agent early authentication across Local, Staging and Production with exact reviewed path/method, per-site UUID, TLS and spoofed rest_route denial before the foreign REST short-circuit. 26 hermetic regression assertions execute in PHP 7.4 and 8.3. Tests executed via network-isolated PHP 7.4 and PHP 8.3 container; production live execution, deployment, credentials and owner authorizations remain UNVERIFIED."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-review-worker.php",
+      "source_blob_sha": "817b8bc24b3ece176b3d6920ee11dcfd773bbb97",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-worker-guard-hermetic.php"
+      ],
+      "owner_role": "Repository automated exact-source and security test review — CI only; not original WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "P0: reviewed non-Local worker scope preflight and transport. Exact enrolled site and authenticated original identity are required. Production callback URL requires HTTPS and wp_safe_remote_post; local loopback remains scoped to Local. 26 negative/positive PHP guard checks, no publication grant. Tests executed via network-isolated PHP 7.4 and PHP 8.3 container; production live execution, deployment, credentials and owner authorizations remain UNVERIFIED."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-native-owner-review.php",
+      "source_blob_sha": "0bd38e05cdf861ce2d179b9868fd88392b5746fa",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php"
+      ],
+      "owner_role": "Repository automated exact-source and security test review — CI only; not original WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "P0: reviewed current-environment exact owner grant and original source SHA/revision, immutable native owner audit/CAS, no execute_callback authorization. Original-owner runtime exercises 46 source-only cases and retains protected-domain denials. Tests executed via network-isolated PHP 7.4 and PHP 8.3 container; production live execution, deployment, credentials and owner authorizations remain UNVERIFIED."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-domain-executors.php",
+      "source_blob_sha": "abf42e09850e9c49999842873eeb6af6429f92c1",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-domain-executors-runtime.php"
+      ],
+      "owner_role": "Repository automated exact-source and security test review — CI only; not original WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "P0: reviewed environment-neutral site-bound registration for original-owner content adapters. Exact audited file SHA pin, runtime revalidation and exclusion of protected governance domains remain mandatory. Source-only runtime executes 24 adversarial cases. Tests executed via network-isolated PHP 7.4 and PHP 8.3 container; production live execution, deployment, credentials and owner authorizations remain UNVERIFIED."
     }
   ],
   "code_change_rules": {

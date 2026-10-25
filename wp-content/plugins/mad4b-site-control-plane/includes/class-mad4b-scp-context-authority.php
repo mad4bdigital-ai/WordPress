@@ -147,6 +147,18 @@ final class MAD4B_SCP_Context_Authority {
 		return sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() );
 	}
 
+	private static function ai_review_environment_allowed() {
+		$environment=self::site_profile_environment();
+		if(in_array($environment,array('staging','local'),true))return true;
+		// Production review requires separately enabled site identity and scoped
+		// original Agent authority. No production publication rights are inferred.
+		return $environment==='production'
+			&& class_exists('MAD4B_SCP_AI_Only_Local_Activation')
+			&& MAD4B_SCP_AI_Only_Local_Activation::site_bound()
+			&& defined('MAD4B_AI_REVIEW_CROSS_ENV_ENABLED')
+			&& constant('MAD4B_AI_REVIEW_CROSS_ENV_ENABLED')===true;
+	}
+
 	private static function site_profile_agent_slug() {
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! method_exists( 'MAD4B_SCP_Site_Profile', 'agent_slug' ) ) return '';
 		return sanitize_key( (string) MAD4B_SCP_Site_Profile::agent_slug() );
@@ -166,7 +178,7 @@ final class MAD4B_SCP_Context_Authority {
 	public static function ai_review_catalog_eligible() {
 		$policy = self::review_policy();
 		if ( ! in_array( (string) $policy['mode'], array( 'human_and_ai', 'ai_only' ), true ) || empty( $policy['ai_agent_public_id'] ) ) return false;
-		if ( ! in_array( self::site_profile_environment(), array( 'staging', 'local' ), true ) ) return false;
+		if ( ! self::ai_review_environment_allowed() ) return false;
 		if ( ! class_exists( 'MAD4B_SCP_Agent_Registry' ) || ! class_exists( 'MAD4B_SCP_Schema' ) || ! MAD4B_SCP_Schema::is_ready() ) return false;
 		$agent = MAD4B_SCP_Agent_Registry::get_agent_by_public_id( (string) $policy['ai_agent_public_id'] );
 		$profile_agent_slug = self::site_profile_agent_slug();
@@ -184,7 +196,7 @@ final class MAD4B_SCP_Context_Authority {
 		$grant = null;
 		if ( ! in_array( (string) $policy['mode'], array( 'human_and_ai', 'ai_only' ), true ) ) $blockers[] = 'ai_review_mode_disabled';
 		if ( empty( $policy['ai_agent_public_id'] ) ) $blockers[] = 'ai_review_agent_unconfigured';
-		if ( ! in_array( self::site_profile_environment(), array( 'staging', 'local' ), true ) ) $blockers[] = 'ai_review_staging_only';
+		if ( ! self::ai_review_environment_allowed() ) $blockers[] = 'ai_review_site_scope_required';
 		if ( ! class_exists( 'MAD4B_SCP_Agent_Registry' ) || ! class_exists( 'MAD4B_SCP_Schema' ) || ! MAD4B_SCP_Schema::is_ready() ) {
 			$blockers[] = 'ai_review_agent_registry_unavailable';
 		} elseif ( ! empty( $policy['ai_agent_public_id'] ) ) {
@@ -236,7 +248,7 @@ final class MAD4B_SCP_Context_Authority {
 		if ( in_array( $mode, array( 'human_and_ai', 'ai_only' ), true ) ) {
 			if ( ! $confirmed ) return new WP_Error( 'mad4b_context_ai_review_confirmation_required', 'Changing delegated AI Agent review requires explicit administrator confirmation.' );
 			if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', $agent_public_id ) ) return new WP_Error( 'mad4b_context_ai_review_agent_required', 'Select one exact enabled MAD4B Agent for AI review delegation.' );
-			if ( ! in_array( self::site_profile_environment(), array( 'staging', 'local' ), true ) ) return new WP_Error( 'mad4b_context_ai_review_staging_only', 'AI Agent approval mode is Staging-only in rc.54.' );
+			if ( ! self::ai_review_environment_allowed() ) return new WP_Error( 'mad4b_context_ai_review_site_scope_required', 'Verified and explicitly enabled AI review site scope required.' );
 			if ( ! class_exists( 'MAD4B_SCP_Agent_Registry' ) || ! class_exists( 'MAD4B_SCP_Schema' ) || ! MAD4B_SCP_Schema::is_ready() ) return new WP_Error( 'mad4b_context_ai_review_agent_registry_unavailable', 'MAD4B Agent registry is unavailable.' );
 			$agent = MAD4B_SCP_Agent_Registry::get_agent_by_public_id( $agent_public_id );
 			$profile_agent_slug = self::site_profile_agent_slug();
@@ -2556,7 +2568,7 @@ final class MAD4B_SCP_Context_Authority {
 		}
 		$policy = self::review_policy();
 		if ( ! in_array( (string) $policy['mode'], array( 'human_and_ai', 'ai_only' ), true ) ) return new WP_Error( 'mad4b_context_ai_review_mode_disabled', 'AI Agent review is disabled. Human Review remains available.' );
-		if ( ! in_array( self::site_profile_environment(), array( 'staging', 'local' ), true ) ) return new WP_Error( 'mad4b_context_ai_review_staging_only', 'AI Agent review is Staging-only in rc.54.' );
+		if ( ! self::ai_review_environment_allowed() ) return new WP_Error( 'mad4b_context_ai_review_site_scope_required', 'Verified AI review site scope required.' );
 		if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) || ! class_exists( 'MAD4B_SCP_Agent_Registry' ) ) return new WP_Error( 'mad4b_context_ai_review_identity_unavailable', 'AI review identity authority is unavailable.' );
 		$identity = MAD4B_SCP_Identity_Context::current();
 		if ( is_wp_error( $identity ) || empty( $identity['authenticated'] ) || ! in_array( (string) ( $identity['auth_method'] ?? '' ), array( 'oauth2_bearer', 'wp_application_password', 'mad4b_passwordless_bearer' ), true ) ) return new WP_Error( 'mad4b_context_ai_review_oauth_required', 'AI review requires verified OAuth2 bearer or explicitly bound WordPress Application Password identity.' );
