@@ -4,8 +4,8 @@
   "reviewed_base_sha": "e7f30d944c354c3a4f7346330ad401d995e768c5",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 113,
-  "changed_paths_sha256": "f128c8ec3d666febee2e1c9257dd92996b3a02ab5429c208caa934375e20cdb9",
+  "changed_file_count": 114,
+  "changed_paths_sha256": "343fb187913de39999d2e7736cecd76c7fa0fac02695179cbd13adbda174fdeb",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -19,6 +19,7 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-source-repair.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/ai-model-routing-worker-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-history-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-media-evidence-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tools/ai-review-worker-local.php"
       ]

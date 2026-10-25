@@ -2232,6 +2232,27 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing authenticated read-only MCP/provider controls, Site Profile/Market Profile, core security, source trust and audit controls already cover this bounded calendar preview; no new mutation authority or new Production control is granted.",
       "review_rationale": "Exact Public Holidays source reviewed with hermetic PHP 7.4 and PHP 8.3 regression: fixes two PHP8-only str_contains usages without changing parse semantics. Original Ability exposes a nonpublic read-only endpoint, requires native MAD4B_SCP_Policy::can_read, strict ISO country, visible site language and bounded year, and uses static provider hosts through wp_safe_remote_get with redirects disabled and 2 MB response cap. Nager entries filter national Public type/country; recurrence and oversized iCalendar fail closed; no season terms, offers, or market approvals are mutated. The 19-case same-PR runtime fixture checks successful parsing, wrong country, hidden locale, year, unknown source, unapproved market, redirect rejection and zero publication. This record does not attest live WordPress/Google HTTP acceptance or owner release approval."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-review-lifecycle.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-history-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-media-evidence-runtime.php"
+      ],
+      "owner_role": "Repository automated exact-source reviewer — CI only, not original WordPress source owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The existing Context Authority, security, original owner review/Audit, source-file identity, nonauthorizing control-plane and auth controls cover review progress without adding a new execution or release control.",
+      "review_rationale": "Reviewed complete 201-line lifecycle source: decide() only returns a nonauthorizing plan, never applies actions, loops are capped at 6 rounds/2 unchanged repairs and protected mutation domains reject delegated auto-review. exact_media_evidence() accepts a governed WP Media attachment only within real uploads root and rejects symlinks, stale SHA256, unreadable/oversized assets and incomplete normalization; readback includes original Context revision, remains read_only and publication_authorized=false. record_review_result() writes a bounded derivative history only when current original Context Authority asset receipt matches exact AI actor/decision/content digest and repeats idempotently. Three same-PR hermetic tests were executed on PHP 7.4/8.3: lifecycle reducer 20/20, original receipt/history 8/8, media trust boundary 10/10 including path escape and symlink denial. No external WordPress/Production execution or new grant is claimed."
     }
   ],
   "lifecycle": [],
@@ -8608,6 +8629,26 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Exact revised source blob 3512a46a is the reviewed immutable Public Holiday preview implementation. The only code change replaces PHP8-only str_contains with strpos existence checks for PHP 7.4 compatibility, preserving the original fail-closed parser logic. Same-PR 19-case hermetic PHP7.4/8.3 test verifies fixed-provider URL, safe HTTP without redirects, 2 MB response cap, read-only registered Ability and rejected unknown/unapproved sources; neither this review nor the parser promotes an approved market or creates season terms."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-review-lifecycle.php",
+      "source_blob_sha": "e4f86724f02bd2d92ddffbd47b91268fa1a09bc6",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-history-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-media-evidence-runtime.php"
+      ],
+      "owner_role": "Repository automated exact-source security reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact new read-only lifecycle source reviewed for signed original-content SHA, original AI actor and owner-authority verification before derivative history writes. It refuses source-path escapes, symbolic links, content-hash drift, incomplete media normalization, delegated decisions on protected operations, source-less approvals and replay/stall. Same-PR hermetic PHP 7.4/8.3 tests execute 38 positive/negative assertions; production approval and external live source execution are explicitly not certified."
     }
   ],
   "code_change_rules": {
