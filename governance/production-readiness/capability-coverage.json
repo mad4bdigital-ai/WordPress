@@ -2350,6 +2350,44 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing enrolled administrator/Policy, Local-only bound Agent identity, original Context Authority review endpoint, source-readback and release/approval gates control this worker; no new authority is granted.",
       "review_rationale": "Reviewed unchanged source blob 065726ac26093b0bbc9e11c0009af102df61fcb9. The REST route has original Policy::can_connect_user plus manage_options checks. Preflight requires Local, bound Local Client, ai_only policy, enabled model credentials and authenticated original Agent identity. Run refuses when preflight fails. JSON verdict validation denies foreign authority fields, low-confidence approvals, malformed/oversized payloads and invalid evidence-line citations; no automatic publication authority. New same-PR 22-case hermetic CLI source regression passed PHP 7.4 and 8.3. Live WP original Agent receipt, network transport, background schedule and Staging were NOT exercised or certified."
+    },
+    {
+      "id": "rest:mad4b-local-ai/v1/context-review",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-crossenv-scope-hermetic.php"
+      ],
+      "owner_role": "Repository source/security CI reviewer only, not authenticated WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing original Agent Registry, Site Profile, WordPress App Password authentication, Policy, Context Authority and audit/approval/Content-CAS governance controls; does not expand any underlying permission.",
+      "review_rationale": "Original REST permission callback requires exact enrolled Site Profile, HTTPS in non-Local, bound WordPress Application Password reviewer identity, enabled delegated AI Agent, exact original review grant and original Context Authority CAS. Early-auth adversarial checks reject forged rest_route query on WP admin/foreign REST, wrong user meta site, unsupported methods and plaintext traffic. Endpoint registration alone cannot provide publishing authorization."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-only-local-activation.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-crossenv-scope-hermetic.php"
+      ],
+      "owner_role": "Repository source/security CI reviewer only, not authenticated WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing original Agent Registry, Site Profile, WordPress App Password authentication, Policy, Context Authority and audit/approval/Content-CAS governance controls; does not expand any underlying permission.",
+      "review_rationale": "AI reviewer identity service remains exact site-bound and opt-in across environments; managed subscriber identity cannot reach arbitrary WordPress REST routes, while the original policy checks explicitly delegated Agent and environment-matching grant. PHP 7.4/8.3 network-free negative/positive tests verify cross-env site UUID, HTTPS, missing opt-in, disabled Agent scope and spoofed admin paths. No live credentials issued, no grants created, no publication authority."
     }
   ],
   "lifecycle": [],
