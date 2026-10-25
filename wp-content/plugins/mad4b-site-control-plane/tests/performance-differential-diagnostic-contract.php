@@ -14,6 +14,7 @@ if(($result['contract']??'')!=='mad4b.performance-differential-diagnostic.v1'
  ||$result['authority_granted']!==false || $result['mutation_performed']!==false
  ||$result['attribution']['caller_component_trace_available']!==true)
  throw new RuntimeException('non-authorizing bounded diagnostic contract violated');
+// A broken Query Monitor bridge must not abort MCP or expose an exception.
 $GLOBALS['qm_test_throw']=true;
 $result2=MAD4B_SCP_Live_Acceptance_Observer::performance_differential_diagnostic();
 if ($result2['read_only']!==true || $result2['mutation_performed']!==false || $result2['attribution']['state']!=='attribution_probe_failed' || strpos(json_encode($result2),'secret backend exception')!==false)
