@@ -55,6 +55,9 @@ class MAD4B_SCP_Audit {
  }
 }
 class MAD4B_SCP_Site_Profile {public static function site_uuid(){return '123e4567-e89b-12d3-a456-426614174000';}}
+class MAD4B_SCP_AI_Only_Local_Activation {
+ public static function site_bound(){return ($GLOBALS['env']??'local')==='local' || !empty($GLOBALS['crossenv_bound']);}
+}
 require dirname(__DIR__).'/includes/class-mad4b-scp-ai-native-owner-review.php';
 $passes=0;
 function ok($n,$c){global $passes;if(!$c){fwrite(STDERR,"FAILED $n\n");exit(1);}++$passes;echo "$n: PASS\n";}
@@ -66,7 +69,10 @@ foreach($GLOBALS['abilities'] as $name=>$info)
     &&empty($info['meta']['public']) &&empty($info['meta']['mcp']['public'])
     &&MAD4B_SCP_AI_Native_Owner_Review::local_ability_allowed($name));
 $GLOBALS['env']='production';
-ok('native_grant_denied_production',!MAD4B_SCP_AI_Native_Owner_Review::local_ability_allowed('mad4b/ai-content-job-review'));
+ok('native_grant_denied_production_without_scope',!MAD4B_SCP_AI_Native_Owner_Review::local_ability_allowed('mad4b/ai-content-job-review'));
+$GLOBALS['crossenv_bound']=true;
+ok('native_grant_visible_for_scoped_production',MAD4B_SCP_AI_Native_Owner_Review::local_ability_allowed('mad4b/ai-content-job-review'));
+unset($GLOBALS['crossenv_bound']);
 $GLOBALS['env']='local';
 $items=array(
  'content_job'=>'job:123e4567-e89b-42d3-a456-426614174000',

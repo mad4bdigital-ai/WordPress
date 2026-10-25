@@ -14,6 +14,9 @@ $GLOBALS['native_receipt_valid']=true;
 $GLOBALS['model_calls']=0;
 $GLOBALS['submit_calls']=0;
 $GLOBALS['candidate']=array('item_id'=>'draft:42','content_hash'=>str_repeat('a',64),'owner_revision'=>7);
+class MAD4B_SCP_AI_Only_Local_Activation {
+ public static function site_bound(){return ($GLOBALS['env']??'local')==='local' || !empty($GLOBALS['crossenv_bound']);}
+}
 class MAD4B_SCP_AI_Review_Worker {
     public static function preflight(){return array('ready'=>!empty($GLOBALS['inference_ready']));}
     public static function parse_verdict($text,$evidence){

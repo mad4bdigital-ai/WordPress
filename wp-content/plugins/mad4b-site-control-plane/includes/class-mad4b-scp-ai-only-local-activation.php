@@ -13,11 +13,34 @@ final class MAD4B_SCP_AI_Only_Local_Activation {
     const MAX_LIFETIME = 86400;
     const AUDIT_OPTION = 'mad4b_scp_ai_only_local_activation_audit_v1';
 
+    public static function site_bound() {
+        if (!class_exists('MAD4B_SCP_Site_Profile')) return false;
+        if (wp_get_environment_type()==='local'
+            && class_exists('MAD4B_SCP_Local_Client')
+            && MAD4B_SCP_Local_Client::bound()) return true;
+        if (!defined('MAD4B_AI_REVIEW_CROSS_ENV_ENABLED')
+            || constant('MAD4B_AI_REVIEW_CROSS_ENV_ENABLED')!==true
+            || !defined('MAD4B_AI_REVIEW_SITE_UUID')) return false;
+        $expected=(string)constant('MAD4B_AI_REVIEW_SITE_UUID');
+        $actual=(string)MAD4B_SCP_Site_Profile::site_uuid();
+        return (bool)preg_match('/^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$/D',$expected)
+            && hash_equals(strtolower($expected),strtolower($actual))
+            && MAD4B_SCP_Site_Profile::origin_enrolled()
+            && MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
+            && (wp_get_environment_type()==='local'
+                || (function_exists('home_url') && function_exists('wp_parse_url') && strtolower((string)wp_parse_url(home_url('/'),PHP_URL_SCHEME))==='https'));
+    }
     private static function path() {
-        if ( ! defined('MAD4B_LOCAL_CLIENT_VAULT_PATH') ) return '';
-        $base = constant('MAD4B_LOCAL_CLIENT_VAULT_PATH');
+        if (defined('MAD4B_AI_REVIEW_VAULT_PATH')) {
+            $base=constant('MAD4B_AI_REVIEW_VAULT_PATH');
+            if (!is_string($base) || basename($base)!=='ai-only-review.json') return '';
+            $candidate=$base;
+        } elseif (wp_get_environment_type()==='local' && defined('MAD4B_LOCAL_CLIENT_VAULT_PATH')) {
+            $base=constant('MAD4B_LOCAL_CLIENT_VAULT_PATH');
+            $candidate=dirname((string)$base).'/ai-only-review.json';
+        } else return '';
         if ( ! is_string($base) || '/' !== substr($base,0,1) ) return '';
-        $dir = dirname($base);
+        $dir = dirname($candidate);
         $real = realpath($dir);
         $web = realpath(ABSPATH);
         if ( ! $real || !$web || 0 === strpos($real.'/', $web.'/')
@@ -27,9 +50,7 @@ final class MAD4B_SCP_AI_Only_Local_Activation {
     private static function policy_agent() {
         if ( ! class_exists('MAD4B_SCP_Context_Authority')
              || !class_exists('MAD4B_SCP_Agent_Registry')
-             || !class_exists('MAD4B_SCP_Local_Client')
-             || ! MAD4B_SCP_Local_Client::bound()
-             || wp_get_environment_type() !== 'local' ) return new WP_Error('mad4b_ai_only_local_scope_denied','Local Site Profile binding required.');
+             || !self::site_bound() ) return new WP_Error('mad4b_ai_review_scope_denied','Verified Site Profile and scoped review opt-in required.');
         $policy=MAD4B_SCP_Context_Authority::review_policy();
         $status=MAD4B_SCP_Context_Authority::ai_review_policy_status();
         if ( ($policy['mode']??'') !== 'ai_only' || empty($status['ready']) || empty($status['exact_grant_ready']) )
@@ -83,7 +104,9 @@ final class MAD4B_SCP_AI_Only_Local_Activation {
                 && is_array($app) && is_array($subject) && $subject['status']==='enabled'
                 && (int)($subject['agent_id']??0)===(int)$agent['id'];
         }
-        return array('contract'=>self::CONTRACT,'mode'=>'ai_only','local_only'=>true,
+        return array('contract'=>self::CONTRACT,'mode'=>'ai_only',
+            'local_only'=>wp_get_environment_type()==='local',
+            'site_scope_ready'=>self::site_bound(),
             'identity_ready'=>(bool)$valid,'review_execution_confirmed'=>false,
             'manual_application_password_required'=>false,
             'review_decision_automated'=>false,'secrets_exposed'=>false,
@@ -103,8 +126,13 @@ final class MAD4B_SCP_AI_Only_Local_Activation {
     public static function activate($origin='policy_save') {
         $agent=self::policy_agent();
         if (is_wp_error($agent)) return $agent;
-        if ( !defined('MAD4B_LOCAL_CLIENT_PROVISION_ENABLED') || true!==constant('MAD4B_LOCAL_CLIENT_PROVISION_ENABLED') )
-            return new WP_Error('mad4b_ai_only_local_activation_disabled','Local activation not enabled.');
+        $provision=wp_get_environment_type()==='local'
+            && defined('MAD4B_LOCAL_CLIENT_PROVISION_ENABLED')
+            && constant('MAD4B_LOCAL_CLIENT_PROVISION_ENABLED')===true;
+        if (defined('MAD4B_AI_REVIEW_PROVISION_ENABLED')
+            && constant('MAD4B_AI_REVIEW_PROVISION_ENABLED')===true) $provision=true;
+        if (!$provision)
+            return new WP_Error('mad4b_ai_review_provision_disabled','Explicit credential provisioning is not enabled.');
         $admin = 'policy_save'===$origin
             && is_user_logged_in() && current_user_can('manage_options')
             && MAD4B_SCP_Site_Profile::user_is_enrolled(get_current_user_id())
@@ -175,7 +203,7 @@ final class MAD4B_SCP_AI_Only_Local_Activation {
     }
     /** Admission to this credential's REST scope never broadens a WordPress account role. */
     public static function matches_credential($user,$item) {
-        if(wp_get_environment_type()!=='local' || !($user instanceof WP_User) || empty($item['uuid']))return false;
+        if(!($user instanceof WP_User) || empty($item['uuid']))return false;
         $r=self::record();if(!is_array($r)||time()>=(int)($r['expires_at']??0))return false;
         return (int)$r['user_id']===(int)$user->ID
             && hash_equals((string)$r['uuid'],(string)$item['uuid'])
@@ -204,7 +232,7 @@ final class MAD4B_SCP_AI_Only_Local_Activation {
     /** Prevent unrelated REST access regardless of when WP lazily authenticates Basic. */
     /** Authenticate through WordPress itself before the OAuth bridge pre-dispatch. */
     public static function restrict_rest_dispatch($result,$server,$request) {
-        if(wp_get_environment_type()!=='local' || !is_object($request) || !method_exists($request,'get_route'))return $result;
+        if(!is_object($request) || !method_exists($request,'get_route'))return $result;
         $route='/'.trim((string)$request->get_route(),'/');
         if($route==='/mcp/mad4b-chatgpt'
            && preg_match('/^Basic [A-Za-z0-9+\/=]+$/D',trim((string)$request->get_header('authorization')))
@@ -223,8 +251,7 @@ final class MAD4B_SCP_AI_Only_Local_Activation {
     }
     /** Bounded local-only path; invokes the existing exact Agent governance method. */
     public static function register_review_route() {
-        if(wp_get_environment_type()!=='local' || !class_exists('MAD4B_SCP_Local_Client')
-           || !MAD4B_SCP_Local_Client::bound())return;
+        if(!self::site_bound())return;
         register_rest_route('mad4b-local-ai/v1','/context-review',array(
             'methods'=>'GET, POST',
             'callback'=>array(__CLASS__,'execute_local_review'),
@@ -265,7 +292,9 @@ final class MAD4B_SCP_AI_Only_Local_Activation {
     }
 
     public static function review_permission($request) {
-        if(wp_get_environment_type()!=='local')return new WP_Error('mad4b_ai_local_scope_denied','Local only.',array('status'=>403));
+        if(!self::site_bound() || (wp_get_environment_type()!=='local'
+            && (!function_exists('is_ssl') || !is_ssl())))
+            return new WP_Error('mad4b_ai_review_scope_denied','Verified HTTPS Site Profile required.',array('status'=>403));
         $user=wp_get_current_user();
         $row=self::record();
         if(!is_array($row) || !($user instanceof WP_User) || (int)$user->ID!==(int)$row['user_id']

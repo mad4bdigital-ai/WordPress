@@ -6,6 +6,7 @@ $GLOBALS['mock_environment']='local';
 $GLOBALS['mock_user_site']=MAD4B_LOCAL_CLIENT_SITE_UUID;
 $GLOBALS['mock_hooks']=array();
 function wp_get_environment_type(){return $GLOBALS['mock_environment'];}
+function is_ssl(){return $GLOBALS['mock_ssl']??false;}
 function home_url($path='/'){return ($GLOBALS['mock_home']??'https://lab.example/').ltrim((string)$path,'/');}
 function add_action($name,$callback,$priority=10,$args=1){$GLOBALS['mock_hooks'][$name]=$callback;}
 function get_user_meta($id,$key,$single){return $GLOBALS['mock_user_site'];}
@@ -54,6 +55,18 @@ unset($GLOBALS['mock_home']);
 $run('foreign_site_denied','/wp-json/mad4b-local-ai/v1/context-review','POST','mad4b_ai_local_fixture','00000000-0000-0000-0000-000000000000','mad4b_ai_only_service_site_denied');
 $run('ordinary_user_not_impacted','/wp-json/wp/v2/users/me','GET','regular_subscriber',$site,'');
 $GLOBALS['mock_environment']='production';
-$run('production_not_managed','/wp-json/wp/v2/users/me','GET','mad4b_ai_local_fixture',$site,'');
-echo "SUMMARY pass=20 fail=0\n";
+$run('production_default_denied','/wp-json/wp/v2/users/me','GET','mad4b_ai_local_fixture',$site,'mad4b_ai_review_tls_required');
+define('MAD4B_AI_REVIEW_CROSS_ENV_ENABLED',true);
+define('MAD4B_AI_REVIEW_SITE_UUID',MAD4B_LOCAL_CLIENT_SITE_UUID);
+$GLOBALS['mock_ssl']=true;
+$run('production_scoped_review_allowed','/wp-json/mad4b-local-ai/v1/context-review','POST','mad4b_ai_local_fixture',$site,'');
+$run('production_foreign_admin_denied','/wp-json/wp/v2/users/me','GET','mad4b_ai_local_fixture',$site,'mad4b_ai_only_service_route_denied');
+$run('production_foreign_site_denied','/wp-json/mad4b-local-ai/v1/context-review','POST','mad4b_ai_local_fixture','00000000-0000-0000-0000-000000000000','mad4b_ai_only_service_site_denied');
+$GLOBALS['mock_environment']='staging';
+$run('staging_scoped_review_allowed','/wp-json/mad4b-local-ai/v1/context-review','POST','mad4b_ai_local_fixture',$site,'');
+$run('staging_query_spoof_denied','/wp-admin/admin-ajax.php?rest_route=/mad4b-local-ai/v1/context-review','POST','mad4b_ai_local_fixture',$site,'mad4b_ai_only_service_route_denied','/mad4b-local-ai/v1/context-review');
+$GLOBALS['mock_environment']='production';
+$GLOBALS['mock_ssl']=false;
+$run('production_http_denied','/wp-json/mad4b-local-ai/v1/context-review','POST','mad4b_ai_local_fixture',$site,'mad4b_ai_review_tls_required');
+echo "SUMMARY pass=26 fail=0\n";
 echo "PASS: AI_ONLY_EARLY_AUTH_GUARD\n";

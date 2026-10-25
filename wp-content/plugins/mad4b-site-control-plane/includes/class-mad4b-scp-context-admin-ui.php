@@ -433,9 +433,10 @@ final class MAD4B_SCP_Context_Admin_UI {
         // Re-use the administrator's already verified policy save as consent;
         // no second Local Client credential wizard is required for AI-only.
         $ai_activation = null;
-        if ( ! is_wp_error($result) && wp_get_environment_type() === 'local'
+        if ( ! is_wp_error($result)
             && 'ai_only' === (string) MAD4B_SCP_Context_Authority::review_policy()['mode']
-            && class_exists('MAD4B_SCP_AI_Only_Local_Activation') )
+            && class_exists('MAD4B_SCP_AI_Only_Local_Activation')
+            && MAD4B_SCP_AI_Only_Local_Activation::site_bound() )
             $ai_activation = MAD4B_SCP_AI_Only_Local_Activation::activate('policy_save');
 		if ( self::is_ajax_request() ) {
 			if ( is_wp_error( $result ) ) wp_send_json_error( array( 'code' => sanitize_key( $result->get_error_code() ), 'message' => $result->get_error_message(), 'data' => $result->get_error_data() ), 422 );

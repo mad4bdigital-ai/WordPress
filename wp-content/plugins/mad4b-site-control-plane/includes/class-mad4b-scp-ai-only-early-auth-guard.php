@@ -12,13 +12,21 @@ final class MAD4B_SCP_AI_Only_Early_Auth_Guard {
 
     public static function authenticate( $error, $user, $item ) {
         if ( ! ( $error instanceof WP_Error ) || ! ( $user instanceof WP_User )
-            || ! function_exists( 'wp_get_environment_type' )
-            || 'local' !== wp_get_environment_type() ) return;
+            || ! function_exists( 'wp_get_environment_type' ) ) return;
         if ( 0 !== strpos( (string) $user->user_login, 'mad4b_ai_local_' ) ) return;
         // Any managed credential must be restricted, even if profile settings
         // drift, the main plugin is not booted, or revocation was delayed.
-        $expected = defined( 'MAD4B_LOCAL_CLIENT_SITE_UUID' )
-            ? strtolower( (string) constant( 'MAD4B_LOCAL_CLIENT_SITE_UUID' ) ) : '';
+        $cross = defined('MAD4B_AI_REVIEW_CROSS_ENV_ENABLED')
+            && constant('MAD4B_AI_REVIEW_CROSS_ENV_ENABLED') === true;
+        $expected = $cross && defined('MAD4B_AI_REVIEW_SITE_UUID')
+            ? strtolower((string)constant('MAD4B_AI_REVIEW_SITE_UUID'))
+            : (wp_get_environment_type()==='local' && defined('MAD4B_LOCAL_CLIENT_SITE_UUID')
+                ? strtolower((string)constant('MAD4B_LOCAL_CLIENT_SITE_UUID')) : '');
+        if (wp_get_environment_type()!=='local'
+            && (!function_exists('is_ssl') || !is_ssl())) {
+            $error->add('mad4b_ai_review_tls_required','Managed AI credentials require HTTPS.');
+            return;
+        }
         $actual = strtolower( (string) get_user_meta( (int) $user->ID, self::META, true ) );
         if ( '' === $expected || ! hash_equals( $expected, $actual ) ) {
             $error->add( 'mad4b_ai_only_service_site_denied', 'Managed local service is not site-bound.' );
@@ -52,8 +60,6 @@ final class MAD4B_SCP_AI_Only_Early_Auth_Guard {
         }
     }
     public static function boot() {
-        if ( ! function_exists( 'wp_get_environment_type' )
-             || 'local' !== wp_get_environment_type() ) return;
         add_action( 'wp_authenticate_application_password_errors', array( __CLASS__, 'authenticate' ), 1, 3 );
     }
 }

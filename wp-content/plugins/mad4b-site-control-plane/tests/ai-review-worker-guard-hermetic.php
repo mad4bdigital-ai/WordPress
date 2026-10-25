@@ -35,6 +35,9 @@ class MAD4B_SCP_Context_Authority {
 }
 class MAD4B_SCP_AI_Only_Local_Activation {
     public static function status() { return array('identity_ready' => $GLOBALS['identity']); }
+    public static function site_bound() {
+        return $GLOBALS['local_env']==='local' ? $GLOBALS['bound'] : !empty($GLOBALS['crossenv_bound']);
+    }
 }
 class MAD4B_SCP_Policy {
     public static function can_connect_user($id) { return $GLOBALS['enrolled'] && $id === 11; }
@@ -66,6 +69,18 @@ $GLOBALS['credentials'] = false;
 check('missing credential denied', !MAD4B_SCP_AI_Review_Worker::preflight()['ready']);
 $GLOBALS['credentials'] = true;
 check('fully enrolled local preflight', MAD4B_SCP_AI_Review_Worker::preflight()['ready']);
+$GLOBALS['local_env']='staging';
+check('staging without scope rejected', !MAD4B_SCP_AI_Review_Worker::preflight()['ready']);
+$GLOBALS['crossenv_bound']=true;
+check('staging explicitly scoped allowed', MAD4B_SCP_AI_Review_Worker::preflight()['ready']
+ && !MAD4B_SCP_AI_Review_Worker::preflight()['local_scope']
+ && MAD4B_SCP_AI_Review_Worker::preflight()['site_scope']);
+$GLOBALS['local_env']='production';
+check('production scoped review allowed', MAD4B_SCP_AI_Review_Worker::preflight()['ready']);
+$GLOBALS['identity']=false;
+check('production missing agent identity denied', !MAD4B_SCP_AI_Review_Worker::preflight()['ready']);
+$GLOBALS['identity']=true;
+$GLOBALS['local_env']='local';
 $evidence = array('normalized_text' => "A\nB\nC");
 $valid = array(
  'decision' => 'approve', 'confidence' => 0.92,

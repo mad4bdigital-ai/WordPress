@@ -22,8 +22,8 @@ final class MAD4B_SCP_AI_Native_Owner_Review {
     public static function owner($domain) { $o=self::owners();return $o[$domain]??''; }
 
     public static function local_ability_allowed($ability) {
-        if(!function_exists('wp_get_environment_type')||wp_get_environment_type()!=='local')
-            return false;
+        if(!class_exists('MAD4B_SCP_AI_Only_Local_Activation')
+            || !MAD4B_SCP_AI_Only_Local_Activation::site_bound()) return false;
         foreach(array_keys(self::owners()) as $d)
             if($ability==='mad4b/ai-'.str_replace('_','-',$d).'-review')return true;
         return false;
@@ -32,7 +32,8 @@ final class MAD4B_SCP_AI_Native_Owner_Review {
      * path is the authenticated original local Agent REST review route.
      */
     public static function register_abilities() {
-        if(!function_exists('wp_register_ability') ||wp_get_environment_type()!=='local')return;
+        if(!function_exists('wp_register_ability') || !class_exists('MAD4B_SCP_AI_Only_Local_Activation')
+            || !MAD4B_SCP_AI_Only_Local_Activation::site_bound())return;
         foreach(array_keys(self::owners()) as $d) {
             $ability='mad4b/ai-'.str_replace('_','-',$d).'-review';
             if(function_exists('wp_has_ability')&&wp_has_ability($ability))continue;
@@ -149,8 +150,8 @@ final class MAD4B_SCP_AI_Native_Owner_Review {
         return $live;
     }
     private static function authorized_agent($domain) {
-        if(!function_exists('wp_get_environment_type') || wp_get_environment_type()!=='local'
-            ||PHP_SAPI==='cli' ||!class_exists('MAD4B_SCP_AI_Only_Local_Activation'))
+        if(PHP_SAPI==='cli' || !class_exists('MAD4B_SCP_AI_Only_Local_Activation')
+            || !MAD4B_SCP_AI_Only_Local_Activation::site_bound())
             return new WP_Error('mad4b_owner_review_agent_http_required','Original delegated Agent REST authentication required.');
         $authenticated=MAD4B_SCP_AI_Only_Local_Activation::review_permission(null);
         if($authenticated!==true)return new WP_Error('mad4b_owner_review_agent_denied','Original Agent authorization missing.');
@@ -166,7 +167,7 @@ final class MAD4B_SCP_AI_Native_Owner_Review {
         $grant=MAD4B_SCP_Agent_Registry::exact_grant((int)$agent['id'],
             'mad4b-write',$ability,'core');
         if(!is_array($grant)||($grant['effect']??'')!=='allow'
-            || !in_array(($grant['environment']??''),array('local','all'),true))
+            || !in_array(($grant['environment']??''),array(wp_get_environment_type(),'all'),true))
             return new WP_Error('mad4b_owner_review_exact_grant_required',
                 'Owner-approved exact AI domain review grant is required.');
         return (string)$policy['ai_agent_public_id'];

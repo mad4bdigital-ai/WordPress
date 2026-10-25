@@ -58,8 +58,9 @@ final class MAD4B_SCP_AI_Domain_Executors {
              || self::mode($domain)!=='content_only_owner_executor'
              || isset(self::$adapters[$domain]) )
             return new WP_Error('mad4b_ai_domain_registration_denied','Only one reviewed content-domain executor may be registered.');
-        if ( !function_exists('wp_get_environment_type') || wp_get_environment_type()!=='local' )
-            return new WP_Error('mad4b_ai_domain_environment_denied','Automatic AI review adapters require a local lab.');
+        if (!class_exists('MAD4B_SCP_AI_Only_Local_Activation')
+            || !MAD4B_SCP_AI_Only_Local_Activation::site_bound())
+            return new WP_Error('mad4b_ai_domain_site_scope_denied','Verified AI review Site Profile required.');
         $allowed = defined('MAD4B_AI_DOMAIN_CERTIFIED_ADAPTERS')
             ? constant('MAD4B_AI_DOMAIN_CERTIFIED_ADAPTERS') : array();
         $pin = is_array($allowed)?($allowed[$domain]??null):null;
@@ -174,8 +175,8 @@ final class MAD4B_SCP_AI_Domain_Executors {
            ||!hash_equals((string)$proof['sha256'],hash_file('sha256',$proof['file']))
            ||!class_exists($proof['owner'])
            ||!method_exists($proof['owner'],$proof['method'])
-           ||!function_exists('wp_get_environment_type')
-           ||wp_get_environment_type()!=='local')
+           ||!class_exists('MAD4B_SCP_AI_Only_Local_Activation')
+           ||!MAD4B_SCP_AI_Only_Local_Activation::site_bound())
             return new WP_Error('mad4b_ai_domain_certification_stale',
                 'Deployed owner adapter code or original authority has changed.');
         if(!class_exists('MAD4B_SCP_AI_Review_Worker')

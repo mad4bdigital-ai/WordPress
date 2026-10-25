@@ -10,18 +10,19 @@ final class MAD4B_SCP_AI_Review_Worker {
     public static function preflight() {
         $cfg=MAD4B_SCP_AI_Model_Router::settings();
         $status=MAD4B_SCP_AI_Model_Router::provider_status();
-        $can=wp_get_environment_type()==='local'
-            && class_exists('MAD4B_SCP_Local_Client') && MAD4B_SCP_Local_Client::bound()
+        $can=class_exists('MAD4B_SCP_AI_Only_Local_Activation')
+            && MAD4B_SCP_AI_Only_Local_Activation::site_bound()
             && MAD4B_SCP_Context_Authority::review_policy()['mode']==='ai_only';
         $auth=class_exists('MAD4B_SCP_AI_Only_Local_Activation')
             ?MAD4B_SCP_AI_Only_Local_Activation::status():array();
         $ready=$can && !empty($cfg['enabled']) && !empty($status['credential_ready'])
             && !empty($auth['identity_ready']);
-        return array('contract'=>self::CONTRACT,'local_scope'=>$can,'ready'=>$ready,
+        return array('contract'=>self::CONTRACT,'local_scope'=>$can && wp_get_environment_type()==='local',
+            'site_scope'=>$can,'ready'=>$ready,
             'model_routing'=>$status,'agent_identity_ready'=>!empty($auth['identity_ready']),
             'inference_activated'=>!empty($cfg['enabled']),
             'blockers'=>array_values(array_filter(array(
-                !$can?'ai_only_local_delegation_required':null,
+                !$can?'ai_review_site_scope_or_exact_delegation_missing':null,
                 empty($cfg['enabled'])?'model_routing_disabled':null,
                 empty($status['credential_ready'])?'model_credentials_missing':null,
                 empty($auth['identity_ready'])?'authentic_agent_identity_missing':null,
@@ -71,9 +72,16 @@ final class MAD4B_SCP_AI_Review_Worker {
             'revised_text'=>$revised);
     }
     private static function review_via_original_agent($evidence,$verdict) {
-        if(wp_get_environment_type()!=='local' || !defined('MAD4B_LOCAL_CLIENT_VAULT_PATH'))
-            return new WP_Error('mad4b_ai_worker_scope_denied','Local Agent review only.');
-        $vault=dirname((string)constant('MAD4B_LOCAL_CLIENT_VAULT_PATH')).'/ai-only-review.json';
+        if(!class_exists('MAD4B_SCP_AI_Only_Local_Activation')
+            || !MAD4B_SCP_AI_Only_Local_Activation::site_bound())
+            return new WP_Error('mad4b_ai_worker_scope_denied','Verified AI review site scope required.');
+        if(defined('MAD4B_AI_REVIEW_VAULT_PATH'))
+            $vault=(string)constant('MAD4B_AI_REVIEW_VAULT_PATH');
+        elseif(wp_get_environment_type()==='local' && defined('MAD4B_LOCAL_CLIENT_VAULT_PATH'))
+            $vault=dirname((string)constant('MAD4B_LOCAL_CLIENT_VAULT_PATH')).'/ai-only-review.json';
+        else return new WP_Error('mad4b_ai_worker_vault_missing','Scoped reviewer vault required.');
+        if(basename($vault)!=='ai-only-review.json')
+            return new WP_Error('mad4b_ai_worker_vault_invalid','Invalid reviewer vault path.');
         if(!is_file($vault) || is_link($vault) || (fileperms($vault)&0077)!==0)
             return new WP_Error('mad4b_ai_worker_vault_invalid','Secure local Agent credentials unavailable.');
         $r=json_decode((string)file_get_contents($vault),true);
@@ -91,18 +99,23 @@ final class MAD4B_SCP_AI_Review_Worker {
         // Never allow request payload or provider output to override this URL.
         $canonical=home_url();
         $url=home_url('/wp-json/mad4b-local-ai/v1/context-review');
-        if(defined('MAD4B_AI_LOCAL_REVIEW_LOOPBACK_URL')) {
+        if(wp_get_environment_type()==='local'
+            && defined('MAD4B_AI_LOCAL_REVIEW_LOOPBACK_URL')) {
             $internal=(string)constant('MAD4B_AI_LOCAL_REVIEW_LOOPBACK_URL');
             if(!preg_match('#^http://[a-z0-9][a-z0-9-]*(?::[0-9]{2,5})?$#D',$internal))
                 return new WP_Error('mad4b_ai_worker_internal_origin_invalid','Local review transport must be an explicit internal service.');
             $url=$internal.'/wp-json/mad4b-local-ai/v1/context-review';
         }
+        if(wp_get_environment_type()!=='local'
+            && strtolower((string)wp_parse_url($canonical,PHP_URL_SCHEME))!=='https')
+            return new WP_Error('mad4b_ai_worker_tls_required','Enrolled HTTPS site required outside Local.');
         $site_parts=wp_parse_url($canonical);
         $canonical_host=(string)($site_parts['host']??'');
         if($canonical_host==='')
             return new WP_Error('mad4b_ai_worker_site_origin_invalid','Enrolled canonical site host missing.');
         $host_header=$canonical_host.(isset($site_parts['port'])?':'.$site_parts['port']:'');
-        $res=wp_remote_post($url,array('timeout'=>25,'redirection'=>0,
+        $transport=wp_get_environment_type()==='local'?'wp_remote_post':'wp_safe_remote_post';
+        $res=call_user_func($transport,$url,array('timeout'=>25,'redirection'=>0,
             'headers'=>array('Authorization'=>'Basic '.base64_encode($r['login'].':'.$r['password']),
                 'Content-Type'=>'application/json','Host'=>$host_header),
             'body'=>wp_json_encode($payload),'limit_response_size'=>32000));

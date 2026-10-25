@@ -12,10 +12,9 @@
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
-// Restrict local managed AI credentials before the foreign REST zero-touch return.
-if ( function_exists('wp_get_environment_type') && 'local' === wp_get_environment_type()
-     && defined('MAD4B_LOCAL_CLIENT_SITE_UUID') )
-    require_once __DIR__ . '/includes/class-mad4b-scp-ai-only-early-auth-guard.php';
+// Always register the managed AI credential fence before the foreign REST
+// zero-touch return. Missing/revoked enrollment must fail closed on every site.
+require_once __DIR__ . '/includes/class-mad4b-scp-ai-only-early-auth-guard.php';
 
 // Request-local, O(1) bootstrap timing markers. No persistent cache, DB
 // writes, user context, file hashing or authority changes. The registration
@@ -122,10 +121,9 @@ if ( ! ( defined( 'MAD4B_SCP_FORCE_FULL_BOOT' ) && true === constant( 'MAD4B_SCP
 	if ( '' !== $mad4b_scp_early_rest_path ) {
 		$mad4b_scp_early_owned = 0 === strpos( $mad4b_scp_early_rest_path, '/mcp/mad4b-' )
 			|| 0 === strpos( $mad4b_scp_early_rest_path, '/mad4b/' )
-            || ( function_exists('wp_get_environment_type') && 'local' === wp_get_environment_type()
-                 && in_array($mad4b_scp_early_rest_path,array(
+            || in_array($mad4b_scp_early_rest_path,array(
                     '/mad4b-local-ai/v1/context-review',
-                    '/mad4b-local-ai/v1/domain-review'),true) );
+                    '/mad4b-local-ai/v1/domain-review'),true);
 		// Unified Approval is a Local-only, source-bound MAD4B-owned REST surface.
 		if ( function_exists('wp_get_environment_type') && 'local' === wp_get_environment_type()
 		     && in_array( $mad4b_scp_early_rest_path, array(
