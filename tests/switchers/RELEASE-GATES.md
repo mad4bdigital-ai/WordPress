@@ -70,3 +70,10 @@
 - Local QA: real Store API, 55-passenger Classic/Blocks, 390px/1440px browser with all-as-draft, manual override, review invalidation/reconfirmation, actual **HPOS** Woo order draft saved/read/deleted and duplicate-item fail-closed, 999 ISO2 validations × 20 iterations measured independently from WP bootstrap, plus saved-option and taxonomy rollback.
 - `.github/workflows/country-nationality-switchers.yml` now adds `node --check` and a pinned React/Playwright browser job. Network/package download success and completion of the new GitHub job must be confirmed on the exact new commit.
 - Site ownership, taxes/payments, supplier confirmation, optional real inventory, Booking v2 financial bridge, WPML external diagnostic, privacy retention policies and existing production release gates remain independent. The plugin cannot assert live supplier availability or an actual financial booking.
+
+
+## 0.5.4-local — WooCommerce privacy/HPOS & Store API request memo
+- `woocommerce_privacy_export_order_personal_data` enriches the **native** Woo order privacy exporter with each ISO2 passport-country order-item entry. It is tested against a real draft HPOS order, which is hard-deleted after testing. No separate email/customer enumeration or automatic erasure is introduced.
+- The Store API cart **presentation-only** linked-service registry is memoized for the same Woo session cart object+hash. It avoids repeated linked-service resolution per line on a stable cart. The final Checkout order writer always recalculates the registry without that cache, and in-memory/session-less carts recompute.
+- Preset controls for manual server source, optional nationality and suggested capacity are **not permission grants**; the admin now explicitly explains their advisory nature, while smart suggestion mode has executable behavior and server-confirmed-review checks.
+- This change still does not close paid Booking v2, real departure occupancy, production data-retention legal approval or external WPML/Production Readiness/owner-attestation gates.

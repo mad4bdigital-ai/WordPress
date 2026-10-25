@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Travel Booking Traveller Nationality Switcher
  * Description: Passport-country selection for travellers, separate from WooCommerce market, shipping, billing and WCML currency.
- * Version: 0.5.3-local
+ * Version: 0.5.4-local
  * Requires Plugins: woocommerce
  * License: GPL-2.0-or-later
  * Text Domain: travel-booking-traveller-nationality-switcher
@@ -179,6 +179,25 @@ final class Travel_Booking_Traveller_Nationality_Switcher {
   }
   foreach($valid as $i=>$iso)$item->add_meta_data('Traveller '.($i+1).' passport country (ISO2)',$iso,true);
  }
+ /**
+  * WooCommerce's native order exporter does not include line-item metadata by
+  * default. Append these ISO2 entries to the SAME owner-authorized export,
+  * supporting legacy and HPOS order storage without a second query/exporter.
+  * Retention/erasure remains with WooCommerce's configured policy.
+  */
+ public static function privacy_export_order($data,$order){
+  if(!is_array($data)||!$order instanceof WC_Order)return $data;
+  foreach($order->get_items('line_item') as $item){
+   foreach($item->get_meta_data() as $meta){
+    if(!preg_match('/^Traveller ([0-9]+) passport country \(ISO2\)$/D',(string)$meta->key,$matches))continue;
+    $iso=(string)$meta->value;
+    if(!preg_match('/^[A-Z]{2}$/D',$iso))continue;
+    $data[]=['name'=>'Traveller '.$matches[1].' passport country (ISO2) — '.$item->get_name(),
+      'value'=>$iso];
+   }
+  }
+  return $data;
+ }
  /** Opt-in Fluent Forms integration: only specifically named nationality fields. */
  public static function fluent_validate($errors,$form_data){
   if(!is_array($form_data))return $errors;
@@ -224,6 +243,7 @@ final class Travel_Booking_Traveller_Nationality_Switcher {
   add_action('woocommerce_after_checkout_validation',[__CLASS__,'classic_checkout_validate'],25,2);
   add_filter('fluentform/validation_errors',[__CLASS__,'fluent_validate'],15,2);
   add_filter('fluentform/insert_response_data',[__CLASS__,'fluent_normalize'],15,1);
+  add_filter('woocommerce_privacy_export_order_personal_data',[__CLASS__,'privacy_export_order'],20,2);
   add_action('admin_init',static function(){
    if(!function_exists('wp_add_privacy_policy_content'))return;
    wp_add_privacy_policy_content('Travel Booking Traveller Nationalities',

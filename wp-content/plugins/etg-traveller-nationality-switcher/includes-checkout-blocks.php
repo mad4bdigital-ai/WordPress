@@ -120,9 +120,18 @@ final class Travel_Booking_Traveller_Nationality_Checkout_Blocks {
      if(class_exists('Travel_Booking_Traveller_Management') && function_exists('has_filter')
       && has_filter('travel_booking_traveller_management/verified_service_links')
       && function_exists('WC') && WC()->cart){
-      // Avoid O(n²) repeated server re-quotes when no service-link adapter exists.
-      $registry=Travel_Booking_Traveller_Management::registry(WC()->cart->get_cart());
-      $linked=isset($registry['linked_services'][(string)($item['key']??'')]);
+      // Presentation-only memo: a stable Woo session cart should be quoted once
+      // per Store API response, not once per line. Checkout always requotes.
+      static $lastCart=null,$lastLinks=[];
+      $cart=WC()->cart;
+      $hash=method_exists($cart,'get_cart_hash')?(string)$cart->get_cart_hash():'';
+      $cacheKey=$hash!=='' ? spl_object_id($cart).':'.$hash : null;
+      if($cacheKey===null||$cacheKey!==$lastCart){
+       $registry=Travel_Booking_Traveller_Management::registry($cart->get_cart());
+       $lastLinks=$registry['linked_services']??[];
+       $lastCart=$cacheKey;
+      }
+      $linked=isset($lastLinks[(string)($item['key']??'')]);
      }
      $bookable=self::is_bookable($item)&&!$linked;
      $preset=class_exists('Travel_Booking_Traveller_Management')
@@ -150,8 +159,8 @@ final class Travel_Booking_Traveller_Nationality_Checkout_Blocks {
    return $items;
   },90);
   $file=plugin_dir_path(__FILE__).'assets/checkout-blocks.js';
-  wp_enqueue_style('travel-booking-nationality-switcher',plugins_url('assets/nationality.css',__FILE__),[],'0.5.3');
-  wp_enqueue_script('travel-booking-traveller-nationality-checkout-blocks',plugins_url('assets/checkout-blocks.js',__FILE__),['wp-element','wp-plugins','wp-data','wc-blocks-checkout','wc-blocks-data-store'],'0.5.3',true);
+  wp_enqueue_style('travel-booking-nationality-switcher',plugins_url('assets/nationality.css',__FILE__),[],'0.5.4');
+  wp_enqueue_script('travel-booking-traveller-nationality-checkout-blocks',plugins_url('assets/checkout-blocks.js',__FILE__),['wp-element','wp-plugins','wp-data','wc-blocks-checkout','wc-blocks-data-store'],'0.5.4',true);
   $countries=Travel_Booking_Traveller_Nationality_Switcher::countries();$options=[];
   foreach($countries as $code=>$label)$options[]=['value'=>$code,'label'=>$label];
   wp_add_inline_script('travel-booking-traveller-nationality-checkout-blocks','window.travelBookingTravellerBlocks='.wp_json_encode(['namespace'=>self::NAMESPACE_ID,'types'=>self::bookable_types(),'countries'=>$options,'max'=>Travel_Booking_Traveller_Management::MAX_VERIFIED_PERSONS,'batch_size'=>Travel_Booking_Traveller_Management::LEGACY_BATCH_SIZE,'preferred'=>Travel_Booking_Traveller_Nationality_Switcher::selected()]).';','before');

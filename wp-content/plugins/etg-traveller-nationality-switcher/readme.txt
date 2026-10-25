@@ -2,7 +2,7 @@
 Requires at least: 6.9
 Requires PHP: 8.1
 Requires Plugins: woocommerce
-Stable tag: 0.5.3-local
+Stable tag: 0.5.4-local
 License: GPLv2 or later
 
 Reusable, site-neutral travel booking extension. QA Draft only; no paid Booking v2, departure inventory, or production certification.
@@ -36,3 +36,9 @@ This plugin remains a QA Draft. No staging, production, live inventory, supplier
 Traveller presets now include `suggestion`: `none`, `first` (default), or `all` (draft every person from signed booking-party preference). Every suggestion remains editable; a **Use preferred country for unfilled travellers** action never overwrites existing manual selections. Checkout Blocks requires the customer to deliberately confirm the entire booking-party list after the last edit. Any edit or cart identity/count change clears that acknowledgement. The server refuses complete but unconfirmed submissions; there is no implicit confirmation and no browser-only bypass.
 A booked service with no configured Group/Private modes is **inquiry-only**: `request_status=pending_mode_configuration` and `booking_mode_verified=false`. No stock requirement is introduced. An automatic Group recommendation requires a matching Group Tier for its booking-party size; an explicit customer Group seat linked to an existing departure never becomes Private merely due to a small party.
 The ISO2 validation catalogue is cached once per verification call to reduce work on large parties; WooCommerce remains master source for countries. WordPress Privacy Policy guidance explains stored per-traveller ISO2 order metadata and the nonpayment nature of drafts. No automatic erasure occurs, because order retention requires a separate merchant/legal decision. Legacy compatibility remains unchanged.
+
+
+## 0.5.4-local — privacy export and read-only Store API caching
+The WordPress/WooCommerce native privacy export for authorized order owners now includes all `Traveller n passport country (ISO2)` item metadata, including orders using HPOS. It uses the official `woocommerce_privacy_export_order_personal_data` extension hook; it does not create a separate exporter or expose PII publicly. The WooCommerce store's existing order retention and erasure policies remain authoritative. Manual deletion of individual confirmed traveller data is deliberately NOT automatic, pending the store's legal/operational policy.
+Store API cart presentation caches linked-service identity within a request only when WooCommerce exposes a nonempty cart hash. It invalidates on cart-hash change; payment and order write paths always re-evaluate identity and verified quantities. In-memory test carts with empty cart hashes do not reuse the cache.
+The `source`, `nationality`, and `max` preset fields must be understood as advisory configuration until a certified financial provider consumes them. They never create a verified booking, bypass passport requirements, or set supplier stock by themselves.

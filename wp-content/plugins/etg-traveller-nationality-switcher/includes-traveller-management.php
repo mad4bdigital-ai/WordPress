@@ -521,11 +521,11 @@ final class Travel_Booking_Traveller_Management {
   wp_nonce_field('travel_booking_traveller_management_save','_travel_booking_traveller_nonce');
   echo '<table class="form-table"><tr><th>Display name</th><td><input name="fields[label]" type="text" maxlength="90" class="regular-text" value="'.esc_attr($current['label']).'"></td></tr>';
   echo '<tr><th>Count authority</th><td><select name="fields[source]">';
-  foreach(['verified'=>'Automatic — Verified Source','manual_server_validated'=>'Manual — SERVER validated only'] as $value=>$label)echo '<option value="'.$value.'" '.selected($current['source'],$value,false).'>'.esc_html($label).'</option>';
-  echo '</select></td></tr><tr><th>Linked service inheritance</th><td><select name="fields[inherit]"><option value="1" '.selected($current['inherit'],true,false).'>Enabled</option><option value="0" '.selected($current['inherit'],false,false).'>Disabled</option></select></td></tr>';
+  foreach(['verified'=>'Automatic — Verified Source','manual_server_validated'=>'Certified server adapter required (not a manual bypass)'] as $value=>$label)echo '<option value="'.$value.'" '.selected($current['source'],$value,false).'>'.esc_html($label).'</option>';
+  echo '</select><p class="description">Only an authorized, server-verified adapter can supply a traveller count. Saving this field does not create such an adapter.</p></td></tr><tr><th>Linked service inheritance</th><td><select name="fields[inherit]"><option value="1" '.selected($current['inherit'],true,false).'>Enabled</option><option value="0" '.selected($current['inherit'],false,false).'>Disabled</option></select></td></tr>';
   echo '<tr><th>Nationality policy</th><td><select name="fields[nationality]">';
   foreach(['service'=>'Service requirements (recommended)','required'=>'Required','optional'=>'Optional only when service permits'] as $value=>$label)echo '<option value="'.$value.'" '.selected($current['nationality'],$value,false).'>'.esc_html($label).'</option>';
-  echo '</select><p class="description">These labels do not bypass checkout-required nationalities until the service adapter is certified.</p></td></tr>';
+  echo '</select><p class="description">Advisory service policy only: passport nationality remains required for each certified traveller until a dedicated server-side service policy has been approved. Optional here is not a Checkout bypass.</p></td></tr>';
   echo '<tr><th>Group Tour Capacity Policy</th><td><select name="fields[group_capacity]">';
   foreach(['taxonomy_when_group'=>'Group-size-tiers Taxonomy (group bookings only)','booking_engine_only'=>'Booking engine policy (optional; never force tiers)'] as $value=>$label)
    echo '<option value="'.$value.'" '.selected($current['group_capacity']??'taxonomy_when_group',$value,false).'>'.esc_html($label).'</option>';

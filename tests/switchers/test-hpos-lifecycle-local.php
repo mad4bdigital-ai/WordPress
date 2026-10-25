@@ -40,6 +40,10 @@ try{
   $stored[0]->get_meta('Traveller 1 passport country (ISO2)')==='EG' &&
   $stored[0]->get_meta('Traveller 2 passport country (ISO2)')==='US' &&
   $stored[0]->get_meta('Traveller 3 passport country (ISO2)')==='SA');
+ $exported=apply_filters('woocommerce_privacy_export_order_personal_data',[],$again);
+ $test('HPOS_PRIVACY_EXPORT_INCLUDES_ALL_COUNTRIES',count($exported)===3 &&
+  array_column($exported,'value')===['EG','US','SA']);
+
  $test('ORDER_LEDGER_PRICE_UNCHANGED',$again->get_currency()===$beforeCurrency&&
   (float)$again->get_total()===(float)$beforeTotal);
  $badOrder=new WC_Order();$a=apply_filters('woocommerce_checkout_create_order_line_item_object',new WC_Order_Item_Product(),'dup-a',$line,null);
