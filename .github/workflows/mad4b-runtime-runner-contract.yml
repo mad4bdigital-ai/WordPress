@@ -12,6 +12,9 @@ on:
       - '.github/workflows/mad4b-runtime-runner-contract.yml'
 permissions:
   contents: read
+concurrency:
+  group: mad4b-runtime-runner-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
 jobs:
   signed-diagnostic:
     runs-on: ubuntu-latest
