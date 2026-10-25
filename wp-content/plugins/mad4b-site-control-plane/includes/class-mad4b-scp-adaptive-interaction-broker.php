@@ -103,7 +103,13 @@ final class MAD4B_SCP_Adaptive_Interaction_Broker {
             'state'=>$hint['state'],'resolution_kind'=>$hint['resolution_kind'],
             'provider'=>$provider,'ability'=>$read_ability,
             'expires_at'=>time()+self::TTL,'next_action'=>$hint['client_action']);
-        if(!add_option(self::key($ref),$p,'','no'))return self::deny('checkpoint_not_persisted');
+        // WordPress transients expire automatically; a bounded actor quota
+        // prevents unbounded credential-free checkpoint creation.
+        $quota_key=self::PREFIX.'quota_'.hash('sha256',wp_json_encode(self::anchor()));
+        $quota=(int)get_transient($quota_key);
+        if($quota>=32)return self::deny('checkpoint_capacity_reached');
+        if(!set_transient(self::key($ref),$p,self::TTL))return self::deny('checkpoint_not_persisted');
+        set_transient($quota_key,$quota+1,self::TTL);
         $out=self::public_record($p);
         $out['intervention']=self::intervention($p);
         return $out;
@@ -144,7 +150,7 @@ final class MAD4B_SCP_Adaptive_Interaction_Broker {
     private static function read($args){
         if(!self::permitted())return self::deny('actor_denied');
         if(!self::clean($args,array('checkpoint_ref'))||!self::ref_valid($args['checkpoint_ref']??null))return self::deny('checkpoint_invalid');
-        $p=get_option(self::key($args['checkpoint_ref']),null);
+        $p=get_transient(self::key($args['checkpoint_ref']));
         if(!is_array($p)||!isset($p['scope'],$p['expires_at']))return self::deny('checkpoint_missing');
         if($p['expires_at']<=time())return self::deny('checkpoint_expired');
         if(self::anchor()!==$p['scope'])return self::deny('checkpoint_scope_changed');
@@ -178,7 +184,7 @@ final class MAD4B_SCP_Adaptive_Interaction_Broker {
         $p['input_digest']=hash('sha256',wp_json_encode($args['values']));
         $p['schema_digest']=$args['expected_descriptor_sha256'];
         $p['state']='INPUT_VALIDATED';
-        if(!update_option(self::key($p['ref']),$p,false))return self::deny('checkpoint_update_failed');
+        if(!set_transient(self::key($p['ref']),$p,max(1,$p['expires_at']-time())))return self::deny('checkpoint_update_failed');
         return array('contract'=>self::CONTRACT,'state'=>'INPUT_VALIDATED',
             'checkpoint_ref'=>$p['ref'],'input_digest'=>$p['input_digest'],
             'values_echoed'=>false,'saved_values'=>false,
