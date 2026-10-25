@@ -2388,6 +2388,42 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing original Agent Registry, Site Profile, WordPress App Password authentication, Policy, Context Authority and audit/approval/Content-CAS governance controls; does not expand any underlying permission.",
       "review_rationale": "AI reviewer identity service remains exact site-bound and opt-in across environments; managed subscriber identity cannot reach arbitrary WordPress REST routes, while the original policy checks explicitly delegated Agent and environment-matching grant. PHP 7.4/8.3 network-free negative/positive tests verify cross-env site UUID, HTTPS, missing opt-in, disabled Agent scope and spoofed admin paths. No live credentials issued, no grants created, no publication authority."
+    },
+    {
+      "id": "ability:mad4b/market-profiles-read",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/market-source-read-abilities-hermetic.php"
+      ],
+      "owner_role": "Repository CI source/security reviewer only, not original WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Site Profile, WordPress Permissions/Policy, market registry, source inbox and immutable review-approval controls; reads grant neither source ingestion authority nor publication. The first matched impact rule is MCP because these are registered WordPress Ability/MCP read interfaces; MCP-01 covers transport-level read-only admission.",
+      "review_rationale": "Market Profiles read Ability only discloses approved Site Profile UUID-bound market records for enabled languages with read-only annotation, original Policy::can_read, non-public MCP/REST metadata, and no write methods exposed; hermetic test confirms country/language filtering, invalid input and unauthorized cross-environment binding. Network-disabled hermetic source execution passed 23 read/denial checks under PHP 7.4 and PHP 8.3; installed WPML/live WordPress acceptance remains unverified."
+    },
+    {
+      "id": "ability:mad4b/source-hub-status",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/market-source-read-abilities-hermetic.php"
+      ],
+      "owner_role": "Repository CI source/security reviewer only, not original WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Site Profile, WordPress Permissions/Policy, market registry, source inbox and immutable review-approval controls; reads grant neither source ingestion authority nor publication. The first matched impact rule is MCP because these are registered WordPress Ability/MCP read interfaces; MCP-01 covers transport-level read-only admission.",
+      "review_rationale": "Source Hub status Ability invokes only original status callback and private Policy::can_read authorization, has no-public read-only annotations, returns review inbox and source counts, and explicitly denies automatic approval or publication; synthetic fixture verifies no option updates or network operations and no cross-environment Site Profile inheritance. Network-disabled hermetic source execution passed 23 read/denial checks under PHP 7.4 and PHP 8.3; installed WPML/live WordPress acceptance remains unverified."
     }
   ],
   "lifecycle": [],
