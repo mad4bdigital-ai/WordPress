@@ -2109,6 +2109,26 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing MCP, OAuth, execution boundary, security and platform readiness controls govern diagnostics and prevent unapproved executor activation.",
       "review_rationale": "Restricted RSA-signed diagnostic bridge verifies exact enrolled site, request hash and signed receipt, with no Production, Shell, SQL or Developer execution grant."
+    },
+    {
+      "id": "ability:mad4b/performance-differential-diagnostic",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "GOVERNANCE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/performance-differential-diagnostic-contract.php"
+      ],
+      "owner_role": "Repository MCP ability reviewer — read-only nonauthorizing scope",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP readonly gate, security boundary and performance observability controls enforce bounded nonmutating diagnostics and source-certified attribution.",
+      "review_rationale": "New status ability must explicitly report unavailable independent WP-CLI bootstrap comparisons and never grant runtime authority."
     }
   ],
   "lifecycle": [],
@@ -7976,6 +7996,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing MCP OAuth and security evidence rules retain nonauthorizing bounded transport diagnostics while blocking untrusted foreign identifiers.",
       "review_rationale": "Exact-source regression preserves only four explicit first-party origin error identifiers; foreign mad4b-prefixed response body identifiers cannot leak into persisted telemetry."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-acceptance-observer.php",
+      "source_blob_sha": "bd79db99fc6259b10a590cf8dec6866cc21168b0",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "GOVERNANCE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/performance-differential-diagnostic-contract.php"
+      ],
+      "owner_role": "Repository source security reviewer — diagnostic-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "New MCP read-only status reports bounded request metrics and Query Monitor availability; no plugin exclusion, shell, SQL mutation, production authorization or fabricated differential measurements."
     }
   ],
   "code_change_rules": {
