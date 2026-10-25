@@ -420,6 +420,8 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-autopilot.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-functional-gap-evidence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-functional-gap-runtime-diagnostic.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-code-snippets-runtime-diagnostic.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-backend-registry.php';
+MAD4B_SCP_Runtime_Backend_Registry::register_lifecycle();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-developer-host-capabilities.php';
 MAD4B_SCP_Developer_Host_Capabilities::discovery_boot();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-developer-runtime.php';
