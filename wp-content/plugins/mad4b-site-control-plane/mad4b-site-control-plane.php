@@ -407,6 +407,19 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-ai-native-owner-adapter.p
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-ai-source-repair.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-authority-setup-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-ai-only-local-activation.php';
+// MAD4B Control Plane Core: unified approval and background agent authorization (review-only).
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-unified-policy.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-unified-approval-workflow.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-background-authorization.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-unified-gate-bridge.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-unified-approval-admin.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-unified-approval-extensions.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-unified-approval-queue-bridge.php';
+// REST/admin pilot is limited to the enrolled Local environment; no staging/production activation.
+if (function_exists('wp_get_environment_type') && wp_get_environment_type() === 'local') {
+    add_action('plugins_loaded', array('MAD4B_SCP_Unified_Approval_Admin', 'boot'), 110);
+}
+
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-deployment-mode-resolver.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operational-scope-guard.php';
 MAD4B_SCP_Deployment_Mode_Resolver::boot();
