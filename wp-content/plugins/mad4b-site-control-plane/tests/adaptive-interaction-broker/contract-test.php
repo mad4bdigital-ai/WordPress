@@ -1,4 +1,5 @@
 <?php
+if ( PHP_SAPI !== 'cli' ) { http_response_code(403); exit; }
 /** Synthetic WordPress fixture: NO real users, secrets, database or external requests. */
 define('ABSPATH','/fixture');
 class WP_Error {private $code;function __construct($code,$message='',$data=[]){$this->code=$code;}function get_error_code(){return $this->code;}}
