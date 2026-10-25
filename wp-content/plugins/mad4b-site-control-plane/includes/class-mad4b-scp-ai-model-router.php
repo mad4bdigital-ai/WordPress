@@ -318,6 +318,7 @@ final class MAD4B_SCP_AI_Model_Router {
             echo '<p class="description">WordPress database connector keys are masked in the UI, not encrypted. Prefer environment variables for production secrets.</p></form>';
         } else echo '<p>Key is externally managed. This page cannot overwrite it.</p>';
         if(class_exists('MAD4B_SCP_AI_Domain_Executors'))MAD4B_SCP_AI_Domain_Executors::render_admin();
+        if(class_exists('MAD4B_SCP_AI_Grant_Mode'))MAD4B_SCP_AI_Grant_Mode::render_settings();
         echo '</div>';
     }
     public static function boot() {

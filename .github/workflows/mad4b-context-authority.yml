@@ -38,6 +38,8 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/authority-setup-fields-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-setup-coverage-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-domain-executors-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-grant-mode-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-grant-mode.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-domain-executors.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-setup-coverage.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-connections-admin-ui.php'
@@ -111,6 +113,8 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/authority-setup-fields-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-setup-coverage-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-domain-executors-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-grant-mode-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-grant-mode.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-domain-executors.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-setup-coverage.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-connections-admin-ui.php'
@@ -209,6 +213,8 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/tests/authority-setup-fields-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/provider-setup-coverage-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/ai-domain-executors-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/ai-grant-mode-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-grant-mode.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-domain-executors.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-setup-coverage.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-connections-admin-ui.php
@@ -294,6 +300,7 @@ jobs:
           php wp-content/plugins/mad4b-site-control-plane/tests/authority-setup-fields-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/provider-setup-coverage-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/ai-domain-executors-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/ai-grant-mode-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php
 
       - name: Execute Skill Context preflight runtime

@@ -1918,6 +1918,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing immutable source/owner review, execution, approval and platform controls cover this code-gated local-only non-publishing executor bridge. No new Production ability or broad credential is added.",
       "review_rationale": "Reviewed original-owner adapter must be explicitly locally deployed with a precise code SHA pin, original source item hash and revision, and durable independent decision receipt; protected grant/mutation domains cannot register, with negative test evidence."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-grant-mode.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-grant-mode-runtime.php"
+      ],
+      "owner_role": "MAD4B repository governance code reviewer; no tenant-grant authorization conveyed",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing original Agent identity, deny-first grant, site profile, audit, admin nonce and protected OAuth controls remain the sole authority; no new external secret or Production grant is introduced.",
+      "review_rationale": "Nonproduction exact content-review option is disabled by default and owner-initiated. No self-grants, broad privileged abilities or cross-environment expansion."
     }
   ],
   "lifecycle": [],
@@ -7340,6 +7359,78 @@
       ],
       "owner_role": "MAD4B repository source security reviewer; CI evidence only, not the site or Production owner",
       "review_rationale": "Bootstrap includes the reviewed AI Domain Executor registry after original worker initialization, with Local-only runtime fences and no new Production grants. Preserves existing startup profile, route behavior and controlled plugin lifecycle.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-grant-mode.php",
+      "source_blob_sha": "6427055103463f16c5f09069474a435a08ea3137",
+      "control_ids": [
+        "PLATFORM-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-grant-mode-runtime.php"
+      ],
+      "owner_role": "MAD4B repository governance code reviewer; CI only, not owner approval or Production authorization",
+      "review_rationale": "Optional owner-action exact non-Production content-review grant, deny-first, scope-pinned original Agent, stable row ownership and reversible operation. Developer/Breakglass/Full Authority require separate original OAuth and do not inherit this selection.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-model-router.php",
+      "source_blob_sha": "21d939ef8e0542c9b8c02beab918b5b1023dd46c",
+      "control_ids": [
+        "PLATFORM-01",
+        "GOVERNANCE-01",
+        "AI-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-grant-mode-runtime.php"
+      ],
+      "owner_role": "MAD4B repository governance code reviewer; CI only, not owner approval or Production authorization",
+      "review_rationale": "AI Routing shows optional exact content-grant selection only to an enrolled owner; existing model inference and protected runtime are unchanged.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-setup-ui.php",
+      "source_blob_sha": "b296f8f54cc39f5062be246f5f52b23ee17fb69c",
+      "control_ids": [
+        "PLATFORM-01",
+        "ADMIN-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-grant-mode-runtime.php"
+      ],
+      "owner_role": "MAD4B repository governance code reviewer; CI only, not owner approval or Production authorization",
+      "review_rationale": "Authority Setup displays optional AI-only content grant status but retains separately authenticated Developer, Breakglass and Full Staging Authority plans.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "e5f8af26c7db319845b6c0b26b23c1300e5e74e1",
+      "control_ids": [
+        "PLATFORM-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-grant-mode-runtime.php"
+      ],
+      "owner_role": "MAD4B repository governance code reviewer; CI only, not owner approval or Production authorization",
+      "review_rationale": "Existing entrypoint loads the new reviewed owner-controlled grant module without changing Site Profile bootstrap or Production policy.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true

@@ -140,6 +140,13 @@ final class MAD4B_SCP_Authority_Setup_UI {
         $s=self::project_status();
         $flows=self::workflows();
         echo '<div class="wrap"><h1>MAD4B — Authority Setup</h1>';
+        if(class_exists('MAD4B_SCP_AI_Grant_Mode')) {
+            $delegation=MAD4B_SCP_AI_Grant_Mode::status();
+            echo '<p><strong>Optional AI Agent Only exact grant mode:</strong> '.esc_html($delegation['mode']).
+                ' — original content-review exact grant '.esc_html($delegation['existing_exact_review_grant']?'present':'not present').
+                '. Configure separately under <a href="'.esc_url(admin_url('options-general.php?page=mad4b-ai-routing')).'">AI Routing</a>.</p>';
+            echo '<p>Developer/Breakglass/Full Authority still require their original separately authenticated exact OAuth/step-up plans. The optional content grant does not create those capabilities.</p>';
+        }
         echo '<p>One source of authority: the existing MAD4B OAuth and exact grant-plan engine. This page does not enable flags, issue grants, bypass step-up authorization, or change the Site Profile.</p>';
         echo '<p><strong>Environment:</strong> '.esc_html($s['environment']).'. Developer: '.esc_html($s['developer']['authority_ready']?'ready':'not ready').
             '. Developer Breakglass: '.esc_html($s['developer_breakglass']['authority_ready']?'ready':'not ready').
