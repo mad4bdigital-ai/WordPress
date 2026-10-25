@@ -2312,6 +2312,44 @@
       "owner_role": "Repository source/security integration reviewer — CI only, no model or provider privileges",
       "coverage_reuse_rationale": "WordPress Core Connector credential source, original Site Profile, source repair and secure provider transport controls already govern this source; no new shadow credential registry or release capability.",
       "review_rationale": "Reviewed immutable 384-line model router source (current reviewed Git blob 76dd0b9e, already exact-source covered in the registry). Default inference is disabled; Local Ollama is pinned to 127.0.0.1 and the configured Qwen model only inside Local, WordPress Core Connector manages all external keys, custom endpoint validation rejects credentials, query/fragment, localhost/internal host and non443 HTTP and uses wp_safe_remote_post with redirects disabled. 44 source-specific PHP 7.4/8.3 hermetic assertions include new private endpoint and model injection negative cases, original review evidence/low-confidence rejection and disabled connector failures. Tests are not proof of external paid/free model availability, live inference, or deployment."
+    },
+    {
+      "id": "rest:mad4b/ai/review-cycle",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-worker-guard-hermetic.php"
+      ],
+      "owner_role": "Repository source/security CI test reviewer only; not WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing enrolled administrator/Policy, Local-only bound Agent identity, original Context Authority review endpoint, source-readback and release/approval gates control this worker; no new authority is granted.",
+      "review_rationale": "Reviewed unchanged source blob 065726ac26093b0bbc9e11c0009af102df61fcb9. The REST route has original Policy::can_connect_user plus manage_options checks. Preflight requires Local, bound Local Client, ai_only policy, enabled model credentials and authenticated original Agent identity. Run refuses when preflight fails. JSON verdict validation denies foreign authority fields, low-confidence approvals, malformed/oversized payloads and invalid evidence-line citations; no automatic publication authority. New same-PR 22-case hermetic CLI source regression passed PHP 7.4 and 8.3. Live WP original Agent receipt, network transport, background schedule and Staging were NOT exercised or certified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-review-worker.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-worker-guard-hermetic.php"
+      ],
+      "owner_role": "Repository source/security CI test reviewer only; not WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing enrolled administrator/Policy, Local-only bound Agent identity, original Context Authority review endpoint, source-readback and release/approval gates control this worker; no new authority is granted.",
+      "review_rationale": "Reviewed unchanged source blob 065726ac26093b0bbc9e11c0009af102df61fcb9. The REST route has original Policy::can_connect_user plus manage_options checks. Preflight requires Local, bound Local Client, ai_only policy, enabled model credentials and authenticated original Agent identity. Run refuses when preflight fails. JSON verdict validation denies foreign authority fields, low-confidence approvals, malformed/oversized payloads and invalid evidence-line citations; no automatic publication authority. New same-PR 22-case hermetic CLI source regression passed PHP 7.4 and 8.3. Live WP original Agent receipt, network transport, background schedule and Staging were NOT exercised or certified."
     }
   ],
   "lifecycle": [],
