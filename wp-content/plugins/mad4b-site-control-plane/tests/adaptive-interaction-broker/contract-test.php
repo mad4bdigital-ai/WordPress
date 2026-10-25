@@ -18,6 +18,8 @@ function get_post_type_object($name){return $name==='post'?(object)['show_in_res
 function get_registered_meta_keys($type,$name){return ['public_field'=>['type'=>'string','show_in_rest'=>true],'api_key'=>['type'=>'string','show_in_rest'=>true],'private_field'=>['type'=>'string','show_in_rest'=>false],'price_code'=>['type'=>'integer','show_in_rest'=>true]];}
 function is_protected_meta($key,$type){return false;}
 function update_option($name,$val,$unused=false){$GLOBALS['options'][$name]=$val;return true;}
+function set_transient($name,$value,$ttl){$GLOBALS['options'][$name]=$value;return true;}
+function get_transient($name){return $GLOBALS['options'][$name]??false;}
 class MAD4B_SCP_Site_Profile{static function status(){return ['origin_match'=>true,'environment_match'=>true,'site_uuid'=>'site-fixture','profile_digest'=>$GLOBALS['profile'],'revision'=>3];}}
 class MAD4B_SCP_Policy{static function can_read(){return $GLOBALS['authorized'];}static function can_connect_user($id){return $GLOBALS['authorized'];}}
 class MAD4B_SCP_CSO_Scope{static function safe_data($v){if(!is_array($v))return false;foreach($v as $key=>$value){if(preg_match('/api[_-]?key|secret|password|token|credential/i',$key))return false;if(is_array($value)){if(!self::safe_data($value))return false;}elseif(!is_string($value)||strlen($value)>160)return false;}return true;}static function enabled($name){return false;}}
