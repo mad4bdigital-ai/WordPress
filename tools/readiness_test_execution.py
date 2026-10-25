@@ -25,6 +25,9 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/remote-execution/chatgpt-optional-catalog-smoke.php",
     "tests/remote-execution/developer-preparation-bridge-smoke.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/mcp-catalog-adaptive-budget.php",
+    # Exact, hermetic PHP scripts; never promote arbitrary runtime PHP to CLI.
+    "wp-content/plugins/mad4b-site-control-plane/tests/ai-domain-executors-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/ai-model-routing-worker-runtime.php",
     "tests/remote-execution/operator-grants-convergence-smoke.php",
     "tests/remote-execution/operator-grant-rollout-smoke.php",
     "tests/remote-execution/operator-bridge-admission.php",
@@ -114,6 +117,14 @@ def self_test():
     assert command_for("tests/production_readiness_registry_contract.py")[0] == sys.executable
     assert command_for("tests/remote-execution/operator-grants-convergence-smoke.php")[0] == "php"
     assert command_for("tests/remote-execution/operator-bridge-admission.php")[0] == "php"
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/ai-domain-executors-runtime.php")[0] == "php"
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/ai-model-routing-worker-runtime.php")[0] == "php"
+    try:
+        command_for("wp-content/plugins/mad4b-site-control-plane/tests/runtime-gateway-cookie-http.php")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("WP-authenticated HTTP fixture must not run as bare standalone PHP")
     for path in ("README.md", "../secrets.py", "tests/does-not-exist.py"):
         try:
             command_for(path)

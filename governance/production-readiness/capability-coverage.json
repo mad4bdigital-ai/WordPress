@@ -7317,7 +7317,7 @@
         "GOVERNANCE-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-gateway-cookie-http.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/oauth-native-cookie-gateway-contract.py"
       ],
       "owner_role": "MAD4B repository source security reviewer; CI evidence only, not the site or Production owner",
       "review_rationale": "Before Passwordless clears stale OAuth identity, the native WordPress cookie is preserved only for admin requests with a valid wp_rest nonce and no Authorization header. Nonces and invalid-bearer fallback are negatively tested; no bearer or WordPress capability grants are created.",

@@ -105,3 +105,4 @@ check('no_protected_owner_called',is_wp_error(MAD4B_SCP_AI_Domain_Executors::run
 $cycle=MAD4B_SCP_AI_Domain_Executors::cycle(0);
 check('bounded_cycle_preserves_original_verified_result',($cycle['result']['original_owner_receipt_verified']??false)===true);
 echo "SUMMARY pass=$checks fail=0\n";
+echo "PASS: AI_DOMAIN_ORIGINAL_OWNER_EXECUTION\n";

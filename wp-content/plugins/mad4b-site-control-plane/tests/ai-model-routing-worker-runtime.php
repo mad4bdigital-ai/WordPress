@@ -98,3 +98,4 @@ ok('reject_source_identity_change',is_wp_error($v));
 $v=MAD4B_SCP_AI_Source_Repair::validate_revision($old,$next."\nhttps://evil.test/fake-evidence",'text/plain');
 ok('reject_model_invented_external_link',is_wp_error($v));
 echo "SUMMARY pass=$pass fail=0\n";
+echo "PASS: AI_MODEL_ROUTING_AND_VERDICT\n";
