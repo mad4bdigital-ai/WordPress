@@ -12,7 +12,7 @@ from cryptography.hazmat.primitives import serialization
 
 CONTRACT = "mad4b.runtime-runner.v1"
 OPERATIONS = {"runtime.status.read"}
-IMAGE = "alpine:3.20"
+IMAGE = "alpine@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc"
 def canonical(obj):
     return json.dumps(obj, separators=(",", ":"), sort_keys=True, ensure_ascii=True).encode()
 def b64decode(s):
