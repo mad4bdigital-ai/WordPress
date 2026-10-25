@@ -7954,6 +7954,29 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Pin current exact source identity for portable runtime Backend discovery including Docker and PHP-compatible cryptographically signed diagnostics. No discovery finding or result authorizes Developer, mutation, Shell, SQL or Production execution."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-transport-admission.php",
+      "source_blob_sha": "9feba57717b26e80cc854efa2f4579b458770e69",
+      "control_ids": [
+        "MCP-01",
+        "OAUTH-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "PERFORMANCE-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-oauth-rejection-evidence-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-origin-error-preservation-runtime.php"
+      ],
+      "owner_role": "Repository security source reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP OAuth and security evidence rules retain nonauthorizing bounded transport diagnostics while blocking untrusted foreign identifiers.",
+      "review_rationale": "Exact-source regression preserves only four explicit first-party origin error identifiers; foreign mad4b-prefixed response body identifiers cannot leak into persisted telemetry."
     }
   ],
   "code_change_rules": {
