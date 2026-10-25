@@ -30,8 +30,8 @@ with sync_playwright() as p:
             data: {dispatch: () => ({setExtensionData: (name, value) => {window.__checkoutData[name]=value;}})}
           };
           window.wc = {blocksCheckout: {ExperimentalOrderMeta: () => null}, wcBlocksData: {CHECKOUT_STORE_KEY:'checkout'}};
-          window.etgTravellerBlocks = {
-            namespace: 'etg-traveller-nationality', preferred: '', max: 999, batch_size: 20,
+          window.travelBookingTravellerBlocks = {
+            namespace: 'travel-booking-traveller-nationality', preferred: '', max: 999, batch_size: 20,
             countries: [{value:'EG', label:'Egypt'}, {value:'SA',label:'Saudi Arabia'}, {value:'US',label:'United States'}]
           };
         }""")
@@ -41,10 +41,10 @@ with sync_playwright() as p:
           let plugin = window.__plugin;
           window.__root = ReactDOM.createRoot(document.querySelector('#booking'));
           window.__root.render(React.cloneElement(plugin.render().props.children, {cart: {items: [
-            {key:'rate-3',name:'Three-person tour',extensions:{'etg-traveller-nationality':{bookable:true,travellers:3}}},
-            {key:'rate-2',name:'Two-person tour',extensions:{'etg-traveller-nationality':{bookable:true,travellers:2}}},
-            {key:'no-certified-quote',name:'Unverified booking',extensions:{'etg-traveller-nationality':{bookable:true,travellers:0}}},
-            {key:'shirt',name:'Ordinary product',extensions:{'etg-traveller-nationality':{bookable:false,travellers:0}}}
+            {key:'rate-3',name:'Three-person tour',extensions:{'travel-booking-traveller-nationality':{bookable:true,travellers:3}}},
+            {key:'rate-2',name:'Two-person tour',extensions:{'travel-booking-traveller-nationality':{bookable:true,travellers:2}}},
+            {key:'no-certified-quote',name:'Unverified booking',extensions:{'travel-booking-traveller-nationality':{bookable:true,travellers:0}}},
+            {key:'shirt',name:'Ordinary product',extensions:{'travel-booking-traveller-nationality':{bookable:false,travellers:0}}}
           ]}}));
         }""")
         selects = page.locator("#booking select")
@@ -53,8 +53,8 @@ with sync_playwright() as p:
         assert page.locator("#booking [role=alert]").count() == 1
         for i, nationality in enumerate(["EG", "US", "SA", "US", "EG"]):
             selects.nth(i).select_option(nationality)
-        page.wait_for_function("""() => JSON.stringify(window.__checkoutData['etg-traveller-nationality']?.travellers?.['rate-3']) === '["EG","US","SA"]'""")
-        data = page.evaluate("window.__checkoutData['etg-traveller-nationality'].travellers")
+        page.wait_for_function("""() => JSON.stringify(window.__checkoutData['travel-booking-traveller-nationality']?.travellers?.['rate-3']) === '["EG","US","SA"]'""")
+        data = page.evaluate("window.__checkoutData['travel-booking-traveller-nationality'].travellers")
         assert data["rate-3"] == ["EG", "US", "SA"]
         assert data["rate-2"] == ["US", "EG"]
         assert data["no-certified-quote"] == []
@@ -65,7 +65,7 @@ with sync_playwright() as p:
         page.evaluate("""() => {
           window.__root.render(React.cloneElement(window.__plugin.render().props.children, {cart: {items: [
             {key:'party-55',name:'Group of 55 passengers',extensions:{
-              'etg-traveller-nationality':{bookable:true,travellers:55}
+              'travel-booking-traveller-nationality':{bookable:true,travellers:55}
             }}
           ]}}));
         }""")
@@ -83,7 +83,7 @@ with sync_playwright() as p:
                     f"() => document.querySelector('#booking fieldset').textContent.includes('Page {current + 2} of 3')"
                 )
         page.wait_for_function("""() => {
-          const codes=window.__checkoutData['etg-traveller-nationality']?.travellers?.['party-55'];
+          const codes=window.__checkoutData['travel-booking-traveller-nationality']?.travellers?.['party-55'];
           return codes?.length===55 && codes.every(x=>x==='EG');
         }""")
         assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")

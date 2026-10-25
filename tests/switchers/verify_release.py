@@ -55,7 +55,7 @@ class ReleaseContracts(unittest.TestCase):
         self.assertIn("get_items('line_item')", php)
         self.assertIn("get_cart()", php)
         self.assertIn("woocommerce_store_api_checkout_update_order_from_request", php)
-        self.assertIn("etg_traveller_nationality/required_count", php)
+        self.assertIn("travel_booking_traveller_nationality/required_count", php)
         self.assertTrue((NATIONALITY / "assets/checkout-blocks.js").is_file())
 
     def test_unified_management_guards(self):
@@ -64,31 +64,52 @@ class ReleaseContracts(unittest.TestCase):
         blocks = (NATIONALITY / "includes-checkout-blocks.php").read_text()
         for marker in (
             "const LEGACY_BATCH_SIZE=20", "shared_product_booking_configuration_matches",
-            "etg_traveller_management/verified_count", "checkout_ready",
-            "etg_traveller_management/verified_service_links",
+            "travel_booking_traveller_management/verified_count", "checkout_ready",
+            "travel_booking_traveller_management/verified_service_links",
             "wp_verify_nonce", "manage_woocommerce", "revision",
             "traveller_indices", "add_meta_box"
         ):
             self.assertIn(marker, src)
         self.assertIn("require_once __DIR__.'/includes-traveller-management.php'", main)
         self.assertIn("Requires Plugins: woocommerce", main)
-        self.assertIn("ETG_Traveller_Management::resolve", blocks)
-        self.assertIn("ETG_Traveller_Management::registry", blocks)
+        self.assertIn("Travel_Booking_Traveller_Management::resolve", blocks)
+        self.assertIn("Travel_Booking_Traveller_Management::registry", blocks)
         self.assertIn("if($verified<1)return 0", blocks)
         self.assertIn("$n===$verified", blocks)
-        for token in ("etg.booking-request.v1", "departure_inventory_mode", "request_allowed_without_stock", "capacity_preview"):
+        for token in ("travel_booking.booking-request.v1", "departure_inventory_mode", "request_allowed_without_stock", "capacity_preview"):
             self.assertIn(token,src)
         self.assertNotIn("set_price(", src)
         self.assertNotIn("create_order(", src)
         for token in (
-            "shared_product_group_tier_from_taxonomy", "etg.group-capacity.v1",
+            "shared_product_group_tier_from_taxonomy", "travel_booking.group-capacity.v1",
             "taxonomy_when_group", "booking_engine_only", "assess_v2_preview",
-            "etg.departure-capacity.v1", "booking_v2_persons_supported",
-            "booking_mode", "group_size", "etg.departure-capacity.v1",
+            "travel_booking.departure-capacity.v1", "booking_v2_persons_supported",
+            "booking_mode", "group_size", "travel_booking.departure-capacity.v1",
             "minimum_to_operate", "booking_party_size", "first_group_minimum",
             "automatic_conversion", "MAX_VERIFIED_PERSONS=999", "LEGACY_BATCH_SIZE=20"
         ):
             self.assertIn(token, src)
+
+    def test_no_new_site_branded_identifiers(self):
+        import re
+        compatibility = NATIONALITY / "includes-legacy-compat.php"
+        self.assertTrue(compatibility.is_file(), "Legacy data compatibility must remain isolated")
+        # WordPress retains the historic activation filename, not historic runtime symbols.
+        for path in NATIONALITY.rglob("*"):
+            if not path.is_file() or path == compatibility or path.suffix not in {".php", ".js", ".css"}:
+                continue
+            body = path.read_text()
+            self.assertNotRegex(body, r"(?i)(?:\betg[_\-.]|\bETG_|\bETG\s)",
+                                f"Site-branded runtime identifier in {path}")
+        management = (NATIONALITY / "includes-traveller-management.php").read_text()
+        for marker in (
+            "_travel_booking_group_booking_minimum",
+            "function group_booking_minimum(",
+            "self::first_group_minimum($tour_id)",
+            "travel_booking_tm_group_minimum",
+            "group_booking_minimum($tour_id)",
+        ):
+            self.assertIn(marker, management)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

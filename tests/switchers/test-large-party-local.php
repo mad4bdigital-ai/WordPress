@@ -2,7 +2,7 @@
 /** Safe in-memory Woo local-lab validation of 55 people, Woo quantity=1. */
 require '/var/www/html/wp-load.php';
 if(wp_get_environment_type()!=='local')exit(19);
-$tm='ETG_Traveller_Management';$cl='ETG_Traveller_Nationality_Switcher';$blk='ETG_Traveller_Nationality_Checkout_Blocks';
+$tm='Travel_Booking_Traveller_Management';$cl='Travel_Booking_Traveller_Nationality_Switcher';$blk='Travel_Booking_Traveller_Nationality_Checkout_Blocks';
 $fail=0;$test=static function($name,$good)use(&$fail){echo $name.'='.($good?'PASS':'FAIL').PHP_EOL;if(!$good)$fail++;};
 $quote=shared_product_booking_configuration_quote(66139,'general','double',['quantities'=>['persons'=>55],'options'=>[]]);
 $test('SERVER_QUOTE_55',!is_wp_error($quote));
@@ -23,14 +23,14 @@ $test('BLOCKS_54_REJECTED',is_wp_error($blk::validate_request(['travellers'=>['p
 $test('NATIONALITY_1000_DENIED',is_wp_error($cl::validate_list(array_fill(0,1000,'EG'))));
 $test('NATIONALITY_INDEX_999_DENIED',is_wp_error($cl::validate_list([999=>'EG'])));
 $test('NATIONALITY_SPARSE_ARRAY_DENIED',is_wp_error($cl::validate_list([0=>'EG',2=>'SA'])));
-$line['etg_traveller_nationalities']=$codes;
+$line['travel_booking_traveller_nationalities']=$codes;
 $cart=new WC_Cart();$cart->set_cart_contents(['party55'=>$line]);
 $old=WC()->cart;WC()->cart=$cart;
 try{
  $classic=new WP_Error();
  $cl::classic_checkout_validate([],$classic);
  $test('CLASSIC_55_NATIONALITIES_VALID',!$classic->has_errors());
- $partialLine=$line;$partialLine['etg_traveller_nationalities']=array_slice($codes,0,54);
+ $partialLine=$line;$partialLine['travel_booking_traveller_nationalities']=array_slice($codes,0,54);
  $partialCart=new WC_Cart();$partialCart->set_cart_contents(['party55'=>$partialLine]);
  WC()->cart=$partialCart;$error=new WP_Error();$cl::classic_checkout_validate([],$error);
  $test('CLASSIC_54_NATIONALITIES_REJECTED',$error->has_errors());

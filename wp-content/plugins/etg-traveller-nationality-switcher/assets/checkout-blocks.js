@@ -1,6 +1,6 @@
 (function () {
   'use strict';
-  var config = window.etgTravellerBlocks;
+  var config = window.travelBookingTravellerBlocks;
   var wp = window.wp, wc = window.wc;
   if (!config || !wp || !wp.element || !wp.plugins || !wp.data || !wc || !wc.blocksCheckout || !wc.wcBlocksData) return;
   var el = wp.element.createElement;
@@ -52,7 +52,7 @@
         return next;
       });
     }
-    return el('fieldset', {'className': 'etg-block-travellers'},
+    return el('fieldset', {'className': 'travel-booking-block-travellers'},
       el('legend', null, 'Traveller passport nationalities'),
       items.map(function (item) {
         var count = Math.min(Number(config.max) || 999, Number(item.extensions[namespace].travellers) || 0);
@@ -68,14 +68,14 @@
             return value;
           });
         }
-        return el('div', {'className': 'etg-block-travellers__line', key: item.key},
+        return el('div', {'className': 'travel-booking-block-travellers__line', key: item.key},
           el('strong', null, item.name),
           count < 1 ? el('p', {role:'alert'}, 'Traveller count is not yet verified for this booking. Choose a valid booking configuration before checkout.') : null,
           count > batch ? el('p', {'aria-live':'polite'}, 'Travellers ' + (start + 1) + '–' + (start + visible) + ' of ' + count) : null,
           Array.from({length: Math.max(0, visible)}, function (_, index) {
             var i = start + index;
-            var id = 'etg-passport-' + item.key.replace(/[^a-z0-9_-]/gi, '') + '-' + i;
-            return el('label', {key: i, htmlFor: id, 'className': 'etg-block-travellers__field'},
+            var id = 'travel-booking-passport-' + item.key.replace(/[^a-z0-9_-]/gi, '') + '-' + i;
+            return el('label', {key: i, htmlFor: id, 'className': 'travel-booking-block-travellers__field'},
               el('span', null, 'Traveller ' + (i + 1)),
               el('select', {id: id, value: codes[i] || '', required: true,
                 onChange: function (ev) { update(item.key, i, ev.target.value); }},
@@ -84,7 +84,7 @@
               )
             );
           }),
-          totalPages > 1 ? el('div', {'className':'etg-traveller-pager'},
+          totalPages > 1 ? el('div', {'className':'travel-booking-traveller-pager'},
             el('button', {type:'button',disabled:page===0,onClick:function(){changePage(page-1);}}, 'Previous 20'),
             el('span', null, ' Page '+(page+1)+' of '+totalPages+' '),
             el('button', {type:'button',disabled:page>=totalPages-1,onClick:function(){changePage(page+1);}}, 'Next 20')
@@ -93,7 +93,7 @@
       })
     );
   }
-  wp.plugins.registerPlugin('etg-traveller-nationality', {
+  wp.plugins.registerPlugin('travel-booking-traveller-nationality', {
     render: function () {return el(wc.blocksCheckout.ExperimentalOrderMeta, null, el(Picker));},
     scope: 'woocommerce-checkout'
   });

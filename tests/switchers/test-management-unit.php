@@ -49,7 +49,7 @@ function apply_filters($tag,$value,...$args){
  return $value;
 }
 require __DIR__.'/../../wp-content/plugins/etg-traveller-nationality-switcher/includes-traveller-management.php';
-$tm='ETG_Traveller_Management';$fail=0;
+$tm='Travel_Booking_Traveller_Management';$fail=0;
 $test=static function($name,$bool)use(&$fail){echo "$name=".($bool?'PASS':'FAIL').PHP_EOL;if(!$bool)$fail++;};
 $test('FIVE_FIXED_BUILTINS',count($tm::builtins())===5);
 $test('DEFAULT_IS_VERIFIED_SOURCE',$tm::state()['default']==='automatic');
@@ -90,15 +90,15 @@ $hook=static function($unused,$line,$type)use($tm){
  return ['contract'=>$tm::COUNT_CONTRACT,'authority'=>'server_verified','product_id'=>$line['product_id'],
   'cart_quantity'=>$line['quantity'],'source'=>'booking_v2_certified','checkout_ready'=>false,'count'=>4];
 };
-add_filter('etg_traveller_management/verified_count',$hook);
+add_filter('travel_booking_traveller_management/verified_count',$hook);
 $test('DENY_NON_READY_ADAPTER',$tm::resolve($faux)['count']===0);
-remove_all_filters('etg_traveller_management/verified_count');
+remove_all_filters('travel_booking_traveller_management/verified_count');
 $hook=static function($unused,$line,$type)use($tm){
  return ['contract'=>$tm::COUNT_CONTRACT,'authority'=>'server_verified','product_id'=>$line['product_id'],
   'cart_quantity'=>$line['quantity'],'source'=>'booking_v2_certified','checkout_ready'=>true,
   'tour_id'=>$line['product_id'],'booking_mode'=>'private','count'=>4];
 };
-add_filter('etg_traveller_management/verified_count',$hook);
+add_filter('travel_booking_traveller_management/verified_count',$hook);
 $test('CERTIFIED_FUTURE_ADAPTER_ALLOWED',$tm::resolve($faux)['count']===4);
 $test('ADAPTER_NOT_VALID_FOR_ACCOMMODATION',$tm::resolve(['product_id'=>9,'quantity'=>1,'data'=>new WC_Product(9)])['count']===0);
 $groupCertified=static function($unused,$line,$type)use($tm){
@@ -106,29 +106,29 @@ $groupCertified=static function($unused,$line,$type)use($tm){
   'cart_quantity'=>$line['quantity'],'source'=>'booking_v2_certified','checkout_ready'=>true,
   'tour_id'=>$line['product_id'],'booking_mode'=>'group','group_size'=>15,'tier_id'=>101,'count'=>15];
 };
-remove_all_filters('etg_traveller_management/verified_count');
-add_filter('etg_traveller_management/verified_count',$groupCertified);
+remove_all_filters('travel_booking_traveller_management/verified_count');
+add_filter('travel_booking_traveller_management/verified_count',$groupCertified);
 $test('CERTIFIED_GROUP_TIER_EXACT_MATCH',$tm::resolve($faux)['count']===15);
-remove_all_filters('etg_traveller_management/verified_count');
+remove_all_filters('travel_booking_traveller_management/verified_count');
 $badGroup=static function($unused,$line,$type)use($tm){
  return ['contract'=>$tm::COUNT_CONTRACT,'authority'=>'server_verified','product_id'=>$line['product_id'],
   'cart_quantity'=>$line['quantity'],'source'=>'booking_v2_certified','checkout_ready'=>true,
   'tour_id'=>$line['product_id'],'booking_mode'=>'group','group_size'=>14,'tier_id'=>101,'count'=>15];
 };
-add_filter('etg_traveller_management/verified_count',$badGroup);
+add_filter('travel_booking_traveller_management/verified_count',$badGroup);
 $test('CERTIFIED_GROUP_PERSONS_MISMATCH_DENIED',$tm::resolve($faux)['count']===0);
-remove_all_filters('etg_traveller_management/verified_count');
-remove_all_filters('etg_traveller_management/verified_count');
+remove_all_filters('travel_booking_traveller_management/verified_count');
+remove_all_filters('travel_booking_traveller_management/verified_count');
 $cart=['tour'=>$good,'optional'=>$faux];
 $root=$tm::registry($cart);
 $test('BOOKING_REGISTRY_ONLY_ONE_ROOT',count($root['bookings'])===1 && count($root['bookings']['tour']['people'])===3);
 $test('UNLINKED_EXTRAS_ARE_NOT_ADDED',count($root['linked_services'])===0);
 $hook=static fn()=>[['contract'=>$tm::CONTRACT,'authority'=>'server_verified','booking_key'=>'tour','service_key'=>'optional','traveller_indices'=>[0,2]]];
-add_filter('etg_traveller_management/verified_service_links',$hook);
+add_filter('travel_booking_traveller_management/verified_service_links',$hook);
 $linked=$tm::registry($cart)['linked_services']['optional']??[];
 $test('ASSIGN_SUBSET_WITHOUT_DUPLICATION',($linked['count']??0)===2&&count(array_unique($linked['traveller_ids']??[]))===2);
 $test('NO_NATIONALITY_IN_REGISTRY',!str_contains(json_encode($tm::registry($cart)),'nationality'));
-remove_all_filters('etg_traveller_management/verified_service_links');
+remove_all_filters('travel_booking_traveller_management/verified_service_links');
 $group=$tm::assess_capacity(8,'group',25);
 $test('GROUP_25_MATCHES_CANONICAL_TIER',!is_wp_error($group)&&$group['tier_id']===102&&
  $group['checkout_capacity_certified']===false&&$group['booking_v2_persons_supported']===true);
@@ -166,11 +166,11 @@ $untracked=$tm::assess_departure(8,1);
 $test('NO_INVENTORY_DEFAULT_ALLOWS_BOOKING_REQUEST',!is_wp_error($untracked)
  &&$untracked['status']==='request_allowed_occupancy_unknown'
  &&$untracked['remaining_seats_after_booking']===null);
-$GLOBALS['unit_meta'][8]['_etg_departure_max_capacity']=30;
+$GLOBALS['unit_meta'][8]['_travel_booking_departure_max_capacity']=30;
 $stillUntracked=$tm::assess_departure(8,1);
 $test('OPTIONAL_CAPACITY_FIELD_NOT_FORCED',!is_wp_error($stillUntracked)
  &&$stillUntracked['departure_capacity']===null);
-$GLOBALS['unit_meta'][8]['_etg_departure_inventory_mode']='capacity_preview';
+$GLOBALS['unit_meta'][8]['_travel_booking_departure_inventory_mode']='capacity_preview';
 $pending=$tm::assess_departure(8,1);
 $test('NO_CONFIRMED_GUESTS_NOT_ASSUMED_ZERO',!is_wp_error($pending)
  &&$pending['departure_capacity']===30&&$pending['remaining_seats_after_booking']===null);
@@ -182,6 +182,16 @@ $test('OPTIONAL_CAPACITY_PREVIEW_NOT_STOCK_RECEIPT',!is_wp_error($preview)
 $requested=$tm::assess_booking_request(8,1,'group');
 $test('GROUP_SEAT_WITHOUT_INVENTORY',$requested['request_allowed_without_stock']===true
  &&$requested['seat_confirmation']==='requires_separate_booking_confirmation');
-unset($GLOBALS['unit_meta'][8]['_etg_departure_inventory_mode'],$GLOBALS['unit_meta'][8]['_etg_departure_max_capacity']);
+unset($GLOBALS['unit_meta'][8]['_travel_booking_departure_inventory_mode'],$GLOBALS['unit_meta'][8]['_travel_booking_departure_max_capacity']);
+$test('NO_GROUP_MINIMUM_HARDCODED',$tm::group_booking_minimum(8)===10);
+$GLOBALS['unit_meta'][8]['_travel_booking_group_booking_minimum']=12;
+$test('GROUP_MINIMUM_OVERRIDE_TWELVE',$tm::group_booking_minimum(8)===12);
+$party=$tm::advise_booking_mode(8,11,'auto',false);
+$test('MINIMUM_PARTY_ELEVEN_SUGGESTS_PRIVATE',!is_wp_error($party)&&$party['recommended_mode']==='private');
+$party=$tm::advise_booking_mode(8,12,'auto',false);
+$test('MINIMUM_PARTY_TWELVE_SUGGESTS_GROUP',!is_wp_error($party)&&$party['recommended_mode']==='group');
+$test('ONE_SEAT_EXPLICIT_GROUP_NOT_FORCED_PRIVATE',$tm::advise_booking_mode(8,1,'group',true)['selected_mode']==='group');
+unset($GLOBALS['unit_meta'][8]['_travel_booking_group_booking_minimum']);
+$test('CLEAR_GROUP_MINIMUM_INHERITS_TIER',$tm::group_booking_minimum(8)===10);
 $test('ONLY_TRAVELLER_OPTION_CHANGED',array_keys($GLOBALS['unit_options'])===[$tm::OPTION]);
 echo "UNIFIED_HERMETIC_FAILURES=$fail\n";exit($fail?1:0);

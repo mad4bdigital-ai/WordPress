@@ -3,16 +3,16 @@
 require '/var/www/html/wp-load.php';
 if(wp_get_environment_type()!=='local')exit(10);
 $fail=0;$assert=static function($n,$ok)use(&$fail){echo "$n=".($ok?'PASS':'FAIL').PHP_EOL;if(!$ok)$fail++;};
-$tm='ETG_Traveller_Management';$blocks='ETG_Traveller_Nationality_Checkout_Blocks';$switcher='ETG_Traveller_Nationality_Switcher';
+$tm='Travel_Booking_Traveller_Management';$blocks='Travel_Booking_Traveller_Nationality_Checkout_Blocks';$switcher='Travel_Booking_Traveller_Nationality_Switcher';
 $quote=shared_product_booking_configuration_quote(66139,'general','double',['quantities'=>['persons'=>3],'options'=>[]]);
 if(is_wp_error($quote))exit(21);
 $base=['key'=>'booking-main','product_id'=>66139,'variation_id'=>0,'variation'=>[],'quantity'=>1,'data'=>wc_get_product(66139),'shared_booking_configuration'=>$quote,
- 'etg_traveller_nationalities'=>['EG','SA','US']];
+ 'travel_booking_traveller_nationalities'=>['EG','SA','US']];
 $extra=['key'=>'activity-linked','product_id'=>66134,'variation_id'=>0,'variation'=>[],'quantity'=>1,'data'=>wc_get_product(66134)];
 $cart=new WC_Cart();$cart->set_cart_contents(['booking-main'=>$base,'activity-linked'=>$extra]);
 $old=WC()->cart;WC()->cart=$cart;
 $link=static fn($value)=>[['contract'=>$tm::CONTRACT,'authority'=>'server_verified','booking_key'=>'booking-main','service_key'=>'activity-linked','traveller_indices'=>[0,2]]];
-add_filter('etg_traveller_management/verified_service_links',$link);
+add_filter('travel_booking_traveller_management/verified_service_links',$link);
 try{
  $reg=$tm::registry($cart->get_cart());
  $assert('VERIFIED_PARENT_REGISTRY',count($reg['bookings'])===1&&count($reg['bookings']['booking-main']['people'])===3);
@@ -31,14 +31,14 @@ try{
  }
  $root=$order_items['booking-main'];$child=$order_items['activity-linked'];
  $assert('CLASSIC_ROOT_HAS_THREE_COUNTRIES',$root->get_meta('Traveller 3 passport country (ISO2)')==='US');
- $assert('CLASSIC_CHILD_REFERENCES_ROOT',$child->get_meta('_etg_tm_parent_registry_id')===$root->get_meta('_etg_tm_registry_id'));
+ $assert('CLASSIC_CHILD_REFERENCES_ROOT',$child->get_meta('_travel_booking_tm_parent_registry_id')===$root->get_meta('_travel_booking_tm_registry_id'));
  $assert('CLASSIC_CHILD_HAS_NO_DUPLICATE_COUNTRIES',$child->get_meta('Traveller 1 passport country (ISO2)')==='');
- $assert('CLASSIC_CHILD_SUBSET_ASSIGNMENT',$child->get_meta('_etg_tm_traveller_indices')===[0,2]);
+ $assert('CLASSIC_CHILD_SUBSET_ASSIGNMENT',$child->get_meta('_travel_booking_tm_traveller_indices')===[0,2]);
  $req=new WP_REST_Request('POST','/wc/store/v1/checkout');
  $req->set_param('extensions',[$blocks::NAMESPACE_ID=>['travellers'=>['booking-main'=>['EG','SA','US']]]]);
  $blocks::apply_to_order($order,$req);
  $assert('BLOCKS_ROOT_STILL_HAS_THREE',$root->get_meta('Traveller 3 passport country (ISO2)')==='US');
- $assert('BLOCKS_CHILD_STILL_REFERENCES_ROOT',$child->get_meta('_etg_tm_parent_registry_id')===$root->get_meta('_etg_tm_registry_id'));
+ $assert('BLOCKS_CHILD_STILL_REFERENCES_ROOT',$child->get_meta('_travel_booking_tm_parent_registry_id')===$root->get_meta('_travel_booking_tm_registry_id'));
  $assert('BLOCKS_PARENT_IDEMPOTENT',count(array_filter($root->get_meta_data(),static fn($x)=>preg_match('/^Traveller [0-9]+ passport country/',(string)$x->key)))===3);
  $response=rest_do_request(new WP_REST_Request('GET','/wc/store/v1/cart'));
  $json=json_decode(wp_json_encode($response->get_data()),true);
@@ -48,7 +48,7 @@ try{
  $assert('STORE_API_MAIN_REQUIRES_THREE',($byId[66139]['extensions'][$ns]['travellers']??0)===3);
  $assert('ORDER_NEVER_SAVED',$order->get_id()===0);
 } finally {
- remove_filter('etg_traveller_management/verified_service_links',$link);
+ remove_filter('travel_booking_traveller_management/verified_service_links',$link);
  WC()->cart=$old;
 }
 echo "LINKED_SERVICE_FAILURES=$fail\n";

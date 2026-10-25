@@ -10,6 +10,7 @@ define('COOKIEPATH', '/');
 define('WP_PLUGIN_DIR', '/__wpml_not_installed__');
 function add_action(...$args) {}
 function add_filter(...$args) {}
+function apply_filters($name,$value,...$args) {return $value;}
 function add_shortcode(...$args) {}
 function home_url($path = '/') { return 'http://local.test' . $path; }
 function wp_salt($scheme = 'auth') { return 'unit-test-only-key'; }
@@ -31,7 +32,7 @@ class WC_Fake {
 }
 function WC() { static $wc; return $wc ??= new WC_Fake(); }
 require (getenv('SWITCHER_PLUGIN_FILE') ?: __DIR__ . '/../../wp-content/plugins/etg-traveller-nationality-switcher/etg-traveller-nationality-switcher.php');
-$n = 'ETG_Traveller_Nationality_Switcher';
+$n = 'Travel_Booking_Traveller_Nationality_Switcher';
 $assert = static function ($what, $ok) {
     if (!$ok) { fwrite(STDERR, "$what=FAIL\n"); exit(1); }
     echo "$what=PASS\n";

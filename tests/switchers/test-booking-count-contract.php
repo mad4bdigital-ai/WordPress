@@ -3,7 +3,7 @@
 define('ABSPATH', __DIR__);
 function add_action(...$args) {}
 function apply_filters($name, $count, ...$args) {
- if($name==='etg_traveller_nationality/required_count'&&($GLOBALS['test_external_count_override']??false))return 2;
+ if($name==='travel_booking_traveller_nationality/required_count'&&($GLOBALS['test_external_count_override']??false))return 2;
  return $count;
 }
 function get_post_type($id) {return $id===101?'tour-rates':'tours-and-activities';}
@@ -19,7 +19,7 @@ function shared_product_booking_configuration_matches($saved){
  if(($saved['status']??'')!=='server_quote' || ($saved['valid']??true)!==true)return new WP_Error('stale');
  return $saved;
 }
-class ETG_Traveller_Nationality_Switcher {
+class Travel_Booking_Traveller_Nationality_Switcher {
  public static function validate_list($input) {
   if(!is_array($input)||!$input||count($input)>999)return new WP_Error();
   foreach($input as $s)if(!in_array($s,['EG','US','SA'],true))return new WP_Error();
@@ -28,7 +28,7 @@ class ETG_Traveller_Nationality_Switcher {
 }
 require getenv('SWITCHER_MANAGEMENT_FILE') ?: __DIR__ . '/../../wp-content/plugins/etg-traveller-nationality-switcher/includes-traveller-management.php';
 require getenv('SWITCHER_BLOCKS_FILE') ?: __DIR__ . '/../../wp-content/plugins/etg-traveller-nationality-switcher/includes-checkout-blocks.php';
-$c='ETG_Traveller_Nationality_Checkout_Blocks';
+$c='Travel_Booking_Traveller_Nationality_Checkout_Blocks';
 $check=static function($name,$pass){if(!$pass){fwrite(STDERR,$name."=FAIL\n");exit(1);}echo $name."=PASS\n";};
 $rate=['product_id'=>101,'quantity'=>1,'data'=>new WC_Product(101),'shared_booking_configuration'=>[
  'status'=>'server_quote','rate_id'=>101,'quantities'=>['persons'=>3],'options'=>[]]];

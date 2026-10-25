@@ -2,7 +2,7 @@
 /** Lab integration; no order persistence, payment attempt, or checkout activation. */
 require '/var/www/html/wp-load.php';
 if(wp_get_environment_type()!=='local')exit(21);
-$c='ETG_Traveller_Nationality_Checkout_Blocks';
+$c='Travel_Booking_Traveller_Nationality_Checkout_Blocks';
 $bad=0;
 $assert=static function($name,$pass)use(&$bad){echo "$name=".($pass?'PASS':'FAIL').PHP_EOL;if(!$pass)$bad++;};
 $old=WC()->cart;
@@ -32,17 +32,17 @@ try {
  $first=$cart->get_cart();
  $checkCart=$first;
  $goodLine=$checkCart['rate-66139'];
- $goodLine['etg_traveller_nationalities']=['EG','SA','US'];
+ $goodLine['travel_booking_traveller_nationalities']=['EG','SA','US'];
  $checkCart['rate-66139']=$goodLine;
  $other=$checkCart['rate-66138'];
- $other['etg_traveller_nationalities']=['US','EG'];
+ $other['travel_booking_traveller_nationalities']=['US','EG'];
  $checkCart['rate-66138']=$other;
  $cart->set_cart_contents($checkCart);
  $errors=new WP_Error();
- $cCheck='ETG_Traveller_Nationality_Switcher';
+ $cCheck='Travel_Booking_Traveller_Nationality_Switcher';
  $cCheck::classic_checkout_validate([],$errors);
  $assert('CLASSIC_VERIFIED_COUNT_ACCEPTS',$errors->has_errors()===false);
- $badCart=$checkCart;$badCart['rate-66139']['etg_traveller_nationalities']=['EG'];
+ $badCart=$checkCart;$badCart['rate-66139']['travel_booking_traveller_nationalities']=['EG'];
  $cart->set_cart_contents($badCart);
  $errors=new WP_Error();$cCheck::classic_checkout_validate([],$errors);
  $assert('CLASSIC_COUNT_MISMATCH_FAIL_CLOSED',$errors->get_error_code()==='nationality_booking_count_mismatch');
@@ -73,7 +73,7 @@ try {
  $keys=array_map(static fn($m)=>(string)$m->key,$meta[66139]->get_meta_data());
  $nationKeys=array_values(array_filter($keys,static fn($key)=>str_starts_with($key,'Traveller ') && str_ends_with($key,' passport country (ISO2)')));
  $assert('IDEMPOTENT_ORDER_META',count($nationKeys)===3&&count($keys)===4);
- $assert('ROOT_BOOKING_REGISTRY_ID',strlen((string)$meta[66139]->get_meta('_etg_tm_registry_id'))===24);
+ $assert('ROOT_BOOKING_REGISTRY_ID',strlen((string)$meta[66139]->get_meta('_travel_booking_tm_registry_id'))===24);
  $assert('ORDER_ID_NOT_PERSISTED',!$order->get_id());
  $assert('CURRENCY_NOT_CHANGED',get_woocommerce_currency()===$oldCurrency);
  $rest=rest_do_request(new WP_REST_Request('GET','/wc/store/v1/cart'));

@@ -2,7 +2,7 @@
 /** Reversible Local Lab-only integration. No order/checkout/price mutations. */
 require '/var/www/html/wp-load.php';
 if(wp_get_environment_type()!=='local')exit(10);
-$t='ETG_Traveller_Management';$option=$t::OPTION;
+$t='Travel_Booking_Traveller_Management';$option=$t::OPTION;
 $original=get_option($option,'__unset__');
 $failures=0;
 $test=static function($name,$ok)use(&$failures){echo "$name=".($ok?'PASS':'FAIL').PHP_EOL;if(!$ok)$failures++;};
@@ -58,42 +58,42 @@ try {
  $test('NO_AUTO_LINK_WITHOUT_AUTHORITY',count($registry['linked_services'])===0);
  $invalidLink=['authority'=>'unverified','contract'=>$t::CONTRACT,'service_key'=>'extra-activity','booking_key'=>'tour-main','traveller_indices'=>[0,2]];
  $hook=static function()use($invalidLink){return [$invalidLink];};
- add_filter('etg_traveller_management/verified_service_links',$hook);
+ add_filter('travel_booking_traveller_management/verified_service_links',$hook);
  $test('UNTRUSTED_SERVICE_RELATION_DENIED',count($t::registry($cart)['linked_services'])===0);
- remove_filter('etg_traveller_management/verified_service_links',$hook);
+ remove_filter('travel_booking_traveller_management/verified_service_links',$hook);
  $valid=$invalidLink;$valid['authority']='server_verified';
  $hook=static function()use($valid){return [$valid];};
- add_filter('etg_traveller_management/verified_service_links',$hook);
+ add_filter('travel_booking_traveller_management/verified_service_links',$hook);
  $linked=$t::registry($cart)['linked_services']['extra-activity']??[];
  $test('LINKED_EXTRA_SUBSET_TWO_PEOPLE',($linked['count']??0)===2&&count(array_unique($linked['traveller_ids']??[]))===2);
  $test('NO_DUPLICATE_PERSON_RECORDS',count($t::registry($cart)['bookings']['tour-main']['people'])===3);
- remove_filter('etg_traveller_management/verified_service_links',$hook);
+ remove_filter('travel_booking_traveller_management/verified_service_links',$hook);
  $unrelatedCart=$cart;$unrelatedCart['extra-activity']=$ordinary;
  $hook=static function()use($valid){return [$valid];};
- add_filter('etg_traveller_management/verified_service_links',$hook);
+ add_filter('travel_booking_traveller_management/verified_service_links',$hook);
  $test('UNRELATED_TOUR_IS_NOT_A_VERIFIED_EXTRA',count($t::registry($unrelatedCart)['linked_services'])===0);
- remove_filter('etg_traveller_management/verified_service_links',$hook);
+ remove_filter('travel_booking_traveller_management/verified_service_links',$hook);
  $bad=$valid;$bad['traveller_indices']=[0,0];
  $hook=static function()use($bad){return [$bad];};
- add_filter('etg_traveller_management/verified_service_links',$hook);
+ add_filter('travel_booking_traveller_management/verified_service_links',$hook);
  $test('REPEATED_TRAVELLER_ASSIGNMENTS_REJECTED',count($t::registry($cart)['linked_services'])===0);
- remove_filter('etg_traveller_management/verified_service_links',$hook);
+ remove_filter('travel_booking_traveller_management/verified_service_links',$hook);
  $future=static function($value,$line,$type)use($t){
   return ['contract'=>$t::COUNT_CONTRACT,'authority'=>'server_verified','product_id'=>(int)$line['product_id'],
    'cart_quantity'=>(int)$line['quantity'],'source'=>'booking_v2_certified','checkout_ready'=>true,
    'tour_id'=>(int)$line['product_id'],'booking_mode'=>'private','count'=>4];
  };
- add_filter('etg_traveller_management/verified_count',$future,10,3);
+ add_filter('travel_booking_traveller_management/verified_count',$future,10,3);
  $futureResult=$t::resolve($ordinary);
  $test('FUTURE_CERTIFIED_ADAPTER_SHAPE',($futureResult['status']??'')==='verified'&&($futureResult['count']??0)===4);
- remove_filter('etg_traveller_management/verified_count',$future,10);
+ remove_filter('travel_booking_traveller_management/verified_count',$future,10);
  $wrong=static function($value,$line,$type)use($t){
   return ['contract'=>$t::COUNT_CONTRACT,'authority'=>'server_verified','product_id'=>(int)$line['product_id'],
    'cart_quantity'=>(int)$line['quantity'],'source'=>'transport_checkout_certified','checkout_ready'=>true,'count'=>3];
  };
- add_filter('etg_traveller_management/verified_count',$wrong,10,3);
+ add_filter('travel_booking_traveller_management/verified_count',$wrong,10,3);
  $test('CROSS_PRODUCT_AUTHORITY_CONFUSION_BLOCKED',$t::resolve($ordinary)['status']==='unverified');
- remove_filter('etg_traveller_management/verified_count',$wrong,10);
+ remove_filter('travel_booking_traveller_management/verified_count',$wrong,10);
  $private=$t::assess_capacity(66133,'private',25);
  $test('PRIVATE_25_NOT_RESTRICTED_BY_GROUP_TIERS',!is_wp_error($private)&&$private['tier_id']===null
    &&$private['booking_v2_persons_supported']&&$private['checkout_capacity_certified']===false);

@@ -6,10 +6,10 @@
  */
 require '/var/www/html/wp-load.php';
 if(wp_get_environment_type()!=='local')exit(90);
-$tm='ETG_Traveller_Management';
+$tm='Travel_Booking_Traveller_Management';
 $fail=0;$assert=static function($name,$ok)use(&$fail){echo $name.'='.($ok?'PASS':'FAIL').PHP_EOL;if(!$ok)$fail++;};
 $tour=66133;$rate=66139;$created=[];$old=[];
-$departureMeta=['_etg_minimum_departure_participants','_etg_departure_max_capacity','_etg_small_party_routing','_etg_departure_inventory_mode'];
+$departureMeta=['_travel_booking_minimum_departure_participants','_travel_booking_departure_max_capacity','_travel_booking_small_party_routing','_travel_booking_departure_inventory_mode','_travel_booking_group_booking_minimum'];
 $oldDepartureMeta=[];
 foreach($departureMeta as $key)$oldDepartureMeta[$key]=get_post_meta($tour,$key,true);
 $taxonomies=['group-size-tiers','tour_categories_jet'];
@@ -60,6 +60,24 @@ try{
  $seat=$tm::advise_booking_mode($tour,1,'group',true);
  $assert('EXPLICIT_GROUP_SEAT_NOT_CONVERTED_TO_PRIVATE',!is_wp_error($seat)&&$seat['selected_mode']==='group');
  $assert('FIRST_ENABLED_TIER_MINIMUM_TEN',$tm::first_group_minimum($tour)===10);
+ $assert('GROUP_MIN_INHERITS_FIRST_TIER',$tm::group_booking_minimum($tour)===10);
+ update_post_meta($tour,'_travel_booking_group_booking_minimum',12);
+ $assert('OVERRIDE_MIN_GROUP_TO_TWELVE',$tm::group_booking_minimum($tour)===12);
+ $party11=$tm::advise_booking_mode($tour,11,'auto',false);
+ $party12=$tm::advise_booking_mode($tour,12,'auto',false);
+ $assert('BELOW_CONFIGURED_MIN_PRIVATE_SUGGESTED',!is_wp_error($party11)
+  &&$party11['recommended_mode']==='private'&&$party11['group_tier_minimum']===10);
+ $assert('AT_CONFIGURED_MIN_GROUP_SUGGESTED',!is_wp_error($party12)&&$party12['recommended_mode']==='group');
+ $stillGroup=$tm::advise_booking_mode($tour,1,'group',true);
+ $assert('EXPLICIT_GROUP_SEAT_NOT_BLOCKED_BY_OVERRIDE',!is_wp_error($stillGroup)&&$stillGroup['selected_mode']==='group');
+ $notDepartMin=$tm::assess_departure($tour,1,10,30,10);
+ $assert('GROUP_OVERRIDE_DOES_NOT_CHANGE_DEPARTURE_MINIMUM',!is_wp_error($notDepartMin)&&$notDepartMin['minimum_to_operate']===10);
+ delete_post_meta($tour,'_travel_booking_group_booking_minimum');
+ $assert('RESET_TO_FIRST_GROUP_TIER',$tm::group_booking_minimum($tour)===10);
+ update_post_meta($tour,'_travel_booking_group_booking_minimum',0);
+ $assert('INVALID_GROUP_MIN_FAILS_CLOSED',is_wp_error($tm::group_booking_minimum($tour)));
+ delete_post_meta($tour,'_travel_booking_group_booking_minimum');
+
  $noStock=$tm::assess_departure($tour,1);
  $assert('NO_STOCK_DEFAULT_PERMITS_GROUP_REQUEST',!is_wp_error($noStock)
   &&$noStock['status']==='request_allowed_occupancy_unknown'
@@ -71,14 +89,14 @@ try{
   &&$seatRequest['availability_verified']===false);
  $metaKeys=get_registered_meta_keys('post','tours-and-activities');
  $assert('CAPACITY_FIELDS_REGISTERED_IN_WORDPRESS',
-  isset($metaKeys['_etg_departure_inventory_mode'],$metaKeys['_etg_departure_max_capacity'],
-   $metaKeys['_etg_minimum_departure_participants'],$metaKeys['_etg_small_party_routing']));
- update_post_meta($tour,'_etg_departure_max_capacity',30);
+  isset($metaKeys['_travel_booking_group_booking_minimum'],$metaKeys['_travel_booking_departure_inventory_mode'],$metaKeys['_travel_booking_departure_max_capacity'],
+   $metaKeys['_travel_booking_minimum_departure_participants'],$metaKeys['_travel_booking_small_party_routing']));
+ update_post_meta($tour,'_travel_booking_departure_max_capacity',30);
  $noStockAfterMax=$tm::assess_departure($tour,1);
  $assert('OPTIONAL_MAX_DOES_NOT_FORCE_INVENTORY',!is_wp_error($noStockAfterMax)
   &&$noStockAfterMax['departure_capacity']===null
   &&$noStockAfterMax['remaining_seats_after_booking']===null);
- update_post_meta($tour,'_etg_departure_inventory_mode','capacity_preview');
+ update_post_meta($tour,'_travel_booking_departure_inventory_mode','capacity_preview');
  $unknownStock=$tm::assess_departure($tour,1);
  $assert('PREVIEW_MODE_WITH_UNKNOWN_GUESTS_ACCEPTS_REQUEST',!is_wp_error($unknownStock)
   &&$unknownStock['departure_capacity']===30
@@ -88,14 +106,14 @@ try{
  $assert('OPTIONAL_PREVIEW_WITH_SUPPLIED_COUNT',$preview['departure_total_after_booking']===25
   &&$preview['remaining_seats_after_booking']===5
   &&$preview['availability_verified']===false);
- update_post_meta($tour,'_etg_departure_inventory_mode','untracked');
+ update_post_meta($tour,'_travel_booking_departure_inventory_mode','untracked');
 
- update_post_meta($tour,'_etg_small_party_routing','join_group_only');
+ update_post_meta($tour,'_travel_booking_small_party_routing','join_group_only');
  $policy=$tm::advise_booking_mode($tour,1,'auto',false);
  $assert('OPTIONAL_NO_AUTOMATIC_PRIVATE_SUGGESTION',!is_wp_error($policy)&&$policy['recommended_mode']===null&&!$policy['automatic_conversion']);
- update_post_meta($tour,'_etg_small_party_routing','offer_private');
- update_post_meta($tour,'_etg_departure_max_capacity',30);
- update_post_meta($tour,'_etg_minimum_departure_participants',10);
+ update_post_meta($tour,'_travel_booking_small_party_routing','offer_private');
+ update_post_meta($tour,'_travel_booking_departure_max_capacity',30);
+ update_post_meta($tour,'_travel_booking_minimum_departure_participants',10);
  $configured=$tm::assess_departure($tour,1,24);
  $assert('CONFIGURED_DEPARTURE_LIMIT_AND_MINIMUM',!is_wp_error($configured)&&$configured['tier_id']===$b&&$configured['minimum_to_operate']===10);
 
