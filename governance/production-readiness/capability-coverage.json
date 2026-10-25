@@ -7784,6 +7784,48 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Safely clear plugin-managed backend discovery refresh schedules across single-site and multisite deactivation without altering credentials, provider configuration, write grants or runtime authority."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-runner-bridge.php",
+      "source_blob_sha": "487f0542d24f91901bfcbe7b5e6426e02f81930b",
+      "control_ids": [
+        "MCP-01",
+        "OAUTH-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "ADMIN-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-runner-bridge-contract.php"
+      ],
+      "owner_role": "Repository reviewer — nonauthorizing read-only runner bridge contract",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Pin exact source of the RSA-SHA256 status-only runner transport and plugin registration. All Developer, Shell, SQL, Production, and write authorities remain separately gated. Signed requests target a fixed safe diagnostic; receipts are independently verified and cannot confer execution grants."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "5cdbd37f5dde14426c18f12f4107bd2619e737ec",
+      "control_ids": [
+        "MCP-01",
+        "OAUTH-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "ADMIN-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-runner-bridge-contract.php"
+      ],
+      "owner_role": "Repository reviewer — nonauthorizing read-only runner bridge contract",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Pin exact source of the RSA-SHA256 status-only runner transport and plugin registration. All Developer, Shell, SQL, Production, and write authorities remain separately gated. Signed requests target a fixed safe diagnostic; receipts are independently verified and cannot confer execution grants."
     }
   ],
   "code_change_rules": {
