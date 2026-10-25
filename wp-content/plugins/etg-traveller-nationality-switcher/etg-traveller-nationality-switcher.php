@@ -2,7 +2,7 @@
 /**
  * Plugin Name: ETG Traveller Nationality Switcher
  * Description: Passport-country selection for travellers, separate from WooCommerce market, shipping, billing and WCML currency.
- * Version: 0.4.1-local
+ * Version: 0.5.0-local
  * Requires Plugins: woocommerce
  * License: GPL-2.0-or-later
  * Text Domain: etg-traveller-nationality-switcher
@@ -93,7 +93,7 @@ final class ETG_Traveller_Nationality_Switcher {
  }
  public static function traveler_shortcode($atts=[]){
   $a=shortcode_atts(['count'=>1,'use_preference'=>'yes'],$atts,'etg_traveller_nationalities');
-  $num=max(1,min(20,(int)$a['count']));$pref=($a['use_preference']==='yes')?self::selected():'';
+  $num=max(1,min(ETG_Traveller_Management::MAX_VERIFIED_PERSONS,(int)$a['count']));$pref=($a['use_preference']==='yes')?self::selected():'';
   $html='<div class="etg-traveller-nationalities" data-traveller-count="'.$num.'">';
   for($i=0;$i<$num;$i++){
    $html.='<label class="etg-traveller-nationality-field">'.esc_html(sprintf(__('Traveller %d passport nationality','etg-traveller-nationality-switcher'),$i+1));
@@ -102,10 +102,10 @@ final class ETG_Traveller_Nationality_Switcher {
   return $html.'</div>';
  }
  public static function validate_list($input){
-  if(!is_array($input)||!$input||count($input)>20)return new WP_Error('etg_invalid_passengers','Expected 1–20 traveller nationality entries');
+  if(!is_array($input)||!$input||count($input)>ETG_Traveller_Management::MAX_VERIFIED_PERSONS)return new WP_Error('etg_invalid_passengers','Expected valid per-person nationality entries');
   $result=[];foreach($input as $index=>$iso){
    if(!is_int($index)&&!(is_string($index)&&ctype_digit($index)))return new WP_Error('etg_invalid_passenger_index','Invalid traveller index');
-   $i=(int)$index;if($i<0||$i>=20||isset($result[$i])||!is_string($iso))return new WP_Error('etg_invalid_passenger_entry','Invalid traveller nationality');
+   $i=(int)$index;if($i<0||$i>=ETG_Traveller_Management::MAX_VERIFIED_PERSONS||isset($result[$i])||!is_string($iso))return new WP_Error('etg_invalid_passenger_entry','Invalid traveller nationality');
    $country=self::valid($iso);if(!$country)return new WP_Error('etg_invalid_nationality','Invalid ISO2 passport country');
    $result[$i]=$country;
   }

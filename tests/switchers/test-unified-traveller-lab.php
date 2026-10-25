@@ -20,7 +20,7 @@ try {
  $test('DUPLICATE_PRESET_DENIED',is_wp_error($duplicate));
  $edit=$t::mutate('save','family_tour',['label'=>'Family Private Tour','source'=>'verified','inherit'=>false,'nationality'=>'required','max'=>50],1);
  $test('EDIT_CUSTOM_PRESET',!is_wp_error($edit)&&$t::presets()['family_tour']['inherit']===false);
- $test('UNCERTIFIED_50_CAP_REMAINS_20',$t::certified_limit(66139)===20);
+ $test('NO_ARTIFICIAL_20_CHECKOUT_CAP',$t::certified_limit(66139)===999);
  $stale=$t::mutate('global','family_tour',[],1);
  $test('OPTIMISTIC_REVISION_DENIES_STALE_WRITE',is_wp_error($stale));
  $global=$t::mutate('global','family_tour',[],2);

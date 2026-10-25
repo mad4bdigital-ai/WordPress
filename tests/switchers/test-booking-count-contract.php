@@ -21,7 +21,7 @@ function shared_product_booking_configuration_matches($saved){
 }
 class ETG_Traveller_Nationality_Switcher {
  public static function validate_list($input) {
-  if(!is_array($input)||!$input||count($input)>20)return new WP_Error();
+  if(!is_array($input)||!$input||count($input)>999)return new WP_Error();
   foreach($input as $s)if(!in_array($s,['EG','US','SA'],true))return new WP_Error();
   return array_values($input);
  }
@@ -49,7 +49,7 @@ $check('BOOKING_UNIT_QUANTITY_CHANGED_FAIL_CLOSED',$c::traveller_count($bad)===0
 $bad=$rate;$bad['shared_booking_configuration']['options']['travelers']=2;
 $check('CONFLICTING_COUNT_REJECTED',$c::traveller_count($bad)===0);
 $bad=$rate;$bad['shared_booking_configuration']['quantities']['persons']=21;
-$check('OVER_20_REJECTED',$c::traveller_count($bad)===0);
+$check('OVER_20_SERVER_VERIFIED_ALLOWED',$c::traveller_count($bad)===21);
 $tour=['product_id'=>102,'quantity'=>4,'data'=>new WC_Product(102)];
 $check('TOUR_QUANTITY_NOT_PERSON_COUNT',$c::traveller_count($tour)===0);
 $GLOBALS['test_external_count_override']=true;

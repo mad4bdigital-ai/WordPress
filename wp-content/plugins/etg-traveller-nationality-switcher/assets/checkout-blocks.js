@@ -17,7 +17,7 @@
   function initialState(items) {
     var state = {};
     items.forEach(function (item) {
-      var count = Math.min(20, Number(item.extensions[namespace].travellers) || 0);
+      var count = Math.min(Number(config.max) || 999, Number(item.extensions[namespace].travellers) || 0);
       state[item.key] = Array.from({length: count}, function () { return config.preferred || ''; });
     });
     return state;
@@ -27,6 +27,9 @@
     var itemSignature = items.map(function (i) { return i.key + ':' + i.extensions[namespace].travellers; }).join('|');
     var pair = useState(function () { return initialState(items); });
     var values = pair[0], setValues = pair[1];
+    var pager = useState({});
+    var pages = pager[0], setPages = pager[1];
+    var batch = Math.max(1, Math.min(20, Number(config.batch_size) || 20));
     useEffect(function () {
       setValues(function (old) {
         var next = initialState(items);
@@ -52,12 +55,25 @@
     return el('fieldset', {'className': 'etg-block-travellers'},
       el('legend', null, 'Traveller passport nationalities'),
       items.map(function (item) {
-        var count = Math.min(20, Number(item.extensions[namespace].travellers) || 0);
+        var count = Math.min(Number(config.max) || 999, Number(item.extensions[namespace].travellers) || 0);
         var codes = values[item.key] || [];
+        var totalPages = Math.ceil(count / batch);
+        var page = Math.max(0, Math.min(totalPages - 1, Number(pages[item.key]) || 0));
+        var start = page * batch;
+        var visible = Math.min(batch, count - start);
+        function changePage(next) {
+          setPages(function (old) {
+            var value = Object.assign({}, old);
+            value[item.key] = Math.max(0, Math.min(totalPages - 1, next));
+            return value;
+          });
+        }
         return el('div', {'className': 'etg-block-travellers__line', key: item.key},
           el('strong', null, item.name),
           count < 1 ? el('p', {role:'alert'}, 'Traveller count is not yet verified for this booking. Choose a valid booking configuration before checkout.') : null,
-          Array.from({length: count}, function (_, i) {
+          count > batch ? el('p', {'aria-live':'polite'}, 'Travellers ' + (start + 1) + '–' + (start + visible) + ' of ' + count) : null,
+          Array.from({length: Math.max(0, visible)}, function (_, index) {
+            var i = start + index;
             var id = 'etg-passport-' + item.key.replace(/[^a-z0-9_-]/gi, '') + '-' + i;
             return el('label', {key: i, htmlFor: id, 'className': 'etg-block-travellers__field'},
               el('span', null, 'Traveller ' + (i + 1)),
@@ -67,7 +83,12 @@
                 config.countries.map(function (country) {return el('option', {value: country.value, key: country.value}, country.label);})
               )
             );
-          })
+          }),
+          totalPages > 1 ? el('div', {'className':'etg-traveller-pager'},
+            el('button', {type:'button',disabled:page===0,onClick:function(){changePage(page-1);}}, 'Previous 20'),
+            el('span', null, ' Page '+(page+1)+' of '+totalPages+' '),
+            el('button', {type:'button',disabled:page>=totalPages-1,onClick:function(){changePage(page+1);}}, 'Next 20')
+          ) : null
         );
       })
     );

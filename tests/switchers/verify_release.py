@@ -63,7 +63,7 @@ class ReleaseContracts(unittest.TestCase):
         main = (NATIONALITY / "etg-traveller-nationality-switcher.php").read_text()
         blocks = (NATIONALITY / "includes-checkout-blocks.php").read_text()
         for marker in (
-            "const CERTIFIED_MAX=20", "shared_product_booking_configuration_matches",
+            "const LEGACY_BATCH_SIZE=20", "shared_product_booking_configuration_matches",
             "etg_traveller_management/verified_count", "checkout_ready",
             "etg_traveller_management/verified_service_links",
             "wp_verify_nonce", "manage_woocommerce", "revision",
@@ -81,8 +81,10 @@ class ReleaseContracts(unittest.TestCase):
         for token in (
             "shared_product_group_tier_from_taxonomy", "etg.group-capacity.v1",
             "taxonomy_when_group", "booking_engine_only", "assess_v2_preview",
-            "tier_valid_checkout_capacity_not_certified", "booking_v2_persons_supported",
-            "booking_mode", "group_size"
+            "etg.departure-capacity.v1", "booking_v2_persons_supported",
+            "booking_mode", "group_size", "etg.departure-capacity.v1",
+            "minimum_to_operate", "booking_party_size", "first_group_minimum",
+            "automatic_conversion", "MAX_VERIFIED_PERSONS=999", "LEGACY_BATCH_SIZE=20"
         ):
             self.assertIn(token, src)
 

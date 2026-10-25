@@ -10,7 +10,10 @@ final class ETG_Traveller_Management {
  const COUNT_CONTRACT='etg.traveller-count.v1';
  const OPTION='etg_traveller_management_v1';
  const META='_etg_traveller_preset_id';
- const CERTIFIED_MAX=20;
+ const LEGACY_BATCH_SIZE=20;
+ const MAX_VERIFIED_PERSONS=999;
+ // Business capacity belongs to the departure and supplier, not a passport form.
+
  const TYPES=['tour-rates','tours-and-activities','properties','transportations','product'];
  public static function builtins(){
   return [
@@ -85,7 +88,9 @@ final class ETG_Traveller_Management {
    return new WP_Error('etg_group_capacity_policy_invalid');
   $result=['contract'=>'etg.group-capacity.v1','tour_id'=>(int)$tour_id,'booking_mode'=>$booking_mode,
    'persons'=>$people,'capacity_source'=>$booking_mode==='group'&&$policy==='taxonomy_when_group'?'group-size-tiers':'booking_engine',
-   'tier_id'=>null,'checkout_capacity_certified'=>$people<=self::CERTIFIED_MAX,
+   'tier_id'=>null,'checkout_capacity_certified'=>false,
+   'nationality_entry_supported'=>$people<=self::MAX_VERIFIED_PERSONS,
+   'nationality_entry_batches'=>(int)ceil($people/self::LEGACY_BATCH_SIZE),
    'booking_v2_persons_supported'=>$people<=50,'financial_checkout_authority'=>false];
   if($booking_mode==='private'){
    if($requested_tier!==null)return new WP_Error('etg_group_tier_not_applicable');
@@ -111,8 +116,109 @@ final class ETG_Traveller_Management {
    if($given===false||$given!==$tier)return new WP_Error('etg_group_tier_selection_mismatch');
   }
   return array_replace($result,['tier_id'=>$tier,'status'=>$people>50?
-   'tier_valid_booking_v2_capacity_not_certified':($people>self::CERTIFIED_MAX?
-   'tier_valid_checkout_capacity_not_certified':'tier_valid_preview_only')]);
+   'tier_valid_booking_v2_capacity_not_certified':'tier_valid_preview_only']);
+ }
+ /**
+  * Read the FIRST enabled group tier attached to the tour. Its minimum describes
+  * tour/departure group thresholds, NEVER the minimum seats per customer booking.
+  */
+ public static function first_group_minimum($tour_id){
+  if(get_post_type($tour_id)!=='tours-and-activities')
+   return new WP_Error('etg_group_minimum_invalid_tour');
+  $terms=wp_get_post_terms($tour_id,'group-size-tiers',['fields'=>'ids']);
+  if(is_wp_error($terms))return $terms;
+  $minimum=null;
+  foreach($terms as $id){
+   if(!get_term_meta($id,'tier_enabled',true))continue;
+   $lo=filter_var(get_term_meta($id,'tier_min',true),FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>999]]);
+   $hi=filter_var(get_term_meta($id,'tier_max',true),FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>999]]);
+   if($lo===false||$hi===false||$hi<$lo)return new WP_Error('etg_group_minimum_invalid_tier');
+   $minimum=$minimum===null?$lo:min($minimum,$lo);
+  }
+  return $minimum===null?new WP_Error('etg_group_minimum_missing'):$minimum;
+ }
+ /** Only trusted explicit booking-mode selection, never infer Private from a small party. */
+ public static function advise_booking_mode($tour_id,$party_size,$requested='auto',$departure_selected=false){
+  $party=filter_var($party_size,FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>self::MAX_VERIFIED_PERSONS]]);
+  if($party===false||!in_array($requested,['auto','group','private'],true))
+   return new WP_Error('etg_party_mode_invalid');
+  if(get_post_type($tour_id)!=='tours-and-activities')
+   return new WP_Error('etg_party_mode_invalid_tour');
+  $offered=[];
+  if(function_exists('shared_product_booking_modes_from_taxonomy')){
+   $availability=shared_product_booking_modes_from_taxonomy($tour_id);
+   if(is_wp_error($availability))return $availability;
+   $offered=(array)($availability['modes']??[]);
+  }
+  if($requested!=='auto'&&$offered&&!in_array($requested,$offered,true))
+   return new WP_Error('etg_party_mode_not_offered');
+  $minimum=self::first_group_minimum($tour_id);
+  if(is_wp_error($minimum)){
+   if($requested==='private'||($requested==='auto'&&in_array('private',$offered,true))){
+    return ['contract'=>'etg.party-mode.v1','party_size'=>$party,'group_tier_minimum'=>null,
+      'below_first_group_tier'=>null,'requested_mode'=>$requested,
+      'selected_mode'=>$requested==='auto'?null:'private',
+      'recommended_mode'=>'private','reason'=>'no_group_tiers_available',
+      'automatic_conversion'=>false,'financial_checkout_authority'=>false];
+   }
+   return $minimum;
+  }
+  $below=$party<$minimum;
+  $chosen=$requested==='auto'?null:$requested;
+  $small_policy=(string)get_post_meta($tour_id,'_etg_small_party_routing',true);
+  if(!in_array($small_policy,['offer_private','join_group_only'],true))$small_policy='offer_private';
+  $recommend=$below&&!$departure_selected?($small_policy==='offer_private'?'private':null):'group';
+  if($offered && $recommend!==null && !in_array($recommend,$offered,true))$recommend=null;
+  return ['contract'=>'etg.party-mode.v1','party_size'=>$party,'group_tier_minimum'=>$minimum,
+   'below_first_group_tier'=>$below,'requested_mode'=>$requested,'selected_mode'=>$chosen,
+   'small_party_policy'=>$small_policy,'recommended_mode'=>$requested==='auto'?$recommend:$chosen,
+   'reason'=>$below?($departure_selected?'join_existing_group_as_individual':'consider_private_below_minimum'):'within_group_range',
+   'automatic_conversion'=>false,'financial_checkout_authority'=>false];
+ }
+ /**
+  * A departure is a DIFFERENT aggregation from the customer's party.
+  * confirmed_count must eventually be supplied by a certified departure/inventory
+  * authority. These inputs yield a preview ONLY and cannot reserve a seat.
+  */
+ public static function assess_departure($tour_id,$party_size,$confirmed_count,$departure_limit=null,$minimum_to_operate=null){
+  if(get_post_type($tour_id)!=='tours-and-activities')
+   return new WP_Error('etg_departure_invalid_tour');
+  if($departure_limit===null)$departure_limit=get_post_meta($tour_id,'_etg_departure_max_capacity',true);
+  $numbers=[];
+  foreach(['party_size'=>$party_size,'confirmed_count'=>$confirmed_count,
+   'departure_limit'=>$departure_limit] as $key=>$n){
+   $numbers[$key]=filter_var($n,FILTER_VALIDATE_INT,
+    ['options'=>['min_range'=>$key==='confirmed_count'?0:1,'max_range'=>self::MAX_VERIFIED_PERSONS]]);
+   if($numbers[$key]===false||$numbers[$key]===null)return new WP_Error('etg_departure_invalid_count');
+  }
+  if($minimum_to_operate===null){
+   $stored=get_post_meta($tour_id,'_etg_minimum_departure_participants',true);
+   $minimum_to_operate=$stored!==''?$stored:self::first_group_minimum($tour_id);
+   if(is_wp_error($minimum_to_operate))return $minimum_to_operate;
+  }
+  $minimum_to_operate=filter_var($minimum_to_operate,FILTER_VALIDATE_INT,
+   ['options'=>['min_range'=>1,'max_range'=>self::MAX_VERIFIED_PERSONS]]);
+  if($minimum_to_operate===false||$minimum_to_operate===null||$minimum_to_operate>$numbers['departure_limit'])
+   return new WP_Error('etg_departure_minimum_invalid');
+  $total=$numbers['confirmed_count']+$numbers['party_size'];
+  if($total>$numbers['departure_limit']||$total>self::MAX_VERIFIED_PERSONS)
+   return new WP_Error('etg_departure_capacity_exceeded');
+  $minimumMet=$total>=$minimum_to_operate;
+  $tier=null;
+  if($minimumMet && function_exists('shared_product_group_tier_from_taxonomy')){
+   $tier=shared_product_group_tier_from_taxonomy($tour_id,$total);
+   if(is_wp_error($tier))return $tier;
+  }
+  return ['contract'=>'etg.departure-capacity.v1','tour_id'=>(int)$tour_id,
+   'booking_party_size'=>$numbers['party_size'],
+   'confirmed_before_booking'=>$numbers['confirmed_count'],
+   'departure_total_after_booking'=>$total,'departure_capacity'=>$numbers['departure_limit'],
+   'remaining_seats_after_booking'=>$numbers['departure_limit']-$total,
+   'minimum_to_operate'=>$minimum_to_operate,
+   'minimum_to_operate_met'=>$minimumMet,'tier_id'=>$minimumMet?(int)$tier:null,
+   'status'=>$minimumMet?'group_capacity_preview':'below_departure_operating_minimum',
+   'count_authority'=>'caller_supplied_preview_only','inventory_reserved'=>false,
+   'financial_checkout_authority'=>false];
  }
  /**
   * Assess existing v2 contract without activating its structural-only cart identity.
@@ -133,10 +239,11 @@ final class ETG_Traveller_Management {
   if(is_wp_error($assessment))return $assessment;
   return $assessment+['quote_source'=>'shared_product_booking_v2_validate','status_financial'=>'preview_only'];
  }
- /** A requested 50/100-person limit never overrides the 20-person certified checkout cap. */
- public static function certified_limit($post_id){
-  return min(self::CERTIFIED_MAX,(int)self::preset_for($post_id)['fields']['max']);
- }
+ /** This is a data-validation bound from the existing 1..999 booking-unit contract.
+  * Preset max is a configurable sales preference, NEVER a global group maximum.
+  * Final service/departure capacity is validated by its separate booking authority.
+  */
+ public static function certified_limit($post_id){return self::MAX_VERIFIED_PERSONS;}
  private static function verified_tour_rate($line,$product){
   $saved=$line['shared_booking_configuration']??null;
   if(!is_array($saved)||!function_exists('shared_product_booking_configuration_matches') ||
@@ -323,8 +430,8 @@ final class ETG_Traveller_Management {
    echo '<option value="'.$value.'" '.selected($current['group_capacity']??'taxonomy_when_group',$value,false).'>'.esc_html($label).'</option>';
   echo '</select><p class="description">A group tier controls group suitability, not technical Checkout person capacity. Private bookings never inherit Group Tiers.</p></td></tr>';
   echo '<tr><th>Requested capacity</th><td><select name="fields[max]">';
-  foreach([20,50,100] as $limit)echo '<option value="'.$limit.'" '.selected($current['max'],$limit,false).'>'.$limit.($limit>self::CERTIFIED_MAX?' (requires extended QA)':' (currently certified)').'</option>';
-  echo '</select><p>Checkout remains capped at '.self::CERTIFIED_MAX.' until expanded acceptance.</p></td></tr></table>';
+  foreach([20,50,100] as $limit)echo '<option value="'.$limit.'" '.selected($current['max'],$limit,false).'>'.$limit.' (suggested party size only)</option>';
+  echo '</select><p>This is a suggested party size, not a Checkout or Group Tour maximum. Verified passport fields display in batches of '.self::LEGACY_BATCH_SIZE.'. Departure capacity is resolved separately.</p></td></tr></table>';
   echo '<p><button class="button button-primary" type="submit" name="mode" value="save">Save changes</button> <button class="button" type="submit" name="mode" value="reset">Reset preset</button></p>';
   echo '</form>';
   echo '<h2>Save a New Copy</h2><form method="post" action="'.$action.'"><input type="hidden" name="action" value="etg_tm_action"><input type="hidden" name="mode" value="clone"><input type="hidden" name="preset_id" value="'.esc_attr($selected).'"><input type="hidden" name="revision" value="'.(int)$s['revision'].'"><input type="hidden" name="fields[source_preset]" value="'.esc_attr($selected).'">';
@@ -339,6 +446,19 @@ final class ETG_Traveller_Management {
   echo '<p><label for="etg_tm_product_preset">Traveller preset</label><select id="etg_tm_product_preset" name="etg_tm_product_preset" style="width:100%"><option value="">Inherit global default</option>';
   foreach(self::presets() as $id=>$preset)echo '<option value="'.esc_attr($id).'" '.selected($current,$id,false).'>'.esc_html($preset['label']).'</option>';
   echo '</select></p><p>Count stays server-verified. Currency and pricing do not change.</p>';
+  if(get_post_type($post->ID)==='tours-and-activities'){
+   $min=get_post_meta($post->ID,'_etg_minimum_departure_participants',true);
+   $capacity=get_post_meta($post->ID,'_etg_departure_max_capacity',true);
+   $routing=(string)get_post_meta($post->ID,'_etg_small_party_routing',true);
+   if(!in_array($routing,['offer_private','join_group_only'],true))$routing='offer_private';
+   echo '<p><strong>Departure configuration (preview, not inventory)</strong></p>';
+   echo '<p><label>Minimum to operate <input type="number" min="1" max="999" name="etg_tm_departure_minimum" value="'.esc_attr($min).'"></label></p>';
+   echo '<p><label>Maximum seats / departure <input type="number" min="1" max="999" name="etg_tm_departure_capacity" value="'.esc_attr($capacity).'"></label></p>';
+   echo '<p><label>Below first group tier <select name="etg_tm_small_party_routing">';
+   foreach(['offer_private'=>'Suggest Private if offered','join_group_only'=>'Require explicit Group departure selection'] as $key=>$label)
+    echo '<option value="'.esc_attr($key).'" '.selected($routing,$key,false).'>'.esc_html($label).'</option>';
+   echo '</select></label></p><p>Never auto-convert a confirmed Group seat into Private.</p>';
+  }
  }
  public static function save_product($id){
   if(!in_array(get_post_type($id),self::TYPES,true)||!current_user_can('edit_post',$id)
@@ -348,6 +468,22 @@ final class ETG_Traveller_Management {
   $value=sanitize_key((string)wp_unslash($_POST['etg_tm_product_preset']??''));
   if($value===''||!isset(self::presets()[$value]))delete_post_meta($id,self::META);
   else update_post_meta($id,self::META,$value);
+  if(get_post_type($id)==='tours-and-activities'){
+   // Never infer supplier inventory. Empty values retain the taxonomy/explicit-source defaults.
+   foreach(['etg_tm_departure_minimum'=>'_etg_minimum_departure_participants',
+    'etg_tm_departure_capacity'=>'_etg_departure_max_capacity'] as $request=>$key){
+    if(!isset($_POST[$request])||!is_scalar($_POST[$request]))continue;
+    $raw=trim((string)wp_unslash($_POST[$request]));
+    if($raw===''){delete_post_meta($id,$key);continue;}
+    $n=filter_var($raw,FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>self::MAX_VERIFIED_PERSONS]]);
+    if($n!==false)update_post_meta($id,$key,$n);
+   }
+   if(isset($_POST['etg_tm_small_party_routing'])&&is_string($_POST['etg_tm_small_party_routing'])){
+    $policy=sanitize_key((string)wp_unslash($_POST['etg_tm_small_party_routing']));
+    if(in_array($policy,['offer_private','join_group_only'],true))
+     update_post_meta($id,'_etg_small_party_routing',$policy);
+   }
+  }
  }
  public static function boot(){
   add_action('admin_menu',static function(){

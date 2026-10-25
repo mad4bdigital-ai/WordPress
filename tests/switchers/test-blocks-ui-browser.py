@@ -31,7 +31,7 @@ with sync_playwright() as p:
           };
           window.wc = {blocksCheckout: {ExperimentalOrderMeta: () => null}, wcBlocksData: {CHECKOUT_STORE_KEY:'checkout'}};
           window.etgTravellerBlocks = {
-            namespace: 'etg-traveller-nationality', preferred: '', max: 20,
+            namespace: 'etg-traveller-nationality', preferred: '', max: 999, batch_size: 20,
             countries: [{value:'EG', label:'Egypt'}, {value:'SA',label:'Saudi Arabia'}, {value:'US',label:'United States'}]
           };
         }""")
@@ -62,5 +62,32 @@ with sync_playwright() as p:
         assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth"), "Horizontal overflow"
         assert not errors, errors
         print(f"BROWSER_BLOCKS_UI_PASS width={width} fields={selects.count()} unverified_alert=1 react_errors=0")
+        page.evaluate("""() => {
+          window.__root.render(React.cloneElement(window.__plugin.render().props.children, {cart: {items: [
+            {key:'party-55',name:'Group of 55 passengers',extensions:{
+              'etg-traveller-nationality':{bookable:true,travellers:55}
+            }}
+          ]}}));
+        }""")
+        page.get_by_role('button', name='Next 20').wait_for()
+        for current in range(3):
+            field = page.locator('#booking select')
+            field.first.wait_for()
+            expected = 20 if current < 2 else 15
+            assert field.count() == expected, f"Page {current}: {field.count()} != {expected}"
+            for i in range(expected):
+                field.nth(i).select_option('EG')
+            if current < 2:
+                page.get_by_role('button', name='Next 20').click()
+                page.wait_for_function(
+                    f"() => document.querySelector('#booking fieldset').textContent.includes('Page {current + 2} of 3')"
+                )
+        page.wait_for_function("""() => {
+          const codes=window.__checkoutData['etg-traveller-nationality']?.travellers?.['party-55'];
+          return codes?.length===55 && codes.every(x=>x==='EG');
+        }""")
+        assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+        assert not errors, errors
+        print(f"BROWSER_55_PASS width={width} pages=3 submitted=55 react_errors=0")
         page.close()
     browser.close()

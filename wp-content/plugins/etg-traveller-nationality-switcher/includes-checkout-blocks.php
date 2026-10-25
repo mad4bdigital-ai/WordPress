@@ -50,7 +50,7 @@ final class ETG_Traveller_Nationality_Checkout_Blocks {
   if(count($submitted)!==count($expected)||array_diff(array_keys($submitted),array_keys($expected)))return new WP_Error('etg_block_cart_mismatch','Traveller nationality data does not match the current cart');
   $normalized=[];
   foreach($expected as $key=>$line){
-   if(!$line['travellers'])return new WP_Error('etg_block_passenger_count','Traveller count must be 1–20 per bookable cart line');
+   if(!$line['travellers'])return new WP_Error('etg_block_passenger_count','Traveller count is not verified for this booked service');
    $value=ETG_Traveller_Nationality_Switcher::validate_list($submitted[$key]??null);
    if(is_wp_error($value)||count($value)!==$line['travellers'])return new WP_Error('etg_block_passengers_invalid','Select one valid passport nationality for every traveller');
    $normalized[$key]=$value;
@@ -136,11 +136,11 @@ final class ETG_Traveller_Nationality_Checkout_Blocks {
    return $items;
   },90);
   $file=plugin_dir_path(__FILE__).'assets/checkout-blocks.js';
-  wp_enqueue_style('etg-nationality-switcher',plugins_url('assets/nationality.css',__FILE__),[],'0.4.0');
-  wp_enqueue_script('etg-traveller-nationality-checkout-blocks',plugins_url('assets/checkout-blocks.js',__FILE__),['wp-element','wp-plugins','wp-data','wc-blocks-checkout','wc-blocks-data-store'],'0.4.0',true);
+  wp_enqueue_style('etg-nationality-switcher',plugins_url('assets/nationality.css',__FILE__),[],'0.5.0');
+  wp_enqueue_script('etg-traveller-nationality-checkout-blocks',plugins_url('assets/checkout-blocks.js',__FILE__),['wp-element','wp-plugins','wp-data','wc-blocks-checkout','wc-blocks-data-store'],'0.5.0',true);
   $countries=ETG_Traveller_Nationality_Switcher::countries();$options=[];
   foreach($countries as $code=>$label)$options[]=['value'=>$code,'label'=>$label];
-  wp_add_inline_script('etg-traveller-nationality-checkout-blocks','window.etgTravellerBlocks='.wp_json_encode(['namespace'=>self::NAMESPACE_ID,'types'=>self::bookable_types(),'countries'=>$options,'max'=>20,'preferred'=>ETG_Traveller_Nationality_Switcher::selected()]).';','before');
+  wp_add_inline_script('etg-traveller-nationality-checkout-blocks','window.etgTravellerBlocks='.wp_json_encode(['namespace'=>self::NAMESPACE_ID,'types'=>self::bookable_types(),'countries'=>$options,'max'=>ETG_Traveller_Management::MAX_VERIFIED_PERSONS,'batch_size'=>ETG_Traveller_Management::LEGACY_BATCH_SIZE,'preferred'=>ETG_Traveller_Nationality_Switcher::selected()]).';','before');
  }
  public static function boot(){
   add_action('wp_enqueue_scripts',[__CLASS__,'assets'],20);
