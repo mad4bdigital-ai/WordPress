@@ -68,6 +68,7 @@ jobs:
           php "$root/tests/developer-runner-lifecycle-fetch-contract.php"
           php -l "$root/includes/class-mad4b-scp-runtime-backend-registry.php"
           php "$root/tests/runtime-backend-registry-contract.php"
+          php "$root/tests/runtime-backend-deactivation-contract.php"
 
       - name: Capture endpoint and REST index without writes
         shell: bash
