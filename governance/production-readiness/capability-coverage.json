@@ -2272,6 +2272,46 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing Site Profile exact UUID, local environment, WordPress application-password pre-authentication hook, OAuth credential-fence and fail-closed transport policies govern this scoped Local service; no additional Production permission.",
       "review_rationale": "Reviewed exact source for Local-only prefix-scoped service identity, exact Site UUID match, route/method allowlist and independent hook registration before the foreign REST early return. A source-specific adversarial regression exposed a real spoofed rest_route query that previously passed a foreign /wp-json or wp-admin path. Fixed query-style dispatch to the original WordPress index path derived from home_url(), denying conflicting pretty-path/rest_route combinations and malformed/foreign paths while retaining valid root and subdirectory query-mode routing. Hermetic PHP 7.4 and 8.3 test executed all 20 cases with fail-closed negatives. No live authenticated WordPress or Production access is attested."
+    },
+    {
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-application-password-agent-bridge.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/application-password-agent-bridge-hermetic.php"
+      ],
+      "owner_role": "Repository source/security integration reviewer — CI only; not WP original owner",
+      "coverage_reuse_rationale": "Existing WordPress application-password, enrolled Site Profile, exact Agent Registry grant, original Basic verifier, OAuth and production-deny controls govern the Local read/write bridge without introducing authority.",
+      "review_rationale": "Reviewed 55-line original hook implementation: an attached Basic header alone never creates identity; WordPress original application_password_did_authenticate must confirm a UUID and enrolled site/user, exact Local MCP request must match /mcp/mad4b-chatgpt, subject must equal current user, and the Agent Registry must grant exactly mad4b/context-ai-review. 16-case hermetic PHP7.4/8.3 test confirms denial on false header, missing UUID, wrong user, revoked exact grant, unrelated REST route, production, unenrolled user/origin and anti-overwrite of original trusted subject context. Separate genuine WordPress network acceptance still required."
+    },
+    {
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-model-router.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01",
+        "PROVIDERS-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-model-routing-worker-runtime.php"
+      ],
+      "owner_role": "Repository source/security integration reviewer — CI only, no model or provider privileges",
+      "coverage_reuse_rationale": "WordPress Core Connector credential source, original Site Profile, source repair and secure provider transport controls already govern this source; no new shadow credential registry or release capability.",
+      "review_rationale": "Reviewed immutable 384-line model router source (current reviewed Git blob 76dd0b9e, already exact-source covered in the registry). Default inference is disabled; Local Ollama is pinned to 127.0.0.1 and the configured Qwen model only inside Local, WordPress Core Connector manages all external keys, custom endpoint validation rejects credentials, query/fragment, localhost/internal host and non443 HTTP and uses wp_safe_remote_post with redirects disabled. 44 source-specific PHP 7.4/8.3 hermetic assertions include new private endpoint and model injection negative cases, original review evidence/low-confidence rejection and disabled connector failures. Tests are not proof of external paid/free model availability, live inference, or deployment."
     }
   ],
   "lifecycle": [],
@@ -8686,6 +8726,25 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Exactly reviewed bounded service authentication source change: wp-authenticate_application_password_errors denies spoofed query-mode rest_route values on foreign REST/admin targets, validates the original home/index.php path including WordPress subdirectory sites, rejects mismatched route aliases and denied HTTP methods, enforces Local Site Profile UUID and managed login only. 20-case network-isolated PHP 7.4/8.3 source-specific runtime test passed, including adversarial reproduction before the fix. No promotion, original owner decision, external end-to-end or other grant issued."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-application-password-agent-bridge.php",
+      "source_blob_sha": "6104dbd20039509db3413d9d48b48e3805b0acf0",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/application-password-agent-bridge-hermetic.php"
+      ],
+      "owner_role": "Repository exact-source security reviewer for CI only; no original owner authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact Git source 6104dbd2 binds authenticated WordPress app-password callback and site-enrolled subject to separate non-authorizing Agent grant evaluation. Tested 16 positive/negative cases on PHP 7.4/8.3, including original WP verifier lazy bootstrap, revocation and origin mismatch. No header-only identity mint, no new grant, no Production or external site certification."
     }
   ],
   "code_change_rules": {

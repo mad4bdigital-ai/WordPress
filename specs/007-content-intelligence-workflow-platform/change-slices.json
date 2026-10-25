@@ -4,8 +4,8 @@
   "reviewed_base_sha": "e7f30d944c354c3a4f7346330ad401d995e768c5",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 114,
-  "changed_paths_sha256": "343fb187913de39999d2e7736cecd76c7fa0fac02695179cbd13adbda174fdeb",
+  "changed_file_count": 115,
+  "changed_paths_sha256": "fdc89ce566e7312c2a206b85ebc76c5a917106390e5f7581120999af4bb47a3a",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -99,6 +99,7 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-passwordless-connection.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/ai-grant-mode-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/application-password-agent-bridge-hermetic.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/authority-setup-fields-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/integration/passwordless-mcp-local.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/local-client-credential-lifecycle-runtime.php",

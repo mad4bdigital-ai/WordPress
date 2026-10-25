@@ -120,6 +120,15 @@ ok('reject_json_array_without_php81_helper',is_wp_error($v));
 $v=MAD4B_SCP_AI_Review_Worker::parse_verdict('{}',$e);
 ok('reject_empty_verdict_object',is_wp_error($v));
 
+ok('reject_internal_tld_endpoint',MAD4B_SCP_AI_Model_Router::validate_endpoint('https://api.private.internal/v1')===false);
+ok('reject_local_tld_endpoint',MAD4B_SCP_AI_Model_Router::validate_endpoint('https://api.private.local/v1')===false);
+ok('reject_endpoint_with_url_query',MAD4B_SCP_AI_Model_Router::validate_endpoint('https://api.example.org/v1?secret=fake')===false);
+ok('reject_endpoint_with_fragment',MAD4B_SCP_AI_Model_Router::validate_endpoint('https://api.example.org/v1#fake')===false);
+ok('reject_nonstandard_public_https_port',MAD4B_SCP_AI_Model_Router::validate_endpoint('https://api.example.org:8443/v1')===false);
+ok('reject_model_slug_with_injection',
+   is_wp_error(MAD4B_SCP_AI_Model_Router::normalize_settings(array('mode'=>'custom','model'=>'gpt/fake?token=secret','custom_endpoint'=>'https://api.example.org/v1'))));
+ok('reject_oversized_prompt',
+   is_wp_error(MAD4B_SCP_AI_Model_Router::generate_text(str_repeat('x',60001))));
 $old="ETG BRAND STRATEGY\nSource: catalog\nEvidence: verified\nSafe editorial context is sufficient for a review. ".str_repeat('This content is sourced and bounded. ',18);
 $next=str_replace('Safe editorial context','Revised editorial context',$old);
 $v=MAD4B_SCP_AI_Source_Repair::validate_revision($old,$next,'text/plain');
