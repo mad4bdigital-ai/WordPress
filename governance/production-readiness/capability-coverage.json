@@ -7695,23 +7695,6 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Retain a bounded first-party response code when reporting generic HTTP 503 in Staging. Never retain arbitrary messages or payloads. This improves attribution but does not prove the ChatGPT connector runtime is healthy."
-    },
-    {
-      "path": "wp-content/plugins/mad4b-site-control-plane/tools/staging-mcp-skills-recertify.php",
-      "source_blob_sha": "69dd262c038483c4daeaafe86cfa87c2052e351f",
-      "control_ids": [
-        "GOVERNANCE-01",
-        "PLATFORM-01",
-        "SECURITY-01"
-      ],
-      "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/staging-mcp-skills-recertify-contract.php"
-      ],
-      "owner_role": "Repository source/security reviewer — CI coverage only; Staging operator confirmation required",
-      "status": "reviewed_for_ci_only",
-      "production_authorized": false,
-      "live_evidence_required": true,
-      "review_rationale": "Exact-SHA and origin-pinned Staging operator-only refresh of live-ready managed Skills certification after approved package install. Requires private backup and audit-ready readback, preserves stale convergence checkpoint and write-owner gate, refuses Production, and never claims authenticated MCP acceptance without real connector calls."
     }
   ],
   "code_change_rules": {
