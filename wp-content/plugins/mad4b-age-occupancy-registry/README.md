@@ -38,7 +38,7 @@ Current commercial boundary: accommodation shadow quotes and age-aware capacity 
 
 ## Live Fluent Forms passenger-age integration
 
-The adapter is **non-destructive**: original Fluent Form definitions are not changed. It extends the existing render/submission pipeline and adds age inputs only for configured forms.
+The adapter is **non-destructive**: original Fluent Form definitions are not changed. It extends the existing render/submission pipeline and adds age inputs only for forms enrolled in the site option `mad4b_age_occupancy_fluent_forms_v1` (editable under WooCommerce → Age & Occupancy). No form IDs are hardcoded in the distributable plugin. The following mapping is installed in ETG Local only.
 
 | Fluent Forms ID | Existing children field | Existing infants field | Missing ages with minors |
 | --- | --- | --- | --- |
