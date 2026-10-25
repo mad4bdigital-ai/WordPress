@@ -15,4 +15,9 @@ if(MAD4B_SCP_Runtime_Backend_Registry::fallback_allowed('php.lint','outcome_unkn
 if(!MAD4B_SCP_Runtime_Backend_Registry::fallback_allowed('php.lint','confirmed_not_started'))throw new RuntimeException('safe fallback');
 $p=MAD4B_SCP_Runtime_Backend_Registry::snapshot($c,'invalid');
 if($p['preset']!=='shared_hosting'||$p['authorization_granted']||isset($p['backends']['docker1']['host']))throw new RuntimeException('snapshot leak');
+$validPreset=MAD4B_SCP_Runtime_Backend_Registry::normalize_preset(array('docker','ssh'));
+if($validPreset!==array('docker','ssh'))throw new RuntimeException('preset validation');
+if(MAD4B_SCP_Runtime_Backend_Registry::normalize_preset(array('docker','docker'))!==null)throw new RuntimeException('duplicate preset accepted');
+if(MAD4B_SCP_Runtime_Backend_Registry::normalize_preset(array('unknown'))!==null)throw new RuntimeException('unknown backend accepted');
+if(MAD4B_SCP_Runtime_Backend_Registry::save_preset('vps',array('docker'))!==false)throw new RuntimeException('unauthorized preset save');
 echo "PASS: RUNTIME_BACKEND_REGISTRY_FAIL_CLOSED\n";
