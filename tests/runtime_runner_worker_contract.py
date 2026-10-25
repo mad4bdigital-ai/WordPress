@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """Live isolated diagnostic and deny-path contract for the optional VPS worker."""
 import base64, importlib.util, json, pathlib, tempfile, time, os
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives import hashes
 source=pathlib.Path(__file__).resolve().parents[1]/"tools/runtime-runner-worker.py"
 spec=importlib.util.spec_from_file_location("worker",source)
 m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
-site=Ed25519PrivateKey.generate(); runner=Ed25519PrivateKey.generate()
+site=rsa.generate_private_key(public_exponent=65537,key_size=2048); runner=rsa.generate_private_key(public_exponent=65537,key_size=2048)
 now=int(time.time())
 req={"contract":m.CONTRACT,"site":"staging-site-test","operation":"runtime.status.read",
  "nonce":"ab"*16,"issued_at":now-1,"expires_at":now+50,
  "target":"isolated-diagnostic","plan_sha256":"1"*64}
-def sign(x):return {"request":x,"signature":base64.b64encode(site.sign(m.canonical(x))).decode()}
+def sign(x):return {"request":x,"signature":base64.b64encode(site.sign(m.canonical(x),padding.PKCS1v15(),hashes.SHA256())).decode()}
 class Result:
  returncode=0
  stdout="MAD4B_DOCKER_RUNNER_OK"
@@ -23,7 +24,7 @@ def sandbox(argv):
 with tempfile.TemporaryDirectory() as d:
  nonces=pathlib.Path(d)
  receipt=m.process(sign(req),site.public_key(),runner,nonces,"staging-site-test",now,sandbox)
- runner.public_key().verify(m.b64decode(receipt["signature"]),m.canonical(receipt["receipt"]))
+ runner.public_key().verify(m.b64decode(receipt["signature"]),m.canonical(receipt["receipt"]),padding.PKCS1v15(),hashes.SHA256())
  assert receipt["receipt"]["result"]=="ok" and not receipt["receipt"]["production_authorized"]
  assert len(calls)==1
  def denied(e):
