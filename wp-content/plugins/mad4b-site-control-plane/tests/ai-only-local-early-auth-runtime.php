@@ -32,6 +32,9 @@ $run=function($label,$path,$method,$login,$site,$expected) {
 };
 $site=MAD4B_LOCAL_CLIENT_SITE_UUID;
 $run('valid_local_review_post','/wp-json/mad4b-local-ai/v1/context-review','POST','mad4b_ai_local_fixture',$site,'');
+$run('valid_native_owner_review_post','/wp-json/mad4b-local-ai/v1/domain-review','POST','mad4b_ai_local_fixture',$site,'');
+$run('native_owner_review_get_denied','/wp-json/mad4b-local-ai/v1/domain-review','GET','mad4b_ai_local_fixture',$site,'mad4b_ai_only_service_route_denied');
+$run('native_owner_review_put_denied','/wp-json/mad4b-local-ai/v1/domain-review','PUT','mad4b_ai_local_fixture',$site,'mad4b_ai_only_service_route_denied');
 $run('non_review_route_denied','/wp-json/wp/v2/users/me','GET','mad4b_ai_local_fixture',$site,'mad4b_ai_only_service_route_denied');
 $run('other_mcp_route_denied','/wp-json/mcp/mad4b-chatgpt','POST','mad4b_ai_local_fixture',$site,'mad4b_ai_only_service_route_denied');
 $run('review_queue_get_allowed','/wp-json/mad4b-local-ai/v1/context-review','GET','mad4b_ai_local_fixture',$site,'');
@@ -40,4 +43,5 @@ $run('foreign_site_denied','/wp-json/mad4b-local-ai/v1/context-review','POST','m
 $run('ordinary_user_not_impacted','/wp-json/wp/v2/users/me','GET','regular_subscriber',$site,'');
 $GLOBALS['mock_environment']='production';
 $run('production_not_managed','/wp-json/wp/v2/users/me','GET','mad4b_ai_local_fixture',$site,'');
-echo "SUMMARY pass=8 fail=0\n";
+echo "SUMMARY pass=11 fail=0\n";
+echo "PASS: AI_ONLY_EARLY_AUTH_GUARD\n";

@@ -7,6 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
  */
 final class MAD4B_SCP_AI_Only_Early_Auth_Guard {
     const ROUTE = '/mad4b-local-ai/v1/context-review';
+    const DOMAIN_ROUTE = '/mad4b-local-ai/v1/domain-review';
     const META = '_mad4b_ai_only_local_service_site';
 
     public static function authenticate( $error, $user, $item ) {
@@ -26,9 +27,15 @@ final class MAD4B_SCP_AI_Only_Early_Auth_Guard {
         $url = isset( $_SERVER['REQUEST_URI'] ) ? (string) $_SERVER['REQUEST_URI'] : '';
         $path = (string) wp_parse_url( $url, PHP_URL_PATH );
         $query = isset( $_GET['rest_route'] ) ? (string) $_GET['rest_route'] : '';
-        $accepted = '/wp-json' . self::ROUTE === rtrim( $path, '/' )
-            || self::ROUTE === '/' . trim( $query, '/' );
-        if ( ! $accepted || ! in_array( strtoupper( (string) ( $_SERVER['REQUEST_METHOD'] ?? '' ) ), array('POST','GET'), true ) ) {
+        $rest = '/' . trim( $query, '/' );
+        $route = '/wp-json' . self::ROUTE === rtrim( $path, '/' )
+            || self::ROUTE === $rest;
+        $domain = '/wp-json' . self::DOMAIN_ROUTE === rtrim( $path, '/' )
+            || self::DOMAIN_ROUTE === $rest;
+        $method = strtoupper((string)($_SERVER['REQUEST_METHOD']??''));
+        $accepted = ($route && in_array($method,array('POST','GET'),true))
+            || ($domain && $method==='POST');
+        if (!$accepted) {
             $error->add( 'mad4b_ai_only_service_route_denied',
                 'Managed local AI review credentials cannot authenticate other WordPress routes.' );
         }

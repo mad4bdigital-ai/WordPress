@@ -7840,6 +7840,46 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "672a1b66b03defecf6bd22d900eec8d5887c4629",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B security reviewer, Local-Lab-only route scope",
+      "review_rationale": "reviewed exact early-owned Local REST route only; native Domain POST must not traverse foreign REST zero-touch bootstrap, and all other REST requests remain on their old fast path.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-only-early-auth-guard.php",
+      "source_blob_sha": "ac78d4f7b56e9a42f7669257c858670f8204ef1d",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B security reviewer, Local-Lab-only route scope",
+      "review_rationale": "early managed WP Application Password is restricted to exact Local Context GET/POST and Domain POST; other methods, foreign routes and production deny.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {

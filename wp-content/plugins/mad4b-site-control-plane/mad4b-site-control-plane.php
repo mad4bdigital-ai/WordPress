@@ -123,7 +123,9 @@ if ( ! ( defined( 'MAD4B_SCP_FORCE_FULL_BOOT' ) && true === constant( 'MAD4B_SCP
 		$mad4b_scp_early_owned = 0 === strpos( $mad4b_scp_early_rest_path, '/mcp/mad4b-' )
 			|| 0 === strpos( $mad4b_scp_early_rest_path, '/mad4b/' )
             || ( function_exists('wp_get_environment_type') && 'local' === wp_get_environment_type()
-                 && '/mad4b-local-ai/v1/context-review' === $mad4b_scp_early_rest_path );
+                 && in_array($mad4b_scp_early_rest_path,array(
+                    '/mad4b-local-ai/v1/context-review',
+                    '/mad4b-local-ai/v1/domain-review'),true) );
 		if ( ! $mad4b_scp_early_owned ) $mad4b_scp_early_zero_touch_reason = 'foreign_rest';
 	} elseif ( defined( 'DOING_AJAX' ) && DOING_AJAX ) {
 		$mad4b_scp_early_action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( (string) $_REQUEST['action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended

@@ -34,3 +34,8 @@ The native scope and mock-audit regression passed **40/40**, including five sour
 
 ### QA vs. authority semantics
 A successful QA receipt must contain the original content hash and revision, original owner ID, independent audit event hash and verified chain, and authentic Agent identity. It explicitly states `publication_authorized=false`. It does not upgrade browser observations into release receipts or create new rights to modify underlying provider-owned content.
+
+### HTTP Local Lab bootstrap finding and correction
+The native review endpoint initially existed in full WordPress CLI bootstrap yet returned HTTP 404. Request-local, no-secret diagnostics proved this came from the plugin's intentional **foreign REST zero-touch bootstrap**: it recognized only `/mad4b-local-ai/v1/context-review`, not the new `/mad4b-local-ai/v1/domain-review`. The exact Local-only domain route was added to the full-bootstrap allowlist (no namespace-wide exemption), and the early short-lived Agent credential guard now permits that route **only with POST**. This retains the original Context GET/POST behavior and rejects every other path/method. The extra diagnostic MU file was removed after use.
+
+Real Local HTTP verification after restart: anonymous `POST /wp-json/mad4b-local-ai/v1/domain-review` now yields `403 mad4b_ai_only_auth_required`, as does the pre-existing Context route; previously domain review returned 404. No bound Agent Basic Auth credentials, live original-owner grants or review receipts were issued during HTTP diagnosis. The integration is now addressable, but **5/5 live approval still requires genuine owner-enrolled exact grants and five eligible source records**. This test does not override any publishing, provider, or privileged authority.

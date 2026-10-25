@@ -28,6 +28,7 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # Exact, hermetic PHP scripts; never promote arbitrary runtime PHP to CLI.
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-domain-executors-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-grant-mode-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-model-routing-worker-runtime.php",
     "tests/remote-execution/operator-grants-convergence-smoke.php",
@@ -121,6 +122,7 @@ def self_test():
     assert command_for("tests/remote-execution/operator-bridge-admission.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/ai-domain-executors-runtime.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php")[0] == "php"
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/ai-grant-mode-runtime.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/ai-model-routing-worker-runtime.php")[0] == "php"
     try:
