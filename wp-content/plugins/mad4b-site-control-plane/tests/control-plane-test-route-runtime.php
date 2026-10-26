@@ -104,4 +104,4 @@ $GLOBALS['test_can_manage'] = true;
 $result = $router::inspect( array( 'native' => $native_eligible ) );
 check( is_wp_error( $result ) && 'mad4b_test_route_input_invalid' === $result->get_error_code(), 'Reject caller-controlled preflight' );
 
-echo "PASS: certified test route selector (12 hermetic assertions)\n";
+echo "PASS: certified test route selector (hermetic security and fallback checks)\n";
