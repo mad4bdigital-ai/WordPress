@@ -80,7 +80,7 @@ for marker in [
     "$server_id = $server_map[ $route ]",
     "MAD4B_SCP_MCP_Client_Compatibility::authoritative_well_known_url( $server_id )",
     "MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier( $server_id )",
-    "MAD4B_SCP_OAuth_Resource_Bridge::scopes_for_resource( $resource )",
+    "MAD4B_SCP_OAuth_Resource_Bridge::challenge_required_scopes( $resource )",
 ]:
     assert marker in challenge, f'missing resource-specific challenge marker: {marker}'
 assert "MAD4B_SCP_OAuth_Resource_Bridge::metadata_url( $resource )" not in challenge, 'resource challenge must use canonical RFC9728 path-derived metadata'
