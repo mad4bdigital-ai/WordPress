@@ -85,8 +85,31 @@ final class SCP_External_Skill_Sources {
         return new WP_Error( 'skill_source_not_found', 'Unknown source.' );
     }
 
+
+    /** Reviewed public provider endpoint, never a tenant or caller URL. */
+    private static function github_origin() {
+        $file = MAD4B_SCP_DIR . 'config/external-skill-source-providers.json';
+        if ( ! is_readable( $file ) ) return new WP_Error( 'skill_source_provider_missing', 'The source provider configuration is unavailable.' );
+        $config = json_decode( (string) file_get_contents( $file ), true );
+        if ( ! is_array( $config ) || ( $config['contract'] ?? '' ) !== 'external-skill-source-providers.v1' ) {
+            return new WP_Error( 'skill_source_provider_invalid', 'The source provider configuration is invalid.' );
+        }
+        $origin = $config['providers']['github']['origin'] ?? '';
+        $parts = is_string( $origin ) ? parse_url( $origin ) : false;
+        if ( ! is_array( $parts ) || ( $parts['scheme'] ?? '' ) !== 'https' || empty( $parts['host'] )
+            || isset( $parts['user'] ) || isset( $parts['pass'] ) || isset( $parts['port'] )
+            || isset( $parts['path'] ) || isset( $parts['query'] ) || isset( $parts['fragment'] )
+            || ! preg_match( '/\A[a-z0-9.-]+\z/D', $parts['host'] ) ) {
+            return new WP_Error( 'skill_source_provider_origin_invalid', 'The source provider origin is not a valid reviewed HTTPS authority.' );
+        }
+        return $origin;
+    }
+
     private static function github_json( $url, $limit ) {
         if ( ! class_exists( 'MAD4B_SCP_Egress_Policy' ) ) return new WP_Error( 'skill_source_egress_unavailable', 'Outbound security policy is unavailable.' );
+        $origin = self::github_origin();
+        if ( is_wp_error( $origin ) ) return $origin;
+        if ( 0 !== strpos( $url, $origin . '/repos/' ) ) return new WP_Error( 'skill_source_endpoint_invalid', 'Only the reviewed source provider API is permitted.' );
         $args = array(
             'timeout' => 12,
             'redirection' => 0,
@@ -95,7 +118,7 @@ final class SCP_External_Skill_Sources {
             'limit_response_size' => $limit + 1,
             'headers' => array( 'Accept' => 'application/vnd.github+json', 'User-Agent' => 'Skill-Source-Explorer' ),
         );
-        $args = MAD4B_SCP_Egress_Policy::mark_request( 'skill_source_discovery', $url, 'https://api.github.com', $args );
+        $args = MAD4B_SCP_Egress_Policy::mark_request( 'skill_source_discovery', $url, $origin, $args );
         if ( is_wp_error( $args ) ) return $args;
         MAD4B_SCP_Egress_Policy::boot();
         $response = wp_safe_remote_get( $url, $args );
@@ -113,7 +136,9 @@ final class SCP_External_Skill_Sources {
         $key = 'tree_' . $source['id'];
         $cached = wp_cache_get( $key, self::CACHE_GROUP );
         if ( is_array( $cached ) && isset( $cached['sha'], $cached['skills'], $cached['files'] ) ) return $cached;
-        $url = 'https://api.github.com/repos/' . $source['repository'] . '/git/trees/' . rawurlencode( $source['ref'] ) . '?recursive=1';
+        $origin = self::github_origin();
+        if ( is_wp_error( $origin ) ) return $origin;
+        $url = $origin . '/repos/' . $source['repository'] . '/git/trees/' . rawurlencode( $source['ref'] ) . '?recursive=1';
         $tree = self::github_json( $url, self::MAX_TREE_BYTES );
         if ( is_wp_error( $tree ) ) return $tree;
         if ( empty( $tree['sha'] ) || ! preg_match( '/\A[a-f0-9]{40}\z/D', $tree['sha'] ) || ! isset( $tree['tree'] ) || ! is_array( $tree['tree'] ) || ! empty( $tree['truncated'] ) ) {
@@ -164,7 +189,9 @@ final class SCP_External_Skill_Sources {
             return new WP_Error( 'skill_source_revision_changed', 'File digest differs from the inspected tree. Rediscover the source.' );
         }
         if ( $entry['size'] < 0 || $entry['size'] > self::MAX_FILE_BYTES ) return new WP_Error( 'skill_source_file_too_large', 'File exceeds the text read budget.' );
-        $url = 'https://api.github.com/repos/' . $source['repository'] . '/git/blobs/' . $entry['sha'];
+        $origin = self::github_origin();
+        if ( is_wp_error( $origin ) ) return $origin;
+        $url = $origin . '/repos/' . $source['repository'] . '/git/blobs/' . $entry['sha'];
         $blob = self::github_json( $url, 400000 );
         if ( is_wp_error( $blob ) ) return $blob;
         if ( ( $blob['encoding'] ?? '' ) !== 'base64' || ( $blob['sha'] ?? '' ) !== $entry['sha'] || ! is_string( $blob['content'] ?? null ) ) return new WP_Error( 'skill_source_blob_invalid', 'Blob encoding or identity is invalid.' );

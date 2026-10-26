@@ -17,7 +17,7 @@ Returned provenance includes the repository, Git ref, tree SHA, blob SHA, and SH
 
 ## Governance and limits
 
-- Public GitHub-only fetch through the existing egress policy; HTTPS, TLS verification, no redirects, bounded response and timeout.
+- Public GitHub-only fetch through the existing egress policy and reviewed provider-origin configuration; HTTPS, TLS verification, no redirects, bounded response and timeout.
 - Sources must be explicitly registered by a WordPress administrator; no arbitrary user-supplied URLs to the MCP tools.
 - At most 40 configured sources, 500 Skills per source, 4 MiB of tree JSON and 256 KiB of UTF-8 per file. Incomplete Git trees are rejected, not presented as complete.
 - MCP operations use the existing governed read capability; no MCP mutation endpoint.
