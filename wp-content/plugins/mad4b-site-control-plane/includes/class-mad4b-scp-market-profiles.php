@@ -4,6 +4,7 @@ if (!defined('ABSPATH')) exit;
 final class MAD4B_SCP_Market_Profiles {
  const CONTRACT='mad4b.market-profiles.v1';
  const OPTION='mad4b_scp_market_profiles_v1';
+ const TARGETING_POLICY='mad4b_scp_market_targeting_policy_v1';
  const AUDIT='mad4b_scp_market_profiles_audit_v1';
  private static $booted=false;
  public static function site_uuid(){
@@ -45,6 +46,25 @@ final class MAD4B_SCP_Market_Profiles {
   return ['public'=>$public,'hidden'=>[],'configured'=>array_keys($public),'source'=>'wordpress'];
  }
  public static function enabled_languages(){return self::language_visibility()['public'];}
+ public static function targeted_languages(){
+  $languages=self::enabled_languages();$policy=self::targeting_policy();
+  foreach((array)($policy['excluded_languages']??[]) as $code)unset($languages[$code]);
+  return $languages;
+ }
+ public static function targeting_policy(){
+  $p=get_option(self::TARGETING_POLICY,[]);
+  return is_array($p)?$p:[];
+ }
+ /** WPML visibility is necessary but not sufficient: owner can exclude non-targeted countries/languages. */
+ public static function is_targetable($country,$language){
+  $country=strtoupper((string)$country);$language=sanitize_key((string)$language);
+  if(!preg_match('/^[A-Z]{2}$/D',$country)||!isset(self::enabled_languages()[$language]))return false;
+  $policy=self::targeting_policy();
+  if(in_array($country,(array)($policy['excluded_countries']??[]),true))return false;
+  if(in_array($language,(array)($policy['excluded_languages']??[]),true))return false;
+  return true;
+ }
+
  /** CLDR linguistic evidence generates proposals, NEVER approval or market entitlement. */
  public static function suggestions($language=''){
   $language=sanitize_key((string)$language);$active=self::enabled_languages();
@@ -59,6 +79,7 @@ final class MAD4B_SCP_Market_Profiles {
    foreach($payload['languages'][$lang]??[] as $item){
     if(!is_array($item))continue;$code=(string)($item['country']??'');
     if(!preg_match('/^[A-Z]{2}$/D',$code))continue;
+    if(!self::is_targetable($code,$lang))continue;
     if($countries&&!isset($countries[$code]))continue;
     $out[$lang.'-'.$code]=['language'=>$lang,'language_label'=>$label,'country'=>$code,
       'country_label'=>$countries[$code]??$code,'evidence'=>(string)($item['evidence']??'spoken'),
@@ -70,7 +91,7 @@ final class MAD4B_SCP_Market_Profiles {
  }
  public static function approved($id){
   $id=sanitize_key($id);$r=self::records();$p=$r[$id]??null;$uuid=self::site_uuid();
-  if(!$uuid||!is_array($p)||($p['contract']??'')!==self::CONTRACT||($p['status']??'')!=='approved'||($p['profile_id']??'')!==$id||!hash_equals($uuid,(string)($p['site_uuid']??''))||($p['environment']??'')!==wp_get_environment_type()||((int)($p['revision']??0))<1||(int)($p['approved_revision']??0)!==(int)$p['revision']||empty($p['approved_at'])||empty($p['language'])||!isset(self::enabled_languages()[$p['language']]))return [];
+  if(!$uuid||!is_array($p)||($p['contract']??'')!==self::CONTRACT||($p['status']??'')!=='approved'||($p['profile_id']??'')!==$id||!hash_equals($uuid,(string)($p['site_uuid']??''))||($p['environment']??'')!==wp_get_environment_type()||((int)($p['revision']??0))<1||(int)($p['approved_revision']??0)!==(int)$p['revision']||empty($p['approved_at'])||empty($p['language'])||!self::is_targetable($p['country']??'',$p['language']))return [];
   return ['profile_id'=>$id,'site_uuid'=>$uuid,'authority_status'=>'site_approved','revision'=>(int)$p['revision'],'country'=>(string)$p['country'],'language'=>(string)$p['language'],'label'=>(string)$p['label'],'contract'=>self::CONTRACT];
  }
  public static function approved_list(){
@@ -83,7 +104,7 @@ final class MAD4B_SCP_Market_Profiles {
   return count($found)===1?$found[0]:[];
  }
  public static function status(){
-  return ['contract'=>self::CONTRACT,'site_bound'=>self::site_uuid()!=='','count'=>count(self::records()),'approved_count'=>count(self::approved_list()),'suggestion_count'=>count(self::suggestions()),'enabled_languages'=>array_keys(self::enabled_languages()),'hidden_languages'=>self::language_visibility()['hidden'],'environment'=>wp_get_environment_type(),'write_policy'=>'local_admin_only_until_governed_release'];
+  return ['contract'=>self::CONTRACT,'site_bound'=>self::site_uuid()!=='','count'=>count(self::records()),'approved_count'=>count(self::approved_list()),'suggestion_count'=>count(self::suggestions()),'enabled_languages'=>array_keys(self::enabled_languages()),'hidden_languages'=>self::language_visibility()['hidden'],'market_exclusions'=>self::targeting_policy(),'environment'=>wp_get_environment_type(),'write_policy'=>'local_admin_only_until_governed_release'];
  }
  private static function write_allowed(){return wp_get_environment_type()==='local'&&current_user_can('manage_options')&&self::site_uuid()!=='';}
  private static function error($code){return new WP_Error('mad4b_market_'.$code,$code);}
@@ -95,7 +116,7 @@ final class MAD4B_SCP_Market_Profiles {
  public static function save_draft($id,$label,$country,$language,$expected_revision=0){
   if(!self::write_allowed())return self::error('write_not_allowed');
   $id=sanitize_key($id);$label=sanitize_text_field($label);$country=strtoupper(sanitize_text_field($country));$language=sanitize_key((string)$language);
-  if(!$id||strlen($id)>60||!$label||strlen($label)>120||!preg_match('/^[A-Z]{2}$/D',$country)||!isset(self::enabled_languages()[$language])||!isset(self::suggestions($language)[$language.'-'.$country])||(function_exists('WC')&&WC()->countries&&!isset(WC()->countries->get_countries()[$country])))return self::error('invalid_fields');
+  if(!$id||strlen($id)>60||!$label||strlen($label)>120||!preg_match('/^[A-Z]{2}$/D',$country)||!self::is_targetable($country,$language)||!isset(self::suggestions($language)[$language.'-'.$country])||(function_exists('WC')&&WC()->countries&&!isset(WC()->countries->get_countries()[$country])))return self::error('invalid_fields');
   $r=self::records();$existing=$r[$id]??null;
   if(!$existing&&count($r)>=50)return self::error('limit');
   $current=is_array($existing)?(int)($existing['revision']??0):0;
@@ -110,7 +131,7 @@ final class MAD4B_SCP_Market_Profiles {
  public static function approve($id,$expected_revision){
   if(!self::write_allowed())return self::error('write_not_allowed');
   $id=sanitize_key($id);$r=self::records();$p=$r[$id]??null;
-  if(!is_array($p)||($p['status']??'')!=='draft'||(int)($p['revision']??0)!==(int)$expected_revision||!hash_equals(self::site_uuid(),(string)($p['site_uuid']??''))||!isset(self::suggestions((string)($p['language']??''))[(string)($p['language']??'').'-'.(string)($p['country']??'')]))return self::error('invalid_approval');
+  if(!is_array($p)||($p['status']??'')!=='draft'||(int)($p['revision']??0)!==(int)$expected_revision||!hash_equals(self::site_uuid(),(string)($p['site_uuid']??''))||!self::is_targetable($p['country']??'',$p['language']??'')||!isset(self::suggestions((string)($p['language']??''))[(string)($p['language']??'').'-'.(string)($p['country']??'')]))return self::error('invalid_approval');
   foreach($r as $other=>$value)if($other!==$id&&($value['status']??'')==='approved'&&($value['country']??'')===$p['country']&&($value['language']??'')===($p['language']??''))return self::error('duplicate_country');
   $r[$id]['status']='approved';$r[$id]['approved_revision']=(int)$p['revision'];$r[$id]['approved_by']=get_current_user_id();$r[$id]['approved_at']=current_time('mysql',true);
   update_option(self::OPTION,$r,false);$saved=self::approved($id);
@@ -157,8 +178,10 @@ final class MAD4B_SCP_Market_Profiles {
  public static function boot(){
   if(self::$booted)return;self::$booted=true;
   add_action('wp_abilities_api_init',[__CLASS__,'register_ability'],9);
-  MAD4B_SCP_Admin_Route_Registry::schedule_submenu([__CLASS__,'admin_menu'],92);
-  MAD4B_SCP_Admin_Route_Registry::register('mad4b-market-profiles','manage_options');
+  if(class_exists('MAD4B_SCP_Admin_Route_Registry',false)) {
+   MAD4B_SCP_Admin_Route_Registry::register('mad4b-market-profiles','manage_options');
+   MAD4B_SCP_Admin_Route_Registry::schedule_submenu([__CLASS__,'admin_menu'],92);
+  }
   add_action('admin_post_mad4b_market_draft',[__CLASS__,'save_action']);
   add_action('admin_post_mad4b_market_approve',[__CLASS__,'approve_action']);
  }

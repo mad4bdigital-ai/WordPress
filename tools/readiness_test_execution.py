@@ -35,6 +35,11 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-worker-guard-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-crossenv-scope-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-credential-expiry-hermetic.php",
+    # Exact signed-market and source-bootstrap fixtures execute without WordPress.
+    # Review-bound paths only; unlisted PHP still requires PHPUnit.
+    "tests/switchers/test-market-compatibility.php",
+    "tests/switchers/test-market-context-boundaries.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/market-bootstrap-compatibility.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/market-source-read-abilities-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/market-source-calendar-cron-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/market-source-calendar-authority-hermetic.php",
@@ -209,6 +214,13 @@ def self_test():
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/ai-review-worker-guard-hermetic.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/ai-review-crossenv-scope-hermetic.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/ai-review-credential-expiry-hermetic.php")[0] == "php"
+    for path in (
+        "tests/switchers/test-market-compatibility.php",
+        "tests/switchers/test-market-context-boundaries.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/market-bootstrap-compatibility.php",
+    ):
+        assert command_for(path) == ["php", str((ROOT / path).resolve())]
+    assert not has_assertion_pass("UNREVIEWED_TEST=PASS\n")
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/market-source-read-abilities-hermetic.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/market-source-calendar-cron-hermetic.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/market-source-calendar-authority-hermetic.php")[0] == "php"

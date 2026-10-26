@@ -1,0 +1,85 @@
+# Country & Traveller Nationality switchers — QA release boundary
+- This branch contains standalone switchers and the MAD4B shared source / market context required for Country.
+- The QA plugin ZIPs are **not** a deployment-ready Control Plane upgrade. The Control Plane must use its governed packaging, compatibility and rollback process before Country is activated elsewhere.
+- CI checks PHP syntax, source ownership, no price/currency interception, dependency presence and reproducible archives. These static checks do **not** replace WooCommerce checkout integration tests.
+- Verified separately on ETG WooCommerce Local Lab 2026-10-25: Country/Nationality PHP 39/39; Blocks PHP 20/20; Store API simulated cart HTTP 200.
+- Not yet certified: real booking-engine traveller count, real full checkout + sandbox payment, MaxMind MMDB, CDN cache separation, registered-customer session, Staging and Production.
+- Do not transfer any `qa-*` market approval records or secrets to other environments. Do not enable promotional/seasonal offers.
+- The existing `etg-` plugin folder, action names and metadata keys remain temporarily for backward compatibility. Reusable naming / migration is a separate guarded change.
+
+- Traveller count now reads the existing server-verified Tour Rate v1 booking quote `shared_booking_configuration.quantities.persons`, even with Woo `quantity=1`. Booking v2 remains preview-only; unsupported or unverified lines refuse checkout (zero count), not inferred from Quantity.
+
+## Booking count correction validated 2026-10-25
+- Current WooCommerce-native Tour Rate cart source: `shared_booking_configuration` created and refreshed by the existing server quote adapter. Count is `quantities.persons`, not `WC Cart quantity` (one booking).
+- The separate Booking Configuration v2 `quantities.persons` and Fluent Forms `total_travelers` contracts were discovered, but their present statuses are `structure_only_not_ready_for_cart_write` / `normalized_only_not_checkout_authority`. They must not be promoted into paid Checkout data without their source's own financial booking authorization.
+- Both Checkout Blocks and Classic Checkout refuse unverified/missing or mismatched traveller counts. No market, currency, pricing or billing fields are edited by the switcher.
+- Local Lab real Tour Rates 66139 (3 people) and 66138 (2 people) with Woo Quantity 1: 20 assertions passed including Store API cart schema, nonpersisted in-memory Woo Order line-item meta, Classic validation, tampered server quote rejection, duplicate retry rejection and unchanged currency. Test is `tests/switchers/test-local-real-booking-count.php` and is intentionally not run inside GitHub Actions without the lab fixtures.
+- GeoLite2: Woo integration is installed but license key and MMDB are absent. No key was created or copied, and Woo default customer location remains `base`.
+- Guest AJAX response has `Cache-Control: no-cache, must-revalidate, max-age=0, no-store, private` and `X-LiteSpeed-Cache-Control: no-cache` in Local Lab. Real CDN edge isolation still needs Staging acceptance.
+- Existing MAD4B release governance checks, including exact reviewed-source provenance, are not waived by this QA change.
+
+- Real plugin React UI loaded in an isolated Chromium harness (without making the Draft QA page public): five verified nationality selectors plus one unverified booking alert at 1440px/390px, with no JavaScript errors or horizontal overflow. Run manually with `python3 tests/switchers/test-blocks-ui-browser.py`; requires Playwright and mounted Local Lab assets. This does not prove a full checkout payment.
+
+## Traveller Management 0.4.0-local — optional per-product configuration
+- Five built-in presets (automatic/tour/accommodation/transport/extra), versioned overrides, editable copies, global default selection, per-product/CPT preset dropdown, clone, reset, and optimistic revision checks. WooCommerce admins use WooCommerce → Traveller Management, linked from Booking Experience settings.
+- Strict 20-person Checkout cap remains in force even if a preset requests 50 or 100 for future QA.
+- Tour Rates use the server-requoted quantities.persons; do not equate Woo Quantity, group pricing tiers or currency with people. Uncertified Booking v2 preview, accommodation shadow quotes and transport reservations are explicitly not authorized.
+- A future verified adapter can register a count for its matching product type only when checkout_ready=true, with the exact product ID and Woo quantity. This interface alone is not an installed payment integration.
+- The in-memory per-booking registry holds opaque IDs, count, and optional verified service links. Linked services can inherit selected existing traveller indexes without duplicate nationality fields. Classic and Blocks order items record opaque registry IDs and participation indexes, while root order items retain the passport-nationality metadata.
+- New CI tests: test-management-unit.php, updated hermetic booking-count test, and static validation. Local Lab test scripts: test-unified-traveller-lab.php, test-linked-traveller-services-lab.php, test-local-real-booking-count.php and existing Playwright browser harness. Local test options are restored after each test and no paid order is created.
+- Outstanding: financial Booking v2 approval, Accommodation and Transport certified Checkout adapters, actual frontend participant picker tied to server booking identity, HPOS GDPR retention/export acceptance, enlarged group capacities, MaxMind and real CDN/staging isolation.
+- Security regression: legacy required_count filter cannot turn an unverified booking into a verified person count or alter the server-certified count (2 new fail-closed tests).
+- The older `test-checkout-blocks-nationality-20261025.php` lab fixture expected `Quantity=travellers` and is deliberately superseded; run `test-local-real-booking-count.php`, `test-linked-traveller-services-lab.php`, and `test-management-unit.php` instead. Restoring the old semantics would reintroduce the data-authority defect.
+- Cross-product service assignment is additionally matched to the canonical Tour Rate → Optional Tour relationship via shared_product_allowed_optional_tour_ids. Unrelated tours cannot be marked linked just by providing a server_verified flag; future cross-type Accommodation/Transport providers must supply a certified_relationship server check. Local QA proves the unrelated-tour case is rejected.
+
+
+## Group Tour Tiers capacity bridge (0.4.1-local)
+- `ETG_Traveller_Management::assess_capacity()` uses the existing `shared_product_group_tier_from_taxonomy()` to validate exactly one enabled `group-size-tiers` term by the actual number of people only for explicit Group Booking. Original taxonomy is never replaced.
+- Default: `taxonomy_when_group` for Tour/Automatic presets. Optional `booking_engine_only` bypasses the extra traveller-policy check and defers native Booking v2 pricing/tier validation; it does not grant checkout or disable the booking engine's own checks. Private booking never requires a group tier.
+- A successfully matched tier with 25 people in a 21–30 range returns preview status `tier_valid_checkout_capacity_not_certified` and **financial_checkout_authority=false**. The 20-person passport Checkout QA cap remains. Existing Booking v2 schema separately accepts up to 50 persons, regardless of taxonomy limits. Higher headcounts require a future Booking v2 capability upgrade.
+- Verified Booking v2 Checkout adapters must supply explicit booking mode, matching tour ID, a consistent group size, and the correct tier. Ordinary Woo Quantity cannot substitute group size.
+- Local reversible live-taxonomy fixture `test-group-tour-tiers-local.php` exercises 20/25/30/31, enabled/disabled/overlap, Private mode, Booking v2 validation for 25, the 51-person v2 limit and cleanup restoration. Hermetic CI `test-management-unit.php` tests the policy without WordPress. No term or business data permanently changed.
+
+
+## 0.5.0-local Group seat booking and nationality batching (supersedes older QA gate wording)
+- **Deprecated:** the 20-person hard Checkout cap. It is now only a 20-field page size in React Checkout Blocks. The tested server Tour Rate v1 quote authority accepts 55 persons and preserves Woo Quantity=1; `validate_list`, Checkout REST payloads and order-item metadata validate every passenger. No pagination weakens full-array validation. PHP schema uses the existing v1 native 999 upper bound, not a global commercial group maximum; 999-person end-to-end capacity has NOT been certified.
+- Separates **booking_party_size** and **departure_total_after_booking** from the Group Tier itself. Adds advisory automatic-mode routing without forced Private conversion; Private is only suggested if offered for a small party with no chosen Group departure. Explicit Group seat bookings of 1 can join existing Group departures.
+- Per-tour settings `_etg_minimum_departure_participants`, `_etg_departure_max_capacity` and `_etg_small_party_routing` are selectable in WordPress editor and separate the supplier-defined minimum-to-operate from Group Tier boundaries. The aggregator is preview-only and requires a future governed departure inventory source; numbers provided by client/caller are NOT inventory receipts.
+- Reversible live WP fixture `test-group-tour-tiers-local.php` exercises the minimum-to-operate, Private suggestion, one-seat booking on 25-person group departure, overselling refusal, saved setting restoration and existing tiers. Real Cart/Store API test `test-large-party-local.php` confirms 55 nationalities, 54-incomplete denial, Classic+Blocks checks, order metadata without persistence and no price modification. Playwright checks 55 passports over three pages at 390/1440 viewport sizes.
+- Financial Checkout approval for new Booking v2/Departure inventory remains **NO-GO** until it can reserve a seat atomically, revalidate group departure limits, prevent oversells and settle without duplicating people or changing currency.
+
+
+## 0.5.1-local — optional inventory and editable meta fields
+- **No-inventory default:** `_etg_departure_inventory_mode=untracked` if absent; Group booking requests have no mandatory occupancy or seat capacity. Neither booking party quantity nor the first group tier minimum is treated as a Woo stock counter.
+- `capacity_preview` is an explicit optional setting for operator-supplied capacity. If prior participants are unknown, capacity may display but `remaining_seats_after_booking=null` and `availability_verified=false`. The system never assumes zero booked seats or claims a confirmed booking/supplier allocation.
+- Meta keys `_etg_minimum_departure_participants`, `_etg_departure_max_capacity`, `_etg_small_party_routing`, `_etg_departure_inventory_mode` are registered under the existing Tour CPT and editable through its **Traveller Preset** box, with nonce + `edit_post` authorization. They are not a separate JetEngine meta-box schema.
+- New regression tests include missing inventory, optional maximum with untracked mode, unknown occupancy in optional preview, known-count advisory, explicit Group seat below first group tier, and reversible restoration of all local tour metadata. **No financial checkout, inventory allocation or final seat confirmation is certified by these tests.**
+
+
+## Site-neutral identifiers and configurable group minimum (0.5.2-local)
+- **Group booking minimum is configurable per Tour** using `_travel_booking_group_booking_minimum`, a native WordPress post-meta field in the existing Traveller Preset editor. Blank inherits the first enabled `group-size-tiers.tier_min`; no hardcoded business minimum. The independent departure minimum remains optional and unaffected.
+- Example QA: first enabled tier minimum 10, per-Tour override 12 -> party 11 suggests Private only if offered; 12 suggests Group. An explicit 1-person Group seat is accepted as an inquiry. Clearing the override reverts to the tier minimum.
+- Canonical runtime (classes, hooks, options, meta, API, shortcodes, JS/CSS) uses `travel_booking` names. Historical branded data is supported by **read-only compatibility** in `includes-legacy-compat.php`, plus a single historic activation filename retained for existing WordPress installs. New writes use neutral keys; no unsafe database-wide rename.
+- Static CI guards prohibit brand-specific prefixes in canonical source files. Local tests validate 55 traveller nationality entries, signed legacy preference read/tamper refusal, old option/meta fallback, new-key override and rollback. No production/staging installation.
+
+## 0.5.3-local — optional smart suggestions, review proofs and regression expansion
+- `suggestion=first` default; `none` suppresses default values; `all` drafts the booker's signed preference in each selector, clearly marked as a *suggestion*. One-click application fills only blanks; it does not overwrite any manually entered traveller ISO2 nationality.
+- Checkout Blocks requires `confirmed[cart_key] === true` for **every server-verified booking root** and a complete traveller array. A browser change to any nationality or cart identity/count invalidates confirmation. A fully populated but unconfirmed draft fails on the server. Confirmations are never inferred from prefill.
+- When booking-mode taxonomy is missing or the requested mode is not proven, a manual inquiry is possible but reports `booking_mode_verified=false` and `request_status=pending_mode_configuration`, **not a confirmed bookable offer**. Automatic new Group recommendations require an actual Group Tier match; a separate explicit seat on an existing departure remains Group.
+- The `source`, `nationality`, and `max` preset fields remain **configuration metadata only** where no authoritative provider contract is certified; they do not bypass nationality requirements, mint a count, set payment or inventory, or permit an otherwise unpriceable Group checkout. Do not describe them as active financial controls.
+- Local QA: real Store API, 55-passenger Classic/Blocks, 390px/1440px browser with all-as-draft, manual override, review invalidation/reconfirmation, actual **HPOS** Woo order draft saved/read/deleted and duplicate-item fail-closed, 999 ISO2 validations × 20 iterations measured independently from WP bootstrap, plus saved-option and taxonomy rollback.
+- `.github/workflows/country-nationality-switchers.yml` now adds `node --check` and a pinned React/Playwright browser job. Network/package download success and completion of the new GitHub job must be confirmed on the exact new commit.
+- Site ownership, taxes/payments, supplier confirmation, optional real inventory, Booking v2 financial bridge, WPML external diagnostic, privacy retention policies and existing production release gates remain independent. The plugin cannot assert live supplier availability or an actual financial booking.
+
+
+## 0.5.4-local — WooCommerce privacy/HPOS & Store API request memo
+- `woocommerce_privacy_export_order_personal_data` enriches the **native** Woo order privacy exporter with each ISO2 passport-country order-item entry. It is tested against a real draft HPOS order, which is hard-deleted after testing. No separate email/customer enumeration or automatic erasure is introduced.
+- The Store API cart **presentation-only** linked-service registry is memoized for the same Woo session cart object+hash. It avoids repeated linked-service resolution per line on a stable cart. The final Checkout order writer always recalculates the registry without that cache, and in-memory/session-less carts recompute.
+- Preset controls for manual server source, optional nationality and suggested capacity are **not permission grants**; the admin now explicitly explains their advisory nature, while smart suggestion mode has executable behavior and server-confirmed-review checks.
+- This change still does not close paid Booking v2, real departure occupancy, production data-retention legal approval or external WPML/Production Readiness/owner-attestation gates.
+
+
+## 0.5.5-local — real Woo Store API Checkout extension contract
+- Register the existing extension namespace on both **CartItemSchema** (read-only server-derived counts) and **CheckoutSchema** (client `travellers` and `confirmed` maps). This matches Woo's actual `extensions` REST schema rather than relying on unregistered arbitrary payload fields.
+- `test-checkout-schema-local.php` interrogates `OPTIONS /wc/store/v1/checkout`, validates and sanitizes genuine 3-person data, ensures confirmation remains boolean, and rejects malformed ISO2 values.
+- Direct `wp.data.dispatch(CHECKOUT_STORE_KEY).setExtensionData(namespace, data)` uses the native two-argument Woo store action. The similarly named three-argument method provided to some inner blocks through checkout context is NOT this action. Browser harness asserts the native dispatch signature and raises on misuse.

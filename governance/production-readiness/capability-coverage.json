@@ -2932,6 +2932,122 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing MCP identity, original WordPress Policy and Site Profile grants, provider isolation, authorized capability registration and execution fence remain authoritative; no new write path, raw shell, SQL, Production promotion or automatic credential access is granted.",
       "review_rationale": "Signed RSA receipt binds enrolled site, nonce, request SHA, exact operation and result; tampered payload, cross-site or write-contaminated receipts deny. Only diagnostic read is eligible, no shell, SQL or Production grant."
+    },
+    {
+      "id": "admin_asset:wp-content/plugins/mad4b-site-control-plane/assets/js/mad4b-market-selector.js",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02",
+        "LOCALIZATION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/switchers/verify_release.py"
+      ],
+      "owner_role": "Technical code review only; independent repository-owner approval still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing Browser/Admin read and response-security controls cover the public selector asset, while Localization checks govern country/language display. No purchase, financial or Production permission is granted.",
+      "review_rationale": "Read-only market selector uses same-origin no-store fetch and textContent for untrusted hints. It never auto-submits, changes prices, approves a market or activates geo-derived entitlement."
+    },
+    {
+      "id": "ajax:wp_ajax_mad4b_market_context_read",
+      "control_ids": [
+        "LOCALIZATION-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/switchers/test-market-context-boundaries.php"
+      ],
+      "owner_role": "Technical code review only; independent repository-owner approval still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing localization, site-binding and security controls already cover advisory market lookup, signed preferences and public response minimization; no booking or financial authority is introduced.",
+      "review_rationale": "Authenticated market read exposes only a small public projection with cache disabled; selected profile revision/site identity and internal notes are redacted."
+    },
+    {
+      "id": "ajax:wp_ajax_nopriv_mad4b_market_context_read",
+      "control_ids": [
+        "LOCALIZATION-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/switchers/test-market-context-boundaries.php"
+      ],
+      "owner_role": "Technical code review only; independent repository-owner approval still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing localization, site-binding and security controls already cover advisory market lookup, signed preferences and public response minimization; no booking or financial authority is introduced.",
+      "review_rationale": "Guest market read uses the same sanitized projection as authenticated read. It does not publish customer identity, raw IP, checkout, Woo billing or pricing data."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-market-context.php",
+      "control_ids": [
+        "LOCALIZATION-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/switchers/test-market-context-boundaries.php"
+      ],
+      "owner_role": "Technical code review only; independent repository-owner approval still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing localization, site-binding and security controls already cover advisory market lookup, signed preferences and public response minimization; no booking or financial authority is introduced.",
+      "review_rationale": "Explicit visitor market choice rechecks enabled language and approved site-bound profile. Revision-mismatched sessions fail closed and GeoIP remains suggestion only."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-market-preferences.php",
+      "control_ids": [
+        "LOCALIZATION-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/switchers/test-market-compatibility.php"
+      ],
+      "owner_role": "Technical code review only; independent repository-owner approval still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing localization, site-binding and security controls already cover advisory market lookup, signed preferences and public response minimization; no booking or financial authority is introduced.",
+      "review_rationale": "HMAC-bound session/cookie preference state fails on tampering, unknown site or unsupported currency. PHP 7.4 compatibility is now verified at runtime, not inferred from syntax."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-switcher-sources.php",
+      "control_ids": [
+        "LOCALIZATION-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/switchers/verify_release.py"
+      ],
+      "owner_role": "Technical code review only; independent repository-owner approval still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing localization, site-binding and security controls already cover advisory market lookup, signed preferences and public response minimization; no booking or financial authority is introduced.",
+      "review_rationale": "Data adapters read native Woo countries, WPML public languages and WCML currencies, and only expose profile countries through the existing explicit approval registry."
     }
   ],
   "lifecycle": [],
@@ -10080,6 +10196,114 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Combined bootstrap source preserves original Authorization/Execution fence and legacy loading order. New adaptive read-only broker is booted after central Authorization; runtime registry and runner bridge are loaded before Developer Host Capabilities without granting writes. Native PHP fixtures cover source-bound checkpoint, no blind replay, backend deactivation and signed receipt denials. This record is an integration simulation only, not a Site/Production grant or retroactive G2–G9 signature."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/assets/js/mad4b-market-selector.js",
+      "source_blob_sha": "b4e1c9134480a51041452bcd7502d93930815789",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "LOCALIZATION-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/switchers/verify_release.py"
+      ],
+      "owner_role": "Technical source-review candidate only; not an owner attestation or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Selector renders profile hints as escaped text with no auto-selection or booking writes. Public JSON cannot grant market approval or update financial values."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-market-context.php",
+      "source_blob_sha": "9a865a97f61dee82823ab3958da4d079fc4a2df0",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "LOCALIZATION-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/switchers/test-market-context-boundaries.php"
+      ],
+      "owner_role": "Technical source-review candidate only; not an owner attestation or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Market Context publishes minimal JSON, rejects stale site/session profile revisions, enforces language/profile match and distinguishes GeoIP suggestions from explicit selection."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-market-preferences.php",
+      "source_blob_sha": "bb17f969253441c90f02389163de95cdf8e52515",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "LOCALIZATION-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/switchers/test-market-compatibility.php"
+      ],
+      "owner_role": "Technical source-review candidate only; not an owner attestation or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Preference cookie verification checks HMAC and site identity before use; all currencies are constrained to native WCML settings. Compatibility fix removes PHP 8-only call."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-market-profiles.php",
+      "source_blob_sha": "697dacc43b209c5a5f62fb1cb3885b0677310ae4",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "LOCALIZATION-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/switchers/verify_release.py"
+      ],
+      "owner_role": "Technical source-review candidate only; not an owner attestation or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "The merged market profile registry preserves owner exclusion policy and exact site/approval/revision checks while retaining current admin market-language filter."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-switcher-sources.php",
+      "source_blob_sha": "d50f069fbc75f811e82ba07b1b4abb2d7f50d4ce",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "LOCALIZATION-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/switchers/verify_release.py"
+      ],
+      "owner_role": "Technical source-review candidate only; not an owner attestation or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Country, language, flag and currency catalogs come from native Woo/WPML/WCML capabilities, not a parallel shadow source; approved-market reads defer to the registry."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "9cf9ec8ef27f6ba4346770a310076b628c29d328",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "LOCALIZATION-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/market-bootstrap-compatibility.php"
+      ],
+      "owner_role": "Technical source-review candidate only; not an owner attestation or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Merge bootstrap retains previously certified master Context/Season/Source Hub services and new independent market adapters; no prior execution fence was removed or replaced."
     }
   ],
   "code_change_rules": {
