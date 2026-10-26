@@ -12,7 +12,7 @@ final class SCP_Skill_Task_Composition {
     private static function tokens( $value ) {
         if ( ! is_string( $value ) || ! preg_match( '//u', $value ) ) return array();
         $parts = preg_split( '/[^\p{L}\p{N}]+/u', strtolower( $value ), -1, PREG_SPLIT_NO_EMPTY );
-        $stop = array( 'the', 'and', 'for', 'from', 'with', 'into', 'this', 'that', 'are', 'use', 'your', 'have', 'after', 'before', 'please', 'need', 'can', 'want', 'task', 'skill', 'skills', 'project', 'then', 'الى', 'على', 'في', 'من', 'مع', 'عن', 'ثم', 'نفذ', 'تابع', 'راجع' );
+        $stop = array( 'the', 'and', 'for', 'from', 'with', 'into', 'this', 'that', 'are', 'use', 'your', 'have', 'after', 'before', 'please', 'need', 'can', 'want', 'task', 'skill', 'skills', 'project', 'then', 'الى', 'على', 'في', 'من', 'مع', 'عن', 'ثم', 'نفذ', 'تابع' );
         $aliases = array(
             'debugging' => 'debug', 'fixing' => 'debug', 'bugs' => 'debug', 'bug' => 'debug',
             'عالج' => 'debug', 'اصلح' => 'debug', 'أصلح' => 'debug', 'الأخطاء' => 'debug', 'اخطاء' => 'debug',
