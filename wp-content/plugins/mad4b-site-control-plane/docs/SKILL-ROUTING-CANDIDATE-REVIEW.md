@@ -75,3 +75,16 @@ Two new source-blob candidates are `includes/class-external-skill-sources.php` a
 ## Advisory enrichment timeout reporting — PENDING REVIEW
 
 A follow-up isolated RED/GREEN regression covers source discovery finishing before advisory context enrichment hits `skill_source_budget_exhausted`. The new composer keeps `execution_ready=false` and marks `source_page.budget_exhausted=true`, `page_complete=false`, `complete=false`; the external context returns `not_loaded_budget` instead of a generic unavailable state. PHP 7.4/8.3 network-disabled, read-only fixture and syntax checks passed in temporary containers. The updated exact Git blobs listed above supersede the previous composer/fixture blobs. This remains technical evidence only; no approval or Production authority is implied.
+
+
+## Skill source egress policy regression — PENDING REVIEW
+
+The new `skill_source_discovery` egress purpose is covered by real policy runtime
+assertions (positive HTTPS provider authority, negative HTTP/TLS opt-out/redirect
+and host drift, public versus private DNS) in
+`tests/egress-policy-runtime.php`. The separate
+`tests/egress-policy-contract.py` asserts the exact policy profile and
+binds the source reader to `mark_request`. The integration Dynamic Skills
+contract workflow executes both tests explicitly. These are isolated tests;
+a live enrolled WordPress MCP/real networking acceptance remains outstanding.
+No control or source approval is granted by adding this evidence.
