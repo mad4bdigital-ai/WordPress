@@ -4,6 +4,10 @@ on:
   pull_request:
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-source-pipeline.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wordpress-media-context.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/context-media-inventory-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/integration/context-source-pipeline-local.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-preflight.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-intelligence.php'
@@ -26,6 +30,31 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-oauth-lifecycle-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-human-review-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/context-classification-title-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-history-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-model-routing-worker-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-setup-ui.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/authority-setup-fields-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-setup-coverage-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-domain-executors-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-native-owner-review.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-native-owner-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-grant-mode-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-grant-mode.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-domain-executors.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-setup-coverage.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-connections-admin-ui.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-browser-acceptance-admin-ui.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-model-router.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-review-worker.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-source-repair.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tools/ai-review-worker-local.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-review-lifecycle.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-only-local-activation.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-only-early-auth-guard.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-intelligence-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-intelligence-contract.py'
@@ -53,6 +82,10 @@ on:
       - master
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-source-pipeline.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wordpress-media-context.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/context-media-inventory-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/integration/context-source-pipeline-local.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-preflight.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-intelligence.php'
@@ -75,6 +108,31 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-oauth-lifecycle-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-human-review-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/context-classification-title-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-history-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-model-routing-worker-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-setup-ui.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/authority-setup-fields-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-setup-coverage-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-domain-executors-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-native-owner-review.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-native-owner-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-grant-mode-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-grant-mode.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-domain-executors.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-setup-coverage.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-connections-admin-ui.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-browser-acceptance-admin-ui.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-model-router.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-review-worker.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-source-repair.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tools/ai-review-worker-local.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-review-lifecycle.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-only-local-activation.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-only-early-auth-guard.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-intelligence-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-intelligence-contract.py'
@@ -132,6 +190,11 @@ jobs:
         run: |
           set -euo pipefail
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-source-pipeline.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wordpress-media-context.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/integration/context-source-pipeline-local.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/context-media-normalization-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/context-media-excel-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-preflight.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-intelligence.php
@@ -149,6 +212,31 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-oauth-lifecycle-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-human-review-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/context-classification-title-contract.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-history-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/ai-model-routing-worker-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/authority-setup-fields-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/provider-setup-coverage-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/ai-domain-executors-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-native-owner-review.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-native-owner-adapter.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/ai-grant-mode-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-grant-mode.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-domain-executors.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-setup-coverage.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-connections-admin-ui.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-browser-acceptance-admin-ui.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-setup-ui.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-model-router.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-review-worker.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-source-repair.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tools/ai-review-worker-local.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-review-lifecycle.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-only-local-activation.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-only-early-auth-guard.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-intelligence-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-source-write-policy-runtime.php
@@ -163,6 +251,15 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-document-normalization-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-skill-enforcement-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-registry-atomicity-runtime.php
+
+      - name: Verify structured Excel and CSV Media extraction (no WordPress mutation)
+        run: python3 wp-content/plugins/mad4b-site-control-plane/tests/context-media-excel-contract.py
+
+      - name: Verify local WordPress Media content normalization (no WordPress mutation)
+        run: php wp-content/plugins/mad4b-site-control-plane/tests/context-media-normalization-runtime.php
+
+      - name: Enforce scoped Media inventory contract
+        run: python3 wp-content/plugins/mad4b-site-control-plane/tests/context-media-inventory-contract.py
 
       - name: Enforce Context Authority architecture
         shell: bash
@@ -205,6 +302,16 @@ jobs:
         run: |
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/context-classification-title-contract.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-history-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/ai-model-routing-worker-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/authority-setup-fields-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/provider-setup-coverage-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/ai-domain-executors-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/ai-grant-mode-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php
 
       - name: Execute Skill Context preflight runtime
         shell: bash
