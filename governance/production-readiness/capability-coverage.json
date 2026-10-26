@@ -9628,6 +9628,42 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "The original Browser Acceptance admin preference is non-authorizing and never stores credentials or executes a browser. Network-free PHP 7.4/8.3 test reuses full executable original acceptance suite (including BINARY CAS readback, stale revision denial, credential field rejection, provider/profile binding and source-route coupling), plus 15 new direct adversarial cases per PHP: exact target/required profile, malformed saved pref rejection, bad revision, non-string fields, no secret fields, no implicit external runner readiness, and no mutation/publication authorization. Operator preference remains advisory until independent Browser runner verification. No actual browser, external API credentials or live WordPress options were touched. Exact source Git blob is unchanged; changed-in-PR tests are run by trusted executor. Owner/runtime certification required separately."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-lifecycle.php",
+      "source_blob_sha": "1f499511f96e17fd0e63370b8f9d66a3580d591e",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-lifecycle-preflight-hermetic.php"
+      ],
+      "owner_role": "Repository original-source lifecycle CI reviewer only; not enrolled Site Owner or Production release authority",
+      "review_rationale": "Original plugin lifecycle is a read-only, source-state and dependency scoped WordPress Ability with no activation/deactivation side effect. Its mutation_preflight requires exact reviewed plan digest and current state; missing/wrong hash or blocked state are denied, network activation is not mistaken for site activation, and an altered expected snapshot does not authorize the writer. Original plugin-lifecycle network fixture and nine new exact CAS and scope assertions run PASS on PHP 7.4 and 8.3, network-isolated; no real plugin activation occurred. Final plugin-package apply remains independently governed by original Owner, impact/ticket and write permissions. Exact Git blob pinned. Additional independent live evidence and original owner approval remain required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-client-admin.php",
+      "source_blob_sha": "4e700029ceccd46cbaded888502268f4aa92b810",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/local-client-request-boundary-hermetic.php"
+      ],
+      "owner_role": "Repository original-source lifecycle CI reviewer only; not enrolled Site Owner or Production release authority",
+      "review_rationale": "Original local-only admin credential lifecycle requires originating site-admin and nonce, a 300-second exact user/site/request-bound pending intent, explicitly restricted vault outside web root and exact independent native WordPress App Password revocation before vault deletion. Network-isolated PHP 7.4 and 8.3 original mock lifecycle passes request, one-time issuance, SHA-256 Agent binding, 0600 vault, user mismatch denial, nonce, duplicate provision and revocation, with 12 additional direct adversarial cases per runtime for cross-user/site, malformed nonce, wrong intent, future/expired issue time, excessive TTL and no extra credentials issued. No production/staging credentials or network permissions created and no live WordPress mutation. Exact Git blob pinned. Additional independent live evidence and original owner approval remain required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {

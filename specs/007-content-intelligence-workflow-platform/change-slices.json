@@ -4,8 +4,8 @@
   "reviewed_base_sha": "e7f30d944c354c3a4f7346330ad401d995e768c5",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 137,
-  "changed_paths_sha256": "8d155c42c1dc6f41369af356836916880384b3eafa8610225f8ce39bf98a0b56",
+  "changed_file_count": 139,
+  "changed_paths_sha256": "537a81a5be0e4e2d1d8e126922d3ca4ee3c46d1cadee2c3b8ed16ed872fb390b",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -75,7 +75,8 @@
         "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/operator-doctor-contract.php",
         "wp-content/plugins/mad4b-site-control-plane/tools/apply_core_merge.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-lifecycle-admission-hermetic.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-lifecycle-admission-hermetic.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-lifecycle-preflight-hermetic.php"
       ]
     },
     {
@@ -201,7 +202,8 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/admin-settings-persistence-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/context-classification-title-contract.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/browser-operator-integrity-hermetic.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/browser-operator-integrity-hermetic.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/local-client-request-boundary-hermetic.php"
       ]
     },
     {
