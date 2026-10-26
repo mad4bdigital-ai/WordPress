@@ -2686,6 +2686,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing original site-scoped Unified Policy, WordPress source native owner evidence, approved Agent registry, exact ticket and OAuth governance still own authorization; source hardening adds no new grants or scope.",
       "review_rationale": "Exact original Unified Approval Workflow local source, site enrollment, original Content source evidence and CAS hash/revision, original Policy digest and expiry remain authoritative. Hardened inspect rejects malformed review identifiers and tampered/incomplete stored rows, owner source responses or policy payloads before hash_equals, rather than emitting PHP notices or type errors. No approval stage may bypass original Agent exact-grant/human nonce checks; AI-first state transitions retain review-only semantics. New hermetic original-class regression 28/28 PASS on PHP 7.4 and 8.3 with valid record, invalid/missing content/policy hashes, foreign Site Profile, missing/changed source and owner revision, policy drift, expiry, and AI-first next_state. Existing Unified Approval original AI-first 37/37 regression passed on both runtimes. No live owner receipt, human session, WordPress record or token minted."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-source-pipeline.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-pipeline-admission-hermetic.php"
+      ],
+      "owner_role": "Original-source CI operator, not enrolled WordPress Site Owner or provider",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original Site Profile/WordPress manage_options and Policy::can_connect_user, Context Authority registered source/revision, original Brand Context Builder complete inventory admission, independent Google Drive and Media inventory, and original publication review are unchanged. Existing reviewed source SHA is pinned separately and not rewritten.",
+      "review_rationale": "Source-owned original Context Source Pipeline plan/sync/scan_complete invoked in network-disabled hermetic PHP 7.4 and PHP 8.3, each PASS 27 cases. Verified bounded 1-25 explicit Media IDs, deduplication, approval manual_only, source SHA/revision CAS checks, refused partial Media sync and Drive direct sync, incomplete content/Drive scan denial, original enrolled admin and Context Builder admission, advisory absent Drive candidates, and one simulated successful complete Media inventory reconciliation performed solely against an in-memory mock. No actual WordPress database, Google token, Media asset, approval, or publication was modified. Real end-to-end source scan acceptance remains outstanding."
     }
   ],
   "lifecycle": [],

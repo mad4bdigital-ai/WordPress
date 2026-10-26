@@ -4,8 +4,8 @@
   "reviewed_base_sha": "e7f30d944c354c3a4f7346330ad401d995e768c5",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 128,
-  "changed_paths_sha256": "16341be638749b5f9b95466f602d043565bf8a448f49974c29eff8b156952ebc",
+  "changed_file_count": 129,
+  "changed_paths_sha256": "2cf741558acd814bb656cb657f56eb02140cdce8bc69a7dceb355b9dc2733ded",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -55,7 +55,8 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/context-media-normalization-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/context-media-normalization-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/fixtures/context-media-spreadsheet-sample.xlsx",
-        "wp-content/plugins/mad4b-site-control-plane/tests/integration/context-source-pipeline-local.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration/context-source-pipeline-local.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-pipeline-admission-hermetic.php"
       ]
     },
     {
