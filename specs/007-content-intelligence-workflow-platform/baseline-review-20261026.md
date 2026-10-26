@@ -47,3 +47,34 @@ The exploratory patch was discarded. Its replacement is a versioned exact-histor
 **Release gate:** the successor bridge and parent sync remain a local candidate until the unchanged original Feature 007 validator, negative regressions, CI on exact head, and owner review pass. No authority or runtime-release identity is updated.
 
 The bridge additionally checks older UI/G1–G5/G7 manifests which retained SHA-only historical bindings; absence of an archived byte field never relaxes the historic SHA match or current Git blob check. The G5 service uses existing CI-only exact-source review; G6 legacy admin smoke requires its known historical SHA and byte length.
+
+
+## Follow-up: Feature 007 cumulative-fingerprint CI agreement
+
+The old read-only cumulative delivery checker incorrectly required all 227
+historical fingerprints to equal current file bytes, contradicting the
+unchanged original extension validator's reviewed-successor policy and
+failing the original CI gate ahead of the specification check. Its read-only
+mode now consults that **same existing** closed-scope verifier only for
+reviewed historical successors and reports zero uncovered drift when the
+current exact Git blobs, immutable archive SHA/byte records, and source
+reviews all match. Negative tests reject a tampered Git checkout, historic
+digest/size edits, unexpected paths, and synthetic workspaces; the original
+ten manifests are neither changed nor re-signed. `--write` is explicitly
+forbidden for the real archive-bearing repository but remains testable in
+disposable fixtures. This is non-authorizing CI repair, not deployment
+certification.
+
+
+## GitHub-hosted live read-only runner network diagnosis
+
+Original GitHub workflow job `121421329724` failed on the *first*
+public home GET with `OSError [Errno 101] Network is unreachable`, before
+WordPress/MCP assertions. DNS advertises A and AAAA; a read-only VPS run of
+the **unchanged complete script** returned all expected anonymous OAuth
+challenges and HTTP codes. The source-level runner now tries reachable IPv4
+DNS answers first with IPv6 fallback, retaining the original TLS host
+verification, redirect denial and strict status/body checks. A four-case
+offline unit regression guards the address sorter. CI must independently
+confirm GitHub-hosted network admission; no inaccessible Staging site may
+receive a fabricated PASS.

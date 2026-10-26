@@ -4,8 +4,8 @@
   "reviewed_base_sha": "e7f30d944c354c3a4f7346330ad401d995e768c5",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 151,
-  "changed_paths_sha256": "fd1b61cc32e4ae456c2a6d3f0a76722b9397ae23f4dc677a91552b71574bc6d9",
+  "changed_file_count": 155,
+  "changed_paths_sha256": "ce57399585b81d4902f550cf79171a2e1b2b691dfe81c16b73333447e7ed0e19",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -145,8 +145,8 @@
     },
     {
       "id": "legacy-contract-regression",
-      "semantic_unit": "Bounded historical source successors for frozen delivery evidence with fail-closed CI regression contract.",
-      "revert_boundary": "Revert exact-source verifier, SPEC validator and positive/negative regression fixture together; never rewrite the immutable G1-G9 historic manifests.",
+      "semantic_unit": "Fail-closed archived Feature 007 evidence and network-admission source regressions, including original Live Staging OAuth rejection checks.",
+      "revert_boundary": "Keep reviewed historical SHA integrity, adversarial archive tests, and HTTPS DNS ordering fixture together; never waive live Staging OAuth or HTTP expectations.",
       "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/g6-g9-historical-administration-source-contract.py",
@@ -156,7 +156,11 @@
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/validate.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/historical-delivery-successor-contract.py",
         "specs/007-content-intelligence-workflow-platform/validate_spec.py",
-        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/historical-delivery-source-reviews.json"
+        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/historical-delivery-source-reviews.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/rebind-delivery.py",
+        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_rebind_delivery.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/are-staging-operations-http-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-live-dns-order-contract.py"
       ]
     },
     {
