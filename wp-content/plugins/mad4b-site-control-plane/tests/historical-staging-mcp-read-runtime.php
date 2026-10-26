@@ -2,6 +2,7 @@
 /** Hermetic test: historical Staging restart gate may admit MCP reads, never writes. */
 define('ABSPATH', '/test/');
 function sanitize_text_field($text) { return (string) $text; }
+function add_action($name, $handler, $priority=10) { return true; }
 require dirname(__DIR__) . '/includes/class-mad4b-scp-runtime-convergence.php';
 function verify($condition, $label) {
     if (!$condition) { fwrite(STDERR, "FAIL: $label\n"); exit(1); }
