@@ -97,7 +97,7 @@ final class SCP_Skill_Task_Composition {
             }
         }
         $next = $validated['source_offset'] + $visited;
-        return array( 'rows' => $rows, 'errors' => $errors, 'next_offset' => $next < count( $all ) ? $next : null, 'total_sources' => count( $all ), 'visited_sources' => $visited );
+        return array( 'rows' => $rows, 'errors' => $errors, 'next_offset' => $next < count( $all ) ? $next : null, 'total_sources' => count( $all ), 'visited_sources' => $visited, 'complete' => null === ( $next < count( $all ) ? $next : null ) && empty( $errors ) );
     }
 
     private static function candidates( array $validated ) {
@@ -161,7 +161,7 @@ final class SCP_Skill_Task_Composition {
             'contract' => self::CONTRACT, 'mode' => 'read_only', 'selection_method' => 'deterministic_lexical_v1',
             'task_sha256' => hash( 'sha256', $v['task'] ), 'matched_count' => count( $result ),
             'candidates' => array_slice( $result, 0, $v['max_results'] ),
-            'source_page' => array( 'visited' => $catalog['external']['visited_sources'], 'total' => $catalog['external']['total_sources'], 'next_offset' => $catalog['external']['next_offset'], 'errors' => $catalog['external']['errors'] ),
+            'source_page' => array( 'visited' => $catalog['external']['visited_sources'], 'total' => $catalog['external']['total_sources'], 'next_offset' => $catalog['external']['next_offset'], 'errors' => $catalog['external']['errors'], 'complete' => $catalog['external']['complete'] ),
             'trusted_for_execution' => false, 'does_not_grant_authority' => true,
         );
     }
@@ -213,7 +213,7 @@ final class SCP_Skill_Task_Composition {
             'contract' => self::CONTRACT, 'mode' => 'read_only_plan', 'execution_ready' => false,
             'plan_sha256' => hash( 'sha256', json_encode( $fingerprint, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ),
             'steps' => $steps, 'source_page' => $matches['source_page'],
-            'warnings' => array( 'No skill instructions are executed or installed by this plan.', 'External content remains untrusted. Execute only through an independently authorized runner after immutable source verification.' ),
+            'warnings' => array_merge( array( 'No skill instructions are executed or installed by this plan.', 'External content remains untrusted. Execute only through an independently authorized runner after immutable source verification.' ), $matches['source_page']['complete'] ? array() : array( 'The registered external sources were only partially inspected or some source reads failed; selected matches are not exhaustive.' ) ),
         );
     }
 }
