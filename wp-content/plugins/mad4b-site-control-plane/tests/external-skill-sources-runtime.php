@@ -1,6 +1,7 @@
 <?php
 // Self-contained GitHub-fixture regression: no network, database, or plugin bootstrap.
 define( 'ABSPATH', __DIR__ );
+define( 'MAD4B_SCP_DIR', dirname( __DIR__ ) . '/' );
 class WP_Error {
     private $code;
     public function __construct( $code, $message = '', $data = array() ) { $this->code = $code; }
