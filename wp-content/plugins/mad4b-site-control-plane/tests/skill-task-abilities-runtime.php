@@ -43,6 +43,7 @@ foreach ( $expected as $name => $method ) {
     assert_skill( $ability['input_schema']['required'] === array( 'task' ), 'Task input not required' );
     assert_skill( $ability['input_schema']['additionalProperties'] === false, 'Unbounded inputs admitted' );
     assert_skill( $ability['input_schema']['properties']['source_ids']['maxItems'] === 40, 'Source limits drifted' );
+    assert_skill( $ability['input_schema']['properties']['task_context']['maxLength'] === 4000, 'Follow-up context must be bounded' );
     assert_skill( call_user_func( $ability['permission_callback'] ) === false, 'Anonymous/read-denied caller admitted' );
 }
 $GLOBALS['skill_can_read'] = true;
