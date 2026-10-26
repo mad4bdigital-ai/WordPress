@@ -117,6 +117,7 @@ jobs:
         run: |
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/external-skill-sources-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/skill-task-composition-runtime.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/dynamic-skills-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/skill-runtime-certification-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py

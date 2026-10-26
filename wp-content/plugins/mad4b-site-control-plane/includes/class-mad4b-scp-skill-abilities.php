@@ -98,6 +98,1143 @@ final class MAD4B_SCP_Skill_Abilities {
             array( 'SCP_External_Skill_Sources', 'get_resource' )
         );
 
+
+        // Read-only task matching. Neither endpoint grants authority or executes upstream code.
+        self::add(
+            'mad4b/skill-match-task', 'Match Task to Skills',
+            array(
+                'type' => 'object',
+                'properties' => array(
+                    'task' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 4000 ),
+                    'topics' => array( 'type' => 'array', 'maxItems' => 12, 'items' => array( 'type' => 'string', 'maxLength' => 80 ) ),
+                    'source_ids' => array( 'type' => 'array', 'maxItems' => 40, 'items' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{24}
+		self::add(
+			'mad4b/skill-context-preflight',
+			'Inspect Skill Context Readiness',
+			array(
+				'type' => 'object',
+				'properties' => array(
+					'level' => array( 'type' => 'string', 'enum' => MAD4B_SCP_Skill_Registry::levels() ),
+					'target' => array( 'type' => 'string', 'maxLength' => 120 ),
+					'name' => array( 'type' => 'string', 'pattern' => '^[a-z0-9]+(?:-[a-z0-9]+)*$' ),
+					'task_scope' => array( 'type' => 'string', 'maxLength' => 160 ),
+					'intended_ability' => array( 'type' => 'string', 'maxLength' => 191 ),
+				),
+				'required' => array( 'level', 'name' ),
+				'additionalProperties' => false,
+			),
+			array( __CLASS__, 'skill_context_preflight' )
+		);
+
+
+		self::add(
+			'mad4b/brand-content-gate-triage',
+			'Discover Exact Skill and Brand Recovery Route Without Guessing Target',
+			array( 'type' => 'object', 'properties' => array(
+				'intended_ability' => array( 'type' => 'string', 'maxLength' => 191 ),
+				'task_scope' => array( 'type' => 'string', 'maxLength' => 160 ),
+			), 'additionalProperties' => false ),
+			array( __CLASS__, 'brand_content_gate_triage' )
+		);
+
+		self::add(
+			'mad4b/external-source-rights-preflight',
+			'Inspect External Supplier and Media Reuse Rights',
+			array( 'type'=>'object','properties'=>array(
+				'source_url'=>array('type'=>'string','maxLength'=>2048),
+				'intended_use'=>array('type'=>'string','enum'=>array('editorial_reference','commercial_offer','third_party_media')),
+				'post_id'=>array('type'=>'integer','minimum'=>1),
+			),'required'=>array('source_url','intended_use'),'additionalProperties'=>false),
+			array( __CLASS__, 'external_source_rights_preflight' )
+		);
+
+		self::add(
+			'mad4b/skills-export-status',
+			'Get Skills Export Status',
+			array( 'type' => 'object', 'additionalProperties' => false ),
+			array( __CLASS__, 'skills_export_status' )
+		);
+
+		self::add(
+			'mad4b/skills-runtime-certification',
+			'Get Skills Runtime Certification',
+			array( 'type' => 'object', 'additionalProperties' => false ),
+			array( __CLASS__, 'skills_runtime_certification' )
+		);
+	}
+
+	private static function add( $name, $label, array $input_schema, $callback ) {
+		wp_register_ability(
+			$name,
+			array(
+				'label' => $label,
+				'description' => self::ability_description( $name, $label ),
+				'category' => 'mad4b-read',
+				'execute_callback' => $callback,
+				'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
+				'input_schema' => $input_schema,
+				'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+				'meta' => array(
+					'public' => false,
+					'show_in_rest' => false,
+					'mcp' => array( 'public' => false, 'type' => 'tool' ),
+					'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+				),
+			)
+		);
+	}
+
+	/** @internal Deterministic tool metadata anchor consumed only from a real external tools/list response. */
+	public static function snapshot_anchor() {
+		$identity = array();
+		if ( class_exists( 'MAD4B_SCP_Skill_Snapshot_Identity' ) ) {
+			$identity = method_exists( 'MAD4B_SCP_Skill_Snapshot_Identity', 'build_request_cached' )
+				? MAD4B_SCP_Skill_Snapshot_Identity::build_request_cached()
+				: MAD4B_SCP_Skill_Snapshot_Identity::build();
+		}
+		$token = isset( $identity['identity_token'] ) ? strtolower( trim( (string) $identity['identity_token'] ) ) : '';
+		return 1 === preg_match( '/^sha256:[a-f0-9]{64}$/', $token ) ? $token : '';
+	}
+
+	private static function ability_description( $name, $label ) {
+		$description = $label . ' through the governed MAD4B file-backed Skill registry.';
+		if ( 'mad4b/skills-export-status' !== (string) $name ) return $description;
+		$anchor = self::snapshot_anchor();
+		return '' === $anchor ? $description : $description . ' ' . self::SNAPSHOT_ANCHOR_PREFIX . ' ' . $anchor . '.';
+	}
+
+	public static function skills_list( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		$filters = array();
+		if ( isset( $input['level'] ) ) $filters['level'] = $input['level'];
+		if ( isset( $input['target'] ) ) $filters['target'] = $input['target'];
+		if ( array_key_exists( 'enabled', $input ) ) $filters['enabled'] = (bool) $input['enabled'];
+		$skills = MAD4B_SCP_Skill_Registry::list_skills( $filters );
+		return array( 'contract' => 'mad4b.skills-list.v1', 'count' => count( $skills ), 'skills' => $skills );
+	}
+
+	public static function skill_get( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		$level = isset( $input['level'] ) ? $input['level'] : '';
+		$target = isset( $input['target'] ) ? $input['target'] : '';
+		$name = isset( $input['name'] ) ? $input['name'] : '';
+		$task_scope = isset( $input['task_scope'] ) ? substr( sanitize_text_field( (string) $input['task_scope'] ), 0, 160 ) : '';
+		$intended_ability = isset( $input['intended_ability'] ) ? trim( (string) $input['intended_ability'] ) : '';
+		$skill = self::resolve_skill( $level, $target, $name );
+		if ( is_wp_error( $skill ) ) return $skill;
+		if ( ! class_exists( 'MAD4B_SCP_Context_Preflight' ) ) return new WP_Error( 'mad4b_skill_context_preflight_unavailable', 'Skill exposure is denied because Context Preflight is unavailable.' );
+
+		$preflight = MAD4B_SCP_Context_Preflight::preflight_entry( $skill, $task_scope, $intended_ability );
+		if ( is_wp_error( $preflight ) ) return $preflight;
+		if ( empty( $preflight['ready'] ) ) {
+			return new WP_Error(
+				'mad4b_required_brand_context_unavailable',
+				'This Skill requires governed Brand Context that is not currently ready.',
+				array(
+					'skill_logical_id' => isset( $skill['logical_id'] ) ? (string) $skill['logical_id'] : '',
+					// Deliberately redact the raw Context envelope and signed
+					// receipt. Even a blocked preflight may contain eligible
+					// optional assets unrelated to the missing required set.
+					'context_ready' => false,
+					'blockers' => isset( $preflight['blockers'] ) && is_array( $preflight['blockers'] ) ? array_values( array_map( 'strval', $preflight['blockers'] ) ) : array( 'context_not_ready' ),
+					'missing_context_sets' => isset( $preflight['missing_context_sets'] ) && is_array( $preflight['missing_context_sets'] ) ? array_values( array_map( 'strval', $preflight['missing_context_sets'] ) ) : array(),
+					'next_read_ability' => 'mad4b/brand-content-gate-triage',
+					'recovery_handoff' => array(
+						'contract' => 'mad4b.content-job-dependency-recovery.v1',
+						'state' => 'PRESERVE_ORIGINAL_TASK_AND_RECOVER_BRAND',
+						'intake_ability' => 'mad4b/content-job-create',
+						'intake_requires_exact_approval' => true,
+						'resume_plan_ability' => 'mad4b/content-job-dependency-plan',
+						'recovery_router_ability' => 'context/brand-core-control-loop',
+						'resume_with_same_job_id' => true,
+						'resume_receipt_ability' => 'mad4b/skill-get',
+						'publish_requires_separate_approval' => true,
+						'approve_unreviewed_assets_automatically' => false,
+						'production_mutation_allowed' => false,
+						'read_only' => true,
+					),
+					'context_envelope_exposed' => false,
+					'context_receipt_exposed' => false,
+				)
+			);
+		}
+
+		return array(
+			'contract' => 'mad4b.skill-get.v3',
+			'skill' => $skill,
+			'context_preflight' => $preflight,
+			'context_envelope' => isset( $preflight['envelope'] ) ? $preflight['envelope'] : array(),
+			'context_receipt' => isset( $preflight['receipt'] ) ? $preflight['receipt'] : array(),
+		);
+	}
+
+	/** An omitted target may resolve only to one uniquely named registered Skill. */
+	private static function resolve_skill( $level, $target, $name ) {
+		$skill = MAD4B_SCP_Skill_Registry::get_skill( $level, $target, $name );
+		if ( ! is_wp_error( $skill ) || '' !== (string) $target || 'site' === (string) $level ) return $skill;
+		$candidates = MAD4B_SCP_Skill_Registry::list_skills( array( 'level' => $level ) );
+		$matches = array();
+		foreach ( $candidates as $candidate ) {
+			if ( isset( $candidate['name'] ) && (string) $candidate['name'] === (string) $name ) $matches[] = $candidate;
+		}
+		if ( count( $matches ) > 1 ) return new WP_Error( 'mad4b_skill_target_ambiguous', 'Several Skill targets match. Specify the exact target.' );
+		return count( $matches ) === 1
+			? MAD4B_SCP_Skill_Registry::get_skill( $level, (string) $matches[0]['target'], $name )
+			: $skill;
+	}
+
+	/** Read-only, redacted preflight. No Skill body or signed receipt is returned. */
+	public static function skill_context_preflight( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		$level = isset( $input['level'] ) ? (string) $input['level'] : '';
+		$target = isset( $input['target'] ) ? (string) $input['target'] : '';
+		$name = isset( $input['name'] ) ? (string) $input['name'] : '';
+		$skill = self::resolve_skill( $level, $target, $name );
+		if ( is_wp_error( $skill ) ) return $skill;
+		if ( empty( $skill['enabled'] ) ) return new WP_Error( 'mad4b_skill_disabled', 'Skill is not enabled.' );
+		if ( ! class_exists( 'MAD4B_SCP_Context_Preflight' ) ) return new WP_Error( 'mad4b_skill_context_preflight_unavailable', 'Context preflight service is unavailable.' );
+		$task_scope = isset( $input['task_scope'] ) ? substr( sanitize_text_field( (string) $input['task_scope'] ), 0, 160 ) : '';
+		$intended = isset( $input['intended_ability'] ) ? trim( (string) $input['intended_ability'] ) : '';
+		$preflight = MAD4B_SCP_Context_Preflight::preflight_entry( $skill, $task_scope, $intended );
+		if ( is_wp_error( $preflight ) ) return $preflight;
+		$policy = isset( $preflight['effective_policy'] ) && is_array( $preflight['effective_policy'] )
+			? $preflight['effective_policy'] : ( isset( $preflight['policy'] ) && is_array( $preflight['policy'] ) ? $preflight['policy'] : array() );
+		$receipt = isset( $preflight['receipt'] ) && is_array( $preflight['receipt'] ) ? $preflight['receipt'] : array();
+		$ready = ! empty( $preflight['ready'] ) && ! empty( $receipt['ready'] );
+		$blockers = isset( $preflight['blockers'] ) && is_array( $preflight['blockers'] ) ? array_values( array_map( 'strval', $preflight['blockers'] ) ) : array();
+		if ( ! $ready && ! $blockers ) $blockers[] = 'context_receipt_not_ready';
+		return array(
+			'contract' => 'mad4b.skill-context-preflight.v1',
+			'state' => $ready ? 'ready' : 'blocked',
+			'ready' => $ready,
+			'skill_logical_id' => isset( $skill['logical_id'] ) ? (string) $skill['logical_id'] : '',
+			'intended_ability' => $intended,
+			'brand_context_required' => ! empty( $policy['brand_context_required'] ),
+			'required_context_sets' => isset( $policy['effective_required_context_sets'] ) && is_array( $policy['effective_required_context_sets'] )
+				? array_values( $policy['effective_required_context_sets'] ) : ( isset( $policy['required_context_sets'] ) && is_array( $policy['required_context_sets'] ) ? array_values( $policy['required_context_sets'] ) : array() ),
+			'missing_context_sets' => isset( $preflight['missing_context_sets'] ) && is_array( $preflight['missing_context_sets'] ) ? array_values( $preflight['missing_context_sets'] ) : array(),
+			'blockers' => $blockers,
+			'next_action' => $ready ? 'request_skill_get_for_exact_signed_context_receipt' : 'reconcile_and_approve_required_brand_context',
+			'next_ability' => $ready ? 'mad4b/skill-get' : 'context/brand-core-control-loop',
+			'skill_body_exposed' => false,
+			'context_assets_exposed' => false,
+			'context_receipt_issued' => false,
+			'authorizing' => false,
+			'read_only' => true,
+			'mutation_performed' => false,
+		);
+	}
+
+
+	/**
+	 * A non-authorizing content-gate diagnostic independent of caller-supplied
+	 * Skill name/target. Recover from the exact live Skill registry instead
+	 * of an opaque WP_Error when users do not know a logical Skill identifier.
+	 */
+	public static function brand_content_gate_triage( $input = array() ) {
+		if ( ! is_array( $input ) || array_diff( array_keys( $input ), array( 'task_scope', 'intended_ability' ) ) )
+			return new WP_Error( 'mad4b_brand_gate_triage_input_invalid', 'Only a bounded task and intended Ability are supported.' );
+		$ability = substr( trim( (string) ( $input['intended_ability'] ?? '' ) ), 0, 191 );
+		$coverage = class_exists( 'MAD4B_SCP_Context_Authority' )
+			? MAD4B_SCP_Context_Authority::brand_core_coverage() : array();
+		$ready = is_array( $coverage ) && ! empty( $coverage['ready'] );
+		$skills = class_exists( 'MAD4B_SCP_Skill_Registry' )
+			? MAD4B_SCP_Skill_Registry::list_skills( array() ) : array();
+		$candidates = array();
+		foreach ( is_array( $skills ) ? $skills : array() as $skill ) {
+			if ( ! is_array( $skill ) || empty( $skill['enabled'] ) ) continue;
+			$policy = $skill['context_policy'] ?? array();
+			if ( empty( $policy['brand_context_required'] ) ) continue;
+			$candidates[] = array(
+				'level' => (string) ( $skill['level'] ?? '' ),
+				'target' => (string) ( $skill['target'] ?? '' ),
+				'name' => (string) ( $skill['name'] ?? '' ),
+				'logical_id' => (string) ( $skill['logical_id'] ?? '' ),
+			);
+			if ( count( $candidates ) >= 25 ) break;
+		}
+		return array(
+			'contract' => 'mad4b.brand-content-gate-triage.v1',
+			'state' => $ready ? 'brand_core_ready_skill_selection_required' : 'brand_core_recovery_required',
+			'brand_core_ready' => $ready,
+			'missing_context_sets' => is_array( $coverage ) ? array_values( $coverage['missing_required_context_sets'] ?? array() ) : array(),
+			'next_ability' => $ready ? 'mad4b/skill-context-preflight' : 'context/brand-core-control-loop',
+			'durable_task_recovery' => array(
+				'intake_ability' => 'mad4b/content-job-create',
+				'plan_ability' => 'mad4b/content-job-dependency-plan',
+				'resume_after_reviewed_brand_core' => true,
+				'readback_required_after_every_context_write' => true,
+				'no_duplicate_content_job' => true,
+				'auto_approve_unreviewed_assets' => false,
+				'separate_content_approval_required' => true,
+			),
+			'candidate_skills' => $candidates,
+			'intended_ability' => $ability,
+			'exact_skill_selection_required' => true,
+			'skill_body_exposed' => false, 'signed_receipt_exposed' => false,
+			'owner_approval_automatically_created' => false,
+			'read_only' => true, 'authorizing' => false, 'mutation_performed' => false,
+		);
+	}
+
+	/** External source references alone do not provide licensing or resale rights. */
+	public static function external_source_rights_preflight( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		$url = isset( $input['source_url'] ) ? trim( (string) $input['source_url'] ) : '';
+		$intent = isset( $input['intended_use'] ) ? (string) $input['intended_use'] : '';
+		if ( ! in_array( $intent, array( 'editorial_reference', 'commercial_offer', 'third_party_media' ), true ) ) return new WP_Error( 'mad4b_external_source_intent_invalid', 'Source use purpose is invalid.' );
+		if ( '' === $url || strlen( $url ) > 2048 || ! function_exists( 'wp_parse_url' ) ) return new WP_Error( 'mad4b_external_source_url_invalid', 'A valid, bounded absolute source URL is required.' );
+		$scheme = strtolower( (string) wp_parse_url( $url, PHP_URL_SCHEME ) );
+		$host = strtolower( (string) wp_parse_url( $url, PHP_URL_HOST ) );
+		if ( ! in_array( $scheme, array( 'http', 'https' ), true ) || '' === $host || '' !== (string) wp_parse_url( $url, PHP_URL_USER ) ) return new WP_Error( 'mad4b_external_source_url_invalid', 'Source must be an HTTP(S) URL without embedded credentials.' );
+		$id = isset( $input['post_id'] ) ? absint( $input['post_id'] ) : 0;
+		if ( $id && ( ! get_post( $id ) || ! current_user_can( 'read_post', $id ) ) ) return new WP_Error( 'mad4b_external_source_post_denied', 'Post is not readable.' );
+		$site_host = function_exists( 'home_url' ) ? strtolower( (string) wp_parse_url( home_url( '/' ), PHP_URL_HOST ) ) : '';
+		$external = '' === $site_host || ! hash_equals( $site_host, $host );
+		$requirements = array();
+		if ( $external && 'commercial_offer' === $intent ) $requirements = array( 'supplier_identity', 'signed_distribution_or_resale_authorization', 'agreement_scope_and_validity', 'sales_channels', 'live_availability_and_price', 'booking_and_refund_responsibility', 'separate_media_rights' );
+		if ( $external && 'third_party_media' === $intent ) $requirements = array( 'asset_owner', 'asset_provenance', 'license_or_permission', 'allowed_use_and_derivatives', 'attribution', 'expiration' );
+		if ( $external && 'editorial_reference' === $intent ) $requirements = array( 'original_editorial_copy', 'source_attribution', 'fact_check', 'no_unlicensed_media', 'no_false_supplier_affiliation' );
+		$coverage = class_exists( 'MAD4B_SCP_Context_Authority' ) && method_exists( 'MAD4B_SCP_Context_Authority', 'brand_core_coverage' ) ? MAD4B_SCP_Context_Authority::brand_core_coverage() : array();
+		return array(
+			'contract' => 'mad4b.external-source-rights-preflight.v1',
+			'state' => $external ? 'independent_rights_review_required' : 'first_party_origin_detected',
+			'source_host' => $host,
+			'site_host' => $site_host,
+			'external_source' => $external,
+			'intended_use' => $intent,
+			'post_id' => $id,
+			'evidence_requirements' => $requirements,
+			'brand_core_ready' => is_array( $coverage ) && ! empty( $coverage['ready'] ),
+			'brand_core_missing_context_sets' => is_array( $coverage ) && isset( $coverage['missing_required_context_sets'] ) ? $coverage['missing_required_context_sets'] : array(),
+			'supplier_rights_verified' => false,
+			'commercial_reuse_authorized' => false,
+			'licensed_media_verified' => false,
+			'public_source_implies_license' => false,
+			'next_action' => $external ? 'independent_source_rights_review' : 'verify_first_party_origin_and_brand_policy',
+			'network_access_performed' => false,
+			'authorizing' => false,
+			'read_only' => true,
+			'mutation_performed' => false,
+		);
+	}
+
+	public static function skills_export_status() {
+		return array(
+			'contract' => 'mad4b.skills-export-status.v1',
+			'registry' => MAD4B_SCP_Skill_Registry::status(),
+			'portable_snapshot' => MAD4B_SCP_Skill_Registry::portable_snapshot(),
+			'snapshot_identity' => class_exists( 'MAD4B_SCP_Skill_Snapshot_Identity' ) ? MAD4B_SCP_Skill_Snapshot_Identity::build() : array(),
+			'zero_touch_external_snapshot' => self::dynamic_snapshot_status(),
+			'note' => 'The authenticated MCP tools/list surface carries the exact current Skill snapshot anchor automatically. Portable Plugin export remains available only as a backwards-compatible fallback and is not required for live snapshot acceptance.',
+		);
+	}
+
+	public static function skills_runtime_certification() {
+		return class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' )
+			? MAD4B_SCP_Skill_Runtime_Certification::current_status()
+			: array( 'contract' => 'mad4b.skill-runtime-certification.v1', 'ready' => false, 'state' => 'unavailable' );
+	}
+
+	public static function bind_zero_touch_live_acceptance( $args, $name ) {
+		if ( 'mad4b/live-acceptance-status' !== (string) $name || ! is_array( $args ) ) return $args;
+		$args['execute_callback'] = array( __CLASS__, 'zero_touch_live_acceptance_status' );
+		return $args;
+	}
+
+	public static function zero_touch_live_acceptance_status( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		$base = class_exists( 'MAD4B_SCP_External_Snapshot_Finalizer' )
+			? MAD4B_SCP_External_Snapshot_Finalizer::live_acceptance_status( $input )
+			: ( class_exists( 'MAD4B_SCP_Live_Acceptance_Finalizer' ) ? MAD4B_SCP_Live_Acceptance_Finalizer::live_acceptance_status( $input ) : array() );
+		if ( ! is_array( $base ) ) $base = array();
+		if ( ! isset( $base['gates'] ) || ! is_array( $base['gates'] ) ) $base['gates'] = array();
+
+		$dynamic = self::dynamic_snapshot_status();
+		$existing = isset( $base['gates']['snapshot_external'] ) && is_array( $base['gates']['snapshot_external'] ) ? $base['gates']['snapshot_external'] : array();
+		if ( ! empty( $dynamic['ready'] ) || empty( $existing['ready'] ) ) $base['gates']['snapshot_external'] = $dynamic;
+
+		$base['ready'] = class_exists( 'MAD4B_SCP_Live_Acceptance_Finalizer' )
+			? MAD4B_SCP_Live_Acceptance_Finalizer::aggregate_ready( $base['gates'] )
+			: self::all_ready( $base['gates'] );
+		$base['state'] = $base['ready'] ? 'ready' : 'pending_or_blocked';
+		$base['zero_touch_external_snapshot_contract'] = self::DYNAMIC_SNAPSHOT_CONTRACT;
+		$base['external_facts_self_certified'] = false;
+		return $base;
+	}
+
+	public static function observe_external_tools_list( $response, $server, $request ) {
+		if ( ! self::staging_allowed() || ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return $response;
+		$params = method_exists( $request, 'get_json_params' ) ? $request->get_json_params() : null;
+		if ( ! is_array( $params ) || 'tools/list' !== ( isset( $params['method'] ) ? (string) $params['method'] : '' ) ) return $response;
+		$session_id = method_exists( $request, 'get_header' ) ? trim( (string) $request->get_header( 'mcp-session-id' ) ) : '';
+		if ( '' === $session_id || strlen( $session_id ) > 512 ) return $response;
+		$rest = function_exists( 'rest_ensure_response' ) ? rest_ensure_response( $response ) : $response;
+		if ( ! is_object( $rest ) || ! method_exists( $rest, 'get_status' ) || ! method_exists( $rest, 'get_data' ) || 200 !== (int) $rest->get_status() ) return $response;
+		$data = $rest->get_data();
+		if ( is_object( $data ) ) $data = get_object_vars( $data );
+		$result = is_array( $data ) && isset( $data['result'] ) ? $data['result'] : array();
+		if ( is_object( $result ) ) $result = get_object_vars( $result );
+		$tools = is_array( $result ) && isset( $result['tools'] ) && is_array( $result['tools'] ) ? $result['tools'] : array();
+		$snapshot = self::snapshot_attestation_from_tools( $tools );
+		if ( empty( $snapshot['identity_match'] ) ) return $response;
+		$names = array();
+		foreach ( $tools as $tool ) if ( is_array( $tool ) && isset( $tool['name'] ) && is_string( $tool['name'] ) && '' !== trim( $tool['name'] ) ) $names[] = trim( $tool['name'] );
+		$names = array_values( array_unique( $names ) );
+		sort( $names, SORT_STRING );
+		if ( empty( $names ) ) return $response;
+		self::$pending_external_snapshot = array(
+			'session_fingerprint' => hash( 'sha256', $session_id ),
+			'snapshot_identity' => (string) $snapshot['observed_identity'],
+			'tool_inventory_fingerprint' => hash( 'sha256', implode( "\n", $names ) ),
+			'tool_count' => count( $names ),
+			'observed_at' => gmdate( 'Y-m-d H:i:s' ),
+		);
+		unset( $session_id );
+		return $response;
+	}
+
+	public static function finalize_external_snapshot_observation() {
+		$pending = self::$pending_external_snapshot;
+		self::$pending_external_snapshot = null;
+		if ( ! is_array( $pending ) || ! self::staging_allowed() ) return;
+		if ( ! class_exists( 'MAD4B_SCP_External_Handshake_Evidence' ) || ! class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ) return;
+
+		$handshake = MAD4B_SCP_External_Handshake_Evidence::status();
+		$raw_handshake = get_option( MAD4B_SCP_External_Handshake_Evidence::OPTION, array() );
+		$observer = MAD4B_SCP_Live_Acceptance_Observer::external_handshake_attestation_status();
+		if ( ! method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_identity_status' ) ) return;
+		$provenance = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status();
+		if ( ! is_array( $handshake ) || empty( $handshake['verified'] ) || empty( $handshake['tool_inventory_match'] ) || empty( $handshake['build_fingerprint_match'] ) ) return;
+		if ( ! is_array( $raw_handshake ) || ! is_array( $observer ) || empty( $observer['verified'] ) || empty( $observer['real_external_session'] ) || empty( $observer['inventory_match'] ) || empty( $observer['write_inventory_fingerprint_match'] ) || empty( $observer['build_fingerprint_match'] ) ) return;
+		if ( ! is_array( $provenance ) || empty( $provenance['identity_ready'] ) ) return;
+
+		$raw_session = isset( $raw_handshake['mcp_session_fingerprint'] ) ? strtolower( trim( (string) $raw_handshake['mcp_session_fingerprint'] ) ) : '';
+		$raw_inventory = isset( $raw_handshake['tool_inventory_fingerprint'] ) ? strtolower( trim( (string) $raw_handshake['tool_inventory_fingerprint'] ) ) : '';
+		$observer_inventory = isset( $observer['external_tool_inventory_fingerprint'] ) ? strtolower( trim( (string) $observer['external_tool_inventory_fingerprint'] ) ) : '';
+		if ( ! self::valid_hash( $raw_session ) || ! hash_equals( $raw_session, (string) $pending['session_fingerprint'] ) ) return;
+		if ( ! self::valid_hash( $raw_inventory ) || ! hash_equals( $raw_inventory, (string) $pending['tool_inventory_fingerprint'] ) ) return;
+		if ( ! self::valid_hash( $observer_inventory ) || ! hash_equals( $observer_inventory, (string) $pending['tool_inventory_fingerprint'] ) ) return;
+		if ( ! isset( $raw_handshake['tool_count'], $observer['external_tool_count'] ) || (int) $raw_handshake['tool_count'] !== (int) $pending['tool_count'] || (int) $observer['external_tool_count'] !== (int) $pending['tool_count'] ) return;
+		if ( self::CHATGPT_CLIENT_ID !== ( isset( $handshake['client_id'] ) ? (string) $handshake['client_id'] : '' ) || self::SERVER_ID !== ( isset( $handshake['server_id'] ) ? (string) $handshake['server_id'] : '' ) ) return;
+
+		$observer_time = self::parse_time( isset( $observer['observed_at'] ) ? $observer['observed_at'] : '' );
+		$pending_time = self::parse_time( isset( $pending['observed_at'] ) ? $pending['observed_at'] : '' );
+		if ( false === $observer_time || false === $pending_time || abs( $observer_time - $pending_time ) > 5 ) return;
+		$current_snapshot = self::snapshot_anchor();
+		if ( '' === $current_snapshot || ! hash_equals( $current_snapshot, (string) $pending['snapshot_identity'] ) ) return;
+
+		$source_sha = isset( $provenance['source_commit_sha'] ) ? strtolower( trim( (string) $provenance['source_commit_sha'] ) ) : '';
+		$build = isset( $provenance['build_fingerprint'] ) ? strtolower( trim( (string) $provenance['build_fingerprint'] ) ) : '';
+		$observer_build = isset( $observer['build_fingerprint'] ) ? strtolower( trim( (string) $observer['build_fingerprint'] ) ) : '';
+		if ( 1 !== preg_match( '/^[a-f0-9]{40}$/', $source_sha ) || ! self::valid_hash( $build ) || ! self::valid_hash( $observer_build ) || ! hash_equals( $build, $observer_build ) ) return;
+
+		update_option(
+			self::DYNAMIC_SNAPSHOT_OPTION,
+			array(
+				'contract' => self::DYNAMIC_SNAPSHOT_CONTRACT,
+				'candidate_sha' => $source_sha,
+				'build_fingerprint' => $build,
+				'snapshot_identity' => $current_snapshot,
+				'mcp_session_fingerprint' => $raw_session,
+				'tool_inventory_fingerprint' => $raw_inventory,
+				'tool_count' => (int) $pending['tool_count'],
+				'observer_observed_at' => isset( $observer['observed_at'] ) ? (string) $observer['observed_at'] : '',
+				'handshake_verified_at' => isset( $handshake['verified_at'] ) ? (string) $handshake['verified_at'] : '',
+				'observed_at' => gmdate( 'c' ),
+			),
+			false
+		);
+	}
+
+	/** @internal Pure parser for the exact Skill snapshot anchor in tools/list metadata. */
+	public static function snapshot_attestation_from_tools( array $tools ) {
+		$expected_tool = self::ability_to_mcp_tool_name( 'mad4b/skills-export-status' );
+		$observed = '';
+		foreach ( $tools as $tool ) {
+			if ( ! is_array( $tool ) || empty( $tool['name'] ) || ! is_string( $tool['name'] ) || '' === $expected_tool || ! hash_equals( $expected_tool, trim( (string) $tool['name'] ) ) ) continue;
+			$description = isset( $tool['description'] ) && is_string( $tool['description'] ) ? $tool['description'] : '';
+			$pattern = '/(?:^|\s)' . preg_quote( self::SNAPSHOT_ANCHOR_PREFIX, '/' ) . '\s+(sha256:[a-f0-9]{64})(?:\.|\s|$)/i';
+			if ( preg_match( $pattern, $description, $matches ) ) $observed = strtolower( (string) $matches[1] );
+			break;
+		}
+		$expected = self::snapshot_anchor();
+		$present = 1 === preg_match( '/^sha256:[a-f0-9]{64}$/', $observed );
+		return array(
+			'anchor_present' => (bool) $present,
+			'tool_name' => $expected_tool,
+			'observed_identity' => $present ? $observed : '',
+			'expected_identity' => $expected,
+			'identity_match' => $present && '' !== $expected && hash_equals( $expected, $observed ),
+		);
+	}
+
+	/** @internal Read-only evaluator used by the live-acceptance wrapper and tests. */
+	public static function dynamic_snapshot_status() {
+		$stored = self::staging_allowed() ? get_option( self::DYNAMIC_SNAPSHOT_OPTION, array() ) : array();
+		$provenance = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status() : array();
+		$external = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::external_handshake_attestation_status() : array();
+		$handshake = class_exists( 'MAD4B_SCP_External_Handshake_Evidence' ) ? MAD4B_SCP_External_Handshake_Evidence::status() : array();
+		$raw_handshake = class_exists( 'MAD4B_SCP_External_Handshake_Evidence' ) ? get_option( MAD4B_SCP_External_Handshake_Evidence::OPTION, array() ) : array();
+		$current_snapshot = self::snapshot_anchor();
+		$blockers = array();
+
+		if ( ! self::staging_allowed() ) $blockers[] = 'wrong_target';
+		if ( ! is_array( $stored ) || self::DYNAMIC_SNAPSHOT_CONTRACT !== ( isset( $stored['contract'] ) ? (string) $stored['contract'] : '' ) ) $blockers[] = 'fresh_external_tools_list_required';
+		if ( ! is_array( $provenance ) || empty( $provenance['runtime_manifest_match'] ) || ! empty( $provenance['stale'] ) ) $blockers[] = 'candidate_provenance_unavailable';
+		if ( ! is_array( $handshake ) || empty( $handshake['verified'] ) || empty( $handshake['tool_inventory_match'] ) || empty( $handshake['build_fingerprint_match'] ) ) $blockers[] = 'fresh_external_tools_list_required';
+		if ( ! is_array( $external ) || empty( $external['verified'] ) || empty( $external['real_external_session'] ) || empty( $external['finalizer_subject_binding_verified'] ) || empty( $external['inventory_match'] ) || empty( $external['write_inventory_fingerprint_match'] ) || empty( $external['build_fingerprint_match'] ) ) $blockers[] = 'external_subject_session_binding_required';
+		if ( self::CHATGPT_CLIENT_ID !== ( isset( $external['client_id'] ) ? (string) $external['client_id'] : '' ) || self::SERVER_ID !== ( isset( $external['server_id'] ) ? (string) $external['server_id'] : '' ) ) $blockers[] = 'external_client_server_binding_mismatch';
+		if ( ! self::valid_hash( isset( $external['finalizer_context_digest'] ) ? strtolower( trim( (string) $external['finalizer_context_digest'] ) ) : '' ) ) $blockers[] = 'external_subject_session_binding_required';
+
+		$source_sha = isset( $provenance['source_commit_sha'] ) ? strtolower( trim( (string) $provenance['source_commit_sha'] ) ) : '';
+		$build = isset( $provenance['build_fingerprint'] ) ? strtolower( trim( (string) $provenance['build_fingerprint'] ) ) : '';
+		$stored_sha = isset( $stored['candidate_sha'] ) ? strtolower( trim( (string) $stored['candidate_sha'] ) ) : '';
+		$stored_build = isset( $stored['build_fingerprint'] ) ? strtolower( trim( (string) $stored['build_fingerprint'] ) ) : '';
+		if ( 1 !== preg_match( '/^[a-f0-9]{40}$/', $source_sha ) || 1 !== preg_match( '/^[a-f0-9]{40}$/', $stored_sha ) || ! hash_equals( $source_sha, $stored_sha ) ) $blockers[] = 'candidate_mismatch';
+		if ( ! self::valid_hash( $build ) || ! self::valid_hash( $stored_build ) || ! hash_equals( $build, $stored_build ) ) $blockers[] = 'build_fingerprint_mismatch';
+
+		$stored_snapshot = isset( $stored['snapshot_identity'] ) ? strtolower( trim( (string) $stored['snapshot_identity'] ) ) : '';
+		if ( '' === $current_snapshot || 1 !== preg_match( '/^sha256:[a-f0-9]{64}$/', $stored_snapshot ) || ! hash_equals( $current_snapshot, $stored_snapshot ) ) $blockers[] = 'snapshot_binding_changed';
+
+		$stored_session = isset( $stored['mcp_session_fingerprint'] ) ? strtolower( trim( (string) $stored['mcp_session_fingerprint'] ) ) : '';
+		$current_session = is_array( $raw_handshake ) && isset( $raw_handshake['mcp_session_fingerprint'] ) ? strtolower( trim( (string) $raw_handshake['mcp_session_fingerprint'] ) ) : '';
+		if ( ! self::valid_hash( $stored_session ) || ! self::valid_hash( $current_session ) || ! hash_equals( $stored_session, $current_session ) ) $blockers[] = 'external_session_binding_changed';
+
+		$stored_inventory = isset( $stored['tool_inventory_fingerprint'] ) ? strtolower( trim( (string) $stored['tool_inventory_fingerprint'] ) ) : '';
+		$current_inventory = isset( $external['external_tool_inventory_fingerprint'] ) ? strtolower( trim( (string) $external['external_tool_inventory_fingerprint'] ) ) : '';
+		$handshake_inventory = is_array( $handshake ) && isset( $handshake['tool_inventory_fingerprint'] ) ? strtolower( trim( (string) $handshake['tool_inventory_fingerprint'] ) ) : '';
+		if ( ! self::valid_hash( $stored_inventory ) || ! self::valid_hash( $current_inventory ) || ! self::valid_hash( $handshake_inventory ) || ! hash_equals( $stored_inventory, $current_inventory ) || ! hash_equals( $stored_inventory, $handshake_inventory ) ) $blockers[] = 'external_inventory_changed';
+
+		$stored_observer_time = isset( $stored['observer_observed_at'] ) ? (string) $stored['observer_observed_at'] : '';
+		$current_observer_time = isset( $external['observed_at'] ) ? (string) $external['observed_at'] : '';
+		if ( '' === $stored_observer_time || '' === $current_observer_time || ! hash_equals( $stored_observer_time, $current_observer_time ) ) $blockers[] = 'external_observation_changed';
+		$observed_at = isset( $stored['observed_at'] ) ? (string) $stored['observed_at'] : '';
+		$observed_ts = self::parse_time( $observed_at );
+		$fresh = false !== $observed_ts && $observed_ts <= time() + 60 && ( time() - $observed_ts ) <= self::DYNAMIC_SNAPSHOT_TTL;
+		if ( ! $fresh ) $blockers[] = 'stale_external_snapshot_attestation';
+
+		$blockers = array_values( array_unique( $blockers ) );
+		$ready = empty( $blockers );
+		return array(
+			'ready' => $ready,
+			'state' => $ready ? 'ready' : 'pending_external_evidence',
+			'fresh' => $ready && $fresh,
+			'evidence_contract' => self::DYNAMIC_SNAPSHOT_CONTRACT,
+			'evidence_mode' => 'dynamic_authenticated_mcp_tools_list',
+			'observed_at' => $observed_at,
+			'blockers' => $blockers,
+			'candidate_sha' => $source_sha,
+			'build_fingerprint' => $build,
+			'snapshot_identity' => $current_snapshot,
+			'external_subject_session_bound' => empty( $blockers ) || ! in_array( 'external_subject_session_binding_required', $blockers, true ),
+			'self_certified' => false,
+		);
+	}
+
+	private static function ability_to_mcp_tool_name( $ability_name ) {
+		if ( ! class_exists( '\\WP\\MCP\\Domain\\Utils\\McpNameSanitizer' ) ) return '';
+		$name = \WP\MCP\Domain\Utils\McpNameSanitizer::sanitize_name( (string) $ability_name );
+		return is_wp_error( $name ) || ! is_string( $name ) ? '' : trim( $name );
+	}
+
+	private static function normalize_value( $value ) {
+		$encoded = wp_json_encode( $value );
+		return false === $encoded ? null : json_decode( $encoded, true );
+	}
+
+	private static function staging_allowed() {
+		if ( defined( 'WP_CLI' ) && WP_CLI ) return false;
+		if ( defined( 'DOING_CRON' ) && DOING_CRON ) return false;
+		return class_exists( 'MAD4B_SCP_Site_Profile' )
+			&& MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
+			&& MAD4B_SCP_Site_Profile::skills_enabled();
+	}
+
+	private static function parse_time( $value ) {
+		$value = trim( (string) $value );
+		return '' === $value ? false : strtotime( $value );
+	}
+
+	private static function valid_hash( $value ) { return is_string( $value ) && 1 === preg_match( '/^[a-f0-9]{64}$/', $value ); }
+	private static function all_ready( array $gates ) { foreach ( $gates as $gate ) if ( ! is_array( $gate ) || empty( $gate['ready'] ) ) return false; return ! empty( $gates ); }
+}
+ ) ),
+                    'source_offset' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 40 ),
+                    'max_results' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 12 ),
+                ),
+                'required' => array( 'task' ), 'additionalProperties' => false,
+            ),
+            array( 'SCP_Skill_Task_Composition', 'match_task' )
+        );
+        self::add(
+            'mad4b/skill-composition-plan', 'Suggest Compatible Skill Plan',
+            array(
+                'type' => 'object',
+                'properties' => array(
+                    'task' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 4000 ),
+                    'topics' => array( 'type' => 'array', 'maxItems' => 12, 'items' => array( 'type' => 'string', 'maxLength' => 80 ) ),
+                    'source_ids' => array( 'type' => 'array', 'maxItems' => 40, 'items' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{24}
+		self::add(
+			'mad4b/skill-context-preflight',
+			'Inspect Skill Context Readiness',
+			array(
+				'type' => 'object',
+				'properties' => array(
+					'level' => array( 'type' => 'string', 'enum' => MAD4B_SCP_Skill_Registry::levels() ),
+					'target' => array( 'type' => 'string', 'maxLength' => 120 ),
+					'name' => array( 'type' => 'string', 'pattern' => '^[a-z0-9]+(?:-[a-z0-9]+)*$' ),
+					'task_scope' => array( 'type' => 'string', 'maxLength' => 160 ),
+					'intended_ability' => array( 'type' => 'string', 'maxLength' => 191 ),
+				),
+				'required' => array( 'level', 'name' ),
+				'additionalProperties' => false,
+			),
+			array( __CLASS__, 'skill_context_preflight' )
+		);
+
+
+		self::add(
+			'mad4b/brand-content-gate-triage',
+			'Discover Exact Skill and Brand Recovery Route Without Guessing Target',
+			array( 'type' => 'object', 'properties' => array(
+				'intended_ability' => array( 'type' => 'string', 'maxLength' => 191 ),
+				'task_scope' => array( 'type' => 'string', 'maxLength' => 160 ),
+			), 'additionalProperties' => false ),
+			array( __CLASS__, 'brand_content_gate_triage' )
+		);
+
+		self::add(
+			'mad4b/external-source-rights-preflight',
+			'Inspect External Supplier and Media Reuse Rights',
+			array( 'type'=>'object','properties'=>array(
+				'source_url'=>array('type'=>'string','maxLength'=>2048),
+				'intended_use'=>array('type'=>'string','enum'=>array('editorial_reference','commercial_offer','third_party_media')),
+				'post_id'=>array('type'=>'integer','minimum'=>1),
+			),'required'=>array('source_url','intended_use'),'additionalProperties'=>false),
+			array( __CLASS__, 'external_source_rights_preflight' )
+		);
+
+		self::add(
+			'mad4b/skills-export-status',
+			'Get Skills Export Status',
+			array( 'type' => 'object', 'additionalProperties' => false ),
+			array( __CLASS__, 'skills_export_status' )
+		);
+
+		self::add(
+			'mad4b/skills-runtime-certification',
+			'Get Skills Runtime Certification',
+			array( 'type' => 'object', 'additionalProperties' => false ),
+			array( __CLASS__, 'skills_runtime_certification' )
+		);
+	}
+
+	private static function add( $name, $label, array $input_schema, $callback ) {
+		wp_register_ability(
+			$name,
+			array(
+				'label' => $label,
+				'description' => self::ability_description( $name, $label ),
+				'category' => 'mad4b-read',
+				'execute_callback' => $callback,
+				'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
+				'input_schema' => $input_schema,
+				'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+				'meta' => array(
+					'public' => false,
+					'show_in_rest' => false,
+					'mcp' => array( 'public' => false, 'type' => 'tool' ),
+					'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+				),
+			)
+		);
+	}
+
+	/** @internal Deterministic tool metadata anchor consumed only from a real external tools/list response. */
+	public static function snapshot_anchor() {
+		$identity = array();
+		if ( class_exists( 'MAD4B_SCP_Skill_Snapshot_Identity' ) ) {
+			$identity = method_exists( 'MAD4B_SCP_Skill_Snapshot_Identity', 'build_request_cached' )
+				? MAD4B_SCP_Skill_Snapshot_Identity::build_request_cached()
+				: MAD4B_SCP_Skill_Snapshot_Identity::build();
+		}
+		$token = isset( $identity['identity_token'] ) ? strtolower( trim( (string) $identity['identity_token'] ) ) : '';
+		return 1 === preg_match( '/^sha256:[a-f0-9]{64}$/', $token ) ? $token : '';
+	}
+
+	private static function ability_description( $name, $label ) {
+		$description = $label . ' through the governed MAD4B file-backed Skill registry.';
+		if ( 'mad4b/skills-export-status' !== (string) $name ) return $description;
+		$anchor = self::snapshot_anchor();
+		return '' === $anchor ? $description : $description . ' ' . self::SNAPSHOT_ANCHOR_PREFIX . ' ' . $anchor . '.';
+	}
+
+	public static function skills_list( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		$filters = array();
+		if ( isset( $input['level'] ) ) $filters['level'] = $input['level'];
+		if ( isset( $input['target'] ) ) $filters['target'] = $input['target'];
+		if ( array_key_exists( 'enabled', $input ) ) $filters['enabled'] = (bool) $input['enabled'];
+		$skills = MAD4B_SCP_Skill_Registry::list_skills( $filters );
+		return array( 'contract' => 'mad4b.skills-list.v1', 'count' => count( $skills ), 'skills' => $skills );
+	}
+
+	public static function skill_get( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		$level = isset( $input['level'] ) ? $input['level'] : '';
+		$target = isset( $input['target'] ) ? $input['target'] : '';
+		$name = isset( $input['name'] ) ? $input['name'] : '';
+		$task_scope = isset( $input['task_scope'] ) ? substr( sanitize_text_field( (string) $input['task_scope'] ), 0, 160 ) : '';
+		$intended_ability = isset( $input['intended_ability'] ) ? trim( (string) $input['intended_ability'] ) : '';
+		$skill = self::resolve_skill( $level, $target, $name );
+		if ( is_wp_error( $skill ) ) return $skill;
+		if ( ! class_exists( 'MAD4B_SCP_Context_Preflight' ) ) return new WP_Error( 'mad4b_skill_context_preflight_unavailable', 'Skill exposure is denied because Context Preflight is unavailable.' );
+
+		$preflight = MAD4B_SCP_Context_Preflight::preflight_entry( $skill, $task_scope, $intended_ability );
+		if ( is_wp_error( $preflight ) ) return $preflight;
+		if ( empty( $preflight['ready'] ) ) {
+			return new WP_Error(
+				'mad4b_required_brand_context_unavailable',
+				'This Skill requires governed Brand Context that is not currently ready.',
+				array(
+					'skill_logical_id' => isset( $skill['logical_id'] ) ? (string) $skill['logical_id'] : '',
+					// Deliberately redact the raw Context envelope and signed
+					// receipt. Even a blocked preflight may contain eligible
+					// optional assets unrelated to the missing required set.
+					'context_ready' => false,
+					'blockers' => isset( $preflight['blockers'] ) && is_array( $preflight['blockers'] ) ? array_values( array_map( 'strval', $preflight['blockers'] ) ) : array( 'context_not_ready' ),
+					'missing_context_sets' => isset( $preflight['missing_context_sets'] ) && is_array( $preflight['missing_context_sets'] ) ? array_values( array_map( 'strval', $preflight['missing_context_sets'] ) ) : array(),
+					'next_read_ability' => 'mad4b/brand-content-gate-triage',
+					'recovery_handoff' => array(
+						'contract' => 'mad4b.content-job-dependency-recovery.v1',
+						'state' => 'PRESERVE_ORIGINAL_TASK_AND_RECOVER_BRAND',
+						'intake_ability' => 'mad4b/content-job-create',
+						'intake_requires_exact_approval' => true,
+						'resume_plan_ability' => 'mad4b/content-job-dependency-plan',
+						'recovery_router_ability' => 'context/brand-core-control-loop',
+						'resume_with_same_job_id' => true,
+						'resume_receipt_ability' => 'mad4b/skill-get',
+						'publish_requires_separate_approval' => true,
+						'approve_unreviewed_assets_automatically' => false,
+						'production_mutation_allowed' => false,
+						'read_only' => true,
+					),
+					'context_envelope_exposed' => false,
+					'context_receipt_exposed' => false,
+				)
+			);
+		}
+
+		return array(
+			'contract' => 'mad4b.skill-get.v3',
+			'skill' => $skill,
+			'context_preflight' => $preflight,
+			'context_envelope' => isset( $preflight['envelope'] ) ? $preflight['envelope'] : array(),
+			'context_receipt' => isset( $preflight['receipt'] ) ? $preflight['receipt'] : array(),
+		);
+	}
+
+	/** An omitted target may resolve only to one uniquely named registered Skill. */
+	private static function resolve_skill( $level, $target, $name ) {
+		$skill = MAD4B_SCP_Skill_Registry::get_skill( $level, $target, $name );
+		if ( ! is_wp_error( $skill ) || '' !== (string) $target || 'site' === (string) $level ) return $skill;
+		$candidates = MAD4B_SCP_Skill_Registry::list_skills( array( 'level' => $level ) );
+		$matches = array();
+		foreach ( $candidates as $candidate ) {
+			if ( isset( $candidate['name'] ) && (string) $candidate['name'] === (string) $name ) $matches[] = $candidate;
+		}
+		if ( count( $matches ) > 1 ) return new WP_Error( 'mad4b_skill_target_ambiguous', 'Several Skill targets match. Specify the exact target.' );
+		return count( $matches ) === 1
+			? MAD4B_SCP_Skill_Registry::get_skill( $level, (string) $matches[0]['target'], $name )
+			: $skill;
+	}
+
+	/** Read-only, redacted preflight. No Skill body or signed receipt is returned. */
+	public static function skill_context_preflight( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		$level = isset( $input['level'] ) ? (string) $input['level'] : '';
+		$target = isset( $input['target'] ) ? (string) $input['target'] : '';
+		$name = isset( $input['name'] ) ? (string) $input['name'] : '';
+		$skill = self::resolve_skill( $level, $target, $name );
+		if ( is_wp_error( $skill ) ) return $skill;
+		if ( empty( $skill['enabled'] ) ) return new WP_Error( 'mad4b_skill_disabled', 'Skill is not enabled.' );
+		if ( ! class_exists( 'MAD4B_SCP_Context_Preflight' ) ) return new WP_Error( 'mad4b_skill_context_preflight_unavailable', 'Context preflight service is unavailable.' );
+		$task_scope = isset( $input['task_scope'] ) ? substr( sanitize_text_field( (string) $input['task_scope'] ), 0, 160 ) : '';
+		$intended = isset( $input['intended_ability'] ) ? trim( (string) $input['intended_ability'] ) : '';
+		$preflight = MAD4B_SCP_Context_Preflight::preflight_entry( $skill, $task_scope, $intended );
+		if ( is_wp_error( $preflight ) ) return $preflight;
+		$policy = isset( $preflight['effective_policy'] ) && is_array( $preflight['effective_policy'] )
+			? $preflight['effective_policy'] : ( isset( $preflight['policy'] ) && is_array( $preflight['policy'] ) ? $preflight['policy'] : array() );
+		$receipt = isset( $preflight['receipt'] ) && is_array( $preflight['receipt'] ) ? $preflight['receipt'] : array();
+		$ready = ! empty( $preflight['ready'] ) && ! empty( $receipt['ready'] );
+		$blockers = isset( $preflight['blockers'] ) && is_array( $preflight['blockers'] ) ? array_values( array_map( 'strval', $preflight['blockers'] ) ) : array();
+		if ( ! $ready && ! $blockers ) $blockers[] = 'context_receipt_not_ready';
+		return array(
+			'contract' => 'mad4b.skill-context-preflight.v1',
+			'state' => $ready ? 'ready' : 'blocked',
+			'ready' => $ready,
+			'skill_logical_id' => isset( $skill['logical_id'] ) ? (string) $skill['logical_id'] : '',
+			'intended_ability' => $intended,
+			'brand_context_required' => ! empty( $policy['brand_context_required'] ),
+			'required_context_sets' => isset( $policy['effective_required_context_sets'] ) && is_array( $policy['effective_required_context_sets'] )
+				? array_values( $policy['effective_required_context_sets'] ) : ( isset( $policy['required_context_sets'] ) && is_array( $policy['required_context_sets'] ) ? array_values( $policy['required_context_sets'] ) : array() ),
+			'missing_context_sets' => isset( $preflight['missing_context_sets'] ) && is_array( $preflight['missing_context_sets'] ) ? array_values( $preflight['missing_context_sets'] ) : array(),
+			'blockers' => $blockers,
+			'next_action' => $ready ? 'request_skill_get_for_exact_signed_context_receipt' : 'reconcile_and_approve_required_brand_context',
+			'next_ability' => $ready ? 'mad4b/skill-get' : 'context/brand-core-control-loop',
+			'skill_body_exposed' => false,
+			'context_assets_exposed' => false,
+			'context_receipt_issued' => false,
+			'authorizing' => false,
+			'read_only' => true,
+			'mutation_performed' => false,
+		);
+	}
+
+
+	/**
+	 * A non-authorizing content-gate diagnostic independent of caller-supplied
+	 * Skill name/target. Recover from the exact live Skill registry instead
+	 * of an opaque WP_Error when users do not know a logical Skill identifier.
+	 */
+	public static function brand_content_gate_triage( $input = array() ) {
+		if ( ! is_array( $input ) || array_diff( array_keys( $input ), array( 'task_scope', 'intended_ability' ) ) )
+			return new WP_Error( 'mad4b_brand_gate_triage_input_invalid', 'Only a bounded task and intended Ability are supported.' );
+		$ability = substr( trim( (string) ( $input['intended_ability'] ?? '' ) ), 0, 191 );
+		$coverage = class_exists( 'MAD4B_SCP_Context_Authority' )
+			? MAD4B_SCP_Context_Authority::brand_core_coverage() : array();
+		$ready = is_array( $coverage ) && ! empty( $coverage['ready'] );
+		$skills = class_exists( 'MAD4B_SCP_Skill_Registry' )
+			? MAD4B_SCP_Skill_Registry::list_skills( array() ) : array();
+		$candidates = array();
+		foreach ( is_array( $skills ) ? $skills : array() as $skill ) {
+			if ( ! is_array( $skill ) || empty( $skill['enabled'] ) ) continue;
+			$policy = $skill['context_policy'] ?? array();
+			if ( empty( $policy['brand_context_required'] ) ) continue;
+			$candidates[] = array(
+				'level' => (string) ( $skill['level'] ?? '' ),
+				'target' => (string) ( $skill['target'] ?? '' ),
+				'name' => (string) ( $skill['name'] ?? '' ),
+				'logical_id' => (string) ( $skill['logical_id'] ?? '' ),
+			);
+			if ( count( $candidates ) >= 25 ) break;
+		}
+		return array(
+			'contract' => 'mad4b.brand-content-gate-triage.v1',
+			'state' => $ready ? 'brand_core_ready_skill_selection_required' : 'brand_core_recovery_required',
+			'brand_core_ready' => $ready,
+			'missing_context_sets' => is_array( $coverage ) ? array_values( $coverage['missing_required_context_sets'] ?? array() ) : array(),
+			'next_ability' => $ready ? 'mad4b/skill-context-preflight' : 'context/brand-core-control-loop',
+			'durable_task_recovery' => array(
+				'intake_ability' => 'mad4b/content-job-create',
+				'plan_ability' => 'mad4b/content-job-dependency-plan',
+				'resume_after_reviewed_brand_core' => true,
+				'readback_required_after_every_context_write' => true,
+				'no_duplicate_content_job' => true,
+				'auto_approve_unreviewed_assets' => false,
+				'separate_content_approval_required' => true,
+			),
+			'candidate_skills' => $candidates,
+			'intended_ability' => $ability,
+			'exact_skill_selection_required' => true,
+			'skill_body_exposed' => false, 'signed_receipt_exposed' => false,
+			'owner_approval_automatically_created' => false,
+			'read_only' => true, 'authorizing' => false, 'mutation_performed' => false,
+		);
+	}
+
+	/** External source references alone do not provide licensing or resale rights. */
+	public static function external_source_rights_preflight( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		$url = isset( $input['source_url'] ) ? trim( (string) $input['source_url'] ) : '';
+		$intent = isset( $input['intended_use'] ) ? (string) $input['intended_use'] : '';
+		if ( ! in_array( $intent, array( 'editorial_reference', 'commercial_offer', 'third_party_media' ), true ) ) return new WP_Error( 'mad4b_external_source_intent_invalid', 'Source use purpose is invalid.' );
+		if ( '' === $url || strlen( $url ) > 2048 || ! function_exists( 'wp_parse_url' ) ) return new WP_Error( 'mad4b_external_source_url_invalid', 'A valid, bounded absolute source URL is required.' );
+		$scheme = strtolower( (string) wp_parse_url( $url, PHP_URL_SCHEME ) );
+		$host = strtolower( (string) wp_parse_url( $url, PHP_URL_HOST ) );
+		if ( ! in_array( $scheme, array( 'http', 'https' ), true ) || '' === $host || '' !== (string) wp_parse_url( $url, PHP_URL_USER ) ) return new WP_Error( 'mad4b_external_source_url_invalid', 'Source must be an HTTP(S) URL without embedded credentials.' );
+		$id = isset( $input['post_id'] ) ? absint( $input['post_id'] ) : 0;
+		if ( $id && ( ! get_post( $id ) || ! current_user_can( 'read_post', $id ) ) ) return new WP_Error( 'mad4b_external_source_post_denied', 'Post is not readable.' );
+		$site_host = function_exists( 'home_url' ) ? strtolower( (string) wp_parse_url( home_url( '/' ), PHP_URL_HOST ) ) : '';
+		$external = '' === $site_host || ! hash_equals( $site_host, $host );
+		$requirements = array();
+		if ( $external && 'commercial_offer' === $intent ) $requirements = array( 'supplier_identity', 'signed_distribution_or_resale_authorization', 'agreement_scope_and_validity', 'sales_channels', 'live_availability_and_price', 'booking_and_refund_responsibility', 'separate_media_rights' );
+		if ( $external && 'third_party_media' === $intent ) $requirements = array( 'asset_owner', 'asset_provenance', 'license_or_permission', 'allowed_use_and_derivatives', 'attribution', 'expiration' );
+		if ( $external && 'editorial_reference' === $intent ) $requirements = array( 'original_editorial_copy', 'source_attribution', 'fact_check', 'no_unlicensed_media', 'no_false_supplier_affiliation' );
+		$coverage = class_exists( 'MAD4B_SCP_Context_Authority' ) && method_exists( 'MAD4B_SCP_Context_Authority', 'brand_core_coverage' ) ? MAD4B_SCP_Context_Authority::brand_core_coverage() : array();
+		return array(
+			'contract' => 'mad4b.external-source-rights-preflight.v1',
+			'state' => $external ? 'independent_rights_review_required' : 'first_party_origin_detected',
+			'source_host' => $host,
+			'site_host' => $site_host,
+			'external_source' => $external,
+			'intended_use' => $intent,
+			'post_id' => $id,
+			'evidence_requirements' => $requirements,
+			'brand_core_ready' => is_array( $coverage ) && ! empty( $coverage['ready'] ),
+			'brand_core_missing_context_sets' => is_array( $coverage ) && isset( $coverage['missing_required_context_sets'] ) ? $coverage['missing_required_context_sets'] : array(),
+			'supplier_rights_verified' => false,
+			'commercial_reuse_authorized' => false,
+			'licensed_media_verified' => false,
+			'public_source_implies_license' => false,
+			'next_action' => $external ? 'independent_source_rights_review' : 'verify_first_party_origin_and_brand_policy',
+			'network_access_performed' => false,
+			'authorizing' => false,
+			'read_only' => true,
+			'mutation_performed' => false,
+		);
+	}
+
+	public static function skills_export_status() {
+		return array(
+			'contract' => 'mad4b.skills-export-status.v1',
+			'registry' => MAD4B_SCP_Skill_Registry::status(),
+			'portable_snapshot' => MAD4B_SCP_Skill_Registry::portable_snapshot(),
+			'snapshot_identity' => class_exists( 'MAD4B_SCP_Skill_Snapshot_Identity' ) ? MAD4B_SCP_Skill_Snapshot_Identity::build() : array(),
+			'zero_touch_external_snapshot' => self::dynamic_snapshot_status(),
+			'note' => 'The authenticated MCP tools/list surface carries the exact current Skill snapshot anchor automatically. Portable Plugin export remains available only as a backwards-compatible fallback and is not required for live snapshot acceptance.',
+		);
+	}
+
+	public static function skills_runtime_certification() {
+		return class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' )
+			? MAD4B_SCP_Skill_Runtime_Certification::current_status()
+			: array( 'contract' => 'mad4b.skill-runtime-certification.v1', 'ready' => false, 'state' => 'unavailable' );
+	}
+
+	public static function bind_zero_touch_live_acceptance( $args, $name ) {
+		if ( 'mad4b/live-acceptance-status' !== (string) $name || ! is_array( $args ) ) return $args;
+		$args['execute_callback'] = array( __CLASS__, 'zero_touch_live_acceptance_status' );
+		return $args;
+	}
+
+	public static function zero_touch_live_acceptance_status( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		$base = class_exists( 'MAD4B_SCP_External_Snapshot_Finalizer' )
+			? MAD4B_SCP_External_Snapshot_Finalizer::live_acceptance_status( $input )
+			: ( class_exists( 'MAD4B_SCP_Live_Acceptance_Finalizer' ) ? MAD4B_SCP_Live_Acceptance_Finalizer::live_acceptance_status( $input ) : array() );
+		if ( ! is_array( $base ) ) $base = array();
+		if ( ! isset( $base['gates'] ) || ! is_array( $base['gates'] ) ) $base['gates'] = array();
+
+		$dynamic = self::dynamic_snapshot_status();
+		$existing = isset( $base['gates']['snapshot_external'] ) && is_array( $base['gates']['snapshot_external'] ) ? $base['gates']['snapshot_external'] : array();
+		if ( ! empty( $dynamic['ready'] ) || empty( $existing['ready'] ) ) $base['gates']['snapshot_external'] = $dynamic;
+
+		$base['ready'] = class_exists( 'MAD4B_SCP_Live_Acceptance_Finalizer' )
+			? MAD4B_SCP_Live_Acceptance_Finalizer::aggregate_ready( $base['gates'] )
+			: self::all_ready( $base['gates'] );
+		$base['state'] = $base['ready'] ? 'ready' : 'pending_or_blocked';
+		$base['zero_touch_external_snapshot_contract'] = self::DYNAMIC_SNAPSHOT_CONTRACT;
+		$base['external_facts_self_certified'] = false;
+		return $base;
+	}
+
+	public static function observe_external_tools_list( $response, $server, $request ) {
+		if ( ! self::staging_allowed() || ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return $response;
+		$params = method_exists( $request, 'get_json_params' ) ? $request->get_json_params() : null;
+		if ( ! is_array( $params ) || 'tools/list' !== ( isset( $params['method'] ) ? (string) $params['method'] : '' ) ) return $response;
+		$session_id = method_exists( $request, 'get_header' ) ? trim( (string) $request->get_header( 'mcp-session-id' ) ) : '';
+		if ( '' === $session_id || strlen( $session_id ) > 512 ) return $response;
+		$rest = function_exists( 'rest_ensure_response' ) ? rest_ensure_response( $response ) : $response;
+		if ( ! is_object( $rest ) || ! method_exists( $rest, 'get_status' ) || ! method_exists( $rest, 'get_data' ) || 200 !== (int) $rest->get_status() ) return $response;
+		$data = $rest->get_data();
+		if ( is_object( $data ) ) $data = get_object_vars( $data );
+		$result = is_array( $data ) && isset( $data['result'] ) ? $data['result'] : array();
+		if ( is_object( $result ) ) $result = get_object_vars( $result );
+		$tools = is_array( $result ) && isset( $result['tools'] ) && is_array( $result['tools'] ) ? $result['tools'] : array();
+		$snapshot = self::snapshot_attestation_from_tools( $tools );
+		if ( empty( $snapshot['identity_match'] ) ) return $response;
+		$names = array();
+		foreach ( $tools as $tool ) if ( is_array( $tool ) && isset( $tool['name'] ) && is_string( $tool['name'] ) && '' !== trim( $tool['name'] ) ) $names[] = trim( $tool['name'] );
+		$names = array_values( array_unique( $names ) );
+		sort( $names, SORT_STRING );
+		if ( empty( $names ) ) return $response;
+		self::$pending_external_snapshot = array(
+			'session_fingerprint' => hash( 'sha256', $session_id ),
+			'snapshot_identity' => (string) $snapshot['observed_identity'],
+			'tool_inventory_fingerprint' => hash( 'sha256', implode( "\n", $names ) ),
+			'tool_count' => count( $names ),
+			'observed_at' => gmdate( 'Y-m-d H:i:s' ),
+		);
+		unset( $session_id );
+		return $response;
+	}
+
+	public static function finalize_external_snapshot_observation() {
+		$pending = self::$pending_external_snapshot;
+		self::$pending_external_snapshot = null;
+		if ( ! is_array( $pending ) || ! self::staging_allowed() ) return;
+		if ( ! class_exists( 'MAD4B_SCP_External_Handshake_Evidence' ) || ! class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ) return;
+
+		$handshake = MAD4B_SCP_External_Handshake_Evidence::status();
+		$raw_handshake = get_option( MAD4B_SCP_External_Handshake_Evidence::OPTION, array() );
+		$observer = MAD4B_SCP_Live_Acceptance_Observer::external_handshake_attestation_status();
+		if ( ! method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_identity_status' ) ) return;
+		$provenance = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status();
+		if ( ! is_array( $handshake ) || empty( $handshake['verified'] ) || empty( $handshake['tool_inventory_match'] ) || empty( $handshake['build_fingerprint_match'] ) ) return;
+		if ( ! is_array( $raw_handshake ) || ! is_array( $observer ) || empty( $observer['verified'] ) || empty( $observer['real_external_session'] ) || empty( $observer['inventory_match'] ) || empty( $observer['write_inventory_fingerprint_match'] ) || empty( $observer['build_fingerprint_match'] ) ) return;
+		if ( ! is_array( $provenance ) || empty( $provenance['identity_ready'] ) ) return;
+
+		$raw_session = isset( $raw_handshake['mcp_session_fingerprint'] ) ? strtolower( trim( (string) $raw_handshake['mcp_session_fingerprint'] ) ) : '';
+		$raw_inventory = isset( $raw_handshake['tool_inventory_fingerprint'] ) ? strtolower( trim( (string) $raw_handshake['tool_inventory_fingerprint'] ) ) : '';
+		$observer_inventory = isset( $observer['external_tool_inventory_fingerprint'] ) ? strtolower( trim( (string) $observer['external_tool_inventory_fingerprint'] ) ) : '';
+		if ( ! self::valid_hash( $raw_session ) || ! hash_equals( $raw_session, (string) $pending['session_fingerprint'] ) ) return;
+		if ( ! self::valid_hash( $raw_inventory ) || ! hash_equals( $raw_inventory, (string) $pending['tool_inventory_fingerprint'] ) ) return;
+		if ( ! self::valid_hash( $observer_inventory ) || ! hash_equals( $observer_inventory, (string) $pending['tool_inventory_fingerprint'] ) ) return;
+		if ( ! isset( $raw_handshake['tool_count'], $observer['external_tool_count'] ) || (int) $raw_handshake['tool_count'] !== (int) $pending['tool_count'] || (int) $observer['external_tool_count'] !== (int) $pending['tool_count'] ) return;
+		if ( self::CHATGPT_CLIENT_ID !== ( isset( $handshake['client_id'] ) ? (string) $handshake['client_id'] : '' ) || self::SERVER_ID !== ( isset( $handshake['server_id'] ) ? (string) $handshake['server_id'] : '' ) ) return;
+
+		$observer_time = self::parse_time( isset( $observer['observed_at'] ) ? $observer['observed_at'] : '' );
+		$pending_time = self::parse_time( isset( $pending['observed_at'] ) ? $pending['observed_at'] : '' );
+		if ( false === $observer_time || false === $pending_time || abs( $observer_time - $pending_time ) > 5 ) return;
+		$current_snapshot = self::snapshot_anchor();
+		if ( '' === $current_snapshot || ! hash_equals( $current_snapshot, (string) $pending['snapshot_identity'] ) ) return;
+
+		$source_sha = isset( $provenance['source_commit_sha'] ) ? strtolower( trim( (string) $provenance['source_commit_sha'] ) ) : '';
+		$build = isset( $provenance['build_fingerprint'] ) ? strtolower( trim( (string) $provenance['build_fingerprint'] ) ) : '';
+		$observer_build = isset( $observer['build_fingerprint'] ) ? strtolower( trim( (string) $observer['build_fingerprint'] ) ) : '';
+		if ( 1 !== preg_match( '/^[a-f0-9]{40}$/', $source_sha ) || ! self::valid_hash( $build ) || ! self::valid_hash( $observer_build ) || ! hash_equals( $build, $observer_build ) ) return;
+
+		update_option(
+			self::DYNAMIC_SNAPSHOT_OPTION,
+			array(
+				'contract' => self::DYNAMIC_SNAPSHOT_CONTRACT,
+				'candidate_sha' => $source_sha,
+				'build_fingerprint' => $build,
+				'snapshot_identity' => $current_snapshot,
+				'mcp_session_fingerprint' => $raw_session,
+				'tool_inventory_fingerprint' => $raw_inventory,
+				'tool_count' => (int) $pending['tool_count'],
+				'observer_observed_at' => isset( $observer['observed_at'] ) ? (string) $observer['observed_at'] : '',
+				'handshake_verified_at' => isset( $handshake['verified_at'] ) ? (string) $handshake['verified_at'] : '',
+				'observed_at' => gmdate( 'c' ),
+			),
+			false
+		);
+	}
+
+	/** @internal Pure parser for the exact Skill snapshot anchor in tools/list metadata. */
+	public static function snapshot_attestation_from_tools( array $tools ) {
+		$expected_tool = self::ability_to_mcp_tool_name( 'mad4b/skills-export-status' );
+		$observed = '';
+		foreach ( $tools as $tool ) {
+			if ( ! is_array( $tool ) || empty( $tool['name'] ) || ! is_string( $tool['name'] ) || '' === $expected_tool || ! hash_equals( $expected_tool, trim( (string) $tool['name'] ) ) ) continue;
+			$description = isset( $tool['description'] ) && is_string( $tool['description'] ) ? $tool['description'] : '';
+			$pattern = '/(?:^|\s)' . preg_quote( self::SNAPSHOT_ANCHOR_PREFIX, '/' ) . '\s+(sha256:[a-f0-9]{64})(?:\.|\s|$)/i';
+			if ( preg_match( $pattern, $description, $matches ) ) $observed = strtolower( (string) $matches[1] );
+			break;
+		}
+		$expected = self::snapshot_anchor();
+		$present = 1 === preg_match( '/^sha256:[a-f0-9]{64}$/', $observed );
+		return array(
+			'anchor_present' => (bool) $present,
+			'tool_name' => $expected_tool,
+			'observed_identity' => $present ? $observed : '',
+			'expected_identity' => $expected,
+			'identity_match' => $present && '' !== $expected && hash_equals( $expected, $observed ),
+		);
+	}
+
+	/** @internal Read-only evaluator used by the live-acceptance wrapper and tests. */
+	public static function dynamic_snapshot_status() {
+		$stored = self::staging_allowed() ? get_option( self::DYNAMIC_SNAPSHOT_OPTION, array() ) : array();
+		$provenance = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status() : array();
+		$external = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::external_handshake_attestation_status() : array();
+		$handshake = class_exists( 'MAD4B_SCP_External_Handshake_Evidence' ) ? MAD4B_SCP_External_Handshake_Evidence::status() : array();
+		$raw_handshake = class_exists( 'MAD4B_SCP_External_Handshake_Evidence' ) ? get_option( MAD4B_SCP_External_Handshake_Evidence::OPTION, array() ) : array();
+		$current_snapshot = self::snapshot_anchor();
+		$blockers = array();
+
+		if ( ! self::staging_allowed() ) $blockers[] = 'wrong_target';
+		if ( ! is_array( $stored ) || self::DYNAMIC_SNAPSHOT_CONTRACT !== ( isset( $stored['contract'] ) ? (string) $stored['contract'] : '' ) ) $blockers[] = 'fresh_external_tools_list_required';
+		if ( ! is_array( $provenance ) || empty( $provenance['runtime_manifest_match'] ) || ! empty( $provenance['stale'] ) ) $blockers[] = 'candidate_provenance_unavailable';
+		if ( ! is_array( $handshake ) || empty( $handshake['verified'] ) || empty( $handshake['tool_inventory_match'] ) || empty( $handshake['build_fingerprint_match'] ) ) $blockers[] = 'fresh_external_tools_list_required';
+		if ( ! is_array( $external ) || empty( $external['verified'] ) || empty( $external['real_external_session'] ) || empty( $external['finalizer_subject_binding_verified'] ) || empty( $external['inventory_match'] ) || empty( $external['write_inventory_fingerprint_match'] ) || empty( $external['build_fingerprint_match'] ) ) $blockers[] = 'external_subject_session_binding_required';
+		if ( self::CHATGPT_CLIENT_ID !== ( isset( $external['client_id'] ) ? (string) $external['client_id'] : '' ) || self::SERVER_ID !== ( isset( $external['server_id'] ) ? (string) $external['server_id'] : '' ) ) $blockers[] = 'external_client_server_binding_mismatch';
+		if ( ! self::valid_hash( isset( $external['finalizer_context_digest'] ) ? strtolower( trim( (string) $external['finalizer_context_digest'] ) ) : '' ) ) $blockers[] = 'external_subject_session_binding_required';
+
+		$source_sha = isset( $provenance['source_commit_sha'] ) ? strtolower( trim( (string) $provenance['source_commit_sha'] ) ) : '';
+		$build = isset( $provenance['build_fingerprint'] ) ? strtolower( trim( (string) $provenance['build_fingerprint'] ) ) : '';
+		$stored_sha = isset( $stored['candidate_sha'] ) ? strtolower( trim( (string) $stored['candidate_sha'] ) ) : '';
+		$stored_build = isset( $stored['build_fingerprint'] ) ? strtolower( trim( (string) $stored['build_fingerprint'] ) ) : '';
+		if ( 1 !== preg_match( '/^[a-f0-9]{40}$/', $source_sha ) || 1 !== preg_match( '/^[a-f0-9]{40}$/', $stored_sha ) || ! hash_equals( $source_sha, $stored_sha ) ) $blockers[] = 'candidate_mismatch';
+		if ( ! self::valid_hash( $build ) || ! self::valid_hash( $stored_build ) || ! hash_equals( $build, $stored_build ) ) $blockers[] = 'build_fingerprint_mismatch';
+
+		$stored_snapshot = isset( $stored['snapshot_identity'] ) ? strtolower( trim( (string) $stored['snapshot_identity'] ) ) : '';
+		if ( '' === $current_snapshot || 1 !== preg_match( '/^sha256:[a-f0-9]{64}$/', $stored_snapshot ) || ! hash_equals( $current_snapshot, $stored_snapshot ) ) $blockers[] = 'snapshot_binding_changed';
+
+		$stored_session = isset( $stored['mcp_session_fingerprint'] ) ? strtolower( trim( (string) $stored['mcp_session_fingerprint'] ) ) : '';
+		$current_session = is_array( $raw_handshake ) && isset( $raw_handshake['mcp_session_fingerprint'] ) ? strtolower( trim( (string) $raw_handshake['mcp_session_fingerprint'] ) ) : '';
+		if ( ! self::valid_hash( $stored_session ) || ! self::valid_hash( $current_session ) || ! hash_equals( $stored_session, $current_session ) ) $blockers[] = 'external_session_binding_changed';
+
+		$stored_inventory = isset( $stored['tool_inventory_fingerprint'] ) ? strtolower( trim( (string) $stored['tool_inventory_fingerprint'] ) ) : '';
+		$current_inventory = isset( $external['external_tool_inventory_fingerprint'] ) ? strtolower( trim( (string) $external['external_tool_inventory_fingerprint'] ) ) : '';
+		$handshake_inventory = is_array( $handshake ) && isset( $handshake['tool_inventory_fingerprint'] ) ? strtolower( trim( (string) $handshake['tool_inventory_fingerprint'] ) ) : '';
+		if ( ! self::valid_hash( $stored_inventory ) || ! self::valid_hash( $current_inventory ) || ! self::valid_hash( $handshake_inventory ) || ! hash_equals( $stored_inventory, $current_inventory ) || ! hash_equals( $stored_inventory, $handshake_inventory ) ) $blockers[] = 'external_inventory_changed';
+
+		$stored_observer_time = isset( $stored['observer_observed_at'] ) ? (string) $stored['observer_observed_at'] : '';
+		$current_observer_time = isset( $external['observed_at'] ) ? (string) $external['observed_at'] : '';
+		if ( '' === $stored_observer_time || '' === $current_observer_time || ! hash_equals( $stored_observer_time, $current_observer_time ) ) $blockers[] = 'external_observation_changed';
+		$observed_at = isset( $stored['observed_at'] ) ? (string) $stored['observed_at'] : '';
+		$observed_ts = self::parse_time( $observed_at );
+		$fresh = false !== $observed_ts && $observed_ts <= time() + 60 && ( time() - $observed_ts ) <= self::DYNAMIC_SNAPSHOT_TTL;
+		if ( ! $fresh ) $blockers[] = 'stale_external_snapshot_attestation';
+
+		$blockers = array_values( array_unique( $blockers ) );
+		$ready = empty( $blockers );
+		return array(
+			'ready' => $ready,
+			'state' => $ready ? 'ready' : 'pending_external_evidence',
+			'fresh' => $ready && $fresh,
+			'evidence_contract' => self::DYNAMIC_SNAPSHOT_CONTRACT,
+			'evidence_mode' => 'dynamic_authenticated_mcp_tools_list',
+			'observed_at' => $observed_at,
+			'blockers' => $blockers,
+			'candidate_sha' => $source_sha,
+			'build_fingerprint' => $build,
+			'snapshot_identity' => $current_snapshot,
+			'external_subject_session_bound' => empty( $blockers ) || ! in_array( 'external_subject_session_binding_required', $blockers, true ),
+			'self_certified' => false,
+		);
+	}
+
+	private static function ability_to_mcp_tool_name( $ability_name ) {
+		if ( ! class_exists( '\\WP\\MCP\\Domain\\Utils\\McpNameSanitizer' ) ) return '';
+		$name = \WP\MCP\Domain\Utils\McpNameSanitizer::sanitize_name( (string) $ability_name );
+		return is_wp_error( $name ) || ! is_string( $name ) ? '' : trim( $name );
+	}
+
+	private static function normalize_value( $value ) {
+		$encoded = wp_json_encode( $value );
+		return false === $encoded ? null : json_decode( $encoded, true );
+	}
+
+	private static function staging_allowed() {
+		if ( defined( 'WP_CLI' ) && WP_CLI ) return false;
+		if ( defined( 'DOING_CRON' ) && DOING_CRON ) return false;
+		return class_exists( 'MAD4B_SCP_Site_Profile' )
+			&& MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
+			&& MAD4B_SCP_Site_Profile::skills_enabled();
+	}
+
+	private static function parse_time( $value ) {
+		$value = trim( (string) $value );
+		return '' === $value ? false : strtotime( $value );
+	}
+
+	private static function valid_hash( $value ) { return is_string( $value ) && 1 === preg_match( '/^[a-f0-9]{64}$/', $value ); }
+	private static function all_ready( array $gates ) { foreach ( $gates as $gate ) if ( ! is_array( $gate ) || empty( $gate['ready'] ) ) return false; return ! empty( $gates ); }
+}
+ ) ),
+                    'source_offset' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 40 ),
+                    'max_results' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 12 ),
+                ),
+                'required' => array( 'task' ), 'additionalProperties' => false,
+            ),
+            array( 'SCP_Skill_Task_Composition', 'composition_plan' )
+        );
+
 		// Report blocked authoring Context without exposing assets, instructions or receipts.
 		self::add(
 			'mad4b/skill-context-preflight',
