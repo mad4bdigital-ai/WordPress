@@ -40,3 +40,13 @@ including non-Skill files, before building the indexed file inventory.
 outcome; choose a more narrowly scoped upstream repository rather than
 increasing server limits without review. The existing 500-Skill count limit,
 exact Git blob digest validation and untrusted-context boundaries remain.
+
+
+## GitHub provider identity is pinned
+
+The source reader accepts only the reviewed public GitHub REST authority
+`https://api.github.com`, with `visibility=public`, `mode=read_only`,
+and `git_tree_api=v3`. A valid but different HTTPS origin or relaxed mode
+is rejected as `skill_source_provider_origin_invalid` before any outbound
+request. To introduce a new provider, add a separately reviewed provider
+integration rather than editing the GitHub entry to redirect egress.

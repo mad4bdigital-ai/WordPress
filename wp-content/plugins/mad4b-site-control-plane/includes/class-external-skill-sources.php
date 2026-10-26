@@ -95,15 +95,18 @@ final class SCP_External_Skill_Sources {
         if ( ! is_array( $config ) || ( $config['contract'] ?? '' ) !== 'external-skill-source-providers.v1' ) {
             return new WP_Error( 'skill_source_provider_invalid', 'The source provider configuration is invalid.' );
         }
-        $origin = $config['providers']['github']['origin'] ?? '';
-        $parts = is_string( $origin ) ? parse_url( $origin ) : false;
-        if ( ! is_array( $parts ) || ( $parts['scheme'] ?? '' ) !== 'https' || empty( $parts['host'] )
-            || isset( $parts['user'] ) || isset( $parts['pass'] ) || isset( $parts['port'] )
-            || isset( $parts['path'] ) || isset( $parts['query'] ) || isset( $parts['fragment'] )
-            || ! preg_match( '/\A[a-z0-9.-]+\z/D', $parts['host'] ) ) {
-            return new WP_Error( 'skill_source_provider_origin_invalid', 'The source provider origin is not a valid reviewed HTTPS authority.' );
+        // The provider config describes one *reviewed public GitHub API*.
+        // A syntactically valid HTTPS hostname is insufficient: changing this
+        // value must not silently grant a different origin the egress role.
+        $provider = $config['providers']['github'] ?? null;
+        if ( ! is_array( $provider )
+            || ( $provider['origin'] ?? null ) !== 'https://api.github.com'
+            || ( $provider['visibility'] ?? null ) !== 'public'
+            || ( $provider['mode'] ?? null ) !== 'read_only'
+            || ( $provider['git_tree_api'] ?? null ) !== 'v3' ) {
+            return new WP_Error( 'skill_source_provider_origin_invalid', 'The source provider differs from the reviewed public GitHub API contract.' );
         }
-        return $origin;
+        return $provider['origin'];
     }
 
     private static function github_json( $url, $limit, $deadline = null ) {

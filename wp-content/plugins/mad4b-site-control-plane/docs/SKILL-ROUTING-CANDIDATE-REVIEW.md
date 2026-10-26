@@ -69,7 +69,7 @@ The composition reader now checks the exact `repository`, `ref`, and `tree_sha` 
 
 ## Shared network budget security/performance review — PENDING
 
-Two new source-blob candidates are `includes/class-external-skill-sources.php` at `7f0e42de6e99572b177ea8dd96e633d13cdbe70b` and `includes/class-skill-task-composition.php` at `929ab0a06ad81ac015a279ec08f8db69ba665a17`. New tests use blobs `3e3672002ce5f685e04eb69c2e0314f21e21b1c1` and `bd06234cd8f9efb9bb2b517c47c0ba8135d92b95`. They first demonstrate that old 12-second per-call timeouts and expired source scans failed the new assertions, then pass for PHP 7.4/8.3 in network-disabled read-only containers. All requests in one composition share a bounded deadline; exhausted scans disclose incomplete results. This does **not** establish a hard real-time limit or waive the required independent performance, egress, security, and source-blob reviews. No owner attestation, new execution authority, or Production certification is granted.
+Two new source-blob candidates are `includes/class-external-skill-sources.php` at `6fce21a3b030992f01cca470ffe6caf94f52b183` and `includes/class-skill-task-composition.php` at `929ab0a06ad81ac015a279ec08f8db69ba665a17`. New tests use blobs `3e3672002ce5f685e04eb69c2e0314f21e21b1c1` and `bd06234cd8f9efb9bb2b517c47c0ba8135d92b95`. They first demonstrate that old 12-second per-call timeouts and expired source scans failed the new assertions, then pass for PHP 7.4/8.3 in network-disabled read-only containers. All requests in one composition share a bounded deadline; exhausted scans disclose incomplete results. This does **not** establish a hard real-time limit or waive the required independent performance, egress, security, and source-blob reviews. No owner attestation, new execution authority, or Production certification is granted.
 
 
 ## Advisory enrichment timeout reporting — PENDING REVIEW
@@ -107,3 +107,18 @@ network-disabled, read-only container. No registered source, cache, site or
 Production environment was mutated. This is bounded technical evidence only;
 actual WordPress memory pressure and live MCP acceptance remain independent.
 The exact new class and fixture Git blob hashes above supersede prior ones.
+
+
+## Exact public GitHub provider pinning — PENDING REVIEW
+
+Security review identified that the previous `github_origin()` check validated
+generic HTTPS syntax but allowed the externally configured GitHub provider to
+switch to a different hostname. The reader now fails closed unless the
+provider entry is exactly `https://api.github.com`, public, read-only and
+Git Trees API v3. The isolated provider policy fixture exercises valid config
+and tampered HTTPS hostname, lookalike host, HTTP, port, path, visibility,
+write mode and API version. Red/green observed with PHP 7.4 and 8.3. This
+hardening adds no provider installation or write surface and requires
+independent security/release review before merge.
+
+Provider policy fixture Git blob: `08060c1d64ae9e763c722c29f5517bfbfca2f060`.
