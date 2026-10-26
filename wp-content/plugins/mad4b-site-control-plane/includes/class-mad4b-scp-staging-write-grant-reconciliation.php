@@ -106,6 +106,10 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 		// Never include these wider administrative operations on Production.
 		if ( 'staging' === self::current_environment() ) {
 			$staging_reviewed = array(
+				// Enrolled Staging-only Media Library transfer has separate
+				// mad4b_attachment_transfer capability, upload_files and mutation
+				// kill-switch gates. An exact NHI grant never bypasses them.
+				'mad4b/attachment-transfer' => 'core',
 				// Only the exact reversible JetSmartFilters metadata writer.
 				// Its behavioral certificate makes it inventory-eligible, but a
 				// grant is never issued without a fresh source/profile/inventory
