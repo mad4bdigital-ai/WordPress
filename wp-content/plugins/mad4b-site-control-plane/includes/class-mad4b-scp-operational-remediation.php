@@ -41,6 +41,9 @@ final class MAD4B_SCP_Operational_Remediation {
         if ( ! class_exists( 'MAD4B_SCP_Operator_Journeys', false ) )
             require_once __DIR__ . '/class-mad4b-scp-operator-journeys.php';
         MAD4B_SCP_Operator_Journeys::boot();
+        if ( ! class_exists( 'MAD4B_SCP_Control_Plane_Test_Router', false ) )
+            require_once __DIR__ . '/class-mad4b-scp-control-plane-test-router.php';
+        MAD4B_SCP_Control_Plane_Test_Router::boot();
         if ( ! class_exists( 'MAD4B_SCP_Recovery_Route_Matrix', false ) )
             require_once __DIR__ . '/class-mad4b-scp-recovery-route-matrix.php';
         MAD4B_SCP_Recovery_Route_Matrix::boot();
@@ -113,6 +116,7 @@ final class MAD4B_SCP_Operational_Remediation {
         if ( ! class_exists( 'MAD4B_SCP_Staging_Recovery_Center', false ) )
             require_once __DIR__ . '/class-mad4b-scp-staging-recovery-center.php';
         MAD4B_SCP_Staging_Recovery_Center::render();
+        MAD4B_SCP_Control_Plane_Test_Router::render_admin_panel();
         if ( class_exists( 'MAD4B_SCP_Runtime_Recovery_Workspace', false ) )
             MAD4B_SCP_Runtime_Recovery_Workspace::render();
         echo '<h2>' . esc_html__( 'Complete a recovery task', 'mad4b-site-control-plane' ) . '</h2>';
