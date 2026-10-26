@@ -6,6 +6,7 @@ final class SCP_Skill_Task_Composition {
     const CONTRACT = 'skill-task-composition.v1';
     const MAX_TASK_BYTES = 4000;
     const SOURCE_PAGE_LIMIT = 6;
+    const SOURCE_TIME_BUDGET_SECONDS = 18;
     const MAX_RESULTS = 12;
 
     private static function tokens( $value ) {
@@ -62,7 +63,11 @@ final class SCP_Skill_Task_Composition {
         $page = array_slice( $all, $validated['source_offset'], self::SOURCE_PAGE_LIMIT );
         $rows = array();
         $errors = array();
+        $visited = 0;
+        $started = microtime( true );
         foreach ( $page as $source ) {
+            if ( $visited > 0 && microtime( true ) - $started >= self::SOURCE_TIME_BUDGET_SECONDS ) break;
+            $visited++;
             $list = SCP_External_Skill_Sources::list_skills( array( 'source_id' => $source['id'] ) );
             if ( is_wp_error( $list ) ) {
                 $errors[] = array( 'source_id' => $source['id'], 'code' => $list->get_error_code() );
@@ -78,8 +83,8 @@ final class SCP_Skill_Task_Composition {
                 );
             }
         }
-        $next = $validated['source_offset'] + count( $page );
-        return array( 'rows' => $rows, 'errors' => $errors, 'next_offset' => $next < count( $all ) ? $next : null, 'total_sources' => count( $all ), 'visited_sources' => count( $page ) );
+        $next = $validated['source_offset'] + $visited;
+        return array( 'rows' => $rows, 'errors' => $errors, 'next_offset' => $next < count( $all ) ? $next : null, 'total_sources' => count( $all ), 'visited_sources' => $visited );
     }
 
     private static function candidates( array $validated ) {
