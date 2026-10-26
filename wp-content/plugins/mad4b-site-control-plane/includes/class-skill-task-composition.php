@@ -97,7 +97,7 @@ final class SCP_Skill_Task_Composition {
             }
         }
         $next = $validated['source_offset'] + $visited;
-        return array( 'rows' => $rows, 'errors' => $errors, 'next_offset' => $next < count( $all ) ? $next : null, 'total_sources' => count( $all ), 'visited_sources' => $visited, 'complete' => null === ( $next < count( $all ) ? $next : null ) && empty( $errors ) );
+        return array( 'rows' => $rows, 'errors' => $errors, 'next_offset' => $next < count( $all ) ? $next : null, 'total_sources' => count( $all ), 'visited_sources' => $visited, 'page_complete' => $visited === count( $page ) && empty( $errors ), 'complete' => 0 === $validated['source_offset'] && $next >= count( $all ) && empty( $errors ) );
     }
 
     private static function candidates( array $validated ) {
@@ -161,7 +161,7 @@ final class SCP_Skill_Task_Composition {
             'contract' => self::CONTRACT, 'mode' => 'read_only', 'selection_method' => 'deterministic_lexical_v1',
             'task_sha256' => hash( 'sha256', $v['task'] ), 'matched_count' => count( $result ),
             'candidates' => array_slice( $result, 0, $v['max_results'] ),
-            'source_page' => array( 'visited' => $catalog['external']['visited_sources'], 'total' => $catalog['external']['total_sources'], 'next_offset' => $catalog['external']['next_offset'], 'errors' => $catalog['external']['errors'], 'complete' => $catalog['external']['complete'] ),
+            'source_page' => array( 'visited' => $catalog['external']['visited_sources'], 'total' => $catalog['external']['total_sources'], 'next_offset' => $catalog['external']['next_offset'], 'errors' => $catalog['external']['errors'], 'page_complete' => $catalog['external']['page_complete'], 'complete' => $catalog['external']['complete'] ),
             'trusted_for_execution' => false, 'does_not_grant_authority' => true,
         );
     }
