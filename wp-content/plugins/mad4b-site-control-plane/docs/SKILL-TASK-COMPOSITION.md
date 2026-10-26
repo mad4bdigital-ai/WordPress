@@ -12,7 +12,7 @@ This read-only follow-on to the external Skill source explorer does not expand t
 
 - Local candidates come from enabled managed Skill Registry entries, preserving logical ID and content SHA-256.
 - External candidates come only from administrator-configured sources. Their provenance includes repository, ref, tree SHA, file path and Git blob SHA.
-- No upstream instructions or scripts are downloaded as part of matching; external descriptions are inferred from path/name alone.
+- Matching reads source paths and names only. Composition optionally retrieves at most two exact-blob verified external Skill documents per request, extracts bounded frontmatter descriptions/compatibility and heading labels as **untrusted advisory metadata**, and never treats the body as executable instructions.
 - Ranking is deterministic lexical matching, NOT embeddings or reliable semantic intent inference. A client may supply topic hints, but hints convey no authorization.
 - Up to six external sources are queried per source page. Follow `next_offset` for additional sources. Page-local rankings are not global rankings.
 - External errors (including GitHub rate limits) are reported; no silent full-coverage claim.
@@ -51,6 +51,19 @@ Fixture tests do not certify live MCP, GitHub egress, host dispatch, Staging or 
 - `source_page.page_complete` means that the *requested page* was fully attempted with no source failures. `source_page.complete` is conservative: it is `true` only when one request starts at offset 0, exhausts all selected sources, and has no failures. Multiple pages are **not** certified complete merely because the last page was fetched. Callers must assemble a complete, provenance-checked inventory independently before claiming global coverage.
 - No selection from this endpoint grants execution, imports external scripts or settles the compatibility of independently authored Skill instructions.
 
-## Managed versus external name collisions
+## Smart context composition and conflict precedence (candidate)
 
-When a **currently matching managed** Skill and an external candidate have an identical normalized name, the result keeps the managed candidate and suppresses external lookalikes from the ranking and composition. The response reports `external_name_collisions_suppressed` for transparency. Source inventory APIs still expose the external upstream entries; neither a Skill name nor this deduplication validates external content. Distinctly named external candidates remain eligible for read-only matching.
+When a matching local managed Skill and an external Skill share a normalized name, the result creates a **knowledge family** rather than suppressing external material. The managed Skill remains the primary source for any subsequent authorized execution. Up to three external source references (each tied to source ID, repository, Git tree, path and Git blob SHA) are attached; extra candidates are counted in `context_companions_omitted`. Matching is still lexical and does not claim semantic equivalence from names alone.
+
+For selected families, `skill-composition-plan` reads no more than two already-registered external `SKILL.md` resources using the existing verified source API. It checks source ID, path, blob, file length, SHA-256, UTF-8, and untrusted provenance before extracting only short descriptive metadata and headings. It does **not** copy or execute external instructions/scripts or import third-party Skills into Managed Registry.
+
+`composition_context` contains:
+- `managed_context`: canonical local logical ID, SHA-256, and description
+- `external_contexts`: exact provenance and optional `verified_untrusted_metadata` or `unavailable/not_loaded_budget` status
+- `shared_topics` and `additional_external_topics`: bounded lexical hints, not automatically approved operations
+- `execution_precedence=managed`, `external_instructions_applied=false`, `review_required_before_mutation=true`
+- `conflict_status=potential_conflicts_not_semantically_verified` and explicit resolution policy to retain advisory knowledge but follow managed execution constraints
+
+**Important limit:** This is an evidence-backed composition and safe default for conflicts, **not** an LLM-derived comparison of full documents, verified compatibility resolution, or a Runner. Genuine contradictory requirements remain open for review. Execution and authorization remain independent of these plans. Error and budget states never silently become trusted content.
+
+The previous response field `external_name_collisions_suppressed` remains zero for compatibility with existing callers; `external_contexts_attached` records retained context, and omitted sources are counted explicitly.

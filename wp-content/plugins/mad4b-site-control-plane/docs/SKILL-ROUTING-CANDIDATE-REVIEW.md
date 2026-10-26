@@ -3,7 +3,7 @@
 **Status: PENDING REVIEW.** This document prepares evidence for repository governance. It **does not** attest owner approval, production readiness, complete CI, or the right to execute remote Skill text.
 
 - Stacked PR: [#525](https://github.com/mad4bdigital-ai/WordPress/pull/525) based on [#522](https://github.com/mad4bdigital-ai/WordPress/pull/522).
-- Exact source review candidate: `2b6d114d874d8d2e23b086b7f023dac4525b6798`. The code blob identities below identify the exact pending-review bytes; documentation-only changes do not authorize them.
+- Exact source review candidate: `a6e92077200494ef6994e0c47e42e57ef2a5a037`. The code blob identities below identify the exact pending-review bytes; documentation-only changes do not authorize them.
 - Immutable dependency: #522 head `cf909fb32cfbdfbfcad754708370e32904299e3a`.
 - Scope: read-only task matching and non-authorizing skill composition. External Skills are never installed, executed, granted permissions or treated as trusted code.
 
@@ -23,7 +23,7 @@ The owner/reviewer must decide whether existing controls are sufficient or a new
 | --- | --- | --- |
 | `includes/adapters/class-mad4b-scp-skills-adapter.php` | `064937e152bbbff3ffa6b8ef4548d4d77b9d2ccd` | PENDING |
 | `includes/class-mad4b-scp-skill-abilities.php` | `b04e9f544c5c6ac6adb3afe696a34316e4b83981` | PENDING |
-| `includes/class-skill-task-composition.php` | `4463fdd7cbbdaeb78914b9e1ab65fcd38a9108a9` | PENDING |
+| `includes/class-skill-task-composition.php` | `011b6a6a33584c9521755466ae77b49bc6d920b5` | PENDING |
 | `mad4b-site-control-plane.php` | `2a1f0a15555ae223fb4f20b36eb221efe3da4a75` | PENDING |
 
 All four changes require exact source review. The bootstrap path additionally participates in immutable archived G6/G9 delivery evidence. Neither old delivery manifests nor review status may be silently re-signed.
@@ -32,7 +32,7 @@ All four changes require exact source review. The bootstrap path additionally pa
 
 | Test | Exact Git blob SHA | What it tests |
 | --- | --- | --- |
-| `tests/skill-task-composition-runtime.php` | `41aaff290185ca25a31a92ac814f1e6262e6cbfb` | input bounds, denied unknown sources, bilingual matching, pagination, non-authorizing plans, stage order, stable digest, partial discovery and rate-limit errors |
+| `tests/skill-task-composition-runtime.php` | `473352e2f053f37dff11e114fb78d049b0c6c38e` | input bounds, denied unknown sources, bilingual matching, pagination, non-authorizing plans, stage order, stable digest, partial discovery and rate-limit errors |
 | `tests/skill-task-abilities-runtime.php` | `9bc3cd420c862cc1dbe9440a00789e51a6887bb7` | registration, existing read callback, no public REST/MCP, constrained schema, denied read, no execution ability |
 | `tests/runtime-dynamic-skills-smoke.php` | `8628a0f5dc8ee5fa2a98b268339e8d1db3c2efba` | native WordPress registration and execution of read-only task matching/planning in disposable Staging |
 
@@ -54,3 +54,7 @@ At the previous exact head `da1d3f1a48febf525affe82eb4fe4d5011de79e1`, the Produ
 ## Candidate-specific review delta
 
 The latest source update prefers enrolled managed Skills over untrusted external name collisions, without modifying permissions or external source reads. The matcher emits `external_name_collisions_suppressed` for audit, and corresponding fixture coverage was added. All source candidates remain **PENDING REVIEW** until the specified CI, exact-source, and owner governance checks are performed.
+
+## Smart composition candidate delta
+
+This candidate now retains external Skill descriptions/headings as **untrusted advisory context** for same-name managed matches, with verified blob identities, bounded reads and explicit fail-closed context status. Local Skill execution and site authority stay canonical. Semantic contradictions are not claimed resolved; the pending reviewer must examine the new content-fetch path, prompt-injection exposure, time budgets, review provenance, and absence of write grants before any governance review entry is issued.
