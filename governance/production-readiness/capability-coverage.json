@@ -9409,6 +9409,42 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Exact original Unified Approval Workflow local source, site enrollment, original Content source evidence and CAS hash/revision, original Policy digest and expiry remain authoritative. Hardened inspect rejects malformed review identifiers and tampered/incomplete stored rows, owner source responses or policy payloads before hash_equals, rather than emitting PHP notices or type errors. No approval stage may bypass original Agent exact-grant/human nonce checks; AI-first state transitions retain review-only semantics. New hermetic original-class regression 28/28 PASS on PHP 7.4 and 8.3 with valid record, invalid/missing content/policy hashes, foreign Site Profile, missing/changed source and owner revision, policy drift, expiry, and AI-first next_state. Existing Unified Approval original AI-first 37/37 regression passed on both runtimes. No live owner receipt, human session, WordPress record or token minted. Only stored-read input integrity was changed; any production promotion must revalidate real WordPress owner receipts."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-jwt-header-guard.php",
+      "source_blob_sha": "d0c9eb4663dac73b6d01b9698f1cec9145db7c03",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/oauth-preflight-denial-hermetic.php"
+      ],
+      "owner_role": "CI-only OAuth denial/source reviewer, not Site Owner or credential custodian",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Original JWT Header Guard is pre-cryptographic deny-only: accepts only at+jwt and RS256 protected header for exact MCP routes, rejects alg=none and HS256, malformed compact bearer, oversized header, wrong typ and invalid Authorization scheme. It returns null for valid-looking unverified JWT, which must STILL undergo the original Resource Bridge RS256/JWKS signature, token claims and subject authorization checks. It never grants a session or trusts raw headers. Exact source behavior executed in a network-isolated, no-credential fixture with 27 PASS tests on PHP 7.4 and 8.3 including mock original issuer/resource policy and no real credentials, RSA keys or live authorization. The original cryptographic verifier is NOT exercised here and current-head CI cannot promote Production without its separate authority, independent live and owner receipts."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-subject-gate.php",
+      "source_blob_sha": "926826f05f60d9b56e9a97ef9cee795c2d4e85f1",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/oauth-preflight-denial-hermetic.php"
+      ],
+      "owner_role": "CI-only OAuth denial/source reviewer, not Site Owner or credential custodian",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Original OAuth Subject Gate uses unverified claims ONLY TO DENY before cryptographic verification, rejects unknown issuers/subjects, wrong audience, missing or mismatching exact resource, oversized audience lists, malformed JWT and not-allowed original issuer-subject. A syntactically compatible JWT returns null to the original Resource Bridge signature/JWKS verifier and must not be treated as accepted authentication. Exact source behavior executed in a network-isolated, no-credential fixture with 27 PASS tests on PHP 7.4 and 8.3 including mock original issuer/resource policy and no real credentials, RSA keys or live authorization. The original cryptographic verifier is NOT exercised here and current-head CI cannot promote Production without its separate authority, independent live and owner receipts."
     }
   ],
   "code_change_rules": {

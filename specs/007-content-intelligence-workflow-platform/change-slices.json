@@ -4,8 +4,8 @@
   "reviewed_base_sha": "e7f30d944c354c3a4f7346330ad401d995e768c5",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 129,
-  "changed_paths_sha256": "2cf741558acd814bb656cb657f56eb02140cdce8bc69a7dceb355b9dc2733ded",
+  "changed_file_count": 130,
+  "changed_paths_sha256": "ea5ff9de8c0c48aa9181f1042dbaec5cbec1b7a8f7112f2e6841e35bbc00a91f",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -112,7 +112,8 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/oauth-native-cookie-gateway-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-gateway-cookie-http.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-oauth-context-cooldown-smoke.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/background-authorization-verified-identity-hermetic.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/background-authorization-verified-identity-hermetic.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/oauth-preflight-denial-hermetic.php"
       ]
     },
     {
