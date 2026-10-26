@@ -43,3 +43,10 @@ Fixture tests do not certify live MCP, GitHub egress, host dispatch, Staging or 
 - TDD belongs in the implementation stage, with separately selected verification and security reviews afterward.
 - Added regression fixtures cover bilingual direct tasks, overlapping phase candidates, complementarity and monotonic plan ordering.
 - Staged integration still requires current-head PHP compatibility, WordPress Abilities registration tests, external source permission tests and live MCP/egress acceptance before merge.
+
+
+## Continuation and coverage guarantees
+
+- Clients may provide optional `task_context` (at most 4000 valid UTF-8 bytes) alongside commands such as `تابع`. The router tokenizes the supplied task and context together and binds both to the SHA-256 request identity. Context is supplied by the caller; the Control Plane does not invent earlier conversation state or silently query a user conversation.
+- `source_page.page_complete` means that the *requested page* was fully attempted with no source failures. `source_page.complete` is conservative: it is `true` only when one request starts at offset 0, exhausts all selected sources, and has no failures. Multiple pages are **not** certified complete merely because the last page was fetched. Callers must assemble a complete, provenance-checked inventory independently before claiming global coverage.
+- No selection from this endpoint grants execution, imports external scripts or settles the compatibility of independently authored Skill instructions.
