@@ -68,7 +68,7 @@ final class SCP_Skill_Task_Composition {
         return array( 'task' => $task, 'task_context' => $context, 'topics' => $topics, 'source_ids' => array_values( array_unique( $source_ids ) ), 'source_offset' => $offset, 'max_results' => $limit );
     }
 
-    private static function source_catalog( array $validated ) {
+    private static function source_catalog( array $validated, $deadline ) {
         $all = SCP_External_Skill_Sources::sources();
         if ( $validated['source_ids'] ) {
             $allowed = array_column( $all, 'id' );
@@ -83,11 +83,18 @@ final class SCP_Skill_Task_Composition {
         $rows = array();
         $errors = array();
         $visited = 0;
-        $started = microtime( true );
+        $budget_exhausted = false;
         foreach ( $page as $source ) {
-            if ( $visited > 0 && microtime( true ) - $started >= self::SOURCE_TIME_BUDGET_SECONDS ) break;
+            if ( $deadline - microtime( true ) < 1 ) {
+                $budget_exhausted = true;
+                break;
+            }
+            $list = SCP_External_Skill_Sources::list_skills( array( 'source_id' => $source['id'], 'deadline' => $deadline ) );
+            if ( is_wp_error( $list ) && 'skill_source_budget_exhausted' === $list->get_error_code() ) {
+                $budget_exhausted = true;
+                break;
+            }
             $visited++;
-            $list = SCP_External_Skill_Sources::list_skills( array( 'source_id' => $source['id'] ) );
             if ( is_wp_error( $list ) ) {
                 $errors[] = array( 'source_id' => $source['id'], 'code' => $list->get_error_code() );
                 continue;
@@ -103,10 +110,12 @@ final class SCP_Skill_Task_Composition {
             }
         }
         $next = $validated['source_offset'] + $visited;
-        return array( 'rows' => $rows, 'errors' => $errors, 'next_offset' => $next < count( $all ) ? $next : null, 'total_sources' => count( $all ), 'visited_sources' => $visited, 'page_complete' => $visited === count( $page ) && empty( $errors ), 'complete' => 0 === $validated['source_offset'] && $next >= count( $all ) && empty( $errors ) );
+        return array( 'rows' => $rows, 'errors' => $errors, 'next_offset' => $next < count( $all ) ? $next : null, 'total_sources' => count( $all ), 'visited_sources' => $visited,
+            'budget_exhausted' => $budget_exhausted, 'page_complete' => ! $budget_exhausted && $visited === count( $page ) && empty( $errors ),
+            'complete' => ! $budget_exhausted && 0 === $validated['source_offset'] && $next >= count( $all ) && empty( $errors ) );
     }
 
-    private static function candidates( array $validated ) {
+    private static function candidates( array $validated, $deadline ) {
         $rows = array();
         if ( class_exists( 'MAD4B_SCP_Skill_Registry' ) ) {
             foreach ( MAD4B_SCP_Skill_Registry::list_skills( array( 'enabled' => true ) ) as $skill ) {
@@ -119,7 +128,7 @@ final class SCP_Skill_Task_Composition {
                 );
             }
         }
-        $external = self::source_catalog( $validated );
+        $external = self::source_catalog( $validated, $deadline );
         if ( is_wp_error( $external ) ) return $external;
         return array( 'rows' => array_merge( $rows, $external['rows'] ), 'external' => $external );
     }
@@ -143,10 +152,12 @@ final class SCP_Skill_Task_Composition {
         return array( 'score' => $score, 'matched' => array_values( array_unique( $matched ) ) );
     }
 
-    public static function match_task( $input = array() ) {
+    public static function match_task( $input = array(), $deadline = null ) {
+        $deadline = null === $deadline ? microtime( true ) + self::SOURCE_TIME_BUDGET_SECONDS
+            : min( (float) $deadline, microtime( true ) + self::SOURCE_TIME_BUDGET_SECONDS );
         $v = self::validate( $input );
         if ( is_wp_error( $v ) ) return $v;
-        $catalog = self::candidates( $v );
+        $catalog = self::candidates( $v, $deadline );
         if ( is_wp_error( $catalog ) ) return $catalog;
         $query = self::tokens( $v['task'] . ' ' . $v['task_context'] );
         $topics = self::tokens( implode( ' ', $v['topics'] ) );
@@ -223,7 +234,7 @@ final class SCP_Skill_Task_Composition {
             'external_contexts_attached' => $external_contexts_attached,
             'context_companions_omitted' => $context_companions_omitted,
             'candidates' => array_slice( $result, 0, $v['max_results'] ),
-            'source_page' => array( 'visited' => $catalog['external']['visited_sources'], 'total' => $catalog['external']['total_sources'], 'next_offset' => $catalog['external']['next_offset'], 'errors' => $catalog['external']['errors'], 'page_complete' => $catalog['external']['page_complete'], 'complete' => $catalog['external']['complete'] ),
+            'source_page' => array( 'visited' => $catalog['external']['visited_sources'], 'total' => $catalog['external']['total_sources'], 'next_offset' => $catalog['external']['next_offset'], 'errors' => $catalog['external']['errors'], 'budget_exhausted' => $catalog['external']['budget_exhausted'], 'page_complete' => $catalog['external']['page_complete'], 'complete' => $catalog['external']['complete'] ),
             'trusted_for_execution' => false, 'does_not_grant_authority' => true,
         );
     }
@@ -251,7 +262,7 @@ final class SCP_Skill_Task_Composition {
         return $text;
     }
 
-    private static function advisory_context( array $companion, $read_allowed ) {
+    private static function advisory_context( array $companion, $read_allowed, $deadline ) {
         $entry = $companion;
         $entry['state'] = 'not_loaded_budget';
         $entry['description'] = '';
@@ -267,6 +278,7 @@ final class SCP_Skill_Task_Composition {
             'source_id' => $companion['source_id'],
             'path' => $companion['path'],
             'blob_sha' => $companion['blob_sha'],
+            'deadline' => $deadline,
         ) );
         if ( is_wp_error( $doc ) ) {
             $entry['error_code'] = $doc->get_error_code();
@@ -322,7 +334,8 @@ final class SCP_Skill_Task_Composition {
     }
 
     public static function composition_plan( $input = array() ) {
-        $matches = self::match_task( $input );
+        $deadline = microtime( true ) + self::SOURCE_TIME_BUDGET_SECONDS;
+        $matches = self::match_task( $input, $deadline );
         if ( is_wp_error( $matches ) ) return $matches;
         $selected = array(); $used = array(); $stage_terms = array(); $stage_counts = array();
         foreach ( $matches['candidates'] as $candidate ) {
@@ -357,9 +370,9 @@ final class SCP_Skill_Task_Composition {
                 $local_terms = self::tokens( $item['skill']['name'] . ' ' . $item['skill']['description'] );
                 $external_terms = array();
                 foreach ( $item['skill']['context_companions'] as $companion ) {
-                    $load = $remaining_context_reads > 0;
+                    $load = $remaining_context_reads > 0 && $deadline - microtime( true ) >= 1;
                     if ( $load ) $remaining_context_reads--;
-                    $advisory = self::advisory_context( $companion, $load );
+                    $advisory = self::advisory_context( $companion, $load, $deadline );
                     if ( 'verified_untrusted_metadata' !== $advisory['state'] ) {
                         $context_warnings['incomplete'] = 'Some external context was unavailable or not inspected within the bounded read budget.';
                     }

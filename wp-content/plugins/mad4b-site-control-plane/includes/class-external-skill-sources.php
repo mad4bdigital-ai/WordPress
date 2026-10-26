@@ -105,13 +105,22 @@ final class SCP_External_Skill_Sources {
         return $origin;
     }
 
-    private static function github_json( $url, $limit ) {
+    private static function github_json( $url, $limit, $deadline = null ) {
+        // One request deadline is shared by discovery and all advisory reads.
+        if ( null !== $deadline && ! ( is_float( $deadline ) || is_int( $deadline ) )
+            || null !== $deadline && ! is_finite( (float) $deadline ) ) {
+            return new WP_Error( 'skill_source_deadline_invalid', 'Invalid read deadline.' );
+        }
+        $remaining = null === $deadline ? 12 : (int) floor( $deadline - microtime( true ) );
+        if ( $remaining < 1 ) {
+            return new WP_Error( 'skill_source_budget_exhausted', 'Source read budget exhausted.' );
+        }
         if ( ! class_exists( 'MAD4B_SCP_Egress_Policy' ) ) return new WP_Error( 'skill_source_egress_unavailable', 'Outbound security policy is unavailable.' );
         $origin = self::github_origin();
         if ( is_wp_error( $origin ) ) return $origin;
         if ( 0 !== strpos( $url, $origin . '/repos/' ) ) return new WP_Error( 'skill_source_endpoint_invalid', 'Only the reviewed source provider API is permitted.' );
         $args = array(
-            'timeout' => 12,
+            'timeout' => min( 12, $remaining ),
             'redirection' => 0,
             'sslverify' => true,
             'reject_unsafe_urls' => true,
@@ -121,6 +130,11 @@ final class SCP_External_Skill_Sources {
         $args = MAD4B_SCP_Egress_Policy::mark_request( 'skill_source_discovery', $url, $origin, $args );
         if ( is_wp_error( $args ) ) return $args;
         MAD4B_SCP_Egress_Policy::boot();
+        if ( null !== $deadline ) {
+            $remaining = (int) floor( $deadline - microtime( true ) );
+            if ( $remaining < 1 ) return new WP_Error( 'skill_source_budget_exhausted', 'Source read budget exhausted.' );
+            $args['timeout'] = min( (float) $args['timeout'], 12, $remaining );
+        }
         $response = wp_safe_remote_get( $url, $args );
         if ( is_wp_error( $response ) ) return new WP_Error( 'skill_source_transport_unavailable', 'GitHub request failed.' );
         $code = (int) wp_remote_retrieve_response_code( $response );
@@ -132,14 +146,14 @@ final class SCP_External_Skill_Sources {
         return $decoded;
     }
 
-    private static function tree( array $source ) {
+    private static function tree( array $source, $deadline = null ) {
         $key = 'tree_' . $source['id'];
         $cached = wp_cache_get( $key, self::CACHE_GROUP );
         if ( is_array( $cached ) && isset( $cached['sha'], $cached['skills'], $cached['files'] ) ) return $cached;
         $origin = self::github_origin();
         if ( is_wp_error( $origin ) ) return $origin;
         $url = $origin . '/repos/' . $source['repository'] . '/git/trees/' . rawurlencode( $source['ref'] ) . '?recursive=1';
-        $tree = self::github_json( $url, self::MAX_TREE_BYTES );
+        $tree = self::github_json( $url, self::MAX_TREE_BYTES, $deadline );
         if ( is_wp_error( $tree ) ) return $tree;
         if ( empty( $tree['sha'] ) || ! preg_match( '/\A[a-f0-9]{40}\z/D', $tree['sha'] ) || ! isset( $tree['tree'] ) || ! is_array( $tree['tree'] ) || ! empty( $tree['truncated'] ) ) {
             return new WP_Error( 'skill_source_tree_incomplete', 'The upstream Git tree is incomplete or invalid.' );
@@ -173,7 +187,8 @@ final class SCP_External_Skill_Sources {
     public static function list_skills( $input = array() ) {
         $source = self::source( is_array( $input ) ? ( $input['source_id'] ?? '' ) : '' );
         if ( is_wp_error( $source ) ) return $source;
-        $tree = self::tree( $source );
+        $deadline = is_array( $input ) ? ( $input['deadline'] ?? null ) : null;
+        $tree = self::tree( $source, $deadline );
         if ( is_wp_error( $tree ) ) return $tree;
         return array(
             'contract' => self::CONTRACT, 'source' => $source, 'tree_sha' => $tree['sha'],
@@ -182,7 +197,7 @@ final class SCP_External_Skill_Sources {
         );
     }
 
-    private static function document( array $source, array $tree, $path, $expected_sha ) {
+    private static function document( array $source, array $tree, $path, $expected_sha, $deadline = null ) {
         if ( ! self::valid_path( $path ) || ! isset( $tree['files'][ $path ] ) ) return new WP_Error( 'skill_source_path_unavailable', 'The requested file is not in the exact source tree.' );
         $entry = $tree['files'][ $path ];
         if ( ! is_string( $expected_sha ) || ! preg_match( '/\A[a-f0-9]{40}\z/D', $expected_sha ) || ! hash_equals( $entry['sha'], $expected_sha ) ) {
@@ -192,7 +207,7 @@ final class SCP_External_Skill_Sources {
         $origin = self::github_origin();
         if ( is_wp_error( $origin ) ) return $origin;
         $url = $origin . '/repos/' . $source['repository'] . '/git/blobs/' . $entry['sha'];
-        $blob = self::github_json( $url, 400000 );
+        $blob = self::github_json( $url, 400000, $deadline );
         if ( is_wp_error( $blob ) ) return $blob;
         if ( ( $blob['encoding'] ?? '' ) !== 'base64' || ( $blob['sha'] ?? '' ) !== $entry['sha'] || ! is_string( $blob['content'] ?? null ) ) return new WP_Error( 'skill_source_blob_invalid', 'Blob encoding or identity is invalid.' );
         $content = base64_decode( preg_replace( '/\s+/', '', $blob['content'] ), true );
@@ -213,11 +228,12 @@ final class SCP_External_Skill_Sources {
         if ( is_wp_error( $source ) ) return $source;
         $path = is_array( $input ) ? ( $input['path'] ?? '' ) : '';
         if ( ! self::valid_path( $path ) || 'SKILL.md' !== basename( $path ) ) return new WP_Error( 'skill_source_skill_path_invalid', 'Choose an exact SKILL.md path from discovery.' );
-        $tree = self::tree( $source );
+        $deadline = is_array( $input ) ? ( $input['deadline'] ?? null ) : null;
+        $tree = self::tree( $source, $deadline );
         if ( is_wp_error( $tree ) ) return $tree;
         $paths = array_column( $tree['skills'], 'path' );
         if ( ! in_array( $path, $paths, true ) ) return new WP_Error( 'skill_source_skill_not_found', 'This path is not a discovered Skill.' );
-        return self::document( $source, $tree, $path, is_array( $input ) ? ( $input['blob_sha'] ?? '' ) : '' );
+        return self::document( $source, $tree, $path, is_array( $input ) ? ( $input['blob_sha'] ?? '' ) : '', $deadline );
     }
 
     public static function get_resource( $input = array() ) {

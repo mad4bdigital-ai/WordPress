@@ -67,3 +67,11 @@ For selected families, `skill-composition-plan` reads no more than two already-r
 **Important limit:** This is an evidence-backed composition and safe default for conflicts, **not** an LLM-derived comparison of full documents, verified compatibility resolution, or a Runner. Genuine contradictory requirements remain open for review. Execution and authorization remain independent of these plans. Error and budget states never silently become trusted content.
 
 The previous response field `external_name_collisions_suppressed` remains zero for compatibility with existing callers; `external_contexts_attached` records retained context, and omitted sources are counted explicitly.
+
+## Shared outbound time budget (integration candidate)
+
+Task matching and composition use **one request-relative deadline** of 18 seconds for source inventory and advisory enrichment together. The library still defaults to a 12-second HTTPS request timeout for direct source reads, but the composer now forwards its same deadline through source enumeration, Git tree reads, and Git blob reads. The outbound transport timeout is conservatively capped to the integer seconds remaining at each network dispatch. When under one second remains, no new outbound request starts.
+
+Discovery exposes `source_page.budget_exhausted` and marks the page and global coverage incomplete when that budget stops a source scan. An advisory read that runs out of budget stays unavailable or `not_loaded_budget`; the managed Skill remains the primary source and `execution_ready` remains false. Matching/pagination remain non-authorizing and **partial content is not certified complete**.
+
+This is **bounded network dispatch**, not a real-time hard wall-clock guarantee: transport libraries, DNS, PHP scheduling, and response processing can add overhead. CI should verify end-to-end service latency and the performance reviewer must approve the final timeout policy independently.
