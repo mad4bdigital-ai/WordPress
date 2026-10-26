@@ -1264,7 +1264,7 @@
   "repository_baseline": {
     "contract": "mad4b.reviewed-repository-parent.v1",
     "branch": "master",
-    "last_reviewed_parent_sha": "17a447839bd091f95d964153814bc4382677a8c8",
+    "last_reviewed_parent_sha": "e7f30d944c354c3a4f7346330ad401d995e768c5",
     "current_head_is_external_evidence": true,
     "self_referential_current_head_forbidden": true
   },

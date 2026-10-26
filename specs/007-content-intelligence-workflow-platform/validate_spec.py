@@ -801,6 +801,16 @@ if extension_validator.exists():
     if result.returncode:
         errors.append("competitive_experience_extension:" + (result.stderr or result.stdout).strip())
 
+# The negative fixture is a real required specification check, not a passive
+# hash record or optional unit test. Keep the original historical manifests.
+historic_negative = pathlib.Path("wp-content/plugins/mad4b-site-control-plane/tests/historical-delivery-successor-contract.py")
+if historic_negative.is_file() and not historic_negative.is_symlink():
+    result = subprocess.run([sys.executable, str(historic_negative)], text=True, capture_output=True)
+    if result.returncode or "FEATURE007_HISTORICAL_DELIVERY_SUCCESSOR: PASS " not in result.stdout:
+        errors.append("historical_delivery_regressions:" + (result.stderr or result.stdout).strip())
+else:
+    errors.append("historical_delivery_regressions:required_fixture_missing_or_unsafe")
+
 if errors:
     print("FEATURE_007_SPEC_VALIDATION: FAIL")
     for e in errors:

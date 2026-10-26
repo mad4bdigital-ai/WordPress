@@ -603,7 +603,9 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			if ( 0 !== strpos( $route, '/mcp/mad4b-' ) ) throw $error; // Preserve unrelated REST behavior.
 			try { self::reset_verified_bearer_context( true ); } catch ( Throwable $ignored ) {}
 			if ( class_exists( 'MAD4B_SCP_MCP_Transport_Admission', false ) ) {
-				MAD4B_SCP_MCP_Transport_Admission::observe_rejection( 'oauth_exception', 503, 'mad4b_oauth_evaluation_exception' );
+				try {
+					MAD4B_SCP_MCP_Transport_Admission::observe_rejection( 'oauth_exception', 503, 'mad4b_oauth_evaluation_exception' );
+				} catch ( Throwable $ignored ) { /* Optional diagnostic must never defeat OAuth fail-closed response. */ }
 			}
 			$response = new WP_REST_Response(
 				array( 'error' => 'mad4b_oauth_evaluation_exception',
@@ -636,7 +638,33 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 
 		$status = self::status();
 		if ( empty( $status['effective'] ) ) return self::unauthorized_response( 'mad4b_oauth_resource_bridge_not_effective', 'OAuth resource bridge is not effective for this environment.', 503, $resource );
+		// Local-only REST path: WordPress has independently authenticated this
+		// application's Basic credential. Agent binding and ability grants are
+		// still checked by the downstream MAD4B authorization contract.
+		if ( class_exists( 'MAD4B_SCP_Application_Password_Agent_Bridge' )
+			&& MAD4B_SCP_Application_Password_Agent_Bridge::verified_for_mcp_request( $request ) ) {
+			self::reset_verified_bearer_context( true );
+			return $result;
+		}
 		$authorization = method_exists( $request, 'get_header' ) ? trim( (string) $request->get_header( 'authorization' ) ) : '';
+		// WordPress REST authenticates the first-party cookie and X-WP-Nonce
+		// before rest_pre_dispatch. Preserve that verified user BEFORE the
+		// passwordless fallback clears request-local OAuth identity. An
+		// explicitly supplied Authorization header must NEVER fall back to
+		// cookie credentials if the bearer/Passwordless claim is invalid.
+		$nonce = method_exists( $request, 'get_header' ) ? (string) $request->get_header( 'x-wp-nonce' ) : '';
+		if ( '' === $authorization && '' !== $nonce
+			&& is_user_logged_in() && current_user_can( 'manage_options' )
+			&& wp_verify_nonce( $nonce, 'wp_rest' ) ) {
+			self::reset_verified_bearer_context( false );
+			return $result;
+		}
+		if ( class_exists( 'MAD4B_SCP_Passwordless_Connection' ) ) {
+			// Clear stale OAuth identity before an independently verified local
+			// Passwordless claim; invalid claims cannot restore cookie authority.
+			self::reset_verified_bearer_context( true );
+			if ( MAD4B_SCP_Passwordless_Connection::verify_mcp( $request ) ) return $result;
+		}
 		if ( '' === $authorization ) {
 			self::reset_verified_bearer_context( false );
 			if ( is_user_logged_in() && current_user_can( 'manage_options' ) ) return $result;

@@ -387,6 +387,13 @@ final class MAD4B_SCP_Context_Admin_UI {
 			exit;
 		}
 		$source = $sources[ $source_id ];
+        if ( 'wordpress_media' === ( $source['provider'] ?? '' ) ) {
+            $types = isset( $_POST['mime_types'] ) && is_array( $_POST['mime_types'] )
+                ? array_map( 'sanitize_text_field', wp_unslash( $_POST['mime_types'] ) )
+                : ( isset( $_POST['media_mime_scope'] ) ? array() : array( 'application/pdf', 'text/plain', 'text/markdown', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel.sheet.macroEnabled.12', 'text/csv' ) );
+            $result = MAD4B_SCP_Context_Source_Pipeline::scan_complete( $source_id, array( 'mime_types' => $types ) );
+            self::redirect_result( $result, 'assets', 'source_scanned' );
+        }
 		$scan = MAD4B_SCP_Google_Drive_Context::scan_folder( $source['external_root_id'], ! empty( $source['recursive'] ) );
 		if ( is_wp_error( $scan ) ) self::redirect_result( $scan, 'sources', '' );
 		// Admin and MCP use the same complete-source admission. A partial
@@ -423,6 +430,14 @@ final class MAD4B_SCP_Context_Admin_UI {
 			isset( $_POST['ai_agent_public_id'] ) ? wp_unslash( $_POST['ai_agent_public_id'] ) : '',
 			! empty( $_POST['confirm_ai_review_delegation'] )
 		);
+        // Re-use the administrator's already verified policy save as consent;
+        // no second Local Client credential wizard is required for AI-only.
+        $ai_activation = null;
+        if ( ! is_wp_error($result)
+            && 'ai_only' === (string) MAD4B_SCP_Context_Authority::review_policy()['mode']
+            && class_exists('MAD4B_SCP_AI_Only_Local_Activation')
+            && MAD4B_SCP_AI_Only_Local_Activation::site_bound() )
+            $ai_activation = MAD4B_SCP_AI_Only_Local_Activation::activate('policy_save');
 		if ( self::is_ajax_request() ) {
 			if ( is_wp_error( $result ) ) wp_send_json_error( array( 'code' => sanitize_key( $result->get_error_code() ), 'message' => $result->get_error_message(), 'data' => $result->get_error_data() ), 422 );
 			$policy = MAD4B_SCP_Context_Authority::review_policy();
@@ -452,6 +467,8 @@ final class MAD4B_SCP_Context_Admin_UI {
 						'revision' => isset( $context_profile['revision'] ) ? (int) $context_profile['revision'] : 0,
 					),
 					'review_policy' => $status,
+                    'ai_only_local_activation' => is_wp_error($ai_activation)
+                        ? array('identity_ready'=>false,'reason'=>$ai_activation->get_error_code()) : $ai_activation,
 					'context_status' => MAD4B_SCP_Context_Authority::status(),
 					'one_time_confirmation_persisted' => false,
 				)
@@ -1466,7 +1483,13 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '<td><form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 			wp_nonce_field( self::ACTION_SCAN_SOURCE );
 			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_SCAN_SOURCE ) . '"><input type="hidden" name="source_id" value="' . esc_attr( $source['source_id'] ) . '">';
+            if ( 'wordpress_media' === ( $source['provider'] ?? '' ) ) {
+                echo '<input type="hidden" name="media_mime_scope" value="1">';
+                foreach ( array( 'application/pdf' => 'PDF', 'text/plain' => 'TXT', 'text/markdown' => 'Markdown', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => 'Excel XLSX', 'application/vnd.ms-excel.sheet.macroEnabled.12' => 'Excel XLSM', 'text/csv' => 'Excel CSV' ) as $mime => $caption )
+                    echo ' <label><input type="checkbox" name="mime_types[]" value="' . esc_attr( $mime ) . '" checked> ' . esc_html( $caption ) . '</label>';
+            }
 			submit_button( __( 'Scan now', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
+            if ( 'google_drive' === ( $source['provider'] ?? '' ) )
 			echo ' <button class="button" name="resumable" value="1" type="submit">' . esc_html__( 'Scan in bounded steps', 'mad4b-site-control-plane' ) . '</button>';
 			echo '</form><details class="mad4b-context-remove"><summary>' . esc_html__( 'Remove', 'mad4b-site-control-plane' ) . '</summary><form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 			wp_nonce_field( self::ACTION_REMOVE_SOURCE );
@@ -1526,7 +1549,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		echo '<div class="mad4b-context-approval-mode-grid">';
 		echo '<label class="mad4b-context-approval-mode-card"><input type="radio" name="review_mode" value="human_only"' . checked( $mode, 'human_only', false ) . '> <strong>' . esc_html__( 'Human Approval', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Review exact content directly in this workspace.', 'mad4b-site-control-plane' ) . '</span></label>';
 		echo '<label class="mad4b-context-approval-mode-card"><input type="radio" name="review_mode" value="human_and_ai"' . checked( $mode, 'human_and_ai', false ) . '> <strong>' . esc_html__( 'Human + AI', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Adds the canonical Site Profile agent as an exact-bound review path. Governance metadata remains human-controlled.', 'mad4b-site-control-plane' ) . '</span></label>';
-		echo '<label class="mad4b-context-approval-mode-card"><input type="radio" name="review_mode" value="ai_only"' . checked( $mode, 'ai_only', false ) . '> <strong>' . esc_html__( 'AI-only Review', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Delegated Agent makes final approve / needs changes / reject decisions on verified content; publishing remains separate.', 'mad4b-site-control-plane' ) . '</span></label>';
+		echo '<label class="mad4b-context-approval-mode-card"><input type="radio" name="review_mode" value="ai_only"' . checked( $mode, 'ai_only', false ) . '> <strong>' . esc_html__( 'AI-only Review', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Delegated Agent makes final approve / needs changes / reject decisions on verified content; publishing remains separate. In Local Lab, an enabled policy may prepare a dedicated review identity; all decisions still require authenticated Agent authorization.', 'mad4b-site-control-plane' ) . '</span></label>';
 		echo '</div><div class="mad4b-context-ai-review-settings">';
 		echo '<label><strong>' . esc_html__( 'Delegated AI Agent', 'mad4b-site-control-plane' ) . '</strong><select name="ai_agent_public_id"><option value="">' . esc_html__( 'Select the canonical Site Profile agent', 'mad4b-site-control-plane' ) . '</option>';
 		foreach ( $agents as $agent ) {

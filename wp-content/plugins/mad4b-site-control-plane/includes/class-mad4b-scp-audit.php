@@ -430,6 +430,43 @@ final class MAD4B_SCP_Audit {
 	 * returned through this MCP-facing diagnostic; presence and SHA-256 are enough
 	 * to prove rationale existed without widening the read surface.
 	 */
+    /** Exact original-owner AI content-QA receipt lookup. Never authorizes
+     * publishing or privileged mutation. No caller-controlled SQL identifiers.
+     */
+    public static function native_owner_review_events(array $selector=array()) {
+        global $wpdb;
+        $domains=array('content_job','product_catalog','seo_metadata',
+            'localization','design_template');
+        $domain=(string)($selector['domain']??'');
+        $event=(string)($selector['event_id']??'');
+        $item=(string)($selector['item_id']??'');
+        if(!in_array($domain,$domains,true) ||
+           !preg_match('/^[a-f0-9-]{36}$/D',$event) ||
+           !preg_match('/^[a-z0-9._:-]{1,128}$/D',$item))
+            return new WP_Error('mad4b_ai_native_owner_receipt_selector_denied',
+                'Exact original-owner review event selector required.');
+        $ready=self::storage_status();
+        if(empty($ready['ready']))return new WP_Error(
+            'mad4b_ai_native_owner_audit_unavailable','Original audit unavailable.');
+        $t=MAD4B_SCP_Schema::tables();
+        $rows=$wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM {$t['audit_events']} WHERE chain_name=%s AND ability=%s AND event_id=%s LIMIT 1",
+            self::CHAIN,'mad4b/ai-native-owner-review-'.$domain,$event),ARRAY_A);
+        if(!is_array($rows))return new WP_Error('mad4b_ai_native_owner_audit_read_failed',
+            'Original review event query failed.');
+        $out=array();
+        foreach($rows as $row) {
+            $entry=MAD4B_SCP_Audit_Integrity::row_to_entry($row);
+            if(!is_array($entry)||($entry['summary']['item_id']??'')!==$item)continue;
+            $out[]=$entry;
+        }
+        return array('contract'=>'mad4b.ai-native-owner-audit-readback.v1',
+          'chain_valid'=>self::verify_chain(),
+          'head_consistent'=>!empty($ready['head_consistent']),
+          'events'=>$out,'count'=>count($out),'read_only'=>true,
+          'mutation_performed'=>false,'publication_authorized'=>false);
+    }
+
 	public static function context_review_events( array $selectors = array() ) {
 		global $wpdb;
 		$limit = isset( $selectors['limit'] ) ? max( 1, min( 100, absint( $selectors['limit'] ) ) ) : 25;

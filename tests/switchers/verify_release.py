@@ -22,6 +22,20 @@ class ReleaseContracts(unittest.TestCase):
         self.assertTrue((CORE / "data/market-language-territories.json").is_file())
         self.assertTrue((CORE / "assets/js/mad4b-market-selector.js").is_file())
 
+    def test_reconciled_market_profile_policy_and_filter_binding(self):
+        profiles = (CORE / "includes/class-mad4b-scp-market-profiles.php").read_text()
+        self.assertIn("const TARGETING_POLICY=", profiles)
+        self.assertIn("function is_targetable(", profiles)
+        self.assertIn("if(!self::is_targetable($code,$lang))continue;", profiles)
+        self.assertIn("self::is_targetable($country,$language)", profiles)
+        self.assertIn("$_GET['market_lang']", profiles)
+        self.assertIn('name="market_lang"', profiles)
+        self.assertNotIn('name="tab"', profiles)
+        for component in ("market-context", "market-preferences",
+                          "season-calendar", "source-hub", "public-holidays"):
+            source = "includes/class-mad4b-scp-" + component + ".php"
+            self.assertEqual(MAIN.count("require_once MAD4B_SCP_DIR . '" + source + "';"), 1)
+
     def test_country_explicit_dependency_and_contract(self):
         php = (COUNTRY / "mad4b-country-switcher.php").read_text()
         self.assertIn("Requires Plugins: woocommerce, mad4b-site-control-plane", php)

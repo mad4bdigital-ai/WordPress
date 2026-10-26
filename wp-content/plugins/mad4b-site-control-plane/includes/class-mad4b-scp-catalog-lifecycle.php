@@ -6,6 +6,8 @@ final class MAD4B_SCP_Catalog_Lifecycle {
 	public static function deactivate( $network_wide = false ) {
 		if ( ! $network_wide || ! is_multisite() ) {
 			wp_clear_scheduled_hook( 'mad4b_catalog_gc' );
+			wp_clear_scheduled_hook( 'mad4b_developer_runner_refresh' );
+			wp_clear_scheduled_hook( 'mad4b_runtime_backend_refresh' );
 			return;
 		}
 		// Per-site cron lives in each site's options table. Restore the caller's

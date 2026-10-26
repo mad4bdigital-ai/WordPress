@@ -14,7 +14,7 @@ for name, marker in (
     ("object-cache-diagnostics-runtime.php", "PASS Memcached/LSMCD passive diagnostics and staging-only ephemeral acceptance"),
     ("operational-acceptance-evidence-runtime.php", "mad4b.site-control-plane.operational-acceptance-evidence.runtime.v1: PASS"),
     ("provider-transport-eligibility-runtime.php", "mad4b.provider-transport-eligibility.runtime.v1: PASS"),
-    ("operator-doctor-contract.php", "mad4b.operator-doctor.v1: PASS"),
+    ("operator-doctor-contract.php", "PASS: mad4b.operator-doctor.v1"),
     ("plugin-operation-readiness-runtime.php", "PLUGIN_OPERATION_READINESS: PASS"),
     ("dynamic-adapter-capability-graph-runtime.php", "DYNAMIC_ADAPTER_CAPABILITY_GRAPH: PASS"),
     ("admin-native-mcp-view-runtime.php", "Admin Native MCP view projection: PASS"),

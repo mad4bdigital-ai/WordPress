@@ -54,6 +54,23 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-wpml-response-contract.php"
           php -l "$root/tests/wpml-response-contract-runtime.php"
           php "$root/tests/wpml-response-contract-runtime.php"
+          php -l "$root/includes/class-mad4b-scp-oauth-resource-bridge.php"
+          php -l "$root/tests/oauth-secondary-diagnostic-exception-runtime.php"
+          php "$root/tests/oauth-secondary-diagnostic-exception-runtime.php"
+          python3 "$root/tests/mcp-live-authenticated-gate-contract.py"
+          php -l "$root/includes/class-mad4b-scp-mcp-transport-admission.php"
+          php "$root/tests/mcp-origin-error-preservation-runtime.php"
+          php -l "$root/tools/staging-mcp-skills-recertify.php"
+          php -l "$root/tests/staging-mcp-skills-recertify-contract.php"
+          php "$root/tests/staging-mcp-skills-recertify-contract.php"
+          php -l "$root/includes/class-mad4b-scp-developer-host-capabilities.php"
+          php "$root/tests/developer-external-backend-discovery-contract.php"
+          php "$root/tests/developer-runner-lifecycle-fetch-contract.php"
+          php -l "$root/includes/class-mad4b-scp-runtime-backend-registry.php"
+          php "$root/tests/runtime-backend-registry-contract.php"
+          php "$root/tests/runtime-backend-deactivation-contract.php"
+          php -l "$root/includes/class-mad4b-scp-runtime-runner-bridge.php"
+          php "$root/tests/runtime-runner-bridge-contract.php"
 
       - name: Capture endpoint and REST index without writes
         shell: bash
@@ -243,25 +260,33 @@ jobs:
           origin='https://staging.egypttourgates.com'
 
           probe() {
-            name="$1"
-            url="$2"
-            set +e
-            metrics="$(
-              curl --silent --show-error --compressed \
-                --max-time 12 \
-                --connect-timeout 5 \
-                --header 'Accept: application/json' \
-                --header 'Cache-Control: no-cache, no-store, max-age=0' \
-                --header 'Pragma: no-cache' \
-                --user-agent 'MAD4B-External-MCP-Diagnostic/1.0' \
-                --dump-header "$out/$name.headers" \
-                --output "$out/$name.body" \
-                --write-out '%{http_code}\t%{time_namelookup}\t%{time_connect}\t%{time_starttransfer}\t%{time_total}\t%{size_download}' \
-                "$url" \
-                2>"$out/$name.stderr"
-            )"
-            curl_exit=$?
-            set -e
+            local name="$1" url="$2" attempt metrics curl_exit
+            # Retry only transport failures. The existing strict evidence validator
+            # continues to reject unexpected HTTP responses and invalid JSON.
+            for attempt in 1 2 3; do
+              : > "$out/$name.headers"
+              : > "$out/$name.body"
+              : > "$out/$name.stderr"
+              set +e
+              metrics="$(
+                curl --silent --show-error --compressed \
+                  --max-time 12 \
+                  --connect-timeout 5 \
+                  --header 'Accept: application/json' \
+                  --header 'Cache-Control: no-cache, no-store, max-age=0' \
+                  --header 'Pragma: no-cache' \
+                  --user-agent 'MAD4B-External-MCP-Diagnostic/1.0' \
+                  --dump-header "$out/$name.headers" \
+                  --output "$out/$name.body" \
+                  --write-out '%{http_code}\t%{time_namelookup}\t%{time_connect}\t%{time_starttransfer}\t%{time_total}\t%{size_download}' \
+                  "$url" \
+                  2>"$out/$name.stderr"
+              )"
+              curl_exit=$?
+              set -e
+              if [ "$curl_exit" -eq 0 ]; then break; fi
+              if [ "$attempt" -lt 3 ]; then sleep "$attempt"; fi
+            done
             printf '%s\n' "$curl_exit" > "$out/$name.curl-exit"
             printf '%s\n' "$metrics" > "$out/$name.metrics"
           }
