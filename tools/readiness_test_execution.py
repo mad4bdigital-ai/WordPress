@@ -42,6 +42,12 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/market-bootstrap-compatibility.php",
     # Exact no-network PHP fixture reviewed for external Skill source discovery only.
     "wp-content/plugins/mad4b-site-control-plane/tests/external-skill-sources-runtime.php",
+    # CI-reviewed standalone Skill fixtures: exit-on-assertion-failure and
+    # require a positive PASS marker. Authenticated WordPress smoke is excluded.
+    "wp-content/plugins/mad4b-site-control-plane/tests/external-skill-source-provider-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/skill-task-abilities-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/skill-task-composition-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/egress-policy-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/market-source-read-abilities-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/market-source-calendar-cron-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/market-source-calendar-authority-hermetic.php",
@@ -223,6 +229,21 @@ def self_test():
     ):
         assert command_for(path) == ["php", str((ROOT / path).resolve())]
     assert not has_assertion_pass("UNREVIEWED_TEST=PASS\n")
+    for standalone in (
+        "external-skill-source-provider-runtime.php",
+        "skill-task-abilities-runtime.php",
+        "skill-task-composition-runtime.php",
+        "egress-policy-runtime.php",
+    ):
+        exact = "wp-content/plugins/mad4b-site-control-plane/tests/" + standalone
+        assert command_for(exact) == ["php", str((ROOT / exact).resolve())]
+    # WordPress-integrated smoke cannot be silently run as bare PHPUnit or CLI.
+    try:
+        command_for("wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("WordPress runtime smoke was incorrectly admitted as standalone")
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/market-source-read-abilities-hermetic.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/market-source-calendar-cron-hermetic.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/market-source-calendar-authority-hermetic.php")[0] == "php"

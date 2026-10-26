@@ -15,6 +15,18 @@ $inspect_args=MAD4B_SCP_Egress_Policy::mark_request('remote_media_inspect','http
 $check(is_array($media_args)&&true===$media_args['sslverify']&&0===$media_args['redirection'],'remote media request hardening failed',$media_args);
 $check(is_array($inspect_args)&&true===$inspect_args['sslverify']&&0===$inspect_args['redirection'],'remote media inspection hardening failed',$inspect_args);
 $check('mad4b_egress_https_required'===$code(MAD4B_SCP_Egress_Policy::mark_request('remote_media_discovery','http://example.test/page','http://example.test',array())),'remote media HTTP accepted');
+// The new external Skill source purpose must honor the same hardening.
+$skill_url='https://api.github.com/repos/example/skills/git/trees/main';
+$skill_args=MAD4B_SCP_Egress_Policy::mark_request('skill_source_discovery',$skill_url,'https://api.github.com',array('timeout'=>12,'redirection'=>0));
+$check(is_array($skill_args)&&true===$skill_args['sslverify']&&0===$skill_args['redirection']&&true===$skill_args['reject_unsafe_urls'],'Skill source egress not hardened',$skill_args);
+$check('mad4b_egress_https_required'===$code(MAD4B_SCP_Egress_Policy::mark_request('skill_source_discovery','http://api.github.com/repos/example/skills/git/trees/main','http://api.github.com',array())),'Skill source HTTP was admitted');
+$check('mad4b_egress_tls_verification_required'===$code(MAD4B_SCP_Egress_Policy::mark_request('skill_source_discovery',$skill_url,'https://api.github.com',array('sslverify'=>false))),'Skill source TLS disable was admitted');
+$check('mad4b_egress_redirect_budget_exceeded'===$code(MAD4B_SCP_Egress_Policy::mark_request('skill_source_discovery',$skill_url,'https://api.github.com',array('redirection'=>1))),'Skill source redirects were admitted');
+$check('mad4b_egress_authority_origin_drift'===$code(MAD4B_SCP_Egress_Policy::mark_request('skill_source_discovery','https://evil.example.test/repos/example/skills','https://api.github.com',array())),'Skill source origin drift was admitted');
+MAD4B_SCP_Egress_Policy::set_test_resolver(static function(){return array('93.184.216.34');});
+$check(false===MAD4B_SCP_Egress_Policy::enforce(false,$skill_args,$skill_url),'Skill source public DNS denied');
+MAD4B_SCP_Egress_Policy::set_test_resolver(static function(){return array('10.12.0.7');});
+$check('mad4b_egress_dns_private_or_reserved'===$code(MAD4B_SCP_Egress_Policy::enforce(false,$skill_args,$skill_url)),'Skill source private DNS admitted');
 $check(!MAD4B_SCP_Egress_Policy::proxy_host_allowed('proxy.local',array('other.local'))&&MAD4B_SCP_Egress_Policy::proxy_host_allowed('proxy.local',array('proxy.local')),'proxy trust failed');
 MAD4B_SCP_Egress_Policy::set_test_resolver(static function(){return array('93.184.216.34');});$check(false===MAD4B_SCP_Egress_Policy::enforce(false,$args,'https://auth.example.test/x'),'public DNS rejected');
 MAD4B_SCP_Egress_Policy::set_test_resolver(static function(){return array('10.0.0.7');});$check('mad4b_egress_dns_private_or_reserved'===$code(MAD4B_SCP_Egress_Policy::enforce(false,$args,'https://auth.example.test/x')),'private DNS accepted');

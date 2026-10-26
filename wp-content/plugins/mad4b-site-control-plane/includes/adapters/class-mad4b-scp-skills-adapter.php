@@ -32,6 +32,12 @@ final class MAD4B_SCP_Skills_Adapter extends MAD4B_SCP_Adapter_Base {
 			'read' => array(
 				'mad4b/skills-list',
 				'mad4b/skill-get',
+				'mad4b/skill-sources-list',
+				'mad4b/skill-source-skills',
+				'mad4b/skill-source-get',
+				'mad4b/skill-source-resource',
+				'mad4b/skill-match-task',
+				'mad4b/skill-composition-plan',
 				'mad4b/skills-export-status',
 				'mad4b/skills-runtime-certification',
 			),

@@ -87,6 +87,8 @@ jobs:
             includes/class-mad4b-scp-skill-exporter.php \
             includes/class-mad4b-scp-skill-runtime-certification.php \
             includes/class-mad4b-scp-skill-abilities.php \
+            includes/class-skill-task-composition.php \
+            includes/class-external-skill-sources.php \
             includes/class-mad4b-scp-skills-admin-ui.php \
             includes/class-mad4b-scp-staging-write-authority.php \
             includes/class-mad4b-scp-staging-write-planning-guard.php \
@@ -120,12 +122,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          external_fixture='wp-content/plugins/mad4b-site-control-plane/tests/external-skill-sources-runtime.php'
-          if test -f "$external_fixture"; then
-            php "$external_fixture"
-          else
-            echo 'External Skill Sources fixture absent; source explorer not accepted by this run.'
-          fi
+          # In this integration the source explorer and composition are included.
+          # Missing fixtures must fail the contract, not be skipped silently.
+          php wp-content/plugins/mad4b-site-control-plane/tests/external-skill-sources-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/external-skill-source-provider-runtime.php
+          # Exercise the real egress policy and binding, not only the source reader's mock.
+          php wp-content/plugins/mad4b-site-control-plane/tests/egress-policy-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/egress-policy-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/skill-task-composition-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/skill-task-abilities-runtime.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/dynamic-skills-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/skill-runtime-certification-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py

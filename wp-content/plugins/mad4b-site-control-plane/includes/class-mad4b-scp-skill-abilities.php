@@ -2,6 +2,11 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
+// Read-only source and composition modules are owned by this Skills provider.
+// Keep the canonical plugin bootstrap unchanged for its historical delivery contract.
+require_once __DIR__ . '/class-external-skill-sources.php';
+require_once __DIR__ . '/class-skill-task-composition.php';
+
 /**
  * Read-only MCP/Abilities projection for the file-backed Skill registry.
  * Authoring remains a local wp-admin operation behind explicit environment
@@ -63,6 +68,75 @@ final class MAD4B_SCP_Skill_Abilities {
 			),
 			array( __CLASS__, 'skill_get' )
 		);
+
+
+        // Untrusted external instruction text is read-only and never imported.
+        self::add(
+            'mad4b/skill-sources-list', 'List External Skill Sources',
+            array( 'type' => 'object', 'additionalProperties' => false ),
+            array( 'SCP_External_Skill_Sources', 'list_sources' )
+        );
+        self::add(
+            'mad4b/skill-source-skills', 'Discover External Skills',
+            array( 'type' => 'object', 'properties' => array(
+                'source_id' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{24}$' ),
+            ), 'required' => array( 'source_id' ), 'additionalProperties' => false ),
+            array( 'SCP_External_Skill_Sources', 'list_skills' )
+        );
+        self::add(
+            'mad4b/skill-source-get', 'Read External Skill',
+            array( 'type' => 'object', 'properties' => array(
+                'source_id' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{24}$' ),
+                'path' => array( 'type' => 'string', 'maxLength' => 512 ),
+                'blob_sha' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{40}$' ),
+            ), 'required' => array( 'source_id', 'path', 'blob_sha' ), 'additionalProperties' => false ),
+            array( 'SCP_External_Skill_Sources', 'get_skill' )
+        );
+        self::add(
+            'mad4b/skill-source-resource', 'Read External Skill Supporting Text',
+            array( 'type' => 'object', 'properties' => array(
+                'source_id' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{24}$' ),
+                'skill_path' => array( 'type' => 'string', 'maxLength' => 512 ),
+                'path' => array( 'type' => 'string', 'maxLength' => 512 ),
+                'blob_sha' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{40}$' ),
+            ), 'required' => array( 'source_id', 'skill_path', 'path', 'blob_sha' ), 'additionalProperties' => false ),
+            array( 'SCP_External_Skill_Sources', 'get_resource' )
+        );
+
+
+        // Read-only task matching; no source instructions are installed or executed.
+        self::add(
+            'mad4b/skill-match-task', 'Match Task to Skills',
+            array(
+                'type' => 'object',
+                'properties' => array(
+                    'task' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 4000 ),
+                    'task_context' => array( 'type' => 'string', 'maxLength' => 4000 ),
+                    'topics' => array( 'type' => 'array', 'maxItems' => 12, 'items' => array( 'type' => 'string', 'maxLength' => 80 ) ),
+                    'source_ids' => array( 'type' => 'array', 'maxItems' => 40, 'items' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{24}$' ) ),
+                    'source_offset' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 40 ),
+                    'max_results' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 12 ),
+                ),
+                'required' => array( 'task' ), 'additionalProperties' => false,
+            ),
+            array( 'SCP_Skill_Task_Composition', 'match_task' )
+        );
+        self::add(
+            'mad4b/skill-composition-plan', 'Suggest Skill Composition',
+            array(
+                'type' => 'object',
+                'properties' => array(
+                    'task' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 4000 ),
+                    'task_context' => array( 'type' => 'string', 'maxLength' => 4000 ),
+                    'topics' => array( 'type' => 'array', 'maxItems' => 12, 'items' => array( 'type' => 'string', 'maxLength' => 80 ) ),
+                    'source_ids' => array( 'type' => 'array', 'maxItems' => 40, 'items' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{24}$' ) ),
+                    'source_offset' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 40 ),
+                    'max_results' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 12 ),
+                ),
+                'required' => array( 'task' ), 'additionalProperties' => false,
+            ),
+            array( 'SCP_Skill_Task_Composition', 'composition_plan' )
+        );
 
 		// Report blocked authoring Context without exposing assets, instructions or receipts.
 		self::add(
