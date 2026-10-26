@@ -110,11 +110,22 @@ jobs:
             tests/runtime-dynamic-skills-production-smoke.php; do
             php -l "$root/$file"
           done
+          # The external explorer is a separately governed plugin feature.
+          # When installed, lint its exact class; absent code is never claimed as tested.
+          if test -f "$root/includes/class-external-skill-sources.php"; then
+            php -l "$root/includes/class-external-skill-sources.php"
+          fi
 
       - name: Verify dynamic Skill and governed write contracts
         shell: bash
         run: |
           set -euo pipefail
+          external_fixture='wp-content/plugins/mad4b-site-control-plane/tests/external-skill-sources-runtime.php'
+          if test -f "$external_fixture"; then
+            php "$external_fixture"
+          else
+            echo 'External Skill Sources fixture absent; source explorer not accepted by this run.'
+          fi
           python3 wp-content/plugins/mad4b-site-control-plane/tests/dynamic-skills-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/skill-runtime-certification-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py
