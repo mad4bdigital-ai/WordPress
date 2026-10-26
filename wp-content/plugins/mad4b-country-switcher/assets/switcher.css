@@ -1,0 +1,8 @@
+.mad4b-country-switcher{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font:inherit;color:inherit}
+.mad4b-country-switcher label{display:flex;gap:7px;align-items:center}
+.mad4b-country-switcher select{min-width:170px;max-width:min(75vw,280px);border:1px solid #aec0ce;border-radius:7px;padding:8px;background:transparent;color:inherit;font:inherit}
+.mad4b-country-switcher button{border:0;border-radius:7px;background:#b5e947;color:#12283a;padding:9px 15px;font:inherit;font-weight:650;cursor:pointer}
+.mad4b-country-switcher button:focus-visible,.mad4b-country-switcher select:focus-visible{outline:2px solid #8eacff;outline-offset:2px}
+.mad4b-country-flag{object-fit:contain;flex:none}.mad4b-country-flag--fallback{font-size:11px;font-weight:700}
+.mad4b-country-market-status{font-size:12px}
+@media(max-width:560px){.mad4b-country-switcher{gap:7px}.mad4b-switcher-label{font-size:12px}}
