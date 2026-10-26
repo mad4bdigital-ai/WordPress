@@ -82,6 +82,8 @@ $badContext=SCP_Skill_Task_Composition::match_task(array('task'=>'تابع','tas
 ok(is_wp_error($badContext),'oversized task context rejected');
 $badContext=SCP_Skill_Task_Composition::match_task(array('task'=>'تابع','task_context'=>array('unexpected')));
 ok(is_wp_error($badContext),'non-string task context rejected');
+// Restore external fixtures after the preceding rate-limit regression.
+SCP_External_Skill_Sources::$fail=false;
 // Installed managed Skills take priority over externally named lookalikes.
 $collision=SCP_Skill_Task_Composition::match_task(array('task'=>'Debug API','max_results'=>12));
 ok(!is_wp_error($collision) && $collision['external_name_collisions_suppressed']>=1,'External duplicate name collision must be reported');
