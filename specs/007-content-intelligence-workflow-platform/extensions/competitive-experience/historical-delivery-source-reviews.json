@@ -1,0 +1,41 @@
+{
+  "contract": "feature007.historical-delivery-source-reviews.v1",
+  "authorizing": false,
+  "production_authorized": false,
+  "live_evidence_required": true,
+  "description": "Exact repository-source evidence only; never an owner or site authorization.",
+  "reviewed_sources": [
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/validate.py",
+      "source_blob_sha": "d5d40002fdf8c0cc24afd16258cefae99e062c0a",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/historical-delivery-successor-contract.py"
+      ],
+      "review_rationale": "G1-G9 and UI immutable source fingerprints can only match a historical Git ancestor and CI-reviewed, exact current Git source."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/historical_source_successor.py",
+      "source_blob_sha": "046bb44a3856617fd1a849a0b98ae78329af2310",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/historical-delivery-successor-contract.py"
+      ],
+      "review_rationale": "Versioned closed-scope verifier binds itself to exact Git source, and rejects changed historic hashes and any source outside fixed inventory."
+    }
+  ]
+}
