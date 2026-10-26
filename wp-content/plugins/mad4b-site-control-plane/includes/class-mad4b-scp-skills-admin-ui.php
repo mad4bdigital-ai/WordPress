@@ -86,6 +86,8 @@ final class MAD4B_SCP_Skills_Admin_UI {
 			if ( 'save' === $action ) $message = self::handle_save();
 			if ( 'save_resource' === $action ) $message = self::handle_save_resource();
 			if ( 'reconcile_managed' === $action ) $message = self::handle_reconcile_managed();
+			if ( 'source_add' === $action ) $message = SCP_External_Skill_Sources::handle_admin( 'add', $_POST );
+			if ( 'source_remove' === $action ) $message = SCP_External_Skill_Sources::handle_admin( 'remove', $_POST );
 		}
 
 		$status = MAD4B_SCP_Skill_Registry::status();

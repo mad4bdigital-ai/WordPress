@@ -87,6 +87,7 @@ jobs:
             includes/class-mad4b-scp-skill-exporter.php \
             includes/class-mad4b-scp-skill-runtime-certification.php \
             includes/class-mad4b-scp-skill-abilities.php \
+            includes/class-external-skill-sources.php \
             includes/class-mad4b-scp-skills-admin-ui.php \
             includes/class-mad4b-scp-staging-write-authority.php \
             includes/class-mad4b-scp-staging-write-planning-guard.php \
