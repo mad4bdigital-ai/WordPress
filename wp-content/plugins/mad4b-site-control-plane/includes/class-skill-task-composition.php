@@ -13,9 +13,22 @@ final class SCP_Skill_Task_Composition {
         if ( ! is_string( $value ) || ! preg_match( '//u', $value ) ) return array();
         $parts = preg_split( '/[^\p{L}\p{N}]+/u', strtolower( $value ), -1, PREG_SPLIT_NO_EMPTY );
         $stop = array( 'the', 'and', 'for', 'from', 'with', 'into', 'this', 'that', 'are', 'use', 'your', 'have', 'after', 'before', 'please', 'need', 'can', 'want', 'task', 'skill', 'skills', 'project', 'then', 'الى', 'على', 'في', 'من', 'مع', 'عن', 'ثم', 'نفذ', 'تابع', 'راجع' );
-        return array_values( array_unique( array_filter( $parts, function ( $part ) use ( $stop ) {
-            return strlen( $part ) >= 3 && ! in_array( $part, $stop, true );
-        } ) ) );
+        $aliases = array(
+            'debugging' => 'debug', 'fixing' => 'debug', 'bugs' => 'debug', 'bug' => 'debug',
+            'عالج' => 'debug', 'اصلح' => 'debug', 'أصلح' => 'debug', 'الأخطاء' => 'debug', 'اخطاء' => 'debug',
+            'testing' => 'test', 'tests' => 'test', 'اختبر' => 'test', 'اختبارات' => 'test', 'الاختبارات' => 'test',
+            'الأمان' => 'security', 'الامان' => 'security', 'أمان' => 'security', 'الأمن' => 'security', 'امن' => 'security',
+            'مراجعة' => 'review', 'راجع' => 'review', 'مراجعه' => 'review', 'افحص' => 'review',
+            'الجودة' => 'quality', 'جودة' => 'quality', 'الكود' => 'code', 'الشفرة' => 'code',
+            'البرمجة' => 'development', 'تطوير' => 'development', 'طور' => 'development',
+            'تصميم' => 'design', 'صمم' => 'design', 'اختيار' => 'selection', 'التوافق' => 'compatibility',
+        );
+        $normalized = array();
+        foreach ( $parts as $part ) {
+            if ( strlen( $part ) < 3 || in_array( $part, $stop, true ) ) continue;
+            $normalized[] = isset( $aliases[$part] ) ? $aliases[$part] : $part;
+        }
+        return array_values( array_unique( $normalized ) );
     }
 
     private static function validate( $input ) {
@@ -158,6 +171,7 @@ final class SCP_Skill_Task_Composition {
         $patterns = array(
             'diagnose' => '/debug|diagnos|triage|investigat|troubleshoot|audit/',
             'design' => '/design|architect|model|spec|plan|research/',
+            'implement' => '/develop|implement|test driven/',
             'verify' => '/test|verif|quality|review|security|performance|lint/',
             'release' => '/deploy|release|ship|publish|workflow|automation|git/',
         );
@@ -168,13 +182,17 @@ final class SCP_Skill_Task_Composition {
     public static function composition_plan( $input = array() ) {
         $matches = self::match_task( $input );
         if ( is_wp_error( $matches ) ) return $matches;
-        $selected = array(); $used = array(); $phase = array();
+        $selected = array(); $used = array(); $stage_terms = array(); $stage_counts = array();
         foreach ( $matches['candidates'] as $candidate ) {
             $key = strtolower( (string) $candidate['name'] );
             if ( isset( $used[$key] ) ) continue;
             $stage = self::stage( $candidate['name'] );
-            if ( isset( $phase[$stage] ) ) continue;
-            $used[$key] = true; $phase[$stage] = true;
+            $covered = isset( $stage_terms[$stage] ) ? $stage_terms[$stage] : array();
+            $novel = array_diff( $candidate['matched_terms'], $covered );
+            if ( isset( $stage_counts[$stage] ) && ( ! $novel || $stage_counts[$stage] >= 2 ) ) continue;
+            $used[$key] = true;
+            $stage_counts[$stage] = isset( $stage_counts[$stage] ) ? $stage_counts[$stage] + 1 : 1;
+            $stage_terms[$stage] = array_values( array_unique( array_merge( $covered, $candidate['matched_terms'] ) ) );
             $selected[] = array( 'stage' => $stage, 'skill' => $candidate );
             if ( count( $selected ) >= 5 ) break;
         }
