@@ -9700,6 +9700,24 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "The original Google Drive Context isolated OAuth lifecycle exercises dedicated/managed OAuth grants and refresh, scope normalization, incremental consent, stored token privacy, authenticated client and stale revision rejection without a real Google request. The test adds ten direct PHP7.4/8.3 manual_revocation_admission cases: only an already disabled pending token with exactly one refresh and one access attempt, both HTTP 400 invalid_token, and matching attempted-at revision may enter the *separately attested* operator gate; missing/wrong timestamp, still readable token, other provider status, missing attempt, reversed order, and fake approval fail closed. No claims of successful provider revocation or actual token deletion. Exact Git source blob pinned; the original live OAuth/owner acceptance remains outstanding."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-resource-bridge.php",
+      "source_blob_sha": "45bf3ba302cedf9b2a66c24411994c68a37da79f",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/oauth-resource-signature-hermetic.php"
+      ],
+      "owner_role": "Original source OAuth cryptographic review via isolated CI only; not issuer credential custodian or enrolled Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Original OAuth Resource Bridge::verify_access_token exercised using generated ephemeral RSA-2048 private/public JWK materials and in-memory trusted-issuer discovery/JWKS cache. The original OpenSSL verification, exact allowed user:-subject, resource audience, protected URI, issuer policy, session/client binding and read scope pass on a valid signed token. Adversarial cases deny tampered signature, alg none, unapproved subject even with valid signature, wrong aud/resource, expired token, wildcard scope, mismatched client/azp, sign-only key_ops, duplicate KID and RSA-1024 modulus. Tested 23/23 cases on network-isolated PHP 7.4 and 8.3; no outbound HTTP and bearer never establishes verified WordPress user without the separate original REST admission. Source Git blob is exact; live JWKS provider transport and independently signed production credentials remain outside this hermetic scope and must be validated before any deployment. No owner tickets, API keys, real tokens, or site changes were created."
     }
   ],
   "code_change_rules": {

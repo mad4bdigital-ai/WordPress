@@ -4,8 +4,8 @@
   "reviewed_base_sha": "e7f30d944c354c3a4f7346330ad401d995e768c5",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 141,
-  "changed_paths_sha256": "3c6cd77cb40fe8357f49e020fb87ccc38c51fcc1e42c9dcb2854519ee100e6b0",
+  "changed_file_count": 142,
+  "changed_paths_sha256": "ac5893c4f36bf48a7757cef6ba69bf29a5fd4ac7732258cfa7f16bf83a27f711",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -119,7 +119,8 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-oauth-context-cooldown-smoke.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/background-authorization-verified-identity-hermetic.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/oauth-preflight-denial-hermetic.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/passwordless-mcp-identity-hermetic.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/passwordless-mcp-identity-hermetic.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/oauth-resource-signature-hermetic.php"
       ]
     },
     {
