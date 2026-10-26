@@ -83,11 +83,22 @@ if ( ! ( $response instanceof WP_REST_Response ) || 401 !== $response->get_statu
 $context_property->setValue( null, null );
 wp_set_current_user( 1 );
 $clean_local_request = new WP_REST_Request( 'POST', '/mcp/mad4b-chatgpt' );
+// An actual first-party WordPress REST cookie session requires its wp_rest nonce.
+$clean_local_request->set_header( 'X-WP-Nonce', wp_create_nonce( 'wp_rest' ) );
 MAD4B_SCP_OAuth_Request_Context_Guard::reset_request_context( null, null, $clean_local_request );
 if ( 1 !== get_current_user_id() ) mad4b_oauth_context_fail( 'Clean no-bearer local admin session was incorrectly demoted.' );
 $result = MAD4B_SCP_OAuth_Resource_Bridge::authenticate_rest_request( null, null, $clean_local_request );
 if ( null !== $result ) mad4b_oauth_context_fail( 'Authenticated clean local admin should continue through the gateway permission path.', $result );
 if ( MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) mad4b_oauth_context_fail( 'Clean local session unexpectedly gained OAuth overlay.' );
+
+// Directly selected CLI users are not independently cookie-authenticated REST
+// sessions. Without a nonce, the gateway must require an authenticated transport.
+wp_set_current_user( 1 );
+$missing_nonce_request = new WP_REST_Request( 'POST', '/mcp/mad4b-chatgpt' );
+MAD4B_SCP_OAuth_Request_Context_Guard::reset_request_context( null, null, $missing_nonce_request );
+$missing_nonce_result = MAD4B_SCP_OAuth_Resource_Bridge::authenticate_rest_request( null, null, $missing_nonce_request );
+if ( ! ( $missing_nonce_result instanceof WP_REST_Response ) || 401 !== $missing_nonce_result->get_status() ) mad4b_oauth_context_fail( 'Admin without REST cookie nonce must not bypass OAuth.', $missing_nonce_result );
+if ( 0 !== get_current_user_id() ) mad4b_oauth_context_fail( 'Missing-nonce request retained unverified WordPress identity.' );
 
 wp_set_current_user( 0 );
 echo 'mad4b.site-control-plane.runtime-oauth-context-cooldown.v3: PASS' . PHP_EOL;
