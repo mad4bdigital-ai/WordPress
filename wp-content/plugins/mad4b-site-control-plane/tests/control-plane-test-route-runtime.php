@@ -104,4 +104,20 @@ $GLOBALS['test_can_manage'] = true;
 $result = $router::inspect( array( 'native' => $native_eligible ) );
 check( is_wp_error( $result ) && 'mad4b_test_route_input_invalid' === $result->get_error_code(), 'Reject caller-controlled preflight' );
 
+
+// Verify that the MCP discovery surface is registered read-only and uses the
+// independent governed policy, not a write/approval or caller-supplied plan.
+$GLOBALS['ability_registration'] = array();
+function add_action( $hook, $handler, $priority = 10 ) { $GLOBALS['test_action_hook'] = $hook; }
+function wp_has_ability( $name ) { return false; }
+function wp_register_ability( $name, $args ) { $GLOBALS['ability_registration'][ $name ] = $args; }
+$router::boot();
+check( 'wp_abilities_api_init' === $GLOBALS['test_action_hook'], 'Register on WordPress Abilities hook' );
+$router::register_ability();
+$reg = $GLOBALS['ability_registration'][ $router::ABILITY ] ?? array();
+check( ( $reg['category'] ?? '' ) === 'mad4b-read', 'MCP read category only' );
+check( true === ( $reg['meta']['annotations']['readonly'] ?? false ), 'Read-only tool annotation' );
+check( false === ( $reg['meta']['public'] ?? true ), 'Never public capability' );
+check( ( $reg['execute_callback'][1] ?? '' ) === 'inspect', 'Unforgeable local provider callback' );
+
 echo "PASS: certified test route selector (hermetic security and fallback checks)\n";
