@@ -3048,6 +3048,111 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing localization, site-binding and security controls already cover advisory market lookup, signed preferences and public response minimization; no booking or financial authority is introduced.",
       "review_rationale": "Data adapters read native Woo countries, WPML public languages and WCML currencies, and only expose profile countries through the existing explicit approval registry."
+    },
+    {
+      "id": "ability:mad4b/skill-sources-list",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "MCP-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/external-skill-sources-runtime.php"
+      ],
+      "owner_role": "Technical source reviewer — CI-only mapping; independent repository-owner approval and live WordPress/MCP acceptance remain required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing source/egress, MCP read-permission, repository-governance and security controls cover this additional advisory read surface; no authorization, write, package install or deployment authority is added.",
+      "review_rationale": "Read-only projection of configured public GitHub repository/ref identities; administrator-only source configuration remains wp-admin/nonce guarded.",
+      "execution_note": "Hermetic PHP 7.4 and 8.3 fixtures cover bounded source identity, path, nonce/admin write rejection and read-only invariants. Real authenticated WordPress/MCP scope, GitHub egress/rate-limit and environment acceptance remain unverified."
+    },
+    {
+      "id": "ability:mad4b/skill-source-skills",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "MCP-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/external-skill-sources-runtime.php"
+      ],
+      "owner_role": "Technical source reviewer — CI-only mapping; independent repository-owner approval and live WordPress/MCP acceptance remain required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing source/egress, MCP read-permission, repository-governance and security controls cover this additional advisory read surface; no authorization, write, package install or deployment authority is added.",
+      "review_rationale": "Bounded source tree inventory uses public reviewed GitHub endpoint, accepted blob metadata and path validation; incomplete trees fail closed.",
+      "execution_note": "Hermetic PHP 7.4 and 8.3 fixtures cover bounded source identity, path, nonce/admin write rejection and read-only invariants. Real authenticated WordPress/MCP scope, GitHub egress/rate-limit and environment acceptance remain unverified."
+    },
+    {
+      "id": "ability:mad4b/skill-source-get",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "MCP-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/external-skill-sources-runtime.php"
+      ],
+      "owner_role": "Technical source reviewer — CI-only mapping; independent repository-owner approval and live WordPress/MCP acceptance remain required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing source/egress, MCP read-permission, repository-governance and security controls cover this additional advisory read surface; no authorization, write, package install or deployment authority is added.",
+      "review_rationale": "Exact SKILL.md selection requires the current discovered Git blob SHA; response remains untrusted text, never installed or executed.",
+      "execution_note": "Hermetic PHP 7.4 and 8.3 fixtures cover bounded source identity, path, nonce/admin write rejection and read-only invariants. Real authenticated WordPress/MCP scope, GitHub egress/rate-limit and environment acceptance remain unverified."
+    },
+    {
+      "id": "ability:mad4b/skill-source-resource",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "MCP-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/external-skill-sources-runtime.php"
+      ],
+      "owner_role": "Technical source reviewer — CI-only mapping; independent repository-owner approval and live WordPress/MCP acceptance remain required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing source/egress, MCP read-permission, repository-governance and security controls cover this additional advisory read surface; no authorization, write, package install or deployment authority is added.",
+      "review_rationale": "Restricted supporting-resource path under selected Skill with SHA verification; rejects crossing source paths and missing blobs.",
+      "execution_note": "Hermetic PHP 7.4 and 8.3 fixtures cover bounded source identity, path, nonce/admin write rejection and read-only invariants. Real authenticated WordPress/MCP scope, GitHub egress/rate-limit and environment acceptance remain unverified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-external-skill-sources.php",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "SECURITY-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/external-skill-sources-runtime.php"
+      ],
+      "owner_role": "Technical source reviewer — CI-only mapping; independent repository-owner approval and live WordPress/MCP acceptance remain required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing source/egress, MCP read-permission, repository-governance and security controls cover this additional advisory read surface; no authorization, write, package install or deployment authority is added.",
+      "review_rationale": "Source discovery, response bounds, cached tree inventory and administrator catalog updates remain distinct; no external code execution or authority transfer.",
+      "execution_note": "Hermetic PHP 7.4 and 8.3 fixtures cover bounded source identity, path, nonce/admin write rejection and read-only invariants. Real authenticated WordPress/MCP scope, GitHub egress/rate-limit and environment acceptance remain unverified."
     }
   ],
   "lifecycle": [],
@@ -10304,6 +10409,114 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Merge bootstrap retains previously certified master Context/Season/Source Hub services and new independent market adapters; no prior execution fence was removed or replaced."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/egress-policy.json",
+      "source_blob_sha": "9f3921fb5afafde5072bc8c9bd4a3378b9d7cd0a",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/external-skill-sources-runtime.php"
+      ],
+      "owner_role": "Technical source reviewer — CI-only mapping; independent repository-owner approval and live WordPress/MCP acceptance remain required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Adds source-discovery egress purpose under existing HTTPS/TLS verification, redirect-denial, unsafe-URL rejection and fail-closed defaults.",
+      "execution_note": "This SHA-bound review recognizes only testable source contracts and is not owner approval, runtime certification, live WordPress/MCP acceptance or Production authorization."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/external-skill-source-providers.json",
+      "source_blob_sha": "7a5a3ab0f1b9535672ebff645b5b6890465ddb14",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/external-skill-sources-runtime.php"
+      ],
+      "owner_role": "Technical source reviewer — CI-only mapping; independent repository-owner approval and live WordPress/MCP acceptance remain required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Reviewed source-provider catalog fixes a public HTTPS GitHub API origin, read-only mode and public visibility; callers cannot supply an arbitrary endpoint.",
+      "execution_note": "This SHA-bound review recognizes only testable source contracts and is not owner approval, runtime certification, live WordPress/MCP acceptance or Production authorization."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-skills-adapter.php",
+      "source_blob_sha": "1ecd3c0972c00c0c386c84d765ec4449be6c1b06",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/external-skill-sources-runtime.php"
+      ],
+      "owner_role": "Technical source reviewer — CI-only mapping; independent repository-owner approval and live WordPress/MCP acceptance remain required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Four source discovery/get abilities are attributed to the existing Skills read adapter; mutation and admin ability buckets remain empty.",
+      "execution_note": "This SHA-bound review recognizes only testable source contracts and is not owner approval, runtime certification, live WordPress/MCP acceptance or Production authorization."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-external-skill-sources.php",
+      "source_blob_sha": "fbc27a67e404594952f632e246ac16b32f091243",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/external-skill-sources-runtime.php"
+      ],
+      "owner_role": "Technical source reviewer — CI-only mapping; independent repository-owner approval and live WordPress/MCP acceptance remain required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Git tree/file SHA validation, bounded bytes and inventory, UTF-8/Git-blob verification, source admin nonce/capability and no-install/read-only responses reviewed with no-network fixture.",
+      "execution_note": "This SHA-bound review recognizes only testable source contracts and is not owner approval, runtime certification, live WordPress/MCP acceptance or Production authorization."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-abilities.php",
+      "source_blob_sha": "c30c3004f6ccc5791e3d5c7b5004426b7834233e",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/external-skill-sources-runtime.php"
+      ],
+      "owner_role": "Technical source reviewer — CI-only mapping; independent repository-owner approval and live WordPress/MCP acceptance remain required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Owned source-module include and four read-only schemas preserve existing Skill Abilities registration without modifying legacy bootstrap, external execution or write powers.",
+      "execution_note": "This SHA-bound review recognizes only testable source contracts and is not owner approval, runtime certification, live WordPress/MCP acceptance or Production authorization."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skills-admin-ui.php",
+      "source_blob_sha": "49b2ee873c6c007596b79bc3d451a515721c4767",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/external-skill-sources-runtime.php"
+      ],
+      "owner_role": "Technical source reviewer — CI-only mapping; independent repository-owner approval and live WordPress/MCP acceptance remain required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Existing admin Skills workspace routes only source add/remove operations to a nonce- and manage_options-protected catalog handler; output is escaped.",
+      "execution_note": "This SHA-bound review recognizes only testable source contracts and is not owner approval, runtime certification, live WordPress/MCP acceptance or Production authorization."
     }
   ],
   "code_change_rules": {
