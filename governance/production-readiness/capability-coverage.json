@@ -9664,6 +9664,42 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-admin-ui.php",
+      "source_blob_sha": "af298931a35406ba61a1eb83a6b4647d0157af9b",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-admin-integrity-hermetic.php"
+      ],
+      "owner_role": "Original-source CI security reviewer only; never a Google credential custodian or authenticated site owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "The real original Context Admin UI render and AJAX handler fixture exercises scoped source edit with persisted readback, nonce and administrator denial, preserved review policy view semantics, selected Google login method, and Staging write checkpoint guidance. Added eight adversarial direct runtime checks on PHP7.4/8.3 verify unauthenticated and invalid nonce attempts do not alter source policies, Google login UI does not render client secret/refresh token, typed HTML readback uses registered assets and stale Staging authority is not projected as ready. Original class and original in-memory data are used. No WP site state or real OAuth grant changed. Exact Git source blob pinned; the original live OAuth/owner acceptance remains outstanding."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php",
+      "source_blob_sha": "241c76df707d60b1548e632d45de71ac18deb2e6",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/google-revocation-boundary-hermetic.php"
+      ],
+      "owner_role": "Original-source CI security reviewer only; never a Google credential custodian or authenticated site owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "The original Google Drive Context isolated OAuth lifecycle exercises dedicated/managed OAuth grants and refresh, scope normalization, incremental consent, stored token privacy, authenticated client and stale revision rejection without a real Google request. The test adds ten direct PHP7.4/8.3 manual_revocation_admission cases: only an already disabled pending token with exactly one refresh and one access attempt, both HTTP 400 invalid_token, and matching attempted-at revision may enter the *separately attested* operator gate; missing/wrong timestamp, still readable token, other provider status, missing attempt, reversed order, and fake approval fail closed. No claims of successful provider revocation or actual token deletion. Exact Git source blob pinned; the original live OAuth/owner acceptance remains outstanding."
     }
   ],
   "code_change_rules": {
