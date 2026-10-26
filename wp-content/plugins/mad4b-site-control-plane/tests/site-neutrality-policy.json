@@ -36,10 +36,11 @@
         "generativelanguage.googleapis.com",
         "mail.google.com",
         "oauth2.googleapis.com",
+        "schemas.openxmlformats.org",
         "www",
         "www.googleapis.com"
       ],
-      "rationale": "Reviewed provider/service/documentation endpoints or reserved examples; never a tenant origin default."
+      "rationale": "Reviewed provider/service/documentation endpoints or reserved examples; never a tenant origin default. OOXML namespace identifier for read-only Excel worksheet relationships; not a network request or a tenant URL."
     },
     "includes/class-mad4b-scp-wp-native-build-worker.php": {
       "hosts": [
@@ -183,6 +184,34 @@
         "github.com"
       ],
       "rationale": "Reviewed provider/service/documentation endpoints or reserved examples; never a tenant origin default."
+    },
+    "includes/class-mad4b-scp-public-holidays.php": {
+      "hosts": [
+        "calendar.google.com",
+        "nagerholidays.com"
+      ],
+      "rationale": "Explicit public iCalendar feed URL; selected country calendar only, no tenant default. Nager Holiday API public country/year endpoint, bounded provider fetch; not tenant data."
+    },
+    "includes/class-mad4b-scp-season-calendar.php": {
+      "hosts": [
+        "www.googleapis.com"
+      ],
+      "rationale": "Google Calendar readonly OAuth scope identifier; not a destination or a tenant value."
+    },
+    "includes/class-mad4b-scp-source-hub.php": {
+      "hosts": [
+        "jsonfeed.org"
+      ],
+      "rationale": "Literal JSON Feed version identifier checked when validating external feed structure; not a request destination."
+    },
+    "includes/class-mad4b-scp-ai-model-router.php": {
+      "hosts": [
+        "127.0.0.1",
+        "aistudio.google.com",
+        "generativelanguage.googleapis.com",
+        "openrouter.ai"
+      ],
+      "rationale": "127.0.0.1 is the immutable local-only Ollama model sidecar loopback API, not a tenant or production origin. The code rejects non-Local environments and model substitutions; the ETG Local Lab MU sandbox explicitly allowlists only POST /api/chat while all other requests remain blocked."
     }
   },
   "optional_named_tag_integrations": [

@@ -74,6 +74,10 @@ class MAD4B_SCP_Site_Profile {
 	public static function agent_slug() { return 'context-review-ai'; }
 }
 
+class MAD4B_SCP_AI_Only_Local_Activation {
+    public static $bound = false;
+    public static function site_bound() { return self::$bound; }
+}
 class MAD4B_SCP_Audit {
 	public static $fail_append = false;
 	public static function storage_status() { return array( 'ready' => true ); }
@@ -109,6 +113,7 @@ class MAD4B_SCP_Agent_Registry {
 	public static $configured_public_id = '22222222-2222-4222-8222-222222222222';
 	public static $wrong_public_id = '33333333-3333-4333-8333-333333333333';
     public static $configured_environment = 'staging';
+    public static $grant_environment = 'staging';
 
 	private static function configured_agent() {
 		return array(
@@ -149,7 +154,7 @@ class MAD4B_SCP_Agent_Registry {
 			'server_id' => 'mad4b-write',
 			'ability_name' => 'mad4b/context-ai-review',
 			'provider' => 'core',
-			'environment' => 'staging',
+			'environment' => self::$grant_environment,
 			'effect' => 'allow',
 		);
 	}
@@ -964,8 +969,20 @@ mad4b_review_assert( 'ai_only' === $last_ai_only_event['data']['review_policy_mo
 MAD4B_SCP_Site_Profile::$environment = 'production';
 $production_review = MAD4B_SCP_Context_Authority::review_asset_by_agent( mad4b_ai_review_input( $asset_id ) );
 mad4b_review_assert( is_wp_error( $production_review ), 'AI Agent approval must remain fail-closed in Production.', $production_review );
-mad4b_review_assert( 'mad4b_context_ai_review_staging_only' === $production_review->get_error_code(), 'Production AI review must expose exact Staging-only denial.', $production_review->get_error_code() );
-mad4b_review_assert( empty( MAD4B_SCP_Context_Authority::ai_review_catalog_eligible() ), 'Production must never expose AI review as runtime catalog-eligible.' );
+mad4b_review_assert( 'mad4b_context_ai_review_site_scope_required' === $production_review->get_error_code(), 'Production AI review must reject missing scoped opt-in.', $production_review->get_error_code() );
+mad4b_review_assert( empty( MAD4B_SCP_Context_Authority::ai_review_catalog_eligible() ), 'Production is ineligible without explicit site binding.' );
+define('MAD4B_AI_REVIEW_CROSS_ENV_ENABLED',true);
+MAD4B_SCP_AI_Only_Local_Activation::$bound = true;
+mad4b_review_assert( MAD4B_SCP_Context_Authority::ai_review_catalog_eligible(),
+    'Site-scope alone permits catalog only when the Agent is configured but does not grant execution.' );
+mad4b_review_assert( !MAD4B_SCP_Context_Authority::ai_review_policy_status()['ready'],
+    'Production with Staging-only exact grant must remain blocked.' );
+MAD4B_SCP_Agent_Registry::$grant_environment = 'all';
+mad4b_review_assert( MAD4B_SCP_Context_Authority::ai_review_catalog_eligible(), 'Production allows only explicit site-scoped Agent review catalog.' );
+mad4b_review_assert( MAD4B_SCP_Context_Authority::ai_review_policy_status()['ready'] === true,
+    'Production scoped review preserves exact Agent identity and grant gates.' );
+MAD4B_SCP_AI_Only_Local_Activation::$bound = false;
+MAD4B_SCP_Agent_Registry::$grant_environment = 'staging';
 MAD4B_SCP_Site_Profile::$environment = 'staging';
 
 MAD4B_SCP_Agent_Registry::$configured_environment = 'staging';
@@ -981,3 +998,4 @@ mad4b_review_assert( 3 === count( $policy_events ), 'Human + AI, AI-only, and hu
 mad4b_review_assert( empty( $policy_events[0]['data']['grant_reconciliation_called'] ) && empty( $policy_events[1]['data']['grant_reconciliation_called'] ), 'Review policy changes must never reconcile grants automatically.', $policy_events );
 
 echo "mad4b.site-control-plane.context-ai-agent-review.runtime.v1: PASS\n";
+echo "PASS: CONTEXT_AI_CROSS_ENV_REVIEW\n";
