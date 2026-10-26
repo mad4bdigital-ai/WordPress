@@ -106,6 +106,7 @@ final class MAD4B_SCP_Skill_Abilities {
                 'type' => 'object',
                 'properties' => array(
                     'task' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 4000 ),
+                    'task_context' => array( 'type' => 'string', 'maxLength' => 4000 ),
                     'topics' => array( 'type' => 'array', 'maxItems' => 12, 'items' => array( 'type' => 'string', 'maxLength' => 80 ) ),
                     'source_ids' => array( 'type' => 'array', 'maxItems' => 40, 'items' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{24}$' ) ),
                     'source_offset' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 40 ),
@@ -121,6 +122,7 @@ final class MAD4B_SCP_Skill_Abilities {
                 'type' => 'object',
                 'properties' => array(
                     'task' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 4000 ),
+                    'task_context' => array( 'type' => 'string', 'maxLength' => 4000 ),
                     'topics' => array( 'type' => 'array', 'maxItems' => 12, 'items' => array( 'type' => 'string', 'maxLength' => 80 ) ),
                     'source_ids' => array( 'type' => 'array', 'maxItems' => 40, 'items' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{24}$' ) ),
                     'source_offset' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 40 ),
