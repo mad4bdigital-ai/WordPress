@@ -2743,6 +2743,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original WordPress Local environment and Site Profile, Background Authorization exact delegated identity, original Workflow and Policy receipt gates, and browser MFA remain authoritative; source remains unchanged.",
       "review_rationale": "The original Unified Approval Admin registers its eight REST routes only in the Local environment and retains explicit WordPress enrolled-owner or original Background_Authorization::current() actor admission. Unknown POST fields including publication, force-grant and MFA-bypass are rejected; original Workflow, Policy and Gate endpoints delegate only to existing owner review, original approval ticket and browser authority guards. Network-isolated PHP 7.4 and PHP 8.3 executions each passed 24 direct original-class tests, checking admin and delegated agent admission, Production/Staging rejection, original route permission callbacks, deny/allow request shape and no mocked site mutation. Existing Workflow and exact grant tests separately verify owner decision and deny-first behavior; these local-only checks do not certify live REST/nonce, model identity, or owner approval."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wordpress-media-context.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/media-inventory-authorization-hermetic.php"
+      ],
+      "owner_role": "Original Media source CI reviewer, not WordPress Content/Production Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original Media Context scanner retains exact WordPress admin+upload files+Site Profile connect policy, bounded MIME inventory, content normalizers, SHA-256 reuse checks and Context Authority complete scan approval; already existing two source-behavior CI reviews remain intact and unchanged.",
+      "review_rationale": "New original-class Media inventory/authorization source regression passed 22/22 cases on PHP 7.4 and PHP 8.3 in network-isolated temporary file fixture: exact hash and supported MIME, text/CSV normalization, explicit allowed MIME scope, max 1000 inventory rejection, reuse of unchanged version+hash record, denied legacy sync without manage_options, upload_files or original connect policy, and invalid/oversized ID refusal before any WordPress registry mutation. Existing normalize_bytes regression passed 10/10 on both PHP 7.4 and 8.3. Existing Excel OOXML regression passed 12/12 using an isolated WordPress PHP 8.3 image with ZIP extension; bare php:7.4-cli and php:8.3-cli images lack ZIP, so their initial Excel fixture failure was an environment dependency and NOT counted as a product regression. No Site Media, database, approval or actual upload changed. This CI-only review is not real deployment or full author acceptance."
     }
   ],
   "lifecycle": [],
