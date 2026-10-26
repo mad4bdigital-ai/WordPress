@@ -40,6 +40,8 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/switchers/test-market-compatibility.php",
     "tests/switchers/test-market-context-boundaries.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/market-bootstrap-compatibility.php",
+    # Exact no-network PHP fixture reviewed for external Skill source discovery only.
+    "wp-content/plugins/mad4b-site-control-plane/tests/external-skill-sources-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/market-source-read-abilities-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/market-source-calendar-cron-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/market-source-calendar-authority-hermetic.php",
