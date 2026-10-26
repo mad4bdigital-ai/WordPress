@@ -2,6 +2,11 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
+// Read-only source and composition modules are owned by this Skills provider.
+// Keep the canonical plugin bootstrap unchanged for its historical delivery contract.
+require_once __DIR__ . '/class-external-skill-sources.php';
+require_once __DIR__ . '/class-skill-task-composition.php';
+
 /**
  * Read-only MCP/Abilities projection for the file-backed Skill registry.
  * Authoring remains a local wp-admin operation behind explicit environment

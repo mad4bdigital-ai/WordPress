@@ -527,8 +527,6 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-autoconfig.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-seeder.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-resource-reader.php';
-require_once MAD4B_SCP_DIR . 'includes/class-external-skill-sources.php';
-require_once MAD4B_SCP_DIR . 'includes/class-skill-task-composition.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-resource-writer.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-snapshot-identity.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-exporter.php';
