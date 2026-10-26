@@ -114,6 +114,11 @@ final class MAD4B_SCP_Error_Contract_Registry {
 			'message_is_contractual' => false,
 			'authorizing' => false,
 		);
+		// Provide safe, value-free blocker hints to existing MCP/Ability clients.
+		if ( class_exists( 'MAD4B_SCP_Adaptive_Interaction_Broker', false ) ) {
+			$hint = MAD4B_SCP_Adaptive_Interaction_Broker::hint( $code );
+			if ( is_array( $hint ) ) $data['adaptive_interaction'] = $hint;
+		}
 		if ( ! array_key_exists( 'reason_code', $data ) ) $data['reason_code'] = $code;
 		if ( method_exists( $error, 'add_data' ) ) {
 			$error->add_data( $data, $code );

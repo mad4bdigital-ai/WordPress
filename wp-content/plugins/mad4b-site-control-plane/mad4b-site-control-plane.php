@@ -454,12 +454,15 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-production-readiness-eval
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operator-control-center.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-request-generation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-error-contract-registry.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adaptive-interaction-broker.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-authorization.php';
 // The mutation execution-boundary filter must exist before any ability can be
 // materialized. Nested write dispatch calls Ability::execute() directly, so
 // permission callbacks alone are not a sufficient execution fence.
 MAD4B_SCP_Authorization::boot();
 MAD4B_SCP_Error_Contract_Registry::boot();
+// Metadata-only, actor-bound adaptive recovery. No secret ingress or automatic write.
+MAD4B_SCP_Adaptive_Interaction_Broker::boot();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-execution-fence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mutation-manager.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-postcondition-profile.php';
@@ -469,7 +472,11 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-autopilot.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-functional-gap-evidence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-functional-gap-runtime-diagnostic.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-code-snippets-runtime-diagnostic.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-backend-registry.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-runner-bridge.php';
+MAD4B_SCP_Runtime_Backend_Registry::register_lifecycle();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-developer-host-capabilities.php';
+MAD4B_SCP_Developer_Host_Capabilities::discovery_boot();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-developer-runtime.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-developer-workspace.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-transport-registry.php';

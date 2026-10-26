@@ -2781,6 +2781,157 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The original approved Agent/Local Client, Context Source ownership and revision CAS, managed Media content normalization, enrolled WordPress admin and source rescan remain the only authorities; no AI review result alone grants mutation or publication.",
       "review_rationale": "Original AI Source Repair exact method remains local-only and requires enrolled Local Client plus original AI Router allow_source_repair, original operator Policy or certified host runner, registered governed WordPress Media asset in needs_changes status, matching current and reviewed content SHA, a real inside-uploads non-symlink bounded file and an original Context Source Pipeline rescan. It rejects invented provenance URLs, document identity changes, unsupported MIME, invalid or insufficient revisions and stale file. New fail-closed checks reject malformed SHA/asset ID or non-string model output before hash_equals/filesystem; invalid UTF-8/NUL is validated before Unicode document heading extraction. The hermetic test directly calls original service methods with disposable private /tmp uploads and fake WordPress record handles; 27/27 PASS on PHP 7.4 and PHP 8.3, including a successful simulated swap/rescan and byte-for-byte restored original on forced rescan failure. No real WordPress files, content, AI model, credentials or approval changed, and no autonomous publication or Production deployment is authorized."
+    },
+    {
+      "id": "ability:mad4b/adaptive-interaction-",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "status": "reviewed_for_ci_only",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php"
+      ],
+      "owner_role": "Source/security CI technical review; not Repository/Site Owner attestation",
+      "review_rationale": "Reviewed original bounded checkpoint broker source (actor/site/revision, expiry, no secret storage, typed CSO01 validation and no write replay), 34 original-class positive/negative PHP assertions on both PHP 7.4/8.3, including missing-provider protection and closed Staging/Production pilot. No live certification or credential exchange.",
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "coverage_reuse_rationale": "Existing reviewed WordPress Policy/Site Profile actor permissions, MCP read/metadata Ability admission, provider certification and central native execution fence remain authoritative. The broker adds only non-secret planning checkpoints and grants no new write, Production, OAuth or provider authority."
+    },
+    {
+      "id": "ability:mad4b/adaptive-interaction-plan",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "status": "reviewed_for_ci_only",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php"
+      ],
+      "owner_role": "Source/security CI technical review; not Repository/Site Owner attestation",
+      "review_rationale": "Reviewed original bounded checkpoint broker source (actor/site/revision, expiry, no secret storage, typed CSO01 validation and no write replay), 34 original-class positive/negative PHP assertions on both PHP 7.4/8.3, including missing-provider protection and closed Staging/Production pilot. No live certification or credential exchange.",
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "coverage_reuse_rationale": "Existing reviewed WordPress Policy/Site Profile actor permissions, MCP read/metadata Ability admission, provider certification and central native execution fence remain authoritative. The broker adds only non-secret planning checkpoints and grants no new write, Production, OAuth or provider authority."
+    },
+    {
+      "id": "ability:mad4b/v1",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "status": "reviewed_for_ci_only",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php"
+      ],
+      "owner_role": "Source/security CI technical review; not Repository/Site Owner attestation",
+      "review_rationale": "Reviewed original bounded checkpoint broker source (actor/site/revision, expiry, no secret storage, typed CSO01 validation and no write replay), 34 original-class positive/negative PHP assertions on both PHP 7.4/8.3, including missing-provider protection and closed Staging/Production pilot. No live certification or credential exchange.",
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "coverage_reuse_rationale": "Existing WordPress Policy/Site Profile user admission, MCP identity and established execution fence apply. This new metadata-only Local pilot never grants OAuth, new provider authority or native write replay. Extra environments need separate certification."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-interaction-broker.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "status": "reviewed_for_ci_only",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php"
+      ],
+      "owner_role": "Source/security CI technical review; not Repository/Site Owner attestation",
+      "review_rationale": "Reviewed original bounded checkpoint broker source (actor/site/revision, expiry, no secret storage, typed CSO01 validation and no write replay), 34 original-class positive/negative PHP assertions on both PHP 7.4/8.3, including missing-provider protection and closed Staging/Production pilot. No live certification or credential exchange.",
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "coverage_reuse_rationale": "Existing reviewed WordPress Policy/Site Profile actor permissions, MCP read/metadata Ability admission, provider certification and central native execution fence remain authoritative. The broker adds only non-secret planning checkpoints and grants no new write, Production, OAuth or provider authority."
+    },
+    {
+      "id": "ability:mad4b/performance-differential-diagnostic",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/performance-differential-diagnostic-contract.php"
+      ],
+      "owner_role": "Original exact-source/security CI review; not repository owner or external site attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP identity, original WordPress Policy and Site Profile grants, provider isolation, authorized capability registration and execution fence remain authoritative; no new write path, raw shell, SQL, Production promotion or automatic credential access is granted.",
+      "review_rationale": "Original MCP status ability reports current request counts only without independent bootstrap or SQL execution; Query Monitor attribution exceptions collapse to bounded attribution_probe_failed and never expose exception text. PHP7.4/8.3 tests asserted default read-only/no mutation."
+    },
+    {
+      "id": "cron:mad4b_developer_runner_refresh",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/developer-runner-lifecycle-fetch-contract.php"
+      ],
+      "owner_role": "Original exact-source/security CI review; not repository owner or external site attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP identity, original WordPress Policy and Site Profile grants, provider isolation, authorized capability registration and execution fence remain authoritative; no new write path, raw shell, SQL, Production promotion or automatic credential access is granted.",
+      "review_rationale": "Remote runner discovery exposes only safe configured status and preserves execution_allowed=false and uncertified identity; requires trusted HTTPS origin, limits response size and redirects, caches with TTL. Original-source positive/negative staging fixture checks state and avoids credentials or cross-site authorization."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-backend-registry.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-backend-registry-contract.php"
+      ],
+      "owner_role": "Original exact-source/security CI review; not repository owner or external site attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP identity, original WordPress Policy and Site Profile grants, provider isolation, authorized capability registration and execution fence remain authoritative; no new write path, raw shell, SQL, Production promotion or automatic credential access is granted.",
+      "review_rationale": "Closed backend selection accepts only independently configured/verified/certified isolated read diagnostics, denies unsupported preset, expired/backoff, untrusted actor or unsafe fallback for writes. Original source fixtures exercise denial and sanitized snapshot."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-runner-bridge.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-runner-bridge-contract.php"
+      ],
+      "owner_role": "Original exact-source/security CI review; not repository owner or external site attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP identity, original WordPress Policy and Site Profile grants, provider isolation, authorized capability registration and execution fence remain authoritative; no new write path, raw shell, SQL, Production promotion or automatic credential access is granted.",
+      "review_rationale": "Signed RSA receipt binds enrolled site, nonce, request SHA, exact operation and result; tampered payload, cross-site or write-contaminated receipts deny. Only diagnostic read is eligible, no shell, SQL or Production grant."
     }
   ],
   "lifecycle": [],
@@ -9718,6 +9869,217 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Original OAuth Resource Bridge::verify_access_token exercised using generated ephemeral RSA-2048 private/public JWK materials and in-memory trusted-issuer discovery/JWKS cache. The original OpenSSL verification, exact allowed user:-subject, resource audience, protected URI, issuer policy, session/client binding and read scope pass on a valid signed token. Adversarial cases deny tampered signature, alg none, unapproved subject even with valid signature, wrong aud/resource, expired token, wildcard scope, mismatched client/azp, sign-only key_ops, duplicate KID and RSA-1024 modulus. Tested 23/23 cases on network-isolated PHP 7.4 and 8.3; no outbound HTTP and bearer never establishes verified WordPress user without the separate original REST admission. Source Git blob is exact; live JWKS provider transport and independently signed production credentials remain outside this hermetic scope and must be validated before any deployment. No owner tickets, API keys, real tokens, or site changes were created."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-restore-epoch.php",
+      "source_blob_sha": "90fcaffdc6ffebbc1708e4f3dfbed2feb6a02f68",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "RECOVERY-01",
+        "UPDATES-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/restore-epoch-recovery-contract.py"
+      ],
+      "owner_role": "Repository exact-source reviewer — CI-only, external restore authority and Production not certified",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact Restore Epoch PHP source uses external monotonic record, per-Site Profile binding and fail-closed classified status. Only guarded, audited, explicitly checked evidence reconciliation can advance the epoch; no unconditional authority or grant is produced. Trusted Python runner invokes PHP lint and a six-case recovery/rollback/idempotency fixture. Repository testing is not live filesystem-restore acceptance."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-interaction-broker.php",
+      "source_blob_sha": "868bdd8fd9c3813d0efa843bb7c25fce0bac8c42",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php"
+      ],
+      "status": "reviewed_for_ci_only",
+      "owner_role": "Source/security CI technical review; not Repository/Site Owner attestation",
+      "review_rationale": "Reviewed original bounded checkpoint broker source (actor/site/revision, expiry, no secret storage, typed CSO01 validation and no write replay), 34 original-class positive/negative PHP assertions on both PHP 7.4/8.3, including missing-provider protection and closed Staging/Production pilot. No live certification or credential exchange.",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-error-contract-registry.php",
+      "source_blob_sha": "9331b8d222766d68f48347137b2406825fd1dce0",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php"
+      ],
+      "status": "reviewed_for_ci_only",
+      "owner_role": "Source/security CI technical review; not Repository/Site Owner attestation",
+      "review_rationale": "Reviewed only additive error registry hook: canonical error reason receives value-free nonauthorizing adaptive metadata while existing policy remains original owner. Runtime test checks no plaintext credential request, no mutation approval.",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "25a6d5b06e2f6e8d2fb485966c5c8fae5345c6b8",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php"
+      ],
+      "status": "reviewed_for_ci_only",
+      "owner_role": "Source/security CI technical review; not Repository/Site Owner attestation",
+      "review_rationale": "Reviewed narrow plugin bootstrap: broker class required beside original error registry, booted after original authorization fence, no expanded grant nor automatic retry. Original runtime PHP assertions and source diff check exercised; WordPress live acceptance independent.",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-lifecycle.php",
+      "source_blob_sha": "9b5ee4a0c14680f6c4b2b0f0d9926a652c876454",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-backend-deactivation-contract.php"
+      ],
+      "owner_role": "Original exact-source/security CI review; not repository owner or external site attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Original catalog hook deactivation clears only its registered bounded refresh cron alongside existing catalog garbage collection. Tested actual lifecycle deactivation and no plugin/website mutation."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-host-capabilities.php",
+      "source_blob_sha": "2df929231c86b2e2ccdc265d762b3a7ffdedcc2b",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/developer-runner-lifecycle-fetch-contract.php"
+      ],
+      "owner_role": "Original exact-source/security CI review; not repository owner or external site attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Remote runner discovery exposes only safe configured status and preserves execution_allowed=false and uncertified identity; requires trusted HTTPS origin, limits response size and redirects, caches with TTL. Original-source positive/negative staging fixture checks state and avoids credentials or cross-site authorization."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-acceptance-observer.php",
+      "source_blob_sha": "ee7f0689ce8dd75b1ef6a9855dc3985fd3b490b1",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/performance-differential-diagnostic-contract.php"
+      ],
+      "owner_role": "Original exact-source/security CI review; not repository owner or external site attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Original MCP status ability reports current request counts only without independent bootstrap or SQL execution; Query Monitor attribution exceptions collapse to bounded attribution_probe_failed and never expose exception text. PHP7.4/8.3 tests asserted default read-only/no mutation."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-transport-admission.php",
+      "source_blob_sha": "9feba57717b26e80cc854efa2f4579b458770e69",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-origin-error-preservation-runtime.php"
+      ],
+      "owner_role": "Original exact-source/security CI review; not repository owner or external site attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Only explicit first-party OAuth/protected-route error codes survive generic HTTP 503; foreign mad4b-prefixed strings and response body messages are refused. Source runtime verifies accepted origin and foreign-code denial with PHP7.4 visibility-safe fixture."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-backend-registry.php",
+      "source_blob_sha": "6bc57eb6ec32af7ce09323b41c9370b9284894a0",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-backend-registry-contract.php"
+      ],
+      "owner_role": "Original exact-source/security CI review; not repository owner or external site attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Closed backend selection accepts only independently configured/verified/certified isolated read diagnostics, denies unsupported preset, expired/backoff, untrusted actor or unsafe fallback for writes. Original source fixtures exercise denial and sanitized snapshot."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-runner-bridge.php",
+      "source_blob_sha": "ce8899094ed08ee3687a53c64bcc879a42703ae3",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-runner-bridge-contract.php"
+      ],
+      "owner_role": "Original exact-source/security CI review; not repository owner or external site attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Signed RSA receipt binds enrolled site, nonce, request SHA, exact operation and result; tampered payload, cross-site or write-contaminated receipts deny. Only diagnostic read is eligible, no shell, SQL or Production grant."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "35cec2d3df49575d04e0e27df7de130cbcfa0c38",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-backend-deactivation-contract.php"
+      ],
+      "owner_role": "Original exact-source/security CI review; not repository owner or external site attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exactly the reviewed platform bootstraps external backend registry and diagnostic runner bridge with original execution fence unchanged; no implicit invocation or new grant. Original runner-registry and catalog lifecycle fixtures run with this exact merged source; historic G2-G9 unchanged."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "4c8d21033f3b479c038a2b010164bb17a9fca80f",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-backend-deactivation-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-runner-bridge-contract.php"
+      ],
+      "owner_role": "Four-branch combined source CI reviewer only; no repository or site owner approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Combined bootstrap source preserves original Authorization/Execution fence and legacy loading order. New adaptive read-only broker is booted after central Authorization; runtime registry and runner bridge are loaded before Developer Host Capabilities without granting writes. Native PHP fixtures cover source-bound checkpoint, no blind replay, backend deactivation and signed receipt denials. This record is an integration simulation only, not a Site/Production grant or retroactive G2–G9 signature."
     }
   ],
   "code_change_rules": {
