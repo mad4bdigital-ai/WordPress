@@ -11,6 +11,7 @@ function is_wp_error( $value ) { return $value instanceof WP_Error; }
 $GLOBALS['fake_sources'] = array();
 $GLOBALS['is_admin'] = true;
 $GLOBALS['tree_truncated'] = false;
+$GLOBALS['tree_extra_entries'] = 0;
 $GLOBALS['fake_blob_valid'] = true;
 $GLOBALS['fake_urls'] = array();
 $GLOBALS['fake_timeouts'] = array();
@@ -38,6 +39,10 @@ function wp_safe_remote_get( $url, $args ) {
             array( 'type' => 'blob', 'path' => 'skills/sample/SKILL.md', 'sha' => $sha, 'size' => strlen( $content ) ),
             array( 'type' => 'blob', 'path' => 'skills/sample/references/notes.md', 'sha' => $sha, 'size' => strlen( $content ) ),
         ) );
+        for ( $i = 0; $i < $GLOBALS['tree_extra_entries']; $i++ ) {
+            $result['tree'][] = array( 'type' => 'blob', 'path' => 'assets/file-' . $i . '.md',
+                'sha' => $sha, 'size' => strlen( $content ) );
+        }
     } else {
         $result = array( 'sha' => $GLOBALS['fake_blob_valid'] ? $sha : str_repeat( 'b', 40 ), 'encoding' => 'base64', 'content' => base64_encode( $content ) );
     }
@@ -85,6 +90,17 @@ $before=count($GLOBALS['fake_urls']);
 $result=SCP_External_Skill_Sources::get_skill($expired);
 assert_ok(is_wp_error($result) && $result->get_error_code()==='skill_source_budget_exhausted','Expired deadline must fail closed');
 assert_ok(count($GLOBALS['fake_urls'])===$before,'Expired deadline started external request');
+// A small JSON payload can contain enough distinct entries to exhaust PHP memory
+// as tree() creates a second indexed files array. Enforce an entry count bound.
+$GLOBALS['tree_extra_entries'] = 9999; // Two original entries + 9999 = 10001.
+$oversized = SCP_External_Skill_Sources::list_skills( array( 'source_id' => $source['id'] ) );
+assert_ok( is_wp_error( $oversized ) && 'skill_source_tree_entry_limit' === $oversized->get_error_code(),
+    'Excessive Git tree entry count must fail closed' );
+$GLOBALS['tree_extra_entries'] = 9998; // Exactly 10000 entries is still valid.
+$boundary = SCP_External_Skill_Sources::list_skills( array( 'source_id' => $source['id'] ) );
+assert_ok( ! is_wp_error( $boundary ) && 1 === $boundary['count'],
+    'Exactly bounded Git tree entries should be accepted' );
+$GLOBALS['tree_extra_entries'] = 0;
 $GLOBALS['tree_truncated'] = true;
 assert_ok( is_wp_error( SCP_External_Skill_Sources::list_skills( array( 'source_id' => $source['id'] ) ) ), 'truncated tree accepted' );
 assert_ok( SCP_External_Skill_Sources::remove_source( $source['id'] ) === true, 'delete failed' );

@@ -13,6 +13,7 @@ final class SCP_External_Skill_Sources {
     const CONTRACT = 'external-skill-sources.v1';
     const MAX_SOURCES = 40;
     const MAX_SKILLS = 500;
+    const MAX_TREE_ENTRIES = 10000;
     const MAX_TREE_BYTES = 4194304;
     const MAX_FILE_BYTES = 262144;
     const CACHE_GROUP = 'scp_external_skills';
@@ -157,6 +158,11 @@ final class SCP_External_Skill_Sources {
         if ( is_wp_error( $tree ) ) return $tree;
         if ( empty( $tree['sha'] ) || ! preg_match( '/\A[a-f0-9]{40}\z/D', $tree['sha'] ) || ! isset( $tree['tree'] ) || ! is_array( $tree['tree'] ) || ! empty( $tree['truncated'] ) ) {
             return new WP_Error( 'skill_source_tree_incomplete', 'The upstream Git tree is incomplete or invalid.' );
+        }
+        // Git trees are untrusted input: MAX_TREE_BYTES limits wire size but
+        // not decoded PHP array/cardinality and subsequent indexed copies.
+        if ( count( $tree['tree'] ) > self::MAX_TREE_ENTRIES ) {
+            return new WP_Error( 'skill_source_tree_entry_limit', 'The upstream tree has too many entries for safe discovery.' );
         }
         $files = array();
         $skills = array();

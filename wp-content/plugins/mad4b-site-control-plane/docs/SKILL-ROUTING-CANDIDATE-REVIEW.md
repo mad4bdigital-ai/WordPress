@@ -69,7 +69,7 @@ The composition reader now checks the exact `repository`, `ref`, and `tree_sha` 
 
 ## Shared network budget security/performance review — PENDING
 
-Two new source-blob candidates are `includes/class-external-skill-sources.php` at `585844caee1688ef43955ea7ed3f8aa6f96542ca` and `includes/class-skill-task-composition.php` at `929ab0a06ad81ac015a279ec08f8db69ba665a17`. New tests use blobs `a5879e56ee7fd3bd12fb8a27a27d065e83835001` and `bd06234cd8f9efb9bb2b517c47c0ba8135d92b95`. They first demonstrate that old 12-second per-call timeouts and expired source scans failed the new assertions, then pass for PHP 7.4/8.3 in network-disabled read-only containers. All requests in one composition share a bounded deadline; exhausted scans disclose incomplete results. This does **not** establish a hard real-time limit or waive the required independent performance, egress, security, and source-blob reviews. No owner attestation, new execution authority, or Production certification is granted.
+Two new source-blob candidates are `includes/class-external-skill-sources.php` at `7f0e42de6e99572b177ea8dd96e633d13cdbe70b` and `includes/class-skill-task-composition.php` at `929ab0a06ad81ac015a279ec08f8db69ba665a17`. New tests use blobs `3e3672002ce5f685e04eb69c2e0314f21e21b1c1` and `bd06234cd8f9efb9bb2b517c47c0ba8135d92b95`. They first demonstrate that old 12-second per-call timeouts and expired source scans failed the new assertions, then pass for PHP 7.4/8.3 in network-disabled read-only containers. All requests in one composition share a bounded deadline; exhausted scans disclose incomplete results. This does **not** establish a hard real-time limit or waive the required independent performance, egress, security, and source-blob reviews. No owner attestation, new execution authority, or Production certification is granted.
 
 
 ## Advisory enrichment timeout reporting — PENDING REVIEW
@@ -88,3 +88,22 @@ binds the source reader to `mark_request`. The integration Dynamic Skills
 contract workflow executes both tests explicitly. These are isolated tests;
 a live enrolled WordPress MCP/real networking acceptance remains outstanding.
 No control or source approval is granted by adding this evidence.
+
+
+## Git tree cardinality / memory hardening — PENDING REVIEW
+
+A 4 MiB JSON response body can expand into tens of thousands of decoded PHP
+objects and an additional indexed `files` array. On PHP memory-limited hosts
+that is a separate resource risk from the existing response-size and MAX_SKILLS
+bounds. External discovery now rejects any complete upstream tree above **10,000
+entries** with `skill_source_tree_entry_limit` before it constructs the second
+file-index array; a tree of exactly 10,000 entries remains supported.
+
+Isolated RED/GREEN: a deterministic 10,001-entry Git tree fixture was accepted
+by the original class and failed the new expectation on PHP 7.4 and 8.3.
+After the guard, the same fixture correctly fails closed; 10,000 entries passes
+on both versions, with `memory_limit=120M` inside an isolated 128 MiB,
+network-disabled, read-only container. No registered source, cache, site or
+Production environment was mutated. This is bounded technical evidence only;
+actual WordPress memory pressure and live MCP acceptance remain independent.
+The exact new class and fixture Git blob hashes above supersede prior ones.

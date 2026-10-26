@@ -29,3 +29,14 @@ Returned provenance includes the repository, Git ref, tree SHA, blob SHA, and SH
 ## Verification
 
 Run `php -l wp-content/plugins/mad4b-site-control-plane/includes/class-external-skill-sources.php` and `php wp-content/plugins/mad4b-site-control-plane/tests/external-skill-sources-runtime.php`. The Dynamic Skills workflow invokes both on each relevant PR. Live public GitHub connectivity and MCP client tool discovery require environment-specific acceptance; fixture tests do not prove live egress.
+
+
+## Source-tree resource limits
+
+A GitHub tree may be well below the 4 MiB response-size ceiling yet expand into
+many PHP arrays. Discovery rejects trees containing more than 10,000 entries,
+including non-Skill files, before building the indexed file inventory.
+`skill_source_tree_entry_limit` is a normal fail-closed, non-authorizing
+outcome; choose a more narrowly scoped upstream repository rather than
+increasing server limits without review. The existing 500-Skill count limit,
+exact Git blob digest validation and untrusted-context boundaries remain.
