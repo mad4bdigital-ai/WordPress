@@ -3061,8 +3061,7 @@
         "EXECUTION-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/skill-task-abilities-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/skill-task-abilities-runtime.php"
       ],
       "needs_new_control": false,
       "new_control_ids": [],
@@ -3082,7 +3081,6 @@
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/skill-task-abilities-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/external-skill-sources-runtime.php"
       ],
       "needs_new_control": false,
@@ -3103,7 +3101,6 @@
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/skill-task-abilities-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/external-skill-sources-runtime.php"
       ],
       "needs_new_control": false,
@@ -3124,7 +3121,6 @@
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/skill-task-abilities-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/external-skill-sources-runtime.php"
       ],
       "needs_new_control": false,
@@ -3144,8 +3140,7 @@
         "EXECUTION-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/skill-task-abilities-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/skill-task-abilities-runtime.php"
       ],
       "needs_new_control": false,
       "new_control_ids": [],
@@ -3164,8 +3159,7 @@
         "EXECUTION-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/skill-task-abilities-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/skill-task-abilities-runtime.php"
       ],
       "needs_new_control": false,
       "new_control_ids": [],
@@ -10516,8 +10510,7 @@
         "EXECUTION-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/skill-task-abilities-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/skill-task-abilities-runtime.php"
       ],
       "review_rationale": "Six Skill Abilities map exclusively to adapter read; no new content/admin or mutation handlers. Centralized can_read permission and nonpublic annotations are tested. Exact-head tests executed in isolated PHP 7.4/8.3 (or accepted disposable WordPress CI); Production acceptance remains separate."
     },
@@ -10552,8 +10545,7 @@
         "MCP-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/skill-task-abilities-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/skill-task-abilities-runtime.php"
       ],
       "review_rationale": "Six registered nonpublic read Abilities use the canonical can_read callback and closed bounded schemas; no authority grant or write route. PHP registration and disposable WordPress runtime CI pass. Exact-head tests executed in isolated PHP 7.4/8.3 (or accepted disposable WordPress CI); Production acceptance remains separate."
     },
@@ -10570,8 +10562,7 @@
         "SECURITY-02"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/external-skill-sources-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/external-skill-sources-runtime.php"
       ],
       "review_rationale": "Only source_add/source_remove admin handlers and bounded HTML source listing were added. Page-level manage_options check, action nonce check and escaped output reviewed; admin changes do not create MCP write abilities. Exact-head tests executed in isolated PHP 7.4/8.3 (or accepted disposable WordPress CI); Production acceptance remains separate."
     },
