@@ -282,6 +282,9 @@ final class SCP_Skill_Task_Composition {
         ) );
         if ( is_wp_error( $doc ) ) {
             $entry['error_code'] = $doc->get_error_code();
+            if ( 'skill_source_budget_exhausted' === $entry['error_code'] ) {
+                $entry['state'] = 'not_loaded_budget';
+            }
             return $entry;
         }
         if ( ! is_array( $doc ) || ! isset( $doc['source']['id'], $doc['source']['repository'],
@@ -373,6 +376,14 @@ final class SCP_Skill_Task_Composition {
                     $load = $remaining_context_reads > 0 && $deadline - microtime( true ) >= 1;
                     if ( $load ) $remaining_context_reads--;
                     $advisory = self::advisory_context( $companion, $load, $deadline );
+                    // Catalog discovery may finish before a later advisory read
+                    // exhausts the same deadline. Never report a complete plan.
+                    if ( ( ! $load && $deadline - microtime( true ) < 1 )
+                        || ( $advisory['error_code'] ?? '' ) === 'skill_source_budget_exhausted' ) {
+                        $matches['source_page']['budget_exhausted'] = true;
+                        $matches['source_page']['page_complete'] = false;
+                        $matches['source_page']['complete'] = false;
+                    }
                     if ( 'verified_untrusted_metadata' !== $advisory['state'] ) {
                         $context_warnings['incomplete'] = 'Some external context was unavailable or not inspected within the bounded read budget.';
                     }

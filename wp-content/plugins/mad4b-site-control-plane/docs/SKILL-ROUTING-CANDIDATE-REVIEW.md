@@ -23,7 +23,7 @@ The owner/reviewer must decide whether existing controls are sufficient or a new
 | --- | --- | --- |
 | `includes/adapters/class-mad4b-scp-skills-adapter.php` | `064937e152bbbff3ffa6b8ef4548d4d77b9d2ccd` | PENDING |
 | `includes/class-mad4b-scp-skill-abilities.php` | `81ab601de559d9ba57991dffb226e129c4553a44` | PENDING |
-| `includes/class-skill-task-composition.php` | `8d42361279758e7159a93169d7dc13f770b290dc` | PENDING |
+| `includes/class-skill-task-composition.php` | `929ab0a06ad81ac015a279ec08f8db69ba665a17` | PENDING |
 | `mad4b-site-control-plane.php` | `4c8d21033f3b479c038a2b010164bb17a9fca80f` | BASELINE — same blob as master |
 
 The three modified skill source files require exact source review. The plugin bootstrap now matches master byte-for-byte and retains its immutable G6/G9 archive identity. Neither archive evidence nor review status was re-signed.
@@ -32,7 +32,7 @@ The three modified skill source files require exact source review. The plugin bo
 
 | Test | Exact Git blob SHA | What it tests |
 | --- | --- | --- |
-| `tests/skill-task-composition-runtime.php` | `a7f6126b94f963cf2a23086be78e9ead1b4edb37` | input bounds, denied unknown sources, bilingual matching, pagination, non-authorizing plans, stage order, stable digest, partial discovery and rate-limit errors |
+| `tests/skill-task-composition-runtime.php` | `bd06234cd8f9efb9bb2b517c47c0ba8135d92b95` | input bounds, denied unknown sources, bilingual matching, pagination, non-authorizing plans, stage order, stable digest, partial discovery and rate-limit errors |
 | `tests/skill-task-abilities-runtime.php` | `9fdab67df3c01b2d27e7c0160fa5adb72ffd0e79` | registration, existing read callback, no public REST/MCP, constrained schema, denied read, no execution ability |
 | `tests/runtime-dynamic-skills-smoke.php` | `8628a0f5dc8ee5fa2a98b268339e8d1db3c2efba` | native WordPress registration and execution of read-only task matching/planning in disposable Staging |
 
@@ -69,4 +69,9 @@ The composition reader now checks the exact `repository`, `ref`, and `tree_sha` 
 
 ## Shared network budget security/performance review — PENDING
 
-Two new source-blob candidates are `includes/class-external-skill-sources.php` at `585844caee1688ef43955ea7ed3f8aa6f96542ca` and `includes/class-skill-task-composition.php` at `8d42361279758e7159a93169d7dc13f770b290dc`. New tests use blobs `a5879e56ee7fd3bd12fb8a27a27d065e83835001` and `a7f6126b94f963cf2a23086be78e9ead1b4edb37`. They first demonstrate that old 12-second per-call timeouts and expired source scans failed the new assertions, then pass for PHP 7.4/8.3 in network-disabled read-only containers. All requests in one composition share a bounded deadline; exhausted scans disclose incomplete results. This does **not** establish a hard real-time limit or waive the required independent performance, egress, security, and source-blob reviews. No owner attestation, new execution authority, or Production certification is granted.
+Two new source-blob candidates are `includes/class-external-skill-sources.php` at `585844caee1688ef43955ea7ed3f8aa6f96542ca` and `includes/class-skill-task-composition.php` at `929ab0a06ad81ac015a279ec08f8db69ba665a17`. New tests use blobs `a5879e56ee7fd3bd12fb8a27a27d065e83835001` and `bd06234cd8f9efb9bb2b517c47c0ba8135d92b95`. They first demonstrate that old 12-second per-call timeouts and expired source scans failed the new assertions, then pass for PHP 7.4/8.3 in network-disabled read-only containers. All requests in one composition share a bounded deadline; exhausted scans disclose incomplete results. This does **not** establish a hard real-time limit or waive the required independent performance, egress, security, and source-blob reviews. No owner attestation, new execution authority, or Production certification is granted.
+
+
+## Advisory enrichment timeout reporting — PENDING REVIEW
+
+A follow-up isolated RED/GREEN regression covers source discovery finishing before advisory context enrichment hits `skill_source_budget_exhausted`. The new composer keeps `execution_ready=false` and marks `source_page.budget_exhausted=true`, `page_complete=false`, `complete=false`; the external context returns `not_loaded_budget` instead of a generic unavailable state. PHP 7.4/8.3 network-disabled, read-only fixture and syntax checks passed in temporary containers. The updated exact Git blobs listed above supersede the previous composer/fixture blobs. This remains technical evidence only; no approval or Production authority is implied.
