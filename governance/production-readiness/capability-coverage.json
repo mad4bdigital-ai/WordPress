@@ -2724,6 +2724,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original enrolled Site Profile, WordPress-only administrative roles, Agent Registry subject and exact environment grant, HTTPS-on-Staging and existing WordPress transient controls remain authoritative, with no widening of credential issuance or Production access.",
       "review_rationale": "Exact original Passwordless Connection now uses PHP 7.4-compatible prefix comparison in verified MCP bearer and one-time WordPress login, preserving requirement that the WordPress account login starts with mad4b_connection_. The 15-minute MCP transient is checked against the enrolled Site Profile, exact Agent subject, exact original mad4b/context-ai-review grant, and a single-role administrator integration user before setting WP current user. It denies unsupported environments, wrong token/route/site/Agent, missing/denied grant, roles, non-integration WordPress users, insecure staging and expired transient; the identity context is invalidated before every verifier call. Hermetic PHP 7.4/8.3 original-source test passed 26 cases each, with synthetic in-memory transient and no real token, user, grant or change to a WordPress installation."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-approval-admin.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-admin-rest-permissions-hermetic.php"
+      ],
+      "owner_role": "Original source REST security CI reviewer, not an enrolled Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original WordPress Local environment and Site Profile, Background Authorization exact delegated identity, original Workflow and Policy receipt gates, and browser MFA remain authoritative; source remains unchanged.",
+      "review_rationale": "The original Unified Approval Admin registers its eight REST routes only in the Local environment and retains explicit WordPress enrolled-owner or original Background_Authorization::current() actor admission. Unknown POST fields including publication, force-grant and MFA-bypass are rejected; original Workflow, Policy and Gate endpoints delegate only to existing owner review, original approval ticket and browser authority guards. Network-isolated PHP 7.4 and PHP 8.3 executions each passed 24 direct original-class tests, checking admin and delegated agent admission, Production/Staging rejection, original route permission callbacks, deny/allow request shape and no mocked site mutation. Existing Workflow and exact grant tests separately verify owner decision and deny-first behavior; these local-only checks do not certify live REST/nonce, model identity, or owner approval."
     }
   ],
   "lifecycle": [],
@@ -9482,6 +9501,24 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Exact original Passwordless Connection now uses PHP 7.4-compatible prefix comparison in verified MCP bearer and one-time WordPress login, preserving requirement that the WordPress account login starts with mad4b_connection_. The 15-minute MCP transient is checked against the enrolled Site Profile, exact Agent subject, exact original mad4b/context-ai-review grant, and a single-role administrator integration user before setting WP current user. It denies unsupported environments, wrong token/route/site/Agent, missing/denied grant, roles, non-integration WordPress users, insecure staging and expired transient; the identity context is invalidated before every verifier call. Hermetic PHP 7.4/8.3 original-source test passed 26 cases each, with synthetic in-memory transient and no real token, user, grant or change to a WordPress installation. No deployment or live credential issuance; owner approval, crypto and audit integration acceptance remain independent."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-approval-admin.php",
+      "source_blob_sha": "cb05249b471f23991df9a5d1db93a5942a6ba4ce",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-admin-rest-permissions-hermetic.php"
+      ],
+      "owner_role": "Original-source CI route review, not a live operator or credential custodian",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "The original Unified Approval Admin registers its eight REST routes only in the Local environment and retains explicit WordPress enrolled-owner or original Background_Authorization::current() actor admission. Unknown POST fields including publication, force-grant and MFA-bypass are rejected; original Workflow, Policy and Gate endpoints delegate only to existing owner review, original approval ticket and browser authority guards. Network-isolated PHP 7.4 and PHP 8.3 executions each passed 24 direct original-class tests, checking admin and delegated agent admission, Production/Staging rejection, original route permission callbacks, deny/allow request shape and no mocked site mutation. Existing Workflow and exact grant tests separately verify owner decision and deny-first behavior; these local-only checks do not certify live REST/nonce, model identity, or owner approval. Exact source Git blob is pinned and no new route or ability has been added."
     }
   ],
   "code_change_rules": {

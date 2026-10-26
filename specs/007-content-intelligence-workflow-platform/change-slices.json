@@ -4,8 +4,8 @@
   "reviewed_base_sha": "e7f30d944c354c3a4f7346330ad401d995e768c5",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 131,
-  "changed_paths_sha256": "07a9a3b203f24911be143c1051973a10f246485b3671c550364ac36b600685cd",
+  "changed_file_count": 132,
+  "changed_paths_sha256": "3ad88a34950b766b93d09c2ae077526d5753da553f4860a57803122cde697169",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -239,7 +239,8 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/unified-approval-ai-first/runtime-contract.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/unified-policy-gate-hermetic.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/unified-queue-extension-hermetic.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/unified-workflow-inspect-hermetic.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-workflow-inspect-hermetic.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-admin-rest-permissions-hermetic.php"
       ]
     }
   ]
