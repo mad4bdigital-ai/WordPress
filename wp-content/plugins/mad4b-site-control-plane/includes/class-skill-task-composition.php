@@ -276,6 +276,9 @@ final class SCP_Skill_Task_Composition {
             $doc['content'], $doc['sha256'], $doc['bytes'], $doc['trust'] )
             || ! is_string( $doc['content'] )
             || strlen( $doc['content'] ) > 262144 || ! preg_match( '//u', $doc['content'] )
+            || ! is_string( $doc['source']['id'] ) || ! is_string( $doc['path'] )
+            || ! is_string( $doc['blob_sha'] ) || ! is_string( $doc['sha256'] )
+            || ! is_int( $doc['bytes'] ) || ! is_string( $doc['trust'] )
             || ! hash_equals( $companion['source_id'], $doc['source']['id'] )
             || ! hash_equals( $companion['blob_sha'], $doc['blob_sha'] )
             || ! hash_equals( $companion['path'], $doc['path'] )
@@ -345,12 +348,19 @@ final class SCP_Skill_Task_Composition {
             if ( 'managed' === $item['skill']['origin']
                 && ! empty( $item['skill']['context_companions'] ) ) {
                 $advisories = array();
+                $local_terms = self::tokens( $item['skill']['name'] . ' ' . $item['skill']['description'] );
+                $external_terms = array();
                 foreach ( $item['skill']['context_companions'] as $companion ) {
                     $load = $remaining_context_reads > 0;
                     if ( $load ) $remaining_context_reads--;
                     $advisory = self::advisory_context( $companion, $load );
                     if ( 'verified_untrusted_metadata' !== $advisory['state'] ) {
                         $context_warnings['incomplete'] = 'Some external context was unavailable or not inspected within the bounded read budget.';
+                    }
+                    if ( 'verified_untrusted_metadata' === $advisory['state'] ) {
+                        $external_terms = array_merge( $external_terms, self::tokens(
+                            $advisory['description'] . ' ' . implode( ' ', $advisory['headings'] )
+                        ) );
                     }
                     $advisories[] = $advisory;
                 }
@@ -364,6 +374,9 @@ final class SCP_Skill_Task_Composition {
                         'description' => $item['skill']['description'],
                     ),
                     'external_contexts' => $advisories,
+                    'shared_topics' => array_slice( array_values( array_intersect( array_unique( $external_terms ), $local_terms ) ), 0, 12 ),
+                    'additional_external_topics' => array_slice( array_values( array_diff( array_unique( $external_terms ), $local_terms ) ), 0, 12 ),
+                    'external_instructions_applied' => false,
                     'execution_precedence' => 'managed',
                     'conflict_status' => 'potential_conflicts_not_semantically_verified',
                     'resolution' => 'retain_external_advice_apply_managed_execution_constraints',
