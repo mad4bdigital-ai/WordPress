@@ -2,6 +2,10 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
+// This Skills provider owns the read-only external-source module.
+// Keep the canonical plugin bootstrap unchanged for historical G9 identity.
+require_once __DIR__ . '/class-external-skill-sources.php';
+
 /**
  * Read-only MCP/Abilities projection for the file-backed Skill registry.
  * Authoring remains a local wp-admin operation behind explicit environment
@@ -63,6 +67,40 @@ final class MAD4B_SCP_Skill_Abilities {
 			),
 			array( __CLASS__, 'skill_get' )
 		);
+
+
+        // Untrusted external instruction text is read-only and never imported.
+        self::add(
+            'mad4b/skill-sources-list', 'List External Skill Sources',
+            array( 'type' => 'object', 'additionalProperties' => false ),
+            array( 'SCP_External_Skill_Sources', 'list_sources' )
+        );
+        self::add(
+            'mad4b/skill-source-skills', 'Discover External Skills',
+            array( 'type' => 'object', 'properties' => array(
+                'source_id' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{24}$' ),
+            ), 'required' => array( 'source_id' ), 'additionalProperties' => false ),
+            array( 'SCP_External_Skill_Sources', 'list_skills' )
+        );
+        self::add(
+            'mad4b/skill-source-get', 'Read External Skill',
+            array( 'type' => 'object', 'properties' => array(
+                'source_id' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{24}$' ),
+                'path' => array( 'type' => 'string', 'maxLength' => 512 ),
+                'blob_sha' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{40}$' ),
+            ), 'required' => array( 'source_id', 'path', 'blob_sha' ), 'additionalProperties' => false ),
+            array( 'SCP_External_Skill_Sources', 'get_skill' )
+        );
+        self::add(
+            'mad4b/skill-source-resource', 'Read External Skill Supporting Text',
+            array( 'type' => 'object', 'properties' => array(
+                'source_id' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{24}$' ),
+                'skill_path' => array( 'type' => 'string', 'maxLength' => 512 ),
+                'path' => array( 'type' => 'string', 'maxLength' => 512 ),
+                'blob_sha' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{40}$' ),
+            ), 'required' => array( 'source_id', 'skill_path', 'path', 'blob_sha' ), 'additionalProperties' => false ),
+            array( 'SCP_External_Skill_Sources', 'get_resource' )
+        );
 
 		// Report blocked authoring Context without exposing assets, instructions or receipts.
 		self::add(
