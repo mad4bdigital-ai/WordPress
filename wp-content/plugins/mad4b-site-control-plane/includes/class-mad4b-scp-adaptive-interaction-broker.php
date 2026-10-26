@@ -201,7 +201,8 @@ final class MAD4B_SCP_Adaptive_Interaction_Broker {
         $p=self::read($args);if(is_wp_error($p))return $p;
         $out=self::public_record($p);
         $out['state']='WAITING_HUMAN_OR_AUTH';$out['readback_complete']=false;
-        if($p['resolution_kind']==='provider_connection'&&$p['provider']!==''){
+        if($p['resolution_kind']==='provider_connection'&&$p['provider']!==''
+            && class_exists('MAD4B_SCP_Provider_Connection_Center')){
             $plan=MAD4B_SCP_Provider_Connection_Center::plan(array('provider'=>$p['provider']));
             if(!is_wp_error($plan)){
                 $out['provider_action']=$plan['action'];
