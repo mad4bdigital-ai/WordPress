@@ -56,6 +56,23 @@ class MAD4B_SCP_Policy {
     public static function can_connect_user( $id ) { return 4 === $id; }
     public static function mutation_gate_status() { return array( 'effective' => false ); }
 }
+// Local client enrollment now binds the authenticated WordPress Application
+// Password to the original AI reviewer. The isolated test must model that
+// contract; omitting it caused a false fatal before any expected assertions.
+class MAD4B_SCP_Context_Authority {
+    public static function review_policy() {
+        return array('mode'=>'ai_only','ai_agent_public_id'=>'237e4567-e89b-12d3-a456-426614174000');
+    }
+}
+class MAD4B_SCP_Agent_Registry {
+    public static function bind_subject($agent,$type,$fingerprint,$label='') {
+        if($agent!=='237e4567-e89b-12d3-a456-426614174000' || $type!=='wp_app_password'
+            || !preg_match('/^[a-f0-9]{64}$/D',$fingerprint))return false;
+        $GLOBALS['lc_bound_agent']=$agent;
+        $GLOBALS['lc_bound_fingerprint']=$fingerprint;
+        return true;
+    }
+}
 class WP_Application_Passwords {
     public static function create_new_application_password( $user, $args ) {
         $GLOBALS['lc_created']++;
@@ -99,6 +116,11 @@ action_local( array( 'MAD4B_SCP_Local_Client_Admin', 'provision' ), 'NONCE_INVAL
 $GLOBALS['lc_nonce'] = true;
 action_local( array( 'MAD4B_SCP_Local_Client_Admin', 'provision' ), 'REDIRECT:' );
 ok_local( $GLOBALS['lc_created'] === 1, 'exact user-approved credential mock issued once' );
+ok_local( ($GLOBALS['lc_bound_agent']??'')==='237e4567-e89b-12d3-a456-426614174000',
+    'issued credential is bound only to original AI Agent' );
+ok_local( preg_match('/^[a-f0-9]{64}$/D',(string)($GLOBALS['lc_bound_fingerprint']??''))===1,
+    'credential identity is bound by exact SHA-256 fingerprint without exposing its value' );
+
 ok_local( is_file( MAD4B_LOCAL_CLIENT_VAULT_PATH ), 'credential stored outside web root' );
 clearstatcache( true, MAD4B_LOCAL_CLIENT_VAULT_PATH );
 ok_local( ( fileperms( MAD4B_LOCAL_CLIENT_VAULT_PATH ) & 0077 ) === 0, 'vault permission is owner-only' );

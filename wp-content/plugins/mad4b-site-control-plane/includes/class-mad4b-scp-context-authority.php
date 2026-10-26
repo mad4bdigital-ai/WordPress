@@ -147,21 +147,44 @@ final class MAD4B_SCP_Context_Authority {
 		return sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() );
 	}
 
+	private static function ai_review_environment_allowed() {
+		$environment=self::site_profile_environment();
+		if(in_array($environment,array('staging','local'),true))return true;
+		// Production review requires separately enabled site identity and scoped
+		// original Agent authority. No production publication rights are inferred.
+		return $environment==='production'
+			&& class_exists('MAD4B_SCP_AI_Only_Local_Activation')
+			&& MAD4B_SCP_AI_Only_Local_Activation::site_bound()
+			&& defined('MAD4B_AI_REVIEW_CROSS_ENV_ENABLED')
+			&& constant('MAD4B_AI_REVIEW_CROSS_ENV_ENABLED')===true;
+	}
+
 	private static function site_profile_agent_slug() {
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! method_exists( 'MAD4B_SCP_Site_Profile', 'agent_slug' ) ) return '';
 		return sanitize_key( (string) MAD4B_SCP_Site_Profile::agent_slug() );
 	}
 
+	/** A staging-enrolled agent may serve the isolated Lab only with an explicit all-environment grant. */
+	private static function ai_review_agent_environment_valid( $agent ) {
+		if ( ! is_array( $agent ) || empty( $agent['id'] ) ) return false;
+		$site_env = self::site_profile_environment();
+		$agent_env = (string) ( $agent['environment'] ?? '' );
+		if ( $agent_env === $site_env || 'all' === $agent_env ) return true;
+		if ( 'local' !== $site_env || 'staging' !== $agent_env || wp_get_environment_type() !== 'local' ) return false;
+		$grant = MAD4B_SCP_Agent_Registry::exact_grant( (int) $agent['id'], 'mad4b-write', self::AI_REVIEW_ABILITY, 'core' );
+		return is_array( $grant ) && 'allow' === ( $grant['effect'] ?? '' ) && 'all' === ( $grant['environment'] ?? '' );
+	}
+
 	public static function ai_review_catalog_eligible() {
 		$policy = self::review_policy();
 		if ( ! in_array( (string) $policy['mode'], array( 'human_and_ai', 'ai_only' ), true ) || empty( $policy['ai_agent_public_id'] ) ) return false;
-		if ( 'staging' !== self::site_profile_environment() ) return false;
+		if ( ! self::ai_review_environment_allowed() ) return false;
 		if ( ! class_exists( 'MAD4B_SCP_Agent_Registry' ) || ! class_exists( 'MAD4B_SCP_Schema' ) || ! MAD4B_SCP_Schema::is_ready() ) return false;
 		$agent = MAD4B_SCP_Agent_Registry::get_agent_by_public_id( (string) $policy['ai_agent_public_id'] );
 		$profile_agent_slug = self::site_profile_agent_slug();
 		return is_array( $agent )
 			&& 'enabled' === ( isset( $agent['status'] ) ? (string) $agent['status'] : '' )
-			&& in_array( (string) ( $agent['environment'] ?? '' ), array( 'staging', 'all' ), true )
+			&& self::ai_review_agent_environment_valid( $agent )
 			&& '' !== $profile_agent_slug
 			&& $profile_agent_slug === sanitize_key( isset( $agent['slug'] ) ? (string) $agent['slug'] : '' );
 	}
@@ -173,7 +196,7 @@ final class MAD4B_SCP_Context_Authority {
 		$grant = null;
 		if ( ! in_array( (string) $policy['mode'], array( 'human_and_ai', 'ai_only' ), true ) ) $blockers[] = 'ai_review_mode_disabled';
 		if ( empty( $policy['ai_agent_public_id'] ) ) $blockers[] = 'ai_review_agent_unconfigured';
-		if ( 'staging' !== self::site_profile_environment() ) $blockers[] = 'ai_review_staging_only';
+		if ( ! self::ai_review_environment_allowed() ) $blockers[] = 'ai_review_site_scope_required';
 		if ( ! class_exists( 'MAD4B_SCP_Agent_Registry' ) || ! class_exists( 'MAD4B_SCP_Schema' ) || ! MAD4B_SCP_Schema::is_ready() ) {
 			$blockers[] = 'ai_review_agent_registry_unavailable';
 		} elseif ( ! empty( $policy['ai_agent_public_id'] ) ) {
@@ -181,18 +204,18 @@ final class MAD4B_SCP_Context_Authority {
 			if ( ! is_array( $agent ) || empty( $agent ) ) $blockers[] = 'ai_review_agent_missing';
 			else {
 				if ( 'enabled' !== ( isset( $agent['status'] ) ? (string) $agent['status'] : '' ) ) $blockers[] = 'ai_review_agent_disabled';
-				if ( ! in_array( (string) ( $agent['environment'] ?? '' ), array( 'staging', 'all' ), true ) ) $blockers[] = 'ai_review_agent_environment_mismatch';
+				if ( ! self::ai_review_agent_environment_valid( $agent ) ) $blockers[] = 'ai_review_agent_environment_mismatch';
 				$profile_agent_slug = self::site_profile_agent_slug();
 				if ( '' === $profile_agent_slug || $profile_agent_slug !== sanitize_key( isset( $agent['slug'] ) ? (string) $agent['slug'] : '' ) ) $blockers[] = 'ai_review_agent_not_profile_owned';
 				$grant = MAD4B_SCP_Agent_Registry::exact_grant( (int) $agent['id'], 'mad4b-write', self::AI_REVIEW_ABILITY, 'core' );
-				if ( ! is_array( $grant ) || 'allow' !== ( isset( $grant['effect'] ) ? (string) $grant['effect'] : '' ) || 'staging' !== ( isset( $grant['environment'] ) ? (string) $grant['environment'] : '' ) ) $blockers[] = 'ai_review_exact_grant_missing';
+				if ( ! is_array( $grant ) || 'allow' !== ( isset( $grant['effect'] ) ? (string) $grant['effect'] : '' ) || ! in_array( (string) ( $grant['environment'] ?? '' ), array( self::site_profile_environment(), 'all' ), true ) ) $blockers[] = 'ai_review_exact_grant_missing';
 			}
 		}
 		$blockers = array_values( array_unique( $blockers ) );
 		return array(
 			'contract' => self::REVIEW_POLICY_CONTRACT,
 			'mode' => (string) $policy['mode'],
-			'human_review_available' => true,
+			'human_review_available' => 'ai_only' !== (string) $policy['mode'],
 			'ai_review_enabled' => in_array( (string) $policy['mode'], array( 'human_and_ai', 'ai_only' ), true ),
 			'ai_only_final_review' => 'ai_only' === (string) $policy['mode'],
 			'ai_agent_public_id' => (string) $policy['ai_agent_public_id'],
@@ -225,11 +248,11 @@ final class MAD4B_SCP_Context_Authority {
 		if ( in_array( $mode, array( 'human_and_ai', 'ai_only' ), true ) ) {
 			if ( ! $confirmed ) return new WP_Error( 'mad4b_context_ai_review_confirmation_required', 'Changing delegated AI Agent review requires explicit administrator confirmation.' );
 			if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', $agent_public_id ) ) return new WP_Error( 'mad4b_context_ai_review_agent_required', 'Select one exact enabled MAD4B Agent for AI review delegation.' );
-			if ( 'staging' !== self::site_profile_environment() ) return new WP_Error( 'mad4b_context_ai_review_staging_only', 'AI Agent approval mode is Staging-only in rc.54.' );
+			if ( ! self::ai_review_environment_allowed() ) return new WP_Error( 'mad4b_context_ai_review_site_scope_required', 'Verified and explicitly enabled AI review site scope required.' );
 			if ( ! class_exists( 'MAD4B_SCP_Agent_Registry' ) || ! class_exists( 'MAD4B_SCP_Schema' ) || ! MAD4B_SCP_Schema::is_ready() ) return new WP_Error( 'mad4b_context_ai_review_agent_registry_unavailable', 'MAD4B Agent registry is unavailable.' );
 			$agent = MAD4B_SCP_Agent_Registry::get_agent_by_public_id( $agent_public_id );
 			$profile_agent_slug = self::site_profile_agent_slug();
-			if ( ! is_array( $agent ) || empty( $agent ) || 'enabled' !== ( isset( $agent['status'] ) ? (string) $agent['status'] : '' ) || ! in_array( (string) ( $agent['environment'] ?? '' ), array( 'staging', 'all' ), true ) ) return new WP_Error( 'mad4b_context_ai_review_agent_ineligible', 'AI review requires the enabled Staging Site Profile agent.' );
+			if ( ! is_array( $agent ) || empty( $agent ) || 'enabled' !== ( isset( $agent['status'] ) ? (string) $agent['status'] : '' ) || ! self::ai_review_agent_environment_valid( $agent ) ) return new WP_Error( 'mad4b_context_ai_review_agent_ineligible', 'AI review requires the enabled Staging Site Profile agent.' );
 			if ( '' === $profile_agent_slug || $profile_agent_slug !== sanitize_key( isset( $agent['slug'] ) ? (string) $agent['slug'] : '' ) ) return new WP_Error( 'mad4b_context_ai_review_agent_not_profile_owned', 'AI review delegation must use the canonical Site Profile governed-write agent.' );
 		}
 		return self::with_registry_lock(
@@ -260,7 +283,7 @@ final class MAD4B_SCP_Context_Authority {
 						'mode' => $mode,
 						'previous_ai_agent_public_id' => isset( $previous['ai_agent_public_id'] ) ? (string) $previous['ai_agent_public_id'] : '',
 						'ai_agent_public_id' => $agent_public_id,
-						'human_review_available' => true,
+						'human_review_available' => 'ai_only' !== (string) $policy['mode'],
 						'grant_reconciliation_called' => false,
 						'production_mutation' => false,
 						'wp_user_id' => get_current_user_id(),
@@ -1419,14 +1442,17 @@ final class MAD4B_SCP_Context_Authority {
 
 				$provider = sanitize_key( isset( $input['provider'] ) ? $input['provider'] : '' );
 				$mode = sanitize_key( isset( $input['mode'] ) ? $input['mode'] : 'governed' );
-				if ( 'google_drive' !== $provider ) return new WP_Error( 'mad4b_context_source_provider_invalid', 'Only the governed Google Drive context provider is supported in this foundation.' );
+				if ( ! in_array( $provider, array( 'google_drive', 'wordpress_media' ), true ) ) return new WP_Error( 'mad4b_context_source_provider_invalid', 'Provider is unavailable in this environment.' );
 				if ( ! in_array( $mode, array( 'governed', 'task_attachment' ), true ) ) return new WP_Error( 'mad4b_context_source_mode_invalid', 'Context source mode must be governed or task_attachment.' );
 
 				$external_root_id = self::bounded_external_id( isset( $input['external_root_id'] ) ? $input['external_root_id'] : '' );
-				if ( '' === $external_root_id ) return new WP_Error( 'mad4b_context_source_root_required', 'A canonical Google Drive folder ID is required.' );
+				// WordPress Media is one site-wide library, not an arbitrary folder root.
+				// Normalize legacy aliases before computing the stable source identity.
+				if ( 'wordpress_media' === $provider ) $external_root_id = 'site_media_library';
+				if ( '' === $external_root_id ) return new WP_Error( 'mad4b_context_source_root_required', 'A canonical source root ID is required.' );
 				if ( 'root' === strtolower( $external_root_id ) ) return new WP_Error( 'mad4b_context_source_root_forbidden', 'My Drive root is browse-only. Select a specific Google Drive folder as the Context source boundary.' );
 				$label = trim( sanitize_text_field( isset( $input['label'] ) ? $input['label'] : '' ) );
-				if ( '' === $label ) $label = 'Google Drive Folder';
+				if ( '' === $label ) $label = 'wordpress_media' === $provider ? 'WordPress Media Library' : 'Google Drive Folder';
 				$task_scope = trim( sanitize_text_field( isset( $input['task_scope'] ) ? $input['task_scope'] : '' ) );
 				if ( 'task_attachment' === $mode && '' === $task_scope ) return new WP_Error( 'mad4b_context_task_scope_required', 'Task-only sources require a task scope label.' );
 
@@ -1512,6 +1538,13 @@ final class MAD4B_SCP_Context_Authority {
 			}
 		);
 	}
+
+    /** A scoped complete scan may mark missing only assets inside its MIME boundary. */
+    private static function scan_includes_absence( array $scan, array $record ) {
+        if ( empty( $scan['scoped_inventory'] ) ) return true;
+        $types = isset( $scan['mime_types'] ) && is_array( $scan['mime_types'] ) ? $scan['mime_types'] : array();
+        return in_array( (string) ( $record['mime_type'] ?? '' ), $types, true );
+    }
 
 	public static function replace_source_assets( $source_id, array $assets, array $scan = array() ) {
 		return self::with_registry_lock(
@@ -1697,8 +1730,13 @@ final class MAD4B_SCP_Context_Authority {
 				// Only a fully observed + normalized + representable scan may create
 				// absence evidence for an asset that was not observed this generation.
 				if ( $scan_complete ) {
+                    $scoped = ! empty( $scan['scoped_inventory'] );
+                    $scoped_types = $scoped && isset( $scan['mime_types'] ) && is_array( $scan['mime_types'] )
+                        ? array_values( array_unique( array_map( 'strval', $scan['mime_types'] ) ) ) : array();
+                    if ( $scoped && ! $scoped_types ) return new WP_Error( 'mad4b_context_scan_scope_missing', 'Scoped inventory requires explicit MIME types.' );
 					foreach ( $previous as $asset_id => $record ) {
 						if ( isset( $selected_assets[ $asset_id ] ) ) continue;
+                        if ( ! self::scan_includes_absence( $scan, $record ) ) continue;
 						$records[ $asset_id ]['status'] = 'unavailable';
 						$records[ $asset_id ]['availability_reason'] = 'not_seen_in_complete_scan';
 						$records[ $asset_id ]['last_missing_at'] = $scan_completed_at;
@@ -1712,6 +1750,9 @@ final class MAD4B_SCP_Context_Authority {
 				$sources[ $source_id ]['status'] = $scan_complete ? 'ready' : 'partial_scan';
 				$sources[ $source_id ]['last_synced_at'] = $scan_completed_at;
 				$sources[ $source_id ]['last_scan_complete'] = (bool) $scan_complete;
+                if ( ! empty( $scan['scoped_inventory'] ) && isset( $scan['mime_types'] ) && is_array( $scan['mime_types'] ) )
+                    $sources[ $source_id ]['last_scan_scope_mime_types'] = array_values( array_unique( array_map( 'sanitize_text_field', $scan['mime_types'] ) ) );
+                else unset( $sources[ $source_id ]['last_scan_scope_mime_types'] );
 				$sources[ $source_id ]['last_scan_generation'] = $scan_generation;
 				$sources[ $source_id ]['last_scan_truncation_reasons'] = $truncation_reasons;
 				if ( $scan_complete ) {
@@ -2503,6 +2544,7 @@ final class MAD4B_SCP_Context_Authority {
 	}
 
 	public static function review_asset( $asset_id, array $input ) {
+		if ( 'ai_only' === (string) self::review_policy()['mode'] ) return new WP_Error( 'mad4b_context_human_review_disabled', 'This profile requires an authenticated AI Agent review.' );
 		return self::review_asset_with_actor(
 			$asset_id,
 			$input,
@@ -2526,19 +2568,19 @@ final class MAD4B_SCP_Context_Authority {
 		}
 		$policy = self::review_policy();
 		if ( ! in_array( (string) $policy['mode'], array( 'human_and_ai', 'ai_only' ), true ) ) return new WP_Error( 'mad4b_context_ai_review_mode_disabled', 'AI Agent review is disabled. Human Review remains available.' );
-		if ( 'staging' !== self::site_profile_environment() ) return new WP_Error( 'mad4b_context_ai_review_staging_only', 'AI Agent review is Staging-only in rc.54.' );
+		if ( ! self::ai_review_environment_allowed() ) return new WP_Error( 'mad4b_context_ai_review_site_scope_required', 'Verified AI review site scope required.' );
 		if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) || ! class_exists( 'MAD4B_SCP_Agent_Registry' ) ) return new WP_Error( 'mad4b_context_ai_review_identity_unavailable', 'AI review identity authority is unavailable.' );
 		$identity = MAD4B_SCP_Identity_Context::current();
-		if ( is_wp_error( $identity ) || empty( $identity['authenticated'] ) || 'oauth2_bearer' !== ( isset( $identity['auth_method'] ) ? (string) $identity['auth_method'] : '' ) ) return new WP_Error( 'mad4b_context_ai_review_oauth_required', 'AI Agent review requires an authenticated OAuth2 bearer identity.' );
+		if ( is_wp_error( $identity ) || empty( $identity['authenticated'] ) || ! in_array( (string) ( $identity['auth_method'] ?? '' ), array( 'oauth2_bearer', 'wp_application_password', 'mad4b_passwordless_bearer' ), true ) ) return new WP_Error( 'mad4b_context_ai_review_oauth_required', 'AI review requires verified OAuth2 bearer or explicitly bound WordPress Application Password identity.' );
 		$agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
 		if ( is_wp_error( $agent ) ) return $agent;
 		$configured_agent = isset( $policy['ai_agent_public_id'] ) ? (string) $policy['ai_agent_public_id'] : '';
 		if ( empty( $agent['public_id'] ) || '' === $configured_agent || ! hash_equals( $configured_agent, (string) $agent['public_id'] ) ) return new WP_Error( 'mad4b_context_ai_review_agent_mismatch', 'Authenticated AI Agent does not match the Context review delegation.' );
-		if ( 'enabled' !== ( isset( $agent['status'] ) ? (string) $agent['status'] : '' ) || ! in_array( (string) ( $agent['environment'] ?? '' ), array( 'staging', 'all' ), true ) ) return new WP_Error( 'mad4b_context_ai_review_agent_ineligible', 'AI review requires the configured enabled Staging agent.' );
+		if ( 'enabled' !== ( isset( $agent['status'] ) ? (string) $agent['status'] : '' ) || ! self::ai_review_agent_environment_valid( $agent ) ) return new WP_Error( 'mad4b_context_ai_review_agent_ineligible', 'AI review requires the configured enabled Staging agent.' );
 		$profile_agent_slug = self::site_profile_agent_slug();
 		if ( '' === $profile_agent_slug || $profile_agent_slug !== sanitize_key( isset( $agent['slug'] ) ? (string) $agent['slug'] : '' ) ) return new WP_Error( 'mad4b_context_ai_review_agent_not_profile_owned', 'AI review requires the canonical Site Profile governed-write agent.' );
 		$grant = MAD4B_SCP_Agent_Registry::exact_grant( (int) $agent['id'], 'mad4b-write', self::AI_REVIEW_ABILITY, 'core' );
-		if ( ! is_array( $grant ) || 'allow' !== ( isset( $grant['effect'] ) ? (string) $grant['effect'] : '' ) || 'staging' !== ( isset( $grant['environment'] ) ? (string) $grant['environment'] : '' ) ) return new WP_Error( 'mad4b_context_ai_review_exact_grant_missing', 'Configured AI Agent does not have the exact Staging grant for Context AI review.' );
+		if ( ! is_array( $grant ) || 'allow' !== ( isset( $grant['effect'] ) ? (string) $grant['effect'] : '' ) || ! in_array( (string) ( $grant['environment'] ?? '' ), array( self::site_profile_environment(), 'all' ), true ) ) return new WP_Error( 'mad4b_context_ai_review_exact_grant_missing', 'Configured AI Agent does not have the exact Staging grant for Context AI review.' );
 		$asset_id = isset( $input['asset_id'] ) ? strtolower( trim( sanitize_text_field( (string) $input['asset_id'] ) ) ) : '';
 		$asset = self::asset( $asset_id );
 		if ( empty( $asset ) ) return new WP_Error( 'mad4b_context_asset_not_found', 'Context asset was not found in the live source-authorized registry view.' );
@@ -2931,6 +2973,16 @@ final class MAD4B_SCP_Context_Authority {
 			);
 		}
 		usort( $items, static function ( $a, $b ) { $required = (int) ! empty( $b['required'] ) <=> (int) ! empty( $a['required'] ); return 0 !== $required ? $required : strcmp( (string) $a['title'], (string) $b['title'] ); } );
+		if ( class_exists('MAD4B_SCP_AI_Review_Lifecycle',false) ) {
+			$review_policy=self::review_policy();
+			foreach($items as &$item) {
+				$item['ai_review_lifecycle']=MAD4B_SCP_AI_Review_Lifecycle::decide('brand_context',$item,array(
+					'review_mode'=>(string)($review_policy['mode']??'human_only'),
+					'identity_ready'=>!empty(self::ai_review_policy_status()['ready']) ) +
+                    MAD4B_SCP_AI_Review_Lifecycle::read_history((string)($item['asset_id']??''),(string)($item['content_hash']??'')) );
+			}
+			unset($item);
+		}
 		return array( 'contract' => 'mad4b.context-review-queue.v1', 'read_only' => true, 'mutation_performed' => false, 'registry_revision' => self::registry_revision(), 'context_fingerprint' => self::context_fingerprint(), 'authority_manifest_fingerprint' => self::authority_manifest_fingerprint(), 'counts' => $counts, 'count' => count( $items ), 'items' => $items );
 	}
 
@@ -3086,6 +3138,17 @@ final class MAD4B_SCP_Context_Authority {
 			if ( 'ready' === $asset['status'] && $content_complete && $review_exact ) ++$approved_required;
 		}
 
+        // A complete MIME-scoped scan must cover every required asset in that source.
+        // A PDF-only scan cannot certify mandatory TXT guidance as freshly observed.
+        $required_outside_scan_scope = 0;
+        foreach ( $required as $asset ) {
+            $source_id = (string) ( $asset['source_id'] ?? '' );
+            $scope = isset( $sources[ $source_id ]['last_scan_scope_mime_types'] )
+                ? $sources[ $source_id ]['last_scan_scope_mime_types'] : null;
+            if ( is_array( $scope ) && ! in_array( (string) ( $asset['mime_type'] ?? '' ), $scope, true ) )
+                ++$required_outside_scan_scope;
+        }
+
 		$blockers = array();
 		$warnings = array();
 		if ( empty( $site_status['configured'] ) || empty( $site_status['origin_match'] ) || empty( $site_status['environment_match'] ) ) $blockers[] = 'site_profile_not_enrolled';
@@ -3094,6 +3157,7 @@ final class MAD4B_SCP_Context_Authority {
 		if ( count( $raw_assets ) > self::MAX_ASSETS ) $blockers[] = 'context_asset_registry_capacity_exceeded';
 		if ( empty( $governed_sources ) ) $blockers[] = 'governed_context_source_missing';
 		if ( $partial_sources > 0 ) $blockers[] = 'governed_context_source_scan_incomplete';
+		if ( $required_outside_scan_scope > 0 ) $blockers[] = 'governed_context_required_mime_not_scanned';
 		if ( empty( $governed_assets ) ) $blockers[] = 'governed_context_assets_missing';
 		if ( ! empty( $governed_assets ) && empty( $required ) ) $blockers[] = 'mandatory_context_unclassified';
 		if ( count( $required ) !== $ready_required ) $blockers[] = 'mandatory_context_not_ready';
@@ -3167,6 +3231,7 @@ final class MAD4B_SCP_Context_Authority {
 			'governed_source_count' => count( $governed_sources ),
 			'task_source_count' => count( $task_sources ),
 			'partial_source_count' => $partial_sources,
+            'required_outside_scan_scope_count' => $required_outside_scan_scope,
 			'source_binding_diagnostics' => $source_diagnostics,
 			'google_connection_diagnostics' => $google_connection,
 			'diagnostics_authorizing' => false,
@@ -3221,6 +3286,25 @@ final class MAD4B_SCP_Context_Authority {
 			$hits = 0;
 			foreach ( $needles as $needle ) if ( false !== strpos( $haystack, $needle ) ) ++$hits;
 			if ( $hits > $best_hits ) { $best = $category; $best_hits = $hits; }
+		}
+		// Authoritative document titles are stronger evidence of document type
+		// than incidental cross-references in their body. A style guide can quote
+		// Brand Strategy and Tone of Voice without becoming a strategy asset.
+		// Use only explicit multi-word authority identifiers in title or path;
+		// do not infer Brand authority from arbitrary content mentions.
+		$title_path = strtolower( trim( (string) $name . ' ' . (string) $path ) );
+		$named_authority_rules = array(
+			'editorial_guidelines' => array( 'editorial guideline', 'style guide', 'دليل التحرير', 'قواعد المحتوى' ),
+			'tone_of_voice' => array( 'tone of voice', 'tone-of-voice', 'نبرة الصوت', 'نبرة العلامة' ),
+			'brand_strategy' => array( 'brand strategy', 'core brand identity', 'استراتيجية العلامة', 'استراتيجية البراند' ),
+		);
+		foreach ( $named_authority_rules as $category => $names ) {
+			foreach ( $names as $named_phrase ) {
+				if ( false === strpos( $title_path, $named_phrase ) ) continue;
+				$best = $category;
+				$best_hits = max( 2, $best_hits );
+				break 2;
+			}
 		}
 		// Operational/connector inventories often quote "brand strategy" while
 		// describing data plumbing, not the approved commercial Brand Strategy.
@@ -3449,6 +3533,14 @@ final class MAD4B_SCP_Context_Authority {
 		if ( '' === $file_id ) return new WP_Error( 'mad4b_context_asset_file_id_required', 'Asset requires a canonical external file ID.' );
 		$parent_folder_id = self::bounded_external_id( isset( $asset['parent_folder_id'] ) ? $asset['parent_folder_id'] : '' );
 		if ( '' === $parent_folder_id && ! empty( $asset['parents'] ) && is_array( $asset['parents'] ) ) $parent_folder_id = self::bounded_external_id( (string) reset( $asset['parents'] ) );
+        if ( ( $source['provider'] ?? '' ) === 'wordpress_media' ) {
+            $attachment_id = ctype_digit( (string) $file_id ) ? (int) $file_id : 0;
+            $post = $attachment_id ? get_post( $attachment_id ) : null;
+            if ( ! $post || 'attachment' !== $post->post_type || ! wp_attachment_is_image( $attachment_id ) && ! in_array( get_post_mime_type( $attachment_id ), array( 'text/plain', 'application/pdf', 'text/markdown', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel.sheet.macroEnabled.12', 'text/csv' ), true ) )
+                return new WP_Error( 'mad4b_wp_media_attachment_invalid', 'WordPress media attachment must exist and have an allowed type.' );
+            if ( (string) ( $asset['content_hash'] ?? '' ) !== hash_file( 'sha256', get_attached_file( $attachment_id ) ) )
+                return new WP_Error( 'mad4b_wp_media_hash_mismatch', 'Attachment content hash mismatch.' );
+        }
 		$title = trim( sanitize_text_field( isset( $asset['title'] ) ? $asset['title'] : '' ) );
 		if ( '' === $title ) $title = 'Untitled';
 		$content_complete = ! array_key_exists( 'content_complete', $asset ) || ! empty( $asset['content_complete'] );
@@ -3625,6 +3717,20 @@ final class MAD4B_SCP_Context_Authority {
 			// A drift forces the existing registry snapshot compensation path.
 			if ( null !== $checkpoint ) {
 				$rechecked = MAD4B_SCP_Operational_Integrity::assert_unchanged( $checkpoint );
+                // Review policy intentionally bumps the Brand Profile revision.
+                // Validate that ONLY that exact expected revision changed; never
+                // waive site identity, actor, brand binding or other scope checks.
+                if ( is_wp_error( $rechecked ) && 'set_review_policy' === (string) $operation
+                    && 'mad4b_integrity_checkpoint_stale' === $rechecked->get_error_code() ) {
+                    $after = MAD4B_SCP_Operational_Integrity::capture();
+                    if ( is_array( $after )
+                        && ( $after['scope'] ?? null ) === ( $checkpoint['scope'] ?? null )
+                        && (int) ( $after['actor_user_id'] ?? -1 ) === (int) ( $checkpoint['actor_user_id'] ?? -2 )
+                        && (int) ( $after['dependency_revision']['site_profile'] ?? -1 ) === (int) ( $checkpoint['dependency_revision']['site_profile'] ?? -2 )
+                        && (int) ( $after['dependency_revision']['brand_profile'] ?? -1 ) === (int) ( $checkpoint['dependency_revision']['brand_profile'] ?? -2 ) + 1 ) {
+                        $rechecked = true;
+                    }
+                }
 				if ( is_wp_error( $rechecked ) ) {
 					return self::compensate_registry_error( $snapshot, $operation, $rechecked, 'scope_drift' );
 				}

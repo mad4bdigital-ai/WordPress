@@ -55,7 +55,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "sha256": "29f654713f63c91e9d6391134ab94131ef08642847dadcdaf1a467ea95e990be"
+      "sha256": "08b706dc15256d56bc33ec94082e2744fec84deee2f2dcaaabf4b2569a317212"
     }
   ],
   "test_paths": [

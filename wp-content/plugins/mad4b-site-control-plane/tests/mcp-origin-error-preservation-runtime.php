@@ -33,6 +33,8 @@ if (!is_array($event) || $event['code']!=='mad4b_oauth_evaluation_exception' || 
   throw new RuntimeException('First-party origin not recorded safely');
 $GLOBALS['captured_event']=null;
 $reflection=new ReflectionProperty('MAD4B_SCP_MCP_Transport_Admission','observed_rejection');
+// PHP 7.4 requires an explicit visibility override for private properties.
+$reflection->setAccessible(true);
 $reflection->setValue(null,false);
 $foreign=new WP_REST_Response(array('code'=>'mad4b_private_token_abc','message'=>'PRIVATE SECRET'),503);
 MAD4B_SCP_MCP_Transport_Admission::annotate_response($foreign,null,$req);

@@ -1900,6 +1900,154 @@
       "review_rationale": "WordPress hourly cleanup limited to stale .part files under exact owned temporary root, maximum 200 scanned per run; disabled in Production and when global write kill switch is active, with negative hermetic fixtures."
     },
     {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-domain-executors.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "AI-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-domain-executors-runtime.php"
+      ],
+      "owner_role": "MAD4B repository security reviewer; CI-only review does not enroll executor or approve Production",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing immutable source/owner review, execution, approval and platform controls cover this code-gated local-only non-publishing executor bridge. No new Production ability or broad credential is added.",
+      "review_rationale": "Reviewed original-owner adapter must be explicitly locally deployed with a precise code SHA pin, original source item hash and revision, and durable independent decision receipt; protected grant/mutation domains cannot register, with negative test evidence."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-grant-mode.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-grant-mode-runtime.php"
+      ],
+      "owner_role": "MAD4B repository governance code reviewer; no tenant-grant authorization conveyed",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing original Agent identity, deny-first grant, site profile, audit, admin nonce and protected OAuth controls remain the sole authority; no new external secret or Production grant is introduced.",
+      "review_rationale": "Nonproduction exact content-review option is disabled by default and owner-initiated. No self-grants, broad privileged abilities or cross-environment expansion."
+    },
+    {
+      "id": "ability:mad4b/ai-",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01",
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B repository security code reviewer; exact tenant permission not issued",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original deny-first Agent grant checks, App Password identity, Site Profile, append-only audit, exact native owner CAS and existing protected privileges remain mandatory. No direct ability execution, nonlocal writes, owner entitlement grant or publication.",
+      "review_rationale": "Scanner-discovered dynamic PHP namespace prefix; not an independently registered wildcard ability. No wildcard grants permitted."
+    },
+    {
+      "id": "ability:mad4b/ai-native-owner-review-",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01",
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B repository security code reviewer; exact tenant permission not issued",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original deny-first Agent grant checks, App Password identity, Site Profile, append-only audit, exact native owner CAS and existing protected privileges remain mandatory. No direct ability execution, nonlocal writes, owner entitlement grant or publication.",
+      "review_rationale": "Scanner-discovered dynamic PHP namespace prefix; not an independently registered wildcard ability. No wildcard grants permitted."
+    },
+    {
+      "id": "rest:mad4b-local-ai/v1/domain-review",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B repository security code reviewer; exact tenant permission not issued",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original deny-first Agent grant checks, App Password identity, Site Profile, append-only audit, exact native owner CAS and existing protected privileges remain mandatory. No direct ability execution, nonlocal writes, owner entitlement grant or publication.",
+      "review_rationale": "Local-only reviewed original-owner content quality endpoint/service; independently verifies exact original owner source and durable audit receipt; never native publication or privileged mutation."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-native-owner-adapter.php",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01",
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B repository security code reviewer; exact tenant permission not issued",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original deny-first Agent grant checks, App Password identity, Site Profile, append-only audit, exact native owner CAS and existing protected privileges remain mandatory. No direct ability execution, nonlocal writes, owner entitlement grant or publication.",
+      "review_rationale": "Local-only reviewed original-owner content quality endpoint/service; independently verifies exact original owner source and durable audit receipt; never native publication or privileged mutation."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-native-owner-review.php",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B repository security code reviewer; exact tenant permission not issued",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original deny-first Agent grant checks, App Password identity, Site Profile, append-only audit, exact native owner CAS and existing protected privileges remain mandatory. No direct ability execution, nonlocal writes, owner entitlement grant or publication.",
+      "review_rationale": "Local-only reviewed original-owner content quality endpoint/service; independently verifies exact original owner source and durable audit receipt; never native publication or privileged mutation."
+    },
+    {
       "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-agent-connection.php",
       "control_ids": [
         "MCP-01",
@@ -2046,89 +2194,668 @@
       "review_rationale": "New guarded recovery coordinator defaults DEFER, requires authoritative Staging Site Profile, sealed pre-update grant baseline and continuation permit, verified OAuth step-up and eligible exact plan, denies stale grants and invokes the existing audited reconciliation operation only with nonproduction_approved_auto=true. No independent mutation authority is introduced. Static integration contract and actual PHP gate test cover this source for CI-only review."
     },
     {
-      "id": "cron:mad4b_developer_runner_refresh",
+      "id": "ability:mad4b/season-public-preview",
       "control_ids": [
         "MCP-01",
-        "OAUTH-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
         "SECURITY-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/public-holiday-hermetic-runtime.php"
+      ],
+      "owner_role": "Repository automated source/security test review — CI only, not WordPress owner or grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing authenticated read-only MCP/provider controls, Site Profile/Market Profile, core security, source trust and audit controls already cover this bounded calendar preview; no new mutation authority or new Production control is granted.",
+      "review_rationale": "Exact Public Holidays source reviewed with hermetic PHP 7.4 and PHP 8.3 regression: fixes two PHP8-only str_contains usages without changing parse semantics. Original Ability exposes a nonpublic read-only endpoint, requires native MAD4B_SCP_Policy::can_read, strict ISO country, visible site language and bounded year, and uses static provider hosts through wp_safe_remote_get with redirects disabled and 2 MB response cap. Nager entries filter national Public type/country; recurrence and oversized iCalendar fail closed; no season terms, offers, or market approvals are mutated. The 19-case same-PR runtime fixture checks successful parsing, wrong country, hidden locale, year, unknown source, unapproved market, redirect rejection and zero publication. This record does not attest live WordPress/Google HTTP acceptance or owner release approval."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-public-holidays.php",
+      "control_ids": [
         "GOVERNANCE-01",
         "PLATFORM-01",
-        "EXECUTION-01",
+        "SECURITY-01",
+        "MCP-01",
+        "PROVIDERS-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/public-holiday-hermetic-runtime.php"
+      ],
+      "owner_role": "Repository automated source/security test review — CI only, not WordPress owner or grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing authenticated read-only MCP/provider controls, Site Profile/Market Profile, core security, source trust and audit controls already cover this bounded calendar preview; no new mutation authority or new Production control is granted.",
+      "review_rationale": "Exact Public Holidays source reviewed with hermetic PHP 7.4 and PHP 8.3 regression: fixes two PHP8-only str_contains usages without changing parse semantics. Original Ability exposes a nonpublic read-only endpoint, requires native MAD4B_SCP_Policy::can_read, strict ISO country, visible site language and bounded year, and uses static provider hosts through wp_safe_remote_get with redirects disabled and 2 MB response cap. Nager entries filter national Public type/country; recurrence and oversized iCalendar fail closed; no season terms, offers, or market approvals are mutated. The 19-case same-PR runtime fixture checks successful parsing, wrong country, hidden locale, year, unknown source, unapproved market, redirect rejection and zero publication. This record does not attest live WordPress/Google HTTP acceptance or owner release approval."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-review-lifecycle.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-history-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-media-evidence-runtime.php"
+      ],
+      "owner_role": "Repository automated exact-source reviewer — CI only, not original WordPress source owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The existing Context Authority, security, original owner review/Audit, source-file identity, nonauthorizing control-plane and auth controls cover review progress without adding a new execution or release control.",
+      "review_rationale": "Reviewed complete 201-line lifecycle source: decide() only returns a nonauthorizing plan, never applies actions, loops are capped at 6 rounds/2 unchanged repairs and protected mutation domains reject delegated auto-review. exact_media_evidence() accepts a governed WP Media attachment only within real uploads root and rejects symlinks, stale SHA256, unreadable/oversized assets and incomplete normalization; readback includes original Context revision, remains read_only and publication_authorized=false. record_review_result() writes a bounded derivative history only when current original Context Authority asset receipt matches exact AI actor/decision/content digest and repeats idempotently. Three same-PR hermetic tests were executed on PHP 7.4/8.3: lifecycle reducer 20/20, original receipt/history 8/8, media trust boundary 10/10 including path escape and symlink denial. No external WordPress/Production execution or new grant is claimed."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-only-early-auth-guard.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php"
+      ],
+      "owner_role": "Repository source/security integration review for CI only — not Site Owner attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Site Profile exact UUID, local environment, WordPress application-password pre-authentication hook, OAuth credential-fence and fail-closed transport policies govern this scoped Local service; no additional Production permission.",
+      "review_rationale": "Reviewed exact source for Local-only prefix-scoped service identity, exact Site UUID match, route/method allowlist and independent hook registration before the foreign REST early return. A source-specific adversarial regression exposed a real spoofed rest_route query that previously passed a foreign /wp-json or wp-admin path. Fixed query-style dispatch to the original WordPress index path derived from home_url(), denying conflicting pretty-path/rest_route combinations and malformed/foreign paths while retaining valid root and subdirectory query-mode routing. Hermetic PHP 7.4 and 8.3 test executed all 20 cases with fail-closed negatives. No live authenticated WordPress or Production access is attested."
+    },
+    {
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-application-password-agent-bridge.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/application-password-agent-bridge-hermetic.php"
+      ],
+      "owner_role": "Repository source/security integration reviewer — CI only; not WP original owner",
+      "coverage_reuse_rationale": "Existing WordPress application-password, enrolled Site Profile, exact Agent Registry grant, original Basic verifier, OAuth and production-deny controls govern the Local read/write bridge without introducing authority.",
+      "review_rationale": "Reviewed 55-line original hook implementation: an attached Basic header alone never creates identity; WordPress original application_password_did_authenticate must confirm a UUID and enrolled site/user, exact Local MCP request must match /mcp/mad4b-chatgpt, subject must equal current user, and the Agent Registry must grant exactly mad4b/context-ai-review. 16-case hermetic PHP7.4/8.3 test confirms denial on false header, missing UUID, wrong user, revoked exact grant, unrelated REST route, production, unenrolled user/origin and anti-overwrite of original trusted subject context. Separate genuine WordPress network acceptance still required."
+    },
+    {
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-model-router.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01",
+        "PROVIDERS-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-model-routing-worker-runtime.php"
+      ],
+      "owner_role": "Repository source/security integration reviewer — CI only, no model or provider privileges",
+      "coverage_reuse_rationale": "WordPress Core Connector credential source, original Site Profile, source repair and secure provider transport controls already govern this source; no new shadow credential registry or release capability.",
+      "review_rationale": "Reviewed immutable 384-line model router source (current reviewed Git blob 76dd0b9e, already exact-source covered in the registry). Default inference is disabled; Local Ollama is pinned to 127.0.0.1 and the configured Qwen model only inside Local, WordPress Core Connector manages all external keys, custom endpoint validation rejects credentials, query/fragment, localhost/internal host and non443 HTTP and uses wp_safe_remote_post with redirects disabled. 44 source-specific PHP 7.4/8.3 hermetic assertions include new private endpoint and model injection negative cases, original review evidence/low-confidence rejection and disabled connector failures. Tests are not proof of external paid/free model availability, live inference, or deployment."
+    },
+    {
+      "id": "rest:mad4b/ai/review-cycle",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-worker-guard-hermetic.php"
+      ],
+      "owner_role": "Repository source/security CI test reviewer only; not WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing enrolled administrator/Policy, Local-only bound Agent identity, original Context Authority review endpoint, source-readback and release/approval gates control this worker; no new authority is granted.",
+      "review_rationale": "Reviewed unchanged source blob 065726ac26093b0bbc9e11c0009af102df61fcb9. The REST route has original Policy::can_connect_user plus manage_options checks. Preflight requires Local, bound Local Client, ai_only policy, enabled model credentials and authenticated original Agent identity. Run refuses when preflight fails. JSON verdict validation denies foreign authority fields, low-confidence approvals, malformed/oversized payloads and invalid evidence-line citations; no automatic publication authority. New same-PR 22-case hermetic CLI source regression passed PHP 7.4 and 8.3. Live WP original Agent receipt, network transport, background schedule and Staging were NOT exercised or certified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-review-worker.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-worker-guard-hermetic.php"
+      ],
+      "owner_role": "Repository source/security CI test reviewer only; not WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing enrolled administrator/Policy, Local-only bound Agent identity, original Context Authority review endpoint, source-readback and release/approval gates control this worker; no new authority is granted.",
+      "review_rationale": "Reviewed unchanged source blob 065726ac26093b0bbc9e11c0009af102df61fcb9. The REST route has original Policy::can_connect_user plus manage_options checks. Preflight requires Local, bound Local Client, ai_only policy, enabled model credentials and authenticated original Agent identity. Run refuses when preflight fails. JSON verdict validation denies foreign authority fields, low-confidence approvals, malformed/oversized payloads and invalid evidence-line citations; no automatic publication authority. New same-PR 22-case hermetic CLI source regression passed PHP 7.4 and 8.3. Live WP original Agent receipt, network transport, background schedule and Staging were NOT exercised or certified."
+    },
+    {
+      "id": "rest:mad4b-local-ai/v1/context-review",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-crossenv-scope-hermetic.php"
+      ],
+      "owner_role": "Repository source/security CI reviewer only, not authenticated WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing original Agent Registry, Site Profile, WordPress App Password authentication, Policy, Context Authority and audit/approval/Content-CAS governance controls; does not expand any underlying permission.",
+      "review_rationale": "Original REST permission callback requires exact enrolled Site Profile, HTTPS in non-Local, bound WordPress Application Password reviewer identity, enabled delegated AI Agent, exact original review grant and original Context Authority CAS. Early-auth adversarial checks reject forged rest_route query on WP admin/foreign REST, wrong user meta site, unsupported methods and plaintext traffic. Endpoint registration alone cannot provide publishing authorization."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-only-local-activation.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-crossenv-scope-hermetic.php"
+      ],
+      "owner_role": "Repository source/security CI reviewer only, not authenticated WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing original Agent Registry, Site Profile, WordPress App Password authentication, Policy, Context Authority and audit/approval/Content-CAS governance controls; does not expand any underlying permission.",
+      "review_rationale": "AI reviewer identity service remains exact site-bound and opt-in across environments; managed subscriber identity cannot reach arbitrary WordPress REST routes, while the original policy checks explicitly delegated Agent and environment-matching grant. PHP 7.4/8.3 network-free negative/positive tests verify cross-env site UUID, HTTPS, missing opt-in, disabled Agent scope and spoofed admin paths. No live credentials issued, no grants created, no publication authority."
+    },
+    {
+      "id": "ability:mad4b/market-profiles-read",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/market-source-read-abilities-hermetic.php"
+      ],
+      "owner_role": "Repository CI source/security reviewer only, not original WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Site Profile, WordPress Permissions/Policy, market registry, source inbox and immutable review-approval controls; reads grant neither source ingestion authority nor publication. The first matched impact rule is MCP because these are registered WordPress Ability/MCP read interfaces; MCP-01 covers transport-level read-only admission.",
+      "review_rationale": "Market Profiles read Ability only discloses approved Site Profile UUID-bound market records for enabled languages with read-only annotation, original Policy::can_read, non-public MCP/REST metadata, and no write methods exposed; hermetic test confirms country/language filtering, invalid input and unauthorized cross-environment binding. Network-disabled hermetic source execution passed 23 read/denial checks under PHP 7.4 and PHP 8.3; installed WPML/live WordPress acceptance remains unverified."
+    },
+    {
+      "id": "ability:mad4b/source-hub-status",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/market-source-read-abilities-hermetic.php"
+      ],
+      "owner_role": "Repository CI source/security reviewer only, not original WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Site Profile, WordPress Permissions/Policy, market registry, source inbox and immutable review-approval controls; reads grant neither source ingestion authority nor publication. The first matched impact rule is MCP because these are registered WordPress Ability/MCP read interfaces; MCP-01 covers transport-level read-only admission.",
+      "review_rationale": "Source Hub status Ability invokes only original status callback and private Policy::can_read authorization, has no-public read-only annotations, returns review inbox and source counts, and explicitly denies automatic approval or publication; synthetic fixture verifies no option updates or network operations and no cross-environment Site Profile inheritance. Network-disabled hermetic source execution passed 23 read/denial checks under PHP 7.4 and PHP 8.3; installed WPML/live WordPress acceptance remains unverified."
+    },
+    {
+      "id": "cron:mad4b_ai_only_local_expire",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-credential-expiry-hermetic.php"
+      ],
+      "owner_role": "Repository CI source/revocation reviewer only — not independent WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing WordPress Cron, Application Passwords revocation and Audit option controls; expiry hook remains its legacy identifier but applies to enrolled service vaults across environments, not authority escalation.",
+      "review_rationale": "Hermetic source runtime checks idempotent no-op before expiration, exact WordPress user/password-UUID revocation, denied original WP deletion leaving private 0600 vault for bounded retry, audit of failed deletion, successful retry + deletion/audit, and no reissuance. PHP 7.4 and 8.3 PASS 9 scenarios; test fixture creates only disposable /tmp directories. Not live WP-Cron acceptance or automatic production enrollment."
+    },
+    {
+      "id": "cron:mad4b_scp_source_hub_import",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/market-source-calendar-cron-hermetic.php"
+      ],
+      "owner_role": "CI-only original-source cron security reviewer, not WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing site-specific WordPress Cron scheduling, approved Market Profile or Source Hub registration, original admin-only policy, original provider and audit guards. No new automation permissions or public write endpoint.",
+      "review_rationale": "Original Source Hub cron only runs after explicit site administrator activation; original Site Profile and local lab guard remain required. Draft, non-approved sources produce no inbox ingestion; scheduled work stages only review inbox, denies automatic source approval and publication. Hermetic 22-check fixture (both PHP 7.4 and 8.3) confirms environment, admin enrollment, site binding, duplicate schedule and zero write side effects. No live external source fetch or site-wide cron enablement was performed."
+    },
+    {
+      "id": "cron:mad4b_scp_season_calendar_sync",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/market-source-calendar-cron-hermetic.php"
+      ],
+      "owner_role": "CI-only original-source cron security reviewer, not WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing site-specific WordPress Cron scheduling, approved Market Profile or Source Hub registration, original admin-only policy, original provider and audit guards. No new automation permissions or public write endpoint.",
+      "review_rationale": "Original Season Calendar schedule requires enrolled Local site admin and approved country-language Market Profile plus exact Google holiday source. Cron validates approved binding before attempting fetch; provider failure records exact denial without Seasons term creation, financial offer mutation or automatic publishing. Hermetic 22-check fixture on PHP 7.4 and 8.3 tests negative Production/admin/site, invalid market and calendar, positive bounded schedule, offline provider and no campaign writes. No live Google tokens or database terms touched."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-market-profiles.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/market-source-read-abilities-hermetic.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/market-source-calendar-authority-hermetic.php"
+      ],
+      "owner_role": "Source/original-owner CI security reviewer only; independent WordPress Site Owner required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original enrolled Site Profile, admin permission, exact draft/revision source authority and original WordPress/Google provider boundaries; all changes remain subject to existing platform/security and independent owner gates.",
+      "review_rationale": "Market Profiles creates local enrolled-admin country/language drafts from CLDR advisory suggestions only; exact CAS revision on save/approve, distinct review action, duplicate country-language rejection and old site/environment denial are exercised by original-source test. Site-scoped WordPress Ability remains independently Policy::can_read gated and read-only. Tests on PHP 7.4/8.3 PASS 33 original service lifecycle assertions; pre-existing read Ability test adds 23 adversarial checks. Not a claim of live WPML acceptance. Evidence refers to exact source behavior and changed-in-PR executable hermetic fixtures; owner attestation and deployment still blocked."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-source-hub.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/market-source-calendar-cron-hermetic.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/market-source-calendar-authority-hermetic.php"
+      ],
+      "owner_role": "Source/original-owner CI security reviewer only; independent WordPress Site Owner required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original enrolled Site Profile, admin permission, exact draft/revision source authority and original WordPress/Google provider boundaries; all changes remain subject to existing platform/security and independent owner gates.",
+      "review_rationale": "Source Hub original service checks operator-only local registration, source approval as separate action, exact revisions, HTTPS pinned-feed host/adapter and userinfo/IP rejection, cross-site/environment denial, private source inbox that cannot auto-approve or auto-publish. The original Cron admission regression separately tests bounded scheduled approved source import and nonapproved source denial. New integration runs 33 assertions on both PHP 7.4/8.3; no provider credentials or live network calls. Evidence refers to exact source behavior and changed-in-PR executable hermetic fixtures; owner attestation and deployment still blocked."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-season-calendar.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/market-source-calendar-cron-hermetic.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/market-source-calendar-authority-hermetic.php"
+      ],
+      "owner_role": "Source/original-owner CI security reviewer only; independent WordPress Site Owner required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original enrolled Site Profile, admin permission, exact draft/revision source authority and original WordPress/Google provider boundaries; all changes remain subject to existing platform/security and independent owner gates.",
+      "review_rationale": "Season Calendar service accepts only approved country/language Market Profiles and subscribed exact Google holiday calendars; original plan normalizes tentative versus confirmed events, creates pending-only proposals with explicit CAS before individual review, denies tentative and Production term modifications, and never auto-publishes offers. Network-isolated original-source integration PASS 33 cases on PHP 7.4/8.3; supplemental Cron fixture PASS 22 cases per PHP and denies invalid calendar/provider, no live Google authorization asserted. Evidence refers to exact source behavior and changed-in-PR executable hermetic fixtures; owner attestation and deployment still blocked."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-setup-coverage.php",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-setup-coverage-runtime.php"
+      ],
+      "owner_role": "Original-source provider security CI reviewer only; independent Site Owner attestation still needed",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original WordPress Core Connector custody, browser acceptance registry, source-owned Search enrollment, OAuth connection authority, explicit Policy/admin capability, Provider and Execution controls already govern real operations; this status aggregation grants no new privileges.",
+      "review_rationale": "Source reviewed: original provider-setup coverage is read-only and requires manage_options. It enumerates only original adapter field names, never any database or host key bytes, and preserves separation of credential-present, OAuth-connected, plugin-active, model-inference tested, signed browser evidence and execution certification. The original runtime fixture, changed in the same PR, executes 26 PASS checks on network-isolated PHP 7.4 and 8.3 for external runner fields, WP Core Connector source flags, managed/dedicated/custom Google OAuth modes, protected SERP adapter, G5 adapter growth, no secret bytes/handles, absent admin and nonauthorizing inventory. No key issuance, provider API calls, production rights or live acceptance."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-setup-ui.php",
+      "control_ids": [
+        "ADMIN-01",
+        "SECURITY-02",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/authority-setup-fields-runtime.php"
+      ],
+      "owner_role": "Repository original-source admin UI CI security reviewer only, not approved Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing original WordPress enrolled Site Profile and manage_options authorization, OAuth bearer/step-up and exact developer/full-staging plan/apply Ability. The page has no direct grant issuing code, and user-controlled input only prepares unverified CAS shape.",
+      "review_rationale": "Source-reviewed authority UI: three distinct developer/developer-breakglass/full-staging workflows present exact owner-confirmation phrases and SHA/UUID/revision bounds; original validate_payload rejects unknown fields, invalid digests, production Developer selection and raw SQL. Extended same-PR original PHP runtime now includes denial of anonymous/non-enrolled admin, independent site enrollment check, projection-only no-implicit-apply, no mutation, exact staging eligibility and denied production Full Staging. 26 original runtime checks passed on network-isolated PHP 7.4 and 8.3; the source does not mint a grant, authenticate OAuth nor invoke apply. Production mutation or owner confirmation remains strictly unverified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-background-authorization.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/background-authorization-verified-identity-hermetic.php"
+      ],
+      "owner_role": "Repository original-source authentication and authorization CI reviewer only; not enrolled Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing immutable original Identity_Context verified transport, Agent Registry exact deny-first grants, enrolled Site Profile and Unified Approval owner Workflow. No expansion of supported authentication method or browser MFA scope.",
+      "review_rationale": "Direct original Background Authorization current() + check_qa_grant() and Browser Auth Broker source reviewed on exact Git blob. Mandatory verified upstream Identity_Context fingerprint must be string lowercase SHA-256, original Agent Registry must return enabled Agent with valid numeric ID, Site Profile must be present and have enrolled UUID. Requested QA domain must be registered by Unified Approval original owner, and exact grant must allow this exact environment and ability; all results are review-only and publication-authorized false. Browser login requires human and refuses model-issued sessions/MFA bypass. Network-free PHP 7.4 and 8.3 checks: 23 per interpreter, including malformed identity, unsupported API key, disabled Agent, missing site binding, invalid domain, original deny and different-environment grant, positive app-password/OAuth/passwordless identity, HTTPS-only browser handoff. Original unified-approval-ai-first contract also passes 37 cases on each PHP. No token, owner grant or browser session minted; real WordPress live acceptance remains necessary."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-policy.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-policy-gate-hermetic.php"
+      ],
+      "owner_role": "Repository original-source governance/approval CI reviewer only; not independent Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original Unified Policy original-owner Context Authority rules, WordPress Ability registry, Impact Policy, and separately OAuth-/ticket-governed execution rights; mapping only projects and does not authorize a mutation.",
+      "review_rationale": "Source original Unified Policy resolves configuration as quality-review rules only and inherits stricter original Context Authority. The original AI-only content decision is review-only; pricing, deployment, Developer and Breakglass cannot become AI-final execution. Configured legacy human-first or either-actor saved rules are projected in memory to AI-first without persisted mutation, while new unsafe rules are denied. Owner policy save is denied from CLI; exact scope/mode/TTL/confidence validation and no option mutations are tested. Hermetic original PHP 7.4 and 8.3 each PASS 27 checks. No live WordPress instance was changed; CI-only evidence."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-gate-bridge.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "TICKETS-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-policy-gate-hermetic.php"
+      ],
+      "owner_role": "Repository original-source governance/approval CI reviewer only; not independent Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original Unified Policy original-owner Context Authority rules, WordPress Ability registry, Impact Policy, and separately OAuth-/ticket-governed execution rights; mapping only projects and does not authorize a mutation.",
+      "review_rationale": "Source original Unified Gate Bridge is strictly read-only: it maps a reviewed original owner for the operation, gets the original Policy decision, checks real WordPress Ability registration and original Impact Policy but cannot mint a grant, approval ticket, owner receipt, publication or execution authorization. Unknown owners, unsafe provider names and malformed Ability names reject; even when QA owner and Ability are present, an original owner receipt remains required, while Pricing requires an independently reviewed human Approval Ticket. Hermetic PHP 7.4 and 8.3 each PASS 27 original-source tests and no options writes. No live WordPress instance was changed; CI-only evidence."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-approval-queue-bridge.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-queue-extension-hermetic.php"
+      ],
+      "owner_role": "Exact source/authorization CI reviewer, never original Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Source retains the independent original review/owner authorization, original Site Profile, OAuth and ticket requirements; no direct credential, session, approval ticket or publishing authority is added.",
+      "review_rationale": "Original Queue Bridge delegates to original Unified Approval Workflow::inspect, rejects malformed review IDs and missing original reviews, and returns read-only state projection. Even when original review state is REVIEW_APPROVED, the next step remains original_owner_authorization_required. Pending, waiting-human and rejected states never issue tickets, perform mutations, publish, or authorize providers; original hashes remain scoped in projection. Network-free hermetic test executes 20 assertion cases on PHP 7.4 and PHP 8.3 against original classes; synthetic plugin file exists only under a temporary directory and is removed. This is CI-only, not live owner or provider certification."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-approval-extensions.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-queue-extension-hermetic.php"
+      ],
+      "owner_role": "Exact source/authorization CI reviewer, never original Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Source retains the independent original review/owner authorization, original Site Profile, OAuth and ticket requirements; no direct credential, session, approval ticket or publishing authority is added.",
+      "review_rationale": "Original optional Extension Registry accepts only declared service_identity/browser_authorization descriptor types with an exact SHA-256 pinned plugin file inside WP_PLUGIN_DIR, and independently pinned original-owner certification map. Rejects unlisted kinds, invalid IDs, forged digest, outside plugin paths, extra authority callback fields and duplicate registration. Even a valid provider is described_only; it never becomes an authenticated subject, browser session or mutation grant. Network-free hermetic test executes 20 assertion cases on PHP 7.4 and PHP 8.3 against original classes; synthetic plugin file exists only under a temporary directory and is removed. This is CI-only, not live owner or provider certification."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-approval-workflow.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-workflow-inspect-hermetic.php"
+      ],
+      "owner_role": "Original-source lifecycle CI reviewer only, not Site Owner or runtime acceptance provider",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing original site-scoped Unified Policy, WordPress source native owner evidence, approved Agent registry, exact ticket and OAuth governance still own authorization; source hardening adds no new grants or scope.",
+      "review_rationale": "Exact original Unified Approval Workflow local source, site enrollment, original Content source evidence and CAS hash/revision, original Policy digest and expiry remain authoritative. Hardened inspect rejects malformed review identifiers and tampered/incomplete stored rows, owner source responses or policy payloads before hash_equals, rather than emitting PHP notices or type errors. No approval stage may bypass original Agent exact-grant/human nonce checks; AI-first state transitions retain review-only semantics. New hermetic original-class regression 28/28 PASS on PHP 7.4 and 8.3 with valid record, invalid/missing content/policy hashes, foreign Site Profile, missing/changed source and owner revision, policy drift, expiry, and AI-first next_state. Existing Unified Approval original AI-first 37/37 regression passed on both runtimes. No live owner receipt, human session, WordPress record or token minted."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-source-pipeline.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-pipeline-admission-hermetic.php"
+      ],
+      "owner_role": "Original-source CI operator, not enrolled WordPress Site Owner or provider",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original Site Profile/WordPress manage_options and Policy::can_connect_user, Context Authority registered source/revision, original Brand Context Builder complete inventory admission, independent Google Drive and Media inventory, and original publication review are unchanged. Existing reviewed source SHA is pinned separately and not rewritten.",
+      "review_rationale": "Source-owned original Context Source Pipeline plan/sync/scan_complete invoked in network-disabled hermetic PHP 7.4 and PHP 8.3, each PASS 27 cases. Verified bounded 1-25 explicit Media IDs, deduplication, approval manual_only, source SHA/revision CAS checks, refused partial Media sync and Drive direct sync, incomplete content/Drive scan denial, original enrolled admin and Context Builder admission, advisory absent Drive candidates, and one simulated successful complete Media inventory reconciliation performed solely against an in-memory mock. No actual WordPress database, Google token, Media asset, approval, or publication was modified. Real end-to-end source scan acceptance remains outstanding."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-passwordless-connection.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/passwordless-mcp-identity-hermetic.php"
+      ],
+      "owner_role": "CI security and original-source review, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original enrolled Site Profile, WordPress-only administrative roles, Agent Registry subject and exact environment grant, HTTPS-on-Staging and existing WordPress transient controls remain authoritative, with no widening of credential issuance or Production access.",
+      "review_rationale": "Exact original Passwordless Connection now uses PHP 7.4-compatible prefix comparison in verified MCP bearer and one-time WordPress login, preserving requirement that the WordPress account login starts with mad4b_connection_. The 15-minute MCP transient is checked against the enrolled Site Profile, exact Agent subject, exact original mad4b/context-ai-review grant, and a single-role administrator integration user before setting WP current user. It denies unsupported environments, wrong token/route/site/Agent, missing/denied grant, roles, non-integration WordPress users, insecure staging and expired transient; the identity context is invalidated before every verifier call. Hermetic PHP 7.4/8.3 original-source test passed 26 cases each, with synthetic in-memory transient and no real token, user, grant or change to a WordPress installation."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-approval-admin.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-admin-rest-permissions-hermetic.php"
+      ],
+      "owner_role": "Original source REST security CI reviewer, not an enrolled Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original WordPress Local environment and Site Profile, Background Authorization exact delegated identity, original Workflow and Policy receipt gates, and browser MFA remain authoritative; source remains unchanged.",
+      "review_rationale": "The original Unified Approval Admin registers its eight REST routes only in the Local environment and retains explicit WordPress enrolled-owner or original Background_Authorization::current() actor admission. Unknown POST fields including publication, force-grant and MFA-bypass are rejected; original Workflow, Policy and Gate endpoints delegate only to existing owner review, original approval ticket and browser authority guards. Network-isolated PHP 7.4 and PHP 8.3 executions each passed 24 direct original-class tests, checking admin and delegated agent admission, Production/Staging rejection, original route permission callbacks, deny/allow request shape and no mocked site mutation. Existing Workflow and exact grant tests separately verify owner decision and deny-first behavior; these local-only checks do not certify live REST/nonce, model identity, or owner approval."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wordpress-media-context.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/media-inventory-authorization-hermetic.php"
+      ],
+      "owner_role": "Original Media source CI reviewer, not WordPress Content/Production Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original Media Context scanner retains exact WordPress admin+upload files+Site Profile connect policy, bounded MIME inventory, content normalizers, SHA-256 reuse checks and Context Authority complete scan approval; already existing two source-behavior CI reviews remain intact and unchanged.",
+      "review_rationale": "New original-class Media inventory/authorization source regression passed 22/22 cases on PHP 7.4 and PHP 8.3 in network-isolated temporary file fixture: exact hash and supported MIME, text/CSV normalization, explicit allowed MIME scope, max 1000 inventory rejection, reuse of unchanged version+hash record, denied legacy sync without manage_options, upload_files or original connect policy, and invalid/oversized ID refusal before any WordPress registry mutation. Existing normalize_bytes regression passed 10/10 on both PHP 7.4 and 8.3. Existing Excel OOXML regression passed 12/12 using an isolated WordPress PHP 8.3 image with ZIP extension; bare php:7.4-cli and php:8.3-cli images lack ZIP, so their initial Excel fixture failure was an environment dependency and NOT counted as a product regression. No Site Media, database, approval or actual upload changed. This CI-only review is not real deployment or full author acceptance."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-source-repair.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-source-repair-hermetic.php"
+      ],
+      "owner_role": "Exact-source repository AI security reviewer, not WordPress Media/Production Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original approved Agent/Local Client, Context Source ownership and revision CAS, managed Media content normalization, enrolled WordPress admin and source rescan remain the only authorities; no AI review result alone grants mutation or publication.",
+      "review_rationale": "Original AI Source Repair exact method remains local-only and requires enrolled Local Client plus original AI Router allow_source_repair, original operator Policy or certified host runner, registered governed WordPress Media asset in needs_changes status, matching current and reviewed content SHA, a real inside-uploads non-symlink bounded file and an original Context Source Pipeline rescan. It rejects invented provenance URLs, document identity changes, unsupported MIME, invalid or insufficient revisions and stale file. New fail-closed checks reject malformed SHA/asset ID or non-string model output before hash_equals/filesystem; invalid UTF-8/NUL is validated before Unicode document heading extraction. The hermetic test directly calls original service methods with disposable private /tmp uploads and fake WordPress record handles; 27/27 PASS on PHP 7.4 and PHP 8.3, including a successful simulated swap/rescan and byte-for-byte restored original on forced rescan failure. No real WordPress files, content, AI model, credentials or approval changed, and no autonomous publication or Production deployment is authorized."
+    },
+    {
+      "id": "ability:mad4b/performance-differential-diagnostic",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/performance-differential-diagnostic-contract.php"
+      ],
+      "owner_role": "Original exact-source/security CI review; not repository owner or external site attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP identity, original WordPress Policy and Site Profile grants, provider isolation, authorized capability registration and execution fence remain authoritative; no new write path, raw shell, SQL, Production promotion or automatic credential access is granted.",
+      "review_rationale": "Original MCP status ability reports current request counts only without independent bootstrap or SQL execution; Query Monitor attribution exceptions collapse to bounded attribution_probe_failed and never expose exception text. PHP7.4/8.3 tests asserted default read-only/no mutation."
+    },
+    {
+      "id": "cron:mad4b_developer_runner_refresh",
+      "control_ids": [
         "AUTOMATION-01",
         "PERFORMANCE-01"
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/developer-runner-lifecycle-fetch-contract.php"
       ],
-      "owner_role": "Repository source security reviewer — CI coverage only, no operational grant",
+      "owner_role": "Original exact-source/security CI review; not repository owner or external site attestation",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
       "needs_new_control": false,
-      "coverage_reuse_rationale": "Existing MCP, OAuth, execution boundary, security and platform readiness controls govern diagnostics and prevent unapproved executor activation.",
-      "review_rationale": "Bounded, asynchronous backend-availability probe respects opt-in HTTPS origin and refresh cooldown; it grants no Developer or write authority."
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP identity, original WordPress Policy and Site Profile grants, provider isolation, authorized capability registration and execution fence remain authoritative; no new write path, raw shell, SQL, Production promotion or automatic credential access is granted.",
+      "review_rationale": "Remote runner discovery exposes only safe configured status and preserves execution_allowed=false and uncertified identity; requires trusted HTTPS origin, limits response size and redirects, caches with TTL. Original-source positive/negative staging fixture checks state and avoids credentials or cross-site authorization."
     },
     {
       "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-backend-registry.php",
       "control_ids": [
-        "MCP-01",
-        "OAUTH-01",
-        "SECURITY-01",
         "GOVERNANCE-01",
         "PLATFORM-01",
-        "EXECUTION-01"
+        "SECURITY-01"
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-backend-registry-contract.php"
       ],
-      "owner_role": "Repository source security reviewer — CI coverage only, no operational grant",
+      "owner_role": "Original exact-source/security CI review; not repository owner or external site attestation",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
       "needs_new_control": false,
-      "coverage_reuse_rationale": "Existing MCP, OAuth, execution boundary, security and platform readiness controls govern diagnostics and prevent unapproved executor activation.",
-      "review_rationale": "Portable registry only classifies read and execution candidates, requires independent identity and isolation certification, and never dispatches commands or grants access."
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP identity, original WordPress Policy and Site Profile grants, provider isolation, authorized capability registration and execution fence remain authoritative; no new write path, raw shell, SQL, Production promotion or automatic credential access is granted.",
+      "review_rationale": "Closed backend selection accepts only independently configured/verified/certified isolated read diagnostics, denies unsupported preset, expired/backoff, untrusted actor or unsafe fallback for writes. Original source fixtures exercise denial and sanitized snapshot."
     },
     {
       "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-runner-bridge.php",
       "control_ids": [
-        "MCP-01",
-        "OAUTH-01",
-        "SECURITY-01",
         "GOVERNANCE-01",
         "PLATFORM-01",
-        "EXECUTION-01"
+        "SECURITY-01"
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-runner-bridge-contract.php"
       ],
-      "owner_role": "Repository source security reviewer — CI coverage only, no operational grant",
+      "owner_role": "Original exact-source/security CI review; not repository owner or external site attestation",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
       "needs_new_control": false,
-      "coverage_reuse_rationale": "Existing MCP, OAuth, execution boundary, security and platform readiness controls govern diagnostics and prevent unapproved executor activation.",
-      "review_rationale": "Restricted RSA-signed diagnostic bridge verifies exact enrolled site, request hash and signed receipt, with no Production, Shell, SQL or Developer execution grant."
-    },
-    {
-      "id": "ability:mad4b/performance-differential-diagnostic",
-      "control_ids": [
-        "MCP-01",
-        "SECURITY-01",
-        "PLATFORM-01",
-        "GOVERNANCE-01",
-        "PERFORMANCE-01"
-      ],
-      "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/performance-differential-diagnostic-contract.php"
-      ],
-      "owner_role": "Repository MCP ability reviewer — read-only nonauthorizing scope",
-      "status": "reviewed_for_ci_only",
-      "production_authorized": false,
-      "live_evidence_required": true,
-      "needs_new_control": false,
-      "coverage_reuse_rationale": "Existing MCP readonly gate, security boundary and performance observability controls enforce bounded nonmutating diagnostics and source-certified attribution.",
-      "review_rationale": "New status ability must explicitly report unavailable independent WP-CLI bootstrap comparisons and never grant runtime authority."
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP identity, original WordPress Policy and Site Profile grants, provider isolation, authorized capability registration and execution fence remain authoritative; no new write path, raw shell, SQL, Production promotion or automatic credential access is granted.",
+      "review_rationale": "Signed RSA receipt binds enrolled site, nonce, request SHA, exact operation and result; tampered payload, cross-site or write-contaminated receipts deny. Only diagnostic read is eligible, no shell, SQL or Production grant."
     }
   ],
   "lifecycle": [],
@@ -7265,6 +7992,706 @@
       "live_evidence_required": true
     },
     {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php",
+      "source_blob_sha": "938ba418ebb3ac0aa2ccb674d401ab52d6928995",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PROVIDERS-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-media-normalization-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — nonauthorizing CI coverage",
+      "review_rationale": "Exact-source review of a pure local PDF normalization facade that reuses the existing Google Drive PDF text parser without Google credentials, network access or provider mutations. Tests prove a text PDF is normalized and invalid/OCR-required PDFs are rejected. Attachment approval and complete-source admission remain separate; this review is not a Staging or Production certificate.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wordpress-media-context.php",
+      "source_blob_sha": "6882f27192a6f2e829fcef164deec6e7bbf1973b",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "AI-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-media-normalization-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — nonauthorizing CI coverage",
+      "review_rationale": "Exact-source review of fail-closed WordPress Media content normalization for new or modified TXT, Markdown and text-based PDF: raw SHA-256 is compared after bounded local read, invalid or empty UTF-8 and oversized attachments are rejected, PDF OCR-needed/incomplete output is blocked, and unmodified registry-approved content follows the unchanged exact reuse path. Isolated PHP regression and Local Lab read-only acceptance passed. Does not auto-approve Context, modify historical ownership, overcome registry capacity or authorize deployments.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php",
+      "source_blob_sha": "074601dc3be33a8c21a812754dacc8bc4cc1cd52",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "AI-01",
+        "PROVIDERS-02",
+        "PROVIDERS-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-media-excel-contract.py"
+      ],
+      "owner_role": "MAD4B repository source reviewer — CI-only, not a site or Production owner",
+      "review_rationale": "CI-only exact-source review: enable Excel XLSX/XLSM and CSV in governed WordPress Media MIME inventory, normalize OOXML workbook via bounded read-only ZIP/XML parser with worksheet names, cell coordinates, shared/inline strings and cached-only formulas, and fail closed for malformed/missing data, oversized spreadsheets and legacy XLS without a certified parser. Tests execute the real PHP implementation with multi-sheet numeric fixtures, sheet-name and sparse-column preservation, malformed workbook, formula-cache denial, CSV, and XLSM without macro execution. Local Lab attachment readback verified. No new Context approvals, source ownership migration or Production authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wordpress-media-context.php",
+      "source_blob_sha": "057ee4b2f5061afc49be0202d24b01c67e3f5e86",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "AI-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-media-excel-contract.py"
+      ],
+      "owner_role": "MAD4B repository source reviewer — CI-only, not a site or Production owner",
+      "review_rationale": "CI-only exact-source review: enable Excel XLSX/XLSM and CSV in governed WordPress Media MIME inventory, normalize OOXML workbook via bounded read-only ZIP/XML parser with worksheet names, cell coordinates, shared/inline strings and cached-only formulas, and fail closed for malformed/missing data, oversized spreadsheets and legacy XLS without a certified parser. Tests execute the real PHP implementation with multi-sheet numeric fixtures, sheet-name and sparse-column preservation, malformed workbook, formula-cache denial, CSV, and XLSM without macro execution. Local Lab attachment readback verified. No new Context approvals, source ownership migration or Production authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-source-pipeline.php",
+      "source_blob_sha": "7a08407a797d5382d0dd3bd49d29116fdb1bc7b2",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "AI-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-media-excel-contract.py"
+      ],
+      "owner_role": "MAD4B repository source reviewer — CI-only, not a site or Production owner",
+      "review_rationale": "CI-only exact-source review: enable Excel XLSX/XLSM and CSV in governed WordPress Media MIME inventory, normalize OOXML workbook via bounded read-only ZIP/XML parser with worksheet names, cell coordinates, shared/inline strings and cached-only formulas, and fail closed for malformed/missing data, oversized spreadsheets and legacy XLS without a certified parser. Tests execute the real PHP implementation with multi-sheet numeric fixtures, sheet-name and sparse-column preservation, malformed workbook, formula-cache denial, CSV, and XLSM without macro execution. Local Lab attachment readback verified. No new Context approvals, source ownership migration or Production authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-admin-ui.php",
+      "source_blob_sha": "904c8bee75d5e7f05b3452ac5d4e3f969705b3a4",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "AI-01",
+        "PROVIDERS-02",
+        "ADMIN-01",
+        "BROWSER-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-media-excel-contract.py"
+      ],
+      "owner_role": "MAD4B repository source reviewer — CI-only, not a site or Production owner",
+      "review_rationale": "CI-only exact-source review: enable Excel XLSX/XLSM and CSV in governed WordPress Media MIME inventory, normalize OOXML workbook via bounded read-only ZIP/XML parser with worksheet names, cell coordinates, shared/inline strings and cached-only formulas, and fail closed for malformed/missing data, oversized spreadsheets and legacy XLS without a certified parser. Tests execute the real PHP implementation with multi-sheet numeric fixtures, sheet-name and sparse-column preservation, malformed workbook, formula-cache denial, CSV, and XLSM without macro execution. Local Lab attachment readback verified. No new Context approvals, source ownership migration or Production authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php",
+      "source_blob_sha": "5e0b818b5354451aa809f42558c86427806f3094",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "AI-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-media-excel-contract.py"
+      ],
+      "owner_role": "MAD4B repository source reviewer — CI-only, not a site or Production owner",
+      "review_rationale": "CI-only exact-source review: enable Excel XLSX/XLSM and CSV in governed WordPress Media MIME inventory, normalize OOXML workbook via bounded read-only ZIP/XML parser with worksheet names, cell coordinates, shared/inline strings and cached-only formulas, and fail closed for malformed/missing data, oversized spreadsheets and legacy XLS without a certified parser. Tests execute the real PHP implementation with multi-sheet numeric fixtures, sheet-name and sparse-column preservation, malformed workbook, formula-cache denial, CSV, and XLSM without macro execution. Local Lab attachment readback verified. No new Context approvals, source ownership migration or Production authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-domain-executors.php",
+      "source_blob_sha": "8fe752245eb04038870042df3e94e3db56c084d4",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-domain-executors-runtime.php"
+      ],
+      "owner_role": "MAD4B repository source security reviewer; CI evidence only, not the site or Production owner",
+      "review_rationale": "Exact source-pinned original-owner execution requires current source hash, owner revision and durable approved receipt; unauthorized and protected domains fail closed in the reviewed local-only workflow.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-model-router.php",
+      "source_blob_sha": "909cac67b174f48b849336ccd5c64ccf9b351ae4",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "AI-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-model-routing-worker-runtime.php"
+      ],
+      "owner_role": "MAD4B repository source security reviewer; CI evidence only, not the site or Production owner",
+      "review_rationale": "Model routing uses WordPress Core connector custody, guarded inference, and existing owner review; current change only provides an administrative read-only domain closure dashboard.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-review-worker.php",
+      "source_blob_sha": "1fd7eead320614f21347aa2d743941a11c0af9ad",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "AI-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-domain-executors-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-model-routing-worker-runtime.php"
+      ],
+      "owner_role": "MAD4B repository source security reviewer; CI evidence only, not the site or Production owner",
+      "review_rationale": "Worker respects original Brand Context authentication, rotates only exact registered content-owner adapters, verifies independent review receipts, and avoids publishing or broad governance approval. PHP 7.4 JSON validation is tested.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php",
+      "source_blob_sha": "0dd956e8815a7f676ed528fce9ebb9cfec7928ee",
+      "control_ids": [
+        "PLATFORM-01",
+        "GOVERNANCE-01",
+        "AI-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-settings-persistence-contract.py"
+      ],
+      "owner_role": "MAD4B repository source security reviewer; CI evidence only, not the site or Production owner",
+      "review_rationale": "AI-only review remains supported with explicit admin confirmation, original Agent binding and exact registry readback; corrected mode error text and a version-aware persistence guard do not expand approval grants.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-market-profiles.php",
+      "source_blob_sha": "7f7b4a63712f883fcf6326cadaf175bbb6c3f35d",
+      "control_ids": [
+        "PLATFORM-01",
+        "ADMIN-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py"
+      ],
+      "owner_role": "MAD4B repository source security reviewer; CI evidence only, not the site or Production owner",
+      "review_rationale": "Market Profiles admin submenu is declared through the shared permission and parent-order registry instead of an independent admin_menu hook; no country-language entitlement or approval changes.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-season-calendar.php",
+      "source_blob_sha": "ed9da6be7fcd8426ccdc06742d91f0c5ef7f490b",
+      "control_ids": [
+        "PLATFORM-01",
+        "ADMIN-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py"
+      ],
+      "owner_role": "MAD4B repository source security reviewer; CI evidence only, not the site or Production owner",
+      "review_rationale": "Season Calendar admin submenu uses the same manage_options registry and ordered parent schedule; original season taxonomy data, field authority and calendar operations remain unchanged.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-source-hub.php",
+      "source_blob_sha": "65c4c54961bdf35b45a212fc4b5197d9279bb80b",
+      "control_ids": [
+        "PLATFORM-01",
+        "ADMIN-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py"
+      ],
+      "owner_role": "MAD4B repository source security reviewer; CI evidence only, not the site or Production owner",
+      "review_rationale": "Source Hub admin submenu uses the original shared manage_options route registry; provider secrets, source trust checks and external connector permissions remain independently enforced.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-resource-bridge.php",
+      "source_blob_sha": "3434ea73f7747dafcda3e5ba5d7185fe301cfbc7",
+      "control_ids": [
+        "PLATFORM-01",
+        "OAUTH-01",
+        "SECURITY-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/oauth-native-cookie-gateway-contract.py"
+      ],
+      "owner_role": "MAD4B repository source security reviewer; CI evidence only, not the site or Production owner",
+      "review_rationale": "Before Passwordless clears stale OAuth identity, the native WordPress cookie is preserved only for admin requests with a valid wp_rest nonce and no Authorization header. Nonces and invalid-bearer fallback are negatively tested; no bearer or WordPress capability grants are created.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "a69c483585a4289670f26bf1cd3d9c7d7d1c34fa",
+      "control_ids": [
+        "PLATFORM-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-domain-executors-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py"
+      ],
+      "owner_role": "MAD4B repository source security reviewer; CI evidence only, not the site or Production owner",
+      "review_rationale": "Bootstrap includes the reviewed AI Domain Executor registry after original worker initialization, with Local-only runtime fences and no new Production grants. Preserves existing startup profile, route behavior and controlled plugin lifecycle.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-grant-mode.php",
+      "source_blob_sha": "6427055103463f16c5f09069474a435a08ea3137",
+      "control_ids": [
+        "PLATFORM-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-grant-mode-runtime.php"
+      ],
+      "owner_role": "MAD4B repository governance code reviewer; CI only, not owner approval or Production authorization",
+      "review_rationale": "Optional owner-action exact non-Production content-review grant, deny-first, scope-pinned original Agent, stable row ownership and reversible operation. Developer/Breakglass/Full Authority require separate original OAuth and do not inherit this selection.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-model-router.php",
+      "source_blob_sha": "21d939ef8e0542c9b8c02beab918b5b1023dd46c",
+      "control_ids": [
+        "PLATFORM-01",
+        "GOVERNANCE-01",
+        "AI-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-grant-mode-runtime.php"
+      ],
+      "owner_role": "MAD4B repository governance code reviewer; CI only, not owner approval or Production authorization",
+      "review_rationale": "AI Routing shows optional exact content-grant selection only to an enrolled owner; existing model inference and protected runtime are unchanged.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-setup-ui.php",
+      "source_blob_sha": "b296f8f54cc39f5062be246f5f52b23ee17fb69c",
+      "control_ids": [
+        "PLATFORM-01",
+        "ADMIN-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-grant-mode-runtime.php"
+      ],
+      "owner_role": "MAD4B repository governance code reviewer; CI only, not owner approval or Production authorization",
+      "review_rationale": "Authority Setup displays optional AI-only content grant status but retains separately authenticated Developer, Breakglass and Full Staging Authority plans.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "e5f8af26c7db319845b6c0b26b23c1300e5e74e1",
+      "control_ids": [
+        "PLATFORM-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-grant-mode-runtime.php"
+      ],
+      "owner_role": "MAD4B repository governance code reviewer; CI only, not owner approval or Production authorization",
+      "review_rationale": "Existing entrypoint loads the new reviewed owner-controlled grant module without changing Site Profile bootstrap or Production policy.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-domain-executors.php",
+      "source_blob_sha": "afc204a650ace83245d849b587bdd48824e040ae",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-domain-executors-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-model-routing-worker-runtime.php"
+      ],
+      "owner_role": "MAD4B source security reviewer; Local Lab inference trial only",
+      "review_rationale": "Original-owner agent review dispatcher requests only the fixed review JSON contract from local open model. Verified owner receipts, source hashes, original guards and nonproduction scope are unchanged; no new local adapter grants are enrolled.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-model-router.php",
+      "source_blob_sha": "76dd0b9e6ac6e082a8943ff00a24cc5fb85568a2",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-model-routing-worker-runtime.php"
+      ],
+      "owner_role": "MAD4B source security reviewer; Local Lab inference trial only",
+      "review_rationale": "Source-reviewed exact Local Lab-only Ollama loopback model/URL, no API key, no custom endpoint or remote internet route, source-pinned fixed structured review schema; provider and production model selection remain independently authorized.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-review-worker.php",
+      "source_blob_sha": "065726ac26093b0bbc9e11c0009af102df61fcb9",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-model-routing-worker-runtime.php"
+      ],
+      "owner_role": "MAD4B source security reviewer; Local Lab inference trial only",
+      "review_rationale": "Brand Context continues canonical owner-authenticated review path, now with bounded JSON Schema option for local open-model inference. Model output alone cannot issue Agent grant or owner review receipt.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-translation-bridge-adapter.php",
+      "source_blob_sha": "e2fb2fe0505081ec04ee5e8c659972820123b3fb",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01",
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B source governance reviewer; CI-only assessment, not authority grant",
+      "review_rationale": "Source-owner original read/submit/readback content QA, source-hash/revision CAS and audit, with no publishing, pricing, SEO apply, WPML link, browser release, or Production authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-agent-registry.php",
+      "source_blob_sha": "1607f91d731610fd9abd9ca0771dcfff07376bb8",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B source governance reviewer; CI-only assessment, not authority grant",
+      "review_rationale": "No elevation: only exact Local-only nonexecutable review ability identities; deny-first original grant logic persists.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-domain-executors.php",
+      "source_blob_sha": "97c9217643ae9c9ba2c997418f16cc0587497e03",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B source governance reviewer; CI-only assessment, not authority grant",
+      "review_rationale": "Independent original owner receipt verification and decision matching; adapters cannot self-confirm.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-native-owner-adapter.php",
+      "source_blob_sha": "6d9c5e47a10062026431a127dd1d11715f9708f1",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01",
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B source governance reviewer; CI-only assessment, not authority grant",
+      "review_rationale": "Source-owner original read/submit/readback content QA, source-hash/revision CAS and audit, with no publishing, pricing, SEO apply, WPML link, browser release, or Production authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-native-owner-review.php",
+      "source_blob_sha": "234d7f77048edf2454bf111f22de98645cbdeb0f",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B source governance reviewer; CI-only assessment, not authority grant",
+      "review_rationale": "Source-owner original read/submit/readback content QA, source-hash/revision CAS and audit, with no publishing, pricing, SEO apply, WPML link, browser release, or Production authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-only-local-activation.php",
+      "source_blob_sha": "4ade73b4e2d82ceae1ed2f20c5a1c85b75cd03d8",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B source governance reviewer; CI-only assessment, not authority grant",
+      "review_rationale": "Exact local-only POST REST route under original WP Application Password Agent identity with original restrictive authentication.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-audit.php",
+      "source_blob_sha": "fa8ccaf4bff8a962a8d3b6065b55bc688989e973",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B source governance reviewer; CI-only assessment, not authority grant",
+      "review_rationale": "Read-only lookup against original append-only audit chain; SHA/revision/actor provenance validated independently.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-browser-acceptance-core.php",
+      "source_blob_sha": "af98831572619a56fd39aae150f157901c9f9382",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B source governance reviewer; CI-only assessment, not authority grant",
+      "review_rationale": "Source-owner original read/submit/readback content QA, source-hash/revision CAS and audit, with no publishing, pricing, SEO apply, WPML link, browser release, or Production authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-object-store.php",
+      "source_blob_sha": "1ef62e0e54be4ef0502c2121c0150394ee9591a9",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B source governance reviewer; CI-only assessment, not authority grant",
+      "review_rationale": "Source-owner original read/submit/readback content QA, source-hash/revision CAS and audit, with no publishing, pricing, SEO apply, WPML link, browser release, or Production authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php",
+      "source_blob_sha": "cf644515fcee48fdcf1e14d20d88086fa257b777",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01",
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B source governance reviewer; CI-only assessment, not authority grant",
+      "review_rationale": "Source-owner original read/submit/readback content QA, source-hash/revision CAS and audit, with no publishing, pricing, SEO apply, WPML link, browser release, or Production authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g5-seo-provider-families.php",
+      "source_blob_sha": "f1b5d68faeda48926715ca1a7545539a828540ea",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01",
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B source governance reviewer; CI-only assessment, not authority grant",
+      "review_rationale": "Source-owner original read/submit/readback content QA, source-hash/revision CAS and audit, with no publishing, pricing, SEO apply, WPML link, browser release, or Production authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "a234d0e6aaa474cc567e1f92eb1f9dd268ab66b1",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B source governance reviewer; CI-only assessment, not authority grant",
+      "review_rationale": "Source-owner original read/submit/readback content QA, source-hash/revision CAS and audit, with no publishing, pricing, SEO apply, WPML link, browser release, or Production authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "672a1b66b03defecf6bd22d900eec8d5887c4629",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B security reviewer, Local-Lab-only route scope",
+      "review_rationale": "reviewed exact early-owned Local REST route only; native Domain POST must not traverse foreign REST zero-touch bootstrap, and all other REST requests remain on their old fast path.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-only-early-auth-guard.php",
+      "source_blob_sha": "ac78d4f7b56e9a42f7669257c858670f8204ef1d",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "AI-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py"
+      ],
+      "owner_role": "MAD4B security reviewer, Local-Lab-only route scope",
+      "review_rationale": "early managed WP Application Password is restricted to exact Local Context GET/POST and Domain POST; other methods, foreign routes and production deny.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-agent-connection.php",
       "source_blob_sha": "71a79336cb192d64126df7ef92fccd343bc385ea",
       "control_ids": [
@@ -7765,93 +9192,607 @@
       "review_rationale": "Observed MCP tool errors require fail-closed exception containment. The existing OAuth exception wrapper called optional transport rejection telemetry without its own try/catch, allowing a second exception to escape. This change preserves the existing protected-route 503/no-store response even when optional telemetry throws; hermetic same-PR regression executes that scenario. It does not claim authenticated live MCP acceptance or authorize deployment."
     },
     {
-      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-transport-admission.php",
-      "source_blob_sha": "17af6022877915e561bc712836a784bf1e8c2df0",
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "81d1ea8229e1db91fa65742a72b22cf1bb1b55f7",
       "control_ids": [
-        "MCP-01",
-        "OAUTH-01",
-        "SECURITY-01",
         "GOVERNANCE-01",
-        "PERFORMANCE-01",
-        "ADMIN-01"
+        "PLATFORM-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "MCP-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-origin-error-preservation-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-approval-ai-first/local-rest-fastpath-contract.php"
       ],
-      "owner_role": "Repository source/security reviewer — CI coverage only",
+      "owner_role": "Repository automated source/security review — CI-only evidence, never owner attestation",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
-      "review_rationale": "Retain a bounded first-party response code when reporting generic HTTP 503 in Staging. Never retain arbitrary messages or payloads. This improves attribution but does not prove the ChatGPT connector runtime is healthy."
+      "review_rationale": "Exact Git bootstrap successor reviewed against merged master: only 57 additions and one replaced early-REST ownership expression, introducing a fixed Local-only allowlist for native AI and unified review paths, guarded Agent application-password early auth, read-source/season/market includes, and governed original-owner AI review modules. The existing foreign REST fastpath, Site Profile, deny-first Admin Route Registry, OAuth scope, and original release gates remain; environment-local checks prevent staging/production Unified Approval REST registration, while source/market/cron mutations remain independently guarded in their original implementation. The named same-PR negative regressions were executed on hermetic PHP 7.4/8.3 (route allowlist, non-owned REST denial, source-owner CAS, admin manage_options) with Python route and owner wiring tests. This is limited CI source review; WordPress live environment, Feature007 external acceptance, owner approval, and Production promotion are NOT asserted."
     },
     {
-      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-host-capabilities.php",
-      "source_blob_sha": "4f4343943a1e6321fba4d432a4845cda5ac99eb6",
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-public-holidays.php",
+      "source_blob_sha": "3512a46a635de7a0d57a1fc73e5a8e88ea3c7d77",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/public-holiday-hermetic-runtime.php"
+      ],
+      "owner_role": "Repository automated exact-source security review — CI only, nonauthorizing",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact revised source blob 3512a46a is the reviewed immutable Public Holiday preview implementation. The only code change replaces PHP8-only str_contains with strpos existence checks for PHP 7.4 compatibility, preserving the original fail-closed parser logic. Same-PR 19-case hermetic PHP7.4/8.3 test verifies fixed-provider URL, safe HTTP without redirects, 2 MB response cap, read-only registered Ability and rejected unknown/unapproved sources; neither this review nor the parser promotes an approved market or creates season terms."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-review-lifecycle.php",
+      "source_blob_sha": "e4f86724f02bd2d92ddffbd47b91268fa1a09bc6",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-history-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-media-evidence-runtime.php"
+      ],
+      "owner_role": "Repository automated exact-source security reviewer — CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact new read-only lifecycle source reviewed for signed original-content SHA, original AI actor and owner-authority verification before derivative history writes. It refuses source-path escapes, symbolic links, content-hash drift, incomplete media normalization, delegated decisions on protected operations, source-less approvals and replay/stall. Same-PR hermetic PHP 7.4/8.3 tests execute 38 positive/negative assertions; production approval and external live source execution are explicitly not certified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-only-early-auth-guard.php",
+      "source_blob_sha": "d243aada9c22dce40cbc6ca12ce7fbb6e6d691ac",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php"
+      ],
+      "owner_role": "Repository exact-source CI-only security review — no site execution grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exactly reviewed bounded service authentication source change: wp-authenticate_application_password_errors denies spoofed query-mode rest_route values on foreign REST/admin targets, validates the original home/index.php path including WordPress subdirectory sites, rejects mismatched route aliases and denied HTTP methods, enforces Local Site Profile UUID and managed login only. 20-case network-isolated PHP 7.4/8.3 source-specific runtime test passed, including adversarial reproduction before the fix. No promotion, original owner decision, external end-to-end or other grant issued."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-application-password-agent-bridge.php",
+      "source_blob_sha": "6104dbd20039509db3413d9d48b48e3805b0acf0",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/application-password-agent-bridge-hermetic.php"
+      ],
+      "owner_role": "Repository exact-source security reviewer for CI only; no original owner authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact Git source 6104dbd2 binds authenticated WordPress app-password callback and site-enrolled subject to separate non-authorizing Agent grant evaluation. Tested 16 positive/negative cases on PHP 7.4/8.3, including original WP verifier lazy bootstrap, revocation and origin mismatch. No header-only identity mint, no new grant, no Production or external site certification."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php",
+      "source_blob_sha": "630b772c438f5535d65c372a3ec7a4c2a10ffd32",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php"
+      ],
+      "owner_role": "Repository automated exact-source and security test review — CI only; not original WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "P0: source reviewed for opt-in site scope on the original AI review authority. Staging/Local remain governed; Production requires explicit true constant and site-bound activation, exact original Agent and environment-matching grant. Original CAS, source integrity and append-only audit remain unchanged. Positive Production status with all-environment grant and negative default/Staging-only grant cases execute in same-PR hermetic test. Tests executed via network-isolated PHP 7.4 and PHP 8.3 container; production live execution, deployment, credentials and owner authorizations remain UNVERIFIED."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-only-local-activation.php",
+      "source_blob_sha": "397b9662bbdfc285cae047183c2759ee0405a05a",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-crossenv-scope-hermetic.php"
+      ],
+      "owner_role": "Repository automated exact-source and security test review — CI only; not original WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "P0: source reviewed for enrolled Site Profile UUID, HTTPS outside Local, explicit host opt-in, original Agent identity, secure owner-only vault, exact policy and grant; legacy Local site remains opt-in compatible. Hermetic positive/negative scope checks, route denial and WordPress app-password worker tests do not substitute for live auth. Tests executed via network-isolated PHP 7.4 and PHP 8.3 container; production live execution, deployment, credentials and owner authorizations remain UNVERIFIED."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-only-early-auth-guard.php",
+      "source_blob_sha": "b3f5492bc9622552913d5c48686b569c9d95db09",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php"
+      ],
+      "owner_role": "Repository automated exact-source and security test review — CI only; not original WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "P0: reviewed managed Agent early authentication across Local, Staging and Production with exact reviewed path/method, per-site UUID, TLS and spoofed rest_route denial before the foreign REST short-circuit. 26 hermetic regression assertions execute in PHP 7.4 and 8.3. Tests executed via network-isolated PHP 7.4 and PHP 8.3 container; production live execution, deployment, credentials and owner authorizations remain UNVERIFIED."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-review-worker.php",
+      "source_blob_sha": "817b8bc24b3ece176b3d6920ee11dcfd773bbb97",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-worker-guard-hermetic.php"
+      ],
+      "owner_role": "Repository automated exact-source and security test review — CI only; not original WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "P0: reviewed non-Local worker scope preflight and transport. Exact enrolled site and authenticated original identity are required. Production callback URL requires HTTPS and wp_safe_remote_post; local loopback remains scoped to Local. 26 negative/positive PHP guard checks, no publication grant. Tests executed via network-isolated PHP 7.4 and PHP 8.3 container; production live execution, deployment, credentials and owner authorizations remain UNVERIFIED."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-native-owner-review.php",
+      "source_blob_sha": "0bd38e05cdf861ce2d179b9868fd88392b5746fa",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php"
+      ],
+      "owner_role": "Repository automated exact-source and security test review — CI only; not original WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "P0: reviewed current-environment exact owner grant and original source SHA/revision, immutable native owner audit/CAS, no execute_callback authorization. Original-owner runtime exercises 46 source-only cases and retains protected-domain denials. Tests executed via network-isolated PHP 7.4 and PHP 8.3 container; production live execution, deployment, credentials and owner authorizations remain UNVERIFIED."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-domain-executors.php",
+      "source_blob_sha": "abf42e09850e9c49999842873eeb6af6429f92c1",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-domain-executors-runtime.php"
+      ],
+      "owner_role": "Repository automated exact-source and security test review — CI only; not original WordPress Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "P0: reviewed environment-neutral site-bound registration for original-owner content adapters. Exact audited file SHA pin, runtime revalidation and exclusion of protected governance domains remain mandatory. Source-only runtime executes 24 adversarial cases. Tests executed via network-isolated PHP 7.4 and PHP 8.3 container; production live execution, deployment, credentials and owner authorizations remain UNVERIFIED."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "ee38c1f216b22620ff3c58e8a4c9c240d845ce05",
       "control_ids": [
         "SECURITY-01",
+        "OAUTH-01",
         "GOVERNANCE-01",
         "PLATFORM-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/developer-external-backend-discovery-contract.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/developer-runner-lifecycle-fetch-contract.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-only-local-early-auth-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-crossenv-scope-hermetic.php"
       ],
-      "owner_role": "Repository reviewer; non-authorizing backend discovery only",
+      "owner_role": "Source/security CI reviewer only; independent WordPress Site Owner attestation is still required",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
-      "review_rationale": "Discover configuration of two external Developer runner candidates without exposing identities or enabling remote execution; all remote attestation and authority remain false until implemented and certified."
+      "review_rationale": "Exact current top-level bootstrap source inspected at Git blob ee38c1f216b22620ff3c58e8a4c9c240d845ce05. The early managed Application Password fence is registered before foreign REST zero-touch return on every WordPress environment, with exact site-bound user meta/route/method and TLS checks; bounded AI review routes are treated as MAD4B-owned so full kernel and original Context Authority permission checks run, while unrelated routes continue to use existing routing. Verified 26 early-auth spoof/HTTP/site tests, 9 opt-in site scope tests, passive Context admin load and 27 Admin route declarations using isolated PHP 7.4 and 8.3. Does not review unrelated changed services, authorize Production deployment, re-sign G6/G9 historical evidence, certify live WordPress app-password authentications or provide owner attestation."
     },
     {
-      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "source_blob_sha": "63ec008d889b49412b7618146eb81ba6105585b7",
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-only-local-activation.php",
+      "source_blob_sha": "56c63b84fbafec406dd7c578c446e80930c79deb",
       "control_ids": [
         "GOVERNANCE-01",
+        "SECURITY-01",
         "PLATFORM-01",
+        "AUTOMATION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-credential-expiry-hermetic.php"
+      ],
+      "owner_role": "Repository security source reviewer only; no Site Owner authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact successor source updated only for fail-closed credential expiration: if original WP_Application_Passwords deletion is not confirmed, preserve owner-only vault and record failure for retry; require successful unlink and persisted revocation audit before reporting success. Existing Agent delegation, site UUID and routing remain governed and unchanged. Executable, network-isolated PHP 7.4/8.3 test provides no authorization for site provisioning or production publication."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-setup-coverage.php",
+      "source_blob_sha": "55b66560e4a98280588ed279b1b4e54960429021",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-setup-coverage-runtime.php"
+      ],
+      "owner_role": "Repository source/security CI reviewer only, not live credential custodian",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Source reviewed: original provider-setup coverage is read-only and requires manage_options. It enumerates only original adapter field names, never any database or host key bytes, and preserves separation of credential-present, OAuth-connected, plugin-active, model-inference tested, signed browser evidence and execution certification. The original runtime fixture, changed in the same PR, executes 26 PASS checks on network-isolated PHP 7.4 and 8.3 for external runner fields, WP Core Connector source flags, managed/dedicated/custom Google OAuth modes, protected SERP adapter, G5 adapter growth, no secret bytes/handles, absent admin and nonauthorizing inventory. No key issuance, provider API calls, production rights or live acceptance. Source SHA and same-PR original runtime regression are pinned; historical review and release identities stay immutable."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-background-authorization.php",
+      "source_blob_sha": "d6130aabe5a193f0e5dc32c055c799b898cd365e",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
         "SECURITY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/developer-external-backend-discovery-contract.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/background-authorization-verified-identity-hermetic.php"
       ],
-      "owner_role": "Repository reviewer — non-authorizing plugin lifecycle registration",
+      "owner_role": "Original source/security CI review only; independent Site Owner and WordPress runtime acceptance required",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
-      "review_rationale": "Schedule a bounded and non-authorizing runner-availability observation only when explicitly configured on Staging and an administrator visits; no hot-path network fetch or new execution authority."
+      "review_rationale": "Direct original Background Authorization current() + check_qa_grant() and Browser Auth Broker source reviewed on exact Git blob. Mandatory verified upstream Identity_Context fingerprint must be string lowercase SHA-256, original Agent Registry must return enabled Agent with valid numeric ID, Site Profile must be present and have enrolled UUID. Requested QA domain must be registered by Unified Approval original owner, and exact grant must allow this exact environment and ability; all results are review-only and publication-authorized false. Browser login requires human and refuses model-issued sessions/MFA bypass. Network-free PHP 7.4 and 8.3 checks: 23 per interpreter, including malformed identity, unsupported API key, disabled Agent, missing site binding, invalid domain, original deny and different-environment grant, positive app-password/OAuth/passwordless identity, HTTPS-only browser handoff. Original unified-approval-ai-first contract also passes 37 cases on each PHP. No token, owner grant or browser session minted; real WordPress live acceptance remains necessary. Source change only converts malformed missing-site, credential fingerprint and missing workflow paths to explicit WP_Error fail-closed responses without minting any grant."
     },
     {
-      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-backend-registry.php",
-      "source_blob_sha": "e42bc079d342361d5d3be5d51567fbb0977d2cbe",
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-policy.php",
+      "source_blob_sha": "1ddce9dc1c653772438030e061eac1183c8e58c9",
       "control_ids": [
-        "GOVERNANCE-01",
-        "PLATFORM-01",
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
         "SECURITY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-backend-registry-contract.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-policy-gate-hermetic.php"
       ],
-      "owner_role": "Repository reviewer — no execution authority granted",
+      "owner_role": "Original-source and security CI reviewer only; not independent Site Owner",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
-      "review_rationale": "Expose a portable backend candidate registry and lifecycle hook, retaining independent execution permissions, identity proof and isolation certification. No candidate availability alone grants authorization."
+      "review_rationale": "Source original Unified Policy resolves configuration as quality-review rules only and inherits stricter original Context Authority. The original AI-only content decision is review-only; pricing, deployment, Developer and Breakglass cannot become AI-final execution. Configured legacy human-first or either-actor saved rules are projected in memory to AI-first without persisted mutation, while new unsafe rules are denied. Owner policy save is denied from CLI; exact scope/mode/TTL/confidence validation and no option mutations are tested. Hermetic original PHP 7.4 and 8.3 each PASS 27 checks. Source blob is exact; required owner and release gates remain outstanding."
     },
     {
-      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "source_blob_sha": "8da6719bac98fabbbbc7dbdb222def175fb262aa",
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-gate-bridge.php",
+      "source_blob_sha": "28e254182ae8d704ba8f106c300b4c478362d9ef",
       "control_ids": [
         "GOVERNANCE-01",
         "PLATFORM-01",
-        "SECURITY-01"
+        "SECURITY-01",
+        "TICKETS-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-backend-registry-contract.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-policy-gate-hermetic.php"
       ],
-      "owner_role": "Repository reviewer — no execution authority granted",
+      "owner_role": "Original-source and security CI reviewer only; not independent Site Owner",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
-      "review_rationale": "Expose a portable backend candidate registry and lifecycle hook, retaining independent execution permissions, identity proof and isolation certification. No candidate availability alone grants authorization."
+      "review_rationale": "Source original Unified Gate Bridge is strictly read-only: it maps a reviewed original owner for the operation, gets the original Policy decision, checks real WordPress Ability registration and original Impact Policy but cannot mint a grant, approval ticket, owner receipt, publication or execution authorization. Unknown owners, unsafe provider names and malformed Ability names reject; even when QA owner and Ability are present, an original owner receipt remains required, while Pricing requires an independently reviewed human Approval Ticket. Hermetic PHP 7.4 and 8.3 each PASS 27 original-source tests and no options writes. Source blob is exact; required owner and release gates remain outstanding."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-approval-queue-bridge.php",
+      "source_blob_sha": "b76ad1e146a73997cbe7a3314316085c333cff85",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-queue-extension-hermetic.php"
+      ],
+      "owner_role": "CI-only code security reviewer, not owner-accepted runtime evidence",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Original Queue Bridge delegates to original Unified Approval Workflow::inspect, rejects malformed review IDs and missing original reviews, and returns read-only state projection. Even when original review state is REVIEW_APPROVED, the next step remains original_owner_authorization_required. Pending, waiting-human and rejected states never issue tickets, perform mutations, publish, or authorize providers; original hashes remain scoped in projection. Network-free hermetic test executes 20 assertion cases on PHP 7.4 and PHP 8.3 against original classes; synthetic plugin file exists only under a temporary directory and is removed. This is CI-only, not live owner or provider certification. Source Git blob and exact test included in the same PR."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-approval-extensions.php",
+      "source_blob_sha": "f77b88893ce7083f95207b84ede1521ad8a49868",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-queue-extension-hermetic.php"
+      ],
+      "owner_role": "CI-only code security reviewer, not owner-accepted runtime evidence",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Original optional Extension Registry accepts only declared service_identity/browser_authorization descriptor types with an exact SHA-256 pinned plugin file inside WP_PLUGIN_DIR, and independently pinned original-owner certification map. Rejects unlisted kinds, invalid IDs, forged digest, outside plugin paths, extra authority callback fields and duplicate registration. Even a valid provider is described_only; it never becomes an authenticated subject, browser session or mutation grant. Network-free hermetic test executes 20 assertion cases on PHP 7.4 and PHP 8.3 against original classes; synthetic plugin file exists only under a temporary directory and is removed. This is CI-only, not live owner or provider certification. Source Git blob and exact test included in the same PR."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-approval-workflow.php",
+      "source_blob_sha": "d1e662123b94f064b12b41244086be2795b278b7",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-workflow-inspect-hermetic.php"
+      ],
+      "owner_role": "Review of exact PHP fail-closed source behavior in isolated CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact original Unified Approval Workflow local source, site enrollment, original Content source evidence and CAS hash/revision, original Policy digest and expiry remain authoritative. Hardened inspect rejects malformed review identifiers and tampered/incomplete stored rows, owner source responses or policy payloads before hash_equals, rather than emitting PHP notices or type errors. No approval stage may bypass original Agent exact-grant/human nonce checks; AI-first state transitions retain review-only semantics. New hermetic original-class regression 28/28 PASS on PHP 7.4 and 8.3 with valid record, invalid/missing content/policy hashes, foreign Site Profile, missing/changed source and owner revision, policy drift, expiry, and AI-first next_state. Existing Unified Approval original AI-first 37/37 regression passed on both runtimes. No live owner receipt, human session, WordPress record or token minted. Only stored-read input integrity was changed; any production promotion must revalidate real WordPress owner receipts."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-jwt-header-guard.php",
+      "source_blob_sha": "d0c9eb4663dac73b6d01b9698f1cec9145db7c03",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/oauth-preflight-denial-hermetic.php"
+      ],
+      "owner_role": "CI-only OAuth denial/source reviewer, not Site Owner or credential custodian",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Original JWT Header Guard is pre-cryptographic deny-only: accepts only at+jwt and RS256 protected header for exact MCP routes, rejects alg=none and HS256, malformed compact bearer, oversized header, wrong typ and invalid Authorization scheme. It returns null for valid-looking unverified JWT, which must STILL undergo the original Resource Bridge RS256/JWKS signature, token claims and subject authorization checks. It never grants a session or trusts raw headers. Exact source behavior executed in a network-isolated, no-credential fixture with 27 PASS tests on PHP 7.4 and 8.3 including mock original issuer/resource policy and no real credentials, RSA keys or live authorization. The original cryptographic verifier is NOT exercised here and current-head CI cannot promote Production without its separate authority, independent live and owner receipts."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-subject-gate.php",
+      "source_blob_sha": "926826f05f60d9b56e9a97ef9cee795c2d4e85f1",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/oauth-preflight-denial-hermetic.php"
+      ],
+      "owner_role": "CI-only OAuth denial/source reviewer, not Site Owner or credential custodian",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Original OAuth Subject Gate uses unverified claims ONLY TO DENY before cryptographic verification, rejects unknown issuers/subjects, wrong audience, missing or mismatching exact resource, oversized audience lists, malformed JWT and not-allowed original issuer-subject. A syntactically compatible JWT returns null to the original Resource Bridge signature/JWKS verifier and must not be treated as accepted authentication. Exact source behavior executed in a network-isolated, no-credential fixture with 27 PASS tests on PHP 7.4 and 8.3 including mock original issuer/resource policy and no real credentials, RSA keys or live authorization. The original cryptographic verifier is NOT exercised here and current-head CI cannot promote Production without its separate authority, independent live and owner receipts."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-passwordless-connection.php",
+      "source_blob_sha": "f0eca787f691375bb14dc7df91f63b577dc738fc",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/passwordless-mcp-identity-hermetic.php"
+      ],
+      "owner_role": "CI review of exact PHP 7.4 source repair, not an auth-provider acceptance",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact original Passwordless Connection now uses PHP 7.4-compatible prefix comparison in verified MCP bearer and one-time WordPress login, preserving requirement that the WordPress account login starts with mad4b_connection_. The 15-minute MCP transient is checked against the enrolled Site Profile, exact Agent subject, exact original mad4b/context-ai-review grant, and a single-role administrator integration user before setting WP current user. It denies unsupported environments, wrong token/route/site/Agent, missing/denied grant, roles, non-integration WordPress users, insecure staging and expired transient; the identity context is invalidated before every verifier call. Hermetic PHP 7.4/8.3 original-source test passed 26 cases each, with synthetic in-memory transient and no real token, user, grant or change to a WordPress installation. No deployment or live credential issuance; owner approval, crypto and audit integration acceptance remain independent."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-approval-admin.php",
+      "source_blob_sha": "cb05249b471f23991df9a5d1db93a5942a6ba4ce",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-admin-rest-permissions-hermetic.php"
+      ],
+      "owner_role": "Original-source CI route review, not a live operator or credential custodian",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "The original Unified Approval Admin registers its eight REST routes only in the Local environment and retains explicit WordPress enrolled-owner or original Background_Authorization::current() actor admission. Unknown POST fields including publication, force-grant and MFA-bypass are rejected; original Workflow, Policy and Gate endpoints delegate only to existing owner review, original approval ticket and browser authority guards. Network-isolated PHP 7.4 and PHP 8.3 executions each passed 24 direct original-class tests, checking admin and delegated agent admission, Production/Staging rejection, original route permission callbacks, deny/allow request shape and no mocked site mutation. Existing Workflow and exact grant tests separately verify owner decision and deny-first behavior; these local-only checks do not certify live REST/nonce, model identity, or owner approval. Exact source Git blob is pinned and no new route or ability has been added."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-source-repair.php",
+      "source_blob_sha": "4bc5ccec80e985e08f6e552b8a90a2975f9ff11d",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-source-repair-hermetic.php"
+      ],
+      "owner_role": "CI reviewer of bounded local-only repair path; no operator approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Original AI Source Repair exact method remains local-only and requires enrolled Local Client plus original AI Router allow_source_repair, original operator Policy or certified host runner, registered governed WordPress Media asset in needs_changes status, matching current and reviewed content SHA, a real inside-uploads non-symlink bounded file and an original Context Source Pipeline rescan. It rejects invented provenance URLs, document identity changes, unsupported MIME, invalid or insufficient revisions and stale file. New fail-closed checks reject malformed SHA/asset ID or non-string model output before hash_equals/filesystem; invalid UTF-8/NUL is validated before Unicode document heading extraction. The hermetic test directly calls original service methods with disposable private /tmp uploads and fake WordPress record handles; 27/27 PASS on PHP 7.4 and PHP 8.3, including a successful simulated swap/rescan and byte-for-byte restored original on forced rescan failure. No real WordPress files, content, AI model, credentials or approval changed, and no autonomous publication or Production deployment is authorized. Real failure-safe upload IO, owner receipt persistence and live WordPress acceptance must be independently verified before runtime rollout."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-connections-admin-ui.php",
+      "source_blob_sha": "1f023535c236498a94762d78193e5633267af1a6",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "PROVIDERS-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connections-admin-read-hermetic.php"
+      ],
+      "owner_role": "Original source CI read-only admin UI security reviewer, not provider administrator or Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "The original Provider Connections admin UI registers only a manage_options submenu and calls Provider Connection Center read-only discover() and plan() to display provider health. It never calls refresh, consent, grants, API keys, or write operations. The owner handoff link is escaped, untrusted labels and health state are HTML escaped, unavailable adapters display warning and setup guidance, refresh requires separate exact owner approval, OAuth requires owner browser, and pending revocation cannot silently reconnect. The network-free original-class fixture passed 20/20 scenarios on PHP 7.4 and 8.3 for permission denial before discovery, idempotent menu registration, advisory health/actions, escaped malicious strings, no forms and zero provider mutations. Source code is unchanged; no live credential, browser or provider acceptance was asserted."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cross-plugin-lifecycle.php",
+      "source_blob_sha": "299ae31217535ed7ba60d3ce4f1038eb1bb3e610",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-lifecycle-admission-hermetic.php"
+      ],
+      "owner_role": "CI-only exact-source reviewer, not independent WordPress Site Owner or certifying release authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "The original Cross Plugin lifecycle builds source-neutral READ-ONLY certification, Staging review and Production promotion plans. Direct PHP 7.4/8.3 hermetic original-class test PASS 22 cases each. Unreviewed source, mismatched exact source commit, version, package SHA, independent Provider Contract, unregistered provider, unenrolled or conflicting environments, and native preflight errors block. Even certified Staging returns only a plan for separately gated original plugin-package-apply with owner OAuth step-up/backup/rollback; it never executes. A self-supplied Production attestation cannot certify a Production executor or inherit Staging authority. No plugin changes, artifact uploads, credentials, owner approvals or live filesystem mutations were performed. Exact source Git blob is unchanged; changed-in-PR tests are run by trusted executor. Owner/runtime certification required separately."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-browser-acceptance-admin-ui.php",
+      "source_blob_sha": "24a601983460c708ca309d53bb0dafd71b5bc6a0",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/browser-operator-integrity-hermetic.php"
+      ],
+      "owner_role": "CI-only exact-source reviewer, not independent WordPress Site Owner or certifying release authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "The original Browser Acceptance admin preference is non-authorizing and never stores credentials or executes a browser. Network-free PHP 7.4/8.3 test reuses full executable original acceptance suite (including BINARY CAS readback, stale revision denial, credential field rejection, provider/profile binding and source-route coupling), plus 15 new direct adversarial cases per PHP: exact target/required profile, malformed saved pref rejection, bad revision, non-string fields, no secret fields, no implicit external runner readiness, and no mutation/publication authorization. Operator preference remains advisory until independent Browser runner verification. No actual browser, external API credentials or live WordPress options were touched. Exact source Git blob is unchanged; changed-in-PR tests are run by trusted executor. Owner/runtime certification required separately."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-lifecycle.php",
+      "source_blob_sha": "1f499511f96e17fd0e63370b8f9d66a3580d591e",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-lifecycle-preflight-hermetic.php"
+      ],
+      "owner_role": "Repository original-source lifecycle CI reviewer only; not enrolled Site Owner or Production release authority",
+      "review_rationale": "Original plugin lifecycle is a read-only, source-state and dependency scoped WordPress Ability with no activation/deactivation side effect. Its mutation_preflight requires exact reviewed plan digest and current state; missing/wrong hash or blocked state are denied, network activation is not mistaken for site activation, and an altered expected snapshot does not authorize the writer. Original plugin-lifecycle network fixture and nine new exact CAS and scope assertions run PASS on PHP 7.4 and 8.3, network-isolated; no real plugin activation occurred. Final plugin-package apply remains independently governed by original Owner, impact/ticket and write permissions. Exact Git blob pinned. Additional independent live evidence and original owner approval remain required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-client-admin.php",
+      "source_blob_sha": "4e700029ceccd46cbaded888502268f4aa92b810",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/local-client-request-boundary-hermetic.php"
+      ],
+      "owner_role": "Repository original-source lifecycle CI reviewer only; not enrolled Site Owner or Production release authority",
+      "review_rationale": "Original local-only admin credential lifecycle requires originating site-admin and nonce, a 300-second exact user/site/request-bound pending intent, explicitly restricted vault outside web root and exact independent native WordPress App Password revocation before vault deletion. Network-isolated PHP 7.4 and 8.3 original mock lifecycle passes request, one-time issuance, SHA-256 Agent binding, 0600 vault, user mismatch denial, nonce, duplicate provision and revocation, with 12 additional direct adversarial cases per runtime for cross-user/site, malformed nonce, wrong intent, future/expired issue time, excessive TTL and no extra credentials issued. No production/staging credentials or network permissions created and no live WordPress mutation. Exact Git blob pinned. Additional independent live evidence and original owner approval remain required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-admin-ui.php",
+      "source_blob_sha": "af298931a35406ba61a1eb83a6b4647d0157af9b",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-admin-integrity-hermetic.php"
+      ],
+      "owner_role": "Original-source CI security reviewer only; never a Google credential custodian or authenticated site owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "The real original Context Admin UI render and AJAX handler fixture exercises scoped source edit with persisted readback, nonce and administrator denial, preserved review policy view semantics, selected Google login method, and Staging write checkpoint guidance. Added eight adversarial direct runtime checks on PHP7.4/8.3 verify unauthenticated and invalid nonce attempts do not alter source policies, Google login UI does not render client secret/refresh token, typed HTML readback uses registered assets and stale Staging authority is not projected as ready. Original class and original in-memory data are used. No WP site state or real OAuth grant changed. Exact Git source blob pinned; the original live OAuth/owner acceptance remains outstanding."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php",
+      "source_blob_sha": "241c76df707d60b1548e632d45de71ac18deb2e6",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/google-revocation-boundary-hermetic.php"
+      ],
+      "owner_role": "Original-source CI security reviewer only; never a Google credential custodian or authenticated site owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "The original Google Drive Context isolated OAuth lifecycle exercises dedicated/managed OAuth grants and refresh, scope normalization, incremental consent, stored token privacy, authenticated client and stale revision rejection without a real Google request. The test adds ten direct PHP7.4/8.3 manual_revocation_admission cases: only an already disabled pending token with exactly one refresh and one access attempt, both HTTP 400 invalid_token, and matching attempted-at revision may enter the *separately attested* operator gate; missing/wrong timestamp, still readable token, other provider status, missing attempt, reversed order, and fake approval fail closed. No claims of successful provider revocation or actual token deletion. Exact Git source blob pinned; the original live OAuth/owner acceptance remains outstanding."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-resource-bridge.php",
+      "source_blob_sha": "45bf3ba302cedf9b2a66c24411994c68a37da79f",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/oauth-resource-signature-hermetic.php"
+      ],
+      "owner_role": "Original source OAuth cryptographic review via isolated CI only; not issuer credential custodian or enrolled Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Original OAuth Resource Bridge::verify_access_token exercised using generated ephemeral RSA-2048 private/public JWK materials and in-memory trusted-issuer discovery/JWKS cache. The original OpenSSL verification, exact allowed user:-subject, resource audience, protected URI, issuer policy, session/client binding and read scope pass on a valid signed token. Adversarial cases deny tampered signature, alg none, unapproved subject even with valid signature, wrong aud/resource, expired token, wildcard scope, mismatched client/azp, sign-only key_ops, duplicate KID and RSA-1024 modulus. Tested 23/23 cases on network-isolated PHP 7.4 and 8.3; no outbound HTTP and bearer never establishes verified WordPress user without the separate original REST admission. Source Git blob is exact; live JWKS provider transport and independently signed production credentials remain outside this hermetic scope and must be validated before any deployment. No owner tickets, API keys, real tokens, or site changes were created."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-lifecycle.php",
@@ -7864,176 +9805,113 @@
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-backend-deactivation-contract.php"
       ],
-      "owner_role": "Repository reviewer — bounded deactivation cleanup only",
+      "owner_role": "Original exact-source/security CI review; not repository owner or external site attestation",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
-      "review_rationale": "Safely clear plugin-managed backend discovery refresh schedules across single-site and multisite deactivation without altering credentials, provider configuration, write grants or runtime authority."
-    },
-    {
-      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-runner-bridge.php",
-      "source_blob_sha": "487f0542d24f91901bfcbe7b5e6426e02f81930b",
-      "control_ids": [
-        "MCP-01",
-        "OAUTH-01",
-        "SECURITY-01",
-        "GOVERNANCE-01",
-        "PLATFORM-01",
-        "ADMIN-01",
-        "PERFORMANCE-01"
-      ],
-      "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-runner-bridge-contract.php"
-      ],
-      "owner_role": "Repository reviewer — nonauthorizing read-only runner bridge contract",
-      "status": "reviewed_for_ci_only",
-      "production_authorized": false,
-      "live_evidence_required": true,
-      "review_rationale": "Pin exact source of the RSA-SHA256 status-only runner transport and plugin registration. All Developer, Shell, SQL, Production, and write authorities remain separately gated. Signed requests target a fixed safe diagnostic; receipts are independently verified and cannot confer execution grants."
-    },
-    {
-      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "source_blob_sha": "5cdbd37f5dde14426c18f12f4107bd2619e737ec",
-      "control_ids": [
-        "MCP-01",
-        "OAUTH-01",
-        "SECURITY-01",
-        "GOVERNANCE-01",
-        "PLATFORM-01",
-        "ADMIN-01",
-        "PERFORMANCE-01"
-      ],
-      "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-runner-bridge-contract.php"
-      ],
-      "owner_role": "Repository reviewer — nonauthorizing read-only runner bridge contract",
-      "status": "reviewed_for_ci_only",
-      "production_authorized": false,
-      "live_evidence_required": true,
-      "review_rationale": "Pin exact source of the RSA-SHA256 status-only runner transport and plugin registration. All Developer, Shell, SQL, Production, and write authorities remain separately gated. Signed requests target a fixed safe diagnostic; receipts are independently verified and cannot confer execution grants."
+      "review_rationale": "Original catalog hook deactivation clears only its registered bounded refresh cron alongside existing catalog garbage collection. Tested actual lifecycle deactivation and no plugin/website mutation."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-host-capabilities.php",
       "source_blob_sha": "2df929231c86b2e2ccdc265d762b3a7ffdedcc2b",
       "control_ids": [
-        "MCP-01",
-        "OAUTH-01",
-        "SECURITY-01",
         "GOVERNANCE-01",
         "PLATFORM-01",
-        "ADMIN-01",
-        "PERFORMANCE-01"
+        "SECURITY-01"
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/developer-runner-lifecycle-fetch-contract.php"
       ],
-      "owner_role": "Repository security reviewer — CI-only discovery and signed read contract",
+      "owner_role": "Original exact-source/security CI review; not repository owner or external site attestation",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
-      "review_rationale": "Pin current exact source identity for portable runtime Backend discovery including Docker and PHP-compatible cryptographically signed diagnostics. No discovery finding or result authorizes Developer, mutation, Shell, SQL or Production execution."
+      "review_rationale": "Remote runner discovery exposes only safe configured status and preserves execution_allowed=false and uncertified identity; requires trusted HTTPS origin, limits response size and redirects, caches with TTL. Original-source positive/negative staging fixture checks state and avoids credentials or cross-site authorization."
     },
     {
-      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-backend-registry.php",
-      "source_blob_sha": "6bc57eb6ec32af7ce09323b41c9370b9284894a0",
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-acceptance-observer.php",
+      "source_blob_sha": "ee7f0689ce8dd75b1ef6a9855dc3985fd3b490b1",
       "control_ids": [
-        "MCP-01",
-        "OAUTH-01",
-        "SECURITY-01",
         "GOVERNANCE-01",
         "PLATFORM-01",
-        "ADMIN-01",
-        "PERFORMANCE-01"
+        "SECURITY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-backend-registry-contract.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/performance-differential-diagnostic-contract.php"
       ],
-      "owner_role": "Repository security reviewer — CI-only discovery and signed read contract",
+      "owner_role": "Original exact-source/security CI review; not repository owner or external site attestation",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
-      "review_rationale": "Pin current exact source identity for portable runtime Backend discovery including Docker and PHP-compatible cryptographically signed diagnostics. No discovery finding or result authorizes Developer, mutation, Shell, SQL or Production execution."
-    },
-    {
-      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-runner-bridge.php",
-      "source_blob_sha": "ce8899094ed08ee3687a53c64bcc879a42703ae3",
-      "control_ids": [
-        "MCP-01",
-        "OAUTH-01",
-        "SECURITY-01",
-        "GOVERNANCE-01",
-        "PLATFORM-01",
-        "ADMIN-01",
-        "PERFORMANCE-01"
-      ],
-      "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-runner-bridge-contract.php"
-      ],
-      "owner_role": "Repository security reviewer — CI-only discovery and signed read contract",
-      "status": "reviewed_for_ci_only",
-      "production_authorized": false,
-      "live_evidence_required": true,
-      "review_rationale": "Pin current exact source identity for portable runtime Backend discovery including Docker and PHP-compatible cryptographically signed diagnostics. No discovery finding or result authorizes Developer, mutation, Shell, SQL or Production execution."
+      "review_rationale": "Original MCP status ability reports current request counts only without independent bootstrap or SQL execution; Query Monitor attribution exceptions collapse to bounded attribution_probe_failed and never expose exception text. PHP7.4/8.3 tests asserted default read-only/no mutation."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-transport-admission.php",
       "source_blob_sha": "9feba57717b26e80cc854efa2f4579b458770e69",
       "control_ids": [
         "MCP-01",
-        "OAUTH-01",
-        "SECURITY-01",
-        "GOVERNANCE-01",
-        "PERFORMANCE-01",
-        "ADMIN-01"
+        "PROVIDERS-01",
+        "EXECUTION-01"
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/mcp-origin-error-preservation-runtime.php"
       ],
-      "owner_role": "Repository security source reviewer — CI only",
+      "owner_role": "Original exact-source/security CI review; not repository owner or external site attestation",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
-      "needs_new_control": false,
-      "coverage_reuse_rationale": "Existing MCP OAuth and security evidence rules retain nonauthorizing bounded transport diagnostics while blocking untrusted foreign identifiers.",
-      "review_rationale": "Exact-source regression preserves only four explicit first-party origin error identifiers; foreign mad4b-prefixed response body identifiers cannot leak into persisted telemetry."
+      "review_rationale": "Only explicit first-party OAuth/protected-route error codes survive generic HTTP 503; foreign mad4b-prefixed strings and response body messages are refused. Source runtime verifies accepted origin and foreign-code denial with PHP7.4 visibility-safe fixture."
     },
     {
-      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-acceptance-observer.php",
-      "source_blob_sha": "bd79db99fc6259b10a590cf8dec6866cc21168b0",
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-backend-registry.php",
+      "source_blob_sha": "6bc57eb6ec32af7ce09323b41c9370b9284894a0",
       "control_ids": [
-        "MCP-01",
-        "SECURITY-01",
-        "PLATFORM-01",
         "GOVERNANCE-01",
-        "PERFORMANCE-01"
+        "PLATFORM-01",
+        "SECURITY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/performance-differential-diagnostic-contract.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-backend-registry-contract.php"
       ],
-      "owner_role": "Repository source security reviewer — diagnostic-only",
+      "owner_role": "Original exact-source/security CI review; not repository owner or external site attestation",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
-      "review_rationale": "New MCP read-only status reports bounded request metrics and Query Monitor availability; no plugin exclusion, shell, SQL mutation, production authorization or fabricated differential measurements."
+      "review_rationale": "Closed backend selection accepts only independently configured/verified/certified isolated read diagnostics, denies unsupported preset, expired/backoff, untrusted actor or unsafe fallback for writes. Original source fixtures exercise denial and sanitized snapshot."
     },
     {
-      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-acceptance-observer.php",
-      "source_blob_sha": "ee7f0689ce8dd75b1ef6a9855dc3985fd3b490b1",
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-runner-bridge.php",
+      "source_blob_sha": "ce8899094ed08ee3687a53c64bcc879a42703ae3",
       "control_ids": [
-        "MCP-01",
-        "SECURITY-01",
-        "PLATFORM-01",
         "GOVERNANCE-01",
-        "PERFORMANCE-01"
+        "PLATFORM-01",
+        "SECURITY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/performance-differential-diagnostic-contract.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-runner-bridge-contract.php"
       ],
-      "owner_role": "Repository source reviewer — bounded MCP diagnostics",
+      "owner_role": "Original exact-source/security CI review; not repository owner or external site attestation",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
-      "review_rationale": "The differential diagnostic catches Query Monitor attribution exceptions without disclosing exception data or altering execution authority. The matching regression tests fail-closed behavior and denies invented comparisons."
+      "review_rationale": "Signed RSA receipt binds enrolled site, nonce, request SHA, exact operation and result; tampered payload, cross-site or write-contaminated receipts deny. Only diagnostic read is eligible, no shell, SQL or Production grant."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "35cec2d3df49575d04e0e27df7de130cbcfa0c38",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-backend-deactivation-contract.php"
+      ],
+      "owner_role": "Original exact-source/security CI review; not repository owner or external site attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exactly the reviewed platform bootstraps external backend registry and diagnostic runner bridge with original execution fence unchanged; no implicit invocation or new grant. Original runner-registry and catalog lifecycle fixtures run with this exact merged source; historic G2-G9 unchanged."
     }
   ],
   "code_change_rules": {
