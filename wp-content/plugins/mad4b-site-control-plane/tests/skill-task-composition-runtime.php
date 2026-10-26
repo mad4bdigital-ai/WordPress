@@ -53,6 +53,8 @@ $plan=SCP_Skill_Task_Composition::composition_plan(array('task'=>'Debug API secu
 ok(!is_wp_error($plan) && count($plan['steps'])>=1, 'plan must be generated');
 ok($plan['execution_ready']===false && $plan['mode']==='read_only_plan','plan must not authorize execution');
 foreach($plan['steps'] as $step) ok($step['execution']==='not_authorized','every step must be non-authorizing');
+$stageOrder=array('diagnose'=>10,'design'=>20,'implement'=>30,'verify'=>40,'release'=>50);
+$previousStage=0; foreach($plan['steps'] as $step) { ok($stageOrder[$step['stage']]>$previousStage,'dependent skill stages must be ordered'); $previousStage=$stageOrder[$step['stage']]; }
 $again=SCP_Skill_Task_Composition::composition_plan(array('task'=>'Debug API security testing', 'topics'=>array('debug','api','security')));
 ok($again['plan_sha256']===$plan['plan_sha256'],'stable inputs must yield stable plan digest');
 $empty=SCP_Skill_Task_Composition::match_task(array('task'=>'zyxqv unknown irrelevant'));
