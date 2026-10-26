@@ -92,6 +92,8 @@ if ( $expected_content_mutations !== $actual_content_mutations ) {
 $required_read = array(
 	'mad4b/skills-list',
 	'mad4b/skill-get',
+	'mad4b/skill-match-task',
+	'mad4b/skill-composition-plan',
 	'mad4b/skills-export-status',
 	'mad4b/skills-runtime-certification',
 	'mad4b/write-authority-status',
@@ -100,6 +102,25 @@ $required_read = array(
 	'mad4b/site-bootstrap-snapshot',
 );
 foreach ( $required_read as $ability ) if ( ! wp_has_ability( $ability ) ) $fail( 'Missing read ability: ' . $ability );
+
+// Test task-first Skills through native WordPress Abilities without authorizing execution.
+foreach ( array( 'mad4b/skill-match-task', 'mad4b/skill-composition-plan' ) as $name ) {
+    $router = wp_get_ability( $name );
+    if ( ! is_object( $router ) || ! method_exists( $router, 'execute' ) ) $fail( 'Task routing read ability unavailable: ' . $name );
+    $meta = method_exists( $router, 'get_meta' ) ? $router->get_meta() : array();
+    if ( ! isset( $meta['annotations']['readonly'] ) || true !== $meta['annotations']['readonly'] ||
+         ! isset( $meta['mcp']['public'] ) || false !== $meta['mcp']['public'] ) $fail( 'Task routing leaked authority: ' . $name );
+    $reply = $router->execute( array( 'task' => 'Review security and debug issues', 'max_results' => 3 ) );
+    if ( is_wp_error( $reply ) ) $fail( 'Task routing ability rejected enrolled read caller: ' . $reply->get_error_code() );
+    if ( ! is_array( $reply ) || ( $reply['contract'] ?? '' ) !== SCP_Skill_Task_Composition::CONTRACT ) $fail( 'Task routing response contract drift: ' . $name );
+    if ( 'mad4b/skill-composition-plan' === $name && ( ! empty( $reply['execution_ready'] ) || ( $reply['mode'] ?? '' ) !== 'read_only_plan' ) ) {
+        $fail( 'Task routing unexpectedly granted execution.' );
+    }
+    if ( 'mad4b/skill-match-task' === $name && ( empty( $reply['does_not_grant_authority'] ) || ( $reply['mode'] ?? '' ) !== 'read_only' ) ) {
+        $fail( 'Task matching unexpectedly granted authority.' );
+    }
+}
+
 
 // Existing-site bootstrap must be safe to execute through the same read-only
 // runtime used by remote ChatGPT. A small page must never fail merely because
