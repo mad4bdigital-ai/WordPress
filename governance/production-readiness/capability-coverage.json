@@ -10297,8 +10297,7 @@
         "PLATFORM-01"
       ],
       "regression_tests": [
-        "tests/switchers/verify_release.py",
-        "tests/switchers/test-market-context-boundaries.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/market-bootstrap-compatibility.php"
       ],
       "owner_role": "Technical source-review candidate only; not an owner attestation or Production authorization",
       "status": "reviewed_for_ci_only",

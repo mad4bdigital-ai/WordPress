@@ -44,6 +44,8 @@ jobs:
         run: php tests/switchers/test-nationality-ajax-fallback.php
       - name: Booking quote traveller-count authority (no Woo Quantity fallback)
         run: php tests/switchers/test-booking-count-contract.php
+      - name: Bootstrap source loading, source ordering and authority retention
+        run: php wp-content/plugins/mad4b-site-control-plane/tests/market-bootstrap-compatibility.php
       - name: Market context selection and public JSON minimization (hermetic)
         run: php tests/switchers/test-market-context-boundaries.php
       - name: Signed market preferences and PHP compatibility (hermetic)
