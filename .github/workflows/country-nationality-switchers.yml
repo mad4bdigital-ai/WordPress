@@ -1,0 +1,94 @@
+name: Country and Nationality Switchers (QA release gate)
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/country-nationality-switchers.yml'
+      - 'tests/switchers/**'
+      - 'wp-content/plugins/mad4b-country-switcher/**'
+      - 'wp-content/plugins/etg-traveller-nationality-switcher/**'
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-market-*.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-switcher-sources.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/data/market-language-territories.json'
+  push:
+    branches:
+      - 'feature/country-nationality-switchers-release-*'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: country-nationality-switchers-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+jobs:
+  contract-and-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Lint source PHP (no WordPress boot needed)
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -v
+          for f in wp-content/plugins/mad4b-{country-switcher,site-control-plane}/mad4b-*.php wp-content/plugins/etg-traveller-nationality-switcher/*.php wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-{market-*,switcher-sources}.php; do
+            php -l "$f"
+          done
+      - name: Static source and dependency contracts
+        run: python3 tests/switchers/verify_release.py
+      - name: JavaScript syntax
+        run: node --check wp-content/plugins/etg-traveller-nationality-switcher/assets/checkout-blocks.js
+      - name: AJAX guest fallback without MAD4B runtime
+        run: php tests/switchers/test-nationality-ajax-fallback.php
+      - name: Booking quote traveller-count authority (no Woo Quantity fallback)
+        run: php tests/switchers/test-booking-count-contract.php
+      - name: Bootstrap source loading, source ordering and authority retention
+        run: php wp-content/plugins/mad4b-site-control-plane/tests/market-bootstrap-compatibility.php
+      - name: Market context selection and public JSON minimization (hermetic)
+        run: php tests/switchers/test-market-context-boundaries.php
+      - name: Signed market preferences and PHP compatibility (hermetic)
+        run: php tests/switchers/test-market-compatibility.php
+      - name: Unified traveller configuration and server authority (hermetic)
+        run: php tests/switchers/test-management-unit.php
+      - name: Deterministic QA archives and SHA-256 manifest
+        run: |
+          python3 tests/switchers/build_release.py
+          python3 tests/switchers/build_release.py /tmp/switchers-second-build
+          cmp dist/country-nationality/qa-dependency-manifest.json /tmp/switchers-second-build/qa-dependency-manifest.json
+          for f in dist/country-nationality/*.zip; do
+            cmp "$f" "/tmp/switchers-second-build/$(basename "$f")"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: country-nationality-qa-candidates
+          path: dist/country-nationality/
+          if-no-files-found: error
+
+
+  browser-smart-suggestions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Prepare pinned React 18 browser dependencies
+        run: |
+          npm install --prefix /tmp/travel-react --no-save --no-audit --no-fund react@18.3.1 react-dom@18.3.1
+          python -m pip install playwright==1.56.0
+          python -m playwright install --with-deps chromium
+      - name: Real React + Checkout Blocks smart draft and review acceptance
+        env:
+          SWITCHER_JS: ${{ github.workspace }}/wp-content/plugins/etg-traveller-nationality-switcher/assets/checkout-blocks.js
+          SWITCHER_REACT: /tmp/travel-react/node_modules/react/umd/react.production.min.js
+          SWITCHER_REACT_DOM: /tmp/travel-react/node_modules/react-dom/umd/react-dom.production.min.js
+        run: python tests/switchers/test-blocks-ui-browser.py
