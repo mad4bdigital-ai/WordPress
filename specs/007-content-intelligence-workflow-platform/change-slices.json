@@ -4,8 +4,8 @@
   "reviewed_base_sha": "e7f30d944c354c3a4f7346330ad401d995e768c5",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 134,
-  "changed_paths_sha256": "4786cebc52b932610cb8057b5d1dd0815fa88871f731d5eaeab2c0d52df4a4a3",
+  "changed_file_count": 135,
+  "changed_paths_sha256": "583b435dee725fb895f1de846d03b0d81cc3f63ba00b135039ecc254b4c272a1",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -182,7 +182,8 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/ai-five-domain-free-model-local-smoke.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-wiring-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/provider-setup-coverage-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-setup-coverage-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connections-admin-read-hermetic.php"
       ]
     },
     {

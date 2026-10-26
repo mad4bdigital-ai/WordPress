@@ -9575,6 +9575,24 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Original AI Source Repair exact method remains local-only and requires enrolled Local Client plus original AI Router allow_source_repair, original operator Policy or certified host runner, registered governed WordPress Media asset in needs_changes status, matching current and reviewed content SHA, a real inside-uploads non-symlink bounded file and an original Context Source Pipeline rescan. It rejects invented provenance URLs, document identity changes, unsupported MIME, invalid or insufficient revisions and stale file. New fail-closed checks reject malformed SHA/asset ID or non-string model output before hash_equals/filesystem; invalid UTF-8/NUL is validated before Unicode document heading extraction. The hermetic test directly calls original service methods with disposable private /tmp uploads and fake WordPress record handles; 27/27 PASS on PHP 7.4 and PHP 8.3, including a successful simulated swap/rescan and byte-for-byte restored original on forced rescan failure. No real WordPress files, content, AI model, credentials or approval changed, and no autonomous publication or Production deployment is authorized. Real failure-safe upload IO, owner receipt persistence and live WordPress acceptance must be independently verified before runtime rollout."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-connections-admin-ui.php",
+      "source_blob_sha": "1f023535c236498a94762d78193e5633267af1a6",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "PROVIDERS-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connections-admin-read-hermetic.php"
+      ],
+      "owner_role": "Original source CI read-only admin UI security reviewer, not provider administrator or Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "The original Provider Connections admin UI registers only a manage_options submenu and calls Provider Connection Center read-only discover() and plan() to display provider health. It never calls refresh, consent, grants, API keys, or write operations. The owner handoff link is escaped, untrusted labels and health state are HTML escaped, unavailable adapters display warning and setup guidance, refresh requires separate exact owner approval, OAuth requires owner browser, and pending revocation cannot silently reconnect. The network-free original-class fixture passed 20/20 scenarios on PHP 7.4 and 8.3 for permission denial before discovery, idempotent menu registration, advisory health/actions, escaped malicious strings, no forms and zero provider mutations. Source code is unchanged; no live credential, browser or provider acceptance was asserted."
     }
   ],
   "code_change_rules": {
