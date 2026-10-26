@@ -3,7 +3,7 @@
 **Status: PENDING REVIEW.** This document prepares evidence for repository governance. It **does not** attest owner approval, production readiness, complete CI, or the right to execute remote Skill text.
 
 - Stacked PR: [#525](https://github.com/mad4bdigital-ai/WordPress/pull/525) based on [#522](https://github.com/mad4bdigital-ai/WordPress/pull/522).
-- Exact source review candidate: `a6e92077200494ef6994e0c47e42e57ef2a5a037`. The code blob identities below identify the exact pending-review bytes; documentation-only changes do not authorize them.
+- Exact source review candidate: `f6b877b6c78437f9a54f09f32a92913ed49d2d84`. The code blob identities below identify the exact pending-review bytes; documentation-only changes do not authorize them.
 - Immutable dependency: #522 head `cf909fb32cfbdfbfcad754708370e32904299e3a`.
 - Scope: read-only task matching and non-authorizing skill composition. External Skills are never installed, executed, granted permissions or treated as trusted code.
 
@@ -22,11 +22,11 @@ The owner/reviewer must decide whether existing controls are sufficient or a new
 | File (relative to plugin root) | Git blob SHA | Review state |
 | --- | --- | --- |
 | `includes/adapters/class-mad4b-scp-skills-adapter.php` | `064937e152bbbff3ffa6b8ef4548d4d77b9d2ccd` | PENDING |
-| `includes/class-mad4b-scp-skill-abilities.php` | `b04e9f544c5c6ac6adb3afe696a34316e4b83981` | PENDING |
+| `includes/class-mad4b-scp-skill-abilities.php` | `81ab601de559d9ba57991dffb226e129c4553a44` | PENDING |
 | `includes/class-skill-task-composition.php` | `011b6a6a33584c9521755466ae77b49bc6d920b5` | PENDING |
-| `mad4b-site-control-plane.php` | `2a1f0a15555ae223fb4f20b36eb221efe3da4a75` | PENDING |
+| `mad4b-site-control-plane.php` | `4c8d21033f3b479c038a2b010164bb17a9fca80f` | BASELINE — same blob as master |
 
-All four changes require exact source review. The bootstrap path additionally participates in immutable archived G6/G9 delivery evidence. Neither old delivery manifests nor review status may be silently re-signed.
+The three modified skill source files require exact source review. The plugin bootstrap now matches master byte-for-byte and retains its immutable G6/G9 archive identity. Neither archive evidence nor review status was re-signed.
 
 ## Proposed regression evidence (non-authorizing)
 
@@ -58,3 +58,7 @@ The latest source update prefers enrolled managed Skills over untrusted external
 ## Smart composition candidate delta
 
 This candidate now retains external Skill descriptions/headings as **untrusted advisory context** for same-name managed matches, with verified blob identities, bounded reads and explicit fail-closed context status. Local Skill execution and site authority stay canonical. Semantic contradictions are not claimed resolved; the pending reviewer must examine the new content-fetch path, prompt-injection exposure, time budgets, review provenance, and absence of write grants before any governance review entry is issued.
+
+## Integration repair for archived source identity
+
+At integration candidate `f6b877b6c78437f9a54f09f32a92913ed49d2d84`, bootstrap `mad4b-site-control-plane.php` was restored to master-exact Git blob `4c8d21033f3b479c038a2b010164bb17a9fca80f`. The two Skills dependency requires moved to `includes/class-mad4b-scp-skill-abilities.php`, the existing owner of the read-only abilities. This preserves the archived bootstrap fingerprint without relaxing the G9 contract. The abilities file has changed and remains **PENDING REVIEW**. This note documents provenance, not acceptance, merge approval or authority.
