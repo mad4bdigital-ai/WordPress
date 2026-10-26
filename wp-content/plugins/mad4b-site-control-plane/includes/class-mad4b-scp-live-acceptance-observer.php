@@ -62,7 +62,7 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 			public function is_available() { return true; }
 			public function ability_names() {
 				return array(
-					'read' => array( 'mad4b/query-monitor-regression-status', 'mad4b/query-monitor-db-attribution-status', 'mad4b/frontend-performance-status', 'mad4b/frontend-origin-diagnostic', 'mad4b/build-provenance-status', 'mad4b/external-handshake-attestation-status', 'mad4b/external-wpml-receipt-status', 'mad4b/snapshot-verify', 'mad4b/live-acceptance-status' ),
+					'read' => array( 'mad4b/query-monitor-regression-status', 'mad4b/query-monitor-db-attribution-status', 'mad4b/performance-differential-diagnostic', 'mad4b/frontend-performance-status', 'mad4b/frontend-origin-diagnostic', 'mad4b/build-provenance-status', 'mad4b/external-handshake-attestation-status', 'mad4b/external-wpml-receipt-status', 'mad4b/snapshot-verify', 'mad4b/live-acceptance-status' ),
 					'content' => array(), 'admin' => array(),
 				);
 			}
@@ -77,6 +77,7 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 		if ( ! function_exists( 'wp_register_ability' ) ) return;
 		self::add_read_ability( 'mad4b/query-monitor-regression-status', 'Get Query Monitor Regression Evidence', array( __CLASS__, 'query_monitor_status' ) );
 		self::add_read_ability( 'mad4b/query-monitor-db-attribution-status', 'Get Query Monitor DB Attribution Status', array( __CLASS__, 'query_monitor_db_attribution_status' ) );
+		self::add_read_ability( 'mad4b/performance-differential-diagnostic', 'Read Safe Runtime Performance Differential Capabilities', array( __CLASS__, 'performance_differential_diagnostic' ) );
 		self::add_read_ability( 'mad4b/frontend-performance-status', 'Get Front-end Performance Baseline Evidence', array( __CLASS__, 'frontend_performance_status' ) );
 		self::add_read_ability( 'mad4b/build-provenance-status', 'Get Exact Build Provenance', array( __CLASS__, 'build_provenance_status' ) );
 		self::add_read_ability( 'mad4b/external-handshake-attestation-status', 'Get External Tool Inventory Attestation', array( __CLASS__, 'external_handshake_attestation_status' ) );
@@ -332,6 +333,55 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 			'required_canaries' => $required_canaries,
 			'canaries' => array_merge( array( 'wpml_admin' => 0, 'site_health_rest' => 0, 'wpml_external_rest' => 0, 'generic_cron' => 0 ), $canaries ),
 			'blockers' => array_values( array_unique( $blockers ) ),
+		);
+	}
+
+
+	/**
+	 * Read-only MCP-native diagnostic. No plugin exclusion/rebootstrap, SQL tracing,
+	 * shell, wp-cli, network requests, persistence or privileged changes.
+	 */
+	public static function performance_differential_diagnostic() {
+		global $wpdb;
+		$environment = function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'unknown';
+		$query_count = function_exists( 'get_num_queries' ) ? (int) get_num_queries() : null;
+		$file_count = count( get_included_files() );
+		$peak = memory_get_peak_usage( true );
+		// Evidence collection must never break the originating MCP request.
+		try {
+			$attribution = self::query_monitor_db_attribution_status();
+		} catch ( Throwable $ignored ) {
+			$attribution = array( 'state' => 'attribution_probe_failed' );
+		}
+		return array(
+			'contract' => 'mad4b.performance-differential-diagnostic.v1',
+			'read_only' => true,
+			'mutation_performed' => false,
+			'environment' => $environment,
+			'sample_type' => 'current_mcp_wordpress_request',
+			'current_request' => array(
+				'queries_so_far' => $query_count,
+				'included_php_files_so_far' => $file_count,
+				'peak_memory_bytes_so_far' => $peak,
+				'wpdb_savequeries_enabled' => is_object( $wpdb ) && ! empty( $wpdb->save_queries ),
+			),
+			'attribution' => array(
+				'state' => isset( $attribution['state'] ) ? $attribution['state'] : 'unavailable',
+				'qm_db_active' => ! empty( $attribution['qm_db_active'] ),
+				'dropin_conflict' => ! empty( $attribution['dropin_conflict'] ),
+				'query_monitor_active' => ! empty( $attribution['query_monitor_active'] ),
+				'caller_component_trace_available' => ! empty( $attribution['caller_component_trace_expected'] ),
+			),
+			'differential' => array(
+				'core_only' => null,
+				'other_plugins_without_this_plugin' => null,
+				'all_plugins' => null,
+				'comparable_samples_available' => false,
+				'reason' => 'WordPress is already bootstrapped; skipping a plugin now cannot reproduce independent WP-CLI bootstrap profiles.',
+				'external_worker_required_for_isolated_bootstrap' => true,
+			),
+			'authority_granted' => false,
+			'production_mutation_allowed' => false,
 		);
 	}
 
