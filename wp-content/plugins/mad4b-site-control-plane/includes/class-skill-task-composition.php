@@ -163,19 +163,27 @@ final class SCP_Skill_Task_Composition {
     public static function composition_plan( $input = array() ) {
         $matches = self::match_task( $input );
         if ( is_wp_error( $matches ) ) return $matches;
-        $steps = array(); $used = array(); $phase = array();
+        $selected = array(); $used = array(); $phase = array();
         foreach ( $matches['candidates'] as $candidate ) {
             $key = strtolower( (string) $candidate['name'] );
             if ( isset( $used[$key] ) ) continue;
             $stage = self::stage( $candidate['name'] );
-            if ( isset( $phase[$stage] ) && count( $steps ) > 0 ) continue;
+            if ( isset( $phase[$stage] ) ) continue;
             $used[$key] = true; $phase[$stage] = true;
+            $selected[] = array( 'stage' => $stage, 'skill' => $candidate );
+            if ( count( $selected ) >= 5 ) break;
+        }
+        $order = array( 'diagnose' => 10, 'design' => 20, 'implement' => 30, 'verify' => 40, 'release' => 50 );
+        usort( $selected, function ( $a, $b ) use ( $order ) {
+            return $order[$a['stage']] - $order[$b['stage']];
+        } );
+        $steps = array();
+        foreach ( $selected as $item ) {
             $steps[] = array(
-                'order' => count( $steps ) + 1, 'stage' => $stage,
-                'skill' => $candidate, 'depends_on' => count( $steps ) ? array( count( $steps ) ) : array(),
+                'order' => count( $steps ) + 1, 'stage' => $item['stage'],
+                'skill' => $item['skill'], 'depends_on' => count( $steps ) ? array( count( $steps ) ) : array(),
                 'execution' => 'not_authorized',
             );
-            if ( count( $steps ) >= 5 ) break;
         }
         $fingerprint = array( 'task_sha256' => $matches['task_sha256'], 'steps' => $steps, 'source_page' => $matches['source_page'] );
         return array(
