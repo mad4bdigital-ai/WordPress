@@ -121,6 +121,7 @@ final class MAD4B_SCP_Skills_Admin_UI {
 		self::render_editor( $status, $selected );
 		self::render_resource_editor( $status, $selected );
 		self::render_export( $status );
+		SCP_External_Skill_Sources::render_admin();
 		echo '</div>';
 	}
 
