@@ -2629,6 +2629,44 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original Unified Policy original-owner Context Authority rules, WordPress Ability registry, Impact Policy, and separately OAuth-/ticket-governed execution rights; mapping only projects and does not authorize a mutation.",
       "review_rationale": "Source original Unified Gate Bridge is strictly read-only: it maps a reviewed original owner for the operation, gets the original Policy decision, checks real WordPress Ability registration and original Impact Policy but cannot mint a grant, approval ticket, owner receipt, publication or execution authorization. Unknown owners, unsafe provider names and malformed Ability names reject; even when QA owner and Ability are present, an original owner receipt remains required, while Pricing requires an independently reviewed human Approval Ticket. Hermetic PHP 7.4 and 8.3 each PASS 27 original-source tests and no options writes. No live WordPress instance was changed; CI-only evidence."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-approval-queue-bridge.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-queue-extension-hermetic.php"
+      ],
+      "owner_role": "Exact source/authorization CI reviewer, never original Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Source retains the independent original review/owner authorization, original Site Profile, OAuth and ticket requirements; no direct credential, session, approval ticket or publishing authority is added.",
+      "review_rationale": "Original Queue Bridge delegates to original Unified Approval Workflow::inspect, rejects malformed review IDs and missing original reviews, and returns read-only state projection. Even when original review state is REVIEW_APPROVED, the next step remains original_owner_authorization_required. Pending, waiting-human and rejected states never issue tickets, perform mutations, publish, or authorize providers; original hashes remain scoped in projection. Network-free hermetic test executes 20 assertion cases on PHP 7.4 and PHP 8.3 against original classes; synthetic plugin file exists only under a temporary directory and is removed. This is CI-only, not live owner or provider certification."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-approval-extensions.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-queue-extension-hermetic.php"
+      ],
+      "owner_role": "Exact source/authorization CI reviewer, never original Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Source retains the independent original review/owner authorization, original Site Profile, OAuth and ticket requirements; no direct credential, session, approval ticket or publishing authority is added.",
+      "review_rationale": "Original optional Extension Registry accepts only declared service_identity/browser_authorization descriptor types with an exact SHA-256 pinned plugin file inside WP_PLUGIN_DIR, and independently pinned original-owner certification map. Rejects unlisted kinds, invalid IDs, forged digest, outside plugin paths, extra authority callback fields and duplicate registration. Even a valid provider is described_only; it never becomes an authenticated subject, browser session or mutation grant. Network-free hermetic test executes 20 assertion cases on PHP 7.4 and PHP 8.3 against original classes; synthetic plugin file exists only under a temporary directory and is removed. This is CI-only, not live owner or provider certification."
     }
   ],
   "lifecycle": [],
@@ -9279,6 +9317,42 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Source original Unified Gate Bridge is strictly read-only: it maps a reviewed original owner for the operation, gets the original Policy decision, checks real WordPress Ability registration and original Impact Policy but cannot mint a grant, approval ticket, owner receipt, publication or execution authorization. Unknown owners, unsafe provider names and malformed Ability names reject; even when QA owner and Ability are present, an original owner receipt remains required, while Pricing requires an independently reviewed human Approval Ticket. Hermetic PHP 7.4 and 8.3 each PASS 27 original-source tests and no options writes. Source blob is exact; required owner and release gates remain outstanding."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-approval-queue-bridge.php",
+      "source_blob_sha": "b76ad1e146a73997cbe7a3314316085c333cff85",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-queue-extension-hermetic.php"
+      ],
+      "owner_role": "CI-only code security reviewer, not owner-accepted runtime evidence",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Original Queue Bridge delegates to original Unified Approval Workflow::inspect, rejects malformed review IDs and missing original reviews, and returns read-only state projection. Even when original review state is REVIEW_APPROVED, the next step remains original_owner_authorization_required. Pending, waiting-human and rejected states never issue tickets, perform mutations, publish, or authorize providers; original hashes remain scoped in projection. Network-free hermetic test executes 20 assertion cases on PHP 7.4 and PHP 8.3 against original classes; synthetic plugin file exists only under a temporary directory and is removed. This is CI-only, not live owner or provider certification. Source Git blob and exact test included in the same PR."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-approval-extensions.php",
+      "source_blob_sha": "f77b88893ce7083f95207b84ede1521ad8a49868",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-queue-extension-hermetic.php"
+      ],
+      "owner_role": "CI-only code security reviewer, not owner-accepted runtime evidence",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Original optional Extension Registry accepts only declared service_identity/browser_authorization descriptor types with an exact SHA-256 pinned plugin file inside WP_PLUGIN_DIR, and independently pinned original-owner certification map. Rejects unlisted kinds, invalid IDs, forged digest, outside plugin paths, extra authority callback fields and duplicate registration. Even a valid provider is described_only; it never becomes an authenticated subject, browser session or mutation grant. Network-free hermetic test executes 20 assertion cases on PHP 7.4 and PHP 8.3 against original classes; synthetic plugin file exists only under a temporary directory and is removed. This is CI-only, not live owner or provider certification. Source Git blob and exact test included in the same PR."
     }
   ],
   "code_change_rules": {
