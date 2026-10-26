@@ -44,12 +44,15 @@ $invalid=SCP_Skill_Task_Composition::match_task(array('task'=>'debug api','sourc
 ok(is_wp_error($invalid),'bad source offset must fail');
 $match=SCP_Skill_Task_Composition::match_task(array('task'=>'Investigate API design and debugging','topics'=>array('api','security')));
 ok(!is_wp_error($match),'valid task must return result');
-ok($match['source_page']['visited']===6 && $match['source_page']['next_offset']===6 && $match['source_page']['complete']===false,'pagination must not silently claim full coverage');
+ok($match['source_page']['visited']===6 && $match['source_page']['next_offset']===6 && $match['source_page']['complete']===false && $match['source_page']['page_complete']===true,'pagination must not silently claim full coverage');
 ok($match['candidates'][0]['name']==='api-design','topic-based match must prioritize exact skill');
 ok($match['candidates'][0]['origin']==='external_untrusted','external candidate must be marked untrusted');
 ok($match['candidates'][0]['executable']===false,'external candidate must not be executable');
 $second=SCP_Skill_Task_Composition::match_task(array('task'=>'Investigate API design and debugging','topics'=>array('api','security'),'source_offset'=>6));
-ok($second['source_page']['visited']===2 && $second['source_page']['next_offset']===null && $second['source_page']['complete']===true,'second page exhausted and complete');
+$skipped=SCP_Skill_Task_Composition::match_task(array('task'=>'Investigate API design and debugging','source_offset'=>40));
+ok(!is_wp_error($skipped) && $skipped['source_page']['visited']===0 && $skipped['source_page']['page_complete']===true && $skipped['source_page']['complete']===false,'Out-of-range page must never imply globally complete coverage');
+
+ok($second['source_page']['visited']===2 && $second['source_page']['next_offset']===null && $second['source_page']['complete']===false && $second['source_page']['page_complete']===true,'second page exhausted and complete');
 $plan=SCP_Skill_Task_Composition::composition_plan(array('task'=>'Debug API security testing', 'topics'=>array('debug','api','security')));
 ok(!is_wp_error($plan) && count($plan['steps'])>=1, 'plan must be generated');
 ok($plan['execution_ready']===false && $plan['mode']==='read_only_plan','plan must not authorize execution');
@@ -63,7 +66,7 @@ $empty=SCP_Skill_Task_Composition::match_task(array('task'=>'zyxqv unknown irrel
 ok($empty['matched_count']===0 && count($empty['candidates'])===0,'do not invent matches');
 SCP_External_Skill_Sources::$fail=true;
 $failed=SCP_Skill_Task_Composition::match_task(array('task'=>'security review'));
-ok(count($failed['source_page']['errors'])===6 && $failed['source_page']['complete']===false,'rate-limit failures must be explicit and deny full coverage');
+ok(count($failed['source_page']['errors'])===6 && $failed['source_page']['complete']===false && $failed['source_page']['page_complete']===false,'rate-limit failures must be explicit and deny full coverage');
 ok(count($failed['candidates'])>=1,'keep valid managed candidates on source errors');
 $reviewOnly=SCP_Skill_Task_Composition::match_task(array('task'=>'راجع'));
 ok($reviewOnly['matched_count']>=1,'Arabic review imperative must not be dropped as stopword');
