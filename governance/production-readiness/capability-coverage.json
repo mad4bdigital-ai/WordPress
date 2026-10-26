@@ -2762,6 +2762,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original Media Context scanner retains exact WordPress admin+upload files+Site Profile connect policy, bounded MIME inventory, content normalizers, SHA-256 reuse checks and Context Authority complete scan approval; already existing two source-behavior CI reviews remain intact and unchanged.",
       "review_rationale": "New original-class Media inventory/authorization source regression passed 22/22 cases on PHP 7.4 and PHP 8.3 in network-isolated temporary file fixture: exact hash and supported MIME, text/CSV normalization, explicit allowed MIME scope, max 1000 inventory rejection, reuse of unchanged version+hash record, denied legacy sync without manage_options, upload_files or original connect policy, and invalid/oversized ID refusal before any WordPress registry mutation. Existing normalize_bytes regression passed 10/10 on both PHP 7.4 and 8.3. Existing Excel OOXML regression passed 12/12 using an isolated WordPress PHP 8.3 image with ZIP extension; bare php:7.4-cli and php:8.3-cli images lack ZIP, so their initial Excel fixture failure was an environment dependency and NOT counted as a product regression. No Site Media, database, approval or actual upload changed. This CI-only review is not real deployment or full author acceptance."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-source-repair.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-source-repair-hermetic.php"
+      ],
+      "owner_role": "Exact-source repository AI security reviewer, not WordPress Media/Production Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The original approved Agent/Local Client, Context Source ownership and revision CAS, managed Media content normalization, enrolled WordPress admin and source rescan remain the only authorities; no AI review result alone grants mutation or publication.",
+      "review_rationale": "Original AI Source Repair exact method remains local-only and requires enrolled Local Client plus original AI Router allow_source_repair, original operator Policy or certified host runner, registered governed WordPress Media asset in needs_changes status, matching current and reviewed content SHA, a real inside-uploads non-symlink bounded file and an original Context Source Pipeline rescan. It rejects invented provenance URLs, document identity changes, unsupported MIME, invalid or insufficient revisions and stale file. New fail-closed checks reject malformed SHA/asset ID or non-string model output before hash_equals/filesystem; invalid UTF-8/NUL is validated before Unicode document heading extraction. The hermetic test directly calls original service methods with disposable private /tmp uploads and fake WordPress record handles; 27/27 PASS on PHP 7.4 and PHP 8.3, including a successful simulated swap/rescan and byte-for-byte restored original on forced rescan failure. No real WordPress files, content, AI model, credentials or approval changed, and no autonomous publication or Production deployment is authorized."
     }
   ],
   "lifecycle": [],
@@ -9538,6 +9557,24 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "The original Unified Approval Admin registers its eight REST routes only in the Local environment and retains explicit WordPress enrolled-owner or original Background_Authorization::current() actor admission. Unknown POST fields including publication, force-grant and MFA-bypass are rejected; original Workflow, Policy and Gate endpoints delegate only to existing owner review, original approval ticket and browser authority guards. Network-isolated PHP 7.4 and PHP 8.3 executions each passed 24 direct original-class tests, checking admin and delegated agent admission, Production/Staging rejection, original route permission callbacks, deny/allow request shape and no mocked site mutation. Existing Workflow and exact grant tests separately verify owner decision and deny-first behavior; these local-only checks do not certify live REST/nonce, model identity, or owner approval. Exact source Git blob is pinned and no new route or ability has been added."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-source-repair.php",
+      "source_blob_sha": "4bc5ccec80e985e08f6e552b8a90a2975f9ff11d",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-source-repair-hermetic.php"
+      ],
+      "owner_role": "CI reviewer of bounded local-only repair path; no operator approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Original AI Source Repair exact method remains local-only and requires enrolled Local Client plus original AI Router allow_source_repair, original operator Policy or certified host runner, registered governed WordPress Media asset in needs_changes status, matching current and reviewed content SHA, a real inside-uploads non-symlink bounded file and an original Context Source Pipeline rescan. It rejects invented provenance URLs, document identity changes, unsupported MIME, invalid or insufficient revisions and stale file. New fail-closed checks reject malformed SHA/asset ID or non-string model output before hash_equals/filesystem; invalid UTF-8/NUL is validated before Unicode document heading extraction. The hermetic test directly calls original service methods with disposable private /tmp uploads and fake WordPress record handles; 27/27 PASS on PHP 7.4 and PHP 8.3, including a successful simulated swap/rescan and byte-for-byte restored original on forced rescan failure. No real WordPress files, content, AI model, credentials or approval changed, and no autonomous publication or Production deployment is authorized. Real failure-safe upload IO, owner receipt persistence and live WordPress acceptance must be independently verified before runtime rollout."
     }
   ],
   "code_change_rules": {

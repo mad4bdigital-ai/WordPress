@@ -48,6 +48,7 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/passwordless-mcp-identity-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/unified-admin-rest-permissions-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/media-inventory-authorization-hermetic.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/ai-source-repair-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/generation-snapshot-exception-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/no-input-read-ability-schema-runtime.php",
@@ -168,6 +169,7 @@ def self_test():
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/passwordless-mcp-identity-hermetic.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/unified-admin-rest-permissions-hermetic.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/media-inventory-authorization-hermetic.php")[0] == "php"
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/ai-source-repair-hermetic.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php")[0] == "php"
     try:
         command_for("wp-content/plugins/mad4b-site-control-plane/tests/runtime-gateway-cookie-http.php")

@@ -10,14 +10,16 @@ final class MAD4B_SCP_AI_Source_Repair {
             return new WP_Error('mad4b_ai_repair_bounds','Model revision must preserve sufficient original evidence.');
         if(hash_equals(hash('sha256',$old),hash('sha256',$next)))
             return new WP_Error('mad4b_ai_repair_unchanged','A repair requires an actual content change.');
+        // Validate binary/UTF-8 before Unicode header parsing: malformed payloads
+        // must return an explicit fail-closed type error, not a misleading CAS error.
+        if(strpos($next,"\x00")!==false || !preg_match('//u',$next) || !preg_match('//u',$old))
+            return new WP_Error('mad4b_ai_repair_text_invalid','Text encoding invalid.');
         $first=trim((string)(preg_split('/\R/u',str_replace("\xEF\xBB\xBF",'',$old),2)[0]??''));
         $first_new=trim((string)(preg_split('/\R/u',str_replace("\xEF\xBB\xBF",'',$next),2)[0]??''));
         if($first==='' || $first!==$first_new)
             return new WP_Error('mad4b_ai_repair_identity_drift','Document identity header must not change.');
         if(stripos($next,'DRAFT FOR OWNER REVIEW')!==false)
             return new WP_Error('mad4b_ai_repair_manual_review_regression','Revision reintroduced an obsolete manual review gate.');
-        if(strpos($next,"\x00")!==false || !preg_match('//u',$next))
-            return new WP_Error('mad4b_ai_repair_text_invalid','Text encoding invalid.');
         preg_match_all('~https?://[^\s\)\]>]+~i',$old,$before);
         preg_match_all('~https?://[^\s\)\]>]+~i',$next,$after);
         $new_urls=array_diff(array_unique($after[0]),array_unique($before[0]));
@@ -25,6 +27,12 @@ final class MAD4B_SCP_AI_Source_Repair {
         return true;
     }
     public static function apply_registered_text_revision($asset_id,$expected_hash,$text) {
+        // Never pass untrusted REST/model payloads to hash_equals, asset lookup
+        // or filesystem writes until their exact required types are established.
+        if(!is_string($asset_id)||!preg_match('/^[a-f0-9]{64}$/D',$asset_id)
+            ||!is_string($expected_hash)||!preg_match('/^[a-f0-9]{64}$/D',$expected_hash)
+            ||!is_string($text))
+            return new WP_Error('mad4b_ai_repair_input_invalid','Exact asset, content hash and text required.');
         if(wp_get_environment_type()!=='local' || !MAD4B_SCP_Local_Client::bound())
             return new WP_Error('mad4b_ai_repair_scope_denied','Local Lab only.');
         $cfg=MAD4B_SCP_AI_Model_Router::settings();
