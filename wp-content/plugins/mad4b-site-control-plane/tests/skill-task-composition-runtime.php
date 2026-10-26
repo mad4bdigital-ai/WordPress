@@ -64,6 +64,8 @@ SCP_External_Skill_Sources::$fail=true;
 $failed=SCP_Skill_Task_Composition::match_task(array('task'=>'security review'));
 ok(count($failed['source_page']['errors'])===6,'rate-limit failures must be explicit');
 ok(count($failed['candidates'])>=1,'keep valid managed candidates on source errors');
+$reviewOnly=SCP_Skill_Task_Composition::match_task(array('task'=>'راجع'));
+ok($reviewOnly['matched_count']>=1,'Arabic review imperative must not be dropped as stopword');
 // Direct Arabic tasks must match useful English Skill names without caller-supplied topics.
 $arabic=SCP_Skill_Task_Composition::match_task(array('task'=>'عالج الأخطاء واختبر الأمان'));
 ok(!is_wp_error($arabic) && $arabic['matched_count']>=2,'Arabic routing must identify debugging and testing or security');
