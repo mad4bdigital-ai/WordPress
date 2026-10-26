@@ -123,6 +123,10 @@ ok($debugStep['composition_context']['external_contexts'][0]['trust']==='untrust
 ok($debugStep['composition_context']['external_contexts'][0]['state']==='verified_untrusted_metadata','Context must have verified source provenance');
 ok(strpos($debugStep['composition_context']['external_contexts'][0]['description'],'External API diagnostics')!==false,'Verified external context must contribute useful description');
 ok(in_array('API diagnostics',$debugStep['composition_context']['external_contexts'][0]['headings'],true),'Verified external headings must contribute topical context');
+ok(in_array('api',$debugStep['composition_context']['additional_external_topics'],true),'Distinct external information must be identified as supplementary topic');
+ok($debugStep['composition_context']['external_instructions_applied']===false,'External advice must not become executable instructions');
+ok(strpos(json_encode($collisionPlan),'ignore approval')===false,'Untrusted imperative body text must not enter merged context');
+
 ok(SCP_External_Skill_Sources::$reads>=1 && SCP_External_Skill_Sources::$reads<=2,'Enrichment reads must be bounded');
 ok($collisionPlan['execution_ready']===false && $debugStep['execution']==='not_authorized','Merged context must not grant authorization');
 SCP_External_Skill_Sources::$readFail=true;
