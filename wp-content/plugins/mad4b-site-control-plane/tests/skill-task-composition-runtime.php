@@ -82,6 +82,24 @@ $badContext=SCP_Skill_Task_Composition::match_task(array('task'=>'تابع','tas
 ok(is_wp_error($badContext),'oversized task context rejected');
 $badContext=SCP_Skill_Task_Composition::match_task(array('task'=>'تابع','task_context'=>array('unexpected')));
 ok(is_wp_error($badContext),'non-string task context rejected');
+// Installed managed Skills take priority over externally named lookalikes.
+$collision=SCP_Skill_Task_Composition::match_task(array('task'=>'Debug API','max_results'=>12));
+ok(!is_wp_error($collision) && $collision['external_name_collisions_suppressed']>=1,'External duplicate name collision must be reported');
+$managedDebug=false; $externalDebug=false; $externalApi=false;
+foreach($collision['candidates'] as $candidate) {
+    if($candidate['name']==='debugging') {
+        if($candidate['origin']==='managed') $managedDebug=true;
+        if($candidate['origin']==='external_untrusted') $externalDebug=true;
+    }
+    if($candidate['name']==='api-design' && $candidate['origin']==='external_untrusted') $externalApi=true;
+}
+ok($managedDebug && !$externalDebug,'Prefer local managed Skill on identical names');
+ok($externalApi,'Unmatched specialist external Skills remain discoverable');
+$collisionPlan=SCP_Skill_Task_Composition::composition_plan(array('task'=>'Debug API','max_results'=>12));
+$managedStep=false; foreach($collisionPlan['steps'] as $step) {
+    if($step['skill']['name']==='debugging' && $step['skill']['origin']==='managed') $managedStep=true;
+}
+ok($managedStep,'Composition must retain the managed Skill when names collide');
 $reviewOnly=SCP_Skill_Task_Composition::match_task(array('task'=>'راجع'));
 ok($reviewOnly['matched_count']>=1,'Arabic review imperative must not be dropped as stopword');
 // Direct Arabic tasks must match useful English Skill names without caller-supplied topics.

@@ -156,6 +156,21 @@ final class SCP_Skill_Task_Composition {
             $row['matched_terms'] = $match['matched'];
             $result[] = $row;
         }
+        // Favor an eligible managed Skill over any external candidate with
+        // the identical name. Source discovery remains visible separately,
+        // but an untrusted name collision cannot displace the installed Skill.
+        $managed_names = array();
+        foreach ( $result as $candidate ) {
+            if ( 'managed' === $candidate['origin'] ) {
+                $managed_names[ strtolower( trim( $candidate['name'] ) ) ] = true;
+            }
+        }
+        $before_suppression = count( $result );
+        $result = array_values( array_filter( $result, function ( $candidate ) use ( $managed_names ) {
+            return 'managed' === $candidate['origin'] ||
+                ! isset( $managed_names[ strtolower( trim( $candidate['name'] ) ) ] );
+        } ) );
+        $external_duplicates_suppressed = $before_suppression - count( $result );
         usort( $result, function ( $a, $b ) {
             if ( $a['score'] !== $b['score'] ) return $b['score'] - $a['score'];
             if ( $a['origin'] !== $b['origin'] ) return $a['origin'] === 'managed' ? -1 : 1;
@@ -164,6 +179,7 @@ final class SCP_Skill_Task_Composition {
         return array(
             'contract' => self::CONTRACT, 'mode' => 'read_only', 'selection_method' => 'deterministic_lexical_v1',
             'task_sha256' => hash( 'sha256', $v['task'] . chr( 0 ) . $v['task_context'] ), 'matched_count' => count( $result ),
+            'external_name_collisions_suppressed' => $external_duplicates_suppressed,
             'candidates' => array_slice( $result, 0, $v['max_results'] ),
             'source_page' => array( 'visited' => $catalog['external']['visited_sources'], 'total' => $catalog['external']['total_sources'], 'next_offset' => $catalog['external']['next_offset'], 'errors' => $catalog['external']['errors'], 'page_complete' => $catalog['external']['page_complete'], 'complete' => $catalog['external']['complete'] ),
             'trusted_for_execution' => false, 'does_not_grant_authority' => true,
