@@ -122,3 +122,15 @@ hardening adds no provider installation or write surface and requires
 independent security/release review before merge.
 
 Provider policy fixture Git blob: `08060c1d64ae9e763c722c29f5517bfbfca2f060`.
+
+
+## Site-neutrality source exception — PENDING INDEPENDENT REVIEW
+
+The literal provider identity guard requires `https://api.github.com`
+inside the external source-reader implementation. Its exact source path and
+only the GitHub public API hostname have been added to the existing
+`tests/site-neutrality-policy.json.reviewed_literal_endpoints` registry,
+following the repository's established third-party service exceptions.
+This is a read-only host classification, NOT a site or tenant default and
+NOT a new egress authorization. Other hostnames remain rejected by the
+site-neutrality scanner; explicit negative checks confirm this.

@@ -218,6 +218,12 @@
         "api.github.com"
       ],
       "rationale": "Reviewed public source-provider API authority. This is a reusable outbound Git host, not a tenant/site default. Requests remain fixed to the configured provider and protected by the governed egress policy."
+    },
+    "includes/class-external-skill-sources.php": {
+      "hosts": [
+        "api.github.com"
+      ],
+      "rationale": "Immutable public GitHub REST source-reader authority only, not a tenant or site default. This exact hostname pin rejects config drift to unreviewed providers; HTTPS, TLS, DNS and redirect checks remain governed by Egress Policy."
     }
   },
   "optional_named_tag_integrations": [
