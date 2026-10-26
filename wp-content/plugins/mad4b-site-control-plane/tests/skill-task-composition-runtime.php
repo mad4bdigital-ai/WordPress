@@ -68,6 +68,20 @@ SCP_External_Skill_Sources::$fail=true;
 $failed=SCP_Skill_Task_Composition::match_task(array('task'=>'security review'));
 ok(count($failed['source_page']['errors'])===6 && $failed['source_page']['complete']===false && $failed['source_page']['page_complete']===false,'rate-limit failures must be explicit and deny full coverage');
 ok(count($failed['candidates'])>=1,'keep valid managed candidates on source errors');
+
+$followUp=SCP_Skill_Task_Composition::match_task(array('task'=>'تابع','task_context'=>'Review code security and debugging'));
+ok(!is_wp_error($followUp) && $followUp['matched_count']>=2,'follow-up should match explicit prior task context');
+$followNames=array_column($followUp['candidates'],'name');
+ok(in_array('security-review',$followNames,true),'follow-up context should match security');
+$followPlan=SCP_Skill_Task_Composition::composition_plan(array('task'=>'تابع','task_context'=>'Review code security and debugging'));
+ok(!is_wp_error($followPlan) && $followPlan['mode']==='read_only_plan' && $followPlan['execution_ready']===false,'context does not grant execution');
+$withoutContext=SCP_Skill_Task_Composition::match_task(array('task'=>'تابع'));
+ok(!is_wp_error($withoutContext) && $withoutContext['matched_count']===0,'do not invent prior task context');
+ok($followUp['task_sha256']!==$withoutContext['task_sha256'],'task context must be bound to request digest');
+$badContext=SCP_Skill_Task_Composition::match_task(array('task'=>'تابع','task_context'=>str_repeat('x',4001)));
+ok(is_wp_error($badContext),'oversized task context rejected');
+$badContext=SCP_Skill_Task_Composition::match_task(array('task'=>'تابع','task_context'=>array('unexpected')));
+ok(is_wp_error($badContext),'non-string task context rejected');
 $reviewOnly=SCP_Skill_Task_Composition::match_task(array('task'=>'راجع'));
 ok($reviewOnly['matched_count']>=1,'Arabic review imperative must not be dropped as stopword');
 // Direct Arabic tasks must match useful English Skill names without caller-supplied topics.
