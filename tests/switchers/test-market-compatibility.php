@@ -85,4 +85,5 @@ $check('NO_CURRENCY_NOT_OFFERED', !in_array('SAR', $class::currencies(), true));
 $check('PROFILES_REQUIRE_ACTIVE_LANGUAGE', $class::defaults('US')['market_approved'] === true);
 $check('UNSUPPORTED_CURRENCY_REJECTED', is_wp_error($class::set('en', 'SAR', 'us-en')));
 $check('UNAPPROVED_MARKET_REJECTED', is_wp_error($class::set('en', 'USD', 'other')));
+echo 'SUMMARY checks=9 failures=' . $failures . PHP_EOL;
 exit($failures ? 1 : 0);

@@ -69,4 +69,5 @@ $check('SENSITIVE_FIELDS_REDACTED', !isset($selected['site_uuid']) && !isset($se
 $check('READ_ONLY_NO_PRICE_OR_IDENTITY', !isset($public['ip']) && !isset($public['billing_country']) && !isset($public['price']));
 $class::clear();
 $check('SESSION_CLEAR', !isset($GLOBALS['mock_session'][$class::SESSION_KEY]));
+echo 'SUMMARY checks=13 failures=' . $fail . PHP_EOL;
 exit($fail ? 1 : 0);

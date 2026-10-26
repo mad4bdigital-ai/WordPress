@@ -13,7 +13,9 @@ $services = [
     'public-holidays' => 'MAD4B_SCP_Public_Holidays',
 ];
 $failures = 0;
-$check = static function ($label, $condition) use (&$failures) {
+$checks = 0;
+$check = static function ($label, $condition) use (&$failures, &$checks) {
+    $checks++;
     echo $label . '=' . ($condition ? 'PASS' : 'FAIL') . PHP_EOL;
     if (!$condition) $failures++;
 };
@@ -43,4 +45,5 @@ $check('GENERIC_EXECUTION_FENCE_NOT_REMOVED',
     strpos($bootstrap, "require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-execution-fence.php';") !== false);
 $check('NO_DIRECT_MARKET_PRICE_ASSIGNMENT',
     strpos($bootstrap, "MAD4B_SCP_Market_Context::set_price(") === false);
+echo 'SUMMARY checks=' . $checks . ' failures=' . $failures . PHP_EOL;
 exit($failures ? 1 : 0);
