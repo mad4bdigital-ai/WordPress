@@ -56,6 +56,12 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/unified-admin-rest-permissions-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/media-inventory-authorization-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-source-repair-hermetic.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/unified-approval-ai-first/local-rest-fastpath-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/public-holiday-hermetic-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/application-password-agent-bridge-hermetic.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-media-evidence-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-history-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/provider-connections-admin-read-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/generation-snapshot-exception-runtime.php",
@@ -100,6 +106,23 @@ def command_for(test):
     raise ValueError("No supported behavioral test executor for " + test)
 
 
+def has_assertion_pass(stdout):
+    # The allowlisted *executable* fixture must exit zero and report at least
+    # one assertion. Accept either positive PASS lines or a bounded terminal
+    # counter; reject zero-count, failure and PHP lint-only output.
+    if not isinstance(stdout, str) or not stdout:
+        return False
+    if re.search(r"(?m)^(?:FAIL(?::|\s)|[^\n]{3,130}: FAIL(?:\s|$))", stdout):
+        return False
+    if re.search(r"(?m)^PASS(?::|\s)", stdout):
+        return True
+    if re.search(r"(?m)^[A-Za-z][A-Za-z0-9 _./:-]{2,110}: PASS(?: [1-9][0-9]*(?: [A-Za-z][A-Za-z ]{0,30})?)?[ \t]*$", stdout):
+        return True
+    return bool(re.search(
+        r"(?m)^SUMMARY (?:pass=[1-9][0-9]* fail=0|"
+        r"checks=[1-9][0-9]* failures=0)[ \t]*$", stdout))
+
+
 def run_tests(impact, head, timeout):
     ensure(SHA.fullmatch(head or "") and impact.get("exact_head_sha") == head,
            "Exact HEAD mismatch in regression test plan")
@@ -119,8 +142,10 @@ def run_tests(impact, head, timeout):
                                     timeout=timeout, check=False)
             ok = result.returncode == 0
             if name in STANDALONE_PHP_REGRESSIONS:
-                # A zero-exit stub is not sufficient evidence of a test.
-                ok = ok and bool(re.search(r"(?m)^PASS(?::|\s)", result.stdout))
+                # Require positive assertions, never accept exit(0) or lint-only
+                # output. Existing original contracts also print N test cases
+                # in an anchored success-only terminal summary.
+                ok = ok and has_assertion_pass(result.stdout)
             tail = (result.stdout + "\n" + result.stderr)[-5000:]
             outcome = "PASS" if ok else "FAIL"
             code = result.returncode
@@ -148,6 +173,17 @@ def run_tests(impact, head, timeout):
 
 
 def self_test():
+    assert has_assertion_pass("PASS: verified real case\n")
+    assert has_assertion_pass("SUMMARY pass=8 fail=0\n")
+    assert has_assertion_pass("SUMMARY checks=21 failures=0\n")
+    assert has_assertion_pass("BROWSER_OPERATOR_INTEGRITY: PASS 15\n")
+    assert has_assertion_pass("Context admin recovery render/handler runtime: PASS\n")
+    assert has_assertion_pass("PLUGIN_LIFECYCLE_PREFLIGHT: PASS 9 added checks\n")
+    assert not has_assertion_pass("PASS: first success\nFAIL: second\n")
+    assert not has_assertion_pass("SUMMARY pass=0 fail=0\n")
+    assert not has_assertion_pass("SUMMARY pass=8 fail=1\n")
+    assert not has_assertion_pass("No syntax errors detected\n")
+
     assert command_for("tests/production_readiness_registry_contract.py")[0] == sys.executable
     assert command_for("tests/remote-execution/operator-grants-convergence-smoke.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/generation-snapshot-exception-runtime.php")[0] == "php"
@@ -185,6 +221,12 @@ def self_test():
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/unified-admin-rest-permissions-hermetic.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/media-inventory-authorization-hermetic.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/ai-source-repair-hermetic.php")[0] == "php"
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/unified-approval-ai-first/local-rest-fastpath-contract.php")[0] == "php"
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/public-holiday-hermetic-runtime.php")[0] == "php"
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/application-password-agent-bridge-hermetic.php")[0] == "php"
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-runtime.php")[0] == "php"
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-media-evidence-runtime.php")[0] == "php"
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-history-runtime.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/provider-connections-admin-read-hermetic.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php")[0] == "php"
     try:

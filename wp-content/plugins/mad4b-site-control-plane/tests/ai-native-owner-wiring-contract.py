@@ -21,11 +21,14 @@ assert 'call_user_func(array($proof[\'owner\'],$proof[\'method\'])' in executor
 audit=(root/'includes/class-mad4b-scp-audit.php').read_text()
 assert 'function native_owner_review_events' in audit and 'self::verify_chain()' in audit
 auth=(root/'includes/class-mad4b-scp-ai-native-owner-review.php').read_text()
-for token in ("wp_get_environment_type()!=='local'", "PHP_SAPI==='cli'",
+for token in ("MAD4B_SCP_AI_Only_Local_Activation::site_bound()", "PHP_SAPI==='cli'",
               "MAD4B_SCP_AI_Only_Local_Activation::review_permission(null)",
               "MAD4B_SCP_Agent_Registry::exact_grant", "MAD4B_SCP_Audit::record",
               "MAD4B_SCP_Audit::native_owner_review_events"):
  assert token in auth,token
+# Do not silently reintroduce an environment-name-only ban. Exact Site
+# Profile enrollment and a matching original Agent grant remain mandatory.
+assert "in_array(($grant['environment']??''),array(wp_get_environment_type(),'all'),true)" in auth
 assert "mad4b/ai-'.str_replace('_','-',$domain).'-review" in auth
 service=(root/'includes/class-mad4b-scp-ai-only-local-activation.php').read_text()
 assert "const LOCAL_DOMAIN_ROUTE = '/mad4b-local-ai/v1/domain-review'" in service
