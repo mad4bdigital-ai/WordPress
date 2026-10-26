@@ -39,6 +39,10 @@ final class SCP_Skill_Task_Composition {
         if ( strlen( $task ) < 3 || strlen( $task ) > self::MAX_TASK_BYTES || ! preg_match( '//u', $task ) ) {
             return new WP_Error( 'skill_task_invalid', 'Task must be bounded valid UTF-8 text.' );
         }
+        $context = isset( $input['task_context'] ) ? $input['task_context'] : '';
+        if ( ! is_string( $context ) || strlen( $context ) > self::MAX_TASK_BYTES || ! preg_match( '//u', $context ) ) {
+            return new WP_Error( 'skill_context_invalid', 'Task context must be bounded valid UTF-8 text.' );
+        }
         $topics = array();
         if ( isset( $input['topics'] ) ) {
             if ( ! is_array( $input['topics'] ) || count( $input['topics'] ) > 12 ) return new WP_Error( 'skill_topics_invalid', 'Too many topics.' );
@@ -59,7 +63,7 @@ final class SCP_Skill_Task_Composition {
         if ( ! is_int( $offset ) || $offset < 0 || $offset > 40 ) return new WP_Error( 'skill_offset_invalid', 'Invalid source offset.' );
         $limit = isset( $input['max_results'] ) ? $input['max_results'] : 6;
         if ( ! is_int( $limit ) || $limit < 1 || $limit > self::MAX_RESULTS ) return new WP_Error( 'skill_result_limit_invalid', 'Invalid result count.' );
-        return array( 'task' => $task, 'topics' => $topics, 'source_ids' => array_values( array_unique( $source_ids ) ), 'source_offset' => $offset, 'max_results' => $limit );
+        return array( 'task' => $task, 'task_context' => $context, 'topics' => $topics, 'source_ids' => array_values( array_unique( $source_ids ) ), 'source_offset' => $offset, 'max_results' => $limit );
     }
 
     private static function source_catalog( array $validated ) {
@@ -142,7 +146,7 @@ final class SCP_Skill_Task_Composition {
         if ( is_wp_error( $v ) ) return $v;
         $catalog = self::candidates( $v );
         if ( is_wp_error( $catalog ) ) return $catalog;
-        $query = self::tokens( $v['task'] );
+        $query = self::tokens( $v['task'] . ' ' . $v['task_context'] );
         $topics = self::tokens( implode( ' ', $v['topics'] ) );
         $result = array();
         foreach ( $catalog['rows'] as $row ) {
@@ -159,7 +163,7 @@ final class SCP_Skill_Task_Composition {
         } );
         return array(
             'contract' => self::CONTRACT, 'mode' => 'read_only', 'selection_method' => 'deterministic_lexical_v1',
-            'task_sha256' => hash( 'sha256', $v['task'] ), 'matched_count' => count( $result ),
+            'task_sha256' => hash( 'sha256', $v['task'] . chr( 0 ) . $v['task_context'] ), 'matched_count' => count( $result ),
             'candidates' => array_slice( $result, 0, $v['max_results'] ),
             'source_page' => array( 'visited' => $catalog['external']['visited_sources'], 'total' => $catalog['external']['total_sources'], 'next_offset' => $catalog['external']['next_offset'], 'errors' => $catalog['external']['errors'], 'page_complete' => $catalog['external']['page_complete'], 'complete' => $catalog['external']['complete'] ),
             'trusted_for_execution' => false, 'does_not_grant_authority' => true,
