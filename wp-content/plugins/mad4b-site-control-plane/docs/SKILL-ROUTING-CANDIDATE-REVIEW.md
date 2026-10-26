@@ -3,7 +3,7 @@
 **Status: PENDING REVIEW.** This document prepares evidence for repository governance. It **does not** attest owner approval, production readiness, complete CI, or the right to execute remote Skill text.
 
 - Stacked PR: [#525](https://github.com/mad4bdigital-ai/WordPress/pull/525) based on [#522](https://github.com/mad4bdigital-ai/WordPress/pull/522).
-- Exact source review candidate: `f6b877b6c78437f9a54f09f32a92913ed49d2d84`. The code blob identities below identify the exact pending-review bytes; documentation-only changes do not authorize them.
+- Source review scope: integration PR #528 at its live HEAD. The blob identities below identify the pending-review bytes independently of documentation-only commits; this record does not attest or authorize them.
 - Immutable dependency: #522 head `cf909fb32cfbdfbfcad754708370e32904299e3a`.
 - Scope: read-only task matching and non-authorizing skill composition. External Skills are never installed, executed, granted permissions or treated as trusted code.
 
@@ -23,7 +23,7 @@ The owner/reviewer must decide whether existing controls are sufficient or a new
 | --- | --- | --- |
 | `includes/adapters/class-mad4b-scp-skills-adapter.php` | `064937e152bbbff3ffa6b8ef4548d4d77b9d2ccd` | PENDING |
 | `includes/class-mad4b-scp-skill-abilities.php` | `81ab601de559d9ba57991dffb226e129c4553a44` | PENDING |
-| `includes/class-skill-task-composition.php` | `011b6a6a33584c9521755466ae77b49bc6d920b5` | PENDING |
+| `includes/class-skill-task-composition.php` | `4bb70319e39fa7242a8bfed3671289a449f5b54a` | PENDING |
 | `mad4b-site-control-plane.php` | `4c8d21033f3b479c038a2b010164bb17a9fca80f` | BASELINE — same blob as master |
 
 The three modified skill source files require exact source review. The plugin bootstrap now matches master byte-for-byte and retains its immutable G6/G9 archive identity. Neither archive evidence nor review status was re-signed.
@@ -32,7 +32,7 @@ The three modified skill source files require exact source review. The plugin bo
 
 | Test | Exact Git blob SHA | What it tests |
 | --- | --- | --- |
-| `tests/skill-task-composition-runtime.php` | `473352e2f053f37dff11e114fb78d049b0c6c38e` | input bounds, denied unknown sources, bilingual matching, pagination, non-authorizing plans, stage order, stable digest, partial discovery and rate-limit errors |
+| `tests/skill-task-composition-runtime.php` | `f8baf2056d66790fe8d623a00a1db39c58283090` | input bounds, denied unknown sources, bilingual matching, pagination, non-authorizing plans, stage order, stable digest, partial discovery and rate-limit errors |
 | `tests/skill-task-abilities-runtime.php` | `9bc3cd420c862cc1dbe9440a00789e51a6887bb7` | registration, existing read callback, no public REST/MCP, constrained schema, denied read, no execution ability |
 | `tests/runtime-dynamic-skills-smoke.php` | `8628a0f5dc8ee5fa2a98b268339e8d1db3c2efba` | native WordPress registration and execution of read-only task matching/planning in disposable Staging |
 
@@ -62,3 +62,7 @@ This candidate now retains external Skill descriptions/headings as **untrusted a
 ## Integration repair for archived source identity
 
 At integration candidate `f6b877b6c78437f9a54f09f32a92913ed49d2d84`, bootstrap `mad4b-site-control-plane.php` was restored to master-exact Git blob `4c8d21033f3b479c038a2b010164bb17a9fca80f`. The two Skills dependency requires moved to `includes/class-mad4b-scp-skill-abilities.php`, the existing owner of the read-only abilities. This preserves the archived bootstrap fingerprint without relaxing the G9 contract. The abilities file has changed and remains **PENDING REVIEW**. This note documents provenance, not acceptance, merge approval or authority.
+
+## Additional pending review: source-family provenance continuity
+
+The composition reader now checks the exact `repository`, `ref`, and `tree_sha` reported by the source reader against the previously selected external companion, **in addition to** source ID, path, Git blob SHA, document SHA-256, size, and untrusted status. The existing `skill_companion_provenance_unverified` failure remains non-authorizing. A regression test reproduces all three mismatches and proves the previously accepted tree mismatch is now denied, using network-disabled PHP 7.4 and 8.3 containers. The corresponding service and test Git blob identities appear above. This is technical evidence for future reviewer assessment, not `reviewed_for_ci_only` acceptance.

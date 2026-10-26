@@ -272,14 +272,20 @@ final class SCP_Skill_Task_Composition {
             $entry['error_code'] = $doc->get_error_code();
             return $entry;
         }
-        if ( ! is_array( $doc ) || ! isset( $doc['source']['id'], $doc['path'], $doc['blob_sha'],
+        if ( ! is_array( $doc ) || ! isset( $doc['source']['id'], $doc['source']['repository'],
+            $doc['source']['ref'], $doc['tree_sha'], $doc['path'], $doc['blob_sha'],
             $doc['content'], $doc['sha256'], $doc['bytes'], $doc['trust'] )
             || ! is_string( $doc['content'] )
             || strlen( $doc['content'] ) > 262144 || ! preg_match( '//u', $doc['content'] )
-            || ! is_string( $doc['source']['id'] ) || ! is_string( $doc['path'] )
+            || ! is_string( $doc['source']['id'] ) || ! is_string( $doc['source']['repository'] )
+            || ! is_string( $doc['source']['ref'] ) || ! is_string( $doc['tree_sha'] )
+            || ! is_string( $doc['path'] )
             || ! is_string( $doc['blob_sha'] ) || ! is_string( $doc['sha256'] )
             || ! is_int( $doc['bytes'] ) || ! is_string( $doc['trust'] )
             || ! hash_equals( $companion['source_id'], $doc['source']['id'] )
+            || ! hash_equals( $companion['repository'], $doc['source']['repository'] )
+            || ! hash_equals( $companion['ref'], $doc['source']['ref'] )
+            || ! hash_equals( $companion['tree_sha'], $doc['tree_sha'] )
             || ! hash_equals( $companion['blob_sha'], $doc['blob_sha'] )
             || ! hash_equals( $companion['path'], $doc['path'] )
             || ! hash_equals( hash( 'sha256', $doc['content'] ), $doc['sha256'] )
