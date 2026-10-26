@@ -11,6 +11,7 @@ class MAD4B_SCP_Skill_Registry {
     public static function list_skills( $filters = array() ) {
         return array(
             array( 'name' => 'test-driven-development', 'description' => 'Implement features with tests.', 'logical_id' => 'workflow:test', 'sha256' => str_repeat('a', 64), 'level' => 'workflow', 'target' => 'default' ),
+            array( 'name' => 'code-quality-review', 'description' => 'Review code quality and defects.', 'logical_id' => 'workflow:code', 'sha256' => str_repeat('d', 64), 'level' => 'workflow', 'target' => 'default' ),
             array( 'name' => 'security-review', 'description' => 'Inspect security risks and code.', 'logical_id' => 'workflow:security', 'sha256' => str_repeat('b', 64), 'level' => 'workflow', 'target' => 'default' ),
             array( 'name' => 'debugging', 'description' => 'Debug failure symptoms and root causes.', 'logical_id' => 'workflow:debug', 'sha256' => str_repeat('c', 64), 'level' => 'workflow', 'target' => 'default' ),
         );
@@ -54,7 +55,7 @@ ok(!is_wp_error($plan) && count($plan['steps'])>=1, 'plan must be generated');
 ok($plan['execution_ready']===false && $plan['mode']==='read_only_plan','plan must not authorize execution');
 foreach($plan['steps'] as $step) ok($step['execution']==='not_authorized','every step must be non-authorizing');
 $stageOrder=array('diagnose'=>10,'design'=>20,'implement'=>30,'verify'=>40,'release'=>50);
-$previousStage=0; foreach($plan['steps'] as $step) { ok($stageOrder[$step['stage']]>$previousStage,'dependent skill stages must be ordered'); $previousStage=$stageOrder[$step['stage']]; }
+$previousStage=0; foreach($plan['steps'] as $step) { ok($stageOrder[$step['stage']]>=$previousStage,'dependent skill stages must be ordered'); $previousStage=$stageOrder[$step['stage']]; }
 $again=SCP_Skill_Task_Composition::composition_plan(array('task'=>'Debug API security testing', 'topics'=>array('debug','api','security')));
 ok($again['plan_sha256']===$plan['plan_sha256'],'stable inputs must yield stable plan digest');
 $empty=SCP_Skill_Task_Composition::match_task(array('task'=>'zyxqv unknown irrelevant'));
@@ -63,4 +64,19 @@ SCP_External_Skill_Sources::$fail=true;
 $failed=SCP_Skill_Task_Composition::match_task(array('task'=>'security review'));
 ok(count($failed['source_page']['errors'])===6,'rate-limit failures must be explicit');
 ok(count($failed['candidates'])>=1,'keep valid managed candidates on source errors');
+// Direct Arabic tasks must match useful English Skill names without caller-supplied topics.
+$arabic=SCP_Skill_Task_Composition::match_task(array('task'=>'عالج الأخطاء واختبر الأمان'));
+ok(!is_wp_error($arabic) && $arabic['matched_count']>=2,'Arabic routing must identify debugging and testing or security');
+$arabicNames=array_column($arabic['candidates'],'name');
+ok(in_array('debugging',$arabicNames,true),'Arabic fix request should match debugging');
+ok(in_array('security-review',$arabicNames,true),'Arabic security request should match security');
+// Distinct verification concerns must not be reduced to a single stage-wide choice.
+$multi=SCP_Skill_Task_Composition::composition_plan(array('task'=>'Review code quality and security'));
+ok(!is_wp_error($multi),'combined verification plan should resolve');
+$multiNames=array_column(array_column($multi['steps'],'skill'),'name');
+ok(in_array('security-review',$multiNames,true) && in_array('code-quality-review',$multiNames,true),'complementary verification skills must co-exist');
+// TDD supports implementation and must precede security review rather than acting as post-hoc testing.
+$tdd=SCP_Skill_Task_Composition::composition_plan(array('task'=>'Implement with test-driven-development and security review'));
+$stages=array(); foreach($tdd['steps'] as $step) $stages[$step['skill']['name']]=$step['stage'];
+ok(isset($stages['test-driven-development']) && $stages['test-driven-development']==='implement','TDD should be in implementation stage');
 echo "Skill Task Composition fixtures: PASS\n";
