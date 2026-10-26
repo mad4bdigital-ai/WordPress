@@ -156,3 +156,108 @@ def is_exact_ci_history_checkout_successor(root, path, contents, historic_sha, h
     expected = only_allowed.encode("utf-8")
     blob = hashlib.sha1(b"blob " + str(len(contents)).encode("ascii") + b"\0" + contents).hexdigest()
     return expected == contents and git_blob == blob
+
+
+# Versioned, closed-scope bridge for immutable G6/G8/G9 delivery evidence.
+# These are the Git commits whose *actual bytes* must match each archived
+# delivery record. Neither a current source review nor a CI pass can replace
+# the archived SHA-256 and byte count.
+DELIVERY_REVIEWED_ANCESTORS = {
+    "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php":
+        "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
+    "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/validate.py":
+        "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g5-seo-provider-families.php":
+        "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
+}
+
+
+def is_exact_historical_delivery_successor(root, path, contents, historic_sha, historic_bytes):
+    """Allow only an exact CI-reviewed successor to an exact archived G6/G8/G9 file.
+
+    This cannot grant a Site Owner receipt, widen a WordPress authority or
+    certify live acceptance. The archived manifests are never modified.
+    """
+    root = Path(root)
+    ancestor = DELIVERY_REVIEWED_ANCESTORS.get(path) if isinstance(path, str) else None
+    if (not ancestor or not isinstance(contents, bytes)
+            or not isinstance(historic_sha, str) or not re.fullmatch(r"[a-f0-9]{64}", historic_sha)
+            or (historic_bytes is not None and (type(historic_bytes) is not int or historic_bytes < 20))):
+        return False
+    try:
+        source = root / path
+        if (not source.is_file() or source.is_symlink()
+                or not source.resolve().is_relative_to(root.resolve())
+                or source.read_bytes() != contents
+                or any(parent.is_symlink() for parent in source.parents
+                       if parent != root and parent.is_relative_to(root))):
+            return False
+        archived = subprocess.check_output(
+            ["git", "show", f"{ancestor}:{path}"], cwd=root,
+            stderr=subprocess.DEVNULL, timeout=8,
+        )
+        current_git_blob = subprocess.check_output(
+            ["git", "rev-parse", f"HEAD:{path}"], cwd=root,
+            stderr=subprocess.DEVNULL, timeout=8,
+        ).decode().strip()
+        reviews_path = (
+            "specs/007-content-intelligence-workflow-platform/extensions/"
+            "competitive-experience/historical-delivery-source-reviews.json"
+            if path.endswith("/competitive-experience/validate.py")
+            else "governance/production-readiness/capability-coverage.json"
+        )
+        registry = json.loads((root / reviews_path).read_text(encoding="utf-8"))
+        if reviews_path.endswith("historical-delivery-source-reviews.json"):
+            if (registry.get("contract") != "feature007.historical-delivery-source-reviews.v1"
+                    or registry.get("authorizing") is not False
+                    or registry.get("production_authorized") is not False
+                    or registry.get("live_evidence_required") is not True):
+                return False
+            review_rows = registry.get("reviewed_sources", [])
+            # Fail closed if the versioned verifier itself is modified without
+            # an exact source/test review bound to the current Git checkout.
+            verifier = "wp-content/plugins/mad4b-site-control-plane/tests/historical_source_successor.py"
+            rec = next((e for e in review_rows if e.get("path") == verifier), None)
+            actual = (root / verifier).read_bytes()
+            actual_git = subprocess.check_output(
+                ["git", "rev-parse", "HEAD:" + verifier],
+                cwd=root, stderr=subprocess.DEVNULL, timeout=8,
+            ).decode().strip()
+            actual_blob = hashlib.sha1(
+                b"blob " + str(len(actual)).encode("ascii") + b"\0" + actual
+            ).hexdigest()
+            if (not rec or not (root / verifier).is_file()
+                    or (root / verifier).is_symlink()
+                    or actual_blob != actual_git
+                    or rec.get("source_blob_sha") != actual_blob):
+                return False
+        else:
+            review_rows = registry.get("reviewed_changes", [])
+    except (OSError, ValueError, TypeError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        return False
+    if ((historic_bytes is not None and len(archived) != historic_bytes)
+            or hashlib.sha256(archived).hexdigest() != historic_sha
+            or contents == archived):
+        return False
+    blob = hashlib.sha1(
+        b"blob " + str(len(contents)).encode("ascii") + b"\0" + contents
+    ).hexdigest()
+    if current_git_blob != blob:
+        return False
+    tests_prefix = "wp-content/plugins/mad4b-site-control-plane/tests/"
+    for entry in review_rows:
+        if (entry.get("path") != path or entry.get("source_blob_sha") != blob
+                or entry.get("status") != "reviewed_for_ci_only"
+                or entry.get("production_authorized") is not False
+                or entry.get("live_evidence_required") is not True):
+            continue
+        controls = entry.get("control_ids")
+        tests = entry.get("regression_tests")
+        if (not isinstance(controls, list) or len(controls) < 2
+                or not isinstance(tests, list) or not tests
+                or not all(isinstance(t, str) and t.startswith(tests_prefix)
+                           and (root / t).is_file() and not (root / t).is_symlink()
+                           for t in tests)):
+            continue
+        return True
+    return False

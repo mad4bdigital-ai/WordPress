@@ -4,8 +4,8 @@
   "reviewed_base_sha": "e7f30d944c354c3a4f7346330ad401d995e768c5",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 142,
-  "changed_paths_sha256": "ac5893c4f36bf48a7757cef6ba69bf29a5fd4ac7732258cfa7f16bf83a27f711",
+  "changed_file_count": 151,
+  "changed_paths_sha256": "fd1b61cc32e4ae456c2a6d3f0a76722b9397ae23f4dc677a91552b71574bc6d9",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -82,13 +82,18 @@
     },
     {
       "id": "governance-evidence-and-coverage",
-      "semantic_unit": "Baseline-bound nonauthorizing coverage records, change slices, competitive delivery fingerprints and readiness checks.",
-      "revert_boundary": "Revert candidate source evidence and scope manifest together; preserve prior Git review history and require independent exact-head owner and release checks.",
+      "semantic_unit": "Source-scoped readiness, Feature 007 parent review evidence and governed execution contract.",
+      "revert_boundary": "Revert technical baseline review and its four metadata mirrors as one unit with the Change Slice manifest; never reset historical delivery fingerprints or owner authority.",
       "certification": "exact_head",
       "path_globs": [
         "governance/production-readiness/capability-coverage.json",
         "specs/007-content-intelligence-workflow-platform/change-slices.json",
-        "tools/readiness_test_execution.py"
+        "tools/readiness_test_execution.py",
+        "specs/007-content-intelligence-workflow-platform/feature.json",
+        "specs/007-content-intelligence-workflow-platform/implementation-closure.json",
+        "specs/007-content-intelligence-workflow-platform/implementation-closure.md",
+        "specs/007-content-intelligence-workflow-platform/post-merge-capability-fabric-closure.json",
+        "specs/007-content-intelligence-workflow-platform/baseline-review-20261026.md"
       ]
     },
     {
@@ -140,14 +145,18 @@
     },
     {
       "id": "legacy-contract-regression",
-      "semantic_unit": "Pre-existing integration/compatibility fixtures retained alongside changed Control Plane services.",
-      "revert_boundary": "Revert compatibility changes and associated tests together; never infer live environment certification.",
+      "semantic_unit": "Bounded historical source successors for frozen delivery evidence with fail-closed CI regression contract.",
+      "revert_boundary": "Revert exact-source verifier, SPEC validator and positive/negative regression fixture together; never rewrite the immutable G1-G9 historic manifests.",
       "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/g6-g9-historical-administration-source-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/historical_source_successor.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/site-neutrality-policy.json"
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-neutrality-policy.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/validate.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/historical-delivery-successor-contract.py",
+        "specs/007-content-intelligence-workflow-platform/validate_spec.py",
+        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/historical-delivery-source-reviews.json"
       ]
     },
     {
