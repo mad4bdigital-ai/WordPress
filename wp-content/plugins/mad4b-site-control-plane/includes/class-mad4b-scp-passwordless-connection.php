@@ -102,7 +102,7 @@ final class MAD4B_SCP_Passwordless_Connection {
         if (!is_array($grant) || ($grant['effect']??'') !== 'allow') return false;
         $wp_user = get_userdata( (int) ( $data['wp_user_id'] ?? 0 ) );
         if ( ! $wp_user || ! in_array( 'administrator', (array) $wp_user->roles, true ) || count( (array) $wp_user->roles ) !== 1 ) return false;
-        if ( ! str_starts_with( $wp_user->user_login, 'mad4b_connection_' ) ) return false;
+        if ( 0 !== strpos( (string) $wp_user->user_login, 'mad4b_connection_' ) ) return false;
         $identity['wp_user_id'] = (int) $wp_user->ID;
         wp_set_current_user( $wp_user->ID );
         self::$mcp_identity = $identity;
@@ -129,7 +129,7 @@ final class MAD4B_SCP_Passwordless_Connection {
         delete_transient( $key );
         if ( ! is_array( $data ) || empty( $data['uid'] ) || ! hash_equals( (string) MAD4B_SCP_Site_Profile::site_uuid(), (string) ( $data['site'] ?? '' ) ) ) { status_header( 403 ); exit; }
         $user = get_userdata( (int) $data['uid'] );
-        if ( ! $user || ! in_array( (string) reset( $user->roles ), array( 'subscriber', 'administrator' ), true ) || count( $user->roles ) !== 1 || ! str_starts_with( $user->user_login, 'mad4b_connection_' ) ) { status_header( 403 ); exit; }
+        if ( ! $user || ! in_array( (string) reset( $user->roles ), array( 'subscriber', 'administrator' ), true ) || count( $user->roles ) !== 1 || 0 !== strpos( (string) $user->user_login, 'mad4b_connection_' ) ) { status_header( 403 ); exit; }
         wp_set_current_user( $user->ID );
         wp_set_auth_cookie( $user->ID, false, is_ssl() );
         wp_safe_redirect( admin_url( 'profile.php' ) );

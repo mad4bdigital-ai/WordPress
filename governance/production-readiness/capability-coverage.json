@@ -2705,6 +2705,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Original Site Profile/WordPress manage_options and Policy::can_connect_user, Context Authority registered source/revision, original Brand Context Builder complete inventory admission, independent Google Drive and Media inventory, and original publication review are unchanged. Existing reviewed source SHA is pinned separately and not rewritten.",
       "review_rationale": "Source-owned original Context Source Pipeline plan/sync/scan_complete invoked in network-disabled hermetic PHP 7.4 and PHP 8.3, each PASS 27 cases. Verified bounded 1-25 explicit Media IDs, deduplication, approval manual_only, source SHA/revision CAS checks, refused partial Media sync and Drive direct sync, incomplete content/Drive scan denial, original enrolled admin and Context Builder admission, advisory absent Drive candidates, and one simulated successful complete Media inventory reconciliation performed solely against an in-memory mock. No actual WordPress database, Google token, Media asset, approval, or publication was modified. Real end-to-end source scan acceptance remains outstanding."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-passwordless-connection.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/passwordless-mcp-identity-hermetic.php"
+      ],
+      "owner_role": "CI security and original-source review, not Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original enrolled Site Profile, WordPress-only administrative roles, Agent Registry subject and exact environment grant, HTTPS-on-Staging and existing WordPress transient controls remain authoritative, with no widening of credential issuance or Production access.",
+      "review_rationale": "Exact original Passwordless Connection now uses PHP 7.4-compatible prefix comparison in verified MCP bearer and one-time WordPress login, preserving requirement that the WordPress account login starts with mad4b_connection_. The 15-minute MCP transient is checked against the enrolled Site Profile, exact Agent subject, exact original mad4b/context-ai-review grant, and a single-role administrator integration user before setting WP current user. It denies unsupported environments, wrong token/route/site/Agent, missing/denied grant, roles, non-integration WordPress users, insecure staging and expired transient; the identity context is invalidated before every verifier call. Hermetic PHP 7.4/8.3 original-source test passed 26 cases each, with synthetic in-memory transient and no real token, user, grant or change to a WordPress installation."
     }
   ],
   "lifecycle": [],
@@ -9445,6 +9464,24 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Original OAuth Subject Gate uses unverified claims ONLY TO DENY before cryptographic verification, rejects unknown issuers/subjects, wrong audience, missing or mismatching exact resource, oversized audience lists, malformed JWT and not-allowed original issuer-subject. A syntactically compatible JWT returns null to the original Resource Bridge signature/JWKS verifier and must not be treated as accepted authentication. Exact source behavior executed in a network-isolated, no-credential fixture with 27 PASS tests on PHP 7.4 and 8.3 including mock original issuer/resource policy and no real credentials, RSA keys or live authorization. The original cryptographic verifier is NOT exercised here and current-head CI cannot promote Production without its separate authority, independent live and owner receipts."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-passwordless-connection.php",
+      "source_blob_sha": "f0eca787f691375bb14dc7df91f63b577dc738fc",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/passwordless-mcp-identity-hermetic.php"
+      ],
+      "owner_role": "CI review of exact PHP 7.4 source repair, not an auth-provider acceptance",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact original Passwordless Connection now uses PHP 7.4-compatible prefix comparison in verified MCP bearer and one-time WordPress login, preserving requirement that the WordPress account login starts with mad4b_connection_. The 15-minute MCP transient is checked against the enrolled Site Profile, exact Agent subject, exact original mad4b/context-ai-review grant, and a single-role administrator integration user before setting WP current user. It denies unsupported environments, wrong token/route/site/Agent, missing/denied grant, roles, non-integration WordPress users, insecure staging and expired transient; the identity context is invalidated before every verifier call. Hermetic PHP 7.4/8.3 original-source test passed 26 cases each, with synthetic in-memory transient and no real token, user, grant or change to a WordPress installation. No deployment or live credential issuance; owner approval, crypto and audit integration acceptance remain independent."
     }
   ],
   "code_change_rules": {
