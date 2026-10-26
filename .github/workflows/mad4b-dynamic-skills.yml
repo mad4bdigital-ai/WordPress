@@ -87,6 +87,7 @@ jobs:
             includes/class-mad4b-scp-skill-exporter.php \
             includes/class-mad4b-scp-skill-runtime-certification.php \
             includes/class-mad4b-scp-skill-abilities.php \
+            includes/class-skill-task-composition.php \
             includes/class-external-skill-sources.php \
             includes/class-mad4b-scp-skills-admin-ui.php \
             includes/class-mad4b-scp-staging-write-authority.php \
@@ -118,6 +119,7 @@ jobs:
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/external-skill-sources-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/skill-task-composition-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/skill-task-abilities-runtime.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/dynamic-skills-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/skill-runtime-certification-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py
