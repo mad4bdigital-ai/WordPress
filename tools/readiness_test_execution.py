@@ -25,6 +25,7 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/remote-execution/chatgpt-optional-catalog-smoke.php",
     "tests/remote-execution/developer-preparation-bridge-smoke.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/mcp-catalog-adaptive-budget.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php",
     # Exact, hermetic PHP scripts; never promote arbitrary runtime PHP to CLI.
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-domain-executors-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
@@ -68,6 +69,14 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/no-input-read-ability-schema-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/operator-doctor-contract.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/oauth-secondary-diagnostic-exception-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/staging-mcp-skills-recertify-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/developer-external-backend-discovery-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/developer-runner-lifecycle-fetch-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/runtime-backend-registry-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/runtime-backend-deactivation-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/runtime-runner-bridge-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/performance-differential-diagnostic-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/mcp-origin-error-preservation-runtime.php",
     "tests/remote-execution/operator-grants-convergence-smoke.php",
     "tests/remote-execution/operator-grant-rollout-smoke.php",
     "tests/remote-execution/operator-bridge-admission.php",
@@ -187,6 +196,7 @@ def self_test():
     assert command_for("tests/production_readiness_registry_contract.py")[0] == sys.executable
     assert command_for("tests/remote-execution/operator-grants-convergence-smoke.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/generation-snapshot-exception-runtime.php")[0] == "php"
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/no-input-read-ability-schema-runtime.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/operator-doctor-contract.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/oauth-secondary-diagnostic-exception-runtime.php")[0] == "php"
