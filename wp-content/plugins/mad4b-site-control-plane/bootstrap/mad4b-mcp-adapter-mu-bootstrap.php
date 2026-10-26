@@ -47,6 +47,7 @@ $mad4b_mcp_mu_status = array(
 	'runtime_source' => 'unavailable',
 	'request_requires_mcp_runtime' => false,
 	'request_scope_bypassed' => false,
+	'runtime_cache_convergence' => 'not_checked',
 	'request_route' => '',
 	'transaction_pending' => false,
 	'diagnostic_mu_proof_valid' => false,
@@ -298,6 +299,47 @@ if ( $mad4b_mcp_mu_profile_enrolled ) {
 			$mad4b_mcp_mu_status['request_scope_bypassed'] = true;
 			$mad4b_mcp_mu_status['state'] = 'non_mad4b_request_bypassed';
 		}
+	}
+
+	// Out-of-band installs (including CLI/SSH) do not call Self_Update's
+	// post-install opcode invalidator. The enrolled early MU runs before
+	// regular Control Plane classes and heals only manifest-verified Staging
+	// source changes, once per site/build. It never issues mutation grants.
+	if ( $mad4b_mcp_mu_status['eligible']
+		&& $mad4b_mcp_mu_request_requires_mcp
+		&& in_array( $mad4b_mcp_mu_route, $mad4b_mcp_mu_allowed_routes, true )
+		&& ! $mad4b_mcp_mu_is_cli
+		&& 'POST' === ( $_SERVER['REQUEST_METHOD'] ?? '' )
+		&& in_array( (string) ( $mad4b_mcp_mu_binding['environment'] ?? '' ), array( 'staging', 'local', 'development' ), true )
+		&& '' !== $mad4b_mcp_mu_control_plane_root ) {
+		$mad4b_cache_guard = $mad4b_mcp_mu_control_plane_root . 'bootstrap/mad4b-runtime-cache-convergence-mu.php';
+		if ( is_readable( $mad4b_cache_guard ) ) {
+			require_once $mad4b_cache_guard;
+			$mad4b_cache_result = MAD4B_SCP_Runtime_Cache_Convergence_MU::converge(
+				$mad4b_mcp_mu_control_plane_root,
+				$mad4b_mcp_mu_binding['environment'],
+				(string) ( $mad4b_mcp_mu_binding['site_uuid'] ?? '' )
+			);
+			$mad4b_mcp_mu_status['runtime_cache_convergence'] = $mad4b_cache_result['state'];
+		} else {
+			$mad4b_cache_result = array( 'state' => 'blocked' );
+			$mad4b_mcp_mu_status['runtime_cache_convergence'] = 'helper_missing';
+		}
+		// No stale PHP should serve a privileged MCP request after a changed
+		// package, including the request that performed the invalidation.
+		if ( 'current' !== $mad4b_cache_result['state'] ) {
+			if ( function_exists( 'status_header' ) ) status_header( 503 );
+			else http_response_code( 503 );
+			header( 'Content-Type: application/json; charset=utf-8' );
+			header( 'Cache-Control: no-store' );
+			if ( 'revalidated' === $mad4b_cache_result['state'] ) header( 'Retry-After: 1' );
+			echo wp_json_encode( array(
+				'code' => 'mad4b_runtime_cache_convergence_pending',
+				'retryable' => 'revalidated' === $mad4b_cache_result['state'],
+			) );
+			exit;
+		}
+		unset( $mad4b_cache_guard, $mad4b_cache_result );
 	}
 
 	if ( $mad4b_mcp_mu_status['eligible'] && ! $mad4b_mcp_mu_status['request_scope_bypassed'] ) {

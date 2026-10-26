@@ -24,6 +24,10 @@ function wp_get_environment_type() { return defined( 'WP_ENVIRONMENT_TYPE' ) ? W
 function apply_filters( $hook, $v, ...$args ) { return 'explicit_filter' === $GLOBALS['case'] && 'mad4b_scp_wordpress_environment_explicit' === $hook ? true : $v; }
 function rest_get_url_prefix() { return 'custom_rest_prefix' === $GLOBALS['case'] ? 'api' : 'wp-json'; }
 function has_action( $hook, $callback ) { return false; }
+function update_option( $key, $value, $autoload = false ) {
+	$GLOBALS['options'][ $key ] = $value;
+	return true;
+}
 function get_option( $key, $default = null ) {
 	if ( isset( $GLOBALS['option_cache'] ) && array_key_exists( $key, $GLOBALS['option_cache'] ) ) return $GLOBALS['option_cache'][ $key ];
 	return $GLOBALS['options'][ $key ] ?? $default;
@@ -93,6 +97,42 @@ copy( $source . '/includes/class-mad4b-scp-site-profile.php', WP_PLUGIN_DIR . '/
 // Site Profile now resolves a strictly host-local binding class on reads.
 // The disposable MU fixture must include the same non-mutating dependency.
 copy( $source . '/includes/class-mad4b-scp-deployment-binding-native.php', WP_PLUGIN_DIR . '/' . $control_slug . '/includes/class-mad4b-scp-deployment-binding-native.php' );
+
+// The existing fixture models an already-converged release. The new early
+// opcode guard must not prevent unrelated MCP adapter invariants from running.
+$control_root = WP_PLUGIN_DIR . '/' . $control_slug;
+mkdir( $control_root . '/bootstrap', 0777, true );
+copy( $source . '/bootstrap/mad4b-runtime-cache-convergence-mu.php',
+	$control_root . '/bootstrap/mad4b-runtime-cache-convergence-mu.php' );
+$package_paths = array(
+	'bootstrap/mad4b-runtime-cache-convergence-mu.php',
+	'includes/class-mad4b-scp-deployment-binding-native.php',
+	'includes/class-mad4b-scp-site-profile.php',
+);
+sort( $package_paths, SORT_STRING );
+$package_rows = array();
+$canonical = '';
+foreach ( $package_paths as $relative ) {
+	$contents = file_get_contents( $control_root . '/' . $relative );
+	$size = strlen( $contents );
+	$sha = hash( 'sha256', $contents );
+	$package_rows[] = array( 'path' => $relative, 'bytes' => $size, 'sha256' => $sha );
+	$canonical .= $relative . "\0" . $size . "\0" . $sha . "\n";
+}
+$manifest_sha = hash( 'sha256', $canonical );
+file_put_contents( $control_root . '/MAD4B-BUILD-PROVENANCE.json', json_encode( array(
+	'contract' => 'mad4b.build-provenance.v1',
+	'source_commit_sha' => str_repeat( 'a', 40 ),
+	'package_manifest_digest' => $manifest_sha,
+	'package_files' => $package_rows, 'manifest_file_count' => count( $package_rows ),
+) ) );
+$site_receipt_environment = is_string( $profile['environment'] ) ? $profile['environment'] : '';
+$site_receipt_binding = hash( 'sha256', $profile['site_uuid'] . "\n" . $site_receipt_environment . "\n" . realpath( $control_root ) );
+$options['mad4b_scp_runtime_cache_convergence_v1'] = array(
+	'contract' => 'mad4b.runtime-cache-convergence.v1',
+	'identity' => hash( 'sha256', $site_receipt_binding . "\n" . str_repeat( 'a', 40 ) . "\n" . $manifest_sha ),
+);
+$GLOBALS['options'] = $options;
 require $source . '/includes/class-mad4b-scp-mcp-class-provenance.php';
 $map = array(); $manifest = array();
 foreach ( MAD4B_SCP_MCP_Class_Provenance::critical_classes() as $spec ) $map[ $spec['class'] ] = $spec['file'];
