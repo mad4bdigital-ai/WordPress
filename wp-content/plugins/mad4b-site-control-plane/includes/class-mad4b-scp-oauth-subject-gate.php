@@ -55,6 +55,8 @@ final class MAD4B_SCP_OAuth_Subject_Gate {
 
 		$authorization = method_exists( $request, 'get_header' ) ? trim( (string) $request->get_header( 'authorization' ) ) : '';
 		if ( '' === $authorization ) return $result;
+		if ( '/mcp/mad4b-chatgpt' === $route && class_exists( 'MAD4B_SCP_Passwordless_Connection' )
+			&& MAD4B_SCP_Passwordless_Connection::verify_mcp( $request ) ) return $result;
 		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) return self::denied( 'mad4b_oauth_subject_policy_unavailable', 'OAuth authority registry is unavailable.', 503, $resource );
 
 		$claims = self::claims_from_bearer( $authorization );

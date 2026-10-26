@@ -112,7 +112,9 @@ def reviewed_source_supersedes_snapshot(path):
         direct_profile = "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-direct-profile.php"
         source = Path(direct_profile).read_bytes()
         source_blob = hashlib.sha1(b"blob " + str(len(source)).encode("ascii") + b"\0" + source).hexdigest()
-        return (blob_sha == "25c4b930b7f6d80fb16726e341d140eeb1cb5f82"
+        # Reviewed successor adds the three Admin Route Registry smoke pages.
+        # Pin exact current Git blob; keep historic Feature 007 snapshots immutable.
+        return (blob_sha == "0c0c2052254a5c893a79d45aa9d985b57d8361fd"
                 and (direct_profile, source_blob) in reviewed_exact_blobs
                 and b"'mad4b-direct-access-profile' => array( 'MAD4B_SCP_Direct_Profile', 'render_page'" in data)
     return (path, blob_sha) in reviewed_exact_blobs
