@@ -34,3 +34,12 @@ Fixture tests do not certify live MCP, GitHub egress, host dispatch, Staging or 
 - Dependency and conflict graph composition across multiple sources.
 - Governed preflight and authorized handoff to the existing Control Plane Runner.
 - Evaluation harness, outcome telemetry and human-reviewed routing accuracy.
+
+
+## Routing refinement (2026-10-26)
+
+- Direct Arabic tasks and common English variants use a **small, explicit bilingual intent lexicon** to align terms like `عالج`, `اختبر`, and `الأمان` with `debug`, `test`, and `security`. This is terminology normalization, not a trained semantic model, translation API, or a guarantee of correct matching.
+- Composition can choose up to two nonredundant Skills in the same lifecycle stage when their matched terms offer additional coverage. It does **not** prove actual interoperability or parallel execution; the plan remains sequential and not authorized to run.
+- TDD belongs in the implementation stage, with separately selected verification and security reviews afterward.
+- Added regression fixtures cover bilingual direct tasks, overlapping phase candidates, complementarity and monotonic plan ordering.
+- Staged integration still requires current-head PHP compatibility, WordPress Abilities registration tests, external source permission tests and live MCP/egress acceptance before merge.
