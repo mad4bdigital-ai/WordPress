@@ -4,8 +4,8 @@
   "reviewed_base_sha": "e7f30d944c354c3a4f7346330ad401d995e768c5",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 127,
-  "changed_paths_sha256": "c6fa409bff8b5b5ac7adaacc8e0e6a7fb87fa273efc1625a42efa457c9c9b703",
+  "changed_file_count": 128,
+  "changed_paths_sha256": "16341be638749b5f9b95466f602d043565bf8a448f49974c29eff8b156952ebc",
   "slices": [
     {
       "id": "ai-inference-and-review-lifecycle",
@@ -235,7 +235,8 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/unified-approval-ai-first/local-rest-fastpath-contract.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/unified-approval-ai-first/runtime-contract.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/unified-policy-gate-hermetic.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/unified-queue-extension-hermetic.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-queue-extension-hermetic.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-workflow-inspect-hermetic.php"
       ]
     }
   ]

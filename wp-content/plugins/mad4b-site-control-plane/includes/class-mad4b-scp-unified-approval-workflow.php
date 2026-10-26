@@ -42,17 +42,37 @@ final class MAD4B_SCP_Unified_Approval_Workflow {
   return MAD4B_SCP_AI_Native_Owner_Review::evidence($domain,['item_id'=>$id]);
  }
  public static function inspect($id){
+  if(!is_string($id)||!preg_match('/^[a-f0-9]{64}$/D',$id))
+   return new WP_Error('mad4b_review_id_invalid','Exact review identifier required.');
   $all=self::load();$record=$all[$id]??null;
   if(!is_array($record))return new WP_Error('mad4b_review_not_found','Unknown review.');
+  // A partial/tampered option row must fail closed rather than leak PHP notices
+  // or pass malformed values to hash_equals() in the original owner checks.
+  if(($record['contract']??'')!==self::CONTRACT ||($record['review_id']??'')!==$id
+    ||!is_string($record['domain']??null)
+    ||!is_string($record['item_id']??null)
+    ||!is_string($record['content_hash']??null)
+    ||!preg_match('/^[a-f0-9]{64}$/D',$record['content_hash'])
+    ||!is_string($record['policy_sha256']??null)
+    ||!preg_match('/^[a-f0-9]{64}$/D',$record['policy_sha256'])
+    ||!is_scalar($record['owner_revision']??null)
+    ||!is_numeric($record['expires_at']??null)
+    ||(int)$record['expires_at']<=0)
+   return new WP_Error('mad4b_review_record_invalid','Stored review integrity is incomplete.');
   if(!self::local_scope()||($record['site_uuid']??'')!==MAD4B_SCP_Site_Profile::site_uuid())
    return new WP_Error('mad4b_review_scope_changed','Review scope is no longer valid.');
   $source=self::owner_evidence($record['domain'],$record['item_id']);
   if(is_wp_error($source))return $source;
-  if(!hash_equals($record['content_hash'],$source['content_hash'])
+  if(!is_array($source)||!is_string($source['content_hash']??null)
+    ||!preg_match('/^[a-f0-9]{64}$/D',$source['content_hash'])
+    ||!is_scalar($source['owner_revision']??null)
+    ||!hash_equals($record['content_hash'],$source['content_hash'])
     ||(string)$source['owner_revision']!==(string)$record['owner_revision'])
    return new WP_Error('mad4b_review_source_stale','Original content changed after review opened.');
   $policy=MAD4B_SCP_Unified_Policy::resolve(['module'=>$record['domain'],'operation'=>'content_review','resource'=>$record['item_id']]);
-  if(is_wp_error($policy)||!hash_equals($record['policy_sha256'],$policy['policy_sha256']))
+  if(is_wp_error($policy)||!is_array($policy)
+    ||!is_string($policy['policy_sha256']??null)
+    ||!hash_equals($record['policy_sha256'],$policy['policy_sha256']))
    return new WP_Error('mad4b_review_policy_stale','Review policy changed.');
   if(time()>(int)$record['expires_at'])return new WP_Error('mad4b_review_expired','Review expired.');
   return $record;

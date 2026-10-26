@@ -2667,6 +2667,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Source retains the independent original review/owner authorization, original Site Profile, OAuth and ticket requirements; no direct credential, session, approval ticket or publishing authority is added.",
       "review_rationale": "Original optional Extension Registry accepts only declared service_identity/browser_authorization descriptor types with an exact SHA-256 pinned plugin file inside WP_PLUGIN_DIR, and independently pinned original-owner certification map. Rejects unlisted kinds, invalid IDs, forged digest, outside plugin paths, extra authority callback fields and duplicate registration. Even a valid provider is described_only; it never becomes an authenticated subject, browser session or mutation grant. Network-free hermetic test executes 20 assertion cases on PHP 7.4 and PHP 8.3 against original classes; synthetic plugin file exists only under a temporary directory and is removed. This is CI-only, not live owner or provider certification."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-approval-workflow.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-workflow-inspect-hermetic.php"
+      ],
+      "owner_role": "Original-source lifecycle CI reviewer only, not Site Owner or runtime acceptance provider",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing original site-scoped Unified Policy, WordPress source native owner evidence, approved Agent registry, exact ticket and OAuth governance still own authorization; source hardening adds no new grants or scope.",
+      "review_rationale": "Exact original Unified Approval Workflow local source, site enrollment, original Content source evidence and CAS hash/revision, original Policy digest and expiry remain authoritative. Hardened inspect rejects malformed review identifiers and tampered/incomplete stored rows, owner source responses or policy payloads before hash_equals, rather than emitting PHP notices or type errors. No approval stage may bypass original Agent exact-grant/human nonce checks; AI-first state transitions retain review-only semantics. New hermetic original-class regression 28/28 PASS on PHP 7.4 and 8.3 with valid record, invalid/missing content/policy hashes, foreign Site Profile, missing/changed source and owner revision, policy drift, expiry, and AI-first next_state. Existing Unified Approval original AI-first 37/37 regression passed on both runtimes. No live owner receipt, human session, WordPress record or token minted."
     }
   ],
   "lifecycle": [],
@@ -9353,6 +9372,24 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Original optional Extension Registry accepts only declared service_identity/browser_authorization descriptor types with an exact SHA-256 pinned plugin file inside WP_PLUGIN_DIR, and independently pinned original-owner certification map. Rejects unlisted kinds, invalid IDs, forged digest, outside plugin paths, extra authority callback fields and duplicate registration. Even a valid provider is described_only; it never becomes an authenticated subject, browser session or mutation grant. Network-free hermetic test executes 20 assertion cases on PHP 7.4 and PHP 8.3 against original classes; synthetic plugin file exists only under a temporary directory and is removed. This is CI-only, not live owner or provider certification. Source Git blob and exact test included in the same PR."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-approval-workflow.php",
+      "source_blob_sha": "d1e662123b94f064b12b41244086be2795b278b7",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-workflow-inspect-hermetic.php"
+      ],
+      "owner_role": "Review of exact PHP fail-closed source behavior in isolated CI only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact original Unified Approval Workflow local source, site enrollment, original Content source evidence and CAS hash/revision, original Policy digest and expiry remain authoritative. Hardened inspect rejects malformed review identifiers and tampered/incomplete stored rows, owner source responses or policy payloads before hash_equals, rather than emitting PHP notices or type errors. No approval stage may bypass original Agent exact-grant/human nonce checks; AI-first state transitions retain review-only semantics. New hermetic original-class regression 28/28 PASS on PHP 7.4 and 8.3 with valid record, invalid/missing content/policy hashes, foreign Site Profile, missing/changed source and owner revision, policy drift, expiry, and AI-first next_state. Existing Unified Approval original AI-first 37/37 regression passed on both runtimes. No live owner receipt, human session, WordPress record or token minted. Only stored-read input integrity was changed; any production promotion must revalidate real WordPress owner receipts."
     }
   ],
   "code_change_rules": {
