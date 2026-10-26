@@ -3048,6 +3048,168 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing localization, site-binding and security controls already cover advisory market lookup, signed preferences and public response minimization; no booking or financial authority is introduced.",
       "review_rationale": "Data adapters read native Woo countries, WPML public languages and WCML currencies, and only expose profile countries through the existing explicit approval registry."
+    },
+    {
+      "owner_role": "Single-owner technical code review for CI only, with a separately required exact-head authenticated owner attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "id": "ability:mad4b/skill-sources-list",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/skill-task-abilities-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP read admission, provider boundary and execution-denial controls cover this nonpublic read-only interface without any new writable or executable ability.",
+      "review_rationale": "Sources list uses the existing private read permission, no network and no source configuration mutation. Registered callback, closed input and can_read denial reviewed, and hermetic PHP 7.4/8.3 regressions passed. Live enrolled MCP acceptance is still pending."
+    },
+    {
+      "owner_role": "Single-owner technical code review for CI only, with a separately required exact-head authenticated owner attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "id": "ability:mad4b/skill-source-skills",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/skill-task-abilities-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/external-skill-sources-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP read admission, provider boundary and execution-denial controls cover this nonpublic read-only interface without any new writable or executable ability.",
+      "review_rationale": "Discovery is limited to administrator-configured GitHub sources; 10,000 tree-entry and 500 Skills limits reject incomplete inventories. Registered callback, closed input and can_read denial reviewed, and hermetic PHP 7.4/8.3 regressions passed. Live enrolled MCP acceptance is still pending."
+    },
+    {
+      "owner_role": "Single-owner technical code review for CI only, with a separately required exact-head authenticated owner attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "id": "ability:mad4b/skill-source-get",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/skill-task-abilities-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/external-skill-sources-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP read admission, provider boundary and execution-denial controls cover this nonpublic read-only interface without any new writable or executable ability.",
+      "review_rationale": "File read is restricted to discovered SKILL.md with matched tree blob SHA, UTF-8 and Git blob digest verification. Registered callback, closed input and can_read denial reviewed, and hermetic PHP 7.4/8.3 regressions passed. Live enrolled MCP acceptance is still pending."
+    },
+    {
+      "owner_role": "Single-owner technical code review for CI only, with a separately required exact-head authenticated owner attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "id": "ability:mad4b/skill-source-resource",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/skill-task-abilities-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/external-skill-sources-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP read admission, provider boundary and execution-denial controls cover this nonpublic read-only interface without any new writable or executable ability.",
+      "review_rationale": "Supporting files are constrained to references/assets/scripts under the specific discovered Skill; scripts are returned as untrusted text, never run. Registered callback, closed input and can_read denial reviewed, and hermetic PHP 7.4/8.3 regressions passed. Live enrolled MCP acceptance is still pending."
+    },
+    {
+      "owner_role": "Single-owner technical code review for CI only, with a separately required exact-head authenticated owner attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "id": "ability:mad4b/skill-match-task",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/skill-task-abilities-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP read admission, provider boundary and execution-denial controls cover this nonpublic read-only interface without any new writable or executable ability.",
+      "review_rationale": "Task match enforces bounded input/source selection, read-only lexical ranking, provenance and pagination completeness. Registered callback, closed input and can_read denial reviewed, and hermetic PHP 7.4/8.3 regressions passed. Live enrolled MCP acceptance is still pending."
+    },
+    {
+      "owner_role": "Single-owner technical code review for CI only, with a separately required exact-head authenticated owner attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "id": "ability:mad4b/skill-composition-plan",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/skill-task-abilities-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP read admission, provider boundary and execution-denial controls cover this nonpublic read-only interface without any new writable or executable ability.",
+      "review_rationale": "Composition preserves managed Skill execution precedence; external context is SHA-checked and advisory only; every step is not_authorized. Registered callback, closed input and can_read denial reviewed, and hermetic PHP 7.4/8.3 regressions passed. Live enrolled MCP acceptance is still pending."
+    },
+    {
+      "owner_role": "Single-owner technical code review for CI only, with a separately required exact-head authenticated owner attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-external-skill-sources.php",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/external-skill-sources-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/external-skill-source-provider-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/egress-policy-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing bounded automation and performance controls cover a non-authorizing advisory service; no new execution or write surface is introduced.",
+      "review_rationale": "GitHub provider origin pinned to public api.github.com with TLS/no redirects and governed egress; validated administrator source writes, tree/cardinality/body limits, exact Git SHA and UTF-8 blob identity, negative tests and no installation or execution. Hermetic PHP 7.4/8.3 suites passed; a matching deployed Staging build has not been accepted."
+    },
+    {
+      "owner_role": "Single-owner technical code review for CI only, with a separately required exact-head authenticated owner attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-skill-task-composition.php",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/skill-task-composition-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/skill-task-abilities-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing bounded automation and performance controls cover a non-authorizing advisory service; no new execution or write surface is introduced.",
+      "review_rationale": "Reviewed shared 18-second source read deadline, error pagination, bounded companions, managed execution precedence, verified external advisory metadata and explicit incomplete/timeout states; no remote instructions are executed. Hermetic PHP 7.4/8.3 suites passed; a matching deployed Staging build has not been accepted."
     }
   ],
   "lifecycle": [],
@@ -10304,6 +10466,131 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Merge bootstrap retains previously certified master Context/Season/Source Hub services and new independent market adapters; no prior execution fence was removed or replaced."
+    },
+    {
+      "owner_role": "Single-owner technical code review for CI only, with a separately required exact-head authenticated owner attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/egress-policy.json",
+      "source_blob_sha": "9f3921fb5afafde5072bc8c9bd4a3378b9d7cd0a",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/egress-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/egress-policy-contract.py"
+      ],
+      "review_rationale": "Adds a fail-closed Skill-source egress purpose with HTTPS, mandatory TLS, no redirects, safe URL checks and private DNS rejection. PHP/Python policy tests pass. Exact-head tests executed in isolated PHP 7.4/8.3 (or accepted disposable WordPress CI); Production acceptance remains separate."
+    },
+    {
+      "owner_role": "Single-owner technical code review for CI only, with a separately required exact-head authenticated owner attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/external-skill-source-providers.json",
+      "source_blob_sha": "7a5a3ab0f1b9535672ebff645b5b6890465ddb14",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/external-skill-source-provider-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/external-skill-sources-runtime.php"
+      ],
+      "review_rationale": "Defines only the public read-only GitHub REST v3 origin and is guarded by an exact runtime pin. Rogue/lookalike host, HTTP downgrade and write/private mode mutations fail. Exact-head tests executed in isolated PHP 7.4/8.3 (or accepted disposable WordPress CI); Production acceptance remains separate."
+    },
+    {
+      "owner_role": "Single-owner technical code review for CI only, with a separately required exact-head authenticated owner attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-skills-adapter.php",
+      "source_blob_sha": "064937e152bbbff3ffa6b8ef4548d4d77b9d2ccd",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/skill-task-abilities-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php"
+      ],
+      "review_rationale": "Six Skill Abilities map exclusively to adapter read; no new content/admin or mutation handlers. Centralized can_read permission and nonpublic annotations are tested. Exact-head tests executed in isolated PHP 7.4/8.3 (or accepted disposable WordPress CI); Production acceptance remains separate."
+    },
+    {
+      "owner_role": "Single-owner technical code review for CI only, with a separately required exact-head authenticated owner attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-external-skill-sources.php",
+      "source_blob_sha": "6fce21a3b030992f01cca470ffe6caf94f52b183",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/external-skill-sources-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/external-skill-source-provider-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/egress-policy-runtime.php"
+      ],
+      "review_rationale": "Manually reviewed exact blob for pinned origin, administrator-only source changes, hard 10000-entry tree bound, 500-Skill count, exact-SHA file validation, UTF-8 and untrusted read-only responses; negative tests pass. Exact-head tests executed in isolated PHP 7.4/8.3 (or accepted disposable WordPress CI); Production acceptance remains separate."
+    },
+    {
+      "owner_role": "Single-owner technical code review for CI only, with a separately required exact-head authenticated owner attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-abilities.php",
+      "source_blob_sha": "81ab601de559d9ba57991dffb226e129c4553a44",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/skill-task-abilities-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php"
+      ],
+      "review_rationale": "Six registered nonpublic read Abilities use the canonical can_read callback and closed bounded schemas; no authority grant or write route. PHP registration and disposable WordPress runtime CI pass. Exact-head tests executed in isolated PHP 7.4/8.3 (or accepted disposable WordPress CI); Production acceptance remains separate."
+    },
+    {
+      "owner_role": "Single-owner technical code review for CI only, with a separately required exact-head authenticated owner attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skills-admin-ui.php",
+      "source_blob_sha": "49b2ee873c6c007596b79bc3d451a515721c4767",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/external-skill-sources-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php"
+      ],
+      "review_rationale": "Only source_add/source_remove admin handlers and bounded HTML source listing were added. Page-level manage_options check, action nonce check and escaped output reviewed; admin changes do not create MCP write abilities. Exact-head tests executed in isolated PHP 7.4/8.3 (or accepted disposable WordPress CI); Production acceptance remains separate."
+    },
+    {
+      "owner_role": "Single-owner technical code review for CI only, with a separately required exact-head authenticated owner attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-skill-task-composition.php",
+      "source_blob_sha": "929ab0a06ad81ac015a279ec08f8db69ba665a17",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/skill-task-composition-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/skill-task-abilities-runtime.php"
+      ],
+      "review_rationale": "Exact source reviewed for bounded lexical ranking, shared 18-second deadline, partial/incomplete propagation, SHA-checked advisory context and managed execution precedence. Steps remain not_authorized. Exact-head tests executed in isolated PHP 7.4/8.3 (or accepted disposable WordPress CI); Production acceptance remains separate."
     }
   ],
   "code_change_rules": {
