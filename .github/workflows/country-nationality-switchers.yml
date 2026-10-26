@@ -44,6 +44,10 @@ jobs:
         run: php tests/switchers/test-nationality-ajax-fallback.php
       - name: Booking quote traveller-count authority (no Woo Quantity fallback)
         run: php tests/switchers/test-booking-count-contract.php
+      - name: Market context selection and public JSON minimization (hermetic)
+        run: php tests/switchers/test-market-context-boundaries.php
+      - name: Signed market preferences and PHP compatibility (hermetic)
+        run: php tests/switchers/test-market-compatibility.php
       - name: Unified traveller configuration and server authority (hermetic)
         run: php tests/switchers/test-management-unit.php
       - name: Deterministic QA archives and SHA-256 manifest

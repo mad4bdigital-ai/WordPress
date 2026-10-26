@@ -4,9 +4,10 @@ define('ABSPATH','/tmp/');
 $GLOBALS['unit_options']=[];
 $GLOBALS['unit_meta']=[];
 $GLOBALS['unit_hooks']=[];
-class WP_Error {public function __construct(public string $code='error') {} public function get_error_code(){return $this->code;}}
+class WP_Error {public $code;public function __construct($code='error') {$this->code=$code;} public function get_error_code(){return $this->code;}}
 class WC_Product {
- public function __construct(private int $id) {}
+ private $id;
+ public function __construct($id) {$this->id=(int)$id;}
  public function get_id(){return $this->id;}
 }
 function is_wp_error($value){return $value instanceof WP_Error;}
@@ -127,7 +128,7 @@ $hook=static fn()=>[['contract'=>$tm::CONTRACT,'authority'=>'server_verified','b
 add_filter('travel_booking_traveller_management/verified_service_links',$hook);
 $linked=$tm::registry($cart)['linked_services']['optional']??[];
 $test('ASSIGN_SUBSET_WITHOUT_DUPLICATION',($linked['count']??0)===2&&count(array_unique($linked['traveller_ids']??[]))===2);
-$test('NO_NATIONALITY_IN_REGISTRY',!str_contains(json_encode($tm::registry($cart)),'nationality'));
+$test('NO_NATIONALITY_IN_REGISTRY',strpos(json_encode($tm::registry($cart)),'nationality')===false);
 remove_all_filters('travel_booking_traveller_management/verified_service_links');
 $group=$tm::assess_capacity(8,'group',25);
 $test('GROUP_25_MATCHES_CANONICAL_TIER',!is_wp_error($group)&&$group['tier_id']===102&&

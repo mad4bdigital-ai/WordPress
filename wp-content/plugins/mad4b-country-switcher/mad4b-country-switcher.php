@@ -22,7 +22,7 @@ final class MAD4B_Country_Switcher {
  public static function saved_country(){
   if(!self::available())return '';
   if(function_exists('WC')&&WC()->session){$s=self::validated_record(WC()->session->get(self::SESSION,[]));if($s)return $s;}
-  $raw=(string)($_COOKIE[self::COOKIE]??'');if(strlen($raw)>1500||!str_contains($raw,'.'))return '';
+  $raw=(string)($_COOKIE[self::COOKIE]??'');if(strlen($raw)>1500||strpos($raw,'.')===false)return '';
   [$payload,$sig]=explode('.',$raw,2);
   if(!hash_equals(hash_hmac('sha256',$payload,wp_salt('auth')),$sig))return '';
   $decoded=base64_decode(strtr($payload,'-_','+/'),true);

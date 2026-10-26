@@ -444,7 +444,7 @@ final class Travel_Booking_Traveller_Management {
    }
    if(!$relationship)continue;
    $indices=$link['traveller_indices']??null;
-   if(!is_array($indices)||!array_is_list($indices)||!$indices||count($indices)>$root['count'])continue;
+   if(!is_array($indices)||array_values($indices)!==$indices||!$indices||count($indices)>$root['count'])continue;
    $normalized=[];$valid=true;
    foreach($indices as $idx){
     if(!is_int($idx)||$idx<0||$idx>=$root['count']||isset($normalized[$idx])){$valid=false;break;}

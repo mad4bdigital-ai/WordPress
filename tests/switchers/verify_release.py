@@ -36,6 +36,40 @@ class ReleaseContracts(unittest.TestCase):
             source = "includes/class-mad4b-scp-" + component + ".php"
             self.assertEqual(MAIN.count("require_once MAD4B_SCP_DIR . '" + source + "';"), 1)
 
+    def test_market_selector_advisory_and_native_source_boundaries(self):
+        script = (CORE / "assets/js/mad4b-market-selector.js").read_text()
+        context = (CORE / "includes/class-mad4b-scp-market-context.php").read_text()
+        preferences = (CORE / "includes/class-mad4b-scp-market-preferences.php").read_text()
+        adapter = (CORE / "includes/class-mad4b-scp-switcher-sources.php").read_text()
+        self.assertIn("cache:'no-store'", script)
+        self.assertIn("credentials:'same-origin'", script)
+        self.assertIn("note.textContent=", script)
+        self.assertNotIn(".innerHTML", script)
+        self.assertNotIn(".submit(", script)
+        self.assertNotIn("set_price(", script)
+        self.assertIn("wp_ajax_nopriv_mad4b_market_context_read", context)
+        self.assertIn("nocache_headers();", context)
+        self.assertIn("array_intersect_key($m,array_flip(", context)
+        self.assertIn("'geoip_is_commercial_eligibility'=>false", context)
+        self.assertIn("wp_verify_nonce(", context)
+        self.assertIn("wp_safe_redirect(", context)
+        self.assertNotIn("str_contains(", preferences)
+        country_source = (COUNTRY / "mad4b-country-switcher.php").read_text()
+        nationality_source = (NATIONALITY / "etg-traveller-nationality-switcher.php").read_text()
+        self.assertNotIn("str_contains(", country_source)
+        self.assertNotIn("str_contains(", nationality_source)
+        management_source = (NATIONALITY / "includes-traveller-management.php").read_text()
+        self.assertNotIn("array_is_list(", management_source)
+        self.assertIn("array_values($indices)!==$indices", management_source)
+
+
+        self.assertIn("strpos($cookie,'.')===false", preferences)
+        self.assertIn("hash_equals(", preferences)
+        self.assertIn("FILTER_FLAG_NO_PRIV_RANGE|FILTER_FLAG_NO_RES_RANGE", context)
+        for native_contract in ("get_countries()", "wpml_active_languages", "get_woocommerce_currency_symbol"):
+            self.assertIn(native_contract, adapter)
+        self.assertIn("MAD4B_SCP_Market_Profiles::by_country(", adapter)
+
     def test_country_explicit_dependency_and_contract(self):
         php = (COUNTRY / "mad4b-country-switcher.php").read_text()
         self.assertIn("Requires Plugins: woocommerce, mad4b-site-control-plane", php)

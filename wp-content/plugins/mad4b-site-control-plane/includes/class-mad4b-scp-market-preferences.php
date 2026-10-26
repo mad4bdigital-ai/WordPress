@@ -48,7 +48,7 @@ final class MAD4B_SCP_Market_Preferences {
   $v=function_exists('WC')&&WC()->session?WC()->session->get(self::SESSION,null):null;
   $decoded=self::valid_preferences($v);if($decoded)return $decoded;
   $cookie=(string)($_COOKIE[self::COOKIE]??'');
-  if(!$cookie||strlen($cookie)>1600||!str_contains($cookie,'.'))return [];
+  if(!$cookie||strlen($cookie)>1600||strpos($cookie,'.')===false)return [];
   [$payload,$sig]=explode('.',$cookie,2);
   if(!hash_equals(hash_hmac('sha256',$payload,wp_salt('auth')),$sig))return [];
   $raw=base64_decode(strtr($payload,'-_','+/'),true);if(!is_string($raw))return [];

@@ -13,8 +13,8 @@ function get_post_meta($id,$key,$single=false) {return '';}
 function sanitize_text_field($v) {return trim((string)$v);}
 function sanitize_key($v) {return strtolower(preg_replace('/[^a-z0-9_-]/','',(string)$v));}
 function wp_salt($key='auth') {return 'test-salt';}
-class WP_Error {function __construct(public $code='invalid'){} }
-class WC_Product {public function __construct(private $id){} public function get_id(){return $this->id;}}
+class WP_Error {public $code;function __construct($code='invalid'){$this->code=$code;} }
+class WC_Product {private $id;public function __construct($id){$this->id=$id;} public function get_id(){return $this->id;}}
 function shared_product_booking_configuration_matches($saved){
  if(($saved['status']??'')!=='server_quote' || ($saved['valid']??true)!==true)return new WP_Error('stale');
  return $saved;
