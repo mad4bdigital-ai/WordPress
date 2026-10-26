@@ -9593,6 +9593,41 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "The original Provider Connections admin UI registers only a manage_options submenu and calls Provider Connection Center read-only discover() and plan() to display provider health. It never calls refresh, consent, grants, API keys, or write operations. The owner handoff link is escaped, untrusted labels and health state are HTML escaped, unavailable adapters display warning and setup guidance, refresh requires separate exact owner approval, OAuth requires owner browser, and pending revocation cannot silently reconnect. The network-free original-class fixture passed 20/20 scenarios on PHP 7.4 and 8.3 for permission denial before discovery, idempotent menu registration, advisory health/actions, escaped malicious strings, no forms and zero provider mutations. Source code is unchanged; no live credential, browser or provider acceptance was asserted."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cross-plugin-lifecycle.php",
+      "source_blob_sha": "299ae31217535ed7ba60d3ce4f1038eb1bb3e610",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-lifecycle-admission-hermetic.php"
+      ],
+      "owner_role": "CI-only exact-source reviewer, not independent WordPress Site Owner or certifying release authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "The original Cross Plugin lifecycle builds source-neutral READ-ONLY certification, Staging review and Production promotion plans. Direct PHP 7.4/8.3 hermetic original-class test PASS 22 cases each. Unreviewed source, mismatched exact source commit, version, package SHA, independent Provider Contract, unregistered provider, unenrolled or conflicting environments, and native preflight errors block. Even certified Staging returns only a plan for separately gated original plugin-package-apply with owner OAuth step-up/backup/rollback; it never executes. A self-supplied Production attestation cannot certify a Production executor or inherit Staging authority. No plugin changes, artifact uploads, credentials, owner approvals or live filesystem mutations were performed. Exact source Git blob is unchanged; changed-in-PR tests are run by trusted executor. Owner/runtime certification required separately."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-browser-acceptance-admin-ui.php",
+      "source_blob_sha": "24a601983460c708ca309d53bb0dafd71b5bc6a0",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/browser-operator-integrity-hermetic.php"
+      ],
+      "owner_role": "CI-only exact-source reviewer, not independent WordPress Site Owner or certifying release authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "The original Browser Acceptance admin preference is non-authorizing and never stores credentials or executes a browser. Network-free PHP 7.4/8.3 test reuses full executable original acceptance suite (including BINARY CAS readback, stale revision denial, credential field rejection, provider/profile binding and source-route coupling), plus 15 new direct adversarial cases per PHP: exact target/required profile, malformed saved pref rejection, bad revision, non-string fields, no secret fields, no implicit external runner readiness, and no mutation/publication authorization. Operator preference remains advisory until independent Browser runner verification. No actual browser, external API credentials or live WordPress options were touched. Exact source Git blob is unchanged; changed-in-PR tests are run by trusted executor. Owner/runtime certification required separately."
     }
   ],
   "code_change_rules": {
