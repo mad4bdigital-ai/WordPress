@@ -47,7 +47,8 @@
     "MAD4B_SCP_JetEngine_REST_Lifecycle_Diagnostics_Adapter",
     "MAD4B_CI_Failure_Evidence_Adapter",
     "MAD4B_SCP_ETG_DFSB_Write_Adapter",
-    "MAD4B_SCP_IndexFlow_Routes_Adapter"
+    "MAD4B_SCP_IndexFlow_Routes_Adapter",
+    "MAD4B_SCP_ChatbotX_Provider_Adapter"
   ],
   "unknown_plugin_mutation": "deny",
   "unknown_plugin_discovery": "read_only",
@@ -71,7 +72,8 @@
     "MAD4B_SCP_JetFormBuilder_Adapter",
     "MAD4B_SCP_FluentForms_Adapter",
     "MAD4B_SCP_WP_Import_Export_Adapter",
-    "MAD4B_SCP_WP_Native_Build_Adapter"
+    "MAD4B_SCP_WP_Native_Build_Adapter",
+    "MAD4B_SCP_ChatbotX_Provider_Adapter"
   ],
   "registered_hook_classes": [
     "MAD4B_SCP_ETG_DFSB_Adapter",
