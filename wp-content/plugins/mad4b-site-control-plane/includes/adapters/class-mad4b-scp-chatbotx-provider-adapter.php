@@ -1,11 +1,12 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 require_once __DIR__ . '/class-mad4b-scp-chatbotx-governed-writes.php';
+require_once __DIR__ . '/class-mad4b-scp-chatbotx-write-preflight.php';
 
 /**
  * Source-reviewed ChatbotX provider adapter for ETG WooCommerce Lab.
  *
- * Five read and three explicitly governed write abilities. No arbitrary endpoint invocation,
+ * Six read and three explicitly governed write abilities. No arbitrary endpoint invocation,
  * plugin callbacks, order/customer data, token output or mutation authority.
  * Registration through the existing reviewed bundled-class policy only.
  */
@@ -41,6 +42,7 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
             'mad4b/chatbotx-remote-health',
             'mad4b/chatbotx-business-context',
             'mad4b/chatbotx-cpt-product-source',
+            'mad4b/chatbotx-write-preflight',
         ), 'content' => array(), 'write' => array(
             'mad4b/chatbotx-support-create-ticket',
             'mad4b/chatbotx-support-add-note',
@@ -62,6 +64,15 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
         $this->add_ability('mad4b/chatbotx-remote-health',
             'Probe Fixed ChatbotX Health Endpoint',
             'remote_health', $permission, $this->schema(array()));
+        $this->add_ability('mad4b/chatbotx-write-preflight',
+            'Assess ChatbotX Write Prerequisites Without Mutating Anything',
+            'write_preflight', $permission, $this->schema(array(
+                'ability' => array('type'=>'string', 'enum'=>array_keys(MAD4B_SCP_ChatbotX_Write_Preflight::ACTIONS)),
+                'customer_id'=>array('type'=>'integer','minimum'=>1),
+                'mailbox_id'=>array('type'=>'integer','minimum'=>1),
+                'ticket_id'=>array('type'=>'integer','minimum'=>1),
+                'post_type'=>array('type'=>'string','enum'=>array('tours-and-activities','properties','transportations'))
+            ),array('ability')));
         // All writes pass SCP's site, provider and centralized authorization
         // gates before a native provider API is called. No arbitrary REST.
         $admin=array('MAD4B_SCP_Policy','can_admin');
@@ -99,6 +110,10 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
             $this->schema(array('product_id' => array('type' => 'integer', 'minimum' => 1)), array('product_id')));
     }
 
+    public function write_preflight($input = array()) {
+        if (!$this->is_available()) return $this->unavailable_error();
+        return MAD4B_SCP_ChatbotX_Write_Preflight::assess($input);
+    }
     public function support_create_ticket($input) {
         return MAD4B_SCP_ChatbotX_Governed_Writes::support_create_ticket((array)$input);
     }

@@ -27,3 +27,25 @@ and quote/booking operations need their own approved domain contracts.
 
 Run isolated contract:
 php wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php
+
+## Write preflight for ETG Lab
+
+The additional read-only Ability `mad4b/chatbotx-write-preflight`
+accepts an exact registered write Ability name plus optional non-secret
+customer/mailbox/ticket IDs or supported CPT post type. It evaluates the
+Site Profile, effective mutation policy, native provider availability and
+provider certification, without creating any external records, credentials,
+grants, approvals or fixtures. An eligible preflight is never execution
+authorization: the caller must still pass SCP's exact Agent/NHI grant,
+risk-specific approval, provider certification and audit gate at execution.
+
+ETG Lab's enrolled environment is **local**. The canonical
+`mad4b/site-profile-write-enable` contract only enables Staging/Production
+and requires a verified OAuth step-up plus a matching source SHA and
+build fingerprint. Never relabel the current Local Site Profile, mutate
+WordPress options directly, or insert a bypass filter to activate this
+ChatbotX adapter. A separate real, exactly enrolled Staging origin is
+required for the governed authority progression.
+
+Isolated verification:
+`php wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php`.
