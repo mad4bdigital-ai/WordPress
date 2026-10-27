@@ -55,7 +55,11 @@ verify( count( $calls ) === 2, 'no wildcard or unrelated file invalidation' );
 $two = $accept( 'staging' );
 verify( 'current' === $two['state'] && count( $calls ) === 2,
     'subsequent request has no invalidation or write' );
-verify( 'blocked' === $accept( 'production' )['state'], 'Production remains excluded' );
+verify( 'revalidated' === $accept( 'production' )['state'],
+    'Production supports exactly the same verified package-only cache operation' );
+verify( 'current' === $accept( 'production' )['state'],
+    'Production receipt is idempotent and never grants writing' );
+verify( 'blocked' === $accept( 'unknown' )['state'], 'Unknown environment remains denied' );
 verify( 'revalidated' === $accept( 'staging', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb' )['state'],
     'site-bound receipt does not transfer to another enrollment' );
 write_manifest( $root, $next, true );

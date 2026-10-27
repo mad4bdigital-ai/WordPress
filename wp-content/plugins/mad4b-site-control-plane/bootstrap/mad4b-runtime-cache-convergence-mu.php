@@ -19,8 +19,9 @@ final class MAD4B_SCP_Runtime_Cache_Convergence_MU {
             'next_request_required' => false, 'mutation_authorized' => false,
             'global_reset_used' => false,
         );
-        // This is an enrolled non-production lifecycle; no changes to Production.
-        if ( ! in_array( $environment, array( 'staging', 'local', 'development' ), true )
+        // Cache coherence is environment-neutral. It is not a mutation
+        // authority; the enrolled MU/host binding decides eligibility.
+        if ( ! in_array( $environment, array( 'staging', 'local', 'development', 'production' ), true )
             || ! preg_match( '/^[a-f0-9-]{36}$/D', (string) $site_uuid )
             || ! function_exists( 'get_option' ) || ! function_exists( 'update_option' ) )
             return $result;

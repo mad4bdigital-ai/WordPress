@@ -33,6 +33,14 @@ final class MAD4B_SCP_Site_Profile {
 final class MAD4B_SCP_Google_Drive_Context {
     public static $status = array();
     public static $refresh_calls = 0;
+    const AUTH_MODE_MANAGED = 'managed';
+    public static $auth_calls = 0;
+    public static $requested_scope = 'scope-read';
+    public static function auth_mode() { return 'custom'; }
+    public static function connection_status() { return array_merge( self::$status, array( 'scope' => 'scope-read', 'token_unreadable' => false ) ); }
+    public static function workspace_grants_status() { return array( 'scopes' => array( self::$requested_scope ), 'selection' => array( 'drive' => 'read' ), 'managed_profile_reconsent_required' => false ); }
+    public static function authorization_url( $access_mode ) { self::$auth_calls++; return $access_mode === 'read_only' ? 'https://accounts.google.com/o/oauth2/v2/auth?state=test' : new WP_Error( 'bad_mode' ); }
+    public static function managed_authorization_url( $access_mode ) { return new WP_Error( 'managed_not_configured' ); }
     public static function public_connection_status() { return self::$status; }
     public static function encrypted_grant_identity_sha256() { return str_repeat( 'c', 64 ); }
     public static function refresh_existing_connection( $expected ) {

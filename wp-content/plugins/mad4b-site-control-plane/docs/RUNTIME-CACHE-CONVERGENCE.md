@@ -18,8 +18,8 @@ On the first enrolled non-production MCP POST after a changed release:
 5. Respond with one retryable HTTP 503; previously loaded PHP classes
    must not serve the updated release in the current request.
 
-No global reset, shared PHP restart, arbitrary paths, Developer authority,
-owner ticket, write grant, or Production mutation is part of this flow.
+No global reset, shared PHP restart, arbitrary paths, automatic Developer authority,
+owner ticket, write grant, or business-data mutation is part of this flow. Production only qualifies with an explicit matched Production host environment and exact Site Profile enrollment; early MCP adapter boot authority stays independently gated.
 An unchanged receipt avoids repeating the full verification scan.
 Failed integrity or opcode checks remain closed. With OPcache disabled,
 a verified package can proceed without opcode invalidation.

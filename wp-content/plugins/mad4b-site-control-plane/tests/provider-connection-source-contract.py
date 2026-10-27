@@ -49,6 +49,12 @@ check(
     "remote_refresh_reviewed",
     "production_mutation_allowed' => false",
     "owner_handoff_url",
+    "register_rest_routes()",
+    "rest_reconnect_permission(",
+    "rest_reconnect(",
+    "mad4b_provider_reconnect_scope_expansion_denied",
+    "mad4b_provider_reconnect_browser_nonce_required",
+    "RECONNECT EXISTING STAGING PROVIDER GRANT",
 )
 check(
     INC / "class-mad4b-scp-provider-connections-admin-ui.php",

@@ -60,6 +60,13 @@ class MAD4B_SCP_Site_Profile {
     public static function origin_enrolled() { return true; }
     public static function site_urls_match_enrollment() { return true; }
     public static function user_is_enrolled( $user ) { return 7 === $user; }
+    public static $owner_ids = array( 7 );
+    public static function oauth_user_ids() { return self::$owner_ids; }
+}
+class MAD4B_SCP_Identity_Context {
+    public static function current() {
+        return array( 'authenticated'=>true, 'subject_type'=>'oauth', 'auth_method'=>'oauth2_bearer' );
+    }
 }
 class MAD4B_SCP_Policy { public static function can_breakglass() { return false; } }
 class MAD4B_SCP_Local_OAuth_Server { const CHATGPT_CIMD_CLIENT_ID = 'https://chatgpt.com/oauth/client.json'; }
@@ -74,6 +81,9 @@ class MAD4B_SCP_OAuth_Resource_Bridge {
     public static function verified_bearer_client_is( $id ) {
         return self::$client && MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID === $id;
     }
+}
+class MAD4B_SCP_Transport_Context {
+    public static function current_server_id() { return 'mad4b-chatgpt'; }
 }
 class MAD4B_SCP_Remote_Operation_Parity {
     public static function catalog() { return array(); }
@@ -119,6 +129,20 @@ mad4b_check( $owner === $entry['remote_ability'] && ! empty( $entry['human_decis
     'discovery stripped the owner gate' );
 mad4b_check( $entry['operation_id'] === $pre[ $owner ]['operation_id'],
     'census and broker operation IDs diverged' );
+// The same authenticated ChatGPT request must distinguish the parent
+// Enrollment scope from the exact first-party owner target's permission.
+$owner_preflight = MAD4B_SCP_Enrollment_Dispatch::info( array( 'operation_id' => $entry['operation_id'] ) );
+mad4b_check( 'request_permission_observed' === $owner_preflight['request_permission_preflight']['state']
+    && 'target_permission_observed' === $owner_preflight['request_permission_preflight']['target_permission_state']
+    && false === $owner_preflight['request_permission_preflight']['execution_authorized'],
+    'the exact owner permission was not evaluated separately from OAuth scope' );
+MAD4B_SCP_Site_Profile::$owner_ids = array( 8 );
+$owner_blocked = MAD4B_SCP_Enrollment_Dispatch::info( array( 'operation_id' => $entry['operation_id'] ) );
+mad4b_check( 'target_permission_blocked' === $owner_blocked['request_permission_preflight']['target_permission_state']
+    && 'mad4b_staging_owner_not_explicitly_enrolled' === $owner_blocked['request_permission_preflight']['target_permission_blocker'],
+    'owner target enrollment denial was hidden by a verified parent bearer' );
+MAD4B_SCP_Site_Profile::$owner_ids = array( 7 );
+
 $info = MAD4B_SCP_Enrollment_Dispatch::info( array( 'operation_id' => $entry['operation_id'] ) );
 mad4b_check( ! is_wp_error( $info ) && $info['remote_ability'] === $owner,
     'info did not resolve exact registered ability' );

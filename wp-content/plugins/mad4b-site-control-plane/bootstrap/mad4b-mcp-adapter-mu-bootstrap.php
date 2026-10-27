@@ -196,6 +196,69 @@ if ( null !== $mad4b_mcp_mu_transaction ) {
 	$mad4b_mcp_mu_profile_enrolled = false;
 }
 
+// Production cache coherence must never change the eligibility of the early
+// MCP adapter or its privileged routing. Only an explicit, exact-origin Site
+// Profile with managed_runtime enabled may maintain PHP opcodes, and only
+// through the same complete package provenance verification as Staging.
+// A Production Site Profile does NOT turn on early_managed_runtime_binding().
+$mad4b_cache_binding = class_exists( 'MAD4B_SCP_Site_Profile', false )
+	&& method_exists( 'MAD4B_SCP_Site_Profile', 'early_cache_runtime_binding' )
+	? MAD4B_SCP_Site_Profile::early_cache_runtime_binding()
+	: array( 'eligible' => false );
+if ( ! $mad4b_mcp_mu_profile_enrolled
+	&& ! empty( $mad4b_cache_binding['eligible'] )
+	&& 'production' === ( $mad4b_cache_binding['environment'] ?? '' )
+	&& ! $mad4b_mcp_mu_status['transaction_pending']
+	&& ! $mad4b_mcp_mu_status['plugin_identity_ambiguous']
+	&& '' !== $mad4b_mcp_mu_control_plane_plugin
+	&& '' !== $mad4b_mcp_mu_adapter_plugin
+	&& '' !== $mad4b_mcp_mu_control_plane_root
+	&& 'POST' === ( $_SERVER['REQUEST_METHOD'] ?? '' )
+	&& ! ( defined( 'WP_CLI' ) && WP_CLI ) ) {
+	$mad4b_cache_uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) $_SERVER['REQUEST_URI'] : '';
+	$mad4b_cache_url_path = wp_parse_url( $mad4b_cache_uri, PHP_URL_PATH );
+	$mad4b_cache_url_path = is_string( $mad4b_cache_url_path ) ? $mad4b_cache_url_path : '';
+	$mad4b_cache_url_query = wp_parse_url( $mad4b_cache_uri, PHP_URL_QUERY );
+	$mad4b_cache_query = array();
+	if ( is_string( $mad4b_cache_url_query ) ) parse_str( $mad4b_cache_url_query, $mad4b_cache_query );
+	$mad4b_cache_route = isset( $mad4b_cache_query['rest_route'] ) && is_string( $mad4b_cache_query['rest_route'] )
+		? '/' . trim( $mad4b_cache_query['rest_route'], '/' )
+		: '';
+	if ( '' === $mad4b_cache_route
+		&& 0 === strpos( $mad4b_cache_url_path, '/wp-json/mcp/' ) ) {
+		$mad4b_cache_route = substr( $mad4b_cache_url_path, strlen( '/wp-json' ) );
+	}
+	$mad4b_cache_route = rtrim( $mad4b_cache_route, '/' );
+	if ( in_array( $mad4b_cache_route, array(
+		'/mcp/mad4b-read', '/mcp/mad4b-chatgpt', '/mcp/mad4b-content',
+		'/mcp/mad4b-write', '/mcp/mad4b-admin', '/mcp/mad4b-developer',
+	), true ) ) {
+		$mad4b_cache_helper = $mad4b_mcp_mu_control_plane_root . 'bootstrap/mad4b-runtime-cache-convergence-mu.php';
+		$mad4b_cache_result = array( 'state' => 'blocked' );
+		if ( is_readable( $mad4b_cache_helper ) ) {
+			require_once $mad4b_cache_helper;
+			$mad4b_cache_result = MAD4B_SCP_Runtime_Cache_Convergence_MU::converge(
+				$mad4b_mcp_mu_control_plane_root,
+				'production',
+				(string) $mad4b_cache_binding['site_uuid']
+			);
+		}
+		$mad4b_mcp_mu_status['runtime_cache_convergence'] = $mad4b_cache_result['state'];
+		if ( 'current' !== $mad4b_cache_result['state'] ) {
+			if ( function_exists( 'status_header' ) ) status_header( 503 );
+			else http_response_code( 503 );
+			header( 'Content-Type: application/json; charset=utf-8' );
+			header( 'Cache-Control: no-store' );
+			if ( 'revalidated' === $mad4b_cache_result['state'] ) header( 'Retry-After: 1' );
+			echo wp_json_encode( array(
+				'code' => 'mad4b_runtime_cache_convergence_pending',
+				'retryable' => 'revalidated' === $mad4b_cache_result['state'],
+			) );
+			exit;
+		}
+	}
+}
+
 if ( $mad4b_mcp_mu_profile_enrolled ) {
 	$mad4b_mcp_mu_status['official_plugin_active'] = '' !== $mad4b_mcp_mu_adapter_plugin;
 	$mad4b_mcp_mu_status['control_plane_active'] = '' !== $mad4b_mcp_mu_control_plane_plugin;
@@ -303,7 +366,7 @@ if ( $mad4b_mcp_mu_profile_enrolled ) {
 
 	// Out-of-band installs (including CLI/SSH) do not call Self_Update's
 	// post-install opcode invalidator. The enrolled early MU runs before
-	// regular Control Plane classes and heals only manifest-verified Staging
+	// regular Control Plane classes and heals only manifest-verified site
 	// source changes, once per site/build. It never issues mutation grants.
 	if ( $mad4b_mcp_mu_status['eligible']
 		&& $mad4b_mcp_mu_request_requires_mcp

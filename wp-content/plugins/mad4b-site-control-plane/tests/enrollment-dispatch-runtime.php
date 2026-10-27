@@ -230,6 +230,20 @@ MAD4B_SCP_Servers::$mounted = MAD4B_SCP_Remote_Operation_Parity::enrollment_abil
 
 // Simulate the exact parent-bound single-use child permit; the production
 // runtime uses MAD4B_SCP_Execution_Fence rather than this isolated fixture.
+final class MAD4B_SCP_Staging_Write_Owner_Intent {
+    public static $target_error = '';
+    public static $checks = 0;
+    public static function can_remote_attest() {
+        ++self::$checks;
+        return '' === self::$target_error ? true : new WP_Error( self::$target_error );
+    }
+}
+
+final class MAD4B_SCP_Transport_Context {
+    public static $server = 'mad4b-chatgpt';
+    public static function current_server_id() { return self::$server; }
+}
+
 final class MAD4B_SCP_Execution_Fence {
     public static $parent_active = true;
     public static $pending = false;
@@ -433,6 +447,61 @@ $GLOBALS['mad4b_test_abilities'][ MAD4B_SCP_Remote_Operation_Parity::OWNER_CONVE
 $owner_info = MAD4B_SCP_Enrollment_Dispatch::info( array( 'operation_id' => 'staging_write_authority_convergence' ) );
 mad4b_assert( is_array( $owner_info ) && true === $owner_info['human_decision_required'],
     'owner decision was downgraded or bootstrap operation absent' );
+// Info-only request-local owner OAuth preflight. Never runs the child.
+$owner_calls = $owner->calls;
+MAD4B_SCP_Staging_Write_Owner_Intent::$checks = 0;
+MAD4B_SCP_OAuth_Resource_Bridge::$scope = false;
+$pre = MAD4B_SCP_Enrollment_Dispatch::info( array(
+    'operation_id' => 'staging_write_authority_convergence',
+) )['request_permission_preflight'];
+mad4b_assert( 'request_permission_blocked' === $pre['state']
+    && 'mad4b_enrollment_dispatch_step_up_scope_required' === $pre['blocker_code']
+    && 'reauthorize_chatgpt_authority_step_up_scope' === $pre['next_safe_action'],
+    'owner preflight concealed missing OAuth step-up scope' );
+mad4b_assert( false === $pre['execution_authorized'] && false === $pre['owner_decision_recorded']
+    && false === $pre['mutation_performed'] && false === $pre['blind_retry_allowed'],
+    'owner preflight executed or granted authority' );
+MAD4B_SCP_OAuth_Resource_Bridge::$scope = true;
+MAD4B_SCP_OAuth_Resource_Bridge::$client = false;
+$pre = MAD4B_SCP_Enrollment_Dispatch::info( array(
+    'operation_id' => 'staging_write_authority_convergence',
+) )['request_permission_preflight'];
+mad4b_assert( 'mad4b_enrollment_dispatch_chatgpt_client_required' === $pre['blocker_code'],
+    'owner preflight concealed incorrect OAuth client' );
+MAD4B_SCP_OAuth_Resource_Bridge::$client = true;
+$pre = MAD4B_SCP_Enrollment_Dispatch::info( array(
+    'operation_id' => 'staging_write_authority_convergence',
+) )['request_permission_preflight'];
+mad4b_assert( 'request_permission_observed' === $pre['state'] && true === $pre['permission_observed']
+    && false === $pre['execution_authorized'], 'owner preflight incorrectly granted mutation authority' );
+// The dynamic owner operation is different from the convergence apply path.
+// Only its audited, read-only permission predicate is evaluated.
+$pre = MAD4B_SCP_Enrollment_Dispatch::info( array(
+    'operation_id' => 'core_step_up_mad4b_staging_write_owner_attest_2cc8769d389d',
+) );
+if ( ! is_wp_error( $pre ) ) {
+    mad4b_assert( 'target_permission_observed' ===
+        $pre['request_permission_preflight']['target_permission_state'],
+        'owner target permission was not distinguished from parent OAuth scope' );
+    MAD4B_SCP_Staging_Write_Owner_Intent::$target_error = 'mad4b_staging_owner_oauth_subject_required';
+    $blocked = MAD4B_SCP_Enrollment_Dispatch::info( array(
+        'operation_id' => 'core_step_up_mad4b_staging_write_owner_attest_2cc8769d389d',
+    ) )['request_permission_preflight'];
+    mad4b_assert( 'target_permission_blocked' === $blocked['target_permission_state']
+        && 'mad4b_staging_owner_oauth_subject_required' === $blocked['target_permission_blocker'],
+        'target owner guard rejection was hidden by parent scope' );
+    MAD4B_SCP_Staging_Write_Owner_Intent::$target_error = '';
+}
+
+MAD4B_SCP_Transport_Context::$server = 'mad4b-enrollment';
+$pre = MAD4B_SCP_Enrollment_Dispatch::info( array(
+    'operation_id' => 'staging_write_authority_convergence',
+) )['request_permission_preflight'];
+mad4b_assert( 'not_evaluated' === $pre['state'] && false === $pre['evaluated_current_request'],
+    'owner preflight trusted unrelated transport context' );
+MAD4B_SCP_Transport_Context::$server = 'mad4b-chatgpt';
+mad4b_assert( $owner_calls === $owner->calls, 'owner preflight invoked a child mutation' );
+
 $owner_input = array(
     'operation_id' => 'staging_write_authority_convergence',
     'expected_registration_digest' => $owner_info['registration_digest'],

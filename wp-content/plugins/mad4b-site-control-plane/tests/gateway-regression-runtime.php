@@ -165,8 +165,18 @@ foreach ( array( 'write', 'content', 'admin' ) as $lane ) {
  $row = MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( $name );
  $execution = MAD4B_SCP_Unified_Capability_Gateway::describe_execution( $row );
  check_gateway( $execution['dispatch_tool'] === 'mad4b/write-execute' && $execution['expected_execution_lane'] === $lane, 'Mutation lane lost stable dispatch/original identity: ' . $lane );
- $identity = prepared_dispatch_identity( $name );
- check_gateway( ! is_wp_error( $identity ), 'Unable to issue prepared identity: ' . $lane );
+ // A real MCP client must obtain these pins directly from write_info.
+ $before_info_calls = $a->calls;
+ $before_info_scope = $GLOBALS['approval_scope_calls'];
+ $info = $dispatcher->write_info( array( 'ability_name' => $name ) );
+ check_gateway( ! is_wp_error( $info ) && ! empty( $info['prepared_dispatch']['preparation_receipt'] )
+    && $lane === $info['prepared_dispatch']['expected_execution_lane']
+    && 'mad4b/write-execute' === ( $info['dispatch_tool'] ?? '' )
+    && true === MAD4B_SCP_Preparation_Receipt::verify( $info['prepared_dispatch']['preparation_receipt'], $name ),
+    'Governed write_info failed to supply a signed, classification-pinned preparation for: ' . $lane );
+ check_gateway( $a->calls === $before_info_calls && $GLOBALS['approval_scope_calls'] === $before_info_scope,
+    'Non-authorizing write_info entered mutation or approval scope: ' . $lane );
+ $identity = $info['prepared_dispatch'];
  check_gateway( 0 < $GLOBALS['abuse_admit_calls'], 'Preparation fixture bypassed abuse-budget admission: ' . $lane );
  $input = array_merge( array( 'ability_name' => $name, 'input' => array() ), $identity );
  $approval_id = '00000000-0000-4000-8000-000000000001';

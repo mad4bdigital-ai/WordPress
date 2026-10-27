@@ -55,6 +55,7 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-plugin.php"
           php -l "$root/tests/upgrade-continuity-runtime.php"
           php -l "$root/tests/reconnect-hardening-runtime.php"
+          php -l "$root/tests/historical-owner-attestation-transport-runtime.php"
           php -l "$root/tests/connector-resilience-runtime.php"
           php -l "$root/includes/class-mad4b-scp-external-handshake-evidence.php"
           php -l "$root/includes/class-mad4b-scp-connection-ability.php"
@@ -86,6 +87,7 @@ jobs:
           node "$root/tests/admin-settings-persistence-runtime.mjs"
           php "$root/tests/upgrade-continuity-runtime.php"
           php "$root/tests/reconnect-hardening-runtime.php"
+          php "$root/tests/historical-owner-attestation-transport-runtime.php"
           php "$root/tests/connector-resilience-runtime.php"
           php "$root/tests/write-dispatch-scope-delegation-runtime.php"
 
