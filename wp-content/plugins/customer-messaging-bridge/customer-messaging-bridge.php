@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Customer Messaging Bridge
  * Description: Lab-safe Webchat and WooCommerce integration bridge for an external messaging platform.
- * Version: 0.2.3
+ * Version: 0.3.0
  * Requires PHP: 8.0
  * Requires at least: 6.2
  * Author: MAD4B Digital
@@ -11,6 +11,7 @@
 if (!defined('ABSPATH')) { exit; }
 require_once __DIR__ . '/includes/class-cmb-channels.php';
 require_once __DIR__ . '/includes/class-cmb-commerce.php';
+require_once __DIR__ . '/includes/class-cmb-business-context.php';
 require_once __DIR__ . '/includes/class-cmb-webhooks.php';
 
 final class Customer_Messaging_Bridge {
@@ -23,12 +24,14 @@ final class Customer_Messaging_Bridge {
         // Expose metadata to the WordPress Settings Registry for passive
         // Control Plane inventory; REST serialization remains OFF.
         add_action('admin_init', [self::class, 'register_settings_metadata']);
+        add_action('admin_init', [self::class, 'business_settings_metadata']);
         add_action('admin_menu', [self::class, 'admin_menu']);
         add_action('admin_post_cmb_save', [self::class, 'save']);
         add_action('admin_post_cmb_test', [self::class, 'test']);
         add_action('wp_footer', [self::class, 'render_footer'], 99);
         add_shortcode('customer_messaging_webchat', [self::class, 'shortcode']);
         CMB_Commerce::boot();
+        CMB_Business_Context::boot();
         CMB_Webhooks::boot();
         add_action('cmb_admin_sections', [CMB_Channels::class, 'admin_panel'], 10);
         add_action('cmb_admin_sections', [CMB_Commerce::class, 'admin_panel'], 20);
@@ -113,6 +116,17 @@ final class Customer_Messaging_Bridge {
             },
             'default' => [],
             'description' => 'Lab-only privacy-minimal WooCommerce event observation settings.',
+        ]);
+    }
+
+    public static function business_settings_metadata(): void {
+        register_setting('cmb_review', CMB_Business_Context::OPTION, [
+            'type' => 'object', 'show_in_rest' => false,
+            'sanitize_callback' => static function ($v) {
+                return CMB_Business_Context::sanitize(is_array($v) ? $v : []);
+            },
+            'default' => [],
+            'description' => 'Lab-only Fluent Forms and Fluent Support event observation controls.',
         ]);
     }
 

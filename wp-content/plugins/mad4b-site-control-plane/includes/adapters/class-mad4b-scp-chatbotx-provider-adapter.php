@@ -4,13 +4,14 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /**
  * Source-reviewed ChatbotX provider adapter for ETG WooCommerce Lab.
  *
- * Three explicit read-only abilities. No arbitrary endpoint invocation,
+ * Five explicit read-only abilities. No arbitrary endpoint invocation,
  * plugin callbacks, order/customer data, token output or mutation authority.
  * Registration through the existing reviewed bundled-class policy only.
  */
 final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
     const PLUGIN = 'customer-messaging-bridge/customer-messaging-bridge.php';
-    // The approved provider owns its pinned origin; Control Plane is site-neutral.
+    // Site-neutral: the installed, explicitly reviewed provider owns its own
+    // network origin. Control Plane cannot independently override that host.
     private function origin() {
         return $this->is_available() ? Customer_Messaging_Bridge::API_ORIGIN : '';
     }
@@ -37,6 +38,8 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
             'mad4b/chatbotx-provider-snapshot',
             'mad4b/chatbotx-channels-read',
             'mad4b/chatbotx-remote-health',
+            'mad4b/chatbotx-business-context',
+            'mad4b/chatbotx-cpt-product-source',
         ), 'content' => array(), 'write' => array(), 'admin' => array());
     }
     protected function mutation_requires_certification() { return false; }
@@ -54,6 +57,13 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
         $this->add_ability('mad4b/chatbotx-remote-health',
             'Probe Fixed ChatbotX Health Endpoint',
             'remote_health', $permission, $this->schema(array()));
+        $this->add_ability('mad4b/chatbotx-business-context',
+            'Read Fluent Forms, Support and CPT WooCommerce Integration Readiness',
+            'business_context', $permission, $this->schema(array()));
+        $this->add_ability('mad4b/chatbotx-cpt-product-source',
+            'Read Canonical WooCommerce Product-to-CPT Mapping Without Price',
+            'cpt_product_source', $permission,
+            $this->schema(array('product_id' => array('type' => 'integer', 'minimum' => 1)), array('product_id')));
     }
 
     private function scope() {
@@ -67,6 +77,24 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
             'mcp_read_available' => $this->is_available(),
         );
     }
+    public function business_context($input = array()) {
+        if (!$this->is_available() || !class_exists('CMB_Business_Context', false)) {
+            return $this->unavailable_error();
+        }
+        return array_merge($this->scope(), array(
+            'business_integrations' => CMB_Business_Context::capabilities()
+        ));
+    }
+    public function cpt_product_source($input = array()) {
+        if (!$this->is_available() || !class_exists('CMB_Business_Context', false)) {
+            return $this->unavailable_error();
+        }
+        $id = isset($input['product_id']) ? absint($input['product_id']) : 0;
+        return array_merge($this->scope(), array(
+            'product_context' => CMB_Business_Context::product_context($id)
+        ));
+    }
+
     public function provider_snapshot($input = array()) {
         if ( ! $this->is_available() ) return $this->unavailable_error();
         $site = Customer_Messaging_Bridge::settings();
@@ -86,7 +114,8 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
             ? array_keys((array) $wp_rest_server->get_routes()) : array();
         foreach ($routes as &$route) $route['registered_in_current_lifecycle'] = in_array($route['path'], $registered, true);
         unset($route);
-        // Discovery of future routes is metadata-only, never execution authority.
+        // Enumerate new bridge-namespace paths without calling their
+        // callbacks. Unknown endpoints are discovery candidates, not tools.
         $extra_total = 0;
         if (is_object($wp_rest_server)) foreach ($registered as $path) {
             if (!is_string($path) || 0 !== strpos($path, '/cmb/v1/')) continue;
@@ -120,6 +149,9 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
                 'legacy_retained_events' => is_array($legacy) ? count($legacy) : 0,
                 'outbound_sync_enabled' => false,
             ),
+            'business_integrations' => class_exists('CMB_Business_Context', false)
+                ? CMB_Business_Context::capabilities()
+                : array('state' => 'adapter_missing'),
             'channels' => array(
                 'known_types' => array_keys(CMB_Channels::CHANNELS),
                 'workspace_token_present' => '' !== CMB_Channels::api_token(),
@@ -129,8 +161,8 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
                 'rest' => $routes,
                 'unreviewed_route_count' => $extra_total,
                 'unreviewed_route_truncated' => $extra_total > 64,
-                'admin_post' => array('cmb_save','cmb_test','cmb_commerce_save','cmb_commerce_clear'),
-                'registered_options' => array('cmb_settings_v1', 'cmb_commerce_settings_v1'),
+                'admin_post' => array('cmb_save','cmb_test','cmb_commerce_save','cmb_commerce_clear','cmb_business_save'),
+                'registered_options' => array('cmb_settings_v1', 'cmb_commerce_settings_v1', 'cmb_business_integrations_v1'),
                 'settings_write_via_mcp' => false,
             ),
             'external_contracts' => array(

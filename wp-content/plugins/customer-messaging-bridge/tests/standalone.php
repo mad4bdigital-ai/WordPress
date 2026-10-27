@@ -13,6 +13,7 @@ function get_option($name, $default = false) { return $GLOBALS['cmb_test_options
 function wp_parse_args($args, $defaults = []) { return array_merge($defaults, (array) $args); }
 function sanitize_text_field($v) { return strip_tags(trim((string) $v)); }
 function sanitize_key($value) { return preg_replace('/[^a-z0-9_\-]/', '', strtolower((string) $value)); }
+function absint($v) { return abs((int)$v); }
 function wp_salt($scheme = 'auth') { return 'standalone-test-salt-not-a-real-site-secret'; }
 function update_option($key, $value, $autoload = false) { $GLOBALS['cmb_test_options'][$key] = $value; return true; }
 function add_option($key, $value, $deprecated = '', $autoload = false) {
@@ -171,5 +172,31 @@ $denied = CMB_Webhooks::receive(new CMB_Test_Request($foreign, $realTime, $forei
 assert_true($denied instanceof WP_Error && $denied->code === 'cmb_invalid_event', 'other workspace webhook blocked');
 $events = get_option(CMB_Webhooks::AUDIT, []);
 assert_true(count($events) === 1 && !isset($events[0]['workspaceId']), 'webhook audit retains no payload or tenant identity');
+
+$ss=CMB_Business_Context::sanitize(['forms'=>'1','support'=>'1','enabled_form_ids'=>[6,6,11,-1,'0','999']]);
+assert_true($ss['enabled_form_ids'] === [6,11,999], 'Form allowlist canonicalized');
+$ss['enabled_form_ids']=[6,11];
+$GLOBALS['cmb_test_options'][CMB_Business_Context::OPTION]=$ss;
+$GLOBALS['cmb_test_options'][CMB_Commerce::OUTBOX] = [];
+$previousCount=count(get_option(CMB_Commerce::OUTBOX,[]));
+$private=['email'=>'synthetic-secret@example.invalid','customer'=>'Private Customer','phone'=>'01010000000'];
+CMB_Business_Context::form_submitted(611,$private,(object)['id'=>6]);
+assert_true(count(get_option(CMB_Commerce::OUTBOX,[]))===$previousCount+1,'Allowed form submission creates local observation');
+CMB_Business_Context::form_submitted(611,$private,(object)['id'=>6]);
+assert_true(count(get_option(CMB_Commerce::OUTBOX,[]))===$previousCount+1,'Form replay deduplicates');
+CMB_Business_Context::form_submitted(612,$private,(object)['id'=>9]);
+assert_true(count(get_option(CMB_Commerce::OUTBOX,[]))===$previousCount+1,'Unapproved form not observed');
+CMB_Business_Context::ticket_created((object)['id'=>701,'customer_email'=>'synthetic-secret@example.invalid'],(object)['email'=>'synthetic-secret@example.invalid']);
+CMB_Business_Context::ticket_closed((object)['id'=>701],null);
+assert_true(count(get_option(CMB_Commerce::OUTBOX,[]))===$previousCount+3,'Ticket created and closed observed');
+$entries=json_encode(get_option(CMB_Commerce::OUTBOX,[]));
+assert_true(!str_contains($entries,'synthetic-secret')&&!str_contains($entries,'01010000000'),'No PII leaks into outbox');
+assert_true(!str_contains($entries,'"611"')&&!str_contains($entries,'"701"'),'No raw ticket or submission IDs');
+$GLOBALS['cmb_test_options'][CMB_Business_Context::OPTION]=CMB_Business_Context::sanitize(['forms'=>'0','support'=>'0','enabled_form_ids'=>[6]]);
+CMB_Business_Context::form_submitted(633,$private,(object)['id'=>6]);
+CMB_Business_Context::ticket_created((object)['id'=>704],(object)[]);
+assert_true(count(get_option(CMB_Commerce::OUTBOX,[]))===$previousCount+3,'Disabled hooks fail closed');
+assert_true(CMB_Business_Context::product_context(0)['pricing_authorized']===false,'Invalid product cannot quote');
+
 echo "ALL EXTENDED STANDALONE TESTS PASSED\n";
 

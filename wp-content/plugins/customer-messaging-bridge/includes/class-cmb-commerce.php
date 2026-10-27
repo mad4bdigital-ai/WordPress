@@ -65,7 +65,7 @@ final class CMB_Commerce {
         if ($s['local_event_capture'] !== '1') { return false; }
         if (!in_array($kind, ['order.created', 'order.status_changed', 'order.payment_complete',
             'order.refunded', 'order.payment_failed', 'order.cancelled',
-            'customer.created', 'cart.observed'], true)) { return false; }
+            'customer.created', 'cart.observed', 'form.submitted', 'ticket.created', 'ticket.closed'], true)) { return false; }
         if ((str_starts_with($kind, 'order.') && $s['orders'] !== '1') ||
             ($kind === 'customer.created' && $s['customers'] !== '1') ||
             ($kind === 'cart.observed' && ($s['abandoned_cart'] !== '1' || !self::consent_allowed()))) {

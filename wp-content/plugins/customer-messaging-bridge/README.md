@@ -167,3 +167,23 @@ third-party adapters cannot self-enroll. WordPress settings are registered
 for passive discovery but **not** exposed through REST and no arbitrary write
 operations are granted through MCP. Live Webchat and WooCommerce writes stay
 under WordPress' original authorization and consent constraints.
+
+## ETG Business Context v0.3.0 — optional local providers
+
+This release adds fail-closed observation of Fluent Forms and Fluent Support,
+plus read-only WooCommerce/CPT product mapping, using existing provider APIs.
+
+- fluentform/submission_inserted captures only an anonymous event fingerprint
+  and timestamp for allowed form IDs (6,7,8,11 default allowlist). Observation
+  is disabled until explicitly enabled by the site administrator.
+- fluent_support/ticket_created and fluent_support/ticket_closed capture
+  lifecycle events without customer, subject, body, employee or raw ticket ID.
+- ETG_WooCommerce_Bridge::source_for_product provides verified product-to-CPT
+  relationships. Price, availability, currency and inventory are NOT exposed
+  through this integration. No quote or booking may be created.
+- MAD4B Abilities: mad4b/chatbotx-business-context and
+  mad4b/chatbotx-cpt-product-source (integer product_id, no price).
+- Event history is local, capped at 200 anonymized events, not outbound.
+  The new WordPress option cmb_business_integrations_v1 is not REST-exposed.
+- FluentCRM, FluentSMTP, Fluent Boards and WP ERP are optional providers and
+  have not been installed or activated by this work.
