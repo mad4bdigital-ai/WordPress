@@ -1,0 +1,27 @@
+name: ChatbotX SCP Governed Write Contract
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-*.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/docs/chatbotx-governed-writes.md'
+      - '.github/workflows/chatbotx-governed-write-contract.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: PHP lint
+        run: |
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-provider-adapter.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-governed-writes.php
+      - name: Fail closed direct invocation
+        run: php wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php
