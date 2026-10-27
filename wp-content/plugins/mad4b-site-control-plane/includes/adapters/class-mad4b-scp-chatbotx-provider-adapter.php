@@ -1,10 +1,11 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once __DIR__ . '/class-mad4b-scp-chatbotx-governed-writes.php';
 
 /**
  * Source-reviewed ChatbotX provider adapter for ETG WooCommerce Lab.
  *
- * Five explicit read-only abilities. No arbitrary endpoint invocation,
+ * Five read and three explicitly governed write abilities. No arbitrary endpoint invocation,
  * plugin callbacks, order/customer data, token output or mutation authority.
  * Registration through the existing reviewed bundled-class policy only.
  */
@@ -40,10 +41,14 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
             'mad4b/chatbotx-remote-health',
             'mad4b/chatbotx-business-context',
             'mad4b/chatbotx-cpt-product-source',
-        ), 'content' => array(), 'write' => array(), 'admin' => array());
+        ), 'content' => array(), 'write' => array(
+            'mad4b/chatbotx-support-create-ticket',
+            'mad4b/chatbotx-support-add-note',
+            'mad4b/chatbotx-cpt-create-draft'
+        ), 'admin' => array());
     }
-    protected function mutation_requires_certification() { return false; }
-    protected function provider_certification($available) { return null; }
+    protected function mutation_requires_certification() { return true; }
+
     public function reversible_contracts() { return array(); }
     public function register_abilities() {
         if ( ! $this->is_available() ) return;
@@ -57,6 +62,34 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
         $this->add_ability('mad4b/chatbotx-remote-health',
             'Probe Fixed ChatbotX Health Endpoint',
             'remote_health', $permission, $this->schema(array()));
+        // All writes pass SCP's site, provider and centralized authorization
+        // gates before a native provider API is called. No arbitrary REST.
+        $admin=array('MAD4B_SCP_Policy','can_admin');
+        $idempotency=array('type'=>'string','minLength'=>16,'maxLength'=>100);
+        $this->add_ability('mad4b/chatbotx-support-create-ticket',
+            'Create Ticket For Existing Fluent Support Customer',
+            'support_create_ticket',$admin,$this->schema(array(
+                'customer_id'=>array('type'=>'integer','minimum'=>1),
+                'mailbox_id'=>array('type'=>'integer','minimum'=>1),
+                'title'=>array('type'=>'string','minLength'=>1,'maxLength'=>150),
+                'content'=>array('type'=>'string','minLength'=>1,'maxLength'=>2000),
+                'idempotency_key'=>$idempotency
+            ),array('customer_id','mailbox_id','title','content','idempotency_key')),
+            'write',false,true,true);
+        $this->add_ability('mad4b/chatbotx-support-add-note',
+            'Add Agent-only Support Note','support_add_note',$admin,$this->schema(array(
+                'ticket_id'=>array('type'=>'integer','minimum'=>1),
+                'content'=>array('type'=>'string','minLength'=>1,'maxLength'=>2000),
+                'idempotency_key'=>$idempotency
+            ),array('ticket_id','content','idempotency_key')),
+            'write',false,true,true);
+        $this->add_ability('mad4b/chatbotx-cpt-create-draft',
+            'Create Unpublished Travel CPT Draft','cpt_create_draft',$admin,$this->schema(array(
+                'post_type'=>array('type'=>'string','enum'=>array('tours-and-activities','properties','transportations')),
+                'title'=>array('type'=>'string','minLength'=>1,'maxLength'=>180),
+                'idempotency_key'=>$idempotency
+            ),array('post_type','title','idempotency_key')),
+            'write',false,true,true);
         $this->add_ability('mad4b/chatbotx-business-context',
             'Read Fluent Forms, Support and CPT WooCommerce Integration Readiness',
             'business_context', $permission, $this->schema(array()));
@@ -66,6 +99,15 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
             $this->schema(array('product_id' => array('type' => 'integer', 'minimum' => 1)), array('product_id')));
     }
 
+    public function support_create_ticket($input) {
+        return MAD4B_SCP_ChatbotX_Governed_Writes::support_create_ticket((array)$input);
+    }
+    public function support_add_note($input) {
+        return MAD4B_SCP_ChatbotX_Governed_Writes::support_add_note((array)$input);
+    }
+    public function cpt_create_draft($input) {
+        return MAD4B_SCP_ChatbotX_Governed_Writes::cpt_create_draft((array)$input);
+    }
     private function scope() {
         return array(
             'contract' => self::CONTRACT,
@@ -75,6 +117,9 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
             'authorizing' => false,
             'mutations_enabled' => false,
             'mcp_read_available' => $this->is_available(),
+            'write_abilities_declared' => 3,
+            'central_mutation_gate_ready' => MAD4B_SCP_Policy::can_mutate(),
+            'provider_certification_required' => true,
         );
     }
     public function business_context($input = array()) {
