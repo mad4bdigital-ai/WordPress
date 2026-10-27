@@ -1,0 +1,76 @@
+{
+  "feature_id": "009",
+  "slug": "agent-definition-team-composition",
+  "title": "MAD4B Agent Definition Explorer and Team Composition",
+  "kind": "spec-kit",
+  "status": "proposed_spec_only",
+  "feature_branch": "spec/009-agent-definition-team-composition-20261027",
+  "baseline_branch": "master",
+  "baseline_sha": "176667ec044be272146b243c37a82e7b6f7f2db4",
+  "parent_feature_ids": [
+    "006",
+    "007",
+    "008"
+  ],
+  "integration_parent_pr": 528,
+  "scope": [
+    "managed_agent_definitions",
+    "external_agent_source_discovery",
+    "read_only_match_and_composition",
+    "governed_handoff_design"
+  ],
+  "phases": [
+    {
+      "id": "P0",
+      "name": "Contracts and tests",
+      "execution_allowed": false
+    },
+    {
+      "id": "P1",
+      "name": "Explorer and definition reader",
+      "execution_allowed": false
+    },
+    {
+      "id": "P2",
+      "name": "Admin definition studio",
+      "execution_allowed": false
+    },
+    {
+      "id": "P3",
+      "name": "Matcher and team plan",
+      "execution_allowed": false
+    },
+    {
+      "id": "P4",
+      "name": "Separately approved governed runtime handoff",
+      "execution_allowed": false,
+      "requires_new_authorization": true
+    }
+  ],
+  "ownership": {
+    "spec_root": "specs/009-agent-definition-team-composition",
+    "global_specify_files_owned": false,
+    "runtime_code_changes_in_this_branch": false
+  },
+  "authority": {
+    "authorizing": false,
+    "production_authorized": false,
+    "merge_authorized": false,
+    "external_agent_execution_enabled": false,
+    "nhi_or_grant_changes_allowed": false
+  },
+  "required_gates": [
+    "source_provenance_and_incomplete_coverage",
+    "agent_definition_not_nhi",
+    "managed_precedence_and_conflict_transparency",
+    "no_external_instruction_execution",
+    "matcher_determinism",
+    "team_bounded_and_acyclic",
+    "exact_runtime_handoff_revalidation",
+    "negative_security_fixtures",
+    "php_7_4_and_current",
+    "wordpress_mcp_read_acceptance",
+    "release_head_and_governance"
+  ],
+  "updated_at": "2026-10-27"
+}

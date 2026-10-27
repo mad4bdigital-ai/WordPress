@@ -1,0 +1,20 @@
+# Constitution — Feature 009 Agent Definition & Team Composition
+
+**Status:** Proposed, spec-only. Applies to specs/009-agent-definition-team-composition/** and to future implementation that explicitly adopts this feature.
+
+1. **Definition is not identity.** An Agent Definition describes purpose, instructions and Skill requirements. Existing MAD4B_SCP_Agent_Registry contains authenticated NHI agents; importing a definition MUST NOT create/activate NHI subjects, tokens, passwords or grants.
+2. **Discovery is never execution.** No external Agent markdown, frontmatter, scripts, MCP configuration, tool listing or referenced file executes, installs, self-registers or becomes a trusted policy solely through discovery.
+3. **Single authority plane.** All future work MUST reuse existing authorization, provider certification, environment policy, approvals, audit, budgets and durable execution. No duplicate runner, grant table, queue or shadow MCP write endpoint.
+4. **Fail closed and truthful completeness.** Invalid schema, untrusted remote origin, insecure transport, source truncation, budget exhaustion, unavailable references or unknown model/provider are explicit errors or partial results; never report complete or executable.
+5. **Exact provenance.** Every sourced definition is tied to configured source ID, provider, repository, ref/tree SHA, exact path, blob SHA, normalized content digest and parser version; mutable refs are resolved and recorded. Re-evaluate digest at each boundary.
+6. **Managed precedence without blind suppression.** Local approved definitions are authoritative for instructions when a same-name external advisory candidate exists; external material may be considered as attributed companion context, with conflict status explicit. No remote instruction or approval can override local policy.
+7. **No privilege inheritance.** Team member agents never automatically receive the parent Agent's grants, token scopes, environment rights, approvals or secrets. Effective authorization is independently intersected per executing bound NHI and exact action.
+8. **Context minimality.** Only task-relevant, attribution-preserving, bounded references should enter prompt context. Secrets and credentials are not ingested in definitions, plans or audit logs.
+9. **One owner for each state.** Execution outcome is determined only by the existing runner/operation ledger; a plan is an immutable proposal and not a job. External providers own their remote files. Site config and managed definitions require explicit admin governance.
+10. **No implicit autonomous dispatch.** Classification, score, recommendation, imported definition, activation of a UI card, or natural-language delegation never authorizes tool calls or mutation. Execution requires explicit preflight, plan approval where applicable, exact binding and a distinct handoff.
+11. **Bounded, reproducible evaluation.** Discovery counts, candidate ranking, team size, recursion/delegation depth, elapsed budget and context bytes are bounded and deterministic where possible. Report scorer version, candidates and omissions.
+12. **Evidence before promotion.** Negative security fixtures and an actual WordPress integration smoke are required before runtime code; current-head CI, staging acceptance, rollback and build lineage are required before any Production use.
+13. **Isolation and compatibility.** Preserve Feature 001 global .specify ownership; reuse Feature 006 identity semantics and existing Skills/Agent connection schemas. New behavior is opt-in and reversible, not an unguarded breaking change.
+14. **Human accountability.** Final authority/production delegation remains with authorized owner procedures. A planner, model or imported author cannot self-approve its own execution rights.
+
+**Non-goals:** generic execute-any, unrestricted shell, automatic Production permissions, arbitrary remote scripts, autonomous financial/credential actions, vendor source modification, or hidden multi-agent loops.
