@@ -10,7 +10,10 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
     const PLUGIN = 'customer-messaging-bridge/customer-messaging-bridge.php';
-    const ORIGIN = 'https://chatbotx.mad4b.com';
+    // The approved provider owns its pinned origin; Control Plane is site-neutral.
+    private function origin() {
+        return $this->is_available() ? Customer_Messaging_Bridge::API_ORIGIN : '';
+    }
     const CONTRACT = 'mad4b.chatbotx-provider.v1';
 
     public function id() { return 'chatbotx-provider'; }
@@ -112,8 +115,8 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
                 'settings_write_via_mcp' => false,
             ),
             'external_contracts' => array(
-                array('method' => 'GET', 'path' => '/api/health', 'origin' => self::ORIGIN),
-                array('method' => 'GET', 'path' => '/api/v1/inboxes', 'origin' => self::ORIGIN,
+                array('method' => 'GET', 'path' => '/api/health', 'origin' => $this->origin()),
+                array('method' => 'GET', 'path' => '/api/v1/inboxes', 'origin' => $this->origin(),
                     'requires_scope' => 'inbox', 'permission' => 'read_only'),
             ),
             'authorization_notice' => 'Discovered surfaces do not grant permission to invoke external writes, callbacks or arbitrary routes.',
@@ -127,7 +130,7 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
         // performs an uncached read without any WordPress side effects.
         $items = array();
         for ($page = 1; $page <= 10; $page++) {
-            $response = wp_remote_get(self::ORIGIN . '/api/v1/inboxes?page=' . $page . '&perPage=50', array(
+            $response = wp_remote_get($this->origin() . '/api/v1/inboxes?page=' . $page . '&perPage=50', array(
                 'timeout' => 8, 'redirection' => 0, 'sslverify' => true,
                 'headers' => array('Authorization' => 'Bearer ' . $token, 'Accept' => 'application/json'),
             ));
@@ -157,7 +160,7 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
     }
     public function remote_health($input = array()) {
         if ( ! $this->is_available() ) return $this->unavailable_error();
-        $response = wp_remote_get(self::ORIGIN . '/api/health', array(
+        $response = wp_remote_get($this->origin() . '/api/health', array(
             'timeout' => 7, 'redirection' => 0, 'sslverify' => true,
             'headers' => array('Accept' => 'application/json'),
         ));
