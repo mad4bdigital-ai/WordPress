@@ -44,13 +44,13 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
         $permission = array('MAD4B_SCP_Policy', 'can_read');
         $this->add_ability('mad4b/chatbotx-provider-snapshot',
             'Read ChatbotX Provider and WordPress Surface Inventory',
-            'provider_snapshot', $permission);
+            'provider_snapshot', $permission, $this->schema(array()));
         $this->add_ability('mad4b/chatbotx-channels-read',
             'Read Connected ChatbotX Workspace Inboxes',
-            'channels_read', $permission);
+            'channels_read', $permission, $this->schema(array()));
         $this->add_ability('mad4b/chatbotx-remote-health',
             'Probe Fixed ChatbotX Health Endpoint',
-            'remote_health', $permission);
+            'remote_health', $permission, $this->schema(array()));
     }
 
     private function scope() {
