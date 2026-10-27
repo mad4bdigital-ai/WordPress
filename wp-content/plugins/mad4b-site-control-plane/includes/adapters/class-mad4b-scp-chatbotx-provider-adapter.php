@@ -86,6 +86,23 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
             ? array_keys((array) $wp_rest_server->get_routes()) : array();
         foreach ($routes as &$route) $route['registered_in_current_lifecycle'] = in_array($route['path'], $registered, true);
         unset($route);
+        // Discovery of future routes is metadata-only, never execution authority.
+        $extra_total = 0;
+        if (is_object($wp_rest_server)) foreach ($registered as $path) {
+            if (!is_string($path) || 0 !== strpos($path, '/cmb/v1/')) continue;
+            $known = false;
+            foreach ($routes as $row) if ($row['path'] === $path) { $known = true; break; }
+            if ($known) continue;
+            ++$extra_total;
+            if ($extra_total > 64) continue;
+            $routes[] = array(
+                'method' => 'unreviewed',
+                'path' => substr($path, 0, 220),
+                'state' => 'discovered_requires_schema_and_permission_review',
+                'registered_in_current_lifecycle' => true,
+                'execution_authorized' => false,
+            );
+        }
         return array_merge($this->scope(), array(
             'plugin_file' => self::PLUGIN,
             'plugin_version' => $this->detect_plugin_version(),
@@ -110,6 +127,8 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
             ),
             'surfaces' => array(
                 'rest' => $routes,
+                'unreviewed_route_count' => $extra_total,
+                'unreviewed_route_truncated' => $extra_total > 64,
                 'admin_post' => array('cmb_save','cmb_test','cmb_commerce_save','cmb_commerce_clear'),
                 'registered_options' => array('cmb_settings_v1', 'cmb_commerce_settings_v1'),
                 'settings_write_via_mcp' => false,
