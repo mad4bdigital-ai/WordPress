@@ -1,0 +1,186 @@
+{
+    "result": "PASS",
+    "passed": 40,
+    "total": 40,
+    "tests": {
+        "real_qa45_evaluate_returns_array": {
+            "pass": true,
+            "observed": null
+        },
+        "company_policy_currently_draft": {
+            "pass": true,
+            "observed": null
+        },
+        "financial_mode_not_approved": {
+            "pass": true,
+            "observed": null
+        },
+        "no_certified_source_receipts": {
+            "pass": true,
+            "observed": null
+        },
+        "source_missing_exact_four": {
+            "pass": true,
+            "observed": null
+        },
+        "does_not_offer_fake_issuance": {
+            "pass": true,
+            "observed": null
+        },
+        "no_execution_authorizations": {
+            "pass": true,
+            "observed": null
+        },
+        "real_lab_issue_denied": {
+            "pass": true,
+            "observed": null
+        },
+        "parent_sale_line_consistent": {
+            "pass": true,
+            "observed": null
+        },
+        "missing_issued_quote_cannot_approve": {
+            "pass": true,
+            "observed": null
+        },
+        "unknown_approval_kind_denied": {
+            "pass": true,
+            "observed": null
+        },
+        "unissued_quote_status_denied": {
+            "pass": true,
+            "observed": null
+        },
+        "pure_reconciliation_valid_synthetic": {
+            "pass": true,
+            "observed": null
+        },
+        "pure_quote_digest_sha": {
+            "pass": true,
+            "observed": null
+        },
+        "quote_expiry_shortest_signed_receipt": {
+            "pass": true,
+            "observed": null
+        },
+        "pure_stable_digest": {
+            "pass": true,
+            "observed": null
+        },
+        "reject_currency_conflict": {
+            "pass": true,
+            "observed": null
+        },
+        "reject_cost_tax_mismatch": {
+            "pass": true,
+            "observed": null
+        },
+        "reject_unreconciled_total": {
+            "pass": true,
+            "observed": null
+        },
+        "reject_mismatched_receipt_digest": {
+            "pass": true,
+            "observed": null
+        },
+        "reject_abstract_inventory_no_hold": {
+            "pass": true,
+            "observed": null
+        },
+        "reject_expired_hold": {
+            "pass": true,
+            "observed": null
+        },
+        "reject_string_as_source_amount": {
+            "pass": true,
+            "observed": null
+        },
+        "reject_invalid_discount_and_total": {
+            "pass": true,
+            "observed": null
+        },
+        "reject_unbound_issuer_context": {
+            "pass": true,
+            "observed": null
+        },
+        "issuer_private_claims_present": {
+            "pass": true,
+            "observed": null
+        },
+        "public_evidence_probe_no_internal_claims": {
+            "pass": true,
+            "observed": null
+        },
+        "synthetic_sources_seen_but_policy_blocks": {
+            "pass": true,
+            "observed": null
+        },
+        "synthetic_verified_receipts_never_issue_draft": {
+            "pass": true,
+            "observed": null
+        },
+        "admin_rest_readiness_200": {
+            "pass": true,
+            "observed": 200
+        },
+        "rest_no_store": {
+            "pass": true,
+            "observed": null
+        },
+        "admin_rest_preview_does_not_expose_supplier_amount": {
+            "pass": true,
+            "observed": null
+        },
+        "admin_rest_issuance_409": {
+            "pass": true,
+            "observed": 409
+        },
+        "rest_client_signed_quote_rejected": {
+            "pass": true,
+            "observed": 400
+        },
+        "admin_approval_for_unissued_quote_404": {
+            "pass": true,
+            "observed": 404
+        },
+        "admin_quote_status_unissued_404": {
+            "pass": true,
+            "observed": 404
+        },
+        "guest_readiness_denied": {
+            "pass": true,
+            "observed": null
+        },
+        "guest_issue_denied": {
+            "pass": true,
+            "observed": null
+        },
+        "guest_approval_denied": {
+            "pass": true,
+            "observed": null
+        },
+        "business_and_quote_tables_unchanged": {
+            "pass": true,
+            "observed": {
+                "before": {
+                    "orders": 1,
+                    "requests": 9,
+                    "tasks": 6,
+                    "holds": 0,
+                    "bookings": 0,
+                    "quotes": 0,
+                    "approvals": 0
+                },
+                "after": {
+                    "orders": 1,
+                    "requests": 9,
+                    "tasks": 6,
+                    "holds": 0,
+                    "bookings": 0,
+                    "quotes": 0,
+                    "approvals": 0
+                }
+            }
+        }
+    }
+}
