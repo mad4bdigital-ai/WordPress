@@ -75,6 +75,11 @@ yes(array_key_exists('resolved_at',get_option($cls::STORE)[$source_key]) &&
  'reopened source issue clears its obsolete resolved timestamp');
 $GLOBALS['admin']=false;
 $before=serialize(get_option($cls::STORE));
+$internalDenied=$cls::reconcile($cls::discover(),true);
+yes(is_wp_error($internalDenied) && serialize(get_option($cls::STORE))===$before,
+ 'a non-scheduler caller cannot bypass admin write policy');
+$scheduledDisabled=$cls::run_scheduled();
+yes(is_wp_error($scheduledDisabled),'untrusted scheduler invocation fails closed');
 $denied=$cls::reconcile($cls::discover());
 yes(is_wp_error($denied)&&serialize(get_option($cls::STORE))===$before,'unprivileged caller cannot save');
 $board=$cls::sync_board($source_key);
