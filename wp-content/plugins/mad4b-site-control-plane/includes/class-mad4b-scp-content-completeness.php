@@ -28,7 +28,7 @@ final class MAD4B_SCP_Content_Completeness {
             'rules'=>is_array($stored['rules']??null)?$stored['rules']:array());
     }
     private static function read_permission() {return current_user_can('edit_others_posts');}
-    public static function admin_permission() {return current_user_can('manage_options');}
+    public static function admin_permission() {return MAD4B_SCP_Readiness_Integrations::can_manage();}
     private static function fail($code,$msg,$status=400) {
         return new WP_Error($code,$msg,array('status'=>$status));
     }
@@ -352,10 +352,10 @@ final class MAD4B_SCP_Content_Completeness {
     }
     public static function menu() {
         add_submenu_page('mad4b-control-plane','Content Completeness & SEO',
-            'Completeness & SEO','manage_options',self::PAGE,array(__CLASS__,'render'));
+            'Completeness & SEO','mad4b_manage_company_operations',self::PAGE,array(__CLASS__,'render'));
     }
     public static function render() {
-        if(!current_user_can('manage_options'))wp_die('Forbidden',403);
+        if(!MAD4B_SCP_Readiness_Integrations::can_manage())wp_die('Forbidden',403);
         $settings=self::settings();
         echo '<div class="wrap"><h1>Content Completeness &amp; SEO Rules</h1>';
         echo '<p>Rules are company-local. The scanner never fills content, changes pricing or generates SEO metadata. Dynamic sources without verified evidence are not reported as empty.</p>';

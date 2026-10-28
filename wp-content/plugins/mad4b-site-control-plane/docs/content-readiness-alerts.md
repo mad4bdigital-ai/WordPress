@@ -269,3 +269,32 @@ Do not copy this Lab issue ledger into other companies or Production.
 - Lab initial preset intentionally omits `post_content`, gallery (already
   monitored by Media Readiness) and broad hotel description requirements where
   the authoritative imported content source is not yet established.
+
+## Company operations + Fluent Boards + Bit Flows readiness bridge (2026-10-28)
+
+- `MAD4B_SCP_Readiness_Integrations` uses the existing Company Master Admin capability `mad4b_manage_company_operations`; it does not grant `manage_options`, WordPress Settings, plugin-install or plugin-activation privileges.
+- Same-site event journal `mad4b_content_readiness_events_v1` holds transitions: `discovered`, `reopened`, and `resolved`. It initializes with an empty baseline so legacy open issues are not bulk-notified. History is bounded to 300 events and scoped to the current WordPress site.
+- `GET /wp-json/mad4b-content-readiness/v1/notifications/inbox` is filtered to the current assigned WP user; the Company Master Admin or Administrator may request `scope=all`. `GET /notifications/backlog` exposes active, source-backed issues assigned to the current user (or all to an authorized manager).
+- `GET /admin/team`, `GET /admin/routing`, `PATCH /admin/routing` select exact WordPress users/roles, revision-checked. Company Master Admin can assign only its approved managed staff. An ambiguous role membership never auto-picks a user.
+- `GET /admin/integrations` gives per-company provider and assignment readiness. `GET /admin/integrations/preview?issue_id=<exact 64hex>` renders a sanitized, dry-run event payload.
+- Bit Flows 1.32.0 supports the native `WordPress Action Hooks` trigger with `addAction`; the dedicated event hook is `mad4b/readiness/issue_transition` with one whitelisted, site-local array payload. Existing site Bit Flows have no active flow for this hook, so outbound notifications are NOT configured.
+- The hook is NEVER invoked by scanner/reconcile or `GET`; `POST /admin/integrations/dispatch` requires a verified application-password Agent, central mutation grant, explicit company `bitflows_notifications` approval, a dedicated active native Bit Flows flow and an atomic single-use claim. The receipt says `hook_invoked`, not delivered. No automatic retries of unknown outcomes.
+- Fluent Boards task creation remains separately governed by the existing `POST /sync-one` and `POST /sync-batch`, preserving its native source ID, board, stage and team assignee checks. Existing 843 open issues have no linked Board tasks and existing setup tasks are not considered gap tasks.
+- Current company roles: 4 `master_admin`, 9 administrators, no active `editor` or `shop_manager` users. Routing defaults therefore remain unassigned until named managed staff are chosen. The administrator can use the company team UI to create/assign scoped editorial staff without granting site configuration privileges.
+- Email and Bit Flows outbound remain disabled by default, even though Fluent SMTP and Bit Flows are installed. No recipient address, API key or external flow is created or mutated in this patch.
+
+## WPML-inspired Work Scope & Batch Management (2026-10-28)
+
+WPML source design reviewed (read-only): `classes/translation-batch/class-wpml-tm-translation-batch.php`, `classes/translation-batch/class-wpml-tm-translation-batch-element.php`, and the installed translation-batch query/domain classes. WPML maintains individual translation elements, named batches, language-specific translators, task states, and per-job assignments. MAD4B **does not copy WPML implementation** or write into `icl_translation_batches`, `icl_translation_status`, `icl_translations`, `icl_translate_job`.
+
+MAD4B independently models: source issue -> bounded work packet -> parent work batch -> manually approved Fluent Boards task -> optional one Bit Flows digest.
+
+- A work packet groups a company site's open source issues by owner group + WPML language + severity + source post type/taxonomy. Every packet has a stable site-scoped fingerprint and a revision derived from the exact issue identifiers.
+- Packet maximum: 50 issues. Oversized groups are deterministically subpartitioned by source issue fingerprint prefix. The parent batch remains the grouping key. Lab dry run: 843 open issues -> 53 bounded work packets (largest 47) -> 24 parent batches, with no writes or external notifications.
+- `GET /wp-json/mad4b-content-readiness/v1/scope-batches` shows parent digests; `GET /scopes` shows the owner's work packets; `GET /scopes/{scope_id}` paginates underlying source issue references; `GET /scope-batches/{batch_id}/digest-preview` previews one aggregation without dispatch.
+- Company Master Admin may `POST /scopes/{scope_id}/approve` only for a current revision with a single enrolled, company-managed WP user. No active editorial users are currently named as owners; therefore the 53 packets fail closed in `needs_owner` state.
+- Governed app-password Agent may `POST /scopes/{scope_id}/sync` to create **one** native Fluent Boards task for the approved packet, using an exact source ID and an atomic single-use claim to prevent duplicates. Successful provider receipt is stored; a second call returns the existing task. An uncertain claim is not retried automatically.
+- Only after all packets in a parent batch are synced, a separate governed request can attempt `POST /scope-batches/{batch_id}/notify`, requiring the current batch revision, company Bit Flows opt-in, an explicitly active native `WordPress Action Hooks` flow for `mad4b/readiness/scope_digest`, and an atomic single-use digest key. A response of `hook_invoked` **does not** assert that the recipient received an email or message.
+- The older per-issue `POST /admin/integrations/dispatch` is retired (HTTP 410), eliminating the future accidental 843-email failure mode. No scanner or scheduler emits external messages.
+- A company menu `Company -> Content Work Scopes` provides the operational overview. REST list/read pagination is bounded; there is no WPML translation-status mutation.
+- Bit Flows 1.32.0 is installed but has no active dedicated readiness-digest Flow. External dispatch is disabled and remains blocked until explicitly configured and certified. Fluent Boards notifications follow their native member settings and are only considered after a governed task-create operation.

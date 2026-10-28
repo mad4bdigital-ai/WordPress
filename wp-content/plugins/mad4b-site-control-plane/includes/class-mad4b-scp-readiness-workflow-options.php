@@ -75,10 +75,10 @@ final class MAD4B_SCP_Readiness_Workflow_Options {
     }
     public static function menu() {
         add_submenu_page('mad4b-control-plane','Content Follow-up Settings',
-            'Content Follow-up','manage_options',self::PAGE,array(__CLASS__,'render'));
+            'Content Follow-up','mad4b_manage_company_operations',self::PAGE,array(__CLASS__,'render'));
     }
     public static function save() {
-        if(!current_user_can('manage_options'))wp_die('Forbidden',403);
+        if(!MAD4B_SCP_Readiness_Integrations::can_manage())wp_die('Forbidden',403);
         check_admin_referer('mad4b_readiness_workflow_save');
         $in=wp_unslash($_POST);
         $board=absint($in['board_id']??0);
@@ -92,7 +92,9 @@ final class MAD4B_SCP_Readiness_Workflow_Options {
             $roles[$group]=in_array($role,$registered_roles,true)?$role:'';
             $id=absint($in['owners'][$group]??0);
             $user=$id?get_user_by('id',$id):null;
-            $users[$group]=$user&&user_can($user,'edit_others_posts')?$id:0;
+            $users[$group]=$user&&user_can($user,'edit_others_posts') &&
+                (current_user_can('manage_options') ||
+                    (class_exists('MAD4B_SCP_Company_Master_Admin') && MAD4B_SCP_Company_Master_Admin::managedStaff($id)))?$id:0;
         }
         $channels=array(
             'dashboard_alerts'=>!empty($in['dashboard_alerts']),
@@ -122,7 +124,7 @@ final class MAD4B_SCP_Readiness_Workflow_Options {
         echo '</select>';
     }
     public static function render() {
-        if(!current_user_can('manage_options'))wp_die('Forbidden',403);
+        if(!MAD4B_SCP_Readiness_Integrations::can_manage())wp_die('Forbidden',403);
         $s=self::settings();
         $gate=class_exists('MAD4B_SCP_Policy')?MAD4B_SCP_Policy::mutation_gate_status():array();
         $authorized=class_exists('MAD4B_SCP_Policy')&&MAD4B_SCP_Policy::can_mutate();
@@ -136,7 +138,9 @@ final class MAD4B_SCP_Readiness_Workflow_Options {
         }
         $users=array(0=>'— Unassigned —');
         foreach(get_users(array('number'=>300)) as $user)
-            if(user_can($user,'edit_others_posts'))
+            if(user_can($user,'edit_others_posts') &&
+                (current_user_can('manage_options') ||
+                    (class_exists('MAD4B_SCP_Company_Master_Admin') && MAD4B_SCP_Company_Master_Admin::managedStaff($user->ID))))
                 $users[(int)$user->ID]=$user->display_name.' (#'.$user->ID.')';
         echo '<div class="wrap"><h1>Content Follow-up &amp; Notifications</h1>';
         echo '<p>Company-local configuration. Source scans and dashboard alerts are independent of external task creation and outbound notifications.</p>';

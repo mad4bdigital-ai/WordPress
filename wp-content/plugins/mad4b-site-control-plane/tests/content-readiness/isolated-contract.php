@@ -16,6 +16,7 @@ function sanitize_key($str){return preg_replace('/[^a-z0-9_-]/','',strtolower((s
 function absint($v){return abs((int)$v);}
 function get_option($key,$default=[]){return $GLOBALS['options'][$key]??$default;}
 function update_option($key,$v,$autoload=false){$GLOBALS['options'][$key]=$v;return true;}
+function add_option($key,$v,$deprecated='', $autoload='yes') {if(isset($GLOBALS['options'][$key]))return false;$GLOBALS['options'][$key]=$v;return true;}
 function get_post_types($args,$format){return ['tours-and-activities'=>'tours-and-activities'];}
 function post_type_exists($type){return $type==='tours-and-activities';}
 function get_posts($args){return [111,112];}
@@ -254,4 +255,57 @@ yes(!is_wp_error($ccRemoved)&&get_option($cls::STORE)[$frId]['status']==='open',
 $GLOBALS['options'][$completeness::OPTION]=$settings;
 yes($completeness::rest_rules()['settings']['enabled']===true,
  'administrative GET reports persisted independent rules');
+// Native operational notification bridge is append-only and gated; it never
+// emits an external Bit Flows hook during a scanner reconciliation.
+$bridge='MAD4B_SCP_Readiness_Integrations';
+$initial=get_option($bridge::STORE,[]);
+yes(is_array($initial) && isset($initial['events']),
+ 'a new integration journal is seeded without historical notification spam');
+$sampleId=hash('sha256','readiness-test-new');
+$sample=['id'=>$sampleId,'post_type'=>'tours-and-activities','object_id'=>111,
+  'code'=>'ccr_required_summary','severity'=>'high','status'=>'open',
+  'source'=>'content-completeness','source_evidence'=>['field'=>'meta_text']];
+$beforeEvents=count(get_option($bridge::STORE)['events']);
+$added=$bridge::record_changes([],[$sampleId=>$sample]);
+yes($added['recorded']===1 && $added['emitted']===0 &&
+ count(get_option($bridge::STORE)['events'])===$beforeEvents+1,
+ 'new confirmed source issue creates an internal event without Bit Flows dispatch');
+$duplicate=$bridge::record_changes([],[$sampleId=>$sample]);
+yes($duplicate['recorded']===0,
+ 'event replay does not duplicate the notification receipt');
+$resolvedSample=$sample;$resolvedSample['status']='resolved';
+$close=$bridge::record_changes([$sampleId=>$sample],[$sampleId=>$resolvedSample]);
+yes($close['recorded']===1 && $close['emitted']===0,
+ 'resolution records a separate internal event with outbound disabled');
+$openAgain=$sample;$openAgain['reopens']=1;
+$reopen=$bridge::record_changes([$sampleId=>$resolvedSample],[$sampleId=>$openAgain]);
+yes($reopen['recorded']===1 && $reopen['emitted']===0,
+ 'reopened issue produces a distinct cycle event');
+$GLOBALS['admin']=false;
+yes(!$bridge::can_manage() && !$bridge::can_view(),
+ 'unprivileged WordPress user cannot read company notification inbox');
+$GLOBALS['admin']=true;
+yes($bridge::can_manage() && $bridge::can_view(),
+ 'administrator can inspect company integration status');
+// WPML-style scoped work queue: a large media gap backlog must never become
+// hundreds of separate task notifications or one unbounded owner task.
+$scopeClass='MAD4B_SCP_Readiness_Scopes';
+$large=[];
+for($i=0;$i<120;$i++) {
+    $id=hash('sha256','media-work-packet-'.$i);
+    $large[$id]=['id'=>$id,'post_type'=>'properties','object_id'=>111,
+        'code'=>'media_missing','severity'=>'medium','status'=>'open',
+        'source_evidence'=>['language'=>'en']];
+}
+$stateBefore=serialize(get_option($scopeClass::STORE,[]));
+$packets=$scopeClass::build($large);
+$maxPacket=max(array_column($packets,'total'));
+$batch=$scopeClass::batches($packets);
+yes(count($packets)>1 && $maxPacket<=$scopeClass::MAX_ITEMS_PER_WORK_PACKET,
+ 'large content group splits into bounded work packets');
+yes(count($batch)===1 && array_sum(array_column($packets,'total'))===120 &&
+ current($batch)['issue_count']===120,
+ 'many bounded tasks belong to exactly one parent digest batch');
+yes(serialize(get_option($scopeClass::STORE,[]))===$stateBefore,
+ 'work scopes and batch previews never write or dispatch');
 echo "ALL READINESS LEDGER CONTRACTS PASSED\n";

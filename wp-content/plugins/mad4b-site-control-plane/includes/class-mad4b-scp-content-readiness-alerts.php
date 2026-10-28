@@ -7,6 +7,8 @@
 defined('ABSPATH') || exit;
 require_once __DIR__.'/class-mad4b-scp-readiness-workflow-options.php';
 require_once __DIR__.'/class-mad4b-scp-content-completeness.php';
+require_once __DIR__.'/class-mad4b-scp-readiness-integrations.php';
+require_once __DIR__.'/class-mad4b-scp-readiness-scopes.php';
 
 final class MAD4B_SCP_Content_Readiness_Alerts {
     const VERSION = '1.0.0';
@@ -29,6 +31,8 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         add_action('admin_notices', array(__CLASS__, 'admin_notice'));
         MAD4B_SCP_Readiness_Workflow_Options::boot();
         MAD4B_SCP_Content_Completeness::boot();
+        MAD4B_SCP_Readiness_Integrations::boot();
+        MAD4B_SCP_Readiness_Scopes::boot();
     }
     public static function rules() {
         $saved = (array) get_option(self::POLICY, array());
@@ -290,7 +294,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         if ($scheduled) {
             if (!self::trusted_scheduled_cli() || empty(self::rules()['scheduled_scan_enabled']))
                 return new WP_Error('mad4b_readiness_scheduler_unauthorized');
-        } elseif (!current_user_can('manage_options')) return new WP_Error('mad4b_readiness_permission_denied');
+        } elseif (!MAD4B_SCP_Readiness_Integrations::can_manage()) return new WP_Error('mad4b_readiness_permission_denied');
         if (!is_array($scan) || empty($scan['complete']) || !isset($scan['issues']))
             return new WP_Error('mad4b_readiness_incomplete_scan');
         $old=(array)get_option(self::STORE,array());$now=gmdate('c');$new=$old;
@@ -316,6 +320,9 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         if (count($new)>self::MAX_ISSUES)
             return new WP_Error('mad4b_readiness_capacity_exceeded','Issue registry capacity exceeded. Nothing saved.');
         update_option(self::STORE,$new,false);
+        if(serialize(get_option(self::STORE,array()))!==serialize($new))
+            return new WP_Error('mad4b_readiness_ledger_readback_failed','Issue ledger persistence was not confirmed.');
+        MAD4B_SCP_Readiness_Integrations::record_changes($old,$new);
         self::audit('scan',['scanned'=>$scan['scanned'],'current'=>count($scan['issues'])]);
         return self::summary($new);
     }
@@ -559,7 +566,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         exit;
     }
     public static function handle_scan() {
-        if(!current_user_can('manage_options'))wp_die('Forbidden',403);
+        if(!MAD4B_SCP_Readiness_Integrations::can_manage())wp_die('Forbidden',403);
         check_admin_referer('mad4b_readiness_scan');
         $result=self::reconcile(self::discover());
         set_transient('mad4b_readiness_result_'.get_current_user_id(),
@@ -567,7 +574,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         wp_safe_redirect(admin_url('admin.php?page='.self::PAGE));exit;
     }
     public static function handle_save_rules() {
-        if(!current_user_can('manage_options'))wp_die('Forbidden',403);
+        if(!MAD4B_SCP_Readiness_Integrations::can_manage())wp_die('Forbidden',403);
         check_admin_referer('mad4b_readiness_rules');
         $names=['origin_fields','origin_source_fields','origin_source_taxonomies','location_taxonomies','media_fields','owner_fields','end_date_fields','stop_sale_fields'];
         $settings=array();
@@ -667,7 +674,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         return array('processed'=>count($results),'results'=>$results);
     }
     public static function handle_batch_sync() {
-        if(!current_user_can('manage_options'))wp_die('Forbidden',403);
+        if(!MAD4B_SCP_Readiness_Integrations::can_manage())wp_die('Forbidden',403);
         check_admin_referer('mad4b_readiness_batch_sync');
         $result=self::batch_sync();
         set_transient('mad4b_readiness_result_'.get_current_user_id(),
@@ -676,7 +683,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         exit;
     }
     public static function handle_board_sync() {
-        if(!current_user_can('manage_options'))wp_die('Forbidden',403);
+        if(!MAD4B_SCP_Readiness_Integrations::can_manage())wp_die('Forbidden',403);
         check_admin_referer('mad4b_readiness_board_sync');
         $issue=sanitize_text_field((string)($_POST['issue_id']??''));
         $result=self::sync_board($issue);
