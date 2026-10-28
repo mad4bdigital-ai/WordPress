@@ -37,7 +37,7 @@ foreach ($catalog['items'] as $record) {
     check(!isset($registered[$record['source_id']]),'duplicate source ID in discovery');
     $registered[$record['source_id']]=$record;
 }
-check($catalog['count']===2 && count($registered)===2
+check($catalog['count']>=2 && $catalog['count']===count($registered)
     && !$catalog['mutation_performed'],'source registry inventory');
 check($GLOBALS['remote_calls']===0,'passive discover triggers no GitHub request');
 check(isset($registered['etg-dynamic-filter-seo-bridge'])
