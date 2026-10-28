@@ -3,7 +3,7 @@
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import json,sys,hashlib
-sys.path.insert(0,str(Path(__file__).parent))
+sys.path.insert(0,str(Path(__file__).resolve().parents[1] / 'tools'))
 from qa31_release_source_gate import evaluate
 def chk(ok,label):
     if not ok:raise AssertionError(label)
