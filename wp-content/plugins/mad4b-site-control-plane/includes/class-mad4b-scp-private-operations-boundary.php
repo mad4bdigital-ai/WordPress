@@ -122,4 +122,8 @@ final class MAD4B_SCP_Private_Operations_Boundary {
         add_action( 'template_redirect', array( __CLASS__, 'public_template' ), -1000 );
     }
 }
-MAD4B_SCP_Private_Operations_Boundary::boot();
+// Standalone PHP contract tests may load this class without a WordPress runtime.
+// Do not install partial hooks; live WP always supplies both functions.
+if ( function_exists( 'add_filter' ) && function_exists( 'add_action' ) ) {
+    MAD4B_SCP_Private_Operations_Boundary::boot();
+}
