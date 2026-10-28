@@ -187,3 +187,23 @@ Do not copy this Lab issue ledger into other companies or Production.
   with source term evidence, content edit links and timestamps, so the team
   can work from a concrete repair queue. The export does not change content
   or issue state and escapes spreadsheet formula prefixes.
+
+## Per-company Follow-up & Notifications Option Page
+
+- Control Plane -> Content Follow-up. This stores a company-local WordPress
+  option: mad4b_content_readiness_workflow_v1. No tenant shares this option.
+- Board and stage are validated against native Fluent Boards records.
+- Group routing: media, origin, wpml, pricing, destinations, operations,
+  seo and general. Each group supports a role plus an optional named owner.
+  A role resolves automatically only when exactly one eligible editor is found.
+- Dashboard alerts are on by default; native Fluent Boards creation remains
+  opt-in and requires MAD4B_SCP_Policy::can_mutate() at execution time.
+- A known source_id equal to issue fingerprint is persisted on task creation.
+  Readback finds a matching native task receipt before creating another one.
+- Direct Email and Bit Flows / WhatsApp are disabled until an approved,
+  separately certified adapter exists. Do not imply delivery is enabled.
+- Site Profile identity on ETG Lab currently points at an old localhost
+  origin. No global write override or automatic re-enrollment is performed.
+- Operator must enroll exact current origin through official Site Profile
+  workflow and validate governed agent, schema and audit before enabling
+  Content Readiness task creation. This may affect other connectors.
