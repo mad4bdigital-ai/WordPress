@@ -319,3 +319,17 @@ New module: `includes/class-mad4b-scp-readiness-preactivation.php`. Registered b
 - Test: PHP 8.3 lint, isolated Readiness contract suite including immutable lock, stale revision rejection, forbidden provider activation, template safety, no side effects and read-only report; no real provider writes.
 - Rollback: remove the new bootstrap `require_once` / `boot()` lines and file, or restore the backed-up original Readiness and Scopes classes. Draft option `mad4b_readiness_preactivation_v1` is isolated and can remain for audit; do not remove or rewrite any source issue or provider history.
 - **Deployment caveat:** At preparation time the `etg-woo-lab-php` and `etg-woo-lab-nginx` containers and its 15-minute timer were stopped. An HTTP 200 from `tours.dev.mad4b.com` may resolve to a separate running staging stack. Do not claim live-Lab runtime certification without independently identifying and testing the intended environment; do not reactivate stopped containers or timers as a side effect of this feature.
+
+## Team Preparation Draft — Woo Lab Staging (2026-10-28)
+
+The live tours.dev.mad4b.com environment is etg-commerce-staging-php / etg_commerce_staging, Control Plane 0.4.0-rc.109. The old etg-woo-lab-php container is stopped. Deployment here was an additive Staging compatibility extension, not a downgrade of rc.109.
+
+Added class-mad4b-scp-readiness-team-preparation.php, loaded by the existing Pre-Activation class and exposed on the Company Pre-Activation screen. It provides role and staff proposals for nine content groups, with independent revision-checked draft storage. No WordPress user or active owner mapping is changed.
+
+REST: GET/PATCH /wp-json/mad4b-content-readiness/v1/admin/preactivation/team-plan and GET /admin/preactivation/blueprints. The blueprint surfaces sample Fluent Boards tasks and Bit Flows batch digests, without calling either provider. All external execution is still locked.
+
+At setup, 834 open issues form 53 packets and 24 batches. Media: 605, origin: 77, destinations: 54, content: 39, WPML: 30, pricing: 23, SEO: 5, operations: 1. No editor, operator, shop_manager or company_translation_manager has an active member; the proposal therefore leaves all actual assignee IDs at zero. Administrators and Master Admins are not auto-selected. The preview priority now matches the existing workflow minimum severity High: 47 issues in five packets. The total backlog is still visible for review.
+
+The independent test at tests/content-readiness/preactivation-team-contract.php validates drafts, eligibility, version conflicts, role restrictions, and provider isolation. Live readback verified unchanged Fluent Boards tasks 3/3, Bit Flows flows 3/3, WP users 14/14, with no issue-ledger changes. Fluent SMTP is not active in the target Staging stack.
+
+Rollback: restore class-mad4b-scp-readiness-preactivation.php from /opt/staging/mad4b-content-readiness/backups/commerce-staging-rc109-team-drafts-20261028/ and remove only the new team-preparation class. Preserve the draft option for audit. The rc.109 bootstrap overlay remains a separate distribution/merge concern.

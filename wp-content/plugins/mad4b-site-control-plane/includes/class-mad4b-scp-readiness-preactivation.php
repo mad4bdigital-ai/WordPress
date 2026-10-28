@@ -7,6 +7,7 @@
  * "disabled" is a constant and not a user-controlled setting.
  */
 defined('ABSPATH') || exit;
+require_once __DIR__.'/class-mad4b-scp-readiness-team-preparation.php';
 
 final class MAD4B_SCP_Readiness_PreActivation {
     const OPTION='mad4b_readiness_preactivation_v1';
@@ -25,6 +26,7 @@ final class MAD4B_SCP_Readiness_PreActivation {
         add_action('rest_api_init',array(__CLASS__,'routes'));
         add_action('admin_menu',array(__CLASS__,'menu'),36);
         add_action('admin_post_mad4b_readiness_preactivation_save',array(__CLASS__,'save'));
+        MAD4B_SCP_Readiness_Team_Preparation::boot();
     }
     public static function can_manage() {
         return current_user_can('manage_options')||current_user_can(self::CAP);
@@ -328,6 +330,7 @@ final class MAD4B_SCP_Readiness_PreActivation {
         echo '</tbody></table>';
         submit_button('Save PRE-ACTIVATION draft only');
         echo '</form>';
+        MAD4B_SCP_Readiness_Team_Preparation::render_section();
         echo '<p><a href="'.esc_url(admin_url('admin.php?page='.MAD4B_SCP_Readiness_Scopes::PAGE)).'">Review work scopes</a></p></div>';
     }
 }
