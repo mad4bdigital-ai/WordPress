@@ -10582,6 +10582,24 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/skill-task-abilities-runtime.php"
       ],
       "review_rationale": "Exact source reviewed for bounded lexical ranking, shared 18-second deadline, partial/incomplete propagation, SHA-checked advisory context and managed execution precedence. Steps remain not_authorized. Exact-head tests executed in isolated PHP 7.4/8.3 (or accepted disposable WordPress CI); Production acceptance remains separate."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/cross-plugin-sources.json",
+      "source_blob_sha": "85ffa0723238236a3c13cfb2b5ba17deac5a1ebd",
+      "owner_role": "Repository security/release source reviewer for CI-only source registry changes; exact-head owner attestation remains independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-deployment-runtime.php"
+      ],
+      "review_rationale": "Review-only second tenant-neutral DFSB source is pinned to merged Git SHA and remains package_certification=pending, without signed provenance, final archive digest, release authority, staging install or Production promotion. Legacy ETG provider remains independent. The changed same-PR PHP runtime test verifies both discovered sources by stable ID, per-provider uniqueness and isolation, exact-SHA selection, fail-closed uncertified artifact and source-review gates, absence of native executor, environment denial and non-mutation. No deployed behavior is authorized. Independent exact-head owner attestation, approved artifact authority and live staging certification remain required."
     }
   ],
   "code_change_rules": {
