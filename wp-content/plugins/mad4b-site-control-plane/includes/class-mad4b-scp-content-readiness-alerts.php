@@ -268,6 +268,8 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
             $status=($previous['status']??'')==='resolved'?'open':($previous['status']??'open');
             $new[$key]=array_merge($previous,$row,
                 array('status'=>$status,'first_seen'=>$previous['first_seen']??$now,'last_seen'=>$now,
+                    // A reopened issue is active again: its old closure timestamp is not current.
+                    'resolved_at'=>null,
                     'reopens'=>($previous['reopens']??0)+(($previous['status']??'')==='resolved'?1:0)));
         }
         // Only close rules evaluated by this scan; removing a configured rule
@@ -547,12 +549,33 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
             echo '<p><label><input type="checkbox" name="'.esc_attr($field).'" '.checked($rules[$field],true,false).'>'.esc_html($label).'</label></p>';
         submit_button('Save rules');echo '</form>';
         }
-        echo '<h2>Issues</h2><table class="widefat striped"><thead><tr><th>Severity</th><th>Source</th><th>Issue</th><th>Status</th><th>Fluent Boards</th></tr></thead><tbody>';
-        $rows=array_values($issues);
-        // Operational priorities must not be hidden behind hundreds of
-        // low-severity media reviews in the first 100 rows.
+        $requestedStatus=sanitize_key((string)wp_unslash($_GET['readiness_status']??'open'));
+        if(!in_array($requestedStatus,array('open','resolved','all'),true))$requestedStatus='open';
+        $requestedSeverity=sanitize_key((string)wp_unslash($_GET['readiness_severity']??'all'));
+        if(!in_array($requestedSeverity,array('all','critical','high','medium','low'),true))$requestedSeverity='all';
+        $rows=array_values(array_filter($issues,static function($row) use($requestedStatus,$requestedSeverity){
+            if(!is_array($row))return false;
+            $state=(($row['status']??'open')==='resolved')?'resolved':'open';
+            return ($requestedStatus==='all'||$state===$requestedStatus) &&
+                ($requestedSeverity==='all'||($row['severity']??'medium')===$requestedSeverity);
+        }));
         usort($rows,array(__CLASS__,'priority_compare'));
-        foreach(array_slice($rows,0,100) as $row) {
+        $totalRows=count($rows);
+        $totalPages=max(1,(int)ceil($totalRows/100));
+        $issuePage=max(1,min($totalPages,absint($_GET['readiness_page']??1)));
+        echo '<h2>Issues</h2><form method="get" style="margin:12px 0">';
+        echo '<input type="hidden" name="page" value="'.esc_attr(self::PAGE).'">';
+        foreach(array('readiness_status'=>array('open'=>'Open','resolved'=>'Resolved','all'=>'All'),
+                      'readiness_severity'=>array('all'=>'All severities','critical'=>'Critical','high'=>'High','medium'=>'Medium','low'=>'Low')) as $field=>$options){
+            $selected=$field==='readiness_status'?$requestedStatus:$requestedSeverity;
+            echo '<label>'.esc_html($field==='readiness_status'?'Status':'Severity').' <select name="'.esc_attr($field).'">';
+            foreach($options as $key=>$value)echo '<option value="'.esc_attr($key).'" '.selected($selected,$key,false).'>'.esc_html($value).'</option>';
+            echo '</select></label> ';
+        }
+        echo '<button class="button">Filter</button></form>';
+        echo '<p class="description">Showing '.($totalRows?((($issuePage-1)*100)+1):0).'-'.min($issuePage*100,$totalRows).' of '.$totalRows.' matching issues.</p>';
+        echo '<table class="widefat striped"><thead><tr><th>Severity</th><th>Source</th><th>Issue</th><th>Status</th><th>Fluent Boards</th></tr></thead><tbody>';
+        foreach(array_slice($rows,($issuePage-1)*100,100) as $row) {
             $url=$row['object_id']?get_edit_post_link($row['object_id']):'';
             $label=esc_html((string)$row['post_type'].' #'.(int)$row['object_id']);
             if($url)$label='<a href="'.esc_url($url).'">'.$label.'</a>';
@@ -576,6 +599,17 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
             }
             echo '</td></tr>';
         }
-        echo '</tbody></table></div>';
+        echo '</tbody></table>';
+        if($totalPages>1){
+            echo '<p class="tablenav-pages">Page '.(int)$issuePage.' of '.(int)$totalPages.' ';
+            foreach(array('Previous'=>$issuePage-1,'Next'=>$issuePage+1) as $label=>$target){
+                if($target<1||$target>$totalPages)continue;
+                $url=add_query_arg(array('page'=>self::PAGE,'readiness_status'=>$requestedStatus,
+                    'readiness_severity'=>$requestedSeverity,'readiness_page'=>$target),admin_url('admin.php'));
+                echo '<a class="button" style="margin-left:8px" href="'.esc_url($url).'">'.esc_html($label).'</a>';
+            }
+            echo '</p>';
+        }
+        echo '</div>';
     }
 }
