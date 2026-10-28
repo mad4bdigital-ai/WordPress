@@ -47,6 +47,7 @@ require_once __DIR__ . '/includes/CommercialQuoteReadiness.php';
 require_once __DIR__ . '/includes/CommercialQuoteEvidenceProbe.php';
 require_once __DIR__ . '/includes/CommercialFinalQuoteLifecycle.php';
 require_once __DIR__ . '/includes/NativeCptOrderItemIdentity.php';
+require_once __DIR__ . '/includes/NativeOrderItemIdentityResolver.php';
 require_once __DIR__ . '/includes/CommerceTenantBindingAudit.php';
 require_once __DIR__ . '/includes/FluentBoardsTaskBridge.php';
 require_once __DIR__ . '/includes/RequestIntake.php';
@@ -103,7 +104,7 @@ add_action('plugins_loaded', [Commerce\Composition\CommercialQuotePlan::class, '
 add_action('plugins_loaded', [Commerce\Composition\CommercialQuoteReadiness::class, 'bootstrap'], 59);
 add_action('plugins_loaded', [Commerce\Composition\CommercialQuoteEvidenceProbe::class, 'bootstrap'], 60);
 add_action('plugins_loaded', [Commerce\Composition\CommercialFinalQuoteLifecycle::class, 'bootstrap'], 61);
-add_action('plugins_loaded', [Commerce\Composition\NativeCptOrderItemIdentity::class, 'bootstrap'], 62);
+add_action('plugins_loaded', [Commerce\Composition\NativeOrderItemIdentityResolver::class, 'bootstrap'], 62);
 add_action('plugins_loaded', [Commerce\Composition\CommerceTenantBindingAudit::class, 'bootstrap'], 57);
 add_action('plugins_loaded', [Commerce\Composition\IntakeCaseApi::class, 'bootstrap'], 50);
 add_action('plugins_loaded', [Commerce\Composition\FluentBoardsTaskBridge::class, 'bootstrap'], 51);
