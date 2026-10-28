@@ -3204,6 +3204,24 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing bounded automation and performance controls cover a non-authorizing advisory service; no new execution or write surface is introduced.",
       "review_rationale": "Reviewed shared 18-second source read deadline, error pagination, bounded companions, managed execution precedence, verified external advisory metadata and explicit incomplete/timeout states; no remote instructions are executed. Hermetic PHP 7.4/8.3 suites passed; a matching deployed Staging build has not been accepted."
+    },
+    {
+      "owner_role": "Plugin security maintainer / independent code review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-early-boundary-contract.py"
+      ],
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-private-operations-boundary.php",
+      "review_rationale": "Review private customer-order access, legacy Master Admin compatibility, fail-closed site-local JetEngine relation binding and before-fastpath initialization.",
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "This adds no public endpoint or new execution privilege; reuse existing SECURITY-01, GOVERNANCE-01 and PLATFORM-01 for privacy enforcement and explicit reviewed release checks."
     }
   ],
   "lifecycle": [],
@@ -10604,6 +10622,40 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-deployment-runtime.php"
       ],
       "execution_note": "The bounded Python wrapper invokes the original standalone PHP fixture through PHP CLI, enforces nonzero-failure and the exact assertion PASS marker; it is not a PHPUnit test. Executed from the ordinary readiness Python lane; no new broad PHP executor allowlist."
+    },
+    {
+      "owner_role": "Plugin security maintainer / independent code review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-early-boundary-contract.py"
+      ],
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-private-operations-boundary.php",
+      "source_blob_sha": "6ff5bbd161a2b2327753578e73669fd02f8b9559",
+      "review_rationale": "Review site-local relation metadata, nonpublic CPT registration and anonymous/private REST denial while preserving authorized operator access."
+    },
+    {
+      "owner_role": "Plugin security maintainer / independent code review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-early-boundary-contract.py"
+      ],
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "1861354d015c94be6ed41265f1737c4dd93d733c",
+      "review_rationale": "Review early Control Plane initialization before REST and CLI fastpaths so private content cannot bypass authorization when ordinary source modules are skipped."
     }
   ],
   "code_change_rules": {
