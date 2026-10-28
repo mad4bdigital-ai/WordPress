@@ -475,14 +475,14 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         header('Content-Type: text/csv; charset=utf-8');
         header('Content-Disposition: attachment; filename="mad4b-content-readiness-'.gmdate('Ymd').'.csv"');
         $output=fopen('php://output','w');
-        fputcsv($output,array('issue_id','severity','status','post_type','post_id','code',
+        fputcsv($output,array('issue_id','severity','status','post_type','post_id','content_title','code',
             'source_taxonomy','source_term_id','source_level','description','edit_url','last_seen'));
         foreach($rows as $row){
             $e=(array)($row['source_evidence']??array());
             $id=absint($row['object_id']??0);
             $url=$id?get_edit_post_link($id,'raw'):'';
             $values=array($row['id']??'',$row['severity']??'',$row['status']??'',
-                $row['post_type']??'',$id,$row['code']??'',$e['taxonomy']??'',
+                $row['post_type']??'',$id,($id?html_entity_decode(wp_strip_all_tags(get_the_title($id)),ENT_QUOTES,'UTF-8'):''),$row['code']??'',$e['taxonomy']??'',
                 absint($e['term_id']??0),$e['level']??'',$row['label']??'',
                 $url,$row['last_seen']??'');
             // Prevent spreadsheet formula execution in exported source labels.
