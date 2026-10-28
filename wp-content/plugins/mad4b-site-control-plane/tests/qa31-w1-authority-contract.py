@@ -5,6 +5,7 @@ import shutil,subprocess,sys
 root=Path(__file__).resolve().parent
 cases={
     'qa31-w1-authority-owner-boundary-runtime.php':'QA31_W1_OWNER_BROWSER_GATE: PASS',
+    'qa31-w1-agent-route-boundary-runtime.php':'QA31_W1_AGENT_REST_ROUTING: PASS',
     'replay-policy-runtime.php':'mad4b.replay-policy.runtime.v1: PASS',
     'context-authority-runtime.php':'mad4b.site-control-plane.context-authority-runtime.v5: PASS',
     'context-recreate-registry-rollback-runtime.php':'mad4b.site-control-plane.context-recreate-registry-rollback.runtime.v3: PASS',
