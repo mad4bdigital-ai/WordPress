@@ -2,7 +2,10 @@
   "contract": "mad4b.cross-plugin-sources.v1",
   "default_execution": "deny_until_exact_artifact_certified",
   "registration_policy": "reviewed_repository_manifest_only",
-  "supported_environments": ["staging", "production"],
+  "supported_environments": [
+    "staging",
+    "production"
+  ],
   "sources": [
     {
       "id": "etg-dynamic-filter-seo-bridge",
@@ -19,7 +22,31 @@
       "artifact_sha256": "",
       "artifact_version": "",
       "package_certification": "pending",
-      "environments": ["staging", "production"],
+      "environments": [
+        "staging",
+        "production"
+      ],
+      "production_promotion_attestation": ""
+    },
+    {
+      "id": "dynamic-filter-seo-bridge",
+      "label": "Dynamic Filter SEO Bridge — tenant-neutral source",
+      "repository": "mad4bdigital-ai/WordPress",
+      "plugin_subdirectory": "wp-content/plugins/dynamic-filter-seo-bridge",
+      "plugin_file": "dynamic-filter-seo-bridge/dynamic-filter-seo-bridge.php",
+      "provider_id": "dynamic-filter-seo-bridge",
+      "review_state": "source_reviewed_artifact_pending",
+      "candidate_source_commit_sha": "8b391bb8af0e2505d9a9c5296d37d9ce420e54e7",
+      "candidate_artifact_version": "0.4.0-alpha.14-local.1",
+      "candidate_state": "REVIEW_ONLY_SOURCE_PINNED",
+      "source_commit_sha": "",
+      "artifact_sha256": "",
+      "artifact_version": "",
+      "package_certification": "pending",
+      "environments": [
+        "staging",
+        "production"
+      ],
       "production_promotion_attestation": ""
     }
   ]
