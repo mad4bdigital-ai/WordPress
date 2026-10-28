@@ -1,0 +1,11 @@
+{
+  "contract": "mad4b.etg-governed-ops-bundle.v1",
+  "target": "ETG Commerce Staging",
+  "production_deploy_allowed": false,
+  "default_dispatch_enabled": false,
+  "files": {
+    "015-mad4b-staging-runtime-admission.php": "49726b6660c4f9d743c140c5e5a33e46606bf11c42aaa6323a9c8d785d91b74d",
+    "governed-cron-plan.php": "12bcb4bcdb67206d48dcadca59ecb57c894c5645f81c2fa89977f848abf731f7",
+    "mad4b-governed-cron-runner.php": "99c526dfeba27a3f8cb6e51806c7a2afa91137a30238fc3ef1fc58f305d74b21"
+  }
+}

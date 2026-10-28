@@ -1,0 +1,32 @@
+name: MAD4B ETG Governed Ops Contracts
+on:
+  pull_request:
+    paths:
+      - 'ops/site-environment-policies/etg-governed-ops/**'
+      - '.github/workflows/mad4b-etg-governed-ops-ci.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mad4b-etg-ops-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: Validate source and hermetic policies
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd ops/site-environment-policies/etg-governed-ops
+          python3 verify-bundle.py --source
+          for f in 015-mad4b-staging-runtime-admission.php governed-cron-plan.php mad4b-governed-cron-runner.php runtime-admission-contract.php cron-plan-contract.php; do php -l "$f"; done
+          php runtime-admission-contract.php
+          php cron-plan-contract.php
+          python3 verify-bundle.py --no-dispatch
