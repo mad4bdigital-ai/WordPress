@@ -6,7 +6,7 @@ require_once __DIR__ . '/class-mad4b-scp-chatbotx-write-preflight.php';
 /**
  * Source-reviewed ChatbotX provider adapter for ETG WooCommerce Lab.
  *
- * Ten read and three explicitly governed write abilities. No arbitrary endpoint invocation,
+ * Eleven read and three explicitly governed write abilities. No arbitrary endpoint invocation,
  * plugin callbacks, order/customer data, token output or mutation authority.
  * Registration through the existing reviewed bundled-class policy only.
  */
@@ -47,6 +47,7 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
             'mad4b/chatbotx-commerce-route-plan',
             'mad4b/chatbotx-pricing-preview',
             'mad4b/chatbotx-booking-readiness',
+            'mad4b/chatbotx-presentation-context',
         ), 'content' => array(), 'write' => array(
             'mad4b/chatbotx-support-create-ticket',
             'mad4b/chatbotx-support-add-note',
@@ -93,6 +94,7 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
         $this->add_ability('mad4b/chatbotx-booking-readiness',
             'Inspect Existing Booking and Inventory Engine Dependencies',
             'booking_readiness', $permission, $this->schema(array()));
+        $this->add_ability('mad4b/chatbotx-presentation-context', 'Inspect Native Presentation Context Without Booking Authority', 'presentation_context', $permission, $this->schema(array('selection'=>array('type'=>'object')),array('selection')));
         // All writes pass SCP's site, provider and centralized authorization
         // gates before a native provider API is called. No arbitrary REST.
         $admin=array('MAD4B_SCP_Policy','can_admin');
@@ -151,6 +153,11 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
         }
         $r = CMB_Provider_Gateway::pricing_preview($input['request'] ?? null);
         return is_wp_error($r) ? $r : array_merge($this->scope(), $r);
+    }
+    public function presentation_context($input = array()) {
+        if (!$this->is_available() || !class_exists('CMB_Provider_Gateway', false)) return $this->unavailable_error();
+        $r=CMB_Provider_Gateway::presentation_context($input['selection']??null);
+        return is_wp_error($r)?$r:array_merge($this->scope(),$r);
     }
     public function booking_readiness($input = array()) {
         if (!$this->is_available() || !class_exists('CMB_Provider_Gateway', false)) {
