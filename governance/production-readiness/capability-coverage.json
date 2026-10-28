@@ -3212,7 +3212,8 @@
       "live_evidence_required": true,
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-early-boundary-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-isolated-php-contract.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-isolated-php-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-behavioral-runtime.php"
       ],
       "control_ids": [
         "GOVERNANCE-01",
@@ -10663,7 +10664,8 @@
       "source_blob_sha": "9b465836aad42b407431b420f587425aca77bcee",
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-early-boundary-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-isolated-php-contract.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-isolated-php-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-behavioral-runtime.php"
       ],
       "owner_role": "Plugin security maintainer / independent code review",
       "status": "reviewed_for_ci_only",
