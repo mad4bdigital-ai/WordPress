@@ -15,6 +15,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 // Always register the managed AI credential fence before the foreign REST
 // zero-touch return. Missing/revoked enrollment must fail closed on every site.
 require_once __DIR__ . '/includes/class-mad4b-scp-ai-only-early-auth-guard.php';
+// Private order/booking policy must register before REST and CLI fastpaths.
+require_once __DIR__ . '/includes/class-mad4b-scp-private-operations-boundary.php';
 
 // Request-local, O(1) bootstrap timing markers. No persistent cache, DB
 // writes, user context, file hashing or authority changes. The registration
