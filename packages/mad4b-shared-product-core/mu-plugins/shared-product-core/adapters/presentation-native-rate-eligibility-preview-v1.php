@@ -47,8 +47,9 @@ function shared_presentation_rate_filter_preview_v1(int $filterId, int $tourId, 
     $package = absint($choices['package_term_id']??0);
     $isCruise = function_exists('shared_product_program_mode_supported')
         && shared_product_program_mode_supported(get_post_meta($tourId,'tour_mode',true));
-    if ($program && !$isCruise)
-        return new WP_Error('program_not_applicable','Program filter is not enabled for this Tour');
+    if ($program && (!function_exists('shared_product_tour_program_allowed_v1')
+        || !shared_product_tour_program_allowed_v1($tourId,$program)))
+        return new WP_Error('program_not_applicable','Program is not linked to this Cruise Tour');
     $eligible = function_exists('shared_product_eligible_tour_rate_ids')
         ? shared_product_eligible_tour_rate_ids($tourId) : [];
     if (count($eligible)>300)
@@ -66,7 +67,8 @@ function shared_presentation_rate_filter_preview_v1(int $filterId, int $tourId, 
         $g=(int)get_post_meta($rateId,'related_program_term_id',true);
         if (!$p || !isset($allowedPackages[$p])) continue;
         if ($package && $p!==$package) continue;
-        if ($program && $g!==$program) continue;
+        if ($isCruise && (!$g || !shared_product_tour_program_allowed_v1($tourId,$g)))continue;
+        if ($program && shared_product_program_canonical_term_v1($g)!==shared_product_program_canonical_term_v1($program))continue;
         if ($date) {
             $from=(int)get_post_meta($rateId,'tour_rate_start_date',true);
             $to=(int)get_post_meta($rateId,'tour_rate_end_date',true);
@@ -79,8 +81,9 @@ function shared_presentation_rate_filter_preview_v1(int $filterId, int $tourId, 
             function_exists('shared_product_rate_facet_term_label')
                 ?shared_product_rate_facet_term_label($tier):$tier->name;
         if ($isCruise && $g) {
-            $t=get_term($g,'duration-options');
-            if($t instanceof WP_Term) $programs[(string)$g]=
+            $canonical=shared_product_program_canonical_term_v1($g);
+            $t=get_term($canonical,'programs');
+            if($t instanceof WP_Term) $programs[(string)$canonical]=
                 function_exists('shared_product_rate_facet_term_label')
                     ?shared_product_rate_facet_term_label($t):$t->name;
         }

@@ -127,6 +127,7 @@ require_once $root.'adapters/tour-rate-filter-url-context.php';
 require_once $root.'adapters/tour-rate-season-url-context.php';
 
 require_once $root.'adapters/tour-rate-season-filter-options.php';
+require_once $root.'adapters/tour-program-source-contract-v1.php';
 require_once $root.'adapters/tour-rate-facets-from-query.php';
 require_once $root.'adapters/pricing-legacy-template-tags.php';
 
