@@ -16,6 +16,8 @@ required = (
     "contents: read",
     "pull-requests: read",
     "issues: read",
+    "pull-requests: read",
+    "issues: read",
     "on:\n  push:\n    branches: [master]",
     "if: github.ref == 'refs/heads/master'",
     "OWNER_ATTEST_SINGLE_OWNER",
@@ -47,4 +49,12 @@ assert workflow.count("OWNER_ATTEST_SINGLE_OWNER") == 1
 assert workflow.count("gh api ") == 2
 assert "pull_request:" not in workflow, "Do not issue attestation from unmerged PR"
 assert "persist-credentials: false" in workflow
+assert "${ " not in workflow, "GitHub Actions expression has a missing opening brace"
+for expression in (
+    "${{ github.token }}",
+    "${{ runner.temp }}",
+    "${{ steps.provenance.outputs.bundle-path }}",
+):
+    assert expression in workflow, "GitHub Action expression missing: " + expression
+
 print("DFSB_ATTESTED_REVIEW_SOURCE_CONTRACT: PASS")
