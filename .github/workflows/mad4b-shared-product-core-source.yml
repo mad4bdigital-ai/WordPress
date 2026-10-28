@@ -50,7 +50,7 @@ jobs:
           m=json.loads(Path('packages/mad4b-shared-product-core/release-manifest.json').read_text())
           assert m['status']=='source-only-candidate'
           assert m['deploy_automatically'] is False
-          assert m['source_file_count']==133
+          assert m['source_file_count']==134
           print('SOURCE_ONLY_RELEASE_FENCE_PASS')
           PY
 

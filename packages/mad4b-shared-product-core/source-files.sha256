@@ -50,6 +50,7 @@ b378f362f0bfdad2a5652dc44a3d88d1822c31a3a7f9eef81bdd1b96e419377d  shared-product
 9af54329017e90e5992403fa1c21160818e5b9f191cb51d1dbea36233bc18ad9  shared-product-core/adapters/pricing-legacy-template-tags.php
 176b73b41681f1cd3b67668e4aad14a768df8dea836ff2bed12748aca19fe70c  shared-product-core/adapters/rate-actions-styles.php
 9a2cc2b912acebf4be6b1e1864288fbb78475489fe3d641c260be053dbb6679d  shared-product-core/adapters/rate-selection-actions.php
+2f3b25944115d01a27db9d59ee6ba0f7e0dab965ccfb6c881cf6b2dd816874ce  shared-product-core/adapters/tour-program-source-contract-v1.php
 331b2ae561827f46c682890b2db22973cd4ca25ebe53996f2dd5e690c0720918  shared-product-core/adapters/tour-rate-ajax-context.php
 6ec9f175cb60e16505c5f4b64fe86ef0cb92d5bd215029f5380c9744cd3db6ce  shared-product-core/adapters/tour-rate-availability-query-isolation.php
 aec1cd5ef20b5283be1aa54a4f399d7ceb30917fb5b771949d514c5f8fa02958  shared-product-core/adapters/tour-rate-dynamic-search.php

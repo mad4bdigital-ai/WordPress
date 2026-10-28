@@ -1,6 +1,6 @@
 # MAD4B Shared Product Core — canonical source candidate
 
-**Version:** `0.1.0-dev.20261028` · **Lifecycle:** source-only / Draft PR · **Origin:** ETG WooCommerce Local Lab on VPS. This is the first version-controlled home for the 133 previously local-only active files. The `*.before-*` recovery files and any WordPress database, customers, orders, media, vendor plugins, runtime secrets, `.env`, and vault contents are **not** included.
+**Version:** `0.1.0-dev.20261028` · **Lifecycle:** source-only / Draft PR · **Origin:** ETG WooCommerce Local Lab on VPS. This is the first version-controlled home for the 134 previously local-only active files. The `*.before-*` recovery files and any WordPress database, customers, orders, media, vendor plugins, runtime secrets, `.env`, and vault contents are **not** included.
 
 ## Layout
 
@@ -34,7 +34,7 @@ The ETG Local Lab fixes for 49 composite Dynamic Tag bindings in 25 Elementor do
 
 ## Compatibility evidence at source import
 
-- 133/133 active source files matched frozen snapshot Git blob SHA; no historical `.before-*` source copied.
+- 134/134 active source files matched frozen snapshot Git blob SHA; no historical `.before-*` source copied.
 - 126 PHP files pass PHP 8.3.36 and PHP 8.5.12 syntax checks.
 - `offline-contract-smoke.php` passes 12/12 on both versions.
 - ETG Local Lab (WordPress 7.1.3, PHP 8.5.12): live Field Shape Gate passes; nested Repeater real-content fix verified separately.
@@ -43,3 +43,7 @@ The ETG Local Lab fixes for 49 composite Dynamic Tag bindings in 25 Elementor do
 ## Maintainership
 
 All subsequent code changes must flow through GitHub PR review and CI and be released as a versioned build; do not treat live VPS file changes as an implicit product update. The first promoted release should establish an immutable manifest, provenance and per-tenant rollout controls in MAD4B Control Plane.
+
+## 2026-10-28 recovery checkpoint
+
+The original `adapters/tour-program-source-contract-v1.php` was recovered verbatim from the ETG WooCommerce Local Lab. Its SHA-256 is `2f3b25944115d01a27db9d59ee6ba0f7e0dab965ccfb6c881cf6b2dd816874ce` (182 lines). A complete static loader assembly is **not** a signed or tenant-authorized deployment; the package remains source-only.

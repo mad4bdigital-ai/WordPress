@@ -7,9 +7,14 @@
     "8.3",
     "8.5"
   ],
-  "source_file_count": 133,
-  "source_manifest_sha256": "3756dde8bc34526c51bfbbe9c9bd85e5d12feb0e693164508f809691acf26329",
+  "source_file_count": 134,
+  "source_manifest_sha256": "a76679fb123dac199304a9e364dde3a96a22a9be53fd95c7132a680182a6ffc9",
   "activation": "local Lab only; production activation not authorized",
   "stage": "requires per-tenant parity, integration tests, editor UI acceptance and explicit rollout approval",
-  "deploy_automatically": false
+  "deploy_automatically": false,
+  "recovered_source_file": {
+    "path": "shared-product-core/adapters/tour-program-source-contract-v1.php",
+    "sha256": "2f3b25944115d01a27db9d59ee6ba0f7e0dab965ccfb6c881cf6b2dd816874ce",
+    "line_count": 182
+  }
 }

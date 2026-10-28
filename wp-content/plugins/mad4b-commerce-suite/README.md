@@ -22,9 +22,9 @@ This WordPress plugin is an operator-facing entrypoint for a multi-company produ
 | Release, site identities, approval and rollback | wp-content/plugins/mad4b-site-control-plane | Governed Control Plane, not absorbed |
 | WooCommerce, JetEngine, Elementor, Fluent Forms | Vendor plugins | Versioned dependencies, never bundled |
 | ETG-specific tour filter routing and display mode | package mu-plugins/local-*.php and shared-extra-display-mode.php | Lab consumers, must become tenant-neutral |
-| Tour program source contract | missing from source import as of 2026-10-28 | Release blocker; do not invent original implementation |
+| Tour program source contract | Original recovered from Local Lab with SHA-256 provenance | Static loader source gap closed; tenant runtime certification still required |
 
-The package manifest freezes 133 local-source files. Its loader includes a literal require for adapters/tour-program-source-contract-v1.php; this file was not captured in the imported snapshot. The production loader must not run until a verified original has been recovered and all required dependencies have been checked. An audit cannot substitute for live environment parity or a versioned release.
+The package manifest freezes 134 local-source files. Its loader includes a literal require for adapters/tour-program-source-contract-v1.php; the original file was recovered and tracked with its exact SHA-256. The production loader must not run until its dependencies, exact build and per-tenant compatibility have been certified. An audit cannot substitute for live environment parity or a versioned release.
 
 ## Run checks
 
