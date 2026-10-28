@@ -306,6 +306,15 @@ final class CommercialFinalQuoteLifecycle
                 ?'/^wp-user:[1-9][0-9]{0,19}$/D'
                 :'/^traveler:[A-Za-z0-9_-]{8,128}$/D',$subject))
             return self::error('final_quote_approval_verified_receipt_missing');
+        if ($kind==='manager_approval') {
+            $managerId=(int)substr($subject,8);
+            $manager=get_userdata($managerId);
+            if (!$manager || !user_can($managerId,'manage_woocommerce'))
+                return self::error('final_quote_approver_not_company_manager');
+        }
+        $ctx=CompanyCommercePolicy::context();
+        if (is_wp_error($ctx) || ($ctx['site_write_ready']??false)!==true)
+            return self::error('final_quote_approval_site_authority_unavailable');
         if (strtotime($receipt['expires_at_utc'])<=time())
             return self::error('final_quote_approval_receipt_expired');
         $approval=[
