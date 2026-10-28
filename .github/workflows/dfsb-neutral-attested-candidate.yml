@@ -42,7 +42,7 @@ jobs:
       - name: Pin master to both merged, owner-approved sources
         shell: bash
         env:
-          GH_TOKEN: ${ github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           test "$GITHUB_REPOSITORY" = 'mad4bdigital-ai/WordPress'
@@ -96,18 +96,18 @@ jobs:
         id: provenance
         uses: actions/attest-build-provenance@v2
         with:
-          subject-path: ${ runner.temp }}/dfsb-artifact/dynamic-filter-seo-bridge.zip
+          subject-path: ${{ runner.temp }}/dfsb-artifact/dynamic-filter-seo-bridge.zip
 
       - name: Verify producer attestation without claiming deploy authority
         shell: bash
         env:
-          GH_TOKEN: ${ github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           gh attestation verify "$RUNNER_TEMP/dfsb-artifact/dynamic-filter-seo-bridge.zip" \
             --repo "$GITHUB_REPOSITORY" > "$RUNNER_TEMP/dfsb-artifact/verified-attestation.json"
           test -s "$RUNNER_TEMP/dfsb-artifact/verified-attestation.json"
-          cp "${ steps.provenance.outputs.bundle-path }}" "$RUNNER_TEMP/dfsb-artifact/attestation-bundle.json"
+          cp "${{ steps.provenance.outputs.bundle-path }}" "$RUNNER_TEMP/dfsb-artifact/attestation-bundle.json"
           printf '%s\n' '{"state":"SIGNED_REVIEW_ARTIFACT_NOT_CERTIFIED","staging_apply_authorized":false,"production_authorized":false,"safe_boot_override":false}' \
             > "$RUNNER_TEMP/dfsb-artifact/release-boundary.json"
 
@@ -118,8 +118,8 @@ jobs:
           retention-days: 30
           if-no-files-found: error
           path: |
-            ${ runner.temp }}/dfsb-artifact/dynamic-filter-seo-bridge.zip
-            ${ runner.temp }}/dfsb-artifact/build.json
-            ${ runner.temp }}/dfsb-artifact/verified-attestation.json
-            ${ runner.temp }}/dfsb-artifact/attestation-bundle.json
-            ${ runner.temp }}/dfsb-artifact/release-boundary.json
+            ${{ runner.temp }}/dfsb-artifact/dynamic-filter-seo-bridge.zip
+            ${{ runner.temp }}/dfsb-artifact/build.json
+            ${{ runner.temp }}/dfsb-artifact/verified-attestation.json
+            ${{ runner.temp }}/dfsb-artifact/attestation-bundle.json
+            ${{ runner.temp }}/dfsb-artifact/release-boundary.json
