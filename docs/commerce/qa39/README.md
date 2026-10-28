@@ -8,12 +8,12 @@
 - Per-company non-authorizing definition: WordPress option `commerce_management_company_definitions_v1`, contract `commerce.management.company.v1`, with a strict **exact-site** binding to site_uuid, Site Profile revision and digest, and environment.
 - Definition metadata includes domain visibility booleans (never capability grants), existing Fluent Forms IDs by company-specific role, approved persona-to-WordPress-role mapping, and permitted native CPT service/Rate source types. No domain IDs are built into the reusable REST facade.
 - Original domain owners are reused: Fluent Forms, CPTs, Rate providers, RequestReview, LifecycleReadiness, FluentBoards, WooCommerce HPOS, workflows, CRM, supplier and accounting provider contracts.
-- Missing, foreign, stale or malformed company definitions **fail closed**. Managed company REST starts read-only; writes require both the exact site-bound definition and a healthy Site Profile authority/origin/deployment binding.
+- Missing, foreign, stale or malformed company definitions **fail closed**. Administrative discovery remains accessible to authorized users even before Request Review is enabled; all request decisions and commands still require the native Request Review policy. Managed company REST starts read-only; writes require both the exact site-bound definition and a healthy Site Profile authority/origin/deployment binding.
 - Changes to site definitions are **not** exposed as arbitrary REST writes; identity and company governance remain under their enrolled Control Plane source.
 
 ## Administrative REST endpoints
 
-All endpoints are below `/wp-json/commerce-composition/v1`, require authenticated `commerce_review_requests` or administrator capability and existing RequestReview site policy.
+Provider discovery, source catalog and admin role audit are onboarding/read surfaces. Request management, transitions and commands require Request Review to be enabled. All endpoints are below `/wp-json/commerce-composition/v1`, require authenticated `commerce_review_requests` or administrator capability and existing RequestReview site policy.
 
 | Method | Route | Scope |
 |---|---|---|
@@ -41,7 +41,7 @@ Commercial Quote approval, traveler acceptance, Woo order creation, payment capt
 
 ## Verification evidence
 
-- QA39 management REST suite: **29/29 PASS** (site binding, reviewer/admin/guest roles, invalid company definition and no-definition fail closed, request listing and state, native transitions, blocked POST, no business mutations).
+- QA39 management REST suite: **33/33 PASS** (site binding, reviewer/admin/guest roles, invalid company definition and no-definition fail closed, request listing and state, native transitions, blocked POST, no business mutations).
 - QA39 source catalog suite: **11/11 PASS** (paginated source identities, blocked WP post types, bad domain/size rejection, read-only prices, guest denied).
 - QA39 role governance REST suite: **9/9 PASS** (admin, no personal user records, real effective capabilities, operator excess privilege finding, denied anonymous).
 - QA38 lifecycle regression: **17/17 PASS**.
@@ -59,3 +59,13 @@ Reversible snapshots and tests on VPS:
 The GitHub files in this PR are a **scoped source patch plus test evidence**, not a complete deployable Commerce Composition release. Proper multi-tenant rollout requires onboarding the complete plugin source under an authorized repository/build, separate Staging provider certification, approved Site Profile/origin reconciliation and independent Production release authority.
 
 **Role governance:** `/management/roles` is independently restricted to WP administrators, reads site-local `wp_roles()` and a bounded set of effective role capabilities without user enumeration, and displays an excess-privilege finding for the legacy operator role. It does not grant or revoke any capability.
+
+## Final evidence (exact Lab head, after discovery/onboarding separation)
+
+- Source/deployed PHP parity, PHP lint and additive REST route discovery: PASS.
+- QA39 management: **33/33**; source catalog: **11/11**; WP Role governance: **9/9**; QA38 Lifecycle regression: **17/17**; **70/70 total**.
+- HTTP 200 Lab; 401 unauthenticated admin Roles. QA39 patch replay on pre-change source snapshot: PASS.
+- Patch SHA256: `0ef509554fb1178b5ef962ad430f34ab749a1c33904a38c94cf0336183a3052b`.
+- New class SHA256: `660bda04a907d2d4bde404658eb6292d49f25b374633103d14ffca599370b477`.
+- Site Profile remains `origin_match=false` and `profile_authority_quarantined=true`: **all management POSTs blocked**, not bypassed.
+- The JSON example uses a deliberately **nonexistent all-zero company identity**; replace it with an authorized Site Profile binding and site-specific form/CPT/role definitions. Never deploy this example as an authorizing policy.

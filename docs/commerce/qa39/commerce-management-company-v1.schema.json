@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://mad4b.com/contracts/commerce-management-company-v1.schema.json",
+  "$id": "urn:mad4b:contracts:commerce-management-company:v1",
   "title": "MAD4B site-bound Commerce Management Company Definition",
   "description": "Governed, non-authorizing per-site configuration. Bound to MAD4B Site Profile v2. No arbitrary provider executable or capability grants.",
   "type": "object",

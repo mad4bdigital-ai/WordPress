@@ -78,7 +78,7 @@
              $changed=$wpdb->query($wpdb->prepare(
 --- a/includes/CompanyManagementRest.php
 +++ b/includes/CompanyManagementRest.php
-@@ -0,0 +1,466 @@
+@@ -0,0 +1,472 @@
 +<?php
 +declare(strict_types=1);
 +namespace Commerce\Composition;
@@ -110,7 +110,12 @@
 +        'users'=>['owner'=>'wordpress_core','source'=>'effective_site_capabilities','mode'=>'governed_read']
 +    ];
 +    private static function auth():bool {
-+        return RequestReview::authorized()&&RequestReview::enabled();
++        // An enrolled tenant may configure its sources before Request Review is on.
++        return current_user_can('manage_options')||
++            current_user_can('commerce_review_requests');
++    }
++    private static function reviewAuth():bool {
++        return self::auth()&&RequestReview::enabled();
 +    }
 +    private static function profile():array|\WP_Error {
 +        if(!class_exists('MAD4B_SCP_Site_Profile'))
@@ -501,6 +506,7 @@
 +    }
 +    public static function routes():void {
 +        $auth=static fn()=>self::auth();
++        $reviewAuth=static fn()=>self::reviewAuth();
 +        $paged=['page'=>['type'=>'integer','minimum'=>1,'default'=>1],
 +            'page_size'=>['type'=>'integer','minimum'=>1,'maximum'=>50,'default'=>20]];
 +        register_rest_route(self::ROUTE,'/management/definitions',[
@@ -527,19 +533,19 @@
 +                'page_size'=>['type'=>'integer','minimum'=>1,'maximum'=>50,'default'=>20]
 +            ]]);
 +        register_rest_route(self::ROUTE,'/management/requests',[
-+            'methods'=>\WP_REST_Server::READABLE,'permission_callback'=>$auth,
++            'methods'=>\WP_REST_Server::READABLE,'permission_callback'=>$reviewAuth,
 +            'callback'=>[self::class,'requestList'],'args'=>$paged]);
 +        register_rest_route(self::ROUTE,'/management/requests/(?P<request_id>[1-9][0-9]*)',[
-+            'methods'=>\WP_REST_Server::READABLE,'permission_callback'=>$auth,
++            'methods'=>\WP_REST_Server::READABLE,'permission_callback'=>$reviewAuth,
 +            'callback'=>[self::class,'requestRead']]);
 +        register_rest_route(self::ROUTE,
 +            '/management/requests/(?P<request_id>[1-9][0-9]*)/actions',[
-+            'methods'=>\WP_REST_Server::READABLE,'permission_callback'=>$auth,
++            'methods'=>\WP_REST_Server::READABLE,'permission_callback'=>$reviewAuth,
 +            'callback'=>[self::class,'actions']]);
 +        register_rest_route(self::ROUTE,
 +            '/management/requests/(?P<request_id>[1-9][0-9]*)/commands',[
 +            'methods'=>\WP_REST_Server::CREATABLE,
-+            'permission_callback'=>$auth,'callback'=>[self::class,'command']]);
++            'permission_callback'=>$reviewAuth,'callback'=>[self::class,'command']]);
 +    }
 +    public static function bootstrap():void {
 +        add_action('rest_api_init',[self::class,'routes']);

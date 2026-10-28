@@ -1,8 +1,8 @@
 {
   "contract": "commerce.management.company.v1",
-  "site_uuid": "REPLACE_WITH_VERIFIED_SITE_PROFILE_UUID",
+  "site_uuid": "00000000-0000-0000-0000-000000000000",
   "site_profile_revision": 1,
-  "site_profile_digest": "REPLACE_WITH_EXACT_SITE_PROFILE_DIGEST",
+  "site_profile_digest": "0000000000000000000000000000000000000000000000000000000000000000",
   "environment": "local",
   "revision": 3,
   "domains": {

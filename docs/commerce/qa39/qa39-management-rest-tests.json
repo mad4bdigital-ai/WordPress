@@ -1,7 +1,7 @@
 {
     "result": "PASS",
-    "passed": 29,
-    "total": 29,
+    "passed": 33,
+    "total": 33,
     "tests": {
         "admin_catalog_ok": {
             "pass": true,
@@ -96,6 +96,22 @@
             "detail": null
         },
         "unconfigured_domains_fail_closed": {
+            "pass": true,
+            "detail": null
+        },
+        "admin_definitions_work_without_review": {
+            "pass": true,
+            "detail": null
+        },
+        "admin_catalog_works_without_review": {
+            "pass": true,
+            "detail": null
+        },
+        "request_management_requires_review_activation": {
+            "pass": true,
+            "detail": null
+        },
+        "actions_require_review_activation": {
             "pass": true,
             "detail": null
         },
