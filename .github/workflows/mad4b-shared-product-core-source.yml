@@ -42,6 +42,10 @@ jobs:
             xargs -0 -n1 php -l
       - name: Lint opt-in read-only WordPress booking acceptance script
         run: php -l packages/mad4b-shared-product-core/tests/live-booking-readonly.php
+      - name: Lint tenant-specific read-only compatibility and QA repair tools
+        run: |
+          php -l packages/mad4b-shared-product-core/tests/qa-rate-unit-reconcile.php
+          php -l packages/mad4b-shared-product-core/tests/elementor-pro-readonly-compat.php
       - name: Standalone data and Repeater context contracts
         run: php packages/mad4b-shared-product-core/tests/offline-contract-smoke.php
       - name: Booking cart quote input-shape regression
