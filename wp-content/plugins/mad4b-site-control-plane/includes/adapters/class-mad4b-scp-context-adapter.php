@@ -243,21 +243,9 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'lane' => array( 'type' => 'string', 'enum' => MAD4B_SCP_Recovery_Attempt_Budget::LANES ),
 				'category' => array( 'type' => 'string', 'maxLength' => 64 ),
 				'artifact_id' => array( 'type' => 'string', 'maxLength' => 36 ),
-				'expected_plan_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}
-			), array( 'lane' ) )
-		);
-		$this->add_ability(
-			 ),
-				'draft_preflight_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}
-			), array( 'lane' ) )
-		);
-		$this->add_ability(
-			 ),
-				'evidence_digest' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}
-			), array( 'lane' ) )
-		);
-		$this->add_ability(
-			 ),
+				'expected_plan_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+				'draft_preflight_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+				'evidence_digest' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
 				'source_id' => array( 'type' => 'string', 'maxLength' => 64 ),
 			), array( 'lane' ) )
 		);
