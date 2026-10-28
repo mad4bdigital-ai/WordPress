@@ -1,0 +1,148 @@
+{
+    "result": "PASS",
+    "passed": 32,
+    "total": 32,
+    "tests": {
+        "canonical_site_bound": {
+            "pass": true,
+            "observed": null
+        },
+        "registry_draft_valid": {
+            "pass": true,
+            "observed": null
+        },
+        "parent_rate_relation_verified": {
+            "pass": true,
+            "observed": null
+        },
+        "independent_rate_parent_inherited": {
+            "pass": true,
+            "observed": null
+        },
+        "rate_as_woo_product_exists": {
+            "pass": true,
+            "observed": null
+        },
+        "program_term_is_typed_not_assumed": {
+            "pass": true,
+            "observed": null
+        },
+        "independent_rate_mode_applied": {
+            "pass": true,
+            "observed": null
+        },
+        "rate_line_uses_existing_cpt_id": {
+            "pass": true,
+            "observed": null
+        },
+        "no_authority_from_policy": {
+            "pass": true,
+            "observed": null
+        },
+        "policy_blockers_explicit": {
+            "pass": true,
+            "observed": null
+        },
+        "parent_context_same_rate_policy": {
+            "pass": true,
+            "observed": null
+        },
+        "company_default_both_other_rate": {
+            "pass": true,
+            "observed": null
+        },
+        "cross_tour_rate_denied": {
+            "pass": true,
+            "observed": null
+        },
+        "rate_identity_distinct_from_sale_eligibility": {
+            "pass": true,
+            "observed": null
+        },
+        "incomplete_rate_season_denied_by_owner": {
+            "pass": true,
+            "observed": null
+        },
+        "foreign_relation_denied": {
+            "pass": true,
+            "observed": null
+        },
+        "foreign_company_policy_denied": {
+            "pass": true,
+            "observed": null
+        },
+        "unapproved_sale_mode_rejected": {
+            "pass": true,
+            "observed": null
+        },
+        "duplicate_source_selector_denied": {
+            "pass": true,
+            "observed": null
+        },
+        "missing_availability_default_denied": {
+            "pass": true,
+            "observed": null
+        },
+        "source_typed_context_rule_valid": {
+            "pass": true,
+            "observed": null
+        },
+        "context_term_override_inherited": {
+            "pass": true,
+            "observed": null
+        },
+        "policy_rest_read_200": {
+            "pass": true,
+            "observed": 200
+        },
+        "rest_source_policy_bound": {
+            "pass": true,
+            "observed": null
+        },
+        "rest_independent_rate_200": {
+            "pass": true,
+            "observed": null
+        },
+        "rest_policy_validate_no_write": {
+            "pass": true,
+            "observed": null
+        },
+        "rest_mutation_denied_when_origin_untrusted": {
+            "pass": true,
+            "observed": "policy_site_authority_not_ready"
+        },
+        "registry_remains_draft": {
+            "pass": true,
+            "observed": null
+        },
+        "admin_policy_summary_renders": {
+            "pass": true,
+            "observed": null
+        },
+        "admin_independent_rate_context": {
+            "pass": true,
+            "observed": null
+        },
+        "guest_rest_denied": {
+            "pass": true,
+            "observed": 401
+        },
+        "business_rows_unchanged": {
+            "pass": true,
+            "observed": {
+                "before": {
+                    "orders": 1,
+                    "tasks": 3,
+                    "requests": 9,
+                    "qualified": 0
+                },
+                "after": {
+                    "orders": 1,
+                    "tasks": 3,
+                    "requests": 9,
+                    "qualified": 0
+                }
+            }
+        }
+    }
+}

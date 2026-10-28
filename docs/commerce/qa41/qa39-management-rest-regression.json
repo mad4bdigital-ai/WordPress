@@ -1,0 +1,154 @@
+{
+    "result": "PASS",
+    "passed": 33,
+    "total": 33,
+    "tests": {
+        "admin_catalog_ok": {
+            "pass": true,
+            "detail": 200
+        },
+        "canonical_profile_binding": {
+            "pass": true,
+            "detail": null
+        },
+        "company_form_roles_dynamic": {
+            "pass": true,
+            "detail": null
+        },
+        "provider_catalog_all_14": {
+            "pass": true,
+            "detail": null
+        },
+        "unapproved_domains_disabled": {
+            "pass": true,
+            "detail": null
+        },
+        "native_route_catalog": {
+            "pass": true,
+            "detail": null
+        },
+        "fail_closed_foreign_origin": {
+            "pass": true,
+            "detail": null
+        },
+        "no_fake_commercial_rights": {
+            "pass": true,
+            "detail": null
+        },
+        "resources_catalog_200": {
+            "pass": true,
+            "detail": null
+        },
+        "unknown_domain_404": {
+            "pass": true,
+            "detail": null
+        },
+        "company_disables_payment_provider": {
+            "pass": true,
+            "detail": null
+        },
+        "requests_paginated": {
+            "pass": true,
+            "detail": null
+        },
+        "request_readback": {
+            "pass": true,
+            "detail": null
+        },
+        "no_checkout_from_readback": {
+            "pass": true,
+            "detail": null
+        },
+        "actions_200": {
+            "pass": true,
+            "detail": null
+        },
+        "transitions_owned_by_review_engine": {
+            "pass": true,
+            "detail": null
+        },
+        "commercial_writes_not_offered": {
+            "pass": true,
+            "detail": null
+        },
+        "no_execute_when_origin_mismatch": {
+            "pass": true,
+            "detail": null
+        },
+        "unsafe_review_command_409": {
+            "pass": true,
+            "detail": "management_site_authority_not_ready"
+        },
+        "unsafe_task_command_409": {
+            "pass": true,
+            "detail": "management_site_authority_not_ready"
+        },
+        "foreign_company_definition_rejected": {
+            "pass": true,
+            "detail": null
+        },
+        "foreign_policy_blocks_request_listing": {
+            "pass": true,
+            "detail": null
+        },
+        "unconfigured_company_is_read_only": {
+            "pass": true,
+            "detail": null
+        },
+        "unconfigured_domains_fail_closed": {
+            "pass": true,
+            "detail": null
+        },
+        "admin_definitions_work_without_review": {
+            "pass": true,
+            "detail": null
+        },
+        "admin_catalog_works_without_review": {
+            "pass": true,
+            "detail": null
+        },
+        "request_management_requires_review_activation": {
+            "pass": true,
+            "detail": null
+        },
+        "actions_require_review_activation": {
+            "pass": true,
+            "detail": null
+        },
+        "guest_denied": {
+            "pass": true,
+            "detail": null
+        },
+        "reviewer_can_read_actions": {
+            "pass": true,
+            "detail": null
+        },
+        "reviewer_cannot_approve_processing": {
+            "pass": true,
+            "detail": null
+        },
+        "reviewer_cannot_authorize_order": {
+            "pass": true,
+            "detail": null
+        },
+        "business_rows_unchanged": {
+            "pass": true,
+            "detail": {
+                "before": {
+                    "requests": 9,
+                    "orders": 1,
+                    "tasks": 3,
+                    "review_events": 4,
+                    "qualifications": 0
+                },
+                "after": {
+                    "requests": 9,
+                    "orders": 1,
+                    "tasks": 3,
+                    "review_events": 4,
+                    "qualifications": 0
+                }
+            }
+        }
+    }
+}
