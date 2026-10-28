@@ -68,6 +68,19 @@ final class CommercialQuoteEvidenceProbe
     public static function inspect(int $sourceId, array $configuration, string $saleRole,
         string $market = '', string $channel = 'web'): array|\WP_Error
     {
+        return self::evaluate($sourceId, $configuration, $saleRole, $market, $channel, false);
+    }
+
+    /** Internal trusted claims: NEVER mapped directly to REST. */
+    public static function inspectForIssuer(int $sourceId, array $configuration, string $saleRole,
+        string $market = '', string $channel = 'web'): array|\WP_Error
+    {
+        return self::evaluate($sourceId, $configuration, $saleRole, $market, $channel, true);
+    }
+
+    private static function evaluate(int $sourceId, array $configuration, string $saleRole,
+        string $market, string $channel, bool $includeClaims): array|\WP_Error
+    {
         $readiness = CommercialQuoteReadiness::inspect($sourceId, $configuration, $saleRole, $market, $channel);
         if (is_wp_error($readiness)) return $readiness;
 
@@ -101,6 +114,7 @@ final class CommercialQuoteEvidenceProbe
         $declared = apply_filters('commerce_composition_final_quote_evidence_providers', []);
         if (!is_array($declared)) $declared = [];
         $results = [];
+        $claims = [];
 
         foreach (self::KINDS as $kind) {
             if (!array_key_exists($kind, $declared)) {
@@ -143,11 +157,32 @@ final class CommercialQuoteEvidenceProbe
             $results[$kind] = $verified
                 ? self::record('source_verified_evidence_only', $owner)
                 : self::record('receipt_rejected', $owner, ['source_provenance_verification_failed']);
+            if ($verified && $includeClaims) {
+                // A verified native source owns these claims; never ingest from REST.
+                $claims[$kind] = [
+                    'receipt_id' => $receipt['receipt_id'],
+                    'receipt_digest' => $receipt['receipt_digest'],
+                    'expires_at_utc' => $receipt['expires_at_utc'],
+                    'provider_id' => $adapter['provider_id'],
+                    'source_owner' => $owner,
+                    'currency' => $receipt['currency'] ?? null,
+                    'amount_minor' => $receipt['amount_minor'] ?? null,
+                    'supplier_cost_minor' => $receipt['supplier_cost_minor'] ?? null,
+                    'tax_minor' => $receipt['tax_minor'] ?? null,
+                    'margin_minor' => $receipt['margin_minor'] ?? null,
+                    'fee_minor' => $receipt['fee_minor'] ?? null,
+                    'discount_minor' => $receipt['discount_minor'] ?? null,
+                    'reference_digests' => $receipt['reference_digests'] ?? null,
+                    'hold_reference' => $receipt['hold_reference'] ?? null,
+                    'quote_digest' => $receipt['quote_digest'] ?? null,
+                    'approver_subject' => $receipt['approver_subject'] ?? null,
+                ];
+            }
         }
 
         $observed = count(array_filter($results,
             static fn(array $r) => $r['receipt_verified_by_source']));
-        return [
+        return array_merge([
             'contract' => 'commerce.source-evidence-probe.v1',
             'site_uuid' => $context['site_uuid'],
             'policy_revision' => $context['policy_revision'],
@@ -170,7 +205,7 @@ final class CommercialQuoteEvidenceProbe
             'inventory_hold_authorized' => false,
             'supplier_booking_authorized' => false,
             'no_side_effects' => true,
-        ];
+        ], $includeClaims ? ['source_verified_claims' => $claims] : []);
     }
 
     public static function routes(): void
