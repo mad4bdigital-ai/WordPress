@@ -1,0 +1,153 @@
+name: DFSB Versioned Release Review Attestation (Not Certified)
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact merged and owner-attested PR head SHA
+        required: true
+        type: string
+      pull_request:
+        description: Independently reviewed merged PR number
+        required: true
+        type: string
+      version:
+        description: Exact version from committed WordPress header
+        required: true
+        type: string
+
+# Review evidence only: no GitHub Release, provider certification or WP deploy.
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+  issues: read
+  attestations: write
+  id-token: write
+
+concurrency:
+  group: dfsb-release-review-${ inputs.source_sha }}
+  cancel-in-progress: false
+
+jobs:
+  exact-reviewed-source:
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      SOURCE_SHA: ${ inputs.source_sha }}
+      PR_NUMBER: ${ inputs.pull_request }}
+      VERSION: ${ inputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify GitHub owner-approved exact source is merged
+        shell: bash
+        env:
+          GH_TOKEN: ${ github.token }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = "mad4bdigital-ai/WordPress"
+          [[ "$SOURCE_SHA" =~ ^[a-f0-9]{40}$ ]]
+          [[ "$PR_NUMBER" =~ ^[1-9][0-9]*$ ]]
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+-alpha\.[0-9]+-rc\.[0-9]+$ ]]
+          git merge-base --is-ancestor "$SOURCE_SHA" HEAD
+          gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" > "$RUNNER_TEMP/dfsb-source-pr.json"
+          jq -e --arg sha "$SOURCE_SHA" \
+            '.merged == true and .base.ref == "master" and .head.sha == $sha' \
+            "$RUNNER_TEMP/dfsb-source-pr.json" > /dev/null
+          expected="$(printf 'OWNER_ATTEST_SINGLE_OWNER\nexact_head_sha: %s' "$SOURCE_SHA")"
+          gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments?per_page=100&page=1" \
+            > "$RUNNER_TEMP/dfsb-owner-comments.json"
+          jq -e --arg expected "$expected" \
+            'length < 100 and any(.[]; .user.login == "mad4bdigital-ai" and .body == $expected)' \
+            "$RUNNER_TEMP/dfsb-owner-comments.json" >/dev/null
+          git worktree add --detach "$RUNNER_TEMP/dfsb-reviewed-source" "$SOURCE_SHA"
+          header="$(sed -n 's/^ \* Version: //p' "$RUNNER_TEMP/dfsb-reviewed-source/wp-content/plugins/dynamic-filter-seo-bridge/dynamic-filter-seo-bridge.php" | head -1)"
+          test "$header" = "$VERSION"
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      - name: Deterministically rebuild the exact review release twice
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/dfsb-release-review"
+          mkdir -p "$out"
+          for item in first second; do
+            python3 "$RUNNER_TEMP/dfsb-reviewed-source/tools/dfsb-neutral/build_release_candidate.py" \
+              --repo "$RUNNER_TEMP/dfsb-reviewed-source" \
+              --expected-source-sha "$SOURCE_SHA" --expected-version "$VERSION" \
+              --output "$out/$item.zip" > "$out/$item-build.json"
+          done
+          cmp "$out/first.zip" "$out/second.zip"
+          mv "$out/first.zip" "$out/dynamic-filter-seo-bridge-$VERSION.zip"
+          sha256sum "$out/dynamic-filter-seo-bridge-$VERSION.zip" > "$out/sha256.txt"
+          unzip -q "$out/dynamic-filter-seo-bridge-$VERSION.zip" -d "$out/unpacked"
+          php "$RUNNER_TEMP/dfsb-reviewed-source/tools/dfsb-neutral/verify_candidate.php" \
+            "$out/unpacked/dynamic-filter-seo-bridge"
+          php "$RUNNER_TEMP/dfsb-reviewed-source/tests/dfsb-release-boot-authority.php"
+
+      - name: Attest the review-only release candidate
+        id: provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: ${ runner.temp }}/dfsb-release-review/dynamic-filter-seo-bridge-${ inputs.version }}.zip
+
+      - name: Independently verify same-run bundle and GitHub API
+        shell: bash
+        env:
+          GH_TOKEN: ${ github.token }}
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/dfsb-release-review"
+          zip="$out/dynamic-filter-seo-bridge-$VERSION.zip"
+          signer="$GITHUB_REPOSITORY/.github/workflows/dfsb-release-review-attestation.yml"
+          bundle="$out/attestation-bundle.json"
+          cp "${ steps.provenance.outputs.bundle-path }}" "$bundle"
+          test -s "$bundle"
+          gh attestation verify "$zip" --repo "$GITHUB_REPOSITORY" \
+            --bundle "$bundle" --signer-workflow "$signer" \
+            --source-ref refs/heads/master --format json > "$out/bundle-verification.json"
+          digest="$(sha256sum "$zip" | awk '{print $1}')"
+          jq -e --arg d "$digest" \
+            'length > 0 and any(.[]; any(.verificationResult.statement.subject[]?; .digest.sha256 == $d))' \
+            "$out/bundle-verification.json" >/dev/null
+          online_ok=false
+          for attempt in 1 2 3 4 5 6; do
+            if gh attestation verify "$zip" --repo "$GITHUB_REPOSITORY" \
+              --signer-workflow "$signer" --source-ref refs/heads/master \
+              --format json > "$out/github-verification.json" 2>"$out/verify-errors.log" &&
+              jq -e --arg d "$digest" \
+                'length > 0 and any(.[]; any(.verificationResult.statement.subject[]?; .digest.sha256 == $d))' \
+                "$out/github-verification.json" >/dev/null; then
+                online_ok=true
+                break
+            fi
+            if test "$attempt" != 6; then sleep "$((attempt * 3))"; fi
+          done
+          test "$online_ok" = true || { echo "::error::indexed attestation verification failed"; exit 1; }
+          printf '%s\n' '{"status":"SIGNED_REVIEW_ONLY","provider_certified":false,"staging_authorized":false,"production_authorized":false,"safe_boot_override":false}' \
+            > "$out/release-boundary.json"
+          echo "DFSB_VERSIONED_REVIEW_ATTESTATION: PASS"
+
+      - name: Upload review evidence only
+        uses: actions/upload-artifact@v4
+        with:
+          name: dfsb-release-review-${ inputs.source_sha }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            ${ runner.temp }}/dfsb-release-review/dynamic-filter-seo-bridge-${ inputs.version }}.zip
+            ${ runner.temp }}/dfsb-release-review/first-build.json
+            ${ runner.temp }}/dfsb-release-review/sha256.txt
+            ${ runner.temp }}/dfsb-release-review/attestation-bundle.json
+            ${ runner.temp }}/dfsb-release-review/bundle-verification.json
+            ${ runner.temp }}/dfsb-release-review/github-verification.json
+            ${ runner.temp }}/dfsb-release-review/release-boundary.json
