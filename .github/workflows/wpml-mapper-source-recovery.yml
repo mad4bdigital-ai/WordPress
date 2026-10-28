@@ -1,0 +1,22 @@
+name: WPML Mapper Source Recovery Contracts
+on:
+  pull_request:
+    paths: ['wp-content/plugins/wpml-meta-id-mapper-ui/**']
+  push:
+    paths: ['wp-content/plugins/wpml-meta-id-mapper-ui/**']
+permissions:
+  contents: read
+jobs:
+  source-recovery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: Lint and source contract
+        run: |
+          php -l wp-content/plugins/wpml-meta-id-mapper-ui/wpml-meta-id-mapper-ui.php
+          php -l wp-content/plugins/wpml-meta-id-mapper-ui/includes/class-wpml-meta-id-mapper-source-recovery.php
+          php -l wp-content/plugins/wpml-meta-id-mapper-ui/includes/class-wpml-meta-id-mapper-source-recovery-ui.php
+          php wp-content/plugins/wpml-meta-id-mapper-ui/tests/source-recovery-contract.php
