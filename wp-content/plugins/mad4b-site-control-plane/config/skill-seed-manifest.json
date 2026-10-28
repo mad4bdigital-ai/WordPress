@@ -1,6 +1,6 @@
 {
   "contract": "mad4b.skill-seed-manifest.v1",
-  "seed_version": 13,
+  "seed_version": 14,
   "skills": [
     {
       "level": "site",
@@ -60,7 +60,20 @@
       "level": "workflow",
       "target": "brand-context",
       "name": "wordpress-brand-context-builder",
-      "enabled": true
+      "enabled": true,
+      "context_policy": {
+        "preset": "custom",
+        "brand_context_required": true,
+        "required_context_sets": [
+          "brand_strategy"
+        ],
+        "optional_context_sets": [],
+        "allow_task_context": false,
+        "allowed_mutation_abilities": [
+          "context/brand-draft-create",
+          "context/brand-draft-append"
+        ]
+      }
     },
     {
       "level": "workflow",
