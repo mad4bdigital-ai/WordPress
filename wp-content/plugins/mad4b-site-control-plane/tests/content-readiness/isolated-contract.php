@@ -200,4 +200,13 @@ yes(MAD4B_SCP_Readiness_Workflow_Options::group_for_issue(['code'=>'origin_missi
 yes(MAD4B_SCP_Readiness_Workflow_Options::group_for_issue(['code'=>'wpml_language_unregistered'])==='wpml', 'WPML routed by source issue code');
 yes(MAD4B_SCP_Readiness_Workflow_Options::group_for_issue(['code'=>'expired_rate_renewal_required'])==='pricing', 'expired rate routed to pricing');
 yes(MAD4B_SCP_Readiness_Workflow_Options::settings()['board_tasks']===false, 'board writes default to disabled');
+$GLOBALS['admin']=false;
+$deniedBatch=$cls::batch_sync();
+yes(is_wp_error($deniedBatch),'non-admin cannot batch-create tasks');
+$GLOBALS['admin']=true;
+$closedBatch=$cls::batch_sync();
+yes(is_wp_error($closedBatch)&&$closedBatch->get_error_code()==='mad4b_readiness_write_gate_closed',
+ 'batch follows existing central write gate and never bypasses it');
+yes($cls::rest_local_client_write_permission()===false,
+ 'REST task write refuses callers without a real verified local-client identity');
 echo "ALL READINESS LEDGER CONTRACTS PASSED\n";
