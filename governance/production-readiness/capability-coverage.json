@@ -10582,6 +10582,23 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/skill-task-abilities-runtime.php"
       ],
       "review_rationale": "Exact source reviewed for bounded lexical ranking, shared 18-second deadline, partial/incomplete propagation, SHA-checked advisory context and managed execution precedence. Steps remain not_authorized. Exact-head tests executed in isolated PHP 7.4/8.3 (or accepted disposable WordPress CI); Production acceptance remains separate."
+    },
+    {
+      "owner_role": "Staging technical code review for CI coverage only; exact-head owner attestation required independently",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-recovery-attempt-budget.php",
+      "source_blob_sha": "e4e4bdc96c303423af47335bc41882454e618ce5",
+      "control_ids": [
+        "RECOVERY-01",
+        "UPDATES-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-append-retry-budget-qa18.php"
+      ],
+      "review_rationale": "Reviewed exact QA18 PHP diff and the fail-before/fix-after regression: add evidence- and preflight-bound brand_draft_append lane without changing existing retry journal scope keys. Pending, succeeded, uncertain, bounded three-attempt reservation and administrator-only reset remain fail closed. QA18 and QA9/10/12/14/15 passed on VPS; ETG Staging same-content governed Append completed idempotently. This source review is not a Production promotion, release certification, or substitute for exact-head owner attestation."
     }
   ],
   "code_change_rules": {
