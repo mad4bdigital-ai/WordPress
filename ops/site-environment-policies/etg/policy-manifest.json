@@ -1,0 +1,9 @@
+{
+  "contract": "mad4b.etg-environment-policy.manifest.v1",
+  "target": "etg-commerce-staging",
+  "files": {
+    "000-sandbox-guard.php": "0575ec7f5d4802dbd512b911dc3c99f03d637bdf78de3062cdca84be77df8440",
+    "005-mad4b-staging-mail-admission.php": "d9c3555bfbffebfe6811cf0d9b4208a5cb0e22460f1eea66b17091a03d2d81aa"
+  },
+  "auto_production_deploy": false
+}

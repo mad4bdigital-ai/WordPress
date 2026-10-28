@@ -1,0 +1,36 @@
+name: MAD4B ETG Environment Policy Contracts
+on:
+  pull_request:
+    paths:
+      - 'ops/site-environment-policies/etg/**'
+      - '.github/workflows/mad4b-etg-environment-policy.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: Source integrity and syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd ops/site-environment-policies/etg
+          python3 verify-runtime-policy.py --source
+          php -l 000-sandbox-guard.php
+          php -l 005-mad4b-staging-mail-admission.php
+          php -l policy-contract.php
+      - name: Explicit environments and mismatched host fail-closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd ops/site-environment-policies/etg
+          for case in 'local local' 'development development' 'staging staging' 'production production' 'production absent' 'production staging' 'staging production' 'staging absent'; do
+            read -r raw host <<< "$case"
+            if [[ "$host" == absent ]]; then host=''; fi
+            MOCK_RAW_ENV="$raw" WP_ENVIRONMENT_TYPE="$host" php policy-contract.php
+          done
