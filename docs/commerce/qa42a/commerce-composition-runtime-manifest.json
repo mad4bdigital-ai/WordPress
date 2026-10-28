@@ -2,7 +2,7 @@
   "schema": "mad4b.commerce-composition.release-snapshot.v1",
   "release_state": "lab_source_snapshot_not_production_authorized",
   "plugin_slug": "commerce-composition",
-  "source_count": 71,
+  "source_count": 73,
   "source_files": [
     {
       "path": "bin/process-workflow-queue.php",
@@ -16,8 +16,8 @@
     },
     {
       "path": "composition.php",
-      "sha256": "0d47a7251652739077b85049f4ff4ba482cb77aa95b9a1de2b0f154a6cf08bac",
-      "bytes": 8615
+      "sha256": "8cd1f9aa5b818c8c289a41ff450bad1a4e5732dfac2cda6f37e4eebd1829f02e",
+      "bytes": 8863
     },
     {
       "path": "includes/Admin.php",
@@ -73,6 +73,11 @@
       "path": "includes/CommercialExecutionPreflight.php",
       "sha256": "a26791aa446ef08035611d18f5211d8683ad09e99ee917958b72ce9c1bd0ce99",
       "bytes": 10768
+    },
+    {
+      "path": "includes/CommercialExternalChargeGate.php",
+      "bytes": 3488,
+      "sha256": "f0a8abb86b2b70cb9d9e512154dd4b0333be2515e359f4373eff4ca9a68e4e4e"
     },
     {
       "path": "includes/CommercialFinalQuoteLifecycle.php",
@@ -231,13 +236,18 @@
     },
     {
       "path": "includes/NativeOrderItemIdentityResolver.php",
-      "sha256": "938096c9d7f0dd38b1457efc923f3cbdba5255aad487d9356139b68f98229ebb",
-      "bytes": 9189
+      "sha256": "dce6fd931867ba50e466f3a1fb3d9ef4b11f57a976fc7225a2fdd9545439affa",
+      "bytes": 10181
     },
     {
       "path": "includes/PolicyStore.php",
       "sha256": "7c9760dafd31981500e87fd52a5c1f07e33088cf516ae49bbad03b29fa0abe96",
       "bytes": 4386
+    },
+    {
+      "path": "includes/PropertyUnitSourceCertification.php",
+      "bytes": 3113,
+      "sha256": "ce486a0cbc9a4815eb61dd07efc6920a22a66fe15ce880b90a28c75df0b378ba"
     },
     {
       "path": "includes/RateProvenance.php",
