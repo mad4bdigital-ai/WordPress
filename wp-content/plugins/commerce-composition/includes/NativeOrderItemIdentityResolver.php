@@ -77,3 +77,50 @@ final class NativeOrderItemIdentityResolver
             throw self::err('commerce_identity_item_order_mismatch');
         return $item;
     }
+    public static function onProductAdded($orderId,$itemId,$product,$qty,$args):void {
+        if(!($product instanceof \WC_Product))return;
+        $id=(int)$product->get_id();
+        if(get_post_type($id)==='product')return;
+        $s=self::source($id);
+        $item=self::item((int)$orderId,(int)$itemId);
+        if(!($item instanceof \TinySolutions\cptwooint\Models\CPTOrderItemProduct))
+            throw self::err('commerce_identity_cpt_factory_missing');
+        $old=(int)$item->get_product_id();
+        if($old!==0 && $old!==$id)
+            throw self::err('commerce_identity_conflicting_product');
+        $attrs=[
+            self::M_ID=>(string)$id,self::M_TYPE=>$s['type'],
+            self::M_PARENT=>(string)$s['parent'],
+            self::M_DIGEST=>self::fingerprint($s)
+        ];
+        foreach($attrs as $key=>$value){
+            $oldValue=$item->get_meta($key,true);
+            if($oldValue!=='' && (string)$oldValue!==$value)
+                throw self::err('commerce_identity_conflicting_evidence');
+        }
+        $item->set_product_id($id);
+        foreach($attrs as $key=>$value)$item->update_meta_data($key,$value);
+        $item->save();
+        self::assertItem((int)$orderId,(int)$itemId,$id);
+    }
+    public static function assertItem(int $orderId,int $itemId,?int $expected=null):array {
+        $item=self::item($orderId,$itemId);
+        $id=(int)$item->get_product_id();
+        if($id<1 || ($expected!==null && $expected!==$id))
+            throw self::err('commerce_identity_product_id_mismatch');
+        $s=self::source($id);
+        if(!$s['native']){
+            if(!($item instanceof \TinySolutions\cptwooint\Models\CPTOrderItemProduct)
+                ||(string)$item->get_meta(self::M_ID,true)!==(string)$id
+                ||(string)$item->get_meta(self::M_TYPE,true)!==$s['type']
+                ||(string)$item->get_meta(self::M_PARENT,true)!==(string)$s['parent']
+                ||(string)$item->get_meta(self::M_DIGEST,true)!==self::fingerprint($s))
+                throw self::err('commerce_identity_receipt_or_relation_changed');
+        }
+        return [
+            'contract'=>self::CONTRACT,'order_id'=>$orderId,'item_id'=>$itemId,
+            'source_id'=>$id,'source_type'=>$s['type'],'parent_id'=>$s['parent'],
+            'identity_verified'=>true,'financial_authorized'=>false,
+            'supplier_booking_authorized'=>false
+        ];
+    }
