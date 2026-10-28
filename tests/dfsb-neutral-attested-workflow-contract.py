@@ -14,6 +14,8 @@ required = (
     "id-token: write",
     "attestations: write",
     "contents: read",
+    "pull-requests: read",
+    "issues: read",
     "on:\n  push:\n    branches: [master]",
     "if: github.ref == 'refs/heads/master'",
     "OWNER_ATTEST_SINGLE_OWNER",
