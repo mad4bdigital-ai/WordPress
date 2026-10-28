@@ -196,6 +196,7 @@ jobs:
               --full-scan --head "$head" --execute --enforce \
               --output dist/mad4b-prepackage-dependency-gate.json
           fi
+          python3 tools/mad4b_predictive_dependency_gate.py --verify-report "dist/mad4b-prepackage-dependency-gate.json"
           python3 - <<'PY_INVARIANT'
           import json
           from pathlib import Path
