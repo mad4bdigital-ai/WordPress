@@ -46,6 +46,8 @@ jobs:
         run: |
           php -l packages/mad4b-shared-product-core/tests/qa-rate-unit-reconcile.php
           php -l packages/mad4b-shared-product-core/tests/elementor-pro-readonly-compat.php
+      - name: Lint QA fixture source producer contract
+        run: php -l packages/mad4b-shared-product-core/qa/interactive-cart-lab-20261026/create-fixture.php
       - name: Standalone data and Repeater context contracts
         run: php packages/mad4b-shared-product-core/tests/offline-contract-smoke.php
       - name: Booking cart quote input-shape regression
