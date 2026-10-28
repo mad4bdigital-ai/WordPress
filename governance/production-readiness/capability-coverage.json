@@ -3224,6 +3224,66 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing immutable platform configuration, security and admin controls cover this narrowly scoped Settings API compatibility filter, with no new external endpoint, write ability or authority.",
       "review_rationale": "QA30 verifies WordPress core settings safety after early MCP REST registration and preserves email change confirmation and all unrelated admin contexts. The PHP assertion fixture is executed through an explicit Python wrapper in CI. No Production authorization or live delivery evidence is inferred."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-agent-grant-lifecycle.php",
+      "owner_role": "MAD4B W1 authorization source reviewer; CI evidence only, not Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing Site Profile, security, OAuth, approvals and administrative governance controls cover this source-only W1 service. No additional Production authority or external grant is conferred.",
+      "review_rationale": "Source was imported from the pinned Staging package into a review branch with matching SHA; safety verified with hermetic owner permissions, replay/approval, OAuth, staged grants tests. The new service remains subject to governed lifecycle registration, live tenant isolation and signed rollout approval."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-native-grants-opt-in.php",
+      "owner_role": "MAD4B W1 authorization source reviewer; CI evidence only, not Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing Site Profile, security, OAuth, approvals and administrative governance controls cover this source-only W1 service. No additional Production authority or external grant is conferred.",
+      "review_rationale": "Source was imported from the pinned Staging package into a review branch with matching SHA; safety verified with hermetic owner permissions, replay/approval, OAuth, staged grants tests. The new service remains subject to governed lifecycle registration, live tenant isolation and signed rollout approval."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-owner-activation.php",
+      "owner_role": "MAD4B W1 authorization source reviewer; CI evidence only, not Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing Site Profile, security, OAuth, approvals and administrative governance controls cover this source-only W1 service. No additional Production authority or external grant is conferred.",
+      "review_rationale": "Source was imported from the pinned Staging package into a review branch with matching SHA; safety verified with hermetic owner permissions, replay/approval, OAuth, staged grants tests. The new service remains subject to governed lifecycle registration, live tenant isolation and signed rollout approval."
     }
   ],
   "lifecycle": [],
@@ -10676,6 +10736,276 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/qa30-native-general-settings-rest-lifecycle.py"
       ],
       "review_rationale": "New source-owned scoped allowed_options filter removes only locked canonical URLs and direct admin_email from native General Settings writes, while preserving new_admin_email confirmation, normal fields, unrelated requests, and independent write authority. Tests run as standalone PHP assertions through a bounded explicit Python wrapper, and CI cannot authorize deployment."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-approval-handoff-adapter.php",
+      "source_blob_sha": "19d6d88f9104b85986f25b0cc8a11e0e898abcfb",
+      "owner_role": "MAD4B exact-source security/authority reviewer for CI-only W1 integration; owner approval and release authority independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py"
+      ],
+      "review_rationale": "W1 staged owner and security source SHA reconciled against pinned Git version, with hermetic tests for replay concurrency, exact result readback, OAuth resource, staging grant permissions, WordPress Site Profile and owner cookie/nonce. Still requires dependency-aware integration, full tenant isolation certification and independent live acceptance before deployment."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-agent-grant-lifecycle.php",
+      "source_blob_sha": "7afb7192770e6ec50ae3210990a5729b8e6b88e3",
+      "owner_role": "MAD4B exact-source security/authority reviewer for CI-only W1 integration; owner approval and release authority independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py"
+      ],
+      "review_rationale": "W1 staged owner and security source SHA reconciled against pinned Git version, with hermetic tests for replay concurrency, exact result readback, OAuth resource, staging grant permissions, WordPress Site Profile and owner cookie/nonce. Still requires dependency-aware integration, full tenant isolation certification and independent live acceptance before deployment."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-native-grants-opt-in.php",
+      "source_blob_sha": "676ecf29a231a4dc23af1e33a0bd14bdc9f7554e",
+      "owner_role": "MAD4B exact-source security/authority reviewer for CI-only W1 integration; owner approval and release authority independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py"
+      ],
+      "review_rationale": "W1 staged owner and security source SHA reconciled against pinned Git version, with hermetic tests for replay concurrency, exact result readback, OAuth resource, staging grant permissions, WordPress Site Profile and owner cookie/nonce. Still requires dependency-aware integration, full tenant isolation certification and independent live acceptance before deployment."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-impact-binding.php",
+      "source_blob_sha": "a1d6b172001ec684fa3bffd4fa72c50848d73465",
+      "owner_role": "MAD4B exact-source security/authority reviewer for CI-only W1 integration; owner approval and release authority independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py"
+      ],
+      "review_rationale": "W1 staged owner and security source SHA reconciled against pinned Git version, with hermetic tests for replay concurrency, exact result readback, OAuth resource, staging grant permissions, WordPress Site Profile and owner cookie/nonce. Still requires dependency-aware integration, full tenant isolation certification and independent live acceptance before deployment."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-tickets.php",
+      "source_blob_sha": "fe9fb487a164bad31291f04615ad418da3db8514",
+      "owner_role": "MAD4B exact-source security/authority reviewer for CI-only W1 integration; owner approval and release authority independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py"
+      ],
+      "review_rationale": "W1 staged owner and security source SHA reconciled against pinned Git version, with hermetic tests for replay concurrency, exact result readback, OAuth resource, staging grant permissions, WordPress Site Profile and owner cookie/nonce. Still requires dependency-aware integration, full tenant isolation certification and independent live acceptance before deployment."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-target-fingerprint.php",
+      "source_blob_sha": "f37dbd6cda93b0674e6a6779116e9a8560298e2d",
+      "owner_role": "MAD4B exact-source security/authority reviewer for CI-only W1 integration; owner approval and release authority independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py"
+      ],
+      "review_rationale": "W1 staged owner and security source SHA reconciled against pinned Git version, with hermetic tests for replay concurrency, exact result readback, OAuth resource, staging grant permissions, WordPress Site Profile and owner cookie/nonce. Still requires dependency-aware integration, full tenant isolation certification and independent live acceptance before deployment."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-owner-activation.php",
+      "source_blob_sha": "e6a69f4e21d0e695f15138e51466f59182a27f0d",
+      "owner_role": "MAD4B exact-source security/authority reviewer for CI-only W1 integration; owner approval and release authority independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py"
+      ],
+      "review_rationale": "W1 staged owner and security source SHA reconciled against pinned Git version, with hermetic tests for replay concurrency, exact result readback, OAuth resource, staging grant permissions, WordPress Site Profile and owner cookie/nonce. Still requires dependency-aware integration, full tenant isolation certification and independent live acceptance before deployment."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php",
+      "source_blob_sha": "123fc5805ad4e60bce3801942316d990b2cde8e6",
+      "owner_role": "MAD4B exact-source security/authority reviewer for CI-only W1 integration; owner approval and release authority independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py"
+      ],
+      "review_rationale": "W1 staged owner and security source SHA reconciled against pinned Git version, with hermetic tests for replay concurrency, exact result readback, OAuth resource, staging grant permissions, WordPress Site Profile and owner cookie/nonce. Still requires dependency-aware integration, full tenant isolation certification and independent live acceptance before deployment."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-challenge-alignment.php",
+      "source_blob_sha": "3ac9d12a5d50b636372eabdd6fa8ae1aaa2c6ab6",
+      "owner_role": "MAD4B exact-source security/authority reviewer for CI-only W1 integration; owner approval and release authority independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py"
+      ],
+      "review_rationale": "W1 staged owner and security source SHA reconciled against pinned Git version, with hermetic tests for replay concurrency, exact result readback, OAuth resource, staging grant permissions, WordPress Site Profile and owner cookie/nonce. Still requires dependency-aware integration, full tenant isolation certification and independent live acceptance before deployment."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-resource-bridge.php",
+      "source_blob_sha": "79fd146d620e99895c53b4cde9aa55350c93d9ac",
+      "owner_role": "MAD4B exact-source security/authority reviewer for CI-only W1 integration; owner approval and release authority independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py"
+      ],
+      "review_rationale": "W1 staged owner and security source SHA reconciled against pinned Git version, with hermetic tests for replay concurrency, exact result readback, OAuth resource, staging grant permissions, WordPress Site Profile and owner cookie/nonce. Still requires dependency-aware integration, full tenant isolation certification and independent live acceptance before deployment."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-replay-policy.php",
+      "source_blob_sha": "e6d552c47a02d5d892be04ca7c0bcb5c1a08ab45",
+      "owner_role": "MAD4B exact-source security/authority reviewer for CI-only W1 integration; owner approval and release authority independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py"
+      ],
+      "review_rationale": "W1 staged owner and security source SHA reconciled against pinned Git version, with hermetic tests for replay concurrency, exact result readback, OAuth resource, staging grant permissions, WordPress Site Profile and owner cookie/nonce. Still requires dependency-aware integration, full tenant isolation certification and independent live acceptance before deployment."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php",
+      "source_blob_sha": "522479438c6061229fe2807c1041e53e16df6f09",
+      "owner_role": "MAD4B exact-source security/authority reviewer for CI-only W1 integration; owner approval and release authority independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py"
+      ],
+      "review_rationale": "W1 staged owner and security source SHA reconciled against pinned Git version, with hermetic tests for replay concurrency, exact result readback, OAuth resource, staging grant permissions, WordPress Site Profile and owner cookie/nonce. Still requires dependency-aware integration, full tenant isolation certification and independent live acceptance before deployment."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php",
+      "source_blob_sha": "8b686a914180f4c841b5bf816e6791c31e20baa8",
+      "owner_role": "MAD4B exact-source security/authority reviewer for CI-only W1 integration; owner approval and release authority independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py"
+      ],
+      "review_rationale": "W1 staged owner and security source SHA reconciled against pinned Git version, with hermetic tests for replay concurrency, exact result readback, OAuth resource, staging grant permissions, WordPress Site Profile and owner cookie/nonce. Still requires dependency-aware integration, full tenant isolation certification and independent live acceptance before deployment."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation.php",
+      "source_blob_sha": "7b3b7f5c41affd72871817109a7c9f1e2d5e59e0",
+      "owner_role": "MAD4B exact-source security/authority reviewer for CI-only W1 integration; owner approval and release authority independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py"
+      ],
+      "review_rationale": "W1 staged owner and security source SHA reconciled against pinned Git version, with hermetic tests for replay concurrency, exact result readback, OAuth resource, staging grant permissions, WordPress Site Profile and owner cookie/nonce. Still requires dependency-aware integration, full tenant isolation certification and independent live acceptance before deployment."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-planning-guard.php",
+      "source_blob_sha": "4884eab4c7fd0c63579ec5305f47dab93ef13ef4",
+      "owner_role": "MAD4B exact-source security/authority reviewer for CI-only W1 integration; owner approval and release authority independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py"
+      ],
+      "review_rationale": "W1 staged owner and security source SHA reconciled against pinned Git version, with hermetic tests for replay concurrency, exact result readback, OAuth resource, staging grant permissions, WordPress Site Profile and owner cookie/nonce. Still requires dependency-aware integration, full tenant isolation certification and independent live acceptance before deployment."
     }
   ],
   "code_change_rules": {
