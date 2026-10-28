@@ -1,0 +1,63 @@
+name: MAD4B Shared Product Core — source quality
+
+on:
+  pull_request:
+    paths:
+      - 'packages/mad4b-shared-product-core/**'
+      - '.github/workflows/mad4b-shared-product-core-source.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-contracts:
+    name: PHP ${{ matrix.php }} source contract
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.3', '8.5']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Validate frozen-source provenance
+        run: python3 packages/mad4b-shared-product-core/tests/verify-snapshot.py
+      - name: PHP syntax lint for full package
+        run: |
+          find packages/mad4b-shared-product-core/mu-plugins -type f -name '*.php' -print0 |
+            xargs -0 -n1 php -l
+      - name: Standalone data and Repeater context contracts
+        run: php packages/mad4b-shared-product-core/tests/offline-contract-smoke.php
+      - name: Require source-only release flag
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          m=json.loads(Path('packages/mad4b-shared-product-core/release-manifest.json').read_text())
+          assert m['status']=='source-only-candidate'
+          assert m['deploy_automatically'] is False
+          assert m['source_file_count']==133
+          print('SOURCE_ONLY_RELEASE_FENCE_PASS')
+          PY
+
+  package-source:
+    name: Non-deployable source archive
+    needs: source-contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bundle exact source tree only
+        run: |
+          cd packages/mad4b-shared-product-core
+          tar -czf ../../mad4b-shared-product-core-0.1.0-dev.20261028-SOURCE-ONLY.tar.gz \
+            mu-plugins release-manifest.json source-files.sha256 README.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-shared-product-core-source-only
+          path: mad4b-shared-product-core-0.1.0-dev.20261028-SOURCE-ONLY.tar.gz
+          if-no-files-found: error
+          retention-days: 14

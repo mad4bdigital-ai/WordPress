@@ -1,0 +1,15 @@
+{
+  "name": "mad4b-shared-product-core",
+  "version": "0.1.0-dev.20261028",
+  "status": "source-only-candidate",
+  "source_environment": "ETG WooCommerce Local Lab",
+  "php_test_matrix": [
+    "8.3",
+    "8.5"
+  ],
+  "source_file_count": 133,
+  "source_manifest_sha256": "3756dde8bc34526c51bfbbe9c9bd85e5d12feb0e693164508f809691acf26329",
+  "activation": "local Lab only; production activation not authorized",
+  "stage": "requires per-tenant parity, integration tests, editor UI acceptance and explicit rollout approval",
+  "deploy_automatically": false
+}
