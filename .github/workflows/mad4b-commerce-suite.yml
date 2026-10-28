@@ -41,3 +41,23 @@ jobs:
           else
             echo 'SOURCE_ONLY: literal assembly release blocked.'
           fi
+
+  package-shell:
+    name: Source-only admin shell ZIP
+    needs: suite-contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Package non-executing admin shell
+        run: |
+          mkdir -p dist
+          (cd wp-content/plugins && zip -rq ../../dist/mad4b-commerce-suite-0.1.0-dev-SHELL-ONLY.zip mad4b-commerce-suite -x 'mad4b-commerce-suite/tests/*')
+          test -s dist/mad4b-commerce-suite-0.1.0-dev-SHELL-ONLY.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-commerce-suite-shell-only-do-not-deploy
+          path: dist/mad4b-commerce-suite-0.1.0-dev-SHELL-ONLY.zip
+          if-no-files-found: error
+          retention-days: 7
