@@ -3974,4 +3974,242 @@ final class MAD4B_SCP_Context_Authority {
 
 			if ( $audit ) {
 				if ( ! class_exists( 'MAD4B_SCP_Audit' ) ) {
-					$audit_resul
+					$audit_result = new WP_Error( 'mad4b_context_audit_unavailable', 'Append-only audit service is unavailable for the committed Context governance mutation.' );
+				} else {
+					$audit_result = MAD4B_SCP_Audit::record(
+						(string) $audit['ability'],
+						isset( $audit['summary'] ) && is_array( $audit['summary'] ) ? $audit['summary'] : array(),
+						isset( $audit['status'] ) ? (string) $audit['status'] : 'ok'
+					);
+				}
+				if ( is_wp_error( $audit_result ) ) return self::compensate_registry_error( $snapshot, $operation, $audit_result, 'audit' );
+			}
+
+			return $public_result;
+		} finally {
+			self::release_registry_lock( $lock );
+		}
+	}
+
+	private static function audited_registry_result( $result, $ability, array $summary, $status = 'ok' ) {
+		return array(
+			'__mad4b_registry_mutation_v1' => true,
+			'result' => $result,
+			'audit' => array(
+				'ability' => (string) $ability,
+				'summary' => $summary,
+				'status' => sanitize_key( (string) $status ),
+			),
+		);
+	}
+
+	private static function is_audited_registry_result( $value ) {
+		return is_array( $value )
+			&& ! empty( $value['__mad4b_registry_mutation_v1'] )
+			&& array_key_exists( 'result', $value )
+			&& ! empty( $value['audit'] )
+			&& is_array( $value['audit'] );
+	}
+
+	private static function registry_snapshot_changed( array $snapshot ) {
+		$sentinel = isset( $snapshot['_sentinel'] ) ? (string) $snapshot['_sentinel'] : '__mad4b_context_snapshot_compare_missing__';
+		foreach ( array( self::PROFILE_OPTION, self::SOURCES_OPTION, self::ASSETS_OPTION, self::REGISTRY_REVISION_OPTION ) as $name ) {
+			if ( ! isset( $snapshot[ $name ] ) || ! is_array( $snapshot[ $name ] ) ) return true;
+			$current = get_option( $name, $sentinel );
+			$expected = $snapshot[ $name ];
+			if ( ! empty( $expected['existed'] ) ) {
+				if ( $current !== $expected['value'] ) return true;
+			} elseif ( $sentinel !== $current ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static function compensate_registry_error( array $snapshot, $operation, $error, $phase ) {
+		if ( ! is_wp_error( $error ) ) return $error;
+		if ( ! self::registry_snapshot_changed( $snapshot ) ) return $error;
+
+		$restored = self::restore_registry_option_snapshot( $snapshot );
+		if ( ! is_wp_error( $restored ) ) {
+			if ( 'audit' === (string) $phase ) {
+				return new WP_Error(
+					'mad4b_context_registry_audit_commit_failed',
+					'Context governance mutation was compensated because append-only audit evidence could not be committed.',
+					array(
+						'operation' => sanitize_key( (string) $operation ),
+						'audit_error_code' => $error->get_error_code(),
+						'compensated' => true,
+					)
+				);
+			}
+			return $error;
+		}
+
+		return new WP_Error(
+			'mad4b_context_registry_recovery_required',
+			'Context registry mutation failed after changing local state and the pre-operation snapshot could not be fully restored.',
+			array(
+				'operation' => sanitize_key( (string) $operation ),
+				'phase' => sanitize_key( (string) $phase ),
+				'original_error_code' => $error->get_error_code(),
+				'compensation_error_code' => $restored->get_error_code(),
+			)
+		);
+	}
+
+	private static function acquire_registry_lock( $operation ) {
+		$operation = sanitize_key( (string) $operation );
+		$owner = function_exists( 'wp_generate_uuid4' ) ? wp_generate_uuid4() : hash( 'sha256', uniqid( 'mad4b-context-lock-', true ) );
+		$record = array( 'owner' => $owner, 'operation' => $operation, 'expires_at' => time() + self::REGISTRY_LOCK_TTL );
+		if ( add_option( self::REGISTRY_LOCK_OPTION, $record, '', false ) ) return $owner;
+		$current = get_option( self::REGISTRY_LOCK_OPTION, array() );
+		if ( is_array( $current ) && isset( $current['expires_at'] ) && (int) $current['expires_at'] < time() ) {
+			delete_option( self::REGISTRY_LOCK_OPTION );
+			if ( add_option( self::REGISTRY_LOCK_OPTION, $record, '', false ) ) return $owner;
+		}
+		return new WP_Error( 'mad4b_context_registry_busy', 'Context registry is being changed by another governed operation. Retry against the new registry revision.', array( 'operation' => $operation, 'registry_revision' => self::registry_revision() ) );
+	}
+
+	private static function release_registry_lock( $owner ) {
+		$current = get_option( self::REGISTRY_LOCK_OPTION, array() );
+		if ( is_array( $current ) && isset( $current['owner'] ) && hash_equals( (string) $current['owner'], (string) $owner ) ) delete_option( self::REGISTRY_LOCK_OPTION );
+	}
+
+	private static function bump_registry_revision() {
+		$current = self::registry_revision();
+		$next = $current + 1;
+		if ( ! self::write_option( self::REGISTRY_REVISION_OPTION, $next ) ) {
+			return new WP_Error(
+				'mad4b_context_registry_revision_write_failed',
+				'Context registry state changed but its monotonic revision could not be persisted.',
+				array( 'current_revision' => $current, 'attempted_revision' => $next )
+			);
+		}
+		return $next;
+	}
+
+	private static function registry_option_snapshot() {
+		$sentinel = '__mad4b_context_snapshot_missing__' . hash( 'sha256', microtime( true ) . '|' . self::registry_revision() );
+		$snapshot = array( '_sentinel' => $sentinel );
+		foreach ( array( self::PROFILE_OPTION, self::SOURCES_OPTION, self::ASSETS_OPTION, self::REGISTRY_REVISION_OPTION ) as $name ) {
+			$value = get_option( $name, $sentinel );
+			$snapshot[ $name ] = array(
+				'existed' => $sentinel !== $value,
+				'value' => $value,
+			);
+		}
+		return $snapshot;
+	}
+
+	private static function restore_registry_option_snapshot( array $snapshot ) {
+		$failures = array();
+		foreach ( array( self::PROFILE_OPTION, self::SOURCES_OPTION, self::ASSETS_OPTION, self::REGISTRY_REVISION_OPTION ) as $name ) {
+			if ( ! isset( $snapshot[ $name ] ) || ! is_array( $snapshot[ $name ] ) ) {
+				$failures[] = $name . ':snapshot_missing';
+				continue;
+			}
+			$entry = $snapshot[ $name ];
+			if ( ! empty( $entry['existed'] ) ) {
+				if ( ! self::write_option( $name, $entry['value'] ) ) $failures[] = $name;
+			} else {
+				$deleted = delete_option( $name );
+				if ( ! $deleted && false !== get_option( $name, false ) ) $failures[] = $name;
+			}
+		}
+		return $failures
+			? new WP_Error( 'mad4b_context_registry_snapshot_restore_failed', 'Context registry pre-operation snapshot could not be fully restored.', array( 'failures' => $failures ) )
+			: true;
+	}
+
+	private static function commit_option_changes( array $changes, $error_code, $message ) {
+		if ( empty( $changes ) ) return true;
+		$sentinel = '__mad4b_context_option_missing__' . hash( 'sha256', implode( '|', array_keys( $changes ) ) . '|' . microtime( true ) );
+		$before = array();
+		$applied = array();
+		foreach ( $changes as $name => $value ) {
+			$current = get_option( $name, $sentinel );
+			$before[ $name ] = array(
+				'existed' => $sentinel !== $current,
+				'value' => $current,
+			);
+			if ( self::write_option( $name, $value ) ) {
+				$applied[] = $name;
+				continue;
+			}
+
+			$rollback_failures = array();
+			foreach ( array_reverse( $applied ) as $applied_name ) {
+				$restore = $before[ $applied_name ];
+				$ok = ! empty( $restore['existed'] )
+					? self::write_option( $applied_name, $restore['value'] )
+					: delete_option( $applied_name );
+				if ( ! $ok && ( ! empty( $restore['existed'] ) ? get_option( $applied_name, $sentinel ) !== $restore['value'] : false !== get_option( $applied_name, false ) ) ) $rollback_failures[] = $applied_name;
+			}
+			if ( $rollback_failures ) {
+				return new WP_Error(
+					'mad4b_context_registry_compensation_failed',
+					'Context registry persistence failed and the previous option snapshot could not be fully restored.',
+					array(
+						'failed_option' => $name,
+						'rollback_failures' => $rollback_failures,
+						'original_error_code' => sanitize_key( (string) $error_code ),
+					)
+				);
+			}
+			return new WP_Error( sanitize_key( (string) $error_code ), (string) $message, array( 'failed_option' => $name ) );
+		}
+		return true;
+	}
+
+	private static function refreshed_profile_record( array $assets, array $sources, $verified = true ) {
+		$profile = self::profile();
+		if ( empty( $profile ) ) return array();
+		$profile['context_fingerprint'] = self::context_fingerprint( $assets, $sources );
+		$profile['authority_manifest_fingerprint'] = self::authority_manifest_fingerprint( $assets, $sources );
+		if ( $verified ) $profile['last_verified_at'] = gmdate( 'c' );
+		$profile['updated_at'] = gmdate( 'c' );
+		return $profile;
+	}
+
+	private static function option_values_equal( $left, $right ) {
+		// WordPress stores top-level scalar options as strings. After invalidating
+		// the option cache, a persisted integer revision is read back as e.g. "1".
+		// Keep structured records type-exact; only compare scalar storage values.
+		if ( ( is_scalar( $left ) || null === $left ) && ( is_scalar( $right ) || null === $right ) ) {
+			return (string) $left === (string) $right;
+		}
+		return serialize( $left ) === serialize( $right );
+	}
+
+	private static function clear_option_read_cache( $name, $aggressive = false ) {
+		if ( ! function_exists( 'wp_cache_delete' ) ) return;
+		$name = sanitize_key( (string) $name );
+		if ( '' === $name ) return;
+		wp_cache_delete( $name, 'options' );
+		wp_cache_delete( 'notoptions', 'options' );
+		wp_cache_delete( 'alloptions', 'options' );
+		if ( $aggressive && function_exists( 'wp_cache_flush_group' ) ) wp_cache_flush_group( 'options' );
+	}
+
+	private static function write_option( $name, $value ) {
+		$name = sanitize_key( (string) $name );
+		if ( '' === $name ) return false;
+
+		self::clear_option_read_cache( $name, true );
+		$missing = '__mad4b_missing_option__' . hash( 'sha256', $name );
+		$current = get_option( $name, $missing );
+		if ( $missing !== $current && self::option_values_equal( $current, $value ) ) return true;
+
+		update_option( $name, $value, false );
+		self::clear_option_read_cache( $name );
+		$readback = get_option( $name, $missing );
+		if ( $missing !== $readback && self::option_values_equal( $readback, $value ) ) return true;
+
+		self::clear_option_read_cache( $name, true );
+		update_option( $name, $value, false );
+		self::clear_option_read_cache( $name, true );
+		$readback = get_option( $name, $missing );
+		return $missing !== $readback && self::option_values_equal( $readback, $value );
+	}
+}
