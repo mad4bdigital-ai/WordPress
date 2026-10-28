@@ -7,7 +7,7 @@ on:
         description: Exact merged and owner-attested PR head SHA
         required: true
         type: string
-      pull_request:
+      review_pr_number:
         description: Independently reviewed merged PR number
         required: true
         type: string
@@ -36,7 +36,7 @@ jobs:
     timeout-minutes: 25
     env:
       SOURCE_SHA: ${{ inputs.source_sha }}
-      PR_NUMBER: ${{ inputs.pull_request }}
+      PR_NUMBER: ${{ inputs.review_pr_number }}
       VERSION: ${{ inputs.version }}
     steps:
       - uses: actions/checkout@v4
