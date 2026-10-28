@@ -1,0 +1,21 @@
+--- a/wp-content/mu-plugins/tour-origin-sync.php
++++ b/wp-content/mu-plugins/tour-origin-sync.php
+@@ -205,6 +205,18 @@
+         }
+ 
+         $reference_term_id = tk_tour_origin_sync_map_term_to_reference_lang( $selected_term_id, $taxonomy );
++        // A continent is a discovery level, never a usable point of pickup.
++        // Use WPML reference term metadata, not a localized term label, to
++        // avoid reintroducing placeholder addresses such as "Africa".
++        $origin_level = sanitize_key( (string) get_term_meta( $reference_term_id, 'destination_type', true ) );
++        if ( 'continent' === $origin_level ) {
++            tk_tour_origin_sync_clear_post_meta( $post_id );
++            tk_tour_origin_sync_debug( 'invalid broad origin requires content review', array(
++                'post_id' => $post_id, 'reference_term_id' => $reference_term_id,
++                'source_level' => $origin_level,
++            ) );
++            return;
++        }
+         $meta              = tk_tour_origin_sync_read_location_term_meta( $reference_term_id, $taxonomy );
+ 
+         if ( empty( $meta['address'] ) && empty( $meta['place_id'] ) && empty( $meta['location'] ) && $reference_term_id !== $selected_term_id ) {

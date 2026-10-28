@@ -108,28 +108,46 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                 $canonical=self::canonical($id,$type);
                 if ($canonical !== $id) continue; // one authoritative content-readiness issue per translation family
                 $origin=$cfg['origin_fields'][$type]??'';
-                if ($origin && !get_post_meta($id,$origin,true))
-                    $issues[]=self::issue($type,$id,'origin_missing','medium','Origin field is empty');
+                $originIsMissing=$origin && !get_post_meta($id,$origin,true);
                 $sourceField=$cfg['origin_source_fields'][$type]??'';
                 $sourceTax=$cfg['origin_source_taxonomies'][$type]??'';
+                $invalidOrigin=false;
+                // The source term is an input, not an instruction to copy a value
+                // into translations. Validate its actual taxonomy and level.
                 if ($sourceField && $sourceTax && taxonomy_exists($sourceTax)) {
-                    $term_id=absint(get_post_meta($id,$sourceField,true));
-                    if ($term_id) {
+                    $rawSource=get_post_meta($id,$sourceField,true);
+                    $term_id=absint($rawSource);
+                    if ($rawSource !== '' && $rawSource !== null && !$term_id) {
+                        $invalidOrigin=true;
+                        $issues[]=self::issue($type,$id,'origin_source_invalid_reference','high',
+                            'Source origin does not resolve to a taxonomy term; review the original record');
+                    } elseif ($term_id) {
                         $original=apply_filters('wpml_default_language',null);
                         if ($original && has_filter('wpml_object_id')) {
                             $mapped=apply_filters('wpml_object_id',$term_id,$sourceTax,false,$original);
                             if ($mapped) $term_id=absint($mapped);
                         }
                         $term=get_term($term_id,$sourceTax);
-                        if ($term instanceof WP_Term && !is_wp_error($term)) {
+                        if (!($term instanceof WP_Term) || is_wp_error($term)) {
+                            $invalidOrigin=true;
+                            $issues[]=self::issue($type,$id,'origin_source_invalid_reference','high',
+                                'Source origin term is missing from the configured taxonomy');
+                        } else {
                             $level=sanitize_key((string)get_term_meta($term_id,'destination_type',true));
                             if ($level && in_array($level,(array)($cfg['invalid_origin_levels']??array()),true)) {
-                                $issues[]=self::issue($type,$id,'origin_source_too_broad','high',
-                                    'Selected origin term is not an approved pickup level');
+                                $invalidOrigin=true;
+                                $issue=self::issue($type,$id,'origin_source_too_broad','high',
+                                    'The origin source is too broad for a pickup: '.sanitize_text_field($term->name).' ('. $level .')');
+                                $issue['source_evidence']=array('taxonomy'=>$sourceTax,'term_id'=>$term_id,'level'=>$level);
+                                $issues[]=$issue;
                             }
                         }
                     }
                 }
+                // One root cause first: a continent cannot be used to fill the
+                // absent pickup address, so do not create two tasks for it.
+                if ($originIsMissing && !$invalidOrigin)
+                    $issues[]=self::issue($type,$id,'origin_missing','medium','Origin field is empty');
                 $taxonomy=$cfg['location_taxonomies'][$type]??'';
                 if ($taxonomy && taxonomy_exists($taxonomy)) {
                     $terms=wp_get_object_terms($id,$taxonomy,array('fields'=>'ids'));
@@ -242,7 +260,8 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         switch($code) {
             case 'wpml_language_unregistered':return (bool)$cfg['check_wpml'];
             case 'origin_missing':return !empty($cfg['origin_fields'][$type]);
-            case 'origin_source_too_broad':return !empty($cfg['origin_source_fields'][$type])&&!empty($cfg['origin_source_taxonomies'][$type]);
+            case 'origin_source_too_broad':
+            case 'origin_source_invalid_reference':return !empty($cfg['origin_source_fields'][$type])&&!empty($cfg['origin_source_taxonomies'][$type]);
             case 'location_unlinked':return !empty($cfg['location_taxonomies'][$type])&&taxonomy_exists($cfg['location_taxonomies'][$type]);
             case 'media_source_unverified':return !empty($cfg['media_fields'][$type]);
             case 'media_source_shared_across_records':return !empty($cfg['media_fields'][$type])&&!empty($cfg['media_reuse_threshold']);
@@ -403,11 +422,32 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         submit_button('Save rules');echo '</form>';
         }
         echo '<h2>Issues</h2><table class="widefat striped"><thead><tr><th>Severity</th><th>Source</th><th>Issue</th><th>Status</th><th>Fluent Boards</th></tr></thead><tbody>';
-        $rows=array_values($issues);usort($rows,static function($a,$b){return strcmp($b['last_seen']??'',$a['last_seen']??'');});
+        $rows=array_values($issues);
+        // Operational priorities must not be hidden behind hundreds of
+        // low-severity media reviews in the first 100 rows.
+        usort($rows,static function($a,$b){
+            $sa=(($a['status']??'open')==='resolved')?1:0;
+            $sb=(($b['status']??'open')==='resolved')?1:0;
+            if ($sa!==$sb) return $sa<=>$sb;
+            $priority=array('critical'=>0,'high'=>1,'medium'=>2,'low'=>3);
+            $pa=$priority[$a['severity']??'low']??4;
+            $pb=$priority[$b['severity']??'low']??4;
+            if ($pa!==$pb) return $pa<=>$pb;
+            return strcmp($b['last_seen']??'',$a['last_seen']??'');
+        });
         foreach(array_slice($rows,0,100) as $row) {
             $url=$row['object_id']?get_edit_post_link($row['object_id']):'';
             $label=esc_html((string)$row['post_type'].' #'.(int)$row['object_id']);
             if($url)$label='<a href="'.esc_url($url).'">'.$label.'</a>';
+            $evidence=(array)($row['source_evidence']??array());
+            if (!empty($evidence['term_id']) && !empty($evidence['taxonomy'])) {
+                $termUrl=get_edit_term_link(absint($evidence['term_id']),sanitize_key($evidence['taxonomy']));
+                $sourceLabel='Source: '.sanitize_key($evidence['taxonomy']).' #'.absint($evidence['term_id']).
+                    ' / '.sanitize_key($evidence['level']??'unverified');
+                if (is_string($termUrl) && $termUrl)
+                    $label.='<p class="description"><a href="'.esc_url($termUrl).'">'.esc_html($sourceLabel).'</a></p>';
+                else $label.='<p class="description">'.esc_html($sourceLabel).'</p>';
+            }
             echo '<tr><td>'.esc_html($row['severity']).'</td><td>'.$label.'</td><td>'.esc_html($row['label']).'</td><td>'.esc_html($row['status']).'</td><td>';
             if(!empty($row['board_task_id']))echo 'Task #'.(int)$row['board_task_id'];
             elseif(($row['status']??'')!=='resolved' && current_user_can('manage_options')) {

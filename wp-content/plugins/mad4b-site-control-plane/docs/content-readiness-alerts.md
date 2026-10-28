@@ -21,7 +21,7 @@ Additional per-tenant fields: origin_source_fields maps post types to term-ID me
 origin_source_taxonomies resolves its registered taxonomy; invalid_origin_levels
 declares forbidden term levels. The detector resolves selected terms through the
 current site's WPML reference language before examining authoritative
-destination_type metadata. A broad continent source is not a pickup address.
+destination_type metadata. A broad continent source is not a pickup address. An invalid broad origin and the empty derived address are treated as one root-cause issue containing term ID and hierarchy evidence. Broken origin term references have a separate explicit integrity issue.
 
 Media reuse detection is opt-in with media_reuse_threshold (0 disables).
 An identical gallery source reused by multiple distinct content records raises
@@ -48,7 +48,7 @@ end-date also raises a separate high-priority issue.
   gallery review issue is intentionally open rather than certifying hotel media.
 - Configured rules use the site's actual destinations taxonomy, not the absent
   location_jet alias. Form ID 6 is only part of this local site's rule config.
-- After reconciliation, 794 issues remain open: 45 high and 749 medium.
+- After root-cause issue deduplication, 781 issues remain open: 45 high and 736 medium. Thirteen former duplicate empty-origin alerts were resolved without deleting the source term issue.
   Two independent scans confirmed ledger key stability, no external tasks,
   and 3 pre-existing Fluent Boards tasks unchanged.
 - Backup and exact rollback evidence reside on the authorized VPS under
