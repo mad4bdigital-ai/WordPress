@@ -8,6 +8,7 @@
  */
 defined('ABSPATH') || exit;
 require_once __DIR__.'/class-mad4b-scp-readiness-team-preparation.php';
+require_once __DIR__.'/class-mad4b-scp-readiness-event-automation.php';
 
 final class MAD4B_SCP_Readiness_PreActivation {
     const OPTION='mad4b_readiness_preactivation_v1';
@@ -27,6 +28,7 @@ final class MAD4B_SCP_Readiness_PreActivation {
         add_action('admin_menu',array(__CLASS__,'menu'),36);
         add_action('admin_post_mad4b_readiness_preactivation_save',array(__CLASS__,'save'));
         MAD4B_SCP_Readiness_Team_Preparation::boot();
+        MAD4B_SCP_Readiness_Event_Automation::boot();
     }
     public static function can_manage() {
         return current_user_can('manage_options')||current_user_can(self::CAP);
@@ -151,6 +153,7 @@ final class MAD4B_SCP_Readiness_PreActivation {
         $batches=$scopeClass::batches($scopes);
         $workflow=MAD4B_SCP_Readiness_Workflow_Options::settings();
         $sync=MAD4B_SCP_Readiness_Integrations::bitflows_flow_status(self::HOOK);
+        $dormant=MAD4B_SCP_Readiness_Event_Automation::inactive_flow_info();
         $board=MAD4B_SCP_Readiness_Workflow_Options::validate_board_stage(
             $workflow['board_id'],$workflow['stage_id']);
         $owners=count(array_filter($scopes,static fn($s)=>absint($s['assignee_id'])>0));
@@ -179,7 +182,11 @@ final class MAD4B_SCP_Readiness_PreActivation {
         if(!$board)$failures[]='fluent_boards_board_unavailable';
         if($owners<count($scopes))$failures[]='work_packets_need_assignees';
         if($approved<count($scopes))$failures[]='work_packets_need_approval';
-        if(!$sync['configured'])$failures[]='bitflows_digest_flow_missing';
+        if(!$sync['configured'])$failures[]=$dormant['found']?
+            'bitflows_digest_flow_inactive':'bitflows_digest_flow_missing';
+        if(get_option('fluentmail-settings',null)===null)$failures[]='smtp_connection_missing';
+        if(!MAD4B_SCP_Readiness_Event_Automation::policy()['recipient_user_ids'])
+            $failures[]='email_staff_recipients_unapproved';
         $failures[]='external_delivery_not_certified';
         $summary=MAD4B_SCP_Content_Readiness_Alerts::summary();
         return array(
@@ -203,7 +210,8 @@ final class MAD4B_SCP_Readiness_PreActivation {
                 'bitflows'=>array('installed'=>$sync['installed'],
                     'configured'=>$sync['configured'],'flow_blueprint'=>array(
                         'trigger_type'=>'WordPress Action Hooks','action_hook'=>self::HOOK,
-                        'flow_status'=>'not_created_by_preactivation'),
+                        'flow_status'=>$dormant['found']?'native_inactive_draft':'not_created_by_preactivation',
+                        'inactive_flow_id'=>$dormant['flow_id']),
                     'preview_only'=>true),
                 'fluent_smtp'=>array('installed'=>class_exists('FluentMail\App\App'),
                     'preview_only'=>true),
@@ -331,6 +339,7 @@ final class MAD4B_SCP_Readiness_PreActivation {
         submit_button('Save PRE-ACTIVATION draft only');
         echo '</form>';
         MAD4B_SCP_Readiness_Team_Preparation::render_section();
+        MAD4B_SCP_Readiness_Event_Automation::render_section();
         echo '<p><a href="'.esc_url(admin_url('admin.php?page='.MAD4B_SCP_Readiness_Scopes::PAGE)).'">Review work scopes</a></p></div>';
     }
 }

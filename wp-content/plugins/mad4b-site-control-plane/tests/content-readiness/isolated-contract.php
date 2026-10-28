@@ -8,6 +8,7 @@ class WP_Error {
 }
 function is_wp_error($r){return $r instanceof WP_Error;}
 function add_action($a,$b,$c=10){}
+function do_action($name,...$args){$GLOBALS['readiness_emitted_events'][$name][]=$args;}
 function current_user_can($cap){return !empty($GLOBALS['admin']);}
 function get_current_user_id(){return 5;}
 function get_current_blog_id(){return 6;}

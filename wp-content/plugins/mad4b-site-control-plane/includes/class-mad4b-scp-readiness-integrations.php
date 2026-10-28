@@ -86,7 +86,7 @@ final class MAD4B_SCP_Readiness_Integrations {
         }
         $events=(array)($saved['events']??array());
         $known=array_fill_keys(array_column($events,'event_id'),true);
-        $recorded=0;$dispatched=0;
+        $recorded=0;$dispatched=0;$newEvents=array();
         foreach($after as $id=>$row) {
             if(!is_array($row))continue;
             $old=$before[$id]??null;
@@ -106,6 +106,7 @@ final class MAD4B_SCP_Readiness_Integrations {
             $payload['at']=gmdate('c');
             $payload['dispatch_state']='not_requested';
             $events[]=$payload;
+            $newEvents[]=$payload;
             $known[$eventId]=true;$recorded++;
             // Never dispatch externally from a discovery or scheduler scan.
             // An external Bit Flows delivery needs a separate governed agent action.
@@ -113,6 +114,9 @@ final class MAD4B_SCP_Readiness_Integrations {
         if($recorded) {
             $saved['events']=array_slice($events,-300);
             update_option(self::STORE,$saved,false);
+            $readback=(array)get_option(self::STORE,array());
+            if(($readback['events']??array())===$saved['events'] && $newEvents)
+                do_action('mad4b/readiness/events_recorded',$newEvents);
         }
         return array('baseline_created'=>false,'recorded'=>$recorded,'emitted'=>$dispatched);
     }
