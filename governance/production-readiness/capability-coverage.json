@@ -2825,14 +2825,17 @@
       "control_ids": [
         "MCP-01",
         "PROVIDERS-01",
-        "EXECUTION-01"
+        "EXECUTION-01",
+        "GOVERNANCE-02",
+        "OAUTH-01"
       ],
       "status": "reviewed_for_ci_only",
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py"
       ],
       "owner_role": "Source/security CI technical review; not Repository/Site Owner attestation",
-      "review_rationale": "Reviewed original bounded checkpoint broker source (actor/site/revision, expiry, no secret storage, typed CSO01 validation and no write replay), 34 original-class positive/negative PHP assertions on both PHP 7.4/8.3, including missing-provider protection and closed Staging/Production pilot. No live certification or credential exchange.",
+      "review_rationale": "Reviewed original bounded checkpoint broker source (actor/site/revision, expiry, no secret storage, typed CSO01 validation and no write replay), 34 original-class positive/negative PHP assertions on both PHP 7.4/8.3, including missing-provider protection and closed Staging/Production pilot. No live certification or credential exchange. QA31 W1 links this previously known capability to its actual review domain (owner access or rollback/recovery), without removing existing control coverage or granting deployment authority.",
       "needs_new_control": false,
       "new_control_ids": [],
       "production_authorized": false,
@@ -3528,7 +3531,9 @@
         "MCP-01",
         "PROVIDERS-01",
         "ADMIN-01",
-        "EXECUTION-01"
+        "EXECUTION-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py"
@@ -3536,7 +3541,7 @@
       "needs_new_control": false,
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing MCP admission, platform identity, security, owner-scoped administrative rights and execution-denial controls cover these staging-only authorization surfaces, without granting Production execution or public access.",
-      "review_rationale": "New surface ability:mad4b/context-staging-trial-restore is source-pinned in the W1 authority integration and assessed with hermetic owner-browser, agent REST route, Site Profile, OAuth, replay, write grant, exact mapping and negative permission fixtures. This is only CI source review, not evidence that the route is registered, usable, or authorized in Production."
+      "review_rationale": "New surface ability:mad4b/context-staging-trial-restore is source-pinned in the W1 authority integration and assessed with hermetic owner-browser, agent REST route, Site Profile, OAuth, replay, write grant, exact mapping and negative permission fixtures. This is only CI source review, not evidence that the route is registered, usable, or authorized in Production. QA31 W1 links this previously known capability to its actual review domain (owner access or rollback/recovery), without removing existing control coverage or granting deployment authority."
     },
     {
       "id": "ability:mad4b/context-staging-trial-rename",
