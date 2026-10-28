@@ -1,0 +1,72 @@
+name: DFSB Neutral Source Integrity (unsigned candidate)
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/dynamic-filter-seo-bridge/**'
+      - 'tools/dfsb-neutral/**'
+      - '.github/workflows/dfsb-neutral-source-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dfsb-neutral-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-contract:
+    runs-on: ubuntu-latest
+    env:
+      EXACT_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout the exact GitHub source head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Verify exact source commit
+        run: test "$(git rev-parse HEAD)" = "$EXACT_SOURCE_SHA"
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: Lint all neutral PHP sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          find wp-content/plugins/dynamic-filter-seo-bridge -type f -name '*.php' -print0 | sort -z | xargs -0 -n1 php -l
+          php -l tools/dfsb-neutral/verify_candidate.php
+      - name: Build two byte-identical unsigned packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/dfsb-candidate"
+          python3 tools/dfsb-neutral/build_candidate.py --output "$RUNNER_TEMP/dfsb-candidate/candidate.zip" | tee "$RUNNER_TEMP/dfsb-candidate/build.json"
+          sha256sum "$RUNNER_TEMP/dfsb-candidate/candidate.zip" > "$RUNNER_TEMP/dfsb-candidate/first.sha256"
+          python3 tools/dfsb-neutral/build_candidate.py --output "$RUNNER_TEMP/dfsb-candidate/candidate.zip" > /dev/null
+          sha256sum "$RUNNER_TEMP/dfsb-candidate/candidate.zip" > "$RUNNER_TEMP/dfsb-candidate/second.sha256"
+          cmp "$RUNNER_TEMP/dfsb-candidate/first.sha256" "$RUNNER_TEMP/dfsb-candidate/second.sha256"
+      - name: Verify package integrity and fail-closed governance
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/dfsb-extracted"
+          unzip -q "$RUNNER_TEMP/dfsb-candidate/candidate.zip" -d "$RUNNER_TEMP/dfsb-extracted"
+          php tools/dfsb-neutral/verify_candidate.php "$RUNNER_TEMP/dfsb-extracted/dynamic-filter-seo-bridge"
+          cp -a "$RUNNER_TEMP/dfsb-extracted/dynamic-filter-seo-bridge" "$RUNNER_TEMP/dfsb-tampered"
+          printf '\n// intentional QA tamper\n' >> "$RUNNER_TEMP/dfsb-tampered/includes/SEO/ContextSeoSources.php"
+          if php tools/dfsb-neutral/verify_candidate.php "$RUNNER_TEMP/dfsb-tampered"; then
+            echo '::error::Tampered package was incorrectly accepted'
+            exit 1
+          fi
+      - name: Upload unsigned review package (not deployable)
+        uses: actions/upload-artifact@v4
+        with:
+          name: dfsb-unsigned-review-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            ${{ runner.temp }}/dfsb-candidate/candidate.zip
+            ${{ runner.temp }}/dfsb-candidate/build.json
+          retention-days: 14
