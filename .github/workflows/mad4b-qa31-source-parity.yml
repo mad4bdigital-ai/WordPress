@@ -1,0 +1,73 @@
+name: MAD4B QA31 Source Parity Evidence
+
+on:
+  pull_request:
+    paths:
+      - 'governance/release-parity/**'
+      - 'tools/qa31_*.py'
+      - 'tests/qa31_*.py'
+      - '.github/workflows/mad4b-qa31-source-parity.yml'
+  workflow_dispatch:
+    inputs:
+      require_parity:
+        description: 'Fail closed unless all protected source SHA and package versions converge'
+        type: boolean
+        required: true
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  qa31-source-parity:
+    name: Read-only QA31 source inventory and release gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact source HEAD
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Verify fail-closed source parity regression
+        run: |
+          set -euo pipefail
+          python3 tests/qa31_release_source_gate_contract.py
+
+      - name: Verify pinned source evidence without granting release authority
+        run: |
+          set -euo pipefail
+          python3 tools/qa31_release_source_gate.py \
+            --evidence governance/release-parity/qa31-commerce-staging-source-parity.json \
+            --github-plugin-root wp-content/plugins/mad4b-site-control-plane \
+            --out /tmp/qa31-source-parity-verdict.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          result=json.loads(Path('/tmp/qa31-source-parity-verdict.json').read_text())
+          assert result['authorizing'] is False
+          assert result['production_authorized'] is False
+          assert result['decision'] == 'BLOCKED_SOURCE_RECONCILIATION'
+          assert result['pending_count'] > 0
+          print('QA31_SOURCE_PARITY_EVIDENCE: PASS; rollout remains BLOCKED')
+          PY
+
+      - name: Apply strict parity check on explicit release request only
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.require_parity }}
+        run: |
+          set -euo pipefail
+          python3 tools/qa31_release_source_gate.py \
+            --evidence governance/release-parity/qa31-commerce-staging-source-parity.json \
+            --github-plugin-root wp-content/plugins/mad4b-site-control-plane \
+            --strict \
+            --out /tmp/qa31-source-parity-verdict.json
+
+      - name: Upload non-authorizing evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-qa31-source-parity
+          path: /tmp/qa31-source-parity-verdict.json
+          if-no-files-found: warn
+          retention-days: 30
