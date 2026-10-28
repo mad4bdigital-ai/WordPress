@@ -1,53 +1,66 @@
-# QA40 — Engine and Product Context Management Diagnostics
+# QA40 — Commerce engine, product context, presentation and admin diagnostics
 
-**Execution:** 2026-10-28, Hostinger primary VPS, ETG WooCommerce **Local Lab only** (`etg-woo-lab-php`, `etg_woocommerce_lab`, `SHARED_PRODUCT_LAB_ONLY=true`). No staging or Production mutations, no orders, payments, bookings or customer changes.
+**Date:** 2026-10-28
+**Scope:** ETG Woo Lab ONLY, PHP container `etg-woo-lab-php`, WordPress `local`, DB `etg_woocommerce_lab`, `SHARED_PRODUCT_LAB_ONLY=true`.
+**Production changes:** NONE. No customer checkout, supplier confirmation, payments, Woo Order writes or financial approval.
 
-## User problem and design
+## Installed modifications
 
-Administration needs a single source-aware view of pricing engines, booking engines, WooCommerce product identity, source CPT/Rate policies, Elementor/JetEngine Dynamic Tags and operator workflows — without adding a competing pricing/booking engine or implicitly selling a product.
+### Commerce Composition — native owned code
+- `includes/CommerceEngineInspector.php`: read-only source-owned engine catalog, incomplete pricing rule diagnostics, verified source/Rate relationship checks, native CPT WooCommerce product identity, Booking Experience form-routing receipt and indicative UI integration facts.
+- `includes/CommerceEngineDashboard.php`: WordPress **Tools → Commerce Engines**, bounded admin-only table of engine/owner/state, incomplete rule list, single product/Rate/date inspection form. No background crawler and no customer details.
+- `includes/CompanyManagementRest.php`: audited admin-only accessor for the enrolled company context, and route names in management definitions.
+- `composition.php`: register the two classes using existing WordPress plugin bootstrap.
 
-Installed QA40 directly in the existing Commerce Composition Lab source:
-- `CommerceEngineInspector`: two **admin-only, read-only** REST routes:
-  - `GET /wp-json/commerce-composition/v1/management/engines`: 14 native engine/provider registrations, company-domain states, incomplete pricing-rule catalog and Site Profile authority blockers.
-  - `GET /wp-json/commerce-composition/v1/management/product-context/{source_id}`: explicit published company-allowlisted CPT source; optional `rate_id` and strict `travel_date`. Reuses native ServiceProductIdentity, RateProvenance / TourRateEligibility and FormRouter. Returns source identity, Rate relationship, form-mode evidence, registered Dynamic Tag provider presence and **checkout_authorized=false**.
-- `CommerceEngineDashboard` under **WordPress → Tools → Commerce Engines**: source-backed diagnostics for one selected product, pricing rule blockers, owner/status matrix and the next review boundary. No customer PII, raw Rate price, order write or alternate source of truth.
-- Existing `CompanyManagementRest` exposes admin-only inspection context derived from the canonical MAD4B Site Profile and site-bound company registry. **Company-registered CPT lists**, not embedded vendor/domain IDs, control eligible source types. Unregistered/foreign/private source pointers fail closed.
-- Composer bootstrap only loads/registers both classes; no new database tables or background jobs.
-- In the Lab's `wp-content/mu-plugins/transport-component-price-tags.php`, changed Elementor role label from misleading **Current final** to **Current indicative**. Engine pricing output or source currency was not altered.
+### MU presentation
+- `wp-content/mu-plugins/transport-component-price-tags.php`: Elementor pricing-role control renamed from **Current final** to **Current indicative**. The original price provider and output are unchanged.
 
-### Live findings (read-only)
+## HTTP / REST
 
-- Pricing registry is present and supplies **indicative** traceable quotes; supplier cost/margin, tax/fees, financial manager approval and other factors remain uncertified/partially covered. Registration of a component is not evidence of sellable availability.
-- Core rate/quote providers are mounted for tours, accommodation and transport; WooCommerce HPOS is mounted; Elementor, JetEngine and JetSmartFilters are active.
-- Inspected Tour IDs `60475` and `60629`: CPT/Woo identity readable. Tested Rate `60820` is eligible for a preview only. **Composition Policy missing or invalid** for these inspected form contexts, so the contract reports `requires_review` and `booking_available=false`.
-- Sampled published property and transport services: Woo CPT mapping not enabled for their parent types; FormRouter cannot certify a booking policy for these examples. This observation is about selected samples, not every post.
-- Rendering providers for Tour / Extra and Transport and Company Option dynamic tags are loaded, but **actual browser/page-template rendering has not been independently certified**. UI diagnostics explicitly set `dynamic_render_certified=false`.
-- The canonical Site Profile reports an origin-binding mismatch, `authority_ready=false`, and `profile_authority_quarantined=true`. Unified management writes therefore remain correctly disabled. No silent rebinding.
-- Do not turn a `booking_available` or a default Woo product meta price into traveler-accepted quote, paid order, supplier booking or stock hold.
+```
+GET /wp-json/commerce-composition/v1/management/engines
+GET /wp-json/commerce-composition/v1/management/product-context/{source_id}?rate_id={id}&travel_date=YYYY-MM-DD
+```
 
-## WP-CLI and HTTP evidence
+Both require WordPress `manage_options`, return read-only v1 diagnostics with private/no-store responses, and have no mutation counterpart.
 
-Re-ran previous and new behavior suites **109/109 PASS**:
-- QA40 engine/product REST/UI: **20/20**.
-- Dynamic Tag/display source safety: **12/12**.
-- Extension: transport context, allowed sources, indicative label, invalid dates: **7/7**.
-- QA39 REST: **33/33**, Catalog: **11/11**, Roles: **9/9**.
-- QA38 Lifecycle: **17/17**.
+The company-bound native CPT source and Rate type allowlists come from `commerce_management_company_definitions_v1` via MAD4B Site Profile v2; diagnostics do not create new company-provider credentials or write capabilities. If form policy is absent, response explicitly includes `booking_available=false` and `checkout_authority=false`. A readable Woo Product identity or enabled Fluent Form NEVER certifies a sellable booking.
 
-PHP lint for changed plugin and MU-plugin files, installed/source parity, two independent patch replays onto pre-change snapshots and `git diff --check`: PASS. Local homepage HTTP 200; anonymous admin-engine REST HTTP 401. No new orders/requests/claim/task writes during inspection tests.
+## Real WP-CLI results
 
-VPS backup and replay evidence: `/opt/commerce-components/evidence/etg-commerce-engines-qa40-20261028/`.
-- `QA40-Commerce-Engine-Inspector.patch` SHA256 `1afb541f177af25c7cd399003d17b57806d08005eea1ecc8dd9595755d39e7bf`
-- `QA40-Transport-Elementor-Price-Label.patch` SHA256 `fa84cefde21f4693b0022b40591147ce0d40e0997e46ed8243a4c65b6d9f1836`
-- `QA40-Commerce-Engines-Product-Context-REST-Handoff.zip` SHA256 `a6873cac93738fc3230f7e7a44105808bad762d0833ca274d93c57e98d3d9c6a`.
+| Suite | Passed |
+|---|---:|
+| New QA40 Engine Inspector / REST / Admin | 20/20 |
+| Native Elementor Dynamic Tag safety | 12/12 |
+| Dynamic CPT/Transport UI wording extension | 7/7 |
+| QA39 company REST regression | 33/33 |
+| QA39 Catalog regression | 11/11 |
+| QA39 Role governance regression | 9/9 |
+| QA38 Lifecycle regression | 17/17 |
+| **Total** | **109/109** |
 
-## Next release gates
+PHP lint and installed/source parity for four Composer files passed. Both the Commerce Composition and the MU presentation patches replayed from their precise pre-change snapshots and produced identical files. HTTP local homepage 200, unauthenticated REST 401. These are code-level/WordPress REST tests; actual responsive-browser visual certification in Elementor editor and published pages is **not claimed**.
 
-1. Onboard complete Commerce Composition plugin + relevant MU-plugin sources into a canonical, deployable, versioned repository. The GitHub **patches are not a full plugin release**.
-2. Per-company exact Site Profile / CPT / Rate / provider enrollment. No copy-pasted UUID or site-bound secrets; resolve Lab origin mismatch under independent authority.
-3. Pricing domain certification for supplier costs, inventory, taxes, nationality/age, final commercial quote digest and manager approval.
-4. First-party traveler acceptance; certified Woo Order/Payment and supplier confirmation. Keep every financial mutation disabled until independent proof.
-5. Manual desktop/mobile browser acceptance of Elementor templates, archive cards, selection states, JetSmartFilters, Dynamic Tags and WPML; the CLI verified plugin and provider functions only, **not pixel/responsive behavior**.
-6. Fix unassigned operational tasks / failed workflow by exact source reconciliation; review legacy operator privileges with a least-privilege migration.
+## Read-only source audit and open gaps
 
-**PR is documentation/source-patch handoff only. Leave Draft; no merge, rollout, or Production write approval implied.**
+- Tour pricing owned by `shared_product_pricing_quote_contract_v2`, with rule catalog containing partial supplier cost/margin, child/age, accommodation, transport, availability; tax/fees, coupon, financial approval unintegrated. Pricing preview is **not** a signed final Quote.
+- Accommodation pricing by Accommodation Booking Core. Provider is mounted, but unit inventory/hold, supplier confirmation and order binding not proven ready.
+- Transport pricing by Booking Experience / transport-rates CPT. Elementor display is indicative, never "final" merely because it renders a number.
+- Product identity by CPT Woo Integration, *not* a duplicated `product` post. Rate/season/provenance by their original domain owners.
+- Booking form ownership by FormRouter and existing Booking Experience site policy. A published booking form and "booking available" flag do not grant checkout.
+- Elementor and JetEngine presentation providers are mounted; no interactive cross-browser, mobile, WPML or all-template certification in this QA.
+- Company Site Profile **origin binding is mismatched and authority is quarantined** in Woo Lab: all management POST remains denied by QA39. No automatic secret/identity rewrite is appropriate.
+- No provider-complete contract for manager-approved financial quote, traveler acceptance, WC order creation, supplier booking, or accounting. Existing unassigned tasks / failed Workflow require source-specific reconciliation.
+- No WP Role/Capability change.
+
+## Rollback / packaging
+
+- Source: `/opt/commerce-components/composition`.
+- Installed Lab: `/opt/hostinger-migrations/hosting-3/etg-woocommerce-lab/site-copy/wp-content/plugins/commerce-composition`.
+- Evidence and backups: this directory, including `composition.before-qa40.php`, `CompanyManagementRest.before-qa40.php`, and `transport-component-price-tags.before.php`.
+- Apply **Commerce Patch** on top of an exact QA39 source tree, then separately **MU Patch** on the matching presentation tag source. Verify SHA256/parity/lint after any migration.
+- The WordPress GitHub repository PR is a *source patch and evidence handoff*, NOT an installable Commerce Composition full plugin release. Full source onboarding and staging release attestation remain required.
+
+## Source review
+
+Correctness: 109 fail-closed behavioral tests. Security: admin-only, no PII, no writes, exact company allowlists, WP native capabilities. Architecture: reuses canonical price/form/provider contracts; no duplicate price engine. Readability: two focused classes and explicit state labels. Performance: one selected product diagnostic and bounded catalog; no template crawl per admin page. Deferred: visual/browser QA, verified positive order/supplier flows, and complete financial quote policies.
