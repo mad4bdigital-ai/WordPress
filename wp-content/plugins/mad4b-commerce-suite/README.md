@@ -6,9 +6,9 @@ This WordPress plugin is an operator-facing entrypoint for a multi-company produ
 
 ## Current surface
 
-- WooCommerce → Commerce Suite: inspect the observed runtime class/function indicators and missing prerequisites.
-- Save **desired enrollment** per site using the manage_woocommerce capability, WordPress nonce and allowlisted module IDs.
-- Authenticated read-only endpoint: GET /wp-json/mad4b-commerce/v1/status (requires manage_woocommerce).
+- WooCommerce → Commerce Suite when WooCommerce is active, or Settings → Commerce Suite when absent: inspect observed runtime indicators and prerequisites.
+- Save **desired enrollment** per site using administrator-only manage_options capability, WordPress nonce and allowlisted module IDs.
+- Authenticated read-only endpoint: GET /wp-json/mad4b-commerce/v1/status (requires manage_options).
 - No runtime loading, activation, pricing resolution, orders, migrations, cross-tenant reads or automatic updates.
 - A runtime detection does not certify a provider, payment/booking flow or release.
 
@@ -43,3 +43,7 @@ python3 packages/mad4b-shared-product-core/tests/assembly-gate.py --release   # 
 5. Only release through the existing MAD4B Control Plane approvals and rollback/readback.
 
 **Data boundary:** each company retains independent WordPress DB, orders, customer data, rates, forms, taxonomy mappings, templates and legal/payment settings.
+
+## WooCommerce-absent staging behavior
+
+A new company site without WooCommerce can access the diagnostics screen under WordPress **Settings**, but must not activate bookings or assume a checkout capability. The screen relocates under WooCommerce only after its class has been loaded. A desired-enrollment option cannot authorize activation; only the external governed release flow can do so. `tests/admin-fallback.php` asserts both menu paths and non-admin denial.
