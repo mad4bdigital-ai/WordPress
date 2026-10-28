@@ -33,7 +33,14 @@ function apply_filters($key,$v,...$args){
  return $v;
 }
 function wp_json_encode($v){return json_encode($v);}
-require dirname(__DIR__, 2).'/includes/class-mad4b-scp-content-readiness-alerts.php';
+function rest_ensure_response($data){return $data;}
+class Readiness_Test_Request {
+    public function __construct(private array $values=[]){}
+    public function get_param($key){return $this->values[$key]??null;}
+}
+$module=dirname(__DIR__).'/includes/class-mad4b-scp-content-readiness-alerts.php';
+if (!is_file($module)) $module=dirname(__DIR__,2).'/includes/class-mad4b-scp-content-readiness-alerts.php';
+require $module;
 $cls='MAD4B_SCP_Content_Readiness_Alerts';
 function yes($condition,$label){if(!$condition){fwrite(STDERR,"FAIL $label\n");exit(3);}echo "PASS $label\n";}
 $GLOBALS['admin']=true;
@@ -106,4 +113,19 @@ $missingDateScan=$cls::discover();
 $missingDateStats=array_count_values(array_column($missingDateScan['issues'],'code'));
 yes(($missingDateStats['rate_end_date_missing']??0)===2,
  'configured missing rate dates remain visible for commercial review');
+$GLOBALS['admin']=false;
+yes(!$cls::rest_permission(), 'REST rejects unprivileged visitors');
+$GLOBALS['admin']=true;
+yes($cls::rest_permission(), 'REST allows editorial review');
+$snapshot=serialize(get_option($cls::STORE));
+$summary=$cls::rest_summary(new Readiness_Test_Request());
+yes(($summary['read_only']??false) && ($summary['counts']['open']??0)===2,
+ 'REST summary exposes current counts without write authority');
+$page=$cls::rest_issues(new Readiness_Test_Request(['status'=>'all','per_page'=>1,'page'=>1]));
+yes(($page['per_page']??0)===1 && count($page['items'])===1 &&
+ ($page['total']??0)>=3, 'REST filters and paginates bounded issue results');
+$filtered=$cls::rest_issues(new Readiness_Test_Request(['code'=>'origin_missing','status'=>'open']));
+yes(($filtered['total']??0)===1 && ($filtered['items'][0]['code']??'')==='origin_missing',
+ 'REST filters source issues by code and state');
+yes(serialize(get_option($cls::STORE))===$snapshot, 'REST reads do not mutate issues');
 echo "ALL READINESS LEDGER CONTRACTS PASSED\n";

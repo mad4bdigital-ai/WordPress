@@ -56,3 +56,25 @@ end-date also raises a separate high-priority issue.
 - Avoid distributing the one-time Lab SQL/content repair scripts as part of
   a tenant-wide plugin update. General code reads the target company's own
   fields, WPML and taxonomy definitions.
+
+## Governed administrative REST readback (2026-10-28)
+
+- GET /wp-json/mad4b-content-readiness/v1/summary returns current Open / High /
+  Critical / Resolved counts, last reconciliation timestamp, and snapshot size.
+- GET /wp-json/mad4b-content-readiness/v1/issues returns sanitized source
+  issue evidence and status. Optional filters: status (open, resolved, all),
+  code, post_type, severity, page and per_page (1-100).
+- Both require an authenticated user with WordPress edit_others_posts
+  capability, verified by a route permission callback. The API has no
+  Create, Update, Delete, bulk scan or task creation endpoint.
+- No public host is hardcoded; the current WordPress site serves its routes.
+  Read endpoints do not execute the content scan or mutate Issue / Board data.
+- Exact Lab REST checks: summary HTTP 200 with 781 open; filtered 13
+  origin_source_too_broad entries; unauthenticated GET HTTP 401; POST
+  HTTP 404; issue registry and Fluent Boards task counts unchanged.
+- The isolated test is portable between staging sources and the plugin's
+  GitHub tests/content-readiness layout.
+
+These routes are intended for a future governed Control Plane diagnostics
+consumer. They do not imply approval for automated external notifications or
+unrestricted ChatbotX operations.

@@ -21,6 +21,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         add_action('admin_post_mad4b_readiness_board_sync', array(__CLASS__, 'handle_board_sync'));
         add_action('admin_post_mad4b_readiness_save_rules', array(__CLASS__, 'handle_save_rules'));
         add_action('admin_bar_menu', array(__CLASS__, 'admin_bar'), 95);
+        add_action('rest_api_init', array(__CLASS__, 'register_rest_routes'));
         add_action('admin_notices', array(__CLASS__, 'admin_notice'));
     }
     public static function rules() {
@@ -289,6 +290,96 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         }
         return $summary;
     }
+    /** Admin/editor read endpoints; intentionally no REST mutation routes. */
+    public static function register_rest_routes() {
+        $namespace='mad4b-content-readiness/v1';
+        register_rest_route($namespace, '/summary', array(
+            'methods' => 'GET',
+            'callback' => array(__CLASS__, 'rest_summary'),
+            'permission_callback' => array(__CLASS__, 'rest_permission'),
+        ));
+        register_rest_route($namespace, '/issues', array(
+            'methods' => 'GET',
+            'callback' => array(__CLASS__, 'rest_issues'),
+            'permission_callback' => array(__CLASS__, 'rest_permission'),
+        ));
+    }
+    public static function rest_permission() {
+        return current_user_can('edit_others_posts');
+    }
+    public static function rest_summary($request) {
+        $rows=(array)get_option(self::STORE,array());
+        $audit=(array)get_option(self::AUDIT,array());
+        $last=null;
+        for($i=count($audit)-1;$i>=0;$i--) {
+            if (($audit[$i]['event']??'')==='scan') {
+                $last=$audit[$i]['at']??null;break;
+            }
+        }
+        return rest_ensure_response(array(
+            'contract'=>'mad4b.content-readiness.summary.v1',
+            'counts'=>self::summary($rows),
+            'last_reconciled_at'=>$last,
+            'snapshot_count'=>count($rows),
+            'read_only'=>true,
+        ));
+    }
+    private static function priority_compare($a,$b) {
+        $sa=(($a['status']??'open')==='resolved')?1:0;
+        $sb=(($b['status']??'open')==='resolved')?1:0;
+        if($sa!==$sb)return $sa<=>$sb;
+        $priority=array('critical'=>0,'high'=>1,'medium'=>2,'low'=>3);
+        $pa=$priority[$a['severity']??'low']??4;
+        $pb=$priority[$b['severity']??'low']??4;
+        if($pa!==$pb)return $pa<=>$pb;
+        return strcmp($b['last_seen']??'',$a['last_seen']??'');
+    }
+    public static function rest_issues($request) {
+        $page=max(1,absint($request->get_param('page')??1));
+        $per_page=max(1,min(100,absint($request->get_param('per_page')??25)));
+        $status=sanitize_key((string)($request->get_param('status')??'open'));
+        if(!in_array($status,array('open','resolved','all'),true))$status='open';
+        $severity=sanitize_key((string)($request->get_param('severity')??''));
+        $type=sanitize_key((string)($request->get_param('post_type')??''));
+        $code=sanitize_key((string)($request->get_param('code')??''));
+        $result=array();
+        foreach((array)get_option(self::STORE,array()) as $row) {
+            if(!is_array($row))continue;
+            $state=(($row['status']??'open')==='resolved')?'resolved':'open';
+            if($status!=='all' && $state!==$status)continue;
+            if($severity && ($row['severity']??'')!==$severity)continue;
+            if($type && ($row['post_type']??'')!==$type)continue;
+            if($code && ($row['code']??'')!==$code)continue;
+            $e=(array)($row['source_evidence']??array());
+            $result[]=array(
+                'issue_id'=>(string)($row['id']??''),
+                'post_type'=>(string)($row['post_type']??''),
+                'object_id'=>absint($row['object_id']??0),
+                'code'=>(string)($row['code']??''),
+                'severity'=>(string)($row['severity']??'medium'),
+                'label'=>(string)($row['label']??''),
+                'status'=>$state,
+                'first_seen'=>$row['first_seen']??null,
+                'last_seen'=>$row['last_seen']??null,
+                'resolved_at'=>$row['resolved_at']??null,
+                'board_task_id'=>absint($row['board_task_id']??0)?:null,
+                'source_evidence'=>$e?array(
+                    'taxonomy'=>sanitize_key((string)($e['taxonomy']??'')),
+                    'term_id'=>absint($e['term_id']??0),
+                    'level'=>sanitize_key((string)($e['level']??'')),
+                ):null,
+            );
+        }
+        usort($result,array(__CLASS__,'priority_compare'));
+        $total=count($result);
+        return rest_ensure_response(array(
+            'contract'=>'mad4b.content-readiness.issues.v1',
+            'read_only'=>true,'total'=>$total,'page'=>$page,
+            'per_page'=>$per_page,'pages'=>(int)ceil($total/$per_page),
+            'items'=>array_slice($result,($page-1)*$per_page,$per_page),
+        ));
+    }
+
     public static function menu() {
         add_submenu_page('mad4b-control-plane','Content Readiness & Alerts',
             'Content Readiness','edit_others_posts',self::PAGE,array(__CLASS__,'render'));
@@ -425,16 +516,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         $rows=array_values($issues);
         // Operational priorities must not be hidden behind hundreds of
         // low-severity media reviews in the first 100 rows.
-        usort($rows,static function($a,$b){
-            $sa=(($a['status']??'open')==='resolved')?1:0;
-            $sb=(($b['status']??'open')==='resolved')?1:0;
-            if ($sa!==$sb) return $sa<=>$sb;
-            $priority=array('critical'=>0,'high'=>1,'medium'=>2,'low'=>3);
-            $pa=$priority[$a['severity']??'low']??4;
-            $pb=$priority[$b['severity']??'low']??4;
-            if ($pa!==$pb) return $pa<=>$pb;
-            return strcmp($b['last_seen']??'',$a['last_seen']??'');
-        });
+        usort($rows,array(__CLASS__,'priority_compare'));
         foreach(array_slice($rows,0,100) as $row) {
             $url=$row['object_id']?get_edit_post_link($row['object_id']):'';
             $label=esc_html((string)$row['post_type'].' #'.(int)$row['object_id']);
