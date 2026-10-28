@@ -20,6 +20,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         add_action('admin_post_mad4b_readiness_scan', array(__CLASS__, 'handle_scan'));
         add_action('admin_post_mad4b_readiness_board_sync', array(__CLASS__, 'handle_board_sync'));
         add_action('admin_post_mad4b_readiness_save_rules', array(__CLASS__, 'handle_save_rules'));
+        add_action('admin_post_mad4b_readiness_export', array(__CLASS__, 'handle_export'));
         add_action('admin_bar_menu', array(__CLASS__, 'admin_bar'), 95);
         add_action('rest_api_init', array(__CLASS__, 'register_rest_routes'));
         add_action('admin_notices', array(__CLASS__, 'admin_notice'));
@@ -45,6 +46,8 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
             'owner_fields' => self::map($saved['owner_fields'] ?? array()),
             'end_date_fields' => self::map($saved['end_date_fields'] ?? array()),
             'stop_sale_fields' => self::map($saved['stop_sale_fields'] ?? array()),
+            'scheduled_scan_enabled' => !empty($saved['scheduled_scan_enabled']),
+            'scheduled_scan_interval_minutes' => max(15,min(1440,absint($saved['scheduled_scan_interval_minutes'] ?? 60))),
             'board_id' => absint($saved['board_id'] ?? 0),
             'stage_id' => absint($saved['stage_id'] ?? 0),
             'assignee_id' => absint($saved['assignee_id'] ?? 0),
@@ -104,7 +107,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                 if (!empty($cfg['check_wpml']) && defined('ICL_SITEPRESS_VERSION')) {
                     $details=apply_filters('wpml_post_language_details',null,$id);
                     if (!is_array($details) || empty($details['language_code']))
-                        $issues[]=self::issue($type,$id,'wpml_language_unregistered','high','Published item has no WPML language record');
+                        $issues[]=self::issue($type,$id,'wpml_language_unregistered','high','Missing WPML source-language registration; confirm source and translation family before repair');
                 }
                 $canonical=self::canonical($id,$type);
                 if ($canonical !== $id) continue; // one authoritative content-readiness issue per translation family
@@ -148,7 +151,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                 // One root cause first: a continent cannot be used to fill the
                 // absent pickup address, so do not create two tasks for it.
                 if ($originIsMissing && !$invalidOrigin)
-                    $issues[]=self::issue($type,$id,'origin_missing','medium','Origin field is empty');
+                    $issues[]=self::issue($type,$id,'origin_missing','medium','Origin and approved pickup source must be reviewed; do not infer location from title');
                 $taxonomy=$cfg['location_taxonomies'][$type]??'';
                 if ($taxonomy && taxonomy_exists($taxonomy)) {
                     $terms=wp_get_object_terms($id,$taxonomy,array('fields'=>'ids'));
@@ -157,7 +160,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                 }
                 $media=$cfg['media_fields'][$type]??'';
                 if ($media && !self::has_media($id,$media))
-                    $issues[]=self::issue($type,$id,'media_source_unverified','medium','No usable value found in configured media source');
+                    $issues[]=self::issue($type,$id,'media_source_unverified','medium','Missing approved media in source field '.$media.'; import licensed media or review the source');
                 if ($media && !empty($cfg['media_reuse_threshold']) && $cfg['media_reuse_threshold']>=2) {
                     $raw=get_post_meta($id,$media,true);
                     if (is_array($raw) && count($raw)>0) {
@@ -256,8 +259,27 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         return array('contract'=>'mad4b.content-readiness.discovery.v1','complete'=>$complete,
             'post_counts'=>$counts,'scanned'=>$scanned,'issues'=>$issues);
     }
-    public static function reconcile($scan) {
-        if (!current_user_can('manage_options')) return new WP_Error('mad4b_readiness_permission_denied');
+    public static function run_scheduled() {
+        if (!self::trusted_scheduled_cli()) return new WP_Error('mad4b_readiness_scheduler_unauthorized');
+        $cfg=self::rules();
+        if (empty($cfg['scheduled_scan_enabled'])) return new WP_Error('mad4b_readiness_scheduler_disabled');
+        $audit=(array)get_option(self::AUDIT,array());$latest=0;
+        foreach ($audit as $item)
+            if (($item['event']??'')==='scan') $latest=max($latest,strtotime((string)($item['at']??''))?:0);
+        $interval=$cfg['scheduled_scan_interval_minutes']*60;
+        if ($latest && time()-$latest<$interval)
+            return array('status'=>'not_due','next_eligible_at'=>gmdate('c',$latest+$interval));
+        return self::reconcile(self::discover(),true);
+    }
+    private static function trusted_scheduled_cli() {
+        return PHP_SAPI==='cli' && defined('MAD4B_READINESS_SCHEDULED_RUN')
+            && MAD4B_READINESS_SCHEDULED_RUN===true;
+    }
+    public static function reconcile($scan,$scheduled=false) {
+        if ($scheduled) {
+            if (!self::trusted_scheduled_cli() || empty(self::rules()['scheduled_scan_enabled']))
+                return new WP_Error('mad4b_readiness_scheduler_unauthorized');
+        } elseif (!current_user_can('manage_options')) return new WP_Error('mad4b_readiness_permission_denied');
         if (!is_array($scan) || empty($scan['complete']) || !isset($scan['issues']))
             return new WP_Error('mad4b_readiness_incomplete_scan');
         $old=(array)get_option(self::STORE,array());$now=gmdate('c');$new=$old;
@@ -433,6 +455,46 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         $counts=self::summary(); if (!$counts['critical'])return;
         echo '<div class="notice notice-warning"><p><strong>Content Readiness:</strong> '.(int)$counts['critical'].' critical open issues. <a href="'.esc_url(admin_url('admin.php?page='.self::PAGE)).'">Review issues</a></p></div>';
     }
+    /** Export currently observed issues for a human source-data repair queue. */
+    public static function handle_export() {
+        if (!current_user_can('edit_others_posts')) wp_die('Forbidden',403);
+        check_admin_referer('mad4b_readiness_export');
+        $status=sanitize_key((string)wp_unslash($_GET['readiness_status']??'open'));
+        if (!in_array($status,array('open','resolved','all'),true)) $status='open';
+        $severity=sanitize_key((string)wp_unslash($_GET['readiness_severity']??'all'));
+        if (!in_array($severity,array('all','critical','high','medium','low'),true)) $severity='all';
+        $rows=array_values(array_filter((array)get_option(self::STORE,array()),
+            static function($row)use($status,$severity){
+                if(!is_array($row))return false;
+                $state=(($row['status']??'open')==='resolved')?'resolved':'open';
+                return ($status==='all'||$state===$status)
+                    && ($severity==='all'||($row['severity']??'medium')===$severity);
+            }));
+        usort($rows,array(__CLASS__,'priority_compare'));
+        nocache_headers();
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="mad4b-content-readiness-'.gmdate('Ymd').'.csv"');
+        $output=fopen('php://output','w');
+        fputcsv($output,array('issue_id','severity','status','post_type','post_id','code',
+            'source_taxonomy','source_term_id','source_level','description','edit_url','last_seen'));
+        foreach($rows as $row){
+            $e=(array)($row['source_evidence']??array());
+            $id=absint($row['object_id']??0);
+            $url=$id?get_edit_post_link($id,'raw'):'';
+            $values=array($row['id']??'',$row['severity']??'',$row['status']??'',
+                $row['post_type']??'',$id,$row['code']??'',$e['taxonomy']??'',
+                absint($e['term_id']??0),$e['level']??'',$row['label']??'',
+                $url,$row['last_seen']??'');
+            // Prevent spreadsheet formula execution in exported source labels.
+            $values=array_map(static function($v){
+                $v=(string)$v;
+                return preg_match('/^[=+@\-\t\r]/',$v)?"'".$v:$v;
+            },$values);
+            fputcsv($output,$values);
+        }
+        fclose($output);
+        exit;
+    }
     public static function handle_scan() {
         if(!current_user_can('manage_options'))wp_die('Forbidden',403);
         check_admin_referer('mad4b_readiness_scan');
@@ -463,6 +525,8 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         $settings['media_reuse_threshold']=max(0,min(100,absint($_POST['media_reuse_threshold']??0)));
         $settings['form_id']=absint($_POST['form_id']??0);
         $settings['form_unread_days']=max(1,min(90,absint($_POST['form_unread_days']??7)));
+        $settings['scheduled_scan_enabled']=isset($_POST['scheduled_scan_enabled']);
+        $settings['scheduled_scan_interval_minutes']=max(15,min(1440,absint($_POST['scheduled_scan_interval_minutes']??60)));
         $settings['check_wpml']=isset($_POST['check_wpml']);
         $settings['check_cron']=isset($_POST['check_cron']);
         $settings['cron_max_age_seconds']=86400;
@@ -543,9 +607,9 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
             echo '<p><label>'.esc_html($name).'<br><input class="large-text" name="'.esc_attr($field).'" value="'.esc_attr((string)$value).'"></label></p>';
         }
         echo '<p><label>Disallowed origin levels (CSV)<br><input class="large-text" name="invalid_origin_levels" value="'.esc_attr(implode(',',(array)$rules['invalid_origin_levels'])).'"></label></p>';
-        foreach(array('media_reuse_threshold'=>'Shared gallery review threshold (0 disables)', 'board_id'=>'Fluent Boards ID','stage_id'=>'Board stage ID','assignee_id'=>'Assigned user ID', 'form_id'=>'Fluent Forms ID', 'form_unread_days'=>'Unread follow-up threshold (days)') as $field=>$label)
+        foreach(array('scheduled_scan_interval_minutes'=>'Scheduled scan minimum interval (minutes)', 'media_reuse_threshold'=>'Shared gallery review threshold (0 disables)', 'board_id'=>'Fluent Boards ID','stage_id'=>'Board stage ID','assignee_id'=>'Assigned user ID', 'form_id'=>'Fluent Forms ID', 'form_unread_days'=>'Unread follow-up threshold (days)') as $field=>$label)
             echo '<p><label>'.esc_html($label).' <input type="number" min="0" name="'.esc_attr($field).'" value="'.(int)$rules[$field].'"></label></p>';
-        foreach(array('check_wpml'=>'Detect missing WPML language','check_cron'=>'Detect overdue WP-Cron') as $field=>$label)
+        foreach(array('scheduled_scan_enabled'=>'Enable local server-side scheduled scans (issue ledger only; no notifications or tasks)','check_wpml'=>'Detect missing WPML language','check_cron'=>'Detect overdue WP-Cron') as $field=>$label)
             echo '<p><label><input type="checkbox" name="'.esc_attr($field).'" '.checked($rules[$field],true,false).'>'.esc_html($label).'</label></p>';
         submit_button('Save rules');echo '</form>';
         }
@@ -573,6 +637,10 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
             echo '</select></label> ';
         }
         echo '<button class="button">Filter</button></form>';
+        $exportUrl=wp_nonce_url(add_query_arg(array('action'=>'mad4b_readiness_export',
+            'readiness_status'=>$requestedStatus,'readiness_severity'=>$requestedSeverity),
+            admin_url('admin-post.php')),'mad4b_readiness_export');
+        echo '<p><a class="button button-secondary" href="'.esc_url($exportUrl).'">Export matching issues (CSV)</a></p>';
         echo '<p class="description">Showing '.($totalRows?((($issuePage-1)*100)+1):0).'-'.min($issuePage*100,$totalRows).' of '.$totalRows.' matching issues.</p>';
         echo '<table class="widefat striped"><thead><tr><th>Severity</th><th>Source</th><th>Issue</th><th>Status</th><th>Fluent Boards</th></tr></thead><tbody>';
         foreach(array_slice($rows,($issuePage-1)*100,100) as $row) {
