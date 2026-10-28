@@ -44,10 +44,22 @@ for forbidden in (
 ):
     assert forbidden not in workflow, f"unsafe release authority: {forbidden}"
 assert workflow.count("actions/attest-build-provenance@v2") == 1
-assert workflow.count("gh attestation verify ") == 1
+assert workflow.count("gh attestation verify ") == 2
 assert workflow.count("OWNER_ATTEST_SINGLE_OWNER") == 1
 assert workflow.count("gh api ") == 2
 assert "pull_request:" not in workflow, "Do not issue attestation from unmerged PR"
+for check in (
+    'bundle="$RUNNER_TEMP/dfsb-artifact/attestation-bundle.json"',
+    '--bundle "$bundle"',
+    '--signer-workflow "$signer"',
+    '--source-ref refs/heads/master',
+    'DFSB_ATTESTATION_VERIFIED_ONLINE_AND_BUNDLE: PASS',
+    'Independent GitHub attestation lookup/verification failed',
+    'for attempt in 1 2 3 4 5 6',
+    'test "$verified" != true',
+    'verified-attestation-bundle.json',
+):
+    assert check in workflow, "Attestation verification gate missing: " + check
 assert "persist-credentials: false" in workflow
 assert "${ " not in workflow, "GitHub Actions expression has a missing opening brace"
 for expression in (
