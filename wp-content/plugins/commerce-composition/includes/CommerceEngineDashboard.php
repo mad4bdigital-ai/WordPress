@@ -46,6 +46,28 @@ final class CommerceEngineDashboard
                  ' &nbsp; <strong>Rules:</strong> '.esc_html((string)count($policy['rules'])).'</p>';
             echo '<p>Company policies determine the intended Rate sale mode. A Rate can use its own Woo Product ID and inherit its parent service context without making checkout automatically available.</p>';
         }
+        $readiness=CommercialQuoteReadiness::overview();
+        echo '<h2>Final Quote — Provider Readiness</h2>';
+        if(is_wp_error($readiness)){
+            echo '<div class="notice notice-warning"><p>'.
+                esc_html($readiness->get_error_code()).'</p></div>';
+        }else{
+            echo '<p><strong>Company policy:</strong> '.esc_html($readiness['policy_status']).
+                ' &nbsp; <strong>Woo Tax:</strong> '.
+                esc_html($readiness['woocommerce_tax_calculation']).
+                ' &nbsp; <strong>Final Quote Provider:</strong> Not yet certified</p>';
+            echo '<table class="widefat striped"><thead><tr>'.
+                '<th>Financial source</th><th>Owner</th><th>Native status</th><th>Certified</th>'.
+                '</tr></thead><tbody>';
+            foreach($readiness['native_rule_coverage'] as $id=>$fact)
+                echo '<tr><td>'.esc_html($id).'</td><td>'.
+                    esc_html($fact['owner']).'</td><td>'.
+                    esc_html($fact['provider_state']).'</td><td>No</td></tr>';
+            echo '</tbody></table>';
+            echo '<p><small>For an exact service, Rate and travel date, use the admin-only '.
+                '<code>POST /commerce-composition/v1/management/commercial-quote/readiness</code>'.
+                ' with the native booking configuration and chosen sale role.</small></p>';
+        }
         echo '<h2>Incomplete pricing contracts</h2>';
         $rules=$overview['pricing_rules'];
         echo '<p>'.esc_html((string)$rules['registered']).' rules registered. '.

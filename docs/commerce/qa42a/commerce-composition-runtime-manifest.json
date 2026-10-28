@@ -2,17 +2,12 @@
   "schema": "mad4b.commerce-composition.release-snapshot.v1",
   "release_state": "lab_source_snapshot_not_production_authorized",
   "plugin_slug": "commerce-composition",
-  "source_count": 66,
+  "source_count": 67,
   "source_files": [
     {
-      "path": "composition.php",
-      "sha256": "57aad88e7a36d5c0fa8cc1c1135ae817a2b51dd7b08c66df4727c0aa072c4d6a",
-      "bytes": 7844
-    },
-    {
-      "path": "README.md",
-      "sha256": "996b6af40313c5dace6f7c95bd0eef111638d971495a82b06fae177ecec505c3",
-      "bytes": 41975
+      "path": "bin/process-workflow-queue.php",
+      "sha256": "23f2e8032a3adf7f7ecb90e22b3e302051ad5ed3e26cf3e9fa9cbdd1893efd08",
+      "bytes": 878
     },
     {
       "path": "CHANGELOG.md",
@@ -20,9 +15,9 @@
       "bytes": 26681
     },
     {
-      "path": "bin/process-workflow-queue.php",
-      "sha256": "23f2e8032a3adf7f7ecb90e22b3e302051ad5ed3e26cf3e9fa9cbdd1893efd08",
-      "bytes": 878
+      "path": "composition.php",
+      "sha256": "7b55689ee6cdaf14334bd9b9eb6436612a5a0224d1a39ec3af11fc001818e79a",
+      "bytes": 8012
     },
     {
       "path": "includes/Admin.php",
@@ -61,8 +56,8 @@
     },
     {
       "path": "includes/CommerceEngineDashboard.php",
-      "sha256": "3af757e4d412b20128b84b6eb41bda4e6362a911b8f935f717b249896738ed6b",
-      "bytes": 6910
+      "sha256": "13cf140b2a06613111e3265fc1ff88896c2540ecfb647adf6b8fa1c96f571afb",
+      "bytes": 8314
     },
     {
       "path": "includes/CommerceEngineInspector.php",
@@ -78,6 +73,16 @@
       "path": "includes/CommercialExecutionPreflight.php",
       "sha256": "a26791aa446ef08035611d18f5211d8683ad09e99ee917958b72ce9c1bd0ce99",
       "bytes": 10768
+    },
+    {
+      "path": "includes/CommercialQuotePlan.php",
+      "sha256": "1b20431e1dd4c9100b7a0fe9c0f18121ada2bfeb8a8d671508086906153973e6",
+      "bytes": 10656
+    },
+    {
+      "path": "includes/CommercialQuoteReadiness.php",
+      "sha256": "48663e9150545f83924a41030652ffa5cfe7045aeff76521852d650205de72fd",
+      "bytes": 12792
     },
     {
       "path": "includes/CompanyCommercePolicy.php",
@@ -330,9 +335,9 @@
       "bytes": 3662
     },
     {
-      "path": "includes/CommercialQuotePlan.php",
-      "sha256": "1b20431e1dd4c9100b7a0fe9c0f18121ada2bfeb8a8d671508086906153973e6",
-      "bytes": 10656
+      "path": "README.md",
+      "sha256": "996b6af40313c5dace6f7c95bd0eef111638d971495a82b06fae177ecec505c3",
+      "bytes": 41975
     }
   ],
   "evidence": "QA42A VPS PHP + GitHub SHA match",
