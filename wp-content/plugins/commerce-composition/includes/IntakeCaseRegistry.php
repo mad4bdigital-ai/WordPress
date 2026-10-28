@@ -110,15 +110,23 @@ final class IntakeCaseRegistry
             "SELECT request_id,route_mode,source_channel,contact_id,woo_order_id,stage,policy_sha256
               FROM $t WHERE request_id=%d",$requestId),ARRAY_A);
         if(!$row)return new \WP_Error('intake_case_not_found');
+        // The registry's original stage is immutable provenance; an approved
+        // FluentBoards task may be linked later. Read the verified link rather
+        // than showing a stale 'awaiting board' state to operators.
+        $board=FluentBoardsTaskBridge::ready()
+            ?FluentBoardsTaskBridge::inspect($requestId):null;
+        $boardLinked=is_array($board) && ($board['linked']??false)===true;
         return [
             'request_id'=>(int)$row['request_id'],
             'route_mode'=>$row['route_mode'],
             'source_channel'=>$row['source_channel'],
             'contact_id'=>(int)$row['contact_id'],
             'woo_order_id'=>$row['woo_order_id']===null?null:(int)$row['woo_order_id'],
-            'stage'=>$row['stage'],
+            'stage'=>$boardLinked?'board_task_linked':$row['stage'],
+            'registry_stage'=>$row['stage'],
+            'board_task_id'=>$boardLinked?(int)$board['task_id']:null,
             'policy_sha256'=>$row['policy_sha256'],
-            'crm_native_task_created'=>false,
+            'crm_native_task_created'=>$boardLinked,
             'marketing_subscription_changed'=>false
         ];
     }
