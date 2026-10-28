@@ -11,6 +11,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 require_once __DIR__ . '/includes/module-registry.php';
+require_once __DIR__ . '/includes/readiness.php';
 
 final class MAD4B_Commerce_Suite {
     public const OPTION = 'mad4b_commerce_suite_desired_modules_v1';
@@ -33,6 +34,7 @@ final class MAD4B_Commerce_Suite {
     public static function status(): array {
         $snapshot = MAD4B_Commerce_Suite_Registry::snapshot(self::desired());
         $snapshot['version'] = '0.1.0-dev';
+        $snapshot['tenant_readiness'] = MAD4B_Commerce_Readiness::inspect($snapshot);
         $snapshot['mode'] = 'source-only-inventory';
         $snapshot['site_environment'] = wp_get_environment_type();
         return $snapshot;
