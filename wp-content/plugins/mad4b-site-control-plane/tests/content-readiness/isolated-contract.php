@@ -195,4 +195,9 @@ yes(is_array($scheduleResult) && array_key_exists('open',$scheduleResult),
 $notDue=$cls::run_scheduled();
 yes(($notDue['status']??'')==='not_due',
  'scheduled scans are throttled by the configured interval');
+yes(MAD4B_SCP_Readiness_Workflow_Options::group_for_issue(['code'=>'media_source_unverified'])==='media', 'media routed by source issue code');
+yes(MAD4B_SCP_Readiness_Workflow_Options::group_for_issue(['code'=>'origin_missing'])==='origin', 'origin routed by source issue code');
+yes(MAD4B_SCP_Readiness_Workflow_Options::group_for_issue(['code'=>'wpml_language_unregistered'])==='wpml', 'WPML routed by source issue code');
+yes(MAD4B_SCP_Readiness_Workflow_Options::group_for_issue(['code'=>'expired_rate_renewal_required'])==='pricing', 'expired rate routed to pricing');
+yes(MAD4B_SCP_Readiness_Workflow_Options::settings()['board_tasks']===false, 'board writes default to disabled');
 echo "ALL READINESS LEDGER CONTRACTS PASSED\n";
