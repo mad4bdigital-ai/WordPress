@@ -1,6 +1,6 @@
 {
   "contract": "mad4b.skill-seed-manifest.v1",
-  "seed_version": 13,
+  "seed_version": 14,
   "skills": [
     {
       "level": "site",
@@ -73,6 +73,18 @@
         "allow_task_context": true,
         "allowed_mutation_abilities_source": "brand_bearing"
       }
+    },
+    {
+      "level": "workflow",
+      "target": "commerce-lifecycle",
+      "name": "wordpress-commerce-inquiry-qualification",
+      "enabled": true
+    },
+    {
+      "level": "workflow",
+      "target": "commerce-lifecycle",
+      "name": "wordpress-commerce-quote-booking-gates",
+      "enabled": true
     }
   ]
 }

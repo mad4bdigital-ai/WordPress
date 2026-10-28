@@ -1,0 +1,18 @@
+---
+name: wordpress-commerce-inquiry-qualification
+description: Qualify an original WordPress/Fluent Forms travel or service inquiry into a non-authorizing quote draft, preserving provenance, rate eligibility, age-policy uncertainty, and operator ownership.
+---
+
+Use when a site receives a general inquiry, custom-trip request, archive inquiry or source-specific booking request that must enter an existing Commerce/operations workflow. This Skill plans and verifies; it never grants a mutation.
+
+1. Resolve the exact enrolled Site Profile, environment, domain provider, form-role mapping and site-owned Request/Quote authorities. Form IDs (for example, a single-service form versus a custom plan or archive inquiry) are configured per site, not embedded in this shared Skill.
+2. Inspect only the metadata exposed by certified Fluent Forms read abilities. A form inventory is NOT permission to read submissions. Obtain original saved submission details, if needed, only through separately authorized, source-owning provider capabilities; otherwise return `submission_evidence_unavailable` and stop.
+3. Bind qualification to the immutable original form ID, submission ID, source digest, status and site identity. Do not trust a submitted post ID, URL, page template, email, hidden field or claimed rate as source authority; do not expose names, phone numbers or responses in receipts.
+4. Distinguish a known service request from an open-ended custom inquiry. Only an authorized operator's explicit selection, independently checked against the published/activated service and its canonical CPT/product identity, can establish the proposed service. Never infer a customer's service acceptance from a staff selection.
+5. Verify an explicitly selected Rate belongs to that service, is published and active for the requested date/season, has not stopped sale, and is consistent with language/market configuration. If multiple rates qualify, request explicit selection; never silently choose the first or cheapest Rate.
+6. Use the stored traveler date, adult/child/infant occupancy and extra selections as *evidence*, not a substitute for the canonical Age Occupancy Registry or accommodation/transport/extra-rate relationships. Missing or uncertified age/availability/price policy yields `Requires Review`, never a fabricated zero or adult-only quote.
+7. Call the existing domain pricing engine through a certified read-only quote-preview surface; do not create an alternative price calculator or adopt a static template currency. A preview is nonbinding and is not a manager-approved commercial Quote.
+8. For multi-service requests, preserve each independently verified component; do not collapse a custom program into a single tour or call a partial quote complete. Keep unmatched services as review items.
+9. Before any qualified-claim write, obtain the specific bounded provider capability, current-state fingerprint, exact approval when required, idempotency key based on the original source, and readback. Skills cannot mutate submissions, provider tables, requests, queues or CRM directly.
+10. Preserve the original submission as system of record. Route operator tasks through the existing governed Request Inbox / FluentBoards link and Commerce Composition queue where certified; Bit Flows is optional routing/notification mechanics, not authority.
+11. Return a redacted receipt with site/environment, source owner and fingerprint, verified service/Rate references, pricing/occupancy blockers, quote-preview state, owner of the next review, and `checkout_authorized=false`, `supplier_booking_authorized=false` unless independently proven by later gates. Never treat Local QA evidence as Staging or Production certification.

@@ -499,3 +499,6 @@ if entry.get('policy', {}).get('authentication') != 'ON_INSTALL':
     raise SystemExit('MAD4B WordPress marketplace entry must authenticate on install')
 
 print('mad4b.dynamic-skills.v8: PASS')
+
+# Canonical commerce-lifecycle pack and provider-guidance regression.
+subprocess.run(['python3', str(wp / 'tests' / 'commerce-lifecycle-skill-contract.py')], check=True)
