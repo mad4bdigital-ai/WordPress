@@ -9,6 +9,8 @@ final class NativeOrderItemIdentityResolver
     private const M_TYPE='_commerce_native_source_type';
     private const M_PARENT='_commerce_native_parent_id';
     private const M_DIGEST='_commerce_native_relation_sha256';
+    private const M_UNIT='_commerce_native_unit_id';
+    private const M_UNIT_REL='_commerce_native_unit_relation_id';
     private static function err(string $code):\WC_Data_Exception {
         return new \WC_Data_Exception($code,'Unverified native CPT Order Item identity');
     }
@@ -62,11 +64,19 @@ final class NativeOrderItemIdentityResolver
         $product=wc_get_product($id);
         if(!($product instanceof \WC_Product)||(int)$product->get_id()!==$id)
             throw self::err('commerce_identity_woo_product_mismatch');
-        return ['id'=>$id,'type'=>$type,'parent'=>$parent,'native'=>false];
+        $identity=['id'=>$id,'type'=>$type,'parent'=>$parent,'native'=>false];
+        if($type==='property-rates'){
+            $unit=PropertyUnitSourceCertification::inspect($id,$parent);
+            $identity['unit']=$unit['unit_id'];
+            $identity['unit_relation']=$unit['jet_relation_id'];
+            $identity['unit_relation_row']=$unit['jet_relation_row_id'];
+        }
+        return $identity;
     }
     private static function fingerprint(array $s):string {
         return hash('sha256',wp_json_encode([
-            self::CONTRACT,home_url(),$s['id'],$s['type'],$s['parent']
+            self::CONTRACT,home_url(),$s['id'],$s['type'],$s['parent'],
+            $s['unit']??null,$s['unit_relation']??null,$s['unit_relation_row']??null
         ],JSON_UNESCAPED_SLASHES));
     }
     private static function item(int $orderId,int $itemId):\WC_Order_Item_Product {
@@ -93,6 +103,10 @@ final class NativeOrderItemIdentityResolver
             self::M_PARENT=>(string)$s['parent'],
             self::M_DIGEST=>self::fingerprint($s)
         ];
+        if(isset($s['unit'])){
+            $attrs[self::M_UNIT]=(string)$s['unit'];
+            $attrs[self::M_UNIT_REL]=(string)$s['unit_relation'];
+        }
         foreach($attrs as $key=>$value){
             $oldValue=$item->get_meta($key,true);
             if($oldValue!=='' && (string)$oldValue!==$value)
@@ -114,12 +128,15 @@ final class NativeOrderItemIdentityResolver
                 ||(string)$item->get_meta(self::M_ID,true)!==(string)$id
                 ||(string)$item->get_meta(self::M_TYPE,true)!==$s['type']
                 ||(string)$item->get_meta(self::M_PARENT,true)!==(string)$s['parent']
-                ||(string)$item->get_meta(self::M_DIGEST,true)!==self::fingerprint($s))
+                ||(string)$item->get_meta(self::M_DIGEST,true)!==self::fingerprint($s)
+                ||(isset($s['unit']) && ((string)$item->get_meta(self::M_UNIT,true)!==(string)$s['unit']
+                   ||(string)$item->get_meta(self::M_UNIT_REL,true)!==(string)$s['unit_relation'])))
                 throw self::err('commerce_identity_receipt_or_relation_changed');
         }
         return [
             'contract'=>self::CONTRACT,'order_id'=>$orderId,'item_id'=>$itemId,
             'source_id'=>$id,'source_type'=>$s['type'],'parent_id'=>$s['parent'],
+            'unit_id'=>$s['unit']??null,'jet_relation_id'=>$s['unit_relation']??null,
             'identity_verified'=>true,'financial_authorized'=>false,
             'supplier_booking_authorized'=>false
         ];
