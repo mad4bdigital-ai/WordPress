@@ -90,6 +90,40 @@ final class MAD4B_SCP_Approval_Handoff_Adapter extends MAD4B_SCP_Adapter_Base {
         $result['mutation_performed'] = false;
         $result['decision_exposed'] = false;
         $result['target_execution_exposed'] = false;
+
+        // Pure, request-local admission diagnostics. This is the existing
+        // admin-permission-protected READ endpoint: it never claims a mutation,
+        // records a ticket, or exposes raw bearer identity, tokens, or subjects.
+        // It helps distinguish an incorrect plan from a remote execution/step-up
+        // failure without turning authorization failures into vague transport 500s.
+        $planner = array(
+            'agent_public_id' => $agent_public_id,
+            'server_id' => 'mad4b-write',
+            'ability' => $ability,
+            'provider' => $provider,
+            'input' => $operation_input,
+            'ticket_class' => 'mutation',
+            'reason' => 'Read-only approval planning admission inspection',
+        );
+        $guard_code = 'planner_guard_unavailable';
+        if ( class_exists( 'MAD4B_SCP_Staging_Write_Planning_Guard' ) ) {
+            $guard = MAD4B_SCP_Staging_Write_Planning_Guard::validate_remote_plan_input( $planner );
+            $guard_code = is_wp_error( $guard ) ? sanitize_key( $guard->get_error_code() ) : 'pass';
+        }
+        $result['planner_admission'] = array(
+            'contract' => 'mad4b.approval-plan-readonly-admission.v1',
+            'admin_capability_observed' => current_user_can( 'manage_options' ),
+            'verified_oauth_bearer' => class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
+                && MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active(),
+            'transport_server_id' => class_exists( 'MAD4B_SCP_Transport_Context' )
+                ? sanitize_key( (string) MAD4B_SCP_Transport_Context::current_server_id() ) : '',
+            'mutation_policy_enabled' => class_exists( 'MAD4B_SCP_Policy' )
+                && MAD4B_SCP_Policy::can_mutate(),
+            'guard_code' => $guard_code,
+            'read_only' => true,
+            'mutation_performed' => false,
+            'authorization_claimed' => false,
+        );
         return $result;
     }
 
