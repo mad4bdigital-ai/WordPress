@@ -69,6 +69,7 @@ def main():
     r=evaluate(e,Path(a.github_plugin_root))
     if a.out:Path(a.out).write_text(json.dumps(r,indent=2)+'\n')
     print(json.dumps({k:v for k,v in r.items() if k not in ('pending_paths','unexpected_paths')},indent=2))
+    if r['unexpected_count']>0:return 3
     if a.strict and r['decision']!='SOURCE_PARITY_CANDIDATE_UNCERTIFIED':return 4
     return 0
 if __name__=='__main__':
