@@ -2,12 +2,12 @@
   "schema": "mad4b.commerce-composition.release-snapshot.v1",
   "release_state": "lab_source_snapshot_not_production_authorized",
   "plugin_slug": "commerce-composition",
-  "source_count": 65,
+  "source_count": 66,
   "source_files": [
     {
       "path": "composition.php",
-      "sha256": "e60d6aff4bbed9af9227646e8abff9933a1f77cd7f39fccf200a8ecd6544eb94",
-      "bytes": 7686
+      "sha256": "57aad88e7a36d5c0fa8cc1c1135ae817a2b51dd7b08c66df4727c0aa072c4d6a",
+      "bytes": 7844
     },
     {
       "path": "README.md",
@@ -328,6 +328,11 @@
       "path": "includes/WorkflowJobsApi.php",
       "sha256": "65e01d2a445d5bf49c3bc35d7a8efada93da351092195c085b4f4527a668e61e",
       "bytes": 3662
+    },
+    {
+      "path": "includes/CommercialQuotePlan.php",
+      "sha256": "1b20431e1dd4c9100b7a0fe9c0f18121ada2bfeb8a8d671508086906153973e6",
+      "bytes": 10656
     }
   ],
   "evidence": "QA42A VPS PHP + GitHub SHA match",
