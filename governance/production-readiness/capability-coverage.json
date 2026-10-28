@@ -3211,7 +3211,8 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-early-boundary-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-early-boundary-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-isolated-php-contract.php"
       ],
       "control_ids": [
         "GOVERNANCE-01",
@@ -10656,6 +10657,24 @@
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
       "source_blob_sha": "1861354d015c94be6ed41265f1737c4dd93d733c",
       "review_rationale": "Review early Control Plane initialization before REST and CLI fastpaths so private content cannot bypass authorization when ordinary source modules are skipped."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-private-operations-boundary.php",
+      "source_blob_sha": "9b465836aad42b407431b420f587425aca77bcee",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-early-boundary-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-isolated-php-contract.php"
+      ],
+      "owner_role": "Plugin security maintainer / independent code review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "review_rationale": "The early guard must be declaration-safe when isolated PHP contracts load source without WordPress hooks, while retaining unconditional bootstrap on real WordPress requests."
     }
   ],
   "code_change_rules": {
