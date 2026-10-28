@@ -27,7 +27,7 @@ All money is in integer minor units. Exact reconciliation: **total = supplier co
 
 Issuance also requires the **active** company policy bound to the current Site Profile, `site_write_ready`, and native financial-mode readiness without blockers. Quotes expire at the earliest source receipt expiry. A Final Quote digest binds site UUID, company policy revision/digest, plan digest, selected native Woo product/Rate, currency, amount breakdown, supplier hold and all source receipt digests.
 
-After issuance, manager and traveler approvals are **different receipt kinds and providers**, signed against the **same immutable Quote digest**. A manager identity must be a source-verified WordPress user, a traveler identity must be a separate opaque verified-channel subject. Approval records never authorize Cart/Order/Payment/Booking; these need separate future certification.
+After issuance, manager and traveler approvals are **independent receipt kinds and signing subjects**, signed against the **same immutable Quote digest**. A manager identity must be a source-verified WordPress user, a traveler identity must be a separate opaque verified-channel subject. Approval records never authorize Cart/Order/Payment/Booking; these need separate future certification.
 
 ## Real source audit
 
