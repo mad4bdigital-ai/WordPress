@@ -134,25 +134,72 @@ final class BootGuard {
         return is_array($state) ? $state : array();
     }
 
-    /** Non-authorizing check; the existing release build is not changed here. */
+    /**
+     * Read-only release authority. Neither an embedded identity, a locally
+     * written receipt nor a signed source build independently authorizes boot.
+     * All three must be bound to the exact approved provider/package row.
+     */
     public static function releaseReadiness(): array {
         $identity = \DynamicFilterSEOBridge\Diagnostics\BuildIdentity::collect();
-        $ready = !empty($identity['provenance_complete'])
-            && !empty($identity['installed_content_valid'])
-            && 'ok' === (string) ($identity['exact_build_reason'] ?? '');
-        // A locally committed source snapshot can be byte-exact but is not
-        // a governed, published release. A local version MUST carry a valid
-        // detached package-provenance receipt before Full Boot is offered.
-        $localCandidate = false !== strpos((string) ($identity['plugin_version'] ?? ''), '-local.');
-        $governanceBlocked = $localCandidate && empty($identity['package_provenance_valid']);
-        if ($governanceBlocked) { $ready = false; }
+        $version = (string) ( $identity['plugin_version'] ?? '' );
+        $sourceSha = strtolower( (string) ( $identity['git_sha'] ?? '' ) );
+        $packageSha = strtolower( (string) ( $identity['package_sha256'] ?? '' ) );
+
+        $integrity = ! empty( $identity['valid'] )
+            && ! empty( $identity['installed_content_valid'] )
+            && ! empty( $identity['provenance_complete'] )
+            && ! empty( $identity['package_provenance_valid'] )
+            && 'ok' === (string) ( $identity['exact_build_reason'] ?? '' )
+            && 1 === preg_match( '/^[a-f0-9]{64}$/D', $packageSha );
+
+        $provider = array();
+        $source = array();
+        $authorityAvailable = class_exists( 'MAD4B_SCP_Provider_Contracts' )
+            && method_exists( 'MAD4B_SCP_Provider_Contracts', 'get_for_version' )
+            && class_exists( 'MAD4B_SCP_Cross_Plugin_Deployment' )
+            && method_exists( 'MAD4B_SCP_Cross_Plugin_Deployment', 'sources' );
+        if ( $authorityAvailable && $integrity ) {
+            $provider = \MAD4B_SCP_Provider_Contracts::get_for_version( 'dynamic-filter-seo-bridge', $version );
+            $sources = \MAD4B_SCP_Cross_Plugin_Deployment::sources();
+            $source = isset( $sources['dynamic-filter-seo-bridge'] )
+                && is_array( $sources['dynamic-filter-seo-bridge'] )
+                ? $sources['dynamic-filter-seo-bridge'] : array();
+        }
+
+        $plugin = 'dynamic-filter-seo-bridge/dynamic-filter-seo-bridge.php';
+        $certified = $integrity
+            && $authorityAvailable
+            && is_array( $provider ) && ! empty( $provider )
+            && is_array( $source ) && ! empty( $source )
+            && (string) ( $provider['plugin_file'] ?? '' ) === $plugin
+            && (string) ( $source['plugin_file'] ?? '' ) === $plugin
+            && (string) ( $source['provider_id'] ?? '' ) === 'dynamic-filter-seo-bridge'
+            && (string) ( $provider['version'] ?? '' ) === $version
+            && (string) ( $source['artifact_version'] ?? '' ) === $version
+            && (string) ( $source['candidate_artifact_version'] ?? '' ) === $version
+            && (string) ( $source['package_certification'] ?? '' ) === 'certified'
+            && (string) ( $source['review_state'] ?? '' ) === 'source_reviewed_artifact_certified'
+            && (string) ( $source['source_commit_sha'] ?? '' ) === $sourceSha
+            && (string) ( $source['candidate_source_commit_sha'] ?? '' ) === $sourceSha
+            && hash_equals( $packageSha, strtolower( (string) ( $provider['archive_sha256'] ?? '' ) ) )
+            && hash_equals( $packageSha, strtolower( (string) ( $source['artifact_sha256'] ?? '' ) ) )
+            && ! empty( $provider['require_runtime_integrity'] );
+
+        $reason = (string) ( $identity['exact_build_reason'] ?? 'unverified' );
+        if ( 'ok' === $reason ) {
+            if ( ! $integrity ) {
+                $reason = 'certified_release_receipt_required';
+            } elseif ( ! $certified ) {
+                $reason = 'independent_provider_certificate_required';
+            }
+        }
         return array(
-            'ready' => $ready,
-            'reason' => $governanceBlocked && 'ok' === (string) ($identity['exact_build_reason'] ?? '')
-                ? 'local_source_candidate_not_certified'
-                : (string) ($identity['exact_build_reason'] ?? 'unverified'),
-            'installed_content_valid' => !empty($identity['installed_content_valid']),
-            'provenance_complete' => !empty($identity['provenance_complete']),
+            'ready' => (bool) $certified,
+            'reason' => $certified ? 'ok' : $reason,
+            'installed_content_valid' => ! empty( $identity['installed_content_valid'] ),
+            'provenance_complete' => ! empty( $identity['provenance_complete'] ),
+            'package_provenance_valid' => ! empty( $identity['package_provenance_valid'] ),
+            'provider_certificate_valid' => (bool) $certified,
             'authorizing' => false,
         );
     }
