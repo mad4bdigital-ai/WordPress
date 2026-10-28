@@ -12,7 +12,7 @@ Executed on **ETG Woo Lab VPS only**, October 28, 2026. Stacked on **Draft PR #5
   - `POST /management/commercial-quote/final/approval/verify` — persist a single independently verified manager or traveler signature/receipt, bound to the exact issued Quote digest. No client-uploaded acceptance or price.
   - `GET /management/commercial-quote/final/{64-char-digest}/status` — returns source-verified approval states without payment or order grants.
 - REST is admin-only (`manage_options && manage_woocommerce`) and `Cache-Control: private,no-store`. Not a guest booking API.
-- Idempotent quote and approval records use atomically unique WordPress option names keyed by signed receipt/Quote digest; immutable readback, conflict denial, no PII. Policy revision and source expiry invalidate stale quotes. **This is not a payment or supplier booking engine.**
+- Idempotent quote and approval records use atomically unique WordPress option names keyed by signed receipt/Quote digest; immutable readback, conflict denial, no PII. Stored Quote digest integrity is revalidated on every readback; policy revision and source expiry invalidate stale quotes. **This is not a payment or supplier booking engine.**
 
 ### Required live provider proof
 
@@ -33,7 +33,7 @@ After issuance, manager and traveler approvals are **independent receipt kinds a
 
 Lab target: `https://tours.dev.mad4b.com`, `etg_woocommerce_lab` DB. The current company policy remains **Draft**, native `shared_product_financial_readiness_v2(60629,60820)` reports `inferred_mode_policy_pending_approval` and `checkout_ready=false`. Woo tax calculation is disabled; no Woo tax tables are configured. The installed inventory ledger is a local-only shadow prototype and cannot prove an authorized supplier hold for Tour Rate 60820. No registered live supplier cost, tax, availability, final Quote, manager approval or traveler acceptance verification adapter. **These are factual blockers, not implementation defaults.**
 
-**QA45 40/40 PASS** native Lab PHP/REST, source-missing refusal, pure reconciliation of synthetic test receipts, financial/tenant policy denial, tampering and permissions. **QA44 27/27 PASS** and **QA43 37/37 PASS** regression, total 104/104 tested in the installed Lab. All synthetic positive tests were pure in-memory calculation only; the actual issuance route returns HTTP 409. No Woo Orders, commerce Requests, FluentBoards Tasks, inventory holds, bookings, issued Quote options or acceptance options were created.
+**QA45 44/44 PASS** native Lab PHP/REST, source-missing refusal, pure reconciliation of synthetic test receipts, financial/tenant policy denial, tampering and permissions. **QA44 27/27 PASS** and **QA43 37/37 PASS** regression, total 108/108 tested in the installed Lab. All synthetic positive tests were pure in-memory calculation only; the actual issuance route returns HTTP 409. No Woo Orders, commerce Requests, FluentBoards Tasks, inventory holds, bookings, issued Quote options or acceptance options were created.
 
 ## Operational next gates
 
