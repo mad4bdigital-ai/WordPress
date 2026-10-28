@@ -16,7 +16,7 @@ names = {
 }
 assert manifest["contract"] == "mad4b.skill-seed-manifest.v1"
 assert manifest["seed_version"] == 15
-assert "const SEED_VERSION = 14;" in seeder
+assert "const SEED_VERSION = 15;" in seeder
 for name in names:
     rows = [r for r in manifest["skills"] if r["name"] == name]
     assert len(rows) == 1, name
