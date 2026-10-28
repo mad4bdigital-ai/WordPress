@@ -2,27 +2,22 @@
   "schema": "mad4b.commerce-composition.release-snapshot.v1",
   "release_state": "lab_source_snapshot_not_production_authorized",
   "plugin_slug": "commerce-composition",
-  "source_count": 68,
+  "source_count": 69,
   "source_files": [
-    {
-      "path": "CHANGELOG.md",
-      "sha256": "39034e9042634e348f18268666d04411be52e6fa001e89886fcbe8e7790b34e6",
-      "bytes": 26681
-    },
-    {
-      "path": "README.md",
-      "sha256": "996b6af40313c5dace6f7c95bd0eef111638d971495a82b06fae177ecec505c3",
-      "bytes": 41975
-    },
     {
       "path": "bin/process-workflow-queue.php",
       "sha256": "23f2e8032a3adf7f7ecb90e22b3e302051ad5ed3e26cf3e9fa9cbdd1893efd08",
       "bytes": 878
     },
     {
+      "path": "CHANGELOG.md",
+      "sha256": "39034e9042634e348f18268666d04411be52e6fa001e89886fcbe8e7790b34e6",
+      "bytes": 26681
+    },
+    {
       "path": "composition.php",
-      "sha256": "6c3732fd5ab871a2b0475408b7329f4b49aef208c722d7d391018c026ea9d839",
-      "bytes": 8188
+      "sha256": "e955190b91fc4408f399a6aa335aa7fc7faf178f9b976073e8d0530476ef4a6a",
+      "bytes": 8366
     },
     {
       "path": "includes/Admin.php",
@@ -80,9 +75,14 @@
       "bytes": 10768
     },
     {
+      "path": "includes/CommercialFinalQuoteLifecycle.php",
+      "sha256": "cf673657d0936c19e24baa491c96134bee429fccac70f6c32e9522b69f2045ff",
+      "bytes": 20695
+    },
+    {
       "path": "includes/CommercialQuoteEvidenceProbe.php",
-      "sha256": "f3d056f4ca028e19ff15729ecff335a17efc89c0cf5b3d01d9cc2f326fd582a0",
-      "bytes": 10524
+      "sha256": "81d322251ea3d334136f65f7bc6d94229c4a142a75783a1f8884e40416ee0d78",
+      "bytes": 12561
     },
     {
       "path": "includes/CommercialQuotePlan.php",
@@ -343,6 +343,11 @@
       "path": "includes/WorkflowJobsApi.php",
       "sha256": "65e01d2a445d5bf49c3bc35d7a8efada93da351092195c085b4f4527a668e61e",
       "bytes": 3662
+    },
+    {
+      "path": "README.md",
+      "sha256": "996b6af40313c5dace6f7c95bd0eef111638d971495a82b06fae177ecec505c3",
+      "bytes": 41975
     }
   ],
   "evidence": "QA42A VPS PHP + GitHub SHA match",
