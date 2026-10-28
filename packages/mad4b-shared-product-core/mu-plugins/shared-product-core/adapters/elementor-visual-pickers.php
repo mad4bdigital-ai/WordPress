@@ -1,0 +1,20 @@
+<?php
+/** Multiple Elementor containers can subscribe to the same tour-scoped choice state. */
+if(!defined('ABSPATH')||!defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY)return;
+add_shortcode('shared_product_visual_picker',static function($args){
+ $a=shortcode_atts(['tour_id'=>0,'type'=>'hotels'],$args);
+ $id=absint($a['tour_id'])?:get_the_ID();
+ $map=['hotels'=>['property_id','properties'],'transport'=>['transport_id','transportations'],'extras'=>['extra_tour_id','extras']];
+ if(!isset($map[$a['type']])||get_post_type($id)!=='tours-and-activities')return '';
+ [$field,$group]=$map[$a['type']];$uid='shared-pick-'.wp_generate_uuid4();
+ ob_start(); ?>
+ <section id="<?php echo esc_attr($uid); ?>" class="shared-visual-independent" data-tour="<?php echo esc_attr($id); ?>" data-field="<?php echo esc_attr($field); ?>" data-group="<?php echo esc_attr($group); ?>" data-url="<?php echo esc_url(rest_url('shared-product/v1/tour-rate-search')); ?>">
+ <div class="shared-visual-independent-status" aria-live="polite"></div><div class="shared-visual-independent-cards"></div></section>
+ <style>.shared-visual-independent-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:12px}.shared-visual-independent button{cursor:pointer;border:1px solid #d6d6d6;border-radius:10px;padding:8px;background:transparent;min-width:0;text-align:start;overflow-wrap:anywhere}.shared-visual-independent button[aria-pressed=true]{outline:2px solid #608b00}.shared-visual-independent img{width:100%;height:105px;object-fit:cover;border-radius:7px;margin-bottom:6px}@media(max-width:600px){.shared-visual-independent-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}</style>
+ <script>(function(){const root=document.getElementById(<?php echo wp_json_encode($uid); ?>);if(!root)return;const tour=root.dataset.tour,key=root.dataset.field,group=root.dataset.group;window.sharedBookingChoices=window.sharedBookingChoices||{};const state=window.sharedBookingChoices[tour]=window.sharedBookingChoices[tour]||{};const status=root.querySelector('.shared-visual-independent-status'),cards=root.querySelector('.shared-visual-independent-cards');let seq=0;
+ async function refresh(){const n=++seq;const params=new URLSearchParams({tour_id:tour});for(const [k,v] of Object.entries(state))if(v)params.set(k,v);status.textContent='Loading compatible options…';try{const res=await fetch(root.dataset.url+'?'+params,{credentials:'same-origin'});if(!res.ok)throw Error('bad_response');const data=await res.json();if(n!==seq)return;cards.replaceChildren();const values=data.visual_options?.[group]||[];if(state[key]){const clear=document.createElement('button');clear.type='button';clear.textContent='Clear selection';clear.onclick=()=>choose('');cards.append(clear);}for(const option of values){const button=document.createElement('button');button.type='button';button.setAttribute('aria-pressed',String(String(state[key]||'')===String(option.id)));if(option.image){const img=document.createElement('img');img.src=option.image;img.alt='';img.loading='lazy';button.append(img);}const name=document.createElement('span');name.textContent=option.name;button.append(name);button.onclick=()=>choose(String(option.id));cards.append(button);}status.textContent=values.length?values.length+' matching choices':'No matching choices';}catch(e){if(seq===n)status.textContent='Unable to load choices';}}
+ function choose(value){state[key]=state[key]===value?'':value;window.dispatchEvent(new CustomEvent('shared-booking-choice-state',{detail:{tourId:tour,choices:{...state}}}));refresh();}
+ window.addEventListener('shared-booking-choice-state',ev=>{if(ev.detail?.tourId!==tour)return;Object.assign(state,ev.detail.choices||{});refresh();});
+ window.addEventListener('shared-booking-visual-change',ev=>{if(ev.detail?.tourId!==tour)return;state[ev.detail.field]=ev.detail.value;window.dispatchEvent(new CustomEvent('shared-booking-choice-state',{detail:{tourId:tour,choices:{...state}}}));});refresh();})();</script>
+ <?php return ob_get_clean();
+});
