@@ -122,10 +122,11 @@ final class MAD4B_SCP_Readiness_Workflow_Options {
         $authorized=class_exists('MAD4B_SCP_Policy')&&MAD4B_SCP_Policy::can_mutate();
         $boards=array(0=>'— Select board —');$stages=array(0=>'— Select stage —');
         if(class_exists('FluentBoards\\App\\Models\\Board')) {
-            foreach(\FluentBoards\App\Models\Board::whereNull('archived_at')->get() as $board)
+            foreach(\FluentBoards\App\Models\Board::whereNull('archived_at')->get() as $board) {
                 $boards[(int)$board->id]=$board->title.' (#'.$board->id.')';
-            if($s['board_id'])foreach(\FluentBoards\App\Models\Stage::where('board_id',$s['board_id'])->whereNull('archived_at')->orderBy('position')->get() as $stage)
-                $stages[(int)$stage->id]=$stage->title.' (#'.$stage->id.')';
+                foreach(\FluentBoards\App\Models\Stage::where('board_id',$board->id)->whereNull('archived_at')->orderBy('position')->get() as $stage)
+                    $stages[(int)$stage->id]=$board->title.' / '.$stage->title.' (#'.$stage->id.')';
+            }
         }
         $users=array(0=>'— Unassigned —');
         foreach(get_users(array('number'=>300)) as $user)
@@ -135,13 +136,17 @@ final class MAD4B_SCP_Readiness_Workflow_Options {
         echo '<p>Company-local configuration. Source scans and dashboard alerts are independent of external task creation and outbound notifications.</p>';
         if(isset($_GET['saved']))echo '<div class="notice notice-success"><p>Settings saved and verified.</p></div>';
         echo '<p><strong>Current site:</strong> '.esc_html(home_url()).' | <strong>Governed task write:</strong> '.($authorized?'Ready':'Blocked').'</p>';
+        $localBound=class_exists('MAD4B_SCP_Local_Client')&&MAD4B_SCP_Local_Client::bound();
+        echo '<p><strong>VPS Local Client:</strong> '.($localBound?'Origin-bound':'Not bound').' | <a href="'.
+            esc_url(admin_url('tools.php?page=mad4b-local-client')).'">Manage local client credential</a></p>';
+        echo '<p class="description">Verified local-agent task writes use POST /wp-json/mad4b-content-readiness/v1/sync-one or /sync-batch with approved WordPress Application Password; a WordPress admin cookie alone does not grant Agent authority.</p>';
         if(!$authorized)echo '<div class="notice notice-warning"><p>Site Profile / identity authority is not ready. Board setup and dashboard alerts work, but task creation and outbound notifications remain blocked.</p></div>';
         echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
         wp_nonce_field('mad4b_readiness_workflow_save');
         echo '<input type="hidden" name="action" value="mad4b_readiness_workflow_save">';
         echo '<h2>Fluent Boards</h2><table class="form-table"><tbody><tr><th>Board</th><td>';
         self::select('board_id',$s['board_id'],$boards);
-        echo '<p class="description">Changing Board reloads this page to choose a stage; current stage must belong to the chosen Board.</p></td></tr><tr><th>New issue stage</th><td>';
+        echo '<p class="description">Select a Board and one of its stages; mismatched combinations are rejected.</p></td></tr><tr><th>New issue stage</th><td>';
         self::select('stage_id',$s['stage_id'],$stages);
         echo '</td></tr></tbody></table>';
         echo '<h2>Responsible team members</h2><p>Select a role, then optionally a named owner. A role is auto-resolved only when there is exactly one eligible member; otherwise the task remains unassigned.</p><table class="form-table"><tbody>';
@@ -168,6 +173,12 @@ final class MAD4B_SCP_Readiness_Workflow_Options {
         echo '</td></tr><tr><th>Maximum tasks per approved run</th><td><input type="number" min="1" max="25" name="batch_limit" value="'.(int)$s['batch_limit'].'"></td></tr>';
         echo '</tbody></table>';
         submit_button('Save company follow-up settings');
-        echo '</form><p><a href="'.esc_url(admin_url('admin.php?page=mad4b-content-readiness-alerts')).'">View Content Issues</a></p></div>';
+        echo '</form>';
+        echo '<h2>Governed issue synchronization</h2><p>Manual batch only. Tasks are created through the native Fluent Boards service after site identity and Control Plane write permission are approved. The operation cannot modify customer orders or rates.</p>';
+        echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
+        wp_nonce_field('mad4b_readiness_batch_sync');
+        echo '<input type="hidden" name="action" value="mad4b_readiness_batch_sync">';
+        echo '<button class="button button-secondary" '.disabled(!$authorized||!$s['board_tasks'],true,false).'>Sync eligible issues (up to '.(int)$s['batch_limit'].')</button></form>';
+        echo '<p><a href="'.esc_url(admin_url('admin.php?page=mad4b-content-readiness-alerts')).'">View Content Issues</a></p></div>';
     }
 }
