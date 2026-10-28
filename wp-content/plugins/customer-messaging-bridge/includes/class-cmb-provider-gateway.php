@@ -55,11 +55,87 @@ final class CMB_Provider_Gateway {
         );
     }
 
+    /**
+     * One read-only presentation contract across isolated QA and main Lab.
+     * The native MU provider makes every eligibility decision; never quote.
+     */
+    public static function presentation_context($selection) {
+        if (!is_array($selection) || count($selection)>7 ||
+            array_diff(array_keys($selection), ['tour_id','rate_id','service','channel',
+                'travel_date','occupancy','audience'])) {
+            return new WP_Error('cmb_presentation_selection_invalid');
+        }
+        $tour=absint($selection['tour_id']??0);
+        if (!$tour || get_post_type($tour)!=='tours-and-activities' ||
+            get_post_status($tour)!=='publish') {
+            return new WP_Error('cmb_presentation_tour_required');
+        }
+        $channel=$selection['channel']??'standalone';
+        if (!in_array($channel,['standalone','tour_component','destination_discovery'],true)) {
+            return new WP_Error('cmb_presentation_channel_invalid');
+        }
+        if ($channel==='destination_discovery') {
+            return new WP_Error('cmb_presentation_discovery_not_a_tour');
+        }
+        $service=$selection['service']??'tours';
+        if (!is_string($service) || !in_array($service,['tours','properties',
+                'transportations','visas'],true)) {
+            return new WP_Error('cmb_presentation_service_invalid');
+        }
+        $rate=absint($selection['rate_id']??0);
+        if ($rate) {
+            if (get_post_type($rate)!=='tour-rates' || get_post_status($rate)!=='publish') {
+                return new WP_Error('cmb_presentation_rate_invalid');
+            }
+            $owner=absint(get_post_meta($rate,'related_tour_id',true));
+            $english=static function($id) {
+                return absint(apply_filters('wpml_object_id',$id,'tours-and-activities',false,'en') ?: $id);
+            };
+            if (!$owner || $english($owner)!==$english($tour)) {
+                return new WP_Error('cmb_presentation_rate_tour_mismatch');
+            }
+        }
+        if (class_exists('Shared_Display_Context_Registry',false)) {
+            $native=Shared_Display_Context_Registry::resolve($selection+['service'=>$service,'channel'=>$channel]);
+            if (is_wp_error($native)) return $native;
+            return ['contract'=>'cmb.presentation-context.v1','native_contract'=>$native['contract'],
+                'provider'=>'unified_display_context','language'=>$native['language']['code']??null,
+                'currency'=>$native['currency']['presentation']??null,
+                'service'=>$service,'channel'=>$channel,
+                'display_eligible'=>$native['visibility']['service_allowed']??false,
+                'market_status'=>$native['market']['status']??'unresolved',
+                'availability_status'=>$native['availability']['status']??'not_checked',
+                'price_status'=>$native['pricing']['status']??'not_quoted',
+                'rate_id'=>$rate?:null, 'tour_id'=>$tour,
+                'quote_authorized'=>false,'booking_authorized'=>false,
+                'read_only'=>true,'mutation_performed'=>false];
+        }
+        if (!class_exists('Shared_Product_Presentation_Compatibility_v1',false) ||
+            !function_exists('service_channel_allowed')) {
+            return new WP_Error('cmb_native_presentation_unavailable');
+        }
+        $native=Shared_Product_Presentation_Compatibility_v1::context_for_tour($tour);
+        if (empty($native['ok'])) return new WP_Error('cmb_native_presentation_invalid');
+        return ['contract'=>'cmb.presentation-context.v1',
+            'native_contract'=>'main_lab.presentation-compatibility.v1',
+            'provider'=>'shared_product_presentation_compatibility',
+            'language'=>$native['locale']??null, 'currency'=>$native['currency']??null,
+            'service'=>$service,'channel'=>$channel,
+            'display_eligible'=>(bool)service_channel_allowed($service,$channel),
+            'market_status'=>'not_certified_by_compatibility_facade',
+            'availability_status'=>'not_checked','price_status'=>'not_quoted',
+            'rate_id'=>$rate?:null,'tour_id'=>$tour,
+            'quote_authorized'=>false,'booking_authorized'=>false,
+            'read_only'=>true,'mutation_performed'=>false];
+    }
+
     public static function booking_status(): array {
         return array(
             'contract' => 'cmb.booking-dependencies.v1',
             'authoritative_pricing' => self::pricing_status(),
             'booking_configuration_v2' => function_exists('shared_product_booking_v2_preview'),
+            'form6_native_preview_present' => function_exists('shared_presentation_form6_price_quote'),
+            'form6_shared_orchestrator_parity_certified' => false,
             'accommodation_stay_overlay' => function_exists('BookingExperience\\tour_stay_overlay_quote'),
             'booking_context_resolution' => function_exists('BookingContext\\resolve'),
             'commerce_operations_bridge' => class_exists('Commerce_Operations_Bridge'),
@@ -101,6 +177,7 @@ final class CMB_Provider_Gateway {
             'contract' => self::CONTRACT,
             'read_only' => true,
             'mutations_performed' => false,
+            'presentation' => array('native_source' => class_exists('Shared_Display_Context_Registry', false) ? 'unified_display_context' : (class_exists('Shared_Product_Presentation_Compatibility_v1',false) ? 'main_lab_presentation_compatibility' : 'unavailable'), 'context_lookup' => 'CMB_Provider_Gateway::presentation_context', 'form6_shared_quote_parity_certified'=>false, 'read_only'=>true),
             'pricing' => self::pricing_status(),
             'booking' => self::booking_status(),
             'commerce_operations' => array(

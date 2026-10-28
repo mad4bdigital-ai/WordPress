@@ -1,0 +1,25 @@
+<?php
+require '/var/www/html/wp-load.php';
+if(DB_NAME!=='etg_ops_checkout_qa') exit(20);
+$cases=[];
+$check=function($name,$good)use(&$cases){$cases[$name]=(bool)$good;echo ($good?'PASS ':'FAIL ').$name."\n";};
+$t=66533;
+$a=Shared_Display_Context_Registry::resolve(['tour_id'=>$t,'service'=>'properties','channel'=>'tour_component']);
+$b=Shared_Display_Context_Registry::resolve(['tour_id'=>$t,'service'=>'properties']);
+$c=Shared_Display_Context_Registry::resolve(['tour_id'=>$t,'service'=>'transportations','channel'=>'tour_component']);
+$check('property_tour_component',is_array($a)&&$a['visibility']['service_allowed']===true);
+$check('transport_tour_component',is_array($c)&&$c['visibility']['service_allowed']===true);
+$check('standalone_denied',is_array($b)&&$b['visibility']['service_allowed']===false);
+$check('channel_cache_partition',is_array($a)&&$a['cache']['fingerprint']!==$b['cache']['fingerprint']);
+$check('missing_tour_rejected',is_wp_error(Shared_Display_Context_Registry::resolve(['service'=>'properties','channel'=>'tour_component'])));
+$check('unknown_channel_rejected',is_wp_error(Shared_Display_Context_Registry::resolve(['service'=>'tours','channel'=>'unknown'])));
+$check('untrusted_checkout_denied',is_array($a)&&$a['pricing']['checkout_authorized']===false);
+$ages=MAD4B_Age_Fluent_Forms::clean_ages(['1.99','11.99'],2);
+$check('decimal_ages_supported',$ages===[1.99,11.99]);
+$check('precision_limited',is_wp_error(MAD4B_Age_Fluent_Forms::clean_ages(['1.999'],1)));
+$check('age_range_limited',is_wp_error(MAD4B_Age_Fluent_Forms::clean_ages(['121'],1)));
+$p=Shared_Presentation_Context_Registry::snapshot(['occupancy'=>['children'=>2,'child_ages'=>[1.99,11.99]]]);
+$check('presentation_fractional_age',is_array($p)&&$p['dimensions']['occupancy']['status']==='declared_unverified');
+$check('no_market_or_price_authority',is_array($a)&&$a['market']['approved']===false&&$a['pricing']['quote_authorized']===false);
+echo json_encode(['passed'=>count(array_filter($cases)),'total'=>count($cases),'no_mutations'=>true])."\n";
+if(count(array_filter($cases))!==count($cases))exit(31);

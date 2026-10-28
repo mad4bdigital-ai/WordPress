@@ -222,3 +222,22 @@ status without initiating any booking.
 Verification: isolated `tests/provider-gateway.php`; also run as an
 ephemeral read-only gateway against the real Checkout QA orchestrator
 (total 2230 USD = 1840+240+150, `checkout_ready=false`, no writes).
+
+## Presentation Context parity — v0.4.1 (28 Oct 2026)
+
+`CMB_Provider_Gateway::presentation_context` is a read-only projection of
+existing MU authorities: Checkout QA `Shared_Display_Context_Registry` or
+main Lab `Shared_Product_Presentation_Compatibility_v1`. It validates
+published Tour identity, matching Tour Rate (including canonical EN WPML
+identity), explicit service channel, and returns *display eligibility only*.
+It never computes prices, certifies inventory or authorizes booking.
+
+Discovery reports the selected provider and `form6_shared_quote_parity_certified=false`.
+Main Lab Form #6 still uses its existing Booking V2 preview. REV65 shared
+pricing is not installed on its DB. Do not show Form6/ChatbotX quote parity
+as certified until an exact-site rollout and receipt comparison pass.
+
+Checkout QA REV82 fixes: `channel=tour_component` enables legitimate tour
+Properties/Transport options without exposing standalone service pages;
+Age Occupancy now accepts two decimal year digits, maintaining integer
+receipts for legacy ages. QA changes are isolated to the checkout database.
