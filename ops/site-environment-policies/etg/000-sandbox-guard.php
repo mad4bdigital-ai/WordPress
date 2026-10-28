@@ -1,29 +1,30 @@
 <?php
 /* Plugin Name: ETG Sandbox Guard */
 if (!defined('ABSPATH')) exit;
-// Sandbox interception belongs solely to the isolated local development lab.
-// Staging and production use native WordPress REST, HTTP and scheduler controls.
-if (!function_exists('wp_get_environment_type') || wp_get_environment_type() !== 'local') return;
-// Local sandbox remains isolated. On Commerce Staging, fail closed until the
-// Site Control Plane has independently certified the company mail policy.
-add_filter('pre_wp_mail', static function ($pre) {
-    if (function_exists('wp_get_environment_type') && wp_get_environment_type() === 'staging') {
-        return class_exists('MAD4B_SCP_Company_Communication', false)
-            && MAD4B_SCP_Company_Communication::canSend() ? $pre : false;
-    }
-    return true;
-}, PHP_INT_MAX);
-add_filter('cron_request', static function () { return false; }, PHP_INT_MAX);
+// Testing sandbox destination controls apply to both Local and Staging.
+// Production must never inherit these lab-only HTTP, mail or Cron hooks.
+if (!function_exists('wp_get_environment_type')) return;
+$mad4b_sandbox_env = wp_get_environment_type();
+if (!in_array($mad4b_sandbox_env, array('local','staging'), true)) return;
+
+// The Local Lab keeps its independent mail/Cron isolation. Staging instead
+// uses the approved Company Communication + Fluent SMTP mail gate and its
+// DISABLE_WP_CRON configuration / governed scheduler.
+if ($mad4b_sandbox_env === 'local') {
+    add_filter('pre_wp_mail', static function () { return false; }, PHP_INT_MAX);
+    add_filter('cron_request', static function () { return false; }, PHP_INT_MAX);
+}
 
 /**
- * Local Lab outbound policy: preserve private-destination deny and two exact exceptions:
+ * Local/Staging outbound destination policy: preserve private-destination
+ * deny and two strictly Local-only exceptions:
  * (1) internal delegated AI review handshake; (2) only the explicitly enabled
  * and credential-ready model provider route. All other HTTP remains blocked.
- * This MU override is Local-Lab-specific, not part of the distributed plugin.
+ * This is a test-environment MU override, never a Production policy.
  */
 add_filter('pre_http_request',static function($pre,$args,$url) {
     $block=new WP_Error('etg_sandbox_network_blocked','Outbound HTTP blocked in sandbox');
-    if(!function_exists('wp_get_environment_type') || wp_get_environment_type()!=='local')
+    if(!function_exists('wp_get_environment_type') || !in_array(wp_get_environment_type(), array('local','staging'), true))
         return $block;
     $method=strtoupper((string)($args['method']??'GET'));
     $headers=$args['headers']??array();
@@ -69,7 +70,7 @@ add_filter('pre_http_request',static function($pre,$args,$url) {
         return false;
     }
 
-    // General outbound access for this local-only lab. Keep private/metadata
+    // General outbound access for Local/Staging. Keep private/metadata
     // addresses unavailable to ordinary WordPress HTTP requests.
     $parts=wp_parse_url((string)$url);
     if (!is_array($parts) || !in_array(strtolower((string)($parts['scheme']??'')),array('http','https'),true)
