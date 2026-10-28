@@ -53,7 +53,6 @@ $schema_end=strpos($adapter_source,"'context/google-drive-status',",$schema_star
 qa(false!==$schema_start&&false!==$schema_end&&$schema_end>$schema_start,'recovery read ability discoverable');
 $schema_block=substr($adapter_source,$schema_start,$schema_end-$schema_start);
 foreach(['draft_preflight_sha256','evidence_digest'] as $required){
- qa(false!==strpos($schema_block,"'".$required."' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}
- )"),'append retry read schema exposes '.$required);
+ qa(false!==strpos($schema_block,"'".$required."' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' )"),'append retry read schema exposes '.$required);
 }
 echo "QA18_RETRY_BUDGET_PASS\n";
