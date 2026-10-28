@@ -10582,6 +10582,77 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/skill-task-abilities-runtime.php"
       ],
       "review_rationale": "Exact source reviewed for bounded lexical ranking, shared 18-second deadline, partial/incomplete propagation, SHA-checked advisory context and managed execution precedence. Steps remain not_authorized. Exact-head tests executed in isolated PHP 7.4/8.3 (or accepted disposable WordPress CI); Production acceptance remains separate."
+    },
+    {
+      "owner_role": "Technical source review for CI only; authenticated owner release attestation remains separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/skill-seed-manifest.json",
+      "source_blob_sha": "9c05af87222befd6541d895ff6d6d386e5f4ab68",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "GOVERNANCE-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-skills-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/commerce-lifecycle-skill-contract.py"
+      ],
+      "review_rationale": "Exact v15 Skill manifest adds three non-authorizing canonical workflow skills; reviewed unique identities, default enablement, no extra execution route or grant. Source-bound tests in this PR must pass before any CI acceptance; Production requires independent attestation."
+    },
+    {
+      "owner_role": "Technical source review for CI only; authenticated owner release attestation remains separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/skill-provider-catalog.json",
+      "source_blob_sha": "eec954918ed3eb84cc057f9ef16c9d8ede7b8973",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/commerce-lifecycle-skill-contract.py"
+      ],
+      "review_rationale": "Existing provider catalog appends read-oriented Fluent Forms, WooCommerce and Bit Flows instruction packs; no new provider mutation endpoint, credentials, order write or HTTP route. Source-bound regression is required; live provider certification not established."
+    },
+    {
+      "owner_role": "Technical source review for CI only; authenticated owner release attestation remains separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/user-role-governance-contract.json",
+      "source_blob_sha": "c3b039f9a81b5b873a3f8dec70796e563248e574",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-user-role-governance-contract.py"
+      ],
+      "review_rationale": "Reviewed site-neutral policy-only RBAC blueprint: six personas, separate approval/acceptance gates, effective WordPress rights versus NHI authority and explicit denial of role/capability mutation. It is not a runtime enforcer and does not certify any tenant."
+    },
+    {
+      "owner_role": "Technical source review for CI only; authenticated owner release attestation remains separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-seeder.php",
+      "source_blob_sha": "e3e31ea1a36035e54a9c6cd689250889ee7bfece",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-skills-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/commerce-lifecycle-skill-contract.py"
+      ],
+      "review_rationale": "Reviewed seed version-only v14 to v15 alignment to canonical Skill manifest; existing seeding/authorization callbacks remain unchanged. Contract regression is bound to this exact blob and requires successful CI; Production activation is excluded."
     }
   ],
   "code_change_rules": {
