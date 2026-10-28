@@ -24,7 +24,7 @@ final class MAD4B_Commerce_Suite {
     }
 
     public static function allowed(): bool {
-        return current_user_can('manage_woocommerce');
+        return current_user_can('manage_options');
     }
 
     public static function desired(): array {
@@ -49,14 +49,26 @@ final class MAD4B_Commerce_Suite {
     }
 
     public static function admin_menu(): void {
-        add_submenu_page(
-            'woocommerce',
-            'MAD4B Commerce Suite',
-            'Commerce Suite',
-            'manage_woocommerce',
-            self::SLUG,
-            [__CLASS__, 'render']
-        );
+        // WooCommerce may be absent on a new company's staging site.
+        // Keep read-only readiness diagnostics discoverable by admins.
+        if (class_exists('WooCommerce', false)) {
+            add_submenu_page(
+                'woocommerce',
+                'MAD4B Commerce Suite',
+                'Commerce Suite',
+                'manage_options',
+                self::SLUG,
+                [__CLASS__, 'render']
+            );
+        } else {
+            add_options_page(
+                'MAD4B Commerce Suite',
+                'Commerce Suite',
+                'manage_options',
+                self::SLUG,
+                [__CLASS__, 'render']
+            );
+        }
     }
 
     public static function save(): void {
