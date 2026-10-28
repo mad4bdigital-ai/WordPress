@@ -187,3 +187,38 @@ plus read-only WooCommerce/CPT product mapping, using existing provider APIs.
   The new WordPress option cmb_business_integrations_v1 is not REST-exposed.
 - FluentCRM, FluentSMTP, Fluent Boards and WP ERP are optional providers and
   have not been installed or activated by this work.
+
+## REV65 Shared Pricing Orchestrator — canonical integration v0.4.0
+
+ChatbotX does NOT calculate prices or orchestrate separate domain quotes.
+The sole composite pricing authority is the existing **Shared Pricing
+Orchestrator REV65**, entrypoint `shared_pricing_orchestrate(array $request)`,
+registered by `128-pricing-orchestrator.php`, with a staff-only native
+`POST /shared-pricing/v1/preview` and provider registry covering **tour,
+accommodation, transportation and visa**.
+
+The new `CMB_Provider_Gateway::pricing_preview($request)` accepts exactly
+the shared orchestrator's schema v1 (`schema_version`, `context`,
+`currency`, `components`), excludes any client money/checkout attributes,
+and returns only the aggregate preview, line summaries and digests.
+It never calls the separate `MAD4B_Pricing_Quote_Dispatch` as a fallback,
+and it never authorizes cart, booking, payment or inventory reservation.
+
+**Deployment boundary — important**: REV65 is certified in the isolated
+Checkout QA database `etg_ops_checkout_qa`, and its bootstrap intentionally
+requires both that exact DB and WordPress environment `local`. The regular
+ETG WooCommerce Lab uses `etg_woocommerce_lab` and does **not** load REV65.
+The gateway consequently returns
+`cmb_shared_pricing_orchestrator_not_deployed` there. Promotion requires a
+separate governed migration and domain-level pricing acceptance. Do **not**
+copy or override the QA bootstrap guard to bypass certification.
+
+The broader integration inventory reuses existing Commerce Composition,
+Commerce Operations and Bit Flows adapters. Bit Flows execution remains
+controlled by `bitflows/run-flow` and its existing authorization policy;
+Commerce routing returns a plan only. Booking readiness reports dependency
+status without initiating any booking.
+
+Verification: isolated `tests/provider-gateway.php`; also run as an
+ephemeral read-only gateway against the real Checkout QA orchestrator
+(total 2230 USD = 1840+240+150, `checkout_ready=false`, no writes).

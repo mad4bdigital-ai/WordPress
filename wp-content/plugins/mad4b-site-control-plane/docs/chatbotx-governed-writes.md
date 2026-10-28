@@ -49,3 +49,20 @@ required for the governed authority progression.
 
 Isolated verification:
 `php wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php`.
+
+## Shared pricing, booking and Bit Flows authority (REV65)
+
+The ChatbotX adapter now registers four additional non-authorizing read
+Abilities: integration inventory, Commerce Operations route plan, native
+pricing preview and booking readiness. The pricing preview consumes exactly
+the v1 request for `shared_pricing_orchestrate()`, which composes Tour,
+Accommodation, Transportation and Visa provider quotes. It does not
+calculate by calling domain engines independently.
+
+The REV65 native Shared Pricing Orchestrator exists only in isolated
+`etg_ops_checkout_qa` Checkout QA, under a strict DB/environment bootstrap.
+The main ETG WooCommerce Lab has no such orchestrator: the new ability
+must fail closed there until a separate governed rollout and certification.
+No changes to the REV65 QA bootstrap or WooCommerce's Cart/Checkout/Order
+authorities are part of this feature. Bit Flows remains disabled by default
+and can only run through its own scoped `bitflows/run-flow` governance.

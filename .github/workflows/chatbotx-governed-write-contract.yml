@@ -24,7 +24,11 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-provider-adapter.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-governed-writes.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-write-preflight.php
+          php -l wp-content/plugins/customer-messaging-bridge/includes/class-cmb-provider-gateway.php
       - name: Fail closed direct invocation
         run: php wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php
       - name: Read-only preflight rejects ineligible site authority
         run: php wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php
+
+      - name: Shared pricing gateway contract assertions
+        run: php wp-content/plugins/customer-messaging-bridge/tests/provider-gateway.php

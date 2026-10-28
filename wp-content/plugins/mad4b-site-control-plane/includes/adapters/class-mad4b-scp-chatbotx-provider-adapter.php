@@ -6,7 +6,7 @@ require_once __DIR__ . '/class-mad4b-scp-chatbotx-write-preflight.php';
 /**
  * Source-reviewed ChatbotX provider adapter for ETG WooCommerce Lab.
  *
- * Six read and three explicitly governed write abilities. No arbitrary endpoint invocation,
+ * Ten read and three explicitly governed write abilities. No arbitrary endpoint invocation,
  * plugin callbacks, order/customer data, token output or mutation authority.
  * Registration through the existing reviewed bundled-class policy only.
  */
@@ -43,6 +43,10 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
             'mad4b/chatbotx-business-context',
             'mad4b/chatbotx-cpt-product-source',
             'mad4b/chatbotx-write-preflight',
+            'mad4b/chatbotx-integration-inventory',
+            'mad4b/chatbotx-commerce-route-plan',
+            'mad4b/chatbotx-pricing-preview',
+            'mad4b/chatbotx-booking-readiness',
         ), 'content' => array(), 'write' => array(
             'mad4b/chatbotx-support-create-ticket',
             'mad4b/chatbotx-support-add-note',
@@ -73,6 +77,22 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
                 'ticket_id'=>array('type'=>'integer','minimum'=>1),
                 'post_type'=>array('type'=>'string','enum'=>array('tours-and-activities','properties','transportations'))
             ),array('ability')));
+        $this->add_ability('mad4b/chatbotx-integration-inventory',
+            'Read Existing Workflow, CRM, Commerce and Pricing Provider Coverage',
+            'integration_inventory', $permission, $this->schema(array()));
+        $this->add_ability('mad4b/chatbotx-commerce-route-plan',
+            'Read Existing Commerce Operations Event Routing Plan',
+            'commerce_route_plan', $permission, $this->schema(array(
+                'event' => array('type' => 'object')
+            ), array('event')));
+        $this->add_ability('mad4b/chatbotx-pricing-preview',
+            'Preview Native Pricing Without Booking or Checkout Authority',
+            'pricing_preview', $permission, $this->schema(array(
+                'request' => array('type'=>'object')
+            ), array('request')));
+        $this->add_ability('mad4b/chatbotx-booking-readiness',
+            'Inspect Existing Booking and Inventory Engine Dependencies',
+            'booking_readiness', $permission, $this->schema(array()));
         // All writes pass SCP's site, provider and centralized authorization
         // gates before a native provider API is called. No arbitrary REST.
         $admin=array('MAD4B_SCP_Policy','can_admin');
@@ -108,6 +128,37 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
             'Read Canonical WooCommerce Product-to-CPT Mapping Without Price',
             'cpt_product_source', $permission,
             $this->schema(array('product_id' => array('type' => 'integer', 'minimum' => 1)), array('product_id')));
+    }
+
+    public function integration_inventory($input = array()) {
+        if (!$this->is_available() || !class_exists('CMB_Provider_Gateway', false)) {
+            return $this->unavailable_error();
+        }
+        return array_merge($this->scope(), array(
+            'integration_inventory' => CMB_Provider_Gateway::discovery()
+        ));
+    }
+    public function commerce_route_plan($input = array()) {
+        if (!$this->is_available() || !class_exists('CMB_Provider_Gateway', false)) {
+            return $this->unavailable_error();
+        }
+        $r = CMB_Provider_Gateway::event_plan($input['event'] ?? null);
+        return is_wp_error($r) ? $r : array_merge($this->scope(), $r);
+    }
+    public function pricing_preview($input = array()) {
+        if (!$this->is_available() || !class_exists('CMB_Provider_Gateway', false)) {
+            return $this->unavailable_error();
+        }
+        $r = CMB_Provider_Gateway::pricing_preview($input['request'] ?? null);
+        return is_wp_error($r) ? $r : array_merge($this->scope(), $r);
+    }
+    public function booking_readiness($input = array()) {
+        if (!$this->is_available() || !class_exists('CMB_Provider_Gateway', false)) {
+            return $this->unavailable_error();
+        }
+        return array_merge($this->scope(), array(
+            'booking' => CMB_Provider_Gateway::booking_status()
+        ));
     }
 
     public function write_preflight($input = array()) {
@@ -209,6 +260,9 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
                 'legacy_retained_events' => is_array($legacy) ? count($legacy) : 0,
                 'outbound_sync_enabled' => false,
             ),
+            'composed_integrations' => class_exists('CMB_Provider_Gateway', false)
+                ? CMB_Provider_Gateway::discovery()
+                : array('state' => 'not_installed'),
             'business_integrations' => class_exists('CMB_Business_Context', false)
                 ? CMB_Business_Context::capabilities()
                 : array('state' => 'adapter_missing'),

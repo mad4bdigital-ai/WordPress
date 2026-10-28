@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Customer Messaging Bridge
  * Description: Lab-safe Webchat and WooCommerce integration bridge for an external messaging platform.
- * Version: 0.3.0
+ * Version: 0.4.0
  * Requires PHP: 8.0
  * Requires at least: 6.2
  * Author: MAD4B Digital
@@ -12,6 +12,7 @@ if (!defined('ABSPATH')) { exit; }
 require_once __DIR__ . '/includes/class-cmb-channels.php';
 require_once __DIR__ . '/includes/class-cmb-commerce.php';
 require_once __DIR__ . '/includes/class-cmb-business-context.php';
+require_once __DIR__ . '/includes/class-cmb-provider-gateway.php';
 require_once __DIR__ . '/includes/class-cmb-webhooks.php';
 
 final class Customer_Messaging_Bridge {
