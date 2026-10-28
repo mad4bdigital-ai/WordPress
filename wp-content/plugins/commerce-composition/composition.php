@@ -42,6 +42,7 @@ require_once __DIR__ . '/includes/CommerceEngineDashboard.php';
 require_once __DIR__ . '/includes/CompanyCommercePolicy.php';
 require_once __DIR__ . '/includes/CompanyCommercePolicyRest.php';
 require_once __DIR__ . '/includes/CommercialExecutionPreflight.php';
+require_once __DIR__ . '/includes/CommercialQuotePlan.php';
 require_once __DIR__ . '/includes/CommerceTenantBindingAudit.php';
 require_once __DIR__ . '/includes/FluentBoardsTaskBridge.php';
 require_once __DIR__ . '/includes/RequestIntake.php';
@@ -94,6 +95,7 @@ add_action('plugins_loaded', [Commerce\Composition\CommerceEngineInspector::clas
 add_action('plugins_loaded', [Commerce\Composition\CommerceEngineDashboard::class, 'bootstrap'], 54);
 add_action('plugins_loaded', [Commerce\Composition\CompanyCommercePolicyRest::class, 'bootstrap'], 55);
 add_action('plugins_loaded', [Commerce\Composition\CommercialExecutionPreflight::class, 'bootstrap'], 56);
+add_action('plugins_loaded', [Commerce\Composition\CommercialQuotePlan::class, 'bootstrap'], 58);
 add_action('plugins_loaded', [Commerce\Composition\CommerceTenantBindingAudit::class, 'bootstrap'], 57);
 add_action('plugins_loaded', [Commerce\Composition\IntakeCaseApi::class, 'bootstrap'], 50);
 add_action('plugins_loaded', [Commerce\Composition\FluentBoardsTaskBridge::class, 'bootstrap'], 51);
