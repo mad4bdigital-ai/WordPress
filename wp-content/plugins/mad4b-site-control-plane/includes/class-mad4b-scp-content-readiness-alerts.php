@@ -35,8 +35,12 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         return array(
             'post_types' => array_slice($valid, 0, 24),
             'origin_fields' => self::map($saved['origin_fields'] ?? array()),
+            'origin_source_fields' => self::map($saved['origin_source_fields'] ?? array()),
+            'origin_source_taxonomies' => self::map($saved['origin_source_taxonomies'] ?? array()),
+            'invalid_origin_levels' => array_values(array_filter(array_map('sanitize_key', (array)($saved['invalid_origin_levels'] ?? array())))),
             'location_taxonomies' => self::map($saved['location_taxonomies'] ?? array()),
             'media_fields' => self::map($saved['media_fields'] ?? array()),
+            'media_reuse_threshold' => max(0, min(100, absint($saved['media_reuse_threshold'] ?? 0))),
             'owner_fields' => self::map($saved['owner_fields'] ?? array()),
             'end_date_fields' => self::map($saved['end_date_fields'] ?? array()),
             'stop_sale_fields' => self::map($saved['stop_sale_fields'] ?? array()),
@@ -86,7 +90,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
     }
     public static function discover($config = null) {
         $cfg = is_array($config) ? $config : self::rules();
-        $issues = array(); $counts=array();$scanned=0;$complete=true;
+        $issues = array(); $counts=array();$scanned=0;$complete=true;$media_groups=array();
         foreach ($cfg['post_types'] as $type) {
             if (!post_type_exists($type)) continue;
             $ids=get_posts(array('post_type'=>$type,'post_status'=>'publish',
@@ -106,6 +110,26 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                 $origin=$cfg['origin_fields'][$type]??'';
                 if ($origin && !get_post_meta($id,$origin,true))
                     $issues[]=self::issue($type,$id,'origin_missing','medium','Origin field is empty');
+                $sourceField=$cfg['origin_source_fields'][$type]??'';
+                $sourceTax=$cfg['origin_source_taxonomies'][$type]??'';
+                if ($sourceField && $sourceTax && taxonomy_exists($sourceTax)) {
+                    $term_id=absint(get_post_meta($id,$sourceField,true));
+                    if ($term_id) {
+                        $original=apply_filters('wpml_default_language',null);
+                        if ($original && has_filter('wpml_object_id')) {
+                            $mapped=apply_filters('wpml_object_id',$term_id,$sourceTax,false,$original);
+                            if ($mapped) $term_id=absint($mapped);
+                        }
+                        $term=get_term($term_id,$sourceTax);
+                        if ($term instanceof WP_Term && !is_wp_error($term)) {
+                            $level=sanitize_key((string)get_term_meta($term_id,'destination_type',true));
+                            if ($level && in_array($level,(array)($cfg['invalid_origin_levels']??array()),true)) {
+                                $issues[]=self::issue($type,$id,'origin_source_too_broad','high',
+                                    'Selected origin term is not an approved pickup level');
+                            }
+                        }
+                    }
+                }
                 $taxonomy=$cfg['location_taxonomies'][$type]??'';
                 if ($taxonomy && taxonomy_exists($taxonomy)) {
                     $terms=wp_get_object_terms($id,$taxonomy,array('fields'=>'ids'));
@@ -115,6 +139,13 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                 $media=$cfg['media_fields'][$type]??'';
                 if ($media && !self::has_media($id,$media))
                     $issues[]=self::issue($type,$id,'media_source_unverified','medium','No usable value found in configured media source');
+                if ($media && !empty($cfg['media_reuse_threshold']) && $cfg['media_reuse_threshold']>=2) {
+                    $raw=get_post_meta($id,$media,true);
+                    if (is_array($raw) && count($raw)>0) {
+                        $signature=hash('sha256',wp_json_encode($raw));
+                        $media_groups[$type.'|'.$signature][]=$id;
+                    }
+                }
                 $owner=$cfg['owner_fields'][$type]??'';
                 if ($owner) {
                     $linked=absint(get_post_meta($id,$owner,true));
@@ -125,7 +156,10 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                 if ($end) {
                     $time=self::parse_end_date(get_post_meta($id,$end,true));
                     $stop=$cfg['stop_sale_fields'][$type]??'';
-                    if ($time && $time < time()) {
+                    if (!$time) {
+                        $issues[]=self::issue($type,$id,'rate_end_date_missing','high',
+                            'Rate has no valid end date; review the authoritative pricing policy');
+                    } elseif ($time < time()) {
                         $safe=$stop && (string)get_post_meta($id,$stop,true)==='1';
                         $issues[]=self::issue($type,$id,
                             $safe?'expired_rate_renewal_required':'expired_rate_sale_not_blocked',
@@ -143,6 +177,16 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
             }
             if ($old) $issues[]=self::issue('site',0,'cron_overdue','critical',
                 'WordPress cron events overdue: ' . $old);
+        }
+        if (!empty($cfg['media_reuse_threshold']) && $cfg['media_reuse_threshold']>=2) {
+            foreach ($media_groups as $group) {
+                if (count($group)<$cfg['media_reuse_threshold'])continue;
+                foreach ($group as $shared_id) {
+                    $issues[]=self::issue(get_post_type($shared_id),$shared_id,
+                        'media_source_shared_across_records','medium',
+                        'The same media gallery is reused across multiple content records; verify licensing and source');
+                }
+            }
         }
         $form_id=absint($cfg['form_id'] ?? 0);
         if ($form_id) {
@@ -198,9 +242,12 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         switch($code) {
             case 'wpml_language_unregistered':return (bool)$cfg['check_wpml'];
             case 'origin_missing':return !empty($cfg['origin_fields'][$type]);
+            case 'origin_source_too_broad':return !empty($cfg['origin_source_fields'][$type])&&!empty($cfg['origin_source_taxonomies'][$type]);
             case 'location_unlinked':return !empty($cfg['location_taxonomies'][$type])&&taxonomy_exists($cfg['location_taxonomies'][$type]);
             case 'media_source_unverified':return !empty($cfg['media_fields'][$type]);
+            case 'media_source_shared_across_records':return !empty($cfg['media_fields'][$type])&&!empty($cfg['media_reuse_threshold']);
             case 'owner_reference_missing':return !empty($cfg['owner_fields'][$type]);
+            case 'rate_end_date_missing':return !empty($cfg['end_date_fields'][$type]);
             case 'expired_rate_renewal_required':
             case 'expired_rate_sale_not_blocked':return !empty($cfg['end_date_fields'][$type]);
             default:return false;
@@ -250,7 +297,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
     public static function handle_save_rules() {
         if(!current_user_can('manage_options'))wp_die('Forbidden',403);
         check_admin_referer('mad4b_readiness_rules');
-        $names=['origin_fields','location_taxonomies','media_fields','owner_fields','end_date_fields','stop_sale_fields'];
+        $names=['origin_fields','origin_source_fields','origin_source_taxonomies','location_taxonomies','media_fields','owner_fields','end_date_fields','stop_sale_fields'];
         $settings=array();
         $types=explode(',',(string)wp_unslash($_POST['post_types']??''));
         $settings['post_types']=array_slice(array_values(array_filter(array_map('sanitize_key',$types))),0,24);
@@ -262,9 +309,11 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                 if(count($parts)===2){$t=sanitize_key($parts[0]);$v=sanitize_key($parts[1]);if($t&&$v)$settings[$key][$t]=$v;}
             }
         }
+        $settings['invalid_origin_levels']=array_values(array_filter(array_map('sanitize_key',explode(',',(string)wp_unslash($_POST['invalid_origin_levels']??'')))));
         $settings['board_id']=absint($_POST['board_id']??0);
         $settings['stage_id']=absint($_POST['stage_id']??0);
         $settings['assignee_id']=absint($_POST['assignee_id']??0);
+        $settings['media_reuse_threshold']=max(0,min(100,absint($_POST['media_reuse_threshold']??0)));
         $settings['form_id']=absint($_POST['form_id']??0);
         $settings['form_unread_days']=max(1,min(90,absint($_POST['form_unread_days']??7)));
         $settings['check_wpml']=isset($_POST['check_wpml']);
@@ -331,6 +380,8 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         wp_nonce_field('mad4b_readiness_rules');echo '<input type="hidden" name="action" value="mad4b_readiness_save_rules">';
         $fields=array('post_types'=>'Content post types (comma-separated)',
             'origin_fields'=>'Origin meta by post type',
+            'origin_source_fields'=>'Origin source term ID meta by post type',
+            'origin_source_taxonomies'=>'Origin term taxonomy by post type',
             'location_taxonomies'=>'Location taxonomy by post type',
             'media_fields'=>'Media meta by post type',
             'owner_fields'=>'Owner meta by post type',
@@ -344,7 +395,8 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
             }
             echo '<p><label>'.esc_html($name).'<br><input class="large-text" name="'.esc_attr($field).'" value="'.esc_attr((string)$value).'"></label></p>';
         }
-        foreach(array('board_id'=>'Fluent Boards ID','stage_id'=>'Board stage ID','assignee_id'=>'Assigned user ID', 'form_id'=>'Fluent Forms ID', 'form_unread_days'=>'Unread follow-up threshold (days)') as $field=>$label)
+        echo '<p><label>Disallowed origin levels (CSV)<br><input class="large-text" name="invalid_origin_levels" value="'.esc_attr(implode(',',(array)$rules['invalid_origin_levels'])).'"></label></p>';
+        foreach(array('media_reuse_threshold'=>'Shared gallery review threshold (0 disables)', 'board_id'=>'Fluent Boards ID','stage_id'=>'Board stage ID','assignee_id'=>'Assigned user ID', 'form_id'=>'Fluent Forms ID', 'form_unread_days'=>'Unread follow-up threshold (days)') as $field=>$label)
             echo '<p><label>'.esc_html($label).' <input type="number" min="0" name="'.esc_attr($field).'" value="'.(int)$rules[$field].'"></label></p>';
         foreach(array('check_wpml'=>'Detect missing WPML language','check_cron'=>'Detect overdue WP-Cron') as $field=>$label)
             echo '<p><label><input type="checkbox" name="'.esc_attr($field).'" '.checked($rules[$field],true,false).'>'.esc_html($label).'</label></p>';

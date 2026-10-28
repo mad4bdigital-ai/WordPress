@@ -13,3 +13,46 @@ Source example for ETG Lab (SITE POLICY ONLY): post types tours-and-activities, 
 No automatic booking, pricing, content modification, extension of expired rates, or generic REST write endpoint. Source scan has a 3000-post cap per CPT and a 3000-issue storage cap. Partial scans do not reconcile. The operator must explicitly trigger a scan; scheduled scans depend on verified scheduler readiness and are NOT enabled while WP-Cron is unhealthy.
 
 Acceptance: isolated ledger tests exercise discovery purity, deduplication, resolution, reopening and permission rejection. Main Lab bootstrap is reversible from the VPS backup created before deployment. Production remains unchanged.
+
+
+## Source-provenance extensions (2026-10-28)
+
+Additional per-tenant fields: origin_source_fields maps post types to term-ID meta;
+origin_source_taxonomies resolves its registered taxonomy; invalid_origin_levels
+declares forbidden term levels. The detector resolves selected terms through the
+current site's WPML reference language before examining authoritative
+destination_type metadata. A broad continent source is not a pickup address.
+
+Media reuse detection is opt-in with media_reuse_threshold (0 disables).
+An identical gallery source reused by multiple distinct content records raises
+a review issue, but the detector never deletes images, fabricates photo URLs or
+automatically changes hotel ownership. A missing or malformed configured rate
+end-date also raises a separate high-priority issue.
+
+### ETG WooCommerce Lab remediation receipt (not a portable data seed)
+
+- Confirmed local DB: etg_woocommerce_lab; Production and external Staging unchanged.
+- 85 published Tour Rates expired before 2026-10-28 had stop_sale activated.
+  A readback proved all 90 expired Rates now have stop_sale=1. Commercial prices,
+  currencies, availability dates and publication status were untouched.
+- 32 Tour origin records were refreshed solely from valid selected destination
+  term IDs resolved to canonical WPML reference terms, preserving Google Place
+  ID and coordinates. Seven literal 'Africa' origin placeholders tied to
+  continent-level selected terms were cleared; selected source terms retained.
+  The existing save hook now refuses to regenerate continent-level pickups.
+- No source-backed remediation was available for 30 tours missing WPML language
+  registrations, 584 properties missing configured galleries, or 51 unlinked
+  destination assignments. Those remain in the reviewer-facing issue ledger,
+  not silently translated or assigned a shared/stock hotel image.
+- 19 populated property galleries use an identical asset set, so the shared
+  gallery review issue is intentionally open rather than certifying hotel media.
+- Configured rules use the site's actual destinations taxonomy, not the absent
+  location_jet alias. Form ID 6 is only part of this local site's rule config.
+- After reconciliation, 794 issues remain open: 45 high and 749 medium.
+  Two independent scans confirmed ledger key stability, no external tasks,
+  and 3 pre-existing Fluent Boards tasks unchanged.
+- Backup and exact rollback evidence reside on the authorized VPS under
+  /opt/staging/content-gap-repair-20261028/backups/.
+- Avoid distributing the one-time Lab SQL/content repair scripts as part of
+  a tenant-wide plugin update. General code reads the target company's own
+  fields, WPML and taxonomy definitions.

@@ -1,6 +1,7 @@
 <?php
 define('ABSPATH','/isolated/');
 define('ICL_SITEPRESS_VERSION','mock');
+class WP_Term {}
 class WP_Error {
     public function __construct(private string $code) {}
     public function get_error_code(){return $this->code;}
@@ -21,6 +22,9 @@ function get_post_meta($id,$key,$one=true){return $GLOBALS['post_meta'][$id][$ke
 function has_post_thumbnail($id){return false;}
 function has_filter($key){return false;}
 function get_post($id){return (object)['ID'=>$id];}
+function get_post_type($id){return 'tours-and-activities';}
+function get_term($id,$tax){return new WP_Term();}
+function get_term_meta($id,$key,$single=true){return $key==='destination_type'?'continent':'';}
 function taxonomy_exists($key){return $key==='location_jet';}
 function wp_get_object_terms($id,$tax,$args){return $id===111?[]:[10];}
 function apply_filters($key,$v,...$args){
@@ -63,4 +67,27 @@ $denied=$cls::reconcile($cls::discover());
 yes(is_wp_error($denied)&&serialize(get_option($cls::STORE))===$before,'unprivileged caller cannot save');
 $board=$cls::sync_board($source_key);
 yes(is_wp_error($board),'unprivileged Fluent Boards write denied');
+$GLOBALS['admin']=true;
+$GLOBALS['post_meta'][111]['gallery']=[['id'=>77],['id'=>78]];
+$GLOBALS['post_meta'][112]['gallery']=[['id'=>77],['id'=>78]];
+$GLOBALS['post_meta'][111]['tour_origin_location_term']='66';
+$cfg=$GLOBALS['options']['mad4b_content_readiness_rules_v1'];
+$cfg['media_fields']=['tours-and-activities'=>'gallery'];
+$cfg['media_reuse_threshold']=2;
+$cfg['origin_source_fields']=['tours-and-activities'=>'tour_origin_location_term'];
+$cfg['origin_source_taxonomies']=['tours-and-activities'=>'location_jet'];
+$cfg['invalid_origin_levels']=['continent'];
+$GLOBALS['options']['mad4b_content_readiness_rules_v1']=$cfg;
+$additional=$cls::discover();
+$extra=array_count_values(array_column($additional['issues'],'code'));
+yes(($extra['media_source_shared_across_records']??0)===2,
+ 'reused source galleries flagged without changing media');
+yes(($extra['origin_source_too_broad']??0)===1,
+ 'continent-level origin detected by configured taxonomy/meta source');
+$cfg['end_date_fields']=['tours-and-activities'=>'rate_end_date'];
+$GLOBALS['options']['mad4b_content_readiness_rules_v1']=$cfg;
+$missingDateScan=$cls::discover();
+$missingDateStats=array_count_values(array_column($missingDateScan['issues'],'code'));
+yes(($missingDateStats['rate_end_date_missing']??0)===2,
+ 'configured missing rate dates remain visible for commercial review');
 echo "ALL READINESS LEDGER CONTRACTS PASSED\n";
