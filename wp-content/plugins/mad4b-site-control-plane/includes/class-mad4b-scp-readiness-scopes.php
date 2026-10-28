@@ -200,6 +200,9 @@ final class MAD4B_SCP_Readiness_Scopes {
                 'synced_packet_count'=>$batch['synced_packet_count'])));
     }
     public static function rest_notify_digest($request) {
+        if(class_exists('MAD4B_SCP_Readiness_PreActivation') &&
+           MAD4B_SCP_Readiness_PreActivation::execution_locked())
+            return self::fail('readiness_preactivation_lock','Digest delivery is disabled in Pre-Activation.',423);
         if(!MAD4B_SCP_Content_Readiness_Alerts::rest_local_client_write_permission())
             return self::fail('readiness_digest_agent_required','Verified governed Agent required.',403);
         $id=(string)$request['batch_id'];
@@ -285,6 +288,9 @@ final class MAD4B_SCP_Readiness_Scopes {
             'tasks_created'=>0,'messages_sent'=>0));
     }
     public static function rest_sync($request) {
+        if(class_exists('MAD4B_SCP_Readiness_PreActivation') &&
+           MAD4B_SCP_Readiness_PreActivation::execution_locked())
+            return self::fail('readiness_preactivation_lock','Scope task execution is disabled in Pre-Activation.',423);
         if(!MAD4B_SCP_Content_Readiness_Alerts::rest_local_client_write_permission())
             return self::fail('readiness_agent_required','Verified governed Agent required.',403);
         $id=(string)$request['scope_id'];

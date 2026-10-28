@@ -9,6 +9,7 @@ require_once __DIR__.'/class-mad4b-scp-readiness-workflow-options.php';
 require_once __DIR__.'/class-mad4b-scp-content-completeness.php';
 require_once __DIR__.'/class-mad4b-scp-readiness-integrations.php';
 require_once __DIR__.'/class-mad4b-scp-readiness-scopes.php';
+require_once __DIR__.'/class-mad4b-scp-readiness-preactivation.php';
 
 final class MAD4B_SCP_Content_Readiness_Alerts {
     const VERSION = '1.0.0';
@@ -33,6 +34,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         MAD4B_SCP_Content_Completeness::boot();
         MAD4B_SCP_Readiness_Integrations::boot();
         MAD4B_SCP_Readiness_Scopes::boot();
+        MAD4B_SCP_Readiness_PreActivation::boot();
     }
     public static function rules() {
         $saved = (array) get_option(self::POLICY, array());

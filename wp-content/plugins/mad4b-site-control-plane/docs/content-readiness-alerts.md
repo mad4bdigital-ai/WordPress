@@ -298,3 +298,24 @@ MAD4B independently models: source issue -> bounded work packet -> parent work b
 - The older per-issue `POST /admin/integrations/dispatch` is retired (HTTP 410), eliminating the future accidental 843-email failure mode. No scanner or scheduler emits external messages.
 - A company menu `Company -> Content Work Scopes` provides the operational overview. REST list/read pagination is bounded; there is no WPML translation-status mutation.
 - Bit Flows 1.32.0 is installed but has no active dedicated readiness-digest Flow. External dispatch is disabled and remains blocked until explicitly configured and certified. Fluent Boards notifications follow their native member settings and are only considered after a governed task-create operation.
+
+## Pre-Activation Console — company-local preparation only (2026-10-28)
+
+New module: `includes/class-mad4b-scp-readiness-preactivation.php`. Registered by the existing Content Readiness bootstrap without a second plugin or an additional background job.
+
+- Admin URL: `wp-admin/admin.php?page=mad4b-readiness-preactivation` under the **Company** menu. Administrator or existing `mad4b_manage_company_operations` capability only; company Master Admin does not receive WordPress Settings/Plugins caps.
+- Settings option `mad4b_readiness_preactivation_v1` stores versioned **drafts only**. No provider table/Flow, user role, WPML translation job, Fluent Boards task, SMTP setting, or source post meta is changed by draft saving.
+- The UI edits task title/body and Bit Flows digest text, priority/legacy backlog preview policy and future per-cycle task/digest limits. Templates whitelist known `{variables}`; arbitrary PHP, unknown template variables and HTML markup are rejected.
+- Defaults: 50 issues per work packet (matches the current scope engine; immutable here), at most five **future** tasks per cycle, one **future** digest per cycle, 60-minute digest cooldown, mandatory human approval, first-cycle quarantine and full batch completion. These limits are **planned** policies, not an activation channel.
+- REST under `/wp-json/mad4b-content-readiness/v1`:
+  - `GET /admin/preactivation` — saved draft and revision
+  - `PATCH /admin/preactivation` — exact JSON schema, `if_match` revision, readback and capped audit; draft only
+  - `GET /admin/preactivation/report` — actual current issue/batch preview, team and provider diagnostics and activation blockers; read-only
+  - `GET /admin/preactivation/task-preview/{scope_id}` — formatted native Fluent Boards task proposal, no task creation
+  - `GET /admin/preactivation/digest-preview/{batch_id}` — Bit Flows WordPress action blueprint and one batch digest, no flow registration, no webhook, no delivery
+- **Hard execution lock:** Pre-Activation always returns `true` for `execution_locked()`. The new work-scope `POST /scopes/{id}/sync` and batch `POST /scope-batches/{id}/notify` return HTTP 423 until a *separately reviewed and released* activation contract supersedes the lock. This does not modify older unrelated governed `sync-one` behavior.
+- No per-issue outbound notifications are generated. Existing event history and work scopes remain available for read-only preparation. Existing Bit Flows active commerce flows are neither disabled nor modified.
+- Team candidate listing does not create or promote WordPress users; Company Master Admin only sees their managed staff. Preview reports distinguish current source backlog from policy-eligible preview counts.
+- Test: PHP 8.3 lint, isolated Readiness contract suite including immutable lock, stale revision rejection, forbidden provider activation, template safety, no side effects and read-only report; no real provider writes.
+- Rollback: remove the new bootstrap `require_once` / `boot()` lines and file, or restore the backed-up original Readiness and Scopes classes. Draft option `mad4b_readiness_preactivation_v1` is isolated and can remain for audit; do not remove or rewrite any source issue or provider history.
+- **Deployment caveat:** At preparation time the `etg-woo-lab-php` and `etg-woo-lab-nginx` containers and its 15-minute timer were stopped. An HTTP 200 from `tours.dev.mad4b.com` may resolve to a separate running staging stack. Do not claim live-Lab runtime certification without independently identifying and testing the intended environment; do not reactivate stopped containers or timers as a side effect of this feature.

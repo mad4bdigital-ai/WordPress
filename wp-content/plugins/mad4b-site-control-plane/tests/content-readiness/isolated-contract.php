@@ -15,6 +15,7 @@ function sanitize_text_field($v){return trim(strip_tags((string)$v));}
 function sanitize_key($str){return preg_replace('/[^a-z0-9_-]/','',strtolower((string)$str));}
 function absint($v){return abs((int)$v);}
 function get_option($key,$default=[]){return $GLOBALS['options'][$key]??$default;}
+function get_users($args=[]){return [];}
 function update_option($key,$v,$autoload=false){$GLOBALS['options'][$key]=$v;return true;}
 function add_option($key,$v,$deprecated='', $autoload='yes') {if(isset($GLOBALS['options'][$key]))return false;$GLOBALS['options'][$key]=$v;return true;}
 function get_post_types($args,$format){return ['tours-and-activities'=>'tours-and-activities'];}
@@ -308,4 +309,76 @@ yes(count($batch)===1 && array_sum(array_column($packets,'total'))===120 &&
  'many bounded tasks belong to exactly one parent digest batch');
 yes(serialize(get_option($scopeClass::STORE,[]))===$stateBefore,
  'work scopes and batch previews never write or dispatch');
+// Pre-Activation Console: option-only draft, invariant-disabled provider actions.
+$pre='MAD4B_SCP_Readiness_PreActivation';
+$draft=$pre::defaults();
+yes($draft['tasks']['require_human_approval']===true &&
+    $draft['digest']['first_cycle']==='quarantine' &&
+    $draft['providers']['bitflows']==='blueprint_only',
+    'preactivation defaults prohibit provider execution');
+yes($pre::normalize($draft)===$draft,
+    'preactivation safe defaults pass exact schema validation');
+yes($pre::execution_locked(), 'preactivation hard-lock is always enabled');
+yes(is_wp_error($scopeClass::rest_sync(null)) &&
+    $scopeClass::rest_sync(null)->get_error_code()==='readiness_preactivation_lock',
+    'preactivation blocks scoped Fluent Boards execution');
+yes(is_wp_error($scopeClass::rest_notify_digest(null)) &&
+    $scopeClass::rest_notify_digest(null)->get_error_code()==='readiness_preactivation_lock',
+    'preactivation blocks external Bit Flows digest execution');
+$invalid=$draft;$invalid['providers']['bitflows']='enabled';
+yes(is_wp_error($pre::normalize($invalid)),
+    'preactivation rejects activation of Bit Flows');
+$invalid=$draft;$invalid['tasks']['require_human_approval']=false;
+yes(is_wp_error($pre::normalize($invalid)),
+    'preactivation rejects removing human approval');
+$invalid=$draft;$invalid['digest']['max_per_cycle']=100;
+yes(is_wp_error($pre::normalize($invalid)),
+    'preactivation forbids mass digest delivery');
+$invalid=$draft;$invalid['tasks']['template_title']='bad {secret_field}';
+yes(is_wp_error($pre::normalize($invalid)),
+    'preactivation rejects unknown template expressions');
+$invalid=$draft;$invalid['scope']['max_items_per_packet']=100;
+yes(is_wp_error($pre::normalize($invalid)),
+    'preactivation bounds future task packet size');
+$one=reset($packets);
+$taskPreview=$pre::mock_task($one);
+$oneBatch=current($batch);
+$digestPreview=$pre::mock_digest($oneBatch);
+yes($taskPreview['preview_only']===true &&
+    $taskPreview['would_create']===false &&
+    $digestPreview['would_invoke_hook']===false &&
+    $digestPreview['would_send_message']===false,
+    'task and Bit Flows previews have no provider side effects');
+yes(str_contains($taskPreview['title'],'media') &&
+    str_contains($digestPreview['body'],'120 gaps'),
+    'source-scoped templates render recognized variables');
+class PreActivation_Test_Request {
+    public function __construct(private array $json) {}
+    public function get_json_params(){return $this->json;}
+}
+$saved=$pre::rest_patch(new PreActivation_Test_Request([
+    'if_match'=>$pre::revision(),'settings'=>$draft
+]));
+yes(!is_wp_error($saved) &&
+    $saved['execution_mode']==='disabled' &&
+    $saved['settings']===$draft,'safe preactivation draft persists with readback');
+$stale=$pre::rest_patch(new PreActivation_Test_Request([
+    'if_match'=>str_repeat('a',64),'settings'=>$draft
+]));
+yes(is_wp_error($stale)&&$stale->get_error_code()==='preactivation_revision_conflict',
+    'stale preactivation update is rejected');
+$cfg=get_option($pre::OPTION);
+yes($cfg['providers']['fluent_boards']==='preview_only' &&
+    $cfg['providers']['fluent_smtp']==='inspection_only',
+    'saved policy never changes provider runtime settings');
+$GLOBALS['admin']=false;
+yes(!$pre::can_manage(),'unprivileged user cannot access the draft console');
+$GLOBALS['admin']=true;
+yes($pre::can_manage(),'company administrator can edit a preactivation draft');
+$preReport=$pre::report();
+yes($preReport['execution_mode']==='disabled' &&
+    $preReport['scopes']['work_packets']>0 &&
+    $preReport['side_effects']['outbound_messages']===0 &&
+    $preReport['gates']['provider_tasks_enabled']===false,
+    'preactivation report is read-only and execution-disabled');
 echo "ALL READINESS LEDGER CONTRACTS PASSED\n";
