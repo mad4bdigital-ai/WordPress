@@ -30,6 +30,13 @@ $mad4b_scp_boot_provenance_path = MAD4B_SCP_DIR . 'MAD4B-BUILD-PROVENANCE.json';
 define( 'MAD4B_SCP_BOOT_PROVENANCE_SHA256', is_readable( $mad4b_scp_boot_provenance_path ) ? hash_file( 'sha256', $mad4b_scp_boot_provenance_path ) : '' );
 unset( $mad4b_scp_boot_provenance_path );
 
+// Source-owned Settings API compatibility on native administrator requests.
+// No environment-specific values or changes to canonical URL ownership.
+if ( function_exists( 'is_admin' ) && is_admin() ) {
+    require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-native-general-settings-contract.php';
+}
+
+
 // Keep this tiny lifecycle hook available even on the foreign REST kernel.
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-catalog-lifecycle.php';
 register_deactivation_hook( __FILE__, array( 'MAD4B_SCP_Catalog_Lifecycle', 'deactivate' ) );
