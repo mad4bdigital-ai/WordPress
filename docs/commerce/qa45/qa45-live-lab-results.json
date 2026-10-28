@@ -1,7 +1,7 @@
 {
     "result": "PASS",
-    "passed": 40,
-    "total": 40,
+    "passed": 44,
+    "total": 44,
     "tests": {
         "real_qa45_evaluate_returns_array": {
             "pass": true,
@@ -56,6 +56,22 @@
             "observed": null
         },
         "pure_quote_digest_sha": {
+            "pass": true,
+            "observed": null
+        },
+        "canonical_stored_quote_digest_valid": {
+            "pass": true,
+            "observed": null
+        },
+        "tampered_stored_quote_rejected": {
+            "pass": true,
+            "observed": null
+        },
+        "tampered_site_uuid_quote_rejected": {
+            "pass": true,
+            "observed": null
+        },
+        "tampered_hold_quote_rejected": {
             "pass": true,
             "observed": null
         },
