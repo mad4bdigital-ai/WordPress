@@ -1,0 +1,123 @@
+name: DFSB Neutral GitHub Attested Review Artifact
+on:
+  push:
+    branches: [master]
+    paths: ['.github/workflows/dfsb-neutral-attested-candidate.yml']
+  workflow_dispatch:
+
+# An authenticated GitHub Actions attestation is evidence for independent
+# certification, NOT the independent certification or deployment permission.
+permissions:
+  contents: read
+  actions: read
+  attestations: write
+  id-token: write
+
+concurrency:
+  group: dfsb-neutral-attested-candidate
+  cancel-in-progress: false
+
+jobs:
+  attested-review:
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SOURCE_SHA: '8b391bb8af0e2505d9a9c5296d37d9ce420e54e7'
+      PLUGIN_TREE: 'c8545970917f17e46cb4d4476371840821f950a7'
+      EXPECTED_SHA256: '0cdc9ea4e99117b4ca80a127fb3d89c54e6b595587f1f64fe136199d106533fb'
+      PR538_HEAD: '72e2168e8ca35d9f632ee260d51d7e8f200c111d'
+      PR538_MERGE: '8b391bb8af0e2505d9a9c5296d37d9ce420e54e7'
+      PR556_HEAD: '09dd5c5712c8a469698b29153bfda3d70a580a50'
+      PR556_MERGE: '5c14681da2aca9d5da0993c175e214bd35e8f692'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Pin master to both merged, owner-approved sources
+        shell: bash
+        env:
+          GH_TOKEN: ${ github.token }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = 'mad4bdigital-ai/WordPress'
+          test "$GITHUB_REF" = 'refs/heads/master'
+          git merge-base --is-ancestor "$PR538_HEAD" HEAD
+          git merge-base --is-ancestor "$PR556_MERGE" HEAD
+          for ref in "$SOURCE_SHA" "$PR538_HEAD" "$PR538_MERGE" "$PR556_MERGE" HEAD; do
+            test "$(git rev-parse "$ref:wp-content/plugins/dynamic-filter-seo-bridge")" = "$PLUGIN_TREE"
+          done
+          for pr in 538 556; do
+            if test "$pr" = 538; then head="$PR538_HEAD"; merge="$PR538_MERGE"; else head="$PR556_HEAD"; merge="$PR556_MERGE"; fi
+            gh api "repos/$GITHUB_REPOSITORY/pulls/$pr" > "$RUNNER_TEMP/dfsb-pr-$pr.json"
+            jq -e --arg head "$head" --arg merge "$merge" \
+              '.merged == true and .head.sha == $head and .merge_commit_sha == $merge' \
+              "$RUNNER_TEMP/dfsb-pr-$pr.json" >/dev/null
+            wanted="$(printf 'OWNER_ATTEST_SINGLE_OWNER\nexact_head_sha: %s' "$head")"
+            gh api "repos/$GITHUB_REPOSITORY/issues/$pr/comments?per_page=100&page=1" \
+              > "$RUNNER_TEMP/dfsb-pr-$pr-comments.json"
+            jq -e --arg wanted "$wanted" \
+              'length < 100 and any(.[]; .user.login == "mad4bdigital-ai" and .body == $wanted)' \
+              "$RUNNER_TEMP/dfsb-pr-$pr-comments.json" >/dev/null
+          done
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          tools: none
+
+      - name: Build and verify exact previously-reviewed source twice
+        shell: bash
+        run: |
+          set -euo pipefail
+          git worktree add --detach "$RUNNER_TEMP/dfsb-pinned-source" "$SOURCE_SHA"
+          mkdir -p "$RUNNER_TEMP/dfsb-artifact"
+          python3 "$RUNNER_TEMP/dfsb-pinned-source/tools/dfsb-neutral/build_candidate.py" \
+            --repo "$RUNNER_TEMP/dfsb-pinned-source" \
+            --output "$RUNNER_TEMP/dfsb-artifact/dynamic-filter-seo-bridge.zip" \
+            > "$RUNNER_TEMP/dfsb-artifact/build.json"
+          python3 "$RUNNER_TEMP/dfsb-pinned-source/tools/dfsb-neutral/build_candidate.py" \
+            --repo "$RUNNER_TEMP/dfsb-pinned-source" \
+            --output "$RUNNER_TEMP/dfsb-artifact/repeat.zip" > /dev/null
+          cmp "$RUNNER_TEMP/dfsb-artifact/dynamic-filter-seo-bridge.zip" "$RUNNER_TEMP/dfsb-artifact/repeat.zip"
+          actual="$(sha256sum "$RUNNER_TEMP/dfsb-artifact/dynamic-filter-seo-bridge.zip" | awk '{print $1}')"
+          test "$actual" = "$EXPECTED_SHA256"
+          unzip -q "$RUNNER_TEMP/dfsb-artifact/dynamic-filter-seo-bridge.zip" -d "$RUNNER_TEMP/dfsb-artifact/unpacked"
+          php "$RUNNER_TEMP/dfsb-pinned-source/tools/dfsb-neutral/verify_candidate.php" \
+            "$RUNNER_TEMP/dfsb-artifact/unpacked/dynamic-filter-seo-bridge"
+
+      - name: Issue GitHub-signed build provenance (review evidence)
+        id: provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: ${ runner.temp }}/dfsb-artifact/dynamic-filter-seo-bridge.zip
+
+      - name: Verify producer attestation without claiming deploy authority
+        shell: bash
+        env:
+          GH_TOKEN: ${ github.token }}
+        run: |
+          set -euo pipefail
+          gh attestation verify "$RUNNER_TEMP/dfsb-artifact/dynamic-filter-seo-bridge.zip" \
+            --repo "$GITHUB_REPOSITORY" > "$RUNNER_TEMP/dfsb-artifact/verified-attestation.json"
+          test -s "$RUNNER_TEMP/dfsb-artifact/verified-attestation.json"
+          cp "${ steps.provenance.outputs.bundle-path }}" "$RUNNER_TEMP/dfsb-artifact/attestation-bundle.json"
+          printf '%s\n' '{"state":"SIGNED_REVIEW_ARTIFACT_NOT_CERTIFIED","staging_apply_authorized":false,"production_authorized":false,"safe_boot_override":false}' \
+            > "$RUNNER_TEMP/dfsb-artifact/release-boundary.json"
+
+      - name: Upload attested evidence for independent authority review
+        uses: actions/upload-artifact@v4
+        with:
+          name: dfsb-attested-review-8b391bb8
+          retention-days: 30
+          if-no-files-found: error
+          path: |
+            ${ runner.temp }}/dfsb-artifact/dynamic-filter-seo-bridge.zip
+            ${ runner.temp }}/dfsb-artifact/build.json
+            ${ runner.temp }}/dfsb-artifact/verified-attestation.json
+            ${ runner.temp }}/dfsb-artifact/attestation-bundle.json
+            ${ runner.temp }}/dfsb-artifact/release-boundary.json
