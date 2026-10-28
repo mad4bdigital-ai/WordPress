@@ -65,6 +65,13 @@ $fixture=[
 $rec=F::reconcile($fixture,$binding);
 $ok('pure_reconciliation_valid_synthetic',is_array($rec)&&$rec['total_minor']===90000);
 $ok('pure_quote_digest_sha',is_array($rec)&&preg_match('/^[a-f0-9]{64}$/D',$rec['quote_digest'])===1);
+$ok('canonical_stored_quote_digest_valid',is_array($rec)&&F::verifyImmutableRecord($rec,$rec['quote_digest']));
+$tampered=$rec;$tampered['total_minor']=1;
+$ok('tampered_stored_quote_rejected',is_array($rec)&&!F::verifyImmutableRecord($tampered,$rec['quote_digest']));
+$tampered=$rec;$tampered['site_uuid']='some-other-tenant';
+$ok('tampered_site_uuid_quote_rejected',is_array($rec)&&!F::verifyImmutableRecord($tampered,$rec['quote_digest']));
+$tampered=$rec;$tampered['provider_hold_reference']='bogus';
+$ok('tampered_hold_quote_rejected',is_array($rec)&&!F::verifyImmutableRecord($tampered,$rec['quote_digest']));
 $ok('quote_expiry_shortest_signed_receipt',is_array($rec)&&$rec['expires_at_utc']===$fixture['final_quote']['expires_at_utc']);
 $ok('pure_stable_digest',is_array($rec)&&$rec['quote_digest']===F::reconcile($fixture,$binding)['quote_digest']);
 $x=$fixture;$x['tax']['currency']='EGP';
