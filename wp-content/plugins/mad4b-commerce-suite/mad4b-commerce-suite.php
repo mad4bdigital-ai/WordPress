@@ -87,7 +87,13 @@ final class MAD4B_Commerce_Suite {
         echo '<table class="widefat striped"><thead><tr><th scope="col">Desired</th><th scope="col">Module</th><th scope="col">Runtime</th><th scope="col">Dependencies</th><th scope="col">Owner</th></tr></thead><tbody>';
         foreach ($snapshot['modules'] as $id => $module) {
             $missing = $module['missing_dependencies'];
-            echo '<tr><td><label><input type="checkbox" name="modules[]" value="' . esc_attr($id) . '"' . checked($module['desired'], true, false) . '> Enroll</label></td>';
+            echo '<tr><td>';
+            if ($module['enrollable']) {
+                echo '<label><input type="checkbox" name="modules[]" value="' . esc_attr($id) . '"' . checked($module['desired'], true, false) . '> Enroll</label>';
+            } else {
+                echo 'External dependency (read-only)';
+            }
+            echo '</td>';
             echo '<td><strong>' . esc_html($module['label']) . '</strong><p>' . esc_html($module['purpose']) . '</p></td>';
             echo '<td>' . ($module['runtime_detected'] ? 'Detected' : 'Not detected') . '</td>';
             echo '<td>' . esc_html($missing ? implode(', ', $missing) : 'None missing') . '</td>';
