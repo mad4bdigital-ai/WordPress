@@ -183,4 +183,16 @@ yes(!is_wp_error($reopened) &&
  (get_option($cls::STORE)[$externalId]['reopens']??0)===1,
  'new external regression reopens original issue once');
 unset($GLOBALS['external_source']);
+// The authorized CLI executor may reconcile only under an enabled tenant policy.
+$GLOBALS['admin']=false;
+$GLOBALS['options'][$cls::POLICY]['scheduled_scan_enabled']=true;
+$GLOBALS['options'][$cls::POLICY]['scheduled_scan_interval_minutes']=60;
+$GLOBALS['options'][$cls::AUDIT]=[];
+define('MAD4B_READINESS_SCHEDULED_RUN',true);
+$scheduleResult=$cls::run_scheduled();
+yes(is_array($scheduleResult) && array_key_exists('open',$scheduleResult),
+ 'authorized CLI scheduler reconciles source issues with tenant opt-in');
+$notDue=$cls::run_scheduled();
+yes(($notDue['status']??'')==='not_due',
+ 'scheduled scans are throttled by the configured interval');
 echo "ALL READINESS LEDGER CONTRACTS PASSED\n";
