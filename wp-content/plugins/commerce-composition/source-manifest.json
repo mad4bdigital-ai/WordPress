@@ -1,0 +1,392 @@
+{
+  "schema": "commerce-composition-source-manifest.v1",
+  "source": "etg-woo-lab-2026-10-28",
+  "files": [
+    {
+      "path": "composition.php",
+      "sha256": "f1f8eb4a8959d26797c1ae57ac946111e4fd01ed937fd5e987793561b2fe996b",
+      "git_blob_sha": "66e8d9a70f28b4e1c651313c7876163158281239",
+      "bytes": 7514
+    },
+    {
+      "path": "includes/Admin.php",
+      "sha256": "4c10395aef7187b968a874dc32d36b4dc8a81d21956844264a4a77441aac963b",
+      "git_blob_sha": "e6d911eebf47fdec6d75cb578bf73c41e0852544",
+      "bytes": 10352
+    },
+    {
+      "path": "includes/Api.php",
+      "sha256": "b23a7c0ec4c41083f236515fc316ab9f67fd00a0fc4211a01228c1e1bcf9e557",
+      "git_blob_sha": "c1d116df0754bb51245f2c647e9f48b514d3283b",
+      "bytes": 2435
+    },
+    {
+      "path": "includes/AutomationEvents.php",
+      "sha256": "d068e8263cd89f650bfe679a5ffcb86b35365e01dd270836ee9b8b0cd392d790",
+      "git_blob_sha": "ea17fc5acab1790d83d57658e21633749b366971",
+      "bytes": 8976
+    },
+    {
+      "path": "includes/BindingStore.php",
+      "sha256": "06b1bfdb99aceee08741660f74d9f6ff00567a5c6e7cf56f0d3bb9dad94760c9",
+      "git_blob_sha": "63fbeb1147dd91a08ed70dca2f781a29fcc03003",
+      "bytes": 5748
+    },
+    {
+      "path": "includes/Channels.php",
+      "sha256": "f715c91f37d535423adcef4c072ccc5645c23a5b5884ba501e54f972134f49d4",
+      "git_blob_sha": "864518d6832c3485d9478138e3b1ca9f374eafb3",
+      "bytes": 3537
+    },
+    {
+      "path": "includes/ClaimLedger.php",
+      "sha256": "c1d9e7a0a9c6e326dd9f8dca9360a6396eb2835c2cc6056d1034ffa5d7366001",
+      "git_blob_sha": "caeecf882448a90b529122dfd4e3e14855dc113f",
+      "bytes": 11205
+    },
+    {
+      "path": "includes/Classification.php",
+      "sha256": "a92a07a77aad55794673fbbecda4e2dbaaff334cc17cb66d9bbe8bf6f10b68a6",
+      "git_blob_sha": "726549777a24c12f79070c2fb4f067fd636708a2",
+      "bytes": 5699
+    },
+    {
+      "path": "includes/CommerceEngineDashboard.php",
+      "sha256": "3af757e4d412b20128b84b6eb41bda4e6362a911b8f935f717b249896738ed6b",
+      "git_blob_sha": "7fc5e6e632846c552c6f957402629a0f3c6f7fa9",
+      "bytes": 6910
+    },
+    {
+      "path": "includes/CommerceEngineInspector.php",
+      "sha256": "3d38ff2781e5fe02f4184d88b5bfac3552b900b2e2fec7b2ac9ff798ea059c44",
+      "git_blob_sha": "89b2394728eae000e32b854a02c6d851a1b46f14",
+      "bytes": 11078
+    },
+    {
+      "path": "includes/CommercialExecutionPreflight.php",
+      "sha256": "a26791aa446ef08035611d18f5211d8683ad09e99ee917958b72ce9c1bd0ce99",
+      "git_blob_sha": "9b4fade817c1c8179fd9c91184a47bf5c2b25b48",
+      "bytes": 10768
+    },
+    {
+      "path": "includes/CompanyCommercePolicy.php",
+      "sha256": "3e68dfbb528a954375abbd4869814a12cc6c6ea0096e81a9e2cdce60c932142f",
+      "git_blob_sha": "d220ebc0171fba54e388964b32ab046ca9042b7b",
+      "bytes": 23398
+    },
+    {
+      "path": "includes/CompanyCommercePolicyRest.php",
+      "sha256": "3edc0b1098d7ebb5234cb283655f2745c2b2254a17e37347ddf3ad3d37384ace",
+      "git_blob_sha": "091dae3ff71b3a0b276b74739231ba827703dafb",
+      "bytes": 5119
+    },
+    {
+      "path": "includes/CompanyManagementRest.php",
+      "sha256": "6e5ef916483cfb80b1ff7dc0456e5d31361b805d4dec3b26be03ae3e448d1e68",
+      "git_blob_sha": "692c5863906e6cc5743d278ad3b2aaa0ecc11dd6",
+      "bytes": 27190
+    },
+    {
+      "path": "includes/Composer.php",
+      "sha256": "09da25bff788f7f1e9c1fc5e387edf8da783ecc857fcb18a699bc424bc9010de",
+      "git_blob_sha": "da581daef79a7c76e493d0da98fdc96097c69b16",
+      "bytes": 9486
+    },
+    {
+      "path": "includes/ConsentPolicySource.php",
+      "sha256": "6f5c0623ffff1e616741a3d51b4331b1f6f117b81db86530c3a54d62566b8096",
+      "git_blob_sha": "fc2a7de4218f0d90237a8b0f044c82faa6fd4acf",
+      "bytes": 799
+    },
+    {
+      "path": "includes/ContactBridge.php",
+      "sha256": "3728d1df6680fcb82a3d62977e964b311d9726b50b87cf8d81e7c36b88714ec3",
+      "git_blob_sha": "71377965023c1fab51ef276a349b65730e742c54",
+      "bytes": 10681
+    },
+    {
+      "path": "includes/ContactBridgeAdmin.php",
+      "sha256": "f73e7390070d6e24a1f60a95f2d8d705d50661c49f2b9f9300063c1f05e9ffb7",
+      "git_blob_sha": "c6bdd09025ea0b4117ea47e2609f8f156074b405",
+      "bytes": 4409
+    },
+    {
+      "path": "includes/ContactBridgeUi.php",
+      "sha256": "f10f651b5032220ff90750fd893cf036c601db27af0a5d7c07a228f93b3ed9cd",
+      "git_blob_sha": "c2c89f8a1ff4a7c0b3f20050c3c9485888fb395a",
+      "bytes": 4648
+    },
+    {
+      "path": "includes/FluentBinding.php",
+      "sha256": "88ebbb0889656ea5f5ddc2fe2a87d55c8a4527e10778afd69876f7e98af0b242",
+      "git_blob_sha": "79b100e8c3842547d1a3a0949624ca9ef889713b",
+      "bytes": 5105
+    },
+    {
+      "path": "includes/FluentBoardsTaskBridge.php",
+      "sha256": "66a281bbd808a8714e55a5fefe7ec5afd2448fdcc831553ff320fe8411290fe2",
+      "git_blob_sha": "ec73d24198fb0983281177f3688a9a1e43ab4d15",
+      "bytes": 6456
+    },
+    {
+      "path": "includes/FluentCrmFeedBridge.php",
+      "sha256": "226d1cd7b91a7fb96fa18522315365f4b0424137d73139b2ba1690508d5476af",
+      "git_blob_sha": "42cbe16b815fdb55af54bf7f8785c17469e06656",
+      "bytes": 6037
+    },
+    {
+      "path": "includes/FluentSubmissionAdapter.php",
+      "sha256": "bbd276b5817b231ad25738f676b028ca982ef4c462b28c91a369e35a495a93d1",
+      "git_blob_sha": "42e323e4fa7044fefdef19ae92257649ed60d6ba",
+      "bytes": 7930
+    },
+    {
+      "path": "includes/FormIntent.php",
+      "sha256": "c37f2120416c61f88b54e8e5574a2c341903946f8bf2e9d99d09fe43e1009c02",
+      "git_blob_sha": "07db13a0d1aa7ab176998a52c411ef788c193af3",
+      "bytes": 2326
+    },
+    {
+      "path": "includes/FormRouter.php",
+      "sha256": "420de00a1af003c772f30fd598ea799619c581ed5db3699a8761bb3a01247ef4",
+      "git_blob_sha": "b328f986440d9aa81ef3681bcfd3066fc1841948",
+      "bytes": 4192
+    },
+    {
+      "path": "includes/FormSchema.php",
+      "sha256": "ddfc8b2601575826f5df4708422cd7108b94303eda9e6a22f32fa2c5c560f4fc",
+      "git_blob_sha": "c4c49550243212b158890e912ad3bdc31d878492",
+      "bytes": 3568
+    },
+    {
+      "path": "includes/GuestConsentConfirmPage.php",
+      "sha256": "33ab180f37bac865380b116870ad6c3a950b1ad3c77b69378d324f5e60280f37",
+      "git_blob_sha": "ecf92eebadd96b974298e2b1245ebf1fe5e23fa0",
+      "bytes": 4595
+    },
+    {
+      "path": "includes/GuestConsentProof.php",
+      "sha256": "ce704c84424707e32a1d0aa2427e82c3cb6084acb46a62add83c24c26d106089",
+      "git_blob_sha": "6a37237ff1a4f37da4204ec4bf9620bf06a6481c",
+      "bytes": 17466
+    },
+    {
+      "path": "includes/InquiryQualification.php",
+      "sha256": "1bab280d788e07250333f462d327366d1de6ce522f377e71f1fbb746213c134e",
+      "git_blob_sha": "51c68af9c90d5e2aab2057a27f66894bbd729df5",
+      "bytes": 13607
+    },
+    {
+      "path": "includes/IntakeCaseApi.php",
+      "sha256": "15ef7dda3d6172fc5f94dd5d910111b45e50ce8cad7e0f12dc69ca131ab81294",
+      "git_blob_sha": "867c04c923a1860d958e25cb9345d6380ef4b358",
+      "bytes": 3667
+    },
+    {
+      "path": "includes/IntakeCaseRegistry.php",
+      "sha256": "f119c416a21ba576d1ea98412414fc0a8c6b0a8d601a950eea7cecd25076ec22",
+      "git_blob_sha": "d0920212cacd496eba401d375d4049923c664045",
+      "bytes": 7269
+    },
+    {
+      "path": "includes/IntakeModePolicy.php",
+      "sha256": "7b61dc50c2d44b8298c8999f912f30159ede3e271fd7cb3888d44d7106a09bb4",
+      "git_blob_sha": "e1a0872d5d44646da87f54ce38327116ed11a1d8",
+      "bytes": 2833
+    },
+    {
+      "path": "includes/IntakeOrderDraft.php",
+      "sha256": "f79356ab9b4efb57800c238da38b69d60e65c7703b65fcea59578b797c230d40",
+      "git_blob_sha": "20aa01d7e5f295c8176cde56361c5ab9aae489f9",
+      "bytes": 8309
+    },
+    {
+      "path": "includes/Integration.php",
+      "sha256": "408a0126719b5f2f9e9e13b07df787236606a9cbfa6d421eb836923350b57960",
+      "git_blob_sha": "5407cfa8e9ebede272e4b2d89e44d177fff1e996",
+      "bytes": 7824
+    },
+    {
+      "path": "includes/LifecycleReadiness.php",
+      "sha256": "65a17f2d5eccf3797dffb5404e9d4c017b40c24b592132a5e28218a06a0721de",
+      "git_blob_sha": "436c4cbb95b079f7b3e8a430d4876c84f5888f27",
+      "bytes": 12023
+    },
+    {
+      "path": "includes/MarketingConsentField.php",
+      "sha256": "cade2ff7c03d0294ce10192e7fe736b20a66eebbeeb0207f902f8c979281db03",
+      "git_blob_sha": "8305ec5950e0544ba8cc7ed3588c7c388f42c6d5",
+      "bytes": 5439
+    },
+    {
+      "path": "includes/MarketingConsentTranslations.php",
+      "sha256": "4da979aae64d46cf24a929ffef9b9355d531dfc86d4c5b0ed6c3876529ef06b4",
+      "git_blob_sha": "b3c869a06e763c7220d7d7b4fde23c3f257a16a8",
+      "bytes": 2824
+    },
+    {
+      "path": "includes/PolicyStore.php",
+      "sha256": "7c9760dafd31981500e87fd52a5c1f07e33088cf516ae49bbad03b29fa0abe96",
+      "git_blob_sha": "205f12e5df30098826126c42a2dcb59e53abad0d",
+      "bytes": 4386
+    },
+    {
+      "path": "includes/RateProvenance.php",
+      "sha256": "232cf4d053c1945cd15072693b24e99f290096b362c20f65f86a3c87218458c3",
+      "git_blob_sha": "2f7aa5d45a5ae2f91ee68e0d6b5167934520a83d",
+      "bytes": 2768
+    },
+    {
+      "path": "includes/RelationProvenance.php",
+      "sha256": "b9b488c602b9ae043ecf083c6a5fc76962e70ce0abb2fecd2858a4363185d711",
+      "git_blob_sha": "e0a1e5430397e25dfa83f63f64d0eb216dde74b2",
+      "bytes": 3435
+    },
+    {
+      "path": "includes/RequestBasket.php",
+      "sha256": "0862084bc19fd9a8f6cfc4e9eae23f5db4a433f9c21990213092b2d567aa9b0e",
+      "git_blob_sha": "d99e1da6dea7eeab4e10b0fa7d0d2f87c90b7def",
+      "bytes": 5020
+    },
+    {
+      "path": "includes/RequestBasketView.php",
+      "sha256": "ceacc2bd366275cf82f116c400ffcac4df9fddf9ddf51be99d86da9e9f96e9b8",
+      "git_blob_sha": "b86b5116b0eaad6f89c4ccc075120c7b1d318790",
+      "bytes": 4468
+    },
+    {
+      "path": "includes/RequestCheckout.php",
+      "sha256": "517467b36894cdf229bdf483bd996aa893fa62553c66a488059839863b41eb35",
+      "git_blob_sha": "f819e786e1a4d8bb8b35f36edd762b3be6665b5b",
+      "bytes": 14335
+    },
+    {
+      "path": "includes/RequestCheckoutController.php",
+      "sha256": "5511018793f781440e2aa1024f2b49cc40825bb7a8b1408060b19b577dd63a62",
+      "git_blob_sha": "dbcc1d470f783fb765525e5a83396646f4ecad9d",
+      "bytes": 5312
+    },
+    {
+      "path": "includes/RequestContactEvidence.php",
+      "sha256": "e5d74c6c0801630267f2cc4d278ea06dddb3f4a5519dff81a6d94775e90d6254",
+      "git_blob_sha": "dece24b12613fc6734f09b3d868500cb1f2c426b",
+      "bytes": 5429
+    },
+    {
+      "path": "includes/RequestIntake.php",
+      "sha256": "64a2821830fe9f76fcc5adf0218ba4c3768e92c46ad4faa5be3de08f97fd4cb3",
+      "git_blob_sha": "de6bf28d0c58552a83aa82199ea25e1c445b2ab1",
+      "bytes": 6549
+    },
+    {
+      "path": "includes/RequestReview.php",
+      "sha256": "97c42f88467f58540e2b8ed8fa76d8f842a3ae3b1c9224e696b0d3bef7a061cf",
+      "git_blob_sha": "704c426c6d2aacecd39fe0bb1a7a4fad0f2660fc",
+      "bytes": 13644
+    },
+    {
+      "path": "includes/RequestReviewAdmin.php",
+      "sha256": "fb81a3ea69f654b7e496f8b71596cd408f2e20cd47bb18ac243411658d4fdd04",
+      "git_blob_sha": "1f576ddca36834542b85ac90b1764f851be8cf16",
+      "bytes": 18684
+    },
+    {
+      "path": "includes/RequestReviewApi.php",
+      "sha256": "79485cda04ff7c140d17745e8cc699f9cf44c6ad7f97216a21c70818f85a1de6",
+      "git_blob_sha": "db0e0e8520c0f5142dd94531f2073ba556c4f574",
+      "bytes": 6845
+    },
+    {
+      "path": "includes/RequestSupplierReadiness.php",
+      "sha256": "d3363a61ca2f39078e558b754571aba5c0486bedbbb475330685a3df43309712",
+      "git_blob_sha": "d7136d928389fc9076db6197db8f21352e21ac6b",
+      "bytes": 6966
+    },
+    {
+      "path": "includes/ServiceProductIdentity.php",
+      "sha256": "774658586f077281fe066dbf35588851573d691bbbdc2b99bc1fb7bce4865c78",
+      "git_blob_sha": "9752c043c11c4eee2a1fb8bb9fc24994db30874c",
+      "bytes": 6959
+    },
+    {
+      "path": "includes/SourceClassifier.php",
+      "sha256": "7956a2dceb3d1fa7c48ad5c7b20c4bc0dca8304c90a65c1e3356fcec7caf04a6",
+      "git_blob_sha": "28e4071ec002d5d9a290e747ef932237ab0ba621",
+      "bytes": 2496
+    },
+    {
+      "path": "includes/SubmissionContext.php",
+      "sha256": "190a11ec21561b0fb5d293817e28b6cb2d918575d2fa3e86d517ce3938e94aaf",
+      "git_blob_sha": "249c640362749f1d0c326bca2917512d970753fa",
+      "bytes": 6127
+    },
+    {
+      "path": "includes/SubmissionProvenance.php",
+      "sha256": "64d9214e3bcbbdb6fb22e66de5d3fd30aca9e1bb05d5d7c8c58242b7e056bf06",
+      "git_blob_sha": "45732d890d169d53de6c8cc519d682b63ecff212",
+      "bytes": 1447
+    },
+    {
+      "path": "includes/TourRateEligibility.php",
+      "sha256": "3c5f759ecf38cd3923b0c5d597ecc013a24540e0c8db12fdadd1b7b6760a551d",
+      "git_blob_sha": "5d8c01e26e3e1ac5441f8905f0a9db7189a6968e",
+      "bytes": 5956
+    },
+    {
+      "path": "includes/TourRateResolution.php",
+      "sha256": "d6548e926531e0ca74a60eec9bbc13614acc70a86584d22438e03c5b1f5fd176",
+      "git_blob_sha": "f5ab1ab8d7a991ff2a817dcec63382ce5196d115",
+      "bytes": 2747
+    },
+    {
+      "path": "includes/WordPressMailTransport.php",
+      "sha256": "a682954828e9bd682d39373e3f6c229ea08a9fb542a875cb376c83b0f9734fb8",
+      "git_blob_sha": "c501b6caa19681b5e1983995e9f2a20a24cc2f6f",
+      "bytes": 2590
+    },
+    {
+      "path": "includes/WorkflowActions.php",
+      "sha256": "95b6e454044fc8cc78fa2218913408bd64f67b0f70c88d5728584aeab24186fc",
+      "git_blob_sha": "df40beb49c0aed2533435dd177135ed625ee39e7",
+      "bytes": 5132
+    },
+    {
+      "path": "includes/WorkflowApi.php",
+      "sha256": "1a1185533299e1e8adce8e455ee984cb4b941933dc5d2e527345082aaeb83205",
+      "git_blob_sha": "530d020ee8b7daf55ef0701b0bb16f2008902167",
+      "bytes": 1894
+    },
+    {
+      "path": "includes/WorkflowJobs.php",
+      "sha256": "0ea2e7c75d382e9117a65030d4b1f2003fe81e9080aeea39dbc21196d644fd58",
+      "git_blob_sha": "89897ffd9a043ef2a4da3e35ffe25fa671367bd4",
+      "bytes": 13400
+    },
+    {
+      "path": "includes/WorkflowJobsApi.php",
+      "sha256": "65e01d2a445d5bf49c3bc35d7a8efada93da351092195c085b4f4527a668e61e",
+      "git_blob_sha": "9a46ad9f836b13b734d4c2eccf741a0150572d0c",
+      "bytes": 3662
+    },
+    {
+      "path": "README.md",
+      "sha256": "996b6af40313c5dace6f7c95bd0eef111638d971495a82b06fae177ecec505c3",
+      "git_blob_sha": "cf097849b31426b2ccf9eb9c2b049329a82d071f",
+      "bytes": 41975
+    },
+    {
+      "path": "CHANGELOG.md",
+      "sha256": "39034e9042634e348f18268666d04411be52e6fa001e89886fcbe8e7790b34e6",
+      "git_blob_sha": "0c2fbfd4b88cca2eb8f6c2c86f4624b72a598859",
+      "bytes": 26681
+    },
+    {
+      "path": "bin/process-workflow-queue.php",
+      "sha256": "23f2e8032a3adf7f7ecb90e22b3e302051ad5ed3e26cf3e9fa9cbdd1893efd08",
+      "git_blob_sha": "5705f910bb950f2497e2afec843840bb1357e9e1",
+      "bytes": 878
+    }
+  ],
+  "file_count": 64,
+  "total_bytes": 511207
+}

@@ -1,0 +1,55 @@
+name: Commerce Composition source integrity (QA42)
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/commerce-composition/**'
+      - '.github/workflows/commerce-composition-source-qa42.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: Verify every source file against manifest
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,subprocess
+          from pathlib import Path
+          root=Path('wp-content/plugins/commerce-composition')
+          m=json.loads((root/'source-manifest.json').read_text())
+          assert m['schema']=='commerce-composition-source-manifest.v1'
+          items=m['files']
+          assert m['file_count']==len(items) and len(items)>=60
+          expected={x['path'] for x in items}
+          actual={'composition.php'} | {'includes/'+p.name for p in (root/'includes').glob('*.php')} | {'README.md','CHANGELOG.md','bin/process-workflow-queue.php'}
+          assert expected==actual,(sorted(actual-expected),sorted(expected-actual))
+          for entry in items:
+              b=(root/entry['path']).read_bytes()
+              assert len(b)==entry['bytes'],entry['path']
+              assert hashlib.sha256(b).hexdigest()==entry['sha256'],entry['path']
+              blob=subprocess.run(['git','hash-object','--stdin'],input=b,capture_output=True,check=True).stdout.decode().strip()
+              assert blob==entry['git_blob_sha'],entry['path']
+          print('PASS',len(items),'manifest-matched files')
+          PY
+      - name: PHP syntax every active plugin file
+        run: |
+          set -euo pipefail
+          find wp-content/plugins/commerce-composition -name '*.php' -type f -print0 |
+            xargs -0 -n1 php -l
+      - name: Verify unsafe runtime writes remain excluded from preflight
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('wp-content/plugins/commerce-composition/includes/CommercialExecutionPreflight.php').read_text()
+          assert 'checkout_authorized' not in s or "'checkout_authorized'=>false" not in s or 'payment_authorized' in s
+          for needle in ["'woocommerce_order_authorized'=>false","'payment_authorized'=>false","'supplier_booking_authorized'=>false","'cart_mutated'=>false","'order_created'=>false"]:
+              assert needle in s,needle
+          print('PASS: execution preflight exposes no write authority')
+          PY
