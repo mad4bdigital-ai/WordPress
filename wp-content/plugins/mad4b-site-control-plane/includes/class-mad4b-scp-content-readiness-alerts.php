@@ -5,6 +5,7 @@
  * No writes on GET or plugin bootstrap; no automatic external notifications.
  */
 defined('ABSPATH') || exit;
+require_once __DIR__.'/class-mad4b-scp-readiness-workflow-options.php';
 
 final class MAD4B_SCP_Content_Readiness_Alerts {
     const VERSION = '1.0.0';
@@ -24,6 +25,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         add_action('admin_bar_menu', array(__CLASS__, 'admin_bar'), 95);
         add_action('rest_api_init', array(__CLASS__, 'register_rest_routes'));
         add_action('admin_notices', array(__CLASS__, 'admin_notice'));
+        MAD4B_SCP_Readiness_Workflow_Options::boot();
     }
     public static function rules() {
         $saved = (array) get_option(self::POLICY, array());
@@ -452,8 +454,14 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
     public static function admin_notice() {
         if (!current_user_can('edit_others_posts') || get_current_screen() === null) return;
         if (get_current_screen()->id !== 'dashboard') return;
-        $counts=self::summary(); if (!$counts['critical'])return;
-        echo '<div class="notice notice-warning"><p><strong>Content Readiness:</strong> '.(int)$counts['critical'].' critical open issues. <a href="'.esc_url(admin_url('admin.php?page='.self::PAGE)).'">Review issues</a></p></div>';
+        $workflow=MAD4B_SCP_Readiness_Workflow_Options::settings();
+        if(empty($workflow['dashboard_alerts']))return;
+        $counts=self::summary();
+        if(!$counts['critical']&&!$counts['high'])return;
+        $link=esc_url(admin_url('admin.php?page='.self::PAGE));
+        echo '<div class="notice notice-warning"><p><strong>Content Readiness:</strong> '.
+            (int)$counts['critical'].' Critical / '.(int)$counts['high'].
+            ' High issues. <a href="'.$link.'">Review and assign</a></p></div>';
     }
     /** Export currently observed issues for a human source-data repair queue. */
     public static function handle_export() {
@@ -538,20 +546,34 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         if(!current_user_can('manage_options'))return new WP_Error('mad4b_readiness_permission_denied');
         if(!class_exists('MAD4B_SCP_Policy') || !MAD4B_SCP_Policy::can_mutate())
             return new WP_Error('mad4b_readiness_write_gate_closed');
-        $rules=self::rules();$board=$rules['board_id'];$stage=$rules['stage_id'];
-        if(!$board || !$stage || !class_exists('FluentBoards\\App\\Services\\TaskService'))
+        $workflow=MAD4B_SCP_Readiness_Workflow_Options::settings();
+        if(empty($workflow['board_tasks']))
+            return new WP_Error('mad4b_readiness_board_sync_disabled');
+        $board=$workflow['board_id'];$stage=$workflow['stage_id'];
+        if(!MAD4B_SCP_Readiness_Workflow_Options::validate_board_stage($board,$stage) ||
+           !class_exists('FluentBoards\\App\\Services\\TaskService'))
             return new WP_Error('mad4b_readiness_board_not_configured');
         $issues=(array)get_option(self::STORE,array());
         $row=$issues[$issue_id]??null;
         if(!$row || ($row['status']??'')==='resolved')return new WP_Error('mad4b_readiness_issue_not_open');
         if(!empty($row['board_task_id']))return array('status'=>'already_linked','task_id'=>(int)$row['board_task_id']);
-        // Native Fluent Boards validates ownership of stage and board.
+        global $wpdb;
+        $existing=(int)$wpdb->get_var($wpdb->prepare(
+            "SELECT id FROM {$wpdb->prefix}fbs_tasks WHERE board_id=%d AND source=%s AND source_id=%s LIMIT 1",
+            $board,'mad4b-readiness',$issue_id));
+        if($existing){
+            $issues[$issue_id]['board_task_id']=$existing;
+            update_option(self::STORE,$issues,false);
+            return array('status'=>'recovered_link','task_id'=>$existing);
+        }
+        // Native board service enforces stage membership. Source ID is the issue fingerprint.
         $subject='['.strtoupper($row['severity']).'] '.$row['code'].' #'.$row['object_id'];
         $link=$row['object_id']?get_edit_post_link($row['object_id'],'raw'):'';
-        $taskData=array('title'=>$subject,'stage_id'=>$stage,
-            'description'=>esc_url_raw((string)$link).'  '.sanitize_text_field($row['label']));
-        if($rules['assignee_id'] && get_user_by('id',$rules['assignee_id']))
-            $taskData['assignees']=array($rules['assignee_id']);
+        $taskData=array('title'=>$subject,'stage_id'=>$stage,'source'=>'mad4b-readiness',
+            'source_id'=>$issue_id,
+            'description'=>'Readiness Issue: '.$issue_id."\n".esc_url_raw((string)$link).'  '.sanitize_text_field($row['label']));
+        $assigned=MAD4B_SCP_Readiness_Workflow_Options::assigned_user($row);
+        if($assigned)$taskData['assignees']=array($assigned);
         try {
             $task=(new \FluentBoards\App\Services\TaskService())->createTask($taskData,$board);
         } catch (Throwable $e) {
@@ -579,7 +601,8 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         $flash=get_transient('mad4b_readiness_result_'.get_current_user_id());
         delete_transient('mad4b_readiness_result_'.get_current_user_id());
         echo '<div class="wrap"><h1>Content Readiness &amp; Alerts</h1>';
-        echo '<p>Source-backed issue ledger. Scan runs only when an administrator requests it. No external notifications or tasks are created automatically.</p>';
+        echo '<p>Source-backed issue ledger. Approved local scheduler reconciles issues; external tasks and messages remain governed separately.</p>';
+        echo '<p><a class="button button-secondary" href="'.esc_url(admin_url('admin.php?page='.MAD4B_SCP_Readiness_Workflow_Options::PAGE)).'">Follow-up &amp; Notifications Settings</a></p>';
         if($flash)echo '<div class="notice notice-info"><pre>'.esc_html(wp_json_encode($flash)).'</pre></div>';
         echo '<h2>Open: '.(int)$counts['open'].' | Critical: '.(int)$counts['critical'].' | High: '.(int)$counts['high'].' | Resolved: '.(int)$counts['resolved'].'</h2>';
         if(current_user_can('manage_options')) {
@@ -607,7 +630,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
             echo '<p><label>'.esc_html($name).'<br><input class="large-text" name="'.esc_attr($field).'" value="'.esc_attr((string)$value).'"></label></p>';
         }
         echo '<p><label>Disallowed origin levels (CSV)<br><input class="large-text" name="invalid_origin_levels" value="'.esc_attr(implode(',',(array)$rules['invalid_origin_levels'])).'"></label></p>';
-        foreach(array('scheduled_scan_interval_minutes'=>'Scheduled scan minimum interval (minutes)', 'media_reuse_threshold'=>'Shared gallery review threshold (0 disables)', 'board_id'=>'Fluent Boards ID','stage_id'=>'Board stage ID','assignee_id'=>'Assigned user ID', 'form_id'=>'Fluent Forms ID', 'form_unread_days'=>'Unread follow-up threshold (days)') as $field=>$label)
+        foreach(array('scheduled_scan_interval_minutes'=>'Scheduled scan minimum interval (minutes)', 'media_reuse_threshold'=>'Shared gallery review threshold (0 disables)', 'form_id'=>'Fluent Forms ID', 'form_unread_days'=>'Unread follow-up threshold (days)') as $field=>$label)
             echo '<p><label>'.esc_html($label).' <input type="number" min="0" name="'.esc_attr($field).'" value="'.(int)$rules[$field].'"></label></p>';
         foreach(array('scheduled_scan_enabled'=>'Enable local server-side scheduled scans (issue ledger only; no notifications or tasks)','check_wpml'=>'Detect missing WPML language','check_cron'=>'Detect overdue WP-Cron') as $field=>$label)
             echo '<p><label><input type="checkbox" name="'.esc_attr($field).'" '.checked($rules[$field],true,false).'>'.esc_html($label).'</label></p>';
@@ -663,7 +686,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                 wp_nonce_field('mad4b_readiness_board_sync');
                 echo '<input type="hidden" name="action" value="mad4b_readiness_board_sync">';
                 echo '<input type="hidden" name="issue_id" value="'.esc_attr($row['id']).'">';
-                echo '<button class="button" '.disabled(!class_exists('MAD4B_SCP_Policy')||!MAD4B_SCP_Policy::can_mutate(),true,false).'>Create Board Task</button></form>';
+                echo '<button class="button" '.disabled(empty(MAD4B_SCP_Readiness_Workflow_Options::settings()['board_tasks'])||!class_exists('MAD4B_SCP_Policy')||!MAD4B_SCP_Policy::can_mutate(),true,false).'>Create Board Task</button></form>';
             }
             echo '</td></tr>';
         }
