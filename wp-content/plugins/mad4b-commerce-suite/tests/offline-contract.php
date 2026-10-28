@@ -34,9 +34,12 @@ must(
     in_array('jetengine', $empty['modules']['shared_product_core']['missing_dependencies'], true),
     'jetengine prerequisite enforced'
 );
-class WooCommerce {}
-class Jet_Engine {}
-class Shared_Product_Date_Service {}
+function make_test_engines_available(): void {
+    class WooCommerce {}
+    class Jet_Engine {}
+    class Shared_Product_Date_Service {}
+}
+make_test_engines_available();
 $loaded = MAD4B_Commerce_Suite_Registry::snapshot(['shared_product_core']);
 must($loaded['modules']['shared_product_core']['runtime_detected'] === true, 'loaded core observed');
 must($loaded['modules']['shared_product_core']['missing_dependencies'] === [], 'required modules observed');
