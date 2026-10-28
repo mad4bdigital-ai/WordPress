@@ -102,10 +102,20 @@ final class MAD4B_SCP_Readiness_Event_Automation {
             if(($receipt['event_id']??'')===$id && ($receipt['issue_id']??'')===$issue &&
                ($receipt['event']??'')===$kind){$known=true;break;}
         }
-        if(!$known)return null;
         $sources=(array)get_option(MAD4B_SCP_Content_Readiness_Alerts::STORE,array());
         $source=$sources[$issue]??array();
         if(!is_array($source))$source=array();
+        if(!$known && $source) {
+            // The UI event journal intentionally keeps only its last 300 rows.
+            // Never drop other verified transitions from a high-volume scan:
+            // source revision plus transition fingerprint is authoritative.
+            $cycle=absint($source['reopens']??0);
+            $expected=hash('sha256',$issue.'|'.$kind.'|'.$cycle);
+            $status=(string)($source['status']??'');
+            $compatible=$kind==='resolved' ? $status==='resolved' : $status==='open';
+            $known=$compatible && hash_equals($expected,$id);
+        }
+        if(!$known)return null;
         if(!$source)$source=array('object_id'=>$e['object_id']??0,'post_type'=>$e['object_type']??'site');
         $lang=self::event_language($source);
         $when=strtotime((string)($e['at']??'')) ?: time();

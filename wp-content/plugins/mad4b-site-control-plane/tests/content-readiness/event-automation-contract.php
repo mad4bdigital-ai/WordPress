@@ -75,6 +75,13 @@ yes($normal['status']==='held' && preg_match('/^[a-f0-9]{64}$/',$normal['batch_k
   'source event maps to stable held digest cohort');
 $bad=$event;$bad['event_id']=str_repeat('a',64);
 yes($c::normalize_event($bad)===null,'unverified event cannot enter the outbox');
+$GLOBALS['options'][MAD4B_SCP_Readiness_Integrations::STORE]=['events'=>[]];
+$fallback=$c::normalize_event($event);
+yes($fallback!==null && $fallback['event_id']===$eventId,
+    'valid source-state fingerprint survives truncated event journal');
+$falseEvent=$event;$falseEvent['event']='resolved';
+yes($c::normalize_event($falseEvent)===null,
+    'incompatible source transition is never backfilled');
 $site=$c::event_language(['post_type'=>'site','object_id'=>0]);
 yes($site['code']==='site' && $site['status']==='site_wide',
     'site-wide issues do not become missing WPML translations');
