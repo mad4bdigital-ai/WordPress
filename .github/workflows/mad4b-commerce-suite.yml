@@ -40,6 +40,11 @@ jobs:
         run: |
           python3 packages/mad4b-shared-product-core/tests/verify-snapshot.py
           python3 packages/mad4b-shared-product-core/tests/assembly-gate.py
+      - name: Source-only engine census
+        run: |
+          python3 packages/mad4b-shared-product-core/tests/source-census.py > commerce-source-census.json
+          python3 -m json.tool commerce-source-census.json > /dev/null
+          python3 -c "import json; r=json.load(open('commerce-source-census.json')); assert r['source_only_file_count']==133; assert r['safe_to_auto_deploy'] is False; print('CENSUS_SOURCE_ONLY_PASS')"
       - name: Report release assembly gate
         run: |
           if python3 packages/mad4b-shared-product-core/tests/assembly-gate.py --release; then
