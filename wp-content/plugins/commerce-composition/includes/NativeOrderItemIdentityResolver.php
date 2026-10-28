@@ -124,3 +124,50 @@ final class NativeOrderItemIdentityResolver
             'supplier_booking_authorized'=>false
         ];
     }
+    public static function assertOrder(int $orderId):array {
+        $order=wc_get_order($orderId);
+        if(!($order instanceof \WC_Order))
+            throw self::err('commerce_identity_order_missing');
+        $items=$order->get_items('line_item');
+        if(!$items)throw self::err('commerce_identity_order_no_lines');
+        $verified=[];
+        foreach($items as $item)$verified[]=self::assertItem($orderId,(int)$item->get_id());
+        return [
+            'contract'=>self::CONTRACT,'order_id'=>$orderId,
+            'verified_lines'=>count($verified),'lines'=>$verified,
+            'financial_authorized'=>false,'payment_authorized'=>false
+        ];
+    }
+    /** Safe access path after WC_Order::add_product bypasses CPT factory. */
+    public static function refreshedItem(int $orderId,int $itemId,int $expected):\WC_Order_Item_Product {
+        self::assertItem($orderId,$itemId,$expected);
+        return self::item($orderId,$itemId);
+    }
+    public static function addProductLine(\WC_Order $order,\WC_Product $product,int $qty=1,array $args=[]):array {
+        if($qty<1)throw self::err('commerce_identity_quantity_invalid');
+        $source=self::source((int)$product->get_id());
+        $itemId=$order->add_product($product,$qty,$args);
+        if(!is_int($itemId)||$itemId<1)throw self::err('commerce_identity_item_create_failed');
+        $proof=self::assertItem((int)$order->get_id(),$itemId,$source['id']);
+        $fresh=wc_get_order($order->get_id());
+        if(!($fresh instanceof \WC_Order))throw self::err('commerce_identity_order_refresh_failed');
+        return ['order'=>$fresh,'item'=>self::refreshedItem((int)$fresh->get_id(),$itemId,$source['id']),'identity'=>$proof];
+    }
+    public static function needsPayment($needs,$order,$statuses):bool {
+        if(!$needs||!($order instanceof \WC_Order))return (bool)$needs;
+        try {self::assertOrder((int)$order->get_id());}
+        catch(\Throwable $e){return false;}
+        return true;
+    }
+    public static function prePaymentComplete($orderId,$transactionId=''):void {
+        self::assertOrder((int)$orderId);
+    }
+    public static function bootstrap():void {
+        if(!class_exists('WC_Order_Factory')
+            ||!class_exists(\TinySolutions\cptwooint\Models\CPTOrderItemProduct::class))
+            return;
+        add_action('woocommerce_order_add_product',[self::class,'onProductAdded'],15,5);
+        add_filter('woocommerce_order_needs_payment',[self::class,'needsPayment'],50,3);
+        add_action('woocommerce_pre_payment_complete',[self::class,'prePaymentComplete'],1,2);
+    }
+}
