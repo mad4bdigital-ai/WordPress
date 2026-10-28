@@ -7,11 +7,23 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+
+concurrency:
+  group: commerce-composition-source-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
 jobs:
   source-integrity:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Verify exact source checkout
+        env:
+          EXACT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXACT_HEAD"
       - name: Use PHP 8.3
         uses: shivammathur/setup-php@v2
         with:
