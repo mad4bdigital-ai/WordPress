@@ -11169,7 +11169,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php",
-      "source_blob_sha": "123fc5805ad4e60bce3801942316d990b2cde8e6",
+      "source_blob_sha": "339431ebde2e2ce859309e2b1a4f59e48bfc33d4",
       "owner_role": "MAD4B exact-source security/authority reviewer for CI-only W1 integration; owner approval and release authority independent",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
@@ -11183,7 +11183,7 @@
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py"
       ],
-      "review_rationale": "W1 staged owner and security source SHA reconciled against pinned Git version, with hermetic tests for replay concurrency, exact result readback, OAuth resource, staging grant permissions, WordPress Site Profile and owner cookie/nonce. Still requires dependency-aware integration, full tenant isolation certification and independent live acceptance before deployment."
+      "review_rationale": "W1 staged owner and security source SHA reconciled against pinned Git version, with hermetic tests for replay concurrency, exact result readback, OAuth resource, staging grant permissions, WordPress Site Profile and owner cookie/nonce. Still requires dependency-aware integration, full tenant isolation certification and independent live acceptance before deployment. Source completeness independently re-verified against the pinned Staging SHA256 after segmented transport, without bypassing package or owner approval."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-challenge-alignment.php",
