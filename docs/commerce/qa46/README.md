@@ -42,6 +42,10 @@ Credential handling: a temporary owner-only environment file was constructed loc
 
 `CommercialFinalQuoteLifecycle::evaluate` previously demanded `shared_product_financial_readiness_v2.checkout_ready===true`, while this native function deliberately **always returns false** (checkout not certified). This made Final Quote issuance impossible even if independently verified proof existed. QA46 separates the approved native price-mode diagnostic (`status=diagnostics_passed_checkout_still_uncertified` and zero blockers) from checkout certification, while preserving **all independent** active company policy, exact tenant binding, valid signed provider cost/tax/availability/final Quote evidence, and site write authority gates. Checkout/Order/Payment/Supplier remain false.
 
+## Reproduction artifact
+
+The executable SQL-transaction test harness is retained only on the authorized VPS at `/opt/commerce-components/evidence/etg-quote-operations-qa46-20261028/qa46-transaction-e2e.php` and was intentionally **not** published as an executable GitHub test. The repository includes a sanitized results summary. No secret environment file, customer credentials or synthetic approval keys are in GitHub.
+
 ## Remaining pre-Production obligations
 
 Real supplier-backed HMAC/public-key verification and audit provenance; genuine hold and expiry, approved tax decision, source financial mode approval, company policy activation through governed authority, real traveler verified channel, and independent execution certification. No auto-merge, no Production deployment. Do not present QA46's mock approvals as consent from a real user.
