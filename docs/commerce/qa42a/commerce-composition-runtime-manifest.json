@@ -76,8 +76,8 @@
     },
     {
       "path": "includes/CommercialFinalQuoteLifecycle.php",
-      "sha256": "4b0daa64d077784e0c1b7be92ab4d721906c122fcb239195a43d3784ff9f7476",
-      "bytes": 21200
+      "sha256": "6ebb90efb2bb85e3f082d86aea4656feb2c337b5edcfe07865da34a5972bb125",
+      "bytes": 21974
     },
     {
       "path": "includes/CommercialQuoteEvidenceProbe.php",
