@@ -26,7 +26,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: dfsb-release-review-${ inputs.source_sha }}
+  group: dfsb-release-review-${{ inputs.source_sha }}
   cancel-in-progress: false
 
 jobs:
@@ -35,9 +35,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
-      SOURCE_SHA: ${ inputs.source_sha }}
-      PR_NUMBER: ${ inputs.pull_request }}
-      VERSION: ${ inputs.version }}
+      SOURCE_SHA: ${{ inputs.source_sha }}
+      PR_NUMBER: ${{ inputs.pull_request }}
+      VERSION: ${{ inputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -47,7 +47,7 @@ jobs:
       - name: Verify GitHub owner-approved exact source is merged
         shell: bash
         env:
-          GH_TOKEN: ${ github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           test "$GITHUB_REPOSITORY" = "mad4bdigital-ai/WordPress"
@@ -98,19 +98,19 @@ jobs:
         id: provenance
         uses: actions/attest-build-provenance@v2
         with:
-          subject-path: ${ runner.temp }}/dfsb-release-review/dynamic-filter-seo-bridge-${ inputs.version }}.zip
+          subject-path: ${{ runner.temp }}/dfsb-release-review/dynamic-filter-seo-bridge-${{ inputs.version }}.zip
 
       - name: Independently verify same-run bundle and GitHub API
         shell: bash
         env:
-          GH_TOKEN: ${ github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           out="$RUNNER_TEMP/dfsb-release-review"
           zip="$out/dynamic-filter-seo-bridge-$VERSION.zip"
           signer="$GITHUB_REPOSITORY/.github/workflows/dfsb-release-review-attestation.yml"
           bundle="$out/attestation-bundle.json"
-          cp "${ steps.provenance.outputs.bundle-path }}" "$bundle"
+          cp "${{ steps.provenance.outputs.bundle-path }}" "$bundle"
           test -s "$bundle"
           gh attestation verify "$zip" --repo "$GITHUB_REPOSITORY" \
             --bundle "$bundle" --signer-workflow "$signer" \
@@ -140,14 +140,14 @@ jobs:
       - name: Upload review evidence only
         uses: actions/upload-artifact@v4
         with:
-          name: dfsb-release-review-${ inputs.source_sha }}
+          name: dfsb-release-review-${{ inputs.source_sha }}
           if-no-files-found: error
           retention-days: 30
           path: |
-            ${ runner.temp }}/dfsb-release-review/dynamic-filter-seo-bridge-${ inputs.version }}.zip
-            ${ runner.temp }}/dfsb-release-review/first-build.json
-            ${ runner.temp }}/dfsb-release-review/sha256.txt
-            ${ runner.temp }}/dfsb-release-review/attestation-bundle.json
-            ${ runner.temp }}/dfsb-release-review/bundle-verification.json
-            ${ runner.temp }}/dfsb-release-review/github-verification.json
-            ${ runner.temp }}/dfsb-release-review/release-boundary.json
+            ${{ runner.temp }}/dfsb-release-review/dynamic-filter-seo-bridge-${{ inputs.version }}.zip
+            ${{ runner.temp }}/dfsb-release-review/first-build.json
+            ${{ runner.temp }}/dfsb-release-review/sha256.txt
+            ${{ runner.temp }}/dfsb-release-review/attestation-bundle.json
+            ${{ runner.temp }}/dfsb-release-review/bundle-verification.json
+            ${{ runner.temp }}/dfsb-release-review/github-verification.json
+            ${{ runner.temp }}/dfsb-release-review/release-boundary.json
