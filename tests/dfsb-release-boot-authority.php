@@ -16,7 +16,7 @@ namespace {
             return $GLOBALS['sources'] ?? array();
         }
     }
-    require_once dirname(__DIR__, 2) . '/wp-content/plugins/dynamic-filter-seo-bridge/includes/Runtime/BootGuard.php';
+    require_once dirname(__DIR__) . '/wp-content/plugins/dynamic-filter-seo-bridge/includes/Runtime/BootGuard.php';
     function check($valid, $msg) {
         if (!$valid) { throw new \RuntimeException($msg); }
     }
