@@ -70,6 +70,9 @@ $GLOBALS['post_meta'][111]['tour_origin_address']='';
 $fourth=$cls::reconcile($cls::discover());
 $source_key=hash('sha256','6|tours-and-activities|111|origin_missing');
 yes($fourth['open']===2 && get_option($cls::STORE)[$source_key]['reopens']===1,'regression reopens original issue exactly once');
+yes(array_key_exists('resolved_at',get_option($cls::STORE)[$source_key]) &&
+ get_option($cls::STORE)[$source_key]['resolved_at']===null,
+ 'reopened source issue clears its obsolete resolved timestamp');
 $GLOBALS['admin']=false;
 $before=serialize(get_option($cls::STORE));
 $denied=$cls::reconcile($cls::discover());
