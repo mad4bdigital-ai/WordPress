@@ -152,3 +152,21 @@ inside the central readiness engine.
 Full rollback: original plugin source and pre-change ledger snapshot at
 `/opt/staging/mad4b-content-readiness/backups/external-source-20261028/`.
 Do not copy this Lab issue ledger into other companies or Production.
+
+## Issue ledger pagination and reopen semantics — 28 October 2026
+
+- The WordPress Content Readiness admin page defaults to Open issues. Editors
+  may filter by Open / Resolved / All and by Critical / High / Medium / Low.
+  The result table displays 100 issues per page, with bounded Previous / Next
+  links and the displayed-versus-matched issue count.
+- High-priority issues remain first within each selection, and a manager can
+  navigate the entire issue history instead of the first 100 rows only.
+- When a previously resolved source issue reappears, reconciliation increments
+  its reopen counter, preserves its fingerprint and first-seen timestamp, and
+  clears its obsolete resolved_at timestamp. A missing issue is closed only
+  after a complete eligible scan.
+- This change does not create Board tasks, send notifications, change external
+  provider rules, or modify prices or source content.
+- Local contract suite: reopen timestamp acceptance plus existing DFSB
+  source-validation, authorization, REST filtering and ledger tests.
+- Site-specific issue counts are operational snapshots, not bundled defaults.
