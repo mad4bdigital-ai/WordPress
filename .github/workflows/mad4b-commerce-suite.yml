@@ -38,6 +38,8 @@ jobs:
         run: php wp-content/plugins/mad4b-commerce-suite/tests/offline-contract.php
       - name: Validate tenant readiness fails closed
         run: php wp-content/plugins/mad4b-commerce-suite/tests/readiness.php
+      - name: Verify admin-only diagnostics without WooCommerce
+        run: php wp-content/plugins/mad4b-commerce-suite/tests/admin-fallback.php
       - name: Audit frozen local source
         run: |
           python3 packages/mad4b-shared-product-core/tests/verify-snapshot.py
