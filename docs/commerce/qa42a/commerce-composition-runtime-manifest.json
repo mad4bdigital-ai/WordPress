@@ -2,7 +2,7 @@
   "schema": "mad4b.commerce-composition.release-snapshot.v1",
   "release_state": "lab_source_snapshot_not_production_authorized",
   "plugin_slug": "commerce-composition",
-  "source_count": 70,
+  "source_count": 71,
   "source_files": [
     {
       "path": "bin/process-workflow-queue.php",
@@ -16,8 +16,8 @@
     },
     {
       "path": "composition.php",
-      "sha256": "6ef6d1652053819f17e1a8967bfa678c8c41cada290cb1d717fcb443ab482612",
-      "bytes": 8538
+      "sha256": "0d47a7251652739077b85049f4ff4ba482cb77aa95b9a1de2b0f154a6cf08bac",
+      "bytes": 8615
     },
     {
       "path": "includes/Admin.php",
@@ -228,6 +228,11 @@
       "path": "includes/NativeCptOrderItemIdentity.php",
       "sha256": "aaa6c785dde55af335efa706cd1c645da4093d40dd4a8ca44ed1710d8c981bcc",
       "bytes": 3193
+    },
+    {
+      "path": "includes/NativeOrderItemIdentityResolver.php",
+      "sha256": "938096c9d7f0dd38b1457efc923f3cbdba5255aad487d9356139b68f98229ebb",
+      "bytes": 9189
     },
     {
       "path": "includes/PolicyStore.php",
