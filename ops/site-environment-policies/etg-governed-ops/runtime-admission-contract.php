@@ -14,7 +14,7 @@ class MAD4B_SCP_Egress_Policy{public static $checks=0;public static function sta
 class MAD4B_SCP_Provider_Transport_Registry{public static function descriptors($p){return $p==='test_provider'?[['provider_id'=>$p]]:[];}}
 class MAD4B_SCP_Provider_Compatibility_Certification{
  public static function supports_provider($p){return $p==='test_provider';}
- public static function assess_provider($p){return ['available'=>true,'exact_runtime_certified'=>true];}
+ public static function capability_certification($args){return ['compatibility_state'=>$GLOBALS['certification_state']??'certified','capabilities'=>['provider.read'=>['read_eligible'=>true]]];}
  public static function certification_generation_sha256($p){return str_repeat('a',64);}
 }
 function expect($ok,$name){if(!$ok){fwrite(STDERR,"FAILED $name\n");exit(7);}echo "PASS $name\n";}
@@ -35,7 +35,9 @@ expect($c::rest_write(null,null,new FakeRequest('POST','/wp/v2/posts'))===null,'
 $GLOBALS['effective']='staging';$args['mad4b_provider_id']='unknown_provider';expect(is_wp_error($c::http(false,$args,'https://provider.example')),'unknown external provider blocked');
 $args['mad4b_provider_id']='test_provider';$GLOBALS['options'][$c::OPTION]=['test_provider'=>['state'=>'draft','certificate_sha256'=>str_repeat('a',64),'purpose'=>'oauth_jwks','origin'=>'https://provider.example']];
 expect(is_wp_error($c::http(false,$args,'https://provider.example/jwks')),'draft certification blocked');
-$GLOBALS['options'][$c::OPTION]['test_provider']['state']='certified';expect($c::http(false,$args,'https://provider.example/jwks')===false,'exact native certified descriptor admitted');
+$GLOBALS['options'][$c::OPTION]['test_provider']['state']='certified';
+$GLOBALS['certification_state']='compatible_unattested';expect(is_wp_error($c::http(false,$args,'https://provider.example/jwks')),'compatible but unattested provider blocked');
+$GLOBALS['certification_state']='certified';expect($c::http(false,$args,'https://provider.example/jwks')===false,'exact native certified descriptor admitted');
 $GLOBALS['options'][$c::OPTION]['test_provider']['certificate_sha256']=str_repeat('b',64);expect(is_wp_error($c::http(false,$args,'https://provider.example/jwks')),'stale certification digest blocked');
 $GLOBALS['options'][$c::OPTION]['test_provider']['certificate_sha256']=str_repeat('a',64);expect(is_wp_error($c::http(false,$args,'https://other.example/jwks')),'authority host drift blocked');
 echo "STAGING_RUNTIME_ADMISSION: PASS\n";

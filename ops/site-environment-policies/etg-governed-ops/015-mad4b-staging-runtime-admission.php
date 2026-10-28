@@ -42,8 +42,18 @@ final class MAD4B_ETG_Runtime_Admission {
           || !MAD4B_SCP_Provider_Transport_Registry::descriptors($provider))return false;
         if(!class_exists('MAD4B_SCP_Provider_Compatibility_Certification',false)
           || !MAD4B_SCP_Provider_Compatibility_Certification::supports_provider($provider))return false;
-        $assessment=MAD4B_SCP_Provider_Compatibility_Certification::assess_provider($provider);
-        if(empty($assessment['exact_runtime_certified']) || empty($assessment['available']))return false;
+        // Native facade resolves the actual registered adapter; assess_provider()
+        // without its adapter argument would always report unavailable.
+        $assessment=MAD4B_SCP_Provider_Compatibility_Certification::capability_certification(
+            array('provider_id'=>$provider));
+        if(!is_array($assessment) || ($assessment['compatibility_state']??'')!=='certified')return false;
+        $eligible=false;
+        foreach((array)($assessment['capabilities']??array()) as $capability){
+            if(!empty($capability['read_eligible']) || !empty($capability['write_eligible'])){
+                $eligible=true;break;
+            }
+        }
+        if(!$eligible)return false;
         $actual=MAD4B_SCP_Provider_Compatibility_Certification::certification_generation_sha256($provider);
         if(!is_string($actual) || !hash_equals($actual,(string)$p['certificate_sha256']))return false;
         $a=wp_parse_url($url);$b=wp_parse_url($p['origin']);
