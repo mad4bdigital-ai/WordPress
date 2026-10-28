@@ -9,7 +9,7 @@ final class MAD4B_SCP_Readiness_Workflow_Options {
     const GROUPS = array(
         'media'=>'Media & Licensing','origin'=>'Tour Origin / Pickup',
         'wpml'=>'Translations (WPML)','pricing'=>'Rates & Pricing',
-        'destinations'=>'Destination Taxonomy','operations'=>'Operations / Forms / Cron',
+        'destinations'=>'Destination Taxonomy','content'=>'Page & Editorial Content','operations'=>'Operations / Forms / Cron',
         'seo'=>'SEO / Dynamic Filters','general'=>'Other Content'
     );
     public static function boot() {
@@ -18,6 +18,12 @@ final class MAD4B_SCP_Readiness_Workflow_Options {
     }
     public static function group_for_issue($issue) {
         $code=sanitize_key((string)($issue['code']??''));
+        if(str_starts_with($code,'ccr_')){
+            $field=sanitize_key((string)($issue['source_evidence']['field']??''));
+            if(str_starts_with($field,'seo_')||$field==='h1')return 'seo';
+            if(in_array($field,array('featured_image','meta_image','term_meta_image','image_alt'),true))return 'media';
+            return 'content';
+        }
         if(str_starts_with($code,'media_'))return 'media';
         if(str_starts_with($code,'origin_'))return 'origin';
         if(str_starts_with($code,'wpml_'))return 'wpml';

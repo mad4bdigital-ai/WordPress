@@ -6,6 +6,7 @@
  */
 defined('ABSPATH') || exit;
 require_once __DIR__.'/class-mad4b-scp-readiness-workflow-options.php';
+require_once __DIR__.'/class-mad4b-scp-content-completeness.php';
 
 final class MAD4B_SCP_Content_Readiness_Alerts {
     const VERSION = '1.0.0';
@@ -27,6 +28,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         add_action('rest_api_init', array(__CLASS__, 'register_rest_routes'));
         add_action('admin_notices', array(__CLASS__, 'admin_notice'));
         MAD4B_SCP_Readiness_Workflow_Options::boot();
+        MAD4B_SCP_Content_Completeness::boot();
     }
     public static function rules() {
         $saved = (array) get_option(self::POLICY, array());
@@ -259,8 +261,14 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                 );
             }
         }
+        $completeness=MAD4B_SCP_Content_Completeness::discover();
+        if(empty($completeness['complete']))$complete=false;
+        else $issues=array_merge($issues,(array)$completeness['issues']);
+        if(count($issues)>self::MAX_ISSUES)$complete=false;
         return array('contract'=>'mad4b.content-readiness.discovery.v1','complete'=>$complete,
-            'post_counts'=>$counts,'scanned'=>$scanned,'issues'=>$issues);
+            'post_counts'=>$counts,'scanned'=>$scanned,'issues'=>$issues,
+            'completeness_evaluated'=>absint($completeness['evaluated']??0),
+            'completeness_skipped_unknown'=>absint($completeness['skipped_unknown']??0));
     }
     public static function run_scheduled() {
         if (!self::trusted_scheduled_cli()) return new WP_Error('mad4b_readiness_scheduler_unauthorized');
@@ -316,6 +324,14 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         if($type==='site' && str_starts_with($code,'dfsb_')){
             // Never resolve a source issue when its scanner is disconnected.
             return has_filter('mad4b/content_readiness/external_issues')!==false;
+        }
+        if(str_starts_with($code,'ccr_')) {
+            $settings=MAD4B_SCP_Content_Completeness::settings();
+            if(empty($settings['enabled'])||($issue['source']??'')!=='content-completeness')return false;
+            $rule_id=(string)($issue['source_evidence']['rule_id']??'');
+            foreach($settings['rules'] as $rule)
+                if(($rule['id']??'')===$rule_id)return true;
+            return false;
         }
         if($code==='cron_overdue')return (bool)$cfg['check_cron'];
         if($code==='form_submissions_unread')return !empty($cfg['form_id']);

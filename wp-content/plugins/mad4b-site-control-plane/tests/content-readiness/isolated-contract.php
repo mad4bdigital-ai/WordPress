@@ -1,7 +1,7 @@
 <?php
 define('ABSPATH','/isolated/');
 define('ICL_SITEPRESS_VERSION','mock');
-class WP_Term {public $name='Africa';}
+class WP_Term {public $name='Africa';public $description='';}
 class WP_Error {
     public function __construct(private string $code) {}
     public function get_error_code(){return $this->code;}
@@ -22,8 +22,12 @@ function get_posts($args){return [111,112];}
 function get_post_meta($id,$key,$one=true){return $GLOBALS['post_meta'][$id][$key]??'';}
 function has_post_thumbnail($id){return false;}
 function has_filter($key){return $key==='mad4b/content_readiness/external_issues' && array_key_exists('external_source', $GLOBALS);}
-function get_post($id){return (object)['ID'=>$id];}
+function get_post($id){return (object)['ID'=>$id,'post_title'=>$GLOBALS['titles'][$id]??'Real Test Page'];}
 function get_post_type($id){return 'tours-and-activities';}
+function get_post_field($key,$id){return $GLOBALS['content_fields'][$id][$key]??'';}
+function get_the_title($id){return $GLOBALS['titles'][$id]??'Real Test Page';}
+function wp_strip_all_tags($v){return strip_tags((string)$v);}
+function get_locale(){return 'en_US';}
 function get_term($id,$tax){return isset($GLOBALS['term_exists']) && !$GLOBALS['term_exists'] ? null : new WP_Term();}
 function get_term_meta($id,$key,$single=true){return $key==='destination_type'?'continent':'';}
 function taxonomy_exists($key){return $key==='location_jet';}
@@ -209,4 +213,45 @@ yes(is_wp_error($closedBatch)&&$closedBatch->get_error_code()==='mad4b_readiness
  'batch follows existing central write gate and never bypasses it');
 yes($cls::rest_local_client_write_permission()===false,
  'REST task write refuses callers without a real verified local-client identity');
+// Configurable completeness is an independent source scanner. It may not
+// resolve saved issues unless its own rule was evaluated in a complete scan.
+$completeness='MAD4B_SCP_Content_Completeness';
+$rules=[
+ ['id'=>'required_summary','target'=>'post','post_type'=>'tours-and-activities',
+  'field'=>'post_excerpt','min_chars'=>3,'severity'=>'high','language'=>'*']
+];
+$invalidRules=$completeness::normalize(['enabled'=>true,'exclude_qa'=>false,'rules'=>[
+ ['id'=>'invalid_field','target'=>'post','post_type'=>'tours-and-activities','field'=>'execute_php']
+]]);
+yes(is_wp_error($invalidRules),'untrusted field expressions cannot become completeness rules');
+$settings=['enabled'=>true,'exclude_qa'=>false,'rules'=>$rules];
+$GLOBALS['options'][$completeness::OPTION]=$settings;
+$GLOBALS['languages']=[111=>'en',112=>'fr'];
+$GLOBALS['content_fields']=[111=>['post_excerpt'=>''],112=>['post_excerpt'=>'']];
+$ccScan=$completeness::discover();
+yes($ccScan['complete']&&$ccScan['evaluated']===2&&count($ccScan['issues'])===2,
+ 'source completeness detects one missing field per WPML language');
+yes($ccScan['issues'][0]['id']!==$ccScan['issues'][1]['id'],
+ 'language-specific fingerprint prevents translation family collisions');
+$ccPersist=$cls::reconcile($cls::discover());
+$ccId=$ccScan['issues'][0]['id'];
+yes(!is_wp_error($ccPersist)&&get_option($cls::STORE)[$ccId]['status']==='open',
+ 'registered completeness issues persist through existing issue ledger');
+$GLOBALS['content_fields'][111]['post_excerpt']='Verified summary source';
+$ccResolved=$cls::reconcile($cls::discover());
+yes(!is_wp_error($ccResolved)&&get_option($cls::STORE)[$ccId]['status']==='resolved',
+ 'correcting source resolves only corresponding language');
+$GLOBALS['options'][$completeness::OPTION]['enabled']=false;
+$ccDisabled=$cls::reconcile($cls::discover());
+$frId=$ccScan['issues'][1]['id'];
+yes(!is_wp_error($ccDisabled)&&get_option($cls::STORE)[$frId]['status']==='open',
+ 'disabling source scanner never silently resolves remaining issues');
+$GLOBALS['options'][$completeness::OPTION]['enabled']=true;
+$GLOBALS['options'][$completeness::OPTION]['rules']=[];
+$ccRemoved=$cls::reconcile($cls::discover());
+yes(!is_wp_error($ccRemoved)&&get_option($cls::STORE)[$frId]['status']==='open',
+ 'removing an active rule preserves unresolved issue history');
+$GLOBALS['options'][$completeness::OPTION]=$settings;
+yes($completeness::rest_rules()['settings']['enabled']===true,
+ 'administrative GET reports persisted independent rules');
 echo "ALL READINESS LEDGER CONTRACTS PASSED\n";

@@ -235,3 +235,37 @@ Do not copy this Lab issue ledger into other companies or Production.
 - The prior Brand Context record and assets retain their original site UUID,
   and require separately certified transfer/migration. They are not silently
   reparented to the new site identity.
+
+## Content Completeness & SEO Readiness Engine (2026-10-28)
+
+- Company-local Option Page: Control Plane → Completeness & SEO. Rules are stored
+  independently in `mad4b_content_completeness_rules_v1`; disabled by default.
+- Never inject JetEngine, pricing, repeaters or taxonomy values into `post_content`.
+  It is an optional WordPress editorial field, not the assumed source of truth.
+- Each rule targets either a registered CPT or taxonomy, and declares an exact
+  trusted source: JetEngine meta text, JetEngine repeater rows, local attachment,
+  featured image ALT, WordPress excerpt/title, Rank Math explicit/template
+  value, Elementor local widget source, or taxonomy description/meta.
+- WPML languages are evaluated independently; each issue fingerprint includes
+  the concrete post/term, rule ID and language. Optional per-language rules
+  and explicit related-post inheritance are supported.
+- Rule fields can include `fallback_meta_keys` (up to six literal meta keys),
+  `conditional_meta`+`conditional_value`, and `inherit_from_meta` +
+  `inherit_post_type`; unverifiable relationships are not guessed.
+- `repeater_rows` counts nonempty JetEngine row arrays; `min_chars` for this
+  field means the minimum number of nonempty rows, not a character count.
+- Empty Rank Math overrides do not automatically imply missing output: global
+  templates and known source values are checked. Unknown template variables,
+  shortcodes, dynamic tags and structured meta remain `unknown` rather than
+  generating confirmed missing-content alerts.
+- The shared issue ledger only resolves configured completeness fingerprints
+  after a complete scan. Disabling a scanner or removing a rule preserves the
+  existing open issue for editorial/audit review; no content is modified.
+- Admin REST: GET/PATCH `/admin/completeness`, GET
+  `/admin/completeness/preview`, POST `/admin/completeness/scan`; normal WP REST
+  admin permission, JSON validation, revision conflict protection (HTTP 409).
+- Routing into Fluent Boards uses `content`, `seo`, and `media` group ownership,
+  but issuing a task still requires the existing MAD4B governed Agent write gate.
+- Lab initial preset intentionally omits `post_content`, gallery (already
+  monitored by Media Readiness) and broad hotel description requirements where
+  the authoritative imported content source is not yet established.
