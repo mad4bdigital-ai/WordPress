@@ -1,0 +1,61 @@
+{
+  "test": "QA46 transaction-isolated Final Quote operations",
+  "execution": "VPS one-off WordPress PHP container, internal-only Docker network, read-only site volume, SQL rollback",
+  "status": "PASS",
+  "qa46_checks": "36/36",
+  "regressions": {
+    "QA45": "44/44",
+    "QA44": "27/27",
+    "QA43": "37/37"
+  },
+  "overall": "144/144",
+  "synthetic": true,
+  "real_supplier_booking": false,
+  "real_payment": false,
+  "company_policy_persisted": false,
+  "note": "Test receipts and approvals existed only in an uncommitted transaction. Quote was neither sold nor booked.",
+  "rows": {
+    "quote_options": [
+      0,
+      1,
+      0
+    ],
+    "approval_options": [
+      0,
+      2,
+      0
+    ],
+    "woo_orders": [
+      1,
+      1,
+      1
+    ],
+    "commerce_requests": [
+      9,
+      9,
+      9
+    ],
+    "fluentboard_tasks": [
+      6,
+      6,
+      6
+    ],
+    "inventory_holds": [
+      0,
+      0,
+      0
+    ],
+    "tour_bookings": [
+      0,
+      0,
+      0
+    ]
+  },
+  "independent_readback": {
+    "company_policy": "draft",
+    "native_financial_blocker": "inferred_mode_policy_pending_approval",
+    "quote_options": 0,
+    "approval_options": 0
+  },
+  "vps_script_path": "/opt/commerce-components/evidence/etg-quote-operations-qa46-20261028/qa46-transaction-e2e.php"
+}
