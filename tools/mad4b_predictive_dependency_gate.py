@@ -138,6 +138,8 @@ DOMAINS = {
     },
 }
 LIMIT_REFERENCED_FILES = 500
+MAX_REVERSE_SCAN_FILES = 3000
+MAX_REVERSE_SCAN_BYTES = 120_000_000
 MAX_BYTES_PER_PHP = 400_000
 CLASS_RE = re.compile(r"\b(?:abstract\s+|final\s+)?class\s+(MAD4B_SCP_[A-Za-z0-9_]+)\b")
 
@@ -172,7 +174,7 @@ def changed_files(repo: Path, base: str, head: str, full_scan: bool) -> list[str
     return sorted(x.replace("\\", "/") for x in result if x.strip())
 
 
-def derived_class_dependents(repo: Path, changed: list[str], base: str = "") -> tuple[list[str], list[str]]:
+def derived_class_dependents(repo: Path, changed: list[str], base: str = "") -> tuple[list[str], list[str], dict]:
     # Dynamic reverse-edge inference: newly modified classes -> PHP consumers.
     classes = set()
     for p in changed:
@@ -191,24 +193,39 @@ def derived_class_dependents(repo: Path, changed: list[str], base: str = "") -> 
                     raise ValueError("Historical PHP blob exceeds bounded scan; review required")
                 classes.update(CLASS_RE.findall(old.stdout.decode("utf-8", errors="replace")))
     if not classes:
-        return [], []
+        return [], [], {"overflow": False, "total": 0, "sha256": hashlib.sha256(b"").hexdigest(), "scanned_files": 0}
     roots = (repo / PLUGIN / "includes", repo / PLUGIN / "tests")
     dependents = set()
+    scanned_files = 0
+    scanned_bytes = 0
     for directory in roots:
         if not directory.exists():
             continue
         for fp in sorted(directory.glob("*.php")):
-            if fp.stat().st_size > MAX_BYTES_PER_PHP:
+            file_size = fp.stat().st_size
+            if file_size > MAX_BYTES_PER_PHP:
                 continue
+            scanned_files += 1
+            scanned_bytes += file_size
+            if scanned_files > MAX_REVERSE_SCAN_FILES or scanned_bytes > MAX_REVERSE_SCAN_BYTES:
+                raise ValueError("Unbounded reverse dependency scan: fail closed")
             body = fp.read_text(encoding="utf-8", errors="replace")
             referenced = set(re.findall(r"\bMAD4B_SCP_[A-Za-z0-9_]+\b", body))
             if not classes.isdisjoint(referenced):
                 rel = fp.relative_to(repo).as_posix()
                 if rel not in changed:
                     dependents.add(rel)
-            if len(dependents) > LIMIT_REFERENCED_FILES:
-                raise ValueError("Unbounded reverse dependency fanout: fail closed")
-    return sorted(classes), sorted(dependents)
+    # Keep the 500-file *detailed evidence* cap. For legitimate high-fanout
+    # changes (e.g. Site Profile), scan every bounded input, hash every hit and
+    # require ALL domain regressions, rather than silently missing consumers
+    # or defeating the security limit by raising it.
+    complete = sorted(dependents)
+    overflow = len(complete) > LIMIT_REFERENCED_FILES
+    evidence_sha = hashlib.sha256("\n".join(complete).encode("utf-8")).hexdigest()
+    return sorted(classes), complete[:LIMIT_REFERENCED_FILES], {
+        "overflow": overflow, "total": len(complete), "sha256": evidence_sha,
+        "scanned_files": scanned_files, "scanned_bytes": scanned_bytes,
+    }
 
 
 def domains_for(paths: list[str]) -> list[str]:
@@ -239,8 +256,8 @@ def closure(initial: list[str]) -> tuple[list[str], list[dict]]:
 
 
 def build_plan(repo: Path, changes: list[str], base: str = "") -> dict:
-    names, dependents = derived_class_dependents(repo, changes, base)
-    seed = domains_for(changes + dependents)
+    names, dependents, reverse = derived_class_dependents(repo, changes, base)
+    seed = sorted(DOMAINS) if reverse["overflow"] else domains_for(changes + dependents)
     if not seed and any(p.startswith(PLUGIN) for p in changes):
         seed = ["core"]
     affected, edges = closure(seed)
@@ -253,6 +270,8 @@ def build_plan(repo: Path, changes: list[str], base: str = "") -> dict:
         "changed_files": changes,
         "changed_classes": names,
         "reverse_dependency_files": dependents,
+        "reverse_dependency_evidence": reverse,
+        "impact_scope": "conservative_all_domains" if reverse["overflow"] else "bounded_exact_domains",
         "direct_domains": seed,
         "transitive_domains": affected,
         "transitive_edges": edges,
@@ -265,7 +284,8 @@ def build_plan(repo: Path, changes: list[str], base: str = "") -> dict:
         "staging_write_authorized": False,
         "production_mutation_allowed": False,
         "release_ready": False,
-        "release_blockers": ["fresh_exact_site_live_evidence_required"] if affected else [],
+        "release_blockers": (["fresh_exact_site_live_evidence_required"] if affected else [])
+            + (["high_fanout_full_suite_and_staging_certification_required"] if reverse["overflow"] else []),
     }
 
 
@@ -312,6 +332,36 @@ def self_test() -> None:
         assert missing["missing_regressions"] and missing["release_ready"] is False
         assert "mcp_host_latency_correlation" in missing["required_live_evidence"]
         assert "production_mutation_denied" in missing["required_live_evidence"]
+    # A legitimate widely used class must never silently lose consumers.
+    # Saturation requires every domain regression and keeps release blocked.
+    with TemporaryDirectory() as temporary:
+        temp = Path(temporary)
+        source = temp / PLUGIN / "includes/class-mad4b-scp-large-shared.php"
+        source.parent.mkdir(parents=True)
+        source.write_text("<?php class MAD4B_SCP_Large_Shared {}")
+        consumers = temp / PLUGIN / "tests"
+        consumers.mkdir(parents=True)
+        for i in range(LIMIT_REFERENCED_FILES + 1):
+            (consumers / f"fanout-{i:04}.php").write_text("<?php MAD4B_SCP_Large_Shared::probe();")
+        plan = build_plan(temp, [source.relative_to(temp).as_posix()])
+        evidence = plan["reverse_dependency_evidence"]
+        assert evidence["total"] == LIMIT_REFERENCED_FILES + 1
+        assert evidence["overflow"] and len(plan["reverse_dependency_files"]) == LIMIT_REFERENCED_FILES
+        assert plan["impact_scope"] == "conservative_all_domains"
+        assert set(plan["transitive_domains"]) == set(DOMAINS)
+        assert plan["release_ready"] is False and not plan["ci_regression_coverage_ready"]
+        assert "high_fanout_full_suite_and_staging_certification_required" in plan["release_blockers"]
+        # Scan-volume limit is still fail-closed; cap was not raised.
+        prior = globals()["MAX_REVERSE_SCAN_FILES"]
+        try:
+            globals()["MAX_REVERSE_SCAN_FILES"] = LIMIT_REFERENCED_FILES
+            try:
+                build_plan(temp, [source.relative_to(temp).as_posix()])
+                raise AssertionError("Unbounded high-fanout scan must be denied")
+            except ValueError as exc:
+                assert "Unbounded reverse dependency scan" in str(exc)
+        finally:
+            globals()["MAX_REVERSE_SCAN_FILES"] = prior
     try:
         changed_files(ROOT, "not-a-sha", "also-not", False)
         raise AssertionError("invalid source commit should be rejected")

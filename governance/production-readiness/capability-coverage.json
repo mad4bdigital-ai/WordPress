@@ -8724,6 +8724,25 @@
       "live_evidence_required": true
     },
     {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php",
+      "source_blob_sha": "c3cd9fb3987a4fc8d63dcabea815ced8509131a1",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/live-write-provider-snapshot-runtime.php"
+      ],
+      "owner_role": "CI source reviewer; separate owner release approval required",
+      "review_rationale": "CI-only exact-source provider mapping review; no authority, grants, or release approval created. Preserve runtime enrollment, adapter certification, and fail-closed provider mapping.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php",
       "source_blob_sha": "938ba418ebb3ac0aa2ccb674d401ab52d6928995",
       "control_ids": [
