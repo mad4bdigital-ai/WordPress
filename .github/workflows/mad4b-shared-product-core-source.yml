@@ -48,6 +48,18 @@ jobs:
           php -l packages/mad4b-shared-product-core/tests/elementor-pro-readonly-compat.php
       - name: Lint QA fixture source producer contract
         run: php -l packages/mad4b-shared-product-core/qa/interactive-cart-lab-20261026/create-fixture.php
+      - name: QA fixture producer must write source-validated Rate units
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('packages/mad4b-shared-product-core/qa/interactive-cart-lab-20261026/create-fixture.php')
+          s = p.read_text()
+          assert s.count("'unit_type'=>$tourUnit") == 2, 'standard and partial QA Rates must inherit explicit source'
+          assert s.count("'unit_type'=>$extraUnit") == 1, 'Extra Rate requires explicit unit'
+          assert "shared_product_unit_glossary('tour-rates','unit_type')" in s
+          assert "if(!isset($unitGlossary['values'][$extraUnit]))" in s
+          print('QA_RATE_UNIT_PRODUCER_SOURCE_CONTRACT_PASS')
+          PY
       - name: Standalone data and Repeater context contracts
         run: php packages/mad4b-shared-product-core/tests/offline-contract-smoke.php
       - name: Booking cart quote input-shape regression
