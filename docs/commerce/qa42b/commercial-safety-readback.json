@@ -1,0 +1,19 @@
+{
+    "binding_classification": "site_bound",
+    "profile_healthy": true,
+    "company_policy_matches_profile": true,
+    "binding_audit_commercial_authority": false,
+    "policy_status": "draft",
+    "order_authorized": false,
+    "supplier_booking_authorized": false,
+    "woo_products": {
+        "60629": {
+            "mapped_product": true,
+            "purchasable": false
+        },
+        "60820": {
+            "mapped_product": true,
+            "purchasable": false
+        }
+    }
+}

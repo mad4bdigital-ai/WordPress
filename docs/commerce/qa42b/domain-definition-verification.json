@@ -1,0 +1,152 @@
+{
+    "result": "PASS",
+    "passed": 33,
+    "total": 33,
+    "checks": {
+        "canonical_domain_exact": {
+            "pass": true,
+            "detail": null
+        },
+        "current_site_profile_authorized": {
+            "pass": true,
+            "detail": null
+        },
+        "company_same_uuid": {
+            "pass": true,
+            "detail": null
+        },
+        "company_same_profile_revision": {
+            "pass": true,
+            "detail": null
+        },
+        "company_same_profile_digest": {
+            "pass": true,
+            "detail": null
+        },
+        "company_new_revision_one": {
+            "pass": true,
+            "detail": null
+        },
+        "policy_new_draft_only": {
+            "pass": true,
+            "detail": null
+        },
+        "policy_same_current_site": {
+            "pass": true,
+            "detail": null
+        },
+        "policy_context_verified": {
+            "pass": true,
+            "detail": null
+        },
+        "rate_sale_modes_are_draft_intent_only": {
+            "pass": true,
+            "detail": null
+        },
+        "no_auto_supplier_or_payment": {
+            "pass": true,
+            "detail": null
+        },
+        "form6_direct_source": {
+            "pass": true,
+            "detail": null
+        },
+        "native_service_cpts": {
+            "pass": true,
+            "detail": null
+        },
+        "native_rate_cpts": {
+            "pass": true,
+            "detail": null
+        },
+        "real_wp_role_personas": {
+            "pass": true,
+            "detail": null
+        },
+        "single_enrollment_receipt": {
+            "pass": true,
+            "detail": null
+        },
+        "receipt_bound_to_domain": {
+            "pass": true,
+            "detail": null
+        },
+        "old_company_preserved_and_isolated": {
+            "pass": true,
+            "detail": null
+        },
+        "old_policy_preserved_and_isolated": {
+            "pass": true,
+            "detail": null
+        },
+        "rest_company_definition_200": {
+            "pass": true,
+            "detail": null
+        },
+        "rest_exact_source_bound": {
+            "pass": true,
+            "detail": null
+        },
+        "rest_policy_200": {
+            "pass": true,
+            "detail": null
+        },
+        "rest_policy_draft_unapproved": {
+            "pass": true,
+            "detail": null
+        },
+        "independent_rate_parent_relation": {
+            "pass": true,
+            "detail": null
+        },
+        "both_sale_choices_are_intent": {
+            "pass": true,
+            "detail": null
+        },
+        "policy_not_order_or_booking_authority": {
+            "pass": true,
+            "detail": null
+        },
+        "preflight_uses_new_site_policy": {
+            "pass": true,
+            "detail": null
+        },
+        "preflight_stays_non_authorizing": {
+            "pass": true,
+            "detail": null
+        },
+        "preflight_rate_only_option_exists": {
+            "pass": true,
+            "detail": null
+        },
+        "preflight_rest_200": {
+            "pass": true,
+            "detail": 200
+        },
+        "anonymous_definitions_denied": {
+            "pass": true,
+            "detail": null
+        },
+        "anonymous_quote_preflight_denied": {
+            "pass": true,
+            "detail": null
+        },
+        "business_rows_unchanged": {
+            "pass": true,
+            "detail": {
+                "before": {
+                    "orders": 1,
+                    "requests": 9,
+                    "tasks": 6,
+                    "inventory_holds": 0
+                },
+                "after": {
+                    "orders": 1,
+                    "requests": 9,
+                    "tasks": 6,
+                    "inventory_holds": 0
+                }
+            }
+        }
+    }
+}
