@@ -143,8 +143,12 @@ final class CommercialFinalQuoteLifecycle
             &&get_post_type($line['service_id'])==='tours-and-activities') {
             $financial=shared_product_financial_readiness_v2($line['service_id'],$line['rate_id']);
         }
+        // The native source readiness explicitly does NOT certify checkout.
+        // An approved mode with zero blockers can support a separately signed
+        // Final Quote. Cart/payment remain an independent, closed release gate.
         $financialApproved=is_array($financial)
-            && ($financial['checkout_ready']??false)===true
+            && ($financial['status']??null)==='diagnostics_passed_checkout_still_uncertified'
+            && ($financial['checkout_ready']??true)===false
             && empty($financial['blockers']);
         $policyActive=$probe['company_policy_status']==='active';
         $siteContext=CompanyCommercePolicy::context();
