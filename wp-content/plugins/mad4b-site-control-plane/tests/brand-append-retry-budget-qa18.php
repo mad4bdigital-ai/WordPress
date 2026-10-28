@@ -47,4 +47,13 @@ qa(!is_wp_error($mat),'materialize lane retained');
 $reset=MAD4B_SCP_Recovery_Attempt_Budget::reset($lane,$input,$success['journal_sha256'],true);
 qa(is_wp_error($reset)&&$reset->get_error_code()==='mad4b_retry_reset_authority_required','admin gate retained');
 qa(MAD4B_SCP_Recovery_Attempt_Budget::LIMIT===3,'retry bound retained');
+$adapter_source=file_get_contents(__DIR__.'/../includes/adapters/class-mad4b-scp-context-adapter.php');
+$schema_start=strrpos($adapter_source,"'context/recovery-attempt-status',");
+$schema_end=strpos($adapter_source,"'context/google-drive-status',",$schema_start);
+qa(false!==$schema_start&&false!==$schema_end&&$schema_end>$schema_start,'recovery read ability discoverable');
+$schema_block=substr($adapter_source,$schema_start,$schema_end-$schema_start);
+foreach(['draft_preflight_sha256','evidence_digest'] as $required){
+ qa(false!==strpos($schema_block,"'".$required."' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}
+ )"),'append retry read schema exposes '.$required);
+}
 echo "QA18_RETRY_BUDGET_PASS\n";
