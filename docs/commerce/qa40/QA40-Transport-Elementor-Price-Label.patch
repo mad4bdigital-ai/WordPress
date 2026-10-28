@@ -1,0 +1,11 @@
+--- a/wp-content/mu-plugins/transport-component-price-tags.php
++++ b/wp-content/mu-plugins/transport-component-price-tags.php
+@@ -84,7 +84,7 @@
+     $this->add_control('rate_id',['label'=>'Explicit Transport Rate ID (optional)','type'=>Elementor\Controls_Manager::TEXT]);
+     $this->add_control('quantity_mode',['label'=>'Quantity basis','type'=>Elementor\Controls_Manager::SELECT,'options'=>['unit_reference'=>'One engine pricing unit (indicative)','context'=>'Explicit inherited quantities'],'default'=>'unit_reference']);
+     $this->add_control('quantities_json',['label'=>'Explicit quantities JSON (optional)','type'=>Elementor\Controls_Manager::TEXT,'condition'=>['quantity_mode'=>'context']]);
+-    $this->add_control('role',['label'=>'Price role','type'=>Elementor\Controls_Manager::SELECT,'options'=>['current'=>'Current final','previous'=>'Previous (only verified)','sale'=>'Sale (only verified)'],'default'=>'current']);
++    $this->add_control('role',['label'=>'Price role','type'=>Elementor\Controls_Manager::SELECT,'options'=>['current'=>'Current indicative','previous'=>'Previous (only verified)','sale'=>'Sale (only verified)'],'default'=>'current']);
+     if($this->part==='formatted')$this->add_control('show_label',['label'=>'Show price label','type'=>Elementor\Controls_Manager::SWITCHER,'default'=>'yes']);
+     if($this->part==='currency')$this->add_control('mode',['label'=>'Currency representation','type'=>Elementor\Controls_Manager::SELECT,'options'=>['code'=>'Code','symbol'=>'Symbol'],'default'=>'code']);
+    }

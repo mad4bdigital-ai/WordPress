@@ -1,0 +1,20 @@
+{
+  "contract": "etg.qa40.verify.v1",
+  "environment": "local",
+  "db": "etg_woocommerce_lab",
+  "total_passed": 109,
+  "total": 109,
+  "installed_on": "etg-woo-lab-php",
+  "no_production_mutation": true,
+  "commercial_authority_granted": false,
+  "positive_financial_write_tested": false,
+  "files": [
+    "qa40-results.json",
+    "display-results.json",
+    "extended-results.json",
+    "qa39-recheck.json",
+    "qa39-catalog-recheck.json",
+    "qa39-roles-recheck.json",
+    "qa38-recheck.json"
+  ]
+}
