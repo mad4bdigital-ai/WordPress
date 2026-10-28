@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mad4b.com/contracts/commerce-management-company-v1.schema.json",
+  "title": "MAD4B site-bound Commerce Management Company Definition",
+  "description": "Governed, non-authorizing per-site configuration. Bound to MAD4B Site Profile v2. No arbitrary provider executable or capability grants.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "site_uuid",
+    "site_profile_revision",
+    "site_profile_digest",
+    "environment",
+    "revision",
+    "domains",
+    "form_roles",
+    "source_types"
+  ],
+  "properties": {
+    "contract": {
+      "const": "commerce.management.company.v1"
+    },
+    "site_uuid": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 128
+    },
+    "site_profile_revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "site_profile_digest": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{64}$"
+    },
+    "environment": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 32
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "domains": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "forms": {
+          "type": "boolean",
+          "description": "Visibility for native provider discovery; never a grant of write authority."
+        },
+        "services": {
+          "type": "boolean",
+          "description": "Visibility for native provider discovery; never a grant of write authority."
+        },
+        "rates": {
+          "type": "boolean",
+          "description": "Visibility for native provider discovery; never a grant of write authority."
+        },
+        "reviews": {
+          "type": "boolean",
+          "description": "Visibility for native provider discovery; never a grant of write authority."
+        },
+        "quotes": {
+          "type": "boolean",
+          "description": "Visibility for native provider discovery; never a grant of write authority."
+        },
+        "tasks": {
+          "type": "boolean",
+          "description": "Visibility for native provider discovery; never a grant of write authority."
+        },
+        "orders": {
+          "type": "boolean",
+          "description": "Visibility for native provider discovery; never a grant of write authority."
+        },
+        "inventory": {
+          "type": "boolean",
+          "description": "Visibility for native provider discovery; never a grant of write authority."
+        },
+        "payments": {
+          "type": "boolean",
+          "description": "Visibility for native provider discovery; never a grant of write authority."
+        },
+        "suppliers": {
+          "type": "boolean",
+          "description": "Visibility for native provider discovery; never a grant of write authority."
+        },
+        "crm": {
+          "type": "boolean",
+          "description": "Visibility for native provider discovery; never a grant of write authority."
+        },
+        "workflows": {
+          "type": "boolean",
+          "description": "Visibility for native provider discovery; never a grant of write authority."
+        },
+        "accounting": {
+          "type": "boolean",
+          "description": "Visibility for native provider discovery; never a grant of write authority."
+        },
+        "users": {
+          "type": "boolean",
+          "description": "Visibility for native provider discovery; never a grant of write authority."
+        }
+      }
+    },
+    "form_roles": {
+      "type": "object",
+      "maxProperties": 30,
+      "patternProperties": {
+        "^[a-z][a-z0-9_]{1,48}$": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "source_types": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "services": {
+          "type": "array",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{1,31}$"
+          }
+        },
+        "rates": {
+          "type": "array",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{1,31}$"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,489 @@
+--- a/composition.php
++++ b/composition.php
+@@ -36,6 +36,7 @@
+ require_once __DIR__ . '/includes/RequestReviewAdmin.php';
+ require_once __DIR__ . '/includes/InquiryQualification.php';
+ require_once __DIR__ . '/includes/LifecycleReadiness.php';
++require_once __DIR__ . '/includes/CompanyManagementRest.php';
+ require_once __DIR__ . '/includes/FluentBoardsTaskBridge.php';
+ require_once __DIR__ . '/includes/RequestIntake.php';
+ require_once __DIR__ . '/includes/SubmissionContext.php';
+@@ -82,6 +83,7 @@
+ add_action('plugins_loaded', [Commerce\Composition\WorkflowJobsApi::class, 'bootstrap'], 50);
+ add_action('plugins_loaded', [Commerce\Composition\RequestReviewApi::class, 'bootstrap'], 50);
+ add_action('plugins_loaded', [Commerce\Composition\LifecycleReadiness::class, 'bootstrap'], 51);
++add_action('plugins_loaded', [Commerce\Composition\CompanyManagementRest::class, 'bootstrap'], 52);
+ add_action('plugins_loaded', [Commerce\Composition\IntakeCaseApi::class, 'bootstrap'], 50);
+ add_action('plugins_loaded', [Commerce\Composition\FluentBoardsTaskBridge::class, 'bootstrap'], 51);
+ add_action('plugins_loaded', [Commerce\Composition\AutomationEvents::class, 'bootstrap'], 51);
+--- a/includes/RequestReview.php
++++ b/includes/RequestReview.php
+@@ -152,23 +152,39 @@
+         ]];
+     }
+ 
+-    public static function decide(int $requestId,string $next,int $expectedRevision,
+-        string $reason,string $intent):array|\WP_Error
++    /** Native review source of truth for every API and UI consumer. */
++    public static function transitionsFor(string $state):array
+     {
+-        global $wpdb;
+-        if(!self::enabled()||!self::authorized()||!self::ready())
+-            return new \WP_Error('review_access_denied');
+-        $transitions=[
++        $states=[
+             'pending_review'=>['under_review','needs_information','rejected'],
+             'under_review'=>['needs_information','accepted_for_processing','rejected'],
+             'needs_information'=>['under_review','rejected'],
+             'accepted_for_processing'=>[],
+             'rejected'=>[]
+         ];
++        return $states[$state]??[];
++    }
++    public static function knownReviewStates():array
++    {
++        return ['pending_review','under_review','needs_information',
++            'accepted_for_processing','rejected'];
++    }
++    public static function reasonCodes():array
++    {
++        return ['review_started','information_missing','source_unavailable',
++            'customer_request','review_completed'];
++    }
++
++    public static function decide(int $requestId,string $next,int $expectedRevision,
++        string $reason,string $intent):array|\WP_Error
++    {
++        global $wpdb;
++        if(!self::enabled()||!self::authorized()||!self::ready())
++            return new \WP_Error('review_access_denied');
++
+         if($requestId<1||$expectedRevision<0||
+-            !in_array($next,array_keys($transitions),true)||
+-            !in_array($reason,['review_started','information_missing',
+-                'source_unavailable','customer_request','review_completed'],true)||
++            !in_array($next,self::knownReviewStates(),true)||
++            !in_array($reason,self::reasonCodes(),true)||
+             !preg_match('/^[A-Za-z0-9._:-]{16,128}$/D',$intent))
+             return new \WP_Error('review_command_invalid');
+         // Accepting or rejecting a request is a manager decision, NOT
+@@ -231,7 +247,7 @@
+             $from=$row['review_state'];$rev=(int)$row['revision'];
+             if($rev!==$expectedRevision)
+                 return new \WP_Error('review_revision_conflict');
+-            if(!in_array($next,$transitions[$from]??[],true))
++            if(!in_array($next,self::transitionsFor($from),true))
+                 return new \WP_Error('review_transition_not_allowed');
+             $revision=$rev+1;$now=gmdate('Y-m-d H:i:s');
+             $changed=$wpdb->query($wpdb->prepare(
+--- a/includes/CompanyManagementRest.php
++++ b/includes/CompanyManagementRest.php
+@@ -0,0 +1,408 @@
++<?php
++declare(strict_types=1);
++namespace Commerce\Composition;
++
++/**
++ * Tenant-bound, read-oriented admin REST facade. The canonical Site Profile
++ * owns tenant identity. Domain providers own rules, data and all mutations.
++ * Company definitions only narrow what is visible; never grant abilities.
++ */
++final class CompanyManagementRest
++{
++    private const PROFILE_OPTION='commerce_management_company_definitions_v1';
++    private const CONTRACT='commerce.management.company.v1';
++    private const ROUTE='commerce-composition/v1';
++    private const DOMAINS=[
++        'forms'=>['owner'=>'fluent_forms','source'=>'native_form_submissions','mode'=>'source_read'],
++        'services'=>['owner'=>'wordpress_cpts','source'=>'published_service_products','mode'=>'source_read'],
++        'rates'=>['owner'=>'domain_rate_providers','source'=>'canonical_cpt_rates','mode'=>'provider_read'],
++        'reviews'=>['owner'=>'commerce_request_review','source'=>'request_registry','mode'=>'native_review'],
++        'quotes'=>['owner'=>'domain_pricing_engines','source'=>'verified_quote_receipts','mode'=>'preview_only'],
++        'tasks'=>['owner'=>'fluentboards','source'=>'native_task_links','mode'=>'native_task'],
++        'orders'=>['owner'=>'woocommerce_hpos','source'=>'woocommerce_orders','mode'=>'not_authorized'],
++        'inventory'=>['owner'=>'domain_inventory_providers','source'=>'provider_inventory','mode'=>'not_authorized'],
++        'payments'=>['owner'=>'woocommerce_payment_provider','source'=>'gateway_receipts','mode'=>'not_authorized'],
++        'suppliers'=>['owner'=>'supplier_provider','source'=>'provider_confirmation','mode'=>'not_authorized'],
++        'crm'=>['owner'=>'fluentcrm','source'=>'consent_bound_contact_links','mode'=>'read_only'],
++        'workflows'=>['owner'=>'commerce_workflow_jobs','source'=>'native_queue','mode'=>'governed_existing'],
++        'accounting'=>['owner'=>'accounting_provider','source'=>'certified_financial_ledger','mode'=>'not_authorized'],
++        'users'=>['owner'=>'wordpress_core','source'=>'effective_site_capabilities','mode'=>'governed_read']
++    ];
++    private static function auth():bool {
++        return RequestReview::authorized()&&RequestReview::enabled();
++    }
++    private static function profile():array|\WP_Error {
++        if(!class_exists('MAD4B_SCP_Site_Profile'))
++            return new \WP_Error('management_site_profile_unavailable');
++        $p=\MAD4B_SCP_Site_Profile::profile();
++        $s=\MAD4B_SCP_Site_Profile::status();
++        if(!is_array($p)||!is_array($s)||
++           ($p['contract']??null)!=='mad4b.site-profile.v2'||
++           !is_string($p['site_uuid']??null)||$p['site_uuid']===''||
++           (int)($p['revision']??0)<1)
++            return new \WP_Error('management_site_profile_unenrolled');
++        return ['uuid'=>$p['site_uuid'],'revision'=>(int)$p['revision'],
++            'environment'=>(string)($p['environment']??'unknown'),
++            'digest'=>(string)($s['profile_digest']??''),
++            'status'=>$s];
++    }
++    private static function definition(array $profile):array {
++        $raw=get_option(self::PROFILE_OPTION,[]);
++        $source='canonical_defaults';
++        $issues=[];
++        $visible=array_fill_keys(array_keys(self::DOMAINS),false);
++        $formRoles=[];
++        $sourceTypes=['services'=>[],'rates'=>[]];
++        $revision=0;
++        if(is_array($raw)&&$raw!==[]){
++            $bound=($raw['contract']??null)===self::CONTRACT
++                &&is_string($raw['site_uuid']??null)
++                &&hash_equals($profile['uuid'],$raw['site_uuid'])
++                &&(int)($raw['site_profile_revision']??-1)===$profile['revision']
++                &&is_string($raw['site_profile_digest']??null)
++                &&$profile['digest']!==''
++                &&hash_equals($profile['digest'],$raw['site_profile_digest'])
++                &&($raw['environment']??null)===$profile['environment']
++                &&is_int($raw['revision']??null)&&$raw['revision']>=1;
++            if(!$bound){
++                // A copied, stale or foreign policy cannot authorize a route.
++                $source='definition_invalid';
++                $issues[]='company_definition_binding_mismatch';
++                $visible=array_fill_keys(array_keys(self::DOMAINS),false);
++            }else{
++                $source='site_bound_definition';
++                $revision=$raw['revision'];
++                $domains=$raw['domains']??[];
++                if(!is_array($domains)){
++                    $source='definition_invalid';$issues[]='company_domains_invalid';
++                    $visible=array_fill_keys(array_keys(self::DOMAINS),false);
++                }else{
++                    foreach($visible as $domain=>$on)
++                        if(array_key_exists($domain,$domains))$visible[$domain]=$domains[$domain]===true;
++                }
++                $sources=$raw['source_types']??[];
++                if(is_array($sources)){
++                    foreach($sourceTypes as $domain=>$_){
++                        $candidates=$sources[$domain]??[];
++                        if(!is_array($candidates))continue;
++                        foreach(array_slice($candidates,0,16) as $type){
++                            if(!is_string($type)||!preg_match('/^[a-z][a-z0-9_-]{1,31}$/D',$type)
++                                ||in_array($type,['post','page','attachment','shop_order',
++                                    'shop_order_refund','revision','user_request'],true)
++                                ||!post_type_exists($type))continue;
++                            $postType=get_post_type_object($type);
++                            if(!is_object($postType)||!($postType->show_ui??false))continue;
++                            $sourceTypes[$domain][]=$type;
++                        }
++                        $sourceTypes[$domain]=array_values(array_unique($sourceTypes[$domain]));
++                    }
++                }
++                $roles=$raw['form_roles']??[];
++                if(is_array($roles)){
++                    foreach($roles as $name=>$id)
++                        if(is_string($name)&&preg_match('/^[a-z][a-z0-9_]{1,48}$/D',$name)
++                            &&is_int($id)&&$id>0&&count($formRoles)<30)
++                            $formRoles[$name]=$id;
++                }
++            }
++        }
++        // The canonical source for configured intake forms stays the
++        // native Request Inbox policy. Only include true cross-references.
++        $inquiries=get_option('commerce_unqualified_inquiry_form_ids',[]);
++        $formIds=is_array($inquiries)?array_values(array_unique(array_filter(
++            array_map('intval',$inquiries),static fn($n)=>$n>0))):[];
++        return ['contract'=>self::CONTRACT,'source'=>$source,'revision'=>$revision,
++            'issues'=>$issues,'domains'=>$visible,'form_roles'=>$formRoles,
++            'source_types'=>$sourceTypes,'inquiry_form_ids'=>array_slice($formIds,0,50),
++            'read_only_definition'=>true];
++    }
++    private static function context():array|\WP_Error {
++        $p=self::profile();
++        if(is_wp_error($p))return $p;
++        $d=self::definition($p);
++        $s=$p['status'];
++        $writeReady=$d['source']==='site_bound_definition'
++            &&($s['authority_ready']??false)===true
++            &&($s['write_enabled']??false)===true
++            &&($s['origin_match']??false)===true
++            &&($s['environment_match']??false)===true
++            &&($s['deployment_binding_match']??false)===true
++            &&($s['profile_authority_quarantined']??true)===false;
++        $blockers=$d['issues'];
++        if($d['source']!=='site_bound_definition')
++            $blockers[]='company_definition_not_site_bound';
++        foreach(['authority_ready','write_enabled','origin_match','environment_match',
++                 'deployment_binding_match'] as $field)
++            if(($s[$field]??false)!==true)$blockers[]='site_profile_'.$field.'_missing';
++        if(($s['profile_authority_quarantined']??true)!==false)
++            $blockers[]='site_profile_authority_quarantined';
++        return ['site_uuid'=>$p['uuid'],'site_profile_revision'=>$p['revision'],
++            'environment'=>$p['environment'],'definition'=>$d,
++            'write_ready'=>$writeReady,'write_blockers'=>array_values(array_unique($blockers))];
++    }
++    private static function respond(array $payload):\WP_REST_Response {
++        $res=new \WP_REST_Response(['schema'=>'commerce.management.rest.v1']+$payload,200);
++        $res->header('Cache-Control','private,no-store');
++        return $res;
++    }
++    private static function nativeRoutes():array
++    {
++        return [
++            'form_configuration'=>'GET /configuration/{parent_id}',
++            'request_review'=>'GET /request-reviews/{request_id}',
++            'request_lifecycle'=>'GET /request-reviews/{request_id}/lifecycle',
++            'review_decision'=>'POST /request-reviews/{request_id}/decide',
++            'task_inspection'=>'GET /request-reviews/{request_id}/task',
++            'supplier_readiness'=>'GET /request-reviews/{request_id}/supplier-readiness',
++            'intake_case'=>'GET /intake-cases/{request_id}',
++            'workflow_definitions'=>'GET /workflow-actions',
++            'workflow_jobs'=>'GET /workflow-jobs',
++            'company_definitions'=>'GET /management/definitions',
++            'company_resources'=>'GET /management/resources',
++            'company_catalog'=>'GET /management/catalog',
++            'company_requests'=>'GET /management/requests',
++            'company_request_actions'=>'GET /management/requests/{request_id}/actions',
++            'company_command'=>'POST /management/requests/{request_id}/commands'
++        ];
++    }
++    public static function definitions():\WP_REST_Response|\WP_Error {
++        $context=self::context();
++        if(is_wp_error($context))return self::error($context);
++        $domains=[];
++        foreach(self::DOMAINS as $id=>$v){
++            $domains[$id]=$v+['enabled'=>$context['definition']['domains'][$id]===true,
++                'mutation_authorized'=>false];
++        }
++        return self::respond(['site_uuid'=>$context['site_uuid'],
++            'site_profile_revision'=>$context['site_profile_revision'],
++            'environment'=>$context['environment'],
++            'definition'=>$context['definition'],
++            'provider_catalog'=>$domains,
++            'native_routes'=>self::nativeRoutes(),
++            'write_ready'=>$context['write_ready'],
++            'write_blockers'=>$context['write_blockers']]);
++    }
++    public static function resources(\WP_REST_Request $r):\WP_REST_Response|\WP_Error {
++        $ctx=self::context();
++        if(is_wp_error($ctx))return self::error($ctx);
++        $domain=(string)$r->get_param('domain');
++        if($domain!==''&&!array_key_exists($domain,self::DOMAINS))
++            return self::failure('management_domain_not_registered',404);
++        $provider=$domain!==''?[$domain=>self::DOMAINS[$domain]]:self::DOMAINS;
++        $data=[];
++        foreach($provider as $name=>$definition){
++            $enabled=$ctx['definition']['domains'][$name]===true;
++            $data[$name]=$definition+['enabled'=>$enabled,
++                'state'=>$enabled?'provider_owned':'disabled_by_company_definition',
++                'commerce_write_authorized'=>false,
++                'source_verified'=>false];
++        }
++        return self::respond(['site_uuid'=>$ctx['site_uuid'],'resources'=>$data,
++            'no_implicit_capability_grants'=>true]);
++    }
++    /** Paginated, published source identities; no private post content/prices. */
++    public static function catalog(\WP_REST_Request $r):\WP_REST_Response|\WP_Error {
++        $ctx=self::context();
++        if(is_wp_error($ctx))return self::error($ctx);
++        $domain=(string)$r->get_param('domain');
++        if(!in_array($domain,['services','rates'],true))
++            return self::failure('management_catalog_domain_invalid',400);
++        if($ctx['definition']['domains'][$domain]!==true)
++            return self::failure('management_resource_disabled',403);
++        $allowed=$ctx['definition']['source_types'][$domain];
++        if(!$allowed)
++            return self::respond(['site_uuid'=>$ctx['site_uuid'],'domain'=>$domain,
++                'items'=>[],'pagination'=>['page'=>1,'page_size'=>0,'total'=>0],
++                'source_status'=>'company_source_types_not_configured']);
++        $type=(string)$r->get_param('type');
++        if($type!==''&&!in_array($type,$allowed,true))
++            return self::failure('management_source_type_not_registered',403);
++        $page=max(1,(int)$r->get_param('page'));
++        $limit=max(1,min(50,(int)$r->get_param('page_size')));
++        $query=new \WP_Query([
++            'post_type'=>$type!==''?$type:$allowed,
++            'post_status'=>'publish','posts_per_page'=>$limit,
++            'paged'=>$page,'fields'=>'ids','orderby'=>'ID','order'=>'DESC',
++            'ignore_sticky_posts'=>true,'suppress_filters'=>true,
++            'no_found_rows'=>false
++        ]);
++        $items=[];
++        foreach($query->posts as $id){
++            $id=(int)$id;
++            if(!in_array(get_post_type($id),$allowed,true))continue;
++            $items[]=['id'=>$id,'source_type'=>get_post_type($id),
++                'title'=>wp_strip_all_tags((string)get_the_title($id)),
++                'published'=>true,'price_authorized'=>false,
++                'supplier_booking_authorized'=>false];
++        }
++        return self::respond(['site_uuid'=>$ctx['site_uuid'],
++            'domain'=>$domain,'items'=>$items,
++            'pagination'=>['page'=>$page,'page_size'=>$limit,
++                'total'=>(int)$query->found_posts],
++            'source_status'=>'company_registered_wp_cpt',
++            'no_financial_authority'=>true]);
++    }
++    public static function requestList(\WP_REST_Request $r):\WP_REST_Response|\WP_Error {
++        $ctx=self::context();
++        if(is_wp_error($ctx))return self::error($ctx);
++        if($ctx['definition']['domains']['reviews']!==true)
++            return self::failure('management_resource_disabled',403);
++        $rows=RequestReview::listing((int)$r->get_param('page'),
++            (int)$r->get_param('page_size'));
++        if(is_wp_error($rows))return self::error($rows);
++        return self::respond(['site_uuid'=>$ctx['site_uuid'],
++            'results'=>$rows,'source_owner'=>'commerce_request_review']);
++    }
++    public static function requestRead(\WP_REST_Request $r):\WP_REST_Response|\WP_Error {
++        $ctx=self::context();
++        if(is_wp_error($ctx))return self::error($ctx);
++        if($ctx['definition']['domains']['reviews']!==true)
++            return self::failure('management_resource_disabled',403);
++        $id=(int)$r['request_id'];
++        $item=LifecycleReadiness::inspect($id);
++        if(is_wp_error($item))return self::error($item);
++        return self::respond(['site_uuid'=>$ctx['site_uuid'],
++            'request'=>$item,'source_owner'=>'commerce_lifecycle_readiness',
++            'write_ready'=>$ctx['write_ready']]);
++    }
++    public static function actions(\WP_REST_Request $r):\WP_REST_Response|\WP_Error {
++        $ctx=self::context();
++        if(is_wp_error($ctx))return self::error($ctx);
++        if($ctx['definition']['domains']['reviews']!==true)
++            return self::failure('management_resource_disabled',403);
++        $id=(int)$r['request_id'];
++        $read=RequestReview::read($id);
++        if(is_wp_error($read))return self::error($read);
++        $reviewer=current_user_can('commerce_review_requests')||
++            current_user_can('manage_options');
++        $manager=current_user_can('commerce_approve_request_processing')||
++            current_user_can('manage_options');
++        $taskUser=current_user_can('commerce_manage_request_tasks')||
++            current_user_can('manage_options');
++        $transitions=[];
++        foreach(RequestReview::transitionsFor((string)$read['review_state']) as $state){
++            $permitted=$reviewer&&($manager||
++                !in_array($state,['accepted_for_processing','rejected'],true));
++            $transitions[]=['to_state'=>$state,'eligible'=>$permitted,
++                'executable'=>$permitted&&$ctx['write_ready'],
++                'requires_idempotency_key'=>true,'source_owner'=>'request_review'];
++        }
++        $task=$ctx['definition']['domains']['tasks']===true&&$taskUser;
++        return self::respond(['site_uuid'=>$ctx['site_uuid'],
++            'request_id'=>$id,'review_revision'=>$read['revision'],
++            'review_state'=>$read['review_state'],'transitions'=>$transitions,
++            'reason_codes'=>RequestReview::reasonCodes(),
++            'task_ensure'=>['eligible'=>$task,'executable'=>$task&&$ctx['write_ready'],
++                'source_owner'=>'fluentboards_task_bridge'],
++            'commercial_actions'=>['quote_final_approve'=>false,'traveler_accept'=>false,
++                'woo_order_create'=>false,'payment_capture'=>false,
++                'supplier_booking_create'=>false,'accounting_post'=>false],
++            'write_ready'=>$ctx['write_ready'],
++            'write_blockers'=>$ctx['write_blockers']]);
++    }
++    public static function command(\WP_REST_Request $r):\WP_REST_Response|\WP_Error {
++        $ctx=self::context();
++        if(is_wp_error($ctx))return self::error($ctx);
++        // The Site Profile authority and deployment binding gate is
++        // mandatory even for existing bounded review/task operations.
++        if(!$ctx['write_ready'])return self::failure('management_site_authority_not_ready',409);
++        $body=$r->get_json_params();
++        if(!is_array($body)||array_is_list($body))
++            return self::failure('management_command_payload_invalid',400);
++        $key=(string)$r->get_header('idempotency-key');
++        if(!preg_match('/^[A-Za-z0-9._:-]{16,128}$/D',$key))
++            return self::failure('management_idempotency_key_required',400);
++        $uuid=$body['site_uuid']??null;
++        $revision=$body['site_profile_revision']??null;
++        if(!is_string($uuid)||!hash_equals($ctx['site_uuid'],$uuid)||
++            !is_int($revision)||$revision!==$ctx['site_profile_revision'])
++            return self::failure('management_company_context_mismatch',409);
++        if(!is_int($body['expected_review_revision']??null)||
++            $body['expected_review_revision']<0)
++            return self::failure('management_revision_required',400);
++        $action=$body['action']??null;
++        if(!is_string($action)||!in_array($action,['review.transition','task.ensure'],true))
++            return self::failure('management_command_not_registered',404);
++        $id=(int)$r['request_id'];
++        $read=RequestReview::read($id);
++        if(is_wp_error($read))return self::error($read);
++        if($read['revision']!==$body['expected_review_revision'])
++            return self::failure('management_revision_conflict',409);
++        if($action==='review.transition'){
++            if($ctx['definition']['domains']['reviews']!==true)
++                return self::failure('management_resource_disabled',403);
++            $expected=['action','expected_review_revision','reason_code',
++                'site_profile_revision','site_uuid','to_state'];
++            $given=array_keys($body);sort($expected);sort($given);
++            if($expected!==$given||!is_string($body['to_state'])||
++                !is_string($body['reason_code']))
++                return self::failure('management_command_schema_invalid',400);
++            $result=RequestReview::decide($id,$body['to_state'],
++                $body['expected_review_revision'],$body['reason_code'],$key);
++        }else{
++            if($ctx['definition']['domains']['tasks']!==true)
++                return self::failure('management_resource_disabled',403);
++            $expected=['action','expected_review_revision',
++                'site_profile_revision','site_uuid'];
++            $given=array_keys($body);sort($expected);sort($given);
++            if($expected!==$given||!(
++                current_user_can('commerce_manage_request_tasks')||
++                current_user_can('manage_options')))
++                return self::failure('management_task_action_forbidden',403);
++            $result=FluentBoardsTaskBridge::ensure($id);
++        }
++        if(is_wp_error($result))return self::error($result);
++        return self::respond(['source_owner'=>$action==='review.transition'?
++            'request_review':'fluentboards_task_bridge','result'=>$result,
++            'financial_authority_granted'=>false]);
++    }
++    private static function error(\WP_Error $error):\WP_Error {
++        $code=$error->get_error_code();
++        return self::failure($code,str_contains($code,'conflict')?409:422);
++    }
++    private static function failure(string $code,int $status):\WP_Error {
++        return new \WP_Error($code,'Management operation unavailable',
++            ['status'=>$status]);
++    }
++    public static function routes():void {
++        $auth=static fn()=>self::auth();
++        $paged=['page'=>['type'=>'integer','minimum'=>1,'default'=>1],
++            'page_size'=>['type'=>'integer','minimum'=>1,'maximum'=>50,'default'=>20]];
++        register_rest_route(self::ROUTE,'/management/definitions',[
++            'methods'=>\WP_REST_Server::READABLE,
++            'permission_callback'=>$auth,
++            'callback'=>[self::class,'definitions']]);
++        register_rest_route(self::ROUTE,'/management/resources',[
++            'methods'=>\WP_REST_Server::READABLE,
++            'permission_callback'=>$auth,
++            'callback'=>[self::class,'resources'],
++            'args'=>['domain'=>['type'=>'string','default'=>'']]]);
++        register_rest_route(self::ROUTE,'/management/catalog',[
++            'methods'=>\WP_REST_Server::READABLE,
++            'permission_callback'=>$auth,
++            'callback'=>[self::class,'catalog'],
++            'args'=>[
++                'domain'=>['type'=>'string','required'=>true],
++                'type'=>['type'=>'string','default'=>''],
++                'page'=>['type'=>'integer','minimum'=>1,'default'=>1],
++                'page_size'=>['type'=>'integer','minimum'=>1,'maximum'=>50,'default'=>20]
++            ]]);
++        register_rest_route(self::ROUTE,'/management/requests',[
++            'methods'=>\WP_REST_Server::READABLE,'permission_callback'=>$auth,
++            'callback'=>[self::class,'requestList'],'args'=>$paged]);
++        register_rest_route(self::ROUTE,'/management/requests/(?P<request_id>[1-9][0-9]*)',[
++            'methods'=>\WP_REST_Server::READABLE,'permission_callback'=>$auth,
++            'callback'=>[self::class,'requestRead']]);
++        register_rest_route(self::ROUTE,
++            '/management/requests/(?P<request_id>[1-9][0-9]*)/actions',[
++            'methods'=>\WP_REST_Server::READABLE,'permission_callback'=>$auth,
++            'callback'=>[self::class,'actions']]);
++        register_rest_route(self::ROUTE,
++            '/management/requests/(?P<request_id>[1-9][0-9]*)/commands',[
++            'methods'=>\WP_REST_Server::CREATABLE,
++            'permission_callback'=>$auth,'callback'=>[self::class,'command']]);
++    }
++    public static function bootstrap():void {
++        add_action('rest_api_init',[self::class,'routes']);
++    }
++}
