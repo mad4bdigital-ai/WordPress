@@ -86,11 +86,17 @@ final class CommercialQuoteEvidenceProbe
         ];
         // No personal data, addresses, contact details or unapproved prices
         // may travel to the source provider.
-        foreach (['travel_date', 'occupancy'] as $safeKey) {
-            if (is_string($configuration[$safeKey] ?? null)
-                && strlen($configuration[$safeKey]) <= 40) {
-                $context[$safeKey] = $configuration[$safeKey];
+        $travelDate = $configuration['travel_date'] ?? null;
+        if (is_string($travelDate) && preg_match('/^\d{4}-\d{2}-\d{2}$/D', $travelDate)) {
+            $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $travelDate);
+            if ($date && $date->format('Y-m-d') === $travelDate) {
+                $context['travel_date'] = $travelDate;
             }
+        }
+        $occupancy = $configuration['occupancy'] ?? null;
+        if (is_string($occupancy) && in_array($occupancy,
+            ['single','double','twin','triple','quad','quadruple','family','shared'], true)) {
+            $context['occupancy'] = $occupancy;
         }
         $declared = apply_filters('commerce_composition_final_quote_evidence_providers', []);
         if (!is_array($declared)) $declared = [];
