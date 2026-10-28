@@ -124,6 +124,16 @@ jobs:
           print('package release-evidence trigger symmetry: PASS')
           PY
 
+      - name: QA30 native General Settings / MCP REST lifecycle contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          php -l "$root/includes/class-mad4b-scp-native-general-settings-contract.php"
+          php -l "$root/includes/class-mad4b-scp-mcp-peer-governance.php"
+          php -l "$root/tests/qa30-native-general-settings-rest-lifecycle.php"
+          php "$root/tests/qa30-native-general-settings-rest-lifecycle.php"
+
       - name: Verify release candidate identity coherence
         shell: bash
         run: |
