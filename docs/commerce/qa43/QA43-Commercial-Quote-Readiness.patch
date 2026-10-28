@@ -49,7 +49,7 @@
          echo '<p>'.esc_html((string)$rules['registered']).' rules registered. '.
 --- a/includes/CommercialQuoteReadiness.php
 +++ b/includes/CommercialQuoteReadiness.php
-@@ -0,0 +1,246 @@
+@@ -0,0 +1,279 @@
 +<?php
 +declare(strict_types=1);
 +namespace Commerce\Composition;
@@ -69,12 +69,44 @@
 +            'reasons'=>array_values(array_unique($reasons))];
 +    }
 +
++    /**
++     * Server-side-only provider discovery. Registration is NOT evidence
++     * verification. An installed adapter must supply a callable and an exact
++     * tenant-bound contract, not merely a client-supplied provider name.
++     */
++    private static function providerRegistry(string $siteUuid):array
++    {
++        $declared=apply_filters('commerce_composition_final_quote_evidence_providers',[]);
++        if(!is_array($declared))return [];
++        $allowed=['final_quote','supplier_cost','tax','availability',
++            'manager_approval','traveler_acceptance'];
++        $registered=[];
++        foreach($allowed as $kind){
++            $v=$declared[$kind]??null;
++            if(!is_array($v)||($v['contract']??null)!=='commerce.source-evidence-provider.v1'
++                ||($v['site_uuid']??null)!==$siteUuid
++                ||!is_string($v['provider_id']??null)
++                ||!preg_match('/^[a-z][a-z0-9_.-]{2,79}$/D',$v['provider_id'])
++                ||!is_callable($v['read']??null))continue;
++            $registered[$kind]=[
++                'provider_id'=>$v['provider_id'],
++                'source_owner'=>(is_string($v['source_owner']??null) &&
++                    preg_match('/^[a-z][a-z0-9_.-]{2,79}$/D',$v['source_owner']))?
++                    $v['source_owner']:'unknown',
++                'registered'=>true,'evidence_certified'=>false,
++                'execution_authorized'=>false
++            ];
++        }
++        return $registered;
++    }
++
 +    public static function overview():array|\WP_Error
 +    {
 +        $ctx=CompanyCommercePolicy::context();
 +        if(is_wp_error($ctx))return $ctx;
 +        $policy=CompanyCommercePolicy::registry();
 +        if(is_wp_error($policy))return $policy;
++        $providers=self::providerRegistry($ctx['site_uuid']);
 +        $taxOption=(string)get_option('woocommerce_calc_taxes','no');
 +        $rules=function_exists('shared_product_pricing_rules_catalog_v2')
 +            ?shared_product_pricing_rules_catalog_v2():[];
@@ -98,12 +130,13 @@
 +            'company_policy_source'=>'commerce_company_policy_registry_v1',
 +            'woocommerce_tax_calculation'=>$taxOption,
 +            'native_rule_coverage'=>$coverage,
-+            'final_quote_provider_registered'=>false,
-+            'supplier_cost_receipt_registered'=>false,
-+            'tax_receipt_registered'=>false,
-+            'availability_hold_receipt_registered'=>false,
-+            'manager_approval_receipt_registered'=>false,
-+            'traveler_acceptance_receipt_registered'=>false,
++            'registered_source_providers'=>$providers,
++            'final_quote_provider_registered'=>isset($providers['final_quote']),
++            'supplier_cost_receipt_registered'=>isset($providers['supplier_cost']),
++            'tax_receipt_registered'=>isset($providers['tax']),
++            'availability_hold_receipt_registered'=>isset($providers['availability']),
++            'manager_approval_receipt_registered'=>isset($providers['manager_approval']),
++            'traveler_acceptance_receipt_registered'=>isset($providers['traveler_acceptance']),
 +            'commercial_quote_certification_authorized'=>false,
 +            'woo_order_creation_authorized'=>false,
 +            'supplier_booking_authorized'=>false,

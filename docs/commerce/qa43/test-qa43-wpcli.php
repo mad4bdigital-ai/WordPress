@@ -23,6 +23,31 @@ $mark('no_cost_tax_inventory_provider_receipts',is_array($over)&&
  !$over['availability_hold_receipt_registered']);
 $mark('no_approval_or_order_authority',is_array($over)&&
  !$over['commercial_quote_certification_authorized']&&!$over['woo_order_creation_authorized']);
+$labProvider=[
+ 'contract'=>'commerce.source-evidence-provider.v1',
+ 'site_uuid'=>$over['site_uuid'],
+ 'provider_id'=>'qa43.localcost.v1',
+ 'source_owner'=>'native_supplier_contract',
+ 'read'=>static fn()=>['unverified_source_data'=>true]
+];
+add_filter('commerce_composition_final_quote_evidence_providers',
+ static fn()=>['supplier_cost'=>$labProvider],10,0);
+$withProvider=$readiness::overview();
+$mark('tenant_exact_provider_discovered_only',
+ is_array($withProvider)&&$withProvider['supplier_cost_receipt_registered']===true
+ &&($withProvider['registered_source_providers']['supplier_cost']['provider_id']??null)==='qa43.localcost.v1');
+$mark('registered_provider_cannot_escalate_certification',
+ is_array($withProvider)&&
+ $withProvider['registered_source_providers']['supplier_cost']['evidence_certified']===false
+ &&$withProvider['commercial_quote_certification_authorized']===false);
+remove_all_filters('commerce_composition_final_quote_evidence_providers');
+$foreignProvider=$labProvider;$foreignProvider['site_uuid']='not-current-tenant';
+add_filter('commerce_composition_final_quote_evidence_providers',
+ static fn()=>['supplier_cost'=>$foreignProvider],10,0);
+$foreignOverview=$readiness::overview();
+$mark('cross_tenant_provider_registration_ignored',
+ is_array($foreignOverview)&&$foreignOverview['supplier_cost_receipt_registered']===false);
+remove_all_filters('commerce_composition_final_quote_evidence_providers');
 $config=[
  'schema_version'=>2,'tour_id'=>60629,'source'=>'rate','rate_id'=>60820,
  'travel_date'=>'2026-11-10','audience'=>'general','occupancy'=>'double',

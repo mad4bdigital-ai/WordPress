@@ -81,8 +81,8 @@
     },
     {
       "path": "includes/CommercialQuoteReadiness.php",
-      "sha256": "48663e9150545f83924a41030652ffa5cfe7045aeff76521852d650205de72fd",
-      "bytes": 12792
+      "sha256": "df1be2720c1ddcd9aca52aad62a3b1d4ed3fdf80bb64d8faa44ade4d560e6bda",
+      "bytes": 14551
     },
     {
       "path": "includes/CompanyCommercePolicy.php",

@@ -11,7 +11,7 @@ Admin-only REST under `/wp-json/commerce-composition/v1`:
 - `GET /management/commercial-quote/providers`: site-bound policy revision and status, WooCommerce tax setting, native provider coverage and missing certified receipt issuers.
 - `POST /management/commercial-quote/readiness`: `{ "source_id": 60820, "configuration": { ...native booking configuration... }, "sale_role": "independent_rate" }`. Uses the existing native `CommercialExecutionPreflight::inspect`, `CommercialQuotePlan::fromPreflight`, `CompanyCommercePolicy::resolve`, `shared_product_financial_readiness_v2` and CPT Woo identity checks. Returns a deterministic readiness digest, 11 provider-owned gates and exact corrective actions. Source and Rate ancestry are verified; no alternate pricing engine.
 
-Both routes use native WordPress `manage_options && manage_woocommerce` and private/no-store responses. No PII is returned. No REST route to issue a final Quote or accept a payment was introduced without certified source receipts.
+Both routes use native WordPress `manage_options && manage_woocommerce` and private/no-store responses. No PII is returned. Installed domain adapters may register evidence-provider readers through the server-side WordPress filter `commerce_composition_final_quote_evidence_providers` with contract `commerce.source-evidence-provider.v1`, exact site UUID, registered provider ID and a callable. Discovery is tenant-bound and never makes evidence certified. The final Quote, cost, tax, availability, approval, payment and booking flags remain false even when a provider is registered. No REST route to issue a final Quote or accept a payment was introduced without certified source receipts.
 
 ## Real source audit for Tour 60629 / Rate 60820
 
@@ -26,12 +26,12 @@ Both routes use native WordPress `manage_options && manage_woocommerce` and priv
 
 ## Actual verification
 
-- QA43 REST, admin, source financial checks, parent Tour/independent Rate, permissions and no business side effects: **34/34 PASS**.
+- QA43 REST, admin, source financial checks, parent Tour/independent Rate, permissions and no business side effects: **37/37 PASS**.
 - QA42 exact-domain new company definition + archive regression: **33/33 PASS**.
 - QA42B real Woo Lab Quote Plan regression: **25/25 PASS**.
-- **92/92 live WP-CLI checks**. PHP lint, installed/source parity, exact patch replay PASS.
+- **95/95 live WP-CLI checks**. PHP lint, installed/source parity, exact patch replay PASS.
 - Local HTTP 200; anonymous provider REST HTTP 401.
-- No change to Woo Orders, Commerce Requests, FluentBoards tasks, provider inventory holds or bookings during tests.
+- Additional QA43 checks prove registered source providers are dynamically discovered, cannot self-certify financial readiness and cannot cross tenant boundaries. No change to Woo Orders, Commerce Requests, FluentBoards tasks, provider inventory holds or bookings during tests.
 
 ## Rollback and release boundaries
 
