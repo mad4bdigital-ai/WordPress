@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: dfsb-attested-review-ci-${{ github.event.pull_request.number }}
+  group: dfsb-attested-review-ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -23,11 +23,11 @@ jobs:
       - name: Checkout exact PR HEAD
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - name: Verify immutable PR source checkout
         env:
-          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
       - name: Enforce source and release boundary
         shell: bash
