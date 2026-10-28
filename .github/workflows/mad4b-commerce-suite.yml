@@ -36,6 +36,8 @@ jobs:
             xargs -0 -n1 php -l
       - name: Verify non-executing module enrollment
         run: php wp-content/plugins/mad4b-commerce-suite/tests/offline-contract.php
+      - name: Validate tenant readiness fails closed
+        run: php wp-content/plugins/mad4b-commerce-suite/tests/readiness.php
       - name: Audit frozen local source
         run: |
           python3 packages/mad4b-shared-product-core/tests/verify-snapshot.py
