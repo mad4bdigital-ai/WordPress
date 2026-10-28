@@ -20,6 +20,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         add_action('admin_menu', array(__CLASS__, 'menu'), 30);
         add_action('admin_post_mad4b_readiness_scan', array(__CLASS__, 'handle_scan'));
         add_action('admin_post_mad4b_readiness_board_sync', array(__CLASS__, 'handle_board_sync'));
+        add_action('admin_post_mad4b_readiness_batch_sync', array(__CLASS__, 'handle_batch_sync'));
         add_action('admin_post_mad4b_readiness_save_rules', array(__CLASS__, 'handle_save_rules'));
         add_action('admin_post_mad4b_readiness_export', array(__CLASS__, 'handle_export'));
         add_action('admin_bar_menu', array(__CLASS__, 'admin_bar'), 95);
@@ -351,7 +352,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         }
         return $summary;
     }
-    /** Admin/editor read endpoints; intentionally no REST mutation routes. */
+    /** Read endpoints plus local-client-only, governed task synchronization. */
     public static function register_rest_routes() {
         $namespace='mad4b-content-readiness/v1';
         register_rest_route($namespace, '/summary', array(
@@ -364,9 +365,47 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
             'callback' => array(__CLASS__, 'rest_issues'),
             'permission_callback' => array(__CLASS__, 'rest_permission'),
         ));
+        // Only real, authenticated local-client credentials may write.
+        register_rest_route($namespace, '/sync-one', array(
+            'methods'=>'POST',
+            'callback'=>array(__CLASS__,'rest_sync_one'),
+            'permission_callback'=>array(__CLASS__,'rest_local_client_write_permission'),
+            'args'=>array('issue_id'=>array('required'=>true,'type'=>'string')),
+        ));
+        register_rest_route($namespace, '/sync-batch', array(
+            'methods'=>'POST',
+            'callback'=>array(__CLASS__,'rest_sync_batch'),
+            'permission_callback'=>array(__CLASS__,'rest_local_client_write_permission'),
+        ));
     }
     public static function rest_permission() {
         return current_user_can('edit_others_posts');
+    }
+    public static function rest_local_client_write_permission() {
+        if(!current_user_can('manage_options') || !class_exists('MAD4B_SCP_Local_Client')
+           || !MAD4B_SCP_Local_Client::bound()
+           || !class_exists('MAD4B_SCP_Identity_Context')
+           || !class_exists('MAD4B_SCP_Policy'))return false;
+        $identity=MAD4B_SCP_Identity_Context::current();
+        if(is_wp_error($identity)||empty($identity['authenticated'])
+           ||($identity['subject_type']??'')!=='wp_app_password'
+           ||($identity['auth_method']??'')!=='wp_application_password'
+           ||(int)($identity['wp_user_id']??0)!==get_current_user_id())return false;
+        return MAD4B_SCP_Policy::can_mutate();
+    }
+    public static function rest_sync_one($request) {
+        $id=strtolower(trim((string)$request->get_param('issue_id')));
+        if(!preg_match('/^[a-f0-9]{64}$/D',$id))
+            return new WP_Error('mad4b_readiness_invalid_issue','Exact source issue fingerprint required.',array('status'=>400));
+        $res=self::sync_board($id);
+        return is_wp_error($res)?$res:rest_ensure_response(array(
+            'contract'=>'mad4b.content-readiness.sync.v1','issue_id'=>$id,
+            'status'=>$res['status']??'unknown','task_id'=>absint($res['task_id']??0)));
+    }
+    public static function rest_sync_batch($request) {
+        $res=self::batch_sync();
+        return is_wp_error($res)?$res:rest_ensure_response(array(
+            'contract'=>'mad4b.content-readiness.batch-sync.v1','result'=>$res));
     }
     public static function rest_summary($request) {
         $rows=(array)get_option(self::STORE,array());
@@ -585,6 +624,40 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         update_option(self::STORE,$issues,false);
         self::audit('board_task_created',array('issue'=>$issue_id,'task_id'=>$taskId));
         return array('status'=>'created','task_id'=>$taskId);
+    }
+    public static function batch_sync() {
+        if(!current_user_can('manage_options'))
+            return new WP_Error('mad4b_readiness_permission_denied');
+        if(!class_exists('MAD4B_SCP_Policy')||!MAD4B_SCP_Policy::can_mutate())
+            return new WP_Error('mad4b_readiness_write_gate_closed');
+        $workflow=MAD4B_SCP_Readiness_Workflow_Options::settings();
+        if(empty($workflow['board_tasks'])||
+            !MAD4B_SCP_Readiness_Workflow_Options::validate_board_stage($workflow['board_id'],$workflow['stage_id']))
+            return new WP_Error('mad4b_readiness_board_not_configured');
+        $issues=array_values((array)get_option(self::STORE,array()));
+        usort($issues,array(__CLASS__,'priority_compare'));
+        $priority=array('critical'=>0,'high'=>1,'medium'=>2,'low'=>3);
+        $ceiling=$priority[$workflow['minimum_severity']]??1;
+        $results=array();$limit=$workflow['batch_limit'];
+        foreach($issues as $issue){
+            if(count($results)>=$limit)break;
+            if(!is_array($issue)||($issue['status']??'')==='resolved'||!empty($issue['board_task_id']))continue;
+            if(($priority[$issue['severity']??'medium']??3)>$ceiling)continue;
+            $result=self::sync_board((string)($issue['id']??''));
+            $results[]=array('issue'=>$issue['id']??'',
+                'status'=>is_wp_error($result)?$result->get_error_code():($result['status']??'unknown'),
+                'task_id'=>is_wp_error($result)?0:absint($result['task_id']??0));
+        }
+        return array('processed'=>count($results),'results'=>$results);
+    }
+    public static function handle_batch_sync() {
+        if(!current_user_can('manage_options'))wp_die('Forbidden',403);
+        check_admin_referer('mad4b_readiness_batch_sync');
+        $result=self::batch_sync();
+        set_transient('mad4b_readiness_result_'.get_current_user_id(),
+            is_wp_error($result)?$result->get_error_code():$result,120);
+        wp_safe_redirect(admin_url('admin.php?page='.MAD4B_SCP_Readiness_Workflow_Options::PAGE));
+        exit;
     }
     public static function handle_board_sync() {
         if(!current_user_can('manage_options'))wp_die('Forbidden',403);
