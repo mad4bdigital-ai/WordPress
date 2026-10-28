@@ -57,7 +57,7 @@ def build(repo, output, release_review=False):
     if release_review:
         # This builds an independently reviewed INSTALLABLE CANDIDATE only;
         # the builder cannot issue provider certificates or authorize sites.
-        if not re.fullmatch(r'[0-9]+\\.[0-9]+\\.[0-9]+-alpha\\.[0-9]+-rc\\.[0-9]+', version):
+        if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+-alpha\.[0-9]+-rc\.[0-9]+', version):
             raise RuntimeError('release review requires an explicitly versioned alpha-N-rc-N source')
     elif '-local.' not in version:
         raise RuntimeError('review source must be an explicitly held -local candidate')
