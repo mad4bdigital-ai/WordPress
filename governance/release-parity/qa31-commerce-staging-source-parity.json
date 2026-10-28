@@ -1,0 +1,996 @@
+{
+  "authorizing": false,
+  "capture_method": "SHA256 manifest inspection of approved Commerce Staging package and exact Git source; no code bodies",
+  "contract": "mad4b.qa31.source-parity-evidence.v1",
+  "excluded_support_and_generated_count": 1072,
+  "github_base_source_sha": "86f0b4f40ea86dbc714c89f32d9d94cc8a2b2da7",
+  "github_source_version": "0.4.0-rc.104",
+  "github_total_source_files": 1897,
+  "identical_shared_files": 778,
+  "live_production_evidence": false,
+  "production_authorized": false,
+  "readiness_requires": [
+    "all divergences resolved and source regression tested",
+    "approved immutable package provenance",
+    "owner exact-head attestation",
+    "staging install certification",
+    "separate Production approval"
+  ],
+  "release_decision": "BLOCKED_PENDING_REVIEW_AND_PARITY",
+  "source_decisions": [
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 36593,
+      "github_sha256": "645e3904d0b067ea2aab6b7b6606136a1d38921a43c71125daa8b38c8594516f",
+      "path": "bootstrap/mad4b-mcp-adapter-mu-bootstrap.php",
+      "staging_bytes": 41902,
+      "staging_sha256": "64353c79394487d6a852970896701481146772e57ac4208069101453972ace0e",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "bootstrap/mad4b-runtime-cache-convergence-mu.php",
+      "staging_bytes": 6270,
+      "staging_sha256": "4661652c7fbf90236c83f47a2b45d95f95cf0a6257cb9cbf3c6485f9aeaadd9e",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 4467,
+      "github_sha256": "1541031c44d0f7be99e2f7fac92d10c1c0e3f7cc62e1beb8a3e2170e4dab244c",
+      "path": "config/adapter-registration-policy.json",
+      "staging_bytes": 4639,
+      "staging_sha256": "f529918e36df9ff90256110cf2f91092e3361dd8a907cf00127234ae5e4d2846",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 2020,
+      "github_sha256": "80a5b1b7490bdb3830985dc4426f75c791bbccb5230efac8d93e548ed86076e4",
+      "path": "config/cross-plugin-sources.json",
+      "staging_bytes": 1099,
+      "staging_sha256": "c6edc0909e01996f53ce957e519cb54f6e9017df4fa325b501c17cea3536a156",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 1365,
+      "github_sha256": "706b936f81e5d56bca491e2f792bb03b278f68eb7bac03a3757622192a5eb32d",
+      "path": "config/egress-policy.json",
+      "staging_bytes": 1204,
+      "staging_sha256": "693e137461390eddab472e47504598958e9c8ef472c7fec304d5ff398a86e1eb",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "PRESERVE_GITHUB_VALIDATE_STAGING_COMPATIBILITY",
+      "github_bytes": 225,
+      "github_sha256": "18591598270446b89ffa4a22f7ca1fe44401c9e9860ee22c2e94e11fe3db0f06",
+      "path": "config/external-skill-source-providers.json",
+      "staging_bytes": null,
+      "staging_sha256": null,
+      "state": "GITHUB_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 53678,
+      "github_sha256": "1080aa55d7def2266cef6a6c8219e5b86f4adcdf3ce8938ac59329850ec4b09c",
+      "path": "config/provider-capability-contracts.json",
+      "staging_bytes": 53609,
+      "staging_sha256": "a3d89ea1cc53ca7f3bdd3a8808a71f9e1f124549167b5a15fcbba694e2c17ebb",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 21628,
+      "github_sha256": "20b13d3308f974ba46c9be4b5b804b90fa1f4627f46d0026f97fc7fa39f38ec5",
+      "path": "config/remote-operation-catalog.php",
+      "staging_bytes": 22463,
+      "staging_sha256": "d83cf99d631424c24230779a9b1ea02cadef66337371683b61ecd1ecb5cfbea2",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 15405,
+      "github_sha256": "34084377018b10a89e7d8ae157d2f7c45ca1bdd55f220ca85b7e0eb1bafe59d2",
+      "path": "config/semantic-content-field-contracts.json",
+      "staging_bytes": 15373,
+      "staging_sha256": "67c44ef07da43e9411e6a3fb1da30443de3af4424e6d2f76edb3fe6892722a53",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 1843,
+      "github_sha256": "d62dbccd5ea1aafc799babfc34551f23727834b45fd8c6c0ad199fe7001085be",
+      "path": "config/skill-seed-manifest.json",
+      "staging_bytes": 2222,
+      "staging_sha256": "7ce713daa56d3b8a1afdd099770115be739b3a9351c120395590bb71fcec197f",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "data/company-communication-page-schema.json",
+      "staging_bytes": 8514,
+      "staging_sha256": "6fc45de0212aa7a2e4caf6624e578ff1491e1149d44c476a66ced6971011c38b",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 11110,
+      "github_sha256": "0b329f4fb7a9bb20970c5e4c05d9b6ac3b9e8c2e89fdff04642650e1c5ce2b59",
+      "path": "includes/adapters/class-mad4b-scp-approval-handoff-adapter.php",
+      "staging_bytes": 13061,
+      "staging_sha256": "6ee7a3872c8fc026cb869459b4f8f47bf21e929a253dfc464f18348b55c9fd07",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/adapters/class-mad4b-scp-chatbotx-governed-writes.php",
+      "staging_bytes": 6880,
+      "staging_sha256": "53f27db33a04980a6103987b0927805fe0df7afd20df3cc7f768c3e8815de9f4",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/adapters/class-mad4b-scp-chatbotx-provider-adapter.php",
+      "staging_bytes": 19650,
+      "staging_sha256": "506a285e4a7a96f0e0ed2f4e077538e4b2a68953c56f11e1005cf8622a46b858",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/adapters/class-mad4b-scp-chatbotx-write-preflight.php",
+      "staging_bytes": 6489,
+      "staging_sha256": "da5f525201efdb522582ce40d6103b270304b1ac86e14620cb58e2b31730047e",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 52243,
+      "github_sha256": "e7a1c851f9bf4ab0dca4c2cb30354c28f006817355f2b87655acfbf5239a0b8f",
+      "path": "includes/adapters/class-mad4b-scp-context-adapter.php",
+      "staging_bytes": 50601,
+      "staging_sha256": "82d87826706422b9e7b5b8dec48ed680102652cc48dfdac47b846b7f87764c3b",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/adapters/class-mad4b-scp-dfsb-adapter.php",
+      "staging_bytes": 20378,
+      "staging_sha256": "7a0a817d4b93d83a344840b51ecada1e89cb5e7e6f88dede9a15cdc5f7974dd7",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/adapters/class-mad4b-scp-local-brand-draft-adapter.php",
+      "staging_bytes": 10856,
+      "staging_sha256": "ba08bab80236d29adcf98010a5567a67925595dc0cd322b4e1d297100e17c27f",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 1863,
+      "github_sha256": "8bfd46c23890cde1c7b2d021e07954871f293f9f9240f29f5e7ec7ad42e7d5e9",
+      "path": "includes/adapters/class-mad4b-scp-skills-adapter.php",
+      "staging_bytes": 1667,
+      "staging_sha256": "e27df6e6638cc45d1d607f2fd38773518d8210b7eeb909dde9dfca9823bfdea0",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "PRESERVE_GITHUB_VALIDATE_STAGING_COMPATIBILITY",
+      "github_bytes": 19676,
+      "github_sha256": "05c21e0334d45aa168ec8e1cb7163907d496ce28691b0fa7d7485c382f8c0531",
+      "path": "includes/class-external-skill-sources.php",
+      "staging_bytes": null,
+      "staging_sha256": null,
+      "state": "GITHUB_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 112673,
+      "github_sha256": "fd6f49abaf2fd7def854a770b247ca22181cb554c91be135f25d16bd12713be5",
+      "path": "includes/class-mad4b-scp-abilities.php",
+      "staging_bytes": 118315,
+      "staging_sha256": "c178e607bda24481028501e26499df7cdc4736fe5b1a3f599d4e5515fbd68289",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 19103,
+      "github_sha256": "e20c1dc3310904bf2e5c2a3105efa6e14478132b46ec893a9133bc189a50db21",
+      "path": "includes/class-mad4b-scp-adaptive-interaction-broker.php",
+      "staging_bytes": 19730,
+      "staging_sha256": "b0f9e32a8e22e2aa73436484a878728d4c024c0a17487947ce852d757dd77323",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-adaptive-interaction-ui.php",
+      "staging_bytes": 14453,
+      "staging_sha256": "a49cf0ed5a21ed6235e30dffb0f650f6f59d19db3b21c67db6ec2778b502991e",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-agent-grant-lifecycle.php",
+      "staging_bytes": 21856,
+      "staging_sha256": "7d4bbb9b65003edc623138861e91f0216025eaff60e299582266c11dde47d68e",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-ai-native-grants-opt-in.php",
+      "staging_bytes": 16398,
+      "staging_sha256": "c20126ff3957041c5701333af093c0f3be8d98dabd75e922c62cff5cc9c99b9b",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-ai-task-routing.php",
+      "staging_bytes": 8562,
+      "staging_sha256": "7783241dcd74e0b196891a8672739c78b001bfd19560fd76ecfc401b937cb3b2",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 8184,
+      "github_sha256": "7ec30ff5b5e4241ac7b15b726ce22f997f61b9089e8f4298ca067e60e53e72f3",
+      "path": "includes/class-mad4b-scp-approval-impact-binding.php",
+      "staging_bytes": 10560,
+      "staging_sha256": "8e61dd286405cc26918341d65dbc4bd8c51fce95db80a04f9eb511bfe1b7ed09",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 47003,
+      "github_sha256": "92a4875c8e20fa22d6f007f4ab4afb112b9046ceb31a8a217c8d28d2edfa4c17",
+      "path": "includes/class-mad4b-scp-approval-tickets.php",
+      "staging_bytes": 47357,
+      "staging_sha256": "81f283e8d9212228dd0cdd6e57487c11cf0f272993966861344789a3298b2634",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 2896,
+      "github_sha256": "ee5e072b25120206c24f41f749ab63a59d47e654d578796e7a5e70726f72bc30",
+      "path": "includes/class-mad4b-scp-authorization-target-fingerprint.php",
+      "staging_bytes": 3702,
+      "staging_sha256": "1edff0186ecba72f1f685f0f5670348e8d1983002fb6683c3650e02c7917219a",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-background-agent-admission.php",
+      "staging_bytes": 1974,
+      "staging_sha256": "4db34bdebc6158e460027cd57713223798cc696778cc2ac145954e0092300da0",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-background-agent-dispatch.php",
+      "staging_bytes": 1475,
+      "staging_sha256": "d50e226773418c2bcc7e0c9de2088582be37bc5896e8ef5bee63bdec869bae18",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 120119,
+      "github_sha256": "5bb21c940b0597698169b85488bddfb61c5cb8c0f0520c6a4a8791150d297e32",
+      "path": "includes/class-mad4b-scp-brand-context-builder.php",
+      "staging_bytes": 123986,
+      "staging_sha256": "2d5f0fb08a783d53d951554583e8a1818985309bf4b9fc06aef460c61dc28275",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-cli-execution-context.php",
+      "staging_bytes": 4823,
+      "staging_sha256": "45f45d034ad2c15aeb6235aed2619b88f6f25f289c1357a42e2e3e4fa41fb724",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-cli-readiness.php",
+      "staging_bytes": 7424,
+      "staging_sha256": "2914a5805968134bf653e4849bb0f94141f63aedf99bf162ed78f513d6171e97",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 6242,
+      "github_sha256": "c627c937c9c8404129b05ea05cd486a31761f09c6998e8312fd2c53c7834c66e",
+      "path": "includes/class-mad4b-scp-cli.php",
+      "staging_bytes": 9325,
+      "staging_sha256": "224a46872c51cb8de195c0e7f68a6db84f6f3fa600bdda7216d4ddc1c92f515d",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-company-communication-team.php",
+      "staging_bytes": 8581,
+      "staging_sha256": "e7890a6887cf62ea008ebc6aedd863e26d1d78fd15e16e6e352782ce8baae293",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-company-communication.php",
+      "staging_bytes": 15062,
+      "staging_sha256": "81a8c4d77b66750abeb6e568bf88360ea8a26b37abfe724902f6b4c7e93d0efd",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-company-email-routing.php",
+      "staging_bytes": 14905,
+      "staging_sha256": "befb397659902c8ac8af948f237007e3bc48cf2a396ade42d81b2521ffe6b9ff",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-company-master-admin.php",
+      "staging_bytes": 25017,
+      "staging_sha256": "0cfe68ea11598587a9cdaeed2313859cb95dff893b3972d2bb6a593fd2af4e4d",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-company-operations-policy.php",
+      "staging_bytes": 6969,
+      "staging_sha256": "759ce17f33738d8b78be86b07695e00984b4eea70f1a0481f262142e288a2ecf",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-company-owner-activation.php",
+      "staging_bytes": 15816,
+      "staging_sha256": "ca980531ed98d3391deb66a63573b4ef6becebf2ba3e009d92467879b3212bc3",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-company-release-status.php",
+      "staging_bytes": 2792,
+      "staging_sha256": "0d5c2d5c642caa2216823f578af0c63a834c643b4ecc70a85d08df29a1c56898",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-company-sender-policy.php",
+      "staging_bytes": 15643,
+      "staging_sha256": "df87f3a527778b7b2ff747cb036aed31750ea92e3ea407ecf6f2fdc8578549bc",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-company-task-handoff.php",
+      "staging_bytes": 21403,
+      "staging_sha256": "e647d8078b9d3f6544e3940d1f7b6d82e8a03ec069e30721a3a1cf9cb59a47c6",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-company-user-lifecycle.php",
+      "staging_bytes": 15361,
+      "staging_sha256": "7d6417579a2d64e67a9d5535e1724d68cb5a361739edefefb1186c0c5fabbf5d",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-content-completeness.php",
+      "staging_bytes": 28820,
+      "staging_sha256": "e136b1e86aef38f8b0cc33f1c1fc2183bfe661b1beebbba903d11bfad83ce7cf",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 37444,
+      "github_sha256": "c7de2e2f97da73061582ea82e1cb7a36b54cc6881fa04a38198f878125b3f547",
+      "path": "includes/class-mad4b-scp-content-jobs.php",
+      "staging_bytes": 39017,
+      "staging_sha256": "c8eb29318e8c66d267dc1aa555b44ef2d774ab8a9c9aab4eb1dad9ee4d88f96a",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-content-readiness-alerts.php",
+      "staging_bytes": 51205,
+      "staging_sha256": "94daadf54a70806590b6274626ee726e29f0134ab49b18f8d90bddd852282740",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 256719,
+      "github_sha256": "f3377dfaab7ff7178809235652fb4dc3f48ad32b9735d25469cfd22a3db0acb3",
+      "path": "includes/class-mad4b-scp-context-authority.php",
+      "staging_bytes": 272370,
+      "staging_sha256": "368dae8d3a094913021df5bb749b55cf9d62b32ba0502529a2f253504c9118d8",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 49702,
+      "github_sha256": "e9be5a89d318f057568e5624b98b91b2f02447f1f82865e4fb8cdec18ac2f289",
+      "path": "includes/class-mad4b-scp-context-preflight.php",
+      "staging_bytes": 52411,
+      "staging_sha256": "434ca62064e7deebc4034e910796cf479095b77ae8952b58ce8978d7bcd66c12",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-control-plane-test-router.php",
+      "staging_bytes": 11435,
+      "staging_sha256": "74b7471945bf44bfc4bdda0a70225d5d3a7082deeb9b3fcc70b3e98bf8963b18",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-core-ai-governance.php",
+      "staging_bytes": 7472,
+      "staging_sha256": "bd39809b26e5c64faf332d149a6accf44ff228f6c0e375d5482b8d22058ae1c2",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-core-connector-vault.php",
+      "staging_bytes": 4793,
+      "staging_sha256": "166015109319ec3a88d130b295d9272101c3858d57bd49f7680f533464dbfc2b",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 48017,
+      "github_sha256": "c5703fd3c59ee6804fbd9fa15bf183e88b481075448a706b78831584fce621e9",
+      "path": "includes/class-mad4b-scp-enrollment-dispatch.php",
+      "staging_bytes": 57579,
+      "staging_sha256": "4dd0ff4bab0d422e17048be24d947723e3f947372759ab91d91f7ee253d91680",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 287418,
+      "github_sha256": "9722c5430dbe65f0cd591e080ac637d07388c3f21e78cda04810df671fd7e958",
+      "path": "includes/class-mad4b-scp-google-drive-context.php",
+      "staging_bytes": 288562,
+      "staging_sha256": "93db19edd5e7da7ca5b5815e25563e58ffc6ef9971e89aa9cc36430d2d63a7eb",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-guided-continuation.php",
+      "staging_bytes": 7598,
+      "staging_sha256": "975aa17dec21915fca05da5dd1e0142801b8682dea36733031c388f77ec7cbfd",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-local-ai-governance.php",
+      "staging_bytes": 9313,
+      "staging_sha256": "8b5f2761443664f28493c1a9b409c6492cc678cfc8eb42ffa18368bc8a978492",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-local-ollama-ability.php",
+      "staging_bytes": 3449,
+      "staging_sha256": "9d18eaeefb2265a3364bdff00fd913c2954ee24855e0242338c6b0c80a6a7586",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-local-transport-policy.php",
+      "staging_bytes": 4185,
+      "staging_sha256": "01e512bf052c24e36f03f5dd4d9f53892645de7f75808c229aa16532295b25a9",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 24013,
+      "github_sha256": "32e03537eb58f927351a45557ae75d81acc8070aef9463cad6565a2deb00cea3",
+      "path": "includes/class-mad4b-scp-mcp-peer-governance.php",
+      "staging_bytes": 24153,
+      "staging_sha256": "d137a10b07c6a12360150fe40c157ff6ae5d336f1ffbd1530f77fc0e18f6e500",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-native-settings-locator.php",
+      "staging_bytes": 3070,
+      "staging_sha256": "e8f668a868fcd93babcdab1ff0db0fca1512dd715720e20fff8f5b5e18f382ff",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 2231,
+      "github_sha256": "d8b9f6729bfa55ea214904816706b19e7d9f9a22669bbd8aeca271c0a461abb4",
+      "path": "includes/class-mad4b-scp-oauth-challenge-alignment.php",
+      "staging_bytes": 2237,
+      "staging_sha256": "5c87b456d96a02dc0d139a7bccfaec9edca2d0e3a33cb4d44f6f35fa9929f0bd",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 71943,
+      "github_sha256": "0f7b2ff617029c18dab69d88993494ebea779ffb35e0093a7661225531b5217a",
+      "path": "includes/class-mad4b-scp-oauth-resource-bridge.php",
+      "staging_bytes": 72533,
+      "staging_sha256": "6a8437b1db9c6e06026d4f26ef4b8e0f4255f2be4ce83309c7edcece7c34a689",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 43842,
+      "github_sha256": "a3a786f460358def867e4709e7e641b56a2f3e300bc0b88adb643579b9158a18",
+      "path": "includes/class-mad4b-scp-operational-remediation.php",
+      "staging_bytes": 44125,
+      "staging_sha256": "248dc10097bef1ecb39ca37a517329c3a2bdb8c25f3f48d887342cedffbbce16",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 15310,
+      "github_sha256": "76bcfee72f752c4313514870e21a48316abdf871516d16b3ee18e34b06ca2a71",
+      "path": "includes/class-mad4b-scp-operator-journeys.php",
+      "staging_bytes": 15503,
+      "staging_sha256": "d5ca6cdf18c585f72cecc79b99c1528bc0c7cadb1c8e7acf7ee0f6cab606ddbd",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 57156,
+      "github_sha256": "8d33a387230c7ae988b4c92a0a79c16bba77ae77052811ccd13abcf48c59f7a7",
+      "path": "includes/class-mad4b-scp-provider-compatibility-certification.php",
+      "staging_bytes": 57225,
+      "staging_sha256": "e05b1e63e829f704a4b0612f278e3d99bf81350c08eef2301d0aa074fc277fc6",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 18608,
+      "github_sha256": "2fddea6cb379c98f56edc0864de9a8463cb3ae5ac81f264172e1c3745b512826",
+      "path": "includes/class-mad4b-scp-provider-connection-center.php",
+      "staging_bytes": 38695,
+      "staging_sha256": "14bdc66f5069c5bee22c7e4b92588f483950a7e174b1e7d581371138c8bd7ad1",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 14807,
+      "github_sha256": "0eef6f2826bdf4973088d079b4610733fb773ee82502f0fdda4ad32140b64533",
+      "path": "includes/class-mad4b-scp-provider-transport-eligibility.php",
+      "staging_bytes": 15041,
+      "staging_sha256": "4186e100784d3f3ceec5b56af73d4fd36c25b869a7c0105d28d458fd4f504c27",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-readiness-event-automation.php",
+      "staging_bytes": 24813,
+      "staging_sha256": "68b693e28da0c1ca0a5c5a887f5c8916d0b0132f8c0629babe7c347a708babef",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-readiness-integrations.php",
+      "staging_bytes": 17130,
+      "staging_sha256": "5ad0e90f76843527ffaac5bcde288beb181f83d7590141a77ea59e33428f69cb",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-readiness-preactivation.php",
+      "staging_bytes": 23098,
+      "staging_sha256": "d9a07f0e9d9105e24cd2a27ab6ef1ce8c086c8f4e8e3688724e1d23bfd74f915",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-readiness-scopes.php",
+      "staging_bytes": 23870,
+      "staging_sha256": "cf7943d2c8706c6a8f8812b9d95dc3a3a7dc70aa55fdf396f3faffc2f380ab2b",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-readiness-team-preparation.php",
+      "staging_bytes": 13527,
+      "staging_sha256": "32ef4b54ad67d541fe1de2cd827b14dca76300cc005bc5df77164987df752615",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-readiness-workflow-options.php",
+      "staging_bytes": 12944,
+      "staging_sha256": "53c6cfc0a85a9e4a123a758cc2c8cbbb5a583af9b21d6d0e5752a4cace751374",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 64455,
+      "github_sha256": "0cd9945639f1d7bc1436f6c50b55ffb8857ae030999a245ca18d63ba1f75aded",
+      "path": "includes/class-mad4b-scp-reconnect-hardening.php",
+      "staging_bytes": 72198,
+      "staging_sha256": "c6910e9c6d23d9f77a671d7ce9d47e1a291150b7f738a456541b376c0ca7faa2",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 10779,
+      "github_sha256": "5432d9fd5051e3777e4b518c290972437643720bdb06b8985a0c08fe785d743d",
+      "path": "includes/class-mad4b-scp-recovery-attempt-budget.php",
+      "staging_bytes": 11526,
+      "staging_sha256": "ec99dd595b4321c4cb4b2dd771fde54071e8dba5180bca635dfa709e7a473100",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 10695,
+      "github_sha256": "00c33cfbd2a63eb089677ac18945b1f47872cd8c1091c0c65ec9deb962ae581e",
+      "path": "includes/class-mad4b-scp-replay-policy.php",
+      "staging_bytes": 11350,
+      "staging_sha256": "8b6220a005e936bcae59bf66131bae3a240a15ee94fbb9238d33c22f8ec7d315",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 141515,
+      "github_sha256": "3d5e920043b654a34e26f3079e6a7c9912b513dfa7a0452b0a0e5d946f4bf9f7",
+      "path": "includes/class-mad4b-scp-runtime-convergence.php",
+      "staging_bytes": 142158,
+      "staging_sha256": "a72bf8f0ef31e05d25ac42459d2ab343d9920e6a253b7cb4b43971d90695271a",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 17184,
+      "github_sha256": "e631512f598eb744aed141206909ba59f15a2207c59d231d51acc73374eb003a",
+      "path": "includes/class-mad4b-scp-runtime-obstacle-resolution.php",
+      "staging_bytes": 18256,
+      "staging_sha256": "b35fb7786d5a5be567779a5551e3c519c27229dfa29ea305e97b4fda8b3b5f90",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 13638,
+      "github_sha256": "f4fade0100bb3505527210fdba321bb9494d83652602beb1f38bbd9f1d116a17",
+      "path": "includes/class-mad4b-scp-server-core-catalog.php",
+      "staging_bytes": 13706,
+      "staging_sha256": "d62eca6d640af4f58020392a5dec474f8dc6ac2465841c3496acb8c0dd6deb37",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 14573,
+      "github_sha256": "1160eb7113fd0ef6732104c4c17c9e18dd402bfd77432f9fd4b52542d2c5aaa9",
+      "path": "includes/class-mad4b-scp-server-write-catalog.php",
+      "staging_bytes": 15024,
+      "staging_sha256": "6a3686931197d56f3afa228a8cdc2b284649256d949078a0418cecbc8dd19195",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 57024,
+      "github_sha256": "63b4191ced02fc2c93d6ca76d97ea34ff1d86e17b498082a3f0e6d9b97ace4e6",
+      "path": "includes/class-mad4b-scp-servers.php",
+      "staging_bytes": 58048,
+      "staging_sha256": "f2a7c9e07418253b4f10a46994ee36d72a2800fb03589d5e49b4c07861866bcf",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-site-lifecycle-rest.php",
+      "staging_bytes": 21876,
+      "staging_sha256": "046b4a2f23f05a942ad4fc838bfc8731449b2db401e4064e738d877028d4dbb3",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 99653,
+      "github_sha256": "918b4c2a4c683bd26c8c6922ab37648eac532d726bf2728dfb1386e05fff5220",
+      "path": "includes/class-mad4b-scp-site-profile.php",
+      "staging_bytes": 100777,
+      "staging_sha256": "cc3ace25b52a452a32031a8a6ce02157963de96eb0b563346aa5d33599cf36bf",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 42891,
+      "github_sha256": "c58591c0bd11d3c5e3b3cc96b2cca54312202732bd2aa1fa883c26f448d2ffb9",
+      "path": "includes/class-mad4b-scp-skill-abilities.php",
+      "staging_bytes": 39545,
+      "staging_sha256": "94dea9e123e142a8b1b3ac11ba94e3478bd9209abcf0f0f40483378da51cac3b",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 30815,
+      "github_sha256": "3a517da7e564dc2d9424d16bc9592d693a070b04d7eb7eb661262444b6809d00",
+      "path": "includes/class-mad4b-scp-skill-seeder.php",
+      "staging_bytes": 30815,
+      "staging_sha256": "8f4a1fc14ba8ccc202a41cb4725248d9b89bfd05a989382bdd4ceffbd8db09c8",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 28368,
+      "github_sha256": "caf3b878e2fa50997b27648a8f108fa366b0daa02034aa775c15e1af68b5e983",
+      "path": "includes/class-mad4b-scp-skills-admin-ui.php",
+      "staging_bytes": 28106,
+      "staging_sha256": "9427dca11263e82e7c485ec934f158976f728cc9c9ee41bd96398e0aa9bf2014",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-staging-brand-trial.php",
+      "staging_bytes": 7385,
+      "staging_sha256": "ea9b0e70a8e34e225024a3e668a6a05c3e50434d97842b016458e9a6a9ba677e",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-staging-context-fixtures.php",
+      "staging_bytes": 11566,
+      "staging_sha256": "bb5d334b9b0855e18c1259ece83f5c8a0796e1e8863cfd47925bccbc8259cda3",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-staging-fixture-drafts.php",
+      "staging_bytes": 9871,
+      "staging_sha256": "7ec0cdcf8dc8a1a7b0ddb99ce876582bc0e3b8edd4fde00b97119aac204c063e",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 136541,
+      "github_sha256": "2bb5198a5604770dec234579328126124d98a3c59ebbdc2afd4fdfc4eba7ead1",
+      "path": "includes/class-mad4b-scp-staging-write-authority.php",
+      "staging_bytes": 136823,
+      "staging_sha256": "9aaff4262720a0b440a7239cf6d6a2dccc5ed7ea14f7ea3bdf89b9f836a9b3d7",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 67663,
+      "github_sha256": "d024f3139d2261364c419dbf4baad7f70e1389c391a209977dfa2bf2cf4ca483",
+      "path": "includes/class-mad4b-scp-staging-write-grant-reconciliation.php",
+      "staging_bytes": 71709,
+      "staging_sha256": "8f88233e161b8c932014d5286cfd0e1da23a03c1593e2f07b8cc309a44d9d241",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 30474,
+      "github_sha256": "2448d9344f13e0d4dc5eaded33904aefb3050e3b9d18a25b128f2364d9db6db7",
+      "path": "includes/class-mad4b-scp-staging-write-planning-guard.php",
+      "staging_bytes": 32603,
+      "staging_sha256": "1197922530790103ed65ab1c16a5981b712812f5b1abf123d74be3e4157563ec",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "SOURCE_IMPORT_REQUIRES_CAPABILITY_REVIEW",
+      "github_bytes": null,
+      "github_sha256": null,
+      "path": "includes/class-mad4b-scp-unified-gate-funnel.php",
+      "staging_bytes": 5604,
+      "staging_sha256": "af70fcca989e0d00f5c9af2f7287e1896212e2597111b710c3174a1093390b19",
+      "state": "STAGING_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "PRESERVE_GITHUB_VALIDATE_STAGING_COMPATIBILITY",
+      "github_bytes": 25485,
+      "github_sha256": "970bed36a8ca20afb99430ec08ae87dc84026e5ea9784527e24ea547081a47e4",
+      "path": "includes/class-skill-task-composition.php",
+      "staging_bytes": null,
+      "staging_sha256": null,
+      "state": "GITHUB_ONLY"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 59878,
+      "github_sha256": "14ab468df5db4abd5042c86c73da1b56230db17d17c2c01d90e23bb330a3d206",
+      "path": "mad4b-site-control-plane.php",
+      "staging_bytes": 63916,
+      "staging_sha256": "32d3aa84b15b0fa549c6dd8ffc131c2c292640e5b63991dab1a94f3f0e97cc00",
+      "state": "DIVERGENT"
+    },
+    {
+      "category": "active_source",
+      "decision": "THREE_WAY_MERGE_REQUIRED",
+      "github_bytes": 12924,
+      "github_sha256": "4e1f59ac4f66d2bb8f4894b7d3e7393c8576e180d3f6eb7412d4e2f5d0abf18c",
+      "path": "skill-seeds/wordpress-brand-context-builder/SKILL.md",
+      "staging_bytes": 13925,
+      "staging_sha256": "7212295e10d47594e61e9b2d253c56aea63adf54283cf61b94453c88c8d73395",
+      "state": "DIVERGENT"
+    }
+  ],
+  "staging_build_source_sha": "0e83ec7ecfdb02ff2f946753721921e4e45523c7",
+  "staging_manifest_files_verified": 877,
+  "staging_package_version": "0.4.0-rc.118",
+  "staging_total_files": 878
+}
