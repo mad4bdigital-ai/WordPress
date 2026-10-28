@@ -45,7 +45,9 @@ print('MAD4B_GOVERNED_RUNTIME_BUNDLE: PASS')
 
 if a.brand_neutral:
     import re
-    owned = [root/f for f in manifest['files']] + [root/'README.md', root/'mad4b-governed-runtime-contracts.yml', root/'runtime-admission-contract.php', root/'cron-plan-contract.php']
+    workflow = root/'mad4b-governed-runtime-contracts.yml'
+    if not workflow.is_file(): workflow = root.parent.parent/'.github/workflows/mad4b-governed-runtime-contracts.yml'
+    owned = [root/f for f in manifest['files']] + [root/'README.md', workflow, root/'runtime-admission-contract.php', root/'cron-plan-contract.php']
     forbidden = re.compile(r'(?i)(?:\betg\b|etg_|_etg|(?:mad4b[.-])etg|tours\.dev\.mad4b\.com|egypttourgates|allroyalegypt)')
     for f in owned:
         assert not forbidden.search(f.read_text()), f'company-specific marker in common artifact: {f.name}'
