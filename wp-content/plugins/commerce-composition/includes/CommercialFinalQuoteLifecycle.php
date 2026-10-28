@@ -211,7 +211,8 @@ final class CommercialFinalQuoteLifecycle
         $key=self::STORE.$record['quote_digest'];
         $before=get_option($key,false);
         if ($before!==false) {
-            if (!is_array($before)||$before!==$record)
+            if (!is_array($before)||!self::verifyImmutableRecord($before,$record['quote_digest'])
+                ||$before!==$record)
                 return self::error('final_quote_storage_conflict');
             return ['state'=>'idempotent_replay','quote'=>$record,
                 'manager_approved'=>false,'traveler_accepted'=>false,
@@ -224,21 +225,36 @@ final class CommercialFinalQuoteLifecycle
                 return self::error('final_quote_storage_conflict');
         }
         $readback=get_option($key,false);
-        if ($readback!==$record)return self::error('final_quote_persist_readback_failed');
+        if ($readback!==$record
+            ||!self::verifyImmutableRecord($readback,$record['quote_digest']))
+            return self::error('final_quote_persist_readback_failed');
         return ['state'=>'issued_awaiting_approvals','quote'=>$record,
             'manager_approved'=>false,'traveler_accepted'=>false,
             'order_authorized'=>false,'payment_authorized'=>false,
             'supplier_booking_authorized'=>false];
     }
 
+    /**
+     * Independent readback integrity: recompute the canonical stored quote
+     * digest; merely preserving a forged quote_digest field is insufficient.
+     */
+    public static function verifyImmutableRecord(array $record, string $digest):bool
+    {
+        if (!self::sha($digest) || ($record['contract']??null)!==self::CONTRACT
+            || ($record['quote_digest']??null)!==$digest) return false;
+        $payload=$record;
+        unset($payload['quote_digest']);
+        return hash_equals($digest,hash('sha256',
+            wp_json_encode($payload,JSON_UNESCAPED_SLASHES)));
+    }
+
     private static function exactQuote(string $digest):array|\WP_Error
     {
         if (!self::sha($digest))return self::error('final_quote_digest_invalid',400);
         $record=get_option(self::STORE.$digest,false);
-        if (!is_array($record)
-            ||($record['contract']??null)!==self::CONTRACT
-            ||($record['quote_digest']??null)!==$digest)
-            return self::error('final_quote_not_found',404);
+        if (!is_array($record))return self::error('final_quote_not_found',404);
+        if (!self::verifyImmutableRecord($record,$digest))
+            return self::error('final_quote_stored_integrity_invalid');
         $ctx=CompanyCommercePolicy::context();
         if (is_wp_error($ctx))return $ctx;
         $policy=CompanyCommercePolicy::registry();
