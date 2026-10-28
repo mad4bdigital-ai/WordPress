@@ -21,7 +21,7 @@ def git(repo, *args):
     return subprocess.check_output(['git', '-C', str(repo), *args]).decode().strip()
 
 
-def build(repo, output):
+def build(repo, output, release_review=False):
     repo = repo.resolve()
     output = output.resolve()
     current = git(repo, 'rev-parse', 'HEAD')
@@ -54,7 +54,12 @@ def build(repo, output):
     version = match.group(1)
     if f"define( 'DFSB_VERSION', '{version}' );" not in main:
         raise RuntimeError('version header and runtime constant differ')
-    if '-local.' not in version:
+    if release_review:
+        # This builds an independently reviewed INSTALLABLE CANDIDATE only;
+        # the builder cannot issue provider certificates or authorize sites.
+        if not re.fullmatch(r'[0-9]+\\.[0-9]+\\.[0-9]+-alpha\\.[0-9]+-rc\\.[0-9]+', version):
+            raise RuntimeError('release review requires an explicitly versioned alpha-N-rc-N source')
+    elif '-local.' not in version:
         raise RuntimeError('review source must be an explicitly held -local candidate')
     identity = {'contract': 'etg.dfsb.embedded-build-identity.v1',
                 'git_sha': current, 'tree_sha': tree, 'plugin_version': version}
@@ -70,7 +75,7 @@ def build(repo, output):
             zi.compress_type = zipfile.ZIP_DEFLATED
             zi.external_attr = 0o100644 << 16
             z.writestr(zi, data[name], compress_type=zipfile.ZIP_DEFLATED, compresslevel=9)
-    report = {'status': 'PASS', 'unsigned': True, 'certified': False, 'source_sha': current,
+    report = {'status': 'PASS', 'unsigned': True, 'certified': False, 'release_review': bool(release_review), 'source_sha': current,
               'root_tree_sha': tree, 'files': len(files), 'version': version,
               'zip_sha256': hashlib.sha256(output.read_bytes()).hexdigest()}
     print(json.dumps(report))
