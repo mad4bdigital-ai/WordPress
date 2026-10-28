@@ -40,6 +40,8 @@ jobs:
         run: |
           find packages/mad4b-shared-product-core/mu-plugins -type f -name '*.php' -print0 |
             xargs -0 -n1 php -l
+      - name: Lint opt-in read-only WordPress booking acceptance script
+        run: php -l packages/mad4b-shared-product-core/tests/live-booking-readonly.php
       - name: Standalone data and Repeater context contracts
         run: php packages/mad4b-shared-product-core/tests/offline-contract-smoke.php
       - name: Require source-only release flag
