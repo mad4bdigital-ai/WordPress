@@ -18,8 +18,8 @@ must(MAD4B_Commerce_Suite_Registry::normalize_desired('invalid') === [], 'non-ar
 must(MAD4B_Commerce_Suite_Registry::normalize_desired(['unknown']) === [], 'unknown capability rejected');
 must(
     MAD4B_Commerce_Suite_Registry::normalize_desired(['woocommerce','woocommerce','shared_product_core','unknown'])
-      === ['shared_product_core','woocommerce'],
-    'dedupe and allowlist'
+      === ['shared_product_core'],
+    'dedupe allowlist and keep external vendors read-only'
 );
 $empty = MAD4B_Commerce_Suite_Registry::snapshot([]);
 must($empty['runtime_mutation_performed'] === false, 'observation does not mutate');
@@ -48,5 +48,11 @@ must($loaded['modules']['shared_product_core']['activation_authorized'] === fals
 must($loaded['modules']['shared_product_core']['activation_performed'] === false, 'enrollment cannot activate');
 must($loaded['modules']['pricing_source_registry']['runtime_detected'] === false, 'independent registry not invented');
 must($loaded['modules']['woocommerce']['desired'] === false, 'dependency does not self-enroll');
+must($loaded['modules']['woocommerce']['enrollable'] === false, 'vendor cannot be enrolled');
+must($loaded['modules']['pricing_source_registry']['enrollable'] === true, 'owned registry can be desired');
+foreach (['cpt_product_adapter','rate_pricing','scheduling','booking_cart','financial_ledger','dynamic_presentation','form_pricing_bridge'] as $engine) {
+    must(array_key_exists($engine, $loaded['modules']), 'concrete engine inventory: ' . $engine);
+    must($loaded['modules'][$engine]['activation_performed'] === false, 'engine not activated: ' . $engine);
+}
 must(count($loaded['modules']) === count(MAD4B_Commerce_Suite_Registry::definitions()), 'complete known module set');
 echo "COMMERCE_SUITE_CONTRACT_PASS {$passed}/{$passed} php=" . PHP_VERSION . "\n";
