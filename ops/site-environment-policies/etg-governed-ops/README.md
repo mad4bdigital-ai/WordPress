@@ -23,6 +23,8 @@ docker exec etg-commerce-staging-php php /var/www/html/wp-content/mad4b-cli/gove
 ```
 
 The staging database currently contains 40 overdue events, classified as 4 messaging/form, 1 Action Scheduler, 4 commerce/booking, 6 company/control-plane and 25 other/core events (time-scoped snapshot; counts will change). There is no scheduled timer for the new preview, and no active Cron worker added.
+**Manual Staging systemd preview:** `systemctl start mad4b-etg-staging-cron-preview.service` followed by `journalctl -u mad4b-etg-staging-cron-preview.service -n 5 --no-pager`. It is a static, disabled-by-default one-shot **without any timer**, and `ExecStart` invokes `--preview` only. A manual smoke succeeded and recorded an anonymized plan. Running this service never executes WP-Cron due hooks.
+
 
 ## 3. Tests and source parity
 

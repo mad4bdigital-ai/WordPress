@@ -1,0 +1,19 @@
+[Unit]
+Description=MAD4B ETG Staging governed WordPress Cron preview (read-only)
+Documentation=https://github.com/mad4bdigital-ai/WordPress/pull/566
+After=docker.service
+Requires=docker.service
+ConditionPathExists=/opt/hostinger-migrations/hosting-3/etg-commerce-staging/site-copy/wp-content/mad4b-cli/governed-cron-runner.php
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+UMask=0077
+TimeoutStartSec=45
+ExecStart=/usr/bin/docker exec etg-commerce-staging-php php /var/www/html/wp-content/mad4b-cli/governed-cron-runner.php --preview
+# No ExecStartPost hook and NO timer: never auto-dispatch overdue tasks.
