@@ -10597,9 +10597,13 @@
         "ROLLOUT-01"
       ],
       "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-deployment-regressions.py"
+      ],
+      "review_rationale": "Review-only second tenant-neutral DFSB source is pinned to merged Git SHA and remains package_certification=pending, without signed provenance, final archive digest, release authority, staging install or Production promotion. Legacy ETG provider remains independent. The changed same-PR PHP runtime test verifies both discovered sources by stable ID, per-provider uniqueness and isolation, exact-SHA selection, fail-closed uncertified artifact and source-review gates, absence of native executor, environment denial and non-mutation. No deployed behavior is authorized. Independent exact-head owner attestation, approved artifact authority and live staging certification remain required.",
+      "source_regression_references": [
         "wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-deployment-runtime.php"
       ],
-      "review_rationale": "Review-only second tenant-neutral DFSB source is pinned to merged Git SHA and remains package_certification=pending, without signed provenance, final archive digest, release authority, staging install or Production promotion. Legacy ETG provider remains independent. The changed same-PR PHP runtime test verifies both discovered sources by stable ID, per-provider uniqueness and isolation, exact-SHA selection, fail-closed uncertified artifact and source-review gates, absence of native executor, environment denial and non-mutation. No deployed behavior is authorized. Independent exact-head owner attestation, approved artifact authority and live staging certification remain required."
+      "execution_note": "The bounded Python wrapper invokes the original standalone PHP fixture through PHP CLI, enforces nonzero-failure and the exact assertion PASS marker; it is not a PHPUnit test. Executed from the ordinary readiness Python lane; no new broad PHP executor allowlist."
     }
   ],
   "code_change_rules": {
