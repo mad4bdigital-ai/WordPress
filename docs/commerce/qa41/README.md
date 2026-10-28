@@ -48,12 +48,12 @@ REST permissions: WordPress `manage_options` **and** `manage_woocommerce`. Polic
 
 ### Verification
 
-- QA41 company policy / Rate independent sale-line / REST / ACL / no-mutation: **32/32 PASS**
+- QA41 company policy / Rate independent sale-line / REST / ACL / no-mutation: **33/33 PASS**
 - QA40 inspector/UI/price tags: **39/39 PASS**
 - QA39 REST/catalog/role: **53/53 PASS**
 - QA38 Lifecycle: **17/17 PASS**
-- **141/141** total WP-CLI checks. PHP lint and source-installed parity passed.
-- Source patch `QA41-Company-Commerce-Policy.patch` applied to exact QA40 predecessor snapshots and reproduces deployed files, SHA256 `b7e293e6fbde74c09e1c5cc4d08deb28d4e3d7e564756b174d8b24951f6efa15`.
+- **142/142** total WP-CLI checks. PHP lint and source-installed parity passed.
+- Source patch `QA41-Company-Commerce-Policy.patch` applied to exact QA40 predecessor snapshots and reproduces deployed files, SHA256 `5e4eb43f189f12cd6794dc27e14872a72a87c19f6f56b854e2da3cbc3c3a92c6`.
 
 Rollback backups, policy configuration and results:
 `/opt/commerce-components/evidence/etg-company-policy-qa41-20261028/`.
@@ -63,3 +63,5 @@ Rollback backups, policy configuration and results:
 This PR includes **scoped source patch + contract + evidence only**, not the complete installable Commerce Composition plugin. Full source onboarding, multi-tenant Staging certification, current Site Profile authority, manager/traveler evidence, fully priced provider Quote, inventory and supplier contract, native Woo checkout/Order Item and payment provider execution, browser/WPML visual QA and explicit Production release are still required.
 
 **Never equate a Rate's independent Woo Product identity with a payable/confirmed booking.** Supported sale-line identity and actual commercial purchasability are independent controls.
+
+The policy digest is canonical across Tour-page and independent Rate-page entry when the selected Rate, market, channel and effective policy are identical; the entry source ID does not artificially change the policy decision.

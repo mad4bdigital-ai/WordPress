@@ -1,7 +1,7 @@
 {
     "result": "PASS",
-    "passed": 32,
-    "total": 32,
+    "passed": 33,
+    "total": 33,
     "tests": {
         "canonical_site_bound": {
             "pass": true,
@@ -44,6 +44,10 @@
             "observed": null
         },
         "parent_context_same_rate_policy": {
+            "pass": true,
+            "observed": null
+        },
+        "same_policy_digest_on_parent_or_rate_page": {
             "pass": true,
             "observed": null
         },

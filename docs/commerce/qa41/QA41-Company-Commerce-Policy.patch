@@ -71,7 +71,7 @@
                  echo '<div class="notice notice-error"><p>'.esc_html($detail->get_error_code()).'</p></div>';
 --- a/includes/CompanyCommercePolicy.php
 +++ b/includes/CompanyCommercePolicy.php
-@@ -0,0 +1,419 @@
+@@ -0,0 +1,424 @@
 +<?php
 +declare(strict_types=1);
 +namespace Commerce\Composition;
@@ -469,8 +469,13 @@
 +            'site_profile_revision'=>$ctx['profile_revision'],
 +            'source'=>$identity,'facts'=>$facts,
 +            'effective'=>$effective,'provenance'=>$from,'matched_rules'=>$matched,
++            // Same Rate + company + market/channel + effective policy must
++            // produce the same decision digest from either the Tour page or
++            // the Rate's independent Woo Product page.
 +            'policy_digest'=>hash('sha256',wp_json_encode([
-+                $ctx['site_uuid'],$registry['revision'],$identity,$facts,$effective,$from
++                $ctx['site_uuid'],$registry['revision'],
++                $facts,$effective,$from,
++                $identity['sale_item_choices']
 +            ],JSON_UNESCAPED_SLASHES)),
 +            'company_policy_intent_only'=>true,
 +            'provider_price_calculated'=>false,
