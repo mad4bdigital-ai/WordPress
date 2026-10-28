@@ -5,6 +5,7 @@ on:
     paths:
       - 'wp-content/plugins/**'
       - 'tools/mad4b-cross-plugin-*.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/cross-plugin-sources.json'
       - '.github/workflows/mad4b-cross-plugin-candidate.yml'
   workflow_dispatch:
     inputs:

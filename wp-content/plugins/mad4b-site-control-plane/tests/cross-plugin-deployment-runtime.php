@@ -32,12 +32,27 @@ function check($yes,$reason) {
 }
 $cls='MAD4B_SCP_Cross_Plugin_Deployment';
 $catalog=$cls::discover();
-check($catalog['count']===1 && !$catalog['mutation_performed'],'source registry inventory');
+$registered=array();
+foreach ($catalog['items'] as $record) {
+    check(!isset($registered[$record['source_id']]),'duplicate source ID in discovery');
+    $registered[$record['source_id']]=$record;
+}
+check($catalog['count']>=2 && $catalog['count']===count($registered)
+    && !$catalog['mutation_performed'],'source registry inventory');
 check($GLOBALS['remote_calls']===0,'passive discover triggers no GitHub request');
-check($catalog['items'][0]['repository']==='mad4bdigital-ai/WordPress','ETG same-repository source present');
-check($catalog['items'][0]['package_certification']==='pending',
-    'candidate metadata may not promote ETG package certification');
-check($catalog['items'][0]['installed']===false,'not-installed source detected');
+check(isset($registered['etg-dynamic-filter-seo-bridge'])
+    && isset($registered['dynamic-filter-seo-bridge']),'both legacy and neutral source visible');
+foreach (array('etg-dynamic-filter-seo-bridge','dynamic-filter-seo-bridge') as $sourceId) {
+    check($registered[$sourceId]['repository']==='mad4bdigital-ai/WordPress',
+        'registered same-repository source missing: '.$sourceId);
+    check($registered[$sourceId]['package_certification']==='pending'
+        && $registered[$sourceId]['review_state']==='source_reviewed_artifact_pending',
+        'candidate must not promote package certification: '.$sourceId);
+    check($registered[$sourceId]['installed']===false,'not-installed source detected: '.$sourceId);
+}
+check($registered['etg-dynamic-filter-seo-bridge']['plugin_file']
+    !==$registered['dynamic-filter-seo-bridge']['plugin_file'],
+    'legacy and neutral plugin files must remain distinct');
 $sha=str_repeat('a',40);
 $input=array('source_id'=>'etg-dynamic-filter-seo-bridge','ref_type'=>'commit','reference'=>$sha);
 check(is_wp_error($cls::selection(array('source_id'=>'unknown','ref_type'=>'commit','reference'=>$sha))),'unknown repository admitted');
@@ -55,6 +70,21 @@ check(in_array('native_package_planner_unavailable', $plan['blockers'], true),
     'Missing native Staging package planner must be a hard blocker' );
 check(!$plan['mutation_performed'] && !$plan['wpcron_auto_execute'],
     'read-only planning claimed execution');
+$neutral=array('source_id'=>'dynamic-filter-seo-bridge',
+    'ref_type'=>'commit','reference'=>$sha);
+$neutral_plan=$cls::plan($neutral);
+check(is_array($neutral_plan) && $neutral_plan['operation']==='install'
+    && $neutral_plan['plugin_file']==='dynamic-filter-seo-bridge/dynamic-filter-seo-bridge.php',
+    'neutral source should be independently selectable');
+check(!$neutral_plan['eligible'] && empty($neutral_plan['native_executor'])
+    && in_array('source_review_promotion_required',$neutral_plan['blockers'],true)
+    && in_array('exact_source_commit_not_certified',$neutral_plan['blockers'],true)
+    && in_array('exact_zip_artifact_not_certified',$neutral_plan['blockers'],true),
+    'neutral source bypassed exact artifact/reviewer gate');
+check(!$neutral_plan['mutation_performed'] && !$neutral_plan['wpcron_auto_execute'],
+    'neutral plan requested automatic mutation');
+// Exact commit planning intentionally verifies the pinned commit via safe GitHub read.
+
 $GLOBALS['wp_environment']='production';
 $env_mismatch=$cls::plan($input);
 check(!$env_mismatch['eligible'] && empty($env_mismatch['native_executor'])
