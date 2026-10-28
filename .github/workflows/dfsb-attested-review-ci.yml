@@ -1,0 +1,45 @@
+name: DFSB Attested Release Review CI
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/dfsb-neutral-attested-candidate.yml'
+      - '.github/workflows/dfsb-attested-review-ci.yml'
+      - 'tests/dfsb-neutral-attested-workflow-contract.py'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dfsb-attested-review-ci-${ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review-contract:
+    name: Read-only DFSB attestation workflow contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact PR HEAD
+        uses: actions/checkout@v4
+        with:
+          ref: ${ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Verify immutable PR source checkout
+        env:
+          EXPECTED_SHA: ${ github.event.pull_request.head.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - name: Enforce source and release boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tests/dfsb-neutral-attested-workflow-contract.py
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path(".github/workflows/dfsb-neutral-attested-candidate.yml").read_text()
+          assert source.count("gh api ") == 2
+          assert all(key in source for key in ("pull-requests: read", "issues: read"))
+          for denied in ("gh release create", "plugin-package-apply", "DFSB_FORCE_FULL_BOOT"):
+              assert denied not in source, denied
+          print("DFSB_ATTESTATION_REVIEW_READ_ONLY: PASS")
+          PY
