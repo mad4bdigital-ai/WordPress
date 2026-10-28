@@ -44,12 +44,19 @@ namespace {
         'package_certification'=>'certified',
     ]];
     $guard='DynamicFilterSEOBridge\\Runtime\\BootGuard';
+    // A legacy environment override may not bypass a missing certificate.
+    define('DFSB_FORCE_FULL_BOOT', true);
+    check($guard::shouldHold(), 'unsafe forced boot was permitted without receipt');
+    $executed = false;
+    check(!$guard::run(static function () use (&$executed) { $executed = true; }) && !$executed,
+        'uncertified release executed boot callback');
     $r=$guard::releaseReadiness();
     check(!$r['ready'] && $r['reason']==='certified_release_receipt_required',
         'missing receipt must deny even with synthetic matching provider');
     $GLOBALS['identity']['package_provenance_valid']=true;
     $r=$guard::releaseReadiness();
     check($r['ready'] && !$r['authorizing'], 'matching in-memory mock fixture must be eligible for read-only result');
+    check(!$guard::shouldHold(), 'synthetic matching certificate could not pass guarded override');
     $GLOBALS['provider']['archive_sha256']=str_repeat('c',64);
     check(!$guard::releaseReadiness()['ready'], 'provider SHA mismatch allowed');
     $GLOBALS['provider']['archive_sha256']=$digest;
