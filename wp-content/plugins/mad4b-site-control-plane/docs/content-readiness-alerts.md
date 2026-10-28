@@ -170,3 +170,20 @@ Do not copy this Lab issue ledger into other companies or Production.
 - Local contract suite: reopen timestamp acceptance plus existing DFSB
   source-validation, authorization, REST filtering and ledger tests.
 - Site-specific issue counts are operational snapshots, not bundled defaults.
+
+## Company-scoped scheduled scanning and source-review triage (2026-10-28)
+
+- A scheduled job may run the scanner only from PHP CLI with
+  `MAD4B_READINESS_SCHEDULED_RUN` explicitly defined in its trusted runner,
+  and only when the site administrator enables `scheduled_scan_enabled`.
+- Interval (15-1440 minutes, default 60) respects recent manual scans.
+- The scheduled scanner writes only its issue ledger, NOT Board tasks,
+  customer records, pricing, bookings, notifications, or other content.
+- Missing media, origin and WPML languages require verified source values,
+  not values inferred from titles or generated images.
+- Deploy a separate scoped scheduler and rules for each company.
+
+- The editor dashboard supports nonce-protected CSV export of filtered issues
+  with source term evidence, content edit links and timestamps, so the team
+  can work from a concrete repair queue. The export does not change content
+  or issue state and escapes spreadsheet formula prefixes.
