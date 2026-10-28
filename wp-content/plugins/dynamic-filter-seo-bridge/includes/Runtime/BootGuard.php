@@ -26,6 +26,12 @@ final class BootGuard {
     }
 
     public static function shouldHold(): bool {
+        // Persistent hold=false is NOT release authority. Recheck the source,
+        // detached receipt and independent provider certificate every request,
+        // including when a previously trusted certificate has been revoked.
+        if ( empty( self::releaseReadiness()['ready'] ) ) { return true; }
+        // Development overrides can only bypass the manual hold after an
+        // independently certified exact package has passed the authority gate.
         if (defined('DFSB_FORCE_FULL_BOOT') && DFSB_FORCE_FULL_BOOT) { return false; }
         $state = self::state();
         if (self::$build === '' || (string)($state['build'] ?? '') !== self::$build) { return true; }
@@ -33,6 +39,7 @@ final class BootGuard {
     }
 
     public static function run(callable $boot): bool {
+        if ( empty( self::releaseReadiness()['ready'] ) ) { return false; }
         self::$monitoring = true;
         try {
             $boot();
