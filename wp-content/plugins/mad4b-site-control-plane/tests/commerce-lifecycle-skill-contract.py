@@ -15,7 +15,7 @@ names = {
     "wordpress-commerce-quote-booking-gates": "quote-booking-gates",
 }
 assert manifest["contract"] == "mad4b.skill-seed-manifest.v1"
-assert manifest["seed_version"] == 14
+assert manifest["seed_version"] == 15
 assert "const SEED_VERSION = 14;" in seeder
 for name in names:
     rows = [r for r in manifest["skills"] if r["name"] == name]

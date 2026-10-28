@@ -1,6 +1,6 @@
 {
   "contract": "mad4b.skill-seed-manifest.v1",
-  "seed_version": 14,
+  "seed_version": 15,
   "skills": [
     {
       "level": "site",
@@ -84,6 +84,12 @@
       "level": "workflow",
       "target": "commerce-lifecycle",
       "name": "wordpress-commerce-quote-booking-gates",
+      "enabled": true
+    },
+    {
+      "level": "workflow",
+      "target": "user-role-governance",
+      "name": "wordpress-user-role-governance",
       "enabled": true
     }
   ]
