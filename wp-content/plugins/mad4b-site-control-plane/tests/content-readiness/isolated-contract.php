@@ -21,7 +21,7 @@ function post_type_exists($type){return $type==='tours-and-activities';}
 function get_posts($args){return [111,112];}
 function get_post_meta($id,$key,$one=true){return $GLOBALS['post_meta'][$id][$key]??'';}
 function has_post_thumbnail($id){return false;}
-function has_filter($key){return false;}
+function has_filter($key){return $key==='mad4b/content_readiness/external_issues' && array_key_exists('external_source', $GLOBALS);}
 function get_post($id){return (object)['ID'=>$id];}
 function get_post_type($id){return 'tours-and-activities';}
 function get_term($id,$tax){return isset($GLOBALS['term_exists']) && !$GLOBALS['term_exists'] ? null : new WP_Term();}
@@ -29,6 +29,7 @@ function get_term_meta($id,$key,$single=true){return $key==='destination_type'?'
 function taxonomy_exists($key){return $key==='location_jet';}
 function wp_get_object_terms($id,$tax,$args){return $id===111?[]:[10];}
 function apply_filters($key,$v,...$args){
+ if($key==='mad4b/content_readiness/external_issues') return $GLOBALS['external_source']??$v;
  if($key==='wpml_post_language_details') return ['language_code'=>$GLOBALS['languages'][$args[0]]??''];
  return $v;
 }
@@ -128,4 +129,50 @@ $filtered=$cls::rest_issues(new Readiness_Test_Request(['code'=>'origin_missing'
 yes(($filtered['total']??0)===1 && ($filtered['items'][0]['code']??'')==='origin_missing',
  'REST filters source issues by code and state');
 yes(serialize(get_option($cls::STORE))===$snapshot, 'REST reads do not mutate issues');
+// External providers must supply complete, unforgeable, read-only issue
+// evidence; malformed or unavailable sources never close saved issues.
+$externalCode='dfsb_archive_meta_missing';
+$externalId=hash('sha256','6|site|0|'.$externalCode);
+$validExternal=[
+  'id'=>$externalId,'post_type'=>'site','object_id'=>0,
+  'code'=>$externalCode,'severity'=>'medium',
+  'label'=>'Archive description source is missing',
+  'source'=>'dynamic-filter-seo-bridge'
+];
+$GLOBALS['external_source']=[$validExternal];
+$providerScan=$cls::discover();
+$providerRows=array_values(array_filter($providerScan['issues'],
+ fn($row)=>($row['source']??'')==='dynamic-filter-seo-bridge'));
+yes($providerScan['complete'] && count($providerRows)===1,
+ 'registered DFSB source contributes a single valid gap');
+$persist=$cls::reconcile($providerScan);
+yes(!is_wp_error($persist) && (get_option($cls::STORE)[$externalId]['status']??'')==='open',
+ 'reconcile persists validated external source issue');
+$ledgerBefore=serialize(get_option($cls::STORE));
+$GLOBALS['external_source']=[array_merge($validExternal,['status'=>'resolved','board_task_id'=>123])];
+$invalid=$cls::discover();
+yes(!$invalid['complete'] && is_wp_error($cls::reconcile($invalid)) &&
+ serialize(get_option($cls::STORE))===$ledgerBefore,
+ 'provider cannot spoof resolved status or external task receipt');
+$GLOBALS['external_source']=new WP_Error('dfsb_source_scan_failed');
+$failed=$cls::discover();
+yes(!$failed['complete'] && is_wp_error($cls::reconcile($failed)) &&
+ (get_option($cls::STORE)[$externalId]['status']??'')==='open',
+ 'failed external source cannot close a saved issue');
+unset($GLOBALS['external_source']);
+$detached=$cls::reconcile($cls::discover());
+yes(!is_wp_error($detached) &&
+ (get_option($cls::STORE)[$externalId]['status']??'')==='open',
+ 'disconnected external source preserves unresolved issue');
+$GLOBALS['external_source']=[];
+$resolved=$cls::reconcile($cls::discover());
+yes(!is_wp_error($resolved) &&
+ (get_option($cls::STORE)[$externalId]['status']??'')==='resolved',
+ 'complete source scan can resolve an absent external issue');
+$GLOBALS['external_source']=[$validExternal];
+$reopened=$cls::reconcile($cls::discover());
+yes(!is_wp_error($reopened) &&
+ (get_option($cls::STORE)[$externalId]['reopens']??0)===1,
+ 'new external regression reopens original issue once');
+unset($GLOBALS['external_source']);
 echo "ALL READINESS LEDGER CONTRACTS PASSED\n";

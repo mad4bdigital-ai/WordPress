@@ -222,6 +222,37 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                     'Fluent Forms pending follow-up older than '.$days.' days: '.$unread);
             }
         }
+        // Preserve issues from separately owned read-only source scanners.
+        // Incomplete/malformed input never reaches the reconciler.
+        $external=apply_filters('mad4b/content_readiness/external_issues',array(),$cfg);
+        if(!is_array($external))$complete=false;
+        else {
+            $externalIds=array();
+            foreach ($external as $row) {
+                // The known DFSB provider owns these records. It cannot
+                // impersonate another issue, set task IDs, or pre-resolve
+                // the issue through untrusted filter output.
+                $code=is_array($row)?(string)($row['code']??''):'';
+                $id=is_array($row)?(string)($row['id']??''):'';
+                $expected=hash('sha256',get_current_blog_id().'|site|0|'.$code);
+                $valid=is_array($row) && preg_match('/^dfsb_[a-z0-9_]+$/D',$code) &&
+                    hash_equals($expected,$id) &&
+                    ($row['source']??'')==='dynamic-filter-seo-bridge' &&
+                    ($row['post_type']??'')==='site' && (int)($row['object_id']??-1)===0 &&
+                    in_array($row['severity']??'',array('critical','high','medium','low'),true) &&
+                    is_string($row['label']??null) &&
+                    trim($row['label'])!=='' && strlen($row['label'])<=240 &&
+                    !isset($row['status']) && !isset($row['board_task_id']) &&
+                    !isset($externalIds[$id]);
+                if (!$valid) {$complete=false;break;}
+                $externalIds[$id]=true;
+                $issues[]=array(
+                    'id'=>$id,'post_type'=>'site','object_id'=>0,'code'=>$code,
+                    'severity'=>$row['severity'],'label'=>sanitize_text_field($row['label']),
+                    'source'=>'dynamic-filter-seo-bridge'
+                );
+            }
+        }
         return array('contract'=>'mad4b.content-readiness.discovery.v1','complete'=>$complete,
             'post_counts'=>$counts,'scanned'=>$scanned,'issues'=>$issues);
     }
@@ -255,6 +286,10 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
     }
     private static function rule_enabled_for($issue,$cfg) {
         $type=$issue['post_type']??'';$code=$issue['code']??'';
+        if($type==='site' && str_starts_with($code,'dfsb_')){
+            // Never resolve a source issue when its scanner is disconnected.
+            return has_filter('mad4b/content_readiness/external_issues')!==false;
+        }
         if($code==='cron_overdue')return (bool)$cfg['check_cron'];
         if($code==='form_submissions_unread')return !empty($cfg['form_id']);
         if(!in_array($type,$cfg['post_types'],true))return false;

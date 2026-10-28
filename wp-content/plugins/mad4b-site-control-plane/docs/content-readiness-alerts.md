@@ -57,6 +57,39 @@ end-date also raises a separate high-priority issue.
   a tenant-wide plugin update. General code reads the target company's own
   fields, WPML and taxonomy definitions.
 
+## Origin provenance and single-root-cause audit (2026-10-28)
+
+The source-selection review found 13 published English tours referencing a source
+taxonomy term in the continent level. In the ETG Lab this was Africa (term 2306).
+A continent is not a passenger pickup location. Source titles such as From Cairo
+are not verified operational pickup addresses: no location, place ID, coordinates
+or WPML translation was guessed or written.
+
+The generic source classifier verifies source terms in the company-configured
+taxonomy, resolves source-language term via WPML, flags invalid references, and
+reports a too-broad origin with term ID, taxonomy, destination_type and native
+term edit link. It suppresses the duplicate empty-pickup alert until the invalid
+source is corrected. On subsequent validation, an empty pickup still becomes
+an actionable alert. All rules remain site-configured.
+
+Admin issue list now sorts open-first, critical/high-first. The lab scan covered
+1092 published records and returned 781 current issues (45 high, 736 medium).
+The ledger retained 794 historical IDs: 781 open and 13 resolved duplicate
+origin_missing alerts. The 13 broad-origin issues remain OPEN: resolved here
+never means a pickup location has been created.
+
+Readback confirmed all 90 expired Tour Rates have stop_sale=1. No pricing,
+booking, rate dates, public Staging or Production was changed. Board ID remains
+0 and central MAD4B write policy remains closed, so no task or outbound alert
+was sent. No scheduled scans were enabled.
+
+The isolated contract tests source discovery, deduplication, resolution/reopen,
+permissions, gallery reuse, root-cause suppression, origin source evidence,
+missing term reference rejection and missing commercial date classification.
+Rollback files on VPS: /opt/staging/chatbotx-deploy/backups/content-readiness-origin-20261028/
+One-time Lab data corrections are NOT distributed as plugin updates.
+
+
 ## Governed administrative REST readback (2026-10-28)
 
 - GET /wp-json/mad4b-content-readiness/v1/summary returns current Open / High /
@@ -78,3 +111,44 @@ end-date also raises a separate high-priority issue.
 These routes are intended for a future governed Control Plane diagnostics
 consumer. They do not imply approval for automated external notifications or
 unrestricted ChatbotX operations.
+
+## DFSB source-backed Content Readiness adapter — 28 October 2026
+
+The active Dynamic Filter SEO Bridge registers a read-only
+`mad4b/content_readiness/external_issues` provider that emits four
+site-wide SEO readiness diagnoses, each with a deterministic fingerprint:
+
+- `dfsb_brand_identity_drift` — High, company identity drift in Rank Math.
+- `dfsb_archive_meta_missing` — Medium, archive meta description unavailable.
+- `dfsb_breadcrumb_owner_conflict` — Medium, possible duplicated schema owner.
+- `dfsb_release_not_certified` — High, DFSB release certification incomplete.
+
+The Control Plane validates exact issue identity against current WordPress
+blog ID and source issue code; requires a scoped site issue, fixed provider
+marker, a known severity, and a bounded label; rejects forged status,
+task ID, duplicate fingerprints or malformed provider responses. A provider
+failure makes the complete scan ineligible for reconciliation. When the
+provider is detached, existing source issues remain open rather than being
+misclassified as resolved. When a functioning provider explicitly emits
+an empty result, the corresponding saved issue may resolve. A later
+regression reopens the same original issue ID.
+
+Exact ETG Lab certification on the isolated DB `etg_woocommerce_lab`:
+
+- Discovery: 1,092 content records, 785 active issues including four DFSB issues.
+- Ledger after save: 798 historical records, 785 open (47 High, 738 Medium)
+  and 13 previously resolved empty-origin duplicate alerts.
+- Two consecutive reconciliations returned identical summary and IDs.
+- Fluent Boards task count remained **3 → 3**; no external notification
+  or message was dispatched, and the central mutation gate remains closed.
+- REST GET: guest 401, authenticated manager 200 with filtered DFSB record;
+  REST POST: 404. REST readback did not modify the ledger.
+
+These are Content/SEO **readiness alerts** only, not certified facts about
+search engine ranking, indexing or actual customer-facing schema duplication.
+Provider rules are kept in the DFSB integration and are not reimplemented
+inside the central readiness engine.
+
+Full rollback: original plugin source and pre-change ledger snapshot at
+`/opt/staging/mad4b-content-readiness/backups/external-source-20261028/`.
+Do not copy this Lab issue ledger into other companies or Production.
