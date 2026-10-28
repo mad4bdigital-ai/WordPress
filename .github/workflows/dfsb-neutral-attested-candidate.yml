@@ -104,10 +104,46 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh attestation verify "$RUNNER_TEMP/dfsb-artifact/dynamic-filter-seo-bridge.zip" \
-            --repo "$GITHUB_REPOSITORY" > "$RUNNER_TEMP/dfsb-artifact/verified-attestation.json"
-          test -s "$RUNNER_TEMP/dfsb-artifact/verified-attestation.json"
-          cp "${{ steps.provenance.outputs.bundle-path }}" "$RUNNER_TEMP/dfsb-artifact/attestation-bundle.json"
+          zip="$RUNNER_TEMP/dfsb-artifact/dynamic-filter-seo-bridge.zip"
+          bundle="$RUNNER_TEMP/dfsb-artifact/attestation-bundle.json"
+          signer="$GITHUB_REPOSITORY/.github/workflows/dfsb-neutral-attested-candidate.yml"
+          cp "${{ steps.provenance.outputs.bundle-path }}" "$bundle"
+          test -s "$bundle"
+          # Cryptographic signature verification directly against the bundle
+          # issued by this same producer, not an API index that may lag signing.
+          gh attestation verify "$zip" \
+            --bundle "$bundle" --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$signer" --source-ref refs/heads/master \
+            --format json > "$RUNNER_TEMP/dfsb-artifact/verified-attestation-bundle.json"
+          jq -e --arg digest "$EXPECTED_SHA256" \
+            'length > 0 and any(.[]; any(.verificationResult.statement.subject[]?; .digest.sha256 == $digest))' \
+            "$RUNNER_TEMP/dfsb-artifact/verified-attestation-bundle.json" > /dev/null
+          # Independently fetch from GitHub's indexed attestation service.
+          # Bounded eventual-consistency retries; never treat failure as PASS.
+          online="$RUNNER_TEMP/dfsb-artifact/verified-attestation.json"
+          failure="$RUNNER_TEMP/dfsb-artifact/attestation-verify-error.log"
+          verified=false
+          for attempt in 1 2 3 4 5 6; do
+            if gh attestation verify "$zip" --repo "$GITHUB_REPOSITORY" \
+              --signer-workflow "$signer" --source-ref refs/heads/master \
+              --format json > "$online" 2>"$failure" &&
+               jq -e --arg digest "$EXPECTED_SHA256" \
+                 'length > 0 and any(.[]; any(.verificationResult.statement.subject[]?; .digest.sha256 == $digest))' \
+                 "$online" > /dev/null; then
+              verified=true
+              echo "DFSB_ATTESTATION_GITHUB_API: PASS on attempt $attempt"
+              break
+            fi
+            echo "::warning::GitHub attestation not verified yet, attempt $attempt/6" >&2
+            if test "$attempt" != 6; then sleep "$((attempt * 3))"; fi
+          done
+          if test "$verified" != true; then
+            echo "::error::Independent GitHub attestation lookup/verification failed after bounded retries"
+            sed -n '1,15p' "$failure" >&2
+            exit 1
+          fi
+          test -s "$online"
+          echo "DFSB_ATTESTATION_VERIFIED_ONLINE_AND_BUNDLE: PASS"
           printf '%s\n' '{"state":"SIGNED_REVIEW_ARTIFACT_NOT_CERTIFIED","staging_apply_authorized":false,"production_authorized":false,"safe_boot_override":false}' \
             > "$RUNNER_TEMP/dfsb-artifact/release-boundary.json"
 
@@ -121,5 +157,6 @@ jobs:
             ${{ runner.temp }}/dfsb-artifact/dynamic-filter-seo-bridge.zip
             ${{ runner.temp }}/dfsb-artifact/build.json
             ${{ runner.temp }}/dfsb-artifact/verified-attestation.json
+            ${{ runner.temp }}/dfsb-artifact/verified-attestation-bundle.json
             ${{ runner.temp }}/dfsb-artifact/attestation-bundle.json
             ${{ runner.temp }}/dfsb-artifact/release-boundary.json
