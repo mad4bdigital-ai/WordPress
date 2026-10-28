@@ -44,6 +44,8 @@ jobs:
         run: php -l packages/mad4b-shared-product-core/tests/live-booking-readonly.php
       - name: Standalone data and Repeater context contracts
         run: php packages/mad4b-shared-product-core/tests/offline-contract-smoke.php
+      - name: Booking cart quote input-shape regression
+        run: php packages/mad4b-shared-product-core/tests/booking-cart-regression.php
       - name: Require source-only release flag
         run: |
           python3 - <<'PY'

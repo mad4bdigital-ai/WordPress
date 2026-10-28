@@ -8,7 +8,7 @@
     "8.5"
   ],
   "source_file_count": 134,
-  "source_manifest_sha256": "a76679fb123dac199304a9e364dde3a96a22a9be53fd95c7132a680182a6ffc9",
+  "source_manifest_sha256": "aec4cb878aaf891cd4ed830e02a4a4bbced09ff7517fbce706b88c2f3537399c",
   "activation": "local Lab only; production activation not authorized",
   "stage": "requires per-tenant parity, integration tests, editor UI acceptance and explicit rollout approval",
   "deploy_automatically": false,
@@ -16,5 +16,10 @@
     "path": "shared-product-core/adapters/tour-program-source-contract-v1.php",
     "sha256": "2f3b25944115d01a27db9d59ee6ba0f7e0dab965ccfb6c881cf6b2dd816874ce",
     "line_count": 182
+  },
+  "post_import_patch": {
+    "path": "shared-product-core/pricing/booking-cart-v2.php",
+    "sha256": "cac0505d58b69c890f08a58dc580f7aefe1ea7b9fc3491fdf2c61e3b3737a744",
+    "reason": "cart_quote_preview_uses_raw_validated_shape"
   }
 }

@@ -20,8 +20,9 @@ function shared_product_booking_v2_cart_quote_preview($configurations){
  $draft=shared_product_booking_v2_cart_draft($configurations);
  if(is_wp_error($draft))return $draft;
  $currency=null;$sum=0;$lines=[];
- foreach($draft['cart_lines'] as $line){
-  $quote=shared_product_booking_v2_preview($line['configuration']);
+ foreach($draft['cart_lines'] as $index=>$line){
+  // Revalidate the original public shape, not the normalized internal draft shape.
+  $quote=shared_product_booking_v2_preview($configurations[$index]);
   if(is_wp_error($quote))return $quote;
   if($currency===null)$currency=$quote['currency'];
   if($currency!==$quote['currency'])return new WP_Error('booking_v2_cart_currency_mismatch');

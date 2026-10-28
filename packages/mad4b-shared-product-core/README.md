@@ -47,3 +47,7 @@ All subsequent code changes must flow through GitHub PR review and CI and be rel
 ## 2026-10-28 recovery checkpoint
 
 The original `adapters/tour-program-source-contract-v1.php` was recovered verbatim from the ETG WooCommerce Local Lab. Its SHA-256 is `2f3b25944115d01a27db9d59ee6ba0f7e0dab965ccfb6c881cf6b2dd816874ce` (182 lines). A complete static loader assembly is **not** a signed or tenant-authorized deployment; the package remains source-only.
+
+## Post-import booking cart bugfix
+
+The first live WordPress test exposed a normalized-cart-to-raw-quote mismatch: `shared_product_booking_v2_cart_draft()` succeeded but `shared_product_booking_v2_cart_quote_preview()` returned `booking_v2_unexpected_keys` for a valid configuration. The cart preview now passes the original already-validated request to the server-side quote validator while retaining normalized identity in the draft. `tests/booking-cart-regression.php` proves the separation. This is a reviewed patch to the imported original and is recorded with its new SHA-256 in `release-manifest.json`. No Woo Cart, Order, Payment, or inventory writes are enabled by this source change.
