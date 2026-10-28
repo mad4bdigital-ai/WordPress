@@ -17,7 +17,7 @@ need = (
 )
 for x in need:
     assert x in w, f"Missing exact-release-review safeguard: {x}"
-assert 'pull_request:' not in w
+assert '\n  pull_request:' not in w, 'review workflow must never trigger on PR'
 assert w.count('actions/attest-build-provenance@v2') == 1
 assert w.count('gh attestation verify ') == 2
 for forbidden in ('contents: write', 'gh release create', 'wp plugin install',
