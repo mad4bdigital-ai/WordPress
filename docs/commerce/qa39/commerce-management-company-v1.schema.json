@@ -138,6 +138,18 @@
           }
         }
       }
+    },
+    "role_personas": {
+      "type": "object",
+      "maxProperties": 30,
+      "patternProperties": {
+        "^[a-z][a-z0-9_]{1,48}$": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{1,60}$"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Site-bound persona role slugs resolved against registered WordPress roles; not permission grants."
     }
   }
 }

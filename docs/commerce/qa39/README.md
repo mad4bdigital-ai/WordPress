@@ -6,7 +6,7 @@
 
 - **MAD4B Site Profile v2** remains the canonical company/site identity source, including site_uuid, environment, origin/deployment bindings, revision and profile digest.
 - Per-company non-authorizing definition: WordPress option `commerce_management_company_definitions_v1`, contract `commerce.management.company.v1`, with a strict **exact-site** binding to site_uuid, Site Profile revision and digest, and environment.
-- Definition metadata includes domain visibility booleans (never capability grants), existing Fluent Forms IDs by company-specific role, and permitted native CPT service/Rate source types. No domain IDs are built into the reusable REST facade.
+- Definition metadata includes domain visibility booleans (never capability grants), existing Fluent Forms IDs by company-specific role, approved persona-to-WordPress-role mapping, and permitted native CPT service/Rate source types. No domain IDs are built into the reusable REST facade.
 - Original domain owners are reused: Fluent Forms, CPTs, Rate providers, RequestReview, LifecycleReadiness, FluentBoards, WooCommerce HPOS, workflows, CRM, supplier and accounting provider contracts.
 - Missing, foreign, stale or malformed company definitions **fail closed**. Managed company REST starts read-only; writes require both the exact site-bound definition and a healthy Site Profile authority/origin/deployment binding.
 - Changes to site definitions are **not** exposed as arbitrary REST writes; identity and company governance remain under their enrolled Control Plane source.
@@ -21,6 +21,7 @@ All endpoints are below `/wp-json/commerce-composition/v1`, require authenticate
 | GET | `/management/resources?domain=...` | 14 allowlisted domain source owners and disabled state |
 | GET | `/management/catalog?domain=services&type=...&page=1&page_size=20` | Bounded published services from company source-type list; no prices |
 | GET | `/management/catalog?domain=rates&type=...&page=1&page_size=20` | Bounded published Rate identities; no prices or sales authorization |
+| GET | `/management/roles` | Admin-only WordPress Role/capability risk matrix and company-bound persona mapping, no WP_User records |
 | GET | `/management/requests?page=1&page_size=20` | Existing RequestReview paginated listing |
 | GET | `/management/requests/{request_id}` | Existing 12-gate LifecycleReadiness inspection |
 | GET | `/management/requests/{request_id}/actions` | Dynamic native review transition list; cap/role and source binding evaluation |
@@ -42,6 +43,7 @@ Commercial Quote approval, traveler acceptance, Woo order creation, payment capt
 
 - QA39 management REST suite: **29/29 PASS** (site binding, reviewer/admin/guest roles, invalid company definition and no-definition fail closed, request listing and state, native transitions, blocked POST, no business mutations).
 - QA39 source catalog suite: **11/11 PASS** (paginated source identities, blocked WP post types, bad domain/size rejection, read-only prices, guest denied).
+- QA39 role governance REST suite: **9/9 PASS** (admin, no personal user records, real effective capabilities, operator excess privilege finding, denied anonymous).
 - QA38 lifecycle regression: **17/17 PASS**.
 - PHP lint and installed/source file parity pass; replay of QA39 patch onto exact pre-change snapshots pass.
 - GET public HTTP without credentials: **401**; Woo Lab homepage HTTP **200**.
@@ -55,3 +57,5 @@ Reversible snapshots and tests on VPS:
 `/opt/commerce-components/evidence/etg-management-rest-qa39-20261028/`.
 
 The GitHub files in this PR are a **scoped source patch plus test evidence**, not a complete deployable Commerce Composition release. Proper multi-tenant rollout requires onboarding the complete plugin source under an authorized repository/build, separate Staging provider certification, approved Site Profile/origin reconciliation and independent Production release authority.
+
+**Role governance:** `/management/roles` is independently restricted to WP administrators, reads site-local `wp_roles()` and a bounded set of effective role capabilities without user enumeration, and displays an excess-privilege finding for the legacy operator role. It does not grant or revoke any capability.

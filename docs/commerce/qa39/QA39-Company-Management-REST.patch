@@ -78,7 +78,7 @@
              $changed=$wpdb->query($wpdb->prepare(
 --- a/includes/CompanyManagementRest.php
 +++ b/includes/CompanyManagementRest.php
-@@ -0,0 +1,408 @@
+@@ -0,0 +1,466 @@
 +<?php
 +declare(strict_types=1);
 +namespace Commerce\Composition;
@@ -134,6 +134,7 @@
 +        $visible=array_fill_keys(array_keys(self::DOMAINS),false);
 +        $formRoles=[];
 +        $sourceTypes=['services'=>[],'rates'=>[]];
++        $rolePersonas=[];
 +        $revision=0;
 +        if(is_array($raw)&&$raw!==[]){
 +            $bound=($raw['contract']??null)===self::CONTRACT
@@ -178,6 +179,14 @@
 +                        $sourceTypes[$domain]=array_values(array_unique($sourceTypes[$domain]));
 +                    }
 +                }
++                $assignments=$raw['role_personas']??[];
++                if(is_array($assignments)){
++                    foreach($assignments as $persona=>$slug)
++                        if(is_string($persona)&&preg_match('/^[a-z][a-z0-9_]{1,48}$/D',$persona)
++                            &&is_string($slug)&&preg_match('/^[a-z][a-z0-9_-]{1,60}$/D',$slug)
++                            &&get_role($slug)!==null&&count($rolePersonas)<30)
++                            $rolePersonas[$persona]=$slug;
++                }
 +                $roles=$raw['form_roles']??[];
 +                if(is_array($roles)){
 +                    foreach($roles as $name=>$id)
@@ -194,7 +203,7 @@
 +            array_map('intval',$inquiries),static fn($n)=>$n>0))):[];
 +        return ['contract'=>self::CONTRACT,'source'=>$source,'revision'=>$revision,
 +            'issues'=>$issues,'domains'=>$visible,'form_roles'=>$formRoles,
-+            'source_types'=>$sourceTypes,'inquiry_form_ids'=>array_slice($formIds,0,50),
++            'source_types'=>$sourceTypes,'role_personas'=>$rolePersonas,'inquiry_form_ids'=>array_slice($formIds,0,50),
 +            'read_only_definition'=>true];
 +    }
 +    private static function context():array|\WP_Error {
@@ -241,6 +250,7 @@
 +            'company_definitions'=>'GET /management/definitions',
 +            'company_resources'=>'GET /management/resources',
 +            'company_catalog'=>'GET /management/catalog',
++            'company_roles'=>'GET /management/roles',
 +            'company_requests'=>'GET /management/requests',
 +            'company_request_actions'=>'GET /management/requests/{request_id}/actions',
 +            'company_command'=>'POST /management/requests/{request_id}/commands'
@@ -282,6 +292,50 @@
 +            'no_implicit_capability_grants'=>true]);
 +    }
 +    /** Paginated, published source identities; no private post content/prices. */
++    /** Effective role definitions, not personal WP_User records. */
++    public static function roles():\WP_REST_Response|\WP_Error
++    {
++        $ctx=self::context();
++        if(is_wp_error($ctx))return self::error($ctx);
++        if($ctx['definition']['domains']['users']!==true)
++            return self::failure('management_resource_disabled',403);
++        if(!current_user_can('manage_options'))
++            return self::failure('management_role_audit_admin_required',403);
++        $wpRoles=wp_roles();
++        if(!$wpRoles||!is_array($wpRoles->roles))
++            return self::failure('management_roles_unavailable',422);
++        $caps=[
++            'edit_posts','publish_posts','edit_users','list_users',
++            'promote_users','manage_options','manage_woocommerce',
++            'commerce_review_requests','commerce_manage_request_tasks',
++            'commerce_approve_request_processing'
++        ];
++        $results=[];
++        foreach(array_slice($wpRoles->roles,0,100,true) as $slug=>$role){
++            if(!is_string($slug)||!is_array($role))continue;
++            $permissions=[];
++            $defined=get_role($slug);
++            if(!$defined)continue;
++            foreach($caps as $cap)$permissions[$cap]=$defined->has_cap($cap);
++            $personas=[];
++            foreach($ctx['definition']['role_personas'] as $persona=>$roleSlug)
++                if($roleSlug===$slug)$personas[]=$persona;
++            $results[]=[
++                'role_slug'=>$slug,
++                'personas'=>$personas,
++                'capabilities'=>$permissions,
++                'excess_privilege_review'=>($permissions['edit_users']||
++                    $permissions['promote_users'])&&!$permissions['manage_options'],
++                'wp_user_records_disclosed'=>false,
++                'role_mutation_authorized'=>false
++            ];
++        }
++        return self::respond([
++            'site_uuid'=>$ctx['site_uuid'],'source'=>'wordpress_site_role_definitions',
++            'roles'=>$results,'wp_user_records_disclosed'=>false,
++            'role_mutation_authorized'=>false
++        ]);
++    }
 +    public static function catalog(\WP_REST_Request $r):\WP_REST_Response|\WP_Error {
 +        $ctx=self::context();
 +        if(is_wp_error($ctx))return self::error($ctx);
@@ -458,6 +512,10 @@
 +            'permission_callback'=>$auth,
 +            'callback'=>[self::class,'resources'],
 +            'args'=>['domain'=>['type'=>'string','default'=>'']]]);
++        register_rest_route(self::ROUTE,'/management/roles',[
++            'methods'=>\WP_REST_Server::READABLE,
++            'permission_callback'=>static fn()=>self::auth()&&current_user_can('manage_options'),
++            'callback'=>[self::class,'roles']]);
 +        register_rest_route(self::ROUTE,'/management/catalog',[
 +            'methods'=>\WP_REST_Server::READABLE,
 +            'permission_callback'=>$auth,

@@ -4,7 +4,7 @@
   "site_profile_revision": 1,
   "site_profile_digest": "REPLACE_WITH_EXACT_SITE_PROFILE_DIGEST",
   "environment": "local",
-  "revision": 1,
+  "revision": 3,
   "domains": {
     "forms": true,
     "services": true,
@@ -37,5 +37,13 @@
       "property-rates",
       "transport-rates"
     ]
+  },
+  "role_personas": {
+    "traveler": "customer",
+    "reviewer": "commerce_request_reviewer",
+    "commercial_manager": "commerce_request_manager",
+    "operations": "operator",
+    "developer": "admin_developer",
+    "site_administrator": "administrator"
   }
 }
