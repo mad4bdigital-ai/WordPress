@@ -1,0 +1,259 @@
+/* Local QA: only existing Fluent Form #6 and original native Jet/Elementor cards. */
+body.single-tours-and-activities .fluent_form_6 [data-presentation-form-projection-v1]{display:none!important}
+body.single-tours-and-activities .fluent_form_6 .shared-price-first-preview{
+ display:flex;flex-direction:column;gap:9px;padding:12px!important;
+ background:#fff;border:1px solid #d6e1ef!important;border-radius:12px!important;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-price-title{
+ font-size:13px;font-weight:650;color:#456b90;line-height:1.35;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-price-first-preview>label{
+ display:flex;flex-direction:column;gap:4px;font-size:12px;line-height:1.35;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-price-first-preview select{
+ width:100%;font-size:13px;min-height:36px;padding:5px 10px;border-radius:7px;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-fluent-extras-quantities label{
+ display:flex;align-items:center;justify-content:space-between;gap:8px;
+ margin:4px 0;font-size:12px;
+}
+/* REV84: compact, keyboard-accessible -/+ guest controls, same form data. */
+body.single-tours-and-activities .fluent_form_6 .shared-fluent-extras-quantities .shared-extra-item{
+ display:flex;align-items:center;justify-content:space-between;gap:9px;
+ margin:5px 0;min-width:0;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-extra-name{
+ flex:1;min-width:0;font-size:11px;line-height:1.35;overflow-wrap:anywhere;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-extra-counter{
+ display:inline-flex;flex:0 0 auto;align-items:center;
+ border:1px solid #d2dbe4;border-radius:7px;overflow:hidden;background:#fff;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-extra-counter button{
+ appearance:none;display:inline-flex;align-items:center;justify-content:center;
+ width:30px;height:32px;min-width:30px;padding:0!important;margin:0!important;
+ border:0;border-radius:0!important;background:#d2ac73;color:#fff;
+ font-size:18px;font-weight:600;line-height:1;cursor:pointer;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-extra-counter button:hover:not(:disabled){background:#bc9256}
+body.single-tours-and-activities .fluent_form_6 .shared-extra-counter button:disabled{opacity:.45;cursor:not-allowed}
+body.single-tours-and-activities .fluent_form_6 .shared-extra-counter button:focus-visible,
+body.single-tours-and-activities .fluent_form_6 .shared-extra-counter input:focus-visible{
+ outline:2px solid #285c90;outline-offset:-2px;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-extra-counter .shared-extra-quantity{
+ width:38px;min-width:38px;max-width:38px;height:32px;min-height:32px;
+ padding:3px 1px!important;margin:0!important;border:0!important;border-radius:0!important;
+ text-align:center;font-size:12px;font-variant-numeric:tabular-nums;
+ background:transparent;color:#285c90;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-extra-counter input::-webkit-inner-spin-button,
+body.single-tours-and-activities .fluent_form_6 .shared-extra-counter input::-webkit-outer-spin-button{
+ appearance:none;margin:0
+}
+body.single-tours-and-activities .fluent_form_6 .shared-extra-counter input[type=number]{-moz-appearance:textfield}
+body.single-tours-and-activities .fluent_form_6 .shared-price-first-preview output{
+ display:flex!important;flex-direction:column;gap:2px;
+ margin:2px 0!important;font-size:13px;font-weight:500;line-height:1.35;
+ overflow-wrap:anywhere;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-price-first-preview .shared-price-amount{
+ font-size:clamp(21px,2.8vw,27px);line-height:1.25;font-weight:750;color:#285c90;
+ font-variant-numeric:tabular-nums;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-price-first-preview .shared-price-scope,
+body.single-tours-and-activities .fluent_form_6 .shared-price-first-preview .shared-price-note{
+ font-size:10.5px;line-height:1.4;color:#68768a;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-price-first-preview .shared-price-note{
+ margin:0;
+}
+@media(max-width:600px){
+ .elementor-46193 .tour-native-package-tier .elementor-element-e64796e .jet-listing-dynamic-field__content{
+  font-size:16px!important;padding:3px 8px!important;
+ }
+ .booking-choice-list .booking-choice-item .elementor-element-76d4f7c .elementor-heading-title{
+  font-size:11.5px!important;
+ }
+}
+
+/* REV85 — Extra activities form-first presentation, same Fluent Form #6. */
+body.single-tours-and-activities .fluent_form_6 .shared-extra-picker{
+ width:100%;box-sizing:border-box;margin:9px 0 12px;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-extra-picker-title{
+ margin:0 0 8px;padding:0;font-size:13px;line-height:1.3;font-weight:700;
+ color:#203b5b;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-fluent-extras-quantities{
+ display:flex;flex-direction:column;gap:0;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-fluent-extras-quantities .shared-extra-item{
+ display:grid;grid-template-columns:46px minmax(0,1fr) auto;gap:9px;
+ align-items:center;min-width:0;margin:0;padding:9px 0;
+ border-bottom:1px solid #e5eaf0;background:transparent;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-fluent-extras-quantities .shared-extra-item:last-child{
+ border-bottom:none;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-extra-media{
+ display:flex;width:46px;height:46px;align-items:center;justify-content:center;
+ overflow:hidden;border-radius:7px;background:#eff2f6;color:#b98c4e;
+ font-size:22px;flex-shrink:0;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-extra-media img{
+ display:block;width:100%;height:100%;object-fit:cover;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-extra-media-placeholder{
+ background:#f4efe6;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-extra-content{
+ display:flex;flex-direction:column;gap:6px;min-width:0;align-items:flex-start;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-extra-name{
+ display:block;min-width:0;font-size:11.5px;line-height:1.4;
+ font-weight:550;color:#243a52;overflow-wrap:anywhere;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-extra-unit-price{
+ display:block;max-width:84px;text-align:end;font-size:10.5px;
+ line-height:1.45;font-weight:650;color:#285c90;
+ font-variant-numeric:tabular-nums;overflow-wrap:anywhere;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-extra-unit-price strong{
+ display:block;font-size:12px;font-weight:700;line-height:1.25;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-extra-unit-price small{
+ display:block;font-size:9.5px;font-weight:400;line-height:1.4;
+ color:#7e8996;white-space:nowrap;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-extra-unit-price[data-price-status=unverified]{
+ color:#7e8996;font-weight:400;font-size:10px;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-extra-counter{
+ border-color:#d5dce4;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-extra-counter button{
+ background:#d2ac73;
+}
+@media(max-width:600px){
+ body.single-tours-and-activities .fluent_form_6 .shared-fluent-extras-quantities .shared-extra-item{
+  grid-template-columns:38px minmax(0,1fr) auto;gap:6px;padding:8px 0;
+ }
+ body.single-tours-and-activities .fluent_form_6 .shared-extra-media{
+  width:38px;height:38px;
+ }
+ body.single-tours-and-activities .fluent_form_6 .shared-extra-unit-price{max-width:65px;font-size:10px}
+ body.single-tours-and-activities .fluent_form_6 .shared-extra-name{font-size:10.75px}
+ body.single-tours-and-activities .fluent_form_6 .shared-extra-counter button{
+  min-width:26px;width:26px;height:30px;
+ }
+ body.single-tours-and-activities .fluent_form_6 .shared-extra-counter .shared-extra-quantity{
+  width:30px;min-width:30px;max-width:30px;height:30px;min-height:30px;
+ }
+}
+
+/* REV86 — selected-only Extra customisation; never show unselected activities. */
+body.single-tours-and-activities .fluent_form_6 .shared-extra-picker[hidden]{display:none!important}
+body.single-tours-and-activities .fluent_form_6 .shared-extra-picker{
+ container-type:inline-size;min-width:0;max-width:100%;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-extra-picker .shared-fluent-extras-quantities{
+ display:grid;grid-template-columns:minmax(0,1fr);align-items:start;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-extra-picker[data-selected-count="1"] .shared-extra-item{
+ border-bottom:0;padding-bottom:4px;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-extra-picker.has-many-extras .shared-extra-item{
+ padding-block:7px;
+}
+@container (min-width:580px){
+ body.single-tours-and-activities .fluent_form_6 .shared-extra-picker.has-many-extras .shared-fluent-extras-quantities{
+  grid-template-columns:repeat(2,minmax(0,1fr));column-gap:14px;
+ }
+}
+/* QA27 optional room and meals controls after original Elementor stay cards */
+body.single-tours-and-activities .fluent_form_6 .shared-stay-picker{
+ display:grid;gap:9px;margin:9px 0 13px;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-stay-picker[hidden]{display:none!important}
+body.single-tours-and-activities .fluent_form_6 .shared-stay-row{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:7px;padding:10px;border:1px solid #d8e1ea;border-radius:10px;background:#fff;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-stay-heading{
+ grid-column:1/-1;font-size:13px;font-weight:650;color:#355675;text-transform:capitalize;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-stay-field{
+ display:flex;flex-direction:column;gap:3px;min-width:0;font-size:11px;line-height:1.35;color:#566b80;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-stay-field select,
+body.single-tours-and-activities .fluent_form_6 .shared-stay-field input{
+ width:100%;min-height:34px;min-width:0;padding:5px 8px;font-size:12px;
+ color:#31506f;border:1px solid #dce3eb;border-radius:7px;background:#fff;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-stay-hint{
+ grid-column:1/-1;font-size:10.5px;color:#78869a;line-height:1.35;
+}
+@media(max-width:440px){
+ body.single-tours-and-activities .fluent_form_6 .shared-stay-row{grid-template-columns:1fr}
+}
+
+/* REV90: selected transportation preferences within the existing Fluent Form. */
+body.single-tours-and-activities .fluent_form_6 .shared-transport-picker[hidden]{display:none!important}
+body.single-tours-and-activities .fluent_form_6 .shared-transport-picker{
+ width:100%;max-width:100%;min-width:0;box-sizing:border-box;margin:10px 0 14px
+}
+body.single-tours-and-activities .fluent_form_6 .shared-transport-heading{
+ margin:0 0 7px;font-size:13px;font-weight:700;color:#203b5b;line-height:1.35
+}
+body.single-tours-and-activities .fluent_form_6 .shared-transport-list{
+ display:grid;grid-template-columns:minmax(0,1fr);gap:6px;min-width:0
+}
+body.single-tours-and-activities .fluent_form_6 .shared-transport-option{
+ display:flex;justify-content:space-between;align-items:center;
+ gap:7px;min-width:0;padding:8px 9px;border:1px solid #e2e7ed;
+ border-radius:8px;background:#fffdfa;color:#283d54
+}
+body.single-tours-and-activities .fluent_form_6 .shared-transport-name{
+ min-width:0;font-size:11.5px;line-height:1.4;overflow-wrap:anywhere
+}
+body.single-tours-and-activities .fluent_form_6 .shared-transport-status{
+ flex:0 0 auto;font-size:10px;font-weight:600;color:#37668c;
+ border-radius:5px;padding:3px 6px;background:#edf3f9
+}
+@media(max-width:600px){
+ body.single-tours-and-activities .fluent_form_6 .shared-transport-option{
+  padding:7px;gap:5px
+ }
+ body.single-tours-and-activities .fluent_form_6 .shared-transport-name{font-size:10.5px}
+ body.single-tours-and-activities .fluent_form_6 .shared-transport-status{font-size:9.5px}
+}
+
+/* REV91 — MU Presentation controls occupancy; hide a non-applicable field
+   even if inherited Elementor form styles otherwise force display:flex. */
+body.single-tours-and-activities .fluent_form_6 .shared-price-first-preview>.shared-room-occupancy-field[hidden]{
+ display:none!important;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-price-first-preview[data-accommodation="none"]{
+ gap:5px;
+}
+
+/* Transport rows inside Fluent #6 are selected preferences only.
+   Use the same Add visual language without claiming a sale price. */
+body.single-tours-and-activities .fluent_form_6 .shared-transport-option[data-selected="true"]{
+ background:#f4f9fe;
+ border-color:#3674a5;
+ box-shadow:0 1px 5px rgba(36,92,143,.08);
+}
+body.single-tours-and-activities .fluent_form_6 .shared-transport-status{
+ display:flex;flex-direction:column;align-items:flex-end;gap:3px;
+ background:transparent;padding:0;min-width:65px;text-align:end;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-transport-added{
+ background:#2d678f;color:#fff;border-radius:5px;
+ padding:3px 6px;font-size:10px;font-weight:650;line-height:1.2;white-space:nowrap;
+}
+body.single-tours-and-activities .fluent_form_6 .shared-transport-policy{
+ background:#edf3f9;color:#37668c;border-radius:4px;
+ padding:2px 5px;font-size:9px;font-weight:550;line-height:1.25;white-space:nowrap;
+}
