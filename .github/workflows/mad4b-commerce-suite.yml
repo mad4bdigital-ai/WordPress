@@ -8,6 +8,11 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+env:
+  SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+concurrency:
+  group: mad4b-commerce-suite-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
 jobs:
   suite-contract:
     name: Suite PHP matrix contract
@@ -19,6 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ env.SOURCE_SHA }}
           persist-credentials: false
       - uses: shivammathur/setup-php@v2
         with:
@@ -49,6 +55,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ env.SOURCE_SHA }}
           persist-credentials: false
       - name: Package non-executing admin shell
         run: |
