@@ -1,0 +1,17 @@
+[Unit]
+Description=MAD4B governed WordPress Cron preview for registered container %i (read-only)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+UMask=0077
+TimeoutStartSec=45
+ExecStart=/usr/bin/docker exec %i php /var/www/html/wp-content/mad4b-cli/governed-cron-runner.php --preview
+# This template is manually started, has no timer, and cannot run Cron callbacks.

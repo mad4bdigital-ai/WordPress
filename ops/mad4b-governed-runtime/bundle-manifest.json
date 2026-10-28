@@ -1,0 +1,12 @@
+{
+  "contract": "mad4b.governed-runtime-bundle.v1",
+  "deployment": "site-registry-resolved",
+  "production_deploy_allowed": false,
+  "default_dispatch_enabled": false,
+  "files": {
+    "015-mad4b-runtime-admission.php": "64d3c019ee97c10e1e536f2f6b1699c829aaa5881c22a9e11262505cfd05f797",
+    "governed-cron-plan.php": "707431dcda58dc5c4aa8db02c28f7d060bba06d6679ab52fa48eb86b86077136",
+    "governed-cron-runner.php": "2e9402218db4f7e610ac73dd14adbb80932f6cbacfaf124d226d10e85d70439e",
+    "mad4b-governed-cron-preview@.service": "035397aab846d86303286108ab11d9a1938496c8efd52e260b967c93b2e26358"
+  }
+}
