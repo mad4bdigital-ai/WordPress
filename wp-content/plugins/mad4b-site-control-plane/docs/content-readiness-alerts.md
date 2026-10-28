@@ -207,3 +207,31 @@ Do not copy this Lab issue ledger into other companies or Production.
 - Operator must enroll exact current origin through official Site Profile
   workflow and validate governed agent, schema and audit before enabling
   Content Readiness task creation. This may affect other connectors.
+
+- Batch Sync is a nonce-protected administrator action; it uses the same
+  central governed write gate as single-task sync and respects company
+  minimum severity and 1-25 task batch limit.
+- Fluent Boards source/source_id readback recovers the exact issue task
+  when a prior attempt created a task but ledger linking was interrupted.
+- External email and Bit Flows checkboxes remain disabled on the Option Page;
+  they do not claim to send messages without certified dispatch adapters.
+
+## Official VPS local-client write binding
+
+- The Site Profile has been re-enrolled at the exact canonical origin on ETG
+  Local Lab through the audited Site Profile save API. Re-enrollment correctly
+  reset the site UUID, requiring host local-client UUID rebind.
+- MAD4B_LOCAL_CLIENT_SITE_UUID in the Lab wp-config is now bound to the new
+  exact Site Profile UUID; this does not authenticate an Agent request.
+- A real WordPress Application Password must be provisioned in the private
+  host vault and bound to an enabled Site Profile governed-write Agent by
+  the official Local Client provisioning workflow. Do NOT fake a request
+  subject or weaken MAD4B_SCP_Policy::can_mutate().
+- POST /wp-json/mad4b-content-readiness/v1/sync-one accepts an exact 64-hex
+  issue fingerprint. POST /sync-batch is capped by per-company settings.
+  Both fail closed unless a WordPress admin has a *verified* app-password
+  identity, an exact Site Profile local-client binding, and the existing
+  NHI/Agent-governed mutation gate passes. Other HTTP methods do not write.
+- The prior Brand Context record and assets retain their original site UUID,
+  and require separately certified transfer/migration. They are not silently
+  reparented to the new site identity.
