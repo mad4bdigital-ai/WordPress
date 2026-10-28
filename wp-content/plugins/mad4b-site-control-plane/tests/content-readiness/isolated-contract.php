@@ -33,7 +33,7 @@ function apply_filters($key,$v,...$args){
  return $v;
 }
 function wp_json_encode($v){return json_encode($v);}
-require dirname(__DIR__).'/includes/class-mad4b-scp-content-readiness-alerts.php';
+require dirname(__DIR__, 2).'/includes/class-mad4b-scp-content-readiness-alerts.php';
 $cls='MAD4B_SCP_Content_Readiness_Alerts';
 function yes($condition,$label){if(!$condition){fwrite(STDERR,"FAIL $label\n");exit(3);}echo "PASS $label\n";}
 $GLOBALS['admin']=true;
