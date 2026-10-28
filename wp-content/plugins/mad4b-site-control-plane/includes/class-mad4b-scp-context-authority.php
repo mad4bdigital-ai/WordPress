@@ -1349,12 +1349,225 @@ final class MAD4B_SCP_Context_Authority {
 		return $count;
 	}
 
+    const STAGING_TRIAL_ARCHIVE = 'mad4b_scp_context_staging_trial_archive_v1';
+    public static function staging_trial_plan() {
+        $site = self::site_binding();
+        if (is_wp_error($site)) return $site;
+        $original=get_option(self::PROFILE_OPTION, array());
+        $sources=get_option(self::SOURCES_OPTION, array());
+        $assets=get_option(self::ASSETS_OPTION, array());
+        $archive=get_option(self::STAGING_TRIAL_ARCHIVE, false);
+        $bound=self::profile();
+        $current_sources=0;$current_assets=0;
+        foreach ((array)$sources as $row) if (is_array($row) && ($row['site_uuid']??'')===$site['site_uuid']) ++$current_sources;
+        foreach ((array)$assets as $row) if (is_array($row) && ($row['site_uuid']??'')===$site['site_uuid']) ++$current_assets;
+        $mode='available';$blockers=array();
+        if (wp_get_environment_type()!=='staging' || $site['environment']!=='staging')$blockers[]='staging_only';
+        if (!self::valid_profile($original))$blockers[]='valid_existing_profile_required';
+        if ($bound)$blockers[]='site_brand_already_enrolled';
+        if ($archive!==false)$blockers[]='trial_archive_already_exists';
+        if ($current_sources || $current_assets)$blockers[]='current_site_context_sources_must_be_empty';
+        if (class_exists('MAD4B_SCP_Company_Communication') && MAD4B_SCP_Company_Communication::canSend())$blockers[]='outbound_must_be_disabled';
+        if (is_wp_error(self::audit_preflight()))$blockers[]='audit_unavailable';
+        $basis=array('contract'=>'mad4b.context-staging-trial-plan.v1',
+           'site_uuid'=>$site['site_uuid'],'environment'=>$site['environment'],
+           'previous_profile_sha256'=>hash('sha256',wp_json_encode($original)),
+           'sources_sha256'=>hash('sha256',wp_json_encode($sources)),
+           'assets_sha256'=>hash('sha256',wp_json_encode($assets)),
+           'registry_revision'=>self::registry_revision(),
+           'current_site_sources'=>$current_sources,'current_site_assets'=>$current_assets,
+           'existing_archive'=>$archive!==false);
+        return array('contract'=>'mad4b.context-staging-trial-preview.v1',
+           'can_create'=>!$blockers,'blockers'=>$blockers,'basis'=>$basis,
+           'plan_sha256'=>hash('sha256',wp_json_encode($basis)),
+           'legacy_source_count'=>count((array)$sources),'legacy_asset_count'=>count((array)$assets),
+           'new_identity_generated_on_commit'=>true,'legacy_profile_preserved_in_immutable_archive'=>true,
+           'production_authorized'=>false,'outbound_authorized'=>false,'read_only'=>true);
+    }
+    /** Exactly one new sandbox Brand identity, never a transfer of old authority. */
+    public static function staging_trial_create(array $input) {
+        if (!class_exists('MAD4B_SCP_Company_Owner_Activation') ||
+            !MAD4B_SCP_Company_Owner_Activation::browserOwnerAuthorized())
+            return new WP_Error('mad4b_brand_trial_browser_owner_required','Verified Staging Administrator browser session and nonce required.');
+        if (($input['confirmation']??'')!=='CREATE NEW STAGING TEST BRAND')
+            return new WP_Error('mad4b_brand_trial_confirmation_required','Exact trial-only confirmation required.');
+        $name=trim(sanitize_text_field((string)($input['brand_name']??'')));
+        if (mb_strlen($name)<8 || mb_strlen($name)>85 || !preg_match('/TEST|تجريبي|اختبار/iu',$name))
+            return new WP_Error('mad4b_brand_trial_name_invalid','The trial name must explicitly identify testing.');
+        $expected=(string)($input['expected_plan_sha256']??'');
+        return self::with_registry_lock('save_profile', static function() use($expected,$name) {
+            $plan=self::staging_trial_plan();
+            if (is_wp_error($plan))return $plan;
+            if (!$plan['can_create'])return new WP_Error('mad4b_brand_trial_preflight_blocked','Trial blocked. Refresh the plan.',$plan['blockers']);
+            if (!preg_match('/^[a-f0-9]{64}$/D',$expected) || !hash_equals($plan['plan_sha256'],$expected))
+                return new WP_Error('mad4b_brand_trial_plan_stale','Site, registry or old Brand record changed.');
+            $site=self::site_binding();if(is_wp_error($site))return $site;
+            $original=get_option(self::PROFILE_OPTION,array());
+            $trial_id=strtolower(str_replace('-','',wp_generate_uuid4()));
+            $archive=array('contract'=>'mad4b.context-staging-trial-archive.v1',
+                'trial_id'=>$trial_id,'site_uuid'=>$site['site_uuid'],
+                'previous_profile'=>$original,'previous_profile_sha256'=>$plan['basis']['previous_profile_sha256'],
+                'sources_sha256'=>$plan['basis']['sources_sha256'],
+                'assets_sha256'=>$plan['basis']['assets_sha256'],
+                'previous_registry_revision'=>$plan['basis']['registry_revision'],
+                'plan_sha256'=>$plan['plan_sha256'],'actor_id'=>get_current_user_id(),
+                'created_at'=>gmdate('c'));
+            if (!add_option(self::STAGING_TRIAL_ARCHIVE,$archive,'',false))
+                return new WP_Error('mad4b_brand_trial_archive_exists','A trial archive already exists; cannot overwrite.');
+            if (get_option(self::STAGING_TRIAL_ARCHIVE)!==$archive)
+                return new WP_Error('mad4b_brand_trial_archive_readback_failed','Original owner archive did not read back exactly.');
+            $record=array('contract'=>self::PROFILE_CONTRACT,'site_uuid'=>$site['site_uuid'],
+                'brand_id'=>$trial_id,'brand_name'=>$name,'revision'=>1,
+                'status'=>'test_only','context_policy'=>'staging_test_only_no_external_authority',
+                'context_fingerprint'=>self::context_fingerprint(),
+                'review_policy'=>self::default_review_policy(),'last_verified_at'=>'',
+                'created_at'=>gmdate('c'),'updated_at'=>gmdate('c'));
+            if (!self::write_option(self::PROFILE_OPTION,$record))
+                return new WP_Error('mad4b_brand_trial_write_failed','Trial Brand did not persist; recovery evidence retained.');
+            if (self::profile()!==$record)
+                return new WP_Error('mad4b_brand_trial_readback_failed','Brand Context readback did not match the test record.');
+            return self::audited_registry_result(
+                array('state'=>'TEST_BRAND_CREATED','trial_id'=>$trial_id,'site_uuid'=>$site['site_uuid'],
+                    'brand_name'=>$name,'test_only'=>true,'legacy_archive_preserved'=>true,
+                    'source_count_inherited'=>0,'outbound_authorized'=>false),
+                'mad4b/context-staging-trial-create',
+                array('trial_id'=>$trial_id,'site_uuid'=>$site['site_uuid'],
+                    'previous_profile_sha256'=>$archive['previous_profile_sha256'],
+                    'plan_sha256'=>$plan['plan_sha256'],'test_only'=>true));
+        });
+    }
+    /**
+     * Browser-owner approved DISPLAY rename of the same test-only Brand.
+     * No new brand_id, source ownership, mail authorization or production grant.
+     */
+    public static function staging_trial_rename(array $input) {
+        if (!class_exists('MAD4B_SCP_Company_Owner_Activation', false)
+            || !MAD4B_SCP_Company_Owner_Activation::browserOwnerAuthorized()
+            || ($input['confirmation'] ?? '') !== 'RENAME STAGING TEST BRAND')
+            return new WP_Error('mad4b_trial_rename_owner_required',
+                'Verified Staging Administrator browser confirmation required.');
+        $name=trim(sanitize_text_field((string)($input['brand_name']??'')));
+        if (mb_strlen($name)<8 || mb_strlen($name)>85
+            || !preg_match('/TEST|تجريبي|اختبار/iu',$name))
+            return new WP_Error('mad4b_trial_rename_requires_test_name',
+                'The name must explicitly identify the demo as TEST-only.');
+        return self::with_registry_lock('save_profile', static function()use($input,$name) {
+            $site=self::site_binding();
+            if (is_wp_error($site)) return $site;
+            if (wp_get_environment_type()!=='staging' || $site['environment']!=='staging')
+                return new WP_Error('mad4b_trial_rename_staging_only','Staging only.');
+            $raw=get_option(self::PROFILE_OPTION, array());
+            $current=self::profile();
+            $archive=get_option(self::STAGING_TRIAL_ARCHIVE, false);
+            if (!is_array($raw) || !is_array($archive) || !$current
+                || ($archive['contract']??'')!=='mad4b.context-staging-trial-archive.v1'
+                || ($current['status']??'')!=='test_only'
+                || ($current['brand_id']??'')!==($archive['trial_id']??'')
+                || ($current['site_uuid']??'')!==$site['site_uuid']
+                || ($archive['site_uuid']??'')!==$site['site_uuid'])
+                return new WP_Error('mad4b_trial_rename_scope_mismatch',
+                    'Only the exact current test Brand can be renamed.');
+            if (class_exists('MAD4B_SCP_Company_Communication',false)
+                && MAD4B_SCP_Company_Communication::canSend())
+                return new WP_Error('mad4b_trial_rename_outbound_active',
+                    'Disable email before renaming a demo Brand.');
+            $expectedId=(string)($input['expected_trial_id']??'');
+            $expectedRev=absint($input['expected_revision']??0);
+            $expectedSha=(string)($input['expected_profile_sha256']??'');
+            $actualSha=hash('sha256',wp_json_encode($raw));
+            if (!hash_equals((string)$current['brand_id'],$expectedId)
+                || $expectedRev!==(int)$current['revision']
+                || !preg_match('/^[a-f0-9]{64}$/D',$expectedSha)
+                || !hash_equals($actualSha,$expectedSha))
+                return new WP_Error('mad4b_trial_rename_stale',
+                    'Brand changed; refresh the page before retrying.');
+            if ($name===(string)$current['brand_name'])
+                return new WP_Error('mad4b_trial_rename_unchanged',
+                    'The test Brand already has that display name.');
+            $check=self::audit_preflight();
+            if (is_wp_error($check))return $check;
+            $updated=$current;
+            $updated['brand_name']=$name;
+            $updated['revision']=max(1,(int)$current['revision'])+1;
+            $updated['updated_at']=gmdate('c');
+            $updated['last_verified_at']='';
+            if (!self::write_option(self::PROFILE_OPTION,$updated))
+                return new WP_Error('mad4b_trial_rename_write_failed',
+                    'Unable to save test-only display name.');
+            if (self::profile()!==$updated)
+                return new WP_Error('mad4b_trial_rename_readback_failed',
+                    'Display rename was not confirmed.');
+            return self::audited_registry_result([
+                    'status'=>'TEST_BRAND_RENAMED',
+                    'brand_name'=>$name,'revision'=>$updated['revision'],
+                    'brand_id_unchanged'=>true,'site_uuid'=>$site['site_uuid'],
+                    'test_only'=>true,'outbound_authorized'=>false,
+                    'external_sources_inherited'=>0],
+                'mad4b/context-staging-trial-rename',
+                ['trial_id'=>$updated['brand_id'],
+                 'old_revision'=>$current['revision'],'new_revision'=>$updated['revision'],
+                 'previous_profile_sha256'=>$actualSha,
+                 'new_profile_sha256'=>hash('sha256',wp_json_encode($updated)),
+                 'test_only'=>true]);
+        });
+    }
+
+    public static function staging_trial_restore(array $input) {
+        if (!class_exists('MAD4B_SCP_Company_Owner_Activation') ||
+            !MAD4B_SCP_Company_Owner_Activation::browserOwnerAuthorized() ||
+            ($input['confirmation']??'')!=='RESTORE ORIGINAL STAGING BRAND RECORD')
+            return new WP_Error('mad4b_brand_trial_restore_owner_required','Exact browser owner rollback approval is required.');
+        return self::with_registry_lock('save_profile',static function()use($input){
+            $archive=get_option(self::STAGING_TRIAL_ARCHIVE,false);
+            $site=self::site_binding();if(is_wp_error($site))return $site;
+            $profile=self::profile();
+            if (!is_array($archive) || ($archive['contract']??'')!=='mad4b.context-staging-trial-archive.v1'
+                || ($archive['site_uuid']??'')!==$site['site_uuid'] ||
+                ($profile['brand_id']??'')!==($archive['trial_id']??'') ||
+                ($profile['status']??'')!=='test_only' || (int)($profile['revision']??0)<1)
+                return new WP_Error('mad4b_brand_trial_restore_conflict','Trial is no longer identical to the archive; manual recovery required.');
+            if (($input['expected_trial_id']??'')!==$archive['trial_id'] ||
+                hash('sha256',wp_json_encode(get_option(self::SOURCES_OPTION,array())))!==$archive['sources_sha256'] ||
+                hash('sha256',wp_json_encode(get_option(self::ASSETS_OPTION,array())))!==$archive['assets_sha256'])
+                return new WP_Error('mad4b_brand_trial_restore_registry_drift','Registry changed since trial enrollment.');
+            if (class_exists('MAD4B_SCP_Company_Communication') && MAD4B_SCP_Company_Communication::canSend())
+                return new WP_Error('mad4b_brand_trial_restore_outbound_active','Disable external mail before rollback.');
+            if (!self::write_option(self::PROFILE_OPTION,$archive['previous_profile']))
+                return new WP_Error('mad4b_brand_trial_restore_write_failed','Could not restore original profile.');
+            if (get_option(self::PROFILE_OPTION)!==$archive['previous_profile'])
+                return new WP_Error('mad4b_brand_trial_restore_readback_failed','Original profile readback mismatch.');
+            return self::audited_registry_result(
+                array('state'=>'LEGACY_PROFILE_RESTORED','trial_id'=>$archive['trial_id'],
+                    'legacy_source_records_preserved'=>true,'production_authorized'=>false),
+                'mad4b/context-staging-trial-restore',array('trial_id'=>$archive['trial_id'],
+                    'restored_profile_sha256'=>$archive['previous_profile_sha256']));
+        });
+    }
+
 	public static function save_profile( $brand_name, array $options = array() ){
 		return self::with_registry_lock(
 			'save_profile',
 			static function () use ( $brand_name, $options ) {
 			$site = self::site_binding();
 			if ( is_wp_error( $site ) ) return $site;
+			// An existing legacy Brand Context is never disposable simply
+			// because its owner is outside the current Site Profile binding.
+			// Re-enrollment must use an independently approved ownership process;
+			// otherwise save_profile() would mint a new brand and erase lineage.
+			$original = get_option( self::PROFILE_OPTION, array() );
+			if ( is_array($original) && ($original['status']??'')==='test_only')
+				return new WP_Error('mad4b_brand_trial_promotion_not_allowed','Trial Brand cannot be promoted through ordinary profile save.');
+			if ( ! empty( $original ) ) {
+				if ( ! self::valid_profile( $original ) ) {
+					return new WP_Error( 'mad4b_brand_existing_profile_invalid_requires_review',
+						'Existing Brand Context requires independent recovery before modification.' );
+				}
+				$prior_site_uuid = strtolower( trim( (string) $original['site_uuid'] ) );
+				if ( ! hash_equals( (string) $site['site_uuid'], $prior_site_uuid ) ) {
+					return new WP_Error( 'mad4b_brand_existing_foreign_owner_review_required',
+						'Existing Brand Context is bound to another Site Profile. An approved ownership transfer is required.' );
+				}
+			}
 			$audit_ready = self::audit_preflight();
 			if ( is_wp_error( $audit_ready ) ) return $audit_ready;
 			$brand_name = trim( sanitize_text_field( (string) $brand_name ) );
@@ -3701,6 +3914,8 @@ final class MAD4B_SCP_Context_Authority {
 		// Initial Brand enrollment/rename establishes identity. All other
 		// registry writes require the same exact revision-bound scope as jobs.
 		$checkpoint = null;
+		if ('save_profile' !== (string) $operation && (self::profile()['status']??'')==='test_only')
+			return new WP_Error('mad4b_brand_trial_no_external_sources','Trial Brand may not mutate the governed context registry.');
 		if ( 'save_profile' !== (string) $operation ) {
 			$checkpoint = class_exists( 'MAD4B_SCP_Operational_Integrity', false )
 				? MAD4B_SCP_Operational_Integrity::capture()
@@ -3759,242 +3974,4 @@ final class MAD4B_SCP_Context_Authority {
 
 			if ( $audit ) {
 				if ( ! class_exists( 'MAD4B_SCP_Audit' ) ) {
-					$audit_result = new WP_Error( 'mad4b_context_audit_unavailable', 'Append-only audit service is unavailable for the committed Context governance mutation.' );
-				} else {
-					$audit_result = MAD4B_SCP_Audit::record(
-						(string) $audit['ability'],
-						isset( $audit['summary'] ) && is_array( $audit['summary'] ) ? $audit['summary'] : array(),
-						isset( $audit['status'] ) ? (string) $audit['status'] : 'ok'
-					);
-				}
-				if ( is_wp_error( $audit_result ) ) return self::compensate_registry_error( $snapshot, $operation, $audit_result, 'audit' );
-			}
-
-			return $public_result;
-		} finally {
-			self::release_registry_lock( $lock );
-		}
-	}
-
-	private static function audited_registry_result( $result, $ability, array $summary, $status = 'ok' ) {
-		return array(
-			'__mad4b_registry_mutation_v1' => true,
-			'result' => $result,
-			'audit' => array(
-				'ability' => (string) $ability,
-				'summary' => $summary,
-				'status' => sanitize_key( (string) $status ),
-			),
-		);
-	}
-
-	private static function is_audited_registry_result( $value ) {
-		return is_array( $value )
-			&& ! empty( $value['__mad4b_registry_mutation_v1'] )
-			&& array_key_exists( 'result', $value )
-			&& ! empty( $value['audit'] )
-			&& is_array( $value['audit'] );
-	}
-
-	private static function registry_snapshot_changed( array $snapshot ) {
-		$sentinel = isset( $snapshot['_sentinel'] ) ? (string) $snapshot['_sentinel'] : '__mad4b_context_snapshot_compare_missing__';
-		foreach ( array( self::PROFILE_OPTION, self::SOURCES_OPTION, self::ASSETS_OPTION, self::REGISTRY_REVISION_OPTION ) as $name ) {
-			if ( ! isset( $snapshot[ $name ] ) || ! is_array( $snapshot[ $name ] ) ) return true;
-			$current = get_option( $name, $sentinel );
-			$expected = $snapshot[ $name ];
-			if ( ! empty( $expected['existed'] ) ) {
-				if ( $current !== $expected['value'] ) return true;
-			} elseif ( $sentinel !== $current ) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	private static function compensate_registry_error( array $snapshot, $operation, $error, $phase ) {
-		if ( ! is_wp_error( $error ) ) return $error;
-		if ( ! self::registry_snapshot_changed( $snapshot ) ) return $error;
-
-		$restored = self::restore_registry_option_snapshot( $snapshot );
-		if ( ! is_wp_error( $restored ) ) {
-			if ( 'audit' === (string) $phase ) {
-				return new WP_Error(
-					'mad4b_context_registry_audit_commit_failed',
-					'Context governance mutation was compensated because append-only audit evidence could not be committed.',
-					array(
-						'operation' => sanitize_key( (string) $operation ),
-						'audit_error_code' => $error->get_error_code(),
-						'compensated' => true,
-					)
-				);
-			}
-			return $error;
-		}
-
-		return new WP_Error(
-			'mad4b_context_registry_recovery_required',
-			'Context registry mutation failed after changing local state and the pre-operation snapshot could not be fully restored.',
-			array(
-				'operation' => sanitize_key( (string) $operation ),
-				'phase' => sanitize_key( (string) $phase ),
-				'original_error_code' => $error->get_error_code(),
-				'compensation_error_code' => $restored->get_error_code(),
-			)
-		);
-	}
-
-	private static function acquire_registry_lock( $operation ) {
-		$operation = sanitize_key( (string) $operation );
-		$owner = function_exists( 'wp_generate_uuid4' ) ? wp_generate_uuid4() : hash( 'sha256', uniqid( 'mad4b-context-lock-', true ) );
-		$record = array( 'owner' => $owner, 'operation' => $operation, 'expires_at' => time() + self::REGISTRY_LOCK_TTL );
-		if ( add_option( self::REGISTRY_LOCK_OPTION, $record, '', false ) ) return $owner;
-		$current = get_option( self::REGISTRY_LOCK_OPTION, array() );
-		if ( is_array( $current ) && isset( $current['expires_at'] ) && (int) $current['expires_at'] < time() ) {
-			delete_option( self::REGISTRY_LOCK_OPTION );
-			if ( add_option( self::REGISTRY_LOCK_OPTION, $record, '', false ) ) return $owner;
-		}
-		return new WP_Error( 'mad4b_context_registry_busy', 'Context registry is being changed by another governed operation. Retry against the new registry revision.', array( 'operation' => $operation, 'registry_revision' => self::registry_revision() ) );
-	}
-
-	private static function release_registry_lock( $owner ) {
-		$current = get_option( self::REGISTRY_LOCK_OPTION, array() );
-		if ( is_array( $current ) && isset( $current['owner'] ) && hash_equals( (string) $current['owner'], (string) $owner ) ) delete_option( self::REGISTRY_LOCK_OPTION );
-	}
-
-	private static function bump_registry_revision() {
-		$current = self::registry_revision();
-		$next = $current + 1;
-		if ( ! self::write_option( self::REGISTRY_REVISION_OPTION, $next ) ) {
-			return new WP_Error(
-				'mad4b_context_registry_revision_write_failed',
-				'Context registry state changed but its monotonic revision could not be persisted.',
-				array( 'current_revision' => $current, 'attempted_revision' => $next )
-			);
-		}
-		return $next;
-	}
-
-	private static function registry_option_snapshot() {
-		$sentinel = '__mad4b_context_snapshot_missing__' . hash( 'sha256', microtime( true ) . '|' . self::registry_revision() );
-		$snapshot = array( '_sentinel' => $sentinel );
-		foreach ( array( self::PROFILE_OPTION, self::SOURCES_OPTION, self::ASSETS_OPTION, self::REGISTRY_REVISION_OPTION ) as $name ) {
-			$value = get_option( $name, $sentinel );
-			$snapshot[ $name ] = array(
-				'existed' => $sentinel !== $value,
-				'value' => $value,
-			);
-		}
-		return $snapshot;
-	}
-
-	private static function restore_registry_option_snapshot( array $snapshot ) {
-		$failures = array();
-		foreach ( array( self::PROFILE_OPTION, self::SOURCES_OPTION, self::ASSETS_OPTION, self::REGISTRY_REVISION_OPTION ) as $name ) {
-			if ( ! isset( $snapshot[ $name ] ) || ! is_array( $snapshot[ $name ] ) ) {
-				$failures[] = $name . ':snapshot_missing';
-				continue;
-			}
-			$entry = $snapshot[ $name ];
-			if ( ! empty( $entry['existed'] ) ) {
-				if ( ! self::write_option( $name, $entry['value'] ) ) $failures[] = $name;
-			} else {
-				$deleted = delete_option( $name );
-				if ( ! $deleted && false !== get_option( $name, false ) ) $failures[] = $name;
-			}
-		}
-		return $failures
-			? new WP_Error( 'mad4b_context_registry_snapshot_restore_failed', 'Context registry pre-operation snapshot could not be fully restored.', array( 'failures' => $failures ) )
-			: true;
-	}
-
-	private static function commit_option_changes( array $changes, $error_code, $message ) {
-		if ( empty( $changes ) ) return true;
-		$sentinel = '__mad4b_context_option_missing__' . hash( 'sha256', implode( '|', array_keys( $changes ) ) . '|' . microtime( true ) );
-		$before = array();
-		$applied = array();
-		foreach ( $changes as $name => $value ) {
-			$current = get_option( $name, $sentinel );
-			$before[ $name ] = array(
-				'existed' => $sentinel !== $current,
-				'value' => $current,
-			);
-			if ( self::write_option( $name, $value ) ) {
-				$applied[] = $name;
-				continue;
-			}
-
-			$rollback_failures = array();
-			foreach ( array_reverse( $applied ) as $applied_name ) {
-				$restore = $before[ $applied_name ];
-				$ok = ! empty( $restore['existed'] )
-					? self::write_option( $applied_name, $restore['value'] )
-					: delete_option( $applied_name );
-				if ( ! $ok && ( ! empty( $restore['existed'] ) ? get_option( $applied_name, $sentinel ) !== $restore['value'] : false !== get_option( $applied_name, false ) ) ) $rollback_failures[] = $applied_name;
-			}
-			if ( $rollback_failures ) {
-				return new WP_Error(
-					'mad4b_context_registry_compensation_failed',
-					'Context registry persistence failed and the previous option snapshot could not be fully restored.',
-					array(
-						'failed_option' => $name,
-						'rollback_failures' => $rollback_failures,
-						'original_error_code' => sanitize_key( (string) $error_code ),
-					)
-				);
-			}
-			return new WP_Error( sanitize_key( (string) $error_code ), (string) $message, array( 'failed_option' => $name ) );
-		}
-		return true;
-	}
-
-	private static function refreshed_profile_record( array $assets, array $sources, $verified = true ) {
-		$profile = self::profile();
-		if ( empty( $profile ) ) return array();
-		$profile['context_fingerprint'] = self::context_fingerprint( $assets, $sources );
-		$profile['authority_manifest_fingerprint'] = self::authority_manifest_fingerprint( $assets, $sources );
-		if ( $verified ) $profile['last_verified_at'] = gmdate( 'c' );
-		$profile['updated_at'] = gmdate( 'c' );
-		return $profile;
-	}
-
-	private static function option_values_equal( $left, $right ) {
-		// WordPress stores top-level scalar options as strings. After invalidating
-		// the option cache, a persisted integer revision is read back as e.g. "1".
-		// Keep structured records type-exact; only compare scalar storage values.
-		if ( ( is_scalar( $left ) || null === $left ) && ( is_scalar( $right ) || null === $right ) ) {
-			return (string) $left === (string) $right;
-		}
-		return serialize( $left ) === serialize( $right );
-	}
-
-	private static function clear_option_read_cache( $name, $aggressive = false ) {
-		if ( ! function_exists( 'wp_cache_delete' ) ) return;
-		$name = sanitize_key( (string) $name );
-		if ( '' === $name ) return;
-		wp_cache_delete( $name, 'options' );
-		wp_cache_delete( 'notoptions', 'options' );
-		wp_cache_delete( 'alloptions', 'options' );
-		if ( $aggressive && function_exists( 'wp_cache_flush_group' ) ) wp_cache_flush_group( 'options' );
-	}
-
-	private static function write_option( $name, $value ) {
-		$name = sanitize_key( (string) $name );
-		if ( '' === $name ) return false;
-
-		self::clear_option_read_cache( $name, true );
-		$missing = '__mad4b_missing_option__' . hash( 'sha256', $name );
-		$current = get_option( $name, $missing );
-		if ( $missing !== $current && self::option_values_equal( $current, $value ) ) return true;
-
-		update_option( $name, $value, false );
-		self::clear_option_read_cache( $name );
-		$readback = get_option( $name, $missing );
-		if ( $missing !== $readback && self::option_values_equal( $readback, $value ) ) return true;
-
-		self::clear_option_read_cache( $name, true );
-		update_option( $name, $value, false );
-		self::clear_option_read_cache( $name, true );
-		$readback = get_option( $name, $missing );
-		return $missing !== $readback && self::option_values_equal( $readback, $value );
-	}
-}
+					$audit_resul
