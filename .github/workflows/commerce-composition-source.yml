@@ -1,0 +1,45 @@
+name: Commerce Composition Source Integrity
+on:
+  pull_request:
+    paths:
+      - "wp-content/plugins/commerce-composition/**"
+      - "docs/commerce/qa42a/commerce-composition-runtime-manifest.json"
+      - ".github/workflows/commerce-composition-source.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: PHP 8.3 lint for plugin runtime and tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          count=0
+          while IFS= read -r -d '' file; do
+            php -l "$file" >/dev/null
+            count=$((count+1))
+          done < <(find wp-content/plugins/commerce-composition -type f -name '*.php' -print0)
+          test "$count" -ge 100
+          echo "PASS: linted $count PHP files"
+      - name: Exact SHA256 and byte-count manifest
+        run: |
+          python3 - <<'PY'
+          import pathlib,hashlib,json
+          manifest=json.load(open('docs/commerce/qa42a/commerce-composition-runtime-manifest.json'))
+          root=pathlib.Path('wp-content/plugins/commerce-composition')
+          records=manifest['source_files']
+          assert len(records)==manifest['source_count'] and len(records)>=65
+          for record in records:
+              path=root/record['path']
+              data=path.read_bytes()
+              assert len(data)==record['bytes'],f"size mismatch: {path}"
+              assert hashlib.sha256(data).hexdigest()==record['sha256'],f"hash mismatch: {path}"
+          print('PASS: manifest matches',len(records),'files')
+          PY

@@ -1,0 +1,341 @@
+{
+  "schema": "mad4b.commerce-composition.release-snapshot.v1",
+  "release_state": "lab_source_snapshot_not_production_authorized",
+  "plugin_slug": "commerce-composition",
+  "source_count": 65,
+  "source_files": [
+    {
+      "path": "composition.php",
+      "sha256": "e60d6aff4bbed9af9227646e8abff9933a1f77cd7f39fccf200a8ecd6544eb94",
+      "bytes": 7686
+    },
+    {
+      "path": "README.md",
+      "sha256": "996b6af40313c5dace6f7c95bd0eef111638d971495a82b06fae177ecec505c3",
+      "bytes": 41975
+    },
+    {
+      "path": "CHANGELOG.md",
+      "sha256": "39034e9042634e348f18268666d04411be52e6fa001e89886fcbe8e7790b34e6",
+      "bytes": 26681
+    },
+    {
+      "path": "bin/process-workflow-queue.php",
+      "sha256": "23f2e8032a3adf7f7ecb90e22b3e302051ad5ed3e26cf3e9fa9cbdd1893efd08",
+      "bytes": 878
+    },
+    {
+      "path": "includes/Admin.php",
+      "sha256": "4c10395aef7187b968a874dc32d36b4dc8a81d21956844264a4a77441aac963b",
+      "bytes": 10352
+    },
+    {
+      "path": "includes/Api.php",
+      "sha256": "b23a7c0ec4c41083f236515fc316ab9f67fd00a0fc4211a01228c1e1bcf9e557",
+      "bytes": 2435
+    },
+    {
+      "path": "includes/AutomationEvents.php",
+      "sha256": "d068e8263cd89f650bfe679a5ffcb86b35365e01dd270836ee9b8b0cd392d790",
+      "bytes": 8976
+    },
+    {
+      "path": "includes/BindingStore.php",
+      "sha256": "06b1bfdb99aceee08741660f74d9f6ff00567a5c6e7cf56f0d3bb9dad94760c9",
+      "bytes": 5748
+    },
+    {
+      "path": "includes/Channels.php",
+      "sha256": "f715c91f37d535423adcef4c072ccc5645c23a5b5884ba501e54f972134f49d4",
+      "bytes": 3537
+    },
+    {
+      "path": "includes/ClaimLedger.php",
+      "sha256": "c1d9e7a0a9c6e326dd9f8dca9360a6396eb2835c2cc6056d1034ffa5d7366001",
+      "bytes": 11205
+    },
+    {
+      "path": "includes/Classification.php",
+      "sha256": "a92a07a77aad55794673fbbecda4e2dbaaff334cc17cb66d9bbe8bf6f10b68a6",
+      "bytes": 5699
+    },
+    {
+      "path": "includes/CommerceEngineDashboard.php",
+      "sha256": "3af757e4d412b20128b84b6eb41bda4e6362a911b8f935f717b249896738ed6b",
+      "bytes": 6910
+    },
+    {
+      "path": "includes/CommerceEngineInspector.php",
+      "sha256": "3d38ff2781e5fe02f4184d88b5bfac3552b900b2e2fec7b2ac9ff798ea059c44",
+      "bytes": 11078
+    },
+    {
+      "path": "includes/CommerceTenantBindingAudit.php",
+      "sha256": "1a744dcbf38c7f0a03146a26557c9ec2f1db241204c74e373827b7918d15e5b4",
+      "bytes": 4849
+    },
+    {
+      "path": "includes/CommercialExecutionPreflight.php",
+      "sha256": "a26791aa446ef08035611d18f5211d8683ad09e99ee917958b72ce9c1bd0ce99",
+      "bytes": 10768
+    },
+    {
+      "path": "includes/CompanyCommercePolicy.php",
+      "sha256": "3e68dfbb528a954375abbd4869814a12cc6c6ea0096e81a9e2cdce60c932142f",
+      "bytes": 23398
+    },
+    {
+      "path": "includes/CompanyCommercePolicyRest.php",
+      "sha256": "3edc0b1098d7ebb5234cb283655f2745c2b2254a17e37347ddf3ad3d37384ace",
+      "bytes": 5119
+    },
+    {
+      "path": "includes/CompanyManagementRest.php",
+      "sha256": "6e5ef916483cfb80b1ff7dc0456e5d31361b805d4dec3b26be03ae3e448d1e68",
+      "bytes": 27190
+    },
+    {
+      "path": "includes/Composer.php",
+      "sha256": "09da25bff788f7f1e9c1fc5e387edf8da783ecc857fcb18a699bc424bc9010de",
+      "bytes": 9486
+    },
+    {
+      "path": "includes/ConsentPolicySource.php",
+      "sha256": "6f5c0623ffff1e616741a3d51b4331b1f6f117b81db86530c3a54d62566b8096",
+      "bytes": 799
+    },
+    {
+      "path": "includes/ContactBridge.php",
+      "sha256": "3728d1df6680fcb82a3d62977e964b311d9726b50b87cf8d81e7c36b88714ec3",
+      "bytes": 10681
+    },
+    {
+      "path": "includes/ContactBridgeAdmin.php",
+      "sha256": "f73e7390070d6e24a1f60a95f2d8d705d50661c49f2b9f9300063c1f05e9ffb7",
+      "bytes": 4409
+    },
+    {
+      "path": "includes/ContactBridgeUi.php",
+      "sha256": "f10f651b5032220ff90750fd893cf036c601db27af0a5d7c07a228f93b3ed9cd",
+      "bytes": 4648
+    },
+    {
+      "path": "includes/FluentBinding.php",
+      "sha256": "88ebbb0889656ea5f5ddc2fe2a87d55c8a4527e10778afd69876f7e98af0b242",
+      "bytes": 5105
+    },
+    {
+      "path": "includes/FluentBoardsTaskBridge.php",
+      "sha256": "66a281bbd808a8714e55a5fefe7ec5afd2448fdcc831553ff320fe8411290fe2",
+      "bytes": 6456
+    },
+    {
+      "path": "includes/FluentCrmFeedBridge.php",
+      "sha256": "226d1cd7b91a7fb96fa18522315365f4b0424137d73139b2ba1690508d5476af",
+      "bytes": 6037
+    },
+    {
+      "path": "includes/FluentSubmissionAdapter.php",
+      "sha256": "bbd276b5817b231ad25738f676b028ca982ef4c462b28c91a369e35a495a93d1",
+      "bytes": 7930
+    },
+    {
+      "path": "includes/FormIntent.php",
+      "sha256": "c37f2120416c61f88b54e8e5574a2c341903946f8bf2e9d99d09fe43e1009c02",
+      "bytes": 2326
+    },
+    {
+      "path": "includes/FormRouter.php",
+      "sha256": "420de00a1af003c772f30fd598ea799619c581ed5db3699a8761bb3a01247ef4",
+      "bytes": 4192
+    },
+    {
+      "path": "includes/FormSchema.php",
+      "sha256": "ddfc8b2601575826f5df4708422cd7108b94303eda9e6a22f32fa2c5c560f4fc",
+      "bytes": 3568
+    },
+    {
+      "path": "includes/GuestConsentConfirmPage.php",
+      "sha256": "33ab180f37bac865380b116870ad6c3a950b1ad3c77b69378d324f5e60280f37",
+      "bytes": 4595
+    },
+    {
+      "path": "includes/GuestConsentProof.php",
+      "sha256": "ce704c84424707e32a1d0aa2427e82c3cb6084acb46a62add83c24c26d106089",
+      "bytes": 17466
+    },
+    {
+      "path": "includes/InquiryQualification.php",
+      "sha256": "1bab280d788e07250333f462d327366d1de6ce522f377e71f1fbb746213c134e",
+      "bytes": 13607
+    },
+    {
+      "path": "includes/IntakeCaseApi.php",
+      "sha256": "15ef7dda3d6172fc5f94dd5d910111b45e50ce8cad7e0f12dc69ca131ab81294",
+      "bytes": 3667
+    },
+    {
+      "path": "includes/IntakeCaseRegistry.php",
+      "sha256": "ed80550adbe1ec0198479386ee47e93c876941b88228eba3de0784ddee52ba8b",
+      "bytes": 7837
+    },
+    {
+      "path": "includes/IntakeModePolicy.php",
+      "sha256": "7b61dc50c2d44b8298c8999f912f30159ede3e271fd7cb3888d44d7106a09bb4",
+      "bytes": 2833
+    },
+    {
+      "path": "includes/IntakeOrderDraft.php",
+      "sha256": "f79356ab9b4efb57800c238da38b69d60e65c7703b65fcea59578b797c230d40",
+      "bytes": 8309
+    },
+    {
+      "path": "includes/Integration.php",
+      "sha256": "408a0126719b5f2f9e9e13b07df787236606a9cbfa6d421eb836923350b57960",
+      "bytes": 7824
+    },
+    {
+      "path": "includes/LifecycleReadiness.php",
+      "sha256": "65a17f2d5eccf3797dffb5404e9d4c017b40c24b592132a5e28218a06a0721de",
+      "bytes": 12023
+    },
+    {
+      "path": "includes/MarketingConsentField.php",
+      "sha256": "cade2ff7c03d0294ce10192e7fe736b20a66eebbeeb0207f902f8c979281db03",
+      "bytes": 5439
+    },
+    {
+      "path": "includes/MarketingConsentTranslations.php",
+      "sha256": "4da979aae64d46cf24a929ffef9b9355d531dfc86d4c5b0ed6c3876529ef06b4",
+      "bytes": 2824
+    },
+    {
+      "path": "includes/PolicyStore.php",
+      "sha256": "7c9760dafd31981500e87fd52a5c1f07e33088cf516ae49bbad03b29fa0abe96",
+      "bytes": 4386
+    },
+    {
+      "path": "includes/RateProvenance.php",
+      "sha256": "232cf4d053c1945cd15072693b24e99f290096b362c20f65f86a3c87218458c3",
+      "bytes": 2768
+    },
+    {
+      "path": "includes/RelationProvenance.php",
+      "sha256": "b9b488c602b9ae043ecf083c6a5fc76962e70ce0abb2fecd2858a4363185d711",
+      "bytes": 3435
+    },
+    {
+      "path": "includes/RequestBasket.php",
+      "sha256": "0862084bc19fd9a8f6cfc4e9eae23f5db4a433f9c21990213092b2d567aa9b0e",
+      "bytes": 5020
+    },
+    {
+      "path": "includes/RequestBasketView.php",
+      "sha256": "ceacc2bd366275cf82f116c400ffcac4df9fddf9ddf51be99d86da9e9f96e9b8",
+      "bytes": 4468
+    },
+    {
+      "path": "includes/RequestCheckout.php",
+      "sha256": "517467b36894cdf229bdf483bd996aa893fa62553c66a488059839863b41eb35",
+      "bytes": 14335
+    },
+    {
+      "path": "includes/RequestCheckoutController.php",
+      "sha256": "5511018793f781440e2aa1024f2b49cc40825bb7a8b1408060b19b577dd63a62",
+      "bytes": 5312
+    },
+    {
+      "path": "includes/RequestContactEvidence.php",
+      "sha256": "e5d74c6c0801630267f2cc4d278ea06dddb3f4a5519dff81a6d94775e90d6254",
+      "bytes": 5429
+    },
+    {
+      "path": "includes/RequestIntake.php",
+      "sha256": "64a2821830fe9f76fcc5adf0218ba4c3768e92c46ad4faa5be3de08f97fd4cb3",
+      "bytes": 6549
+    },
+    {
+      "path": "includes/RequestReview.php",
+      "sha256": "97c42f88467f58540e2b8ed8fa76d8f842a3ae3b1c9224e696b0d3bef7a061cf",
+      "bytes": 13644
+    },
+    {
+      "path": "includes/RequestReviewAdmin.php",
+      "sha256": "fb81a3ea69f654b7e496f8b71596cd408f2e20cd47bb18ac243411658d4fdd04",
+      "bytes": 18684
+    },
+    {
+      "path": "includes/RequestReviewApi.php",
+      "sha256": "79485cda04ff7c140d17745e8cc699f9cf44c6ad7f97216a21c70818f85a1de6",
+      "bytes": 6845
+    },
+    {
+      "path": "includes/RequestSupplierReadiness.php",
+      "sha256": "d3363a61ca2f39078e558b754571aba5c0486bedbbb475330685a3df43309712",
+      "bytes": 6966
+    },
+    {
+      "path": "includes/ServiceProductIdentity.php",
+      "sha256": "774658586f077281fe066dbf35588851573d691bbbdc2b99bc1fb7bce4865c78",
+      "bytes": 6959
+    },
+    {
+      "path": "includes/SourceClassifier.php",
+      "sha256": "7956a2dceb3d1fa7c48ad5c7b20c4bc0dca8304c90a65c1e3356fcec7caf04a6",
+      "bytes": 2496
+    },
+    {
+      "path": "includes/SubmissionContext.php",
+      "sha256": "190a11ec21561b0fb5d293817e28b6cb2d918575d2fa3e86d517ce3938e94aaf",
+      "bytes": 6127
+    },
+    {
+      "path": "includes/SubmissionProvenance.php",
+      "sha256": "64d9214e3bcbbdb6fb22e66de5d3fd30aca9e1bb05d5d7c8c58242b7e056bf06",
+      "bytes": 1447
+    },
+    {
+      "path": "includes/TourRateEligibility.php",
+      "sha256": "3c5f759ecf38cd3923b0c5d597ecc013a24540e0c8db12fdadd1b7b6760a551d",
+      "bytes": 5956
+    },
+    {
+      "path": "includes/TourRateResolution.php",
+      "sha256": "d6548e926531e0ca74a60eec9bbc13614acc70a86584d22438e03c5b1f5fd176",
+      "bytes": 2747
+    },
+    {
+      "path": "includes/WordPressMailTransport.php",
+      "sha256": "a682954828e9bd682d39373e3f6c229ea08a9fb542a875cb376c83b0f9734fb8",
+      "bytes": 2590
+    },
+    {
+      "path": "includes/WorkflowActions.php",
+      "sha256": "95b6e454044fc8cc78fa2218913408bd64f67b0f70c88d5728584aeab24186fc",
+      "bytes": 5132
+    },
+    {
+      "path": "includes/WorkflowApi.php",
+      "sha256": "1a1185533299e1e8adce8e455ee984cb4b941933dc5d2e527345082aaeb83205",
+      "bytes": 1894
+    },
+    {
+      "path": "includes/WorkflowJobs.php",
+      "sha256": "0ea2e7c75d382e9117a65030d4b1f2003fe81e9080aeea39dbc21196d644fd58",
+      "bytes": 13400
+    },
+    {
+      "path": "includes/WorkflowJobsApi.php",
+      "sha256": "65e01d2a445d5bf49c3bc35d7a8efada93da351092195c085b4f4527a668e61e",
+      "bytes": 3662
+    }
+  ],
+  "evidence": "QA42A VPS PHP + GitHub SHA match",
+  "excludes": [
+    "tests",
+    "evidence",
+    "site credentials",
+    "database",
+    "wp-content/uploads"
+  ]
+}
