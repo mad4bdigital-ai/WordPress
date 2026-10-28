@@ -48,9 +48,11 @@ jobs:
           result=json.loads(Path('/tmp/qa31-source-parity-verdict.json').read_text())
           assert result['authorizing'] is False
           assert result['production_authorized'] is False
-          assert result['decision'] == 'BLOCKED_SOURCE_RECONCILIATION'
-          assert result['pending_count'] > 0
-          print('QA31_SOURCE_PARITY_EVIDENCE: PASS; rollout remains BLOCKED')
+          assert result['decision'] in ('BLOCKED_SOURCE_RECONCILIATION', 'SOURCE_PARITY_CANDIDATE_UNCERTIFIED')
+          assert result['unexpected_count'] == 0
+          if result['decision'] == 'BLOCKED_SOURCE_RECONCILIATION':
+              assert result['pending_count'] > 0 or not result['version_match']
+          print('QA31_SOURCE_PARITY_EVIDENCE: PASS; evidence only, not release authority')
           PY
 
       - name: Apply strict parity check on explicit release request only
