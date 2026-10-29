@@ -1,0 +1,53 @@
+{
+  "date": "2026-10-29",
+  "env": "ETG Woo Lab / local",
+  "mode": "inquiry-only",
+  "native_form_hook": "fluentform/submission_inserted",
+  "fluentcrm_api": "FluentCrmApi('contacts')->createOrUpdate",
+  "native_fluentcrm_feeds_configured": 0,
+  "active_form_ids": [
+    1,
+    2,
+    3,
+    5,
+    6,
+    7,
+    8,
+    9,
+    11
+  ],
+  "excluded_empty_form_id": 4,
+  "contact_creation": "transactional lead",
+  "marketing_subscription_changed": false,
+  "source_link": "ContactBridge via WorkflowJobs",
+  "chatbotx": {
+    "plugin": "Customer Messaging Bridge",
+    "local_observation": true,
+    "external_contact_sync": false,
+    "health_http": 200
+  },
+  "tests": {
+    "operational": 21,
+    "full_native_hook": 14,
+    "total": 35,
+    "sql_rollback": true,
+    "mail_sent": false,
+    "external_http_mutation": false
+  },
+  "database": {
+    "submissions": 28,
+    "contacts": 2,
+    "contact_links": 18,
+    "jobs": 12,
+    "woo_orders": 1,
+    "boards_tasks": 6
+  },
+  "source_parity": "75/75",
+  "open_gates": [
+    "ChatbotX authenticated contact/agent exchange",
+    "FluentSMTP mail connection",
+    "Immutable estimated price at submission",
+    "New request-to-FluentBoards task E2E"
+  ],
+  "production_mutated": false
+}
