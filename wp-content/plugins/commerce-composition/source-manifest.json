@@ -3,10 +3,22 @@
   "source": "etg-woo-lab-2026-10-28",
   "files": [
     {
+      "path": "bin/process-workflow-queue.php",
+      "bytes": 878,
+      "sha256": "23f2e8032a3adf7f7ecb90e22b3e302051ad5ed3e26cf3e9fa9cbdd1893efd08",
+      "git_blob_sha": "5705f910bb950f2497e2afec843840bb1357e9e1"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "bytes": 26681,
+      "sha256": "39034e9042634e348f18268666d04411be52e6fa001e89886fcbe8e7790b34e6",
+      "git_blob_sha": "0c2fbfd4b88cca2eb8f6c2c86f4624b72a598859"
+    },
+    {
       "path": "composition.php",
-      "bytes": 8863,
-      "sha256": "8cd1f9aa5b818c8c289a41ff450bad1a4e5732dfac2cda6f37e4eebd1829f02e",
-      "git_blob_sha": "0f141eadb9f532d818833c0bd664403244ca2d29"
+      "bytes": 10065,
+      "sha256": "b0f67477a473e76a873fcc089360eb3c195b7d50a85ad24f9842079a001df18e",
+      "git_blob_sha": "c6d2f5891dc28dec33f6461dcbcb07f2bf276d10"
     },
     {
       "path": "includes/Admin.php",
@@ -171,6 +183,12 @@
       "git_blob_sha": "42cbe16b815fdb55af54bf7f8785c17469e06656"
     },
     {
+      "path": "includes/FluentInquiryCrmIntegration.php",
+      "bytes": 8863,
+      "sha256": "1e87f1f0a4d37ce168cf4c59c0358c5e196aabc67eaa251cf76e3431d80dee19",
+      "git_blob_sha": "420833ba19b68a048e57b80015eb65185662aee9"
+    },
+    {
       "path": "includes/FluentSubmissionAdapter.php",
       "bytes": 7930,
       "sha256": "bbd276b5817b231ad25738f676b028ca982ef4c462b28c91a369e35a495a93d1",
@@ -207,10 +225,22 @@
       "git_blob_sha": "6a37237ff1a4f37da4204ec4bf9620bf06a6481c"
     },
     {
+      "path": "includes/InquiryPhaseOperations.php",
+      "bytes": 11315,
+      "sha256": "2398782714ca57e3a1ba3b705f359f99b17bea4c4c00646aa9fb12eacb186148",
+      "git_blob_sha": "f8a0c92f71b7b48e1cb50bd7e179e7fb3b9a6c33"
+    },
+    {
       "path": "includes/InquiryQualification.php",
       "bytes": 13607,
       "sha256": "1bab280d788e07250333f462d327366d1de6ce522f377e71f1fbb746213c134e",
       "git_blob_sha": "51c68af9c90d5e2aab2057a27f66894bbd729df5"
+    },
+    {
+      "path": "includes/InquirySelectionSnapshot.php",
+      "bytes": 14624,
+      "sha256": "bae456d76a53d15c288c986eff8462c6cef2a8c7aeb036ab626b6fa03a513c27",
+      "git_blob_sha": "d45e648d23314790c616562873066454a32f5e97"
     },
     {
       "path": "includes/IntakeCaseApi.php",
@@ -279,6 +309,12 @@
       "git_blob_sha": "205f12e5df30098826126c42a2dcb59e53abad0d"
     },
     {
+      "path": "includes/ProductFormSourceReceipt.php",
+      "bytes": 5927,
+      "sha256": "92fb8127066c9971e3f1bc8c03ee295b41c48cfa13d37792a7c00d526bb450a6",
+      "git_blob_sha": "ca4160d95cec1e82401db510c7248f1e20a093de"
+    },
+    {
       "path": "includes/PropertyUnitSourceCertification.php",
       "bytes": 3113,
       "sha256": "ce486a0cbc9a4815eb61dd07efc6920a22a66fe15ce880b90a28c75df0b378ba",
@@ -333,6 +369,18 @@
       "git_blob_sha": "de6bf28d0c58552a83aa82199ea25e1c445b2ab1"
     },
     {
+      "path": "includes/RequestMailReply.php",
+      "bytes": 14039,
+      "sha256": "d064081edb2272ae9eb1e1670810bc5e87079c03244db487d110187e8e043bec",
+      "git_blob_sha": "31e416e3efa708505df6018e482ce4c2c9f8ff3f"
+    },
+    {
+      "path": "includes/RequestMailReplyAdmin.php",
+      "bytes": 4733,
+      "sha256": "b01a3ff0262824582e2002159bf270b7f6044723a1bcab13c2515070e960b57d",
+      "git_blob_sha": "65af4402515997da79c5a6d31b7f058f791be1d3"
+    },
+    {
       "path": "includes/RequestReview.php",
       "bytes": 13644,
       "sha256": "97c42f88467f58540e2b8ed8fa76d8f842a3ae3b1c9224e696b0d3bef7a061cf",
@@ -340,9 +388,9 @@
     },
     {
       "path": "includes/RequestReviewAdmin.php",
-      "bytes": 18684,
-      "sha256": "fb81a3ea69f654b7e496f8b71596cd408f2e20cd47bb18ac243411658d4fdd04",
-      "git_blob_sha": "1f576ddca36834542b85ac90b1764f851be8cf16"
+      "bytes": 18969,
+      "sha256": "10166525dd9f2c423e60ad864b7abbde2e7d0bc0cbfc51ff414866735eff1310",
+      "git_blob_sha": "7b8f3b03fd9b46984b5c0e377e56e17763112134"
     },
     {
       "path": "includes/RequestReviewApi.php",
@@ -427,20 +475,8 @@
       "bytes": 41975,
       "sha256": "996b6af40313c5dace6f7c95bd0eef111638d971495a82b06fae177ecec505c3",
       "git_blob_sha": "cf097849b31426b2ccf9eb9c2b049329a82d071f"
-    },
-    {
-      "path": "CHANGELOG.md",
-      "bytes": 26681,
-      "sha256": "39034e9042634e348f18268666d04411be52e6fa001e89886fcbe8e7790b34e6",
-      "git_blob_sha": "0c2fbfd4b88cca2eb8f6c2c86f4624b72a598859"
-    },
-    {
-      "path": "bin/process-workflow-queue.php",
-      "bytes": 878,
-      "sha256": "23f2e8032a3adf7f7ecb90e22b3e302051ad5ed3e26cf3e9fa9cbdd1893efd08",
-      "git_blob_sha": "5705f910bb950f2497e2afec843840bb1357e9e1"
     }
   ],
-  "file_count": 73,
+  "file_count": 79,
   "total_bytes": 599425
 }
