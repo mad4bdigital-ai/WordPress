@@ -30,6 +30,9 @@ final class MAD4B_Hub_Source_Reuse_Gate_V1 {
                 ($category['source_company'] ?? '') !== self::SOURCE ||
                 !is_int($category['source_term_id'] ?? null) ||
                 !is_int($category['parent_source_term_id'] ?? null) ||
+                !in_array($category['source_language_code'] ?? null,['en','ar'],true) ||
+                !is_int($category['source_translation_group_id'] ?? null) ||
+                ($category['source_translation_group_id']??0)<1 ||
                 empty($category['slug'])) {
                 throw new RuntimeException('Invalid category authority or taxonomy');
             }
@@ -72,13 +75,16 @@ final class MAD4B_Hub_Source_Reuse_Gate_V1 {
             ),ARRAY_A);
             if ($wpdb->last_error || count($lingua) !== 1 ||
                 !in_array((string)$lingua[0]['language_code'], ['en','ar'], true) ||
-                (int)$lingua[0]['trid'] <= 0) {
+                (int)$lingua[0]['trid'] <= 0 ||
+                (string)$lingua[0]['language_code'] !== (string)$item['source_language_code']) {
                 throw new RuntimeException('Canonical taxonomy WPML language unverified for source term '.$sourceId);
             }
             $mapped[$sourceId] = [
                 'source_term_id' => $sourceId,
                 'source_slug' => $slug,
                 'source_parent_term_id' => $sourceParent,
+                'source_language' => (string)$item['source_language_code'],
+                'source_wpml_trid' => (int)$item['source_translation_group_id'],
                 'target_term_id' => $targetId,
                 'target_parent_term_id' => $expectedTargetParent,
                 'target_taxonomy' => $targetTax,
@@ -97,11 +103,21 @@ final class MAD4B_Hub_Source_Reuse_Gate_V1 {
 
         // Translation pairs already exist; require one EN and one AR per target trid.
         $translationPairs = [];
+        $sourceToTargetGroup = [];
         foreach ($mapped as $row) {
+            $sourceGroup=(int)$row['source_wpml_trid'];
+            $targetGroup=(int)$row['target_wpml_trid'];
+            if(isset($sourceToTargetGroup[$sourceGroup]) &&
+               $sourceToTargetGroup[$sourceGroup]!==$targetGroup) {
+                throw new RuntimeException('WPML source translations mapped to different target groups');
+            }
+            $sourceToTargetGroup[$sourceGroup]=$targetGroup;
             $translationPairs[$row['target_wpml_trid']][$row['target_language']] =
                 ($translationPairs[$row['target_wpml_trid']][$row['target_language']] ?? 0) + 1;
         }
-        if (count($translationPairs) !== 9) throw new RuntimeException('Unexpected WPML category translation groups');
+        if (count($translationPairs) !== 9 || count($sourceToTargetGroup)!==9 ||
+            count(array_unique(array_values($sourceToTargetGroup)))!==9)
+            throw new RuntimeException('Unexpected WPML category translation groups');
         foreach ($translationPairs as $group) {
             if (count($group) !== 2 || ($group['en']??0)!==1 || ($group['ar']??0)!==1)
                 throw new RuntimeException('Missing canonical bilingual taxonomy pair');
