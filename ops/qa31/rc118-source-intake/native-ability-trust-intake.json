@@ -1,0 +1,29 @@
+{
+  "contract": "mad4b.qa31.rc118-native-ability-trust-intake.v1",
+  "origin": "running ETG Commerce Staging snapshot 2026-10-29, read-only",
+  "candidate_path": "source/class-mad4b-scp-native-ability-trust.php.txt",
+  "runtime_origin": "includes/class-mad4b-scp-native-ability-trust.php",
+  "source_sha256": "bf76bcdbcd240716f8276a9c764a103250141223a8882839a8fd5c4186c3ee49",
+  "bytes": 10495,
+  "absent_from_original_877_member_manifest": true,
+  "not_present_in_reviewed_github_runtime": true,
+  "source_candidate_only": true,
+  "non_executable_source_intake": true,
+  "semantic_review_completed": false,
+  "independent_source_review_required": true,
+  "provider_certified": false,
+  "authorizing": false,
+  "staging_install_authorized": false,
+  "production_install_authorized": false,
+  "staging_mutation_performed": false,
+  "release_status": "BLOCKED_SOURCE_RECONCILIATION",
+  "known_contract": "mad4b.native-ability-trust.v1",
+  "required_review_topics": [
+    "external_owner_pinned_manifest_sha",
+    "read_only_discovery_scope",
+    "no_execution_grants",
+    "reflection_callback_file_provenance",
+    "source_and_schema_hash",
+    "independent_provider_certificate"
+  ]
+}

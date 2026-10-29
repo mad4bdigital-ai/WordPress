@@ -5,6 +5,7 @@ on:
       - 'ops/qa31/rc118-source-intake/**'
       - 'tests/qa31_rc118_unexecuted_source_intake_contract.py'
       - 'tests/qa31_rc118_runtime_drift_lineage_contract.py'
+      - 'tests/qa31_rc118_security_boundary_source_contract.py'
       - 'docs/qa31/rc118-source-intake-review-20261029.md'
       - '.github/workflows/mad4b-qa31-rc118-source-intake.yml'
 permissions:
@@ -35,6 +36,8 @@ jobs:
           set -euo pipefail
           python3 tests/qa31_rc118_unexecuted_source_intake_contract.py
           python3 tests/qa31_rc118_runtime_drift_lineage_contract.py
+          python3 tests/qa31_rc118_security_boundary_source_contract.py
+          php -l ops/qa31/rc118-source-intake/source/class-mad4b-scp-native-ability-trust.php.txt
           for f in ops/qa31/rc118-source-intake/source/*.php; do php -l "$f"; done
           for stage in snapshot-20261028 observed-staging-20261029; do
             for f in ops/qa31/rc118-source-intake/lineage/"$stage"/*.php.txt ops/qa31/rc118-source-intake/lineage/"$stage"/includes/*.php.txt; do

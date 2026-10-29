@@ -47,3 +47,29 @@ The prior 876-of-877 count above describes the earlier intake checkpoint. The in
 Observed source differences include a review-only DFSB pin, a native Ability registry addition, a WPML language metadata fix, migration-loader changes, and a historical version-string difference. These are unreviewed source candidates, not new source authority. In particular the historical main PHP snapshot is NOT presented as the original signed package file.
 
 The QA31 runtime drift contract and dedicated CI lint checks verify immutable candidate bytes and safety flags without loading WordPress, registering new hooks, or mutating Staging. QA31 release source parity, Feature 007 historical ancestry, provider certification, independent owner attestation and deployment approval remain blocked.
+
+## Additional unmatched runtime dependency: Native Ability Trust
+
+The read-only follow-up identified an additional PHP file in the running RC118 plugin:
+`includes/class-mad4b-scp-native-ability-trust.php` (SHA256
+`bf76bcdbcd240716f8276a9c764a103250141223a8882839a8fd5c4186c3ee49`).
+The live `class-mad4b-scp-adapter-registry.php` requires it, but it is **not
+listed among the original 877 signed package members**. Consequently, a
+release containing the observed adapter source without this dependency is
+not independently complete or source-authentic.
+
+An exact, non-executable copy is quarantined as
+`ops/qa31/rc118-source-intake/source/class-mad4b-scp-native-ability-trust.php.txt`;
+`native-ability-trust-intake.json` pins its 10,495 original bytes and
+records the outstanding certification/authorization gates.
+
+A seven-case **static source-boundary** contract verifies source hashes,
+owner-pinned external manifest SHA, private read-only metadata, absence
+of auto-execution/authority, owner + browser guard in the role migration,
+independent proposer/reviewer checks, tenant/Staging controls,
+rollback/audit markers and legal-page protection. A negative mutation
+probe verifies important missing guards cause this static test to fail.
+It is **not** dynamic WordPress authorization testing, **not** an
+independent semantic approval, and **not** evidence of safe Staging
+deployment. No source is introduced into active WordPress plugin paths;
+the original manifest and release gate remain unchanged.
