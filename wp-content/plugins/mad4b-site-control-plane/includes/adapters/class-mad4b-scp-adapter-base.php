@@ -120,8 +120,15 @@ abstract class MAD4B_SCP_Adapter_Base {
 	private function mutation_permission_callback( $permission, $readonly, $ability_name, $surface ) {
 		if ( $readonly ) return $permission;
 		return function ( $input = null ) use ( $permission, $ability_name, $surface ) {
+			// A trusted local WP-CLI operator explicitly selected an enrolled
+			// WordPress user. Only the exact draft-content ability may inherit
+			// that user's existing post permissions; no remote MCP request, NHI
+			// issuance, unrelated mutating ability or publish operation qualifies.
+			$native_draft = 'mad4b/content-apply-bundle' === $ability_name
+				&& class_exists( 'MAD4B_SCP_Policy' )
+				&& MAD4B_SCP_Policy::can_native_content_draft( $input );
 			$granted = call_user_func( $permission, $input );
-			if ( is_wp_error( $granted ) || ! $granted ) return $granted;
+			if ( is_wp_error( $granted ) || ( ! $granted && ! $native_draft ) ) return $granted;
 			// Direct, explicitly write-scoped OAuth content draft requests can
 			// enroll a user-owned execution actor. The existing compact ChatGPT
 			// read-scope path must instead use the signed prepared dispatcher.
@@ -143,7 +150,8 @@ abstract class MAD4B_SCP_Adapter_Base {
 					}
 				}
 			}
-			if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_mutation_disabled', 'MAD4B mutation surfaces are disabled until the global mutation gate and an authenticated governed principal are both present.' );
+			if ( ! $native_draft && ! MAD4B_SCP_Policy::can_mutate() )
+				return new WP_Error( 'mad4b_mutation_disabled', 'MAD4B mutation surfaces require a governed principal or a trusted enrolled native draft operator.' );
 			if ( $this->mutation_requires_certification() ) {
 				if ( class_exists( 'MAD4B_SCP_Provider_Compatibility_Certification' ) && MAD4B_SCP_Provider_Compatibility_Certification::supports_provider( $this->provider_key() ) ) {
 					$provider_guard = MAD4B_SCP_Provider_Compatibility_Certification::mutation_guard( $this->provider_key(), $ability_name, (bool) $this->is_available(), $this );
@@ -153,6 +161,11 @@ abstract class MAD4B_SCP_Adapter_Base {
 				}
 				if ( is_wp_error( $provider_guard ) || true !== $provider_guard ) return $provider_guard;
 			}
+			// Native content draft work is an already-authorized local operator
+			// action, not a remote agent operation. Provider certification and
+			// the bundle's own exact-input, journal and rollback guards still run.
+			// Never mint or reuse an agent approval ticket here.
+			if ( $native_draft ) return true;
 			if ( ! class_exists( 'MAD4B_SCP_Authorization' ) ) return new WP_Error( 'mad4b_authorization_unavailable', 'MAD4B central authorization is unavailable.' );
 			$authorization = MAD4B_SCP_Authorization::authorize_mutation( $ability_name, 'mad4b-' . sanitize_key( $surface ), $this->certified_provider_key(), $input );
 			if ( is_wp_error( $authorization ) ) return $authorization;
