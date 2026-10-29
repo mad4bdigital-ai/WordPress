@@ -32,48 +32,57 @@
   outline-offset: 3px;
 }
 
-/* Top-level desktop navigation: preserve existing Astra/Elementor markup. */
-@media (min-width: 922px) and (hover: hover) {
-  #ast-desktop-header .main-header-menu > .menu-item > .menu-link {
-    position: relative;
-    transition: color 160ms ease;
-  }
-  #ast-desktop-header .main-header-menu > .menu-item > .menu-link::after {
+/* Actual header navigation is Elementor Mega Menu (ID 6072b3f),
+ * not Astra. The menu, dropdown, and mobile button remain native. */
+.elementor-location-header .elementor-element-6072b3f {
+  --n-menu-title-color-normal: var(--e-global-color-text);
+  --n-menu-title-color-hover: var(--e-global-color-accent);
+  --n-menu-title-color-active: var(--e-global-color-secondary);
+  --n-menu-toggle-icon-color: var(--e-global-color-primary);
+}
+.elementor-location-header .elementor-element-6072b3f
+  .e-n-menu-title > .e-n-menu-title-container {
+  position: relative;
+  color: var(--e-global-color-text);
+  font-family: var(--e-global-typography-text-font-family, inherit);
+  font-size: var(--e-global-typography-text-font-size, inherit);
+  font-weight: var(--e-global-typography-text-font-weight, inherit);
+  transition: color 160ms ease;
+}
+@media (min-width: 1025px) and (hover: hover) {
+  .elementor-location-header .elementor-element-6072b3f
+    .e-n-menu-title > .e-n-menu-title-container::after {
     content: "";
     position: absolute;
-    inset-inline: 12px;
+    inset-inline: 9px;
     inset-block-end: 5px;
-    height: 2px;
+    block-size: 2px;
     border-radius: 2px;
+    background: var(--e-global-color-accent);
     pointer-events: none;
-    background: var(--mad4b-client-accent);
     transform: scaleX(0);
     transform-origin: center;
     transition: transform 180ms ease;
   }
-  #ast-desktop-header .main-header-menu > .menu-item:hover > .menu-link,
-  #ast-desktop-header .main-header-menu > .menu-item > .menu-link:focus-visible {
-    color: var(--mad4b-client-hover);
+  .elementor-location-header .elementor-element-6072b3f
+    .e-n-menu-title:hover > .e-n-menu-title-container,
+  .elementor-location-header .elementor-element-6072b3f
+    .e-n-menu-title > .e-n-menu-title-container:focus-visible {
+    color: var(--e-global-color-accent);
   }
-  #ast-desktop-header .main-header-menu > .menu-item:hover > .menu-link::after,
-  #ast-desktop-header .main-header-menu > .menu-item > .menu-link:focus-visible::after,
-  #ast-desktop-header .main-header-menu > .current-menu-item > .menu-link::after,
-  #ast-desktop-header .main-header-menu > .current-menu-ancestor > .menu-link::after {
+  .elementor-location-header .elementor-element-6072b3f
+    .e-n-menu-title:hover > .e-n-menu-title-container::after,
+  .elementor-location-header .elementor-element-6072b3f
+    .e-n-menu-title > .e-n-menu-title-container:focus-visible::after,
+  .elementor-location-header .elementor-element-6072b3f
+    .e-n-menu-title > .e-n-menu-title-container[aria-current="page"]::after {
     transform: scaleX(1);
   }
 }
-/* Elementor Nav Menu's own underline pointer: repair its color and visibility. */
-.elementor-location-header .elementor-nav-menu--main .elementor-item:hover,
-.elementor-location-header .elementor-nav-menu--main .elementor-item:focus-visible,
-.elementor-location-header .elementor-nav-menu--main .elementor-item.elementor-item-active,
-.ekit-template-content-header .elementor-nav-menu--main .elementor-item:hover,
-.ekit-template-content-header .elementor-nav-menu--main .elementor-item:focus-visible {
-  color: var(--mad4b-client-hover);
-  fill: var(--mad4b-client-hover);
-}
-.elementor-location-header .elementor-nav-menu--main:not(.e--pointer-framed) .elementor-item::after,
-.ekit-template-content-header .elementor-nav-menu--main:not(.e--pointer-framed) .elementor-item::after {
-  background-color: var(--mad4b-client-accent);
+.elementor-location-header .elementor-element-6072b3f
+  .e-n-menu-title > .e-n-menu-title-container:focus-visible {
+  outline: 2px solid var(--e-global-color-accent);
+  outline-offset: 3px;
 }
 
 /* Rebuilt TOC is never visible on desktop after resize from mobile. */
@@ -231,7 +240,7 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  #ast-desktop-header .main-header-menu > .menu-item > .menu-link::after,
+  .elementor-location-header .elementor-element-6072b3f .e-n-menu-title-container::after,
   .mad4b-tour-toc__chevron,
   .header-context-toggle {
     transition: none !important;
