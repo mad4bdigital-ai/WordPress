@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Media Reference Audit Policy
  * Description: Permanent bounded, read-only audit of unparented/dangling image attachments. Never deletes, moves, unpublishes, or grants media access.
- * Version: 1.0.0
+ * Version: 1.1.0
  */
 defined('ABSPATH') || exit;
 
@@ -46,9 +46,11 @@ final class MAD4B_Media_Reference_Audit {
             'auto_publish_allowed' => false,
             'auto_media_catalog_approval' => false,
             'candidate_is_not_proof_of_unused' => true,
+            'scheduled_scan_depth' => 'quick',
+            'deep_scan_max_batch' => 3,
             'scan_scope' => 'image attachments with missing or nonexistent post_parent',
-            'coverage' => ['featured post metadata', 'other post metadata', 'term metadata',
-                'options', 'post content and excerpt', 'direct attachment identifiers'],
+            'coverage' => ['quick: featured / known image metadata and term metadata',
+                'deep (opt-in, max 3): all post metadata, options, post content and excerpt'],
             'blind_spots' => ['remote databases and headless clients', 'rendered JS and dynamic remote content',
                 'offline CSS/files and external integrations', 'unrecognized custom encoding'],
             'review_required' => true
@@ -76,7 +78,8 @@ final class MAD4B_Media_Reference_Audit {
                 'properties' => [
                     'action' => ['type'=>'string','enum'=>['status','scan']],
                     'after_id' => ['type'=>'integer','minimum'=>0],
-                    'limit' => ['type'=>'integer','minimum'=>1,'maximum'=>self::MAX_BATCH]
+                    'limit' => ['type'=>'integer','minimum'=>1,'maximum'=>self::MAX_BATCH],
+                    'deep' => ['type'=>'boolean']
                 ],
                 'additionalProperties' => false
             ],
@@ -116,7 +119,7 @@ final class MAD4B_Media_Reference_Audit {
         return $value !== null;
     }
 
-    private static function reference($id) {
+    private static function reference($id, $deep=false) {
         global $wpdb;
         $id = absint($id);
         // Stored within the attachment itself is not evidence of being used.
@@ -128,28 +131,36 @@ final class MAD4B_Media_Reference_Audit {
         if (self::exists("SELECT 1 FROM {$wpdb->postmeta} WHERE meta_key='_thumbnail_id' AND meta_value=%s LIMIT 1", [$id_string])) {
             $evidence[]='featured_image';
         }
-        // Generic serialized and block/Elementor references; deliberately conservative.
-        // A basename hit could be a false positive and is retained for manual review.
+        // Quick path is indexed by a short allowlist of image-reference keys.
+        // Unknown encodings stay unresolved; the policy NEVER deletes them.
         $id_pattern = $wpdb->esc_like('"' . $id_string . '"');
         $name_pattern = $filename ? '%' . $wpdb->esc_like($filename) . '%' : '';
         if (self::exists(
+            "SELECT 1 FROM {$wpdb->postmeta} WHERE post_id<>%d
+             AND meta_key IN ('gallery','image_gellery','featured_image',
+                 '_product_image_gallery','_gallery_ids','_thumbnail_id')
+             AND (meta_value=%s OR meta_value LIKE %s OR (%s<>'' AND meta_value LIKE %s))
+             LIMIT 1",
+            [$id, $id_string, '%'.$id_pattern.'%', $name_pattern, $name_pattern]
+        )) $evidence[]='known_image_metadata';
+        if ($deep && self::exists(
             "SELECT 1 FROM {$wpdb->postmeta} WHERE post_id<>%d
              AND meta_key NOT IN ('_edit_lock','_edit_last')
              AND (meta_value=%s OR meta_value LIKE %s OR (%s<>'' AND meta_value LIKE %s))
              LIMIT 1",
             [$id, $id_string, '%'.$id_pattern.'%', $name_pattern, $name_pattern]
-        )) $evidence[]='other_post_metadata';
+        )) $evidence[]='other_post_metadata_deep';
         if (self::exists(
             "SELECT 1 FROM {$wpdb->termmeta} WHERE meta_value=%s
              OR meta_value LIKE %s OR (%s<>'' AND meta_value LIKE %s) LIMIT 1",
             [$id_string, '%'.$id_pattern.'%', $name_pattern, $name_pattern]
         )) $evidence[]='term_metadata';
-        if ($name_pattern && self::exists(
+        if ($deep && $name_pattern && self::exists(
             "SELECT 1 FROM {$wpdb->options} WHERE option_value LIKE %s LIMIT 1", [$name_pattern]
         )) $evidence[]='options';
         $id_block = '%'.$wpdb->esc_like('wp-image-'.$id_string).'%';
         $content_name = $name_pattern ?: $id_block;
-        if (self::exists(
+        if ($deep && self::exists(
             "SELECT 1 FROM {$wpdb->posts} WHERE post_type<>'attachment'
              AND (post_content LIKE %s OR post_content LIKE %s
                   OR post_excerpt LIKE %s) LIMIT 1",
@@ -169,7 +180,8 @@ final class MAD4B_Media_Reference_Audit {
         return false;
     }
 
-    public static function scan($after_id=0, $limit=self::BATCH) {
+    public static function scan($after_id=0, $limit=self::BATCH, $deep=false) {
+        $limit = $deep ? min(3, max(1, (int)$limit)) : min(self::MAX_BATCH, max(1, (int)$limit));
         $rows = self::candidates($after_id, $limit);
         if (is_wp_error($rows)) return $rows;
         $items = []; $totals = ['referenced'=>0,'unresolved_review_only'=>0,'test_only'=>0];
@@ -179,7 +191,7 @@ final class MAD4B_Media_Reference_Audit {
             $cursor = max($cursor, $id);
             try {
                 $test = self::is_test($id, (int)$row['post_parent']);
-                $refs = $test ? [] : self::reference($id);
+                $refs = $test ? [] : self::reference($id, $deep);
                 $state = $test ? 'test_only' : ($refs ? 'referenced' : 'unresolved_review_only');
             } catch (Throwable $e) {
                 return new WP_Error('media_reference_scan_incomplete', 'Reference audit failed; no cleanup permitted');
@@ -196,7 +208,8 @@ final class MAD4B_Media_Reference_Audit {
         return [
             'contract'=>self::CONTRACT, 'after_id'=>(int)$after_id,
             'next_after_id'=>$cursor, 'batch_size'=>count($rows),
-            'potentially_more'=>count($rows)==min(self::MAX_BATCH,max(1,(int)$limit)),
+            'scan_depth'=>$deep?'deep':'quick',
+            'potentially_more'=>count($rows)==$limit,
             'counts'=>$totals,'items'=>$items,
             'policy'=>self::policy(), 'mutation_performed'=>false
         ];
@@ -206,7 +219,8 @@ final class MAD4B_Media_Reference_Audit {
         if (!self::can_read()) return new WP_Error('media_reference_forbidden', 'Not authorized');
         if (!is_array($args)) $args=[];
         if (($args['action'] ?? 'status') === 'status') return self::status();
-        return self::scan(absint($args['after_id']??0), max(1,min(self::MAX_BATCH,(int)($args['limit']??self::BATCH))));
+        $deep=($args['deep']??false)===true;
+        return self::scan(absint($args['after_id']??0), max(1,min($deep?3:self::MAX_BATCH,(int)($args['limit']??($deep?3:self::BATCH)))), $deep);
     }
 
     public static function status() {
