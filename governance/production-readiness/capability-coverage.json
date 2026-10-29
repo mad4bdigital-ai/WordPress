@@ -3605,6 +3605,31 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing MCP admission, platform identity, security, owner-scoped administrative rights and execution-denial controls cover these staging-only authorization surfaces, without granting Production execution or public access.",
       "review_rationale": "New surface ability:mad4b/staging-write-grant-reconcile-staging is source-pinned in the W1 authority integration and assessed with hermetic owner-browser, agent REST route, Site Profile, OAuth, replay, write grant, exact mapping and negative permission fixtures. This is only CI source review, not evidence that the route is registered, usable, or authorized in Production."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-delegation-mode.php",
+      "owner_role": "Repository security and identity capability source reviewer — CI-only, exact-head owner approval separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "IDENTITY-01",
+        "OAUTH-03",
+        "OAUTH-05",
+        "OAUTH-06",
+        "MCP-01",
+        "MCP-10",
+        "SECURITY-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegation-mode-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegation-connection-policy-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "The new service has no public endpoint and does not issue agent grants or approval tickets. Existing verified OAuth binding, site identity, user role, exact NHI grant and fail-closed policy controls apply.",
+      "review_rationale": "Add an optional administrator-configured principal model with default strictly verified WordPress user delegation and explicit legacy independent-NHI mode. The new service only tightens native user capability checks for the already approved central authorization path, retains all hard write/approval/budget/tenant requirements and never synthesizes identity from WP-CLI or headers."
     }
   ],
   "lifecycle": [],
