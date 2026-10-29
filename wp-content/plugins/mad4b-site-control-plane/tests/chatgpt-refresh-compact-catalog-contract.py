@@ -16,14 +16,21 @@ def require(condition, message):
         raise SystemExit(message)
 
 
+# Brand Drafts are first-party core writes; historical Drive grants may only retire.
+grant_current = GRANT_RECONCILE.split("public static function allowed_ability_providers()", 1)[1].split("public static function allowed_abilities()", 1)[0]
+grant_retirement = GRANT_RECONCILE.split("public static function retirable_stale_ability_providers()", 1)[1].split("public static function allowed_transport_ability_providers()", 1)[0]
+for ability in ("context/brand-draft-append", "context/brand-draft-create"):
+    require(f"'{ability}' => 'core'" in grant_current, f"current core Brand Draft provider missing: {ability}")
+    require(f"'{ability}' => 'google_drive_context'" not in grant_current, f"legacy Drive provider cannot create Brand Draft grant: {ability}")
+    require(f"$providers['{ability}'] = 'google_drive_context';" in grant_retirement, f"legacy Brand Draft grant retirement mapping missing: {ability}")
+
 for ability in [
-    "context/brand-draft-append",
     "context/materialize-brand-draft",
     "context/reconcile-brand-materialization",
     "context/rollback-materialized-brand-draft",
     "context/source-scan-apply",
 ]:
-    require(f"'{ability}' => 'google_drive_context'" in GRANT_RECONCILE, f"reviewed Google Drive staging grant missing from bounded reconciliation allowlist: {ability}")
+    require(f"'{ability}' => 'google_drive_context'" in grant_current, f"reviewed Google Drive staging grant missing from bounded reconciliation allowlist: {ability}")
 for marker in [
     "class-mad4b-scp-staging-write-grant-reconciliation-plan.php",
     "class-mad4b-scp-staging-write-grant-reconciliation.php",

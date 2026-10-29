@@ -15,6 +15,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 // Always register the managed AI credential fence before the foreign REST
 // zero-touch return. Missing/revoked enrollment must fail closed on every site.
 require_once __DIR__ . '/includes/class-mad4b-scp-ai-only-early-auth-guard.php';
+// Private order/booking policy must register before REST and CLI fastpaths.
+require_once __DIR__ . '/includes/class-mad4b-scp-private-operations-boundary.php';
 
 // Request-local, O(1) bootstrap timing markers. No persistent cache, DB
 // writes, user context, file hashing or authority changes. The registration
@@ -29,6 +31,13 @@ define( 'MAD4B_SCP_BOOT_RUNTIME_FILE_SHA256', is_readable( __FILE__ ) ? hash_fil
 $mad4b_scp_boot_provenance_path = MAD4B_SCP_DIR . 'MAD4B-BUILD-PROVENANCE.json';
 define( 'MAD4B_SCP_BOOT_PROVENANCE_SHA256', is_readable( $mad4b_scp_boot_provenance_path ) ? hash_file( 'sha256', $mad4b_scp_boot_provenance_path ) : '' );
 unset( $mad4b_scp_boot_provenance_path );
+
+// Source-owned Settings API compatibility on native administrator requests.
+// No environment-specific values or changes to canonical URL ownership.
+if ( function_exists( 'is_admin' ) && is_admin() ) {
+    require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-native-general-settings-contract.php';
+}
+
 
 // Keep this tiny lifecycle hook available even on the foreign REST kernel.
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-catalog-lifecycle.php';

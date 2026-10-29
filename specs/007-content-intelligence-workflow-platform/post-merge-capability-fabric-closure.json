@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.capability-fabric-post-merge-closure.v1",
   "phase": 37,
-  "baseline_merge_commit": "e7f30d944c354c3a4f7346330ad401d995e768c5",
+  "baseline_merge_commit": "3785892316d3c395ad144500fdecc6836ed2c176",
   "production_authorized": false,
   "breakglass_widened": false,
   "generic_shell_authorized": false,
@@ -935,9 +935,9 @@
   "open_priority_policy": "P0_P1_REQUIRE_EXPLICIT_DEPENDENCIES_FAIL_CLOSED_INTERIM_AND_EVIDENCE_PATH",
   "traceability_family": "CAPFAB",
   "baseline_source_review": {
-    "previous_commit": "17a447839bd091f95d964153814bc4382677a8c8",
-    "reconciled_repository_parent": "e7f30d944c354c3a4f7346330ad401d995e768c5",
-    "scope": "PR #516 inherited base e7f30d9 from prior reviewed 17a4478: source-only technical impact review, independent owner and live runtime acceptance still pending",
+    "previous_commit": "e7f30d944c354c3a4f7346330ad401d995e768c5",
+    "reconciled_repository_parent": "3785892316d3c395ad144500fdecc6836ed2c176",
+    "scope": "PR #587 QA30/QA31 W1 exact source-only impact review from e7f30d9 to 3785892; 470 changed master paths classified and original historical successor audited. See baseline-review-20261029.md. Independent owner attestation, live staging parity, immutable package recapture and production authorization remain pending.",
     "authorizing": false
   }
 }

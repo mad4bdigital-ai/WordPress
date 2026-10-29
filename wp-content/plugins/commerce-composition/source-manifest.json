@@ -4,9 +4,9 @@
   "files": [
     {
       "path": "composition.php",
-      "bytes": 7514,
-      "sha256": "f1f8eb4a8959d26797c1ae57ac946111e4fd01ed937fd5e987793561b2fe996b",
-      "git_blob_sha": "66e8d9a70f28b4e1c651313c7876163158281239"
+      "bytes": 8863,
+      "sha256": "8cd1f9aa5b818c8c289a41ff450bad1a4e5732dfac2cda6f37e4eebd1829f02e",
+      "git_blob_sha": "0f141eadb9f532d818833c0bd664403244ca2d29"
     },
     {
       "path": "includes/Admin.php",
@@ -52,9 +52,9 @@
     },
     {
       "path": "includes/CommerceEngineDashboard.php",
-      "bytes": 6910,
-      "sha256": "3af757e4d412b20128b84b6eb41bda4e6362a911b8f935f717b249896738ed6b",
-      "git_blob_sha": "7fc5e6e632846c552c6f957402629a0f3c6f7fa9"
+      "bytes": 8314,
+      "sha256": "13cf140b2a06613111e3265fc1ff88896c2540ecfb647adf6b8fa1c96f571afb",
+      "git_blob_sha": "b26a55fb2da0087898aed73c00f322e025ac2be1"
     },
     {
       "path": "includes/CommerceEngineInspector.php",
@@ -63,10 +63,46 @@
       "git_blob_sha": "89b2394728eae000e32b854a02c6d851a1b46f14"
     },
     {
+      "path": "includes/CommerceTenantBindingAudit.php",
+      "bytes": 4849,
+      "sha256": "1a744dcbf38c7f0a03146a26557c9ec2f1db241204c74e373827b7918d15e5b4",
+      "git_blob_sha": "f63ed8b1ff9e39d63ceded14cc6b28759e8a8d66"
+    },
+    {
       "path": "includes/CommercialExecutionPreflight.php",
       "bytes": 10768,
       "sha256": "a26791aa446ef08035611d18f5211d8683ad09e99ee917958b72ce9c1bd0ce99",
       "git_blob_sha": "9b4fade817c1c8179fd9c91184a47bf5c2b25b48"
+    },
+    {
+      "path": "includes/CommercialExternalChargeGate.php",
+      "bytes": 3488,
+      "sha256": "f0a8abb86b2b70cb9d9e512154dd4b0333be2515e359f4373eff4ca9a68e4e4e",
+      "git_blob_sha": "c6c187e6fe12d940610c7a94ea9e3fe4e8f5feab"
+    },
+    {
+      "path": "includes/CommercialFinalQuoteLifecycle.php",
+      "bytes": 22305,
+      "sha256": "867d045a48cab78bcfa4f323362cbfe6965f8b31f3cef7b4d7c653692deab62e",
+      "git_blob_sha": "9515564aca928db9aeec46cee81ae674e5e15b12"
+    },
+    {
+      "path": "includes/CommercialQuoteEvidenceProbe.php",
+      "bytes": 12561,
+      "sha256": "81d322251ea3d334136f65f7bc6d94229c4a142a75783a1f8884e40416ee0d78",
+      "git_blob_sha": "a93ae57b47c5974b56cb5a78bb6f4ff55a870902"
+    },
+    {
+      "path": "includes/CommercialQuotePlan.php",
+      "bytes": 10656,
+      "sha256": "1b20431e1dd4c9100b7a0fe9c0f18121ada2bfeb8a8d671508086906153973e6",
+      "git_blob_sha": "f2a07d09a7e48e9ae913bde46f52b957a84e72c4"
+    },
+    {
+      "path": "includes/CommercialQuoteReadiness.php",
+      "bytes": 14551,
+      "sha256": "df1be2720c1ddcd9aca52aad62a3b1d4ed3fdf80bb64d8faa44ade4d560e6bda",
+      "git_blob_sha": "f574ff65f885d57d4bee5688714481b63f8a1338"
     },
     {
       "path": "includes/CompanyCommercePolicy.php",
@@ -225,10 +261,28 @@
       "git_blob_sha": "b3c869a06e763c7220d7d7b4fde23c3f257a16a8"
     },
     {
+      "path": "includes/NativeCptOrderItemIdentity.php",
+      "bytes": 3193,
+      "sha256": "aaa6c785dde55af335efa706cd1c645da4093d40dd4a8ca44ed1710d8c981bcc",
+      "git_blob_sha": "9e751a3e7a3a648252e83cada87e2b0e728f4d91"
+    },
+    {
+      "path": "includes/NativeOrderItemIdentityResolver.php",
+      "bytes": 10181,
+      "sha256": "dce6fd931867ba50e466f3a1fb3d9ef4b11f57a976fc7225a2fdd9545439affa",
+      "git_blob_sha": "e43faaf0e925e50c0853e433072bcdc6a8169990"
+    },
+    {
       "path": "includes/PolicyStore.php",
       "bytes": 4386,
       "sha256": "7c9760dafd31981500e87fd52a5c1f07e33088cf516ae49bbad03b29fa0abe96",
       "git_blob_sha": "205f12e5df30098826126c42a2dcb59e53abad0d"
+    },
+    {
+      "path": "includes/PropertyUnitSourceCertification.php",
+      "bytes": 3113,
+      "sha256": "ce486a0cbc9a4815eb61dd07efc6920a22a66fe15ce880b90a28c75df0b378ba",
+      "git_blob_sha": "346182aeaf4e46648893f57de78b8e5237b4723d"
     },
     {
       "path": "includes/RateProvenance.php",
@@ -387,6 +441,6 @@
       "git_blob_sha": "5705f910bb950f2497e2afec843840bb1357e9e1"
     }
   ],
-  "file_count": 64,
-  "total_bytes": 511775
+  "file_count": 73,
+  "total_bytes": 599425
 }
