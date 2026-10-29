@@ -268,8 +268,15 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$stale_deployment_owner_only = array( 'deployment:pending', 'authority_binding:owner_gate' )
 			=== ( $graph['required_blockers'] ?? null )
 			&& self::superseded_cached_release_only( $checkpoint, $current, $graph, true );
+		// Preserve the existing site-approved read-only allowance for a
+		// historical managed-Skills checkpoint. This does not authorize any
+		// MCP write request or change the independent authority gate.
+		$managed_skills_owner_only = array( 'managed_skills:pending', 'authority_binding:owner_gate' )
+			=== ( $graph['required_blockers'] ?? null )
+			&& ! empty( $graph['phases']['managed_skills']['required'] )
+			&& 'pending' === ( $graph['phases']['managed_skills']['state'] ?? '' );
 		if ( array( 'authority_binding:owner_gate' ) !== ( $graph['required_blockers'] ?? null )
-			&& ! $stale_deployment_owner_only ) return false;
+			&& ! $stale_deployment_owner_only && ! $managed_skills_owner_only ) return false;
 		$target = is_array( $checkpoint['target_identity'] ?? null )
 			? self::bounded_identity( $checkpoint['target_identity'] ) : array();
 		$old_sha = strtolower( trim( (string) ( $target['source_commit_sha'] ?? '' ) ) );
@@ -295,7 +302,9 @@ final class MAD4B_SCP_Runtime_Convergence {
 				|| ( 'authority_binding' !== $id && ! empty( $phase['required'] )
 					&& 'ready' !== ( $phase['state'] ?? '' )
 					&& ! ( $stale_deployment_owner_only && 'deployment' === $id
-						&& 'pending' === ( $phase['state'] ?? '' ) ) ) ) return false;
+						&& 'pending' === ( $phase['state'] ?? '' ) )
+				&& ! ( $managed_skills_owner_only && 'managed_skills' === $id
+					&& 'pending' === ( $phase['state'] ?? '' ) ) ) ) return false;
 		}
 		return true;
 	}
