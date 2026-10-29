@@ -38,7 +38,8 @@
     "requires_exact_site_and_company_identity": true,
     "requires_wpml_same_layout_integrity": true,
     "do_not_use_instead_of_native_wpml_and_jetengine_provisioning": true,
-    "metadata_only_GitHub_contract_not_current_WP_runtime_guard": true
+    "metadata_only_GitHub_contract_not_current_WP_runtime_guard": true,
+    "note": "This validator is mandatory for future governed automated Demo placeholder edits when executed through the approved workflow. The PR does NOT yet install a WordPress-wide runtime save hook; intentional design changes require a separately approved workflow."
   },
   "verified_repair": {
     "source": "Original Woo Lab database archive from 2026-10-29; source-specific element JSON only",
@@ -63,6 +64,10 @@
       "Fluent Forms subscription form 2 is published after restoring its original widget; submission/notification policies require separate review",
       "Review tabs and archive media source isolation still needs verified company-specific data",
       "No runtime enforcement of this policy on manual WordPress/Elementor editing until a reviewed deployable hook is implemented"
-    ]
+    ],
+    "restored_original_editor_markup_skeleton_documents": 8,
+    "full_layout_comparison_documents": 26,
+    "residual_markup_or_child_structure_drift": 0,
+    "existing_outside_scope_settings_differences_left_unchanged": 13
   }
 }
