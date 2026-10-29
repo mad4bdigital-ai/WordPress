@@ -11,6 +11,15 @@ const php=fs.readFileSync(path.join(root,'wp-content/mu-plugins/199-mad4b-client
 assert.equal(policy.templates.tour_content_ids.length,6);
 assert.deepEqual(policy.kit_integrity.required_system_tokens,['primary','secondary','text','accent']);
 assert.equal(policy.kit_integrity.current_legacy_duplicate_ids.length,13);
+assert.equal(policy.templates.real_header_mega_menu.widget_id,'6072b3f');
+assert.equal(policy.templates.real_header_mega_menu.template_ids.length,6);
+assert.equal(policy.templates.real_header_mega_menu.require_typography,'globals/typography?id=text');
+assert.deepEqual(policy.templates.real_header_mega_menu.require_global_colors,{
+  menu_item_title_text_color_normal:'primary',
+  menu_item_title_text_color_hover:'accent',
+  menu_item_title_text_color_active:'secondary',
+  menu_toggle_icon_color_normal:'primary'
+});
 for(const [widget,settings] of Object.entries(policy.templates.fields)){
   assert.ok(/^[a-f0-9]{7}$/.test(widget));
   for(const [setting,token] of Object.entries(settings))
@@ -25,6 +34,9 @@ assert.match(css,/\.mad4b-tour-toc\s*\{\s*display:\s*none;/);
 assert.match(css,/max-width:\s*767px/);
 assert.match(css,/body\.single-tours-and-activities/);
 assert.match(css,/focus-visible/);
+assert.match(css,/elementor-element-6072b3f/,'Actual Elementor Mega Menu targeted');
+assert.match(css,/e-n-menu-title-container::after/,'Native mega menu hover underline');
+assert.doesNotMatch(css,/#ast-desktop-header/,'No obsolete Astra-only selector');
 assert.match(css,/prefers-reduced-motion/);
 assert.equal(toc.allowedHash('#elementor-toc__heading-anchor-2'),true);
 assert.equal(toc.allowedHash('https://evil.example'),false);
