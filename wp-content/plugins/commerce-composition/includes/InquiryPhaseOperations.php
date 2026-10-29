@@ -174,6 +174,8 @@ final class InquiryPhaseOperations
             ))>0,
             'crm_native_feed_count'=>$feeds,
             'crm_native_feed_automated'=>$feeds>0,
+            'crm_operational_sync'=>class_exists(FluentInquiryCrmIntegration::class)
+                ?FluentInquiryCrmIntegration::readiness():['enabled'=>false],
             'estimate_preview_available'=>true,
             'estimate_form_display_bound'=>false,
             'estimate_immutable_snapshot_persisted'=>false,
