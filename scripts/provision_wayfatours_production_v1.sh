@@ -32,8 +32,8 @@ for plugin in elementor elementor-pro jet-engine jet-smart-filters woocommerce s
 done
 rsync -a --no-owner --no-group "$SOURCE/wp-content/themes/astra" "$ROOT/site-copy/wp-content/themes/"
 for mu in 198-mad4b-elementor-kit-integrity.php mad4b-company-template-identity.php mad4b-company-policy-library.php;do
- test -f "$SOURCE/wp-content/mu-plugins/$mu" || { echo "Missing governed MU: $mu" >&2;exit 2; }
- cp "$SOURCE/wp-content/mu-plugins/$mu" "$ROOT/site-copy/wp-content/mu-plugins/$mu"
+ test -f "$SCRIPT_DIR/../wp-content/mu-plugins/$mu" || { echo "Missing governed MU: $mu" >&2;exit 2; }
+ cp "$SCRIPT_DIR/../wp-content/mu-plugins/$mu" "$ROOT/site-copy/wp-content/mu-plugins/$mu"
 done
 mkdir -p "$ROOT/site-copy/wp-content/uploads" "$ROOT/site-copy/wp-content/upgrade"
 # Never copy any staging customer, media, Elementor, WPML, login or test data.
