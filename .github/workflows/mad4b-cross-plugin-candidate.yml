@@ -41,6 +41,7 @@ jobs:
           python3 wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-artifact-builder-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-workflow-dynamic-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-source-matrix-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/dfsb-rc15-signed-review-source-pin.py
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cross-plugin-lifecycle.php
           php wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-lifecycle-gates-runtime.php
       - name: Select exact candidates from reviewed source registry

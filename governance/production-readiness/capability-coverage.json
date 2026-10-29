@@ -11435,6 +11435,24 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py"
       ],
       "review_rationale": "W1 staged owner and security source SHA reconciled against pinned Git version, with hermetic tests for replay concurrency, exact result readback, OAuth resource, staging grant permissions, WordPress Site Profile and owner cookie/nonce. Still requires dependency-aware integration, full tenant isolation certification and independent live acceptance before deployment."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/cross-plugin-sources.json",
+      "source_blob_sha": "e56c558da5967b9c50f189deb5b1d7b0b018ea6a",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/dfsb-rc15-signed-review-source-pin.py"
+      ],
+      "owner_role": "Repository security/release source reviewer for CI-only source registration; exact-head owner attestation required separately",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "review_rationale": "Reviewed exact Git blob for candidate-only RC15 signed-review source pin; source SHA fbcfed264231a2553d197927617a9cdae67f5567 and version 0.4.0-alpha.15-rc.1 only. The same-PR regression test forbids package certification, certified provider promotion, artifact digest authorization, staging/production apply and legacy ETG source mutation. GitHub Sigstore signed-review evidence is not an immutable release, independent provider certificate or Full Boot authority."
     }
   ],
   "code_change_rules": {
