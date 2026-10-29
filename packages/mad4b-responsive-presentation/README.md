@@ -20,3 +20,9 @@ Source deployment destination: `wp-content/mu-plugins/mad4b-responsive-presentat
 - Archive H1 stays visible, semantic and single, with centered alignment, responsive size and contrasting `--e-global-color-primary` (no `display:none`, duplicate text or SEO tag edits).
 - Jet Search/Check Availability submit and apply actions use `--e-global-color-accent` for backgrounds and `--e-global-color-primary` for text, with dynamic per-company Elementor Kit inheritance and keyboard focus treatment.
 - Verify 390px mobile and 1694px desktop, Blog/Tours archive, single tour, destination, H1 count, and contrast before Production rollout.
+
+## Passport header option overlay (2026-10-29)
+
+The existing header preferences panel (.header-context-panel) scrolls with overflow-y:auto and clips the absolutely positioned Passport AJAX list. When that list is visible, allow panel overflow while retaining independent bounded scrolling inside .travel-booking-passport-search__results. Rendering-only: do not relocate the list DOM or change passport/market persistence.
+
+Acceptance: header Passport search desktop/mobile; type Egypt; clear search for multiple results; scroll list, use ArrowDown/Escape; test 390x360, 390x780, 1440x820. Options must be visible and pointer-targetable without horizontal document overflow.
