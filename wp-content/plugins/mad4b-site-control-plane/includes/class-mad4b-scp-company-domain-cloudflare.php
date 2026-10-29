@@ -109,6 +109,13 @@ final class MAD4B_SCP_Company_Domain_Cloudflare {
         if ($mode === 'subdomain' && $hostname !== $code.'.'.self::SUBZONE) {
             return new WP_Error('mad4b_domain_subdomain_scope','Subdomain must match company code in managed MAD4B zone.',array('status'=>422));
         }
+        // A privileged operator may not bind a different company's hostname
+        // simply because the Cloudflare API token can see that zone.
+        if ($mode === 'custom_domain' && !in_array($hostname,
+            (array)($entry['approved_custom_domains'] ?? array()), true)) {
+            return new WP_Error('mad4b_domain_not_company_approved',
+                'This custom hostname is not enrolled for the selected company.',array('status'=>403));
+        }
         if ($mode === 'custom_domain' && ($hostname === self::SUBZONE ||
             substr($hostname,-strlen('.'.self::SUBZONE)) === '.'.self::SUBZONE ||
             $hostname === (string)$entry['origin_host'])) {
