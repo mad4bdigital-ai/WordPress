@@ -67,7 +67,7 @@ def invoke(args,timeout):
     return subprocess.run(args,capture_output=True,text=True,timeout=timeout,check=False)
 
 def probe(container):
-    ret=invoke(["docker","exec","-u","33:33",container,"php","-d","display_errors=0","-r",PROBE_PHP],55)
+    ret=invoke(["docker","exec","-u","33:33",container,"php","-d","display_errors=0","-r",PROBE_PHP],35)
     if ret.returncode: raise RuntimeError("WP cron probe failed rc="+str(ret.returncode))
     out=ret.stdout
     if out.count("MAD4B_CRON_PROBE_BEGIN\n")!=1 or out.count("\nMAD4B_CRON_PROBE_END")!=1:
@@ -153,7 +153,7 @@ def main():
             if not (ok and budget>0):
                 continue
             ret=invoke(["docker","exec","-u","33:33",container,"wp","--path="+EXPECTED_PATH,
-                "cron","event","run",hook,"--due-now"],80)
+                "cron","event","run",hook,"--due-now"],40)
             # stdout may include WP-CLI notices, don't emit it in logs.
             summary["executed"].append({"hook":hook,"exit_code":ret.returncode,
                 "stdout_sha256":hashlib.sha256(ret.stdout.encode()).hexdigest(),
