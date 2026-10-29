@@ -17,7 +17,9 @@ class CompanyCloneFieldPolicyTest(unittest.TestCase):
         self.assertEqual(p["contract"], "mad4b.company-clone-field-source-governance.v1")
         self.assertEqual(p["status"], "proposed_source_controlled_policy_no_runtime_apply")
         self.assertEqual(p["default_unknown_action"], "REVIEW_REQUIRED")
-        self.assertFalse(p["origin"]["current_brand_rewrite_verified"])
+        self.assertTrue(p["origin"]["core_demo_site_name_alignment_verified"])
+        self.assertFalse(p["origin"]["full_demo_brand_neutralization_verified"])
+        self.assertTrue(p["origin"]["legacy_company_contact_media_provider_bindings_pending"])
 
     def test_source_inventory_coverage_is_explicit(self):
         ev = self.p["evidence"]
