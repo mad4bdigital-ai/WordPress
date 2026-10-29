@@ -3605,27 +3605,6 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing MCP admission, platform identity, security, owner-scoped administrative rights and execution-denial controls cover these staging-only authorization surfaces, without granting Production execution or public access.",
       "review_rationale": "New surface ability:mad4b/staging-write-grant-reconcile-staging is source-pinned in the W1 authority integration and assessed with hermetic owner-browser, agent REST route, Site Profile, OAuth, replay, write grant, exact mapping and negative permission fixtures. This is only CI source review, not evidence that the route is registered, usable, or authorized in Production."
-    },
-    {
-      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-source-selector.php",
-      "owner_role": "Repository source maintainer / CI-only review, not Staging authorization",
-      "status": "reviewed_for_ci_only",
-      "production_authorized": false,
-      "live_evidence_required": true,
-      "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/staging-source-selector-runtime.php"
-      ],
-      "control_ids": [
-        "SECURITY-01",
-        "GOVERNANCE-01",
-        "RECOVERY-01",
-        "ROLLOUT-01",
-        "UPDATES-01"
-      ],
-      "needs_new_control": false,
-      "new_control_ids": [],
-      "coverage_reuse_rationale": "This repairs only the read-only bounded source resolver invoked before the unchanged owner-approved Selected-HEAD update.",
-      "review_rationale": "Exact repository allowlist, commit SHA, no redirect, 262144-byte response budget, SSL and timeout remain enforced while using compact Git Data object."
     }
   ],
   "lifecycle": [],
