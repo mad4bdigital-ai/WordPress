@@ -198,6 +198,15 @@ final class MAD4B_Hub_Nile_Publisher_V1 {
     public static function publish(bool $dryRun = true): array {
         if (!self::permission()) throw new RuntimeException('Central Hub admin authority required');
         $all = self::valid_snapshot();
+        // Hard admission gate: resolve canonical native terms and review native tour
+        // collisions BEFORE any Content Hub post is inserted or updated.
+        if (!class_exists('MAD4B_Hub_Source_Reuse_Gate_V1')) {
+            throw new RuntimeException('Canonical-source reuse policy unavailable');
+        }
+        $reusePolicy = MAD4B_Hub_Source_Reuse_Gate_V1::evaluate($all);
+        if (empty($reusePolicy['hard_gate_passed'])) {
+            throw new RuntimeException('Canonical-source reuse policy rejected publication');
+        }
         $existing = self::existing_map();
         $tourTitles = [];
         foreach ($all['nile_cruise_catalog.read'] as $item) {
@@ -208,6 +217,7 @@ final class MAD4B_Hub_Nile_Publisher_V1 {
             foreach ($all[$scope] as $item) {
                 $id = (int)$item[$group['id']];
                 $desired = self::present($item, $group['kind'], $id, $tourTitles);
+                $desired = MAD4B_Hub_Source_Reuse_Gate_V1::enrich($desired, $group['kind'], $id, $reusePolicy);
                 $key = $group['kind'] . ':' . $id;
                 $records[$key] = $desired;
             }
@@ -230,6 +240,12 @@ final class MAD4B_Hub_Nile_Publisher_V1 {
             'categories'=>18,'tours'=>35,'historical_rates'=>364,
             'commerce_approved'=>false,'checkout_enabled'=>false,
             'public_website_distribution_enabled'=>false,
+            'source_reuse_policy'=>MAD4B_Hub_Source_Reuse_Gate_V1::CONTRACT,
+            'canonical_taxonomy_reused'=>$reusePolicy['taxonomy_reuse_count'],
+            'canonical_wpml_groups_reused'=>$reusePolicy['existing_bilingual_taxonomy_groups'],
+            'native_tour_candidates_pending_owner_review'=>$reusePolicy['native_slug_collision_count'],
+            'native_terms_created'=>0,
+            'native_tours_modified'=>0,
         ];
         foreach ($records as $key=>$desired) {
             $desired['post_date_gmt'] = $publishedUtc;
@@ -244,7 +260,8 @@ final class MAD4B_Hub_Nile_Publisher_V1 {
                 $same = (string)get_post_meta($postId,'_mad4b_hub_source_sha256',true) === $payloadHash &&
                     $current->post_status === 'publish' &&
                     $current->post_title === $desired['post_title'] &&
-                    $current->post_content === $desired['post_content'];
+                    $current->post_content === $desired['post_content'] &&
+                    MAD4B_Hub_Source_Reuse_Gate_V1::desired_meta_equal((int)$postId, $desired);
                 if ($same) { $summary['unchanged']++; continue; }
                 $summary['updated']++;
                 if (!$dryRun) {
@@ -269,6 +286,11 @@ final class MAD4B_Hub_Nile_Publisher_V1 {
                 'post_type'=>self::CPT,'published_at'=>gmdate('c'),
                 'checkout_allowed'=>false,'external_distribution_enabled'=>false,
                 'source_snapshot_option'=>self::SNAPSHOT,
+                'source_reuse_policy'=>MAD4B_Hub_Source_Reuse_Gate_V1::CONTRACT,
+                'canonical_taxonomy_reused'=>$reusePolicy['taxonomy_reuse_count'],
+                'canonical_wpml_groups_reused'=>$reusePolicy['existing_bilingual_taxonomy_groups'],
+                'native_tour_matches_pending_review'=>$reusePolicy['native_slug_collision_count'],
+                'native_terms_created'=>0,'native_tours_modified'=>0,
             ], false);
         }
         return $summary;
