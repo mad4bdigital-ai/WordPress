@@ -1,4 +1,6 @@
 <?php
+// CI must execute these assertions even with zend.assertions=-1.
+function mad4b_test_mad4b_test_assert($ok) { if (!$ok) { fwrite(STDERR,"FAIL: delegated principal assertion\n"); exit(1); } }
 define( 'ABSPATH', '/tmp/' );
 define( 'REST_REQUEST', true );
 $GLOBALS['mode_setting'] = null;
@@ -35,49 +37,49 @@ class MAD4B_SCP_OAuth_Subject_User_Bridge {static function mapped_context(){retu
 class MAD4B_SCP_Application_Password_Agent_Bridge {static function verified_context(){return $GLOBALS['verified_app']??array();}}
 require dirname(__DIR__).'/includes/class-mad4b-scp-delegation-mode.php';
 $C='MAD4B_SCP_Delegation_Mode';
-assert($C::selected_mode()==='delegated_user');
+mad4b_test_assert($C::selected_mode()==='delegated_user');
 $identity=array(
     'authenticated'=>true, 'subject_type'=>'oauth','subject_fingerprint'=>str_repeat('a',64),
     'auth_method'=>'oauth2_bearer','origin'=>'mcp','wp_user_id'=>11,
     'token_scopes'=>array('mad4b:read'),
 );
 $GLOBALS['verified_context']=array('authenticated'=>true,'wp_user_id'=>11,'subject_fingerprint'=>$identity['subject_fingerprint']);
-assert($C::mode_for_identity($identity)==='delegated_user');
-assert($C::principal_allowed($identity));
-assert($C::agent_matches_user($identity,array('wp_user_id'=>11))===true);
-assert($C::agent_matches_user($identity,array('wp_user_id'=>22))===false);
-assert($C::agent_matches_user($identity,array())===false);
-assert($C::authorize_ability($identity,'mad4b/content-update-post',array('post_id'=>17))===true);
-assert($C::authorize_ability($identity,'mad4b/content-update-post',array('post_id'=>18)) instanceof WP_Error);
-assert($C::authorize_ability($identity,'mad4b/content-update-post',array('post_id'=>17,'post_status'=>'publish')) instanceof WP_Error);
-assert($C::authorize_ability($identity,'mad4b/content-create-post',array('post_type'=>'post','post_status'=>'draft'))===true);
-assert($C::authorize_ability($identity,'mad4b/content-create-post',array('post_type'=>'post','post_status'=>'publish')) instanceof WP_Error);
-assert($C::authorize_ability($identity,'mad4b/filesystem-write',array()) instanceof WP_Error);
-assert($C::authorize_ability($identity,'mad4b/plugin-activate',array()) instanceof WP_Error);
-assert($C::authorize_ability($identity,'mad4b/approval-plan',array('ability'=>'mad4b/content-update-post','input'=>array('post_id'=>17)))===true);
-assert($C::authorize_ability($identity,'mad4b/write-execute',array('ability'=>'mad4b/write-execute','input'=>array())) instanceof WP_Error);
+mad4b_test_assert($C::mode_for_identity($identity)==='delegated_user');
+mad4b_test_assert($C::principal_allowed($identity));
+mad4b_test_assert($C::agent_matches_user($identity,array('wp_user_id'=>11))===true);
+mad4b_test_assert($C::agent_matches_user($identity,array('wp_user_id'=>22))===false);
+mad4b_test_assert($C::agent_matches_user($identity,array())===false);
+mad4b_test_assert($C::authorize_ability($identity,'mad4b/content-update-post',array('post_id'=>17))===true);
+mad4b_test_assert($C::authorize_ability($identity,'mad4b/content-update-post',array('post_id'=>18)) instanceof WP_Error);
+mad4b_test_assert($C::authorize_ability($identity,'mad4b/content-update-post',array('post_id'=>17,'post_status'=>'publish')) instanceof WP_Error);
+mad4b_test_assert($C::authorize_ability($identity,'mad4b/content-create-post',array('post_type'=>'post','post_status'=>'draft'))===true);
+mad4b_test_assert($C::authorize_ability($identity,'mad4b/content-create-post',array('post_type'=>'post','post_status'=>'publish')) instanceof WP_Error);
+mad4b_test_assert($C::authorize_ability($identity,'mad4b/filesystem-write',array()) instanceof WP_Error);
+mad4b_test_assert($C::authorize_ability($identity,'mad4b/plugin-activate',array()) instanceof WP_Error);
+mad4b_test_assert($C::authorize_ability($identity,'mad4b/approval-plan',array('ability'=>'mad4b/content-update-post','input'=>array('post_id'=>17)))===true);
+mad4b_test_assert($C::authorize_ability($identity,'mad4b/write-execute',array('ability'=>'mad4b/write-execute','input'=>array())) instanceof WP_Error);
 $GLOBALS['verified_oauth']=false;
-assert(!$C::principal_allowed($identity));
-assert($C::authorize_ability($identity,'mad4b/content-update-post',array('post_id'=>17)) instanceof WP_Error);
+mad4b_test_assert(!$C::principal_allowed($identity));
+mad4b_test_assert($C::authorize_ability($identity,'mad4b/content-update-post',array('post_id'=>17)) instanceof WP_Error);
 $GLOBALS['verified_oauth']=true;
 $GLOBALS['current_id']=22;
-assert(!$C::principal_allowed($identity));
+mad4b_test_assert(!$C::principal_allowed($identity));
 $GLOBALS['current_id']=11;
 $fake=$identity;$fake['wp_user_id']=33;$GLOBALS['current_id']=33;
-assert(!$C::principal_allowed($fake));
+mad4b_test_assert(!$C::principal_allowed($fake));
 $GLOBALS['current_id']=11;
 $GLOBALS['mode_setting']='independent_nhi';
-assert($C::mode_for_identity($identity)==='independent_nhi');
-assert($C::principal_allowed($identity));
-assert($C::authorize_ability($identity,'mad4b/plugin-activate',array())===true); // Legacy NHI still separately checks grants.
+mad4b_test_assert($C::mode_for_identity($identity)==='independent_nhi');
+mad4b_test_assert($C::principal_allowed($identity));
+mad4b_test_assert($C::authorize_ability($identity,'mad4b/plugin-activate',array())===true); // Legacy NHI still separately checks grants.
 $GLOBALS['mode_setting']='invalid_mode';
-assert($C::selected_mode()==='independent_nhi');
+mad4b_test_assert($C::selected_mode()==='independent_nhi');
 $GLOBALS['mode_setting']=null;
 $GLOBALS['current_id']=22;
 $admin=$identity;$admin['wp_user_id']=22;$admin['subject_fingerprint']=str_repeat('b',64);
 $GLOBALS['verified_context']=array('authenticated'=>true,'wp_user_id'=>22,'subject_fingerprint'=>$admin['subject_fingerprint']);
-assert($C::authorize_ability($admin,'mad4b/content-update-post',array('post_id'=>17,'post_status'=>'publish'))===true);
-assert($C::authorize_ability($admin,'mad4b/content-create-post',array('post_type'=>'post','post_status'=>'publish'))===true);
-assert($C::authorize_ability($admin,'mad4b/plugin-activate',array()) instanceof WP_Error); // activate_plugins not granted.
-assert($C::authorize_ability($admin,'mad4b/approval-plan',array('ability'=>'mad4b/content-update-post','input'=>array('post_id'=>18))) instanceof WP_Error);
-echo "DELEGATED_PRINCIPAL_DEFAULT_AND_LEGACY_NHI: PASS\n";
+mad4b_test_assert($C::authorize_ability($admin,'mad4b/content-update-post',array('post_id'=>17,'post_status'=>'publish'))===true);
+mad4b_test_assert($C::authorize_ability($admin,'mad4b/content-create-post',array('post_type'=>'post','post_status'=>'publish'))===true);
+mad4b_test_assert($C::authorize_ability($admin,'mad4b/plugin-activate',array()) instanceof WP_Error); // activate_plugins not granted.
+mad4b_test_assert($C::authorize_ability($admin,'mad4b/approval-plan',array('ability'=>'mad4b/content-update-post','input'=>array('post_id'=>18))) instanceof WP_Error);
+echo "PASS: DELEGATED_PRINCIPAL_DEFAULT_AND_LEGACY_NHI\n";
