@@ -730,6 +730,7 @@ final class MAD4B_SCP_Abilities {
 		$request_scope = self::request_scope_admit( 'can_write_dispatch' );
 		if ( is_wp_error( $request_scope ) ) return $request_scope;
 		$delegation_identity = class_exists( 'MAD4B_SCP_Identity_Context' )
+			&& method_exists( 'MAD4B_SCP_Identity_Context', 'current' )
 			? MAD4B_SCP_Identity_Context::current() : null;
 		$delegated = class_exists( 'MAD4B_SCP_Delegation_Mode' )
 			&& is_array( $delegation_identity )
