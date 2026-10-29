@@ -81,6 +81,18 @@ final class MAD4B_SCP_Delegation_Mode {
         return get_userdata( $id ) ?: null;
     }
 
+    /**
+     * An NHI agent referenced by the same OAuth subject must not silently act
+     * on behalf of a DIFFERENT WordPress user in default delegation mode.
+     * Unbound/foreign agents can still use the explicit independent NHI mode.
+     */
+    public static function agent_matches_user( $identity, $agent ) {
+        if ( self::INDEPENDENT === self::mode_for_identity( $identity ) ) return true;
+        $user = self::authenticated_user( $identity );
+        return $user && is_array( $agent )
+            && (int) ( $agent['wp_user_id'] ?? 0 ) === (int) $user->ID;
+    }
+
     /** Mandatory *upper bound* for delegated work, even when NHI grants exist. */
     public static function principal_allowed( $identity ) {
         if ( self::INDEPENDENT === self::mode_for_identity( $identity ) ) return true;
