@@ -4,6 +4,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+// Principal-model policy is additive; legacy autonomous NHI remains supported.
+require_once __DIR__ . '/class-mad4b-scp-delegation-mode.php';
+
 final class MAD4B_SCP_Policy {
 
 	public static function connection_capability() {
@@ -101,6 +104,9 @@ final class MAD4B_SCP_Policy {
 		if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) || ! class_exists( 'MAD4B_SCP_Agent_Registry' ) ) return false;
 		$identity = MAD4B_SCP_Identity_Context::current();
 		if ( is_wp_error( $identity ) ) return false;
+		// A verified delegated user's live capabilities are an upper bound;
+		// independent NHI still uses its pre-existing exact agent/grant path.
+		if ( ! MAD4B_SCP_Delegation_Mode::principal_allowed( $identity ) ) return false;
 		$agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
 		if ( is_wp_error( $agent ) ) return false;
 		return (bool) apply_filters( 'mad4b_scp_mutation_permission', true, get_current_user_id(), $agent, $identity );
