@@ -111,6 +111,11 @@ final class RequestReviewAdmin
                         '<button type="submit" class="button">Link verified CRM contact</button></form>';
                 }
             }
+            if(RequestMailReply::authorized()){
+                echo '<p><a class="button" href="'.esc_url(add_query_arg([
+                    'page'=>'commerce-request-reply','request_id'=>$id
+                ],admin_url('admin.php'))).'">Reply via FluentSMTP</a></p>';
+            }
             echo '</td><td>';
             if(!current_user_can('manage_options')){
                 echo 'Supplier handoff: manager approval required';

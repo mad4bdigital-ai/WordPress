@@ -2,7 +2,7 @@
   "schema": "mad4b.commerce-composition.release-snapshot.v1",
   "release_state": "lab_source_snapshot_not_production_authorized",
   "plugin_slug": "commerce-composition",
-  "source_count": 77,
+  "source_count": 79,
   "source_files": [
     {
       "path": "bin/process-workflow-queue.php",
@@ -16,8 +16,8 @@
     },
     {
       "path": "composition.php",
-      "sha256": "9d928ec766d34c7fc5de67ffe5244251d66d21bf03f564a9857d506f9d75fcf3",
-      "bytes": 9640
+      "sha256": "b0f67477a473e76a873fcc089360eb3c195b7d50a85ad24f9842079a001df18e",
+      "bytes": 10065
     },
     {
       "path": "includes/Admin.php",
@@ -310,14 +310,24 @@
       "bytes": 6549
     },
     {
+      "path": "includes/RequestMailReply.php",
+      "bytes": 14039,
+      "sha256": "d064081edb2272ae9eb1e1670810bc5e87079c03244db487d110187e8e043bec"
+    },
+    {
+      "path": "includes/RequestMailReplyAdmin.php",
+      "bytes": 4733,
+      "sha256": "b01a3ff0262824582e2002159bf270b7f6044723a1bcab13c2515070e960b57d"
+    },
+    {
       "path": "includes/RequestReview.php",
       "sha256": "97c42f88467f58540e2b8ed8fa76d8f842a3ae3b1c9224e696b0d3bef7a061cf",
       "bytes": 13644
     },
     {
       "path": "includes/RequestReviewAdmin.php",
-      "sha256": "fb81a3ea69f654b7e496f8b71596cd408f2e20cd47bb18ac243411658d4fdd04",
-      "bytes": 18684
+      "sha256": "10166525dd9f2c423e60ad864b7abbde2e7d0bc0cbfc51ff414866735eff1310",
+      "bytes": 18969
     },
     {
       "path": "includes/RequestReviewApi.php",

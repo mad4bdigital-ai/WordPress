@@ -1,0 +1,57 @@
+{
+  "date": "2026-10-29",
+  "scope": "ETG Woo Lab isolated local",
+  "transport": "FluentSMTP via wp_mail() only",
+  "master_admin": {
+    "role": "master_admin",
+    "existing_capability": "mad4b_manage_company_operations",
+    "user_switching_plugin_installed": true,
+    "administrator_can_switch_to_master": true,
+    "master_can_switch_to_administrator": false,
+    "new_global_role_capabilities_granted": false,
+    "actor_audit": true,
+    "switched_from_actor_audit_when_cookie_valid": true
+  },
+  "reply_flow": {
+    "request_open_required": true,
+    "original_form_provenance_required": true,
+    "crm_email_identity_required": true,
+    "multiple_form_same_recipient_required": true,
+    "subscription_upgrade": false,
+    "manual_send_only": true,
+    "unique_request_intent": true,
+    "pre_send_audit_claim": true,
+    "plaintext_only": true,
+    "delivery_receipt_verified": false,
+    "default_sender_owned_by_fluentsmtp": true
+  },
+  "woo_lab": {
+    "fluent_smtp_configured_connection_count": 0,
+    "send_enabled": false,
+    "ui_access": true,
+    "audit_schema_installed": true
+  },
+  "etg_staging": {
+    "fluent_smtp_configured_connection_count": 1,
+    "provider": "gmail",
+    "settings_mutated": false
+  },
+  "tests": {
+    "passed": 17,
+    "total": 17,
+    "wp_mail_hook_intercepts": 1,
+    "real_outbound_emails_sent": 0,
+    "rollback_success": true,
+    "orders_created": 0,
+    "boards_tasks_created": 0
+  },
+  "evidence_vps": "/opt/commerce-components/evidence/etg-master-admin-mail-20261029/qa-result.json",
+  "source_parity": "79/79",
+  "production_mutated": false,
+  "open_gates": [
+    "Woo Lab FluentSMTP sender authorization within FluentSMTP UI",
+    "approved test mailbox actual delivery",
+    "User Switching browser cookie round trip",
+    "CI and exact-head owner certification"
+  ]
+}
