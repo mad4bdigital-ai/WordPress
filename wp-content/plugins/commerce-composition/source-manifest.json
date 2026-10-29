@@ -16,9 +16,9 @@
     },
     {
       "path": "composition.php",
-      "bytes": 9027,
-      "sha256": "f86edcbc4b249ea17b30c55cf3c7dfdeaa5079c8b97710870057523e1adceba6",
-      "git_blob_sha": "7f3c999a7df7084a608c223c942b997d18f005ee"
+      "bytes": 9201,
+      "sha256": "5fe46a9eae226e61bde5cae81dfffdbbfbab8eb70ee692a401d5327daf4de773",
+      "git_blob_sha": "1e152eac906217de7945bf43b314789ba7a7e8ed"
     },
     {
       "path": "includes/Admin.php",
@@ -183,6 +183,12 @@
       "git_blob_sha": "42cbe16b815fdb55af54bf7f8785c17469e06656"
     },
     {
+      "path": "includes/FluentInquiryCrmIntegration.php",
+      "bytes": 8863,
+      "sha256": "1e87f1f0a4d37ce168cf4c59c0358c5e196aabc67eaa251cf76e3431d80dee19",
+      "git_blob_sha": "420833ba19b68a048e57b80015eb65185662aee9"
+    },
+    {
       "path": "includes/FluentSubmissionAdapter.php",
       "bytes": 7930,
       "sha256": "bbd276b5817b231ad25738f676b028ca982ef4c462b28c91a369e35a495a93d1",
@@ -220,9 +226,9 @@
     },
     {
       "path": "includes/InquiryPhaseOperations.php",
-      "bytes": 10653,
-      "sha256": "2139aefd06e6bb0415a9970ad9300338396badf88e4ed93216d70d2a9e530a0a",
-      "git_blob_sha": "1915ce3a6c62dd19017e8abe43c91d714021d7d7"
+      "bytes": 10816,
+      "sha256": "bc44c31b757f61f99500f4621d03d4db925041689b2c5301d61c142e178e3038",
+      "git_blob_sha": "81a92c4ca5d0a8c54c4a50475c42bd8534708d5e"
     },
     {
       "path": "includes/InquiryQualification.php",
@@ -447,6 +453,6 @@
       "git_blob_sha": "cf097849b31426b2ccf9eb9c2b049329a82d071f"
     }
   ],
-  "file_count": 74,
+  "file_count": 75,
   "total_bytes": 599425
 }

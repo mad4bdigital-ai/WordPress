@@ -2,7 +2,7 @@
   "schema": "mad4b.commerce-composition.release-snapshot.v1",
   "release_state": "lab_source_snapshot_not_production_authorized",
   "plugin_slug": "commerce-composition",
-  "source_count": 74,
+  "source_count": 75,
   "source_files": [
     {
       "path": "bin/process-workflow-queue.php",
@@ -16,8 +16,8 @@
     },
     {
       "path": "composition.php",
-      "sha256": "f86edcbc4b249ea17b30c55cf3c7dfdeaa5079c8b97710870057523e1adceba6",
-      "bytes": 9027
+      "sha256": "5fe46a9eae226e61bde5cae81dfffdbbfbab8eb70ee692a401d5327daf4de773",
+      "bytes": 9201
     },
     {
       "path": "includes/Admin.php",
@@ -155,6 +155,11 @@
       "bytes": 6037
     },
     {
+      "path": "includes/FluentInquiryCrmIntegration.php",
+      "bytes": 8863,
+      "sha256": "1e87f1f0a4d37ce168cf4c59c0358c5e196aabc67eaa251cf76e3431d80dee19"
+    },
+    {
       "path": "includes/FluentSubmissionAdapter.php",
       "sha256": "bbd276b5817b231ad25738f676b028ca982ef4c462b28c91a369e35a495a93d1",
       "bytes": 7930
@@ -186,8 +191,8 @@
     },
     {
       "path": "includes/InquiryPhaseOperations.php",
-      "bytes": 10653,
-      "sha256": "2139aefd06e6bb0415a9970ad9300338396badf88e4ed93216d70d2a9e530a0a"
+      "bytes": 10816,
+      "sha256": "bc44c31b757f61f99500f4621d03d4db925041689b2c5301d61c142e178e3038"
     },
     {
       "path": "includes/InquiryQualification.php",

@@ -72,6 +72,7 @@ require_once __DIR__ . '/includes/WorkflowJobs.php';
 require_once __DIR__ . '/includes/WorkflowJobsApi.php';
 require_once __DIR__ . '/includes/AutomationEvents.php';
 require_once __DIR__ . '/includes/InquiryPhaseOperations.php';
+require_once __DIR__ . '/includes/FluentInquiryCrmIntegration.php';
 require_once __DIR__ . '/includes/ContactBridgeAdmin.php';
 require_once __DIR__ . '/includes/Composer.php';
 require_once __DIR__ . '/includes/FormSchema.php';
@@ -114,6 +115,7 @@ add_action('plugins_loaded', [Commerce\Composition\IntakeCaseApi::class, 'bootst
 add_action('plugins_loaded', [Commerce\Composition\FluentBoardsTaskBridge::class, 'bootstrap'], 51);
 add_action('plugins_loaded', [Commerce\Composition\AutomationEvents::class, 'bootstrap'], 51);
 add_action('plugins_loaded', [Commerce\Composition\InquiryPhaseOperations::class, 'bootstrap'], 65);
+add_action('plugins_loaded', [Commerce\Composition\FluentInquiryCrmIntegration::class, 'bootstrap'], 66);
 add_action('fluentform/submission_inserted', [Commerce\Composition\SubmissionContext::class, 'capture'], 80, 3);
 add_action('plugins_loaded', [Commerce\Composition\FluentCrmFeedBridge::class, 'bootstrap'], 52);
 add_action('plugins_loaded', [Commerce\Composition\MarketingConsentTranslations::class, 'bootstrap'], 53);
