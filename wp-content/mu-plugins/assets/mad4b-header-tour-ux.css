@@ -110,7 +110,9 @@
     min-width: 0;
     max-width: none;
     margin: 0;
-    font: inherit;
+    font-family: var(--e-global-typography-text-font-family, inherit);
+    font-size: var(--e-global-typography-text-font-size, inherit);
+    font-weight: var(--e-global-typography-text-font-weight, inherit);
     color: var(--mad4b-client-ink);
   }
   body.single-tours-and-activities .mad4b-tour-toc__drawer {
@@ -129,8 +131,8 @@
     list-style: none;
     cursor: pointer;
     color: var(--mad4b-client-ink);
-    font-size: 15px;
-    font-weight: 700;
+    font-size: 1em;
+    font-weight: var(--e-global-typography-accent-font-weight, 700);
     line-height: 1.35;
   }
   body.single-tours-and-activities .mad4b-tour-toc__drawer > summary::-webkit-details-marker,
@@ -182,8 +184,8 @@
     align-items: center;
     min-height: 43px;
     padding: 9px 9px;
-    font-size: 13px;
-    font-weight: 650;
+    font-size: .93em;
+    font-weight: var(--e-global-typography-accent-font-weight, 600);
     color: var(--mad4b-client-hover);
     list-style: none;
   }
@@ -211,7 +213,7 @@
     display: block;
     padding: 9px 9px;
     color: var(--mad4b-client-ink);
-    font-size: 13px;
+    font-size: .91em;
     line-height: 1.45;
     text-decoration: none;
     overflow-wrap: anywhere;
