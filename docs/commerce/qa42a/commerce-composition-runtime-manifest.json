@@ -2,7 +2,7 @@
   "schema": "mad4b.commerce-composition.release-snapshot.v1",
   "release_state": "lab_source_snapshot_not_production_authorized",
   "plugin_slug": "commerce-composition",
-  "source_count": 74,
+  "source_count": 75,
   "source_files": [
     {
       "path": "bin/process-workflow-queue.php",
@@ -16,8 +16,8 @@
     },
     {
       "path": "composition.php",
-      "sha256": "f86edcbc4b249ea17b30c55cf3c7dfdeaa5079c8b97710870057523e1adceba6",
-      "bytes": 9027
+      "sha256": "5fe46a9eae226e61bde5cae81dfffdbbfbab8eb70ee692a401d5327daf4de773",
+      "bytes": 9201
     },
     {
       "path": "includes/Admin.php",
@@ -153,6 +153,11 @@
       "path": "includes/FluentCrmFeedBridge.php",
       "sha256": "226d1cd7b91a7fb96fa18522315365f4b0424137d73139b2ba1690508d5476af",
       "bytes": 6037
+    },
+    {
+      "path": "includes/FluentInquiryCrmIntegration.php",
+      "bytes": 8863,
+      "sha256": "1e87f1f0a4d37ce168cf4c59c0358c5e196aabc67eaa251cf76e3431d80dee19"
     },
     {
       "path": "includes/FluentSubmissionAdapter.php",
