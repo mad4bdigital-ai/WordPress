@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'wp-content/mu-plugins/mad4b-research-firecrawl.php'
+      - 'wp-content/mu-plugins/mad4b-research-firecrawl-transport-exception.php'
       - 'tests/firecrawl-control-plane-bridge-test.php'
       - 'ops/integrations/firecrawl/**'
       - '.github/workflows/mad4b-firecrawl-woo-lab-bridge.yml'
@@ -29,6 +30,7 @@ jobs:
       - name: Lint and exercise authorization and host fencing
         run: |
           php -l wp-content/mu-plugins/mad4b-research-firecrawl.php
+          php -l wp-content/mu-plugins/mad4b-research-firecrawl-transport-exception.php
           php -d zend.assertions=1 -d assert.exception=1 tests/firecrawl-control-plane-bridge-test.php
       - name: Check no hardcoded credentials or public upstream
         run: |
