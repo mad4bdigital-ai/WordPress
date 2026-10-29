@@ -123,13 +123,25 @@ services:
       - /tmp:rw,nosuid,mode=1777
     depends_on: [php]
     restart: unless-stopped
-    networks: [private, edge]
+    networks: [private, edge, coolify]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=coolify"
+      - "traefik.http.routers.wayfatours-production.rule=Host(`wayfatours.mad4b.com`)"
+      - "traefik.http.routers.wayfatours-production.entrypoints=https"
+      - "traefik.http.routers.wayfatours-production.tls=true"
+      - "traefik.http.routers.wayfatours-production.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.wayfatours-production.service=wayfatours-production"
+      - "traefik.http.services.wayfatours-production.loadbalancer.server.port=8080"
 networks:
   private:
     name: wayfatours-production-private
     internal: true
   edge:
     name: wayfatours-production-edge
+  coolify:
+    external: true
+    name: coolify
 YAML
 cat > "$ROOT/stack/nginx.conf" <<'NGINX'
 server {
