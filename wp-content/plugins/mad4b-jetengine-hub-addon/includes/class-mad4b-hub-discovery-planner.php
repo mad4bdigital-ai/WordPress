@@ -256,6 +256,7 @@ final class MAD4B_Hub_Discovery_Planner {
             array_diff(array_keys($layers),$levels)||array_diff($levels,array_keys($layers)))
             return self::err('policy_layers_invalid');
         $denied=array_fill_keys(self::DENIED_ACTIONS,'platform');
+        $explicitDenials=array();
         $allowRead=false;$explanations=array();
         foreach($levels as $level){
             $p=$layers[$level];
@@ -268,7 +269,10 @@ final class MAD4B_Hub_Discovery_Planner {
             foreach($keys as $key) {
                 if($key!=='read_catalog' && !in_array($key,self::DENIED_ACTIONS,true))
                     return self::err('policy_action_unknown');
-                if(!isset($denied[$key]))$denied[$key]=$level;
+                if(!isset($explicitDenials[$key])){
+                    $denied[$key]=$level;
+                    $explicitDenials[$key]=true;
+                }
             }
             if(isset($p['allow_read'])&&!is_bool($p['allow_read']))
                 return self::err('read_flag_invalid');
