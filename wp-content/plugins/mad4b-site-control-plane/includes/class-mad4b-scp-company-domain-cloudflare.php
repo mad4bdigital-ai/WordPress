@@ -62,8 +62,8 @@ final class MAD4B_SCP_Company_Domain_Cloudflare {
         // Prefer a read-only Docker secret; never put provider tokens in wp_options.
         $token = '';
         $tokenFile = (string)getenv('MAD4B_CLOUDFLARE_TOKEN_FILE');
-        if ($tokenFile !== '' && strpos($tokenFile,'/run/secrets/')===0 &&
-            is_readable($tokenFile) && is_file($tokenFile)) {
+        if ($tokenFile !== '' && preg_match('~^/run/secrets/[a-zA-Z0-9_.-]+$~D',$tokenFile) &&
+            strpos($tokenFile,'..')===false && is_readable($tokenFile) && is_file($tokenFile)) {
             $token = trim((string)file_get_contents($tokenFile));
         }
         // An explicitly injected secret-only environment variable is a fallback
@@ -184,6 +184,9 @@ final class MAD4B_SCP_Company_Domain_Cloudflare {
         $result=self::provider('GET',$path,null,$settings);
         if (is_wp_error($result)) return $result;
         if (!is_array($result)) return new WP_Error('mad4b_cloudflare_bad_records','Invalid DNS listing.',array('status'=>502));
+        // A full provider page could conceal a conflicting record on later pages.
+        if (count($result)>=100) return new WP_Error('mad4b_cloudflare_dns_listing_incomplete',
+            'DNS record listing requires manual review before mutation.',array('status'=>409));
         return array_values(array_filter($result,static function($row) use($name) {
             return is_array($row) && ($row['name'] ?? '')===$name;
         }));
