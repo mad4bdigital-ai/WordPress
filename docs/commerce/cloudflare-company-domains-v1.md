@@ -81,3 +81,16 @@ A fresh isolated Wayfatours WordPress Production already exists on `srv2030908`,
 ### Source promotion
 
 The production SCP loader change is deliberately additive to `master`, but GitHub `master` is not currently on the same SCP release as VPS `rc.118`. Staging uses the MU bridge to avoid downgrading/replacing that SCP. After CI and release parity certification, merge through the prescribed governed deployment mechanism, removing the compatibility bridge when version equivalence is certified.
+
+
+## Live observation update — DNS appeared, TLS still blocked (30 Oct 2026)
+
+A later authoritative check **after** initial deployment now shows:
+- `wayfatours.mad4b.com A 187.7.76.129`, TTL 300, from authoritative `elisabeth.ns.cloudflare.com` and independent Google/Cloudflare public resolvers.
+- A random `wayfa-unused-872613.mad4b.com` hostname does **not** resolve to that IP, so the Wayfatours answer is not a catch-all wildcard in the tested zone.
+- The record appeared **without this Control Plane connector making an authenticated Cloudflare call**. Do not attribute record creation to PR #647, assume its owner, or attempt to recreate/replace it.
+- Trusted `curl https://wayfatours.mad4b.com/` still **fails TLS certificate verification** (self-signed `TRAEFIK DEFAULT CERT`); an isolated Wayfatours Nginx router recreation did not obtain Let's Encrypt successfully. HTTPS responses under diagnostic `curl -k` are not public TLS certification.
+- Cloudflare API provider `/status` remains **unconfigured**, so authenticated readback and future DNS management are blocked pending a scoped token and exact zone ID. Track [Issue #648](https://github.com/mad4bdigital-ai/WordPress/issues/648).
+- Public commerce approval remains NO-GO. Continue to withhold payments, bookings, automated emails and SEO indexing. Only a trusted certificate and complete company-site release certification can change that verdict.
+
+Current code paths are *tested with mocked Cloudflare provider responses* and registered on Staging; **no real Cloudflare zone enrollment or DNS write was executed by this module**.
