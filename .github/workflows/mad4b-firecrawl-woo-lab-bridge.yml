@@ -9,6 +9,8 @@ on:
       - 'tests/firecrawl-control-plane-bridge-test.php'
       - 'tests/firecrawl-research-workflow-test.php'
       - 'tests/firecrawl-provider-routing-test.php'
+      - 'ops/integrations/firecrawl/skills/**'
+      - 'scripts/ci/verify-firecrawl-skill-paths.py'
       - 'ops/integrations/firecrawl/**'
       - '.github/workflows/mad4b-firecrawl-woo-lab-bridge.yml'
   push:
@@ -20,6 +22,8 @@ on:
       - 'tests/firecrawl-control-plane-bridge-test.php'
       - 'tests/firecrawl-research-workflow-test.php'
       - 'tests/firecrawl-provider-routing-test.php'
+      - 'ops/integrations/firecrawl/skills/**'
+      - 'scripts/ci/verify-firecrawl-skill-paths.py'
       - 'ops/integrations/firecrawl/**'
       - '.github/workflows/mad4b-firecrawl-woo-lab-bridge.yml'
 concurrency:
@@ -44,6 +48,7 @@ jobs:
           php -d zend.assertions=1 -d assert.exception=1 tests/firecrawl-control-plane-bridge-test.php
           php -d zend.assertions=1 -d assert.exception=1 tests/firecrawl-research-workflow-test.php
           php -d zend.assertions=1 -d assert.exception=1 tests/firecrawl-provider-routing-test.php
+          python3 scripts/ci/verify-firecrawl-skill-paths.py
       - name: Check no hardcoded credentials or public upstream
         run: |
           grep -Fq 'http://gateway:8080' wp-content/mu-plugins/mad4b-research-firecrawl.php
