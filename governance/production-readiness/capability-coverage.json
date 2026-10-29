@@ -11496,6 +11496,29 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing pinned source validation, exact SHA identity, bounded GitHub HTTPS and protected candidate deploy controls cover the compact Git Data lookup.",
       "review_rationale": "The GitHub /commits/{sha} REST response may exceed the existing 262144-byte budget for multi-parent integration changes. Only the exact immutable commit lookup changes to /git/commits/{sha} (small Git object metadata). Do not raise limits, change other source selectors or treat any redirect/invalid/mismatched response as verified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-convergence.php",
+      "source_blob_sha": "da81f3033e8458a838f0d978d98ca02c0e8a487d",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "RECOVERY-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-superseded-owner-gate-readonly-runtime.php"
+      ],
+      "owner_role": "Repository source/security reviewer — CI-only; not a Staging Write Owner or Production release approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing exact-MCP, source provenance, historical recovery, site authorization and independent Owner Write gate controls already cover this bounded read-only recovery policy.",
+      "review_rationale": "An rc.102 self-update checkpoint remained as an HTTP 503 transport barrier on the independently ready rc.118 Tours Commerce Staging runtime. The new strictly verified historical interpretation requires a newer fully identified source build, valid phase graph, no unexpected blocker, source-consistent checkpoint, immutable old audit record, and a demonstrably closed WordPress mutation permission. Owner-only or verified older release-cache-plus-owner-only gaps can release the obsolete transport grace without granting any write authority. Negative PHP fixtures cover production, tampered identity, missing evidence, wrong checkpoint, live mutation permission and other required blockers. Staging HTTP checks are separate, and CI cannot authorize Production.",
+      "execution_note": "Source-level review only. Required PHP test is executed under Post Update Continuation Guards on PHP 7.4/8.1/8.3; staging canary showed 503 became unauthenticated 401 while admin_can_mutate remained false. Owner exact-head approval and fresh authenticated MCP acceptance still required."
     }
   ],
   "code_change_rules": {
