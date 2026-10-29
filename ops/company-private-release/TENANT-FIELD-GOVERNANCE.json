@@ -169,6 +169,60 @@
           "classification": "tenant_owned_external",
           "migration": "bind_to_verified_tenant_sni_and_catalog",
           "required": true
+        },
+        {
+          "path": "LiteSpeed Cache / QUIC.cloud connection, site token, domain and CDN account",
+          "classification": "tenant_owned_external_account_and_credentials",
+          "migration": "retain_tenant_source_credentials_only_with_verified_domain_and_account_binding",
+          "required": true
+        },
+        {
+          "path": "LiteSpeed generated cache, optimization and CDN delivery metadata",
+          "classification": "derived_cache_or_tenant_owned_runtime",
+          "migration": "regenerate_cache_only_on_target_clone_after_account_domain_verification",
+          "required": false
+        }
+      ]
+    },
+    {
+      "group": "reviews_and_traveler_gallery",
+      "fields": [
+        {
+          "path": "Elementor traveler reviews section visual template",
+          "classification": "shareable_structure_only",
+          "migration": "reuse_widget_structure_and_styling_with_target_brand_kit",
+          "required": false
+        },
+        {
+          "path": "wp_options['look-and-feel']['review_gellery_slider']",
+          "classification": "tenant_owned_gallery_media",
+          "migration": "preserve_target_tenant_existing_data_never_copy_donor_urls",
+          "required": false,
+          "notes": "ETG has 19 source-hosted image URLs in the gallery; All Royal Egypt did not expose the option field in the inspected source DB; absence must not trigger fallback"
+        },
+        {
+          "path": "Elementor uael-image-gallery __dynamic__.wp_gallery -> jet-options-gallery",
+          "classification": "tenant_owned_dynamic_binding",
+          "migration": "validate_and_bind_to_target_tenant_own_jetengine_option_field",
+          "required": false
+        },
+        {
+          "path": "JetEngine listing/query IDs in traveler/business review sections",
+          "classification": "tenant_owned_content_reference",
+          "migration": "resolve_existing_target_query_listing_and_post_data_by_stable_mapping",
+          "required": false
+        },
+        {
+          "path": "Trustindex Tripadvisor account, business page and review sources",
+          "classification": "tenant_owned_external_account",
+          "migration": "preserve_current_tenant_account_and_widget_sources_no_cross_company_copy",
+          "required": true
+        },
+        {
+          "path": "Trustindex plugin options, review views and external cache",
+          "classification": "tenant_owned_review_data",
+          "migration": "preserve_from_tenant_own_db_and_verify_bound_business_page",
+          "required": true
         }
       ]
     }
@@ -180,7 +234,11 @@
     "unverified media URL mapping or active cross-tenant Media Gateway access",
     "missing owner binding / source database checksum / rollback receipt",
     "staging QA data or source branding in target database",
-    "unreviewed external API/webhook/payment endpoints"
+    "unreviewed external API/webhook/payment endpoints",
+    "other-company gallery URLs, Elementor attachment IDs or JetEngine option-gallery source values imported into target",
+    "missing target-owned review gallery data filled by donor company fallback",
+    "Trustindex Tripadvisor business/account source bound to another company",
+    "LiteSpeed / QUIC.cloud account or CDN identity not verified for exact target domain"
   ],
   "copy_execution": {
     "phase_1": "inventory and source fingerprint (read only)",
