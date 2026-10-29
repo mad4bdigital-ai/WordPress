@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Shared Responsive Presentation
  * Description: Brand-neutral responsive archive tools and Tour Rate card/accordion parity.
- * Version: 1.1.0
+ * Version: 1.2.0
  * License: Proprietary
  *
  * Source: packages/mad4b-responsive-presentation/mu-plugins/mad4b-responsive-presentation.php
@@ -248,6 +248,21 @@ body[class*="elementor-page-"]:not(.elementor-editor-active) #content.site-conte
   }
 }
 
+/* Passport AJAX options belong visually above the page, not inside the header scroller.
+   The existing list keeps its own independent keyboard-scrollable max-height. */
+.elementor-location-header .header-context-controls.is-open .header-context-panel:has(.travel-booking-passport-search__results:not([hidden])) {
+  overflow: visible !important;
+}
+.elementor-location-header .header-context-panel .travel-booking-passport-search__results:not([hidden]) {
+  max-height: min(220px, max(72px, calc(100dvh - 225px))) !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+}
+@media (max-width: 1024px) {
+  .elementor-location-header .header-context-panel .travel-booking-passport-search__results:not([hidden]) {
+    max-height: min(220px, max(72px, calc(100dvh - 170px))) !important;
+  }
+}
 </style>
 <?php
 }, 98);
