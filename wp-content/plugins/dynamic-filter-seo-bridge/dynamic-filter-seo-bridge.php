@@ -120,7 +120,7 @@ add_action('plugins_loaded', static function (): void {
 }, 19);
 
 // New safe Dynamic Tag is registered for authorized Elementor admin previews
-// even during Safe Boot; public output stays blocked until certification.
+// even during Safe Boot; public output uses a separate verified read-only source gate.
 add_action('plugins_loaded', static function (): void {
     (new DynamicFilterSEOBridge\Elementor\ContextTagRegistration())->registerHooks();
     DynamicFilterSEOBridge\Runtime\ReadOnlyFilterContext::register();
