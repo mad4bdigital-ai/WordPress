@@ -34,3 +34,20 @@ Host operator scripts and domain/port paths are tenant-specific and not part of 
 3. Do not remove cache/critical CSS presets, WooCommerce data or Control Plane package.
 
 Run python3 test-contract.py and php -l company-performance-intelligence.php in CI. Full runtime integration tests require WordPress and the MAD4B Control Plane policy.
+
+## Governed Staging REST interface
+
+The optional, company-neutral MU plugin `company-performance-rest.php` provides these **GET-only** routes under the existing WordPress REST namespace `mad4b/v1`:
+
+- `GET /wp-json/mad4b/v1/company-performance/status` — scanner source trust and availability, no execution.
+- `GET /wp-json/mad4b/v1/company-performance/scan` — one read-only WordPress Ability scan, optional `previous_snapshot_sha256` (64 lowercase hex).
+- `GET /wp-json/mad4b/v1/company-performance/plan` — the same trusted scan narrowed to findings and remediation recommendations.
+- `GET /wp-json/mad4b/v1/native-abilities?prefix=...&limit=...&offset=...` — paginated native capability metadata; no dispatch.
+
+All routes require a WordPress-authenticated **administrator**, existing `MAD4B_SCP_Policy::can_read()`, and a Staging environment. Cookie-based authenticated requests must use the normal WordPress REST nonce; WordPress Application Password authentication works under normal WordPress policies. Unauthorized requests return 401/403. All successful responses use private no-store headers and vary by Authorization/Cookie. POST, PUT, PATCH and DELETE are not implemented.
+
+The scan and plan routes require the independently operator-pinned native source to have `OWNER_PIN_VERIFIED` and `OWNER_PINNED_READ_SOURCE_VERIFIED`. They call `wp_get_ability(...)->execute()`, **not the raw implementation callback**, preserving the original WordPress Ability permission and Control Plane execution fences. Unverified or modified source fails closed with 503. Status and discovery remain available to authorized users for diagnosis even if the trust pin has failed. There is no route for arbitrary Ability execution or automatic remediation.
+
+Actual Woo Lab Staging REST tests on 29 October 2026: unauthenticated real HTTP 401 on all four routes; a WordPress subscriber 403; administrator 200 with no-store headers; malformed digest and pagination 400; no POST route; synthetic wrong in-process trust SHA causes scan/plan 503 without modifying real manifests. This direct Staging deployment is not independent release certification; other companies/Production are out of scope. The private per-host browser history remains on VPS only, not exposed through public REST.
+
+Run `python3 test-rest-contract.py` and `php -l company-performance-rest.php` in source CI. For a site with this MU module installed, the normal rollback is removing only that file, not altering the Control Plane, active performance presets, or any WooCommerce data.
