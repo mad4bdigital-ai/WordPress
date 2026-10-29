@@ -32,16 +32,6 @@ jobs:
         run: |
           python3 packages/etg-woo-lab-portable-mu/tools/deploy_reviewed_mu.py --check
           python3 packages/etg-woo-lab-portable-mu/tests/test_deploy.py
-      - name: Require source owner to explicitly authorize automatic deployment
-        run: |
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
-          m=json.loads(Path('packages/etg-woo-lab-portable-mu/manifest.json').read_text())
-          if m.get('auto_deploy_enabled') is not True:
-              raise SystemExit('NO_GO: source-only candidate not approved for auto-deployment')
-          print('APPROVED_MANIFEST_AUTO_DEPLOY_OPT_IN')
-          PY
 
   deploy-woo-lab:
     name: Controlled master-commit deployment to isolated Woo Lab
@@ -61,6 +51,16 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
+      - name: Require source owner to explicitly authorize automatic deployment
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          m=json.loads(Path('packages/etg-woo-lab-portable-mu/manifest.json').read_text())
+          if m.get('auto_deploy_enabled') is not True:
+              raise SystemExit('NO_GO: source-only candidate not approved for auto-deployment')
+          print('APPROVED_MANIFEST_AUTO_DEPLOY_OPT_IN')
+          PY
       - name: Require configured SSH identity and pinned host keys
         run: |
           set -euo pipefail
