@@ -187,7 +187,7 @@ final class MAD4B_SCP_Delegation_Mode {
             foreach ( $present as $g ) {
                 if ( 'mad4b/content-apply-bundle' === (string) $g['ability_name']
                     && 'core' === (string) $g['provider']
-                    && in_array( $environment, array( (string) $g['environment'], 'all' ), true ) ) {
+                    && in_array( (string) $g['environment'], array( $environment, 'all' ), true ) ) {
                     if ( 'deny' === (string) $g['effect'] )
                         return new WP_Error( 'mad4b_delegation_explicit_deny', 'An explicit policy deny prevents delegated content operation.' );
                     $found = true;
@@ -237,6 +237,38 @@ final class MAD4B_SCP_Delegation_Mode {
             'An authenticated, enrolled WordPress user must be verified for the delegated MCP request.' );
         $ability_name = (string) $ability_name;
         $input = is_array( $input ) ? $input : array();
+
+        if ( 'mad4b/content-apply-bundle' === $ability_name ) {
+            $type = isset( $input['post_type'] ) ? sanitize_key( $input['post_type'] ) : '';
+            $post_type = $type ? get_post_type_object( $type ) : null;
+            $post = isset( $input['post'] ) && is_array( $input['post'] )
+                ? $input['post'] : array();
+            $status = sanitize_key( (string) ( $post['post_status'] ?? 'draft' ) );
+            if ( ! $post_type || ! in_array( $status, array( 'draft', 'pending', 'auto-draft' ), true ) )
+                return new WP_Error( 'mad4b_delegation_draft_only',
+                    'Delegated content bundles are draft/pending-only and require an exact registered post type.' );
+            $mode = sanitize_key( (string) ( $input['mode'] ?? 'create' ) );
+            if ( 'create' === $mode ) {
+                $cap = $post_type->cap->create_posts ?? $post_type->cap->edit_posts;
+                if ( ! user_can( $user, $cap ) || ! empty( $input['post_id'] ) )
+                    return new WP_Error( 'mad4b_delegation_draft_create_denied',
+                        'Delegating user cannot create a draft for this post type.' );
+            } elseif ( 'update' === $mode ) {
+                $id = absint( $input['post_id'] ?? 0 );
+                $target = $id ? get_post( $id ) : null;
+                if ( ! $target || $target->post_type !== $type
+                    || in_array( $target->post_status, array( 'publish', 'private' ), true )
+                    || ! user_can( $user, 'edit_post', $id ) )
+                    return new WP_Error( 'mad4b_delegation_draft_edit_denied',
+                        'Delegating user cannot update the exact draft target.' );
+            } else {
+                return new WP_Error( 'mad4b_delegation_mode_denied', 'Unsupported draft operation.' );
+            }
+            if ( ! empty( $post['post_author'] ) && (int) $post['post_author'] !== (int) $user->ID
+                && ! user_can( $user, $post_type->cap->edit_others_posts ) )
+                return new WP_Error( 'mad4b_delegation_author_denied', 'Delegating user cannot assign another author.' );
+            return true;
+        }
 
         if ( 'mad4b/content-update-post' === $ability_name ) {
             $id = isset( $input['post_id'] ) ? absint( $input['post_id'] ) : 0;
