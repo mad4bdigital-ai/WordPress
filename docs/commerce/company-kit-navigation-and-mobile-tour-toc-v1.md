@@ -2,7 +2,7 @@
 
 ## Why this governance gate exists
 
-The active Elementor Kit `60050` has canonical `Primary`, `Secondary`, `Text` and `Accent` system tokens, plus a **unique** navigation header surface token `bnav001`. A live source census identified **13 duplicate custom color IDs**, often with conflicting values; for example `e14cd5e` appears with both `#B48A46` and `#F6AE22`. **The duplicates are not safe as reusable design contracts.** Do not copy a broken Kit or legacy overrides to a new company.
+The active Elementor Kit `60050` has canonical `Primary`, `Secondary`, `Text` and `Accent` system tokens, plus a **unique** navigation header surface token `bnav001`. A source census initially identified **13 duplicate custom color IDs**, often with conflicting values; for example `e14cd5e` appeared with both `#B48A46` and `#F6AE22`. **These duplicates were reconciled on 2026-10-30 on Wo Vacation Staging** after public CSS confirmed the live winning value for every ID. Do not copy the demo Kit or inherited brand palette to another company.
 
 ## Actions performed on Staging
 
@@ -20,8 +20,21 @@ All company brand colors and inherited navigation typographies must originate in
 
 Source governance is in `governance/ui/elementor-kit-navigation-tokens-v1.json`. The read-only validator `scripts/audit_company_navigation_kit.php` can run through the connected site's `wp eval-file` to verify the live Kit, all six tour-content template bindings **and all six actual Mega Menu header bindings**. It **flags current legacy duplicate IDs** without deleting them. New-company admission uses `MAD4B_NEW_COMPANY_ADMISSION=1` to **fail closed** on duplicate IDs. Existing-site legacy exceptions are temporary audit debt, not approvals to add new invalid references.
 
-### Explicit limitation
+### 2026-10-30: Completed targeted palette reconciliation and live save governance
 
-Current 13 duplicated custom tokens remain in Kit because they may be referenced by unrelated historical pages. An authorized, source-backed reference census and separate design review are required before de-duplication. Our original UI improvement is active on Staging only; PR for production remains DRAFT pending CI and explicit approval. A source-controlled audit script is a deploy gate **when invoked**; it does not automatically intercept every manual Elementor save in WordPress. A future approved save-time extension would be needed for global editor enforcement.
+**Source proof:** all 13 duplicated IDs were present in rendered Elementor CSS exactly once, and each rendered value matched the **LAST** entry in Kit `60050`. A read-only `wp_postmeta` census confirmed the IDs are widely referenced across published JetEngine and Elementor templates; blindly renaming them would break existing pages.
 
-No new backup, no Production changes, no customer/pricing mutations. Browser-level hover and mobile drawer interaction still require visual QA with an actual browser; static/HTTP/PHP/JS validation alone is not that claim.
+**Applied ONLY on Wo Vacation Staging:** the exact source-controlled `scripts/reconcile_wo_staging_kit_duplicates.php` was run first as DRY RUN (no writes), then with `MAD4B_KIT_DEDUP_APPLY=1`. Exact host / DB / environment / public brand / Kit ID and full 13-color known winners were mandatory. The script retained the last entry per color ID, removing **37 redundant rows**, so the Kit custom palette changed **56 → 19**, with **zero duplicates**. The Kit write was an exact compare-and-swap inside a database transaction, read back after write, and Elementor's CSS cache regenerated. The public tour page then confirmed **all 13 CSS variables retained identical visible color values**. No template, post, customer, or order fields were modified; no new backup was created.
+
+**Mandatory live write guard:** `wp-content/mu-plugins/198-mad4b-elementor-kit-integrity.php` is installed on Wo Vacation Staging, and commits to source control. It enforces no duplicate IDs, valid hex, unique `bnav001`, and exactly one of `primary/secondary/text/accent` on:
+- `elementor/document/save/data` for the ACTIVE Kit, rejecting invalid editor submissions before saving.
+- `update_post_metadata` and `add_post_metadata` when the active Kit `_elementor_page_settings` is being persisted through WordPress APIs.
+- `rest_request_before_callbacks` for **`POST /mad4b/v1/company-activation/commit`**, rejecting native company-operations activation when its active Kit is invalid. The existing cookie/nonce/owner/confirmation authorization remains unchanged.
+- An explicit `mad4b_kit_integrity_admission()` callable for governed onboarding pipelines.
+
+The isolated tests validate valid/invalid Kit writes, independent post/other route boundaries, rejection on duplicate ID, and company-activation guard. WordPress runtime smoke confirmed a simulated invalid pre-write is denied while the live Kit remains unchanged. The read-only Kit audit now returns **COMPLIANT**, including all six shared tour-content templates and six Mega Menu headers; strict new-company mode passes on this repaired Kit.
+
+**Precise provisioning boundary:** The identified native Control Plane activation endpoint configures roles and company operations **inside the existing WordPress site**. It is **not a verified external new-site provisioning pipeline**. Future separate WordPress sites must invoke `mad4b_kit_integrity_admission()` as a required admission check in their actual installation/provisioning controller; do not claim that controller is connected until independently observed. Direct raw SQL writes bypass WordPress filter hooks, so governed deployments must not use unreviewed direct Kit SQL mutations.
+
+**Remaining release limitation:** Browser-level hover and mobile drawer visual/touch QA remains unverified. PR source and tests are not merged to master or deployed to Production; no Production change occurred.
+
