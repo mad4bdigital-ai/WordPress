@@ -41,3 +41,9 @@ The full serialized binding result matched byte-equivalent JSON data before/afte
 For every site, first verify pre/post bindings and the new index in its *own* database. If a deployment already has a valid index, it is reused, but a one-time per-site bootstrap may be needed if absent. Keep the candidate index and compiled bindings separate. Future provider-query changes still refresh the compiled binding transient on its normal TTL; Elementor content changes update the index immediately.
 
 Full-page HTTP requests can have other bottlenecks; reducing this query is not a claim of overall page-load optimization. Do not infer a business or data owner from filter/query names.
+
+## Extra fail-closed status guard
+
+The indexed-ID read additionally performs **one indexed `wp_posts.ID IN (...)` lookup** to confirm every candidate is *still* published and of type `elementor_library` or `page`. This prevents stale data from being treated as a published consumer if an external migration bypasses normal WordPress save/status hooks. It does not grant ownership or skip any of the existing widget/provider/taxonomy checks. It never uses `postmeta.meta_value LIKE`.
+
+After applying the guard, output parity remained **29/29 bindings** and the heavy query count remained **zero**. One initially cold measurement fluctuated to 218.85 ms due to runtime/database state. Five consecutive guarded cold-transient evaluations then measured **106.10, 54.85, 47.70, 46.18, and 43.20 ms**. These are observed, not guaranteed, timings; the consistent result is removal of the repeated unindexed SQL scan.
