@@ -14,7 +14,9 @@ function content_url($s){return 'https://example.test/'.$s;}
 function is_singular($slug){return $slug==='tours-and-activities';}
 function assert_same($x,$y,$msg){if($x!==$y){fwrite(STDERR,'FAIL '.$msg.PHP_EOL);exit(1);}}
 class MockWidget {
-    public function __construct(private $id,private $type){}
+    private $id;
+    private $type;
+    public function __construct($id,$type){$this->id=$id;$this->type=$type;}
     public function get_name(){return $this->type;}
     public function get_id(){return $this->id;}
 }
