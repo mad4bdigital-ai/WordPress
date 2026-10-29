@@ -75,10 +75,22 @@ with TemporaryDirectory() as foreign:
         (plugin/'config/cross-plugin-sources.json').read_bytes()),
         'foreign_ci_successor_root_denied')
 checked=evaluate(ledger,plugin)
+# The three exactly reviewed CI-only successors do not resolve other changed
+# Git blobs. Unlike the release gate, this negative regression must PASS when
+# unexpected differences are detected *and correctly rejected*: never require
+# unexpected_count == 0 while the source ledger is unreconciled.
 chk(set(checked['reviewed_github_successor_paths'])==reviewed_paths
-    and checked['unexpected_count']==0 and checked['pending_count']>0
-    and checked['decision']=='BLOCKED_SOURCE_RECONCILIATION',
+    and checked['reviewed_github_successor_count']==len(reviewed_paths)
+    and checked['pending_count']>0
+    and checked['version_match'] is False
+    and checked['decision']=='BLOCKED_SOURCE_RECONCILIATION'
+    and checked['authorizing'] is False
+    and checked['production_authorized'] is False,
     'reviewed_successor_remains_pending_without_version_parity')
+chk(checked['unexpected_count']==len(checked['unexpected_paths'])
+    and set(checked['unexpected_paths']).isdisjoint(reviewed_paths)
+    and checked['unexpected_count']>0,
+    'unreviewed_github_drift_explicitly_blocks_source_parity')
 chk(not reviewed_bootstrap_successor(plugin,'mad4b-site-control-plane.php',current+b'\nmodified'),
     'tampered_bootstrap_bytes_denied')
 chk(not reviewed_bootstrap_successor(plugin,'includes/unapproved.php',current),
