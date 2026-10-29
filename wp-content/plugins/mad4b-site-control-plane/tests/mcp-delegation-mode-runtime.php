@@ -44,6 +44,9 @@ $identity=array(
 $GLOBALS['verified_context']=array('authenticated'=>true,'wp_user_id'=>11,'subject_fingerprint'=>$identity['subject_fingerprint']);
 assert($C::mode_for_identity($identity)==='delegated_user');
 assert($C::principal_allowed($identity));
+assert($C::agent_matches_user($identity,array('wp_user_id'=>11))===true);
+assert($C::agent_matches_user($identity,array('wp_user_id'=>22))===false);
+assert($C::agent_matches_user($identity,array())===false);
 assert($C::authorize_ability($identity,'mad4b/content-update-post',array('post_id'=>17))===true);
 assert($C::authorize_ability($identity,'mad4b/content-update-post',array('post_id'=>18)) instanceof WP_Error);
 assert($C::authorize_ability($identity,'mad4b/content-update-post',array('post_id'=>17,'post_status'=>'publish')) instanceof WP_Error);
