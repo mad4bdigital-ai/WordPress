@@ -1,0 +1,16 @@
+[Unit]
+Description=MAD4B read-only media reference audit (%i)
+Documentation=https://github.com/mad4bdigital-ai/WordPress
+After=docker.service
+Wants=docker.service
+ConditionPathExists=/etc/mad4b/media-reference-audit/%i.env
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/mad4b/media-reference-audit/%i.env
+ExecStart=/usr/bin/flock -n /run/lock/mad4b-media-reference-audit-%i.lock /usr/local/libexec/mad4b-media-reference-audit/run.sh
+TimeoutStartSec=240
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+NoNewPrivileges=true
