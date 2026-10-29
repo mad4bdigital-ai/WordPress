@@ -11789,6 +11789,56 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Exact OAuth cryptographic verifier runs first; already verified bound user, site enrollment, live role, separate site write gate, capped content grants, approval ticket, resources and budget remain independent.",
       "review_rationale": "On first verified, enrolled /mcp/mad4b-chatgpt user bearer only, initialize same-user draft-only Staging actor before ticket planning. Never on Developer, Enrollment, unverified, portable, Production or other site routes; failed actor enrollment never grants execution or corrupts valid read session."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy.php",
+      "source_blob_sha": "48eb3579ec415bdf3cff3ad9cb9b4ac83ac9b4bd",
+      "control_ids": [
+        "IDENTITY-01",
+        "OAUTH-03",
+        "OAUTH-05",
+        "OAUTH-06",
+        "MCP-01",
+        "MCP-10",
+        "SECURITY-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-delegated-content-draft-runtime.php"
+      ],
+      "owner_role": "Repository source safety review — CI coverage only, not Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The already governed native site, WordPress post capabilities and exact source fingerprint apply; no OAuth/NHI impersonation or network-exposed capability is introduced. All remote MCP and non-draft abilities retain existing grants, approvals, budget and runtime authority.",
+      "review_rationale": "Staging-only strict WP_CLI and exact enrolled --user can create/update draft/pending posts through the native content Ability, never anonymous/REST, Production, unenrolled user or published target. Site kill switch, schema and post capabilities remain mandatory.",
+      "execution_note": "Native WP-CLI ability execution must be separately verified against Tours Commerce Staging with rollback and exact readback; CI-only coverage does not authorize Production."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-adapter-base.php",
+      "source_blob_sha": "2fd69b2da8e2e4f40cbbd20615f917de55e7edc7",
+      "control_ids": [
+        "IDENTITY-01",
+        "OAUTH-03",
+        "OAUTH-05",
+        "OAUTH-06",
+        "MCP-01",
+        "MCP-10",
+        "SECURITY-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-delegated-content-draft-runtime.php"
+      ],
+      "owner_role": "Repository source safety review — CI coverage only, not Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The already governed native site, WordPress post capabilities and exact source fingerprint apply; no OAuth/NHI impersonation or network-exposed capability is introduced. All remote MCP and non-draft abilities retain existing grants, approvals, budget and runtime authority.",
+      "review_rationale": "Only exact content-apply-bundle supports already privileged local enrolled operator. Provider certification, per-post content validator, operation journal, lock, idempotency and readback remain; remote NHI/approval unchanged.",
+      "execution_note": "Native WP-CLI ability execution must be separately verified against Tours Commerce Staging with rollback and exact readback; CI-only coverage does not authorize Production."
     }
   ],
   "code_change_rules": {
