@@ -11524,7 +11524,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-delegation-mode.php",
-      "source_blob_sha": "2b763fef3b2930ccd1144c787c1b488b3eba4a1c",
+      "source_blob_sha": "1ed101522da9f69ced75271cd26e311056f9f362",
       "control_ids": [
         "IDENTITY-01",
         "OAUTH-03",
@@ -11537,7 +11537,8 @@
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegation-mode-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegation-connection-policy-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegation-connection-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py"
       ],
       "owner_role": "Repository identity and source security review — CI-only, not owner attestation or Production approval",
       "status": "reviewed_for_ci_only",
@@ -11545,7 +11546,7 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing exact site identity, verified OAuth mapping, enrolled user, NHI least privilege, MCP capability parity, fail-closed tenant isolation and mutation authorization controls cover this additive delegated principal mode.",
-      "review_rationale": "Introduce default identity-verified WordPress user principal policy, exact post-specific capability checks, immutable proof of a mapped bearer or native app-password, explicit selectable independent NHI and nonce-protected admin configuration. No grants, ticket issuances or write privileges are created."
+      "review_rationale": "Introduce default identity-verified WordPress user principal policy, exact post-specific capability checks, immutable proof of a mapped bearer or native app-password, explicit selectable independent NHI and nonce-protected admin configuration. No grants, ticket issuances or write privileges are created. Integrate the page via canonical route registry and native parent-ordered admin navigation; remove independent admin_menu hook that violated admin-performance CI. Exact-user and explicit-site-capability guards remain intact."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy.php",
@@ -11621,6 +11622,26 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing exact site identity, verified OAuth mapping, enrolled user, NHI least privilege, MCP capability parity, fail-closed tenant isolation and mutation authorization controls cover this additive delegated principal mode.",
       "review_rationale": "Expose the request-local already-verified WordPress Application Password subject as a read-only derived context for proof validation; never expose raw passwords and never authenticate from client-claimed headers."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-navigation-manifest.php",
+      "source_blob_sha": "4d68dab2357345d9c99fdce5ecc79b1fc0da5563",
+      "control_ids": [
+        "ADMIN-01",
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py"
+      ],
+      "owner_role": "Repository user-interface/navigation source review, CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing admin parent-order registry and zero-touch native menu contracts govern the same declared nonprivileged settings navigation.",
+      "review_rationale": "Expose the two selectable principal models only to administrators through the established Control Plane navigation manifest, preserving the read-only Plugins admin hotpath and canonical parent-order route declaration. This does not grant any MCP operation."
     }
   ],
   "code_change_rules": {
