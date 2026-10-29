@@ -1,0 +1,193 @@
+{
+  "schema_version": "mad4b.company-copy.tenant-field-contract.v1",
+  "source_truth": "the tenant's own verified Production database backup, never the other tenant or ETG Commerce Staging",
+  "default_policy": "fail_closed",
+  "allow_auto_brand_defaults": false,
+  "allow_cross_tenant_id_reuse": false,
+  "domains": {
+    "hosting_2": "allroyalegypt.com",
+    "hosting_3": "egypttourgates.com"
+  },
+  "field_groups": [
+    {
+      "group": "site_identity",
+      "fields": [
+        {
+          "path": "wp_options.home/siteurl",
+          "classification": "tenant_owned",
+          "migration": "preserve_tenant_then_verify_host",
+          "required": true
+        },
+        {
+          "path": "wp_options.admin_email/new_admin_email/adminhash.newemail",
+          "classification": "tenant_owned",
+          "migration": "verified_tenant_admin_recipient_or_block",
+          "required": true
+        },
+        {
+          "path": "wp_options.option_tree*.email_admin_address",
+          "classification": "tenant_owned",
+          "migration": "verified_tenant_contact_email_or_block",
+          "required": true
+        },
+        {
+          "path": "wp_options.astra-settings.header-html-4",
+          "classification": "tenant_owned",
+          "migration": "review_brand_and_contact_html_or_block",
+          "required": true
+        },
+        {
+          "path": "wp_options.astra_partials_config_cache",
+          "classification": "derived_cache",
+          "migration": "clear_only_on_new_cloned_db",
+          "required": false
+        },
+        {
+          "path": "wp_options.theme_mods_* / widgets / nav_menus",
+          "classification": "tenant_owned",
+          "migration": "preserve_tenant",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "design",
+      "fields": [
+        {
+          "path": "wp_options.elementor_active_kit + kit post/meta",
+          "classification": "tenant_owned",
+          "migration": "preserve_and_assert_valid_post",
+          "required": true
+        },
+        {
+          "path": "Elementor_templates/content",
+          "classification": "shareable_structure_only",
+          "migration": "strip_brand_or_rebind_to_target_kit",
+          "required": false
+        },
+        {
+          "path": "brand logos/fonts/colors/custom CSS",
+          "classification": "tenant_owned",
+          "migration": "preserve_tenant",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "measurement",
+      "fields": [
+        {
+          "path": "wp_options.gtm4wp-options.gtm-code/gtm-containers",
+          "classification": "tenant_owned_tracking",
+          "migration": "verify_container_property_and_domain_unique_or_disable_on_clone",
+          "required": true
+        },
+        {
+          "path": "GA4 / Google Ads / Meta Pixel / Google Site Kit",
+          "classification": "tenant_owned_tracking",
+          "migration": "verify_property_and_domain_or_disable_on_clone",
+          "required": false
+        },
+        {
+          "path": "wp_options.rank_math_analytics_all_services.sites",
+          "classification": "tenant_owned_oauth",
+          "migration": "remove_foreign_property_only_on_clone_preserve_local",
+          "required": true
+        },
+        {
+          "path": "Rank Math organization / SEO/social profiles / sitemap",
+          "classification": "tenant_owned",
+          "migration": "preserve_tenant",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "communications",
+      "fields": [
+        {
+          "path": "Fluent Forms form schemas and conditional logic",
+          "classification": "template_possible",
+          "migration": "preserve_tenant_ids_or_map_by_stable_key",
+          "required": true
+        },
+        {
+          "path": "Fluent Forms notification recipients / webhooks",
+          "classification": "tenant_owned_sensitive",
+          "migration": "verify_email_and_endpoint_or_suspend_on_clone",
+          "required": true
+        },
+        {
+          "path": "SMTP/from/reply-to / mailer tokens",
+          "classification": "tenant_owned_secret",
+          "migration": "rebind_verified_tenant_owned_credentials_no_export",
+          "required": true
+        },
+        {
+          "path": "WooCommerce transactional email and order endpoints",
+          "classification": "tenant_owned_sensitive",
+          "migration": "preserve_tenant_and_verify_test_no_send",
+          "required": true
+        },
+        {
+          "path": "WhatsApp / call tracking / marketing automation",
+          "classification": "tenant_owned_sensitive",
+          "migration": "require_verified_tenant_identity",
+          "required": false
+        }
+      ]
+    },
+    {
+      "group": "site_operations",
+      "fields": [
+        {
+          "path": "wp_options.litespeed.conf.cdn-ori",
+          "classification": "tenant_owned_cdn",
+          "migration": "verify_domain_and_replace_on_clone_after_tls_validation",
+          "required": true
+        },
+        {
+          "path": "wp_options.sbr_email_verification",
+          "classification": "verification_token",
+          "migration": "invalidate_foreign_verification_only_on_clone",
+          "required": false
+        },
+        {
+          "path": "API keys / payment gateway / webhooks / OAuth",
+          "classification": "tenant_owned_secret",
+          "migration": "never_copy_across_tenants_require_scoped_secrets",
+          "required": true
+        },
+        {
+          "path": "WPML translation IDs / terms / media",
+          "classification": "tenant_owned_relations",
+          "migration": "preserve_tenant_and_validate_reference_parity",
+          "required": true
+        },
+        {
+          "path": "VPS media hostnames / public ACL",
+          "classification": "tenant_owned_external",
+          "migration": "bind_to_verified_tenant_sni_and_catalog",
+          "required": true
+        }
+      ]
+    }
+  ],
+  "hard_gates": [
+    "foreign company domain in tenant-specific options, forms, header, brand or analytics",
+    "shared or unapproved GTM container across companies",
+    "unverified admin/notification/smtp recipient, especially wrong-company email",
+    "unverified media URL mapping or active cross-tenant Media Gateway access",
+    "missing owner binding / source database checksum / rollback receipt",
+    "staging QA data or source branding in target database",
+    "unreviewed external API/webhook/payment endpoints"
+  ],
+  "copy_execution": {
+    "phase_1": "inventory and source fingerprint (read only)",
+    "phase_2": "plan exact scoped field rebindings with owner-approved values (no secrets in logs)",
+    "phase_3": "apply on NEW isolated tenant clone only; never current public_html/DB",
+    "phase_4": "re-audit zero foreign references, check GTM unique and forms/SEO/mail",
+    "phase_5": "owner attest specific exact-head and approve deployment",
+    "rollback": "restore original tenant DB snapshot and cancel candidate; never rewrite live rows in-place"
+  }
+}
