@@ -225,6 +225,47 @@
           "required": true
         }
       ]
+    },
+    {
+      "group": "jetengine_options_pages_shared_schema_private_content",
+      "fields": [
+        {
+          "path": "JetEngine Options Page registration: Brand",
+          "classification": "shareable_definition_only",
+          "migration": "version_fields_labels_types_validation_access_rules_no_source_values",
+          "required": true
+        },
+        {
+          "path": "JetEngine Options Page registration: Look & Feel",
+          "classification": "shareable_definition_only",
+          "migration": "version_fields_labels_types_validation_access_rules_no_source_values",
+          "required": true
+        },
+        {
+          "path": "wp_options['look-and-feel'] (field values, serialized)",
+          "classification": "tenant_owned_content_values",
+          "migration": "preserve_existing_target_company_array_and_merge_only_empty_new_schema_fields_without_donor_defaults",
+          "required": true
+        },
+        {
+          "path": "JetEngine Brand page underlying value storage (slug to be verified)",
+          "classification": "tenant_owned_content_values",
+          "migration": "preserve_existing_target_company_brand_assets_colors_fonts_copy_and_media_sources",
+          "required": true
+        },
+        {
+          "path": "JetEngine media/gallery/attachment fields; including look-and-feel::review_gellery_slider",
+          "classification": "tenant_owned_source_reference",
+          "migration": "validate_each_target_media_source_no_cross_company_url_or_id_fallback",
+          "required": true
+        },
+        {
+          "path": "JetEngine options source aliases/tags and Query Builder identifiers",
+          "classification": "portable_binding_contract_target_specific_resolution",
+          "migration": "preserve_tag_shape_remap_to_local_option_and_query_id",
+          "required": true
+        }
+      ]
     }
   ],
   "hard_gates": [
@@ -238,7 +279,10 @@
     "other-company gallery URLs, Elementor attachment IDs or JetEngine option-gallery source values imported into target",
     "missing target-owned review gallery data filled by donor company fallback",
     "Trustindex Tripadvisor business/account source bound to another company",
-    "LiteSpeed / QUIC.cloud account or CDN identity not verified for exact target domain"
+    "LiteSpeed / QUIC.cloud account or CDN identity not verified for exact target domain",
+    "donor JetEngine Options Page values or defaults overriding target company data",
+    "missing Brand/Look & Feel target source silently defaulted to another company's values",
+    "Options Page schema imported without field-value preservation and target media source QA"
   ],
   "copy_execution": {
     "phase_1": "inventory and source fingerprint (read only)",
@@ -247,5 +291,24 @@
     "phase_4": "re-audit zero foreign references, check GTM unique and forms/SEO/mail",
     "phase_5": "owner attest specific exact-head and approve deployment",
     "rollback": "restore original tenant DB snapshot and cancel candidate; never rewrite live rows in-place"
+  },
+  "jetengine_options_pages_policy": {
+    "schema": "shared_versioned_and_reusable",
+    "field_values": "company_owned",
+    "merge": "schema_additive_no_source_values",
+    "preserve_target_existing_fields": true,
+    "never_overwrite_brand_content_colors_or_media": true,
+    "brand_registration_path": "NOT_YET_VERIFIED",
+    "look_and_feel_observed_values": {
+      "allroyalegypt.com": 16,
+      "egypttourgates.com": 21
+    },
+    "review_gallery_dynamic_source": {
+      "provider": "jet-options-gallery",
+      "option_field": "look-and-feel::review_gellery_slider",
+      "company_owned": true
+    },
+    "schema_definitions_located_and_exported": false,
+    "read_only_audit": "ops/company-private-release/audit_jetengine_options_values.php"
   }
 }
