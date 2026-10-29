@@ -8,7 +8,7 @@ if (!defined('ABSPATH')) exit;
 final class MAD4B_Company_PK_Identity_V1 {
  const PRIVATE_OPTION='mad4b_company_pk_private_v1';
  const PUBLIC_TRUST_OPTION='mad4b_company_central_pk_trust_v1';
- const ROUTE='/mad4b-company/v1/identity-v2';
+ const ROUTE='/mad4b-company/v1/identity-v3';
  const HOST_COMPANY=[
   'www.allroyalegypt.com'=>'all-royal-egypt',
   'allroyalegypt.com'=>'all-royal-egypt',
@@ -107,12 +107,13 @@ final class MAD4B_Company_PK_Identity_V1 {
     'price_publication_authorized'=>false,'media_transfer_authorized'=>false,
    ],200);
    $rest->header('Cache-Control','no-store, private, max-age=0');
+   $rest->header('X-LiteSpeed-Cache-Control','no-cache');
    return $rest;
  }
  public static function boot(): void {
    if(!self::identity())return;
    add_action('rest_api_init',static function(){
-    register_rest_route('mad4b-company/v1','/identity-v2',[
+    register_rest_route('mad4b-company/v1','/identity-v3',[
      'methods'=>WP_REST_Server::CREATABLE,
      'permission_callback'=>[__CLASS__,'permission'],
      'callback'=>[__CLASS__,'response'],
