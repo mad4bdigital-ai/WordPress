@@ -2091,6 +2091,7 @@
     {
       "id": "ability:mad4b/control-plane-selected-head-plan",
       "control_ids": [
+        "MCP-01",
         "UPDATES-01",
         "CROSSPLUGIN-01",
         "RECOVERY-01",
@@ -2106,7 +2107,7 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "needs_new_control": false,
-      "coverage_reuse_rationale": "Existing update-coordinator, cross-plugin isolation, recovery, rollout, governance and security controls apply. The introduced source only mentions the established Ability as non-authorizing routing guidance; this review does not register, grant, invoke, install or certify it.",
+      "coverage_reuse_rationale": "Existing MCP read-only planning, update-coordinator, cross-plugin isolation, recovery, rollout, governance and security controls apply. The introduced source only mentions the established Ability as non-authorizing routing guidance; this review does not register, grant, invoke, install or certify it.",
       "review_rationale": "Static source scanner identifies the literal mad4b/control-plane-selected-head-plan in the new package route guidance. It is a pointer to an independent already-governed Control Plane planning surface, NOT a newly registered Ability or an executable provider-package action. Same-PR hermetic PHP test validates fail-closed MAD4B provider rejection, read-only guidance and no auto-apply/Production permission. Runtime discovery remains unverified. The same-PR Python regression contract executes both fixed PHP CLI fixtures with bounded timeout, checks nonzero exit codes and requires positive PASS markers; neither fixture is counted as a trusted standalone PHPUnit test."
     },
     {
