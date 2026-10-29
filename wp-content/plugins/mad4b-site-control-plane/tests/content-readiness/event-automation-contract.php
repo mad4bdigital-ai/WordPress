@@ -2,7 +2,14 @@
 define('ABSPATH','/isolated/');
 define('ICL_SITEPRESS_VERSION','mock');
 class WP_Error {
- public function __construct(private string $code,private string $message='',private array $data=[]) {}
+ private $code;
+ private $message;
+ private $data;
+ public function __construct($code,$message='',$data=[]) {
+  $this->code=$code;
+  $this->message=$message;
+  $this->data=$data;
+ }
  public function get_error_code(){return $this->code;}
  public function get_error_data(){return $this->data;}
 }
