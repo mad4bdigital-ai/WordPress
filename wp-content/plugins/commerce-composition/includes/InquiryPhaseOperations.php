@@ -179,6 +179,13 @@ final class InquiryPhaseOperations
             'estimate_preview_available'=>true,
             'estimate_form_display_bound'=>false,
             'estimate_immutable_snapshot_persisted'=>false,
+            'source_options_snapshot_enabled'=>is_array($sc=get_option('commerce_inquiry_snapshot_policy_v1',[]))
+                &&($sc['enabled']??null)===true
+                &&($sc['site_url']??null)===home_url()
+                &&class_exists(InquirySelectionSnapshot::class)
+                &&InquirySelectionSnapshot::ready(),
+            'product_page_signed_context_receipt'=>class_exists(ProductFormSourceReceipt::class),
+            'catalog_price_at_submission_is_reference_only'=>true,
             'boards_ready'=>FluentBoardsTaskBridge::ready(),
             'workflow_queue_ready'=>WorkflowJobs::ready(),
             'smtp_connection_count'=>$count,
