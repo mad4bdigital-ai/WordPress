@@ -3244,6 +3244,26 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing recovery, update, governance and security controls already cover an exclusively read-only recovery evidence planner with no executor.",
       "review_rationale": "Staging, exact enrolled site, full installed manifest integrity, explicitly unresolved Git lineage, trusted immutable release proof and version check; separate owner OAuth and one-use approval remain prerequisites to a future separately certified executor."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-orphan-source-recovery.php",
+      "owner_role": "Plugin recovery security maintainer / independent code review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/orphan-source-recovery-admission-runtime.php"
+      ],
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing Update, cross-plugin isolation, recovery and rollout controls cover a read-only planning service that cannot install code, change source identities or authorize site mutation.",
+      "review_rationale": "The orphan package is intact but its Git commit cannot be resolved; assess only signed immutable release evidence and exact Staging site binding. Keep separate OAuth one-use grant and effectful executor absent."
     }
   ],
   "lifecycle": [],
