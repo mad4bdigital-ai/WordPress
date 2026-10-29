@@ -116,7 +116,7 @@ final class MAD4B_Firecrawl_Research_Cycles {
                 array( 'stage' => 'retain_reviewed', 'ability' => 'mad4b/research-scrape-record', 'requires' => 'job + provider evidence + rights/robots clearance + write approval' ),
                 array( 'stage' => 'content', 'ability' => 'mad4b/research-coverage-build', 'requires' => 'reviewed observations' ),
                 array( 'stage' => 'seo', 'ability' => 'mad4b/research-information-gain-build', 'requires' => 'SERP and content evidence; no ranking claims from scrape alone' ),
-                array( 'stage' => 'pricing', 'ability' => 'mad4b/market-competitor-plan', 'requires' => 'fresh price validation; no sales price mutation' ),
+                array( 'stage' => 'pricing', 'ability' => 'mad4b/competitor-research-plan', 'requires' => 'fresh price validation; no sales price mutation' ),
                 array( 'stage' => 'editorial', 'ability' => 'mad4b/blueprint-build', 'requires' => 'independent content and editorial approvals' ),
             ),
             'scheduled' => false, 'mutation_performed' => false, 'published' => false,
