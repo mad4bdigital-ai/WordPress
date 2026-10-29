@@ -85,6 +85,8 @@ final class MAD4B_Independent_Authority_Bridge {
             'mutation_performed'=>false,
             'source'=>'central_authority_staging_database',
             'projection_trusted_for_authorization'=>false,
+            'global_wordpress_mutation_gate_modified'=>false,
+            'sensitive_release_mutators_require_separate_permit_gate'=>true,
         ],$fields);
     }
 
@@ -184,6 +186,8 @@ final class MAD4B_Independent_Authority_Bridge {
             'permit_issued'=>false,
             'certificate_issued'=>false,
             'mutation_performed'=>false,
+            'global_wordpress_mutation_gate_modified'=>false,
+            'release_controller_permit_enforcement_installed'=>false,
         ]);
     }
 }
