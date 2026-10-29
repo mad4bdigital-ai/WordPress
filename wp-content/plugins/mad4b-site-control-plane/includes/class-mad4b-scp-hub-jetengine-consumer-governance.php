@@ -43,6 +43,9 @@ final class MAD4B_SCP_Hub_JetEngine_Consumer_Governance {
             'jetengine_hub_addon_loaded'=>class_exists('MAD4B_JetEngine_Hub_Addon'),
             'hub_capability_discovery_loaded'=>class_exists('MAD4B_Hub_Discovery_Planner'),
             'discovery_selection_contract'=>'mad4b.hub.capability-selection.v1',
+            'market_policy_contract'=>'mad4b.hub.market-policy.v1',
+            'market_scope_required_for_distribution'=>true,
+            'market_source_proof_server_filter'=>'mad4b_scp_hub_consumer_market_authority',
             'inheritance_policy'=>'deny_wins_without_self_attested_source_grants',
             'assisted_mapping_mode'=>'deterministic_advisory_no_llm_no_auto_apply',
             'native_hub_mapping_contract'=>'mad4b.jetengine-hub-native-addon.v1',
@@ -233,9 +236,26 @@ final class MAD4B_SCP_Hub_JetEngine_Consumer_Governance {
         if (!$module['hub_capability_discovery_loaded']) {
             return self::denial('capability_discovery_module_missing');
         }
+        // The native endpoint cannot run based on a broad company grant:
+        // an exact selection manifest and server-proven market scope are required.
+        $marketManifest=$plan['selection_manifest']??null;
+        if(!is_array($marketManifest) ||
+            ($marketManifest['contract']??'')!=='mad4b.hub.capability-selection.v1' ||
+            ($marketManifest['source_company']??'')!==($plan['source_company']??null) ||
+            ($marketManifest['source_site_uuid']??'')!==($plan['source_site_uuid']??null) ||
+            ($marketManifest['consumer_site_uuid']??'')!==($plan['consumer_site_uuid']??null)) {
+            return self::denial('market_selection_manifest_required');
+        }
+        $scoped=MAD4B_Hub_Discovery_Planner::validate($marketManifest);
+        if(is_wp_error($scoped) || empty($scoped['market_scoped']) ||
+            !empty($scoped['query_plan']['policy_blocks_read']) ||
+            empty($scoped['query_plan']['market_slices'])) {
+            return self::denial('market_selection_scope_invalid');
+        }
         $sourceVerified = apply_filters('mad4b_scp_hub_consumer_signed_authority', false, $plan);
         $bindingVerified = apply_filters('mad4b_scp_hub_consumer_native_binding_authority', false, $plan);
-        if ($sourceVerified !== true || $bindingVerified !== true) {
+        $marketVerified = apply_filters('mad4b_scp_hub_consumer_market_authority', false, $plan, $scoped);
+        if ($sourceVerified !== true || $bindingVerified !== true || $marketVerified !== true) {
             return self::denial('server_proof_missing');
         }
         // The runtime grant lasts only for this PHP request and exact company/path.
