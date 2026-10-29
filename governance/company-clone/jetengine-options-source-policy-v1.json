@@ -1,0 +1,1436 @@
+{
+  "contract": "mad4b.jetengine-options-company-source-policy.v1",
+  "state": "review_only_no_runtime_enforcement",
+  "source": {
+    "environment": "staging",
+    "host": "tours.dev.mad4b.com",
+    "site_label": "Wo Vacation Demo",
+    "observed_date": "2026-10-29",
+    "generator": "Jet_Engine_Options_Pages::get_items()",
+    "value_exported": false
+  },
+  "scope_model": {
+    "site_per_company": "Each company-specific WordPress site has isolated DB, site identity and global JetEngine option entries; no option values may cross company boundaries",
+    "multi_company_single_site": "Native get_option(slug) is site-global and MUST NOT be treated as company-scoped; must use tenant/site_uuid authenticated resolver and company-specific storage with ACL and no fallback to another company's values",
+    "language": "Neutral English source for demo templates; translations per target company/language and per-site WPML identifier mapping"
+  },
+  "default_unknown": "BLOCK_REVIEW",
+  "policy_definitions": {
+    "SCHEMA_ONLY": "JetEngine layout/tab/section definitions: code source only; never clone stored values",
+    "TENANT_MEDIA": "Company-owned, permissioned and licensed image/gallery, rebind media IDs",
+    "TENANT_BRAND": "Company-owned colors, patterns, visual identity",
+    "TENANT_PRESENTATION": "Company-selected card/presentation mode; template-safe defaults only",
+    "TENANT_MARKETING": "Company-owned editorial/CTA copy; Wo Vacation demo seed only when target explicitly demo",
+    "TENANT_CONTACT": "Company-owned email, phone, WhatsApp, address, recipients, social profiles; blank if not verified",
+    "TENANT_ROUTE": "Destination-local authorized path; revalidate URL on clone and disable external paths by default",
+    "RECONNECT_PROVIDER": "Explicit reconnect to target-owned external service; no token/account ID inheritance",
+    "TENANT_PERSONNEL": "Personally identifying staffing/partner membership; no cross-company copy",
+    "TENANT_IDENTITY": "Authoritative company display name tied to enrolled site/company",
+    "TENANT_OPERATIONS": "Operational controls; new company receives safe defaults, not legacy permission/effects",
+    "TENANT_LOCALE": "Company and language-specific calendar/date preferences",
+    "TENANT_CATALOG": "Tenant-specific channels, allowed destinations, exposure and recommendations",
+    "TENANT_COMMERCE_GATED": "Rate formula, tax, fees, payment/visa/availability; new-company defaults OFF until certified and separately approved",
+    "BLOCK_REVIEW": "No automatic clone without independent field classification"
+  },
+  "pages": {
+    "company-operations-policies": {
+      "source_page_id": 389,
+      "parent": "mad4b-company",
+      "registered_fields": 5,
+      "stored_keys_count_at_census": 0,
+      "fields": [
+        {
+          "field": "hard_delete_policy",
+          "field_type": "select",
+          "policy": "TENANT_OPERATIONS"
+        },
+        {
+          "field": "price_edit_policy",
+          "field_type": "select",
+          "policy": "TENANT_OPERATIONS"
+        },
+        {
+          "field": "content_publication_policy",
+          "field_type": "select",
+          "policy": "TENANT_OPERATIONS"
+        },
+        {
+          "field": "task_offer_ttl_hours",
+          "field_type": "select",
+          "policy": "TENANT_OPERATIONS"
+        },
+        {
+          "field": "max_staff_accounts",
+          "field_type": "select",
+          "policy": "TENANT_OPERATIONS"
+        }
+      ]
+    },
+    "company-communication-operations": {
+      "source_page_id": 388,
+      "parent": "mad4b-company",
+      "registered_fields": 24,
+      "stored_keys_count_at_census": 12,
+      "fields": [
+        {
+          "field": "company_identity_section",
+          "field_type": "html",
+          "policy": "SCHEMA_ONLY"
+        },
+        {
+          "field": "company_display_name",
+          "field_type": "text",
+          "policy": "TENANT_IDENTITY"
+        },
+        {
+          "field": "transactional_from_email",
+          "field_type": "text",
+          "policy": "TENANT_CONTACT"
+        },
+        {
+          "field": "traveler_reply_to",
+          "field_type": "text",
+          "policy": "TENANT_CONTACT"
+        },
+        {
+          "field": "bookings_inbox",
+          "field_type": "text",
+          "policy": "TENANT_CONTACT"
+        },
+        {
+          "field": "sales_inbox",
+          "field_type": "text",
+          "policy": "TENANT_CONTACT"
+        },
+        {
+          "field": "support_inbox",
+          "field_type": "text",
+          "policy": "TENANT_CONTACT"
+        },
+        {
+          "field": "operations_internal_inbox",
+          "field_type": "text",
+          "policy": "TENANT_CONTACT"
+        },
+        {
+          "field": "operations_external_inbox",
+          "field_type": "text",
+          "policy": "TENANT_CONTACT"
+        },
+        {
+          "field": "operational_team_section",
+          "field_type": "html",
+          "policy": "SCHEMA_ONLY"
+        },
+        {
+          "field": "operations_internal_team",
+          "field_type": "repeater",
+          "policy": "TENANT_PERSONNEL",
+          "children": [
+            {
+              "field": "wp_user_id",
+              "type": "text",
+              "policy": "TENANT_PERSONNEL"
+            },
+            {
+              "field": "display_name",
+              "type": "text",
+              "policy": "TENANT_PERSONNEL"
+            },
+            {
+              "field": "email",
+              "type": "text",
+              "policy": "TENANT_PERSONNEL"
+            },
+            {
+              "field": "responsibility",
+              "type": "text",
+              "policy": "TENANT_PERSONNEL"
+            },
+            {
+              "field": "enabled",
+              "type": "text",
+              "policy": "TENANT_PERSONNEL"
+            }
+          ]
+        },
+        {
+          "field": "operations_external_team",
+          "field_type": "repeater",
+          "policy": "TENANT_PERSONNEL",
+          "children": [
+            {
+              "field": "partner",
+              "type": "text",
+              "policy": "TENANT_PERSONNEL"
+            },
+            {
+              "field": "contact_name",
+              "type": "text",
+              "policy": "TENANT_PERSONNEL"
+            },
+            {
+              "field": "email",
+              "type": "text",
+              "policy": "TENANT_PERSONNEL"
+            },
+            {
+              "field": "service_scope",
+              "type": "text",
+              "policy": "TENANT_PERSONNEL"
+            },
+            {
+              "field": "enabled",
+              "type": "text",
+              "policy": "TENANT_PERSONNEL"
+            }
+          ]
+        },
+        {
+          "field": "governance_section",
+          "field_type": "html",
+          "policy": "SCHEMA_ONLY"
+        },
+        {
+          "field": "outbound_email_policy",
+          "field_type": "select",
+          "policy": "TENANT_OPERATIONS"
+        },
+        {
+          "field": "woo_routing_policy",
+          "field_type": "select",
+          "policy": "TENANT_OPERATIONS"
+        },
+        {
+          "field": "fluent_forms_routing_policy",
+          "field_type": "select",
+          "policy": "TENANT_OPERATIONS"
+        },
+        {
+          "field": "notify_internal_operations",
+          "field_type": "select",
+          "policy": "TENANT_OPERATIONS"
+        },
+        {
+          "field": "notify_external_operations",
+          "field_type": "select",
+          "policy": "TENANT_OPERATIONS"
+        },
+        {
+          "field": "notify_traveler",
+          "field_type": "select",
+          "policy": "TENANT_OPERATIONS"
+        },
+        {
+          "field": "email_transport",
+          "field_type": "select",
+          "policy": "TENANT_OPERATIONS"
+        },
+        {
+          "field": "smtp_connection_label",
+          "field_type": "text",
+          "policy": "RECONNECT_PROVIDER"
+        },
+        {
+          "field": "delivery_policy_section",
+          "field_type": "html",
+          "policy": "SCHEMA_ONLY"
+        },
+        {
+          "field": "operations_escalation_email",
+          "field_type": "text",
+          "policy": "TENANT_CONTACT"
+        },
+        {
+          "field": "operations_escalation_note",
+          "field_type": "textarea",
+          "policy": "TENANT_OPERATIONS"
+        }
+      ]
+    },
+    "abk-selling-options": {
+      "source_page_id": 369,
+      "parent": "options-general.php",
+      "registered_fields": 1,
+      "stored_keys_count_at_census": 1,
+      "fields": [
+        {
+          "field": "allowed_price_units",
+          "field_type": "checkbox",
+          "policy": "TENANT_COMMERCE_GATED"
+        }
+      ]
+    },
+    "abk-date-formats": {
+      "source_page_id": 368,
+      "parent": "options-general.php",
+      "registered_fields": 5,
+      "stored_keys_count_at_census": 5,
+      "fields": [
+        {
+          "field": "display_date_format",
+          "field_type": "select",
+          "policy": "TENANT_LOCALE"
+        },
+        {
+          "field": "input_date_format",
+          "field_type": "select",
+          "policy": "TENANT_LOCALE"
+        },
+        {
+          "field": "calendar_locale",
+          "field_type": "select",
+          "policy": "TENANT_LOCALE"
+        },
+        {
+          "field": "display_mode",
+          "field_type": "select",
+          "policy": "TENANT_LOCALE"
+        },
+        {
+          "field": "display_calendar",
+          "field_type": "select",
+          "policy": "TENANT_LOCALE"
+        }
+      ]
+    },
+    "global-offers": {
+      "source_page_id": 366,
+      "parent": "options-general.php",
+      "registered_fields": 18,
+      "stored_keys_count_at_census": 9,
+      "fields": [
+        {
+          "field": "offers_enabled",
+          "field_type": "switcher",
+          "policy": "TENANT_OPERATIONS"
+        },
+        {
+          "field": "active_offer_id",
+          "field_type": "number",
+          "policy": "TENANT_CATALOG"
+        },
+        {
+          "field": "headline",
+          "field_type": "text",
+          "policy": "TENANT_MARKETING"
+        },
+        {
+          "field": "cta_label",
+          "field_type": "text",
+          "policy": "TENANT_MARKETING"
+        },
+        {
+          "field": "cta_url",
+          "field_type": "text",
+          "policy": "TENANT_MARKETING"
+        },
+        {
+          "field": "display_home",
+          "field_type": "switcher",
+          "policy": "TENANT_OPERATIONS"
+        },
+        {
+          "field": "display_archive",
+          "field_type": "switcher",
+          "policy": "TENANT_OPERATIONS"
+        },
+        {
+          "field": "display_single",
+          "field_type": "switcher",
+          "policy": "TENANT_OPERATIONS"
+        },
+        {
+          "field": "desktop_enabled",
+          "field_type": "switcher",
+          "policy": "TENANT_OPERATIONS"
+        },
+        {
+          "field": "tablet_enabled",
+          "field_type": "switcher",
+          "policy": "TENANT_OPERATIONS"
+        },
+        {
+          "field": "mobile_enabled",
+          "field_type": "switcher",
+          "policy": "TENANT_OPERATIONS"
+        },
+        {
+          "field": "dismissible",
+          "field_type": "switcher",
+          "policy": "TENANT_OPERATIONS"
+        },
+        {
+          "field": "background_color",
+          "field_type": "colorpicker",
+          "policy": "TENANT_BRAND"
+        },
+        {
+          "field": "text_color",
+          "field_type": "colorpicker",
+          "policy": "TENANT_BRAND"
+        },
+        {
+          "field": "accent_color",
+          "field_type": "colorpicker",
+          "policy": "TENANT_BRAND"
+        },
+        {
+          "field": "button_text_color",
+          "field_type": "colorpicker",
+          "policy": "TENANT_BRAND"
+        },
+        {
+          "field": "bar_padding",
+          "field_type": "number",
+          "policy": "TENANT_OPERATIONS"
+        },
+        {
+          "field": "campaign_label",
+          "field_type": "text",
+          "policy": "TENANT_MARKETING"
+        }
+      ]
+    },
+    "service-activation": {
+      "source_page_id": 363,
+      "parent": "options-general.php",
+      "registered_fields": 19,
+      "stored_keys_count_at_census": 19,
+      "fields": [
+        {
+          "field": "active_services",
+          "field_type": "checkbox",
+          "policy": "TENANT_CATALOG"
+        },
+        {
+          "field": "properties_channel_mode",
+          "field_type": "select",
+          "policy": "TENANT_CATALOG"
+        },
+        {
+          "field": "transportations_channel_mode",
+          "field_type": "select",
+          "policy": "TENANT_CATALOG"
+        },
+        {
+          "field": "discovery_enabled",
+          "field_type": "select",
+          "policy": "TENANT_CATALOG"
+        },
+        {
+          "field": "discovery_surfaces",
+          "field_type": "checkbox",
+          "policy": "TENANT_CATALOG"
+        },
+        {
+          "field": "discovery_tour_targets",
+          "field_type": "checkbox",
+          "policy": "TENANT_CATALOG"
+        },
+        {
+          "field": "discovery_property_targets",
+          "field_type": "checkbox",
+          "policy": "TENANT_CATALOG"
+        },
+        {
+          "field": "discovery_transportation_targets",
+          "field_type": "checkbox",
+          "policy": "TENANT_CATALOG"
+        },
+        {
+          "field": "discovery_destination_targets",
+          "field_type": "checkbox",
+          "policy": "TENANT_CATALOG"
+        },
+        {
+          "field": "discovery_priority",
+          "field_type": "select",
+          "policy": "TENANT_CATALOG"
+        },
+        {
+          "field": "discovery_sort",
+          "field_type": "select",
+          "policy": "TENANT_CATALOG"
+        },
+        {
+          "field": "discovery_default_limit",
+          "field_type": "number",
+          "policy": "TENANT_CATALOG"
+        },
+        {
+          "field": "discovery_location_policy",
+          "field_type": "select",
+          "policy": "TENANT_CATALOG"
+        },
+        {
+          "field": "discovery_date_policy",
+          "field_type": "select",
+          "policy": "TENANT_CATALOG"
+        },
+        {
+          "field": "discovery_date_horizon_days",
+          "field_type": "number",
+          "policy": "TENANT_CATALOG"
+        },
+        {
+          "field": "discovery_suppliers",
+          "field_type": "select",
+          "policy": "TENANT_CATALOG"
+        },
+        {
+          "field": "discovery_presentation_mode",
+          "field_type": "select",
+          "policy": "TENANT_CATALOG"
+        },
+        {
+          "field": "discovery_nationality_gate",
+          "field_type": "select",
+          "policy": "TENANT_CATALOG"
+        },
+        {
+          "field": "discovery_market_gate",
+          "field_type": "select",
+          "policy": "TENANT_CATALOG"
+        }
+      ]
+    },
+    "destination-activation": {
+      "source_page_id": 362,
+      "parent": "options-general.php",
+      "registered_fields": 3,
+      "stored_keys_count_at_census": 3,
+      "fields": [
+        {
+          "field": "active_continents",
+          "field_type": "checkbox",
+          "policy": "TENANT_CATALOG"
+        },
+        {
+          "field": "active_countries",
+          "field_type": "checkbox",
+          "policy": "TENANT_CATALOG"
+        },
+        {
+          "field": "active_governorates",
+          "field_type": "checkbox",
+          "policy": "TENANT_CATALOG"
+        }
+      ]
+    },
+    "etg-dynamic-pricing-controls": {
+      "source_page_id": 356,
+      "parent": "options-general.php",
+      "registered_fields": 33,
+      "stored_keys_count_at_census": 0,
+      "fields": [
+        {
+          "field": "pricing_engine_enabled",
+          "field_type": "switcher",
+          "policy": "TENANT_COMMERCE_GATED"
+        },
+        {
+          "field": "booking_enabled",
+          "field_type": "switcher",
+          "policy": "TENANT_COMMERCE_GATED"
+        },
+        {
+          "field": "price_formula_version",
+          "field_type": "text",
+          "policy": "TENANT_COMMERCE_GATED"
+        },
+        {
+          "field": "tour_formula",
+          "field_type": "textarea",
+          "policy": "TENANT_COMMERCE_GATED"
+        },
+        {
+          "field": "property_formula",
+          "field_type": "textarea",
+          "policy": "TENANT_COMMERCE_GATED"
+        },
+        {
+          "field": "transport_formula",
+          "field_type": "textarea",
+          "policy": "TENANT_COMMERCE_GATED"
+        },
+        {
+          "field": "default_currency",
+          "field_type": "text",
+          "policy": "TENANT_COMMERCE_GATED"
+        },
+        {
+          "field": "tax_percent",
+          "field_type": "number",
+          "policy": "TENANT_COMMERCE_GATED"
+        },
+        {
+          "field": "service_fee_percent",
+          "field_type": "number",
+          "policy": "TENANT_COMMERCE_GATED"
+        },
+        {
+          "field": "minimum_booking_lead_hours",
+          "field_type": "number",
+          "policy": "TENANT_COMMERCE_GATED"
+        },
+        {
+          "field": "quote_ttl_minutes",
+          "field_type": "number",
+          "policy": "TENANT_COMMERCE_GATED"
+        },
+        {
+          "field": "require_availability",
+          "field_type": "switcher",
+          "policy": "TENANT_COMMERCE_GATED"
+        },
+        {
+          "field": "allow_manual_overrides",
+          "field_type": "switcher",
+          "policy": "TENANT_COMMERCE_GATED"
+        },
+        {
+          "field": "stop_sale_global",
+          "field_type": "switcher",
+          "policy": "TENANT_COMMERCE_GATED"
+        },
+        {
+          "field": "shared_tour_pricing_tab",
+          "field_type": "text",
+          "policy": "TENANT_COMMERCE_GATED"
+        },
+        {
+          "field": "shared_price_source_direct_weight",
+          "field_type": "number",
+          "policy": "TENANT_COMMERCE_GATED"
+        },
+        {
+          "field": "shared_price_source_rate_weight",
+          "field_type": "number",
+          "policy": "TENANT_COMMERCE_GATED"
+        },
+        {
+          "field": "shared_price_source_tie_break",
+          "field_type": "select",
+          "policy": "TENANT_COMMERCE_GATED"
+        },
+        {
+          "field": "shared_price_source_fallback",
+          "field_type": "select",
+          "policy": "TENANT_COMMERCE_GATED"
+        },
+        {
+          "field": "shared_price_source_visibility",
+          "field_type": "select",
+          "policy": "TENANT_COMMERCE_GATED"
+        },
+        {
+          "field": "shared_price_source_mode_rows",
+          "field_type": "repeater",
+          "policy": "TENANT_COMMERCE_GATED",
+          "children": [
+            {
+              "field": "mode",
+              "type": "select",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "direct_weight",
+              "type": "number",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "rate_weight",
+              "type": "number",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "tie_break",
+              "type": "select",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "fallback",
+              "type": "select",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "visibility",
+              "type": "select",
+              "policy": "TENANT_COMMERCE_GATED"
+            }
+          ]
+        },
+        {
+          "field": "shared_mode_policy_rows",
+          "field_type": "repeater",
+          "policy": "TENANT_COMMERCE_GATED",
+          "children": [
+            {
+              "field": "mode",
+              "type": "select",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "strategy",
+              "type": "select",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "enabled",
+              "type": "switcher",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "minimum_travelers",
+              "type": "number",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "maximum_travelers",
+              "type": "number",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "tax_percent_override",
+              "type": "number",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "service_fee_percent_override",
+              "type": "number",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "tax_price_basis",
+              "type": "select",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "discount_tax_order",
+              "type": "select",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "payment_fee_taxable",
+              "type": "select",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "payment_fee_bearer",
+              "type": "select",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "discount_scope",
+              "type": "select",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "refund_allocation",
+              "type": "select",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "refund_payment_fee",
+              "type": "select",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "tax_price_basis_source",
+              "type": "select",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "discount_tax_order_source",
+              "type": "select",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "payment_fee_taxable_source",
+              "type": "select",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "payment_fee_bearer_source",
+              "type": "select",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "discount_scope_source",
+              "type": "select",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "refund_allocation_source",
+              "type": "select",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "refund_payment_fee_source",
+              "type": "select",
+              "policy": "TENANT_COMMERCE_GATED"
+            }
+          ]
+        },
+        {
+          "field": "shared_mode_policies_json",
+          "field_type": "textarea",
+          "policy": "TENANT_COMMERCE_GATED"
+        },
+        {
+          "field": "shared_payment_policies_tab",
+          "field_type": "text",
+          "policy": "TENANT_COMMERCE_GATED"
+        },
+        {
+          "field": "shared_gateway_availability_rows",
+          "field_type": "repeater",
+          "policy": "TENANT_COMMERCE_GATED",
+          "children": [
+            {
+              "field": "method",
+              "type": "select",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "enabled",
+              "type": "switcher",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "country_basis",
+              "type": "select",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "allowed_countries",
+              "type": "text",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "excluded_countries",
+              "type": "text",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "allowed_currencies",
+              "type": "text",
+              "policy": "TENANT_COMMERCE_GATED"
+            }
+          ]
+        },
+        {
+          "field": "shared_promotion_rows",
+          "field_type": "repeater",
+          "policy": "TENANT_COMMERCE_GATED",
+          "children": [
+            {
+              "field": "id",
+              "type": "text",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "enabled",
+              "type": "switcher",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "start",
+              "type": "date",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "end",
+              "type": "date",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "percent",
+              "type": "number",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "payment_methods",
+              "type": "select",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "country_ids",
+              "type": "select",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "nationalities",
+              "type": "text",
+              "policy": "TENANT_COMMERCE_GATED"
+            }
+          ]
+        },
+        {
+          "field": "shared_payment_fee_rows",
+          "field_type": "repeater",
+          "policy": "TENANT_COMMERCE_GATED",
+          "children": [
+            {
+              "field": "method",
+              "type": "select",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "percent",
+              "type": "number",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "fixed",
+              "type": "number",
+              "policy": "TENANT_COMMERCE_GATED"
+            }
+          ]
+        },
+        {
+          "field": "shared_financial_rules_json",
+          "field_type": "textarea",
+          "policy": "TENANT_COMMERCE_GATED"
+        },
+        {
+          "field": "shared_visa_policies_tab",
+          "field_type": "text",
+          "policy": "TENANT_COMMERCE_GATED"
+        },
+        {
+          "field": "shared_visa_policy_notes",
+          "field_type": "textarea",
+          "policy": "TENANT_COMMERCE_GATED"
+        },
+        {
+          "field": "shared_price_card_date_mode",
+          "field_type": "select",
+          "policy": "TENANT_COMMERCE_GATED"
+        },
+        {
+          "field": "shared_group_tier_pricing_rows",
+          "field_type": "repeater",
+          "policy": "TENANT_COMMERCE_GATED",
+          "children": [
+            {
+              "field": "rate_id",
+              "type": "number",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "tier_id",
+              "type": "number",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "percent",
+              "type": "number",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "enabled",
+              "type": "switcher",
+              "policy": "TENANT_COMMERCE_GATED"
+            }
+          ]
+        },
+        {
+          "field": "shared_package_pricing_rows",
+          "field_type": "repeater",
+          "policy": "TENANT_COMMERCE_GATED",
+          "children": [
+            {
+              "field": "package_term_id",
+              "type": "number",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "scope",
+              "type": "select",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "tour_id",
+              "type": "number",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "rate_id",
+              "type": "number",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "percent",
+              "type": "number",
+              "policy": "TENANT_COMMERCE_GATED"
+            },
+            {
+              "field": "enabled",
+              "type": "switcher",
+              "policy": "TENANT_COMMERCE_GATED"
+            }
+          ]
+        }
+      ]
+    },
+    "look-and-feel": {
+      "source_page_id": 192,
+      "parent": "options-general.php",
+      "registered_fields": 54,
+      "stored_keys_count_at_census": 39,
+      "fields": [
+        {
+          "field": "presentation_home_media_tab",
+          "field_type": "text",
+          "policy": "BLOCK_REVIEW"
+        },
+        {
+          "field": "presentation_home_media_tab_section_intro",
+          "field_type": "html",
+          "policy": "SCHEMA_ONLY"
+        },
+        {
+          "field": "home_page_header_image",
+          "field_type": "media",
+          "policy": "TENANT_MEDIA"
+        },
+        {
+          "field": "tour_search_header_image",
+          "field_type": "media",
+          "policy": "TENANT_MEDIA"
+        },
+        {
+          "field": "presentation_destinations_tab",
+          "field_type": "text",
+          "policy": "BLOCK_REVIEW"
+        },
+        {
+          "field": "presentation_destinations_tab_section_intro",
+          "field_type": "html",
+          "policy": "SCHEMA_ONLY"
+        },
+        {
+          "field": "destination_activity_card_primary",
+          "field_type": "select",
+          "policy": "TENANT_PRESENTATION"
+        },
+        {
+          "field": "continents_archive_header_image",
+          "field_type": "media",
+          "policy": "TENANT_MEDIA"
+        },
+        {
+          "field": "countries_archive_header_image",
+          "field_type": "media",
+          "policy": "TENANT_MEDIA"
+        },
+        {
+          "field": "cities_archive_header_image",
+          "field_type": "media",
+          "policy": "TENANT_MEDIA"
+        },
+        {
+          "field": "location_archive_header_image",
+          "field_type": "media",
+          "policy": "TENANT_MEDIA"
+        },
+        {
+          "field": "attraction_archive_header_image",
+          "field_type": "media",
+          "policy": "TENANT_MEDIA"
+        },
+        {
+          "field": "presentation_product_archives_tab",
+          "field_type": "text",
+          "policy": "BLOCK_REVIEW"
+        },
+        {
+          "field": "presentation_product_archives_tab_section_intro",
+          "field_type": "html",
+          "policy": "SCHEMA_ONLY"
+        },
+        {
+          "field": "tours_archive_header_image",
+          "field_type": "media",
+          "policy": "TENANT_MEDIA"
+        },
+        {
+          "field": "properties_archive_header_image",
+          "field_type": "media",
+          "policy": "TENANT_MEDIA"
+        },
+        {
+          "field": "units_archive_header_image",
+          "field_type": "media",
+          "policy": "TENANT_MEDIA"
+        },
+        {
+          "field": "transportations_archive_header_image",
+          "field_type": "media",
+          "policy": "TENANT_MEDIA"
+        },
+        {
+          "field": "transportations_companies_archive_header_image",
+          "field_type": "media",
+          "policy": "TENANT_MEDIA"
+        },
+        {
+          "field": "dmcs_archive_header_image",
+          "field_type": "media",
+          "policy": "TENANT_MEDIA"
+        },
+        {
+          "field": "drivers_archive_header_image",
+          "field_type": "media",
+          "policy": "TENANT_MEDIA"
+        },
+        {
+          "field": "jops_archive_header_image",
+          "field_type": "media",
+          "policy": "TENANT_MEDIA"
+        },
+        {
+          "field": "guides_archive_header_image",
+          "field_type": "media",
+          "policy": "TENANT_MEDIA"
+        },
+        {
+          "field": "busness_reviews_section",
+          "field_type": "text",
+          "policy": "TENANT_MARKETING"
+        },
+        {
+          "field": "busness_reviews_section_section_intro",
+          "field_type": "html",
+          "policy": "SCHEMA_ONLY"
+        },
+        {
+          "field": "company_about_customization",
+          "field_type": "media",
+          "policy": "TENANT_MEDIA"
+        },
+        {
+          "field": "review_hero_image",
+          "field_type": "media",
+          "policy": "TENANT_MEDIA"
+        },
+        {
+          "field": "review_gellery_slider",
+          "field_type": "gallery",
+          "policy": "TENANT_MEDIA"
+        },
+        {
+          "field": "presentation_tours_copy_tab",
+          "field_type": "text",
+          "policy": "BLOCK_REVIEW"
+        },
+        {
+          "field": "presentation_tours_copy_tab_section_intro",
+          "field_type": "html",
+          "policy": "SCHEMA_ONLY"
+        },
+        {
+          "field": "destination_next_trip_heading",
+          "field_type": "text",
+          "policy": "TENANT_MARKETING",
+          "demo_placeholder_updated_on_site": true
+        },
+        {
+          "field": "destination_next_trip_subheading",
+          "field_type": "textarea",
+          "policy": "TENANT_MARKETING",
+          "demo_placeholder_updated_on_site": true
+        },
+        {
+          "field": "destination_tours_heading",
+          "field_type": "text",
+          "policy": "TENANT_MARKETING",
+          "demo_placeholder_updated_on_site": true
+        },
+        {
+          "field": "presentation_stays_copy_tab",
+          "field_type": "text",
+          "policy": "BLOCK_REVIEW"
+        },
+        {
+          "field": "presentation_stays_copy_tab_section_intro",
+          "field_type": "html",
+          "policy": "SCHEMA_ONLY"
+        },
+        {
+          "field": "destination_stays_heading",
+          "field_type": "text",
+          "policy": "TENANT_MARKETING",
+          "demo_placeholder_updated_on_site": true
+        },
+        {
+          "field": "presentation_transport_copy_tab",
+          "field_type": "text",
+          "policy": "BLOCK_REVIEW"
+        },
+        {
+          "field": "presentation_transport_copy_tab_section_intro",
+          "field_type": "html",
+          "policy": "SCHEMA_ONLY"
+        },
+        {
+          "field": "destination_transport_heading",
+          "field_type": "text",
+          "policy": "TENANT_MARKETING",
+          "demo_placeholder_updated_on_site": true
+        },
+        {
+          "field": "destination_road_heading",
+          "field_type": "text",
+          "policy": "TENANT_MARKETING",
+          "demo_placeholder_updated_on_site": true
+        },
+        {
+          "field": "destination_rail_heading",
+          "field_type": "text",
+          "policy": "TENANT_MARKETING",
+          "demo_placeholder_updated_on_site": true
+        },
+        {
+          "field": "destination_air_heading",
+          "field_type": "text",
+          "policy": "TENANT_MARKETING",
+          "demo_placeholder_updated_on_site": true
+        },
+        {
+          "field": "presentation_messages_copy_tab",
+          "field_type": "text",
+          "policy": "BLOCK_REVIEW"
+        },
+        {
+          "field": "presentation_messages_copy_tab_section_intro",
+          "field_type": "html",
+          "policy": "SCHEMA_ONLY"
+        },
+        {
+          "field": "destination_quote_cta_label",
+          "field_type": "text",
+          "policy": "TENANT_MARKETING",
+          "demo_placeholder_updated_on_site": true
+        },
+        {
+          "field": "destination_services_note",
+          "field_type": "textarea",
+          "policy": "TENANT_MARKETING",
+          "demo_placeholder_updated_on_site": true
+        },
+        {
+          "field": "destination_no_results_label",
+          "field_type": "text",
+          "policy": "TENANT_MARKETING",
+          "demo_placeholder_updated_on_site": true
+        },
+        {
+          "field": "company_pattern_backgrounds_tab",
+          "field_type": "text",
+          "policy": "TENANT_BRAND"
+        },
+        {
+          "field": "company_pattern_backgrounds_tab_intro",
+          "field_type": "html",
+          "policy": "SCHEMA_ONLY"
+        },
+        {
+          "field": "company_pattern_preset",
+          "field_type": "select",
+          "policy": "TENANT_BRAND"
+        },
+        {
+          "field": "company_pattern_accent",
+          "field_type": "colorpicker",
+          "policy": "TENANT_BRAND"
+        },
+        {
+          "field": "company_pattern_strength",
+          "field_type": "select",
+          "policy": "TENANT_BRAND"
+        },
+        {
+          "field": "company_pattern_media",
+          "field_type": "media",
+          "policy": "TENANT_MEDIA"
+        },
+        {
+          "field": "company_pattern_mobile",
+          "field_type": "select",
+          "policy": "TENANT_BRAND"
+        }
+      ]
+    },
+    "contact-and-help-info": {
+      "source_page_id": 129,
+      "parent": "options-general.php",
+      "registered_fields": 16,
+      "stored_keys_count_at_census": 17,
+      "fields": [
+        {
+          "field": "support_group_url_aria_label",
+          "field_type": "text",
+          "policy": "TENANT_MARKETING",
+          "demo_placeholder_updated_on_site": true
+        },
+        {
+          "field": "support_group_url",
+          "field_type": "text",
+          "policy": "TENANT_ROUTE"
+        },
+        {
+          "field": "support_chat_url",
+          "field_type": "text",
+          "policy": "RECONNECT_PROVIDER"
+        },
+        {
+          "field": "card-as-action1",
+          "field_type": "text",
+          "policy": "TENANT_ROUTE"
+        },
+        {
+          "field": "trip_advisor_review_shortcode",
+          "field_type": "text",
+          "policy": "RECONNECT_PROVIDER"
+        },
+        {
+          "field": "site_icon_512x512",
+          "field_type": "media",
+          "policy": "TENANT_MEDIA"
+        },
+        {
+          "field": "site_icon_280x100_site_header",
+          "field_type": "media",
+          "policy": "TENANT_MEDIA"
+        },
+        {
+          "field": "site_whatsapp_num",
+          "field_type": "text",
+          "policy": "TENANT_CONTACT"
+        },
+        {
+          "field": "site_wa_tel_link",
+          "field_type": "text",
+          "policy": "TENANT_CONTACT"
+        },
+        {
+          "field": "site_email",
+          "field_type": "text",
+          "policy": "TENANT_CONTACT"
+        },
+        {
+          "field": "site_email_link",
+          "field_type": "text",
+          "policy": "TENANT_CONTACT"
+        },
+        {
+          "field": "site_location_address",
+          "field_type": "text",
+          "policy": "TENANT_CONTACT"
+        },
+        {
+          "field": "site_location_address_link",
+          "field_type": "text",
+          "policy": "TENANT_CONTACT"
+        },
+        {
+          "field": "social_links",
+          "field_type": "text",
+          "policy": "TENANT_CONTACT"
+        },
+        {
+          "field": "site_facebook_page_link",
+          "field_type": "text",
+          "policy": "TENANT_CONTACT"
+        },
+        {
+          "field": "site_instagram_page_link",
+          "field_type": "text",
+          "policy": "TENANT_CONTACT"
+        }
+      ]
+    },
+    "calculate-booking-price": {
+      "source_page_id": 117,
+      "parent": "options-general.php",
+      "registered_fields": 2,
+      "stored_keys_count_at_census": 0,
+      "fields": [
+        {
+          "field": "tour_booking_price_calculate_function",
+          "field_type": "text",
+          "policy": "TENANT_COMMERCE_GATED"
+        },
+        {
+          "field": "display_tours_pricing_section",
+          "field_type": "switcher",
+          "policy": "TENANT_COMMERCE_GATED"
+        }
+      ]
+    }
+  },
+  "legacy_orphans": {
+    "look-and-feel": {
+      "keys": [
+        "busness_reviews_section_tab",
+        "destination_activity_card_alternate"
+      ],
+      "clone_policy": "BLOCK_REVIEW",
+      "reason": "Stored option keys lack a matching currently registered JetEngine field definition; never silently inherit"
+    },
+    "contact-and-help-info": {
+      "keys": [
+        "social_links_tab"
+      ],
+      "clone_policy": "BLOCK_REVIEW",
+      "reason": "Stored option keys lack a matching currently registered JetEngine field definition; never silently inherit"
+    }
+  },
+  "demo_placeholder_updates": {
+    "source_scope": "Wo Vacation demo site only",
+    "do_not_inherit_to_real_companies": true,
+    "modified_option_fields": {
+      "look-and-feel": [
+        "destination_next_trip_heading",
+        "destination_next_trip_subheading",
+        "destination_stays_heading",
+        "destination_transport_heading",
+        "destination_tours_heading",
+        "destination_quote_cta_label",
+        "destination_services_note",
+        "destination_no_results_label",
+        "destination_road_heading",
+        "destination_rail_heading",
+        "destination_air_heading"
+      ],
+      "contact-and-help-info": [
+        "support_group_url_aria_label"
+      ]
+    },
+    "other_surfaces": [
+      "WordPress tagline and Elementor Site Kit",
+      "EN/AR/FR/DE/IT/ES home copy and Rank Math SEO",
+      "Elementor feature sections, travel inspiration, localized CTAs",
+      "Newsletter widget replaced by internal demo trips CTA",
+      "Testimonials and owner review media disconnected rather than fabricated"
+    ],
+    "safe_demo_value_rule": "Marketing placeholder is allowed only for demo preview, clearly labeled; contacts must be blank without verified target channel; no ratings, bookings, provider identities or availability claims fabricated",
+    "images_rule": "Require licensed company/demo-owned image source; cleared review imagery is not automatically inherited",
+    "outbound_rule": "No inherited SMTP/CRM/transactional emails, WhatsApp, TripAdvisor, GTM, analytics, social or payment links; start disabled"
+  },
+  "copy_gate": [
+    "Source instance and target company identities immutable and distinct, site_uuid and DB checked",
+    "Clone only neutral option-page schema and reviewed policies; never copy whole wp_options rows",
+    "Enumerate both active source fields and legacy stored-only keys, block unknown/orphan copying",
+    "Require company_id + site_uuid + source provenance for company-owned field writes and reads",
+    "Check per-field input type, validation, MIME/license/domain of links and media, and WPML language",
+    "Do not inherit prior company's personnel/contact, provider credentials, rates, media, or demo marketing into real tenant",
+    "All outbound_email_policy, booking_enabled, pricing_engine_enabled, offers_enabled default disabled until explicit certification",
+    "Wo Vacation demo must not present confirmed reservations, genuine customer reviews or guaranteed prices",
+    "Run all active language pages and catalog smoke after company-specific field updates",
+    "Changes require dry-run plan, authorized approval, readback and rollback capability in future runtime adapter"
+  ]
+}
