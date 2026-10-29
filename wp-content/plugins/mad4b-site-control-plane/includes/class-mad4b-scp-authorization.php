@@ -218,6 +218,16 @@ final class MAD4B_SCP_Authorization {
 
 		$identity = MAD4B_SCP_Identity_Context::current();
 		if ( is_wp_error( $identity ) ) return $identity;
+		// The default delegated principal must pass the actual WordPress user's
+		// live, target-specific capability BEFORE any agent grant or budget lookup.
+		// This tightens the existing NHI flow; it never substitutes a grant.
+		if ( class_exists( 'MAD4B_SCP_Delegation_Mode' ) ) {
+			$delegated_permission = MAD4B_SCP_Delegation_Mode::authorize_ability( $identity, $ability_name, $input );
+			if ( is_wp_error( $delegated_permission ) || true !== $delegated_permission ) {
+				return is_wp_error( $delegated_permission ) ? $delegated_permission
+					: self::error( 'mad4b_delegation_capability_denied', 'Delegated WordPress user permission is required.' );
+			}
+		}
 		$agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
 		if ( is_wp_error( $agent ) ) return $agent;
 		if ( ! class_exists( 'MAD4B_SCP_Policy' ) || ! MAD4B_SCP_Policy::can_mutate() ) return self::error( 'mad4b_mutation_disabled', 'Mutation capability is disabled by MAD4B policy.' );
