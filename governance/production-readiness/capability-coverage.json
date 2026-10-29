@@ -3605,6 +3605,48 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing MCP admission, platform identity, security, owner-scoped administrative rights and execution-denial controls cover these staging-only authorization surfaces, without granting Production execution or public access.",
       "review_rationale": "New surface ability:mad4b/staging-write-grant-reconcile-staging is source-pinned in the W1 authority integration and assessed with hermetic owner-browser, agent REST route, Site Profile, OAuth, replay, write grant, exact mapping and negative permission fixtures. This is only CI source review, not evidence that the route is registered, usable, or authorized in Production."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-settings-locator.php",
+      "owner_role": "MAD4B QA31 W2 source/security reviewer; CI-only, independent owner release approval required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "tests/qa31_release_source_gate_contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w2a-readonly-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing source-governance, Site Profile, security and native WordPress administrative permission controls govern this read-only, unbootstrapped W2A class. No new write authority, key capture, user role change or provider execution.",
+      "review_rationale": "Exact Staging rc.118 source SHA imported to CI-only W2A, reviewed with PHP 8.3/8.5 hermetic permission, no-secret, gate non-escalation and no-mutation regressions. Still requires disposable WordPress, Woo integration and tenant-isolation acceptance before any deployment."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-gate-funnel.php",
+      "owner_role": "MAD4B QA31 W2 source/security reviewer; CI-only, independent owner release approval required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "tests/qa31_release_source_gate_contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w2a-readonly-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing source-governance, Site Profile, security and native WordPress administrative permission controls govern this read-only, unbootstrapped W2A class. No new write authority, key capture, user role change or provider execution.",
+      "review_rationale": "Exact Staging rc.118 source SHA imported to CI-only W2A, reviewed with PHP 8.3/8.5 hermetic permission, no-secret, gate non-escalation and no-mutation regressions. Still requires disposable WordPress, Woo integration and tenant-isolation acceptance before any deployment."
     }
   ],
   "lifecycle": [],
