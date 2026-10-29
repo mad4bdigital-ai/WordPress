@@ -111,7 +111,7 @@ final class MAD4B_Hub_Source_Reuse_Gate_V1 {
         foreach ($tours as $source) {
             if (($source['source_company'] ?? '') !== self::SOURCE ||
                 !is_int($source['source_tour_id'] ?? null) ||
-                !preg_match('/^[a-z0-9-]{1,200}$/D',(string)($source['source_slug']??''))) {
+                (strlen((string)($source['source_slug']??''))>200 || !preg_match('~^(?:[a-z0-9_-]|%[a-f0-9]{2})+$~Di',(string)($source['source_slug']??'')))) {
                 throw new RuntimeException('Source tour tenant or slug not valid');
             }
             $id = (int)$source['source_tour_id'];
