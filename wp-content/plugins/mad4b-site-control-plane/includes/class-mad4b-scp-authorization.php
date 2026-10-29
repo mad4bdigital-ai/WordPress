@@ -218,23 +218,8 @@ final class MAD4B_SCP_Authorization {
 
 		$identity = MAD4B_SCP_Identity_Context::current();
 		if ( is_wp_error( $identity ) ) return $identity;
-		// The default delegated principal must pass the actual WordPress user's
-		// live, target-specific capability BEFORE any agent grant or budget lookup.
-		// This tightens the existing NHI flow; it never substitutes a grant.
-		if ( class_exists( 'MAD4B_SCP_Delegation_Mode' ) ) {
-			$delegated_permission = MAD4B_SCP_Delegation_Mode::authorize_ability( $identity, $ability_name, $input );
-			if ( is_wp_error( $delegated_permission ) || true !== $delegated_permission ) {
-				return is_wp_error( $delegated_permission ) ? $delegated_permission
-					: self::error( 'mad4b_delegation_capability_denied', 'Delegated WordPress user permission is required.' );
-			}
-		}
 		$agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
 		if ( is_wp_error( $agent ) ) return $agent;
-		if ( class_exists( 'MAD4B_SCP_Delegation_Mode' )
-			&& ! MAD4B_SCP_Delegation_Mode::agent_matches_user( $identity, $agent ) ) {
-			return self::error( 'mad4b_delegation_agent_user_mismatch',
-				'Delegated subject and bound agent must belong to the same WordPress user.' );
-		}
 		if ( ! class_exists( 'MAD4B_SCP_Policy' ) || ! MAD4B_SCP_Policy::can_mutate() ) return self::error( 'mad4b_mutation_disabled', 'Mutation capability is disabled by MAD4B policy.' );
 		if ( 'mad4b-breakglass' === $server_id && ! MAD4B_SCP_Policy::can_breakglass() ) return self::error( 'mad4b_breakglass_disabled', 'Breakglass capability is disabled.' );
 		if ( 'mad4b-developer' === $server_id && ! MAD4B_SCP_Policy::can_developer() ) return self::error( 'mad4b_developer_disabled', 'Developer execution capability is disabled or the exact Developer Agent is not bound.' );
@@ -556,6 +541,35 @@ final class MAD4B_SCP_Authorization {
 			if ( MAD4B_SCP_Authorization::local_approval_planner_execution( $name ) ) {
 				return call_user_func( $original, $input );
 			}
+			// A local enrolled Staging operator is authorized by WordPress for
+			// this exact draft-only Ability. It is not a remote NHI execution.
+			// Preserve all native content validation/journaling/rollback fences,
+			// external restore epoch monotonicity and MCP peer isolation.
+			$native_draft = 'mad4b/content-apply-bundle' === $name
+				&& class_exists( 'MAD4B_SCP_Policy' )
+				&& MAD4B_SCP_Policy::can_native_content_draft( $input );
+			if ( $native_draft ) {
+				if ( ! class_exists( 'MAD4B_SCP_MCP_Peer_Governance' ) )
+					return new WP_Error( 'mcp_peer_inventory_unavailable', 'Peer governance is required for local drafts.' );
+				$peer = MAD4B_SCP_MCP_Peer_Governance::mutation_guard();
+				if ( is_wp_error( $peer ) ) return $peer;
+				if ( ! class_exists( 'MAD4B_SCP_Restore_Epoch' ) )
+					return new WP_Error( 'mad4b_restore_epoch_unavailable', 'Restore epoch authority is required for local drafts.' );
+				if ( ! class_exists( 'MAD4B_SCP_Audit' ) || empty( MAD4B_SCP_Audit::storage_status()['ready'] ) )
+					return new WP_Error( 'mad4b_native_draft_audit_unavailable', 'Durable audit is required for local drafts.' );
+				$epoch = MAD4B_SCP_Restore_Epoch::advance( 'local_native_draft' );
+				if ( is_wp_error( $epoch ) ) return $epoch;
+				$audit = MAD4B_SCP_Audit::record( 'mad4b/native-content-draft-execution', array(
+					'ability' => $name,
+					'actor_user_id' => get_current_user_id(),
+					'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
+					'restore_epoch' => isset( $epoch['epoch'] ) ? (int) $epoch['epoch'] : 0,
+					'operation_key_sha256' => is_array( $input ) && isset( $input['operation_key'] ) ? hash( 'sha256', (string) $input['operation_key'] ) : '',
+				), 'ok' );
+				if ( is_wp_error( $audit ) ) return $audit;
+				return call_user_func( $original, $input );
+			}
+
 			$provider = MAD4B_SCP_Authorization::provider_for_execution( $name, $declared_server );
 			if ( is_wp_error( $provider ) ) return $provider;
 			$claim = MAD4B_SCP_Authorization::claim_mutation( $name, $declared_server, $provider, $input );
