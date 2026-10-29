@@ -131,6 +131,17 @@ remove_all_filters('mad4b_hub_discovery_provider_descriptors');
 if(!$future||$future['verified']!=='adapter_review_required'||
    $future['active']!==false)
     throw new RuntimeException('Unverified dynamic provider was granted execution');
+$graph=MAD4B_Hub_Discovery_Planner::inspect_template(25917);
+if(is_wp_error($graph))throw new RuntimeException('Home Tours template graph unavailable');
+$filterLinks=array_values(array_filter($graph['bindings'],static fn($row)=>
+    ($row['resolved_filter_id']??0)===33503));
+$queryLinks=array_values(array_filter($graph['bindings'],static fn($row)=>
+    ($row['resolved_query_id']??0)===193));
+if(!$filterLinks||!$queryLinks||$graph['activation_performed']!==false ||
+   !isset($graph['template_sha256'])||strlen($graph['template_sha256'])!==64)
+    throw new RuntimeException('Native existing Query+JetSmartFilters provider graph wrong');
+$unknownTemplate=MAD4B_Hub_Discovery_Planner::inspect_template(99999999);
+if(!is_wp_error($unknownTemplate))throw new RuntimeException('Unknown template accepted');
 echo wp_json_encode(array(
  'contract'=>MAD4B_Hub_Discovery_Planner::CONTRACT,
  'counts'=>$cap['counts'],
@@ -143,6 +154,8 @@ echo wp_json_encode(array(
  'inheritance_deny_wins'=>'PASS',
  'provider_dynamic_discovery'=>'UNVERIFIED_FAIL_CLOSED',
  'advice_matches'=>count($advice['suggestions']),
+ 'existing_template_graph_query_193'=>'PASS',
+ 'existing_template_graph_filter_33503'=>'PASS',
  'ai_llm_called'=>false,
  'signed_runtime_grant'=>false,
  'database_writes'=>0
