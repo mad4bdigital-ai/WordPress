@@ -45,6 +45,37 @@ The provisional classification has **2,008 unknown occurrences**, and they are b
 
 A previously observed wrong-brand configuration demonstrates the need for field-level checks: the source had Rank Math identity matching Egypt Tour Gates but an earlier set of fields still referencing Dona Tours; contact options also pointed at legacy staging handles. A global search-and-replace is **not** permitted because gallery URLs, licensed media, serialized Elementor JSON, remote account references and real content ownership require distinct treatment.
 
+## 2A. JetEngine Options Pages: company-level ownership and demo seed separation
+
+Read directly from registered `Jet_Engine_Options_Pages::get_items()` on Wo Vacation Staging on **29 Oct 2026**. Source-controlled full, no-values field manifest: [jetengine-options-source-policy-v1.json](../../governance/company-clone/jetengine-options-source-policy-v1.json). The 11 registered pages contain **180 top-level fields**, including **64 repeater-child definitions** across communication and dynamic-pricing controls. The JetEngine registered source differs from the historical serialized values: `look-and-feel` has **54 registered definitions but only 39 persisted keys**; `contact-and-help-info` has **16 registered definitions and 17 persisted keys**. Three old persisted-only keys are **blocked for cloning**: `look-and-feel.busness_reviews_section_tab`, `look-and-feel.destination_activity_card_alternate`, and `contact-and-help-info.social_links_tab`. The remaining missing stored values often represent layout/tab definitions or optional unset fields; absence must not be interpreted as a target company's approved default.
+
+| JetEngine Options Page | Fields | Source ownership | Clone behavior |
+| --- | ---: | --- | --- |
+| `look-and-feel` | 54 | Visual identity, destination copy, banners, reviews/gallery | Share field/schema layout only. Media and patterns per tenant; the recent Wo Vacation marketing placeholders belong **only** to the demo |
+| `contact-and-help-info` | 16 | Contact email, WhatsApp, support, social, internal CTA, logo | Per-company verified channels; leave blank or disabled rather than invent an address/account; no source-company tokens or photos |
+| `company-communication-operations` | 24 | Company display name, sender/reply routing, staff and supplier repeaters, mail policy | Company-specific identity and personnel, default outbound OFF; never copy another company's people or SMTP |
+| `company-operations-policies` | 5 | Deletion/publication/pricing authority and staff limits | Company-scoped governance; no inherited owner grants |
+| `global-offers` | 18 | Offer flags, CTA, audience and brand colors | Company marketing, ID remapping and safe offers OFF until approved |
+| `service-activation` | 19 | Catalog channels, recommendations and market gates | Company catalog and source proof required; safe default before enrollment |
+| `destination-activation` | 3 | Enabled countries, regions and continents | Tenant-specific destinations with WPML term mapping |
+| `etg-dynamic-pricing-controls` | 33 | Booking, formulas, tax, fees, gateways, promotions and 7 repeaters | Financially sensitive, certified and company-scoped; **never copy active pricing/booking state** |
+| `abk-date-formats` | 5 | Display/input date format and calendar locale | Per-company/per-language preferences |
+| `abk-selling-options` | 1 | Permitted selling price bases | Per-company commercial mode |
+| `calculate-booking-price` | 2 | Price formula and display gate | Company pricing, require certified authority |
+
+**Required admin/UI company boundary:** Each Options Page must identify the **active company display name, verified company/site identity and source profile**, and show whether the current value is an approved company value, a `DEMO_ONLY` placeholder, a shared definition, or an unconfigured external connection. This is an architectural requirement, **not an assertion that the JetEngine admin UI already implements such identity banners**.
+
+**Storage constraint:** JetEngine native `get_option(slug)` is a site-global options array. A separate per-company WP database/site can safely own those keys once provisioned, but **a multi-company installation sharing one WordPress DB cannot safely reuse global option arrays as company-specific state**. It requires a server-validated `company_id` / `site_uuid` resolver, company-scoped persistence, capability checks on reads and writes, and **no cross-company fallback**. Existing `MAD4B_Tenant_Field_Registry` can inform content inheritance but does not by itself enforce JetEngine Options Pages tenant isolation.
+
+### Wo Vacation demo placeholders and language status
+
+- The demo contains **11 updated `look-and-feel.destination_*` headings, notices and CTAs**, plus `contact-and-help-info.support_group_url_aria_label`. All are classified **`TENANT_MARKETING`**, and must **not** be inherited as business facts by the next real company.
+- The Woo Lab demo title, Elementor Site Kit, WPML title, Rank Math Organization and six-language homepage/SEO copy were updated. Demo feature templates, localized inspiration in place of unverified reviews and localized buttons in place of newsletter signup were also updated. **No fabricated client reviews, contact addresses or working external accounts.**
+- **French is now visible**: `hidden_languages=[]`, `/fr/` and `/fr/tours-and-activities/` both return HTTP 200 with `fr-FR` and their own canonical URLs. Earlier statements that French is hidden are obsolete. The French tour archive still contains legacy-site source references, so **full neutrality remains open** under [#625](https://github.com/mad4bdigital-ai/WordPress/issues/625).
+- Scope the marketing seed to the demo; for each real tenant require reviewed field values, permitted media provenance and verification of locales/routes/SEO. Never change live booking or provider delivery policies merely to make the demo more attractive.
+
+**Contract status:** source-reviewed and tested, **not runtime-enforced yet**; owner attestation and a separate bounded implementation are required before provisioning or applying company-scoped JetEngine edit guards.
+
 ## 3. External provider connections — never inherited
 
 At minimum, inspect and reset/reconnect: **Trustindex/TripAdvisor**, **LiteSpeed Cache / QUIC.cloud**, **Google Tag Manager/GA**, **Meta/Instagram**, **Rank Math Google/Search Console**, **Fluent SMTP/CRM/Forms delivery**, **Woo/Stripe/PayPal**, **WhatsApp**, **Google Drive OAuth**, **JetEngine Maps API**, **Elementor license**, and the site's DNS/email/CDN. A provider's setting existing in `wp_options` proves only that a stored value/key is present, **not** that the provider is currently connected or licensed.
