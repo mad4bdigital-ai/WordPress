@@ -46,7 +46,37 @@
         "background_color": "bnav001"
       }
     },
-    "geometry_policy": "Only change settings.__globals__ colors in source templates with exact ID and source expected; do not change widget types, headings, price fields, links, nested order or Elementor JSON elsewhere"
+    "geometry_policy": "Only change settings.__globals__ colors in source templates with exact ID and source expected; do not change widget types, headings, price fields, links, nested order or Elementor JSON elsewhere",
+    "real_header_mega_menu": {
+      "widget_id": "6072b3f",
+      "template_ids": [
+        26212,
+        43484,
+        43486,
+        43488,
+        43490,
+        43492
+      ],
+      "require_global_colors": {
+        "menu_item_title_text_color_normal": "primary",
+        "menu_item_title_text_color_hover": "accent",
+        "menu_item_title_text_color_active": "secondary",
+        "menu_toggle_icon_color_normal": "primary"
+      },
+      "require_typography": "globals/typography?id=text",
+      "forbid_raw_setting_names": [
+        "menu_item_title_text_color_normal",
+        "menu_item_title_text_color_hover",
+        "menu_item_title_text_color_active",
+        "menu_toggle_icon_color_normal"
+      ],
+      "forbid_setting_prefixes": [
+        "menu_item_title_typography_"
+      ],
+      "exception": "__globals__.menu_item_title_typography_typography is required",
+      "underline_css_target": ".elementor-location-header .elementor-element-6072b3f .e-n-menu-title > .e-n-menu-title-container::after",
+      "verified_changes": "Six WPML headers: 24 hardcoded color fields removed, 36 independent typography settings removed, Kit typography and existing color token binds preserved"
+    }
   },
   "kit_integrity": {
     "required_system_tokens": [
@@ -93,6 +123,7 @@
     "CSS and runtime JS only for documented header/menu/TOC components, with mobile scope; no Elementor node redesign",
     "Check hover/focus/active and dropdown at desktop, native TOC restored on resize, mobile nested anchors work",
     "All six WPML templates have same global color refs and independent translated copy",
-    "PR CI before promotion, no Production write without authorized deployment approval"
+    "PR CI before promotion, no Production write without authorized deployment approval",
+    "Verify live Elementor Mega Menu widget 6072b3f on all six WPML headers: no literal brand colors, no custom Cairo typography, active/hover/focus and Kit text typography inherited"
   ]
 }
