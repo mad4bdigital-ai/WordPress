@@ -1,0 +1,82 @@
+{
+  "contract": "mad4b.company-hosting.private-code-candidate.v1",
+  "date": "2026-10-29",
+  "source": {
+    "name": "VPS ETG Commerce Staging selected shared module code",
+    "wordpress_source_version": "7.1.3",
+    "module_bundle_sha256": "013fe32aaa7b010f315dfe65288976d29780e1d28946754d98bc94fa29221ef1",
+    "module_manifest_sha256": "9c52c275c77940da5e507f0fa46e6d409f36a5ef19c9e1705abbc2f1bcc8a95a",
+    "module_files": 980,
+    "module_components": [
+      "mad4b-site-control-plane",
+      "mad4b-tenant-sync",
+      "mad4b-content-hub",
+      "mad4b-pricing-registry",
+      "mad4b-marketplace-sequential-runner",
+      "mad4b-country-switcher",
+      "mad4b-age-occupancy-registry",
+      "cpt-woo-integration",
+      "woocommerce-travel-bridge"
+    ],
+    "mu_review_bundle_sha256": "4a815d06d007fa9df7b88b1557d4feefdc1ac9a498dd10c17c5f4cfe6be43ee2",
+    "mu_files_requiring_source_review": 34
+  },
+  "companies": [
+    {
+      "name": "All Royal Egypt",
+      "domain": "allroyalegypt.com",
+      "target_id": "hosting-2",
+      "private_candidate": "/home/u948953904/domains/allroyalegypt.com/.mad4b-release-candidate-20261029",
+      "site_code_size_approx_mb": 774,
+      "existing_wordpress_version": "7.1.4",
+      "hosting_php_version": "8.5.12",
+      "db_table_count": 162,
+      "source_db_snapshot_size_approx_mb": 25,
+      "source_db_snapshot_sha256": "c1c7974b3cf20c941280b58e80af7d37b0d69668da3be7ec17055c44ee6afe84",
+      "isolated_restore": "PASS",
+      "media_origin_public_binding": "PENDING"
+    },
+    {
+      "name": "Egypt Tour Gates",
+      "domain": "egypttourgates.com",
+      "target_id": "hosting-3",
+      "private_candidate": "/home/u783534439/domains/egypttourgates.com/.mad4b-release-candidate-20261029",
+      "site_code_size_approx_mb": 1100,
+      "existing_wordpress_version": "7.1.4",
+      "hosting_php_version": "8.5.12",
+      "db_table_count": 190,
+      "source_db_snapshot_size_approx_mb": 34,
+      "source_db_snapshot_sha256": "9ce1cf93222c383619d732b2f406953c70a71b4b1df3d5f1974c464ff7249031",
+      "isolated_restore": "PASS_AFTER_ISOLATED_SESSION_TIMEOUT_TUNING",
+      "media_origin_public_binding": "PENDING"
+    }
+  ],
+  "safety": {
+    "private_candidate_mode": "0700",
+    "existing_public_html_renamed": false,
+    "existing_public_html_files_modified": false,
+    "database_production_mutated": false,
+    "private_storage_snapshots_created": true,
+    "company_wp_config_in_candidate": false,
+    "company_uploads_copied": false,
+    "no_website_media_copied_from_vps": true,
+    "DNS_modified": false,
+    "content_hub_public_distribution_enabled": false,
+    "candidate_modules_activated": false,
+    "mu_review_files_installed": false,
+    "isolated_db_restore_network": "none",
+    "isolated_db_restore_ports": 0,
+    "staging_code_source_not_yet_release_certified": true
+  },
+  "outstanding_gates": [
+    "Review and certify shared module source against canonical GitHub master and pending PRs; preview package is source-derived from Staging only",
+    "Verify per-company module/plugin compatibility, active WooCommerce/WPML/Fluent SMTP/MCP behavior without using live database",
+    "Create separately isolated new target DB per tenant and migrate own source DB without cross-company or QA contamination",
+    "Bind per-company media subdomain via HTTPS/TLS and VPS tenant-authorized public media catalog; neither public media route is active",
+    "Finish source isolation/QA gates on PR #611, #614 and #616; no automatic distribution or publication",
+    "Create final per-company wp-config + secrets injection only at approved cutover; no credentials in code package",
+    "Produce complete restore rehearsal, release verdict, exact-head owner attestation and DNS/Hostinger switch approval",
+    "At approved cutover only: rename existing public_html to a time-stamped legacy folder and atomically activate candidate with immediate health/rollback tests"
+  ],
+  "release_verdict": "PRIVATE_CODE_COPIED_GO_LIVE_NO_GO"
+}
