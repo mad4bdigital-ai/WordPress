@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Shared Responsive Presentation
  * Description: Brand-neutral responsive archive tools and Tour Rate card/accordion parity.
- * Version: 1.0.0
+ * Version: 1.1.0
  * License: Proprietary
  *
  * Source: packages/mad4b-responsive-presentation/mu-plugins/mad4b-responsive-presentation.php
@@ -12,13 +12,9 @@ defined('ABSPATH') || exit;
 if (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || !MAD4B_COMMERCE_RUNTIME_ENABLED) return;
 
 add_action('wp_head', static function () {
-    if (is_admin() || !(
-        is_tax('destinations')
-        || is_post_type_archive('tours-and-activities')
-        || is_singular('tours-and-activities')
-        || is_home()
-        || is_singular('post')
-    )) return;
+    // All public Elementor templates may inherit the same full-width canvas.
+    // Style selectors remain scoped to authored components and existing routes.
+    if (is_admin() || is_feed() || is_embed()) return;
     ?>
 <style id="mad4b-responsive-presentation-v1">
 /* Brand-neutral responsive presentation: destination tour toolbar, content width and tour-rate parity. */
@@ -173,6 +169,85 @@ add_action('wp_head', static function () {
   .elementor-45804 .elementor-element-c7a98c5 > .elementor-element-efe922d { gap: 4px !important; }
   .elementor-45804 .elementor-element-efe922d .elementor-element-adb058f { gap: 6px !important; }
 }
+/* Global Elementor Full Width: only page surfaces using Elementor templates. */
+body[class*="elementor-page-"]:not(.elementor-editor-active) #content.site-content > .ast-container {
+  box-sizing: border-box;
+  width: 100% !important;
+  max-width: none !important;
+  margin-inline: 0 !important;
+  padding-inline: 0 !important;
+}
+/* Keep authored Elementor inner containers: Full Width is not Canvas. */
+@media (min-width: 1025px) {
+  .elementor-30843 .elementor-element-ff78100 {
+    padding-inline: clamp(12px, 1.25vw, 22px) !important;
+  }
+  .elementor-30843 .elementor-element-7d67ce7,
+  .elementor-30843 .elementor-element-84a8df9 {
+    width: 17% !important;
+    flex: 0 0 17% !important;
+    min-width: 0;
+  }
+  .elementor-30843 .elementor-element-9a44016 {
+    width: 66% !important;
+    flex: 0 0 66% !important;
+    min-width: 0;
+  }
+}
+/* SEO: retain one visible archive H1, improve contrast and balance. */
+.elementor-30843 .elementor-element-3c6d458b h1.elementor-heading-title,
+.elementor-30875 .elementor-element-a85406ad h1.elementor-heading-title {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  margin-inline: auto !important;
+  text-align: center !important;
+  text-wrap: balance;
+  overflow-wrap: break-word;
+  line-height: 1.22 !important;
+  font-family: var(--e-global-typography-primary-font-family, inherit);
+  font-size: clamp(26px, 2.35vw, 39px) !important;
+  color: var(--e-global-color-primary, var(--ast-global-color-0, #253548)) !important;
+}
+.elementor-30843 .elementor-element-3c6d458b h1.elementor-heading-title {
+  text-shadow: none !important;
+}
+.elementor-30875 .elementor-element-a85406ad h1.elementor-heading-title {
+  padding-block: clamp(8px, 1.1vw, 16px);
+}
+/* Native Jet search and availability submit: dynamic company Elementor Kit colors. */
+.elementor .jet-date-range__submit.apply-filters__button,
+.elementor .jet-ajax-search__submit,
+.elementor .jet-ajax-search__submit-button,
+.elementor .jet-smart-filters-apply-button .apply-filters__button {
+  background-color: var(--e-global-color-accent, var(--ast-global-color-1, #d6d6d6)) !important;
+  background-image: none !important;
+  border-color: var(--e-global-color-accent, var(--ast-global-color-1, #d6d6d6)) !important;
+  color: var(--e-global-color-primary, var(--ast-global-color-0, #253548)) !important;
+  font-family: var(--e-global-typography-text-font-family, inherit);
+  transition: filter .16s ease, box-shadow .16s ease;
+}
+.elementor .jet-date-range__submit.apply-filters__button:hover,
+.elementor .jet-ajax-search__submit:hover,
+.elementor .jet-ajax-search__submit-button:hover,
+.elementor .jet-smart-filters-apply-button .apply-filters__button:hover {
+  filter: brightness(.94);
+}
+.elementor .jet-date-range__submit.apply-filters__button:focus-visible,
+.elementor .jet-ajax-search__submit:focus-visible,
+.elementor .jet-ajax-search__submit-button:focus-visible,
+.elementor .jet-smart-filters-apply-button .apply-filters__button:focus-visible {
+  outline: 2px solid var(--e-global-color-primary, currentColor);
+  outline-offset: 2px;
+}
+@media (max-width: 767px) {
+  .elementor-30843 .elementor-element-3c6d458b h1.elementor-heading-title,
+  .elementor-30875 .elementor-element-a85406ad h1.elementor-heading-title {
+    font-size: clamp(24px, 6.8vw, 32px) !important;
+    line-height: 1.26 !important;
+  }
+}
+
 </style>
 <?php
 }, 98);
