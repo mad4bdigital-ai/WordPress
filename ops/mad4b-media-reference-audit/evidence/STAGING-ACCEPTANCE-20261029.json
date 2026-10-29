@@ -5,8 +5,8 @@
   "branch": "feature/media-orphan-audit-policy-20261029",
   "target": "ETG Commerce Staging, VPS; no Production rollout",
   "source_path": "ops/mad4b-media-reference-audit/055-mad4b-media-reference-audit.php",
-  "installed_sha256": "48d2ca42da1af54fc841b42af7379ec43b2681ca0087a6713a8a74e973fb79ea",
-  "status": "STAGING_POLICY_ACTIVE_SOURCE_REVIEW_PENDING",
+  "installed_sha256": "88f32624bcdaa85d71ec44f85e630b645341f1dcf318ba0fbce1a0d6204620eb",
+  "status": "STAGING_POLICY_V1_2_ACTIVE_SOURCE_REVIEW_PENDING",
   "ability": "mad4b/media-reference-audit",
   "ability_registered": true,
   "unauthenticated_can_read": false,
@@ -69,6 +69,38 @@
     "Deep scan has incomplete coverage of external apps and custom encoding; manual review is required",
     "WordPress ability registered locally; external MCP discovery requires separate runtime test",
     "Deployment to companies other than ETG Commerce Staging and merge into the canonical release are not authorized",
-    "Offsite backup deferred by owner; local restore proof does not protect against VPS disk loss"
-  ]
+    "Offsite backup deferred by owner; local restore proof does not protect against VPS disk loss",
+    "Full candidate cycle not completed; 240 reviewed is only a partial current cycle, and stored review index is incomplete until first full cycle",
+    "WP Cron plus host-side systemd may overlap; current transient lock is not a distributed hard lock, though no destructive operations exist"
+  ],
+  "ability_actions": [
+    "status",
+    "scan",
+    "review"
+  ],
+  "persistent_review_index_option": "mad4b_media_reference_audit_findings_v1",
+  "review_index_record_fields": [
+    "attachment_id",
+    "parent_state",
+    "classification",
+    "reference_evidence",
+    "delete_allowed",
+    "scan_depth",
+    "checked_at"
+  ],
+  "acceptance_test": {
+    "path": "ops/mad4b-media-reference-audit/tests/acceptance.php",
+    "status": "PASS",
+    "ability_registered": true,
+    "unauthenticated_denied": true,
+    "cron_registered": true,
+    "quick_scan_count": 3,
+    "stored_review_count": 3,
+    "attachment_counts_unchanged": true
+  },
+  "latest_checkpoint": {
+    "scanned_in_cycle": 240,
+    "cursor": 16588,
+    "last_error": null
+  }
 }
