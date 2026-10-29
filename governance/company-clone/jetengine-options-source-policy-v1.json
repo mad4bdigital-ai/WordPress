@@ -984,7 +984,7 @@
         {
           "field": "presentation_home_media_tab",
           "field_type": "text",
-          "policy": "BLOCK_REVIEW"
+          "policy": "SCHEMA_ONLY"
         },
         {
           "field": "presentation_home_media_tab_section_intro",
@@ -1004,7 +1004,7 @@
         {
           "field": "presentation_destinations_tab",
           "field_type": "text",
-          "policy": "BLOCK_REVIEW"
+          "policy": "SCHEMA_ONLY"
         },
         {
           "field": "presentation_destinations_tab_section_intro",
@@ -1044,7 +1044,7 @@
         {
           "field": "presentation_product_archives_tab",
           "field_type": "text",
-          "policy": "BLOCK_REVIEW"
+          "policy": "SCHEMA_ONLY"
         },
         {
           "field": "presentation_product_archives_tab_section_intro",
@@ -1124,7 +1124,7 @@
         {
           "field": "presentation_tours_copy_tab",
           "field_type": "text",
-          "policy": "BLOCK_REVIEW"
+          "policy": "SCHEMA_ONLY"
         },
         {
           "field": "presentation_tours_copy_tab_section_intro",
@@ -1152,7 +1152,7 @@
         {
           "field": "presentation_stays_copy_tab",
           "field_type": "text",
-          "policy": "BLOCK_REVIEW"
+          "policy": "SCHEMA_ONLY"
         },
         {
           "field": "presentation_stays_copy_tab_section_intro",
@@ -1168,7 +1168,7 @@
         {
           "field": "presentation_transport_copy_tab",
           "field_type": "text",
-          "policy": "BLOCK_REVIEW"
+          "policy": "SCHEMA_ONLY"
         },
         {
           "field": "presentation_transport_copy_tab_section_intro",
@@ -1202,7 +1202,7 @@
         {
           "field": "presentation_messages_copy_tab",
           "field_type": "text",
-          "policy": "BLOCK_REVIEW"
+          "policy": "SCHEMA_ONLY"
         },
         {
           "field": "presentation_messages_copy_tab_section_intro",
@@ -1432,5 +1432,18 @@
     "Wo Vacation demo must not present confirmed reservations, genuine customer reviews or guaranteed prices",
     "Run all active language pages and catalog smoke after company-specific field updates",
     "Changes require dry-run plan, authorized approval, readback and rollback capability in future runtime adapter"
-  ]
+  ],
+  "schema_reconciliation": {
+    "observed_registered_pages": 11,
+    "observed_registered_top_level_fields": 180,
+    "observed_nested_repeater_fields": 64,
+    "registered_field_unknown_count": 0,
+    "legacy_stored_only_keys": [
+      "look-and-feel.busness_reviews_section_tab",
+      "look-and-feel.destination_activity_card_alternate",
+      "contact-and-help-info.social_links_tab"
+    ],
+    "unknown_stored_only_clone_behavior": "BLOCK_REVIEW",
+    "change_detection": "Verify runtime registered slug/page_id/name/type and all nested children before policy apply; fail closed on schema drift"
+  }
 }
