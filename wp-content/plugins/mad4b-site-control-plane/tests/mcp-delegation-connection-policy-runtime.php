@@ -1,4 +1,6 @@
 <?php
+// CI must execute these assertions even with zend.assertions=-1.
+function mad4b_test_mad4b_test_assert($ok) { if (!$ok) { fwrite(STDERR,"FAIL: delegated principal assertion\n"); exit(1); } }
 define('ABSPATH','/tmp');
 $GLOBALS['mode_setting']=null;
 $GLOBALS['site_configured']=true;
@@ -24,25 +26,25 @@ class MAD4B_SCP_Site_Profile {
  public static function user_is_enrolled($id){return !empty($GLOBALS['enrolled'][$id]);}
 }
 require dirname(__DIR__).'/includes/class-mad4b-scp-policy.php';
-assert(MAD4B_SCP_Delegation_Mode::selected_mode()==='delegated_user');
-assert(MAD4B_SCP_Policy::can_connect_user(11)===true); // verified enrollment, editor need not be admin.
-assert(MAD4B_SCP_Policy::can_connect_user(22)===true);
+mad4b_test_assert(MAD4B_SCP_Delegation_Mode::selected_mode()==='delegated_user');
+mad4b_test_assert(MAD4B_SCP_Policy::can_connect_user(11)===true); // verified enrollment, editor need not be admin.
+mad4b_test_assert(MAD4B_SCP_Policy::can_connect_user(22)===true);
 $GLOBALS['restrict_connection_filter']=true;
-assert(MAD4B_SCP_Policy::can_connect_user(11)===false); // Explicit operator admin cap not relaxed.
-assert(MAD4B_SCP_Policy::can_connect_user(22)===true);
+mad4b_test_assert(MAD4B_SCP_Policy::can_connect_user(11)===false); // Explicit operator admin cap not relaxed.
+mad4b_test_assert(MAD4B_SCP_Policy::can_connect_user(22)===true);
 $GLOBALS['restrict_connection_filter']=false;
-assert(MAD4B_SCP_Policy::can_connect_user(33)===false); // enrollment never bypassed.
+mad4b_test_assert(MAD4B_SCP_Policy::can_connect_user(33)===false); // enrollment never bypassed.
 $GLOBALS['origin_enrolled']=false;
-assert(MAD4B_SCP_Policy::can_connect_user(11)===false);
+mad4b_test_assert(MAD4B_SCP_Policy::can_connect_user(11)===false);
 $GLOBALS['origin_enrolled']=true;
 $GLOBALS['mode_setting']='independent_nhi';
-assert(MAD4B_SCP_Policy::can_connect_user(11)===false);
-assert(MAD4B_SCP_Policy::can_connect_user(22)===true);
+mad4b_test_assert(MAD4B_SCP_Policy::can_connect_user(11)===false);
+mad4b_test_assert(MAD4B_SCP_Policy::can_connect_user(22)===true);
 $GLOBALS['mode_setting']='INVALID';
-assert(MAD4B_SCP_Delegation_Mode::selected_mode()==='independent_nhi');
-assert(MAD4B_SCP_Policy::can_connect_user(11)===false);
+mad4b_test_assert(MAD4B_SCP_Delegation_Mode::selected_mode()==='independent_nhi');
+mad4b_test_assert(MAD4B_SCP_Policy::can_connect_user(11)===false);
 $GLOBALS['mode_setting']=null;
 $GLOBALS['site_configured']=false;
-assert(MAD4B_SCP_Policy::can_connect_user(11)===false); // no enrolled profile => admin connection cap.
-assert(MAD4B_SCP_Policy::can_connect_user(22)===true);
-echo "DELEGATED_CONNECTION_ENROLLMENT_AND_LEGACY: PASS\n";
+mad4b_test_assert(MAD4B_SCP_Policy::can_connect_user(11)===false); // no enrolled profile => admin connection cap.
+mad4b_test_assert(MAD4B_SCP_Policy::can_connect_user(22)===true);
+echo "PASS: DELEGATED_CONNECTION_ENROLLMENT_AND_LEGACY\n";
