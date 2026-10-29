@@ -29,4 +29,6 @@ jobs:
           php -l IndependentAuthority.php
           php -l AuthorityLedger.php
           php -l test-single-owner.php
+          php -l test-ledger-single-owner.php
+          bash -n run-isolated-ledger-qa.sh
           php test-single-owner.php

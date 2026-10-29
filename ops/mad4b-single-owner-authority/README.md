@@ -20,3 +20,14 @@ One verified owner may cover Platform Owner, Company Owner and Security Reviewer
 5. DFSB package certification and immutable release receipt remain independent prerequisites. Never treat single-owner approval as plugin provenance.
 
 This bundle is staged and test-only. No real issuance or Production mutation.
+
+
+## Isolated MariaDB acceptance (VPS)
+
+For a disposable MariaDB QA instance (never the operational authority database), run:
+
+    MAD4B_AUTHORITY_QA_DB_CONTAINER=your-authorized-QA-database-container     MAD4B_AUTHORITY_QA_DOCKER_NETWORK=your-isolated-QA-network     ./run-isolated-ledger-qa.sh
+
+The runner creates an unprivileged temporary QA account/database with a cryptographically random password, executes the signed-permit and concurrency-safe ledger test, then destroys both via a cleanup trap. It never changes the operational authority database or toggles issuance. Prerequisites: Docker authorized access, a MariaDB root secret available to the DB container at /run/secrets/root_password, isolated internal Docker network, PHP 8.3 with mysqli/sodium.
+
+Observed on authorized Staging VPS: 25 standalone PHP checks and 9 transactional MariaDB checks passed; operational permits=0, events=0, live issuance=0; remaining disposable QA databases=0. This QA evidence is not an operational CA certificate.
