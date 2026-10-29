@@ -96,6 +96,10 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/remote-execution/operator-operation-policy-smoke.php",
     "tests/remote-execution/operator-oauth-session-smoke.php",
     "tests/remote-execution/operator-runner-profile-smoke.php",
+    # QA32B: hermetic site-private RBAC fixtures with exit-on-failure assertions,
+    # positive PASS marker and no WordPress, network, filesystem writes or secrets.
+    "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-behavioral-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-isolated-php-contract.php",
     "tests/remote-execution/unified-operator-session-policy-smoke.php",
 ))
 
@@ -206,6 +210,18 @@ def self_test():
     assert not has_assertion_pass("SUMMARY pass=8 fail=1\n")
     assert not has_assertion_pass("No syntax errors detected\n")
 
+    for path in (
+        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-behavioral-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-isolated-php-contract.php",
+    ):
+        assert command_for(path) == ["php", str((ROOT / path).resolve())]
+    # No wildcard admission: unknown PHP still requires a trusted PHPUnit runner.
+    try:
+        command_for("wp-content/plugins/mad4b-site-control-plane/tests/private-operations-foreign-smoke.php")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Unreviewed operations PHP fixture admitted")
     assert command_for("tests/production_readiness_registry_contract.py")[0] == sys.executable
     assert command_for("tests/remote-execution/operator-grants-convergence-smoke.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/generation-snapshot-exception-runtime.php")[0] == "php"
