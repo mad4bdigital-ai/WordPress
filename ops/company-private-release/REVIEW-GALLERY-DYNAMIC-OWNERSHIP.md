@@ -30,3 +30,6 @@ Decision (2026-10-29): **share the visual template structure and widgets; never 
 Before promoting a reusable visual section, produce a review manifest that lists each dynamic binding by **field path / provider / kind** (no URLs or secret values), confirm its target-tenant source and check that any resolved images belong to that tenant and remain reachable through its approved media hostname. Missing or mismatched gallery/gallery query bindings are **NO-GO** for that section, never a reason to fall back to a different company.
 
 The read-only template audit `audit_elementor_template_portability.py` now identifies dynamic tags and local image/listing data bindings separately from template structure. It does not rewrite or import templates by itself. Existing Production sites, database values and Media Library assets remain unchanged.
+
+
+**Field-level distinction:** JetEngine **Options Page definitions** (including Brand and Look & Feel) are shared, while all company-specific content source values in those pages remain tenant-owned. The gallery widget template itself and its source-binding contract can be shared. `review_gellery_slider` field values must only originate from the destination company's options. Absent values require review, never donor fallback. `JETENGINE-OPTIONS-SCHEMA-OWNERSHIP.md` is authoritative.
