@@ -80,5 +80,80 @@
     "blocked": "old-company brand, customer/order databases, real tokens, media with unverified rights, company SEO/contact metadata",
     "on_conflict": "prefer WordPress authoritative Site Profile and per-company option values; block cross-site substitution",
     "real_domain": "wovacation.com must not be silently bound or overwritten by demo domain"
+  },
+  "jetengine_options_contract": {
+    "source": "Staging source-backed census 2026-10-29, no field values",
+    "source_sha256": "b6c79f53443d599c6d9b57c94fbb4a7d1e656d445f3e91877150376450938a0e",
+    "policy": "default_deny_unclassified",
+    "pages": {
+      "contact-and-help-info": {
+        "field_count": 17,
+        "field_policy": {
+          "support_group_url": "TENANT_FIELD",
+          "support_chat_url": "RECONNECT_PROVIDER",
+          "support_group_url_aria_label": "SHARED_DEFINITION",
+          "card-as-action1": "BLOCK_REVIEW",
+          "trip_advisor_review_shortcode": "RECONNECT_PROVIDER",
+          "site_icon_512x512": "TENANT_MEDIA",
+          "site_icon_280x100_site_header": "TENANT_MEDIA",
+          "site_whatsapp_num": "TENANT_FIELD",
+          "site_wa_tel_link": "TENANT_FIELD",
+          "site_email": "TENANT_FIELD",
+          "site_email_link": "TENANT_FIELD",
+          "site_location_address": "TENANT_FIELD",
+          "site_location_address_link": "TENANT_FIELD",
+          "social_links_tab": "SHARED_DEFINITION",
+          "social_links": "TENANT_FIELD",
+          "site_facebook_page_link": "RECONNECT_PROVIDER",
+          "site_instagram_page_link": "RECONNECT_PROVIDER"
+        }
+      },
+      "look-and-feel": {
+        "field_count": 39,
+        "field_policy": {
+          "home_page_header_image": "TENANT_MEDIA",
+          "tour_search_header_image": "TENANT_MEDIA",
+          "continents_archive_header_image": "TENANT_MEDIA",
+          "countries_archive_header_image": "TENANT_MEDIA",
+          "cities_archive_header_image": "TENANT_MEDIA",
+          "location_archive_header_image": "TENANT_MEDIA",
+          "attraction_archive_header_image": "TENANT_MEDIA",
+          "tours_archive_header_image": "TENANT_MEDIA",
+          "properties_archive_header_image": "TENANT_MEDIA",
+          "units_archive_header_image": "TENANT_MEDIA",
+          "transportations_archive_header_image": "TENANT_MEDIA",
+          "transportations_companies_archive_header_image": "TENANT_MEDIA",
+          "dmcs_archive_header_image": "TENANT_MEDIA",
+          "drivers_archive_header_image": "TENANT_MEDIA",
+          "jops_archive_header_image": "TENANT_MEDIA",
+          "guides_archive_header_image": "TENANT_MEDIA",
+          "busness_reviews_section_tab": "SHARED_DEFINITION",
+          "busness_reviews_section": "TENANT_FIELD",
+          "review_hero_image": "TENANT_MEDIA",
+          "company_about_customization": "TENANT_MEDIA",
+          "review_gellery_slider": "TENANT_MEDIA",
+          "destination_next_trip_heading": "SHARED_DEFINITION",
+          "destination_next_trip_subheading": "SHARED_DEFINITION",
+          "destination_stays_heading": "SHARED_DEFINITION",
+          "destination_transport_heading": "SHARED_DEFINITION",
+          "destination_tours_heading": "SHARED_DEFINITION",
+          "destination_quote_cta_label": "SHARED_DEFINITION",
+          "destination_services_note": "SHARED_DEFINITION",
+          "destination_no_results_label": "SHARED_DEFINITION",
+          "destination_road_heading": "SHARED_DEFINITION",
+          "destination_rail_heading": "SHARED_DEFINITION",
+          "destination_air_heading": "SHARED_DEFINITION",
+          "company_pattern_preset": "TENANT_FIELD",
+          "company_pattern_accent": "TENANT_FIELD",
+          "company_pattern_strength": "TENANT_FIELD",
+          "company_pattern_media": "TENANT_MEDIA",
+          "company_pattern_mobile": "TENANT_FIELD",
+          "destination_activity_card_primary": "SHARED_DEFINITION",
+          "destination_activity_card_alternate": "SHARED_DEFINITION"
+        }
+      }
+    },
+    "safe_clone": "share approved definitions only; all tenant fields and media remain per-company",
+    "current_wo_vacation_readback": "no copied contacts, social accounts, media rights or provider tokens authorized"
   }
 }

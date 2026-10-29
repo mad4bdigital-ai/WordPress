@@ -34,3 +34,13 @@ not be mass-replaced as a substitute for asset rights and media review.
 The private, hash-only inventory under
 `/opt/staging/mad4b-wo-vacation-source-governance-20261029`
 is a **snapshot**, not a list of approved source files to import.
+
+## JetEngine company Options Pages
+
+Two source-backed page contracts are now keyed in `field-sources.json`:
+`contact-and-help-info` (17 field keys) and `look-and-feel` (39).
+Only field **names/classifications**, not stored option values, are included.
+The 2026-10-29 discovered policy evidence is SHA-pinned and stays on
+Staging VPS. `TENANT_FIELD` / `TENANT_MEDIA` values must be provisioned
+for the new company, `RECONNECT_PROVIDER` requires new owner consent, and
+unknown fields default to `BLOCK_REVIEW`; do not replace them wholesale.
