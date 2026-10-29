@@ -131,7 +131,18 @@ def php_capabilities(ref, path):
         return set()
     # Conservative static surface. This is a candidate extractor, not an
     # authoritative WordPress Ability census or proof of runtime registration.
-    return {identifier("ability", m) for m in CAP.findall(src)}
+    # REST namespaces are not WordPress Abilities. Mask only the namespace
+    # argument of a static register_rest_route() call, not other literal
+    # ability strings in the same provider source. Actual REST endpoints are
+    # separately inventoried by registered_surfaces().
+    def mask_rest_namespace(match):
+        start = match.start(1) - match.start()
+        end = match.end(1) - match.start()
+        whole = match.group(0)
+        return whole[:start] + "__rest_namespace__" + whole[end:]
+
+    ability_source = REST_ROUTE.sub(mask_rest_namespace, src)
+    return {identifier("ability", m) for m in CAP.findall(ability_source)}
 
 
 def registered_surfaces(ref, path):
