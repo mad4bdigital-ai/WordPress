@@ -91,7 +91,10 @@ if(($ok['market_plan']['status']??'')!=='MARKET_SCOPED_DRY_RUN' ||
    ($ok['market_plan']['scopes'][0]['dimensions']['currencies']??array())!==array('EGP') ||
    $ok['runtime_approved']!==false ||
    $ok['market_plan']['scopes'][0]['source_grant_verified']!==false ||
-   !in_array('verify_source_company_market_grant',$ok['pending_proofs'],true))
+   !in_array('verify_source_company_market_grant',$ok['pending_proofs'],true) ||
+   ($ok['query_plan']['market_slices'][0]['predicate']['market_id']??'')!=='egypt-consumer' ||
+   ($ok['query_plan']['market_slices'][0]['predicate']['nationality_countries']??array())!==array('EG') ||
+   $ok['query_plan']['plan_executable']!==false)
     throw new RuntimeException('Market plan leaked grant or lost narrowed dimensions');
 $without=$plan;
 unset($without['markets']);
@@ -118,7 +121,8 @@ $invalid=array(
  'import_by_database_copy_forbidden'=>array('import_strategy'=>'bulk_copy'),
  'automatic_booking_forbidden'=>array('commercial_status'=>'bookable'),
  'wrong_country_syntax'=>array('nationality_countries'=>array('eg')),
- 'wildcard_forbidden'=>array('point_of_sale_countries'=>array('*'))
+ 'wildcard_forbidden'=>array('point_of_sale_countries'=>array('*')),
+ 'arbitrary_extra_policy'=>array('auto_publish_all'=>true)
 );
 foreach($invalid as $name=>$mod){
  $candidate=$plan;
