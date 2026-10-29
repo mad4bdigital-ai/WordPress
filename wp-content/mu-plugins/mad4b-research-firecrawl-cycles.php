@@ -90,15 +90,20 @@ final class MAD4B_Firecrawl_Research_Cycles {
         $profiles = self::competitors();
         if ( is_wp_error( $profiles ) ) return $profiles;
         $items = array();
+        $admitted = 0;
+        $allowlist = defined( 'MAD4B_FIRECRAWL_ALLOWED_HOSTS' ) ? constant( 'MAD4B_FIRECRAWL_ALLOWED_HOSTS' ) : array( 'example.com' );
+        $allowlist = is_array( $allowlist ) ? $allowlist : array();
         foreach ( $profiles as $id => $row ) {
             if ( ! is_array( $row ) || ! empty( $row['disabled'] ) ) continue;
             $url = isset( $row['source_url'] ) && is_string( $row['source_url'] ) ? $row['source_url'] : '';
             $host = self::https_host( $url );
+            $allowed = '' !== $host && in_array( $host, $allowlist, true );
+            if ( $allowed ) ++$admitted;
             $items[] = array(
                 'competitor_id' => (string) $id,
                 'host' => $host,
                 'site_source_enrolled' => '' !== $host,
-                'provider_allowlist_verified' => false,
+                'provider_allowlist_verified' => $allowed,
                 'robots_rights_review_required' => true,
             );
             if ( count( $items ) >= 100 ) break;
@@ -108,7 +113,8 @@ final class MAD4B_Firecrawl_Research_Cycles {
             'provider' => 'firecrawl',
             'scope' => 'site_control_plane',
             'enrolled_competitors' => $items,
-            'ready_for_competitor_collection' => count( $items ) > 0,
+            'ready_for_competitor_collection' => $admitted > 0,
+            'pre_collection_legal_review_required' => true,
             'stages' => array(
                 array( 'stage' => 'discover', 'ability' => 'mad4b/research-serp-record', 'provider' => 'separately certified SERP provider' ),
                 array( 'stage' => 'select', 'ability' => 'mad4b/research-competitor-select', 'provider' => 'existing research artifacts' ),
