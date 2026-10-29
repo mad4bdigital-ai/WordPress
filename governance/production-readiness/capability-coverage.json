@@ -11684,6 +11684,44 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing pinned source validation, exact SHA identity, bounded GitHub HTTPS and protected candidate deploy controls cover the compact Git Data lookup.",
       "review_rationale": "The GitHub /commits/{sha} REST response may exceed the existing 262144-byte budget for multi-parent integration changes. Only the exact immutable commit lookup changes to /git/commits/{sha} (small Git object metadata). Do not raise limits, change other source selectors or treat any redirect/invalid/mismatched response as verified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema-status-projection.php",
+      "source_blob_sha": "823916bf64501e3e759c55a1e989c93e24da6b76",
+      "control_ids": [
+        "DATABASE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/maintainability-domain-service-contract.py"
+      ],
+      "owner_role": "Repository source-review maintainer, exact-source CI-only — no Site Owner, provider certifier or Production authorizer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Schema data-plane read projection has a P0 database impact. Database/Platform/Security source guards and the newly changed same-PR maintainability test prevent mutation, loss of read_only/mutation_performed flags or reabsorbing Schema migration code.",
+      "review_rationale": "Pure read-only Schema Status projection extracted byte-for-byte from the public Abilities facade. Review is limited to response composition including missing tables, migration preflight, receipt and physical readiness; no migration, write, DDL, update or acceptance is executed. PHP 8.3 and PHP 8.5 lints and stable Schema Status runtime contract passed."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-provider-adapter.php",
+      "source_blob_sha": "8d2613302b60415114e4f94cefb4adcd7678e3b8",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php"
+      ],
+      "owner_role": "Repository source-review maintainer, exact-source CI-only — no Site Owner, provider certifier or Production authorizer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Provider/MCP/Execution P0 controls remain intact: optional catalog selection cannot register an absent Ability, and governed writes still require their independently defined preflight/authorization. The change never creates grants or a provider certificate.",
+      "review_rationale": "Bounded optional provider adapter now derives all advertised MCP names from the same existing installed-and-active provider predicate used by register_abilities. Missing or deactivated provider exposes no dangling abilities; active provider retains 11 reads and three centrally governed writes. Red-before/green-after isolated PHP 8.3 and 8.5 tests cover absence, activation, deactivation, and registration identity. MCP runtime integration subsequently passed on WordPress 6.9 and latest."
     }
   ],
   "code_change_rules": {
