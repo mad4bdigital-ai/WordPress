@@ -4,7 +4,7 @@ require_once __DIR__ . '/class-mad4b-scp-chatbotx-governed-writes.php';
 require_once __DIR__ . '/class-mad4b-scp-chatbotx-write-preflight.php';
 
 /**
- * Source-reviewed ChatbotX provider adapter for ETG WooCommerce Lab.
+ * Source-reviewed ChatbotX adapter using the installed provider's exact business contract.
  *
  * Eleven read and three explicitly governed write abilities. No arbitrary endpoint invocation,
  * plugin callbacks, order/customer data, token output or mutation authority.
@@ -76,7 +76,7 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
                 'customer_id'=>array('type'=>'integer','minimum'=>1),
                 'mailbox_id'=>array('type'=>'integer','minimum'=>1),
                 'ticket_id'=>array('type'=>'integer','minimum'=>1),
-                'post_type'=>array('type'=>'string','enum'=>array('tours-and-activities','properties','transportations'))
+                'post_type'=>array('type'=>'string','enum'=>MAD4B_SCP_ChatbotX_Governed_Writes::draftable_cpt_types())
             ),array('ability')));
         $this->add_ability('mad4b/chatbotx-integration-inventory',
             'Read Existing Workflow, CRM, Commerce and Pricing Provider Coverage',
@@ -118,7 +118,7 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
             'write',false,true,true);
         $this->add_ability('mad4b/chatbotx-cpt-create-draft',
             'Create Unpublished Travel CPT Draft','cpt_create_draft',$admin,$this->schema(array(
-                'post_type'=>array('type'=>'string','enum'=>array('tours-and-activities','properties','transportations')),
+                'post_type'=>array('type'=>'string','enum'=>MAD4B_SCP_ChatbotX_Governed_Writes::draftable_cpt_types()),
                 'title'=>array('type'=>'string','minLength'=>1,'maxLength'=>180),
                 'idempotency_key'=>$idempotency
             ),array('post_type','title','idempotency_key')),

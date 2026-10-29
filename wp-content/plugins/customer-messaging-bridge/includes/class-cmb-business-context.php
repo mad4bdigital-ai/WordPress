@@ -15,6 +15,11 @@ final class CMB_Business_Context {
         'tour-rates','property-rates','transport-rates',
     ];
 
+    /** Provider-owned allowlist: no rate CPTs or arbitrary WP post types. */
+    public static function draftable_source_types(): array {
+        return ['tours-and-activities','properties','transportations'];
+    }
+
     public static function boot(): void {
         add_action('fluentform/submission_inserted', [self::class, 'form_submitted'], 25, 3);
         add_action('fluent_support/ticket_created', [self::class, 'ticket_created'], 25, 2);

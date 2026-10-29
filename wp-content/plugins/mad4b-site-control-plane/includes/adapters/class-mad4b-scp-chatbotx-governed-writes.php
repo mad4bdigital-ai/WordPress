@@ -2,6 +2,20 @@
 defined('ABSPATH') || exit;
 /** Explicit, bounded ChatbotX write targets. Never called without SCP authorization. */
 final class MAD4B_SCP_ChatbotX_Governed_Writes {
+    /** Fail closed unless the installed provider declares exact draft targets. */
+    public static function draftable_cpt_types() {
+        if (!class_exists('CMB_Business_Context', false) ||
+            !method_exists('CMB_Business_Context', 'draftable_source_types')) return array();
+        $declared=CMB_Business_Context::draftable_source_types();
+        if (!is_array($declared) || count($declared)>24) return array();
+        $types=array();
+        foreach ($declared as $type) {
+            if (!is_string($type) || !preg_match('/^[a-z][a-z0-9_-]{0,63}$/D', $type) ||
+                in_array($type,$types,true)) return array();
+            $types[]=$type;
+        }
+        return $types;
+    }
     public static function guard() {
         if (!class_exists('MAD4B_SCP_Policy') || !MAD4B_SCP_Policy::can_mutate()
             || !current_user_can('manage_options')) {
@@ -93,11 +107,11 @@ final class MAD4B_SCP_ChatbotX_Governed_Writes {
         $guard=self::guard();if(is_wp_error($guard))return $guard;
         $type=sanitize_key((string)($in['post_type']??''));
         $title=trim((string)($in['title']??''));
-        if(!in_array($type,array('tours-and-activities','properties','transportations'),true)
+        if(!in_array($type,self::draftable_cpt_types(),true)
             ||$title===''||strlen($title)>240)
             return new WP_Error('cmb_invalid_draft','Supported CPT and bounded title required.');
         $obj=get_post_type_object($type);
-        if(!$obj||!current_user_can($obj->cap->create_posts))
+        if(!$obj||!isset($obj->cap->create_posts)||!current_user_can($obj->cap->create_posts))
             return new WP_Error('cmb_cpt_forbidden','Cannot create this content type.');
         $token=self::reserve('cpt_create_draft',$in);
         if(is_wp_error($token))return $token;

@@ -13,7 +13,14 @@ function current_user_can($permission): bool {return true;}
 final class MAD4B_SCP_Policy {
     public static function can_mutate(): bool {return false;}
 }
+class CMB_Business_Context {
+    public static function draftable_source_types(): array {return array('example-tour','example-hotel');}
+}
 require dirname(__DIR__).'/includes/adapters/class-mad4b-scp-chatbotx-governed-writes.php';
+if (MAD4B_SCP_ChatbotX_Governed_Writes::draftable_cpt_types() !== array('example-tour','example-hotel')) {
+    fwrite(STDERR, "FAIL: provider-owned CPT draft scope was not used\n");exit(1);
+}
+echo "PASS: provider-scoped CPT targets are not hardcoded in Control Plane\n";
 $cases=[
     ['support_create_ticket', ['customer_id'=>12,'mailbox_id'=>2,'title'=>'Synthetic','content'=>'Synthetic','idempotency_key'=>'synthetic-unique-idempotent-A']],
     ['support_add_note',['ticket_id'=>16,'content'=>'Synthetic','idempotency_key'=>'synthetic-unique-idempotent-B']],

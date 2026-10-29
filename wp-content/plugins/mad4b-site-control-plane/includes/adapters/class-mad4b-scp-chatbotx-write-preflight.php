@@ -68,7 +68,8 @@ final class MAD4B_SCP_ChatbotX_Write_Preflight {
                 'native_agent_access_checked_at_execution','bounded_internal_note_at_execution'));
         } else {
             $type = sanitize_key((string)($input['post_type'] ?? ''));
-            $allowed = in_array($type, array('tours-and-activities','properties','transportations'), true);
+            $allowed = class_exists('MAD4B_SCP_ChatbotX_Governed_Writes', false) &&
+                in_array($type, MAD4B_SCP_ChatbotX_Governed_Writes::draftable_cpt_types(), true);
             $post_obj = $allowed ? get_post_type_object($type) : null;
             $can_create = $post_obj && isset($post_obj->cap->create_posts) && current_user_can($post_obj->cap->create_posts);
             if (!$can_create) $blockers[] = 'exact_cpt_create_permission_required';
