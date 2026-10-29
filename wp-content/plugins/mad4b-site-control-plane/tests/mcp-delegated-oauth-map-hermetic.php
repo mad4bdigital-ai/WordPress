@@ -11,6 +11,7 @@ $GLOBALS['last_error']='';
 function add_filter(){}
 function do_action($hook,$code,$user){$GLOBALS['last_error']=$code;}
 function absint($id){return abs((int)$id);}
+function sanitize_key($value){return strtolower(trim((string)$value));}
 function wp_set_current_user($id){$GLOBALS['user_id']=$id;}
 function get_userdata($id){return $id===7?(object)array('ID'=>7):false;}
 function user_can($user,$cap){return $user->ID===7 && $cap==='edit_posts';}
