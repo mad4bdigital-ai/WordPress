@@ -1,6 +1,6 @@
 <?php
 // CI must execute these assertions even with zend.assertions=-1.
-function mad4b_test_mad4b_test_assert($ok) { if (!$ok) { fwrite(STDERR,"FAIL: delegated principal assertion\n"); exit(1); } }
+function mad4b_test_assert($ok) { if (!$ok) { fwrite(STDERR,"FAIL: delegated principal assertion\n"); exit(1); } }
 define( 'ABSPATH', '/tmp/' );
 define( 'REST_REQUEST', true );
 $GLOBALS['mode_setting'] = null;
