@@ -11642,6 +11642,102 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing admin parent-order registry and zero-touch native menu contracts govern the same declared nonprivileged settings navigation.",
       "review_rationale": "Expose the two selectable principal models only to administrators through the established Control Plane navigation manifest, preserving the read-only Plugins admin hotpath and canonical parent-order route declaration. This does not grant any MCP operation."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-delegation-mode.php",
+      "source_blob_sha": "791944bfa382e2a4dcf42271aa132d55069c402e",
+      "control_ids": [
+        "IDENTITY-01",
+        "OAUTH-03",
+        "OAUTH-05",
+        "OAUTH-06",
+        "MCP-01",
+        "MCP-10",
+        "SECURITY-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegated-content-actor-hermetic.php"
+      ],
+      "owner_role": "Source-level identity and content-authorization regression review; CI-only, no production permission",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing verified subject/site enrollment and exact approval, budget, grant, replay and content mutation controls remain authoritative. No new public endpoint or generic permission bypass.",
+      "review_rationale": "Verified, Staging-only user-owned actor, exact limited draft grants, pending/disabled revocation safety, live WordPress role and source scopes, signed prepared dispatcher proof."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy.php",
+      "source_blob_sha": "dd46c69eb3ddb2aa99e5c57d01649e96dacea2e1",
+      "control_ids": [
+        "IDENTITY-01",
+        "OAUTH-03",
+        "OAUTH-05",
+        "OAUTH-06",
+        "MCP-01",
+        "MCP-10",
+        "SECURITY-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegated-content-actor-hermetic.php"
+      ],
+      "owner_role": "Source-level identity and content-authorization regression review; CI-only, no production permission",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing verified subject/site enrollment and exact approval, budget, grant, replay and content mutation controls remain authoritative. No new public endpoint or generic permission bypass.",
+      "review_rationale": "Keep global can_mutate side-effect free, require already verified subject and real user-bound actor, preserve explicit site write and NHI gates."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+      "source_blob_sha": "babab13878189f489e728d74a3a1fcbc997cb6ba",
+      "control_ids": [
+        "IDENTITY-01",
+        "OAUTH-03",
+        "OAUTH-05",
+        "OAUTH-06",
+        "MCP-01",
+        "MCP-10",
+        "SECURITY-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegated-content-actor-hermetic.php"
+      ],
+      "owner_role": "Source-level identity and content-authorization regression review; CI-only, no production permission",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing verified subject/site enrollment and exact approval, budget, grant, replay and content mutation controls remain authoritative. No new public endpoint or generic permission bypass.",
+      "review_rationale": "Signed prepared write dispatcher, exact draft target and ticket reference, WordPress user capability before scoped enrollment, never admin/production/publish."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-adapter-base.php",
+      "source_blob_sha": "18ceaa53bf468eba25cb0026baacc7f14e004970",
+      "control_ids": [
+        "IDENTITY-01",
+        "OAUTH-03",
+        "OAUTH-05",
+        "OAUTH-06",
+        "MCP-01",
+        "MCP-10",
+        "SECURITY-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegated-content-actor-hermetic.php"
+      ],
+      "owner_role": "Source-level identity and content-authorization regression review; CI-only, no production permission",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing verified subject/site enrollment and exact approval, budget, grant, replay and content mutation controls remain authoritative. No new public endpoint or generic permission bypass.",
+      "review_rationale": "Direct draft Ability conditionally enrolls verified explicitly write-scoped subject, reuses signed-dispatcher bound actor, denies generic and incomplete write grants."
     }
   ],
   "code_change_rules": {
