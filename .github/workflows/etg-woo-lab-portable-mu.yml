@@ -112,5 +112,5 @@ jobs:
             --target '$TARGET' --backup-dir '$BACKUP'; \
             MU_PHP_BIN='$INCOMING/etg-woo-lab-portable-mu/tools/php_lint_via_lab_docker.sh' \
             python3 '$INCOMING/etg-woo-lab-portable-mu/tools/deploy_reviewed_mu.py' --dry-run --target '$TARGET'; \
-            test \"$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 -H 'Host: tours.dev.mad4b.com' http://127.0.0.1:8091/wp-json/)\" = 200; \
+            curl -fsS --max-time 10 -H 'Host: tours.dev.mad4b.com' -o /dev/null http://127.0.0.1:8091/wp-json/; \
             printf '%s\n' '$RELEASE_SHA' > '$INCOMING/deployed-exact-head.txt'"
