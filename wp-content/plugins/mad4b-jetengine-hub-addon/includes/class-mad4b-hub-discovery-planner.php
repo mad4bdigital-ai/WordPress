@@ -248,7 +248,10 @@ final class MAD4B_Hub_Discovery_Planner {
     }
     public static function inherit($layers) {
         $levels=array('platform','source_company','consumer_company','provider',
-            'content_type','selection');
+            'content_type','market','selection');
+        // Older six-layer manifests remain valid but have no market approval.
+        if(is_array($layers) && !array_key_exists('market',$layers))
+            $layers['market']=array('deny'=>array());
         if(!is_array($layers)||count($layers)!==count($levels)||
             array_diff(array_keys($layers),$levels)||array_diff($levels,array_keys($layers)))
             return self::err('policy_layers_invalid');
@@ -256,14 +259,16 @@ final class MAD4B_Hub_Discovery_Planner {
         $allowRead=false;$explanations=array();
         foreach($levels as $level){
             $p=$layers[$level];
-            if(!is_array($p)||array_diff(array_keys($p),array('deny','allow_read')))
+            if(!is_array($p)||array_diff(array_keys($p),array('deny','allow_read','market_limits')))
                 return self::err('policy_level_invalid');
+            if(isset($p['market_limits'])&&!is_array($p['market_limits']))
+                return self::err('market_limits_invalid');
             $keys=self::strings($p['deny']??array(),'deny');
             if(is_wp_error($keys))return $keys;
             foreach($keys as $key) {
                 if($key!=='read_catalog' && !in_array($key,self::DENIED_ACTIONS,true))
                     return self::err('policy_action_unknown');
-                $denied[$key]=$level;
+                if(!isset($denied[$key]))$denied[$key]=$level;
             }
             if(isset($p['allow_read'])&&!is_bool($p['allow_read']))
                 return self::err('read_flag_invalid');
@@ -372,6 +377,14 @@ final class MAD4B_Hub_Discovery_Planner {
         $selected['verified_local_categories']=$categoryProofs;
         $policy=self::inherit($manifest['policy_layers']??null);
         if(is_wp_error($policy))return $policy;
+        if(!class_exists('MAD4B_Hub_Market_Policy'))
+            return self::err('market_policy_module_unavailable');
+        // "markets" are server-registered scopes; absence is an explicit
+        // UNSCOPED_DENY, not an implicit all-country import.
+        $marketPlan=MAD4B_Hub_Market_Policy::evaluate(
+            $manifest['markets']??null,$selected,
+            $manifest['policy_layers'],$source);
+        if(is_wp_error($marketPlan))return $marketPlan;
         $queryKinds=array();
         foreach($caps['jet_engine']['queries'] as $item){
             if(in_array($item['id'],$selected['query_ids'],true))$queryKinds[$item['id']]=$item['type'];
@@ -384,10 +397,15 @@ final class MAD4B_Hub_Discovery_Planner {
         if($selected['form_ids'])$pending[]='forms_schema_and_submission_privacy_review';
         if($selectedOptions)$pending[]='option_schema_only_no_value_copy';
         if($selected['source_record_ids'])$pending[]='source_record_ids_are_not_target_wordpress_ids';
+        $pending=array_merge($pending,$marketPlan['pending']);
+        if(isset($policy['deny']['read_catalog']))
+            $pending[]='read_catalog_denied_by_inherited_policy';
         return array('contract'=>self::CONTRACT,'state'=>'DRY_RUN_NEEDS_EVIDENCE',
             'source_company'=>$source,'provider'=>$provider,
             'selected'=>$selected,'query_types'=>$queryKinds,
-            'policy'=>$policy,'pending_proofs'=>$pending,
+            'policy'=>$policy,'market_plan'=>$marketPlan,
+            'market_scoped'=>($marketPlan['status']==='MARKET_SCOPED_DRY_RUN'),
+            'pending_proofs'=>array_values(array_unique($pending)),
             'runtime_approved'=>false,'mutation_performed'=>false,
             'execution_engine'=>'native_provider_pending_proof',
             'query_count_contract'=>'unknown_until_source_verification',
