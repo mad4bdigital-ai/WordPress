@@ -186,8 +186,8 @@
     },
     {
       "path": "includes/InquiryPhaseOperations.php",
-      "bytes": 9022,
-      "sha256": "f157e39d416d006d0d0921ed235595640d813016921b14315d3547d672d4eaf3"
+      "bytes": 10653,
+      "sha256": "2139aefd06e6bb0415a9970ad9300338396badf88e4ed93216d70d2a9e530a0a"
     },
     {
       "path": "includes/InquiryQualification.php",
