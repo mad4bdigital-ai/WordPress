@@ -282,7 +282,8 @@
     "LiteSpeed / QUIC.cloud account or CDN identity not verified for exact target domain",
     "donor JetEngine Options Page values or defaults overriding target company data",
     "missing Brand/Look & Feel target source silently defaulted to another company's values",
-    "Options Page schema imported without field-value preservation and target media source QA"
+    "Options Page schema imported without field-value preservation and target media source QA",
+    "JetEngine shared field definitions not verified against wp_jet_post_types with zero type conflicts"
   ],
   "copy_execution": {
     "phase_1": "inventory and source fingerprint (read only)",
@@ -298,7 +299,7 @@
     "merge": "schema_additive_no_source_values",
     "preserve_target_existing_fields": true,
     "never_overwrite_brand_content_colors_or_media": true,
-    "brand_registration_path": "NOT_YET_VERIFIED",
+    "brand_registration_path": "No separate page slug 'brand' found in current registered JetEngine pages; contact-and-help-info serves company contact/brand-adjacent fields; Elementor Brand Kit is separate",
     "look_and_feel_observed_values": {
       "allroyalegypt.com": 16,
       "egypttourgates.com": 21
@@ -308,7 +309,42 @@
       "option_field": "look-and-feel::review_gellery_slider",
       "company_owned": true
     },
-    "schema_definitions_located_and_exported": false,
-    "read_only_audit": "ops/company-private-release/audit_jetengine_options_values.php"
+    "schema_definitions_located_and_exported": true,
+    "read_only_audit": "ops/company-private-release/audit_jetengine_options_values.php",
+    "registration_source_table": "wp_jet_post_types",
+    "registered_option_pages": [
+      "contact-and-help-info",
+      "look-and-feel",
+      "calculate-booking-price"
+    ],
+    "official_schema_type_conflicts": 0,
+    "official_schema_field_counts": {
+      "contact-and-help-info": {
+        "allroyalegypt.com": 16,
+        "egypttourgates.com": 16
+      },
+      "calculate-booking-price": {
+        "allroyalegypt.com": 2,
+        "egypttourgates.com": 2
+      },
+      "look-and-feel": {
+        "allroyalegypt.com": 18,
+        "egypttourgates.com": 20
+      }
+    },
+    "shared_schema_additive_fields_for_allroyalegypt": [
+      {
+        "name": "company_about_customization",
+        "type": "media",
+        "saved_value_from_donor": false
+      },
+      {
+        "name": "review_gellery_slider",
+        "type": "gallery",
+        "saved_value_from_donor": false
+      }
+    ],
+    "definition_export_status": "Read-only field keys/types audited and recorded; full source definition has not been applied on company clone",
+    "read_only_schema_audit": "ops/company-private-release/audit_jetengine_options_schema.php"
   }
 }
