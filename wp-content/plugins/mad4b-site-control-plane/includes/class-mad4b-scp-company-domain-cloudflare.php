@@ -377,7 +377,7 @@ final class MAD4B_SCP_Company_Domain_Cloudflare {
         }
         return self::respond(array('state'=>$match && $resolved && $tls?'PUBLIC_TLS_VERIFIED':'WAITING_PUBLIC_DNS_OR_TLS',
             'record_matches'=>$match,'dns_resolves_origin'=>$resolved,
-            'trusted_https_200'=>$tls,'public_live'=>$match && $resolved && $tls,
-            'activation_changed'=>false));
+            'trusted_https_200'=>$tls,'public_tls_ready'=>$match && $resolved && $tls,
+            'public_live'=>false,'activation_changed'=>false));
     }
 }
