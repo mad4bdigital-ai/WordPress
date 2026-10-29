@@ -59,10 +59,22 @@ final class MAD4B_SCP_Company_Domain_Cloudflare {
         return true;
     }
     private static function settings() {
+        // Prefer a read-only Docker secret; never put provider tokens in wp_options.
+        $token = '';
+        $tokenFile = (string)getenv('MAD4B_CLOUDFLARE_TOKEN_FILE');
+        if ($tokenFile !== '' && strpos($tokenFile,'/run/secrets/')===0 &&
+            is_readable($tokenFile) && is_file($tokenFile)) {
+            $token = trim((string)file_get_contents($tokenFile));
+        }
+        // An explicitly injected secret-only environment variable is a fallback
+        // for operator-managed containers; never log or return it.
+        if ($token==='' && $tokenFile==='') {
+            $token = trim((string)getenv('MAD4B_CLOUDFLARE_API_TOKEN'));
+        }
         $registry = json_decode((string)getenv('MAD4B_COMPANY_LAUNCH_REGISTRY_JSON'), true);
         $registry = is_array($registry) ? $registry : array();
         return array(
-            'token' => trim((string)getenv('MAD4B_CLOUDFLARE_API_TOKEN')),
+            'token' => $token,
             'zone_id' => trim((string)getenv('MAD4B_CLOUDFLARE_ZONE_ID')),
             'account_id' => trim((string)getenv('MAD4B_CLOUDFLARE_ACCOUNT_ID')),
             'origin_ipv4' => trim((string)getenv('MAD4B_COMPANY_ORIGIN_IPV4')),
