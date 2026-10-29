@@ -61,6 +61,45 @@ foreach ($ids as $templateId) {
         if (($found[$widget] ?? 0) !== 1) $issues[] = 'invalid_widget_count_'.$templateId.'_'.$widget;
     }
 }
+$headerTemplates = [26212,43484,43486,43488,43490,43492];
+$headerGlobals = [
+ 'menu_item_title_text_color_normal'=>'globals/colors?id=primary',
+ 'menu_item_title_text_color_hover'=>'globals/colors?id=accent',
+ 'menu_item_title_text_color_active'=>'globals/colors?id=secondary',
+ 'menu_toggle_icon_color_normal'=>'globals/colors?id=primary',
+ 'menu_item_title_typography_typography'=>'globals/typography?id=text',
+];
+foreach ($headerTemplates as $templateId) {
+    $tree = json_decode((string)get_post_meta($templateId, '_elementor_data', true), true);
+    if (!is_array($tree)) { $issues[] = 'invalid_header_json_'.$templateId; continue; }
+    $foundHeaders = 0;
+    $checkHeader = static function ($nodes) use (&$checkHeader, &$foundHeaders, &$issues, $templateId, $headerGlobals) {
+        foreach ((array)$nodes as $node) {
+            if (($node['id'] ?? null) === '6072b3f') {
+                $foundHeaders++;
+                if (($node['widgetType'] ?? '') !== 'mega-menu') {
+                    $issues[] = 'header_widget_type_'.$templateId;
+                    continue;
+                }
+                $settings = (array)($node['settings'] ?? []);
+                $globals = (array)($settings['__globals__'] ?? []);
+                foreach ($headerGlobals as $key=>$value) {
+                    if (($globals[$key] ?? null) !== $value) $issues[] = 'header_kit_mapping_'.$templateId.'_'.$key;
+                }
+                foreach ($settings as $key=>$value) {
+                    if (strpos((string)$key, 'menu_item_title_typography_') === 0 ||
+                        (array_key_exists($key, $headerGlobals) && $key !== '__globals__')) {
+                        $issues[] = 'header_independent_style_'.$templateId.'_'.$key;
+                    }
+                }
+            } elseif (!empty($node['elements'])) {
+                $checkHeader($node['elements']);
+            }
+        }
+    };
+    $checkHeader($tree);
+    if ($foundHeaders !== 1) $issues[] = 'header_widget_count_'.$templateId;
+}
 $strict = getenv('MAD4B_NEW_COMPANY_ADMISSION') === '1';
 if ($strict && $duplicateIds) $issues[] = 'new_company_kit_duplicate_color_ids';
 $status = !$issues ? ($duplicateIds ? 'COMPLIANT_NAVIGATION_WITH_KIT_LEGACY_DEBT' : 'COMPLIANT') : 'GOVERNANCE_BLOCKED';
@@ -70,6 +109,7 @@ echo wp_json_encode([
  'kit_id'=>$kitId,
  'status'=>$status,
  'checked_translated_tour_templates'=>count($ids),
+ 'checked_translated_mega_menu_headers'=>count($headerTemplates),
  'legacy_duplicate_custom_color_ids'=>$duplicateIds,
  'strict_new_company_admission'=>$strict,
  'issues'=>$issues,
