@@ -28,3 +28,8 @@ jobs:
         run: python3 ops/company-performance-intelligence-v1/test-contract.py
       - name: PHP source syntax
         run: php -l ops/company-performance-intelligence-v1/company-performance-intelligence.php
+
+      - name: Verify authenticated read-only REST interface contract
+        run: python3 ops/company-performance-intelligence-v1/test-rest-contract.py
+      - name: PHP REST route syntax
+        run: php -l ops/company-performance-intelligence-v1/company-performance-rest.php
