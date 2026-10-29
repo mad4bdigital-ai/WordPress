@@ -94,7 +94,11 @@ def generate(catalog, source_roots):
                 probe = probe / part
                 require(not probe.is_symlink(), "symlink in asset path")
             require(candidate.resolve().is_relative_to(root), "asset escaped root")
-            digest = hashlib.sha256(candidate.read_bytes()).hexdigest()
+            with candidate.open("rb") as stream:
+                digest_obj = hashlib.sha256()
+                for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                    digest_obj.update(chunk)
+                digest = digest_obj.hexdigest()
             require(digest == expected, "source hash changed")
             target = escape_conf(f"/srv/media/{key}/{rel}")
             config += [
@@ -113,10 +117,12 @@ def main():
     parser=argparse.ArgumentParser()
     parser.add_argument("--catalog",required=True)
     parser.add_argument("--output",required=True)
-    parser.add_argument("--etg-root",required=True)
+    parser.add_argument("--roots-file",required=True,help="Local JSON mapping of registered tenant key to absolute origin root")
     args=parser.parse_args()
     data=json.loads(Path(args.catalog).read_text())
-    rendered,summary=generate(data, {"etg":args.etg_root})
+    roots=json.loads(Path(args.roots_file).read_text())
+    require(isinstance(roots,dict) and all(isinstance(k,str) and isinstance(v,str) and Path(v).is_absolute() for k,v in roots.items()),"invalid roots mapping")
+    rendered,summary=generate(data, roots)
     dst=Path(args.output)
     dst.parent.mkdir(parents=True,exist_ok=True)
     tmp=dst.with_suffix(".tmp")
