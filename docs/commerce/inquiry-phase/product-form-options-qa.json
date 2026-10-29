@@ -1,0 +1,60 @@
+{
+  "date": "2026-10-29",
+  "environment": "Woo Lab local only",
+  "scope": "fluent_forms_inquiry_product_options_rate_reference",
+  "forms": [
+    1,
+    2,
+    3,
+    5,
+    6,
+    7,
+    8,
+    9,
+    11
+  ],
+  "source_binding": {
+    "signed_receipt": true,
+    "ttl_seconds": 3600,
+    "parent_rate_verified": true,
+    "client_hidden_rate_not_authority": true
+  },
+  "snapshot": {
+    "saved_on_original_form_submission": true,
+    "immutable": true,
+    "seal_hmac_sha256": true,
+    "form6_program_dates_quantities": true,
+    "form7_extras_and_cpt_dynamic": true,
+    "dynamic_option_labels_verified_only_if_form_schema_contains_value": true,
+    "rate_price_current_catalog_reference": true,
+    "add_on_total_certified": false,
+    "customer_visible_full_estimate_certified": false,
+    "emails_names_notes_copied": false,
+    "admin_only_read": true
+  },
+  "testing": {
+    "options_qa": {
+      "passed": 26,
+      "total": 26,
+      "sql_rollback": true
+    },
+    "signed_page_source_and_native_submission_hook": {
+      "passed": 12,
+      "total": 12,
+      "sql_rollback": true
+    },
+    "full_browser_submit_certified": false
+  },
+  "commercial_authority": {
+    "payment": false,
+    "booking": false,
+    "final_quote": false
+  },
+  "dependencies": {
+    "smtp_connections": 0,
+    "crm_operational_active": true,
+    "chatbotx_local_only": true
+  },
+  "vps_evidence": "/opt/commerce-components/evidence/etg-inquiry-options-20261029/",
+  "production_mutated": false
+}
