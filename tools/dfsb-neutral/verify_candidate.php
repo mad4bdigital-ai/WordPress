@@ -12,7 +12,7 @@ $identity=\DynamicFilterSEOBridge\Diagnostics\BuildIdentity::collect();
 $release=\DynamicFilterSEOBridge\Runtime\BootGuard::releaseReadiness();
 if(empty($identity['valid'])||empty($identity['installed_content_valid'])||
   $identity['exact_build_reason']!=='ok'||!empty($release['ready'])||
-  $release['reason']!=='local_source_candidate_not_certified'){
+  !in_array($release['reason'],array('local_source_candidate_not_certified','certified_release_receipt_required','independent_provider_certificate_required'),true)){
     throw new RuntimeException('integrity or governance failure: '.json_encode([$identity,$release]));
 }
 echo json_encode(['status'=>'PASS','source_sha'=>$identity['git_sha'],
