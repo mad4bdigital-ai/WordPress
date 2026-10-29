@@ -125,6 +125,7 @@ final class MAD4B_SCP_Policy {
 		if ( ! MAD4B_SCP_Delegation_Mode::principal_allowed( $identity ) ) return false;
 		$agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
 		if ( is_wp_error( $agent ) ) return false;
+		if ( ! MAD4B_SCP_Delegation_Mode::agent_matches_user( $identity, $agent ) ) return false;
 		return (bool) apply_filters( 'mad4b_scp_mutation_permission', true, get_current_user_id(), $agent, $identity );
 	}
 
