@@ -4,11 +4,11 @@
  * No hardcoded company colors, no widget or template mutation.
  */
 :root {
-  --mad4b-client-ink: var(--e-global-color-primary, var(--ast-global-color-0, #102d40));
-  --mad4b-client-surface: var(--e-global-color-80789f7, #f6f2e9);
-  --mad4b-client-hover: var(--e-global-color-secondary, #204c50);
-  --mad4b-client-accent: var(--e-global-color-accent, #b48a46);
-  --mad4b-client-muted: var(--e-global-color-c18767c, #52636d);
+  --mad4b-client-ink: var(--e-global-color-primary, currentColor);
+  --mad4b-client-surface: var(--e-global-color-bnav001, transparent);
+  --mad4b-client-hover: var(--e-global-color-secondary, currentColor);
+  --mad4b-client-accent: var(--e-global-color-accent, currentColor);
+  --mad4b-client-muted: var(--e-global-color-text, currentColor);
 }
 
 /* Existing nationality/country header controls: never alter input/select meaning. */
@@ -76,6 +76,9 @@
   background-color: var(--mad4b-client-accent);
 }
 
+/* Rebuilt TOC is never visible on desktop after resize from mobile. */
+.mad4b-tour-toc { display: none; }
+
 /* The original full Elementor TOC stays intact and accessible on desktop. */
 @media (max-width: 767px) {
   body.single-tours-and-activities .elementor-24784 .elementor-element-b29a19b {
@@ -102,6 +105,7 @@
   }
 
   body.single-tours-and-activities .mad4b-tour-toc {
+    display: block;
     width: 100%;
     min-width: 0;
     max-width: none;
