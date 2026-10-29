@@ -34,6 +34,11 @@ class CompanyCloneFieldPolicyTest(unittest.TestCase):
         self.assertEqual(len(nested["contact-and-help-info"]), 17)
         self.assertEqual(len(nested["look-and-feel"]), 39)
         self.assertEqual(len(nested["rank-math-options-titles"]), 9)
+        term_fields = self.p["taxonomy_term_fields"]["destinations"]
+        self.assertEqual(len(term_fields), 6)
+        self.assertEqual(sum(len(v) for v in nested.values()) + len(term_fields), 71)
+        self.assertEqual(term_fields["google_place_id"], "REMAP_GEO")
+        self.assertEqual(term_fields["image_gellery"], "TENANT_MEDIA")
         self.assertEqual(nested["contact-and-help-info"]["site_email"], "TENANT_SOURCE")
         self.assertEqual(nested["contact-and-help-info"]["site_whatsapp_num"], "TENANT_SOURCE")
         self.assertEqual(nested["look-and-feel"]["review_gellery_slider"], "TENANT_MEDIA")
