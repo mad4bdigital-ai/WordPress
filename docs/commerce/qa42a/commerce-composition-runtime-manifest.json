@@ -2,7 +2,7 @@
   "schema": "mad4b.commerce-composition.release-snapshot.v1",
   "release_state": "lab_source_snapshot_not_production_authorized",
   "plugin_slug": "commerce-composition",
-  "source_count": 75,
+  "source_count": 77,
   "source_files": [
     {
       "path": "bin/process-workflow-queue.php",
@@ -16,8 +16,8 @@
     },
     {
       "path": "composition.php",
-      "sha256": "5fe46a9eae226e61bde5cae81dfffdbbfbab8eb70ee692a401d5327daf4de773",
-      "bytes": 9201
+      "sha256": "9d928ec766d34c7fc5de67ffe5244251d66d21bf03f564a9857d506f9d75fcf3",
+      "bytes": 9640
     },
     {
       "path": "includes/Admin.php",
@@ -191,13 +191,18 @@
     },
     {
       "path": "includes/InquiryPhaseOperations.php",
-      "bytes": 10816,
-      "sha256": "bc44c31b757f61f99500f4621d03d4db925041689b2c5301d61c142e178e3038"
+      "bytes": 11315,
+      "sha256": "2398782714ca57e3a1ba3b705f359f99b17bea4c4c00646aa9fb12eacb186148"
     },
     {
       "path": "includes/InquiryQualification.php",
       "sha256": "1bab280d788e07250333f462d327366d1de6ce522f377e71f1fbb746213c134e",
       "bytes": 13607
+    },
+    {
+      "path": "includes/InquirySelectionSnapshot.php",
+      "bytes": 14624,
+      "sha256": "bae456d76a53d15c288c986eff8462c6cef2a8c7aeb036ab626b6fa03a513c27"
     },
     {
       "path": "includes/IntakeCaseApi.php",
@@ -253,6 +258,11 @@
       "path": "includes/PolicyStore.php",
       "sha256": "7c9760dafd31981500e87fd52a5c1f07e33088cf516ae49bbad03b29fa0abe96",
       "bytes": 4386
+    },
+    {
+      "path": "includes/ProductFormSourceReceipt.php",
+      "bytes": 5927,
+      "sha256": "92fb8127066c9971e3f1bc8c03ee295b41c48cfa13d37792a7c00d526bb450a6"
     },
     {
       "path": "includes/PropertyUnitSourceCertification.php",
