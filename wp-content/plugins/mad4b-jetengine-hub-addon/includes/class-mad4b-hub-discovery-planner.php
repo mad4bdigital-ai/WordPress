@@ -431,6 +431,97 @@ final class MAD4B_Hub_Discovery_Planner {
             'model_called'=>false,'source_field_claims_verified'=>false,
             'owner_approval_required'=>true,'no_values_read'=>true);
     }
+    /**
+     * Read only the binding graph of an EXISTING Elementor template.
+     * Never return Elementor settings/data, tokens, dynamic field values,
+     * arbitrary shortcode content or source-company options.
+     */
+    public static function inspect_template($id) {
+        if(!(is_int($id)||(is_string($id)&&ctype_digit($id))) ||
+           (int)$id<1)return self::err('template_id_invalid');
+        $id=(int)$id;
+        $post=get_post($id);
+        if(!$post || $post->post_type!=='elementor_library' ||
+           $post->post_status!=='publish')return self::err('template_unavailable');
+        $raw=(string)get_post_meta($id,'_elementor_data',true);
+        if(strlen($raw)<2||strlen($raw)>2500000)return self::err('template_size_invalid');
+        $tree=json_decode($raw,true);
+        if(!is_array($tree))return self::err('template_json_invalid');
+        $nodes=array();$visited=0;$overLimit=false;
+        $visit=function($items,$depth)use(&$visit,&$nodes,&$visited,&$overLimit){
+            if($depth>24){$overLimit=true;return;}
+            foreach((array)$items as $node){
+                if(++$visited>2000){$overLimit=true;return;}
+                if(!is_array($node))continue;
+                $widget=(string)($node['widgetType']??'');
+                if($widget!==''){
+                    $record=array('widget_id'=>self::clean($node['id']??'',12),
+                        'widget_type'=>self::clean($widget,70),'references'=>array());
+                    $settings=(array)($node['settings']??array());
+                    foreach(array('filter_id','query_id','custom_query_id',
+                        'listing_id','template_id') as $key){
+                        if(!isset($settings[$key]))continue;
+                        $values=is_array($settings[$key])?
+                            $settings[$key]:array($settings[$key]);
+                        $out=array();
+                        foreach(array_slice($values,0,30) as $value){
+                            if(!is_string($value)&&!is_int($value))continue;
+                            $v=(string)$value;
+                            if(preg_match('/^[a-zA-Z0-9_-]{1,90}$/D',$v))$out[]=$v;
+                        }
+                        if($out)$record['references'][$key]=array_values(array_unique($out));
+                    }
+                    if($record['references'])$nodes[]=$record;
+                }
+                $visit($node['elements']??array(),$depth+1);
+                if($overLimit)return;
+            }
+        };
+        $visit($tree,0);
+        if($overLimit)return self::err('template_graph_bounds_exceeded');
+        $caps=self::capabilities();
+        $queriesById=array_column($caps['jet_engine']['queries'],null,'id');
+        $queriesByKey=array();
+        foreach($caps['jet_engine']['queries'] as $q){
+            if($q['query_id']!=='')$queriesByKey[$q['query_id']]=$q;
+        }
+        $filterById=array_column($caps['jet_smart_filters']['filters'],null,'id');
+        $resolved=array();
+        foreach($nodes as $node){
+            foreach($node['references'] as $kind=>$values){
+                foreach($values as $v){
+                    $r=array('widget_id'=>$node['widget_id'],
+                        'widget_type'=>$node['widget_type'],'binding_kind'=>$kind,
+                        'native_reference'=>$v,'resolution'=>'review_required',
+                        'auto_apply'=>false);
+                    if(in_array($kind,array('query_id','custom_query_id'),true)){
+                        $q=ctype_digit($v)?($queriesById[(int)$v]??null):($queriesByKey[$v]??null);
+                        if($q){
+                            $r['resolved_query_id']=$q['id'];
+                            $r['resolved_query_type']=$q['type'];
+                            $r['resolution']='existing_native_query';
+                        }
+                    }
+                    if($kind==='filter_id' && ctype_digit($v)&&isset($filterById[(int)$v])){
+                        $r['resolved_filter_id']=(int)$v;
+                        $r['resolution']='existing_jet_smart_filter';
+                    }
+                    $resolved[]=$r;
+                }
+            }
+        }
+        return array('contract'=>self::CONTRACT,'template_id'=>$id,
+            'template_source'=>'existing_elementor',
+            'template_sha256'=>hash('sha256',$raw),
+            'bindings'=>$resolved,'widget_binding_nodes'=>count($nodes),
+            'read_only'=>true,'secret_values_exported'=>false,
+            'activation_performed'=>false,
+            'recommendation'=>'preserve_native_query_filter_listing_binding');
+    }
+    public static function route_inspect($request){
+        $payload=$request->get_json_params();
+        return self::inspect_template(is_array($payload)?($payload['template_id']??null):null);
+    }
     public static function permission(){return current_user_can('manage_options');}
     public static function route_capabilities(){return self::capabilities();}
     public static function route_validate($request){return self::validate($request->get_json_params());}
@@ -439,7 +530,8 @@ final class MAD4B_Hub_Discovery_Planner {
         foreach(array(
             '/hub-capabilities'=>array('GET','route_capabilities'),
             '/hub-selection/validate'=>array('POST','route_validate'),
-            '/hub-selection/advise'=>array('POST','route_advise')
+            '/hub-selection/advise'=>array('POST','route_advise'),
+            '/hub-template/inspect'=>array('POST','route_inspect')
         ) as $path=>$info){
             register_rest_route(self::NAMESPACE_NAME,$path,array(
                 'methods'=>$info[0],'callback'=>array(__CLASS__,$info[1]),
