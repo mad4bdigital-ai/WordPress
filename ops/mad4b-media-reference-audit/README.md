@@ -63,3 +63,18 @@ Full unattended deletion is **not implemented**: approval requires a separate su
 - Source branch and review: PR #616. The Staging MU file is an exact copy of this branch's source file, not a canonical Production installer yet.
 - Do not merge or spread to companies without normal source CI, owner attestation, rollout and authority review.
 - Offsite backup is postponed by owner; same-VPS snapshot risk remains.
+
+## Full-inventory triage and reversible administrative quarantine (2026-10-29)
+
+The routine WordPress Ability is intentionally bounded; it cannot establish that images are unused. Run the standalone **read-only** full-inventory tools against a reviewed local Staging DB and protected local media origin:
+
+- `full_reference_inventory.py`: streams all 6,449 no-parent / dangling-parent image attachments and local reference surfaces (post metadata, posts, options, user metadata, term metadata); produces a private JSONL and summary. No WordPress mutations.
+- `review_secondary_sources.py`: checks unresolved images against WPML strings/translations, Content Hub objects and generated theme/Elementor/CSS files. Still cannot certify remote/external usage.
+- `stage_admin_quarantine.py`: snapshots unresolved candidates in a root-only private **review-hold registry** with SHA-256 on existing source files; it NEVER moves or deletes media or publishes catalog permissions.
+- `review_hold_control.py`: provides private registry status and explicit reasoned release of an administrative hold only; records never authorize deletion, physical quarantine or publication.
+
+Pilot results on ETG Commerce Staging: 6,449 candidates. Broad local references found for 6,398. Secondary audit found additional references for 2 of 51 initially unresolved. Final review queue: **49 records** (30 source files present, 19 source files missing). These files include branding/payment/UI assets, so physical removal is not certified. No assets moved or deleted. Separately, 490 attachment records from the total candidate population point to files absent in both current Staging media and the verified local backup; treat those as a broken-reference repair task, not a deletion list.
+
+Private registry on VPS: `/srv/mad4b-media-control/quarantine-review/ETG-REVIEW-HOLD-20261029.json` (mode 0600). Rollback control tested on a private copy of this registry, without touching source media. Its active hold paths are checked at generation time by the internal Media Gateway source in PR #614; held files cannot be added to the new preview allowlist. This **does not** disable existing WordPress/media URLs and is not a global public-media ACL. Existing live media bytes stay intact.
+
+The authoritative scope remains Staging-only. No Production/DNS changes, no file deletion, and no offsite-backup certification (deferred by owner). Exact CI/owner authority still required before source merge or deployment elsewhere.
