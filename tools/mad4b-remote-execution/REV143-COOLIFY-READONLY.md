@@ -11,11 +11,11 @@ ready to deploy.
 Use the officially supported Coolify CLI with an already-authorized context:
 
 ~~~bash
-coolify context verify
-coolify resource list --format json
-coolify app list --format json
-coolify service list --format json
-coolify server list --format json
+coolify --context mad4b-production context verify
+coolify --context mad4b-production resource list --format json
+coolify --context mad4b-production app list --format json
+coolify --context mad4b-production service list --format json
+coolify --context mad4b-production server list --format json
 ~~~
 
 Installed CLI help is authoritative:
@@ -30,13 +30,26 @@ mutation are rejected. Errors are reported without copying CLI stdout/stderr.
 
 ~~~bash
 python3 tools/mad4b-remote-execution/coolify_readonly_inventory.py \
+  --context mad4b-production \
   --host tours.dev.mad4b.com \
-  --host qa02.example.com \
   --output rev143-coolify-inventory.json
 ~~~
 
-Replace the illustrative QA02 hostname **only after** an actual public HTTPS
-hostname has been registered and verified. No local/IP hostname qualifies.
+Add `--host <real-public-qa02-hostname>` only after a real public QA02
+DNS name is registered and verified. The QA02 workload is currently
+an on-host Docker deployment, not proof of a public Coolify registration.
+No loopback/IP hostname qualifies.
+
+**Observed VPS read-only evidence (2026-10-29):** the default Coolify
+CLI context was `cloud` and returned HTTP 401; the explicitly named
+`mad4b-production` context verified successfully. CLI v1.10.0
+`resource list`, `app list`, and `service list` returned no
+`fqdn`/`domain`/`domains` metadata in any row. When hostname
+matching cannot be performed, the tool now reports
+`COOLIFY_LIST_API_OMITS_DOMAINS`, **not** an absent tenant or a valid
+activation certificate. Separately, the VPS had running
+`mad4b-tenant-qa02-php` and `etg-commerce-staging-php` containers.
+No Shared Media issuer/mount evidence was established by this CLI test.
 
 ## Test
 
@@ -51,8 +64,9 @@ python3 -m unittest discover \
 INVENTORY_ONLY: the supplied hostnames appear exactly in one or more
 Coolify resources, using the active context's read access.
 
-BLOCKED: CLI missing, context unverified, required inventory failed, or a
-specified hostname not found. Being absent from Coolify does **not** prove
+BLOCKED: CLI missing, context unverified, required inventory failed,
+list APIs omit hostname metadata, or a specified hostname cannot be found
+when such metadata is available. Being absent from Coolify does **not** prove
 the Docker workload is absent: existing MAD4B Staging containers may have been
 installed outside Coolify. Do not recreate/replace them on that basis.
 
