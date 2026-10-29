@@ -3,7 +3,8 @@ define('ABSPATH','/isolated/');
 define('ICL_SITEPRESS_VERSION','mock');
 class WP_Term {public $name='Africa';public $description='';}
 class WP_Error {
-    public function __construct(private string $code) {}
+    private $code;
+    public function __construct($code) {$this->code=$code;}
     public function get_error_code(){return $this->code;}
 }
 function is_wp_error($r){return $r instanceof WP_Error;}
@@ -43,7 +44,8 @@ function apply_filters($key,$v,...$args){
 function wp_json_encode($v){return json_encode($v);}
 function rest_ensure_response($data){return $data;}
 class Readiness_Test_Request {
-    public function __construct(private array $values=[]){}
+    private $values;
+    public function __construct(array $values=[]) {$this->values=$values;}
     public function get_param($key){return $this->values[$key]??null;}
 }
 $module=dirname(__DIR__).'/includes/class-mad4b-scp-content-readiness-alerts.php';
@@ -354,7 +356,8 @@ yes(str_contains($taskPreview['title'],'media') &&
     str_contains($digestPreview['body'],'120 gaps'),
     'source-scoped templates render recognized variables');
 class PreActivation_Test_Request {
-    public function __construct(private array $json) {}
+    private $json;
+    public function __construct(array $json) {$this->json=$json;}
     public function get_json_params(){return $this->json;}
 }
 $saved=$pre::rest_patch(new PreActivation_Test_Request([
