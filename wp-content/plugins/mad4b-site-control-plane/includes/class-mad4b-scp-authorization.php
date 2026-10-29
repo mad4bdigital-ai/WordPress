@@ -230,6 +230,11 @@ final class MAD4B_SCP_Authorization {
 		}
 		$agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
 		if ( is_wp_error( $agent ) ) return $agent;
+		if ( class_exists( 'MAD4B_SCP_Delegation_Mode' )
+			&& ! MAD4B_SCP_Delegation_Mode::agent_matches_user( $identity, $agent ) ) {
+			return self::error( 'mad4b_delegation_agent_user_mismatch',
+				'Delegated subject and bound agent must belong to the same WordPress user.' );
+		}
 		if ( ! class_exists( 'MAD4B_SCP_Policy' ) || ! MAD4B_SCP_Policy::can_mutate() ) return self::error( 'mad4b_mutation_disabled', 'Mutation capability is disabled by MAD4B policy.' );
 		if ( 'mad4b-breakglass' === $server_id && ! MAD4B_SCP_Policy::can_breakglass() ) return self::error( 'mad4b_breakglass_disabled', 'Breakglass capability is disabled.' );
 		if ( 'mad4b-developer' === $server_id && ! MAD4B_SCP_Policy::can_developer() ) return self::error( 'mad4b_developer_disabled', 'Developer execution capability is disabled or the exact Developer Agent is not bound.' );
