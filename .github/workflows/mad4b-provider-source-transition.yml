@@ -1,0 +1,35 @@
+name: MAD4B Provider Source Transition Contracts
+on:
+  pull_request:
+    paths:
+      - 'ops/provider-source-transition/**'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/cross-plugin-sources.json'
+      - '.github/workflows/mad4b-provider-source-transition.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mad4b-provider-transition-${ github.event.pull_request.number || github.ref }}-${ github.event_name }}
+  cancel-in-progress: true
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${ github.event.pull_request.head.sha || github.sha }}
+      - name: Validate neutral-first source migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s ops/provider-source-transition -p 'test_*.py' -v
+          python3 ops/provider-source-transition/resolve_source.py --mode new_site > /tmp/neutral-transition.json
+          python3 - <<'PY'
+          import json
+          with open('/tmp/neutral-transition.json', encoding='utf-8') as f:
+              p = json.load(f)
+          assert p['source_id'] == 'dynamic-filter-seo-bridge'
+          assert not p['execution_allowed'] and not p['publication_allowed']
+          assert not p['mutation_allowed'] and not p['legacy_fallback_used']
+          print('PROVIDER_NEUTRAL_SOURCE_TRANSITION: PASS')
+          PY
