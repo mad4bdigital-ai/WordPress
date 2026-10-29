@@ -13,7 +13,9 @@ function add_action() {}
 function get_option($k,$default){return $GLOBALS['mode_setting']===null?$default:$GLOBALS['mode_setting'];}
 function absint($x){return abs((int)$x);}
 function sanitize_key($x){return strtolower(trim((string)$x));}
-function apply_filters($hook,$value){return $value;}
+$GLOBALS['restrict_connection_filter']=false;
+function has_filter($name){return $name==='mad4b_scp_connection_capability' && $GLOBALS['restrict_connection_filter']?10:false;}
+function apply_filters($hook,$value){return $hook==='mad4b_scp_connection_capability' && $GLOBALS['restrict_connection_filter']?'manage_options':$value;}
 function get_userdata($id){return isset($GLOBALS['caps'][$id])?(object)array('ID'=>$id):false;}
 function user_can($u,$cap){return !empty($GLOBALS['caps'][$u->ID][$cap]);}
 class MAD4B_SCP_Site_Profile {
@@ -25,6 +27,10 @@ require dirname(__DIR__).'/includes/class-mad4b-scp-policy.php';
 assert(MAD4B_SCP_Delegation_Mode::selected_mode()==='delegated_user');
 assert(MAD4B_SCP_Policy::can_connect_user(11)===true); // verified enrollment, editor need not be admin.
 assert(MAD4B_SCP_Policy::can_connect_user(22)===true);
+$GLOBALS['restrict_connection_filter']=true;
+assert(MAD4B_SCP_Policy::can_connect_user(11)===false); // Explicit operator admin cap not relaxed.
+assert(MAD4B_SCP_Policy::can_connect_user(22)===true);
+$GLOBALS['restrict_connection_filter']=false;
 assert(MAD4B_SCP_Policy::can_connect_user(33)===false); // enrollment never bypassed.
 $GLOBALS['origin_enrolled']=false;
 assert(MAD4B_SCP_Policy::can_connect_user(11)===false);
