@@ -1,0 +1,108 @@
+{
+  "contract": "mad4b.staging-content-hub-test-isolation.qa-receipt.v1",
+  "date": "2026-10-29",
+  "staging_origin": "https://tours.dev.mad4b.com",
+  "status": "PASS",
+  "passed": 16,
+  "total": 16,
+  "checks": [
+    {
+      "name": "staging_only",
+      "pass": true
+    },
+    {
+      "name": "policy_available",
+      "pass": true
+    },
+    {
+      "name": "hub_active",
+      "pass": true
+    },
+    {
+      "name": "fifteen_classified",
+      "pass": true
+    },
+    {
+      "name": "all_test_records_are_draft",
+      "pass": true
+    },
+    {
+      "name": "test_only_meta_classification",
+      "pass": true
+    },
+    {
+      "name": "nine_lab_related_records",
+      "pass": true
+    },
+    {
+      "name": "hub_denies_all_nine_candidates",
+      "pass": true
+    },
+    {
+      "name": "generated_rate_denied",
+      "pass": true
+    },
+    {
+      "name": "explicit_post_in_excluded",
+      "pass": true
+    },
+    {
+      "name": "general_queries_exclude_qa",
+      "pass": true
+    },
+    {
+      "name": "non_qa_live_tour_exists",
+      "pass": true
+    },
+    {
+      "name": "non_qa_live_tour_visible",
+      "pass": true
+    },
+    {
+      "name": "non_qa_hub_not_denied",
+      "pass": true
+    },
+    {
+      "name": "no_published_lab_records",
+      "pass": true
+    },
+    {
+      "name": "no_related_wpml_group_unclassified",
+      "pass": true
+    }
+  ],
+  "classification": {
+    "legacy_published_downgraded_to_draft": 8,
+    "legacy_related_draft_classified": 1,
+    "existing_qa28_drafts_preserved": 6,
+    "total_classified_test_only": 15
+  },
+  "source_sha256": {
+    "010-mad4b-test-data-isolation.php": "16bc7ca72b58b2c9a60dffaa9c0c6278bc46db438274dba81c1e679f9c27cc49",
+    "class-mad4b-hub-source-reader.php": "51a4bd05136be5fb214291a6540204cfa107ffc4ca2583db3165e238e93faa7d"
+  },
+  "backup": {
+    "verified": true,
+    "sha256": "a7494d588ab4834c6adc92ede32ac02afbf3b49c2411ae577951347152ca948b",
+    "sensitive_backup_in_repo": false
+  },
+  "public_checks": {
+    "staging_root_http": 200,
+    "sample_test_tour_http": 404,
+    "sample_test_rate_http": 404,
+    "rest_root_http": 200
+  },
+  "operational": {
+    "content_hub_central_preview": true,
+    "external_distribution": false,
+    "shared_price_publish": false,
+    "production_mutated": false,
+    "production_import_completed": false,
+    "live_cutover_authorized": false
+  },
+  "limitations": [
+    "custom SQL / third-party commerce queries require additional audit",
+    "restore-from-backup was not rehearsed",
+    "current Production authenticated snapshot not available"
+  ]
+}
