@@ -11475,6 +11475,27 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing release provenance, native update integrity, site-bound owner approval, backup/readback and rollback controls govern the same install lane; no new executable ability or broad skip of ancestry validation is added.",
       "review_rationale": "Patch a witnessed Selected-HEAD Staging continuation release-untrusted failure. Propagate only fixed-channel master release verdict metadata after exact six-part package identity equality and all root-trust flags. Never accept caller-supplied trust, and leave nonmatching Staging candidate behavior and Production denial unchanged."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-source-selector.php",
+      "source_blob_sha": "528943e1b569598b58261716e1cd0852594d2b80",
+      "control_ids": [
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-source-selector-runtime.php"
+      ],
+      "owner_role": "Repository source maintainer / CI-only review, not Staging authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing pinned source validation, exact SHA identity, bounded GitHub HTTPS and protected candidate deploy controls cover the compact Git Data lookup.",
+      "review_rationale": "The GitHub /commits/{sha} REST response may exceed the existing 262144-byte budget for multi-parent integration changes. Only the exact immutable commit lookup changes to /git/commits/{sha} (small Git object metadata). Do not raise limits, change other source selectors or treat any redirect/invalid/mismatched response as verified."
     }
   ],
   "code_change_rules": {

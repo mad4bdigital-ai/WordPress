@@ -19,7 +19,7 @@ function wp_safe_remote_get($url,$args){
   if($network_mode==='fail')return new WP_Error('network_disconnected');
   if($network_mode==='badsha')return ['code'=>200,'body'=>'{"sha":"ffffffffffffffffffffffffffffffffffffffff"}'];
   if($network_mode==='invalid')return ['code'=>200,'body'=>'invalid'];
-  preg_match('~/commits/([a-f0-9]{40})$~',$url,$match);
+  preg_match('~/git/commits/([a-f0-9]{40})$~',$url,$match);
   return ['code'=>200,'body'=>json_encode(['sha'=>$match[1]??''])];
 }
 function wp_remote_retrieve_response_code($response){return (int)$response['code'];}
@@ -29,7 +29,7 @@ $selector='mad4bdigital-ai/WordPress';$sha=str_repeat('a',40);
 $input=['repository'=>$selector,'type'=>'commit','reference'=>$sha];
 $r=MAD4B_SCP_Staging_Source_Selector::resolve($input);
 if(is_wp_error($r)||$r['resolved_sha']!==$sha||$r['remote_verified']!==true||$r['authorizing']!==false)throw new Exception('allowed_repo_mock_verification_failed');
-if($last_url!=='https://api.github.com/repos/'.$selector.'/commits/'.$sha)throw new Exception('not_pinned_github_origin');
+if($last_url!=='https://api.github.com/repos/'.$selector.'/git/commits/'.$sha)throw new Exception('not_pinned_github_origin');
 $calls_before_denied=$network_calls;
 $blocked=MAD4B_SCP_Staging_Source_Selector::resolve(array_merge($input,['repository'=>'mad4b-local/staging']));
 if(!is_wp_error($blocked)||$blocked->get_error_code()!=='mad4b_staging_source_repository_denied')throw new Exception('legacy_local_repository_not_blocked');
