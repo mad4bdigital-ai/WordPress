@@ -30,6 +30,16 @@ final class MAD4B_SCP_Policy {
 		// abilities still check their exact WordPress capabilities and scopes.
 		if ( $profile_configured && class_exists( 'MAD4B_SCP_Delegation_Mode' )
 			&& MAD4B_SCP_Delegation_Mode::DELEGATED === MAD4B_SCP_Delegation_Mode::selected_mode() ) {
+			// Explicit site operator restrictions remain effective. Only the
+			// historical implicit manage_options default is relaxed for enrolled
+			// readers; a site-defined cap or extension filter is never bypassed.
+			$explicit_connection_cap = defined( 'MAD4B_MCP_LOCAL_OAUTH_REQUIRED_CAPABILITY' )
+				|| ( function_exists( 'has_filter' )
+					&& false !== has_filter( 'mad4b_scp_connection_capability' ) );
+			if ( $explicit_connection_cap ) {
+				$required = self::connection_capability();
+				return user_can( $user, 'read' ) && '' !== $required && user_can( $user, $required );
+			}
 			return user_can( $user, 'read' );
 		}
 		$capability = self::connection_capability();
