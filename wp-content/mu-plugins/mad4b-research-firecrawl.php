@@ -12,6 +12,7 @@ final class MAD4B_Research_Firecrawl_Bridge {
     const CONTRACT = 'mad4b.research.firecrawl.preview.v1';
     const TARGET = 'http://gateway:8080';
     const DEFAULT_SECRET = '/run/mad4b-local-vault/firecrawl-control-plane/consumer.credential';
+    private static $transport_scope = '';
 
     public static function boot() {
         add_action( 'wp_abilities_api_init', array( __CLASS__, 'register' ), 45 );
@@ -66,6 +67,24 @@ final class MAD4B_Research_Firecrawl_Bridge {
         return new WP_Error( 'mad4b_research_' . $code, 'Private research provider operation is unavailable or forbidden.', array( 'status' => $status, 'retryable' => $status === 503, 'mutation_performed' => false ) );
     }
 
+    /** Allow only the request currently being emitted by this verified Ability. */
+    public static function transport_permitted( $url, $args ) {
+        if ( '' === self::$transport_scope || ! self::permitted() || ! is_array( $args ) ) { return false; }
+        $method = strtoupper( (string) ( $args['method'] ?? 'GET' ) );
+        if ( isset( $args['redirection'] ) && (int) $args['redirection'] !== 0 ) { return false; }
+        if ( 'health' === self::$transport_scope ) {
+            return 'GET' === $method && self::TARGET . '/__healthcheck' === $url;
+        }
+        if ( 'scrape' !== self::$transport_scope || 'POST' !== $method || self::TARGET . '/v1/scrape' !== $url ) { return false; }
+        $headers = isset( $args['headers'] ) && is_array( $args['headers'] ) ? $args['headers'] : array();
+        $type = isset( $headers['Content-Type'] ) ? strtolower( trim( (string) $headers['Content-Type'] ) ) : '';
+        $auth = isset( $headers['Authorization'] ) ? (string) $headers['Authorization'] : '';
+        if ( 'application/json' !== $type || 0 !== strpos( $auth, 'Basic ' ) ) { return false; }
+        $body = isset( $args['body'] ) && is_string( $args['body'] ) && strlen( $args['body'] ) < 4096 ? json_decode( $args['body'], true ) : null;
+        return is_array( $body ) && isset( $body['url'] ) && self::target_allowed( $body['url'] )
+            && isset( $body['formats'] ) && array( 'markdown' ) === $body['formats'];
+    }
+
     private static function secret_file() {
         $path = defined( 'MAD4B_FIRECRAWL_SECRET_FILE' ) ? constant( 'MAD4B_FIRECRAWL_SECRET_FILE' ) : self::DEFAULT_SECRET;
         if ( ! is_string( $path ) || '' === $path || ! is_file( $path ) || is_link( $path ) || ! is_readable( $path ) ) {
@@ -115,9 +134,12 @@ final class MAD4B_Research_Firecrawl_Bridge {
         $ready = false !== self::secret_file();
         $connected = false;
         if ( $ready ) {
-            $response = wp_remote_get( self::TARGET . '/__healthcheck', array(
-                'timeout' => 4, 'redirection' => 0, 'reject_unsafe_urls' => false,
-            ) );
+            self::$transport_scope = 'health';
+            try {
+                $response = wp_remote_get( self::TARGET . '/__healthcheck', array(
+                    'timeout' => 4, 'redirection' => 0, 'reject_unsafe_urls' => false,
+                ) );
+            } finally { self::$transport_scope = ''; }
             $connected = ! is_wp_error( $response ) && 200 === wp_remote_retrieve_response_code( $response );
         }
         return array(
@@ -139,7 +161,9 @@ final class MAD4B_Research_Firecrawl_Bridge {
         }
         $credentials = self::credentials();
         if ( false === $credentials ) { return self::error( 'not_configured' ); }
-        $response = wp_remote_post( self::TARGET . '/v1/scrape', array(
+        self::$transport_scope = 'scrape';
+        try {
+            $response = wp_remote_post( self::TARGET . '/v1/scrape', array(
             'timeout' => 25,
             'redirection' => 0,
             // The outbound destination is a fixed, internal service URL; caller cannot change it.
@@ -154,6 +178,7 @@ final class MAD4B_Research_Firecrawl_Bridge {
                 'url' => $input['url'], 'formats' => array( 'markdown' ), 'onlyMainContent' => true,
             ) ),
         ) );
+        } finally { self::$transport_scope = ''; }
         if ( is_wp_error( $response ) ) { return self::error( 'provider_unavailable' ); }
         if ( 200 !== wp_remote_retrieve_response_code( $response ) ) { return self::error( 'provider_rejected' ); }
         $data = json_decode( wp_remote_retrieve_body( $response ), true );
