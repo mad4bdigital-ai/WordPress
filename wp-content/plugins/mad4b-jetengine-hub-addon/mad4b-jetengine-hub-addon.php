@@ -134,7 +134,7 @@ final class MAD4B_JetEngine_Hub_Addon {
             $wpml=$wpdb->get_row($wpdb->prepare(
                 "SELECT language_code,trid FROM {$wpdb->prefix}icl_translations
                  WHERE element_type=%s AND element_id=%d LIMIT 1",
-                'tax_tour-types',(int)$term->term_id),ARRAY_A);
+                'tax_tour-types',(int)$term['term_id']),ARRAY_A);
             if (!$wpml || $wpml['language_code']!==$row['language'] ||
                 (int)$wpml['trid']<1) return self::deny('target_wpml_mismatch');
             $row['target_wpml_group']=(int)$wpml['trid'];
