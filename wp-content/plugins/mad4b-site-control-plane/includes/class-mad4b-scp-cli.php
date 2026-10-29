@@ -21,6 +21,7 @@ final class MAD4B_SCP_CLI {
 		WP_CLI::add_command( 'mad4b status', array( __CLASS__, 'status' ) );
 		WP_CLI::add_command( 'mad4b diagnostics schema', array( __CLASS__, 'diagnostics_schema' ) );
 		WP_CLI::add_command( 'mad4b diagnostics runtime', array( __CLASS__, 'diagnostics_runtime' ) );
+		WP_CLI::add_command( 'mad4b diagnostics restore-epoch', array( __CLASS__, 'diagnostics_restore_epoch' ) );
 		WP_CLI::add_command( 'mad4b package verify', array( __CLASS__, 'package_verify' ) );
 		WP_CLI::add_command( 'mad4b operations', array( __CLASS__, 'operations' ) );
 	}
@@ -75,6 +76,27 @@ final class MAD4B_SCP_CLI {
 		) );
 	}
 
+	/** Read-only restore preflight. Never performs site rebinding or changes write grants. */
+	public static function diagnostics_restore_epoch( $args = array(), $assoc_args = array() ) {
+		unset( $args, $assoc_args );
+		if ( ! class_exists( 'MAD4B_SCP_Restore_Epoch' ) ) {
+			self::emit( array( 'contract' => 'mad4b.cli-restore-epoch-diagnostic.v1', 'available' => false, 'reason' => 'restore_epoch_service_unavailable' ) );
+			return;
+		}
+		$status = MAD4B_SCP_Restore_Epoch::status( false, true );
+		$plan = MAD4B_SCP_Restore_Epoch::self_heal_plan();
+		self::emit( array(
+			'contract' => 'mad4b.cli-restore-epoch-diagnostic.v1',
+			'available' => true,
+			'classification' => isset( $status['classification'] ) ? $status['classification'] : 'QUARANTINED',
+			'blockers' => isset( $status['blockers'] ) ? $status['blockers'] : array(),
+			'candidate' => ! empty( $plan['candidate'] ),
+			'identity_provenance_required' => ! empty( $plan['identity_provenance_required'] ),
+			'write_disabled' => class_exists( 'MAD4B_SCP_Site_Profile' ) && ! MAD4B_SCP_Site_Profile::write_enabled(),
+			'next_action' => ! empty( $plan['identity_provenance_required'] ) ? 'governed_site_identity_migration_required' : ( ! empty( $plan['candidate'] ) ? 'verify_authority_and_recovery_preconditions' : 'investigate_restore_evidence' ),
+		) );
+	}
+
 	public static function package_verify( $args = array(), $assoc_args = array() ) {
 		unset( $args, $assoc_args );
 		$runtime = self::runtime_provenance();
@@ -100,6 +122,7 @@ final class MAD4B_SCP_CLI {
 				array( 'command' => 'wp mad4b status', 'operation' => 'runtime.status.read', 'readonly' => true ),
 				array( 'command' => 'wp mad4b diagnostics schema', 'operation' => 'schema.diagnostics.read', 'readonly' => true ),
 				array( 'command' => 'wp mad4b diagnostics runtime', 'operation' => 'runtime.provenance.verify', 'readonly' => true ),
+				array( 'command' => 'wp mad4b diagnostics restore-epoch', 'operation' => 'restore.epoch.diagnostics.read', 'readonly' => true ),
 				array( 'command' => 'wp mad4b package verify', 'operation' => 'package.integrity.verify', 'readonly' => true ),
 			),
 			'write_commands_available' => false,
