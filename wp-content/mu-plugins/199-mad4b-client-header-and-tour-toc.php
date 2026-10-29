@@ -54,7 +54,7 @@ if (!function_exists('mad4b_customer_header_label_html')) {
 add_filter('elementor/widget/render_content', static function ($html, $widget) {
     if (!is_object($widget) || !method_exists($widget, 'get_name')
         || !method_exists($widget, 'get_id') || $widget->get_name() !== 'html'
-        || !in_array($widget->get_id(), ['c0a29f0', 'c0a29f5'], true)) {
+        || $widget->get_id() !== 'c0a29f0') {
         return $html;
     }
     return mad4b_customer_header_label_html($html, mad4b_customer_header_passport_label());
