@@ -143,12 +143,30 @@ final class InquiryPhaseOperations
         $settings=function_exists('fluentMailGetSettings')?fluentMailGetSettings():[];
         $count=is_array($settings)&&is_array($settings['connections']??null)
             ?count($settings['connections']):0;
+        global $wpdb;
+        $feedTable=$wpdb->prefix.'fluentform_form_meta';
+        $feeds=0;
+        foreach((array)($c['form_ids']??[]) as $formId){
+            if(!is_numeric($formId)||(int)$formId<1)continue;
+            $feeds+=(int)$wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM {$feedTable} WHERE form_id=%d AND meta_key=%s",
+                (int)$formId,'fluentcrm_feeds'));
+        }
         return [
             'contract'=>'commerce.inquiry-phase-readiness.v1',
             'configured'=>($c['enabled']??false)===true,
             'form_ids'=>array_values(array_map('intval',(array)($c['form_ids']??[]))),
             'review_enabled'=>RequestReview::enabled()&&RequestReview::ready(),
-            'crm_original_source_configured'=>array_key_exists('tour_form6_inquiry',ContactBridge::sources()),
+            'crm_original_source_configured'=>count(array_filter(
+                ContactBridge::sources(),static fn($v)=>is_array($v)
+                &&($v['domain']??null)==='fluent_form'
+                &&(bool)array_intersect((array)($v['form_ids']??[]),(array)($c['form_ids']??[]))
+            ))>0,
+            'crm_native_feed_count'=>$feeds,
+            'crm_native_feed_automated'=>$feeds>0,
+            'estimate_preview_available'=>true,
+            'estimate_form_display_bound'=>false,
+            'estimate_immutable_snapshot_persisted'=>false,
             'boards_ready'=>FluentBoardsTaskBridge::ready(),
             'workflow_queue_ready'=>WorkflowJobs::ready(),
             'smtp_connection_count'=>$count,
