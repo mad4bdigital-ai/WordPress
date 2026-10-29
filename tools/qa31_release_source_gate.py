@@ -6,9 +6,16 @@ from pathlib import Path
 SHA=re.compile(r'^[a-f0-9]{64}$')
 SHA40=re.compile(r'^[a-f0-9]{40}$')
 def digest(p:Path)->str:return hashlib.sha256(p.read_bytes()).hexdigest()
-def reviewed_bootstrap_successor(root:Path,path:str,contents:bytes)->bool:
-    """Recognize one exact CI-reviewed Git successor; NEVER certify Staging parity."""
-    if path!='mad4b-site-control-plane.php' or not isinstance(contents,bytes):
+_REVIEWED_CI_ONLY_SOURCE_TESTS = {
+    'mad4b-site-control-plane.php': 'wp-content/plugins/mad4b-site-control-plane/tests/qa30-native-general-settings-rest-lifecycle.py',
+    'config/cross-plugin-sources.json': 'wp-content/plugins/mad4b-site-control-plane/tests/dfsb-rc15-signed-review-source-pin.py',
+    'includes/class-mad4b-scp-server-write-catalog.php': 'wp-content/plugins/mad4b-site-control-plane/tests/live-write-provider-snapshot-runtime.php',
+}
+
+def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
+    """Accept only exact reviewed Git blob successors. Never certify Staging parity."""
+    expected_test=_REVIEWED_CI_ONLY_SOURCE_TESTS.get(path)
+    if expected_test is None or not isinstance(contents,bytes):
         return False
     repo=Path(__file__).resolve().parents[1]
     expected=repo/'wp-content/plugins/mad4b-site-control-plane'
@@ -17,14 +24,13 @@ def reviewed_bootstrap_successor(root:Path,path:str,contents:bytes)->bool:
     source=root/path
     if source.is_symlink() or not source.is_file() or source.read_bytes()!=contents:
         return False
-    registry_path=repo/'governance/production-readiness/capability-coverage.json'
     try:
-        registry=json.loads(registry_path.read_text(encoding='utf-8'))
+        registry=json.loads((repo/'governance/production-readiness/capability-coverage.json').read_text(encoding='utf-8'))
         blob=hashlib.sha1(b'blob '+str(len(contents)).encode('ascii')+b'\0'+contents).hexdigest()
         git_blob=subprocess.check_output(
-            ['git','rev-parse','HEAD:wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'],
+            ['git','rev-parse','HEAD:wp-content/plugins/mad4b-site-control-plane/'+path],
             cwd=repo,stderr=subprocess.DEVNULL,timeout=8).decode().strip()
-        test=repo/'wp-content/plugins/mad4b-site-control-plane/tests/qa30-native-general-settings-rest-lifecycle.py'
+        test=repo/expected_test
     except (OSError,ValueError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
         return False
     if (blob!=git_blob or not test.is_file() or test.is_symlink()
@@ -32,7 +38,7 @@ def reviewed_bootstrap_successor(root:Path,path:str,contents:bytes)->bool:
         or registry.get('authorizing') is not False
         or registry.get('production_promotion_from_ci') is not False):
         return False
-    canonical='wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+    canonical='wp-content/plugins/mad4b-site-control-plane/'+path
     for row in registry.get('reviewed_changes',[]):
         if (isinstance(row,dict) and row.get('path')==canonical
             and row.get('source_blob_sha')==blob
@@ -40,46 +46,13 @@ def reviewed_bootstrap_successor(root:Path,path:str,contents:bytes)->bool:
             and row.get('production_authorized') is False
             and row.get('live_evidence_required') is True
             and len(row.get('control_ids',[]))>=2
-            and 'wp-content/plugins/mad4b-site-control-plane/tests/qa30-native-general-settings-rest-lifecycle.py'
-                in row.get('regression_tests',[])):
+            and expected_test in row.get('regression_tests',[])):
             return True
     return False
 
-def reviewed_server_write_catalog_successor(root:Path,path:str,contents:bytes)->bool:
-    """Accept ONLY the exact SHA-reviewed W1 read-only provider map as pending, never as parity."""
-    exact='includes/class-mad4b-scp-server-write-catalog.php'
-    if path!=exact or not isinstance(contents,bytes):return False
-    repo=Path(__file__).resolve().parents[1]
-    expected=repo/'wp-content/plugins/mad4b-site-control-plane'
-    if root.resolve()!=expected.resolve():return False
-    f=root/path
-    if f.is_symlink() or not f.is_file() or f.read_bytes()!=contents:return False
-    registry_path=repo/'governance/production-readiness/capability-coverage.json'
-    test=repo/'wp-content/plugins/mad4b-site-control-plane/tests/live-write-provider-snapshot-runtime.php'
-    try:
-        reg=json.loads(registry_path.read_text(encoding='utf-8'))
-        blob=hashlib.sha1(b'blob '+str(len(contents)).encode('ascii')+b'\0'+contents).hexdigest()
-        git_blob=subprocess.check_output(
-            ['git','rev-parse','HEAD:wp-content/plugins/mad4b-site-control-plane/'+exact],
-            cwd=repo,stderr=subprocess.DEVNULL,timeout=8).decode().strip()
-    except (OSError,ValueError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
-        return False
-    if (blob!=git_blob or not test.is_file() or test.is_symlink()
-        or reg.get('contract')!='mad4b.readiness-capability-coverage.v1'
-        or reg.get('authorizing') is not False
-        or reg.get('production_promotion_from_ci') is not False):return False
-    canonical='wp-content/plugins/mad4b-site-control-plane/'+exact
-    for row in reg.get('reviewed_changes',[]):
-        if (isinstance(row,dict) and row.get('path')==canonical
-            and row.get('source_blob_sha')==blob
-            and row.get('status')=='reviewed_for_ci_only'
-            and row.get('production_authorized') is False
-            and row.get('live_evidence_required') is True
-            and {'GOVERNANCE-01','MCP-01','SECURITY-01'}.issubset(set(row.get('control_ids',[])))
-            and 'wp-content/plugins/mad4b-site-control-plane/tests/live-write-provider-snapshot-runtime.php'
-                in row.get('regression_tests',[])):
-            return True
-    return False
+def reviewed_bootstrap_successor(root:Path,path:str,contents:bytes)->bool:
+    """Bootstrap compatibility wrapper: no cross-path authorization."""
+    return path=='mad4b-site-control-plane.php' and reviewed_ci_only_source_successor(root,path,contents)
 
 def evaluate(evidence:dict,root:Path)->dict:
     if evidence.get('contract')!='mad4b.qa31.source-parity-evidence.v1' or        evidence.get('authorizing') is not False or        evidence.get('production_authorized') is not False or        evidence.get('live_production_evidence') is not False:
@@ -124,10 +97,7 @@ def evaluate(evidence:dict,root:Path)->dict:
             if g is None or s is None:raise ValueError('Invalid divergent record')
             if current==s:covered+=1
             elif current==g:pending.append(path)
-            elif current is not None and (
-                reviewed_bootstrap_successor(root,path,f.read_bytes())
-                or reviewed_server_write_catalog_successor(root,path,f.read_bytes())
-            ):
+            elif current is not None and reviewed_ci_only_source_successor(root,path,f.read_bytes()):
                 pending.append(path)
                 reviewed_successors.append(path)
             else:unexpected.append(path)

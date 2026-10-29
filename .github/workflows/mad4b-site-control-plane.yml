@@ -67,6 +67,15 @@ jobs:
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/self-update-dual-channel-contract.py
 
+      - name: Verify QA20 and QA27 staging source contracts
+        if: matrix.php == '8.3' || matrix.php == '8.5'
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/qa20-source-allowlist-rc118-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/qa27-candidate-upload-plan-rc118-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/staging-source-selector-runtime.php
+
   packaged-provider-contracts:
     name: Packaged provider contract scan
     runs-on: ubuntu-latest
