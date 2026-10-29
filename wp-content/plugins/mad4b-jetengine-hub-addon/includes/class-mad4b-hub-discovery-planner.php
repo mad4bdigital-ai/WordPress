@@ -249,7 +249,9 @@ final class MAD4B_Hub_Discovery_Planner {
     public static function inherit($layers) {
         $levels=array('platform','source_company','consumer_company','provider',
             'content_type','selection');
-        if(!is_array($layers)||array_keys($layers)!==$levels)return self::err('policy_layers_invalid');
+        if(!is_array($layers)||count($layers)!==count($levels)||
+            array_diff(array_keys($layers),$levels)||array_diff($levels,array_keys($layers)))
+            return self::err('policy_layers_invalid');
         $denied=array_fill_keys(self::DENIED_ACTIONS,'platform');
         $allowRead=false;$explanations=array();
         foreach($levels as $level){
@@ -304,7 +306,9 @@ final class MAD4B_Hub_Discovery_Planner {
             if(is_wp_error($out))return $out;
             $selected[$key]=$out;
         }
-        if(!array_filter($selected))return self::err('empty_selection');
+        // Option-only selection is valid and still never copies option values.
+        if(!array_filter($selected) && empty($selection['option_fields']))
+            return self::err('empty_selection');
         foreach(array('languages'=>self::LANGS,'fields'=>null) as $key=>$allow){
             $x=self::strings($selection[$key]??array(),$key,$allow);
             if(is_wp_error($x))return $x;
@@ -335,6 +339,37 @@ final class MAD4B_Hub_Discovery_Planner {
             $checkedOptions[$slug]=$fields;
         }
         $selected['option_fields']=$checkedOptions;
+        // Canonical category IDs are LOCAL IDs, never portable across sites.
+        // Read exact DB rows; get_term() can rewrite AR IDs under WPML.
+        $taxonomy=(string)($selection['canonical_taxonomy']??'tour-types');
+        if(!preg_match('/^[a-z][a-z0-9_-]{0,79}$/D',$taxonomy) ||
+            !taxonomy_exists($taxonomy))return self::err('canonical_taxonomy_unknown');
+        $selected['canonical_taxonomy']=$taxonomy;
+        $categoryProofs=array();
+        if($selected['canonical_category_ids']){
+            global $wpdb;
+            if(!defined('ICL_SITEPRESS_VERSION'))return self::err('wpml_required');
+            foreach($selected['canonical_category_ids'] as $id){
+                $row=$wpdb->get_row($wpdb->prepare(
+                    "SELECT t.term_id,tt.parent
+                     FROM {$wpdb->terms} t
+                     INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_id=t.term_id
+                     WHERE t.term_id=%d AND tt.taxonomy=%s LIMIT 1",$id,$taxonomy),ARRAY_A);
+                if(!$row)return self::err('canonical_term_unknown');
+                $language=$wpdb->get_row($wpdb->prepare(
+                    "SELECT language_code,trid
+                     FROM {$wpdb->prefix}icl_translations
+                     WHERE element_type=%s AND element_id=%d LIMIT 1",
+                     'tax_'.$taxonomy,$id),ARRAY_A);
+                if(!$language || !in_array($language['language_code'],$selected['languages'],true) ||
+                    (int)$language['trid']<1)return self::err('canonical_term_language_unverified');
+                $categoryProofs[]=array('canonical_term_id'=>$id,
+                    'language'=>$language['language_code'],
+                    'target_wpml_group'=>(int)$language['trid'],
+                    'parent_id'=>(int)$row['parent']);
+            }
+        }
+        $selected['verified_local_categories']=$categoryProofs;
         $policy=self::inherit($manifest['policy_layers']??null);
         if(is_wp_error($policy))return $policy;
         $queryKinds=array();
