@@ -134,3 +134,32 @@ add_filter('add_post_metadata', static function ($check, $object_id, $meta_key, 
     }
     return $check;
 }, 8, 5);
+
+
+/**
+ * Enforce Kit admission on the CURRENT native MAD4B company-operations
+ * activation endpoint, before its callback can create roles/Options Pages.
+ * This is not authorization: the original route still enforces its cookie,
+ * nonce, ownership and confirmation contract unchanged.
+ *
+ * This binds an actual registered company activation path; separate external
+ * multi-site provisioning services must invoke the same admission function.
+ */
+add_filter('rest_request_before_callbacks', static function ($response, $handler, $request) {
+    if (!is_object($request) || !method_exists($request, 'get_route') ||
+        !method_exists($request, 'get_method') ||
+        $request->get_route() !== '/mad4b/v1/company-activation/commit' ||
+        strtoupper((string)$request->get_method()) !== 'POST') {
+        return $response;
+    }
+    if ($response !== null) {
+        return $response;
+    }
+    $admission = mad4b_kit_integrity_admission();
+    if (is_wp_error($admission)) {
+        return new WP_Error('mad4b_company_kit_admission_denied',
+            'Company activation blocked: current Elementor Kit has invalid/duplicate company color identities.',
+            ['status'=>409,'kit_error'=>$admission->get_error_code()]);
+    }
+    return $response;
+}, 8, 3);
