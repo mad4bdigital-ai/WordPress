@@ -1,5 +1,8 @@
 # MAD4B Multi-Company REST and Nile Source Reference Contracts
 
+> **2026-10-30 superseding decision:** The temporary public Nile catalog shortcode and Home Elementor Container were **rolled back on Staging** and removed from this PR's active source. Earlier sections below that mention 9/8 public category cards or catalog pages describe historical acceptance only, **not current runtime state**. The permanent policy is native JetEngine REST API Listings + Query Builder consuming signed Control Plane Hub collections, with existing Elementor Listing/Grid/JetSmartFilters. No new REST source distribution is approved/activated yet. See `wp-content/plugins/mad4b-site-control-plane/docs/HUB-JETENGINE-NATIVE-CONSUMER-POLICY.md` and `evidence/HUB-JETENGINE-GOVERNANCE-AND-ROLLBACK-20261030.json`.
+
+
 The Staging administrative hub is **tours.dev.mad4b.com**. Existing company WordPress instances own their own databases, WPML translations, JetEngine data, media URLs, account configurations and customer/order information.
 
 ## Verified company identities
