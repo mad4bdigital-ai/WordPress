@@ -1,0 +1,88 @@
+{
+    "result": "PASS",
+    "checks": {
+        "admin_reads_valid_request": {
+            "pass": true,
+            "detail": "repair_original_source"
+        },
+        "twelve_gates": {
+            "pass": true,
+            "detail": null
+        },
+        "all_financial_authorities_denied": {
+            "pass": true,
+            "detail": null
+        },
+        "tasks_marked_unassigned": {
+            "pass": true,
+            "detail": [
+                "task_not_assigned"
+            ]
+        },
+        "event_bridge_mismatch_reported": {
+            "pass": true,
+            "detail": null
+        },
+        "not_quoted_stays_unapproved": {
+            "pass": true,
+            "detail": null
+        },
+        "no_contact_data_exposed": {
+            "pass": true,
+            "detail": null
+        },
+        "next_owner_present": {
+            "pass": true,
+            "detail": null
+        },
+        "admin_rest_200": {
+            "pass": true,
+            "detail": 200
+        },
+        "extension_incapable_of_sale_authorization": {
+            "pass": true,
+            "detail": null
+        },
+        "guest_denied": {
+            "pass": true,
+            "detail": null
+        },
+        "guest_rest_denied": {
+            "pass": true,
+            "detail": 401
+        },
+        "reviewer_reads_without_admin": {
+            "pass": true,
+            "detail": "repair_original_source"
+        },
+        "reviewer_no_commercial_power": {
+            "pass": true,
+            "detail": null
+        },
+        "reviewer_rest_200": {
+            "pass": true,
+            "detail": 200
+        },
+        "admin_panel_renders": {
+            "pass": true,
+            "detail": null
+        },
+        "no_business_mutations": {
+            "pass": true,
+            "detail": {
+                "before": {
+                    "requests": 9,
+                    "orders": 1,
+                    "tasks": 3,
+                    "qualified": 0
+                },
+                "after": {
+                    "requests": 9,
+                    "orders": 1,
+                    "tasks": 3,
+                    "qualified": 0
+                }
+            }
+        }
+    }
+}
