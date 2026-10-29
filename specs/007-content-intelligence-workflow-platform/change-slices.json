@@ -4,8 +4,8 @@
   "reviewed_base_sha": "7ccfd69d7a76b4b13b73e18aaaf445144d3cfeba",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 140,
-  "changed_paths_sha256": "41b24ee2347065ad786a255dde1f3a84b45038fa089ade0b7ef834d1921cc96d",
+  "changed_file_count": 142,
+  "changed_paths_sha256": "0e8c996854cd3ba39c7d37ec1b4d0f2aef8e341ff32ad54dcfb1983f89873910",
   "slices": [
     {
       "id": "abilities-and-governed-dispatch",
@@ -65,6 +65,7 @@
         ".github/workflows/content-readiness-contracts.yml",
         ".github/workflows/mad4b-chatgpt-attachment-transfer.yml",
         ".github/workflows/mad4b-connection-governance.yml",
+        ".github/workflows/mad4b-local-oauth-standalone.yml",
         ".github/workflows/mad4b-oauth-resource-bridge.yml",
         ".github/workflows/mad4b-plugin-package.yml",
         ".github/workflows/mad4b-post-update-continuation-guards.yml",
@@ -222,6 +223,7 @@
         "governance/release-parity/qa31-w2a-readonly-source-candidate.json",
         "specs/007-content-intelligence-workflow-platform/change-slices.json",
         "tests/qa31_release_source_gate_contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/local-oauth-source-package-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/qa31-remaining-source-security-contract.py"
       ]
     },

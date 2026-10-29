@@ -203,8 +203,50 @@ jobs:
             fi
             test "$OBSERVED_AUTOLOAD_SHA" = "$TARGET_AUTOLOAD_SHA"
           fi
-          rm -rf "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
-          cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          # Managed Runtime requires complete, exact package provenance.
+          # A raw checkout copy has no BUILD-PROVENANCE manifest and must
+          # legitimately receive a 503 from the fail-closed OPcache guard.
+          # Exercise the existing canonical builder in disposable CI instead
+          # of disabling the guard or inventing a signed provider certificate.
+          SOURCE_SHA="$(git rev-parse HEAD)"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          CONTROL_VERSION="$(python3 - <<'PYVER'
+          import re
+          from pathlib import Path
+          main = Path("wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php").read_text()
+          match = re.search(r"(?m)^ \* Version: ([0-9A-Za-z._-]+)", main)
+          if not match:
+              raise SystemExit("Control Plane source version missing")
+          print(match.group(1))
+          PYVER
+          )"
+          ADAPTER_SHA="$(sha256sum "$ADAPTER_ARCHIVE" | cut -d' ' -f1)"
+          PACKAGE_DIR="$(mktemp -d /tmp/mad4b-oauth-source-package.XXXXXX)"
+          mkdir -p "$PACKAGE_DIR/source"
+          cp -R wp-content/plugins/mad4b-site-control-plane "$PACKAGE_DIR/source/mad4b-site-control-plane"
+          rm -rf "$PACKAGE_DIR/source/mad4b-site-control-plane/tests"
+          python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/build-deterministic-control-plane-package.py" \
+            --root "$PACKAGE_DIR/source/mad4b-site-control-plane" \
+            --output-zip "$PACKAGE_DIR/control-plane.zip" \
+            --version "$CONTROL_VERSION" --source-sha "$SOURCE_SHA" \
+            --adapter-version "$EXPECTED_ADAPTER_VERSION" --adapter-sha "$ADAPTER_SHA" \
+            --receipt-output "$PACKAGE_DIR/receipt.json"
+          SOURCE_SHA="$SOURCE_SHA" PACKAGE_DIR="$PACKAGE_DIR" python3 - <<'PYVERIFY'
+          import json, os, sys
+          from pathlib import Path
+          sys.path.insert(0, "tools")
+          from mad4b_standalone_build import verify_zip
+          folder = Path(os.environ["PACKAGE_DIR"])
+          source = os.environ["SOURCE_SHA"]
+          receipt = json.loads((folder / "receipt.json").read_text())
+          verify_zip(folder / "control-plane.zip", receipt, source)
+          assert receipt["source_commit_sha"] == source
+          print("MAD4B_LOCAL_OAUTH_SOURCE_PROVENANCE: PASS")
+          PYVERIFY
+          python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" \
+            --archive "$PACKAGE_DIR/control-plane.zip" \
+            --plugins-dir "$WP_PATH/wp-content/plugins" --slug mad4b-site-control-plane
+          test -s "$WP_PATH/wp-content/plugins/mad4b-site-control-plane/MAD4B-BUILD-PROVENANCE.json"
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
           INSTALLED_ADAPTER_VERSION="$(php /tmp/wp-cli.phar eval '
