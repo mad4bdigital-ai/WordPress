@@ -1,0 +1,34 @@
+name: MAD4B Firecrawl Control Plane bridge contract
+on:
+  pull_request:
+    paths:
+      - 'wp-content/mu-plugins/mad4b-research-firecrawl.php'
+      - 'tests/firecrawl-control-plane-bridge-test.php'
+      - 'ops/integrations/firecrawl/**'
+      - '.github/workflows/mad4b-firecrawl-woo-lab-bridge.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'wp-content/mu-plugins/mad4b-research-firecrawl.php'
+      - 'tests/firecrawl-control-plane-bridge-test.php'
+      - 'ops/integrations/firecrawl/**'
+      - '.github/workflows/mad4b-firecrawl-woo-lab-bridge.yml'
+permissions:
+  contents: read
+jobs:
+  private-research-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          persist-credentials: false
+      - name: Lint and exercise authorization and host fencing
+        run: |
+          php -l wp-content/mu-plugins/mad4b-research-firecrawl.php
+          php -d zend.assertions=1 -d assert.exception=1 tests/firecrawl-control-plane-bridge-test.php
+      - name: Check no hardcoded credentials or public upstream
+        run: |
+          grep -Fq 'http://gateway:8080' wp-content/mu-plugins/mad4b-research-firecrawl.php
+          grep -Fq 'mad4b-firecrawl-production_consumers' ops/integrations/firecrawl/woo-lab.compose.override.yml
+          ! grep -nE 'password=[A-Za-z0-9_-]{40,}' wp-content/mu-plugins/mad4b-research-firecrawl.php
