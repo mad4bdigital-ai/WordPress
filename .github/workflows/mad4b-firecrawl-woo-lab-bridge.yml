@@ -13,6 +13,9 @@ on:
       - 'tests/firecrawl-control-plane-bridge-test.php'
       - 'ops/integrations/firecrawl/**'
       - '.github/workflows/mad4b-firecrawl-woo-lab-bridge.yml'
+concurrency:
+  group: mad4b-firecrawl-woo-lab-bridge-pr-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
