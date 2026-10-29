@@ -210,8 +210,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 			|| 'convergence_required' !== ( $graph['state'] ?? '' )
 			|| ! empty( $graph['ready'] )
 			|| true !== ( $graph['phase_graph_valid'] ?? false )
-			|| ! class_exists( 'MAD4B_SCP_Policy', false )
-			|| true === MAD4B_SCP_Policy::can_mutate() ) return false;
+			|| ! isset( $graph['phases']['authority_binding'] ) ) return false;
 
 		$target = is_array( $checkpoint['target_identity'] ?? null )
 			? self::bounded_identity( $checkpoint['target_identity'] ) : array();
