@@ -41,6 +41,10 @@ final class MAD4B_SCP_Hub_JetEngine_Consumer_Governance {
             'provider'=>'jet-engine',
             'native_rest_api_listings_enabled'=>$enabled,
             'jetengine_hub_addon_loaded'=>class_exists('MAD4B_JetEngine_Hub_Addon'),
+            'hub_capability_discovery_loaded'=>class_exists('MAD4B_Hub_Discovery_Planner'),
+            'discovery_selection_contract'=>'mad4b.hub.capability-selection.v1',
+            'inheritance_policy'=>'deny_wins_without_self_attested_source_grants',
+            'assisted_mapping_mode'=>'deterministic_advisory_no_llm_no_auto_apply',
             'native_hub_mapping_contract'=>'mad4b.jetengine-hub-native-addon.v1',
             'canonical_consumers'=>array('existing_jetengine_listing','jetengine_rest_query'),
             'central_host'=>self::CENTRAL_HOST,
@@ -224,6 +228,10 @@ final class MAD4B_SCP_Hub_JetEngine_Consumer_Governance {
         if (!$module['jetengine_hub_addon_loaded'] ||
             !MAD4B_JetEngine_Hub_Addon::dependencies_ready()) {
             return self::denial('jetengine_hub_addon_missing');
+        }
+        // A signed feed cannot bypass capability/policy discovery prerequisites.
+        if (!$module['hub_capability_discovery_loaded']) {
+            return self::denial('capability_discovery_module_missing');
         }
         $sourceVerified = apply_filters('mad4b_scp_hub_consumer_signed_authority', false, $plan);
         $bindingVerified = apply_filters('mad4b_scp_hub_consumer_native_binding_authority', false, $plan);
