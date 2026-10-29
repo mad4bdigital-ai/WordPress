@@ -191,6 +191,7 @@ final class MAD4B_SCP_Catalog_Intent_Policy {
         $seen_url = array();
         $seen_entity = array();
         $primary_by_url = array();
+        $task_lane_by_id = array();
         $unresolved_relations = 0;
         $rows = array();
 
@@ -229,9 +230,12 @@ final class MAD4B_SCP_Catalog_Intent_Policy {
         // contexts; do not let navigation/footer evidence hide a valid card.
         $weight = array( 'primary' => 4, 'complementary' => 3,
             'discovery_expansion' => 2, 'review' => 1 );
-        usort( $rows, static function ( $a, $b ) use ( $weight ) {
+        usort( $rows, static function ( $a, $b ) use ( $weight, $known ) {
             $delta = $weight[ $b['lane'] ] - $weight[ $a['lane'] ];
-            return $delta ?: $a['position'] - $b['position'];
+            if ( $delta ) return $delta;
+            $existing_delta = (int) isset( $known[ $b['url'] ] )
+                - (int) isset( $known[ $a['url'] ] );
+            return $existing_delta ?: $a['position'] - $b['position'];
         } );
         foreach ( $rows as $row ) {
             $url = $row['url'];
@@ -241,6 +245,12 @@ final class MAD4B_SCP_Catalog_Intent_Policy {
                 $duplicates[] = array( 'url' => $url, 'matching_task_id' => $existing_task,
                     'reason' => isset( $seen_url[ $url ] ) ? 'same_canonical_url' : 'explicit_entity_key_alias',
                     'candidate_context' => $row['link']['discovery_context'] );
+                // Preserve every verified alias URL for future explicit
+                // side-branch dependency resolution without a duplicate task.
+                $seen_url[ $url ] = $existing_task;
+                if ( 'primary' === ( $task_lane_by_id[ $existing_task ] ?? '' ) ) {
+                    $primary_by_url[ $url ] = $existing_task;
+                }
                 continue;
             }
             $task = self::task( $catalog, $url, $row['link'], $row['lane'], $row['reason'] );
@@ -253,6 +263,7 @@ final class MAD4B_SCP_Catalog_Intent_Policy {
             $task['relation_urls_pending_mapping'] = $row['related_urls'];
             $tasks[ $row['lane'] ][] = $task;
             $seen_url[ $url ] = $task['task_id'];
+            $task_lane_by_id[ $task['task_id'] ] = $row['lane'];
             if ( '' !== $key ) $seen_entity[ $key ] = $task['task_id'];
             if ( 'primary' === $row['lane'] ) $primary_by_url[ $url ] = $task['task_id'];
         }
