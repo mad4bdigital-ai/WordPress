@@ -3252,7 +3252,8 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/orphan-source-recovery-admission-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/orphan-source-recovery-admission-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/orphan-source-recovery-plan-runtime.php"
       ],
       "control_ids": [
         "UPDATES-01",
@@ -10722,7 +10723,8 @@
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-orphan-source-recovery.php",
       "source_blob_sha": "706ad4e70227a5c632786074e4c3dc3aa14c450b",
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/orphan-source-recovery-admission-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/orphan-source-recovery-admission-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/orphan-source-recovery-plan-runtime.php"
       ],
       "owner_role": "Plugin recovery security maintainer / independent code review",
       "status": "reviewed_for_ci_only",
@@ -10740,7 +10742,8 @@
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php",
       "source_blob_sha": "2391c5f610f0d218b6872fac8e51081c9c77980b",
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/orphan-source-recovery-admission-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/orphan-source-recovery-admission-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/orphan-source-recovery-plan-runtime.php"
       ],
       "owner_role": "Plugin recovery security maintainer / independent code review",
       "status": "reviewed_for_ci_only",
