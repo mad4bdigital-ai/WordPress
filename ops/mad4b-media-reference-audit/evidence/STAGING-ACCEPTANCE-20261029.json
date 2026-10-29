@@ -1,0 +1,74 @@
+{
+  "contract": "mad4b.media-reference-audit.policy-acceptance.v1",
+  "observed_utc": "2026-10-29T16:36:52Z",
+  "repository": "mad4bdigital-ai/WordPress",
+  "branch": "feature/media-orphan-audit-policy-20261029",
+  "target": "ETG Commerce Staging, VPS; no Production rollout",
+  "source_path": "ops/mad4b-media-reference-audit/055-mad4b-media-reference-audit.php",
+  "installed_sha256": "48d2ca42da1af54fc841b42af7379ec43b2681ca0087a6713a8a74e973fb79ea",
+  "status": "STAGING_POLICY_ACTIVE_SOURCE_REVIEW_PENDING",
+  "ability": "mad4b/media-reference-audit",
+  "ability_registered": true,
+  "unauthenticated_can_read": false,
+  "mcp_descriptor": {
+    "public": false,
+    "show_in_rest": false,
+    "surface": "read"
+  },
+  "policy": {
+    "delete_allowed": false,
+    "trash_allowed": false,
+    "quarantine_move_allowed": false,
+    "auto_publish_allowed": false,
+    "auto_media_catalog_approval": false,
+    "candidate_is_not_proof_of_unused": true
+  },
+  "image_attachments": 22740,
+  "unparented_candidates": 6211,
+  "dangling_parent_candidates": 238,
+  "total_reference_review_candidates": 6449,
+  "first_manual_quick": {
+    "batch": 5,
+    "seconds": 0.271,
+    "depth": "quick"
+  },
+  "first_scheduled_batch": {
+    "batch": 60,
+    "recognized_references": 4,
+    "unresolved_review_only": 56,
+    "mutation_of_attachments": false
+  },
+  "second_host_runner": {
+    "exit_code": 0,
+    "checkpoint_scanned": 120,
+    "error": null
+  },
+  "manual_deep": {
+    "batch": 2,
+    "seconds": 1.375,
+    "referenced": 2,
+    "unresolved": 0,
+    "changed_attachment_rows": false,
+    "changed_attached_file_metadata": false
+  },
+  "schedulers": {
+    "wordpress_cron": "mad4b_media_reference_audit_tick_v1",
+    "interval_seconds": 300,
+    "systemd": "mad4b-media-reference-audit@commerce-staging.timer",
+    "systemd_active": true,
+    "systemd_enabled": true,
+    "systemd_service_test_exit_code": 0
+  },
+  "permissions": "manage_options or existing governed Control Plane can_read()",
+  "backup": "/opt/mad4b-media-backups/etg-20261029T161708Z/BACKUP-RECEIPT.json",
+  "production_mutated": false,
+  "media_file_moved_or_deleted": false,
+  "dns_changed": false,
+  "limitations": [
+    "Quick scans find selected local references only; unresolved_review_only never means confirmed unused",
+    "Deep scan has incomplete coverage of external apps and custom encoding; manual review is required",
+    "WordPress ability registered locally; external MCP discovery requires separate runtime test",
+    "Deployment to companies other than ETG Commerce Staging and merge into the canonical release are not authorized",
+    "Offsite backup deferred by owner; local restore proof does not protect against VPS disk loss"
+  ]
+}
