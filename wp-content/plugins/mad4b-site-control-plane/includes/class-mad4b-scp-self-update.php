@@ -965,6 +965,28 @@ final class MAD4B_SCP_Self_Update {
 		return $plan;
 	}
 
+
+	/**
+	 * A candidate matching the fixed, root-verified master release may carry
+	 * that release's verified metadata into Post_Update_Continuation. Never
+	 * import caller-provided trust flags or declare an orphan Git SHA an ancestor.
+	 * Unpromoted Staging candidates retain their prior owner-only admission.
+	 */
+	private static function trusted_master_release_candidate( array $identity, array $manifest ) {
+		if ( true !== ( $manifest['release_verdict_success'] ?? false )
+			|| true !== ( $manifest['release_root_trust_verified'] ?? false )
+			|| true !== ( $manifest['published_from_master'] ?? false )
+			|| (int) ( $manifest['release_verdict_run_id'] ?? 0 ) < 1 ) return array();
+		foreach ( array( 'version', 'source_commit_sha', 'archive_sha256',
+			'build_fingerprint', 'package_manifest_digest' ) as $field ) {
+			if ( empty( $manifest[ $field ] ) || empty( $identity[ $field ] )
+				|| ! hash_equals( (string) $manifest[ $field ], (string) $identity[ $field ] ) ) return array();
+		}
+		if ( (int) ( $manifest['size_bytes'] ?? 0 ) < 1
+			|| (int) $manifest['size_bytes'] !== (int) ( $identity['size_bytes'] ?? 0 ) ) return array();
+		return self::public_manifest( $manifest );
+	}
+
 	public static function upload_apply( $input ) {
 		$input = is_array( $input ) ? $input : array();
 		$expected = isset( $input['expected_plan_sha256'] ) ? strtolower( trim( (string) $input['expected_plan_sha256'] ) ) : '';
@@ -1037,6 +1059,20 @@ final class MAD4B_SCP_Self_Update {
 			$plan['target'],
 			isset( $plan['release_channel'] ) && is_array( $plan['release_channel'] ) ? $plan['release_channel'] : array()
 		);
+		// The selected-HEAD WordPress-native candidate lane already verifies the
+		// exact GitHub release manifest. The generic candidate upload plan does not
+		// carry release verdict fields; independently reacquire them from the
+		// fixed root-trusted channel and bind every package identity field before
+		// preparing the mandatory post-update continuation permit.
+		// Unresolvable installed source identity is NOT promoted to a verified
+		// ancestor; only the *target* release can obtain this trust evidence.
+		if ( $staging_candidate && 'wordpress_native_candidate_upload' === $plan['channel'] ) {
+			$trusted_manifest = self::fetch_manifest( true );
+			if ( ! is_wp_error( $trusted_manifest ) && is_array( $trusted_manifest ) ) {
+				$trusted_fields = self::trusted_master_release_candidate( $plan['target'], $trusted_manifest );
+				if ( $trusted_fields ) $apply_target = array_merge( $apply_target, $trusted_fields );
+			}
+		}
 		$result = self::apply_verified_archive( $tmp, $apply_target, $staging_candidate ? 'governed_staging_candidate_upload' : 'governed_file_upload', $expected, $verified );
 		@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		return $result;
