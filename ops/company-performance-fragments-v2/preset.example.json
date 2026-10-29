@@ -21,5 +21,6 @@
     "attractions_listing_id": 103,
     "attractions_taxonomy": "destinations"
   },
-  "unsafe_dynamic_injections": "never_cache"
+  "unsafe_dynamic_injections": "never_cache",
+  "geo_policy": "unverified"
 }
