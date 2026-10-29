@@ -134,8 +134,13 @@ abstract class MAD4B_SCP_Adapter_Base {
 						=== MAD4B_SCP_Delegation_Mode::mode_for_identity( $subject ) ) {
 					$cap = MAD4B_SCP_Delegation_Mode::authorize_ability( $subject, $ability_name, $input );
 					if ( is_wp_error( $cap ) || true !== $cap ) return $cap;
-					$actor = MAD4B_SCP_Delegation_Mode::ensure_content_actor( $subject );
-					if ( is_wp_error( $actor ) ) return $actor;
+					$actor = class_exists( 'MAD4B_SCP_Agent_Registry' )
+						? MAD4B_SCP_Agent_Registry::resolve_agent( $subject )
+						: new WP_Error( 'mad4b_delegation_registry_unavailable', 'Registry unavailable.' );
+					if ( is_wp_error( $actor ) ) {
+						$actor = MAD4B_SCP_Delegation_Mode::ensure_content_actor( $subject );
+						if ( is_wp_error( $actor ) ) return $actor;
+					}
 				}
 			}
 			if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_mutation_disabled', 'MAD4B mutation surfaces are disabled until the global mutation gate and an authenticated governed principal are both present.' );
