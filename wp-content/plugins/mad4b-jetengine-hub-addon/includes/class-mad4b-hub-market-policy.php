@@ -64,8 +64,8 @@ final class MAD4B_Hub_Market_Policy {
                 'scopes'=>array(),'runtime_approved'=>false,
                 'pending'=>array('explicit_market_selection','source_signed_market_grants'));
         }
-        if(!is_array($markets)||!array_is_list($markets)||
-           count($markets)<1||count($markets)>12)
+        if(!is_array($markets)||count($markets)<1||count($markets)>12||
+           array_keys($markets)!==range(0,count($markets)-1))
             return self::fail('market_selection_invalid');
         $registry=get_option(self::REGISTRY_OPTION,array());
         if(!is_array($registry)||!$registry)return self::fail('registry_unconfigured');
@@ -89,7 +89,8 @@ final class MAD4B_Hub_Market_Policy {
             if(!self::valid_date($from)||!self::valid_date($until)||
                 !self::valid_date($regFrom)||!self::valid_date($regUntil) ||
                 $from>$until || $regFrom>$regUntil ||
-                $from<$regFrom || $until>$regUntil)
+                $from<$regFrom || $until>$regUntil ||
+                $until<gmdate('Y-m-d'))
                 return self::fail('market_date_out_of_bounds');
             $values=array();
             foreach(self::FIELDS as $name=>$kind){
