@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Media Reference Audit Policy
  * Description: Permanent bounded, read-only audit of unparented/dangling image attachments. Never deletes, moves, unpublishes, or grants media access.
- * Version: 1.1.0
+ * Version: 1.2.0
  */
 defined('ABSPATH') || exit;
 
@@ -11,6 +11,7 @@ final class MAD4B_Media_Reference_Audit {
     const CONTRACT = 'mad4b.media-reference-audit.v1';
     const HOOK = 'mad4b_media_reference_audit_tick_v1';
     const OPTION = 'mad4b_media_reference_audit_checkpoint_v1';
+    const FINDINGS = 'mad4b_media_reference_audit_findings_v1';
     const BATCH = 60;
     const MAX_BATCH = 60;
 
@@ -76,10 +77,11 @@ final class MAD4B_Media_Reference_Audit {
             'input_schema' => [
                 'type' => 'object',
                 'properties' => [
-                    'action' => ['type'=>'string','enum'=>['status','scan']],
+                    'action' => ['type'=>'string','enum'=>['status','scan','review']],
                     'after_id' => ['type'=>'integer','minimum'=>0],
                     'limit' => ['type'=>'integer','minimum'=>1,'maximum'=>self::MAX_BATCH],
-                    'deep' => ['type'=>'boolean']
+                    'deep' => ['type'=>'boolean'],
+                    'classification' => ['type'=>'string','enum'=>['all','referenced','unresolved_review_only','test_only']]
                 ],
                 'additionalProperties' => false
             ],
@@ -219,14 +221,36 @@ final class MAD4B_Media_Reference_Audit {
         if (!self::can_read()) return new WP_Error('media_reference_forbidden', 'Not authorized');
         if (!is_array($args)) $args=[];
         if (($args['action'] ?? 'status') === 'status') return self::status();
+        if (($args['action'] ?? 'status') === 'review') return self::review(absint($args['after_id']??0), (int)($args['limit']??self::BATCH), (string)($args['classification']??'all'));
         $deep=($args['deep']??false)===true;
         return self::scan(absint($args['after_id']??0), max(1,min($deep?3:self::MAX_BATCH,(int)($args['limit']??($deep?3:self::BATCH)))), $deep);
+    }
+
+    public static function review($after_id=0, $limit=self::BATCH, $classification='all') {
+        $limit=max(1,min(self::MAX_BATCH,(int)$limit));
+        $types=['all','referenced','unresolved_review_only','test_only'];
+        if (!in_array($classification,$types,true)) return new WP_Error('invalid_review_filter','Invalid review filter');
+        $saved=get_option(self::FINDINGS,[]);
+        if (!is_array($saved)) $saved=[];
+        ksort($saved,SORT_NUMERIC);
+        $items=[]; $next=$after_id;
+        foreach ($saved as $key=>$entry) {
+            if ((int)$key<=$after_id || !is_array($entry)) continue;
+            if ($classification!=='all' && ($entry['classification']??'')!==$classification) continue;
+            $items[]=$entry;
+            $next=(int)$key;
+            if (count($items)>=$limit) break;
+        }
+        return ['contract'=>self::CONTRACT,'action'=>'review',
+            'filter'=>$classification,'next_after_id'=>$next,
+            'count'=>count($items),'items'=>$items,'mutation_performed'=>false];
     }
 
     public static function status() {
         $state = get_option(self::OPTION, []);
         return ['contract'=>self::CONTRACT, 'policy'=>self::policy(),
             'checkpoint'=>is_array($state)?$state:[], 'scheduled'=> (bool)wp_next_scheduled(self::HOOK),
+            'review_index_option'=>self::FINDINGS,
             'mutation_performed'=>false];
     }
 
@@ -246,6 +270,16 @@ final class MAD4B_Media_Reference_Audit {
                 $state['cursor']=$out['next_after_id'];
                 $state['last_batch_counts']=$out['counts'];
                 $state['last_batch_sample']=array_slice($out['items'],0,12);
+                // Persist a bounded-by-site review index. Only analysis metadata,
+                // never media bytes, publication flags or attachment rows.
+                $findings = $after===0 ? [] : get_option(self::FINDINGS, []);
+                if (!is_array($findings)) $findings=[];
+                foreach ($out['items'] as $item) {
+                    $item['scan_depth']='quick';
+                    $item['checked_at']=gmdate(DATE_ATOM);
+                    $findings[(string)$item['attachment_id']]=$item;
+                }
+                update_option(self::FINDINGS, $findings, false);
                 $state['updated_at']=gmdate(DATE_ATOM);
                 $state['scanned_in_cycle']=(int)($state['scanned_in_cycle']??0)+$out['batch_size'];
                 $totals=$state['cycle_counts']??array_fill_keys(array_keys($out['counts']),0);
