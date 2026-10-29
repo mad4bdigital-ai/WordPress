@@ -28,6 +28,6 @@ provider=json.loads((ROOT/"wp-content/plugins/mad4b-site-control-plane/config/ce
 assert "dynamic-filter-seo-bridge" not in provider.get("providers", {})
 doc=(ROOT/"docs/dfsb/rc15-signed-review-intake-20261029.md").read_text()
 for token in ("40826819043","bb7ab6bf995f477d075198e766ba7b41954a0b3f0eb5fb4bef906c5ee73d9b66",
-  "provider_certified=false","package_certification=pending","Staging"):
+  "provider_certified=false","package_certification: pending","Staging"):
  assert token in doc,token
 print("DFSB_RC15_SIGNED_REVIEW_SOURCE_PIN_PENDING_AND_LEGACY_ISOLATED: PASS")
