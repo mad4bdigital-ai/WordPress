@@ -51,7 +51,7 @@ final class MAD4B_Company_PK_Identity_V1 {
  }
  public static function permission($request) {
    if (!($request instanceof WP_REST_Request) ||
-       $request->get_route()!==self::ROUTE || $request->get_method()!=='GET')
+       $request->get_route()!==self::ROUTE || $request->get_method()!=='POST')
      return self::deny();
    $company=self::identity();
    if(!$company || !function_exists('openssl_verify'))return self::deny();
@@ -68,13 +68,25 @@ final class MAD4B_Company_PK_Identity_V1 {
       strlen($sig)>180)return self::deny();
    $signature=base64_decode($sig,true);
    if(!is_string($signature) || strlen($signature)<40)return self::deny();
-   $message="GET\n".self::ROUTE."\n".$company."\n".$ts."\n".$nonce."\n".self::host();
+   $message="POST\n".self::ROUTE."\n".$company."\n".$ts."\n".$nonce."\n".self::host();
    $pub=openssl_pkey_get_public($trusted);
    if(!$pub || openssl_verify($message,$signature,$pub,OPENSSL_ALGO_SHA256)!==1)
      return self::deny('Invalid challenge');
    $replay='mad4b_pk_nonce_'.hash('sha256',$company.'|'.$nonce.'|'.$ts);
-   if(get_transient($replay))return self::deny('Repeated nonce');
-   set_transient($replay,'1',180);
+   // Atomic uniqueness in the SQL table: transients may not persist between requests.
+   global $wpdb;
+   $insert=$wpdb->query($wpdb->prepare(
+       "INSERT IGNORE INTO {$wpdb->options} (option_name,option_value,autoload) VALUES (%s,%s,%s)",
+       $replay,(string)time(),'no'
+   ));
+   if($insert!==1)return self::deny('Repeated nonce');
+   // Remove old nonces in bounded batches (no user data or content).
+   if(random_int(1,40)===1){
+       $wpdb->query($wpdb->prepare(
+           "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s AND CAST(option_value AS UNSIGNED)<%d LIMIT 120",
+           $wpdb->esc_like('mad4b_pk_nonce_').'%',time()-1800
+       ));
+   }
    return true;
  }
  public static function response(WP_REST_Request $request): WP_REST_Response {
@@ -101,7 +113,7 @@ final class MAD4B_Company_PK_Identity_V1 {
    if(!self::identity())return;
    add_action('rest_api_init',static function(){
     register_rest_route('mad4b-company/v1','/identity-v2',[
-     'methods'=>WP_REST_Server::READABLE,
+     'methods'=>WP_REST_Server::CREATABLE,
      'permission_callback'=>[__CLASS__,'permission'],
      'callback'=>[__CLASS__,'response'],
     ]);
