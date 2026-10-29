@@ -82,3 +82,22 @@ All new company source ingestion plans must use the rules in **[SOURCE-REUSE-AND
 Verified: 18 incoming category records reused 18 existing `tour-types` terms representing 9 existing bilingual WPML groups; no native term was created. Source WPML language and translation group IDs are now signed in the remote category payload. Four existing destination tour slug matches without explicit source-post provenance remain `native_slug_collision_requires_owner_review`; no slug-based merge or native tour update. The previous 417 Content Hub publication entries were reconciled in place with canonical term links and review states; zero new entries, 417 unchanged on repeat dry-run. All 364 historical rates remain published **in the admin-only Hub** but non-bookable, never sale-authoritative.
 
 Seven negative cases rejected on Staging: foreign tenant, wrong taxonomy, source/target language mismatch, broken parent hierarchy, duplicate term ID, unsafe URL slug and missing tour. See `evidence/STAGING-SOURCE-REUSE-POLICY-20261029.json`. Enforcement is currently wired to the **Tourism Nile ingestion path**; other company ingestion paths must integrate the same gate independently before release.
+
+## Public Nile categories and catalog presentation on Staging
+
+The user-visible `tours.dev.mad4b.com` homepage previously used Elementor templates `25917` (Tours), `54880` (Half Day) and other JetEngine listing sources. No homepage widget consumed the Tourism Content Hub records, so `publish` in the private `mad4b_hub_nile` CPT was **not** public visibility.
+
+The Staging-only `central/220-mad4b-tourism-nile-catalog.php` registers shortcode `[mad4b_tourism_nile_catalog]` for **verified public rendering without enabling public REST / CPT access**. It reads exact source-company-owned, published Hub entries with SHA256 payload checks; category metadata is linked to existing `tour-types` and WPML mappings. No new native taxonomy terms or cross-tenant media are created.
+
+- 9 EN categories, 9 AR translations; **19 EN tours + 16 AR tours** from Tourism.
+- Home: Elementor page `35138` receives **one shortcode widget** `b7a92de` immediately after Tours template `25917`; 9 clickable category cards + 6 preview tour cards + full catalog link, with existing Elementor templates unmodified.
+- Catalog EN: `/nile-cruises-catalog/` (page `67883`), all 19 EN entries.
+- Catalog AR: `/ar/nile-cruises-catalog-ar/` (page `67884`), all 16 AR entries.
+- Both pages are paired in WPML `trid=1219637`. Filtering uses the allowlisted `nile_category` URL parameter, and `nile_tour` opens a source-authoritative text/program detail without historical rates or checkout.
+- Visual style inherits Elementor/Astra color and typography tokens; category cards and cruise cards use desktop/tablet/mobile responsive grids. Content/media are owned by the Tourism company; source-media images have **not** been copied or shared.
+- 364 historic rates are not part of the public listing or live booking flow; all 417 Hub reference posts remain in their original status.
+- Home Elementor JSON pre-change private backup: `/opt/mad4b-company-release-prep/20261029/central-rest/HOME-35138-ELEMENTOR-PRE-NILE-20261029.json` (SHA256 `d0b04f58cf0bb6f46c6d8a33cc43b11943d5cd2e4e623f8c76b2095ce545125e`). New verified metadata SHA256 `d2b092338f60dcd4ec2241095808169b5f3f2d52c3287e056d18a621087a3d07`. Backup is not in the public web root.
+- Targeted LiteSpeed homepage purge and Elementor CSS cache clear executed. Public homepage HTTP 200 and rendered **9 category links, 6 tour cards**, company ownership attribute present.
+- Acceptance file: `evidence/STAGING-PUBLIC-NILE-CATEGORIES-20261029.json`.
+
+For rollback, restore exact verified Elementor `_elementor_data` from private backup with WordPress metadata slashing and remove only this shortcode widget, then revert/remove the new Staging-only catalog MU adapter and its two isolated catalog pages under change control. Preserve all existing source/content records. PR #631 is still Draft until its exact-head CI and release authorization pass.
