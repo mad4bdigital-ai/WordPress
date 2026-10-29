@@ -51,3 +51,13 @@ Source files: `central/195-mad4b-hub-source-reuse-gate.php`, `central/190-mad4b-
 Evidence: `evidence/STAGING-SOURCE-REUSE-POLICY-20261029.json`.
 
 **Review/merge control:** PR #631 remains Draft until independent CI and exact-head owner approval. A Staging rollout of this source-specific gate does not constitute permission for Production promotion.
+
+## Owner-confirmed legacy demo: precise override, not a global bypass
+
+On 2026-10-29, the owner identified the existing Staging `Esmerada Nile Cruise` (native post `60617`) and `رحلة نيلية إيسميرادا` (native post `60745`) as **old demo content**. Their respective signed Tourism source tour IDs are `24900` (EN) and `41909` (AR). This confirmation is a *content classification*, not evidence of historical import provenance.
+
+The release defines these **two exact source/native pairs** in a versioned `MAD4B_Hub_Curated_Demo_V1` decision registry (`central/196-mad4b-curated-legacy-demo.php`). The source-reuse gate verifies matching company, native ID, source ID, slug, title, post type, and source language. An unexpected mismatch **fails closed** rather than granting broad demo exemptions. The signed Tourism tour remains the authoritative company source in Content Hub, with state `native_legacy_demo_source_authority`. Neither the demo posts nor their original status, metadata or media are changed; there is no automatic merge, replacement or deletion. This is distinct from public-site distribution.
+
+The other two collisions — Tourism source `15081` → Staging `60433` and `15941` → `60435` — **remain review holds** without sufficient explicit source ownership. Do not generalize the owner's Esmerada classification to them.
+
+Staging reconcile receipt: **417 existing Hub entries retained**, **35 tour governance metadata records refreshed**, **0 new posts**, **0 native posts changed**. Repeat reconciliation: **417 unchanged**. The deliberately altered Esmerada source-title claim was rejected by the gate. See `evidence/OWNER-DECLARED-ESMERADA-DEMO-20261029.json`.
