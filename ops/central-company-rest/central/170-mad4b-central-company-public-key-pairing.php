@@ -57,10 +57,10 @@ final class MAD4B_Central_PK_Pairing_V1 {
    $time=(string)time();
    try{$nonce=bin2hex(random_bytes(16));}
    catch(Throwable $e){return new WP_Error('mad4b_entropy_error','Challenge generation failed',['status'=>503]);}
-   $payload="GET\n".self::ENDPOINT."\n".$id."\n".$time."\n".$nonce."\n".$known['host'];
+   $payload="POST\n".self::ENDPOINT."\n".$id."\n".$time."\n".$nonce."\n".$known['host'];
    if(!openssl_sign($payload,$signature,$key,OPENSSL_ALGO_SHA256))
      return new WP_Error('mad4b_sign_error','Could not sign challenge',['status'=>503]);
-   $response=wp_safe_remote_get($known['url'].'/wp-json'.self::ENDPOINT,[
+   $response=wp_safe_remote_post($known['url'].'/wp-json'.self::ENDPOINT,[
     'timeout'=>12,'redirection'=>0,'sslverify'=>true,
     'reject_unsafe_urls'=>true,'limit_response_size'=>32768,
     'headers'=>[
