@@ -243,7 +243,8 @@ final class MAD4B_Hub_Nile_Publisher_V1 {
             'source_reuse_policy'=>MAD4B_Hub_Source_Reuse_Gate_V1::CONTRACT,
             'canonical_taxonomy_reused'=>$reusePolicy['taxonomy_reuse_count'],
             'canonical_wpml_groups_reused'=>$reusePolicy['existing_bilingual_taxonomy_groups'],
-            'native_tour_candidates_pending_owner_review'=>$reusePolicy['native_slug_collision_count'],
+            'native_tour_candidates_pending_owner_review'=>$reusePolicy['native_tour_pending_review_count'],
+            'owner_confirmed_legacy_demo_collisions'=>$reusePolicy['legacy_demo_collision_count'],
             'native_terms_created'=>0,
             'native_tours_modified'=>0,
         ];
@@ -274,6 +275,7 @@ final class MAD4B_Hub_Nile_Publisher_V1 {
                                     '_mad4b_hub_target_taxonomy','_mad4b_hub_target_term_id',
                                     '_mad4b_hub_target_term_language','_mad4b_hub_target_wpml_trid',
                                     '_mad4b_hub_native_category_created','_mad4b_hub_native_candidates_json',
+                                    '_mad4b_hub_legacy_demo_candidates_json','_mad4b_hub_authoritative_source',
                                     '_mad4b_hub_certified_native_tour_id',
                                     '_mad4b_hub_native_tour_overwritten',
                                 ],true)) {
@@ -306,7 +308,8 @@ final class MAD4B_Hub_Nile_Publisher_V1 {
                 'source_reuse_policy'=>MAD4B_Hub_Source_Reuse_Gate_V1::CONTRACT,
                 'canonical_taxonomy_reused'=>$reusePolicy['taxonomy_reuse_count'],
                 'canonical_wpml_groups_reused'=>$reusePolicy['existing_bilingual_taxonomy_groups'],
-                'native_tour_matches_pending_review'=>$reusePolicy['native_slug_collision_count'],
+                'native_tour_matches_pending_review'=>$reusePolicy['native_tour_pending_review_count'],
+                'owner_confirmed_legacy_demo_collisions'=>$reusePolicy['legacy_demo_collision_count'],
                 'native_terms_created'=>0,'native_tours_modified'=>0,
             ], false);
         }
