@@ -1,0 +1,83 @@
+{
+  "contract": "mad4b.media-unparented-comprehensive-review.v1",
+  "site": "ETG Commerce Staging",
+  "verified_utc": "2026-10-29T16:51:35Z",
+  "backup_receipt": "/opt/mad4b-media-backups/etg-20261029T161708Z/BACKUP-RECEIPT.json",
+  "backup_state": "LOCAL_RESTORE_VERIFIED",
+  "population": {
+    "image_attachments": 22740,
+    "unparented": 6211,
+    "dangling_parent": 238,
+    "total_candidates": 6449
+  },
+  "first_pass": {
+    "local_reference_signals": 6398,
+    "no_local_signal": 51,
+    "scan_surfaces": [
+      "wp_postmeta",
+      "wp_termmeta",
+      "wp_options",
+      "wp_usermeta",
+      "wp_posts post_content/post_excerpt"
+    ]
+  },
+  "second_pass": {
+    "additional_reference_signals": 2,
+    "review_queue": 49,
+    "scan_surfaces": [
+      "WPML source strings",
+      "WPML translations",
+      "Content Hub stored objects",
+      "Elementor generated CSS",
+      "theme static CSS/JS/JSON",
+      "custom CSS/JS"
+    ]
+  },
+  "review_queue": {
+    "state": "ADMINISTRATIVE_REVIEW_HOLD_ONLY",
+    "records": 49,
+    "present_files": 30,
+    "missing_files": 19,
+    "files_moved": 0,
+    "files_deleted": 0,
+    "hash": "24debf50abd3a1d4f004c2ceb5cde353e302a8dc0ba38a5fe86b230431ca8911",
+    "vps_path": "/srv/mad4b-media-control/quarantine-review/ETG-REVIEW-HOLD-20261029.json",
+    "reversal_test": "PASS_ON_PRIVATE_COPY",
+    "high_risk_assets_protected": true
+  },
+  "additional_broken_references": {
+    "candidate_attachment_records_without_origin_media": 490,
+    "none_present_in_staging_source_or_verified_backup": true,
+    "action": "separate repair audit; do not delete attachment database rows"
+  },
+  "media_gateway": {
+    "listener": "127.0.0.1:8097",
+    "origin_path": "/srv/mad4b-media-origin/etg/uploads",
+    "origin_media_checksum_parity_diff_count": 0,
+    "blocked_held_path_test": "PASS",
+    "etg_fixture_status": 200,
+    "are_cross_tenant_status": 404,
+    "unknown_host_status": 421,
+    "held_image_status": 404,
+    "media_source_mount_readonly": true
+  },
+  "wordpress_counts_unchanged": {
+    "attachments": 22782,
+    "image_attachments": 22740,
+    "attached_file_meta": 22782
+  },
+  "source_prs": [
+    616,
+    614
+  ],
+  "production_mutated": false,
+  "dns_changed": false,
+  "media_removed_from_wordpress": false,
+  "limitations": [
+    "Local observed references are not a proof of legitimate business use; local unresolved does not prove global unused",
+    "Remote apps, direct URLs and third-party services cannot be exhaustively verified by local scanning",
+    "No physical quarantine approved: zero files removed or moved, and registry holds only prevent NEW gateway allowlisting",
+    "Backup and separate origin on same VPS physical disk; offsite copy postponed by user",
+    "PR source approvals and CI still pending"
+  ]
+}
