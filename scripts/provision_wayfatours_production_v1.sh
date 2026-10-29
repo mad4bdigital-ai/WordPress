@@ -131,6 +131,12 @@ services:
       - "traefik.http.routers.wayfatours-production.entrypoints=https"
       - "traefik.http.routers.wayfatours-production.tls=true"
       - "traefik.http.routers.wayfatours-production.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.wayfatours-production-http.rule=Host(`wayfatours.mad4b.com`)"
+      - "traefik.http.routers.wayfatours-production-http.entrypoints=http"
+      - "traefik.http.routers.wayfatours-production-http.middlewares=wayfatours-production-redirect"
+      - "traefik.http.routers.wayfatours-production-http.service=wayfatours-production"
+      - "traefik.http.middlewares.wayfatours-production-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.wayfatours-production-redirect.redirectscheme.permanent=true"
       - "traefik.http.routers.wayfatours-production.service=wayfatours-production"
       - "traefik.http.services.wayfatours-production.loadbalancer.server.port=8080"
 networks:
