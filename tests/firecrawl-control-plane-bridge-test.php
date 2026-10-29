@@ -2,15 +2,16 @@
 // Fail-closed isolated test for Firecrawl Control Plane MU bridge.
 define( 'ABSPATH', '/tmp' );
 $GLOBALS['caps']=false; $GLOBALS['registrations']=array(); $GLOBALS['request_count']=0;
-class WP_Error { public $code; function __construct($c){$this->code=$c;} }
+class WP_Error { public $code; function __construct($c){$this->code=$c;} function get_error_code(){return $this->code;} }
 class MAD4B_SCP_Policy { static function can_read(){return true;} }
 function current_user_can($c){return $GLOBALS['caps']&&$c==='manage_options';}
 function add_action($h,$callback,$p){$GLOBALS['boot_hook']=$h;$GLOBALS['boot_callback']=$callback;}
+function add_filter($hook,$callback,$priority,$count){$GLOBALS['transport_filter']=$callback;}
 function wp_register_ability($k,$v){$GLOBALS['registrations'][$k]=$v;}
 function wp_has_ability($k){return isset($GLOBALS['registrations'][$k]);}
 function is_wp_error($v){return $v instanceof WP_Error;}
-function wp_remote_get($url,$args){$GLOBALS['request_count']++;return array('code'=>200);}
-function wp_remote_post($url,$args){$GLOBALS['request_count']++;return array('code'=>200,'body'=>'{"success":true,"data":{"markdown":"Example Domain"}}');}
+function wp_remote_get($url,$args){$GLOBALS['request_count']++;$pre=call_user_func($GLOBALS['transport_filter'],new WP_Error('etg_sandbox_network_blocked'),array_merge($args,array('method'=>'GET')),$url);return $pre===false?array('code'=>200):$pre;}
+function wp_remote_post($url,$args){$GLOBALS['request_count']++;$pre=call_user_func($GLOBALS['transport_filter'],new WP_Error('etg_sandbox_network_blocked'),array_merge($args,array('method'=>'POST')),$url);return $pre===false?array('code'=>200,'body'=>'{"success":true,"data":{"markdown":"Example Domain"}}'):$pre;}
 function wp_remote_retrieve_response_code($r){return $r['code'];}
 function wp_remote_retrieve_body($r){return $r['body'];}
 function wp_json_encode($x){return json_encode($x);}
@@ -21,8 +22,11 @@ file_put_contents($tmp,"username=mad4b-woo-lab-control-plane\npassword=".str_rep
 define('MAD4B_FIRECRAWL_SECRET_FILE',$tmp);
 register_shutdown_function(function()use($tmp){@unlink($tmp);});
 require dirname(__DIR__).'/wp-content/mu-plugins/mad4b-research-firecrawl.php';
+require dirname(__DIR__).'/wp-content/mu-plugins/mad4b-research-firecrawl-transport-exception.php';
 call_user_func($GLOBALS['boot_callback']);
 $bridge='MAD4B_Research_Firecrawl_Bridge';
+assert(call_user_func($GLOBALS['transport_filter'],new WP_Error('etg_sandbox_network_blocked'),array('method'=>'GET'),'http://gateway:8080/__healthcheck') instanceof WP_Error);
+assert(call_user_func($GLOBALS['transport_filter'],new WP_Error('another_policy_denied'),array('method'=>'GET'),'http://gateway:8080/__healthcheck') instanceof WP_Error);
 assert(count($GLOBALS['registrations'])===2);
 assert($bridge::preview(array('url'=>'https://example.com')) instanceof WP_Error);
 assert($GLOBALS['request_count']===0);
