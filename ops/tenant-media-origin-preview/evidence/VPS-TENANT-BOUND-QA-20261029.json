@@ -1,0 +1,159 @@
+{
+  "contract": "mad4b.media-gateway.tenant-bound.loopback.qa.v2",
+  "timestamp_utc": "2026-10-29T16:10:02Z",
+  "scope": "Loopback-only media-origin staging pilot on VPS, no public DNS/TLS/cutover",
+  "deployment": {
+    "host": "srv2030908",
+    "service": "mad4b-tenant-media-origin-preview",
+    "listener": "127.0.0.1:8097",
+    "container_user": "33:33",
+    "root_filesystem_readonly": true,
+    "media_mount_readonly": true
+  },
+  "catalog": {
+    "contract": "mad4b.tenant-media-catalog.preview.v1",
+    "tenants": [
+      {
+        "key": "etg",
+        "hostname": "media.egypttourgates.com",
+        "catalog_assets": 1
+      },
+      {
+        "key": "are",
+        "hostname": "media.allroyalegypt.com",
+        "catalog_assets": 0
+      }
+    ],
+    "pilot_approved_public": false,
+    "sha256": "378605c3b7ac5eb16a5bdd98a3641ad33879d691ffffaf94ef84c54093104c5c"
+  },
+  "http_tests": [
+    {
+      "host": "media.egypttourgates.com",
+      "path": "/__health",
+      "status": 200
+    },
+    {
+      "host": "media.egypttourgates.com",
+      "path": "/2026/10/placeholder-3-100x100.png",
+      "status": 200
+    },
+    {
+      "host": "media.egypttourgates.com",
+      "path": "/2026/10/etg-brand-tone_of_voice-review-20261012.txt",
+      "status": 404
+    },
+    {
+      "host": "media.egypttourgates.com",
+      "path": "/.htaccess",
+      "status": 404
+    },
+    {
+      "host": "media.egypttourgates.com",
+      "path": "/wp-config.php",
+      "status": 404
+    },
+    {
+      "host": "media.egypttourgates.com",
+      "path": "/2026/10/no-file.png",
+      "status": 404
+    },
+    {
+      "host": "media.allroyalegypt.com",
+      "path": "/__health",
+      "status": 200
+    },
+    {
+      "host": "media.allroyalegypt.com",
+      "path": "/2026/10/placeholder-3-100x100.png",
+      "status": 404
+    },
+    {
+      "host": "media.allroyalegypt.com",
+      "path": "/2026/10/etg-brand-tone_of_voice-review-20261012.txt",
+      "status": 404
+    },
+    {
+      "host": "media.allroyalegypt.com",
+      "path": "/.htaccess",
+      "status": 404
+    },
+    {
+      "host": "media.allroyalegypt.com",
+      "path": "/wp-config.php",
+      "status": 404
+    },
+    {
+      "host": "media.allroyalegypt.com",
+      "path": "/2026/10/no-file.png",
+      "status": 404
+    },
+    {
+      "host": "media.unknown-company.example",
+      "path": "/__health",
+      "status": 421
+    },
+    {
+      "host": "media.unknown-company.example",
+      "path": "/2026/10/placeholder-3-100x100.png",
+      "status": 421
+    },
+    {
+      "host": "localhost",
+      "path": "/__health",
+      "status": 421
+    },
+    {
+      "host": "localhost",
+      "path": "/2026/10/placeholder-3-100x100.png",
+      "status": 421
+    }
+  ],
+  "regression_tests": {
+    "passed": 13,
+    "failed": 0,
+    "cases": [
+      "bound_hosts_and_exact_asset_only",
+      "cross_tenant_volume_isolation",
+      "dangerous_host",
+      "digest_mismatch",
+      "duplicate_asset",
+      "duplicate_host",
+      "hidden_file",
+      "non_image_asset",
+      "percent_path",
+      "public_asset_rejected",
+      "public_mode_rejected",
+      "symlink_asset_rejected",
+      "traversal_path"
+    ]
+  },
+  "file_parity": {
+    "source_image_sha256": "b4033b0784ef3c1c2beab3f489b8c945b9a0ce010ffd14a8a5be39d89ccebb63",
+    "response_image_sha256": "b4033b0784ef3c1c2beab3f489b8c945b9a0ce010ffd14a8a5be39d89ccebb63"
+  },
+  "control_plane": {
+    "path": "/srv/mad4b-media-control",
+    "catalog_and_receipts_separated": true,
+    "media_files_relocated": false,
+    "media_source_independent_of_staging": false,
+    "media_file_copy_count": 0
+  },
+  "operational": {
+    "no_production_mutation": true,
+    "no_dns_changes": true,
+    "no_public_route": true,
+    "no_media_copies_to_hosting": true,
+    "no_wordpress_url_rewrites": true,
+    "no_operational_release_permit": true
+  },
+  "remaining": [
+    "Reliable company media source catalog for actual published attachments and tenant registry binding",
+    "Origin storage decoupled from staging lifecycle with verified media backup and restore",
+    "Independent tenant source origins for All Royal Egypt",
+    "Per-host TLS SNI cert and DNS verification",
+    "WordPress URL projection with audit and rollback",
+    "Future upload thumbnail and deletion lifecycle",
+    "CI review and independent owner authorization"
+  ]
+}
