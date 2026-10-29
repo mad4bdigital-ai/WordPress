@@ -36,5 +36,5 @@ jobs:
         run: |
           set -euo pipefail
           for case in valid source_drift schema_drift scope_write wrong_host wrong_callback pin_mismatch manifest_inside_content pagination; do
-            php ops/native-capability-manifest-v1/test-native-ability-trust.php "$case"
+            php wp-content/plugins/mad4b-site-control-plane/tests/native-ability-manifest-trust-contract.php "$case"
           done
