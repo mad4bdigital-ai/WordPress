@@ -352,5 +352,17 @@
     "demo_placeholder_rule": "Only for Wo Vacation demo; normal companies must supply their own brand/marketing/media and contact values, or leave disabled/blank",
     "company_scope_rule": "JetEngine native get_option is site-global; a single-site multi-company deployment cannot reuse these values across company_ids without a strict per-company resolver and separate persistence",
     "runtime_effect": "reviewed contract only, not enforced on existing WordPress settings save"
+  },
+  "elementor_copy_only_contract": "governance/company-clone/elementor-demo-content-only-policy-v1.json",
+  "elementor_demo_design_restoration": {
+    "affected_documents": 17,
+    "restored_gallery_widgets": 1,
+    "restored_nested_tabs_widgets": 6,
+    "restored_fluent_form_widgets": 6,
+    "removed_unapproved_translated_home_sections": 5,
+    "restored_editor_markup_skeleton_documents": 8,
+    "validated_against_archived_reference_documents": 26,
+    "detected_editor_html_skeleton_drift": 0,
+    "unrelated_preexisting_settings_schema_differences_preserved": 13
   }
 }
