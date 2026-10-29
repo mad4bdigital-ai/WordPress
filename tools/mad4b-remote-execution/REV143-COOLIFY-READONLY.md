@@ -43,13 +43,17 @@ No loopback/IP hostname qualifies.
 **Observed VPS read-only evidence (2026-10-29):** the default Coolify
 CLI context was `cloud` and returned HTTP 401; the explicitly named
 `mad4b-production` context verified successfully. CLI v1.10.0
-`resource list`, `app list`, and `service list` returned no
-`fqdn`/`domain`/`domains` metadata in any row. When hostname
-matching cannot be performed, the tool now reports
-`COOLIFY_LIST_API_OMITS_DOMAINS`, **not** an absent tenant or a valid
-activation certificate. Separately, the VPS had running
+`resource list` and `app list` omitted hostname fields in their
+rows; `service list` included an `fqdn` for a different service.
+The CLI-only check therefore reported
+`HOST_NOT_REGISTERED_OR_NOT_VISIBLE:tours.dev.mad4b.com`: no exact
+Coolify app/service domain matched this staging hostname. This is **not**
+proof that its independently deployed Docker workload is absent, nor is
+it an activation certificate. The VPS separately showed running
 `mad4b-tenant-qa02-php` and `etg-commerce-staging-php` containers.
-No Shared Media issuer/mount evidence was established by this CLI test.
+The tool reports `COOLIFY_LIST_API_OMITS_DOMAINS` only when all
+eligible application/service rows lack domain metadata. No Shared Media
+issuer/mount evidence was established by this CLI test.
 
 ## Test
 
