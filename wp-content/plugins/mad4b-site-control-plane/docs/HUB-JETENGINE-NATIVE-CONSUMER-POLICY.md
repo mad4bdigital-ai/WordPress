@@ -50,3 +50,15 @@ The previous manual REST-snapshot-to-Shortcode Elementor solution was rejected a
 The new Control Plane checker is in **planning-only** state on Staging. The signed company-source REST distribution route, source-side entitlement and per-request signing check, destination JetEngine REST Endpoint configuration, original Listing & Query binding, JetSmartFilters query-provider adaptation, cache invalidation/versioning, media resolution and mobile/desktop acceptance **are not installed or certified** by this policy change. Tests must prove source identity and separation, correct language and taxonomy, no staging/test contamination, no price activation and exact rollback before enabling distribution.
 
 **Production promotion requires CI and owner exact-head approval on PR #631.**
+
+## JetEngine native Add-on (implemented on Staging 2026-10-30)
+
+The site-local integration is packaged as a separate WordPress plugin:
+`wp-content/plugins/mad4b-jetengine-hub-addon/mad4b-jetengine-hub-addon.php`.
+It uses the installed JetEngine `jet-engine/rest-api-listings/request/query-args` and `jet-engine/rest-api-listings/response/body` filters, never changes JetEngine vendor files, and never creates a parallel Elementor listing. The Control Plane `admit_runtime()` now checks for this exact add-on prerequisite before considering signed server-side grants.
+
+The Add-on currently implements Tourism Nile source/category identity translation. It maps **18 source term records into 9 EN/AR WPML groups**. It uses raw exact term and WPML translation rows for lookup because a WPML-filtered `get_term(AR_ID)` can silently return the English translation in a request with EN active language. It verifies source company, content hash and linked local canonical term; AR translated slugs are not assumed identical; source and target parent IDs may differ as long as the parent translations belong to the same certified WPML group. A raw source ID passed in an untrusted query is rejected, and only explicitly permitted fields can reach JetEngine's renderer.
+
+Plugin staging status: **activated but `unpaired`**; no live Hub distribution endpoint/query/listing has been provisioned. Admin diagnostic endpoints require `manage_options` (anonymous 401, authenticated administrator 200). Active-plugin tests confirmed map integrity, safe field projection, endpoint denial, and preserved homepage and Hub counts. See `wp-content/plugins/mad4b-jetengine-hub-addon/README.md` and `ops/central-company-rest/evidence/STAGING-JETENGINE-HUB-ADDON-20261030.json`.
+
+The next step is an explicit managed, signed REST collection and company grant; **do not interpret the addon being active as successful Hub→JetEngine remote content publication**.
