@@ -11435,6 +11435,78 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py"
       ],
       "review_rationale": "W1 staged owner and security source SHA reconciled against pinned Git version, with hermetic tests for replay concurrency, exact result readback, OAuth resource, staging grant permissions, WordPress Site Profile and owner cookie/nonce. Still requires dependency-aware integration, full tenant isolation certification and independent live acceptance before deployment."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-gate-funnel.php",
+      "source_blob_sha": "e423f1564ccfa9a9bc2c71342ea241c86b7f96c3",
+      "owner_role": "MAD4B QA31 W2 source reviewer (CI-only, non-authorizing)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "tests/qa31_release_source_gate_contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w2a-readonly-runtime.php"
+      ],
+      "review_rationale": "Exact SHA256 Staging rc.118 read-only source import under W2A. Hermetic denial tests passed on PHP 8.3 and 8.5. No bootstrap registration, owner grant, new provider, release certification, or Production promotion."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-settings-locator.php",
+      "source_blob_sha": "17f50bc26c50a196eb509e358d2586befda63027",
+      "owner_role": "MAD4B QA31 W2 source reviewer (CI-only, non-authorizing)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "tests/qa31_release_source_gate_contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w2a-readonly-runtime.php"
+      ],
+      "review_rationale": "Exact SHA256 Staging rc.118 read-only source import under W2A. Hermetic denial tests passed on PHP 8.3 and 8.5. No bootstrap registration, owner grant, new provider, release certification, or Production promotion."
+    },
+    {
+      "path": "tools/qa31_release_source_gate.py",
+      "source_blob_sha": "c7a36aba59aa3adb9c64847c45f20106941cc171",
+      "owner_role": "MAD4B QA31 W2 source-gate reviewer, non-authorizing",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/qa31_release_source_gate_contract.py"
+      ],
+      "review_rationale": "Require exact Git object and source-reviewed W1 provider mapping as pending only; never rewrite protected ledger or consider parity/Production successful. Add PHP8.3/8.5 hermetic W2 read-only import checks."
+    },
+    {
+      "path": "tests/qa31_release_source_gate_contract.py",
+      "source_blob_sha": "fd170d2c0c0fa43fcca989b626c485f1f6108fb1",
+      "owner_role": "MAD4B QA31 W2 source-gate reviewer, non-authorizing",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/qa31_release_source_gate_contract.py"
+      ],
+      "review_rationale": "Require exact Git object and source-reviewed W1 provider mapping as pending only; never rewrite protected ledger or consider parity/Production successful. Add PHP8.3/8.5 hermetic W2 read-only import checks."
     }
   ],
   "code_change_rules": {

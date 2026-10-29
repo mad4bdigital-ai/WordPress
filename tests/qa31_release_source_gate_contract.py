@@ -57,7 +57,10 @@ current=(plugin/'mad4b-site-control-plane.php').read_bytes()
 chk(reviewed_bootstrap_successor(plugin,'mad4b-site-control-plane.php',current),
     'exact_git_reviewed_bootstrap_accepted_ci_only')
 checked=evaluate(ledger,plugin)
-chk(checked['reviewed_github_successor_paths']==['mad4b-site-control-plane.php']
+chk(set(checked['reviewed_github_successor_paths'])=={
+        'mad4b-site-control-plane.php',
+        'includes/class-mad4b-scp-server-write-catalog.php'
+    }
     and checked['unexpected_count']==0 and checked['pending_count']>0
     and checked['decision']=='BLOCKED_SOURCE_RECONCILIATION',
     'reviewed_successor_remains_pending_without_version_parity')
@@ -65,8 +68,28 @@ chk(not reviewed_bootstrap_successor(plugin,'mad4b-site-control-plane.php',curre
     'tampered_bootstrap_bytes_denied')
 chk(not reviewed_bootstrap_successor(plugin,'includes/unapproved.php',current),
     'unlisted_successor_scope_denied')
+from qa31_release_source_gate import reviewed_server_write_catalog_successor
+provider_path='includes/class-mad4b-scp-server-write-catalog.php'
+provider_content=(plugin/provider_path).read_bytes()
+chk(reviewed_server_write_catalog_successor(plugin,provider_path,provider_content),
+    'exact_W1_provider_source_reviewed_only_as_pending')
+chk(not reviewed_server_write_catalog_successor(plugin,provider_path,provider_content+b'changed'),
+    'tampered_W1_provider_source_denied')
+chk(not reviewed_server_write_catalog_successor(plugin,'includes/foreign.php',provider_content),
+    'foreign_W1_provider_path_denied')
 with TemporaryDirectory() as foreign:
+    chk(not reviewed_server_write_catalog_successor(Path(foreign),provider_path,provider_content),
+        'foreign_provider_checkout_cannot_self_certify')
     chk(not reviewed_bootstrap_successor(Path(foreign),'mad4b-site-control-plane.php',current),
         'foreign_checkout_cannot_self_certify')
 
 print('QA31_SOURCE_PARITY_NEGATIVE_REGRESSIONS: PASS')
+
+# QA31 W2A hermetic source-only fixtures; no WordPress installation or grants.
+import subprocess, shutil
+php=shutil.which('php')
+if not php: raise AssertionError('QA31 W2A PHP runtime unavailable')
+fixture=plugin/'tests/qa31-w2a-readonly-runtime.php'
+execution=subprocess.run([php,str(fixture)],cwd=repo,capture_output=True,text=True,timeout=30,check=False)
+chk(execution.returncode==0 and 'QA31_W2A_READONLY_RUNTIME: PASS' in execution.stdout,
+    'qa31_w2a_native_and_unified_gate_hermetic_runtime')
