@@ -38,7 +38,7 @@ def cmd(cmd_argv, *, timeout=CLI_TIMEOUT, context=''):
     if context:
         args.extend(['--context', context])
     args.extend(cmd_argv[1:])
-    if tuple(args[1:3]) != ('context', 'verify'):
+    if tuple(cmd_argv[1:3]) != ('context', 'verify'):
         args += ['--format', 'json']
     try:
         result = subprocess.run(args, capture_output=True, text=True, timeout=timeout, check=False)
