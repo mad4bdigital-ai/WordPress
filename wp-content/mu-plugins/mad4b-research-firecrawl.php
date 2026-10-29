@@ -154,6 +154,37 @@ final class MAD4B_Research_Firecrawl_Bridge {
         );
     }
 
+    /** Validate a user-entered service credential at the fixed gateway; never persist or echo it. */
+    public static function verify_candidate_credentials( $username, $password ) {
+        if ( ! self::permitted() || ! is_string( $username ) || ! is_string( $password )
+            || ! preg_match( '/\\Amad4b-[a-z0-9-]{3,48}\\z/D', $username )
+            || ! preg_match( '/\\A[A-Za-z0-9_-]{40,128}\\z/D', $password ) ) {
+            return false;
+        }
+        self::$transport_scope = 'scrape';
+        try {
+            $response = wp_remote_post( self::TARGET . '/v1/scrape', array(
+                'timeout' => 18,
+                'redirection' => 0,
+                'reject_unsafe_urls' => false,
+                'limit_response_size' => 8192,
+                'headers' => array(
+                    'Authorization' => 'Basic ' . base64_encode( $username . ':' . $password ),
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                ),
+                'body' => wp_json_encode( array(
+                    'url' => 'https://example.com',
+                    'formats' => array( 'markdown' ),
+                    'onlyMainContent' => true,
+                ) ),
+            ) );
+        } finally { self::$transport_scope = ''; }
+        if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) return false;
+        $data = json_decode( wp_remote_retrieve_body( $response ), true );
+        return is_array( $data ) && ! empty( $data['success'] );
+    }
+
     public static function preview( $input ) {
         if ( ! self::permitted() ) { return self::error( 'denied', 403 ); }
         if ( ! is_array( $input ) || array_keys( $input ) !== array( 'url' ) || ! self::target_allowed( $input['url'] ) ) {
