@@ -1414,8 +1414,8 @@
       "WordPress tagline and Elementor Site Kit",
       "EN/AR/FR/DE/IT/ES home copy and Rank Math SEO",
       "Elementor feature sections, travel inspiration, localized CTAs",
-      "Newsletter widget replaced by internal demo trips CTA",
-      "Testimonials and owner review media disconnected rather than fabricated"
+      "Original Fluent Forms subscription widgets restored; marketing copy only, submission behavior requires review",
+      "Original UAEL gallery and nested-tabs review widgets restored; former provider/image options remain disconnected or unset, with verified sources required"
     ],
     "safe_demo_value_rule": "Marketing placeholder is allowed only for demo preview, clearly labeled; contacts must be blank without verified target channel; no ratings, bookings, provider identities or availability claims fabricated",
     "images_rule": "Require licensed company/demo-owned image source; cleared review imagery is not automatically inherited",
@@ -1445,5 +1445,6 @@
     ],
     "unknown_stored_only_clone_behavior": "BLOCK_REVIEW",
     "change_detection": "Verify runtime registered slug/page_id/name/type and all nested children before policy apply; fail closed on schema drift"
-  }
+  },
+  "elementor_copy_only_policy": "governance/company-clone/elementor-demo-content-only-policy-v1.json"
 }
