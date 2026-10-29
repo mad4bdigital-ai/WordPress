@@ -175,7 +175,13 @@ final class MAD4B_SCP_Runtime_Convergence {
 		// is installed. Never ignore schema, skills, OAuth or authority gates.
 		$stale_release_cache_only = ! $independently_ready
 			&& self::superseded_cached_release_only( $checkpoint, $current, $graph );
-		if ( ! $independently_ready && ! $stale_release_cache_only ) return false;
+		// An obsolete self-update checkpoint must not keep an independently
+		// validated newer staging package in permanent HTTP 503 solely because
+		// OWNER WRITE authority has not been re-attested. This is a READ-ONLY
+		// historical interpretation; the owner/write gate is never granted here.
+		$owner_gate_audit_only = ! $independently_ready
+			&& self::superseded_owner_gate_audit_only( $checkpoint, $current, $graph );
+		if ( ! $independently_ready && ! $stale_release_cache_only && ! $owner_gate_audit_only ) return false;
 		$observed_checkpoint = $graph['checkpoint'] ?? array();
 		if ( ! is_array( $observed_checkpoint ) || 'pending_manual_resume' !== ( $observed_checkpoint['state'] ?? '' )
 			|| 'self_update' !== ( $observed_checkpoint['source'] ?? '' )
@@ -185,8 +191,54 @@ final class MAD4B_SCP_Runtime_Convergence {
 		if ( ! empty( $graph['checkpoint_operator_state']['replay_old_checkpoint_allowed'] ) ) return false;
 		return $independently_ready
 			? 'superseded_audit_only' === ( $graph['checkpoint_operator_state']['state'] ?? '' )
-			: ( $stale_release_cache_only
+			: ( ( $stale_release_cache_only || $owner_gate_audit_only )
 				&& 'historical_checkpoint_independent_blockers' === ( $graph['checkpoint_operator_state']['state'] ?? '' ) );
+	}
+
+	/**
+	 * Narrow old-checkpoint reconciliation for an exact *newer* Staging
+	 * release whose only independent blockers are OWNER WRITE admission,
+	 * optionally accompanied by an independently verified stale release
+	 * cache. Never replace a current candidate, loosen OAuth, revive Cron,
+	 * grant a mutation, or edit/delete the historical checkpoint.
+	 */
+	private static function superseded_owner_gate_audit_only( $checkpoint, $current, $graph ) {
+		if ( ! is_array( $checkpoint ) || ! is_array( $current ) || ! is_array( $graph )
+			|| 'self_update' !== ( $checkpoint['source'] ?? '' )
+			|| 'pending_manual_resume' !== ( $checkpoint['state'] ?? '' )
+			|| 'staging' !== ( $graph['environment'] ?? '' )
+			|| 'convergence_required' !== ( $graph['state'] ?? '' )
+			|| ! empty( $graph['ready'] )
+			|| true !== ( $graph['phase_graph_valid'] ?? false )
+			|| ! isset( $graph['phases']['authority_binding'] ) ) return false;
+
+		$target = is_array( $checkpoint['target_identity'] ?? null )
+			? self::bounded_identity( $checkpoint['target_identity'] ) : array();
+		if ( ! self::automatic_identity_safe( $target )
+			|| ! self::automatic_identity_safe( self::bounded_identity( $current ) )
+			|| ! version_compare( (string) $current['version'], (string) $target['version'], '>' )
+			|| hash_equals( (string) $current['source_commit_sha'], (string) $target['source_commit_sha'] )
+			|| ! self::identity_matches( $current, $graph['current_identity'] ?? array() )
+			|| 'historical_checkpoint_independent_blockers'
+				!== ( $graph['checkpoint_operator_state']['state'] ?? '' )
+			|| ! empty( $graph['checkpoint_operator_state']['replay_old_checkpoint_allowed'] ) ) return false;
+
+		$blockers = $graph['required_blockers'] ?? null;
+		$owner_only = array( 'authority_binding:owner_gate' ) === $blockers;
+		$stale_owner = array( 'deployment:pending', 'authority_binding:owner_gate' ) === $blockers
+			&& self::superseded_cached_release_only( $checkpoint, $current, $graph, true );
+		if ( ! $owner_only && ! $stale_owner ) return false;
+		$phases = $graph['phases'] ?? null;
+		if ( ! is_array( $phases ) || ! isset( $phases['authority_binding'] )
+			|| empty( $phases['authority_binding']['required'] )
+			|| 'owner_gate' !== ( $phases['authority_binding']['state'] ?? '' ) ) return false;
+		foreach ( $phases as $name => $phase ) {
+			if ( ! is_array( $phase ) ) return false;
+			if ( empty( $phase['required'] ) || 'authority_binding' === $name ) continue;
+			if ( 'ready' !== ( $phase['state'] ?? '' )
+				&& ! ( $stale_owner && 'deployment' === $name && 'pending' === ( $phase['state'] ?? '' ) ) ) return false;
+		}
+		return true;
 	}
 
 	/**
@@ -215,8 +267,15 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$stale_deployment_owner_only = array( 'deployment:pending', 'authority_binding:owner_gate' )
 			=== ( $graph['required_blockers'] ?? null )
 			&& self::superseded_cached_release_only( $checkpoint, $current, $graph, true );
+		// Preserve the existing site-approved read-only allowance for a
+		// historical managed-Skills checkpoint. This does not authorize any
+		// MCP write request or change the independent authority gate.
+		$managed_skills_owner_only = array( 'managed_skills:pending', 'authority_binding:owner_gate' )
+			=== ( $graph['required_blockers'] ?? null )
+			&& ! empty( $graph['phases']['managed_skills']['required'] )
+			&& 'pending' === ( $graph['phases']['managed_skills']['state'] ?? '' );
 		if ( array( 'authority_binding:owner_gate' ) !== ( $graph['required_blockers'] ?? null )
-			&& ! $stale_deployment_owner_only ) return false;
+			&& ! $stale_deployment_owner_only && ! $managed_skills_owner_only ) return false;
 		$target = is_array( $checkpoint['target_identity'] ?? null )
 			? self::bounded_identity( $checkpoint['target_identity'] ) : array();
 		$old_sha = strtolower( trim( (string) ( $target['source_commit_sha'] ?? '' ) ) );
@@ -242,7 +301,9 @@ final class MAD4B_SCP_Runtime_Convergence {
 				|| ( 'authority_binding' !== $id && ! empty( $phase['required'] )
 					&& 'ready' !== ( $phase['state'] ?? '' )
 					&& ! ( $stale_deployment_owner_only && 'deployment' === $id
-						&& 'pending' === ( $phase['state'] ?? '' ) ) ) ) return false;
+						&& 'pending' === ( $phase['state'] ?? '' ) )
+				&& ! ( $managed_skills_owner_only && 'managed_skills' === $id
+					&& 'pending' === ( $phase['state'] ?? '' ) ) ) ) return false;
 		}
 		return true;
 	}
