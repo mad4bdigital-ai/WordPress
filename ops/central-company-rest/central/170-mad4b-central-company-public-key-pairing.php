@@ -7,7 +7,7 @@
 if (!defined('ABSPATH')) exit;
 final class MAD4B_Central_PK_Pairing_V1 {
  const PRIVATE_OPTION='mad4b_central_pk_private_v1';
- const ENDPOINT='/mad4b-company/v1/identity-v2';
+ const ENDPOINT='/mad4b-company/v1/identity-v3';
  const TRUST_PREFIX='mad4b_central_pk_remote_public_v1_';
  public static function enabled(): bool {
    return strtolower((string)wp_parse_url(home_url('/'),PHP_URL_HOST))==='tours.dev.mad4b.com';
