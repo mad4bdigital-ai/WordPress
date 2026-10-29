@@ -2825,17 +2825,14 @@
       "control_ids": [
         "MCP-01",
         "PROVIDERS-01",
-        "EXECUTION-01",
-        "GOVERNANCE-02",
-        "OAUTH-01"
+        "EXECUTION-01"
       ],
       "status": "reviewed_for_ci_only",
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php"
       ],
       "owner_role": "Source/security CI technical review; not Repository/Site Owner attestation",
-      "review_rationale": "Reviewed original bounded checkpoint broker source (actor/site/revision, expiry, no secret storage, typed CSO01 validation and no write replay), 34 original-class positive/negative PHP assertions on both PHP 7.4/8.3, including missing-provider protection and closed Staging/Production pilot. No live certification or credential exchange. QA31 W1 links this previously known capability to its actual review domain (owner access or rollback/recovery), without removing existing control coverage or granting deployment authority.",
+      "review_rationale": "Reviewed original bounded checkpoint broker source (actor/site/revision, expiry, no secret storage, typed CSO01 validation and no write replay), 34 original-class positive/negative PHP assertions on both PHP 7.4/8.3, including missing-provider protection and closed Staging/Production pilot. No live certification or credential exchange.",
       "needs_new_control": false,
       "new_control_ids": [],
       "production_authorized": false,
@@ -3207,6 +3204,26 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing bounded automation and performance controls cover a non-authorizing advisory service; no new execution or write surface is introduced.",
       "review_rationale": "Reviewed shared 18-second source read deadline, error pagination, bounded companions, managed execution precedence, verified external advisory metadata and explicit incomplete/timeout states; no remote instructions are executed. Hermetic PHP 7.4/8.3 suites passed; a matching deployed Staging build has not been accepted."
+    },
+    {
+      "owner_role": "Plugin security maintainer / independent code review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-early-boundary-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-isolated-php-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-behavioral-runtime.php"
+      ],
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-private-operations-boundary.php",
+      "review_rationale": "Review private customer-order access, legacy Master Admin compatibility, fail-closed site-local JetEngine relation binding and before-fastpath initialization.",
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "This adds no public endpoint or new execution privilege; reuse existing SECURITY-01, GOVERNANCE-01 and PLATFORM-01 for privacy enforcement and explicit reviewed release checks."
     },
     {
       "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-general-settings-contract.php",
@@ -8724,25 +8741,6 @@
       "live_evidence_required": true
     },
     {
-      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php",
-      "source_blob_sha": "c3cd9fb3987a4fc8d63dcabea815ced8509131a1",
-      "control_ids": [
-        "MCP-01",
-        "GOVERNANCE-01",
-        "EXECUTION-01",
-        "SECURITY-01",
-        "OAUTH-01"
-      ],
-      "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/live-write-provider-snapshot-runtime.php"
-      ],
-      "owner_role": "CI source reviewer; separate owner release approval required",
-      "review_rationale": "CI-only exact-source provider mapping review; no authority, grants, or release approval created. Preserve runtime enrollment, adapter certification, and fail-closed provider mapping.",
-      "status": "reviewed_for_ci_only",
-      "production_authorized": false,
-      "live_evidence_required": true
-    },
-    {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php",
       "source_blob_sha": "938ba418ebb3ac0aa2ccb674d401ab52d6928995",
       "control_ids": [
@@ -11009,6 +11007,59 @@
       "execution_note": "The bounded Python wrapper invokes the original standalone PHP fixture through PHP CLI, enforces nonzero-failure and the exact assertion PASS marker; it is not a PHPUnit test. Executed from the ordinary readiness Python lane; no new broad PHP executor allowlist."
     },
     {
+      "owner_role": "Plugin security maintainer / independent code review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-early-boundary-contract.py"
+      ],
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-private-operations-boundary.php",
+      "source_blob_sha": "6ff5bbd161a2b2327753578e73669fd02f8b9559",
+      "review_rationale": "Review site-local relation metadata, nonpublic CPT registration and anonymous/private REST denial while preserving authorized operator access."
+    },
+    {
+      "owner_role": "Plugin security maintainer / independent code review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-early-boundary-contract.py"
+      ],
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "1861354d015c94be6ed41265f1737c4dd93d733c",
+      "review_rationale": "Review early Control Plane initialization before REST and CLI fastpaths so private content cannot bypass authorization when ordinary source modules are skipped."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-private-operations-boundary.php",
+      "source_blob_sha": "9b465836aad42b407431b420f587425aca77bcee",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-early-boundary-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-isolated-php-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-behavioral-runtime.php"
+      ],
+      "owner_role": "Plugin security maintainer / independent code review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "review_rationale": "The early guard must be declaration-safe when isolated PHP contracts load source without WordPress hooks, while retaining unconditional bootstrap on real WordPress requests."
+    },
+    {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
       "source_blob_sha": "0a4c74c476eff55322d4bf8643e4f340ffac21c5",
       "owner_role": "MAD4B source-code and security reviewer for CI-only coverage; independent exact-HEAD owner attestation still required",
@@ -11077,6 +11128,44 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/qa30-native-general-settings-rest-lifecycle.py"
       ],
       "review_rationale": "QA30 exact Git-source successor, already behaviorally accepted on downstream W1: only register the native allowed_options hook when WordPress hook APIs exist, while retaining the standalone early-admin fail-closed contract and normal native General Settings protection. The existing QA30 Python wrapper executes the source PHP assertions in repository CI. No runtime or Production authorization."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "4a83dc4b3ad5df67d9e43bea8e8b52d4eae80c0d",
+      "owner_role": "Independent source/security CI technical review; not site/repository owner attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa30-native-general-settings-rest-lifecycle.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-early-boundary-contract.py"
+      ],
+      "review_rationale": "Explicit 3-way current-master source combination: preserves master private-operations early auth fence and QA30 source-owned native general settings hook. Inherited historical SHA reviews remain intact; both existing regression paths are required and no Site/Production authority is granted."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php",
+      "source_blob_sha": "c3cd9fb3987a4fc8d63dcabea815ced8509131a1",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/live-write-provider-snapshot-runtime.php"
+      ],
+      "owner_role": "CI source reviewer; separate owner release approval required",
+      "review_rationale": "CI-only exact-source provider mapping review; no authority, grants, or release approval created. Preserve runtime enrollment, adapter certification, and fail-closed provider mapping.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-approval-handoff-adapter.php",
