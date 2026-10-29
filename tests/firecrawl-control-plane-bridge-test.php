@@ -20,7 +20,7 @@ $tmp=sys_get_temp_dir().'/mad4b-test-'.bin2hex(random_bytes(8));
 file_put_contents($tmp,"username=mad4b-woo-lab-control-plane\npassword=".str_repeat('a',60)."\n");chmod($tmp,0600);
 define('MAD4B_FIRECRAWL_SECRET_FILE',$tmp);
 register_shutdown_function(function()use($tmp){@unlink($tmp);});
-require dirname(__DIR__,2).'/wp-content/mu-plugins/mad4b-research-firecrawl.php';
+require dirname(__DIR__).'/wp-content/mu-plugins/mad4b-research-firecrawl.php';
 call_user_func($GLOBALS['boot_callback']);
 $bridge='MAD4B_Research_Firecrawl_Bridge';
 assert(count($GLOBALS['registrations'])===2);
