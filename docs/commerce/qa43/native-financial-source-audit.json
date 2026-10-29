@@ -1,0 +1,68 @@
+{
+    "source_meta_presence_only": {
+        "60629": {
+            "_etg_projected_season_ids": {
+                "nonempty": true,
+                "value_type": "array",
+                "is_numeric": false
+            }
+        },
+        "60820": {
+            "has_allotment_inevntory": {
+                "nonempty": true,
+                "value_type": "string",
+                "is_numeric": true
+            },
+            "remaining_allotment": {
+                "nonempty": false,
+                "value_type": "string",
+                "is_numeric": false
+            },
+            "sold_allotment": {
+                "nonempty": false,
+                "value_type": "string",
+                "is_numeric": false
+            },
+            "single_sale_price": {
+                "nonempty": false,
+                "value_type": "string",
+                "is_numeric": false
+            },
+            "egyptians_single_sale_price": {
+                "nonempty": false,
+                "value_type": "string",
+                "is_numeric": false
+            },
+            "double_sale_price": {
+                "nonempty": false,
+                "value_type": "string",
+                "is_numeric": false
+            },
+            "egyptians_double_sale_price": {
+                "nonempty": false,
+                "value_type": "string",
+                "is_numeric": false
+            },
+            "triple_sale_price": {
+                "nonempty": false,
+                "value_type": "string",
+                "is_numeric": false
+            },
+            "egyptians_triple_sale_price": {
+                "nonempty": false,
+                "value_type": "string",
+                "is_numeric": false
+            }
+        }
+    },
+    "woo_options": {
+        "woocommerce_calc_taxes": "no",
+        "woocommerce_prices_include_tax": "no",
+        "woocommerce_currency": "USD",
+        "woocommerce_custom_orders_table_enabled": "yes",
+        "shared_product_payment_offer_rules_present": false
+    },
+    "woo_tax_rate_rows": 0,
+    "woo_tax_rate_location_rows": 0,
+    "all_available_fields_are_not_verified_cost_receipts": true
+}

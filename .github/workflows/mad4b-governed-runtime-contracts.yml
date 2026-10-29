@@ -1,0 +1,31 @@
+name: MAD4B Governed Runtime Contracts
+on:
+  pull_request:
+    paths:
+      - 'ops/mad4b-governed-runtime/**'
+      - '.github/workflows/mad4b-governed-runtime-contracts.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mad4b-governed-runtime-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: Validate shared runtime neutrality and behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd ops/mad4b-governed-runtime
+          python3 verify-bundle.py --source --no-dispatch --brand-neutral
+          for f in 015-mad4b-runtime-admission.php governed-cron-plan.php governed-cron-runner.php runtime-admission-contract.php cron-plan-contract.php; do php -l "$f"; done
+          php runtime-admission-contract.php
+          php cron-plan-contract.php

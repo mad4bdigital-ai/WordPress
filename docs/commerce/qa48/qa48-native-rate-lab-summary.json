@@ -1,0 +1,51 @@
+{
+  "suite": "QA48 Native Tour Rate Order Item reconciliation",
+  "status": "PASS",
+  "generated_date": "2026-10-28",
+  "source_id": 60820,
+  "source_type": "tour-rates",
+  "parent_tour_id": 60629,
+  "root_cause": "WooCommerce add_product constructs WC_Order_Item_Product via LegacyProxy and bypasses CPT adapter factory",
+  "fixed_by": "NativeCptOrderItemIdentity",
+  "scope": "tour-rates only",
+  "checks": {
+    "qa48": {
+      "passed": 60,
+      "total": 60
+    },
+    "qa46": {
+      "passed": 36,
+      "total": 36
+    },
+    "qa45": {
+      "passed": 44,
+      "total": 44
+    },
+    "qa44": {
+      "passed": 27,
+      "total": 27
+    },
+    "qa43": {
+      "passed": 37,
+      "total": 37
+    },
+    "overall": {
+      "passed": 204,
+      "total": 204
+    }
+  },
+  "source_parity": "70/70",
+  "transactions": {
+    "hpos_orders_before": 1,
+    "hpos_records_during": 7,
+    "hpos_records_after_rollback": 1,
+    "real_new_sales_orders": 0,
+    "real_payment_charges": 0,
+    "supplier_real_bookings": 0,
+    "quote_options_after": 0,
+    "approval_options_after": 0,
+    "order_items_after_rollback": 1
+  },
+  "limitation": "Payment gateway and supplier are simulated in-process, not connected external sandboxes. Order must be rehydrated before changing items after add_product().",
+  "evidence_vps": "/opt/commerce-components/evidence/etg-quote-woocommerce-sandbox-qa48-20261028/"
+}

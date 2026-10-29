@@ -1,0 +1,39 @@
+{
+  "qa": "QA49",
+  "date": "2026-10-28",
+  "environment": "ETG WooCommerce Lab VPS",
+  "status": "PASS",
+  "checks": {
+    "qa49": 38,
+    "qa48": 60,
+    "qa46": 36,
+    "qa45": 44,
+    "qa44": 27,
+    "qa43": 37,
+    "total": 242
+  },
+  "supported_enabled_types": [
+    "tours-and-activities",
+    "tour-rates",
+    "property-rates",
+    "transport-rates"
+  ],
+  "source_parity": "71/71",
+  "identity_verified": true,
+  "financial_authorized": false,
+  "real_provider_connected": false,
+  "db_before": {
+    "woo_orders": 1,
+    "order_items": 1,
+    "quotes": 0,
+    "approvals": 0
+  },
+  "db_after": {
+    "woo_orders": 1,
+    "order_items": 1,
+    "quotes": 0,
+    "approvals": 0
+  },
+  "vps_evidence": "/opt/commerce-components/evidence/etg-native-order-identity-qa49-20261028/",
+  "production_mutated": false
+}

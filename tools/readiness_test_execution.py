@@ -104,6 +104,7 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-behavioral-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-isolated-php-contract.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/self-update-selected-head-release-trust-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/staging-source-selector-runtime.php",
     "tests/remote-execution/unified-operator-session-policy-smoke.php",
 ))
 
@@ -227,6 +228,7 @@ def self_test():
         pass
     else:
         raise AssertionError("Unreviewed operations PHP fixture admitted")
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/staging-source-selector-runtime.php")[0] == "php"
     assert command_for("tests/production_readiness_registry_contract.py")[0] == sys.executable
     assert command_for("tests/remote-execution/operator-grants-convergence-smoke.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/generation-snapshot-exception-runtime.php")[0] == "php"
