@@ -76,6 +76,23 @@ Read directly from registered `Jet_Engine_Options_Pages::get_items()` on Wo Vaca
 
 **Contract status:** source-reviewed and tested, **not runtime-enforced yet**; owner attestation and a separate bounded implementation are required before provisioning or applying company-scoped JetEngine edit guards.
 
+## 2B. Central demo design integrity: COPY-ONLY, never structural replacement
+
+**Owner rule (2026-10-29):** An automated or AI-assisted demo content update must **never** change the design of the central Elementor/JetEngine template while replacing marketing copy. If there is no existing text slot, stop with an explicit design-change proposal; do not convert a gallery, nested tabs, Fluent Forms, listing, shortcode, image or template widget to a text widget/button. Do not insert a new container as a shortcut.
+
+**Correction already executed on Staging:** The original pre-change Woo Lab database archive was read as an **existing reference only**, without creating a new backup. We restored **one original UAEL gallery, six original Nested Tabs, six original Fluent Forms widgets** and removed five unapproved added translated-home containers: **17 Elementor documents** corrected. We then restored the original in-widget HTML/line-break shapes for **eight more editor documents** while retaining the attractive demo marketing words. A read-only comparison of **26** affected Elementor docs against the old source confirmed **106 text-only setting differences**, **zero changed HTML skeletons**, **zero widget/child structural drifts**. Thirteen old-to-live non-text settings-key differences were outside this content replacement (e.g. `company_brand_role`, preexisting `__globals__`); they were **not** blindly reverted.
+
+**Durable guard**: [Elementor copy-only policy](../../governance/company-clone/elementor-demo-content-only-policy-v1.json) + [rejecting validator](../../scripts/elementor_demo_content_guard.py). For any future governed automated copy update, export `_elementor_data` JSON before and candidate JSON after, and run:
+
+```bash
+python3 scripts/elementor_demo_content_guard.py \
+  --before original-elementor.json --after candidate-elementor.json
+```
+
+The validator fails closed if the node hierarchy, IDs, widget types, child order, responsive/CSS/layout settings, dynamic source, form/list/gallery configuration, template IDs, or existing editor HTML tags/attributes change. It permits **only** selected text-value edits in existing matching widgets. Dedicated regression tests reproduce the previously forbidden replacements and run in the GitHub governance workflow. A structurally necessary edit requires a **separate explicitly reviewed and owner-authorized design change**, never an implicit demo placeholder replacement.
+
+**Important runtime boundary:** This is now a reviewed **source-controlled validation rule**, **not** a deployed WordPress-wide save interceptor. Until the approved update pipeline consumes this validator or a governed Elementor pre-save guard is deployed, direct UI/SQL writes can bypass it. Do not claim runtime global enforcement. Original Fluent Forms **subscription form #2 is published**, and restoring its visual widget may restore a submit path; form collection/notification policy requires a separate targeted review while preserving its visual design. The review gallery's live data and third-party accounts likewise require separate ownership verification.
+
 ## 3. External provider connections — never inherited
 
 At minimum, inspect and reset/reconnect: **Trustindex/TripAdvisor**, **LiteSpeed Cache / QUIC.cloud**, **Google Tag Manager/GA**, **Meta/Instagram**, **Rank Math Google/Search Console**, **Fluent SMTP/CRM/Forms delivery**, **Woo/Stripe/PayPal**, **WhatsApp**, **Google Drive OAuth**, **JetEngine Maps API**, **Elementor license**, and the site's DNS/email/CDN. A provider's setting existing in `wp_options` proves only that a stored value/key is present, **not** that the provider is currently connected or licensed.
