@@ -83,7 +83,7 @@ putenv('MAD4B_CLOUDFLARE_ZONE_ID='.str_repeat('a',32));
 putenv('MAD4B_CLOUDFLARE_ACCOUNT_ID='.str_repeat('d',32));
 putenv('MAD4B_COMPANY_ORIGIN_IPV4=187.7.76.129');
 putenv('MAD4B_COMPANY_LAUNCH_REGISTRY_JSON='.json_encode(array(
- 'wayfatours'=>array('origin_host'=>'wayfatours.mad4b.com','production_admitted'=>true)
+ 'wayfatours'=>array('origin_host'=>'wayfatours.mad4b.com','production_admitted'=>true, 'approved_custom_domains'=>array('wayfatours.com'))
 )));
 require dirname(__DIR__,2).'/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-domain-cloudflare.php';
 $c='MAD4B_SCP_Company_Domain_Cloudflare';
@@ -120,6 +120,8 @@ $second=$c::commit(new Mock_Request($commit));
 expect_true(response_data($second)['state']==='DNS_ALREADY_MATCHES'&&$GLOBALS['http_posts']===1,'provider readback prevents double POST');
 $GLOBALS['records']=array(array('name'=>'wayfatours.mad4b.com','type'=>'CNAME','content'=>'other.example','id'=>'conflict'));
 expect_true($c::commit(new Mock_Request($commit))->get_error_code()==='mad4b_domain_dns_conflict','never overwrite conflicting hostname');
+$other=array('company_code'=>'wayfatours','mode'=>'custom_domain','hostname'=>'other-brand.com');
+expect_true(is_wp_error($c::plan(new Mock_Request($other))),'cannot bind unapproved foreign custom domain');
 $custom=array('company_code'=>'wayfatours','mode'=>'custom_domain','hostname'=>'wayfatours.com');
 $customPlan=response_data($c::plan(new Mock_Request($custom)));
 expect_true(in_array('company_domain_ownership_txt_unverified',$customPlan['blockers'],true),'custom domain requires TXT ownership');
