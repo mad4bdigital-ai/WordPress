@@ -1,0 +1,98 @@
+{
+  "contract": "mad4b.elementor-kit-navigation-tokens.v1",
+  "status": "source_controlled_company_design_governance",
+  "scope": "All shared company navigation widgets, header preference controls and tour TOC across WPML locales; one WordPress site per company",
+  "authority": {
+    "company_kit": "Use Elementor active Kit as the only brand-color/typography authority. Source name, visual palette and menu states are never copied from another company's demo.",
+    "colors": {
+      "normal": "globals/colors?id=text",
+      "hover": "globals/colors?id=secondary",
+      "active": "globals/colors?id=accent",
+      "focus": "globals/colors?id=accent",
+      "pointer": "globals/colors?id=accent",
+      "surface": "globals/colors?id=bnav001"
+    },
+    "typography": "Use globals/typography?id=text or relevant active Kit typography token, not standalone font or hardcoded named brand",
+    "layout": "Component-specific responsive layout may define padding, radius, height and scroll; these are nonbrand UX dimensions requiring separate review if changed",
+    "customer_labels": "Public client control is localized as Passport; backend market_country and nationality fields retain existing verified meanings",
+    "no_color_literals": "No brand hex/rgb named literals in new navigation/TOC company CSS. Neutral shadow alpha is documented as a non-brand visual affordance."
+  },
+  "templates": {
+    "tour_content_ids": [
+      24784,
+      42179,
+      35121,
+      35123,
+      35119,
+      40121
+    ],
+    "nav_menu_element": "9757cf2",
+    "toc_element": "b29a19b",
+    "fields": {
+      "9757cf2": {
+        "color_menu_item": "text",
+        "color_menu_item_active": "accent",
+        "pointer_color_menu_item_active": "accent",
+        "toggle_background_color": "bnav001",
+        "toggle_color": "text",
+        "background_color_dropdown_item": "bnav001",
+        "nav_menu_divider_color": "accent"
+      },
+      "b29a19b": {
+        "item_text_color_normal": "text",
+        "item_text_color_active": "accent",
+        "marker_color": "accent",
+        "border_color": "accent",
+        "background_color": "bnav001"
+      }
+    },
+    "geometry_policy": "Only change settings.__globals__ colors in source templates with exact ID and source expected; do not change widget types, headings, price fields, links, nested order or Elementor JSON elsewhere"
+  },
+  "kit_integrity": {
+    "required_system_tokens": [
+      "primary",
+      "secondary",
+      "text",
+      "accent"
+    ],
+    "required_unique_custom_tokens": [
+      "bnav001"
+    ],
+    "current_legacy_duplicate_ids": [
+      "e14cd5e",
+      "80789f7",
+      "62e8100",
+      "272e6c6",
+      "6f02953",
+      "0ce0fb4",
+      "3a5c55e",
+      "c18767c",
+      "e3861c0",
+      "9f7c109",
+      "36b053a",
+      "a558f6f",
+      "887fd61"
+    ],
+    "provisioning_policy": "BLOCK new company activation on any duplicated _id regardless of value: must import only unique validated semantic tokens",
+    "existing_site_policy": "Record legacy duplicates as open debt, do not blindly delete/rename Kit tokens while existing templates may reference them; newly edited navigation widgets must not reference duplicated IDs",
+    "kit_save_policy": "Any intended Kit change requires source-backed diff and distinct authorized design approval; never promote demo-only palette to another tenant",
+    "fallback": "If semantic global is missing, flag invalid configuration instead of using a second company's palette"
+  },
+  "mobile_toc": {
+    "scope": "body.single-tours-and-activities and viewport width <=767px",
+    "behavior": "HTML details disclosure closed by default; section groups with nested native anchor links, scroll cap 58dvh, proper keyboard semantics",
+    "source": "Existing Elementor TOC anchor links; no new or altered heading ids; desktop retains native TOC when viewport changes",
+    "locale": "EN AR FR DE IT ES, labels from current HTML language",
+    "fallback": "If native TOC has no links yet, retain existing Elementor markup; augment only after anchors are available"
+  },
+  "release_gate": [
+    "Verify same-target host and site identity with company/site_uuid for all writes",
+    "Snapshot source metadata in memory, exact compare-and-swap updates, readback",
+    "Audit active Kit semantic tokens and list duplicate custom IDs",
+    "Block new nonsemantic or ambiguous Kit color bindings in shared company navigation widgets",
+    "CSS and runtime JS only for documented header/menu/TOC components, with mobile scope; no Elementor node redesign",
+    "Check hover/focus/active and dropdown at desktop, native TOC restored on resize, mobile nested anchors work",
+    "All six WPML templates have same global color refs and independent translated copy",
+    "PR CI before promotion, no Production write without authorized deployment approval"
+  ]
+}
