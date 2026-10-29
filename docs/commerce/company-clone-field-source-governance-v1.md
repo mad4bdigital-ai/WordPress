@@ -2,7 +2,7 @@
 
 **Scope:** Source-backed discovery and company-provisioning policy for the WordPress tourism platform. Tracking issue: [#626](https://github.com/mad4bdigital-ai/WordPress/issues/626). Machine-readable candidate: [field-source-policy-v1.json](../../governance/company-clone/field-source-policy-v1.json).
 
-**Desired demo:** Wo Vacation at `tours.dev.mad4b.com`. The live site name is **not yet converted**: at the last source read it remained Egypt Tour Gates. The CLI attempt to change `blogname` was rejected by Elementor's Site Kit save authorization. A source-backed, authenticated migration of site title/Kit is a **separate gated implementation step**, not an accomplished result. Do not conflate the demo-brand decision with permission to migrate a company.
+**Desired demo:** Wo Vacation at `tours.dev.mad4b.com`. **Updated 29 Oct 2026:** the live WordPress `blogname`, Elementor active Kit `60050` `site_name`, WPML Blog Title string and Rank Math Organization/Website names are now **Wo Vacation**, changed successfully through the supported WP-CLI/Elementor integration on Staging. Previous permission error affected an ordinary PHP CLI without `WP_CLI` context. The owner explicitly declined creation of a new backup for this change. **This is not a full brand-neutral migration:** legacy company contacts, social links, dynamic review/gallery media, editorial references and provider account bindings still need source-backed isolation; no new company has been provisioned.
 
 ## 1. What was actually discovered
 
@@ -78,7 +78,7 @@ This proposed policy extends inventory/decision coverage without bypassing those
 - Convert this reviewed manifest to a **site provisioning field-source adapter** (read, validate, plan, deny unknown, approve, apply, verify, rollback). Prefer using the existing tenant field registry and Control Plane authority.
 - Build runtime source resolvers for nested Elementor/JetEngine settings and Options Pages; distinguish shared template structure from company dynamic bindings, especially review-gallery media.
 - Add tests that reject account data reuse, leakage of another company's name, external image URLs and QA fixtures; ensure senders/cron integrations start disabled.
-- Fix the Elementor-permission-bound Wo Vacation demo name change through the supported Site Kit path, then validate rendered branding and all six WPML languages as applicable. Do not mark this task complete prematurely.
+- Verify remaining contact/WhatsApp/social links, review-gallery sources, brand-specific logos/captions and external provider bindings for Wo Vacation; core WordPress/Elementor/WPML/Rank Math name sync is complete on Staging, but the wider tenant-neutral content migration is not. Recheck all active WPML languages and public rendered templates before declaring fully neutral.
 - Preserve independent DFSB Safe Boot release certification; no GO decision on Production or template cloning is implied.
 
 **Current status: draft for review; no Production mutation or new-company clone applied.**
