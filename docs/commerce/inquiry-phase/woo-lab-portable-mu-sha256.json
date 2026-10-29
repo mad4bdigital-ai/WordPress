@@ -7,6 +7,12 @@
       "before_lines": 11,
       "after_lines": 11
     },
+    "094-jetsearch-legacy-geo-post-suppression.php": {
+      "source_sha256": "a1bc7c5dea21c812cb2e5c86010c4a76c6b3196f569b466a28bb312ecf763b74",
+      "current_sha256": "2888a08548fe5cd14d3c7c3ecbf3a0dbe3d6f98f506f8b4f7e6a058080d659b7",
+      "before_lines": 17,
+      "after_lines": 17
+    },
     "096-verified-tour-render-context.php": {
       "source_sha256": "623696cff68262e77a95b57df829c5369842624d4b565433aa111c60113fa62d",
       "current_sha256": "75d79a584f5f8fc9290a86e7201f6d7600e52f0b5d87e720b2273a9b3b78fd6d",
@@ -79,11 +85,35 @@
       "before_lines": 46,
       "after_lines": 46
     },
+    "company-elementor-structure-contract.php": {
+      "source_sha256": "23cf00957378d600bf61af328467571bdcb6ca1514e0bcdf3da9b6d02c190ca3",
+      "current_sha256": "f9bc1f4a00fc7d1e636090a32255cffae5933aa239805bff1025381fbaef6f95",
+      "before_lines": 26,
+      "after_lines": 26
+    },
+    "company-jetsearch-legacy-taxonomy-source.php": {
+      "source_sha256": "0917211b9adacae829a91620a957c6744b409205c41ef53e234b6760a74c974b",
+      "current_sha256": "8561fed895f7a4e2ad3c27a5a3e3d67e26bd22f80c68c2beb4b5e8705588d972",
+      "before_lines": 16,
+      "after_lines": 16
+    },
+    "company-uael-social-share-context.php": {
+      "source_sha256": "460f1082599b346eb0660a75f230276e906a5efcb03d6303a5655cd009ddcf3c",
+      "current_sha256": "349089ca1fcb38aa3f14a47b3641ad3fe00ae93aa8ddddfe11d63ac2ff9d4bd2",
+      "before_lines": 48,
+      "after_lines": 48
+    },
     "first-view-image-priority.php": {
       "source_sha256": "6a6e48c1acd793634e4de83bbc01f4fe127c32ac6c6a06051613147f970d36d4",
       "current_sha256": "1dbae3d1a23203ff1b0071c371be663988948f3ca17900c19c18780506680af9",
       "before_lines": 38,
       "after_lines": 38
+    },
+    "local-tour-rate-filter-provider-router.php": {
+      "source_sha256": "e2646d1859088bf056c6cd687fc17761133bf863a79ea058ac25f069032b3371",
+      "current_sha256": "0b2c823c9ffc8e92cbe79a1b4eea4f8816eb08b6e897d30e12860bcb6e23817c",
+      "before_lines": 15,
+      "after_lines": 15
     },
     "portable-term-featured-media.php": {
       "source_sha256": "0fe3bd81262bd95c13aa8ce12e7f3a95e014b3685b86ed722ca6b0c43adbbcce",
