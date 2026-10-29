@@ -10676,6 +10676,24 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/qa30-native-general-settings-rest-lifecycle.py"
       ],
       "review_rationale": "New source-owned scoped allowed_options filter removes only locked canonical URLs and direct admin_email from native General Settings writes, while preserving new_admin_email confirmation, normal fields, unrelated requests, and independent write authority. Tests run as standalone PHP assertions through a bounded explicit Python wrapper, and CI cannot authorize deployment."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-general-settings-contract.php",
+      "source_blob_sha": "0d0c5f7a096c77d95330a9de01f6b47c0adc8c33",
+      "owner_role": "MAD4B source-code and security reviewer for CI-only coverage; independent exact-HEAD owner attestation still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa30-native-general-settings-rest-lifecycle.py"
+      ],
+      "review_rationale": "QA30 exact Git-source successor, already behaviorally accepted on downstream W1: only register the native allowed_options hook when WordPress hook APIs exist, while retaining the standalone early-admin fail-closed contract and normal native General Settings protection. The existing QA30 Python wrapper executes the source PHP assertions in repository CI. No runtime or Production authorization."
     }
   ],
   "code_change_rules": {
