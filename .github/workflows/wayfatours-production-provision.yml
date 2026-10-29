@@ -1,0 +1,36 @@
+name: Wayfatours Production Tenant Provisioning Safety
+
+on:
+  pull_request:
+    paths:
+      - "scripts/provision_wayfatours_production_v1.sh"
+      - "scripts/wayfatours_post_install.php"
+      - "scripts/gate_new_company_production.php"
+      - "scripts/check_wayfatours_public_https.sh"
+      - "tests/wayfatours-production/**"
+      - "docs/commerce/wayfatours-production-onboarding.md"
+      - ".github/workflows/wayfatours-production-provision.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  guarded-provisioning:
+    name: Isolated Production and Kit Admission
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: Shell and PHP lint
+        run: |
+          bash -n scripts/provision_wayfatours_production_v1.sh
+          bash -n scripts/check_wayfatours_public_https.sh
+          php -l scripts/wayfatours_post_install.php
+          php -l scripts/gate_new_company_production.php
+      - name: Tenant identity, credentials, no data-clone and TLS gate contracts
+        run: python3 -m unittest discover -s tests/wayfatours-production -p 'test_*.py' -v
