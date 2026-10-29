@@ -114,6 +114,49 @@ final class MAD4B_Tourism_Nile_Source_V1 {
   }
   return $items;
  }
+ private static function tour_programs(int $id): array {
+  $itinerary=get_post_meta($id,'itinerary_item',true);
+  $items=[];
+  if(is_array($itinerary)){
+   foreach(array_slice(array_values($itinerary),0,25) as $row){
+    if(!is_array($row))continue;
+    $items[]=[
+     'day_label'=>mb_substr(sanitize_text_field((string)($row['number']??'')),0,60),
+     'title'=>mb_substr(sanitize_text_field((string)($row['title']??'')),0,240),
+     'description_text'=>mb_substr(wp_strip_all_tags((string)($row['description']??'')),0,4000),
+     'media_source_company_only'=>true,
+     'media_not_copied'=>true,
+    ];
+   }
+  }
+  $cruise=get_post_meta($id,'cruise_runs',true);
+  $programs=[];
+  if(is_array($cruise)){
+   foreach(array_slice(array_values($cruise),0,15) as $row){
+    if(!is_array($row))continue;
+    $clean=[];
+    foreach(['program','day','origin','time'] as $key){
+     $value=$row[$key]??null;
+     $clean[$key]=is_scalar($value)?mb_substr(sanitize_text_field((string)$value),0,100):null;
+    }
+    $programs[]=$clean;
+   }
+  }
+  return ['itinerary_days'=>$items,'cruise_run_variants'=>$programs,
+    'source_programs_only'=>true,'destination_publication_allowed'=>false];
+ }
+ private static function source_translation(int $id): array {
+  global $wpdb;
+  $table=$wpdb->prefix.'icl_translations';
+  $exists=$wpdb->get_var($wpdb->prepare(
+    'SELECT table_name FROM information_schema.tables WHERE table_schema=%s AND table_name=%s',DB_NAME,$table));
+  if($exists!==$table)return ['language_code'=>null,'source_translation_group_id'=>null];
+  $row=$wpdb->get_row($wpdb->prepare(
+    "SELECT language_code,trid FROM {$table} WHERE element_id=%d AND element_type=%s LIMIT 1",
+    $id,'post_tours-and-activities'),ARRAY_A);
+  return ['language_code'=>is_array($row)?(string)$row['language_code']:null,
+    'source_translation_group_id'=>is_array($row)?(int)$row['trid']:null];
+ }
  private static function catalog_items(): array {
   $items=[];
   foreach(self::tour_ids() as $id){
@@ -126,6 +169,8 @@ final class MAD4B_Tourism_Nile_Source_V1 {
     'summary'=>mb_substr(wp_strip_all_tags((string)$p->post_excerpt),0,3500),
     'source_content_text'=>mb_substr(wp_strip_all_tags((string)$p->post_content),0,6000),
     'source_slug'=>$p->post_name,
+    'translation_source'=>self::source_translation($id),
+    'program_reference_snapshot'=>self::tour_programs($id),
     'source_taxonomy_term_ids'=>is_wp_error($terms)?[]:array_values(array_map('intval',$terms)),
     'itinerary_reference_present'=>get_post_meta($id,'itinerary_item',true)!=='',
     'cruise_run_reference_present'=>get_post_meta($id,'cruise_runs',true)!=='',
