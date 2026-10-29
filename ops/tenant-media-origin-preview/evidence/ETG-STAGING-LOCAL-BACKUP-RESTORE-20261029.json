@@ -1,0 +1,36 @@
+{
+  "contract": "mad4b.backup.etg-commerce-staging.local-restoration-evidence.v1",
+  "date": "2026-10-29",
+  "target": "Hostinger primary VPS (srv2030908)",
+  "status": "LOCAL_RESTORE_VERIFIED",
+  "source_environment": "ETG Commerce Staging",
+  "not_current_production_backup": true,
+  "backup_root": "/opt/mad4b-media-backups/etg-20261029T161708Z",
+  "media": {
+    "files": 54838,
+    "logical_bytes": 10546403346,
+    "rsync_checksum_source_backup_differences": 0,
+    "manifest_sha256": "b9b6d84878891034a3a73c4f46e6642f327da0ff3a92730c35c60a203fc7ad37",
+    "isolated_sample_file_restore_pass": true
+  },
+  "database": {
+    "gzip_archive_size_approx_mb": 95,
+    "sha256": "7f0be6f57e66329ecb3ba7ab737232254387af0ca0028b6999511aa03b9f1dc5",
+    "gzip_integrity_pass": true,
+    "isolated_container_restore_pass": true,
+    "tables": 324,
+    "posts": 25801,
+    "attachments": 22782,
+    "image_attachments": 22740,
+    "postmeta_rows": 170133,
+    "source_restore_counts_match": true
+  },
+  "previous_copies_preserved": true,
+  "rehearsal_container_and_scratch_removed_after_pass": true,
+  "production_and_dns_untouched": true,
+  "remaining_resilience_risks": [
+    "Same VPS / same physical disk: host loss or disk failure is not covered without independently verified offsite backup",
+    "Filesystem and DB were captured sequentially with no application-write freeze; not an atomic point-in-time composite snapshot",
+    "Current hosting-3 Production has not been verified as the source; this evidence is for VPS Commerce Staging"
+  ]
+}

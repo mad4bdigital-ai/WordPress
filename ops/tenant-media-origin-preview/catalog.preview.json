@@ -1,0 +1,24 @@
+{
+  "contract": "mad4b.tenant-media-catalog.preview.v1",
+  "mode": "loopback-only",
+  "tenants": [
+    {
+      "key": "etg",
+      "host": "media.egypttourgates.com",
+      "assets": [
+        {
+          "path": "2026/10/placeholder-3-100x100.png",
+          "mime": "image/png",
+          "sha256": "b4033b0784ef3c1c2beab3f489b8c945b9a0ce010ffd14a8a5be39d89ccebb63",
+          "preview_approved": true,
+          "public_approved": false
+        }
+      ]
+    },
+    {
+      "key": "are",
+      "host": "media.allroyalegypt.com",
+      "assets": []
+    }
+  ]
+}
