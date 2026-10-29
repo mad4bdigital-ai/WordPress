@@ -145,6 +145,16 @@ abstract class MAD4B_SCP_Adapter_Base {
 		$reversible_contract = $readonly ? '' : $this->reversible_contract_for( $name );
 		if ( '' !== $reversible_contract ) {
 			$execute_callback = function ( $input = array() ) use ( $name, $method ) {
+				// The exact local draft Ability carries its own atomic operation journal,
+				// lock, readback and compensation. Do not impersonate an NHI to invoke
+				// the independent agent-only reversible journal for this WP-CLI path.
+				if ( 'mad4b/content-apply-bundle' === $name
+					&& 'dynamic-content' === $this->id()
+					&& 'apply_bundle' === $method
+					&& class_exists( 'MAD4B_SCP_Policy' )
+					&& MAD4B_SCP_Policy::can_native_content_draft( $input ) ) {
+					return $this->apply_bundle( $input );
+				}
 				if ( ! class_exists( 'MAD4B_SCP_Reversible_Adapter_Mutations' ) ) return new WP_Error( 'mad4b_reversible_adapter_manager_unavailable', 'Reversible adapter mutation manager is unavailable.' );
 				return MAD4B_SCP_Reversible_Adapter_Mutations::execute( $this, $name, $method, is_array( $input ) ? $input : array() );
 			};
