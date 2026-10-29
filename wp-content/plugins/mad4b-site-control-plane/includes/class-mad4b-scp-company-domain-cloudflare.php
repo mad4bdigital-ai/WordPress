@@ -11,8 +11,11 @@ final class MAD4B_SCP_Company_Domain_Cloudflare {
     const BASE = '/company-domains';
     const CONTRACT = 'mad4b.company-domains.cloudflare.v1';
     const SUBZONE = 'mad4b.com';
+    private static $booted = false;
 
     public static function boot() {
+        if (self::$booted) return;
+        self::$booted = true;
         add_action('rest_api_init', array(__CLASS__, 'routes'), 39);
     }
     public static function routes() {
