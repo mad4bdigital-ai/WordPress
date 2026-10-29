@@ -213,6 +213,11 @@ final class MAD4B_Hub_Nile_Publisher_V1 {
             }
         }
         if (count($records) !== 417) throw new RuntimeException('Unexpected catalog size');
+        // Egypt's late-October DST transition can make WordPress' inferred
+        // post_date_gmt one hour ahead of UTC, turning publish into future.
+        // Supply explicit UTC/local timestamps already safely in the past.
+        $publishedUtc = gmdate('Y-m-d H:i:s', time() - 180);
+        $publishedLocal = get_date_from_gmt($publishedUtc, 'Y-m-d H:i:s');
         $summary = [
             'contract'=>'mad4b.content-hub.tourism-nile-publication.v1',
             'company'=>self::SOURCE,
@@ -227,6 +232,8 @@ final class MAD4B_Hub_Nile_Publisher_V1 {
             'public_website_distribution_enabled'=>false,
         ];
         foreach ($records as $key=>$desired) {
+            $desired['post_date_gmt'] = $publishedUtc;
+            $desired['post_date'] = $publishedLocal;
             $postId = $existing[$key] ?? 0;
             $payloadHash = (string)$desired['meta_input']['_mad4b_hub_source_sha256'];
             if ($postId) {
