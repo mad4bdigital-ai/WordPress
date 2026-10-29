@@ -119,11 +119,13 @@ services:
       - /tmp:rw,nosuid,mode=1777
     depends_on: [php]
     restart: unless-stopped
-    networks: [private]
+    networks: [private, edge]
 networks:
   private:
     name: wayfatours-production-private
     internal: true
+  edge:
+    name: wayfatours-production-edge
 YAML
 cat > "$ROOT/stack/nginx.conf" <<'NGINX'
 server {
