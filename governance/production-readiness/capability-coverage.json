@@ -3204,6 +3204,26 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing bounded automation and performance controls cover a non-authorizing advisory service; no new execution or write surface is introduced.",
       "review_rationale": "Reviewed shared 18-second source read deadline, error pagination, bounded companions, managed execution precedence, verified external advisory metadata and explicit incomplete/timeout states; no remote instructions are executed. Hermetic PHP 7.4/8.3 suites passed; a matching deployed Staging build has not been accepted."
+    },
+    {
+      "owner_role": "Plugin security maintainer / independent code review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-early-boundary-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-isolated-php-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-behavioral-runtime.php"
+      ],
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-private-operations-boundary.php",
+      "review_rationale": "Review private customer-order access, legacy Master Admin compatibility, fail-closed site-local JetEngine relation binding and before-fastpath initialization.",
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "This adds no public endpoint or new execution privilege; reuse existing SECURITY-01, GOVERNANCE-01 and PLATFORM-01 for privacy enforcement and explicit reviewed release checks."
     }
   ],
   "lifecycle": [],
@@ -10604,6 +10624,77 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-deployment-runtime.php"
       ],
       "execution_note": "The bounded Python wrapper invokes the original standalone PHP fixture through PHP CLI, enforces nonzero-failure and the exact assertion PASS marker; it is not a PHPUnit test. Executed from the ordinary readiness Python lane; no new broad PHP executor allowlist."
+    },
+    {
+      "owner_role": "Plugin security maintainer / independent code review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-early-boundary-contract.py"
+      ],
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-private-operations-boundary.php",
+      "source_blob_sha": "6ff5bbd161a2b2327753578e73669fd02f8b9559",
+      "review_rationale": "Review site-local relation metadata, nonpublic CPT registration and anonymous/private REST denial while preserving authorized operator access."
+    },
+    {
+      "owner_role": "Plugin security maintainer / independent code review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-early-boundary-contract.py"
+      ],
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "1861354d015c94be6ed41265f1737c4dd93d733c",
+      "review_rationale": "Review early Control Plane initialization before REST and CLI fastpaths so private content cannot bypass authorization when ordinary source modules are skipped."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-private-operations-boundary.php",
+      "source_blob_sha": "9b465836aad42b407431b420f587425aca77bcee",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-early-boundary-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-isolated-php-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-behavioral-runtime.php"
+      ],
+      "owner_role": "Plugin security maintainer / independent code review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "review_rationale": "The early guard must be declaration-safe when isolated PHP contracts load source without WordPress hooks, while retaining unconditional bootstrap on real WordPress requests."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/cross-plugin-sources.json",
+      "source_blob_sha": "e56c558da5967b9c50f189deb5b1d7b0b018ea6a",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/dfsb-rc15-signed-review-source-pin.py"
+      ],
+      "owner_role": "Repository security/release source reviewer for CI-only source registration; exact-head owner attestation required separately",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "review_rationale": "Reviewed exact Git blob for candidate-only RC15 signed-review source pin; source SHA fbcfed264231a2553d197927617a9cdae67f5567 and version 0.4.0-alpha.15-rc.1 only. The same-PR regression test forbids package certification, certified provider promotion, artifact digest authorization, staging/production apply and legacy ETG source mutation. GitHub Sigstore signed-review evidence is not an immutable release, independent provider certificate or Full Boot authority."
     }
   ],
   "code_change_rules": {
