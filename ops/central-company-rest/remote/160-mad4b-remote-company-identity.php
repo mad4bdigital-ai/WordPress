@@ -12,6 +12,7 @@ if (!defined('ABSPATH')) { exit; }
 final class MAD4B_Remote_Company_Identity_V1 {
     const MAP = [
         'allroyalegypt.com' => 'all-royal-egypt',
+        'www.allroyalegypt.com' => 'all-royal-egypt',
         'egypttourgates.com' => 'egypt-tour-gates',
         'tourism.almallahgroup-mg.com' => 'tourism-almallahgroup',
     ];
