@@ -36,6 +36,16 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
             && class_exists('CMB_Webhooks', false);
     }
     public function ability_names() {
+        // A bundled adapter may be reviewed and discoverable while its
+        // optional provider plugin is absent. Its register_abilities() then
+        // registers nothing; the advertised MCP names must obey the SAME
+        // availability predicate or the descriptor preflight rejects the
+        // entire first-party mad4b-read server for missing foreign abilities.
+        // Do not suppress descriptor failures for required/core abilities.
+        if ( ! $this->is_available() ) {
+            return array('read' => array(), 'content' => array(),
+                'write' => array(), 'admin' => array());
+        }
         return array('read' => array(
             'mad4b/chatbotx-provider-snapshot',
             'mad4b/chatbotx-channels-read',
