@@ -87,4 +87,13 @@ with TemporaryDirectory() as foreign:
     chk(not reviewed_bootstrap_successor(Path(foreign),'mad4b-site-control-plane.php',current),
         'foreign_checkout_cannot_self_certify')
 
+# QA31 W2A read-only native source checks preserve QA31/QA32 reviewed-source restrictions.
+import subprocess, shutil
+php=shutil.which('php')
+if not php: raise AssertionError('QA31 W2A PHP runtime unavailable')
+fixture=plugin/'tests/qa31-w2a-readonly-runtime.php'
+execution=subprocess.run([php,str(fixture)],cwd=repo,capture_output=True,text=True,timeout=30,check=False)
+chk(execution.returncode==0 and 'QA31_W2A_READONLY_RUNTIME: PASS' in execution.stdout,
+    'qa31_w2a_native_and_unified_gate_hermetic_runtime')
+
 print('QA31_SOURCE_PARITY_NEGATIVE_REGRESSIONS: PASS')

@@ -131,11 +131,12 @@ final class MAD4B_SCP_Operator_Journeys {
                 'label' => 'Safely update a plugin or selected Git HEAD', 'risk' => 'high',
                 'steps' => array(
                     array( 'status', 'mad4b/control-plane-update-status', 'read' ),
+                    array( 'choose_eligible_route', 'mad4b/control-plane-test-route', 'read' ),
                     array( 'plan', 'mad4b/control-plane-selected-head-plan', 'read' ),
                     array( 'execute', 'mad4b/control-plane-selected-head-apply', 'write' ),
                     array( 'verify', 'mad4b/control-plane-update-status', 'read' ),
                 ),
-                'caution' => 'A plan is not a certified ZIP. Preserve immutable SHA, signer, backup, rollback and installed version readback.',
+                'caution' => 'Route choice is read-only. Follow the returned eligible plan (Selected HEAD or Native), not a fixed executor; preserve immutable SHA, signer, owner approval, backup, rollback and independent runtime readback.',
             ),
             'wordpress_native_recovery' => array(
                 'label' => 'Resume Host-free WordPress recovery rehearsal', 'risk' => 'bounded_staging_write',

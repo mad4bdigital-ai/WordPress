@@ -3605,6 +3605,48 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing MCP admission, platform identity, security, owner-scoped administrative rights and execution-denial controls cover these staging-only authorization surfaces, without granting Production execution or public access.",
       "review_rationale": "New surface ability:mad4b/staging-write-grant-reconcile-staging is source-pinned in the W1 authority integration and assessed with hermetic owner-browser, agent REST route, Site Profile, OAuth, replay, write grant, exact mapping and negative permission fixtures. This is only CI source review, not evidence that the route is registered, usable, or authorized in Production."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-settings-locator.php",
+      "owner_role": "MAD4B QA31 W2 source/security reviewer; CI-only, independent owner release approval required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "tests/qa31_release_source_gate_contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w2a-readonly-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing source-governance, Site Profile, security and native WordPress administrative permission controls govern this read-only, unbootstrapped W2A class. No new write authority, key capture, user role change or provider execution.",
+      "review_rationale": "Exact Staging rc.118 source SHA imported to CI-only W2A, reviewed with PHP 8.3/8.5 hermetic permission, no-secret, gate non-escalation and no-mutation regressions. Still requires disposable WordPress, Woo integration and tenant-isolation acceptance before any deployment."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-gate-funnel.php",
+      "owner_role": "MAD4B QA31 W2 source/security reviewer; CI-only, independent owner release approval required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "tests/qa31_release_source_gate_contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w2a-readonly-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing source-governance, Site Profile, security and native WordPress administrative permission controls govern this read-only, unbootstrapped W2A class. No new write authority, key capture, user role change or provider execution.",
+      "review_rationale": "Exact Staging rc.118 source SHA imported to CI-only W2A, reviewed with PHP 8.3/8.5 hermetic permission, no-secret, gate non-escalation and no-mutation regressions. Still requires disposable WordPress, Woo integration and tenant-isolation acceptance before any deployment."
     }
   ],
   "lifecycle": [],
@@ -11475,6 +11517,151 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing release provenance, native update integrity, site-bound owner approval, backup/readback and rollback controls govern the same install lane; no new executable ability or broad skip of ancestry validation is added.",
       "review_rationale": "Patch a witnessed Selected-HEAD Staging continuation release-untrusted failure. Propagate only fixed-channel master release verdict metadata after exact six-part package identity equality and all root-trust flags. Never accept caller-supplied trust, and leave nonmatching Staging candidate behavior and Production denial unchanged."
+    },
+    {
+      "owner_role": "Staging technical code review for CI coverage only; exact-head owner attestation required independently",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-recovery-attempt-budget.php",
+      "source_blob_sha": "e4e4bdc96c303423af47335bc41882454e618ce5",
+      "control_ids": [
+        "RECOVERY-01",
+        "UPDATES-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-append-retry-budget-qa18.php"
+      ],
+      "review_rationale": "Reviewed exact QA18 PHP diff and the fail-before/fix-after regression: add evidence- and preflight-bound brand_draft_append lane without changing existing retry journal scope keys. Pending, succeeded, uncertain, bounded three-attempt reservation and administrator-only reset remain fail closed. QA18 and QA9/10/12/14/15 passed on VPS; ETG Staging same-content governed Append completed idempotently. This source review is not a Production promotion, release certification, or substitute for exact-head owner attestation."
+    },
+    {
+      "owner_role": "Technical source review for CI only; authenticated owner release attestation remains separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/skill-seed-manifest.json",
+      "source_blob_sha": "9c05af87222befd6541d895ff6d6d386e5f4ab68",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "GOVERNANCE-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-skills-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/commerce-lifecycle-skill-contract.py"
+      ],
+      "review_rationale": "Exact v15 Skill manifest adds three non-authorizing canonical workflow skills; reviewed unique identities, default enablement, no extra execution route or grant. Source-bound tests in this PR must pass before any CI acceptance; Production requires independent attestation."
+    },
+    {
+      "owner_role": "Technical source review for CI only; authenticated owner release attestation remains separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/skill-provider-catalog.json",
+      "source_blob_sha": "eec954918ed3eb84cc057f9ef16c9d8ede7b8973",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/commerce-lifecycle-skill-contract.py"
+      ],
+      "review_rationale": "Existing provider catalog appends read-oriented Fluent Forms, WooCommerce and Bit Flows instruction packs; no new provider mutation endpoint, credentials, order write or HTTP route. Source-bound regression is required; live provider certification not established."
+    },
+    {
+      "owner_role": "Technical source review for CI only; authenticated owner release attestation remains separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/user-role-governance-contract.json",
+      "source_blob_sha": "c3b039f9a81b5b873a3f8dec70796e563248e574",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-user-role-governance-contract.py"
+      ],
+      "review_rationale": "Reviewed site-neutral policy-only RBAC blueprint: six personas, separate approval/acceptance gates, effective WordPress rights versus NHI authority and explicit denial of role/capability mutation. It is not a runtime enforcer and does not certify any tenant."
+    },
+    {
+      "owner_role": "Technical source review for CI only; authenticated owner release attestation remains separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-seeder.php",
+      "source_blob_sha": "e3e31ea1a36035e54a9c6cd689250889ee7bfece",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-skills-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/commerce-lifecycle-skill-contract.py"
+      ],
+      "review_rationale": "Reviewed seed version-only v14 to v15 alignment to canonical Skill manifest; existing seeding/authorization callbacks remain unchanged. Contract regression is bound to this exact blob and requires successful CI; Production activation is excluded."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-gate-funnel.php",
+      "source_blob_sha": "e423f1564ccfa9a9bc2c71342ea241c86b7f96c3",
+      "owner_role": "MAD4B QA31 W2 source reviewer (CI-only, non-authorizing)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "tests/qa31_release_source_gate_contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w2a-readonly-runtime.php"
+      ],
+      "review_rationale": "Exact SHA256 Staging rc.118 read-only source import under W2A. Hermetic denial tests passed on PHP 8.3 and 8.5. No bootstrap registration, owner grant, new provider, release certification, or Production promotion."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-settings-locator.php",
+      "source_blob_sha": "17f50bc26c50a196eb509e358d2586befda63027",
+      "owner_role": "MAD4B QA31 W2 source reviewer (CI-only, non-authorizing)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "tests/qa31_release_source_gate_contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w2a-readonly-runtime.php"
+      ],
+      "review_rationale": "Exact SHA256 Staging rc.118 read-only source import under W2A. Hermetic denial tests passed on PHP 8.3 and 8.5. No bootstrap registration, owner grant, new provider, release certification, or Production promotion."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "6c2b2eeacad1d2528e624fce6eb6739cbf36feb0",
+      "owner_role": "Independent Control Plane source reviewer (reviewed CI only; exact-head owner attestation separate)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa30-native-general-settings-rest-lifecycle.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php"
+      ],
+      "review_rationale": "Exact Git blob reviewed for three source-only additions: readiness alerts loader/bootstrap and ChatbotX adapter loader. No new public execution grant, no production promotion, no site activation; retained W1 native General Settings guard and existing permission fences."
     }
   ],
   "code_change_rules": {

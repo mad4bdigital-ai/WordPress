@@ -781,20 +781,55 @@ final class MAD4B_SCP_Abilities {
 		$ability = $this->governed_write_target( $ability_name, false );
 		if ( is_wp_error( $ability ) ) return $ability;
 		$schema = method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null;
+		$schema_sha256 = $this->ability_input_schema_sha256( $ability );
 		$meta = $ability->get_meta();
-		return array(
+		$eligible = in_array( $ability_name, MAD4B_SCP_Servers::write_tools(), true );
+		$result = array(
 			'contract' => 'mad4b.chatgpt-write-ability-info.v1',
 			'ability_name' => $ability_name,
 			'label' => method_exists( $ability, 'get_label' ) ? (string) $ability->get_label() : '',
 			'description' => method_exists( $ability, 'get_description' ) ? (string) $ability->get_description() : '',
 			'category' => method_exists( $ability, 'get_category' ) ? (string) $ability->get_category() : '',
 			'input_schema' => $schema,
-			'input_schema_sha256' => $this->ability_input_schema_sha256( $ability ),
+			'input_schema_sha256' => $schema_sha256,
 			'annotations' => isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array(),
-			'runtime_eligible' => in_array( $ability_name, MAD4B_SCP_Servers::write_tools(), true ),
+			'runtime_eligible' => $eligible,
 			'read_only' => true,
 			'mutation_performed' => false,
 		);
+		// Preparation is non-authorizing. Write-execute still enforces signed
+		// identity, target permission, one-time approval and anti-replay.
+		if ( ! $eligible ) return $result;
+		if ( ! class_exists( 'MAD4B_SCP_Capability_Descriptor_Registry' )
+			|| ! class_exists( 'MAD4B_SCP_Ability_Catalog_Transport' )
+			|| ! class_exists( 'MAD4B_SCP_Preparation_Receipt' ) ) {
+			return new WP_Error( 'mad4b_write_preparation_runtime_unavailable', 'Governed write preparation is unavailable; execution remains denied.' );
+		}
+		$row = MAD4B_SCP_Capability_Descriptor_Registry::describe( $ability_name );
+		if ( is_wp_error( $row ) ) return $row;
+		if ( empty( $row['execution_eligible'] )
+			|| ! in_array( $row['execution_lane'] ?? '', array( 'write', 'content', 'admin' ), true ) ) {
+			return new WP_Error( 'mad4b_write_preparation_target_denied', 'Target is not eligible for governed write preparation.' );
+		}
+		if ( ! isset( $row['input_schema_sha256'], $row['classification_sha256'] )
+			|| ! hash_equals( (string) $row['input_schema_sha256'], $schema_sha256 ) ) {
+			return new WP_Error( 'mad4b_write_preparation_schema_drift', 'Target schema changed during write preparation.' );
+		}
+		$receipt = MAD4B_SCP_Preparation_Receipt::issue( $row );
+		if ( is_wp_error( $receipt ) ) return $receipt;
+		if ( ! is_string( $receipt ) || '' === $receipt ) {
+			return new WP_Error( 'mad4b_write_preparation_receipt_unavailable', 'Signed preparation evidence is unavailable; execution remains denied.' );
+		}
+		$result['prepared_dispatch'] = array(
+			'expected_input_schema_sha256' => $schema_sha256,
+			'expected_execution_lane' => (string) $row['execution_lane'],
+			'expected_classification_sha256' => (string) $row['classification_sha256'],
+			'expected_authority_scope_sha256' => MAD4B_SCP_Ability_Catalog_Transport::current_authority_scope(),
+			'preparation_receipt' => $receipt,
+		);
+		$result['dispatch_tool'] = 'mad4b/write-execute';
+		$result['preparation_contract'] = MAD4B_SCP_Preparation_Receipt::CONTRACT;
+		return $result;
 	}
 
 	private function governance_envelope_hash( $value ) {

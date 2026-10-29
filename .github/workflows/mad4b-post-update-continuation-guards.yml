@@ -48,6 +48,7 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-convergence.php
           php wp-content/plugins/mad4b-site-control-plane/tests/runtime-superseded-restart-checkpoint-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/runtime-restart-grace-readonly-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/historical-staging-mcp-read-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/guided-runtime-convergence-runtime.php
       - name: Verify actual MCP catalog and credential-free discovery evidence
         run: php wp-content/plugins/mad4b-site-control-plane/tests/mcp-catalog-evidence-runtime.php
