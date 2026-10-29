@@ -2,7 +2,14 @@
 /** Hermetic WordPress-free contract for company team preparation drafts. */
 define('ABSPATH','/isolated/');
 class WP_Error {
-    public function __construct(private string $code,private string $message='',private array $data=[]) {}
+    private $code;
+    private $message;
+    private $data;
+    public function __construct($code,$message='',array $data=[]) {
+        $this->code=$code;
+        $this->message=$message;
+        $this->data=$data;
+    }
     public function get_error_code(){return $this->code;}
     public function get_error_data(){return $this->data;}
 }
@@ -49,7 +56,8 @@ class MAD4B_SCP_Company_Master_Admin {
  public static function managedStaff($id){return $id===101;}
 }
 class Req {
- public function __construct(private array $j){}
+ private $j;
+ public function __construct(array $j){$this->j=$j;}
  public function get_json_params(){return $this->j;}
 }
 $GLOBALS['opts']=[];
