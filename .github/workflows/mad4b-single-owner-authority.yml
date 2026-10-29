@@ -1,0 +1,32 @@
+name: MAD4B Single Owner Authority Contracts
+on:
+  pull_request:
+    paths:
+      - 'ops/mad4b-single-owner-authority/**'
+      - '.github/workflows/mad4b-single-owner-authority.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mad4b-owner-authority-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+jobs:
+  hermetic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: sodium,mysqli
+      - name: Validate versioned policy and legacy compatibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd ops/mad4b-single-owner-authority
+          php -l IndependentAuthority.php
+          php -l AuthorityLedger.php
+          php -l test-single-owner.php
+          php test-single-owner.php
