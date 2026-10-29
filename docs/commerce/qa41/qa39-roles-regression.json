@@ -1,0 +1,14 @@
+{
+    "result": "PASS",
+    "checks": {
+        "admin_200": true,
+        "roles_returned": true,
+        "no_user_records": true,
+        "manager_persona_mapped": true,
+        "reviewer_capabilities_read": true,
+        "operator_privilege_flagged": true,
+        "capability_fields_bounded": true,
+        "role_mapping_is_company_definition": true,
+        "guest_denied": true
+    }
+}

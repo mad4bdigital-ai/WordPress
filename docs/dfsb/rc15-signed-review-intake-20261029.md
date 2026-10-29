@@ -1,9 +1,9 @@
 # DFSB RC15 — signed review intake (NOT Provider Certified)
 
-**Date:** 2026-10-29  
-**Tracker:** [Issue #565](https://github.com/mad4bdigital-ai/WordPress/issues/565)  
-**Source PR:** [#567](https://github.com/mad4bdigital-ai/WordPress/pull/567), exact reviewed/owner-attested head `fbcfed264231a2553d197927617a9cdae67f5567`  
-**Merge SHA:** `419b5ab0655ec7093eaf0c8b8968e81dbbd82fd9`  
+**Date:** 2026-10-29
+**Tracker:** [Issue #565](https://github.com/mad4bdigital-ai/WordPress/issues/565)
+**Source PR:** [#567](https://github.com/mad4bdigital-ai/WordPress/pull/567), exact reviewed/owner-attested head `fbcfed264231a2553d197927617a9cdae67f5567`
+**Merge SHA:** `419b5ab0655ec7093eaf0c8b8968e81dbbd82fd9`
 **Owner-comment dispatcher PR:** [#576](https://github.com/mad4bdigital-ai/WordPress/pull/576), merged at `d6483dedaef8dba31afc8dabc94bafe7dd8b8737`.
 
 ## Review signed artifact — exact evidence

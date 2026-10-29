@@ -1,0 +1,49 @@
+{
+  "contract": "commerce.management.company.v1",
+  "site_uuid": "00000000-0000-0000-0000-000000000000",
+  "site_profile_revision": 1,
+  "site_profile_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+  "environment": "local",
+  "revision": 3,
+  "domains": {
+    "forms": true,
+    "services": true,
+    "rates": true,
+    "reviews": true,
+    "quotes": true,
+    "tasks": true,
+    "orders": true,
+    "inventory": false,
+    "payments": false,
+    "suppliers": false,
+    "crm": true,
+    "workflows": true,
+    "accounting": false,
+    "users": true
+  },
+  "form_roles": {
+    "tour_request": 6,
+    "custom_trip": 7,
+    "archive_inquiry": 8
+  },
+  "source_types": {
+    "services": [
+      "tours-and-activities",
+      "properties",
+      "transportations"
+    ],
+    "rates": [
+      "tour-rates",
+      "property-rates",
+      "transport-rates"
+    ]
+  },
+  "role_personas": {
+    "traveler": "customer",
+    "reviewer": "commerce_request_reviewer",
+    "commercial_manager": "commerce_request_manager",
+    "operations": "operator",
+    "developer": "admin_developer",
+    "site_administrator": "administrator"
+  }
+}
