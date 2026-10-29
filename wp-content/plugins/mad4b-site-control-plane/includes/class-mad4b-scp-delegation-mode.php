@@ -11,12 +11,17 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Delegation_Mode {
     const CONTRACT = 'mad4b.mcp-principal-mode.v1';
     const OPTION = 'mad4b_mcp_principal_mode';
+    const PAGE_SLUG = 'mad4b-mcp-principal-mode';
     const DELEGATED = 'delegated_user';
     const INDEPENDENT = 'independent_nhi';
 
     public static function boot() {
         if ( ! function_exists( 'add_action' ) ) return;
-        add_action( 'admin_menu', array( __CLASS__, 'menu' ), 30 );
+        // Queue through the native parent-order and permission registry.
+        if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry' ) ) {
+            MAD4B_SCP_Admin_Route_Registry::register( self::PAGE_SLUG, 'manage_options' );
+            MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'menu' ) );
+        }
         add_action( 'admin_post_mad4b_mcp_principal_mode_save', array( __CLASS__, 'save' ) );
     }
 
@@ -163,8 +168,9 @@ final class MAD4B_SCP_Delegation_Mode {
 
     public static function menu() {
         if ( ! current_user_can( 'manage_options' ) ) return;
-        add_submenu_page( 'mad4b-control-plane', 'MCP Principal Mode', 'MCP Principal Mode',
-            'manage_options', 'mad4b-mcp-principal-mode', array( __CLASS__, 'page' ) );
+        add_submenu_page( MAD4B_SCP_Admin_Navigation_Manifest::PARENT,
+            'MCP Principal Mode', 'MCP Principal Mode',
+            'manage_options', self::PAGE_SLUG, array( __CLASS__, 'page' ) );
     }
 
     public static function page() {
