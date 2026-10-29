@@ -83,6 +83,63 @@ final class MAD4B_Tourism_Nile_Catalog_V1 {
   if(!$url)return '#';
   return esc_url(add_query_arg($params,$url));
  }
+ /**
+  * Nested category links inside the EXISTING Elementor Home Tours template.
+  * Source→canonical term mappings are already certified by the admission gate.
+  * These are navigation links, NOT fake JetSmartFilters post query results.
+  */
+ private static function render_home_subcategories(array $cats,array $tours,string $lang,string $browse): string {
+  $arabic=$lang==='ar';
+  $roots=array_values(array_filter($cats,static fn($c)=>(int)($c['parent_source_term_id']??-1)===0));
+  if(count($roots)!==1)return '';
+  $rootId=(int)$roots[0]['source_term_id'];
+  $children=array_values(array_filter($cats,static fn($c)=>(int)($c['parent_source_term_id']??-1)===$rootId));
+  if(count($children)!==8)return '';
+  usort($children,static fn($a,$b)=>strcmp((string)$a['name'],(string)$b['name']));
+  ob_start(); ?>
+  <section class="mad4b-nile-subcats" id="mad4b-nile-home-subcategories"
+    lang="<?php echo esc_attr($lang); ?>" dir="<?php echo $arabic?'rtl':'ltr'; ?>"
+    data-source-owner="<?php echo esc_attr(self::OWNER); ?>"
+    data-canonical-taxonomy="tour-types" aria-labelledby="mad4b-nile-home-subcats-title">
+    <style>
+      .mad4b-nile-subcats{font-family:inherit;color:var(--e-global-color-text,var(--ast-global-color-3,inherit));padding:22px 0 14px;max-width:100%;box-sizing:border-box}
+      .mad4b-nile-subcats *{box-sizing:border-box}
+      .mad4b-nile-subcats h3{font-size:clamp(1.15rem,2vw,1.6rem);line-height:1.35;font-weight:700;margin:0 0 8px;color:var(--e-global-color-primary,var(--ast-global-color-2,inherit))}
+      .mad4b-nile-subcats .mad4b-nile-subcats-intro{margin:0 0 16px;font-size:.94rem;line-height:1.6}
+      .mad4b-nile-subcats-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+      .mad4b-nile-subcats-list a{display:flex;flex-direction:column;justify-content:center;gap:5px;min-height:74px;border-radius:10px;border:1px solid var(--ast-global-color-7,#ddd);background:var(--ast-global-color-5,#fff);padding:12px 14px;text-decoration:none!important;color:inherit!important;transition:border-color .15s,transform .15s}
+      .mad4b-nile-subcats-list a:hover,.mad4b-nile-subcats-list a:focus-visible{border-color:var(--e-global-color-primary,var(--ast-global-color-0,#555));transform:translateY(-1px)}
+      .mad4b-nile-subcats-list strong{font-size:.93rem;line-height:1.4}
+      .mad4b-nile-subcats-list small{font-size:.78rem;opacity:.74}
+      .mad4b-nile-subcats-end{margin:14px 0 0}
+      .mad4b-nile-subcats-end a{color:var(--e-global-color-primary,var(--ast-global-color-0,inherit));font-weight:650;text-decoration:underline;text-underline-offset:3px}
+      @media(max-width:900px){.mad4b-nile-subcats-list{grid-template-columns:repeat(3,minmax(0,1fr))}}
+      @media(max-width:600px){.mad4b-nile-subcats{padding:18px 0 10px}.mad4b-nile-subcats-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.mad4b-nile-subcats-list a{min-height:75px;padding:11px}}
+      .mad4b-nile-subcats a:focus-visible{outline:2px solid var(--e-global-color-primary,var(--ast-global-color-0,#333));outline-offset:3px}
+    </style>
+    <h3 id="mad4b-nile-home-subcats-title"><?php echo esc_html($arabic?'أنواع الرحلات النيلية':'Nile Cruise Categories'); ?></h3>
+    <p class="mad4b-nile-subcats-intro"><?php echo esc_html($arabic?'استكشف تصنيفات المراكب وبرامجها من مصدر الشركة.':'Browse Nile cruise styles and itineraries from the company catalog.'); ?></p>
+    <nav aria-label="<?php echo esc_attr($arabic?'التصنيفات الفرعية للرحلات النيلية':'Nile Cruises subcategories'); ?>">
+      <ul class="mad4b-nile-subcats-list">
+        <?php foreach($children as $child):
+          $sourceId=(int)$child['source_term_id'];
+          $count=0;foreach($tours as $tour){
+            $ids=array_map('intval',(array)($tour['source_taxonomy_term_ids']??[]));
+            if(in_array($sourceId,$ids,true))$count++;
+          }
+          $url=self::href($browse,['nile_category'=>(string)$child['slug']]);
+        ?>
+        <li><a href="<?php echo esc_url($url); ?>" data-canonical-term-id="<?php echo esc_attr((string)(int)$child['_native_target_id']); ?>">
+            <strong><?php echo esc_html((string)$child['name']); ?></strong>
+            <small><?php echo esc_html(sprintf($arabic?'%d رحلة':'%d cruises',$count)); ?></small>
+        </a></li>
+        <?php endforeach; ?>
+      </ul>
+    </nav>
+    <p class="mad4b-nile-subcats-end"><a href="<?php echo esc_url($browse); ?>"><?php echo esc_html($arabic?'عرض جميع الرحلات النيلية':'See all Nile Cruises'); ?></a></p>
+  </section>
+  <?php return (string)ob_get_clean();
+ }
  private static function detail_html(array $tour,bool $arabic,string $browse): string {
   $title=(string)$tour['title'];
   $summary=(string)($tour['summary']??'');
@@ -123,7 +180,7 @@ final class MAD4B_Tourism_Nile_Catalog_V1 {
   if(!self::enabled())return '';
   $atts=shortcode_atts(['lang'=>'','mode'=>'browse'],$atts,self::SHORTCODE);
   $lang=self::lang($atts);$arabic=$lang==='ar';
-  $mode=in_array($atts['mode'],['home','browse'],true)?$atts['mode']:'browse';
+  $mode=in_array($atts['mode'],['home','browse','home_subcategories'],true)?$atts['mode']:'browse';
   $catalog=self::catalog();
   if(!$catalog)return '<p role="status">'.esc_html($arabic?'محتوى المراكب غير متاح مؤقتًا':'Nile source catalog temporarily unavailable').'</p>';
   $categories=array_values(array_filter($catalog['categories'],static fn($c)=>($c['source_language_code']??'')===$lang));
@@ -134,6 +191,7 @@ final class MAD4B_Tourism_Nile_Catalog_V1 {
   $root=0;
   foreach($categories as $item)if((int)$item['parent_source_term_id']===0)$root=(int)$item['source_term_id'];
   if(!$root)return '';
+  if($mode==='home_subcategories')return self::render_home_subcategories($categories,$tours,$lang,$browse);
   $catKeys=[];foreach($categories as $item)$catKeys[(int)$item['source_term_id']]=$item;
   $selected='';
   if($mode==='browse' && isset($_GET['nile_category']) && is_string($_GET['nile_category'])){
