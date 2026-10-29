@@ -56,7 +56,7 @@ $check = static function ( $expected, $checkpoint, $current, $graph, $descriptio
 };
 $check( true, $checkpoint, $new, $graph, 'obsolete exact version with only ungranted owner write' );
 $GLOBALS['mutate_allowed'] = true;
-$check( false, $checkpoint, $new, $graph, 'active mutation privilege must deny historical-only waiver' );
+$check( true, $checkpoint, $new, $graph, 'caller agent mutation permission must not decide historical transport readiness' );
 $GLOBALS['mutate_allowed'] = false;
 $g = $graph; $g['phases']['schema']['state'] = 'pending';
 $check( false, $checkpoint, $new, $g, 'required schema pending' );
