@@ -3624,12 +3624,37 @@
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegation-mode-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegation-connection-policy-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegation-connection-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegated-content-actor-hermetic.php"
       ],
       "needs_new_control": false,
       "new_control_ids": [],
-      "coverage_reuse_rationale": "The new service has no public endpoint and does not issue agent grants or approval tickets. Existing verified OAuth binding, site identity, user role, exact NHI grant and fail-closed policy controls apply.",
-      "review_rationale": "Add an optional administrator-configured principal model with default strictly verified WordPress user delegation and explicit legacy independent-NHI mode. The new service only tightens native user capability checks for the already approved central authorization path, retains all hard write/approval/budget/tenant requirements and never synthesizes identity from WP-CLI or headers."
+      "coverage_reuse_rationale": "Reuses hardened OAuth subject proof, exact site profile, WP per-post capabilities, narrow grants, separate approval ticket, budget and write commit gates; this service does create two scoped content grants in Staging, but cannot create approval tickets or publish.",
+      "review_rationale": "Revised Staging-only verified-user mode provisions a per-user owned audit/approval principal with two exact, current-environment draft content grants on first signed-prepared or explicit write-scoped request. Unverified/disabled subjects, missing WP capabilities, broader tools, auto-publication and Production are denied. The old independent NHI mode remains unchanged."
+    },
+    {
+      "id": "ability:mad4b/content-apply-bundle",
+      "owner_role": "Repository identity, capability and content mutation source reviewer — CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "IDENTITY-01",
+        "OAUTH-03",
+        "OAUTH-05",
+        "MCP-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegated-content-actor-hermetic.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Exact content bundle Ability is preexisting and remains separately governed by draft-only schema, signed preparation, user caps, approval, budget and downstream commit guards.",
+      "review_rationale": "New caller-principal behavior ONLY: on verified enrolled WordPress user in Staging, exact signed prepared draft dispatcher or explicit write-scoped OAuth may initialize two bounded content grants. Content extraction, source licensing, media, pricing, arbitrary site settings and public publishing remain disallowed without their separate approvals.",
+      "execution_note": "PHP Hermetic and source-gate QA do not establish real OAuth MCP write acceptance; exact owner signoff and live readback remain mandatory."
     }
   ],
   "lifecycle": [],
