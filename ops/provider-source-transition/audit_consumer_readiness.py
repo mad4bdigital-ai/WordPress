@@ -11,6 +11,7 @@ READ_ADAPTER = PLUGIN / "includes/adapters/class-mad4b-scp-etg-dfsb-adapter.php"
 WRITE_ADAPTER = PLUGIN / "includes/adapters/class-mad4b-scp-etg-dfsb-write-adapter.php"
 REGISTRY = PLUGIN / "config/adapter-registration-policy.json"
 SKILLS = PLUGIN / "config/skill-provider-catalog.json"
+SOURCES = PLUGIN / "config/cross-plugin-sources.json"
 NEUTRAL_ENTRY = NEUTRAL / "dynamic-filter-seo-bridge.php"
 MIRROR = NEUTRAL / "includes/Runtime/LegacyOptionMirror.php"
 
@@ -22,7 +23,7 @@ def matched(pattern, content, label):
     return result.group(1)
 
 
-def audit(read_source, write_source, plugin_source, registry, skills, mirror):
+def audit(read_source, write_source, plugin_source, registry, skills, mirror, sources_catalog):
     legacy_read_version = matched(
         r"const\s+SUPPORTED_VERSION\s*=\s*'([^']+)'", read_source, "read adapter version"
     )
@@ -36,6 +37,24 @@ def audit(read_source, write_source, plugin_source, registry, skills, mirror):
         "neutral plugin version",
     )
     aliases = bool(re.search(r"['\"]ETG_DFSB_VERSION['\"]\s*=>\s*DFSB_VERSION", plugin_source))
+    if not isinstance(sources_catalog, dict) or not isinstance(sources_catalog.get("sources"), list):
+        raise ValueError("native source registry must be an object with source list")
+    canonical_descriptors = [
+        row for row in sources_catalog["sources"]
+        if isinstance(row, dict) and row.get("id") == "dynamic-filter-seo-bridge"
+    ]
+    if len(canonical_descriptors) != 1:
+        raise ValueError("canonical source descriptor must exist exactly once")
+    descriptor = canonical_descriptors[0]
+    candidate_version = str(descriptor.get("candidate_artifact_version") or "")
+    candidate_source_sha = str(descriptor.get("candidate_source_commit_sha") or "")
+    candidate_matches_source = bool(candidate_version and candidate_version == canonical_version)
+    exact_certified = bool(
+        descriptor.get("package_certification") == "certified"
+        and re.fullmatch(r"[0-9a-f]{40}", str(descriptor.get("source_commit_sha") or ""))
+        and re.fullmatch(r"[0-9a-f]{64}", str(descriptor.get("artifact_sha256") or ""))
+        and descriptor.get("artifact_version") == canonical_version
+    )
     read_class = "MAD4B_SCP_ETG_DFSB_Adapter"
     write_class = "MAD4B_SCP_ETG_DFSB_Write_Adapter"
     registered = set(registry.get("approved_classes", []))
@@ -50,6 +69,12 @@ def audit(read_source, write_source, plugin_source, registry, skills, mirror):
         "canonical_provider_id": "dynamic-filter-seo-bridge",
         "legacy_provider_id": "etg-dfsb",
         "neutral_plugin_version": canonical_version,
+        "registered_candidate_version": candidate_version,
+        "registered_candidate_source_commit_sha": candidate_source_sha,
+        "candidate_source_version_matches_checkout": candidate_matches_source,
+        "candidate_version_drift": not candidate_matches_source,
+        "native_package_certification": descriptor.get("package_certification", "missing"),
+        "native_exact_package_evidence_present": exact_certified,
         "legacy_read_supported_version": legacy_read_version,
         "legacy_write_supported_version": legacy_write_version,
         "legacy_version_alias_present": aliases,
@@ -76,6 +101,7 @@ def current():
         json.loads(REGISTRY.read_text(encoding="utf-8")),
         json.loads(SKILLS.read_text(encoding="utf-8")),
         MIRROR.read_text(encoding="utf-8"),
+        json.loads(SOURCES.read_text(encoding="utf-8")),
     )
 
 

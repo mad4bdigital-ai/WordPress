@@ -37,6 +37,10 @@ jobs:
           assert not audit['new_write_authority']
           assert not audit['legacy_read_version_compatible']
           assert not audit['legacy_write_version_compatible']
+          assert isinstance(audit['candidate_version_drift'], bool)
+          assert audit['native_package_certification'] == 'pending'
+          assert not audit['native_exact_package_evidence_present']
+          print('DFSB_REVIEW_CANDIDATE_VERSION_DRIFT:', audit['candidate_version_drift'])
           with open('/tmp/control-plane-parity.json', encoding='utf-8') as f:
               parity = json.load(f)
           assert parity['source_header_constant_consistent']

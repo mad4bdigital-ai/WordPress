@@ -36,7 +36,7 @@ This stage adds a source decision policy, a read-only resolver and CI tests. No 
 
 Run `python3 ops/provider-source-transition/audit_consumer_readiness.py`. The audit inspects the **actual repository source**, not a guessed company identity. It checks the source-registered legacy read and write adapter classes, compatibility abilities, native option aliases and version pins against the canonical plugin's declared version. It is deliberately non-authorizing.
 
-At the inspected master revision, the old Control Plane read and write adapters require `0.4.0-alpha.13`, whereas the canonical neutral plugin declares `0.4.0-alpha.14-local.1`. Version compatibility must not be inferred from the neutral package's `ETG_DFSB_VERSION` alias alone. The newer isolated candidate `alpha.15-rc.1` in another branch is likewise not yet a deployed/runtime-authorized source.
+At the 2026-10-29 inspected `master`, the old Control Plane read and write adapters still pin `0.4.0-alpha.13`. After merged PR #567, the neutral plugin's **source** declares `0.4.0-alpha.15-rc.1`. The native `cross-plugin-sources.json` catalog still records **`0.4.0-alpha.14-local.1` as its review candidate**, with `package_certification=pending`. These are different layers: source version, review candidate, installed build and certified package must never be conflated. `audit_consumer_readiness.py` reports the candidate-vs-source drift explicitly; no implicit promotion or rewrite of the reviewed source pin is permitted. Even a matching `ETG_DFSB_VERSION` alias cannot certify runtime or transfer write authority.
 
 Do **not** change the historical `etg-dfsb/...` ability names, old `etg_dfsb_...` option keys or the write/rollback adapter at this point. They are registered provider/source interfaces. Real neutral read migration first requires exact Control Plane `rc.118` source parity and a certified native plugin/read adapter; actual write migration is a separate signed execution process.
 
@@ -59,3 +59,7 @@ Usage when authorized snapshots become available:
 `python3 ops/provider-source-transition/compare_read_shadows.py --legacy /path/to/legacy-fingerprints.json --canonical /path/to/canonical-fingerprints.json`
 
 This is a test artifact contract, not a live observation. On the currently connected separate site `staging.egypttourgates.com` we observed the historical read abilities and two non-certified historical write surfaces, but not an authorized canonical read endpoint. Therefore no live shadow comparison or Staging switch is claimed.
+
+## Reconciliation with current master
+
+Before merging this PR, merge the exact current protected `master` into its branch **without rebasing or force-pushing** so source-based tests inspect the real merged DFSB version, not an outdated PR base. Keep a successful exact-HEAD CI run and fresh owner attestation before merging. The selector itself is always read-only. A later release must separately certify a reviewed exact build artifact, deploy to a named Site UUID, and compare live read fingerprints.
