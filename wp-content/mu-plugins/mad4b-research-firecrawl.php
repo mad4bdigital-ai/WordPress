@@ -147,7 +147,7 @@ final class MAD4B_Research_Firecrawl_Bridge {
             'provider' => 'firecrawl',
             'configured' => $ready,
             'healthy' => $connected,
-            'consumer_scope' => 'woocommerce-lab',
+            'consumer_scope' => 'site_control_plane',
             'allowed_host_count' => count( self::allowed_hosts() ),
             'public_ingress' => false,
             'credential_exposed' => false,
