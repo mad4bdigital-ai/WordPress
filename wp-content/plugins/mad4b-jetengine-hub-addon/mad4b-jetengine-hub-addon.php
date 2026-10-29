@@ -116,15 +116,20 @@ final class MAD4B_JetEngine_Hub_Addon {
         if(is_wp_error($rows))return $rows;
         $result=array();$canonicalLookup=array();$allSource=array();
         foreach($rows as $key=>$row) {
-            $term=get_term($row['canonical_term_id'],'tour-types');
-            if (!$term || is_wp_error($term) ||
-                $term->taxonomy!=='tour-types' ||
-                // EN canonical slugs are stable. Translated source slugs
-                // are NOT transport IDs and are allowed to differ by locale.
-                ($row['language']==='en' && (string)$term->slug!==(string)$row['source_slug'])) {
+            // WPML get_term() may silently translate an AR term to EN in the
+            // current request language. Read exact IDs from native term tables.
+            global $wpdb;
+            $term=$wpdb->get_row($wpdb->prepare(
+                "SELECT t.term_id,t.slug,tt.parent,tt.taxonomy
+                 FROM {$wpdb->terms} t
+                 INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_id=t.term_id
+                 WHERE t.term_id=%d AND tt.taxonomy=%s LIMIT 1",
+                $row['canonical_term_id'],'tour-types'),ARRAY_A);
+            if (!$term || $term['taxonomy']!=='tour-types' ||
+                ($row['language']==='en' &&
+                    (string)$term['slug']!==(string)$row['source_slug'])) {
                 return self::deny('target_taxonomy_identity_mismatch');
             }
-            global $wpdb;
             if (!defined('ICL_SITEPRESS_VERSION'))return self::deny('wpml_unavailable');
             $wpml=$wpdb->get_row($wpdb->prepare(
                 "SELECT language_code,trid FROM {$wpdb->prefix}icl_translations
@@ -133,7 +138,7 @@ final class MAD4B_JetEngine_Hub_Addon {
             if (!$wpml || $wpml['language_code']!==$row['language'] ||
                 (int)$wpml['trid']<1) return self::deny('target_wpml_mismatch');
             $row['target_wpml_group']=(int)$wpml['trid'];
-            $row['canonical_parent_id']=(int)$term->parent;
+            $row['canonical_parent_id']=(int)$term['parent'];
             $result[$key]=$row;
             $canonicalKey=$row['language'].':'.$row['canonical_term_id'];
             if (isset($canonicalLookup[$canonicalKey]))return self::deny('duplicated_canonical');
@@ -174,8 +179,11 @@ final class MAD4B_JetEngine_Hub_Addon {
             $key=$row['language'].':'.$sourceParent;
             if(!isset($result[$key]))return self::deny('source_parent_not_found');
             $parentGroup=$result[$key]['target_wpml_group'];
-            $parentTerm=get_term($targetParent,'tour-types');
-            if(!$parentTerm || is_wp_error($parentTerm))return self::deny('target_parent_missing');
+            $parentTerm=$wpdb->get_var($wpdb->prepare(
+                "SELECT term_taxonomy_id FROM {$wpdb->term_taxonomy}
+                 WHERE term_id=%d AND taxonomy=%s LIMIT 1",
+                $targetParent,'tour-types'));
+            if(!$parentTerm)return self::deny('target_parent_missing');
             global $wpdb;
             $parentWpml=$wpdb->get_row($wpdb->prepare(
                 "SELECT trid FROM {$wpdb->prefix}icl_translations WHERE element_type=%s AND element_id=%d LIMIT 1",
