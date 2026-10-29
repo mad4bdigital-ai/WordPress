@@ -4,6 +4,10 @@
 # Deliberately binds HTTP to loopback until DNS, HTTPS and tenant readiness are verified.
 set -euo pipefail
 umask 077
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+for artifact in wayfatours_post_install.php gate_new_company_production.php;do
+ test -f "$SCRIPT_DIR/$artifact" || { echo "Missing reviewed source artifact: $artifact" >&2; exit 2; }
+done
 SOURCE=/opt/hostinger-migrations/hosting-3/etg-commerce-staging/site-copy
 ROOT=/opt/hostinger-migrations/hosting-3/wayfatours-production
 HOST=wayfatours.mad4b.com
@@ -194,8 +198,18 @@ $administrator=get_role('administrator');
 if ($administrator) $administrator->add_cap('mad4b_manage_company_operations');
 echo wp_json_encode(['site'=>home_url(),'environment'=>wp_get_environment_type(),'kit_id'=>$kit,'kit_admission'=>'PASS','initial_company_name'=>get_option('blogname')]).PHP_EOL;
 WP
-# Remove default placeholder WordPress posts/pages/comments: no inherited company content.
+# Seed a private, explicitly unindexed company page and immutable company identity.
+docker cp "$SCRIPT_DIR/wayfatours_post_install.php" wayfatours-production-php:/tmp/wayfatours_post_install.php
+docker exec -u 33:33 wayfatours-production-php wp eval-file /tmp/wayfatours_post_install.php --path=/var/www/html
+# Remove the default blog sample post and its generated discussion.
 docker exec -u 33:33 wayfatours-production-php wp post delete 1 --force --path=/var/www/html >/dev/null || true
-echo 'WAYFATOURS_PRODUCTION_RUNTIME_READY_PRIVATE_INGRESS'
+# The target production site MUST pass exact-host/DB/UUID/Kit/zero-data checks
+# before a route is exposed. This does not waive DNS ownership or TLS checks.
+docker cp "$SCRIPT_DIR/gate_new_company_production.php" wayfatours-production-php:/tmp/gate_new_company_production.php
+docker exec -u 33:33 -e MAD4B_EXPECTED_COMPANY=wayfatours -e MAD4B_EXPECTED_HOST="$HOST" \
+ -e MAD4B_EXPECTED_DB=wayfatours_production wayfatours-production-php \
+ wp eval-file /tmp/gate_new_company_production.php --path=/var/www/html
+curl --fail --silent --show-error --max-time 12 -H "Host: $HOST" http://127.0.0.1:8107/ >/dev/null
+echo 'WAYFATOURS_PRODUCTION_PRIVATE_RUNTIME_ADMITTED__PUBLIC_DNS_TLS_PENDING'
 echo "Host: $HOST | Host-only port: 127.0.0.1:8107"
 echo "Credential file stays on server: $ROOT/runtime/secrets/wp-admin.initial-secret"
