@@ -25,4 +25,6 @@ assert '"expired_nonce_cleanup"' in s
 assert '"diagnostic_report_only"' in s
 assert '"callback_unregistered_or_provider_deferred"' in s
 assert '"requires_independent_effect_review"' in s
+assert '],35)' in s
+assert '"--due-now"],40)' in s
 print("GOVERNED_CRON_RUNNER_SOURCE_CONTRACT PASS")
