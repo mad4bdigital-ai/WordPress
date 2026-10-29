@@ -154,6 +154,37 @@ final class MAD4B_Research_Firecrawl_Bridge {
         );
     }
 
+    /** Validate a user-entered service credential at the fixed gateway; never persist or echo it. */
+    public static function verify_candidate_credentials( $username, $password ) {
+        if ( ! self::permitted() || ! is_string( $username ) || ! is_string( $password )
+            || ! preg_match( '/\\Amad4b-[a-z0-9-]{3,48}\\z/D', $username )
+            || ! preg_match( '/\\A[A-Za-z0-9_-]{40,128}\\z/D', $password ) ) {
+            return false;
+        }
+        self::$transport_scope = 'scrape';
+        try {
+            $response = wp_remote_post( self::TARGET . '/v1/scrape', array(
+                'timeout' => 18,
+                'redirection' => 0,
+                'reject_unsafe_urls' => false,
+                'limit_response_size' => 8192,
+                'headers' => array(
+                    'Authorization' => 'Basic ' . base64_encode( $username . ':' . $password ),
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                ),
+                'body' => wp_json_encode( array(
+                    'url' => 'https://example.com',
+                    'formats' => array( 'markdown' ),
+                    'onlyMainContent' => true,
+                ) ),
+            ) );
+        } finally { self::$transport_scope = ''; }
+        if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) return false;
+        $data = json_decode( wp_remote_retrieve_body( $response ), true );
+        return is_array( $data ) && ! empty( $data['success'] );
+    }
+
     public static function preview( $input ) {
         if ( ! self::permitted() ) { return self::error( 'denied', 403 ); }
         if ( ! is_array( $input ) || array_keys( $input ) !== array( 'url' ) || ! self::target_allowed( $input['url'] ) ) {
@@ -185,11 +216,21 @@ final class MAD4B_Research_Firecrawl_Bridge {
         if ( ! is_array( $data ) || empty( $data['success'] ) || ! isset( $data['data']['markdown'] ) || ! is_string( $data['data']['markdown'] ) ) {
             return self::error( 'provider_contract_invalid' );
         }
+        // Page-supplied metadata is untrusted evidence, never site authority.
+        $candidate_meta = isset( $data['data']['metadata'] ) && is_array( $data['data']['metadata'] ) ? $data['data']['metadata'] : array();
+        $safe_meta = array();
+        foreach ( array( 'title' => 200, 'description' => 400, 'language' => 32, 'ogTitle' => 200, 'ogDescription' => 400, 'robots' => 100 ) as $key => $max ) {
+            if ( isset( $candidate_meta[ $key ] ) && is_string( $candidate_meta[ $key ] ) ) {
+                $safe_meta[ $key ] = mb_substr( trim( strip_tags( $candidate_meta[ $key ] ) ), 0, $max, 'UTF-8' );
+            }
+        }
         return array(
             'contract' => self::CONTRACT, 'provider' => 'firecrawl',
             'url' => $input['url'],
             'preview' => mb_substr( $data['data']['markdown'], 0, 6000, 'UTF-8' ),
             'truncated' => mb_strlen( $data['data']['markdown'], 'UTF-8' ) > 6000,
+            'metadata' => $safe_meta,
+            'metadata_verified' => false,
             'persisted' => false, 'wordpress_mutated' => false,
         );
     }
