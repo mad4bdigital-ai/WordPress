@@ -3,15 +3,19 @@ on:
   pull_request:
     paths:
       - 'wp-content/mu-plugins/mad4b-research-firecrawl.php'
+      - 'wp-content/mu-plugins/mad4b-research-firecrawl-cycles.php'
       - 'wp-content/mu-plugins/mad4b-research-firecrawl-transport-exception.php'
       - 'tests/firecrawl-control-plane-bridge-test.php'
+      - 'tests/firecrawl-research-workflow-test.php'
       - 'ops/integrations/firecrawl/**'
       - '.github/workflows/mad4b-firecrawl-woo-lab-bridge.yml'
   push:
     branches: [master]
     paths:
       - 'wp-content/mu-plugins/mad4b-research-firecrawl.php'
+      - 'wp-content/mu-plugins/mad4b-research-firecrawl-cycles.php'
       - 'tests/firecrawl-control-plane-bridge-test.php'
+      - 'tests/firecrawl-research-workflow-test.php'
       - 'ops/integrations/firecrawl/**'
       - '.github/workflows/mad4b-firecrawl-woo-lab-bridge.yml'
 concurrency:
@@ -31,7 +35,9 @@ jobs:
         run: |
           php -l wp-content/mu-plugins/mad4b-research-firecrawl.php
           php -l wp-content/mu-plugins/mad4b-research-firecrawl-transport-exception.php
+          php -l wp-content/mu-plugins/mad4b-research-firecrawl-cycles.php
           php -d zend.assertions=1 -d assert.exception=1 tests/firecrawl-control-plane-bridge-test.php
+          php -d zend.assertions=1 -d assert.exception=1 tests/firecrawl-research-workflow-test.php
       - name: Check no hardcoded credentials or public upstream
         run: |
           grep -Fq 'http://gateway:8080' wp-content/mu-plugins/mad4b-research-firecrawl.php
