@@ -3619,7 +3619,7 @@
         "GOVERNANCE-02"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/native-ability-manifest-trust-contract.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-ability-manifest-trust-contract.py"
       ],
       "needs_new_control": false,
       "new_control_ids": [],
@@ -3640,7 +3640,7 @@
         "GOVERNANCE-02"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/native-ability-manifest-trust-contract.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-ability-manifest-trust-contract.py"
       ],
       "needs_new_control": false,
       "new_control_ids": [],
@@ -11550,7 +11550,7 @@
         "GOVERNANCE-02"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/native-ability-manifest-trust-contract.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-ability-manifest-trust-contract.py"
       ],
       "owner_role": "Repository security/source reviewer — CI-only evidence, not Production authorization",
       "status": "reviewed_for_ci_only",
@@ -11571,7 +11571,7 @@
         "GOVERNANCE-02"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/native-ability-manifest-trust-contract.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-ability-manifest-trust-contract.py"
       ],
       "owner_role": "Repository security/source reviewer — CI-only evidence, not Production authorization",
       "status": "reviewed_for_ci_only",
