@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Shared Responsive Presentation
  * Description: Brand-neutral responsive archive tools and Tour Rate card/accordion parity.
- * Version: 1.2.0
+ * Version: 1.2.1
  * License: Proprietary
  *
  * Source: packages/mad4b-responsive-presentation/mu-plugins/mad4b-responsive-presentation.php
@@ -261,6 +261,13 @@ body[class*="elementor-page-"]:not(.elementor-editor-active) #content.site-conte
 @media (max-width: 1024px) {
   .elementor-location-header .header-context-panel .travel-booking-passport-search__results:not([hidden]) {
     max-height: min(220px, max(72px, calc(100dvh - 170px))) !important;
+  }
+}
+/* Astra outer padding must not inset Elementor's full-width single-tour canvas.
+   Desktop-only, scoped to Elementor single-tour template 45149. */
+@media (min-width: 1025px) {
+  body.single-tours-and-activities.elementor-page-45149 #main.site-main {
+    padding: 0 !important;
   }
 }
 </style>
