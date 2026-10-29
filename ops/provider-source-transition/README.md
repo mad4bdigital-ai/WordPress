@@ -47,3 +47,15 @@ This audit and its negative tests do not deploy code, approve a provider, publis
 `python3 ops/provider-source-transition/audit_runtime_parity.py --observed-runtime-version 0.4.0-rc.118` produces an informational comparison with the last reported test-site version. The version is **not** treated as authoritative evidence. Once root access and signed runtime provenance are available, supply the actual site UUID and exact main PHP SHA256. Even a matching version, SHA256 and site identifier **cannot itself authorize deployment**; a signed runtime build/deployment provenance and owner authorization must separately validate the source.
 
 The workflow refuses to claim an adapter cutover based on source/header equality. Without actual runtime read-back, no plugin source in this PR is deployed to Staging or Production. The previous project's source was `rc.104` at inspection while Staging had most recently reported `rc.118`.
+
+## Shadow-read parity — offline gate, never automatic cutover
+
+`compare_read_shadows.py` compares **bounded, authorized read-only semantic fingerprints** collected from the historical and canonical DFSB providers for the same registered site. Its expected section names are `profiles`, `runtime_inventory` and `content_catalog`. Each snapshot must carry its native source ID, explicit site UUID and HTTPS origin, Site Profile revision, environment, locale/WPML language, Control Plane runtime SHA256, distinct provider package SHA256, timezone-aware capture timestamp and named semantic-hash contract.
+
+A matching result is only `shadow_read_match_requires_certification`. It never grants plugin activation, source cutover, write authority or publication. Missing envelopes, mismatched tenant/origin/runtime/language, excessive capture skew and differences in semantic read hashes fail closed. Both snapshots must have been independently captured by an already-authorized read lane; this **comparator does not fetch WordPress or inspect confidential payloads**.
+
+Usage when authorized snapshots become available:
+
+`python3 ops/provider-source-transition/compare_read_shadows.py --legacy /path/to/legacy-fingerprints.json --canonical /path/to/canonical-fingerprints.json`
+
+This is a test artifact contract, not a live observation. On the currently connected separate site `staging.egypttourgates.com` we observed the historical read abilities and two non-certified historical write surfaces, but not an authorized canonical read endpoint. Therefore no live shadow comparison or Staging switch is claimed.
