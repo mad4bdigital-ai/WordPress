@@ -136,7 +136,7 @@ def main():
         if not verification['ok']:
             report['blockers'] = ['COOLIFY_CONTEXT_NOT_VERIFIED']
         else:
-            rows, failed = [], []
+            rows, eligible_domain_rows, failed = [], [], []
             for group, verb in ALLOWED[1:]:
                 result = cmd(['coolify', group, verb], context=args.context)
                 report['commands'].append({'command': f'coolify {group} {verb} --format json',
@@ -144,7 +144,16 @@ def main():
                 if not result['ok']:
                     failed.append(group)
                 else:
-                    rows.extend(resources_from_json(result['raw']))
+                    listed = resources_from_json(result['raw'])
+                    rows.extend(listed)
+                    # Domain evidence must belong to an app/service. A
+                    # server's own fqdn never proves tenant registration.
+                    if group in ('app', 'service'):
+                        eligible_domain_rows.extend(listed)
+                    elif group == 'resource':
+                        eligible_domain_rows.extend(
+                            row for row in listed
+                            if row.get('type') in ('application', 'service'))
             # Inventory aggregation is intentionally conservative.
             combined = {}
             for row in rows:
@@ -155,16 +164,16 @@ def main():
             report['discovered_resources'] = [
                 {key: val for key, val in row.items() if not key.startswith('_')}
                 for row in rows]
-            report['matched_hosts'] = matched_hosts(rows, args.host)
+            report['matched_hosts'] = matched_hosts(eligible_domain_rows, args.host)
             # Coolify CLI v1.10 list APIs may omit ALL domain fields. In that
             # case no host match is proof of anything: require independent
             # target-specific read-only evidence instead of a false negative.
             has_domain_metadata = any(
-                any(v for v in row.get('_domains', [])) for row in rows)
+                any(v for v in row.get('_domains', [])) for row in eligible_domain_rows)
             report['domain_metadata_available'] = has_domain_metadata
             report['blockers'] = ([f'COOLIFY_INVENTORY_UNAVAILABLE:{name}' for name in failed]
                                   + (['COOLIFY_LIST_API_OMITS_DOMAINS']
-                                     if args.host and rows and not has_domain_metadata else [])
+                                     if args.host and eligible_domain_rows and not has_domain_metadata else [])
                                   + [f'HOST_NOT_REGISTERED_OR_NOT_VISIBLE:{x["hostname"]}'
                                      for x in report['matched_hosts']
                                      if x['registration'] != 'FOUND'
