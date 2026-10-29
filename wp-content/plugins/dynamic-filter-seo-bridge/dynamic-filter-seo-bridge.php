@@ -123,6 +123,7 @@ add_action('plugins_loaded', static function (): void {
 // even during Safe Boot; public output stays blocked until certification.
 add_action('plugins_loaded', static function (): void {
     (new DynamicFilterSEOBridge\Elementor\ContextTagRegistration())->registerHooks();
+    DynamicFilterSEOBridge\Runtime\ReadOnlyFilterContext::register();
 }, 19);
 
 // Read-only authenticated REST previews always remain available under Safe
