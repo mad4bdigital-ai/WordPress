@@ -96,7 +96,11 @@ final class MAD4B_Hub_Curated_Demo_V1 {
         foreach(self::EXACT_DECISIONS as $sourceId=>$expected) {
             $source=$bySource[(int)$sourceId]??null;
             $p=get_post((int)$expected['native_id']);
-            if(!$source||!$p||$p->post_status!==$expected['expected_initial_status'])
+            $archivedEnglish=((int)$p->ID===60617 &&
+                $p->post_status==='draft' &&
+                get_post_meta((int)$p->ID,'_mad4b_legacy_demo_unpublished_v1',true)==='yes');
+            if(!$source||!$p||
+               ($p->post_status!==$expected['expected_initial_status']&&!$archivedEnglish))
                 throw new RuntimeException('Demo source or native post status has drifted');
             $native=[
                 'ID'=>$p->ID,'post_name'=>$p->post_name,
