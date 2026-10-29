@@ -50,7 +50,7 @@ class TestCoolifyReadOnly(unittest.TestCase):
     def test_never_reports_runtime_activated(self):
         mockdata=json.dumps({'data':[{'uuid':'test-uuid','name':'STAGING',
                                       'domains':'https://tours.dev.mad4b.com'}]})
-        def fake_cmd(argv, *, timeout=ci.CLI_TIMEOUT):
+        def fake_cmd(argv, *, timeout=ci.CLI_TIMEOUT, context=''):
             return {'ok':True,'exit':0,'raw': mockdata}
         with patch.object(sys,'argv',['run','--host','tours.dev.mad4b.com']), \
              patch('shutil.which', return_value='/usr/bin/coolify'), \
@@ -76,6 +76,44 @@ class TestCoolifyReadOnly(unittest.TestCase):
             out=ci.cmd(['coolify','service','list'])
         self.assertFalse(out['ok'])
         self.assertEqual(out['raw'],'')
+
+
+    def test_explicit_authorized_context_precedes_command(self):
+        p = subprocess.CompletedProcess([], 0, '[{"uuid":"abc"}]', '')
+        with patch('subprocess.run', return_value=p) as called:
+            ci.cmd(['coolify','app','list'], context='mad4b-production')
+            self.assertEqual(
+                called.call_args.args[0],
+                ['coolify','--context','mad4b-production','app','list','--format','json'])
+        with patch('subprocess.run', return_value=p) as called:
+            ci.cmd(['coolify','context','verify'], context='mad4b-production')
+            self.assertEqual(
+                called.call_args.args[0],
+                ['coolify','--context','mad4b-production','context','verify'])
+
+    def test_rejects_context_flag_injection(self):
+        for bad in ('--token', 'two words', 'bad/newline', '-x'):
+            with self.assertRaises(ValueError):
+                ci.cmd(['coolify','resource','list'], context=bad)
+
+    def test_real_cli_list_without_domains_stays_blocked(self):
+        # Coolify 1.10.0 resource/app list may omit domain metadata entirely.
+        # Missing host match must never be mistaken for absent Docker workload.
+        listing = json.dumps([{'uuid':'etg-staging','name':'ETG Staging'}])
+        def fake_cmd(argv, *, timeout=ci.CLI_TIMEOUT, context=''):
+            return {'ok':True,'exit':0,'raw':listing}
+        with patch.object(sys,'argv',['run','--context','mad4b-production',
+                                      '--host','tours.dev.mad4b.com']), \
+             patch('shutil.which', return_value='/usr/local/bin/coolify'), \
+             patch.object(ci,'cmd',side_effect=fake_cmd), \
+             redirect_stdout(io.StringIO()) as output:
+            code=ci.main()
+        report=json.loads(output.getvalue())
+        self.assertEqual(code,2)
+        self.assertEqual(report['coolify_context'],'mad4b-production')
+        self.assertFalse(report['domain_metadata_available'])
+        self.assertIn('COOLIFY_LIST_API_OMITS_DOMAINS',report['blockers'])
+        self.assertFalse(report['shared_media_activation_performed'])
 
 if __name__ == '__main__':
     unittest.main()
