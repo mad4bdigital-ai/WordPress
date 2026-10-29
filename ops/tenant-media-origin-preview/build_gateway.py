@@ -32,7 +32,22 @@ def escape_conf(s):
     require("\n" not in s and "\r" not in s and '"' not in s and "$" not in s, "nginx injection")
     return s
 
-def generate(catalog, source_roots):
+def load_holds(path):
+    data=json.loads(Path(path).read_text())
+    require(data.get("contract")=="mad4b.media-reversible-administrative-quarantine.v1", "invalid hold registry")
+    require(data.get("files_moved")==0 and data.get("files_deleted")==0, "unsafe hold registry")
+    records=data.get("records")
+    require(isinstance(records,list), "missing hold entries")
+    paths=set()
+    for record in records:
+        require(isinstance(record,dict), "bad hold record")
+        if record.get("administrative_quarantine")=="review_hold":
+            rel=record.get("attached_file")
+            require(isinstance(rel,str) and len(rel)>0 and len(rel)<=900, "invalid hold path")
+            paths.add(rel)
+    return paths
+
+def generate(catalog, source_roots, holds=None):
     require(catalog.get("contract") == "mad4b.tenant-media-catalog.preview.v1", "unknown catalog contract")
     require(catalog.get("mode") == "loopback-only", "public serving not supported")
     hosts = catalog.get("tenants")
@@ -79,6 +94,7 @@ def generate(catalog, source_roots):
         for a in assets:
             require(isinstance(a, dict), "bad asset entry")
             rel, ext = media_path(a.get("path"))
+            require(rel not in (holds or set()), "Asset held for manual reference review")
             require(rel not in seen_paths, "duplicate asset")
             seen_paths.add(rel)
             require(a.get("preview_approved") is True and a.get("public_approved") is False, "pilot must not authorize public use")
@@ -118,11 +134,14 @@ def main():
     parser.add_argument("--catalog",required=True)
     parser.add_argument("--output",required=True)
     parser.add_argument("--roots-file",required=True,help="Local JSON mapping of registered tenant key to absolute origin root")
+    parser.add_argument("--holds-file",required=True,help="Private administrative review hold registry: fail closed if unavailable")
     args=parser.parse_args()
     data=json.loads(Path(args.catalog).read_text())
     roots=json.loads(Path(args.roots_file).read_text())
     require(isinstance(roots,dict) and all(isinstance(k,str) and isinstance(v,str) and Path(v).is_absolute() for k,v in roots.items()),"invalid roots mapping")
-    rendered,summary=generate(data, roots)
+    holds=load_holds(args.holds_file)
+    rendered,summary=generate(data, roots, holds)
+    summary["blocked_asset_paths_in_hold_registry"]=len(holds)
     dst=Path(args.output)
     dst.parent.mkdir(parents=True,exist_ok=True)
     tmp=dst.with_suffix(".tmp")
