@@ -3648,6 +3648,716 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing source-governance, Site Profile, security and native WordPress administrative permission controls govern this read-only, unbootstrapped W2A class. No new write authority, key capture, user role change or provider execution.",
       "review_rationale": "Exact Staging rc.118 source SHA imported to CI-only W2A, reviewed with PHP 8.3/8.5 hermetic permission, no-secret, gate non-escalation and no-mutation regressions. Still requires disposable WordPress, Woo integration and tenant-isolation acceptance before any deployment."
+    },
+    {
+      "id": "ability:mad4b/build-provenance-status",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-route-runtime.php"
+      ],
+      "owner_role": "Repository source and CI-only review; no Site Owner, external provider certificate issuer or Production authorizer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Router output contains no caller-chosen package, no implicit owner step-up, no Production apply or independent release certificate. Actual target Ability registration, discovery and authorization are independent. Existing mapped controls: MCP-01, PROVIDERS-01, EXECUTION-01.",
+      "review_rationale": "Exact introduced source identifier mad4b/build-provenance-status in class-mad4b-scp-control-plane-test-router.php. The route reducer references this existing planning/readback/recovery Ability only as bounded user guidance, not as a newly executable/granted Ability. The isolated runtime tests signed candidate matching, blocked phases, strict Staging, and fail-closed owner boundaries."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-booking-readiness",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php"
+      ],
+      "owner_role": "Repository source and CI-only review; no Site Owner, external provider certificate issuer or Production authorizer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The reviewed optional plugin availability predicate, MCP descriptor integrity and independent execution authorization remain required. No abilities are synthesized and no provider certified install is authorized. Existing mapped controls: MCP-01, PROVIDERS-01, EXECUTION-01.",
+      "review_rationale": "Exact introduced source identifier mad4b/chatbotx-booking-readiness in class-mad4b-scp-chatbotx-provider-adapter.php. Optional provider read/preview declaration; PHP regression verifies it is absent from actual MCP registration if the provider is missing or disabled, and registers exactly once when the provider is present."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-business-context",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php"
+      ],
+      "owner_role": "Repository source and CI-only review; no Site Owner, external provider certificate issuer or Production authorizer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The reviewed optional plugin availability predicate, MCP descriptor integrity and independent execution authorization remain required. No abilities are synthesized and no provider certified install is authorized. Existing mapped controls: MCP-01, PROVIDERS-01, EXECUTION-01.",
+      "review_rationale": "Exact introduced source identifier mad4b/chatbotx-business-context in class-mad4b-scp-chatbotx-provider-adapter.php. Optional provider read/preview declaration; PHP regression verifies it is absent from actual MCP registration if the provider is missing or disabled, and registers exactly once when the provider is present."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-channels-read",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php"
+      ],
+      "owner_role": "Repository source and CI-only review; no Site Owner, external provider certificate issuer or Production authorizer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The reviewed optional plugin availability predicate, MCP descriptor integrity and independent execution authorization remain required. No abilities are synthesized and no provider certified install is authorized. Existing mapped controls: MCP-01, PROVIDERS-01, EXECUTION-01.",
+      "review_rationale": "Exact introduced source identifier mad4b/chatbotx-channels-read in class-mad4b-scp-chatbotx-provider-adapter.php. Optional provider read/preview declaration; PHP regression verifies it is absent from actual MCP registration if the provider is missing or disabled, and registers exactly once when the provider is present."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-commerce-route-plan",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php"
+      ],
+      "owner_role": "Repository source and CI-only review; no Site Owner, external provider certificate issuer or Production authorizer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The reviewed optional plugin availability predicate, MCP descriptor integrity and independent execution authorization remain required. No abilities are synthesized and no provider certified install is authorized. Existing mapped controls: MCP-01, PROVIDERS-01, EXECUTION-01.",
+      "review_rationale": "Exact introduced source identifier mad4b/chatbotx-commerce-route-plan in class-mad4b-scp-chatbotx-provider-adapter.php. Optional provider read/preview declaration; PHP regression verifies it is absent from actual MCP registration if the provider is missing or disabled, and registers exactly once when the provider is present."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-cpt-create-draft",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php"
+      ],
+      "owner_role": "Repository source and CI-only review; no Site Owner, external provider certificate issuer or Production authorizer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The reviewed optional plugin availability predicate, MCP descriptor integrity and independent execution authorization remain required. No abilities are synthesized and no provider certified install is authorized. Existing mapped controls: MCP-01, PROVIDERS-01, EXECUTION-01.",
+      "review_rationale": "Exact introduced source identifier mad4b/chatbotx-cpt-create-draft in class-mad4b-scp-chatbotx-provider-adapter.php. Optional provider write declaration, not a direct grant: isolated PHP regression confirms full immutable preflight and rejects direct support/ticket/CPT mutations without local site write authorization."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-cpt-product-source",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php"
+      ],
+      "owner_role": "Repository source and CI-only review; no Site Owner, external provider certificate issuer or Production authorizer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The reviewed optional plugin availability predicate, MCP descriptor integrity and independent execution authorization remain required. No abilities are synthesized and no provider certified install is authorized. Existing mapped controls: MCP-01, PROVIDERS-01, EXECUTION-01.",
+      "review_rationale": "Exact introduced source identifier mad4b/chatbotx-cpt-product-source in class-mad4b-scp-chatbotx-provider-adapter.php. Optional provider read/preview declaration; PHP regression verifies it is absent from actual MCP registration if the provider is missing or disabled, and registers exactly once when the provider is present."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-integration-inventory",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php"
+      ],
+      "owner_role": "Repository source and CI-only review; no Site Owner, external provider certificate issuer or Production authorizer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The reviewed optional plugin availability predicate, MCP descriptor integrity and independent execution authorization remain required. No abilities are synthesized and no provider certified install is authorized. Existing mapped controls: MCP-01, PROVIDERS-01, EXECUTION-01.",
+      "review_rationale": "Exact introduced source identifier mad4b/chatbotx-integration-inventory in class-mad4b-scp-chatbotx-provider-adapter.php. Optional provider read/preview declaration; PHP regression verifies it is absent from actual MCP registration if the provider is missing or disabled, and registers exactly once when the provider is present."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-presentation-context",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php"
+      ],
+      "owner_role": "Repository source and CI-only review; no Site Owner, external provider certificate issuer or Production authorizer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The reviewed optional plugin availability predicate, MCP descriptor integrity and independent execution authorization remain required. No abilities are synthesized and no provider certified install is authorized. Existing mapped controls: MCP-01, PROVIDERS-01, EXECUTION-01.",
+      "review_rationale": "Exact introduced source identifier mad4b/chatbotx-presentation-context in class-mad4b-scp-chatbotx-provider-adapter.php. Optional provider read/preview declaration; PHP regression verifies it is absent from actual MCP registration if the provider is missing or disabled, and registers exactly once when the provider is present."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-pricing-preview",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php"
+      ],
+      "owner_role": "Repository source and CI-only review; no Site Owner, external provider certificate issuer or Production authorizer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The reviewed optional plugin availability predicate, MCP descriptor integrity and independent execution authorization remain required. No abilities are synthesized and no provider certified install is authorized. Existing mapped controls: MCP-01, PROVIDERS-01, EXECUTION-01.",
+      "review_rationale": "Exact introduced source identifier mad4b/chatbotx-pricing-preview in class-mad4b-scp-chatbotx-provider-adapter.php. Optional provider read/preview declaration; PHP regression verifies it is absent from actual MCP registration if the provider is missing or disabled, and registers exactly once when the provider is present."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-provider-snapshot",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php"
+      ],
+      "owner_role": "Repository source and CI-only review; no Site Owner, external provider certificate issuer or Production authorizer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The reviewed optional plugin availability predicate, MCP descriptor integrity and independent execution authorization remain required. No abilities are synthesized and no provider certified install is authorized. Existing mapped controls: MCP-01, PROVIDERS-01, EXECUTION-01.",
+      "review_rationale": "Exact introduced source identifier mad4b/chatbotx-provider-snapshot in class-mad4b-scp-chatbotx-provider-adapter.php. Optional provider read/preview declaration; PHP regression verifies it is absent from actual MCP registration if the provider is missing or disabled, and registers exactly once when the provider is present."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-remote-health",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php"
+      ],
+      "owner_role": "Repository source and CI-only review; no Site Owner, external provider certificate issuer or Production authorizer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The reviewed optional plugin availability predicate, MCP descriptor integrity and independent execution authorization remain required. No abilities are synthesized and no provider certified install is authorized. Existing mapped controls: MCP-01, PROVIDERS-01, EXECUTION-01.",
+      "review_rationale": "Exact introduced source identifier mad4b/chatbotx-remote-health in class-mad4b-scp-chatbotx-provider-adapter.php. Optional provider read/preview declaration; PHP regression verifies it is absent from actual MCP registration if the provider is missing or disabled, and registers exactly once when the provider is present."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-support-add-note",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php"
+      ],
+      "owner_role": "Repository source and CI-only review; no Site Owner, external provider certificate issuer or Production authorizer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The reviewed optional plugin availability predicate, MCP descriptor integrity and independent execution authorization remain required. No abilities are synthesized and no provider certified install is authorized. Existing mapped controls: MCP-01, PROVIDERS-01, EXECUTION-01.",
+      "review_rationale": "Exact introduced source identifier mad4b/chatbotx-support-add-note in class-mad4b-scp-chatbotx-provider-adapter.php. Optional provider write declaration, not a direct grant: isolated PHP regression confirms full immutable preflight and rejects direct support/ticket/CPT mutations without local site write authorization."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-support-create-ticket",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php"
+      ],
+      "owner_role": "Repository source and CI-only review; no Site Owner, external provider certificate issuer or Production authorizer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The reviewed optional plugin availability predicate, MCP descriptor integrity and independent execution authorization remain required. No abilities are synthesized and no provider certified install is authorized. Existing mapped controls: GOVERNANCE-02, OAUTH-01, TICKETS-01, SECURITY-01.",
+      "review_rationale": "Exact introduced source identifier mad4b/chatbotx-support-create-ticket in class-mad4b-scp-chatbotx-provider-adapter.php. Optional provider write declaration, not a direct grant: isolated PHP regression confirms full immutable preflight and rejects direct support/ticket/CPT mutations without local site write authorization."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-write-preflight",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php"
+      ],
+      "owner_role": "Repository source and CI-only review; no Site Owner, external provider certificate issuer or Production authorizer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The reviewed optional plugin availability predicate, MCP descriptor integrity and independent execution authorization remain required. No abilities are synthesized and no provider certified install is authorized. Existing mapped controls: MCP-01, PROVIDERS-01, EXECUTION-01.",
+      "review_rationale": "Exact introduced source identifier mad4b/chatbotx-write-preflight in class-mad4b-scp-chatbotx-provider-adapter.php. Optional provider read/preview declaration; PHP regression verifies it is absent from actual MCP registration if the provider is missing or disabled, and registers exactly once when the provider is present."
+    },
+    {
+      "id": "ability:mad4b/control-plane-native-apply",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-route-runtime.php"
+      ],
+      "owner_role": "Repository source and CI-only review; no Site Owner, external provider certificate issuer or Production authorizer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Router output contains no caller-chosen package, no implicit owner step-up, no Production apply or independent release certificate. Actual target Ability registration, discovery and authorization are independent. Existing mapped controls: MCP-01, PROVIDERS-01, EXECUTION-01.",
+      "review_rationale": "Exact introduced source identifier mad4b/control-plane-native-apply in class-mad4b-scp-control-plane-test-router.php. The route reducer only names this existing separately governed apply Ability as a pointer; no apply callback is invoked, and the test proves owner approval and automatic mutation remain blocked."
+    },
+    {
+      "id": "ability:mad4b/control-plane-native-plan",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-route-runtime.php"
+      ],
+      "owner_role": "Repository source and CI-only review; no Site Owner, external provider certificate issuer or Production authorizer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Router output contains no caller-chosen package, no implicit owner step-up, no Production apply or independent release certificate. Actual target Ability registration, discovery and authorization are independent. Existing mapped controls: MCP-01, PROVIDERS-01, EXECUTION-01.",
+      "review_rationale": "Exact introduced source identifier mad4b/control-plane-native-plan in class-mad4b-scp-control-plane-test-router.php. The route reducer references this existing planning/readback/recovery Ability only as bounded user guidance, not as a newly executable/granted Ability. The isolated runtime tests signed candidate matching, blocked phases, strict Staging, and fail-closed owner boundaries."
+    },
+    {
+      "id": "ability:mad4b/control-plane-selected-head-apply",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-route-runtime.php"
+      ],
+      "owner_role": "Repository source and CI-only review; no Site Owner, external provider certificate issuer or Production authorizer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Router output contains no caller-chosen package, no implicit owner step-up, no Production apply or independent release certificate. Actual target Ability registration, discovery and authorization are independent. Existing mapped controls: MCP-01, PROVIDERS-01, EXECUTION-01.",
+      "review_rationale": "Exact introduced source identifier mad4b/control-plane-selected-head-apply in class-mad4b-scp-control-plane-test-router.php. The route reducer only names this existing separately governed apply Ability as a pointer; no apply callback is invoked, and the test proves owner approval and automatic mutation remain blocked."
+    },
+    {
+      "id": "ability:mad4b/control-plane-test-route",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-route-runtime.php"
+      ],
+      "owner_role": "Repository source and CI-only review; no Site Owner, external provider certificate issuer or Production authorizer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Router output contains no caller-chosen package, no implicit owner step-up, no Production apply or independent release certificate. Actual target Ability registration, discovery and authorization are independent. Existing mapped controls: MCP-01, PROVIDERS-01, EXECUTION-01.",
+      "review_rationale": "Exact introduced source identifier mad4b/control-plane-test-route in class-mad4b-scp-control-plane-test-router.php. This is the one guarded read-only WordPress Ability registered by the Test Router; isolated route test verifies WP capability and policy gates, source-signed SHA, deny on Production and denial of caller-supplied plans."
+    },
+    {
+      "id": "ability:mad4b/control-plane-update-status",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-route-runtime.php"
+      ],
+      "owner_role": "Repository source and CI-only review; no Site Owner, external provider certificate issuer or Production authorizer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Router output contains no caller-chosen package, no implicit owner step-up, no Production apply or independent release certificate. Actual target Ability registration, discovery and authorization are independent. Existing mapped controls: UPDATES-01, CROSSPLUGIN-01, RECOVERY-01, ROLLOUT-01.",
+      "review_rationale": "Exact introduced source identifier mad4b/control-plane-update-status in class-mad4b-scp-control-plane-test-router.php. The route reducer references this existing planning/readback/recovery Ability only as bounded user guidance, not as a newly executable/granted Ability. The isolated runtime tests signed candidate matching, blocked phases, strict Staging, and fail-closed owner boundaries."
+    },
+    {
+      "id": "ability:mad4b/recovery-route-matrix",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-route-runtime.php"
+      ],
+      "owner_role": "Repository source and CI-only review; no Site Owner, external provider certificate issuer or Production authorizer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Router output contains no caller-chosen package, no implicit owner step-up, no Production apply or independent release certificate. Actual target Ability registration, discovery and authorization are independent. Existing mapped controls: UPDATES-01, CROSSPLUGIN-01, RECOVERY-01, ROLLOUT-01.",
+      "review_rationale": "Exact introduced source identifier mad4b/recovery-route-matrix in class-mad4b-scp-control-plane-test-router.php. The route reducer references this existing planning/readback/recovery Ability only as bounded user guidance, not as a newly executable/granted Ability. The isolated runtime tests signed candidate matching, blocked phases, strict Staging, and fail-closed owner boundaries."
+    },
+    {
+      "id": "ability:mad4b/session-safe-diagnostics",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-route-runtime.php"
+      ],
+      "owner_role": "Repository source and CI-only review; no Site Owner, external provider certificate issuer or Production authorizer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Router output contains no caller-chosen package, no implicit owner step-up, no Production apply or independent release certificate. Actual target Ability registration, discovery and authorization are independent. Existing mapped controls: MCP-01, PROVIDERS-01, EXECUTION-01.",
+      "review_rationale": "Exact introduced source identifier mad4b/session-safe-diagnostics in class-mad4b-scp-control-plane-test-router.php. The route reducer references this existing planning/readback/recovery Ability only as bounded user guidance, not as a newly executable/granted Ability. The isolated runtime tests signed candidate matching, blocked phases, strict Staging, and fail-closed owner boundaries."
+    },
+    {
+      "id": "ability:mad4b/site-profile-status",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-route-runtime.php"
+      ],
+      "owner_role": "Repository source and CI-only review; no Site Owner, external provider certificate issuer or Production authorizer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Router output contains no caller-chosen package, no implicit owner step-up, no Production apply or independent release certificate. Actual target Ability registration, discovery and authorization are independent. Existing mapped controls: MCP-01, PROVIDERS-01, EXECUTION-01.",
+      "review_rationale": "Exact introduced source identifier mad4b/site-profile-status in class-mad4b-scp-control-plane-test-router.php. The route reducer references this existing planning/readback/recovery Ability only as bounded user guidance, not as a newly executable/granted Ability. The isolated runtime tests signed candidate matching, blocked phases, strict Staging, and fail-closed owner boundaries."
+    },
+    {
+      "id": "ability:mad4b/skill-runtime-certification",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-route-runtime.php"
+      ],
+      "owner_role": "Repository source and CI-only review; no Site Owner, external provider certificate issuer or Production authorizer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Router output contains no caller-chosen package, no implicit owner step-up, no Production apply or independent release certificate. Actual target Ability registration, discovery and authorization are independent. Existing mapped controls: MCP-01, PROVIDERS-01, EXECUTION-01.",
+      "review_rationale": "Exact introduced source identifier mad4b/skill-runtime-certification in class-mad4b-scp-control-plane-test-router.php. The route reducer references this existing planning/readback/recovery Ability only as bounded user guidance, not as a newly executable/granted Ability. The isolated runtime tests signed candidate matching, blocked phases, strict Staging, and fail-closed owner boundaries."
+    },
+    {
+      "id": "ability:mad4b/staging-certification-status",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-route-runtime.php"
+      ],
+      "owner_role": "Repository source and CI-only review; no Site Owner, external provider certificate issuer or Production authorizer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Router output contains no caller-chosen package, no implicit owner step-up, no Production apply or independent release certificate. Actual target Ability registration, discovery and authorization are independent. Existing mapped controls: MCP-01, PROVIDERS-01, EXECUTION-01.",
+      "review_rationale": "Exact introduced source identifier mad4b/staging-certification-status in class-mad4b-scp-control-plane-test-router.php. The route reducer references this existing planning/readback/recovery Ability only as bounded user guidance, not as a newly executable/granted Ability. The isolated runtime tests signed candidate matching, blocked phases, strict Staging, and fail-closed owner boundaries."
+    },
+    {
+      "id": "ability:mad4b/wordpress-native-candidate-opt-in-plan",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-route-runtime.php"
+      ],
+      "owner_role": "Repository source and CI-only review; no Site Owner, external provider certificate issuer or Production authorizer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Router output contains no caller-chosen package, no implicit owner step-up, no Production apply or independent release certificate. Actual target Ability registration, discovery and authorization are independent. Existing mapped controls: MCP-01, PROVIDERS-01, EXECUTION-01.",
+      "review_rationale": "Exact introduced source identifier mad4b/wordpress-native-candidate-opt-in-plan in class-mad4b-scp-control-plane-test-router.php. The route reducer references this existing planning/readback/recovery Ability only as bounded user guidance, not as a newly executable/granted Ability. The isolated runtime tests signed candidate matching, blocked phases, strict Staging, and fail-closed owner boundaries."
+    },
+    {
+      "id": "rest:mad4b/v1/provider-connections",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-rest-routing-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php"
+      ],
+      "owner_role": "Repository CI-only source reviewer — no Live Site Owner / vendor certifier / Production approver",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped P0 controls MCP-01, PROVIDERS-01, EXECUTION-01, SECURITY-01, OAUTH-01, GOVERNANCE-01 remain in force; no action authorization is conferred by catalog or static review.",
+      "review_rationale": "Exact source REST registration reviewed against isolated provider Connection Center and REST routing runtime: all four routes are private, GET does not mutate, plan is read-only, reconnect/refresh use WordPress owner nonce or verified OAuth identity with independent site authority. Production and anonymous grant remain denied."
+    },
+    {
+      "id": "rest:mad4b/v1/provider-connections/(?P<provider>[a-z][a-z0-9_-]{0,63})/plan",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-rest-routing-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php"
+      ],
+      "owner_role": "Repository CI-only source reviewer — no Live Site Owner / vendor certifier / Production approver",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped P0 controls MCP-01, PROVIDERS-01, EXECUTION-01, SECURITY-01, OAUTH-01, GOVERNANCE-01 remain in force; no action authorization is conferred by catalog or static review.",
+      "review_rationale": "Exact source REST registration reviewed against isolated provider Connection Center and REST routing runtime: all four routes are private, GET does not mutate, plan is read-only, reconnect/refresh use WordPress owner nonce or verified OAuth identity with independent site authority. Production and anonymous grant remain denied."
+    },
+    {
+      "id": "rest:mad4b/v1/provider-connections/(?P<provider>[a-z][a-z0-9_-]{0,63})/reconnect",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-rest-routing-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php"
+      ],
+      "owner_role": "Repository CI-only source reviewer — no Live Site Owner / vendor certifier / Production approver",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped P0 controls MCP-01, PROVIDERS-01, EXECUTION-01, SECURITY-01, OAUTH-01, GOVERNANCE-01 remain in force; no action authorization is conferred by catalog or static review.",
+      "review_rationale": "Exact source REST registration reviewed against isolated provider Connection Center and REST routing runtime: all four routes are private, GET does not mutate, plan is read-only, reconnect/refresh use WordPress owner nonce or verified OAuth identity with independent site authority. Production and anonymous grant remain denied."
+    },
+    {
+      "id": "rest:mad4b/v1/provider-connections/(?P<provider>[a-z][a-z0-9_-]{0,63})/refresh",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "OAUTH-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-rest-routing-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php"
+      ],
+      "owner_role": "Repository CI-only source reviewer — no Live Site Owner / vendor certifier / Production approver",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped P0 controls MCP-01, PROVIDERS-01, EXECUTION-01, SECURITY-01, OAUTH-01, GOVERNANCE-01 remain in force; no action authorization is conferred by catalog or static review.",
+      "review_rationale": "Exact source REST registration reviewed against isolated provider Connection Center and REST routing runtime: all four routes are private, GET does not mutate, plan is read-only, reconnect/refresh use WordPress owner nonce or verified OAuth identity with independent site authority. Production and anonymous grant remain denied."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-governed-writes.php",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php"
+      ],
+      "owner_role": "Repository CI-only source reviewer — no Live Site Owner / vendor certifier / Production approver",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped P0 controls MCP-01, PROVIDERS-01, EXECUTION-01 remain in force; no action authorization is conferred by catalog or static review.",
+      "review_rationale": "Exact source service declaration class-mad4b-scp-chatbotx-governed-writes.php exercised by chat-writes hermetic PHP regression; only the observed capability routing, deny states and negative privilege branches are reviewed, with independent live WP and Production acceptance still unverified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-provider-adapter.php",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "owner_role": "Repository CI-only source reviewer — no Live Site Owner / vendor certifier / Production approver",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped P0 controls MCP-01, PROVIDERS-01, EXECUTION-01 remain in force; no action authorization is conferred by catalog or static review.",
+      "review_rationale": "Exact source service declaration class-mad4b-scp-chatbotx-provider-adapter.php exercised by chat-provider hermetic PHP regression; only the observed capability routing, deny states and negative privilege branches are reviewed, with independent live WP and Production acceptance still unverified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-write-preflight.php",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php"
+      ],
+      "owner_role": "Repository CI-only source reviewer — no Live Site Owner / vendor certifier / Production approver",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped P0 controls MCP-01, PROVIDERS-01, EXECUTION-01 remain in force; no action authorization is conferred by catalog or static review.",
+      "review_rationale": "Exact source service declaration class-mad4b-scp-chatbotx-write-preflight.php exercised by chat-preflight hermetic PHP regression; only the observed capability routing, deny states and negative privilege branches are reviewed, with independent live WP and Production acceptance still unverified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/isolated-contract.php"
+      ],
+      "owner_role": "Repository CI-only source reviewer — no Live Site Owner / vendor certifier / Production approver",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped P0 controls AI-01, LOCALIZATION-01, PROVIDERS-02 remain in force; no action authorization is conferred by catalog or static review.",
+      "review_rationale": "Exact source service declaration class-mad4b-scp-content-readiness-alerts.php exercised by content-alerts hermetic PHP regression; only the observed capability routing, deny states and negative privilege branches are reviewed, with independent live WP and Production acceptance still unverified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-control-plane-test-router.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-route-runtime.php"
+      ],
+      "owner_role": "Repository CI-only source reviewer — no Live Site Owner / vendor certifier / Production approver",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped P0 controls GOVERNANCE-01, PLATFORM-01, SECURITY-01 remain in force; no action authorization is conferred by catalog or static review.",
+      "review_rationale": "Exact source service declaration class-mad4b-scp-control-plane-test-router.php exercised by router hermetic PHP regression; only the observed capability routing, deny states and negative privilege branches are reviewed, with independent live WP and Production acceptance still unverified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-event-automation.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/event-automation-contract.php"
+      ],
+      "owner_role": "Repository CI-only source reviewer — no Live Site Owner / vendor certifier / Production approver",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped P0 controls GOVERNANCE-01, PLATFORM-01, SECURITY-01 remain in force; no action authorization is conferred by catalog or static review.",
+      "review_rationale": "Exact source service declaration class-mad4b-scp-readiness-event-automation.php exercised by event hermetic PHP regression; only the observed capability routing, deny states and negative privilege branches are reviewed, with independent live WP and Production acceptance still unverified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-team-preparation.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/preactivation-team-contract.php"
+      ],
+      "owner_role": "Repository CI-only source reviewer — no Live Site Owner / vendor certifier / Production approver",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped P0 controls GOVERNANCE-01, PLATFORM-01, SECURITY-01 remain in force; no action authorization is conferred by catalog or static review.",
+      "review_rationale": "Exact source service declaration class-mad4b-scp-readiness-team-preparation.php exercised by team hermetic PHP regression; only the observed capability routing, deny states and negative privilege branches are reviewed, with independent live WP and Production acceptance still unverified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema-status-projection.php",
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/maintainability-domain-service-contract.py"
+      ],
+      "owner_role": "Repository CI-only source reviewer — no Live Site Owner / vendor certifier / Production approver",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped P0 controls DATABASE-01, PERFORMANCE-01 remain in force; no action authorization is conferred by catalog or static review.",
+      "review_rationale": "Exact source service declaration class-mad4b-scp-schema-status-projection.php exercised by schema hermetic PHP regression; only the observed capability routing, deny states and negative privilege branches are reviewed, with independent live WP and Production acceptance still unverified."
     }
   ],
   "lifecycle": [],
@@ -11722,6 +12432,141 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Provider/MCP/Execution P0 controls remain intact: optional catalog selection cannot register an absent Ability, and governed writes still require their independently defined preflight/authorization. The change never creates grants or a provider certificate.",
       "review_rationale": "Bounded optional provider adapter now derives all advertised MCP names from the same existing installed-and-active provider predicate used by register_abilities. Missing or deactivated provider exposes no dangling abilities; active provider retains 11 reads and three centrally governed writes. Red-before/green-after isolated PHP 8.3 and 8.5 tests cover absence, activation, deactivation, and registration identity. MCP runtime integration subsequently passed on WordPress 6.9 and latest."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-governed-writes.php",
+      "source_blob_sha": "93d17a36a2c3f5937ea0865b529ac181190d74aa",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php"
+      ],
+      "owner_role": "Repository source reviewer CI-only; Site Owner and provider signer authority remain independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing impact mapped MCP-01, PROVIDERS-01, EXECUTION-01 gates preserved; tests cover only changed source branches and source identity, not live rollout.",
+      "review_rationale": "Exact changed behavior source class-mad4b-scp-chatbotx-governed-writes.php reviewed only for tested chat-writes hermetic execution, fail-closed gating, native registration and denial cases. No independent live certification, package promotion, owner approval or Production mutation; regressions linked to exact changed PR test sources."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-write-preflight.php",
+      "source_blob_sha": "7cbeb2cb9b3ff3f1b6b6b77f7c2fdb9891f5a2d9",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php"
+      ],
+      "owner_role": "Repository source reviewer CI-only; Site Owner and provider signer authority remain independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing impact mapped MCP-01, PROVIDERS-01, EXECUTION-01 gates preserved; tests cover only changed source branches and source identity, not live rollout.",
+      "review_rationale": "Exact changed behavior source class-mad4b-scp-chatbotx-write-preflight.php reviewed only for tested chat-preflight hermetic execution, fail-closed gating, native registration and denial cases. No independent live certification, package promotion, owner approval or Production mutation; regressions linked to exact changed PR test sources."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "source_blob_sha": "b096481effa41ec4ec36f100adaa0e700eda245d",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/isolated-contract.php"
+      ],
+      "owner_role": "Repository source reviewer CI-only; Site Owner and provider signer authority remain independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing impact mapped AI-01, LOCALIZATION-01, PROVIDERS-02 gates preserved; tests cover only changed source branches and source identity, not live rollout.",
+      "review_rationale": "Exact changed behavior source class-mad4b-scp-content-readiness-alerts.php reviewed only for tested content-alerts hermetic execution, fail-closed gating, native registration and denial cases. No independent live certification, package promotion, owner approval or Production mutation; regressions linked to exact changed PR test sources."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-control-plane-test-router.php",
+      "source_blob_sha": "a9f34d8f1c075d04dac4ff449d403e3cdf0a99dc",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-route-runtime.php"
+      ],
+      "owner_role": "Repository source reviewer CI-only; Site Owner and provider signer authority remain independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing impact mapped GOVERNANCE-01, PLATFORM-01, SECURITY-01 gates preserved; tests cover only changed source branches and source identity, not live rollout.",
+      "review_rationale": "Exact changed behavior source class-mad4b-scp-control-plane-test-router.php reviewed only for tested router hermetic execution, fail-closed gating, native registration and denial cases. No independent live certification, package promotion, owner approval or Production mutation; regressions linked to exact changed PR test sources."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-connection-center.php",
+      "source_blob_sha": "fcd021f7e3d7d0fc9fc9684977f339f58a236ae3",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-rest-routing-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php"
+      ],
+      "owner_role": "Repository source reviewer CI-only; Site Owner and provider signer authority remain independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing impact mapped MCP-01, PROVIDERS-01, EXECUTION-01 gates preserved; tests cover only changed source branches and source identity, not live rollout.",
+      "review_rationale": "Exact changed behavior source class-mad4b-scp-provider-connection-center.php reviewed only for tested rest hermetic execution, fail-closed gating, native registration and denial cases. No independent live certification, package promotion, owner approval or Production mutation; regressions linked to exact changed PR test sources."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-event-automation.php",
+      "source_blob_sha": "51fd707e068f0315ae3b81ee27fefdbb9f8e8e4c",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/event-automation-contract.php"
+      ],
+      "owner_role": "Repository source reviewer CI-only; Site Owner and provider signer authority remain independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing impact mapped GOVERNANCE-01, PLATFORM-01, SECURITY-01 gates preserved; tests cover only changed source branches and source identity, not live rollout.",
+      "review_rationale": "Exact changed behavior source class-mad4b-scp-readiness-event-automation.php reviewed only for tested event hermetic execution, fail-closed gating, native registration and denial cases. No independent live certification, package promotion, owner approval or Production mutation; regressions linked to exact changed PR test sources."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-team-preparation.php",
+      "source_blob_sha": "9b6d9faffcd9e6a5a6bbb828686966613f81f625",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/preactivation-team-contract.php"
+      ],
+      "owner_role": "Repository source reviewer CI-only; Site Owner and provider signer authority remain independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing impact mapped GOVERNANCE-01, PLATFORM-01, SECURITY-01 gates preserved; tests cover only changed source branches and source identity, not live rollout.",
+      "review_rationale": "Exact changed behavior source class-mad4b-scp-readiness-team-preparation.php reviewed only for tested team hermetic execution, fail-closed gating, native registration and denial cases. No independent live certification, package promotion, owner approval or Production mutation; regressions linked to exact changed PR test sources."
     }
   ],
   "code_change_rules": {
