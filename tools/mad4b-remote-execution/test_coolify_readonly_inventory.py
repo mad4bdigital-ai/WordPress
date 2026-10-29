@@ -115,5 +115,27 @@ class TestCoolifyReadOnly(unittest.TestCase):
         self.assertIn('COOLIFY_LIST_API_OMITS_DOMAINS',report['blockers'])
         self.assertFalse(report['shared_media_activation_performed'])
 
+
+    def test_server_hostname_does_not_certify_tenant_domain(self):
+        def fake_cmd(argv, *, timeout=ci.CLI_TIMEOUT, context=''):
+            if argv[1] == 'server':
+                records = [{'uuid':'vps-1','name':'VPS',
+                            'fqdn':'https://tours.dev.mad4b.com'}]
+            else:
+                records = [{'uuid':'app-1','name':'Staging',
+                            'type':'application','status':'running'}]
+            return {'ok':True,'exit':0,'raw':json.dumps(records)}
+        with patch.object(sys,'argv',['run','--context','mad4b-production',
+                                      '--host','tours.dev.mad4b.com']), \
+             patch('shutil.which', return_value='/usr/local/bin/coolify'), \
+             patch.object(ci,'cmd',side_effect=fake_cmd), \
+             redirect_stdout(io.StringIO()) as output:
+            code=ci.main()
+        report=json.loads(output.getvalue())
+        self.assertEqual(code,2)
+        self.assertFalse(report['domain_metadata_available'])
+        self.assertIn('COOLIFY_LIST_API_OMITS_DOMAINS',report['blockers'])
+        self.assertEqual(report['matched_hosts'][0]['registration'],'NOT_CONFIRMED')
+
 if __name__ == '__main__':
     unittest.main()
