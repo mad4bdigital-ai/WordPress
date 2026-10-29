@@ -48,3 +48,18 @@ Never assume a company Production WordPress installation is authorized by this e
 WP-Cron alone depends on incoming traffic; systemd supplies a host-side cadence for Staging. Multiple concurrent invocations are serialized by host flock and a short WordPress transient, but there may still be concurrent WP-Cron executions; no destructive action is ever possible. For distributed/multi-host use, replace the transient with a durable DB lock.
 
 Full unattended deletion is **not implemented**: approval requires a separate supervised workflow, confirmed zero references across company-specific adapters and remote assets, immutable snapshot, quarantine retention and tested rollback.
+
+
+## Permanent per-attachment review index (v1.2)
+- Each scheduled quick batch saves a bounded-by-site indexed finding to the non-autoload option `mad4b_media_reference_audit_findings_v1`, preserving `attachment_id`, `parent_state`, classification, reference evidence, scan depth, and timestamp. No media/file or core attachment mutation is performed.
+- Native ability accepts `action=review` with `after_id`, `limit` (maximum 60) and `classification` (`all`, `referenced`, `unresolved_review_only`, `test_only`).
+- Findings are rebuilt when a fresh full-cycle scan restarts; a partial in-progress cycle is not a full-site verdict.
+- `unresolved_review_only` is always protected against deletion. Deep review requires `action=scan`, `deep=true` and is strictly capped at 3 candidates per request.
+- On ETG Commerce Staging, verified `tests/acceptance.php` through `wp eval-file -` with PASS: ability registered, anonymous access denied, schedule present, indexed review readable, no media/attachment count changes.
+- Review index writes are audit metadata; the read-only ability itself never changes the database. Only scheduled jobs persist analysis checkpoint and findings.
+- This is installed only on ETG Commerce Staging (`tours.dev.mad4b.com`). The separately connected `staging.egypttourgates.com` Control Plane has not received this change, so external MCP discovery there does not prove this ability.
+
+## Source governance
+- Source branch and review: PR #616. The Staging MU file is an exact copy of this branch's source file, not a canonical Production installer yet.
+- Do not merge or spread to companies without normal source CI, owner attestation, rollout and authority review.
+- Offsite backup is postponed by owner; same-VPS snapshot risk remains.
