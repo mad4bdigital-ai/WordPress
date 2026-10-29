@@ -2,7 +2,7 @@
   "schema": "mad4b.commerce-composition.release-snapshot.v1",
   "release_state": "lab_source_snapshot_not_production_authorized",
   "plugin_slug": "commerce-composition",
-  "source_count": 73,
+  "source_count": 74,
   "source_files": [
     {
       "path": "bin/process-workflow-queue.php",
@@ -16,8 +16,8 @@
     },
     {
       "path": "composition.php",
-      "sha256": "8cd1f9aa5b818c8c289a41ff450bad1a4e5732dfac2cda6f37e4eebd1829f02e",
-      "bytes": 8863
+      "sha256": "f86edcbc4b249ea17b30c55cf3c7dfdeaa5079c8b97710870057523e1adceba6",
+      "bytes": 9027
     },
     {
       "path": "includes/Admin.php",
@@ -183,6 +183,11 @@
       "path": "includes/GuestConsentProof.php",
       "sha256": "ce704c84424707e32a1d0aa2427e82c3cb6084acb46a62add83c24c26d106089",
       "bytes": 17466
+    },
+    {
+      "path": "includes/InquiryPhaseOperations.php",
+      "bytes": 10653,
+      "sha256": "2139aefd06e6bb0415a9970ad9300338396badf88e4ed93216d70d2a9e530a0a"
     },
     {
       "path": "includes/InquiryQualification.php",

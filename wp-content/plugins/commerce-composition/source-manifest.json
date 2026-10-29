@@ -3,10 +3,22 @@
   "source": "etg-woo-lab-2026-10-28",
   "files": [
     {
+      "path": "bin/process-workflow-queue.php",
+      "bytes": 878,
+      "sha256": "23f2e8032a3adf7f7ecb90e22b3e302051ad5ed3e26cf3e9fa9cbdd1893efd08",
+      "git_blob_sha": "5705f910bb950f2497e2afec843840bb1357e9e1"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "bytes": 26681,
+      "sha256": "39034e9042634e348f18268666d04411be52e6fa001e89886fcbe8e7790b34e6",
+      "git_blob_sha": "0c2fbfd4b88cca2eb8f6c2c86f4624b72a598859"
+    },
+    {
       "path": "composition.php",
-      "bytes": 8863,
-      "sha256": "8cd1f9aa5b818c8c289a41ff450bad1a4e5732dfac2cda6f37e4eebd1829f02e",
-      "git_blob_sha": "0f141eadb9f532d818833c0bd664403244ca2d29"
+      "bytes": 9027,
+      "sha256": "f86edcbc4b249ea17b30c55cf3c7dfdeaa5079c8b97710870057523e1adceba6",
+      "git_blob_sha": "7f3c999a7df7084a608c223c942b997d18f005ee"
     },
     {
       "path": "includes/Admin.php",
@@ -205,6 +217,12 @@
       "bytes": 17466,
       "sha256": "ce704c84424707e32a1d0aa2427e82c3cb6084acb46a62add83c24c26d106089",
       "git_blob_sha": "6a37237ff1a4f37da4204ec4bf9620bf06a6481c"
+    },
+    {
+      "path": "includes/InquiryPhaseOperations.php",
+      "bytes": 10653,
+      "sha256": "2139aefd06e6bb0415a9970ad9300338396badf88e4ed93216d70d2a9e530a0a",
+      "git_blob_sha": "1915ce3a6c62dd19017e8abe43c91d714021d7d7"
     },
     {
       "path": "includes/InquiryQualification.php",
@@ -427,20 +445,8 @@
       "bytes": 41975,
       "sha256": "996b6af40313c5dace6f7c95bd0eef111638d971495a82b06fae177ecec505c3",
       "git_blob_sha": "cf097849b31426b2ccf9eb9c2b049329a82d071f"
-    },
-    {
-      "path": "CHANGELOG.md",
-      "bytes": 26681,
-      "sha256": "39034e9042634e348f18268666d04411be52e6fa001e89886fcbe8e7790b34e6",
-      "git_blob_sha": "0c2fbfd4b88cca2eb8f6c2c86f4624b72a598859"
-    },
-    {
-      "path": "bin/process-workflow-queue.php",
-      "bytes": 878,
-      "sha256": "23f2e8032a3adf7f7ecb90e22b3e302051ad5ed3e26cf3e9fa9cbdd1893efd08",
-      "git_blob_sha": "5705f910bb950f2497e2afec843840bb1357e9e1"
     }
   ],
-  "file_count": 73,
+  "file_count": 74,
   "total_bytes": 599425
 }
