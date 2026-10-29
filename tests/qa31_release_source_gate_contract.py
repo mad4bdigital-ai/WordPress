@@ -4,7 +4,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import json,sys,hashlib
 sys.path.insert(0,str(Path(__file__).resolve().parents[1] / 'tools'))
-from qa31_release_source_gate import evaluate,reviewed_bootstrap_successor
+from qa31_release_source_gate import evaluate,reviewed_bootstrap_successor,reviewed_ci_only_source_successor
 def chk(ok,label):
     if not ok:raise AssertionError(label)
     print('PASS '+label)
@@ -56,8 +56,26 @@ ledger=json.loads((repo/'governance/release-parity/qa31-commerce-staging-source-
 current=(plugin/'mad4b-site-control-plane.php').read_bytes()
 chk(reviewed_bootstrap_successor(plugin,'mad4b-site-control-plane.php',current),
     'exact_git_reviewed_bootstrap_accepted_ci_only')
+reviewed_paths={
+    'mad4b-site-control-plane.php',
+    'config/cross-plugin-sources.json',
+    'includes/class-mad4b-scp-server-write-catalog.php',
+}
+for path in sorted(reviewed_paths - {'mad4b-site-control-plane.php'}):
+    content=(plugin/path).read_bytes()
+    chk(reviewed_ci_only_source_successor(plugin,path,content),
+        'reviewed_exact_ci_successor_'+path.rsplit('/',1)[-1])
+    chk(not reviewed_ci_only_source_successor(plugin,path,content+b'\nmodified'),
+        'tampered_ci_successor_denied_'+path.rsplit('/',1)[-1])
+chk(not reviewed_ci_only_source_successor(plugin,'includes/unapproved.php',current),
+    'unlisted_ci_successor_denied')
+with TemporaryDirectory() as foreign:
+    chk(not reviewed_ci_only_source_successor(Path(foreign),
+        'config/cross-plugin-sources.json',
+        (plugin/'config/cross-plugin-sources.json').read_bytes()),
+        'foreign_ci_successor_root_denied')
 checked=evaluate(ledger,plugin)
-chk(checked['reviewed_github_successor_paths']==['mad4b-site-control-plane.php']
+chk(set(checked['reviewed_github_successor_paths'])==reviewed_paths
     and checked['unexpected_count']==0 and checked['pending_count']>0
     and checked['decision']=='BLOCKED_SOURCE_RECONCILIATION',
     'reviewed_successor_remains_pending_without_version_parity')
