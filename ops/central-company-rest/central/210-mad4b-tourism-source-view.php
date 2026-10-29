@@ -137,9 +137,18 @@ final class MAD4B_Tourism_Source_View_V1 {
         }
     }
     public static function redirect_legacy_source(): void {
-        if(!self::enabled()||is_admin()||wp_doing_ajax()||
-           !is_singular('tours-and-activities'))return;
-        $native=(int)get_queried_object_id();
+        if(!self::enabled()||is_admin()||wp_doing_ajax())return;
+        $native=is_singular('tours-and-activities')?(int)get_queried_object_id():0;
+        // Drafting the old demo produces a 404 before template_redirect.
+        // Match only the one exact legacy public permalink (no fuzzy slug matching).
+        if(!$native && is_404() && isset($_SERVER['REQUEST_URI'])) {
+            $path=(string)wp_parse_url((string)$_SERVER['REQUEST_URI'],PHP_URL_PATH);
+            if(untrailingslashit($path)==='/tours-and-activities/esmerada-nile-cruise') {
+                $native=60617;
+            } elseif($path==='/' && isset($_GET['p']) && (string)$_GET['p']==='60617') {
+                $native=60617;
+            }
+        }
         $sourceId=array_search($native,self::SOURCE_TO_NATIVE,true);
         if(!$sourceId||!self::source((int)$sourceId))return;
         $pages=get_option(self::SETTINGS,[]);
