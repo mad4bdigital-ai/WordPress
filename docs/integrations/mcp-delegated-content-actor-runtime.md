@@ -4,7 +4,9 @@
 
 ## Scope of this increment
 
-Only the **Staging** runtime can automatically create a user-owned governed actor after a verified **write attempt**. It is an internal audit/budget/ticket identity (not an independent service NHI impersonating the user). It can receive only the exact `mad4b/content-apply-bundle` grant, on the two documented mounts `mad4b-content` and `mad4b-write`, for the current Staging environment. It is linked to the real enrolled WordPress `wp_user_id`, an already verified OAuth/app-password fingerprint, and the same site profile. It never creates raw content or approval tickets at enrollment.
+Only the **Staging** runtime can automatically create a user-owned governed actor after the first **cryptographically verified, enrolled ChatGPT OAuth user connection**, before planning a ticket. It is an internal audit/budget/ticket identity (not an independent service NHI impersonating the user). It can receive only the exact `mad4b/content-apply-bundle` grant, on the two documented mounts `mad4b-content` and `mad4b-write`, for the current Staging environment. It is linked to the real enrolled WordPress `wp_user_id`, an already verified OAuth/app-password fingerprint, and the same site profile. It never creates raw content or approval tickets at enrollment.
+
+The first trusted `/mcp/mad4b-chatgpt` connection creates a bounded audit/approval principal only when the site write gate is ready, the Site Profile is enrolled and the WordPress user holds content-edit capability. This pre-ticket identity is needed to bind a genuine ticket to the same actor. The Developer and Enrollment resources never initialize content grants. An unsuccessful onboarding never turns a read session into a write session.
 
 Two legitimate entry routes:
 - **Direct content MCP** requires a verified, explicitly write-scoped OAuth principal, a valid user role for the exact draft CPT, and the normal central exact write/approval/budget policy. It does not accept a read-only bearer as direct write authority.
@@ -16,7 +18,7 @@ A delegated draft can be created only with the target post type's `create_posts`
 
 - An arbitrary `wp_set_current_user()` on WP-CLI, forged header, or raw JWT claim does **not** establish the verified OAuth/app-password request-local context.
 - User enrollment, exact site origin, real WordPress capabilities and token proof remain mandatory.
-- A signed preparation receipt and one-time approval ticket remain mandatory for compact ChatGPT dispatch; creating a managed actor is **not itself** approval or successful content execution.
+- A signed preparation receipt and one-time approval ticket remain mandatory for compact ChatGPT dispatch; first-connection actor initialization is **not itself** approval or successful content execution.
 - Only Staging can auto-provision actors in this iteration. Production never auto-provisions, and existing Production principal policy is unchanged.
 - Any partial actor provisioning failure leaves a disabled principal for operator reconciliation; no retries of revoked authority.
 - Existing self-update convergence and MCP 503 recovery stay independent of user capability inheritance.
