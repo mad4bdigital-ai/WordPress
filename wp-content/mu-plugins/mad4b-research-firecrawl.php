@@ -38,6 +38,7 @@ final class MAD4B_Research_Firecrawl_Bridge {
                 'category' => 'mad4b-admin',
                 'execute_callback' => array( __CLASS__, 'status' ),
                 'permission_callback' => array( __CLASS__, 'permitted' ),
+                'input_schema' => array( 'type' => 'object', 'properties' => array(), 'additionalProperties' => false ),
                 'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
                 'meta' => $meta,
             ) );
