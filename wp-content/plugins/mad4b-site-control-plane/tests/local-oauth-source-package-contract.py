@@ -40,8 +40,20 @@ if not (build < verify < materialize < activate):
     raise SystemExit("LOCAL_OAUTH_PACKAGED_SOURCE_ORDER_INVALID")
 if 'cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"' in source:
     raise SystemExit("LOCAL_OAUTH_RAW_SOURCE_INSTALL_UNVERIFIED")
-if 'mad4b_runtime_cache_convergence_pending' in source:
-    raise SystemExit("LOCAL_OAUTH_CACHE_PROVENANCE_DENIAL_OVERRIDE_FORBIDDEN")
+# The HTTP client may retry a verified cache revalidation exactly once, but
+# must never accept a generic 503 or a nonretryable provenance failure.
+for token in (
+    'if [ "$INIT_STATUS" = "503" ]; then',
+    'payload.get("code") != "mad4b_runtime_cache_convergence_pending"',
+    'payload.get("retryable") is not True',
+    "grep -qi '^Retry-After: 1",
+    'sleep 1',
+    'test "$INIT_STATUS" = "200"',
+):
+    if source.count(token) != 1:
+        raise SystemExit("LOCAL_OAUTH_CONVERGENCE_RETRY_GUARD_MISSING: " + token)
+if source.count('if [ "$INIT_STATUS" = "503" ]; then') != 1:
+    raise SystemExit("LOCAL_OAUTH_UNBOUNDED_CONVERGENCE_RETRY")
 for expected in ('--root "$PACKAGE_DIR/source/mad4b-site-control-plane"',
                  'test "$INSTALLED_ADAPTER_VERSION" = "$EXPECTED_ADAPTER_VERSION"'):
     if expected not in source:

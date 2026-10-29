@@ -525,6 +525,35 @@ jobs:
           echo "HTTP MCP initialize status=$INIT_STATUS time=$INIT_TIME"
           cat /tmp/mad4b-http-init.headers
           cat /tmp/mad4b-http-init.body
+          if [ "$INIT_STATUS" = "503" ]; then
+            # After validating a new exact build, MU cache convergence may
+            # invalidate PHP opcodes and demand one fresh HTTP request.
+            # Only the explicit retryable=true envelope qualifies; a missing,
+            # invalid or unverified package must keep the test failed closed.
+            python3 - <<'PYRETRY'
+          import json
+          from pathlib import Path
+          payload = json.loads(Path("/tmp/mad4b-http-init.body").read_text())
+          if payload.get("code") != "mad4b_runtime_cache_convergence_pending" or payload.get("retryable") is not True:
+              raise SystemExit("MCP 503 not an authorized one-time cache convergence retry")
+          PYRETRY
+            grep -qi '^Retry-After: 1\r*$' /tmp/mad4b-http-init.headers
+            sleep 1
+            INIT_META="$(curl --silent --show-error \
+              --connect-timeout 2 --max-time 8 \
+              -D /tmp/mad4b-http-init.headers \
+              -o /tmp/mad4b-http-init.body \
+              -w '%{http_code} %{time_total}' \
+              -X POST "$MCP_URL" \
+              -H "Authorization: Bearer $CHATGPT_TOKEN" \
+              -H 'Accept: application/json, text/event-stream' \
+              -H 'Content-Type: application/json' \
+              -H 'MCP-Protocol-Version: 2025-11-25' \
+              --data '{"jsonrpc":"2.0","id":901,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"mad4b-http-refresh-ci","version":"1.0.0"}}}')"
+            INIT_STATUS="${INIT_META%% *}"
+            INIT_TIME="${INIT_META#* }"
+            echo "HTTP MCP after one manifest-verified cache convergence status=$INIT_STATUS time=$INIT_TIME"
+          fi
           test "$INIT_STATUS" = "200"
 
           SESSION_ID="$(awk 'BEGIN{IGNORECASE=1} /^Mcp-Session-Id:/ {gsub(/\r/,""); print $2}' /tmp/mad4b-http-init.headers | tail -n1)"
