@@ -293,7 +293,7 @@
     "Full source inventory/digest and zero unclassified selected fields",
     "Every company-specific and media value sourced from approved new company",
     "Public site name, logos, colors, support/contact and SEO Organization validated",
-    "Provider accounts disconnected by default and individually rebound with explicit access",
+    "Provider accounts disconnected by default; all credentials, API secrets, provider IDs and tokens must be newly issued for the target company and individually rebound with explicit consent",
     "No customer/user/order/booking/payment/submission/audit history copied",
     "Canonical media catalog IDs resolved to new attachment ownership and checked for licensing",
     "Translation EN origin preserved with per-language target term/post ID remapping",
