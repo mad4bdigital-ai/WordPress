@@ -120,9 +120,21 @@ final class MAD4B_Tourism_Source_View_V1 {
     public static function exclude_native_demo_from_tour_lists(WP_Query $query): void {
         if(!self::enabled()||is_admin())return;
         $types=(array)$query->get('post_type');
-        if(!in_array('tours-and-activities',$types,true))return;
-        $excluded=array_map('intval',(array)$query->get('post__not_in'));
-        $query->set('post__not_in',array_values(array_unique(array_merge($excluded,array_values(self::SOURCE_TO_NATIVE)))));
+        $nativeIds=array_values(self::SOURCE_TO_NATIVE);
+        $included=array_map('intval',(array)$query->get('post__in'));
+        $isTourQuery=in_array('tours-and-activities',$types,true);
+        $includesDemo=(bool)array_intersect($nativeIds,$included);
+        if(!$isTourQuery&&!$includesDemo)return;
+        // WP_Query ignores post__not_in when post__in is supplied.
+        // Favorites / JetEngine data-store grids often rely on post__in.
+        if($included&&$includesDemo){
+            $allowed=array_values(array_diff($included,$nativeIds));
+            $query->set('post__in',$allowed?:[0]);
+        }
+        if($isTourQuery){
+            $excluded=array_map('intval',(array)$query->get('post__not_in'));
+            $query->set('post__not_in',array_values(array_unique(array_merge($excluded,$nativeIds))));
+        }
     }
     public static function redirect_legacy_source(): void {
         if(!self::enabled()||is_admin()||wp_doing_ajax()||
@@ -135,9 +147,13 @@ final class MAD4B_Tourism_Source_View_V1 {
         $page=get_post($pageId);
         if(!$page||$page->post_type!=='page'||$page->post_status!=='publish')return;
         $url=get_permalink($pageId);
-        if(!is_string($url)||!wp_http_validate_url($url))return;
-        // Temporary, reversible redirect; don't cache forever or abandon old links.
+        $language=((int)$sourceId===41909)?'ar':'en';
+        $url=apply_filters('wpml_permalink',$url,$language,true);
+        if(!is_string($url)||!wp_http_validate_url($url)||
+            strtolower((string)wp_parse_url($url,PHP_URL_HOST))!==self::HOST)return;
+        // Temporary, reversible redirect; LiteSpeed may otherwise cache 302 for a week.
         nocache_headers();
+        header('X-LiteSpeed-Cache-Control: no-cache',true);
         wp_safe_redirect($url,302,'MAD4B Verified Tourism Source');
         exit;
     }
