@@ -100,6 +100,28 @@ final class MAD4B_SCP_OAuth_Subject_User_Bridge {
 			'site_profile_revision' => $profile_ready ? MAD4B_SCP_Site_Profile::revision() : 0,
 			'site_profile_digest' => $profile_ready ? MAD4B_SCP_Site_Profile::profile_digest() : MAD4B_SCP_Portable_Readonly_Connection::connection_digest(),
 		);
+		// A verified enrolled WordPress-user connection may establish its
+		// own draft-only governed execution identity once. This is an audit
+		// principal, never a ticket or publication grant. Portable read-only
+		// connections and any Production environment remain excluded.
+		if ( $profile_ready
+			&& class_exists( 'MAD4B_SCP_Delegation_Mode' )
+			&& MAD4B_SCP_Delegation_Mode::DELEGATED === MAD4B_SCP_Delegation_Mode::selected_mode()
+			&& class_exists( 'MAD4B_SCP_Identity_Context' )
+			&& method_exists( 'MAD4B_SCP_Identity_Context', 'current' )
+			&& user_can( $user, 'edit_posts' ) ) {
+			$identity = MAD4B_SCP_Identity_Context::current();
+			if ( is_array( $identity ) ) {
+				$enrollment = MAD4B_SCP_Delegation_Mode::ensure_content_actor( $identity, true );
+				if ( is_wp_error( $enrollment ) ) {
+					// Failed onboarding must never destroy a legitimate read session
+					// or become implicit write permission. Only a bounded code is
+					// exposed to existing operator diagnostics; no token is logged.
+					do_action( 'mad4b_scp_delegation_onboarding_denied',
+						$enrollment->get_error_code(), $user_id );
+				}
+			}
+		}
 		return $result;
 	}
 
