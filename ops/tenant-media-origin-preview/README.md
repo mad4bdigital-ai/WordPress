@@ -59,3 +59,20 @@ Receipt: evidence/VPS-TENANT-BOUND-QA-20261029.json.
 - `build_gateway.py` uses `--roots-file` instead of a fixed ETG command-line argument, and hashes assets in streaming mode.
 - The backup and independent origin live on the same VPS disk; separate-host disaster recovery is explicitly deferred and remains an acknowledged risk.
 - The catalog pilot must not be extrapolated into public serving of all uploaded files: assets are only candidates until verified against authoritative company ownership and public visibility. Test media remains internal-only.
+
+## Quarantine review holds and source decoupling (2026-10-29)
+
+Gateway configuration generation now requires an owner-controlled private `--holds-file` pointing to the administrative review-hold registry from PR #616. The generator must **refuse** any catalog path with an active review hold, even if the corresponding file exists on disk. Without a valid hold registry, generation fails closed. These review holds do not interrupt existing WordPress media URLs and are not an authorization to delete or physically move files.
+
+ETG media origin is now a separate read-only mount at `/srv/mad4b-media-origin/etg/uploads`, **not** the Staging application uploads directory. Source was seeded from the locally verified 2026-10-29 backup and passed checksum-aware comparison (0 differences). This is still on the **same VPS disk**, NOT independently disaster-recoverable offsite. Public DNS, HTTPS and company Production sites remain unchanged.
+
+Internal generator example:
+
+```bash
+python3 build_gateway.py --catalog catalog.preview.json --output generated/nginx.conf \\
+  --roots-file /srv/mad4b-media-control/catalogs/roots.preview.json \\
+  --holds-file /srv/mad4b-media-control/quarantine-review/ETG-REVIEW-HOLD-20261029.json
+MEDIA_SOURCE_ROOT=/srv/mad4b-media-origin/etg/uploads docker compose -f compose.yml up -d
+```
+
+Verified expected local responses after switching: ETG fixture 200 with unchanged source SHA-256; held company-brand image 404; ARE requesting ETG image 404; unknown Host 421. Port remains bound only to `127.0.0.1:8097`.
