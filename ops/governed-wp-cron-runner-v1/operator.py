@@ -112,8 +112,14 @@ def main():
     if policy.get("max_executions_per_run",0) not in (0,1,2):
         raise RuntimeError("Unexpected execution budget")
     approved=policy.get("approved",[])
-    if not isinstance(approved,list) or len(approved)>4:
+    if not isinstance(approved,list) or len(approved)>6:
         raise RuntimeError("Invalid allowlist")
+    allowed_effect_classes={"wordpress_core_metadata_maintenance",
+                            "diagnostic_report_only",
+                            "expired_nonce_cleanup",
+                            "expired_privacy_export_cleanup"}
+    if any(item.get("approved_effect_class") not in allowed_effect_classes for item in approved):
+        raise RuntimeError("Unreviewed effect classification")
     if any(set(item)!={"hook","callback","source_relpath","source_sha256","approved_effect_class"} for item in approved):
         raise RuntimeError("Unexpected allowlist fields")
     lock.touch(mode=0o600,exist_ok=True)
@@ -132,7 +138,7 @@ def main():
         for name,state in first["hooks"].items():
             if state["due"] and name not in [a["hook"] for a in approved]:
                 summary["blocked_due_hooks"].append({"hook":name,"due":state["due"],"old24":state["old24"],
-                    "reason":"requires_independent_effect_review"})
+                    "reason":"callback_unregistered_or_provider_deferred" if not state.get("callbacks") else "requires_independent_effect_review"})
         budget=policy["max_executions_per_run"] if args.execute else 0
         for item in approved:
             hook=item["hook"]
