@@ -4358,6 +4358,95 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing mapped P0 controls DATABASE-01, PERFORMANCE-01 remain in force; no action authorization is conferred by catalog or static review.",
       "review_rationale": "Exact source service declaration class-mad4b-scp-schema-status-projection.php exercised by schema hermetic PHP regression; only the observed capability routing, deny states and negative privilege branches are reviewed, with independent live WP and Production acceptance still unverified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-completeness.php",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-remaining-source-security-contract.py"
+      ],
+      "owner_role": "CI-only source reviewer; no live Owner, Production approver or vendor certifier",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Exact source guard assertions, six executed security test suites and existing mapped controls remain enforced: AI-01, LOCALIZATION-01, PROVIDERS-02.",
+      "review_rationale": "class-mad4b-scp-content-completeness.php: Admin/Company Content Readiness service remains subject to explicit WordPress role-capability checks, nonce and readback verification; no automatic task, notification or credential handling accepted. CI-only review is not live site acceptance or deployment clearance."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-integrations.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-remaining-source-security-contract.py"
+      ],
+      "owner_role": "CI-only source reviewer; no live Owner, Production approver or vendor certifier",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Exact source guard assertions, six executed security test suites and existing mapped controls remain enforced: GOVERNANCE-01, PLATFORM-01, SECURITY-01.",
+      "review_rationale": "class-mad4b-scp-readiness-integrations.php: Admin/Company Content Readiness service remains subject to explicit WordPress role-capability checks, nonce and readback verification; no automatic task, notification or credential handling accepted. CI-only review is not live site acceptance or deployment clearance."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-preactivation.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-remaining-source-security-contract.py"
+      ],
+      "owner_role": "CI-only source reviewer; no live Owner, Production approver or vendor certifier",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Exact source guard assertions, six executed security test suites and existing mapped controls remain enforced: GOVERNANCE-01, PLATFORM-01, SECURITY-01.",
+      "review_rationale": "class-mad4b-scp-readiness-preactivation.php: Admin/Company Content Readiness service remains subject to explicit WordPress role-capability checks, nonce and readback verification; no automatic task, notification or credential handling accepted. CI-only review is not live site acceptance or deployment clearance."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-scopes.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-remaining-source-security-contract.py"
+      ],
+      "owner_role": "CI-only source reviewer; no live Owner, Production approver or vendor certifier",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Exact source guard assertions, six executed security test suites and existing mapped controls remain enforced: GOVERNANCE-01, PLATFORM-01, SECURITY-01.",
+      "review_rationale": "class-mad4b-scp-readiness-scopes.php: Admin/Company Content Readiness service remains subject to explicit WordPress role-capability checks, nonce and readback verification; no automatic task, notification or credential handling accepted. CI-only review is not live site acceptance or deployment clearance."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-workflow-options.php",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-remaining-source-security-contract.py"
+      ],
+      "owner_role": "CI-only source reviewer; no live Owner, Production approver or vendor certifier",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Exact source guard assertions, six executed security test suites and existing mapped controls remain enforced: AUTOMATION-01, PERFORMANCE-01.",
+      "review_rationale": "class-mad4b-scp-readiness-workflow-options.php: Admin/Company Content Readiness service remains subject to explicit WordPress role-capability checks, nonce and readback verification; no automatic task, notification or credential handling accepted. CI-only review is not live site acceptance or deployment clearance."
     }
   ],
   "lifecycle": [],
@@ -12567,6 +12656,367 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing impact mapped GOVERNANCE-01, PLATFORM-01, SECURITY-01 gates preserved; tests cover only changed source branches and source identity, not live rollout.",
       "review_rationale": "Exact changed behavior source class-mad4b-scp-readiness-team-preparation.php reviewed only for tested team hermetic execution, fail-closed gating, native registration and denial cases. No independent live certification, package promotion, owner approval or Production mutation; regressions linked to exact changed PR test sources."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/certified-providers.json",
+      "source_blob_sha": "2ed4c00f905d7797e1e61e1c318ccb25844bdea8",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/woocommerce-exact-package-onboarding-contract.py"
+      ],
+      "owner_role": "Source reviewer, CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped source risk controls stay mandatory: MCP-01, PROVIDERS-01, EXECUTION-01. No live approval.",
+      "review_rationale": "Exact changed source config/certified-providers.json linked to executed hermetic regression woocommerce-exact-package-onboarding-contract.py. Review is source/CI-only; other release and runtime gates remain open."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/evidence/woocommerce-11.2.1-lab-package.json",
+      "source_blob_sha": "f2e686a2b7ebf05c521215727ddd61aa95c271fb",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/woocommerce-exact-package-onboarding-contract.py"
+      ],
+      "owner_role": "Source reviewer, CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped source risk controls stay mandatory: UPDATES-01, CROSSPLUGIN-01, RECOVERY-01, ROLLOUT-01. No live approval.",
+      "review_rationale": "Exact changed source config/evidence/woocommerce-11.2.1-lab-package.json linked to executed hermetic regression woocommerce-exact-package-onboarding-contract.py. Review is source/CI-only; other release and runtime gates remain open."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/skill-seed-manifest.json",
+      "source_blob_sha": "078f5b41fe3192f21202395e33423d8ea11661dd",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/commerce-lifecycle-skill-contract.py"
+      ],
+      "owner_role": "Source reviewer, CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped source risk controls stay mandatory: AUTOMATION-01, PERFORMANCE-01. No live approval.",
+      "review_rationale": "Exact changed source config/skill-seed-manifest.json linked to executed hermetic regression commerce-lifecycle-skill-contract.py. Review is source/CI-only; other release and runtime gates remain open."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-context-adapter.php",
+      "source_blob_sha": "21bc64ce1b40759f7363092e329cc7eb691ca036",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-append-retry-budget-qa18.php"
+      ],
+      "owner_role": "Source reviewer, CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped source risk controls stay mandatory: MCP-01, PROVIDERS-01, EXECUTION-01. No live approval.",
+      "review_rationale": "Exact changed source includes/adapters/class-mad4b-scp-context-adapter.php linked to executed hermetic regression brand-append-retry-budget-qa18.php. Review is source/CI-only; other release and runtime gates remain open."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+      "source_blob_sha": "8fba63b621707438c101617208dd34c388634d38",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/gateway-mutation-guards.py"
+      ],
+      "owner_role": "Source reviewer, CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped source risk controls stay mandatory: GOVERNANCE-01, PLATFORM-01, SECURITY-01. No live approval.",
+      "review_rationale": "Exact changed source includes/class-mad4b-scp-abilities.php linked to executed hermetic regression gateway-mutation-guards.py. Review is source/CI-only; other release and runtime gates remain open."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli.php",
+      "source_blob_sha": "eeaa8f64873bb2de178d79110a4078c51d5b7b1a",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-live-write-diagnostic-runtime.php"
+      ],
+      "owner_role": "Source reviewer, CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped source risk controls stay mandatory: GOVERNANCE-01, PLATFORM-01, SECURITY-01. No live approval.",
+      "review_rationale": "Exact changed source includes/class-mad4b-scp-cli.php linked to executed hermetic regression wp-cli-live-write-diagnostic-runtime.php. Review is source/CI-only; other release and runtime gates remain open."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-enrollment-dispatch.php",
+      "source_blob_sha": "082f5355929daa0a02aa117721213e4e26532515",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/enrollment-dispatch-runtime.php"
+      ],
+      "owner_role": "Source reviewer, CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped source risk controls stay mandatory: GOVERNANCE-01, PLATFORM-01, SECURITY-01. No live approval.",
+      "review_rationale": "Exact changed source includes/class-mad4b-scp-enrollment-dispatch.php linked to executed hermetic regression enrollment-dispatch-runtime.php. Review is source/CI-only; other release and runtime gates remain open."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-reconnect-hardening.php",
+      "source_blob_sha": "0ef5766d70b1494f8b838735e579cb72b4d740de",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/historical-owner-attestation-transport-runtime.php"
+      ],
+      "owner_role": "Source reviewer, CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped source risk controls stay mandatory: GOVERNANCE-01, PLATFORM-01, SECURITY-01. No live approval.",
+      "review_rationale": "Exact changed source includes/class-mad4b-scp-reconnect-hardening.php linked to executed hermetic regression historical-owner-attestation-transport-runtime.php. Review is source/CI-only; other release and runtime gates remain open."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-convergence.php",
+      "source_blob_sha": "f069a64158648f6fe74d7648c8bd80550856d0b3",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/historical-staging-mcp-read-runtime.php"
+      ],
+      "owner_role": "Source reviewer, CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped source risk controls stay mandatory: GOVERNANCE-01, PLATFORM-01, SECURITY-01. No live approval.",
+      "review_rationale": "Exact changed source includes/class-mad4b-scp-runtime-convergence.php linked to executed hermetic regression historical-staging-mcp-read-runtime.php. Review is source/CI-only; other release and runtime gates remain open."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-core-catalog.php",
+      "source_blob_sha": "b2cce2d0b0347375c92bbf831cb934e669b60427",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py"
+      ],
+      "owner_role": "Source reviewer, CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing mapped source risk controls stay mandatory: GOVERNANCE-01, PLATFORM-01, SECURITY-01. No live approval.",
+      "review_rationale": "Exact changed source includes/class-mad4b-scp-server-core-catalog.php linked to executed hermetic regression plugin-package-mcp-governance-contract.py. Review is source/CI-only; other release and runtime gates remain open."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/adapter-registration-policy.json",
+      "source_blob_sha": "8cf2ac6866b493a2f6c228af5bd409ebd0b2089d",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-remaining-source-security-contract.py"
+      ],
+      "owner_role": "CI-only source reviewer; no live Owner, Production approver or vendor certifier",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Exact source guard assertions, six executed security test suites and existing mapped controls remain enforced: GOVERNANCE-02, OAUTH-01, TICKETS-01, SECURITY-01.",
+      "review_rationale": "adapter-registration-policy.json: Bundled adapter registration policy remains inventory-only, deny-unknown mutation, and requires source review for each new class. CI-only review is not live site acceptance or deployment clearance."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-completeness.php",
+      "source_blob_sha": "f82c54a1831c64407c03c0ded55dc2cc26ea5168",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-remaining-source-security-contract.py"
+      ],
+      "owner_role": "CI-only source reviewer; no live Owner, Production approver or vendor certifier",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Exact source guard assertions, six executed security test suites and existing mapped controls remain enforced: AI-01, LOCALIZATION-01, PROVIDERS-02.",
+      "review_rationale": "class-mad4b-scp-content-completeness.php: Admin/Company Content Readiness service remains subject to explicit WordPress role-capability checks, nonce and readback verification; no automatic task, notification or credential handling accepted. CI-only review is not live site acceptance or deployment clearance."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-client-admin.php",
+      "source_blob_sha": "fc4355087debcc614578f9eafb3a6dcb129a64c5",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-remaining-source-security-contract.py"
+      ],
+      "owner_role": "CI-only source reviewer; no live Owner, Production approver or vendor certifier",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Exact source guard assertions, six executed security test suites and existing mapped controls remain enforced: ADMIN-01, BROWSER-01, SECURITY-02.",
+      "review_rationale": "class-mad4b-scp-local-client-admin.php: Local Client credential code is restricted to enrolled Local environment, strict request TTL and vaulted nonce-bound issuance/revoke with fail-closed rollback. CI-only review is not live site acceptance or deployment clearance."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operational-remediation.php",
+      "source_blob_sha": "2dbed977fab221fcc5ba15d15d0a54effbc0eb2a",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-remaining-source-security-contract.py"
+      ],
+      "owner_role": "CI-only source reviewer; no live Owner, Production approver or vendor certifier",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Exact source guard assertions, six executed security test suites and existing mapped controls remain enforced: GOVERNANCE-01, PLATFORM-01, SECURITY-01.",
+      "review_rationale": "class-mad4b-scp-operational-remediation.php: Operator remediation and journey source remains read-only without automatic execution; separate owner authorization is mandatory for any action. CI-only review is not live site acceptance or deployment clearance."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-journeys.php",
+      "source_blob_sha": "310632c8740337d6f9e65ea25ba33fd95f67c14f",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-remaining-source-security-contract.py"
+      ],
+      "owner_role": "CI-only source reviewer; no live Owner, Production approver or vendor certifier",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Exact source guard assertions, six executed security test suites and existing mapped controls remain enforced: GOVERNANCE-01, PLATFORM-01, SECURITY-01.",
+      "review_rationale": "class-mad4b-scp-operator-journeys.php: Operator remediation and journey source remains read-only without automatic execution; separate owner authorization is mandatory for any action. CI-only review is not live site acceptance or deployment clearance."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-integrations.php",
+      "source_blob_sha": "2a777c27e43104bb784f31862eb594d658d19b80",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-remaining-source-security-contract.py"
+      ],
+      "owner_role": "CI-only source reviewer; no live Owner, Production approver or vendor certifier",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Exact source guard assertions, six executed security test suites and existing mapped controls remain enforced: GOVERNANCE-01, PLATFORM-01, SECURITY-01.",
+      "review_rationale": "class-mad4b-scp-readiness-integrations.php: Admin/Company Content Readiness service remains subject to explicit WordPress role-capability checks, nonce and readback verification; no automatic task, notification or credential handling accepted. CI-only review is not live site acceptance or deployment clearance."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-preactivation.php",
+      "source_blob_sha": "8340fbb30b00406c3b41daa826e7491ad8dfecf4",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-remaining-source-security-contract.py"
+      ],
+      "owner_role": "CI-only source reviewer; no live Owner, Production approver or vendor certifier",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Exact source guard assertions, six executed security test suites and existing mapped controls remain enforced: GOVERNANCE-01, PLATFORM-01, SECURITY-01.",
+      "review_rationale": "class-mad4b-scp-readiness-preactivation.php: Admin/Company Content Readiness service remains subject to explicit WordPress role-capability checks, nonce and readback verification; no automatic task, notification or credential handling accepted. CI-only review is not live site acceptance or deployment clearance."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-scopes.php",
+      "source_blob_sha": "1bd36ce816533c3c160e78022a313137a517063c",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-remaining-source-security-contract.py"
+      ],
+      "owner_role": "CI-only source reviewer; no live Owner, Production approver or vendor certifier",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Exact source guard assertions, six executed security test suites and existing mapped controls remain enforced: GOVERNANCE-01, PLATFORM-01, SECURITY-01.",
+      "review_rationale": "class-mad4b-scp-readiness-scopes.php: Admin/Company Content Readiness service remains subject to explicit WordPress role-capability checks, nonce and readback verification; no automatic task, notification or credential handling accepted. CI-only review is not live site acceptance or deployment clearance."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-workflow-options.php",
+      "source_blob_sha": "8b61ba45a4dac403cf0ba8543b0feef698d3fa19",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-remaining-source-security-contract.py"
+      ],
+      "owner_role": "CI-only source reviewer; no live Owner, Production approver or vendor certifier",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Exact source guard assertions, six executed security test suites and existing mapped controls remain enforced: AUTOMATION-01, PERFORMANCE-01.",
+      "review_rationale": "class-mad4b-scp-readiness-workflow-options.php: Admin/Company Content Readiness service remains subject to explicit WordPress role-capability checks, nonce and readback verification; no automatic task, notification or credential handling accepted. CI-only review is not live site acceptance or deployment clearance."
     }
   ],
   "code_change_rules": {

@@ -4,8 +4,8 @@
   "reviewed_base_sha": "7ccfd69d7a76b4b13b73e18aaaf445144d3cfeba",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 136,
-  "changed_paths_sha256": "a2a125f79f3bfa78da1a10520dca89c3b7cb00c6c9c702f07470585cc4f924a1",
+  "changed_file_count": 137,
+  "changed_paths_sha256": "cd27a76fff834d549114421f592a176772f27c82f94dd5013f0ba6633a746ce3",
   "slices": [
     {
       "id": "abilities-and-governed-dispatch",
@@ -218,7 +218,8 @@
         "governance/production-readiness/capability-coverage.json",
         "governance/release-parity/qa31-w2a-readonly-source-candidate.json",
         "specs/007-content-intelligence-workflow-platform/change-slices.json",
-        "tests/qa31_release_source_gate_contract.py"
+        "tests/qa31_release_source_gate_contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-remaining-source-security-contract.py"
       ]
     },
     {
