@@ -18,6 +18,9 @@ final class MAD4B_Hub_Source_Reuse_Gate_V1 {
             !MAD4B_Hub_Nile_Publisher_V1::enabled()) {
             throw new RuntimeException('Source reuse policy requires central Staging authority');
         }
+        if (!class_exists('MAD4B_Hub_Curated_Demo_V1')) {
+            throw new RuntimeException('Curated demo classification authority unavailable');
+        }
         $categories = $snapshots['nile_cruise_categories.read'] ?? [];
         $tours = $snapshots['nile_cruise_catalog.read'] ?? [];
         if (count($categories) !== 18 || count($tours) !== 35) {
@@ -123,7 +126,7 @@ final class MAD4B_Hub_Source_Reuse_Gate_V1 {
                 throw new RuntimeException('Missing canonical bilingual taxonomy pair');
         }
 
-        $tourMap=[]; $collisions=[];
+        $tourMap=[]; $collisions=[]; $legacyDemoCollisions=0; $pendingReviewCount=0;
         foreach ($tours as $source) {
             if (($source['source_company'] ?? '') !== self::SOURCE ||
                 !is_int($source['source_tour_id'] ?? null) ||
@@ -142,11 +145,17 @@ final class MAD4B_Hub_Source_Reuse_Gate_V1 {
             $state='no_native_tour_collision';
             $candidateIds=[];
             $verifiedId=null;
+            $demoCandidates=[];
             if ($found) {
                 $candidateIds=array_map(static fn($v)=>(int)$v['ID'],$found);
                 $state='native_slug_collision_requires_owner_review';
                 foreach ($found as $native) {
                     $postId=(int)$native['ID'];
+                    $demo=MAD4B_Hub_Curated_Demo_V1::classify($source,$native);
+                    if (is_array($demo)) {
+                        $demoCandidates[]=$postId;
+                        continue; // Demo cannot certify current source ownership or grant an overwrite.
+                    }
                     $owner=get_post_meta($postId,'_mad4b_source_company',true);
                     $sourcePost=(int)get_post_meta($postId,'_mad4b_source_post_id',true);
                     // Only exact explicit company AND source ID can certify ownership.
@@ -156,11 +165,21 @@ final class MAD4B_Hub_Source_Reuse_Gate_V1 {
                         $verifiedId=$postId;
                     }
                 }
+                if($verifiedId!==null && $demoCandidates)
+                    throw new RuntimeException('Conflicting current source and legacy demo candidates');
                 if($verifiedId!==null) $state='verified_same_source_native_tour';
+                elseif(count($demoCandidates)===1 && count($found)===1) {
+                    $state='native_legacy_demo_source_authority';
+                    $legacyDemoCollisions++;
+                }
+                else $pendingReviewCount++;
                 $collisions[]=[
                     'source_tour_id'=>$id,
                     'candidate_native_ids'=>$candidateIds,
+                    'curated_legacy_demo_ids'=>$demoCandidates,
                     'provenance_approved'=>$verifiedId!==null,
+                    'source_content_authoritative'=>$state==='native_legacy_demo_source_authority',
+                    'native_content_mutation_allowed'=>false,
                     'state'=>$state
                 ];
             }
@@ -170,6 +189,7 @@ final class MAD4B_Hub_Source_Reuse_Gate_V1 {
                 'state'=>$state,
                 'certified_native_tour_id'=>$verifiedId,
                 'candidate_native_ids'=>$candidateIds,
+                'curated_legacy_demo_ids'=>$demoCandidates,
                 'may_modify_native_tour'=>false,
                 'may_auto_merge_by_slug'=>false,
             ];
@@ -181,6 +201,8 @@ final class MAD4B_Hub_Source_Reuse_Gate_V1 {
             'taxonomy_reuse_count'=>count($mapped),
             'existing_bilingual_taxonomy_groups'=>count($translationPairs),
             'native_slug_collision_count'=>count($collisions),
+            'legacy_demo_collision_count'=>$legacyDemoCollisions,
+            'native_tour_pending_review_count'=>$pendingReviewCount,
             'native_tour_merge_count'=>0,
             'creates_native_taxonomies'=>false,
             'modifies_existing_tour_posts'=>false,
@@ -210,6 +232,8 @@ final class MAD4B_Hub_Source_Reuse_Gate_V1 {
             if(!is_array($record))throw new RuntimeException('Tour duplication policy absent');
             $desired['meta_input']['_mad4b_hub_reuse_policy_state']=$record['state'];
             $desired['meta_input']['_mad4b_hub_native_candidates_json']=wp_json_encode($record['candidate_native_ids']);
+            $desired['meta_input']['_mad4b_hub_legacy_demo_candidates_json']=wp_json_encode($record['curated_legacy_demo_ids']);
+            $desired['meta_input']['_mad4b_hub_authoritative_source']=($record['state']==='native_legacy_demo_source_authority')?self::SOURCE:'review_required';
             $desired['meta_input']['_mad4b_hub_certified_native_tour_id']=(int)($record['certified_native_tour_id']??0);
             $desired['meta_input']['_mad4b_hub_native_tour_overwritten']='no';
         } else {
@@ -231,6 +255,8 @@ final class MAD4B_Hub_Source_Reuse_Gate_V1 {
         }
         if($kind==='nile_tour') {
             array_push($keys,'_mad4b_hub_native_candidates_json',
+                '_mad4b_hub_legacy_demo_candidates_json',
+                '_mad4b_hub_authoritative_source',
                 '_mad4b_hub_certified_native_tour_id',
                 '_mad4b_hub_native_tour_overwritten');
         }
