@@ -352,3 +352,7 @@ final class MAD4B_JetEngine_Hub_Addon {
     }
 }
 add_action('plugins_loaded',array('MAD4B_JetEngine_Hub_Addon','boot'),30);
+
+// Capability inventory, selective planning and policy advice only. No runtime distribution.
+require_once __DIR__ . '/includes/class-mad4b-hub-discovery-planner.php';
+add_action('plugins_loaded',array('MAD4B_Hub_Discovery_Planner','boot'),35);
