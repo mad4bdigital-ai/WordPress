@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Media Reference Audit Policy
  * Description: Permanent bounded, read-only audit of unparented/dangling image attachments. Never deletes, moves, unpublishes, or grants media access.
- * Version: 1.2.0
+ * Version: 1.3.0
  */
 defined('ABSPATH') || exit;
 
@@ -47,6 +47,7 @@ final class MAD4B_Media_Reference_Audit {
             'auto_publish_allowed' => false,
             'auto_media_catalog_approval' => false,
             'candidate_is_not_proof_of_unused' => true,
+            'missing_file_is_not_permission_to_delete' => true,
             'scheduled_scan_depth' => 'quick',
             'deep_scan_max_batch' => 3,
             'scan_scope' => 'image attachments with missing or nonexistent post_parent',
@@ -186,7 +187,7 @@ final class MAD4B_Media_Reference_Audit {
         $limit = $deep ? min(3, max(1, (int)$limit)) : min(self::MAX_BATCH, max(1, (int)$limit));
         $rows = self::candidates($after_id, $limit);
         if (is_wp_error($rows)) return $rows;
-        $items = []; $totals = ['referenced'=>0,'unresolved_review_only'=>0,'test_only'=>0];
+        $items = []; $totals = ['referenced'=>0,'unresolved_review_only'=>0,'test_only'=>0,'missing_file'=>0,'present_file'=>0];
         $cursor = max(0, (int)$after_id);
         foreach ($rows as $row) {
             $id = absint($row['ID']);
@@ -199,11 +200,18 @@ final class MAD4B_Media_Reference_Audit {
                 return new WP_Error('media_reference_scan_incomplete', 'Reference audit failed; no cleanup permitted');
             }
             $totals[$state]++;
+            // Read-only filesystem check; no deletion or permission change.
+            // Resolve via WordPress attachment mapping to avoid raw web paths.
+            $attached_path = get_attached_file($id);
+            $exists = is_string($attached_path) && $attached_path !== '' && is_file($attached_path);
+            $totals[$exists ? 'present_file' : 'missing_file']++;
             $items[]=[
                 'attachment_id'=>$id,
                 'parent_state'=>$row['reason'],
                 'classification'=>$state,
                 'reference_evidence'=>$refs,
+                'source_file_state'=>$exists ? 'present' : 'missing',
+                'file_missing_is_not_deletion_clearance'=>true,
                 'delete_allowed'=>false
             ];
         }
