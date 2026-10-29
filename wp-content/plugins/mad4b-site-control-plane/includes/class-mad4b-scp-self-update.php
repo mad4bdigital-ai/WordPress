@@ -63,6 +63,10 @@ final class MAD4B_SCP_Self_Update {
 		self::$booted = true;
 
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 34 );
+		// QA32C: isolated, read-only orphan-source preflight, not an update bypass.
+		require_once __DIR__ . '/class-mad4b-scp-orphan-source-recovery.php';
+		MAD4B_SCP_Orphan_Source_Recovery::boot();
+
 		add_filter( 'mad4b_scp_authorization_input', array( __CLASS__, 'authorization_input' ), 20, 3 );
 
 		// WordPress-admin update channel. Keep the exact plugin hook for the
