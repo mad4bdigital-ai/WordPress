@@ -4,6 +4,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+// Principal-model policy is additive; legacy autonomous NHI remains supported.
+require_once __DIR__ . '/class-mad4b-scp-delegation-mode.php';
+
 final class MAD4B_SCP_Policy {
 
 	public static function connection_capability() {
@@ -19,12 +22,28 @@ final class MAD4B_SCP_Policy {
 		if ( $user_id < 1 ) return false;
 		$user = get_userdata( $user_id );
 		if ( ! $user ) return false;
-		$capability = self::connection_capability();
-		if ( '' === $capability || ! user_can( $user, $capability ) ) return false;
-		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::configured() ) {
-			return MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id );
+		$profile_configured = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::configured();
+		if ( $profile_configured && ( ! MAD4B_SCP_Site_Profile::origin_enrolled()
+			|| ! MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id ) ) ) return false;
+		// An explicitly enrolled WordPress user may connect in the default
+		// delegation mode even without administrative privileges; actual MCP
+		// abilities still check their exact WordPress capabilities and scopes.
+		if ( $profile_configured && class_exists( 'MAD4B_SCP_Delegation_Mode' )
+			&& MAD4B_SCP_Delegation_Mode::DELEGATED === MAD4B_SCP_Delegation_Mode::selected_mode() ) {
+			// Explicit site operator restrictions remain effective. Only the
+			// historical implicit manage_options default is relaxed for enrolled
+			// readers; a site-defined cap or extension filter is never bypassed.
+			$explicit_connection_cap = defined( 'MAD4B_MCP_LOCAL_OAUTH_REQUIRED_CAPABILITY' )
+				|| ( function_exists( 'has_filter' )
+					&& false !== has_filter( 'mad4b_scp_connection_capability' ) );
+			if ( $explicit_connection_cap ) {
+				$required = self::connection_capability();
+				return user_can( $user, 'read' ) && '' !== $required && user_can( $user, $required );
+			}
+			return user_can( $user, 'read' );
 		}
-		return true;
+		$capability = self::connection_capability();
+		return '' !== $capability && user_can( $user, $capability );
 	}
 
 	public static function can_plan_mutations() {
@@ -101,8 +120,12 @@ final class MAD4B_SCP_Policy {
 		if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) || ! class_exists( 'MAD4B_SCP_Agent_Registry' ) ) return false;
 		$identity = MAD4B_SCP_Identity_Context::current();
 		if ( is_wp_error( $identity ) ) return false;
+		// A verified delegated user's live capabilities are an upper bound;
+		// independent NHI still uses its pre-existing exact agent/grant path.
+		if ( ! MAD4B_SCP_Delegation_Mode::principal_allowed( $identity ) ) return false;
 		$agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
 		if ( is_wp_error( $agent ) ) return false;
+		if ( ! MAD4B_SCP_Delegation_Mode::agent_matches_user( $identity, $agent ) ) return false;
 		return (bool) apply_filters( 'mad4b_scp_mutation_permission', true, get_current_user_id(), $agent, $identity );
 	}
 

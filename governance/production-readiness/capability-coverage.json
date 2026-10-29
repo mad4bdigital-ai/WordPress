@@ -3605,6 +3605,31 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing MCP admission, platform identity, security, owner-scoped administrative rights and execution-denial controls cover these staging-only authorization surfaces, without granting Production execution or public access.",
       "review_rationale": "New surface ability:mad4b/staging-write-grant-reconcile-staging is source-pinned in the W1 authority integration and assessed with hermetic owner-browser, agent REST route, Site Profile, OAuth, replay, write grant, exact mapping and negative permission fixtures. This is only CI source review, not evidence that the route is registered, usable, or authorized in Production."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-delegation-mode.php",
+      "owner_role": "Repository security and identity capability source reviewer — CI-only, exact-head owner approval separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "IDENTITY-01",
+        "OAUTH-03",
+        "OAUTH-05",
+        "OAUTH-06",
+        "MCP-01",
+        "MCP-10",
+        "SECURITY-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegation-mode-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegation-connection-policy-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "The new service has no public endpoint and does not issue agent grants or approval tickets. Existing verified OAuth binding, site identity, user role, exact NHI grant and fail-closed policy controls apply.",
+      "review_rationale": "Add an optional administrator-configured principal model with default strictly verified WordPress user delegation and explicit legacy independent-NHI mode. The new service only tightens native user capability checks for the already approved central authorization path, retains all hard write/approval/budget/tenant requirements and never synthesizes identity from WP-CLI or headers."
     }
   ],
   "lifecycle": [],
@@ -11496,6 +11521,127 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing pinned source validation, exact SHA identity, bounded GitHub HTTPS and protected candidate deploy controls cover the compact Git Data lookup.",
       "review_rationale": "The GitHub /commits/{sha} REST response may exceed the existing 262144-byte budget for multi-parent integration changes. Only the exact immutable commit lookup changes to /git/commits/{sha} (small Git object metadata). Do not raise limits, change other source selectors or treat any redirect/invalid/mismatched response as verified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-delegation-mode.php",
+      "source_blob_sha": "1ed101522da9f69ced75271cd26e311056f9f362",
+      "control_ids": [
+        "IDENTITY-01",
+        "OAUTH-03",
+        "OAUTH-05",
+        "OAUTH-06",
+        "MCP-01",
+        "MCP-10",
+        "SECURITY-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegation-mode-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegation-connection-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py"
+      ],
+      "owner_role": "Repository identity and source security review — CI-only, not owner attestation or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing exact site identity, verified OAuth mapping, enrolled user, NHI least privilege, MCP capability parity, fail-closed tenant isolation and mutation authorization controls cover this additive delegated principal mode.",
+      "review_rationale": "Introduce default identity-verified WordPress user principal policy, exact post-specific capability checks, immutable proof of a mapped bearer or native app-password, explicit selectable independent NHI and nonce-protected admin configuration. No grants, ticket issuances or write privileges are created. Integrate the page via canonical route registry and native parent-ordered admin navigation; remove independent admin_menu hook that violated admin-performance CI. Exact-user and explicit-site-capability guards remain intact."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy.php",
+      "source_blob_sha": "162125d9663934b7e6b23cab33b3f5576e88ca14",
+      "control_ids": [
+        "IDENTITY-01",
+        "OAUTH-03",
+        "OAUTH-05",
+        "OAUTH-06",
+        "MCP-01",
+        "MCP-10",
+        "SECURITY-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegation-mode-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegation-connection-policy-runtime.php"
+      ],
+      "owner_role": "Repository identity and source security review — CI-only, not owner attestation or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing exact site identity, verified OAuth mapping, enrolled user, NHI least privilege, MCP capability parity, fail-closed tenant isolation and mutation authorization controls cover this additive delegated principal mode.",
+      "review_rationale": "Preserve existing site enrollment and explicit operator capability filters while permitting enrolled users with read capability to connect without an implicit administrator role. Mutations still require the existing governed gate, NHI agent and live delegated-user principal/agent equality."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php",
+      "source_blob_sha": "5503bf219b5e70577e482242fd3516d369b71e8a",
+      "control_ids": [
+        "IDENTITY-01",
+        "OAUTH-03",
+        "OAUTH-05",
+        "OAUTH-06",
+        "MCP-01",
+        "MCP-10",
+        "SECURITY-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegation-mode-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegation-connection-policy-runtime.php"
+      ],
+      "owner_role": "Repository identity and source security review — CI-only, not owner attestation or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing exact site identity, verified OAuth mapping, enrolled user, NHI least privilege, MCP capability parity, fail-closed tenant isolation and mutation authorization controls cover this additive delegated principal mode.",
+      "review_rationale": "Apply exact delegated WordPress user capability and agent ownership checks before central exact grant, OAuth scope, approval/budget and claim/commit admission; existing NHI authorization flow unchanged for autonomous subjects."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-application-password-agent-bridge.php",
+      "source_blob_sha": "1ff0cff6d79144ad45d1dfde84517011642369f2",
+      "control_ids": [
+        "IDENTITY-01",
+        "OAUTH-03",
+        "OAUTH-05",
+        "OAUTH-06",
+        "MCP-01",
+        "MCP-10",
+        "SECURITY-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegation-mode-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegation-connection-policy-runtime.php"
+      ],
+      "owner_role": "Repository identity and source security review — CI-only, not owner attestation or Production approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing exact site identity, verified OAuth mapping, enrolled user, NHI least privilege, MCP capability parity, fail-closed tenant isolation and mutation authorization controls cover this additive delegated principal mode.",
+      "review_rationale": "Expose the request-local already-verified WordPress Application Password subject as a read-only derived context for proof validation; never expose raw passwords and never authenticate from client-claimed headers."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-navigation-manifest.php",
+      "source_blob_sha": "4d68dab2357345d9c99fdce5ecc79b1fc0da5563",
+      "control_ids": [
+        "ADMIN-01",
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py"
+      ],
+      "owner_role": "Repository user-interface/navigation source review, CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing admin parent-order registry and zero-touch native menu contracts govern the same declared nonprivileged settings navigation.",
+      "review_rationale": "Expose the two selectable principal models only to administrators through the established Control Plane navigation manifest, preserving the read-only Plugins admin hotpath and canonical parent-order route declaration. This does not grant any MCP operation."
     }
   ],
   "code_change_rules": {

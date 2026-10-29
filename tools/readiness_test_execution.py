@@ -75,6 +75,10 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-source-repair-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/unified-approval-ai-first/local-rest-fastpath-contract.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/public-holiday-hermetic-runtime.php",
+    # New exact hermetic delegated-WordPress and independent-NHI policy fixtures.
+    # No database, secrets, network or live WordPress; checks fail explicitly.
+    "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegation-mode-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegation-connection-policy-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/application-password-agent-bridge-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-media-evidence-runtime.php",
