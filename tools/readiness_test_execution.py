@@ -27,6 +27,8 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/mcp-catalog-adaptive-budget.php",
     # Hermetic QA31 provider snapshot, no WordPress bootstrap, explicit PASS assertion.
     "wp-content/plugins/mad4b-site-control-plane/tests/live-write-provider-snapshot-runtime.php",
+    # QA30 hermetic native plugins.php lifecycle, explicit fail-fast assertions.
+    "wp-content/plugins/mad4b-site-control-plane/tests/native-plugin-management-menu-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php",
     # Exact, hermetic PHP scripts; never promote arbitrary runtime PHP to CLI.
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-domain-executors-runtime.php",
@@ -199,6 +201,7 @@ def run_tests(impact, head, timeout):
 def self_test():
     assert has_assertion_pass("PASS: verified real case\n")
     assert has_assertion_pass("QA31 Live Write Provider Snapshot: PASS\n")
+    assert has_assertion_pass("PASS: native plugin list retains MAD4B sidebar without heavy lifecycle\n")
     assert has_assertion_pass("SUMMARY pass=8 fail=0\n")
     assert has_assertion_pass("SUMMARY checks=21 failures=0\n")
     assert has_assertion_pass("BROWSER_OPERATOR_INTEGRITY: PASS 15\n")
