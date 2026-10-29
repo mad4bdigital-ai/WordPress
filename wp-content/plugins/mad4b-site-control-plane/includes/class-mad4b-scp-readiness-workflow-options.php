@@ -13,7 +13,8 @@ final class MAD4B_SCP_Readiness_Workflow_Options {
         'seo'=>'SEO / Dynamic Filters','general'=>'Other Content'
     );
     public static function boot() {
-        add_action('admin_menu',array(__CLASS__,'menu'),32);
+        MAD4B_SCP_Admin_Route_Registry::register(self::PAGE,'manage_options');
+        MAD4B_SCP_Admin_Route_Registry::schedule_submenu(array(__CLASS__,'menu'),32);
         add_action('admin_post_mad4b_readiness_workflow_save',array(__CLASS__,'save'));
     }
     public static function group_for_issue($issue) {
@@ -75,7 +76,7 @@ final class MAD4B_SCP_Readiness_Workflow_Options {
     }
     public static function menu() {
         add_submenu_page('mad4b-control-plane','Content Follow-up Settings',
-            'Content Follow-up','mad4b_manage_company_operations',self::PAGE,array(__CLASS__,'render'));
+            'Content Follow-up','manage_options',self::PAGE,array(__CLASS__,'render'));
     }
     public static function save() {
         if(!MAD4B_SCP_Readiness_Integrations::can_manage())wp_die('Forbidden',403);

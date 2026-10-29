@@ -17,7 +17,8 @@ final class MAD4B_SCP_Content_Completeness {
         'seo_og_title','seo_og_description','seo_canonical',
         'term_description','term_meta_text','term_meta_image');
     public static function boot() {
-        add_action('admin_menu',array(__CLASS__,'menu'),33);
+        MAD4B_SCP_Admin_Route_Registry::register(self::PAGE,'manage_options');
+        MAD4B_SCP_Admin_Route_Registry::schedule_submenu(array(__CLASS__,'menu'),33);
         add_action('admin_post_mad4b_completeness_save',array(__CLASS__,'save'));
         add_action('rest_api_init',array(__CLASS__,'routes'));
     }
@@ -352,7 +353,7 @@ final class MAD4B_SCP_Content_Completeness {
     }
     public static function menu() {
         add_submenu_page('mad4b-control-plane','Content Completeness & SEO',
-            'Completeness & SEO','mad4b_manage_company_operations',self::PAGE,array(__CLASS__,'render'));
+            'Completeness & SEO','manage_options',self::PAGE,array(__CLASS__,'render'));
     }
     public static function render() {
         if(!MAD4B_SCP_Readiness_Integrations::can_manage())wp_die('Forbidden',403);

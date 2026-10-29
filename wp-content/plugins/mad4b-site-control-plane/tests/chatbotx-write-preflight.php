@@ -3,7 +3,9 @@ declare(strict_types=1);
 /** Isolated never-mutating gate tests, no WordPress database. */
 define('ABSPATH','/isolated-lab/');
 class WP_Error {
-    public function __construct(public string $code, public string $message) {}
+    public $code;
+    public $message;
+    public function __construct($code, $message) { $this->code = (string)$code; $this->message = (string)$message; }
     public function get_error_code() { return $this->code; }
 }
 function is_wp_error($v): bool { return $v instanceof WP_Error; }

@@ -25,7 +25,7 @@ final class MAD4B_SCP_Readiness_PreActivation {
 
     public static function boot() {
         add_action('rest_api_init',array(__CLASS__,'routes'));
-        add_action('admin_menu',array(__CLASS__,'menu'),36);
+        MAD4B_SCP_Admin_Route_Registry::schedule_submenu(array(__CLASS__,'menu'),36);
         add_action('admin_post_mad4b_readiness_preactivation_save',array(__CLASS__,'save'));
         MAD4B_SCP_Readiness_Team_Preparation::boot();
         MAD4B_SCP_Readiness_Event_Automation::boot();

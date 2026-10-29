@@ -17,7 +17,7 @@ final class MAD4B_SCP_Readiness_Integrations {
     public static function boot() {
         add_action('rest_api_init',array(__CLASS__,'routes'));
         add_action('admin_bar_menu',array(__CLASS__,'admin_bar'),97);
-        add_action('admin_menu',array(__CLASS__,'company_menu'),34);
+        MAD4B_SCP_Admin_Route_Registry::schedule_submenu(array(__CLASS__,'company_menu'),34);
     }
     public static function company_menu() {
         add_submenu_page('mad4b-company','Content Readiness','Content Readiness',self::CAP,

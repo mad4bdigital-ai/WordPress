@@ -21,7 +21,8 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
     const MAX_ISSUES = 3000;
 
     public static function boot() {
-        add_action('admin_menu', array(__CLASS__, 'menu'), 30);
+        MAD4B_SCP_Admin_Route_Registry::register(self::PAGE,'manage_options');
+        MAD4B_SCP_Admin_Route_Registry::schedule_submenu(array(__CLASS__,'menu'),30);
         add_action('admin_post_mad4b_readiness_scan', array(__CLASS__, 'handle_scan'));
         add_action('admin_post_mad4b_readiness_board_sync', array(__CLASS__, 'handle_board_sync'));
         add_action('admin_post_mad4b_readiness_batch_sync', array(__CLASS__, 'handle_batch_sync'));
@@ -507,7 +508,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
 
     public static function menu() {
         add_submenu_page('mad4b-control-plane','Content Readiness & Alerts',
-            'Content Readiness','edit_others_posts',self::PAGE,array(__CLASS__,'render'));
+            'Content Readiness','manage_options',self::PAGE,array(__CLASS__,'render'));
     }
     public static function admin_bar($bar) {
         if (!is_admin_bar_showing() || !current_user_can('edit_others_posts'))return;

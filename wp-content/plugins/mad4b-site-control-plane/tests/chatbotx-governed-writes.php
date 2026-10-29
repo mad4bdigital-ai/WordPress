@@ -5,7 +5,9 @@ declare(strict_types=1);
  */
 define('ABSPATH', '/nonexistent-wp/');
 final class WP_Error {
-    public function __construct(public string $code, public string $message) {}
+    public $code;
+    public $message;
+    public function __construct($code, $message) { $this->code = (string)$code; $this->message = (string)$message; }
     public function get_error_code() {return $this->code;}
 }
 function is_wp_error($e): bool {return $e instanceof WP_Error;}
