@@ -73,3 +73,12 @@ This is **reference ingestion**, not a live catalog cutover. The company remains
 The earlier `remote/160-...identity.php` HMAC variant and `/verify` endpoint are **deprecated and unpaired**, not supported for operational use. Exact reviewed code in PR #631 is a Draft until CI and owner authorization; installing scoped read adapters on the sites does not imply Production source promotion of the full plugin.
 
 Rollback is removal of newly introduced 180 MU adapters and the isolated reference option from **Staging only after an approved snapshot retention decision**. Keep existing central and remote identity pairing intact; no need to touch company content or credentials.
+
+
+## Mandatory deduplication and source reuse before publication
+
+All new company source ingestion plans must use the rules in **[SOURCE-REUSE-AND-DEDUPE-POLICY.md](SOURCE-REUSE-AND-DEDUPE-POLICY.md)** before any materialization. The Tourism Nile publisher now enforces this with `central/195-mad4b-hub-source-reuse-gate.php` from the same Staging PR.
+
+Verified: 18 incoming category records reused 18 existing `tour-types` terms representing 9 existing bilingual WPML groups; no native term was created. Source WPML language and translation group IDs are now signed in the remote category payload. Four existing destination tour slug matches without explicit source-post provenance remain `native_slug_collision_requires_owner_review`; no slug-based merge or native tour update. The previous 417 Content Hub publication entries were reconciled in place with canonical term links and review states; zero new entries, 417 unchanged on repeat dry-run. All 364 historical rates remain published **in the admin-only Hub** but non-bookable, never sale-authoritative.
+
+Seven negative cases rejected on Staging: foreign tenant, wrong taxonomy, source/target language mismatch, broken parent hierarchy, duplicate term ID, unsafe URL slug and missing tour. See `evidence/STAGING-SOURCE-REUSE-POLICY-20261029.json`. Enforcement is currently wired to the **Tourism Nile ingestion path**; other company ingestion paths must integrate the same gate independently before release.
