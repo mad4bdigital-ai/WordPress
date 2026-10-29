@@ -7,6 +7,7 @@
  */
 defined('ABSPATH') || exit;
 final class MAD4B_Tourism_Nile_Catalog_V1 {
+ const CONTRACT='mad4b.tourism.public-content-hub-catalog.v1';
  const OWNER='tourism-almallahgroup';
  const HOST='tours.dev.mad4b.com';
  const CPT='mad4b_hub_nile';
