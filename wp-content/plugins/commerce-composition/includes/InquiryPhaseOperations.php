@@ -143,6 +143,16 @@ final class InquiryPhaseOperations
         $settings=function_exists('fluentMailGetSettings')?fluentMailGetSettings():[];
         $count=is_array($settings)&&is_array($settings['connections']??null)
             ?count($settings['connections']):0;
+        $anti=get_option('_fluentform_global_form_settings',[]);
+        $misc=is_array($anti)?($anti['misc']??[]):[];
+        $misc=is_array($misc)?$misc:[];
+        $recaptcha=get_option('_fluentform_reCaptcha_details',[]);
+        $googleV3=is_array($recaptcha)
+            &&($recaptcha['api_version']??null)==='v3_invisible'
+            &&!empty($recaptcha['siteKey'])
+            &&!empty($recaptcha['secretKey'])
+            &&get_option('_fluentform_reCaptcha_keys_status',false)===true;
+
         global $wpdb;
         $feedTable=$wpdb->prefix.'fluentform_form_meta';
         $feeds=0;
@@ -170,6 +180,9 @@ final class InquiryPhaseOperations
             'boards_ready'=>FluentBoardsTaskBridge::ready(),
             'workflow_queue_ready'=>WorkflowJobs::ready(),
             'smtp_connection_count'=>$count,
+            'fluent_honeypot_globally_enabled'=>($misc['honeypotStatus']??null)==='yes',
+            'fluent_token_protection_globally_enabled'=>($misc['tokenBasedProtectionStatus']??null)==='yes',
+            'google_recaptcha_v3_configured_and_verified'=>$googleV3,
             'email_delivery_certified'=>false,
             'financial_order_authorized'=>false,'checkout_authorized'=>false,
             'supplier_booking_authorized'=>false
