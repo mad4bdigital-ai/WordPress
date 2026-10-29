@@ -176,7 +176,12 @@ final class MAD4B_Firecrawl_Research_Cycles {
             }
         }
         $word_count = count( preg_split( '/\s+/u', trim( $markdown ), -1, PREG_SPLIT_NO_EMPTY ) );
+        $meta = isset( $result['metadata'] ) && is_array( $result['metadata'] ) ? $result['metadata'] : array();
         $seo = array( 'headings' => $headings, 'question_headings' => $questions,
+            'title_candidate' => isset( $meta['title'] ) && is_string( $meta['title'] ) ? mb_substr( $meta['title'], 0, 200, 'UTF-8' ) : '',
+            'meta_description_candidate' => isset( $meta['description'] ) && is_string( $meta['description'] ) ? mb_substr( $meta['description'], 0, 400, 'UTF-8' ) : '',
+            'language_candidate' => isset( $meta['language'] ) && is_string( $meta['language'] ) ? mb_substr( $meta['language'], 0, 32, 'UTF-8' ) : '',
+            'metadata_source' => 'firecrawl_unverified_page_metadata',
             'html_title_verified' => false, 'meta_description_verified' => false,
             'canonical_verified' => false, 'search_ranking_verified' => false );
         $content = array( 'word_count_estimate' => $word_count,
