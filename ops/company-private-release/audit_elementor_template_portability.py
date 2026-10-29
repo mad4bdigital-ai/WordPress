@@ -8,6 +8,7 @@ No API, DB, WordPress, filesystem changes, or imports.
 """
 import argparse
 import json
+from urllib.parse import unquote
 from collections import Counter
 from pathlib import Path
 import re
@@ -72,6 +73,71 @@ def scan(obj, path="$", findings=None):
             findings.append({"path":path,"reason":"hardcoded_typography"})
     return findings
 
+
+# The layout shell is reusable; these are data bindings, not layout components.
+# Deliberately never emit original image URLs, query IDs, business identity or tokens.
+def dynamic_bindings(data):
+    records = []
+    def visit(value, path="$", depth=0):
+        if depth > 32 or not isinstance(value, (list, dict)):
+            return
+        if isinstance(value, list):
+            for i, sub in enumerate(value):
+                visit(sub, f"{path}[{i}]", depth+1)
+            return
+        kind = str(value.get("widgetType", ""))
+        if isinstance(value.get("settings"), dict):
+            settings = value["settings"]
+            tags = settings.get("__dynamic__", {})
+            if isinstance(tags, dict):
+                for target_field, tag in tags.items():
+                    raw = str(tag)
+                    tag_match = re.search(r'name\s*=\s*["\x27]([a-z0-9_-]+)["\x27]',raw,re.I)
+                    tag_name = tag_match.group(1) if tag_match else "unknown_dynamic_tag"
+                    key_hint = None
+                    encoded = re.search(r'settings\s*=\s*["\x27]([^"\x27]+)["\x27]', raw, re.I)
+                    if encoded:
+                        try:
+                            options = json.loads(unquote(encoded.group(1)))
+                            candidate = options.get("option_field") if isinstance(options,dict) else None
+                            if isinstance(candidate,str) and re.fullmatch(r"[A-Za-z0-9_.:/-]{1,128}",candidate):
+                                key_hint = candidate
+                        except (json.JSONDecodeError, ValueError):
+                            pass
+                    records.append({
+                        "path":f"{path}.settings.__dynamic__.{target_field}",
+                        "widget":kind,
+                        "kind":"tenant_dynamic_source",
+                        "provider":tag_name,
+                        "tenant_option_field_key":key_hint,
+                        "migration":"preserve_target_own_binding_or_remap_before_publication",
+                        "copy_source_data":False
+                    })
+            for field in ("wp_gallery","gallery","image_gallery","gallery_images","images","image_list"):
+                if field in settings and settings[field] not in (None,"",[],{}):
+                    records.append({
+                        "path":f"{path}.settings.{field}",
+                        "widget":kind,
+                        "kind":"tenant_gallery_media",
+                        "migration":"use_target_media_library_only",
+                        "copy_source_data":False
+                    })
+            if kind in ("jet-listing-grid","jet-engine-listing-grid"):
+                for field in ("listing_id","lisitng_id","custom_query_id","custom_query","query_id","posts_query"):
+                    if field in settings and settings[field] not in (None,"",[],{}):
+                        records.append({
+                            "path":f"{path}.settings.{field}",
+                            "widget":kind,
+                            "kind":"tenant_listing_or_query_reference",
+                            "migration":"resolve_target_owned_listing_query_and_content",
+                            "copy_source_data":False
+                        })
+        for key, sub in value.items():
+            if isinstance(sub, (dict,list)):
+                visit(sub, f"{path}.{str(key)[:80]}", depth+1)
+    visit(data)
+    return records
+
 def audit(path,strict=False):
     if not path.exists() or path.is_symlink() or not path.is_file():
         raise ValueError("Input must be an existing regular JSON file")
@@ -79,17 +145,22 @@ def audit(path,strict=False):
         raise ValueError("Refuse JSON over 20 MiB without separate inspection")
     data=json.loads(path.read_text(encoding="utf-8"))
     findings=scan(data)
+    tenant_dynamic=dynamic_bindings(data)
     # Output includes only internal path keys; never any settings values.
     return {
         "contract":"mad4b.elementor-template-portability-audit.v1",
         "file":path.name,
-        "status":"REVIEW_REQUIRED" if findings else "STRUCTURAL_CANDIDATE_ONLY",
+        "status":"REVIEW_REQUIRED" if (findings or tenant_dynamic) else "STRUCTURAL_CANDIDATE_ONLY",
         "safe_to_import_automatically":False,
+        "template_structure_portable_after_review":True,
+        "dynamic_data_must_be_tenant_owned":True,
+        "tenant_dynamic_binding_count":len(tenant_dynamic),
+        "tenant_dynamic_bindings":tenant_dynamic[:250],
         "source_brand_values_exported":False,
         "reasons":dict(Counter(r["reason"] for r in findings)),
         "findings":findings[:500],
         "total_findings":len(findings),
-        "truncated":len(findings)>500
+        "truncated":len(findings)>500 or len(tenant_dynamic)>250
     }
 
 def main():
@@ -103,11 +174,13 @@ def main():
     reports=[]
     for path in paths:
         entry=audit(path)
-        if args.summary_only: entry.pop("findings",None)
+        if args.summary_only:
+            entry.pop("findings",None)
+            entry.pop("tenant_dynamic_bindings",None)
         reports.append(entry)
     print(json.dumps({"reports":reports, "automatic_import_allowed":False},
                      ensure_ascii=False, indent=2))
-    if args.strict and any(x["total_findings"] for x in reports):
+    if args.strict and any(x["total_findings"] or x["tenant_dynamic_binding_count"] for x in reports):
         return 2
     return 0
 
