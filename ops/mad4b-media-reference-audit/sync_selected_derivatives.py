@@ -103,9 +103,25 @@ def apply(plan_path,stage,origin,status,expected,receipt):
           "staging_file_changes":0,"production_changes":0}
     write_new(receipt,data)
     print(json.dumps({"status":"VERIFIED","created_in_origin":len(actual),"sha256":digest(receipt)}))
+def rollback(receipt,origin,expected):
+    require(digest(receipt)==expected,"rollback receipt checksum mismatch")
+    payload=json.loads(receipt.read_text())
+    require(payload.get("contract")=="mad4b.media.derivative-addonly-sync.receipt.v1","invalid rollback receipt")
+    rows=payload.get("entries",[])
+    require(isinstance(rows,list) and len(rows)==payload.get("created_file_count"),"receipt cardinality mismatch")
+    # Validate every byte before deleting ANY newly-added file.
+    paths=[]
+    for item in rows:
+        target=resolve(origin,item["relative_path"])
+        require(target.is_file() and digest(target)==item["sha256"],"modified derivative; rollback refused")
+        paths.append(target)
+    for path in reversed(paths):
+        path.unlink()
+    print(json.dumps({"status":"ROLLED_BACK_VERIFIED","new_files_removed":len(paths),"existing_files_deleted":0}))
+
 def main():
     p=argparse.ArgumentParser()
-    p.add_argument("action",choices=["plan","apply"])
+    p.add_argument("action",choices=["plan","apply","rollback"])
     p.add_argument("--metadata",type=Path)
     p.add_argument("--stage",required=True,type=Path)
     p.add_argument("--origin",required=True,type=Path)
@@ -120,7 +136,10 @@ def main():
         data=plan(a.metadata,a.stage,a.origin)
         write_new(a.plan,data)
         print(json.dumps({"planned_new_files":data["files_to_create"],"plan_sha256":digest(a.plan)}))
-    else:
+    elif a.action=="apply":
         require(a.backup_status and a.sha and re.fullmatch("[a-f0-9]{64}",a.sha) and a.receipt,"missing authorization inputs")
         apply(a.plan,a.stage,a.origin,a.backup_status,a.sha,a.receipt)
+    else:
+        require(a.sha and re.fullmatch("[a-f0-9]{64}",a.sha) and a.receipt,"missing rollback receipt")
+        rollback(a.receipt,a.origin,a.sha)
 if __name__=="__main__":main()
