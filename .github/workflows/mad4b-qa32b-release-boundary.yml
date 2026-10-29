@@ -11,6 +11,10 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+
+concurrency:
+  group: qa32b-release-boundary-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
 jobs:
   source-boundary-contract:
     runs-on: ubuntu-latest
