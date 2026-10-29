@@ -104,6 +104,19 @@ function shared_presentation_native_consumers_v1(): array {
     global $wpdb;
     $rows=shared_presentation_native_consumer_index_v2();
     if(!is_array($rows)||count($rows)>1000){$building=false;return [];}
+    // A stale or tampered ID index never authorizes unpublished templates.
+    // One posts-primary-key lookup is indexed; no JSON LIKE and no N+1 status queries.
+    if($rows){
+        $ids=array_values(array_filter(array_map('absint',$rows)));
+        $placeholders=implode(',',array_fill(0,count($ids),'%d'));
+        $rows=$wpdb->get_col($wpdb->prepare(
+            "SELECT ID FROM {$wpdb->posts} WHERE ID IN ($placeholders)
+             AND post_status='publish'
+             AND post_type IN ('elementor_library','page') ORDER BY ID ASC",
+            ...$ids
+        ));
+        if(!is_array($rows)||$wpdb->last_error!==''){$building=false;return [];}
+    }
     $providers=[];
     if(class_exists('\Jet_Engine\Query_Builder\Manager')){
         $manager=\Jet_Engine\Query_Builder\Manager::instance();
