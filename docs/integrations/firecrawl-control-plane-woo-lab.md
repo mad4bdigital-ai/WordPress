@@ -21,3 +21,7 @@ This integration adds two **private WordPress Abilities** to the shared MAD4B Co
 6. Rollback: detach only Woo Lab PHP service from consumers network and remove its credential file and MU plugin, preserving Control Plane and Firecrawl services. Revoke `mad4b-woo-lab-control-plane` in the Firecrawl credential manager. No database, customer media or production site edits required.
 
 The Compose runtime stack is managed separately on the VPS at `/opt/hostinger-migrations/hosting-3/etg-woocommerce-lab/stack/compose.yml`, not inside this WordPress repository; source-to-runtime parity of the network change needs an explicit versioned overlay/reconciliation.
+
+## Local Sandbox transport admission
+
+Woo Lab's existing `000-sandbox-guard.php` correctly rejects private Docker HTTP requests. The additional `mad4b-research-firecrawl-transport-exception.php` plugin runs **after** this local guard and clears **only** its exact `etg_sandbox_network_blocked` error for an in-flight, authorized Control Plane Firecrawl request scoped to fixed `gateway:8080` health GET or preview POST. It never lifts a different policy error or admits a caller-specified private URL; the original sandbox guard remains unchanged. Both MU plugins must be installed together. Run negative tests for unapproved host, non-admin user and direct ordinary WordPress HTTP calls.
