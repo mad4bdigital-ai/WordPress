@@ -130,7 +130,11 @@ $GLOBALS['trusted_oauth']=true;
 $GLOBALS['environment']='production';
 mad4b_verify(is_wp_error($C::ensure_content_actor($identity)),'production auto provisioning denied');
 $GLOBALS['environment']='staging';
-$a=$C::ensure_content_actor($identity);
+// The existing ChatGPT bearer has read scope only: never auto-enroll it
+// until a separate signed exact prepared dispatch is validated.
+$GLOBALS['write_scoped']=false;
+$a=$C::ensure_content_actor($identity,true);
+$GLOBALS['write_scoped']=true;
 mad4b_verify(!is_wp_error($a) && $a['wp_user_id']===7 && $a['status']==='enabled','actor for real user');
 mad4b_verify(count($GLOBALS['grants'])===2,'two exact draft grants');
 foreach($GLOBALS['grants'] as $g)mad4b_verify($g['ability_name']==='mad4b/content-apply-bundle'
