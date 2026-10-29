@@ -38,6 +38,7 @@ function get_post_type_object($type){
 function wp_get_environment_type(){return $GLOBALS['environment'];}
 class MAD4B_SCP_Policy {
  static function can_connect_user($id){return $GLOBALS['site_authorized'] && !empty($GLOBALS['users'][$id]['read']);}
+ static function mutation_gate_status(){return array('effective'=>$GLOBALS['site_authorized']);}
 }
 class MAD4B_SCP_Schema {static function is_ready(){return true;}}
 class MAD4B_SCP_Environment {static function effective(){return $GLOBALS['environment'];}}
@@ -124,6 +125,9 @@ $GLOBALS['write_scoped']=false;
 mad4b_verify(is_wp_error($C::ensure_content_actor($identity)),'read only scope denied');
 mad4b_verify(count($GLOBALS['agents'])===0,'no actor from read token');
 $GLOBALS['write_scoped']=true;
+$GLOBALS['site_authorized']=false;
+mad4b_verify(is_wp_error($C::ensure_content_actor($identity)),'site kill switch denies provisioning');
+$GLOBALS['site_authorized']=true;
 $GLOBALS['trusted_oauth']=false;
 mad4b_verify(is_wp_error($C::ensure_content_actor($identity)),'unverified bearer denied');
 $GLOBALS['trusted_oauth']=true;
