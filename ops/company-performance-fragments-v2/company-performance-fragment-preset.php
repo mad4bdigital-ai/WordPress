@@ -22,6 +22,8 @@ if (!function_exists('mad4b_company_fragment_preset_config')) {
         || !is_array($data['targets'] ?? null)
         || !is_array($data['page_paths'] ?? null)
         || !is_array($data['cache_targets'] ?? null)
+        || !in_array(($data['geo_policy'] ?? ''), ['static_base_only', 'unverified'], true)
+        || ($data['geo_policy'] ?? '') === 'unverified'
         || !in_array('/', $data['page_paths'], true)
         || !is_string($data['site_host'] ?? null)
         || !preg_match('/^[a-z0-9.-]{6,100}$/D', $data['site_host'])
@@ -51,6 +53,15 @@ if (!function_exists('mad4b_company_fragment_preset_enabled')) {
     $cfg = mad4b_company_fragment_preset_config();
     if (!$cfg || ($cfg['environment'] ?? '') !== 'staging') return false;
     if ($target && !in_array($target, $cfg['cache_targets'], true)) return false;
+    // Fail closed on GeoIP-sensitive WooCommerce configuration and on
+    // explicit upstream country/market context. Unknown providers require
+    // company-by-company attestation; this is not general GeoIP certification.
+    if (get_option('woocommerce_default_customer_address', '') !== 'base'
+        || get_option('woocommerce_calc_taxes', '') !== 'no') return false;
+    foreach (['HTTP_CF_IPCOUNTRY','HTTP_X_COUNTRY_CODE',
+              'HTTP_X_GEOIP_COUNTRY','HTTP_X_MAD4B_MARKET_CONTEXT'] as $context_header) {
+        if (!empty($_SERVER[$context_header])) return false;
+    }
     if (is_admin() || wp_doing_ajax() || is_user_logged_in() || is_preview()
         || !empty($_SERVER['HTTP_COOKIE']) || !empty($_SERVER['HTTP_AUTHORIZATION'])
         || ($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET'
