@@ -25,6 +25,50 @@ function tour_component_price_unit($post){
  $unit=get_post_meta($post,'tour_price_unit',true);
  return is_string($unit)&&in_array($unit,['per_person','per_trip','per_day','per_room','per_vehicle','per_cabin','table'],true)?$unit:'';
 }
+/**
+ * Site-bound and explicitly opted-in nationality price display policy.
+ * The passport selector by itself NEVER authorizes special audience pricing.
+ *
+ * Option contract company_tour_price_audience_policy_v1:
+ * {schema_version:1, site_uuid:<registered site UUID>, mode:'configured',
+ *  rules:[{nationality:'EG', audience:'egyptians'}]}
+ *
+ * When absent/mismatched, all visitor nationalities receive the general
+ * indicative display price. Checkout quote authority is unchanged.
+ */
+function tour_component_company_price_auto_audience(int $tour_id): string {
+ $raw=get_option('company_tour_price_audience_policy_v1',[]);
+ $registry=get_option('commerce_company_policy_registry_v1',[]);
+ if(!is_array($raw)||!is_array($registry)||
+    ($raw['schema_version']??null)!==1||
+    ($raw['mode']??'general')!=='configured')return 'general';
+ $registered=(string)($registry['site_uuid']??'');
+ $provided=(string)($raw['site_uuid']??'');
+ if($registered===''||$provided===''||!hash_equals($registered,$provided))
+  return 'general';
+ $rules=$raw['rules']??[];
+ if(!is_array($rules)||count($rules)>64)return 'general';
+ $passport=class_exists('Shared_Product_Nationality_Source')
+  ?Shared_Product_Nationality_Source::selected():null;
+ if(!is_string($passport)||!preg_match('/^[A-Z]{2}$/D',$passport))return 'general';
+ $chosen=null;
+ foreach($rules as $row){
+  if(!is_array($row)||!isset($row['nationality'],$row['audience'])||
+     !is_string($row['nationality'])||!is_string($row['audience']))
+   return 'general';
+  if(!preg_match('/^[A-Z]{2}$/D',$row['nationality']))return 'general';
+  // Only mapped audiences with implemented price resolvers are eligible.
+  // Schema can add more nationalities without assuming a matching rate schema.
+  if($row['nationality']!=='EG'||$row['audience']!=='egyptians')
+   return 'general';
+  if($row['nationality']===$passport){
+   if($chosen!==null)return 'general'; // ambiguity never activates special pricing
+   $chosen=$row['audience'];
+  }
+ }
+ return $chosen?:'general';
+}
+
 function tour_component_price_evidence($id,$audience='auto',$date_mode='inherited'){
  if(!in_array($audience,['auto','general','egyptians'],true)||!in_array($date_mode,['inherited','active_today','upcoming'],true))return new WP_Error('component_price_context_invalid');
  $post=get_post($id);if(!$post||$post->post_type!=='tours-and-activities'||$post->post_status!=='publish')return new WP_Error('component_price_not_public');
@@ -34,9 +78,7 @@ function tour_component_price_evidence($id,$audience='auto',$date_mode='inherite
  if(!current_user_can('manage_woocommerce')&&
     ($post->post_password!==''||get_post_meta($id,'_booking_experience_qa_pricing_fixture',true)!=='')
     &&!$qa_label_allowed)return new WP_Error('component_price_protected');
- // Keep explicit Egyptian price requests strict; only 'auto' may use a clearly labelled general display reference.
- $auto_audience=$audience==='auto';
- if($audience==='auto')$audience=class_exists('Shared_Product_Nationality_Source')&&Shared_Product_Nationality_Source::selected()==='EG'?'egyptians':'general';
+ if($audience==='auto')$audience=tour_component_company_price_auto_audience((int)$id);
  foreach(['pricing_tour_price_projection','pricing_currency_convert','pricing_display_currency','shared_product_resolve_price_sources']as$f)if(!function_exists($f))return new WP_Error('component_price_provider_unavailable');
  $target=pricing_display_currency();$candidates=[];$rate_id=0;
  $direct=get_post_meta($id,$audience==='egyptians'?'egyptians_start_price':'start_price',true);
@@ -76,37 +118,17 @@ function tour_component_price_evidence($id,$audience='auto',$date_mode='inherite
   usort($rows,static fn($a,$b)=>($a['amount']<=>$b['amount'])?:($a['id']<=>$b['id']));
   if($rows){$rate_id=(int)$rows[0]['id'];$candidates['rate']=['amount'=>$rows[0]['amount'],'currency'=>$target];}
  }
- $choice=shared_product_resolve_price_sources($candidates,(string)get_post_meta($id,'tour_mode',true));
- if(is_wp_error($choice)){
-  // Editorial display only. An Egyptian-specific missing price never becomes a general booking quote.
-  // Do not bypass blocked policies, access restrictions, stop-sale, missing FX or invalid source data.
-  if($auto_audience&&$audience==='egyptians'&&$choice->get_error_code()==='no_valid_price_source'){
-   $general=tour_component_price_evidence((int)$id,'general',$date_mode);
-   if(is_array($general)&&($general['status']??'')==='indicative_not_booking_authority'&&
-      isset($general['amount'],$general['currency'],$general['unit'])&&
-      is_numeric($general['amount'])&&(float)$general['amount']>0){
-    $general['reference_only_for_audience']='egyptians';
-    $general['fallback_reason']='egyptian_price_not_configured';
-    return $general;
-   }
-  }
-  return $choice;
- }
+ $choice=shared_product_resolve_price_sources($candidates,(string)get_post_meta($id,'tour_mode',true));if(is_wp_error($choice))return $choice;
  $source_id=$choice['source']==='rate'?$rate_id:$id;$unit=tour_component_price_unit($source_id);if($unit==='')return new WP_Error('component_price_unit_unconfigured');
  $amount=pricing_currency_convert($choice['amount'],$choice['currency'],$target);if($amount===null)return new WP_Error('component_price_fx_unavailable');
  $upcoming=$choice['source']==='rate'&&(int)get_post_meta($rate_id,'tour_rate_start_date',true)>current_time('timestamp',true);
  return ['tour_id'=>(int)$id,'rate_id'=>$choice['source']==='rate'?$rate_id:0,'source'=>$choice['source'],'audience'=>$audience,'amount'=>$amount,'currency'=>$target,'unit'=>$unit,'upcoming'=>$upcoming,'status'=>'indicative_not_booking_authority'];
 }
-function tour_component_price_display_label(array $e):string {
- if(($e['reference_only_for_audience']??'')==='egyptians')
-  return __('General reference from','woocommerce');
- return !empty($e['upcoming'])?__('Upcoming from','woocommerce'):__('From','woocommerce');
-}
 function tour_component_price_html($id=0,$audience='auto',$date_mode='inherited',$show_unit=true){
  $id=$id?:tour_component_price_current_id();$e=tour_component_price_evidence($id,$audience,$date_mode);
  if(is_wp_error($e))return '<span class="price-on-request">'.esc_html__('Price on request','woocommerce').'</span>';
  $labels=['per_person'=>__('per person','woocommerce'),'per_trip'=>__('per trip','woocommerce'),'per_day'=>__('per day','woocommerce'),'per_room'=>__('per room','woocommerce'),'per_vehicle'=>__('per vehicle','woocommerce'),'per_cabin'=>__('per cabin','woocommerce'),'table'=>__('per table','woocommerce')];
- return '<span class="tour-component-price" data-price-source="'.esc_attr($e['source']).'" data-price-unit="'.esc_attr($e['unit']).'" data-price-context="'.(!empty($e['reference_only_for_audience'])?'general_reference':'audience_price').'"><span class="price-label">'.esc_html(tour_component_price_display_label($e)).' </span>'.wp_kses_post(wc_price($e['amount'],['currency'=>$e['currency']])).($show_unit?' <span class="price-unit">/ '.esc_html($labels[$e['unit']]).'</span>':'').'</span>';
+ return '<span class="tour-component-price" data-price-source="'.esc_attr($e['source']).'" data-price-unit="'.esc_attr($e['unit']).'"><span class="price-label">'.esc_html($e['upcoming']?__('Upcoming from','woocommerce'):__('From','woocommerce')).' </span>'.wp_kses_post(wc_price($e['amount'],['currency'=>$e['currency']])).($show_unit?' <span class="price-unit">/ '.esc_html($labels[$e['unit']]).'</span>':'').'</span>';
 }
 add_action('elementor/dynamic_tags/register',static function($manager){
  if(!class_exists('Elementor\\Core\\DynamicTags\\Data_Tag'))return;
