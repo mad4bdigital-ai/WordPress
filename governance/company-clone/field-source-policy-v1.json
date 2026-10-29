@@ -14,8 +14,13 @@
     "termmeta_taxonomy_key_pairs": 148,
     "usermeta_keys": 253,
     "provider_tables": 111,
-    "nested_keys_explicit": 71,
-    "unclassified_provisional": 2008
+    "nested_keys_explicit": 85,
+    "unclassified_provisional": 2008,
+    "jetengine_registered_pages": 11,
+    "jetengine_registered_top_level_fields": 180,
+    "jetengine_registered_repeater_child_fields": 64,
+    "jetengine_legacy_stored_only_keys": 3,
+    "language_fr_now_visible": true
   },
   "semantics": {
     "SHARED_DEFINITION": "Copy approved neutral schema, headings and component structure only; scrub media, content references, provider IDs and URLs",
@@ -65,7 +70,7 @@
     "contact-and-help-info": {
       "support_group_url": "TENANT_SOURCE",
       "support_chat_url": "RECONNECT_PROVIDER",
-      "support_group_url_aria_label": "SHARED_DEFINITION",
+      "support_group_url_aria_label": "TENANT_SOURCE",
       "card-as-action1": "REVIEW_REQUIRED",
       "trip_advisor_review_shortcode": "RECONNECT_PROVIDER",
       "site_icon_512x512": "TENANT_MEDIA",
@@ -76,7 +81,6 @@
       "site_email_link": "TENANT_SOURCE",
       "site_location_address": "TENANT_SOURCE",
       "site_location_address_link": "TENANT_SOURCE",
-      "social_links_tab": "SHARED_DEFINITION",
       "social_links": "TENANT_SOURCE",
       "site_facebook_page_link": "RECONNECT_PROVIDER",
       "site_instagram_page_link": "RECONNECT_PROVIDER"
@@ -98,29 +102,44 @@
       "drivers_archive_header_image": "TENANT_MEDIA",
       "jops_archive_header_image": "TENANT_MEDIA",
       "guides_archive_header_image": "TENANT_MEDIA",
-      "busness_reviews_section_tab": "SHARED_DEFINITION",
       "busness_reviews_section": "TENANT_SOURCE",
       "review_hero_image": "TENANT_MEDIA",
       "company_about_customization": "TENANT_MEDIA",
       "review_gellery_slider": "TENANT_MEDIA",
-      "destination_next_trip_heading": "SHARED_DEFINITION",
-      "destination_next_trip_subheading": "SHARED_DEFINITION",
-      "destination_stays_heading": "SHARED_DEFINITION",
-      "destination_transport_heading": "SHARED_DEFINITION",
-      "destination_tours_heading": "SHARED_DEFINITION",
-      "destination_quote_cta_label": "SHARED_DEFINITION",
-      "destination_services_note": "SHARED_DEFINITION",
-      "destination_no_results_label": "SHARED_DEFINITION",
-      "destination_road_heading": "SHARED_DEFINITION",
-      "destination_rail_heading": "SHARED_DEFINITION",
-      "destination_air_heading": "SHARED_DEFINITION",
+      "destination_next_trip_heading": "TENANT_SOURCE",
+      "destination_next_trip_subheading": "TENANT_SOURCE",
+      "destination_stays_heading": "TENANT_SOURCE",
+      "destination_transport_heading": "TENANT_SOURCE",
+      "destination_tours_heading": "TENANT_SOURCE",
+      "destination_quote_cta_label": "TENANT_SOURCE",
+      "destination_services_note": "TENANT_SOURCE",
+      "destination_no_results_label": "TENANT_SOURCE",
+      "destination_road_heading": "TENANT_SOURCE",
+      "destination_rail_heading": "TENANT_SOURCE",
+      "destination_air_heading": "TENANT_SOURCE",
       "company_pattern_preset": "TENANT_SOURCE",
       "company_pattern_accent": "TENANT_SOURCE",
       "company_pattern_strength": "TENANT_SOURCE",
       "company_pattern_media": "TENANT_MEDIA",
       "company_pattern_mobile": "TENANT_SOURCE",
-      "destination_activity_card_primary": "SHARED_DEFINITION",
-      "destination_activity_card_alternate": "SHARED_DEFINITION"
+      "destination_activity_card_primary": "TENANT_SOURCE",
+      "presentation_home_media_tab": "SHARED_DEFINITION",
+      "presentation_home_media_tab_section_intro": "SHARED_DEFINITION",
+      "presentation_destinations_tab": "SHARED_DEFINITION",
+      "presentation_destinations_tab_section_intro": "SHARED_DEFINITION",
+      "presentation_product_archives_tab": "SHARED_DEFINITION",
+      "presentation_product_archives_tab_section_intro": "SHARED_DEFINITION",
+      "busness_reviews_section_section_intro": "SHARED_DEFINITION",
+      "presentation_tours_copy_tab": "SHARED_DEFINITION",
+      "presentation_tours_copy_tab_section_intro": "SHARED_DEFINITION",
+      "presentation_stays_copy_tab": "SHARED_DEFINITION",
+      "presentation_stays_copy_tab_section_intro": "SHARED_DEFINITION",
+      "presentation_transport_copy_tab": "SHARED_DEFINITION",
+      "presentation_transport_copy_tab_section_intro": "SHARED_DEFINITION",
+      "presentation_messages_copy_tab": "SHARED_DEFINITION",
+      "presentation_messages_copy_tab_section_intro": "SHARED_DEFINITION",
+      "company_pattern_backgrounds_tab": "SHARED_DEFINITION",
+      "company_pattern_backgrounds_tab_intro": "SHARED_DEFINITION"
     },
     "rank-math-options-titles": {
       "knowledgegraph_name": "TENANT_SOURCE",
@@ -320,5 +339,18 @@
       "locations_gallery_attachment_ids": "TENANT_MEDIA"
     }
   },
-  "taxonomy_term_note": "Six observed destination term meta keys explicitly reviewed; hashed lat/lng cache-style keys remain REVIEW_REQUIRED until normalized stable geo resolver is certified. WPML term IDs must be remapped."
+  "taxonomy_term_note": "Six observed destination term meta keys explicitly reviewed; hashed lat/lng cache-style keys remain REVIEW_REQUIRED until normalized stable geo resolver is certified. WPML term IDs must be remapped.",
+  "jetengine_options_ref": "governance/company-clone/jetengine-options-source-policy-v1.json",
+  "jetengine_options_requirements": {
+    "field_definitions": "11 registered JetEngine pages, 180 active fields, 64 nested repeater child fields; exact source manifest gates",
+    "legacy_stored_values": [
+      "look-and-feel.busness_reviews_section_tab",
+      "look-and-feel.destination_activity_card_alternate",
+      "contact-and-help-info.social_links_tab"
+    ],
+    "unregistered_stored_values_rule": "BLOCK_REVIEW: stored-only legacy keys are not company-owned configuration source; do not clone, do not auto-delete from existing site",
+    "demo_placeholder_rule": "Only for Wo Vacation demo; normal companies must supply their own brand/marketing/media and contact values, or leave disabled/blank",
+    "company_scope_rule": "JetEngine native get_option is site-global; a single-site multi-company deployment cannot reuse these values across company_ids without a strict per-company resolver and separate persistence",
+    "runtime_effect": "reviewed contract only, not enforced on existing WordPress settings save"
+  }
 }
