@@ -42,3 +42,8 @@ This policy is effective for the private company candidates in PR #619 and is a 
 ## Audit interface
 
 The standalone `audit_elementor_template_portability.py` performs conservative **read-only** checks of Elementor JSON exports and returns a summary with field paths, not branding values. It does not import or modify templates, settings or live sites. Any flagged export requires manual review and target-tenant token remapping before declaring it reusable. Passing its heuristic checks alone is **not** a production release authorization.
+
+
+## Clarification: shared JetEngine Brand / Look & Feel Options Pages
+
+The **Options Page UI and field definitions** may be reused across tenants. This does not change the rule that Brand values (colors, fonts, logos, contact content) and Look & Feel values (header images, review gallery URLs, media IDs, source links) are **company-owned**. Elementor active Kits also remain company-owned. Never copy the entire donor `wp_options['look-and-feel']` array or invent values for missing target fields. A new shared field should start unset in the tenant until a tenant-specific source supplies its content. Details: `JETENGINE-OPTIONS-SCHEMA-OWNERSHIP.md`.
