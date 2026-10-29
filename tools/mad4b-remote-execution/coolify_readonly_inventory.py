@@ -26,10 +26,18 @@ ALLOWED = (
 CLI_TIMEOUT = 18
 
 
-def cmd(cmd_argv, *, timeout=CLI_TIMEOUT):
+def cmd(cmd_argv, *, timeout=CLI_TIMEOUT, context=''):
     if tuple(cmd_argv[1:3]) not in ALLOWED:
         raise ValueError('Command outside read-only allowlist')
-    args = cmd_argv.copy()
+    # A named Coolify context is required on hosts whose default is an
+    # unrelated cloud account. Keep allowlist validation on the original
+    # command, before injecting the context argument.
+    if context and not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,63}', context):
+        raise ValueError('Invalid Coolify context name')
+    args = [cmd_argv[0]]
+    if context:
+        args.extend(['--context', context])
+    args.extend(cmd_argv[1:])
     if tuple(args[1:3]) != ('context', 'verify'):
         args += ['--format', 'json']
     try:
@@ -107,6 +115,8 @@ def matched_hosts(rows, hosts):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--context', default='',
+                        help='Explicit authorized Coolify context; never a token')
     parser.add_argument('--host', action='append', default=[],
                         help='Staging DNS hostname; do not provide secrets or IP addresses')
     parser.add_argument('--output', default='', help='Optional local JSON output pathname')
@@ -114,20 +124,21 @@ def main():
     report = {'contract': 'mad4b.rev143.coolify-readonly-registration.v1',
               'generated_utc': datetime.now(timezone.utc).isoformat(),
               'kind': 'READ_ONLY', 'source': 'Coolify CLI', 'commands': [],
+              'coolify_context': args.context or 'default',
               'discovered_resources': [], 'matched_hosts': [],
               'shared_media_activation_performed': False, 'production_mutation': False,
               'status': 'BLOCKED'}
     if not shutil.which('coolify'):
         report['blockers'] = ['COOLIFY_CLI_NOT_INSTALLED_OR_NOT_IN_PATH']
     else:
-        verification = cmd(['coolify', 'context', 'verify'])
+        verification = cmd(['coolify', 'context', 'verify'], context=args.context)
         report['commands'].append({'command': 'coolify context verify', 'ok': verification['ok']})
         if not verification['ok']:
             report['blockers'] = ['COOLIFY_CONTEXT_NOT_VERIFIED']
         else:
             rows, failed = [], []
             for group, verb in ALLOWED[1:]:
-                result = cmd(['coolify', group, verb])
+                result = cmd(['coolify', group, verb], context=args.context)
                 report['commands'].append({'command': f'coolify {group} {verb} --format json',
                                            'ok': result['ok']})
                 if not result['ok']:
@@ -145,10 +156,19 @@ def main():
                 {key: val for key, val in row.items() if not key.startswith('_')}
                 for row in rows]
             report['matched_hosts'] = matched_hosts(rows, args.host)
+            # Coolify CLI v1.10 list APIs may omit ALL domain fields. In that
+            # case no host match is proof of anything: require independent
+            # target-specific read-only evidence instead of a false negative.
+            has_domain_metadata = any(
+                any(v for v in row.get('_domains', [])) for row in rows)
+            report['domain_metadata_available'] = has_domain_metadata
             report['blockers'] = ([f'COOLIFY_INVENTORY_UNAVAILABLE:{name}' for name in failed]
+                                  + (['COOLIFY_LIST_API_OMITS_DOMAINS']
+                                     if args.host and rows and not has_domain_metadata else [])
                                   + [f'HOST_NOT_REGISTERED_OR_NOT_VISIBLE:{x["hostname"]}'
                                      for x in report['matched_hosts']
-                                     if x['registration'] != 'FOUND'])
+                                     if x['registration'] != 'FOUND'
+                                     and has_domain_metadata])
             # This script is never an activation certificate: mounts, publisher and
             # owner approvals require separate WordPress/VPS evidence.
             report['status'] = 'INVENTORY_ONLY' if not report['blockers'] else 'BLOCKED'
