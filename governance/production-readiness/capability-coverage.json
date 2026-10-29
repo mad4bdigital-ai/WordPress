@@ -3625,12 +3625,13 @@
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegation-mode-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegation-connection-policy-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegated-content-actor-hermetic.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegated-content-actor-hermetic.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegated-oauth-map-hermetic.php"
       ],
       "needs_new_control": false,
       "new_control_ids": [],
       "coverage_reuse_rationale": "Reuses hardened OAuth subject proof, exact site profile, WP per-post capabilities, narrow grants, separate approval ticket, budget and write commit gates; this service does create two scoped content grants in Staging, but cannot create approval tickets or publish.",
-      "review_rationale": "Revised Staging-only verified-user mode provisions a per-user owned audit/approval principal with two exact, current-environment draft content grants on first signed-prepared or explicit write-scoped request. Unverified/disabled subjects, missing WP capabilities, broader tools, auto-publication and Production are denied. The old independent NHI mode remains unchanged."
+      "review_rationale": "Revised Staging-only verified-user mode provisions a per-user owned audit/approval principal with two exact, current-environment draft content grants on first signed-prepared or explicit write-scoped request. Unverified/disabled subjects, missing WP capabilities, broader tools, auto-publication and Production are denied. The old independent NHI mode remains unchanged. OAuth mapping now also permits first connection onboarding for pre-ticket identity/ticket alignment on the exact enrolled ChatGPT resource, without authorizing the actual write."
     },
     {
       "id": "ability:mad4b/content-apply-bundle",
@@ -11763,6 +11764,31 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing verified subject/site enrollment and exact approval, budget, grant, replay and content mutation controls remain authoritative. No new public endpoint or generic permission bypass.",
       "review_rationale": "Direct draft Ability conditionally enrolls verified explicitly write-scoped subject, reuses signed-dispatcher bound actor, denies generic and incomplete write grants."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-subject-user-bridge.php",
+      "source_blob_sha": "ce543e5fac7ca3f377a19080c92dd599d19f6b89",
+      "control_ids": [
+        "IDENTITY-01",
+        "OAUTH-03",
+        "OAUTH-05",
+        "OAUTH-06",
+        "MCP-01",
+        "MCP-10",
+        "SECURITY-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegated-oauth-map-hermetic.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegated-content-actor-hermetic.php"
+      ],
+      "owner_role": "Source-level OAuth identity lifecycle and delegated content capability review; CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Exact OAuth cryptographic verifier runs first; already verified bound user, site enrollment, live role, separate site write gate, capped content grants, approval ticket, resources and budget remain independent.",
+      "review_rationale": "On first verified, enrolled /mcp/mad4b-chatgpt user bearer only, initialize same-user draft-only Staging actor before ticket planning. Never on Developer, Enrollment, unverified, portable, Production or other site routes; failed actor enrollment never grants execution or corrupts valid read session."
     }
   ],
   "code_change_rules": {
