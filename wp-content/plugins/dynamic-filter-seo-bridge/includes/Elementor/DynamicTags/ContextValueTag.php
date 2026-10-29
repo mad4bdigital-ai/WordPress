@@ -2,7 +2,7 @@
 namespace DynamicFilterSEOBridge\Elementor\DynamicTags;
 
 use DynamicFilterSEOBridge\Context\ContextValueResolver;
-use DynamicFilterSEOBridge\Runtime\BootGuard;
+use DynamicFilterSEOBridge\Runtime\RuntimeLayers;
 
 /** Same source contract as [dfsb_context_value] and admin REST preview. */
 final class ContextValueTag extends \Elementor\Core\DynamicTags\Tag {
@@ -31,7 +31,7 @@ final class ContextValueTag extends \Elementor\Core\DynamicTags\Tag {
         // An editor preview target never becomes a persisted frontend source.
         // Under Safe Boot, even a privileged frontend visitor receives no value.
         $editor=(is_admin() || wp_doing_ajax()) && current_user_can('manage_options');
-        if(BootGuard::shouldHold() && !$editor)return '';
+        if(!RuntimeLayers::canPresent())return '';
         $field=sanitize_key((string)$this->get_settings('field'));
         $scope=$editor?sanitize_key((string)$this->get_settings('preview_scope')):'current';
         $id=$editor?absint($this->get_settings('preview_id')):0;
