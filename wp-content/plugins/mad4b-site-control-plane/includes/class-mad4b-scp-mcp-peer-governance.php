@@ -303,7 +303,7 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 		);
 		if ( isset( $reviewed[ $route ] ) ) {
 			if ( ! is_array( $definition ) ) return false;
-			$expected = $reviewed[ $route ] . '\\\\Framework\\\\Http\\\\Route';
+			$expected = $reviewed[ $route ] . chr(92) . 'Framework' . chr(92) . 'Http' . chr(92) . 'Route';
 			$found = false;
 			foreach ( $definition as $key => $endpoint ) {
 				if ( ! is_int( $key ) ) continue;
