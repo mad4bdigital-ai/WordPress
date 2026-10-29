@@ -5,10 +5,12 @@ on:
       - 'wp-content/mu-plugins/mad4b-research-firecrawl.php'
       - 'wp-content/mu-plugins/mad4b-research-firecrawl-cycles.php'
       - 'wp-content/mu-plugins/mad4b-research-provider-connection.php'
+      - 'wp-content/mu-plugins/mad4b-research-provider-continuation.php'
       - 'wp-content/mu-plugins/mad4b-research-firecrawl-transport-exception.php'
       - 'tests/firecrawl-control-plane-bridge-test.php'
       - 'tests/firecrawl-research-workflow-test.php'
       - 'tests/firecrawl-provider-routing-test.php'
+      - 'tests/provider-continuation-contract.php'
       - 'ops/integrations/firecrawl/skills/**'
       - 'scripts/ci/verify-firecrawl-skill-paths.py'
       - 'ops/integrations/firecrawl/**'
@@ -19,9 +21,11 @@ on:
       - 'wp-content/mu-plugins/mad4b-research-firecrawl.php'
       - 'wp-content/mu-plugins/mad4b-research-firecrawl-cycles.php'
       - 'wp-content/mu-plugins/mad4b-research-provider-connection.php'
+      - 'wp-content/mu-plugins/mad4b-research-provider-continuation.php'
       - 'tests/firecrawl-control-plane-bridge-test.php'
       - 'tests/firecrawl-research-workflow-test.php'
       - 'tests/firecrawl-provider-routing-test.php'
+      - 'tests/provider-continuation-contract.php'
       - 'ops/integrations/firecrawl/skills/**'
       - 'scripts/ci/verify-firecrawl-skill-paths.py'
       - 'ops/integrations/firecrawl/**'
@@ -45,9 +49,11 @@ jobs:
           php -l wp-content/mu-plugins/mad4b-research-firecrawl-transport-exception.php
           php -l wp-content/mu-plugins/mad4b-research-firecrawl-cycles.php
           php -l wp-content/mu-plugins/mad4b-research-provider-connection.php
+          php -l wp-content/mu-plugins/mad4b-research-provider-continuation.php
           php -d zend.assertions=1 -d assert.exception=1 tests/firecrawl-control-plane-bridge-test.php
           php -d zend.assertions=1 -d assert.exception=1 tests/firecrawl-research-workflow-test.php
           php -d zend.assertions=1 -d assert.exception=1 tests/firecrawl-provider-routing-test.php
+          php -d zend.assertions=1 -d assert.exception=1 tests/provider-continuation-contract.php
           python3 scripts/ci/verify-firecrawl-skill-paths.py
       - name: Check no hardcoded credentials or public upstream
         run: |
