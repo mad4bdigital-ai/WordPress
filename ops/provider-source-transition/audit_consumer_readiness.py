@@ -41,7 +41,7 @@ def audit(read_source, write_source, plugin_source, registry, skills, mirror):
     registered = set(registry.get("approved_classes", []))
     read_registered = read_class in registered
     write_registered = write_class in registered
-    legacy_skills = skills.get("etg-dfsb")
+    legacy_skills = (skills.get("packs") or {}).get("etg-dfsb")
     legacy_shadow = ("'etg_dfsb_settings' => 'dfsb_settings'" in mirror)
     read_abilities = sorted(set(re.findall(r"'(etg-dfsb/[^']+)'", read_source)))
     write_abilities = sorted(set(re.findall(r"'(etg-dfsb/[^']+)'", write_source)))
