@@ -43,7 +43,7 @@ Catalog and QA control metadata are independently kept under /srv/mad4b-media-co
 
 Internal reproduction on the authorized VPS:
 1. python3 -m unittest -v test_gateway
-2. python3 build_gateway.py --catalog catalog.preview.json --output generated/nginx.conf --etg-root /path/to/source/uploads
+2. python3 build_gateway.py --catalog catalog.preview.json --output generated/nginx.conf --roots-file /path/to/private/roots.preview.json
 3. MEDIA_SOURCE_ROOT=/path/to/source/uploads docker compose -f compose.yml up -d
 4. curl -H 'Host: media.egypttourgates.com' http://127.0.0.1:8097/2026/10/placeholder-3-100x100.png (200)
 5. curl -H 'Host: media.allroyalegypt.com' http://127.0.0.1:8097/2026/10/placeholder-3-100x100.png (404)
@@ -51,3 +51,11 @@ Internal reproduction on the authorized VPS:
 
 Next gates: independent persistent per-tenant media storage and backup/restore, certified ARE origin, public asset inventory, TLS/DNS owner verification, trusted SNI-to-tenant edge binding, WordPress attachment URL and upload/thumbnail lifecycle, independent owner release authorization.
 Receipt: evidence/VPS-TENANT-BOUND-QA-20261029.json.
+
+## Phase 3: independent on-VPS origin (2026-10-29)
+- Never use the verified backup itself as a serving origin. Seed a separate VPS directory at `/srv/mad4b-media-origin/<tenant>/uploads/` from the verified local ETG Staging backup, and compare contents with checksum-aware rsync before switching the loopback mount.
+- The public Hostinger Production source is not yet attested. The new origin is **only** an isolated Staging-derived media proof.
+- Keep private `roots.preview.json` under `/srv/mad4b-media-control/`, with tenant key to absolute origin-root mapping. No origin paths or asset authorizations are provided by the HTTP client.
+- `build_gateway.py` uses `--roots-file` instead of a fixed ETG command-line argument, and hashes assets in streaming mode.
+- The backup and independent origin live on the same VPS disk; separate-host disaster recovery is explicitly deferred and remains an acknowledged risk.
+- The catalog pilot must not be extrapolated into public serving of all uploaded files: assets are only candidates until verified against authoritative company ownership and public visibility. Test media remains internal-only.
