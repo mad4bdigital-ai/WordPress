@@ -36,4 +36,4 @@ qa31_assert( ! isset( $providers['blocked/write'] )
 qa31_assert( count( $providers ) === 2, 'No extra grant targets are created' );
 QA31_Write_Provider_Harness::$runtime = array();
 qa31_assert( QA31_Write_Provider_Harness::live_write_provider_snapshot() === array(), 'Empty runtime must not create grants' );
-echo "QA31_LIVE_WRITE_PROVIDER_SNAPSHOT_PASS\n";
+echo "QA31 Live Write Provider Snapshot: PASS\n";

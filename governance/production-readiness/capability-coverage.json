@@ -11347,6 +11347,24 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py"
       ],
       "review_rationale": "W1 staged owner and security source SHA reconciled against pinned Git version, with hermetic tests for replay concurrency, exact result readback, OAuth resource, staging grant permissions, WordPress Site Profile and owner cookie/nonce. Still requires dependency-aware integration, full tenant isolation certification and independent live acceptance before deployment."
+    },
+    {
+      "path": ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+      "source_blob_sha": "cf4fd1e1e2cc410bab045eb03f3e2e2b5d56728a",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py"
+      ],
+      "owner_role": "MAD4B repository CI source reviewer (not owner approval)",
+      "review_rationale": "Exact reviewed successor of Feature 007 pre-Staging audit workflow: add read-only SHA256-verifiable dependency pagination contract to existing non-authorizing predictive gate. Historical delivery manifests remain unchanged. Does not change OAuth privileges, repository root policy, trusted branch grants, Staging or Production authority.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {
