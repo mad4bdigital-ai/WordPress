@@ -9,6 +9,17 @@
   $path=__DIR__.'/shared-product-core/assets/presentation-media-visibility-v1.js';
   if(!is_readable($path))return;
   wp_enqueue_script('shared-presentation-media-visibility-v1',
+--- a/wp-content/mu-plugins/094-jetsearch-legacy-geo-post-suppression.php
++++ b/wp-content/mu-plugins/094-jetsearch-legacy-geo-post-suppression.php
+@@ -1,7 +1,7 @@
+ <?php
+ /** Lab-only scoped compatibility for retired geo post search with native destination term results. */
+ add_filter('jet-search/ajax-search/query-args', static function ($args, $handler) {
+-    if (wp_get_environment_type() !== 'local' || !is_array($args)) return $args;
++    if (!is_array($args)) return $args;
+     $post_types = array_values(array_unique(array_map('strval', (array) ($args['post_type'] ?? []))));
+     if ($post_types === ['__etg_geo_terms_only__']) {
+         $args['post__in'] = [0];
 --- a/wp-content/mu-plugins/096-verified-tour-render-context.php
 +++ b/wp-content/mu-plugins/096-verified-tour-render-context.php
 @@ -1,7 +1,7 @@
@@ -153,6 +164,39 @@
  
  // Each WPML instance needs its own ARIA target, even when a slot is rendered
  // more than once in Elementor headers, sticky headers or popups.
+--- a/wp-content/mu-plugins/company-elementor-structure-contract.php
++++ b/wp-content/mu-plugins/company-elementor-structure-contract.php
+@@ -7,7 +7,7 @@
+  * Do NOT change widgets, IDs, content, settings, language or stored meta.
+  */
+ defined('ABSPATH') || exit;
+-if (wp_get_environment_type() !== 'local') return;
++
+ add_filter('elementor/frontend/builder_content_data', static function ($tree) {
+     if (!is_array($tree)) return $tree;
+     $normalize=static function(array $nodes)use(&$normalize):array {
+--- a/wp-content/mu-plugins/company-jetsearch-legacy-taxonomy-source.php
++++ b/wp-content/mu-plugins/company-jetsearch-legacy-taxonomy-source.php
+@@ -7,7 +7,7 @@
+  * Do not rewrite saved revision history or modify WordPress/JetSearch vendor files.
+  */
+ defined('ABSPATH') || exit;
+-if (wp_get_environment_type() !== 'local') return;
++
+ add_filter('jet-search/ajax-search/categories-select/args', static function($args) {
+     if (!is_array($args) || ($args['taxonomy'] ?? null) !== 'tour-types_jet') return $args;
+     if (taxonomy_exists('tour-types_jet') || !taxonomy_exists('tour-types')) return $args;
+--- a/wp-content/mu-plugins/company-uael-social-share-context.php
++++ b/wp-content/mu-plugins/company-uael-social-share-context.php
+@@ -7,7 +7,7 @@
+  * Do not alter vendor files, share URLs, widget settings or site content.
+  */
+ defined('ABSPATH') || exit;
+-if (wp_get_environment_type() !== 'local') return;
++
+ 
+ add_action('elementor/widgets/register', static function($manager) {
+     $parent = '\\UltimateElementor\\Modules\\SocialShare\\Widgets\\SocialShare';
 --- a/wp-content/mu-plugins/first-view-image-priority.php
 +++ b/wp-content/mu-plugins/first-view-image-priority.php
 @@ -10,7 +10,7 @@
@@ -164,6 +208,17 @@
  		return $resources;
  	}
  	$path = (string) wp_parse_url( (string) ( $_SERVER['REQUEST_URI'] ?? '' ), PHP_URL_PATH );
+--- a/wp-content/mu-plugins/local-tour-rate-filter-provider-router.php
++++ b/wp-content/mu-plugins/local-tour-rate-filter-provider-router.php
+@@ -2,7 +2,7 @@
+ /** Native JetSmartFilters provider routing for original Grid/Accordion modes. */
+ if(!defined('ABSPATH'))return;
+ add_action('elementor/frontend/widget/before_render',static function($widget){
+- if(wp_get_environment_type()!=='local')return;
++
+  $tour_post=function_exists('shared_presentation_primary_tour_post_v1') ? shared_presentation_primary_tour_post_v1() : null;
+  if(!($tour_post instanceof WP_Post))return;
+  if(!is_object($widget)||!method_exists($widget,'get_name')||!method_exists($widget,'get_settings')||!method_exists($widget,'set_settings'))return;
 --- a/wp-content/mu-plugins/portable-term-featured-media.php
 +++ b/wp-content/mu-plugins/portable-term-featured-media.php
 @@ -5,7 +5,7 @@
