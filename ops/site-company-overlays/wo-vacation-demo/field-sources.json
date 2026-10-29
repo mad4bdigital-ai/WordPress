@@ -1,0 +1,84 @@
+{
+  "contract": "mad4b.company-overlay.field-source-governance.v1",
+  "shared_core": {
+    "must_not_embed_brand": "Wo Vacation",
+    "sources": [
+      "MAD4B shared source libraries",
+      "Commerce staging runtime and general capabilities"
+    ],
+    "clone_rule": "reuse code only; do not copy site instance secrets/options/media ownership"
+  },
+  "per_company_fields": [
+    {
+      "name": "site_name",
+      "authority": "WordPress get_option(blogname)",
+      "expected": "Wo Vacation",
+      "clone_scope": "company"
+    },
+    {
+      "name": "site_tagline",
+      "authority": "WordPress get_option(blogdescription)",
+      "clone_scope": "company"
+    },
+    {
+      "name": "elementor_site_identity",
+      "authority": "Elementor active kit _elementor_page_settings site_name/site_description",
+      "kit_id_on_this_site": 60050,
+      "clone_scope": "company"
+    },
+    {
+      "name": "elementor_brand_media",
+      "authority": "Elementor active kit site_logo/site_favicon",
+      "clone_scope": "company",
+      "state": "empty / placeholder, not safe to reuse former company logo"
+    },
+    {
+      "name": "rank_math_organization",
+      "authority": "WordPress option rank-math-options-titles knowledgegraph_name/website_name",
+      "expected": "Wo Vacation",
+      "clone_scope": "company"
+    },
+    {
+      "name": "wpml_language_config",
+      "authority": "WordPress option icl_sitepress_settings",
+      "clone_scope": "company",
+      "translate_source": "en"
+    },
+    {
+      "name": "jetengine_options_pages",
+      "authority": "JetEngine site options and individual options page groups",
+      "clone_scope": "company",
+      "state": "require per-page discovery of post/settings/option keys before generic copy"
+    },
+    {
+      "name": "woo_store_identity",
+      "authority": "WooCommerce site-specific settings",
+      "clone_scope": "company",
+      "state": "must never clone billing addresses, tax identities or contact values"
+    },
+    {
+      "name": "marketing_contacts",
+      "authority": "Company option fields + page templates",
+      "clone_scope": "company",
+      "state": "unset until verified; never fill fake email, phone, WhatsApp, social media"
+    },
+    {
+      "name": "media_provenance",
+      "authority": "WordPress attachment meta and content references",
+      "clone_scope": "company",
+      "state": "legacy sources present; preservation of origin and rights required"
+    },
+    {
+      "name": "site_security_and_owner",
+      "authority": "MAD4B SCP Site Profile and independent authority registry",
+      "clone_scope": "site",
+      "state": "site UUID not reusable; no cross-tenant grants"
+    }
+  ],
+  "carryover_rules": {
+    "allowed": "template structure, styling, shared commercial logic, safe demo data with verified attribution",
+    "blocked": "old-company brand, customer/order databases, real tokens, media with unverified rights, company SEO/contact metadata",
+    "on_conflict": "prefer WordPress authoritative Site Profile and per-company option values; block cross-site substitution",
+    "real_domain": "wovacation.com must not be silently bound or overwritten by demo domain"
+  }
+}
