@@ -11453,6 +11453,28 @@
         "ROLLOUT-01"
       ],
       "review_rationale": "Reviewed exact Git blob for candidate-only RC15 signed-review source pin; source SHA fbcfed264231a2553d197927617a9cdae67f5567 and version 0.4.0-alpha.15-rc.1 only. The same-PR regression test forbids package certification, certified provider promotion, artifact digest authorization, staging/production apply and legacy ETG source mutation. GitHub Sigstore signed-review evidence is not an immutable release, independent provider certificate or Full Boot authority."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php",
+      "source_blob_sha": "cdf5f491e1e5d636f18ec354d54729a34960cb6c",
+      "control_ids": [
+        "CROSSPLUGIN-01",
+        "GOVERNANCE-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/self-update-selected-head-release-trust-runtime.php"
+      ],
+      "owner_role": "Repository security review — CI-only; not a deployment or production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing release provenance, native update integrity, site-bound owner approval, backup/readback and rollback controls govern the same install lane; no new executable ability or broad skip of ancestry validation is added.",
+      "review_rationale": "Patch a witnessed Selected-HEAD Staging continuation release-untrusted failure. Propagate only fixed-channel master release verdict metadata after exact six-part package identity equality and all root-trust flags. Never accept caller-supplied trust, and leave nonmatching Staging candidate behavior and Production denial unchanged."
     }
   ],
   "code_change_rules": {
