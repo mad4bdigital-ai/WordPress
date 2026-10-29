@@ -4,8 +4,8 @@
   "reviewed_base_sha": "7ccfd69d7a76b4b13b73e18aaaf445144d3cfeba",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 133,
-  "changed_paths_sha256": "4d226b03833afab2959441125fad67a5c8cd40d2865f244e1d953c70b102fcf9",
+  "changed_file_count": 135,
+  "changed_paths_sha256": "886a896db9e84f174e680dc3e8c0777bac5a3a8c3e9f8c788affdb76a323417c",
   "slices": [
     {
       "id": "abilities-and-governed-dispatch",
@@ -172,6 +172,7 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/brand-append-retry-budget-qa18.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/historical-owner-attestation-transport-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/historical-staging-mcp-read-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa30-native-general-settings-rest-lifecycle.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/staging-attachment-transfer-grant-policy-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-user-role-governance-contract.py"
       ]
@@ -203,6 +204,7 @@
         "wp-content/plugins/mad4b-site-control-plane/config/evidence/woocommerce-11.2.1-lab-package.json",
         "wp-content/plugins/mad4b-site-control-plane/docs/WOOCOMMERCE-EXACT-PACKAGE-ONBOARDING.md",
         "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-context-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/woocommerce-exact-package-onboarding-contract.py"
       ]
     },
