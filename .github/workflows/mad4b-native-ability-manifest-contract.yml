@@ -32,6 +32,8 @@ jobs:
         run: |
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-ability-trust.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php
+      - name: Exercise mapped hermetic native trust matrix
+        run: python3 wp-content/plugins/mad4b-site-control-plane/tests/native-ability-manifest-trust-contract.py
       - name: Reject self approval, source drift and write escalation
         run: |
           set -euo pipefail
