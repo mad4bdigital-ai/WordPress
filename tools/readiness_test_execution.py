@@ -226,6 +226,7 @@ def self_test():
     else:
         raise AssertionError("Unreviewed operations PHP fixture admitted")
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/orphan-source-recovery-admission-runtime.php")[0] == "php"
+    assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/orphan-source-recovery-plan-runtime.php")[0] == "php"
     assert command_for("tests/production_readiness_registry_contract.py")[0] == sys.executable
     assert command_for("tests/remote-execution/operator-grants-convergence-smoke.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/generation-snapshot-exception-runtime.php")[0] == "php"
