@@ -111,7 +111,7 @@ final class MAD4B_SCP_Delegation_Mode {
      * status/read/CLI/anonymous requests. Never re-enable a revoked agent or
      * subject, or rebind a subject owned by another agent.
      */
-    public static function ensure_content_actor( $identity ) {
+    public static function ensure_content_actor( $identity, $validated_prepared_dispatch = false ) {
         if ( self::DELEGATED !== self::mode_for_identity( $identity ) )
             return new WP_Error( 'mad4b_delegation_mode_invalid', 'Delegation actor only applies to verified user mode.' );
         $user = self::authenticated_user( $identity );
@@ -130,12 +130,21 @@ final class MAD4B_SCP_Delegation_Mode {
 
         // Explicit bearer write authorization; read-only OAuth sessions must
         // never be promoted into managed principals simply by calling a tool.
-        if ( 'oauth' === $type ) {
+        if ( 'oauth' === $type && ! $validated_prepared_dispatch ) {
             if ( ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( 'mad4b:write' )
                 && ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( 'server:mad4b-write' )
                 && ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( 'ability:mad4b/content-apply-bundle' ) )
-                return new WP_Error( 'mad4b_delegation_write_scope_required', 'Delegation requires an explicitly verified write scope.' );
+                return new WP_Error( 'mad4b_delegation_write_scope_required', 'Direct delegation requires an explicitly verified write scope.' );
         }
+        // ChatGPT's existing mad4b:read bearer can access ONLY the
+        // independently verified prepared-write dispatcher. The dispatcher
+        // must validate the signed preparation, exact schema, requested
+        // draft target and one-time approval ticket before setting this flag.
+        // Its target is still governed by the existing scope and approval
+        // checks in central authorization; this flag grants no write itself.
+        if ( $validated_prepared_dispatch && 'oauth' === $type
+            && ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( 'mad4b:read' ) )
+            return new WP_Error( 'mad4b_delegation_dispatch_scope_denied', 'Signed prepared dispatch requires an authenticated read-scoped bearer.' );
 
         $existing_subject = MAD4B_SCP_Agent_Registry::subject_binding( $type, $fingerprint );
         if ( is_wp_error( $existing_subject ) ) return $existing_subject;
