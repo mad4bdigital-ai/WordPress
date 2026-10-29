@@ -18,7 +18,7 @@ final class MAD4B_Firecrawl_Provider_Connection {
         add_action( 'admin_post_' . self::POST_ACTION, array( __CLASS__, 'post' ) );
         add_action( 'wp_abilities_api_init', array( __CLASS__, 'register' ), 47 );
     }
-    private static function allowed() {
+    public static function allowed() {
         return class_exists( 'MAD4B_Research_Firecrawl_Bridge' )
             && MAD4B_Research_Firecrawl_Bridge::permitted();
     }
