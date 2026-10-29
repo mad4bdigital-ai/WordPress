@@ -73,3 +73,19 @@ It is **not** dynamic WordPress authorization testing, **not** an
 independent semantic approval, and **not** evidence of safe Staging
 deployment. No source is introduced into active WordPress plugin paths;
 the original manifest and release gate remain unchanged.
+
+## Draft GitHub source match — PR #607 (candidate, not certified provenance)
+
+Exact SHA256 comparison confirms **two** live Staging source candidates match the
+corresponding **GitHub PR #607** draft files at commit
+`eaf502ea8bc471ff02b290fa3d652249d07d92c1`:
+
+- `includes/class-mad4b-scp-native-ability-trust.php`: `bf76bcdbcd240716f8276a9c764a103250141223a8882839a8fd5c4186c3ee49`
+- `includes/class-mad4b-scp-adapter-registry.php`: `bf761a66478374f4002817065d87a68519db7b6b0a2365fed45aefc98989c794`
+
+This is **candidate code identity only**, not proof of which operation deployed
+the file to Staging, not proof of merge into the authoritative release branch,
+and not an independent signoff. PR #607 remains open/draft. These two GitHub
+paths must not be promoted into RC118's original signed Build Manifest, which
+does not list Native Ability Trust and recorded a different Adapter Registry
+hash. Separate release integrity, owner and source review gates remain NO-GO.

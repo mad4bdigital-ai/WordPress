@@ -44,6 +44,14 @@ class DriftContract(unittest.TestCase):
    self.assertIs(row["snapshot_matches_package_manifest"],historically_exact)
    self.assertIs(row["observed_matches_package_manifest"],False)
    self.assertIs(row["source_authenticity_independently_confirmed"],False)
+   if name=="includes/class-mad4b-scp-adapter-registry.php":
+    draft=row["matching_github_draft_source"]
+    self.assertEqual(draft["candidate_pr"],607)
+    self.assertEqual(draft["candidate_commit_sha"],"eaf502ea8bc471ff02b290fa3d652249d07d92c1")
+    self.assertEqual(draft["candidate_state"],"OPEN_DRAFT_UNMERGED")
+    self.assertIs(draft["candidate_exact_source_match"],True)
+    self.assertIs(draft["source_independently_certified"],False)
+    self.assertIs(draft["production_authorized"],False)
    self.assertIs(row["semantic_review_completed"],False)
    p,q=INBOX/a,INBOX/b
    self.assertTrue(p.is_file() and q.is_file() and not p.is_symlink() and not q.is_symlink())

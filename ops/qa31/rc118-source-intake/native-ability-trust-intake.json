@@ -25,5 +25,16 @@
     "reflection_callback_file_provenance",
     "source_and_schema_hash",
     "independent_provider_certificate"
-  ]
+  ],
+  "matching_github_draft_source": {
+    "candidate_repository": "mad4bdigital-ai/WordPress",
+    "candidate_pr": 607,
+    "candidate_commit_sha": "eaf502ea8bc471ff02b290fa3d652249d07d92c1",
+    "candidate_state": "OPEN_DRAFT_UNMERGED",
+    "candidate_exact_source_match": true,
+    "original_manifest_membership_authorized": false,
+    "source_independently_certified": false,
+    "production_authorized": false,
+    "candidate_path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-ability-trust.php"
+  }
 }

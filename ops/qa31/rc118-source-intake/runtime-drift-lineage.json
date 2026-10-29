@@ -1,6 +1,6 @@
 {
   "contract": "mad4b.qa31.rc118-post-package-source-lineage.v1",
-  "origin": "ETG Commerce Woo Lab Staging — observation only",
+  "origin": "ETG Commerce Woo Lab Staging \u2014 observation only",
   "source_observed_date": "2026-10-29",
   "comparison_snapshot_date": "2026-10-28",
   "control_plane_version_installed": "0.4.0-rc.118",
@@ -54,7 +54,18 @@
       "diff_added_lines": 9,
       "diff_removed_lines": 2,
       "source_authenticity_independently_confirmed": false,
-      "semantic_review_completed": false
+      "semantic_review_completed": false,
+      "matching_github_draft_source": {
+        "candidate_repository": "mad4bdigital-ai/WordPress",
+        "candidate_pr": 607,
+        "candidate_commit_sha": "eaf502ea8bc471ff02b290fa3d652249d07d92c1",
+        "candidate_state": "OPEN_DRAFT_UNMERGED",
+        "candidate_exact_source_match": true,
+        "original_manifest_membership_authorized": false,
+        "source_independently_certified": false,
+        "production_authorized": false,
+        "candidate_path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php"
+      }
     },
     {
       "path": "includes/class-mad4b-scp-market-profiles.php",

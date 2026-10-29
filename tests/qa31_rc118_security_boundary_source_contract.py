@@ -54,6 +54,14 @@ class NativeAbilityQuarantine(unittest.TestCase):
             self.assertIs(d[f],True)
         self.assertEqual(d['release_status'],'BLOCKED_SOURCE_RECONCILIATION')
         self.assertFalse((ACTIVE/'includes/class-mad4b-scp-native-ability-trust.php').exists())
+        candidate=d['matching_github_draft_source']
+        self.assertEqual(candidate['candidate_pr'],607)
+        self.assertEqual(candidate['candidate_commit_sha'],'eaf502ea8bc471ff02b290fa3d652249d07d92c1')
+        self.assertEqual(candidate['candidate_state'],'OPEN_DRAFT_UNMERGED')
+        self.assertIs(candidate['candidate_exact_source_match'],True)
+        for field in ('original_manifest_membership_authorized',
+                      'source_independently_certified','production_authorized'):
+            self.assertIs(candidate[field],False)
 
     def test_native_manifest_is_external_exact_source_read_only(self):
         required=(
