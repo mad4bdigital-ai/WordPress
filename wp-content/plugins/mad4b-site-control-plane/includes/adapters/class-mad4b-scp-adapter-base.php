@@ -122,7 +122,23 @@ abstract class MAD4B_SCP_Adapter_Base {
 		return function ( $input = null ) use ( $permission, $ability_name, $surface ) {
 			$granted = call_user_func( $permission, $input );
 			if ( is_wp_error( $granted ) || ! $granted ) return $granted;
-			if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_mutation_disabled', 'MAD4B mutation surfaces are disabled until the global mutation gate and a bound enabled NHI are both present.' );
+			// Direct, explicitly write-scoped OAuth content draft requests can
+			// enroll a user-owned execution actor. The existing compact ChatGPT
+			// read-scope path must instead use the signed prepared dispatcher.
+			if ( 'mad4b/content-apply-bundle' === $ability_name
+				&& class_exists( 'MAD4B_SCP_Delegation_Mode' )
+				&& class_exists( 'MAD4B_SCP_Identity_Context' ) ) {
+				$subject = MAD4B_SCP_Identity_Context::current();
+				if ( is_array( $subject )
+					&& MAD4B_SCP_Delegation_Mode::DELEGATED
+						=== MAD4B_SCP_Delegation_Mode::mode_for_identity( $subject ) ) {
+					$cap = MAD4B_SCP_Delegation_Mode::authorize_ability( $subject, $ability_name, $input );
+					if ( is_wp_error( $cap ) || true !== $cap ) return $cap;
+					$actor = MAD4B_SCP_Delegation_Mode::ensure_content_actor( $subject );
+					if ( is_wp_error( $actor ) ) return $actor;
+				}
+			}
+			if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_mutation_disabled', 'MAD4B mutation surfaces are disabled until the global mutation gate and an authenticated governed principal are both present.' );
 			if ( $this->mutation_requires_certification() ) {
 				if ( class_exists( 'MAD4B_SCP_Provider_Compatibility_Certification' ) && MAD4B_SCP_Provider_Compatibility_Certification::supports_provider( $this->provider_key() ) ) {
 					$provider_guard = MAD4B_SCP_Provider_Compatibility_Certification::mutation_guard( $this->provider_key(), $ability_name, (bool) $this->is_available(), $this );
