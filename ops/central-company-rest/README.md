@@ -1,49 +1,28 @@
-# MAD4B central company REST federation
+# MAD4B Central Company REST — Staging
 
-Scope: tours.dev.mad4b.com is the central administrative Staging site. The three companies' WordPress databases and media remain owned by their existing hostings. There is no full database import.
+Company registry: tours.dev.mad4b.com. Companies: www.allroyalegypt.com, egypttourgates.com, tourism.almallahgroup-mg.com.
 
-## Pinned company endpoints
+## Approved identity protocol
 
-| Company ID | HTTPS root | Company home-page variant |
-| --- | --- | --- |
-| all-royal-egypt | https://www.allroyalegypt.com | multi_country_tours |
-| egypt-tour-gates | https://egypttourgates.com | daytour_your_way |
-| tourism-almallahgroup | https://tourism.almallahgroup-mg.com | discover_nile_your_way |
+Use the new EC P-256 public-key modules, not the original HMAC workflow:
 
-The verified third-company hostname is tourism.almallahgroup-mg.com, not tourism.almallhgroup-mg.com.
+- Central: `central/160-mad4b-central-companies-rest.php` (admin registry), `central/170-mad4b-central-company-public-key-pairing.php` (signed verification).
+- Remote: `remote/170-mad4b-company-public-key-identity.php`.
+- Each WordPress host generates its own private key locally; only public keys are exchanged through verified SSH. No shared secret or private key crosses a hosting boundary.
+- Admin REST: GET `/wp-json/mad4b-central/v1/companies`; POST `/wp-json/mad4b-central/v1/companies/{company}/verify-public-key`.
+- Remote REST: **POST only** `/wp-json/mad4b-company/v1/identity-v3`. Sign exact method, path, company, timestamp, random nonce and canonical host; validate both signatures. A SQL unique-key nonce claim blocks replay.
+- Legacy HMAC pairing and GET identity paths are deprecated, unpaired and not an accepted authentication mechanism.
 
-## Installation and contract
+## Acceptance results, 2026-10-29
 
-Central file: central/160-mad4b-central-companies-rest.php is a WordPress MU plugin enabled only when the site hostname is tours.dev.mad4b.com. Run the seed() method using authenticated local WP-CLI to create records in the Staging company registry.
+Registered all three companies on Staging. Central anonymous registry access: 401. Local administrator registry access: 200. All three central public-key verifies: 200, mutually authenticated, `authenticated_read_only`. No private keys transmitted or exposed.
 
-Remote file: remote/160-mad4b-remote-company-identity.php must be placed in wp-content/mu-plugins on each enrolled company WordPress site.
+A critical negative test discovered that the original GET v2 response was being served from LiteSpeed cache (`x-litespeed-cache: hit`) despite `Cache-Control: no-store`. The POST-only v3 endpoint replaces it. A fresh signed v3 request returned 200; repeating the exact challenge returned 403 on Egypt Tour Gates. Anonymous POST v3 requests returned 403 on all three sites in smoke testing. Targeted LiteSpeed URL purge on all three sites removed the stale v2 cache; old v2 GET now returns 404 (`rest_no_route`, cache miss) for all three.
 
-Provision a different cryptographically random 32-byte shared secret for each company, transmitted over enrolled pinned-key SSH only, never exposed in GitHub or REST responses. The non-autoloaded WordPress option names are:
-- Central: mad4b_central_company_rest_secret_v1_<company-id-with-underscores>
-- Remote: mad4b_company_remote_rest_secret_v1
+## Authority boundaries
 
-Central administrative REST:
-- GET /wp-json/mad4b-central/v1/companies
-- GET /wp-json/mad4b-central/v1/companies/{company-id}/status
-- POST /wp-json/mad4b-central/v1/companies/{company-id}/verify
+Authenticated identity is `company_identity.read` **only**. It does not authorize remote writes, raw WordPress database imports, orders/customers/credentials/media transfer, publishing prices, or automatically changing site content.
 
-These require a locally authenticated WordPress administrator with manage_options. The remote endpoint GET /wp-json/mad4b-company/v1/identity requires HMAC-SHA256 (method, exact route, tenant, timestamp, nonce), 120-second time tolerance and one-time nonce replay prevention. The remote endpoint reveals no customer, account, database or order information.
+The next separate workflow is scoped access to the tourism source's Nile cruise catalog, taxonomies, and reference-only historical rates. That capability requires its own approved read contract; no historical price becomes checkout-authoritative.
 
-Central remote verification uses exact hardcoded HTTPS URLs, safe WordPress HTTP client, TLS verification, zero redirects, bounded response size and exact host/company/contract checks.
-
-## No broad remote authority
-
-An authenticated handshake proves company_identity.read only. It does not grant remote plugin, user, price, order, billing, media or WordPress database mutations; these are explicitly disabled in identity and registry responses. It is not a generic remote command or REST proxy.
-
-Historical Nile-cruise source records require separate narrowly authorized read contracts:
-- nile_cruise_catalog.read: public tour records and itinerary references
-- nile_cruise_categories.read: source taxonomy and translations
-- nile_rate_history.read: historical rate source (reference_only/not_for_sale)
-
-Those three content routes are planned, not implemented or granted by this pairing release. Prices must never silently be used in the current checkout. The source company remains the content authority.
-
-## Safeguards and acceptance
-
-Require source hash/PHP syntax verified, backup/rollback, unsigned remote access denied, exact site/company handshake, central admin-only company list, valid signed challenge for each company and 200 health for the three company websites. Avoid overwriting preexisting plugin files. Production cutover, DNS, media, full database transfer, user/order export and remote writes remain explicitly out of scope.
-
-Rollback: remove newly installed MU files, invalidate the per-tenant pairing secrets and mark central status unverified. Remote WordPress sites and local content stay in place.
+Current deployed source is ahead of master in draft PR #631. Review and exact-head attestation remain required before merge/release. Company databases, WordPress public code and existing content are not bulk migrated.
