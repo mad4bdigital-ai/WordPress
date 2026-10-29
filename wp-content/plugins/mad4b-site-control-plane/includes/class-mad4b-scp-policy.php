@@ -22,12 +22,18 @@ final class MAD4B_SCP_Policy {
 		if ( $user_id < 1 ) return false;
 		$user = get_userdata( $user_id );
 		if ( ! $user ) return false;
-		$capability = self::connection_capability();
-		if ( '' === $capability || ! user_can( $user, $capability ) ) return false;
-		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::configured() ) {
-			return MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id );
+		$profile_configured = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::configured();
+		if ( $profile_configured && ( ! MAD4B_SCP_Site_Profile::origin_enrolled()
+			|| ! MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id ) ) ) return false;
+		// An explicitly enrolled WordPress user may connect in the default
+		// delegation mode even without administrative privileges; actual MCP
+		// abilities still check their exact WordPress capabilities and scopes.
+		if ( $profile_configured && class_exists( 'MAD4B_SCP_Delegation_Mode' )
+			&& MAD4B_SCP_Delegation_Mode::DELEGATED === MAD4B_SCP_Delegation_Mode::selected_mode() ) {
+			return user_can( $user, 'read' );
 		}
-		return true;
+		$capability = self::connection_capability();
+		return '' !== $capability && user_can( $user, $capability );
 	}
 
 	public static function can_plan_mutations() {
