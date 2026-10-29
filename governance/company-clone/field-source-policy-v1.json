@@ -33,7 +33,6 @@
     "wordpress_environment": "staging",
     "current_database_role": "etg_commerce_staging",
     "allowed_use": "inventory and planning only",
-    "current_brand_rewrite_verified": false,
     "disallowed_actions": [
       "Production mutation",
       "bulk SQL copy",
@@ -41,7 +40,17 @@
       "copy media/gallery bindings",
       "copy same origin site UUID",
       "enable sending before provider reconnect"
-    ]
+    ],
+    "core_demo_site_name_alignment_verified": true,
+    "full_demo_brand_neutralization_verified": false,
+    "verified_name_sources": [
+      "wp_options.blogname",
+      "elementor_active_kit_60050.site_name",
+      "WPML.WP_Blog_Title",
+      "rank_math.knowledgegraph_name",
+      "rank_math.website_name"
+    ],
+    "legacy_company_contact_media_provider_bindings_pending": true
   },
   "core_wordpress_options": {
     "blogname": "TENANT_SOURCE",
