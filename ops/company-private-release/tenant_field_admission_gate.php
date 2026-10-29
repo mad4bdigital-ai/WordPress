@@ -96,7 +96,17 @@ $flags['foreign_form_meta_absent']=$formCross===0;
 $flags['gtm_container_present_for_review']=$gtmPresent;
 $flags['admin_email_is_valid']=is_email((string)get_option('admin_email',''))!==false;
 $litespeed=get_option('litespeed.conf.cdn-ori',null);
-$flags['cdn_origin_is_tenant_domain']=!is_string($litespeed) || trim($litespeed)==='' || $owned($litespeed);
+// LiteSpeed stores a JSON list (e.g. ["https://example.com"]).
+// Validate decoded origin entries rather than treating JSON as a hostname.
+$cdnOrigins=[];
+if (is_string($litespeed) && trim($litespeed)!=='') {
+    $decoded=json_decode($litespeed,true);
+    $cdnOrigins=is_array($decoded)?$decoded:[$litespeed];
+}
+$flags['cdn_origin_is_tenant_domain']=count($cdnOrigins)===0 ||
+    (count($cdnOrigins)===count(array_filter($cdnOrigins,static function($item) use($owned){
+        return is_string($item) && $owned($item);
+    })));
 $out=[
  'contract'=>'mad4b.company-copy.tenant-admission-gate.v1',
  'tenant_domain'=>$domain,
