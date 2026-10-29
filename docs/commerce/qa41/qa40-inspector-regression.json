@@ -1,0 +1,100 @@
+{
+    "result": "PASS",
+    "tests": {
+        "engines_200": {
+            "pass": true,
+            "observed": 200
+        },
+        "engine_registry_is_bounded": {
+            "pass": true,
+            "observed": 14
+        },
+        "pricing_engine_registered": {
+            "pass": true,
+            "observed": null
+        },
+        "bookings_not_authorized": {
+            "pass": true,
+            "observed": null
+        },
+        "incomplete_rule_receipts_present": {
+            "pass": true,
+            "observed": null
+        },
+        "company_bind_not_ready": {
+            "pass": true,
+            "observed": null
+        },
+        "tour_context_200": {
+            "pass": true,
+            "observed": 200
+        },
+        "tour_context_source_identity": {
+            "pass": true,
+            "observed": null
+        },
+        "tour_display_is_non_authorizing": {
+            "pass": true,
+            "observed": null
+        },
+        "dynamic_tags_not_render_certified": {
+            "pass": true,
+            "observed": null
+        },
+        "invalid_date_denied": {
+            "pass": true,
+            "observed": null
+        },
+        "missing_source_denied": {
+            "pass": true,
+            "observed": null
+        },
+        "cross_service_rate_denied": {
+            "pass": true,
+            "observed": "engine_rate_not_owned"
+        },
+        "owned_rate_diagnostic_only": {
+            "pass": true,
+            "observed": "eligible_preview_only"
+        },
+        "rest_registry_listed": {
+            "pass": true,
+            "observed": null
+        },
+        "property_context_read_only": {
+            "pass": true,
+            "observed": "read"
+        },
+        "wp_admin_panel_renders": {
+            "pass": true,
+            "observed": null
+        },
+        "wp_admin_nonfinancial_notice": {
+            "pass": true,
+            "observed": null
+        },
+        "guest_denied": {
+            "pass": true,
+            "observed": 401
+        },
+        "business_counts_unchanged": {
+            "pass": true,
+            "observed": {
+                "before": {
+                    "requests": 9,
+                    "orders": 1,
+                    "tasks": 3,
+                    "claims": 0
+                },
+                "after": {
+                    "requests": 9,
+                    "orders": 1,
+                    "tasks": 3,
+                    "claims": 0
+                }
+            }
+        }
+    },
+    "passed": 20,
+    "total": 20
+}
