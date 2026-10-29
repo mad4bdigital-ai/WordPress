@@ -132,6 +132,59 @@ final class MAD4B_SCP_Policy {
 		return (bool) apply_filters( 'mad4b_scp_mutation_permission', true, get_current_user_id(), $agent, $identity );
 	}
 
+
+	/**
+	 * Trusted local WordPress-operator draft execution.
+	 *
+	 * WP-CLI is an explicitly privileged server operator channel, not an OAuth
+	 * impersonation shortcut: a real --user, current-site enrollment, site write
+	 * gate, active schema, exact post-type and per-post WordPress capability are
+	 * mandatory. This is limited to Staging draft/pending content and never
+	 * authorizes a remote MCP/REST request, public publication, or any other
+	 * Control Plane ability. Normal NHI/approval rules remain unchanged elsewhere.
+	 */
+	public static function can_native_content_draft( $input = array() ) {
+		if ( ! defined( 'WP_CLI' ) || true !== WP_CLI
+			|| ( defined( 'REST_REQUEST' ) && REST_REQUEST )
+			|| ! is_array( $input )
+			|| ! class_exists( 'MAD4B_SCP_Delegation_Mode' )
+			|| MAD4B_SCP_Delegation_Mode::DELEGATED !== MAD4B_SCP_Delegation_Mode::selected_mode() ) return false;
+		$gate = self::mutation_gate_status();
+		if ( empty( $gate['effective'] ) || 'staging' !== ( $gate['environment'] ?? '' )
+			|| ! class_exists( 'MAD4B_SCP_Schema' )
+			|| ! MAD4B_SCP_Schema::is_ready() ) return false;
+		$user_id = get_current_user_id();
+		if ( $user_id < 1 || ! self::can_connect_user( $user_id ) ) return false;
+		$type = sanitize_key( (string) ( $input['post_type'] ?? '' ) );
+		$obj = '' !== $type ? get_post_type_object( $type ) : null;
+		if ( ! $obj || ! post_type_exists( $type ) ) return false;
+		$post = is_array( $input['post'] ?? null ) ? $input['post'] : array();
+		$status = sanitize_key( (string) ( $post['post_status'] ?? 'draft' ) );
+		if ( ! in_array( $status, array( 'draft', 'pending' ), true ) ) return false;
+		$mode = sanitize_key( (string) ( $input['mode'] ?? 'create' ) );
+		if ( 'create' === $mode ) {
+			$cap = $obj->cap->create_posts ?? $obj->cap->edit_posts ?? '';
+			if ( '' === $cap || ! current_user_can( $cap )
+				|| ! empty( $input['post_id'] ) ) return false;
+		} elseif ( 'update' === $mode ) {
+			$id = absint( $input['post_id'] ?? 0 );
+			$target = $id > 0 ? get_post( $id ) : null;
+			if ( ! $target || $type !== $target->post_type
+				|| ! in_array( $target->post_status, array( 'draft', 'pending' ), true )
+				|| ! current_user_can( 'edit_post', $id ) ) return false;
+		} else {
+			return false;
+		}
+		if ( isset( $post['post_author'] ) && (int) $post['post_author'] !== $user_id ) {
+			$others = $obj->cap->edit_others_posts ?? '';
+			if ( '' === $others || ! current_user_can( $others ) ) return false;
+		}
+		// Last-mile site policy is deny-only. The normal bundle validator will
+		// still re-check exact plan hashes, taxonomy/meta capabilities, locks,
+		// source policies and operation journaling before writing any content.
+		return true === apply_filters( 'mad4b_scp_native_content_draft_allowed', true, $input, $user_id );
+	}
+
 	public static function can_developer_read() {
 		if ( ! current_user_can( 'manage_options' ) ) return false;
 		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
