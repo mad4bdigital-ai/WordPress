@@ -89,3 +89,22 @@ and not an independent signoff. PR #607 remains open/draft. These two GitHub
 paths must not be promoted into RC118's original signed Build Manifest, which
 does not list Native Ability Trust and recorded a different Adapter Registry
 hash. Separate release integrity, owner and source review gates remain NO-GO.
+
+## Eight-file reconciliation worklist (CI only)
+
+`source-reconciliation-worklist.json` combines the four changed original
+Build Manifest members and four unmanifested runtime dependencies, binding each
+to its quarantined SHA256, independent source-review requirements and explicit
+NO-GO. Only two files have a proven identical GitHub candidate: draft PR #607.
+
+A bounded comparison of PR #605, #607, #608, #610, #612, #615 and #619 found
+no exact match for the other three **changed original** source files:
+`config/cross-plugin-sources.json`,
+`includes/class-mad4b-scp-market-profiles.php` and
+`mad4b-site-control-plane.php`. This is not a claim that no other source exists.
+
+All eight entries remain unapproved for merge or deployment. In particular
+single-operator ownership does not silently bypass the currently coded
+independent proposer/reviewer distinction; a separately reviewed governance
+policy would be needed before changing that contract. The worklist test only
+checks stored evidence; it does not load PHP or interact with live Staging.
