@@ -103,6 +103,7 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # positive PASS marker and no WordPress, network, filesystem writes or secrets.
     "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-behavioral-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-isolated-php-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/self-update-selected-head-release-trust-runtime.php",
     "tests/remote-execution/unified-operator-session-policy-smoke.php",
 ))
 
@@ -216,6 +217,7 @@ def self_test():
     for path in (
         "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-behavioral-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-isolated-php-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/self-update-selected-head-release-trust-runtime.php",
     ):
         assert command_for(path) == ["php", str((ROOT / path).resolve())]
     # No wildcard admission: unknown PHP still requires a trusted PHPUnit runner.

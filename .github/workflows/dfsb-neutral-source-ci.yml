@@ -7,6 +7,8 @@ on:
       - 'tools/dfsb-neutral/**'
       - '.github/workflows/dfsb-neutral-source-ci.yml'
       - '.github/workflows/dfsb-release-review-attestation.yml'
+      - '.github/workflows/dfsb-owner-command-review-dispatch.yml'
+      - 'tests/dfsb-owner-command-dispatch-contract.py'
       - 'tests/dfsb-release-review-workflow-contract.py'
       - 'tests/dfsb-release-boot-authority.php'
   workflow_dispatch:
@@ -38,6 +40,8 @@ jobs:
           coverage: none
       - name: Verify versioned attestation workflow stays non-authorizing
         run: python3 tests/dfsb-release-review-workflow-contract.py
+      - name: Verify governed owner-comment signing dispatch remains fail-closed
+        run: python3 tests/dfsb-owner-command-dispatch-contract.py
       - name: Lint all neutral PHP sources
         shell: bash
         run: |
