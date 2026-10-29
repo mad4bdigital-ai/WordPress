@@ -76,7 +76,6 @@ function wp_remote_request($url,$args) {
     return array('code'=>200,'body'=>json_encode(array('success'=>true,'result'=>$result)));
 }
 function wp_remote_get($url,$args){return new WP_Error('dns_not_propagated','not yet');}
-function dns_get_record($name,$type){return array();}
 function expect_true($condition,$name){if(!$condition){fwrite(STDERR,'FAIL '.$name.PHP_EOL);exit(1);}}
 function response_data($r) {return $r instanceof WP_REST_Response?$r->data:$r;}
 putenv('MAD4B_CLOUDFLARE_API_TOKEN=fake-token-contract');
