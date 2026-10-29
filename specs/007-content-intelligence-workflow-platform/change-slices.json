@@ -4,8 +4,8 @@
   "reviewed_base_sha": "7ccfd69d7a76b4b13b73e18aaaf445144d3cfeba",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 137,
-  "changed_paths_sha256": "cd27a76fff834d549114421f592a176772f27c82f94dd5013f0ba6633a746ce3",
+  "changed_file_count": 138,
+  "changed_paths_sha256": "3510da87093c52195dad6b31106a781f3845c7444bdb0665118fe676a26d2cf5",
   "slices": [
     {
       "id": "abilities-and-governed-dispatch",
@@ -67,7 +67,8 @@
         ".github/workflows/mad4b-plugin-package.yml",
         ".github/workflows/mad4b-post-update-continuation-guards.yml",
         ".github/workflows/mad4b-runtime-integration.yml",
-        ".github/workflows/wpml-mapper-source-recovery.yml"
+        ".github/workflows/wpml-mapper-source-recovery.yml",
+        "tools/readiness_test_execution.py"
       ]
     },
     {

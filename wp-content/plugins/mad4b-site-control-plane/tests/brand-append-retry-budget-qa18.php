@@ -56,3 +56,4 @@ foreach(['draft_preflight_sha256','evidence_digest'] as $required){
  qa(false!==strpos($schema_block,"'".$required."' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' )"),'append retry read schema exposes '.$required);
 }
 echo "QA18_RETRY_BUDGET_PASS\n";
+echo "PASS QA18 retry budget and source-bound adapter assertions";
