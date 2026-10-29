@@ -99,4 +99,12 @@ $out = $cls::plan( array( 'catalog_url' => $catalog, 'intent' => 'tour_catalog',
 assert( $out['counts']['primary'] === 13 );
 assert( $out['counts']['complementary'] === 1 && $out['counts']['discovery_expansion'] === 1 );
 assert( $out['duplicate_count'] === 0 );
+$related_category = array( 'url' => 'https://www.memphistours.com/egypt/cruises/luxury-nile-river-cruises',
+    'title' => 'Luxury Nile Cruises', 'entity_type' => 'collection',
+    'discovery_context' => 'navigation', 'intent_relation' => 'exploration' );
+$expanded = $cls::plan( array( 'catalog_url' => $catalog, 'intent' => 'tour_catalog',
+    'links' => array( $primary, $related_category ) ) );
+assert( $expanded['counts']['discovery_expansion'] === 1 );
+assert( $expanded['tasks']['discovery_expansion'][0]['decision_reason']
+    === 'related_catalog_category_can_expand_inventory' );
 echo "catalog-intent-policy-contract: PASS\n";
