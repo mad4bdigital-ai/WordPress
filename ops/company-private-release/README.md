@@ -39,3 +39,9 @@ The private, mode 0600 production SQL backups remain on the respective hosting a
 `PRIVATE_CODE_COPIED / LIVE_SWITCH_NO_GO`. Websites `https://www.allroyalegypt.com/` and `https://egypttourgates.com/` both returned HTTP 200 after preparation. The old active site files were not renamed or overwritten. No Production runtime changes were made; private inactive files and backups were created in Production-hosting accounts by request.
 
 See `evidence/PRIVATE-HOSTING-CANDIDATES-20261029.json` for the machine-readable source manifest and checksums.
+
+## Tenant brand identity / Elementor kit isolation
+
+Policy is now explicit in [`TENANT-BRAND-ISOLATION.md`](TENANT-BRAND-ISOLATION.md): **portable template structures only; company branding, colors, fonts, active Elementor Kit, theme mods, logos, form delivery settings and Rank Math organization identity are always tenant-owned**. No blanket Elementor Template/Kit or `wp_options` cross-company import, and no defaulting to ETG branding. Each separate new tenant DB must first come from **that tenant's own currently verified Production snapshot**.
+
+Pre-import conservative audit: `python3 audit_elementor_template_portability.py <elementor-export.json> --strict`. The audit flags embedded colors, fonts, brand keys, media/link IDs, email/URLs and Elementor global references for manual target-Kit remapping; it does not import templates, expose setting values or authorize publication. Synthetic hardcoded-brand and structural-only regression tests both passed on the VPS on 2026-10-29. **No actual company template imports or live site setting changes were performed**.
