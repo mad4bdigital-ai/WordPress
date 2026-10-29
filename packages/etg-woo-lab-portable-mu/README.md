@@ -7,7 +7,8 @@ Manifest: manifest.json
 Installer: tools/deploy_reviewed_mu.py
 Docker PHP linter: tools/php_lint_via_lab_docker.sh
 Tests: tests/test_deploy.py
-CI and opt-in release: .github/workflows/etg-woo-lab-portable-mu.yml
+PR source quality CI: .github/workflows/etg-woo-lab-portable-mu.yml
+Serial opt-in master-SHA release: .github/workflows/etg-woo-lab-portable-mu-deploy.yml
 
 The deployer validates the 32 source files, PHP syntax, the exact original or current SHA-256 of every destination, and refuses symlinks, missing files and unreviewed drift. It backs up changes with an audit receipt and permits hash-checked rollback. It never changes database records, sandbox guards or any other site files.
 
