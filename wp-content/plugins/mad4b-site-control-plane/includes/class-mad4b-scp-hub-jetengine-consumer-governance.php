@@ -40,6 +40,8 @@ final class MAD4B_SCP_Hub_JetEngine_Consumer_Governance {
             'status'=>'planning_only',
             'provider'=>'jet-engine',
             'native_rest_api_listings_enabled'=>$enabled,
+            'jetengine_hub_addon_loaded'=>class_exists('MAD4B_JetEngine_Hub_Addon'),
+            'native_hub_mapping_contract'=>'mad4b.jetengine-hub-native-addon.v1',
             'canonical_consumers'=>array('existing_jetengine_listing','jetengine_rest_query'),
             'central_host'=>self::CENTRAL_HOST,
             'native_layout_preservation_required'=>true,
@@ -218,6 +220,10 @@ final class MAD4B_SCP_Hub_JetEngine_Consumer_Governance {
         $module = self::status();
         if (!$module['native_rest_api_listings_enabled']) {
             return self::denial('jetengine_module_missing');
+        }
+        if (!$module['jetengine_hub_addon_loaded'] ||
+            !MAD4B_JetEngine_Hub_Addon::dependencies_ready()) {
+            return self::denial('jetengine_hub_addon_missing');
         }
         $sourceVerified = apply_filters('mad4b_scp_hub_consumer_signed_authority', false, $plan);
         $bindingVerified = apply_filters('mad4b_scp_hub_consumer_native_binding_authority', false, $plan);
