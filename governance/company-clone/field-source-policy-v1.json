@@ -300,5 +300,16 @@
     "No QA fixtures or cross-tenant leaked strings in published HTML, cards, Schema or media",
     "All provider outbound tasks disabled until owner-governed activation",
     "Dry-run, rollback, before/after snapshots and readback on target; no Production mutations"
-  ]
+  ],
+  "taxonomy_term_fields": {
+    "destinations": {
+      "destination_type": "REMAP_GEO",
+      "google_address": "REMAP_GEO",
+      "google_place_id": "REMAP_GEO",
+      "featured_image": "TENANT_MEDIA",
+      "image_gellery": "TENANT_MEDIA",
+      "locations_gallery_attachment_ids": "TENANT_MEDIA"
+    }
+  },
+  "taxonomy_term_note": "Six observed destination term meta keys explicitly reviewed; hashed lat/lng cache-style keys remain REVIEW_REQUIRED until normalized stable geo resolver is certified. WPML term IDs must be remapped."
 }
