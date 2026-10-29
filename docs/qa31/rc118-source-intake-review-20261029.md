@@ -30,3 +30,20 @@ These files include company roles, staging approvals, migration database operati
 ## Contracts
 
 `tests/qa31_rc118_unexecuted_source_intake_contract.py` checks expected hashes, manifest semantics, absence of these files from executable plugin source, and that the candidate is **non-authorizing**. The dedicated workflow lints the candidates on PHP 8.3 and 8.5 without booting the WordPress runtime. This is **source intake only**, not RC118 authority restoration, Selected-HEAD update approval, immutable release publication or DFSB certification.
+
+## Read-only 29 October RC118 post-package drift intake
+
+A separate non-executable source snapshot preserves four live Staging byte differences under ops/qa31/rc118-source-intake/lineage. For each file, both the 28 October historical candidate and 29 October running Staging observation are stored, alongside exact SHA256/size and line-diff counts in runtime-drift-lineage.json. The six PHP source candidates use a .php.txt extension outside the active plugin tree.
+
+| Source | 28 Oct snapshot matches original package manifest? | Subsequent added/removed lines |
+| --- | --- | --- |
+| config/cross-plugin-sources.json | Yes | 29 / 2 |
+| includes/class-mad4b-scp-adapter-registry.php | Yes | 9 / 2 |
+| includes/class-mad4b-scp-market-profiles.php | Yes | 5 / 2 |
+| mad4b-site-control-plane.php | No, already a modified rc.119 candidate | 5 / 3 |
+
+The prior 876-of-877 count above describes the earlier intake checkpoint. The independent read-only recheck on October 29 found only 873 of 877 exact manifest matches, four modified files, and zero missing. Neither the historical signed manifest nor its declared source commit was rewritten. The recorded commit 0e83ec7ecfdb02ff2f946753721921e4e45523c7 was not retrievable from the canonical GitHub repository at the audit time.
+
+Observed source differences include a review-only DFSB pin, a native Ability registry addition, a WPML language metadata fix, migration-loader changes, and a historical version-string difference. These are unreviewed source candidates, not new source authority. In particular the historical main PHP snapshot is NOT presented as the original signed package file.
+
+The QA31 runtime drift contract and dedicated CI lint checks verify immutable candidate bytes and safety flags without loading WordPress, registering new hooks, or mutating Staging. QA31 release source parity, Feature 007 historical ancestry, provider certification, independent owner attestation and deployment approval remain blocked.
