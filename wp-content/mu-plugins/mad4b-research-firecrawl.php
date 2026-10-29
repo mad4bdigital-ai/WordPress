@@ -185,11 +185,21 @@ final class MAD4B_Research_Firecrawl_Bridge {
         if ( ! is_array( $data ) || empty( $data['success'] ) || ! isset( $data['data']['markdown'] ) || ! is_string( $data['data']['markdown'] ) ) {
             return self::error( 'provider_contract_invalid' );
         }
+        // Page-supplied metadata is untrusted evidence, never site authority.
+        $candidate_meta = isset( $data['data']['metadata'] ) && is_array( $data['data']['metadata'] ) ? $data['data']['metadata'] : array();
+        $safe_meta = array();
+        foreach ( array( 'title' => 200, 'description' => 400, 'language' => 32, 'ogTitle' => 200, 'ogDescription' => 400, 'robots' => 100 ) as $key => $max ) {
+            if ( isset( $candidate_meta[ $key ] ) && is_string( $candidate_meta[ $key ] ) ) {
+                $safe_meta[ $key ] = mb_substr( trim( strip_tags( $candidate_meta[ $key ] ) ), 0, $max, 'UTF-8' );
+            }
+        }
         return array(
             'contract' => self::CONTRACT, 'provider' => 'firecrawl',
             'url' => $input['url'],
             'preview' => mb_substr( $data['data']['markdown'], 0, 6000, 'UTF-8' ),
             'truncated' => mb_strlen( $data['data']['markdown'], 'UTF-8' ) > 6000,
+            'metadata' => $safe_meta,
+            'metadata_verified' => false,
             'persisted' => false, 'wordpress_mutated' => false,
         );
     }
