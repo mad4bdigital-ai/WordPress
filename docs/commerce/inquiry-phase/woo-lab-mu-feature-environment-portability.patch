@@ -1,0 +1,87 @@
+--- a/wp-content/mu-plugins/000-shared-presentation-media-v1.php
++++ b/wp-content/mu-plugins/000-shared-presentation-media-v1.php
+@@ -2,7 +2,7 @@
+ /** Generic read-only media-visibility compatibility for JetEngine galleries. */
+ defined('ABSPATH')||exit;
+ add_action('wp_enqueue_scripts',static function():void {
+- if(wp_get_environment_type()!=='local'||is_admin()||is_feed())return;
++ if(is_admin()||is_feed())return;
+  $path=__DIR__.'/shared-product-core/assets/presentation-media-visibility-v1.js';
+  if(!is_readable($path))return;
+  wp_enqueue_script('shared-presentation-media-visibility-v1',
+--- a/wp-content/mu-plugins/company-accessibility-contract.php
++++ b/wp-content/mu-plugins/company-accessibility-contract.php
+@@ -1,7 +1,7 @@
+ <?php
+ /** Shared accessibility contracts — ETG isolated Local Lab. */
+ defined('ABSPATH') || exit;
+-if (wp_get_environment_type() !== 'local') return;
++
+ 
+ // Each WPML instance needs its own ARIA target, even when a slot is rendered
+ // more than once in Elementor headers, sticky headers or popups.
+--- a/wp-content/mu-plugins/first-view-image-priority.php
++++ b/wp-content/mu-plugins/first-view-image-priority.php
+@@ -10,7 +10,7 @@
+ }
+ 
+ add_filter( 'wp_preload_resources', static function ( $resources ) {
+-	if ( is_admin() || wp_get_environment_type() !== 'local' ) {
++	if ( is_admin() ) {
+ 		return $resources;
+ 	}
+ 	$path = (string) wp_parse_url( (string) ( $_SERVER['REQUEST_URI'] ?? '' ), PHP_URL_PATH );
+--- a/wp-content/mu-plugins/pricing-header-switcher.php
++++ b/wp-content/mu-plugins/pricing-header-switcher.php
+@@ -1,6 +1,6 @@
+ <?php
+ /** Plugin Name: Responsive Currency Header Switcher (Lab) */
+-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
++if (!defined('ABSPATH')) return;
+ add_shortcode('pricing_header_switcher', static function () {
+  $settings=get_option('_wcml_settings',[]);
+  if(($settings['enable_multi_currency']??0)!=2 || !function_exists('pricing_public_fx_snapshot') || !pricing_public_fx_snapshot())return '';
+--- a/wp-content/mu-plugins/registry-destination-activity.php
++++ b/wp-content/mu-plugins/registry-destination-activity.php
+@@ -1,7 +1,7 @@
+ <?php
+ /** Local only: authorized extra_trip Destination discovery through native JetEngine. */
+ defined('ABSPATH')||exit;
+-if(wp_get_environment_type()!=='local')return;
++
+ 
+ function registry_destination_activity_term_ready(int $term_id):bool{
+ 	$term=get_term($term_id,'destinations');
+--- a/wp-content/mu-plugins/registry-destination-facets.php
++++ b/wp-content/mu-plugins/registry-destination-facets.php
+@@ -1,7 +1,7 @@
+ <?php
+ /** Native JetSmartFilters options bounded to the verified destination discovery set. */
+ defined('ABSPATH')||exit;
+-if(wp_get_environment_type()!=='local')return;
++
+ 
+ /** Descendants, never parents or siblings; depth is not artificially limited. */
+ function registry_destination_activity_descendants(int $term_id):array {
+--- a/wp-content/mu-plugins/shared-listing-empty-ajax-guard.php
++++ b/wp-content/mu-plugins/shared-listing-empty-ajax-guard.php
+@@ -1,7 +1,7 @@
+ <?php
+ /** Plugin Name: Shared Listing Empty-State Compatibility (Lab) */
+ /** Description: JetEngine listing empty-state normalization for JetSmartFilters without modifying vendors or security. */
+-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
++if (!defined('ABSPATH')) return;
+ /** All JetSmartFilters filter types share the provider response: select, checkbox, radio, search, range, pagination, reset. */
+ add_filter('jet-smart-filters/render/ajax/data', static function ($response) {
+     if (!wp_doing_ajax() || !is_array($response) || !array_key_exists('content', $response)) return $response;
+--- a/wp-content/mu-plugins/shared-product-core-rest.php
++++ b/wp-content/mu-plugins/shared-product-core-rest.php
+@@ -1,7 +1,7 @@
+ <?php
+ if (!defined('ABSPATH')) exit;
+ add_action('rest_api_init',function(){
+- if(wp_get_environment_type()!=='local'||!class_exists('Shared_Product_Date_Service'))return;
++ if(!class_exists('Shared_Product_Date_Service'))return;
+  register_rest_route('shared-product/v1','/rate-dates',['methods'=>'GET','permission_callback'=>'__return_true','callback'=>function($r){
+   $id=absint($r->get_param('product_id'));$from=(string)($r->get_param('from')?:gmdate('Y-m-d'));$to=(string)($r->get_param('to')?:gmdate('Y-m-d',strtotime('+180 days')));
+   $result=Shared_Product_Date_Service::coverage($id,(string)$r->get_param('season'),absint($r->get_param('program_id')),$from,$to);
