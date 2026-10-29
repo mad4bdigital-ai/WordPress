@@ -257,18 +257,35 @@ final class MAD4B_Hub_Nile_Publisher_V1 {
                 if (!$current || $current->post_type !== self::CPT) {
                     throw new RuntimeException('Unsafe existing post identity');
                 }
-                $same = (string)get_post_meta($postId,'_mad4b_hub_source_sha256',true) === $payloadHash &&
+                $sourceSame = (string)get_post_meta($postId,'_mad4b_hub_source_sha256',true) === $payloadHash &&
                     $current->post_status === 'publish' &&
                     $current->post_title === $desired['post_title'] &&
-                    $current->post_content === $desired['post_content'] &&
-                    MAD4B_Hub_Source_Reuse_Gate_V1::desired_meta_equal((int)$postId, $desired);
-                if ($same) { $summary['unchanged']++; continue; }
+                    $current->post_content === $desired['post_content'];
+                $policySame = MAD4B_Hub_Source_Reuse_Gate_V1::desired_meta_equal((int)$postId, $desired);
+                if ($sourceSame && $policySame) { $summary['unchanged']++; continue; }
                 $summary['updated']++;
                 if (!$dryRun) {
-                    $update = $desired;
-                    $update['ID']=$postId;
-                    $res=wp_insert_post($update,true,false);
-                    if (is_wp_error($res))throw new RuntimeException('Content Hub update failed');
+                    if ($sourceSame && !$policySame) {
+                        // Policy-only reconciliation must NOT trigger Elementor/native post
+                        // updates or re-write the existing Hub content.
+                        foreach ($desired['meta_input'] as $metaKey=>$metaValue) {
+                            if (str_starts_with($metaKey,'_mad4b_hub_reuse_') ||
+                                in_array($metaKey,[
+                                    '_mad4b_hub_target_taxonomy','_mad4b_hub_target_term_id',
+                                    '_mad4b_hub_target_term_language','_mad4b_hub_target_wpml_trid',
+                                    '_mad4b_hub_native_category_created','_mad4b_hub_native_candidates_json',
+                                    '_mad4b_hub_certified_native_tour_id',
+                                    '_mad4b_hub_native_tour_overwritten',
+                                ],true)) {
+                                update_post_meta($postId,$metaKey,$metaValue);
+                            }
+                        }
+                    } else {
+                        $update = $desired;
+                        $update['ID']=$postId;
+                        $res=wp_insert_post($update,true,false);
+                        if (is_wp_error($res))throw new RuntimeException('Content Hub update failed');
+                    }
                 }
             } else {
                 $summary['created']++;
