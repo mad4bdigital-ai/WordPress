@@ -10,6 +10,7 @@ class MAD4B_SCP_Policy {
 }
 function sanitize_text_field( $value ) { return trim( strip_tags( (string) $value ) ); }
 function update_option() { $GLOBALS['writes']++; throw new RuntimeException( 'No checkpoint mutation permitted in read test.' ); }
+function add_action( $hook, $callback, $priority = 10 ) { return true; }
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-runtime-convergence.php';
 $old = array(
     'version' => '0.4.0-rc.102', 'source_commit_sha' => str_repeat( 'a', 40 ),
