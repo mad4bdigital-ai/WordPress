@@ -1,0 +1,13 @@
+# Woo Lab only: attach its PHP container to the isolated, authenticated
+# Firecrawl consumer network. This does not expose Firecrawl publicly.
+# When applied, always use together with Woo Lab's existing compose.yml.
+services:
+  php:
+    networks:
+      - private
+      - egress
+      - firecrawl_consumers
+networks:
+  firecrawl_consumers:
+    external: true
+    name: mad4b-firecrawl-production_consumers
