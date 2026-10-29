@@ -77,6 +77,9 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/public-holiday-hermetic-runtime.php",
     # New exact hermetic delegated-WordPress and independent-NHI policy fixtures.
     # No database, secrets, network or live WordPress; checks fail explicitly.
+    # Separate reviewed staged-only user-owned content actor regression.
+    "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegated-content-actor-hermetic.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegated-oauth-map-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegation-mode-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegation-connection-policy-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/application-password-agent-bridge-hermetic.php",

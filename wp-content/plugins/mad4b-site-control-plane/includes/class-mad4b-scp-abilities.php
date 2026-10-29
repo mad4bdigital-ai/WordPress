@@ -729,8 +729,16 @@ final class MAD4B_SCP_Abilities {
 	public function can_write_dispatch( $input = null ) {
 		$request_scope = self::request_scope_admit( 'can_write_dispatch' );
 		if ( is_wp_error( $request_scope ) ) return $request_scope;
-		if ( ! MAD4B_SCP_Policy::can_admin() ) return false;
-		if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_write_dispatch_mutation_disabled', 'Governed mutation authority is not currently ready.' );
+		$delegation_identity = class_exists( 'MAD4B_SCP_Identity_Context' )
+			&& method_exists( 'MAD4B_SCP_Identity_Context', 'current' )
+			? MAD4B_SCP_Identity_Context::current() : null;
+		$delegated = class_exists( 'MAD4B_SCP_Delegation_Mode' )
+			&& is_array( $delegation_identity )
+			&& MAD4B_SCP_Delegation_Mode::DELEGATED
+				=== MAD4B_SCP_Delegation_Mode::mode_for_identity( $delegation_identity );
+		if ( ! $delegated && ! MAD4B_SCP_Policy::can_admin() ) return false;
+		if ( ! $delegated && ! MAD4B_SCP_Policy::can_mutate() )
+			return new WP_Error( 'mad4b_write_dispatch_mutation_disabled', 'Governed mutation authority is not currently ready.' );
 		if ( ! is_array( $input ) || empty( $input['ability_name'] ) || empty( $input['expected_input_schema_sha256'] ) ) return new WP_Error( 'mad4b_write_dispatch_target_required', 'A governed write target and prepared schema identity are required.' );
 		$ability_name = (string) $input['ability_name'];
 		$ability = $this->governed_write_target( $ability_name, true );
@@ -740,6 +748,25 @@ final class MAD4B_SCP_Abilities {
 		$actual = $this->ability_input_schema_sha256( $ability );
 		$expected = strtolower( trim( (string) $input['expected_input_schema_sha256'] ) );
 		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $expected ) || ! hash_equals( strtolower( $actual ), $expected ) ) return new WP_Error( 'mad4b_write_dispatch_schema_drift', 'Requested write ability input schema changed after planning.', array( 'ability_name' => $ability_name, 'current_input_schema_sha256' => $actual ) );
+		if ( $delegated ) {
+			// No owner impersonation, generic admin control or approval issuance:
+			// only a verified signed preparation for a draft content bundle can
+			// enroll an exact WordPress-user-owned execution actor.
+			if ( 'mad4b/content-apply-bundle' !== $ability_name
+				|| ! is_array( $input['input'] ?? null )
+				|| empty( $input['_mad4b_approval_ticket_id'] )
+				|| ! is_string( $input['_mad4b_approval_ticket_id'] ) )
+				return new WP_Error( 'mad4b_delegation_prepared_draft_only', 'Verified delegated write dispatch requires a prepared draft target and exact approval-ticket reference.' );
+			$capability_guard = MAD4B_SCP_Delegation_Mode::authorize_ability(
+				$delegation_identity, $ability_name, $input['input'] );
+			if ( is_wp_error( $capability_guard ) || true !== $capability_guard )
+				return is_wp_error( $capability_guard ) ? $capability_guard
+					: new WP_Error( 'mad4b_delegation_capability_denied', 'WordPress user lacks exact draft permission.' );
+			$actor = MAD4B_SCP_Delegation_Mode::ensure_content_actor( $delegation_identity, true );
+			if ( is_wp_error( $actor ) ) return $actor;
+			if ( ! MAD4B_SCP_Policy::can_mutate() )
+				return new WP_Error( 'mad4b_delegation_runtime_gate_denied', 'Delegated content actor is enrolled but the site write gate is not ready.' );
+		}
 		// Governance metadata is bound only after the signed preparation contract
 		// and exact schema identity have passed current-request revalidation.
 		$captured = $this->capture_write_dispatch_governance_envelope( $input );

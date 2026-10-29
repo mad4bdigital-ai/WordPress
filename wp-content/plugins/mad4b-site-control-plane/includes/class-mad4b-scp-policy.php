@@ -123,6 +123,9 @@ final class MAD4B_SCP_Policy {
 		// A verified delegated user's live capabilities are an upper bound;
 		// independent NHI still uses its pre-existing exact agent/grant path.
 		if ( ! MAD4B_SCP_Delegation_Mode::principal_allowed( $identity ) ) return false;
+		// Actor enrollment occurs only at the exact prepared write dispatch
+		// boundary (or explicitly scoped direct content mutation). This read-like
+		// global predicate must never create a principal as a side effect.
 		$agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
 		if ( is_wp_error( $agent ) ) return false;
 		if ( ! MAD4B_SCP_Delegation_Mode::agent_matches_user( $identity, $agent ) ) return false;
