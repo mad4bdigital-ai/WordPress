@@ -10782,10 +10782,9 @@
         "ADMIN-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/qa30-native-general-settings-rest-lifecycle.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-early-boundary-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa30-native-general-settings-rest-lifecycle.py"
       ],
-      "review_rationale": "Explicit 3-way current-master source combination: preserves master private-operations early auth fence and QA30 source-owned native general settings hook. Inherited historical SHA reviews remain intact; both existing regression paths are required and no Site/Production authority is granted."
+      "review_rationale": "Exact merged bootstrap preserves master private-operations early authorization fence and QA30 guarded native Settings source. QA30 Python regression is newly changed in this PR and executes PHP behavior assertions; existing master private-operation contract remains separately tested and unchanged. Historical source records and independent live/owner authority remain intact."
     }
   ],
   "code_change_rules": {
