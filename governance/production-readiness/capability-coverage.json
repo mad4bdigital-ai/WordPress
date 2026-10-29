@@ -11718,7 +11718,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
-      "source_blob_sha": "babab13878189f489e728d74a3a1fcbc997cb6ba",
+      "source_blob_sha": "d37a4e4435a3eadb438811d5f5c528be04e583ef",
       "control_ids": [
         "IDENTITY-01",
         "OAUTH-03",
@@ -11738,7 +11738,7 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing verified subject/site enrollment and exact approval, budget, grant, replay and content mutation controls remain authoritative. No new public endpoint or generic permission bypass.",
-      "review_rationale": "Signed prepared write dispatcher, exact draft target and ticket reference, WordPress user capability before scoped enrollment, never admin/production/publish."
+      "review_rationale": "Signed prepared write dispatcher, exact draft target and ticket reference, WordPress user capability before scoped enrollment, never admin/production/publish. Guard historical test runtime stubs lacking an identity method; live production requires request-local method proof and cannot construct delegation when unavailable."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-adapter-base.php",
