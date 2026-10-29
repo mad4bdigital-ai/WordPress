@@ -3224,6 +3224,26 @@
       "review_rationale": "Review private customer-order access, legacy Master Admin compatibility, fail-closed site-local JetEngine relation binding and before-fastpath initialization.",
       "needs_new_control": false,
       "coverage_reuse_rationale": "This adds no public endpoint or new execution privilege; reuse existing SECURITY-01, GOVERNANCE-01 and PLATFORM-01 for privacy enforcement and explicit reviewed release checks."
+    },
+    {
+      "id": "ability:mad4b/control-plane-orphan-source-recovery-plan",
+      "owner_role": "Plugin recovery security maintainer / independent code review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/orphan-source-recovery-admission-runtime.php"
+      ],
+      "control_ids": [
+        "RECOVERY-01",
+        "UPDATES-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing recovery, update, governance and security controls already cover an exclusively read-only recovery evidence planner with no executor.",
+      "review_rationale": "Staging, exact enrolled site, full installed manifest integrity, explicitly unresolved Git lineage, trusted immutable release proof and version check; separate owner OAuth and one-use approval remain prerequisites to a future separately certified executor."
     }
   ],
   "lifecycle": [],
@@ -10677,6 +10697,42 @@
         "SECURITY-01"
       ],
       "review_rationale": "The early guard must be declaration-safe when isolated PHP contracts load source without WordPress hooks, while retaining unconditional bootstrap on real WordPress requests."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-orphan-source-recovery.php",
+      "source_blob_sha": "706ad4e70227a5c632786074e4c3dc3aa14c450b",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/orphan-source-recovery-admission-runtime.php"
+      ],
+      "owner_role": "Plugin recovery security maintainer / independent code review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "RECOVERY-01",
+        "UPDATES-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "review_rationale": "QA32C: review immutable-source, tenant-exact, Staging-only orphan recovery read preflight and deny every effectful path; no lineage bypass or source SHA rewrite."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php",
+      "source_blob_sha": "2391c5f610f0d218b6872fac8e51081c9c77980b",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/orphan-source-recovery-admission-runtime.php"
+      ],
+      "owner_role": "Plugin recovery security maintainer / independent code review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "RECOVERY-01",
+        "UPDATES-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "review_rationale": "QA32C: review immutable-source, tenant-exact, Staging-only orphan recovery read preflight and deny every effectful path; no lineage bypass or source SHA rewrite."
     }
   ],
   "code_change_rules": {
