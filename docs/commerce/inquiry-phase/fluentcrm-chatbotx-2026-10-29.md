@@ -35,3 +35,7 @@ VPS evidence: `/opt/commerce-components/evidence/etg-forms-crm-chatbotx-20261029
 Rollback on Woo Lab only: change `commerce_operational_crm_intake_v1.enabled` to false, then restore the previous `commerce_contact_bridge_sources_v1` and `cmb_business_integrations_v1` options from a prior snapshot if needed. Source rollback: remove `FluentInquiryCrmIntegration.php` and its two registration lines in `composition.php`, revert readiness additions to `InquiryPhaseOperations.php`. Existing CRM contacts created by actual customers are business records and must not be silently deleted.
 
 **No Production mutation or payment/supplier integration.**
+
+## FluentBoards direct task proof (isolated)
+
+Additional Lab transaction test in `test-boards-task.php`: a synthetic unpriced request moved into the `under_review` fixture, created **one** native FluentBoards task via `FluentBoardsTaskBridge::ensure`, then called ensure again and verified the **same task was reused**. SQL ROLLBACK returned counts to baseline: Requests **9**, FluentBoards Tasks **6**, Request–Task links **3**. No customer mail was sent. This proves native task creation + idempotency, not the full browser-to-agent assignment journey.
