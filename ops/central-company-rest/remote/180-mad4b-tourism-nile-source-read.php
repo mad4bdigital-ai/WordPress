@@ -147,9 +147,19 @@ final class MAD4B_Tourism_Nile_Source_V1 {
    foreach(array_slice(array_values($cruise),0,15) as $row){
     if(!is_array($row))continue;
     $clean=[];
-    foreach(['program','day','origin','time'] as $key){
-     $value=$row[$key]??null;
-     $clean[$key]=is_scalar($value)?mb_substr(sanitize_text_field((string)$value),0,100):null;
+    $taxonomies=[
+      'program'=>'programs','day'=>'schudle-days-of-weak',
+      'origin'=>'location_jet','time'=>'day-times'
+    ];
+    foreach($taxonomies as $key=>$expectedTaxonomy){
+      $value=$row[$key]??null;
+      $termId=is_scalar($value) && ctype_digit((string)$value)?(int)$value:0;
+      $term=$termId?get_term($termId,$expectedTaxonomy):null;
+      $valid=($term instanceof WP_Term && $term->taxonomy===$expectedTaxonomy);
+      $clean[$key]=$termId?(string)$termId:null;
+      $clean[$key.'_label']=$valid
+          ?mb_substr(sanitize_text_field((string)$term->name),0,220):null;
+      $clean[$key.'_source_taxonomy']=$expectedTaxonomy;
     }
     $programs[]=$clean;
    }
