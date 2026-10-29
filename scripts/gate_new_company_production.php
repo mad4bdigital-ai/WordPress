@@ -23,7 +23,8 @@ $required = [
     'db' => getenv('MAD4B_EXPECTED_DB'),
 ];
 foreach ($required as $key=>$value) {
-    if (!is_string($value) || !preg_match('/^[a-z0-9][a-z0-9.-]{2,120}$/', $value)) {
+    $pattern = $key === 'db' ? '/^[a-z0-9_]{3,120}$/' : '/^[a-z0-9][a-z0-9.-]{2,120}$/';
+    if (!is_string($value) || !preg_match($pattern, $value)) {
         WP_CLI::error('MISSING_EXACT_EXPECTED_' . strtoupper($key));
     }
 }
