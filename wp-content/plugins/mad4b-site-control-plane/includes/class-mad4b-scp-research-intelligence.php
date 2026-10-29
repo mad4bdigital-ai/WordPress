@@ -435,4 +435,8 @@ final class MAD4B_SCP_Research_Intelligence {
 	}
 }
 
+// Catalog classification is an always-on, read-only Research Intelligence policy.
+// Load it through the existing module (not an environment-specific MU plugin).
+require_once __DIR__ . '/class-mad4b-scp-catalog-intent-policy.php';
+
 MAD4B_SCP_Research_Intelligence::boot();
