@@ -123,6 +123,14 @@ final class MAD4B_SCP_Policy {
 		// A verified delegated user's live capabilities are an upper bound;
 		// independent NHI still uses its pre-existing exact agent/grant path.
 		if ( ! MAD4B_SCP_Delegation_Mode::principal_allowed( $identity ) ) return false;
+		// A live verified WordPress user can obtain a narrowly governed
+		// *content-draft* actor. This does not issue approval tickets, expand
+		// transport scope, or grant publication; independent NHI is unchanged.
+		if ( MAD4B_SCP_Delegation_Mode::DELEGATED
+			=== MAD4B_SCP_Delegation_Mode::mode_for_identity( $identity ) ) {
+			$principal = MAD4B_SCP_Delegation_Mode::ensure_content_actor( $identity );
+			if ( is_wp_error( $principal ) ) return false;
+		}
 		$agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
 		if ( is_wp_error( $agent ) ) return false;
 		if ( ! MAD4B_SCP_Delegation_Mode::agent_matches_user( $identity, $agent ) ) return false;
