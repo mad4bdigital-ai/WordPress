@@ -72,6 +72,11 @@ final class MAD4B_Hub_Market_Policy {
         $scopes=array();$seen=array();
         foreach($markets as $market){
             if(!is_array($market))return self::fail('market_scope_invalid');
+            $allowedKeys=array_merge(array_keys(self::FIELDS),array(
+                'market_id','valid_from','valid_until','pricing_authority',
+                'import_strategy','commercial_status'));
+            if(array_diff(array_keys($market),$allowedKeys))
+                return self::fail('unrecognized_market_instruction');
             $marketId=$market['market_id']??null;
             if(!is_string($marketId)||
                !preg_match('/^[a-z][a-z0-9_-]{2,47}$/D',$marketId)||
@@ -139,6 +144,7 @@ final class MAD4B_Hub_Market_Policy {
                 'valid_from'=>$from,'valid_until'=>$until,
                 'source_grant_verified'=>false,
                 'status'=>'PLANNED_NOT_AUTHORIZED',
+                'temporal_state'=>($from>gmdate('Y-m-d')?'FUTURE_SCHEDULED_ONLY':'WITHIN_REQUESTED_WINDOW'),
                 'pricing_authority'=>'reference_only',
                 'commercial_status'=>'not_bookable',
                 'import_strategy'=>'remote_reference',
