@@ -101,6 +101,7 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-behavioral-runtime.php",
     # Exact hermetic QA32C recovery policy fixture; no WordPress or site writes.
     "wp-content/plugins/mad4b-site-control-plane/tests/orphan-source-recovery-admission-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/orphan-source-recovery-plan-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-isolated-php-contract.php",
     "tests/remote-execution/unified-operator-session-policy-smoke.php",
 ))
