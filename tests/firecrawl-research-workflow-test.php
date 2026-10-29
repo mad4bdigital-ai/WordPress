@@ -15,6 +15,7 @@ class MAD4B_Research_Firecrawl_Bridge {
         return array(
             'preview' => "# Best Travel Deal\n## What is included?\nA sample offer costs USD 29.99 per adult.\n## Details\nBook a room for $120.00.",
             'truncated' => false,
+            'metadata' => array( 'title' => 'Test Travel Offer', 'description' => 'Sample page description', 'language' => 'en' ),
         );
     }
 }
@@ -48,6 +49,9 @@ assert(!is_wp_error($demo));
 assert($GLOBALS['calls']===1);
 assert($demo['published']===false && $demo['retained_as_research_artifact']===false);
 assert($demo['seo']['headings'][0]['text']==='Best Travel Deal');
+assert($demo['seo']['title_candidate']==='Test Travel Offer');
+assert($demo['seo']['meta_description_candidate']==='Sample page description');
+assert($demo['seo']['search_ranking_verified']===false);
 assert(count($demo['pricing']['price_mentions'])===2);
 assert($demo['pricing']['price_mentions'][0]['comparison_ready']===false);
 assert($demo['robots_policy_verdict']==='not_verified');
