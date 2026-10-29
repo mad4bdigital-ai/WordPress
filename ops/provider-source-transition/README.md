@@ -41,3 +41,9 @@ At the inspected master revision, the old Control Plane read and write adapters 
 Do **not** change the historical `etg-dfsb/...` ability names, old `etg_dfsb_...` option keys or the write/rollback adapter at this point. They are registered provider/source interfaces. Real neutral read migration first requires exact Control Plane `rc.118` source parity and a certified native plugin/read adapter; actual write migration is a separate signed execution process.
 
 This audit and its negative tests do not deploy code, approve a provider, publish content or send messages.
+
+## Exact source/runtime parity gate (Phase 3 — source only)
+
+`python3 ops/provider-source-transition/audit_runtime_parity.py --observed-runtime-version 0.4.0-rc.118` produces an informational comparison with the last reported test-site version. The version is **not** treated as authoritative evidence. Once root access and signed runtime provenance are available, supply the actual site UUID and exact main PHP SHA256. Even a matching version, SHA256 and site identifier **cannot itself authorize deployment**; a signed runtime build/deployment provenance and owner authorization must separately validate the source.
+
+The workflow refuses to claim an adapter cutover based on source/header equality. Without actual runtime read-back, no plugin source in this PR is deployed to Staging or Production. The previous project's source was `rc.104` at inspection while Staging had most recently reported `rc.118`.

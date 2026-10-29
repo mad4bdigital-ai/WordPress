@@ -24,6 +24,7 @@ jobs:
           set -euo pipefail
           python3 -m unittest discover -s ops/provider-source-transition -p 'test_*.py' -v
           python3 ops/provider-source-transition/audit_consumer_readiness.py > /tmp/dfsb-consumer-readiness.json
+          python3 ops/provider-source-transition/audit_runtime_parity.py > /tmp/control-plane-parity.json
           python3 ops/provider-source-transition/resolve_source.py --mode new_site > /tmp/neutral-transition.json
           python3 - <<'PY'
           import json
@@ -36,6 +37,11 @@ jobs:
           assert not audit['new_write_authority']
           assert not audit['legacy_read_version_compatible']
           assert not audit['legacy_write_version_compatible']
+          with open('/tmp/control-plane-parity.json', encoding='utf-8') as f:
+              parity = json.load(f)
+          assert parity['source_header_constant_consistent']
+          assert not parity['runtime_adapter_migration_authorized']
+          assert not parity['verified_deployment_authority']
           assert not p['execution_allowed'] and not p['publication_allowed']
           assert not p['mutation_allowed'] and not p['legacy_fallback_used']
           print('PROVIDER_NEUTRAL_SOURCE_TRANSITION: PASS')
