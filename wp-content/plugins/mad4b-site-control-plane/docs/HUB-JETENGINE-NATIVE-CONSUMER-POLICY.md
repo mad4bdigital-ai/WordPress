@@ -27,6 +27,12 @@ The future runtime caller must use `MAD4B_SCP_Hub_JetEngine_Consumer_Governance:
 The allowed central URL origin is `https://tours.dev.mad4b.com` with exact endpoint path
 `/wp-json/mad4b-central/v1/hub-distribution/{source_company}/{catalog|categories}`. This is a **future API contract**; no production-ready distribution endpoint is asserted to exist. URL query strings, alternate hosts/IPs, embedded credentials, wrong path or ports fail closed.
 
+## Network-level enforcement against manual REST consumer bypass
+
+The Control Plane registers a narrowly scoped WordPress HTTP filter on `pre_http_request` for **exactly the pinned central host and `/wp-json/mad4b-central/v1/hub-distribution/` path prefix**. Outbound calls to that protected path are rejected with `mad4b_hub_jetengine_unapproved_remote_fetch` unless the caller already passed `admit_runtime($plan)` with two trusted server-side proofs during the **same PHP request**. Approval is request-local, binds to the exact company/collection path, and permits read-only GET only. This also blocks a manually configured JetEngine REST API Endpoint from bypassing the managed admission check. It does **not** block unrelated signed company Control Plane routes or arbitrary third-party REST integrations.
+
+The protected distribution route itself remains a **future contract**, not a deployed API. Existing data can remain staged privately without public publication. Other consumer plugins and old cached responses require independent audit before any production certification.
+
 ## Migration incident: Tourism Nile temporary display rollback (2026-10-30)
 
 The previous manual REST-snapshot-to-Shortcode Elementor solution was rejected as the wrong distribution architecture and has been **rolled back on Staging**:
