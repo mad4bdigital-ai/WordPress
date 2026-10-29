@@ -8,7 +8,8 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from historical_source_successor import is_exact_historical_delivery_successor
+from historical_source_successor import (is_exact_historical_delivery_successor,
+                                         is_exact_ci_history_checkout_successor)
 
 EXT = ROOT / "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience"
 BOOTSTRAP = "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php"
@@ -73,4 +74,36 @@ verify("unreviewed unrelated path rejected", not is_exact_historical_delivery_su
     (ROOT / "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php").read_bytes(),
     "0"*64, 123,
 ))
+# QA31's reviewed source evolves without rewriting the immutable G2/G8
+# delivery snapshots. Only these two explicitly closed paths may succeed;
+# changed archives, altered bytes, unknown paths and fake repos all deny.
+closed = [
+    ("g2", "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php",
+     is_exact_historical_delivery_successor),
+    ("g8", ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+     is_exact_ci_history_checkout_successor),
+]
+for group, path, validator in closed:
+    archive = json.loads((EXT / (group + "-delivery.json")).read_text(encoding="utf-8"))
+    entry = next(
+        item for section in ("code_paths", "test_paths", "spec_paths", "workflow_paths")
+        for item in archive.get(section, [])
+        if item["path"] == path
+    )
+    current = (ROOT / path).read_bytes()
+    historic_sha, historic_bytes = entry["sha256"], entry.get("bytes")
+    verify(group + ":QA31 exact reviewed successor",
+           validator(ROOT, path, current, historic_sha, historic_bytes))
+    verify(group + ":QA31 corrupted historical hash denied",
+           not validator(ROOT, path, current, "0" * 64, historic_bytes))
+    verify(group + ":QA31 corrupted historical bytes denied",
+           not validator(ROOT, path, current, historic_sha,
+                         (historic_bytes or len(current)) + 1))
+    verify(group + ":QA31 modified current source denied",
+           not validator(ROOT, path, current + b"\nqa31-tamper", historic_sha, historic_bytes))
+    verify(group + ":QA31 foreign pathname denied",
+           not validator(ROOT, path + ".other", current, historic_sha, historic_bytes))
+    verify(group + ":QA31 temporary repo cannot self-certify",
+           not validator(Path("/tmp"), path, current, historic_sha, historic_bytes))
+
 print("FEATURE007_HISTORICAL_DELIVERY_SUCCESSOR: PASS " + str(n) + " positive/negative assertions")

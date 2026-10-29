@@ -34,6 +34,11 @@ final class MAD4B_SCP_Approval_Tickets {
 		}
 		$approval_binding = MAD4B_SCP_Approval_Impact_Binding::build( $ability_name, $provider, $target_fingerprint, is_array( $input ) ? $input : array() );
 		if ( is_wp_error( $approval_binding ) ) return $approval_binding;
+		// Use exactly the same stable, *freshly validated* Brand Draft input
+		// for the envelope and the impact digest. A replacement signed receipt
+		// must never widen the originally approved operation.
+		$input = MAD4B_SCP_Approval_Impact_Binding::stable_approval_input( $ability_name, $provider, $input );
+		if ( is_wp_error( $input ) ) return $input;
 		$envelope = array(
 			'contract' => 'mad4b.approval.v1',
 			'site' => $site,

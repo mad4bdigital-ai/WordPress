@@ -1,0 +1,23 @@
+{
+  "contract": "mad4b.ci-workflow-source-reviews.v1",
+  "authorizing": false,
+  "production_authorized": false,
+  "owner_attestation_provided": false,
+  "runtime_scope_widened": false,
+  "review_policy": "explicit_exact_git_blob_and_fixed_CI_regression_only",
+  "reviews": [
+    {
+      "path": ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+      "source_blob_sha": "cf4fd1e1e2cc410bab045eb03f3e2e2b5d56728a",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py"
+      ],
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "root_policy_authorized": false,
+      "owner_role": "MAD4B repository CI source reviewer (not owner authorization)",
+      "review_rationale": "Non-authorizing exact-source review of Feature 007 CI addition for SHA256-paginated dependency evidence verification. Historical delivery manifest hashes remain immutable. Release-critical root changes require separate governance-only PR and exact owner attestation."
+    }
+  ]
+}

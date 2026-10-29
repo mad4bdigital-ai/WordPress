@@ -21,6 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 	const CONTRACT = 'mad4b.staging-write-grant-reconciliation.v3';
 	const ABILITY = 'mad4b/staging-write-grant-reconcile';
+	const STAGING_ALIAS = 'mad4b/staging-write-grant-reconcile-staging';
 	const CONFIRMATION = 'RECONCILE EXACT STAGING WRITE AUTHORITY';
 	const PRODUCTION_CONFIRMATION = 'RECONCILE EXACT PRODUCTION WRITE AUTHORITY';
 
@@ -89,8 +90,8 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 			'elementor/set-etg-dynamic-tag' => 'elementor',
 			'context/update-drive-asset' => 'google_drive_context',
 			'context/recreate-drive-asset' => 'google_drive_context',
-			'context/brand-draft-append' => 'google_drive_context',
-			'context/brand-draft-create' => 'google_drive_context',
+			'context/brand-draft-append' => 'core',
+			'context/brand-draft-create' => 'core',
 			'context/materialize-brand-draft' => 'google_drive_context',
 			'context/reconcile-brand-materialization' => 'google_drive_context',
 			'context/rollback-materialized-brand-draft' => 'google_drive_context',
@@ -106,6 +107,10 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 		// Never include these wider administrative operations on Production.
 		if ( 'staging' === self::current_environment() ) {
 			$staging_reviewed = array(
+				// Enrolled Staging-only Media Library transfer has separate
+				// mad4b_attachment_transfer capability, upload_files and mutation
+				// kill-switch gates. An exact NHI grant never bypasses them.
+				'mad4b/attachment-transfer' => 'core',
 				// Only the exact reversible JetSmartFilters metadata writer.
 				// Its behavioral certificate makes it inventory-eligible, but a
 				// grant is never issued without a fresh source/profile/inventory
@@ -211,8 +216,17 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 		// Historical recertification is NOT in the current governed Write
 		// inventory. Permit only retirement of its exact old core grant,
 		// and only in Staging, after one fresh owner-reviewed plan + step-up.
-		if ( 'staging' === self::current_environment() )
+		if ( 'staging' === self::current_environment() ) {
 			$providers['mad4b/provider-behavioral-recertify'] = 'core';
+			// Two historical exact grants were written while provisional local
+			// Brand Drafts were incorrectly owned by google_drive_context. They
+			// are now a separately reviewed first-party core adapter. Permit
+			// retirement of ONLY these old Staging grants; they are NOT eligible
+			// for new grant creation under the former provider. Exact grant IDs,
+			// site, OAuth owner, plan and audit remain mandatory.
+			$providers['context/brand-draft-append'] = 'google_drive_context';
+			$providers['context/brand-draft-create'] = 'google_drive_context';
+		}
 		ksort( $providers, SORT_STRING );
 		return $providers;
 	}
@@ -251,6 +265,9 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 		if ( self::$booted || ! function_exists( 'add_action' ) ) return;
 		self::$booted = true;
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 11 );
+		// A separate, exact Staging-only wrapper for the existing audited
+		// reconciliation executor. The production-capable original stays unchanged.
+		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_staging_alias' ), 12 );
 	}
 
 	public static function register_ability() {
@@ -364,6 +381,62 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 		} finally {
 			if ( false !== $priority ) add_filter( 'wp_register_ability_args', $augment, (int) $priority, 2 );
 		}
+	}
+
+	/**
+	 * Expose the existing exact grant-retirement/replacement contract through
+	 * the Staging-only enrollment dispatcher. The original grant reconciler
+	 * remains the ONLY mutation owner; this adapter cannot bypass its OAuth,
+	 * signed candidate, audit or exact stale-grant set verification.
+	 */
+	public static function register_staging_alias() {
+		if ( ! function_exists( 'wp_register_ability' ) || ! function_exists( 'wp_get_ability' )
+			|| ! function_exists( 'wp_has_ability' ) || ! wp_has_ability( self::ABILITY )
+			|| wp_has_ability( self::STAGING_ALIAS )
+			|| ! class_exists( 'MAD4B_SCP_Site_Profile' )
+			|| 'staging' !== MAD4B_SCP_Site_Profile::current_environment() ) return;
+		$original = wp_get_ability( self::ABILITY );
+		if ( ! is_object( $original ) || ! method_exists( $original, 'get_input_schema' ) ) return;
+		$schema = $original->get_input_schema();
+		if ( ! is_array( $schema ) || empty( $schema['required'] ) ) return;
+		$augment = array( 'MAD4B_SCP_Staging_Write_Authority', 'augment_write_ability' );
+		$priority = function_exists( 'has_filter' ) ? has_filter( 'wp_register_ability_args', $augment ) : false;
+		if ( false !== $priority ) remove_filter( 'wp_register_ability_args', $augment, (int) $priority );
+		try {
+			wp_register_ability( self::STAGING_ALIAS, array(
+				'label' => 'Reconcile Reviewed Stale Staging Write Grants',
+				'description' => 'Staging-only exact OAuth step-up, reviewed stale-grant retirement and candidate binding. The existing audited grant reconciler executes every check.',
+				'category' => 'mad4b-governance',
+				'permission_callback' => array( __CLASS__, 'can_reconcile_staging' ),
+				'execute_callback' => array( __CLASS__, 'reconcile_staging' ),
+				'input_schema' => $schema,
+				'output_schema' => array( 'type'=>'object', 'additionalProperties'=>true ),
+				'meta' => array(
+					'public'=>false, 'show_in_rest'=>false,
+					'mcp'=>array(
+						'public'=>false, 'type'=>'tool', 'surface'=>'enrollment',
+						'generic_remote_admin'=>false,
+						'production_mutation_allowed'=>false,
+						'binds_exact_package_candidate'=>true,
+						'approved_stale_grant_retirement_only'=>true,
+						'no_breakglass_or_developer'=>true,
+					),
+					'annotations'=>array( 'readonly'=>false, 'destructive'=>false, 'idempotent'=>false ),
+				),
+			) );
+		} finally {
+			if ( false !== $priority ) add_filter( 'wp_register_ability_args', $augment, (int) $priority, 2 );
+		}
+	}
+	public static function can_reconcile_staging( $input = null ) {
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' )
+			|| 'staging' !== MAD4B_SCP_Site_Profile::current_environment() )
+			return new WP_Error( 'mad4b_grant_reconcile_alias_staging_only', 'Staging exact grant reconciliation only.' );
+		return self::can_execute( $input );
+	}
+	public static function reconcile_staging( $input ) {
+		$guard = self::can_reconcile_staging( $input );
+		return is_wp_error( $guard ) || ! $guard ? $guard : self::reconcile( $input );
 	}
 
 	public static function can_execute( $input = null ) {

@@ -55,9 +55,20 @@ $claims=static function($ability,$nonce)use($policy){return array('ability_name'
 
 MAD4B_SCP_Preparation_Receipt::$claims['high-token']=$claims('fixture/high-write',str_repeat('1',32));
 $high=MAD4B_SCP_Replay_Policy::begin('high-token','fixture/high-write','core',array('x'=>1),'same-key');
-$check(is_array($high)&&'single_use'===$high['mode']&&!empty($high['consumed_before_execution']),'high risk was not single-use',$high);
+$check(is_array($high)&&'single_use'===$high['mode']&&!empty($high['claimed'])&&is_array($high['durable_claim']??null),'high risk did not reserve exclusive durable claim',$high);
+$high_pending=MAD4B_SCP_Replay_Policy::begin('high-token','fixture/high-write','core',array('x'=>1),'same-key');
+$check('mad4b_idempotency_in_progress'===$code($high_pending),'pending single-use request was re-admitted',$high_pending);
+$high_dispatch=array('contract'=>'fixture.dispatch.v1','result'=>array('ok'=>true,'ticket'=>'sealed'));
+$high_bad=MAD4B_SCP_Replay_Policy::complete($high,null);
+$check('mad4b_replay_dispatch_result_invalid'===$code($high_bad),'unstructured dispatch result was accepted',$high_bad);
+$high_done=MAD4B_SCP_Replay_Policy::complete($high,$high_dispatch);
+$check(is_array($high_done)&&!empty($high_done['completed'])&&!empty($high_done['durable_completion_required']),'single-use result was not durably completed',$high_done);
 $high_replay=MAD4B_SCP_Replay_Policy::begin('high-token','fixture/high-write','core',array('x'=>1),'same-key');
-$check('mad4b_preparation_replay_denied'===$code($high_replay),'high-risk preparation replay was accepted',$high_replay);
+$check(is_array($high_replay)&&!empty($high_replay['replayed'])&&!empty($high_replay['authorizing'])===false&&$high_dispatch===$high_replay['dispatch_result'],'completed single-use request did not return exact readback',$high_replay);
+$high_rebind=MAD4B_SCP_Replay_Policy::begin('high-token','fixture/high-write','core',array('x'=>999),'same-key');
+$check('mad4b_preparation_replay_binding_conflict'===$code($high_rebind),'single-use changed payload was accepted',$high_rebind);
+$high_other_key=MAD4B_SCP_Replay_Policy::begin('high-token','fixture/high-write','core',array('x'=>1),'another-key');
+$check('mad4b_preparation_replay_binding_conflict'===$code($high_other_key),'single-use alternate idempotency key was accepted',$high_other_key);
 
 MAD4B_SCP_Preparation_Receipt::$claims['medium-token']=$claims('fixture/medium-write',str_repeat('2',32));
 $medium=MAD4B_SCP_Replay_Policy::begin('medium-token','fixture/medium-write','core',array('x'=>2),'idem-1');
@@ -75,7 +86,10 @@ $check('mad4b_preparation_replay_binding_conflict'===$code($payload_drift),'rece
 MAD4B_SCP_Preparation_Receipt::$claims['low-no-idem']=$claims('fixture/low-write',str_repeat('3',32));
 $low=MAD4B_SCP_Replay_Policy::begin('low-no-idem','fixture/low-write','core',array('x'=>3),'');
 $check(is_array($low)&&'single_use'===$low['mode'],'missing idempotency key did not force single-use replay semantics',$low);
-$check('mad4b_preparation_replay_denied'===$code(MAD4B_SCP_Replay_Policy::begin('low-no-idem','fixture/low-write','core',array('x'=>3),'')),'single-use fallback replay was accepted');
+$check('mad4b_idempotency_in_progress'===$code(MAD4B_SCP_Replay_Policy::begin('low-no-idem','fixture/low-write','core',array('x'=>3),'')),'pending single-use fallback was re-admitted');
+$low_dispatch=array('contract'=>'fixture.dispatch.v1','result'=>array('ok'=>true));
+$check(!empty(MAD4B_SCP_Replay_Policy::complete($low,$low_dispatch)['completed']),'single-use fallback failed to durably complete');
+$check(!empty(MAD4B_SCP_Replay_Policy::begin('low-no-idem','fixture/low-write','core',array('x'=>3),'')['replayed']),'single-use fallback does not return completed readback');
 
 MAD4B_SCP_Preparation_Receipt::$claims['stale']=$claims('fixture/medium-write',str_repeat('4',32));
 MAD4B_SCP_Preparation_Receipt::$claims['stale']['replay_policy_sha256']=str_repeat('f',64);
