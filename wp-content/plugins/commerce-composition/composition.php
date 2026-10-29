@@ -73,6 +73,8 @@ require_once __DIR__ . '/includes/WorkflowJobsApi.php';
 require_once __DIR__ . '/includes/AutomationEvents.php';
 require_once __DIR__ . '/includes/InquiryPhaseOperations.php';
 require_once __DIR__ . '/includes/FluentInquiryCrmIntegration.php';
+require_once __DIR__ . '/includes/InquirySelectionSnapshot.php';
+require_once __DIR__ . '/includes/ProductFormSourceReceipt.php';
 require_once __DIR__ . '/includes/ContactBridgeAdmin.php';
 require_once __DIR__ . '/includes/Composer.php';
 require_once __DIR__ . '/includes/FormSchema.php';
@@ -86,6 +88,7 @@ register_activation_hook(__FILE__, [Commerce\Composition\FluentBoardsTaskBridge:
 register_activation_hook(__FILE__, [Commerce\Composition\ContactBridge::class, 'install']);
 register_activation_hook(__FILE__, [Commerce\Composition\WorkflowJobs::class, 'install']);
 register_activation_hook(__FILE__, [Commerce\Composition\SubmissionContext::class, 'install']);
+register_activation_hook(__FILE__, [Commerce\Composition\InquirySelectionSnapshot::class, 'install']);
 register_activation_hook(__FILE__, [Commerce\Composition\GuestConsentProof::class, 'install']);
 add_action('plugins_loaded', [Commerce\Composition\RequestCheckoutController::class, 'bootstrap'], 46);
 add_action('plugins_loaded', [Commerce\Composition\Integration::class, 'bootstrap'], 40);
@@ -116,6 +119,8 @@ add_action('plugins_loaded', [Commerce\Composition\FluentBoardsTaskBridge::class
 add_action('plugins_loaded', [Commerce\Composition\AutomationEvents::class, 'bootstrap'], 51);
 add_action('plugins_loaded', [Commerce\Composition\InquiryPhaseOperations::class, 'bootstrap'], 65);
 add_action('plugins_loaded', [Commerce\Composition\FluentInquiryCrmIntegration::class, 'bootstrap'], 66);
+add_action('plugins_loaded', [Commerce\Composition\InquirySelectionSnapshot::class, 'bootstrap'], 67);
+add_action('plugins_loaded', [Commerce\Composition\ProductFormSourceReceipt::class, 'bootstrap'], 68);
 add_action('fluentform/submission_inserted', [Commerce\Composition\SubmissionContext::class, 'capture'], 80, 3);
 add_action('plugins_loaded', [Commerce\Composition\FluentCrmFeedBridge::class, 'bootstrap'], 52);
 add_action('plugins_loaded', [Commerce\Composition\MarketingConsentTranslations::class, 'bootstrap'], 53);
