@@ -121,6 +121,10 @@ final class MAD4B_SCP_Delegation_Mode {
             || ! class_exists( 'MAD4B_SCP_Schema' )
             || ! MAD4B_SCP_Schema::is_ready() )
             return new WP_Error( 'mad4b_delegation_registry_unavailable', 'Delegation registry is unavailable.' );
+        $gate = class_exists( 'MAD4B_SCP_Policy' )
+            ? MAD4B_SCP_Policy::mutation_gate_status() : array();
+        if ( ! is_array( $gate ) || empty( $gate['effective'] ) )
+            return new WP_Error( 'mad4b_delegation_site_write_disabled', 'Site governance has not enabled write authority.' );
 
         $type = (string) ( $identity['subject_type'] ?? '' );
         $fingerprint = (string) ( $identity['subject_fingerprint'] ?? '' );
@@ -202,6 +206,8 @@ final class MAD4B_SCP_Delegation_Mode {
                     $found = true;
                 }
             }
+            if ( ! $found && ! $new_actor )
+                return new WP_Error( 'mad4b_delegation_grant_revoked', 'An existing principal requires explicit operator re-grant; automatic repair is denied.' );
             if ( ! $found ) {
                 $grant = MAD4B_SCP_Agent_Registry::grant_ability(
                     (string) $actor['public_id'], $server, 'mad4b/content-apply-bundle',
