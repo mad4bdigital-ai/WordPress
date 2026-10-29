@@ -67,7 +67,7 @@ class CompanyCloneFieldPolicyTest(unittest.TestCase):
             self.assertIn(group["policy"], self.p["semantics"])
             if group["source"].startswith("QA fixtures"):
                 self.assertEqual(group["policy"], "SANDBOX_ONLY")
-            if "Users and authorization" in group["source"]:
+            if group["source"].startswith("Tenant users, roles"):
                 self.assertEqual(group["policy"], "NO_CROSS_TENANT_COPY")
         requirements = " ".join(self.p["required_preflight"]).lower()
         for word in ("database", "credentials", "submission", "media", "no qa", "unknown"):
