@@ -1,0 +1,30 @@
+name: MAD4B Company Critical CSS Contract
+
+on:
+  pull_request:
+    paths:
+      - 'ops/company-critical-css-preset-v1/**'
+      - '.github/workflows/mad4b-company-critical-css-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-critical-css-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  tenant-neutral-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Checkout exact PR source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Validate company scoped opt-in configuration
+        run: python3 ops/company-critical-css-preset-v1/test-contract.py
+      - name: Lint Staging critical CSS preset
+        run: php -l ops/company-critical-css-preset-v1/company-critical-css-preset.php
