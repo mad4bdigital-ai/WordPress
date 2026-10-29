@@ -19,4 +19,10 @@ assert 'full_cron_replay":False' in s
 assert 'save(summary,state_file)' in s
 assert 'tours.dev.mad4b.com' not in s
 assert 'etg-commerce-staging' not in s
+assert 'len(approved)>6' in s
+assert '"expired_privacy_export_cleanup"' in s
+assert '"expired_nonce_cleanup"' in s
+assert '"diagnostic_report_only"' in s
+assert '"callback_unregistered_or_provider_deferred"' in s
+assert '"requires_independent_effect_review"' in s
 print("GOVERNED_CRON_RUNNER_SOURCE_CONTRACT PASS")
