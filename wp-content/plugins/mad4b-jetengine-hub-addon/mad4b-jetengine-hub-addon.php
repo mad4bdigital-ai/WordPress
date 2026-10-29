@@ -270,11 +270,31 @@ final class MAD4B_JetEngine_Hub_Addon {
         $language=isset($args['language'])?(string)$args['language']:'';
         $rewritten=array();
         foreach($body->items as $item){
-            if(!is_object($item) || !isset($item->source_company,$item->source_id,$item->language) ||
+            if(!is_object($item) ||
+               !isset($item->source_company,$item->source_id,$item->language,$item->title) ||
                $item->source_company!==$plan['source_company'] ||
-               $item->language!==$language) return (object)array('items'=>array());
-            // A mapping mismatch must fail closed rather than show another site's taxonomy.
-            if(isset($item->source_term_ids) && is_array($item->source_term_ids)){
+               $item->language!==$language ||
+               !is_int($item->source_id) || $item->source_id<=0 ||
+               !is_string($item->title) || $item->title==='' ||
+               strlen($item->title)>500 ||
+               (isset($item->summary) && (!is_string($item->summary) ||
+                    strlen($item->summary)>8000))) {
+                return (object)array('items'=>array());
+            }
+            // Project allowlisted fields into a NEW object. Never pass a raw
+            // remote item (including pricing/PII/account fields) to Elementor.
+            $clean=(object)array(
+                'source_company'=>$item->source_company,
+                'source_id'=>$item->source_id,
+                'language'=>$language,
+                'title'=>sanitize_text_field($item->title),
+                'summary'=>sanitize_textarea_field((string)($item->summary??'')),
+                'reference_only'=>true,
+                'bookable'=>false,
+            );
+            if(isset($item->source_term_ids)) {
+                if(!is_array($item->source_term_ids) || count($item->source_term_ids)>50)
+                    return (object)array('items'=>array());
                 $local=array();
                 foreach($item->source_term_ids as $sourceTerm) {
                     if(!is_int($sourceTerm))return (object)array('items'=>array());
@@ -282,10 +302,15 @@ final class MAD4B_JetEngine_Hub_Addon {
                     if(!isset($map[$k]))return (object)array('items'=>array());
                     $local[]=(int)$map[$k]['canonical_term_id'];
                 }
-                $item->canonical_term_ids=array_values(array_unique($local));
+                $clean->canonical_term_ids=array_values(array_unique($local));
             }
-            unset($item->price,$item->sale_price,$item->checkout_url,$item->customer_email);
-            $rewritten[]=$item;
+            if(isset($item->source_term_id)) {
+                if(!is_int($item->source_term_id) ||
+                   !isset($map[$language.':'.$item->source_term_id]))
+                    return (object)array('items'=>array());
+                $clean->canonical_term_id=(int)$map[$language.':'.$item->source_term_id]['canonical_term_id'];
+            }
+            $rewritten[]=$clean;
         }
         $body->items=$rewritten;
         return $body;
