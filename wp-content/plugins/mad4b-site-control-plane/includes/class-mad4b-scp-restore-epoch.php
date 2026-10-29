@@ -197,7 +197,9 @@ final class MAD4B_SCP_Restore_Epoch {
 		$missing = empty( $status['external_record_present'] );
 		$identity_changed = $valid && ! hash_equals( $site, strtolower( (string) $binding['site_uuid'] ) );
 		$environment = function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'production';
-		$eligible = $missing && $valid && preg_match( '/^[a-f0-9-]{36}$/', $site );
+		// A different binding identity is not proof of a clone or of authorized ownership.
+		// Never advertise it as eligible for unattended recovery.
+		$eligible = $missing && $valid && ! $identity_changed && preg_match( '/^[a-f0-9-]{36}$/', $site );
 		return array(
 			'contract' => 'mad4b.restore-self-heal-plan.v1',
 			'environment' => $environment,
@@ -210,9 +212,28 @@ final class MAD4B_SCP_Restore_Epoch {
 			'needs_pending_operation_quarantine' => true,
 			'requires_separate_write_authority' => true,
 			'automatic_write_permitted' => false,
+			'auto_reconcile_eligible' => (bool) $eligible,
+			'identity_provenance_required' => (bool) $identity_changed,
 			'current_status' => $status['classification'] ?? 'QUARANTINED',
 			'mutation_performed' => false,
 		);
+	}
+
+	/** Attempt only same-site missing-ledger recovery under existing operator fences.
+	 * Identity changes deliberately require separate provenance and governed rebinding.
+	 */
+	public static function attempt_authorized_self_recovery() {
+		$plan = self::self_heal_plan();
+		if ( empty( $plan['candidate'] ) || ! empty( $plan['identity_changed'] ) ) {
+			return new WP_Error( 'mad4b_restore_recovery_identity_evidence_required', 'Automatic recovery is not authorized: investigate site ownership and binding provenance.' );
+		}
+		if ( ! function_exists( 'current_user_can' ) || ! current_user_can( 'manage_options' ) ) {
+			return new WP_Error( 'mad4b_restore_recovery_admin_required', 'Administrator authorization required.' );
+		}
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || MAD4B_SCP_Site_Profile::write_enabled() ) {
+			return new WP_Error( 'mad4b_restore_recovery_write_must_be_disabled', 'Disable governed writing before recovery.' );
+		}
+		return self::recover_from_database_binding( (string) $plan['previous_record_sha256'], false );
 	}
 
 	/** Explicit recovery entrypoint: fenced, environment-neutral, never an implicit write grant. */
