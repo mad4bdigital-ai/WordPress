@@ -4,8 +4,8 @@
   "reviewed_base_sha": "7ccfd69d7a76b4b13b73e18aaaf445144d3cfeba",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 138,
-  "changed_paths_sha256": "3510da87093c52195dad6b31106a781f3845c7444bdb0665118fe676a26d2cf5",
+  "changed_file_count": 140,
+  "changed_paths_sha256": "41b24ee2347065ad786a255dde1f3a84b45038fa089ade0b7ef834d1921cc96d",
   "slices": [
     {
       "id": "abilities-and-governed-dispatch",
@@ -18,11 +18,13 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-control-plane-test-router.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-enrollment-dispatch.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema-status-projection.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/capability-traits-contract.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-route-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-first-party-enrollment-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/enrollment-dispatch-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/gateway-mutation-guards.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/gateway-regression-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-draft-contract.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/maintainability-domain-service-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-live-write-diagnostic-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-readonly-contract.php"
