@@ -112,6 +112,23 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 	private static function synchronize_rest_inventory_lifecycle() {
 		global $wp_rest_server;
 
+		// WordPress native General Settings saves must not lazily initialize REST
+		// as a side effect of passive MCP/provider discovery. REST bootstrap
+		// invokes register_initial_settings(), re-authorizing absent siteurl and
+		// admin_email through option_update_filter() during options.php saves.
+		// Defer the inventory and keep MCP mutation certification fail-closed.
+		if ( function_exists( 'is_admin' ) && is_admin()
+			&& 'POST' === strtoupper( (string) ( $_SERVER['REQUEST_METHOD'] ?? '' ) )
+			&& 'options.php' === basename( (string) ( $_SERVER['SCRIPT_NAME'] ?? '' ) )
+			&& 'general' === (string) ( $_POST['option_page'] ?? '' )
+			&& ! ( defined( 'REST_REQUEST' ) && REST_REQUEST )
+		) {
+			return new WP_Error(
+				'mcp_inventory_deferred_native_general_settings',
+				'MCP peer inventory is deferred during a native General Settings save.'
+			);
+		}
+
 		if ( is_object( $wp_rest_server ) && method_exists( $wp_rest_server, 'get_routes' ) ) {
 			return array(
 				'state' => 'already_initialized',

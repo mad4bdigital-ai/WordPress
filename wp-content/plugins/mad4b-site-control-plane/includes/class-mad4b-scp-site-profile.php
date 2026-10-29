@@ -340,6 +340,32 @@ final class MAD4B_SCP_Site_Profile {
 	}
 
 	/**
+	 * Cache maintenance is independent of managed MCP boot, and never issues
+	 * mutation authority. Production needs the same binary coherence while
+	 * keeping its existing early_managed_runtime_binding() restrictions.
+	 */
+	public static function early_cache_runtime_binding() {
+		$profile = self::exact_stored_profile();
+		$effective = self::current_environment();
+		$host_environment = self::wordpress_environment();
+		$explicit = self::wordpress_environment_explicit();
+		$matched = ! empty( $profile['environment'] )
+			&& hash_equals( (string) $profile['environment'], $effective );
+		return array(
+			'eligible' => $matched
+				&& empty( $profile['mutation_state'] )
+				&& empty( $profile['migration_requires_reenrollment'] )
+				&& ! empty( $profile['features']['managed_runtime'] )
+				&& in_array( $effective, array( 'local', 'development', 'staging', 'production' ), true )
+				&& ( 'production' !== $effective
+					|| ( 'production' === $host_environment && $explicit ) ),
+			'environment' => $effective,
+			'site_uuid' => (string) ( $profile['site_uuid'] ?? '' ),
+			'write_authorized' => false,
+		);
+	}
+
+	/**
 	 * Advisory enrollment default only. Hostname hints never grant authority.
 	 */
 	public static function suggested_environment() {

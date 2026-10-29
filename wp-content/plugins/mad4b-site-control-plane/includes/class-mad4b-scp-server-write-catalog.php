@@ -76,6 +76,29 @@ trait MAD4B_SCP_Server_Write_Catalog {
 		return $result;
 	}
 
+	/**
+	 * One read-only provider snapshot of the effective, currently mounted Write
+	 * inventory. An unregistered/uncertified Adapter cannot become a grant
+	 * target by supplying an Ability name alone.
+	 */
+	public static function live_write_provider_snapshot() {
+		$runtime = self::write_tools();
+		$core = array_fill_keys( self::core_write_candidates(), true );
+		$adapters = self::registered_adapter_write_candidates();
+		$providers = array();
+		foreach ( $runtime as $ability ) {
+			$ability = (string) $ability;
+			if ( isset( $core[ $ability ] ) ) {
+				$providers[ $ability ] = 'core';
+			} elseif ( isset( $adapters[ $ability ] ) && '' !== (string) $adapters[ $ability ] ) {
+				$providers[ $ability ] = (string) $adapters[ $ability ];
+			}
+			// Unknown provider remains unmounted; no invented grant authority.
+		}
+		ksort( $providers, SORT_STRING );
+		return $providers;
+	}
+
 	public static function catalog_external_write_tools() {
 		$cacheable = self::catalog_cacheable();
 		if ( $cacheable && is_array( self::$external_write_tools_cache ) ) return self::$external_write_tools_cache;
