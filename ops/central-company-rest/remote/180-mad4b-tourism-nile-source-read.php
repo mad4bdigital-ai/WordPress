@@ -101,9 +101,21 @@ final class MAD4B_Tourism_Nile_Source_V1 {
   return $ids;
  }
  private static function cat_items(): array {
+  global $wpdb;
   $map=self::term_map();$items=[];
   foreach($map as $id=>$t){
+   $lang=$wpdb->get_results($wpdb->prepare(
+     "SELECT language_code,trid FROM {$wpdb->prefix}icl_translations
+      WHERE element_type=%s AND element_id=%d LIMIT 2",
+      'tax_tour-types_jet',$id),ARRAY_A);
+   if($wpdb->last_error||count($lang)!==1 ||
+       !in_array((string)$lang[0]['language_code'],['en','ar'],true) ||
+       (int)$lang[0]['trid']<=0){
+     throw new RuntimeException('Source category translation authority missing');
+   }
    $items[]=[
+    'source_language_code'=>(string)$lang[0]['language_code'],
+    'source_translation_group_id'=>(int)$lang[0]['trid'],
     'source_term_id'=>(int)$id,'taxonomy'=>'tour-types_jet',
     'slug'=>(string)$t['slug'],'name'=>sanitize_text_field((string)$t['name']),
     'parent_source_term_id'=>(int)$t['parent'],
