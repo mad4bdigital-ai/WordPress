@@ -4,22 +4,22 @@ Generic WordPress MU-plugin components for per-company frontend Performance Pres
 
 ## Guardrails
 
-- The sample preset is disabled. Replace the company's site_host, language, menu and card Elementor document/widget IDs, JetEngine listing ID and taxonomy in its own staging setup.
-- Require Staging, anonymous GET, / path, no query string, no Cookie, no Authorization, no WP admin, REST, AJAX, preview or logged-in identity. Other languages and hostnames do not use the cache.
+- The sample preset is disabled, and its geo_policy is unverified (so it cannot be enabled without an explicit reviewed static_base_only policy). Replace the company's site_host, language, menu and card Elementor document/widget IDs, JetEngine listing ID and taxonomy in its own staging setup.
+- Require Staging, anonymous GET, / path, no query string, no Cookie, no Authorization, no WP admin, REST, AJAX, preview or logged-in identity. Other languages and hostnames do not use the cache. Explicit CF-IPCountry, X-Country-Code, GeoIP-Country and MAD4B Market Context request headers cause bypass.
 - This conservative no-cookie rule bypasses return visitors carrying tracking, WPML and WooCommerce cookies; do not weaken it without separate audience, geo, currency, session and privacy verification.
 - Memoize Elementor Mega Menu SSR and JetEngine individual attraction card content for only 5–60 seconds (default 20). Injected Fluent Forms slides and product/price/cart content never enter the cache.
-- Cache keys include company origin, locale, WPML language, Woo currency and mobile/desktop. Menu entries also use document modification time. Term entries include taxonomy, term ID and both Elementor template modification times.
+- Cache gate additionally requires WooCommerce default customer address=base and tax calculation=no; geo_policy=static_base_only is a narrow configuration guard, NOT proof of all geolocation-dependent content neutrality. Check Market Profiles and client-IP-dependent plugins separately. Cache keys include company origin, locale, WPML language, Woo currency and mobile/desktop. Menu entries also use document modification time. Term entries include taxonomy, term ID and both Elementor template modification times.
 - JetEngine context (setup_data, object-done, required assets) is replayed on cached item HIT to maintain the correct post/term identity and classes.
 - Cacheable markup is screened for dynamic form, nonce, checkout, price, cart and customer markers before writing and reading.
-- Local temporary file storage only. Multi-container installations require tenant-isolated shared caching and an explicit invalidation contract.
+- Bounded opportunistic GC runs on eligible Staging frontend requests at most once per 120 seconds per tenant cache directory. It scans up to 250 entries, uses nonblocking flock, and removes only well-formed expired 64-hex JSON records; never symlinks, active records, unknown names or files belonging to other companies. WP-Cron is disabled on the tested Staging stack. Idle sites can retain expired entries until the next eligible request. Local temporary file storage only. Multi-container installations require tenant-isolated shared caching and an explicit invalidation contract.
 
 ## Safe installation and tests
 
-1. Install the three PHP files into only the target company's Staging MU plugins directory.
+1. Install the four PHP files into only the target company's Staging MU plugins directory.
 2. Copy preset.example.json to company-performance-fragment-preset.json and set exact tenant values; keep disabled until identity and content checks pass.
 3. Use anonymous GET requests for baseline versus warmed requests. The request headers X-MAD4B-Fragment-AB: baseline and X-MAD4B-Card-AB: control temporarily force original-render comparison in Staging.
 4. Compare complete card IDs, titles, URLs, count labels, slider slides, menu links/images and interaction on all supported devices and languages. Recheck currency, market and geo conditions.
-5. Confirm cookie, auth, query, alternate locale, Cart, Checkout and REST bypass; run php -l, the local contract test and owner-governed CI.
+5. Confirm cookie, auth, query, GeoIP/market header, alternate locale, Cart, Checkout and REST bypass; run php -l, the local contract test and owner-governed CI.
 6. No Production or other tenant rollout before the exact source build, release/owner approval, separate tenant QA and rollback readiness.
 
 ## Reference Staging evidence (29 October 2026)
@@ -37,3 +37,7 @@ Set enabled=false in each company's JSON, verify HTTP 200, and then remove only 
 ## Source governance
 
 This source is a review candidate. GitHub is version control, not a substitute for independent owner authority. Do not automatically deploy to Production from the branch or from this package.
+
+## GC regression and country-context risk
+
+Run php test-gc.php and python3 test-contract.py in CI. The GC regression uses an isolated fixture and checks outside files, symlinks, scan bounds and interval lock. Country/GeoIP HTTP header bypass tests do NOT certify real geolocation pricing behavior: each company must test its actual MaxMind/market provider and pricing policies. New tenants default to disabled and geo-unverified.
