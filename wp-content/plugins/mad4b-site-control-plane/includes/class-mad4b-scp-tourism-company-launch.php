@@ -12,6 +12,7 @@ final class MAD4B_SCP_Tourism_Company_Launch {
     const ROOT = '/tourism-company';
     const TYPE = 'mad4b_tourism_application';
     const VERSION = 'mad4b.tourism-company-launch.v1';
+    const DEMO_COLORS = array('primary'=>'#173A4C','secondary'=>'#235E6D','accent'=>'#BB9253');
     private static $booted = false;
 
     public static function boot() {
@@ -78,7 +79,8 @@ final class MAD4B_SCP_Tourism_Company_Launch {
         return true;
     }
     public static function brand_palette($values) {
-        if (!is_array($values)) return self::error('mad4b_palette_required','Brand palette required.');
+        if ($values===null || $values===array()) $values=self::DEMO_COLORS;
+        if (!is_array($values)) return self::error('mad4b_palette_invalid','Colors must be an object.');
         $out=array();
         foreach(array('primary','secondary','accent') as $name) {
             $hex=strtoupper(trim((string)($values[$name]??'')));
@@ -106,6 +108,12 @@ final class MAD4B_SCP_Tourism_Company_Launch {
         $logo=trim((string)($data['logo_url']??''));
         $domain_mode=(string)($data['domain_mode']??'');
         $domain=strtolower(trim((string)($data['domain']??'')));
+        if ($code==='') {
+            $latin=function_exists('remove_accents')?remove_accents($brand):$brand;
+            $candidate=strtolower(trim((string)preg_replace('/[^a-z0-9]+/i','-',$latin),'-'));
+            $code=preg_match('/^[a-z][a-z0-9-]{2,47}[a-z0-9]$/D',$candidate) ?
+                $candidate : 'tour-'.substr(hash('sha256',$brand.'|'.$email),0,12);
+        }
         if (!preg_match('/^[a-z][a-z0-9-]{2,47}$/D',$code) ||
             !preg_match('/^[a-z0-9]$/D',substr($code,-1))) {
             return self::error('mad4b_launch_company_code_invalid','Company code must be URL-safe.');
@@ -119,16 +127,18 @@ final class MAD4B_SCP_Tourism_Company_Launch {
         if (!preg_match('/^\+[1-9][0-9]{7,14}$/D',$phone)) {
             return self::error('mad4b_launch_phone_invalid','Phone must be in international E.164 format.');
         }
-        // URL is retained as a reference ONLY. Never server-fetch arbitrary URLs.
-        if (strlen($logo)>700 || !filter_var($logo,FILTER_VALIDATE_URL) ||
+        // Optional logo is a reference, never server-fetched. Blank means neutral
+        // demo visual, NOT another tenant's logo or legal brand.
+        if ($logo!=='' && (strlen($logo)>700 || !filter_var($logo,FILTER_VALIDATE_URL) ||
             parse_url($logo,PHP_URL_SCHEME)!=='https' ||
             !is_string(parse_url($logo,PHP_URL_HOST)) ||
             filter_var(parse_url($logo,PHP_URL_HOST),FILTER_VALIDATE_IP)!==false ||
-            strpos($logo,'@')!==false || preg_match('/[\x00-\x20]/',$logo)) {
-            return self::error('mad4b_launch_logo_invalid','Secure HTTPS logo reference is required for manual media verification.');
+            strpos($logo,'@')!==false || preg_match('/[\\x00-\\x20]/',$logo))) {
+            return self::error('mad4b_launch_logo_invalid','Optional logo must be a secure HTTPS URL for later review.');
         }
         $palette=self::brand_palette($data['colors']??null);
         if (is_wp_error($palette)) return $palette;
+        if ($domain_mode==='') $domain_mode='subdomain';
         if (!in_array($domain_mode,array('subdomain','custom_domain'),true)) {
             return self::error('mad4b_launch_domain_mode_invalid','Choose a managed subdomain or a customer-owned domain.');
         }
@@ -148,6 +158,14 @@ final class MAD4B_SCP_Tourism_Company_Launch {
             'company_code'=>$code,'brand_name'=>$brand,'email'=>strtolower($email),
             'phone_e164'=>$phone,'logo_url'=>$logo,'colors'=>$palette,
             'domain_mode'=>$domain_mode,'domain'=>$domain,
+            'field_sources'=>array(
+                'brand_name'=>'company_input','email'=>'company_input','phone_e164'=>'company_input',
+                'logo_url'=>$logo===''?'neutral_demo_placeholder':'company_input_unverified',
+                'colors'=>empty($data['colors'])?'demo_design_default':'company_input',
+                'domain'=>empty($data['domain_mode'])?'generated_subdomain':'company_choice',
+                'company_code'=>empty($data['company_code'])?'derived_from_brand':'company_input',
+            ),
+            'customization_open_after_launch'=>true,
             'ai_suggestions_accepted'=>false,'logo_ownership_verified'=>false,
             'email_verified'=>false,'phone_verified'=>false,
             'business_terms_approved'=>false,
@@ -156,8 +174,10 @@ final class MAD4B_SCP_Tourism_Company_Launch {
     public static function schema() {
         return self::reply(array(
             'contract'=>self::VERSION,'title'=>'Start Your Tourism Company',
-            'required'=>array('company_code','brand_name','logo_url','email','phone_e164','domain_mode','colors.primary','colors.secondary','colors.accent','consent'),
-            'optional'=>array('colors.text','domain for custom_domain'),
+            'required'=>array('brand_name','email','phone_e164','consent'),
+            'optional'=>array('company_code','logo_url','domain_mode','domain for custom_domain','colors.primary','colors.secondary','colors.accent','colors.text'),
+            'defaults'=>array('logo'=>'neutral_demo_placeholder','domain_mode'=>'subdomain','colors'=>self::DEMO_COLORS),
+            'inheritance_policy'=>'Demo styles only. No foreign logo, contact, financial, provider or customer data copied.',
             'domain_modes'=>array('subdomain','custom_domain'),
             'public_intake_auto_deploy'=>false,
             'logo_upload_method'=>'HTTPS reference requires owner media validation; upload is not yet supported by this endpoint.',
@@ -169,7 +189,7 @@ final class MAD4B_SCP_Tourism_Company_Launch {
                 'external_chatbotx_transport_connected'=>false,
             ),
             'stages'=>array('intake','identity_validation','owner_review','resource_reserved',
-                'service_started_private','site_bootstrap','kit_admission','cloudflare_zone_dns',
+                'site_profile_prepared','service_started_private','site_bootstrap','target_site_profile_enrollment','kit_admission','cloudflare_zone_dns',
                 'trusted_tls','content_and_commerce_readiness','owner_public_approval'),
         ));
     }
@@ -224,11 +244,11 @@ final class MAD4B_SCP_Tourism_Company_Launch {
     }
     public static function next_actions($state) {
         $map=array(
-          'intake'=>array('verify_logo_email_phone','owner_review'),
+          'intake'=>array('review_company_name_email_phone','owner_review'),
           'owner_approved'=>array('coolify_reserve_resource'),
-          'resource_reserved'=>array('owner_private_start','verify_new_database_isolation'),
+          'resource_reserved'=>array('prepare_site_profile','owner_private_start','verify_new_database_isolation'),
           'service_started_private'=>array('bootstrap_wordpress','verify_unique_site_uuid_and_kit'),
-          'site_bootstrap'=>array('kit_admission','cloudflare_domain_plan'),
+          'site_bootstrap'=>array('enroll_target_site_profile_v2','kit_admission','cloudflare_domain_plan'),
           'cloudflare_zone_dns'=>array('dns_provider_readback','trusted_https_probe'),
           'trusted_tls'=>array('brand_content_review','commerce_readiness','separate_owner_public_approval')
         );
@@ -236,21 +256,23 @@ final class MAD4B_SCP_Tourism_Company_Launch {
     }
     private static function plan_data($x) {
         $v=$x['data'];
-        $preconditions=array(
-            'required_brand_logo_email_phone_colors'=>self::validate_intake(array_merge($v,array('consent'=>true)))!==false,
-            'owner_logo_review'=>!empty($v['logo_ownership_verified']),
-            'owner_email_review'=>!empty($v['email_verified']),
-            'owner_phone_review'=>!empty($v['phone_verified']),
-            'owner_business_terms_review'=>!empty($v['business_terms_approved']),
-        );
-        // Caller controls none of the authority predicates. Inputs may be provided
-        // later by a separately reviewed verification worker; no implicit pass.
         $valid=self::validate_intake(array_merge($v,array('consent'=>true)));
-        $preconditions['required_brand_logo_email_phone_colors']=!is_wp_error($valid);
+        $preconditions=array(
+            'required_brand_email_phone'=>!is_wp_error($valid),
+            'domain_mode_valid'=>in_array($v['domain_mode'],array('subdomain','custom_domain'),true),
+        );
+        $customization=array(
+            'logo'=>$v['field_sources']['logo_url']??'neutral_demo_placeholder',
+            'colors'=>$v['field_sources']['colors']??'demo_design_default',
+            'domain'=>$v['field_sources']['domain']??'generated_subdomain',
+            'email_verification_pending'=>empty($v['email_verified']),
+            'phone_verification_pending'=>empty($v['phone_verified']),
+            'business_terms_review_pending'=>empty($v['business_terms_approved']),
+        );
         $payload=array(
             'contract'=>self::VERSION,'id'=>$x['post']->ID,'state'=>$x['state'],
             'brand'=>$v['brand_name'],'domain'=>$v['domain'],'colors'=>$v['colors'],
-            'checks'=>$preconditions,
+            'checks'=>$preconditions,'deferred_customization'=>$customization,
             'coolify_configured'=>self::coolify_config()['configured'],
             'service_existing'=>$x['coolify_uuid']!=='',
         );
@@ -431,20 +453,20 @@ final class MAD4B_SCP_Tourism_Company_Launch {
         $id='mad4b-tourism-start-'.wp_generate_uuid4();
         $fields=array(
             array('Brand name','brand_name','text'),
-            array('Company slug','company_code','text'),
-            array('Logo HTTPS URL','logo_url','url'),
+            array('Company slug (optional)','company_code','text'),
+            array('Logo HTTPS URL (optional)','logo_url','url'),
             array('Business email','email','email'),
             array('Phone (+country code)','phone_e164','tel'),
         );
         $html='<form class="mad4b-tourism-company-start" id="'.esc_attr($id).'">';
         $html.='<h2>'.esc_html__('Start Your Tourism Company','mad4b-site-control-plane').'</h2>';
-        foreach($fields as $f) $html.='<label>'.esc_html($f[0]).'<input required type="'.esc_attr($f[2]).
+        foreach($fields as $f) $html.='<label>'.esc_html($f[0]).'<input'.(in_array($f[1],array('brand_name','email','phone_e164'),true)?' required':'').' type="'.esc_attr($f[2]).
             '" name="'.esc_attr($f[1]).'" maxlength="700"></label>';
         $html.='<label>Website domain mode<select name="domain_mode"><option value="subdomain">MAD4B subdomain</option><option value="custom_domain">My own domain</option></select></label>';
-        $html.='<label>Custom domain (only when selected)<input name="domain" type="text"></label>';
+        $html.='<label>Custom domain (optional)<input name="domain" type="text"></label>';
         foreach(array('primary','secondary','accent') as $color) {
             $html.='<label>'.esc_html(ucfirst($color)).' <input name="color_'.$color.
-                '" type="color" value="'.esc_attr(array('primary'=>'#173A4C','secondary'=>'#235E6D','accent'=>'#BB9253')[$color]).'" required></label>';
+                '" type="color" value="'.esc_attr(self::DEMO_COLORS[$color]).'"></label>';
         }
         $html.='<label><input name="consent" type="checkbox" required> I agree to be contacted about this company application.</label>';
         $html.='<label style="display:none" aria-hidden="true">Leave blank<input name="website" tabindex="-1" autocomplete="off"></label>';
