@@ -70,7 +70,7 @@ final class MAD4B_SCP_Company_Domain_Cloudflare {
         );
     }
     public static function valid_host($host) {
-        if (!is_string($host) || strlen($host)>253 || strtolower($host)!==$host ||
+        if (!is_string($host) || filter_var($host,FILTER_VALIDATE_IP)!==false || strlen($host)>253 || strtolower($host)!==$host ||
             substr($host,-1)==='.' || strpos($host,'..')!==false ||
             !preg_match('/^(?=.{4,253}$)[a-z0-9]+(?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9]+(?:[a-z0-9-]*[a-z0-9])?)+$/D',$host)) {
             return false;
