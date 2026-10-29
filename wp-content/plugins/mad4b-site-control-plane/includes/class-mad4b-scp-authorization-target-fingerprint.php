@@ -13,10 +13,21 @@ final class MAD4B_SCP_Authorization_Target_Fingerprint {
 		$filtered = apply_filters( 'mad4b_scp_authorization_target_fingerprint', '', (string) $ability_name, $provider, $input, $agent, $identity );
 		if ( is_string( $filtered ) && '' !== trim( $filtered ) ) return substr( trim( $filtered ), 0, 191 );
 
-		$normalized = self::canonicalize( $input, 0 );
+		// The Brand Draft ticket already binds the signed, fresh Context Receipt
+		// to stable content and context identity. Use that same verified identity
+		// for the deterministic target; otherwise each new receipt time produces
+		// a different target than the one approved. Fail closed if verification
+		// fails. All other ability targets retain their exact raw input.
+		$target_input = $input;
+		if ( 'core' === $provider && in_array( (string) $ability_name, array( 'context/brand-draft-create', 'context/brand-draft-append' ), true ) ) {
+			if ( ! class_exists( 'MAD4B_SCP_Approval_Impact_Binding' ) ) return '';
+			$target_input = MAD4B_SCP_Approval_Impact_Binding::stable_approval_input( $ability_name, $provider, $input );
+			if ( is_wp_error( $target_input ) ) return '';
+		}
+		$normalized = self::canonicalize( $target_input, 0 );
 		if ( is_wp_error( $normalized ) ) return '';
 		$resource_set = class_exists( 'MAD4B_SCP_Resource_Constraint_Set' )
-			? MAD4B_SCP_Resource_Constraint_Set::compile( $ability_name, $provider, is_array( $input ) ? $input : array() )
+			? MAD4B_SCP_Resource_Constraint_Set::compile( $ability_name, $provider, is_array( $target_input ) ? $target_input : array() )
 			: array();
 		if ( is_wp_error( $resource_set ) ) return '';
 		$payload = array(

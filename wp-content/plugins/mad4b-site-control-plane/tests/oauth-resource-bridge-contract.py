@@ -177,7 +177,7 @@ alignment_required = [
     "resource_metadata=",
     "authoritative_well_known_url",
     "MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier( $server_id )",
-    "MAD4B_SCP_OAuth_Resource_Bridge::scopes_for_resource( $resource )",
+    "MAD4B_SCP_OAuth_Resource_Bridge::challenge_required_scopes( $resource )",
 ]
 for marker in alignment_required:
     if marker not in alignment:
