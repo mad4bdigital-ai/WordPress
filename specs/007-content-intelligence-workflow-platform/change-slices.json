@@ -4,8 +4,8 @@
   "reviewed_base_sha": "7ccfd69d7a76b4b13b73e18aaaf445144d3cfeba",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 135,
-  "changed_paths_sha256": "886a896db9e84f174e680dc3e8c0777bac5a3a8c3e9f8c788affdb76a323417c",
+  "changed_file_count": 136,
+  "changed_paths_sha256": "a2a125f79f3bfa78da1a10520dca89c3b7cb00c6c9c702f07470585cc4f924a1",
   "slices": [
     {
       "id": "abilities-and-governed-dispatch",
@@ -21,6 +21,7 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-route-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-first-party-enrollment-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/enrollment-dispatch-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/gateway-mutation-guards.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/gateway-regression-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/maintainability-domain-service-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-live-write-diagnostic-runtime.php",
