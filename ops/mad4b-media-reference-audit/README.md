@@ -78,3 +78,22 @@ Pilot results on ETG Commerce Staging: 6,449 candidates. Broad local references 
 Private registry on VPS: `/srv/mad4b-media-control/quarantine-review/ETG-REVIEW-HOLD-20261029.json` (mode 0600). Rollback control tested on a private copy of this registry, without touching source media. Its active hold paths are checked at generation time by the internal Media Gateway source in PR #614; held files cannot be added to the new preview allowlist. This **does not** disable existing WordPress/media URLs and is not a global public-media ACL. Existing live media bytes stay intact.
 
 The authoritative scope remains Staging-only. No Production/DNS changes, no file deletion, and no offsite-backup certification (deferred by owner). Exact CI/owner authority still required before source merge or deployment elsewhere.
+
+
+## Verified Staging repair of missing image sources (2026-10-29)
+
+The initial Staging attachment census found **490** image attachment records whose `_wp_attached_file` target did not exist on the source VPS. That does **not** prove they were unused. This repair addresses only verifiable file-byte recovery, not content deletion or automatic public-media approval.
+
+The in-repository `restore_verified_alternates.py` compares missing attachment paths to image files already present **in the same ETG Staging backup**, and requires exact basename, width, height, MIME and recorded original filesize. Candidate bytes are verified by SHA-256. The original source and both target paths are checked before copying. Target creation uses O_EXCL (no overwrites). Append-only receipts allow exact-hash rollback of newly created files. The non-scaled `original_image` file for one image was recovered separately from the same-source backup using its verified paired scaled source and WordPress metadata evidence.
+
+Staging result:
+- **17** attachment records restored via **13** unique image paths; one required additional original unscaled source file.
+- Both WordPress Staging uploads and the private, independent same-VPS Media Origin received verified bytes. No company-hosting files were copied.
+- WP-CLI `media regenerate --skip-delete` was run only on those restored attachment IDs. Duplicate records for the same underlying image were reconciled by the staging-only `reconcile_duplicate_image_metadata.php`, preserving the existing original file/size and other metadata. **4** duplicate image size metadata entries updated with private preimage + SHA-gated reconciliation/rollback plan.
+- `sync_selected_derivatives.py` copied **85** unique newly regenerated thumbnails, using no-overwrite and SHA-verification, into the VPS Media Origin. Its rollback was tested on a disposable copy (not on the real origin).
+- All **17** restored attachments have existing primary images, and **106/106** size references recorded in their current WordPress metadata resolve to files. Original and thumbnail URLs sampled over Staging HTTPS returned HTTP 200.
+- Remaining missing attachment records: **473**. Many files have no verified, same-company bytes; do not infer their content from a same-named but dimension/byte-mismatched file, nor mix other companies' media.
+- All **49** preexisting administrative review holds remain intact. No image was deleted or overwritten; Production and DNS unchanged.
+- The persistent native read Ability now includes `source_file_state=present|missing` for every scanned orphan candidate; it does not grant deletion authority.
+
+**Evidence:** `evidence/VERIFIED-RESTORE-17-OF-490-20261029.json`; complete private manifests and SHA-256 receipts are on the VPS in `/opt/hostinger-migrations/hosting-3/etg-commerce-staging/qa/media-reference-audit-20261029/full-scan-20261029/`. These are Staging-only repair operations; offsite backup remains deferred at the owner's direction. PR review and exact owner authority remain required before any Production rollout.
