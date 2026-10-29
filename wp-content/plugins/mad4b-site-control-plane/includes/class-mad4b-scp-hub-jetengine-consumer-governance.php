@@ -14,6 +14,7 @@ final class MAD4B_SCP_Hub_JetEngine_Consumer_Governance {
     const NAMESPACE_NAME = 'mad4b/v1';
     const CENTRAL_HOST = 'tours.dev.mad4b.com';
     const ALLOWED_COLLECTIONS = array('catalog','categories');
+    private static $admitted_request_paths = array();
     const DATA_FIELDS = array(
         'source_company','source_id','source_kind','title','summary','language',
         'source_term_id','canonical_term_id','taxonomy','parent_term_id',
@@ -223,9 +224,33 @@ final class MAD4B_SCP_Hub_JetEngine_Consumer_Governance {
         if ($sourceVerified !== true || $bindingVerified !== true) {
             return self::denial('server_proof_missing');
         }
+        // The runtime grant lasts only for this PHP request and exact company/path.
+        $route = (string)wp_parse_url((string)$plan['endpoint_url'], PHP_URL_PATH);
+        self::$admitted_request_paths[$route] = true;
         $result['runtime_approved']=true;
         $result['server_side_proofs_verified']=true;
         return $result;
+    }
+
+    /** Protect the same-source remote REST path even from manual JetEngine configuration.
+     * This does not affect other WordPress REST consumers or different endpoints.
+     */
+    public static function fence_hub_http($preempt, $args, $url) {
+        if ($preempt !== false || !is_string($url)) return $preempt;
+        $parts = wp_parse_url($url);
+        if (!is_array($parts) ||
+            strtolower((string)($parts['host'] ?? '')) !== self::CENTRAL_HOST) {
+            return $preempt;
+        }
+        $path = (string)($parts['path'] ?? '');
+        if (strpos($path, '/wp-json/mad4b-central/v1/hub-distribution/') !== 0) {
+            return $preempt;
+        }
+        if (!isset(self::$admitted_request_paths[$path]) ||
+            strtoupper((string)($args['method'] ?? 'GET')) !== 'GET') {
+            return self::denial('unapproved_remote_fetch');
+        }
+        return $preempt;
     }
 
     public static function permission() {
@@ -253,5 +278,6 @@ final class MAD4B_SCP_Hub_JetEngine_Consumer_Governance {
 
     public static function boot() {
         add_action('rest_api_init', array(__CLASS__, 'register_routes'), 29);
+        add_filter('pre_http_request', array(__CLASS__, 'fence_hub_http'), 9, 3);
     }
 }
