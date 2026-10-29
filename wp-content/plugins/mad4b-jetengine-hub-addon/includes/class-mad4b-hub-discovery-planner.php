@@ -393,6 +393,26 @@ final class MAD4B_Hub_Discovery_Planner {
         foreach($caps['jet_engine']['queries'] as $item){
             if(in_array($item['id'],$selected['query_ids'],true))$queryKinds[$item['id']]=$item['type'];
         }
+        // Explicit market slices form a typed QueryPlan, not an executable
+        // SQL/REST request. Never collapse "no market" to an all-market query.
+        $marketSlices=array();
+        foreach($marketPlan['scopes'] as $scope){
+            $predicate=array_merge(array(
+                'source_company'=>$source,
+                'market_id'=>$scope['market_id'],
+                'valid_from'=>$scope['valid_from'],
+                'valid_until'=>$scope['valid_until'],
+            ),$scope['dimensions']);
+            $marketSlices[]=array('market_id'=>$scope['market_id'],
+                'predicate'=>$predicate,
+                'native_query_ids'=>$selected['query_ids'],
+                'native_listing_ids'=>$selected['listing_ids'],
+                'native_filter_ids'=>$selected['filter_ids'],
+                'market_predicate_mode'=>'AND_ACROSS_DIMENSIONS_OR_WITHIN_LIST',
+                'requires_signed_source_authority'=>true,
+                'preview_digest'=>hash('sha256',wp_json_encode($predicate)),
+                'execution_state'=>'BLOCKED_PENDING_VERIFIED_GRANTS');
+        }
         // No REST feed activation; native filters never auto-converted to REST.
         $pending=array('mutual_signed_site_grants','source_object_ownership',
             'source_field_and_locale_proofs','exact_query_listing_filter_binding',
@@ -409,6 +429,13 @@ final class MAD4B_Hub_Discovery_Planner {
             'selected'=>$selected,'query_types'=>$queryKinds,
             'policy'=>$policy,'market_plan'=>$marketPlan,
             'market_scoped'=>($marketPlan['status']==='MARKET_SCOPED_DRY_RUN'),
+            'query_plan'=>array('contract'=>'mad4b.hub.selective-market-queryplan.v1',
+                'market_slices'=>$marketSlices,
+                'query_provider'=>'native_provider_pending_proof',
+                'market_partitioned_cache_required'=>true,
+                'policy_blocks_read'=>isset($policy['deny']['read_catalog']),
+                'source_authority_verified'=>false,
+                'plan_executable'=>false),
             'pending_proofs'=>array_values(array_unique($pending)),
             'runtime_approved'=>false,'mutation_performed'=>false,
             'execution_engine'=>'native_provider_pending_proof',
