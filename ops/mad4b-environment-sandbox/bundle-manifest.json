@@ -1,0 +1,8 @@
+{
+  "contract": "mad4b.environment-sandbox-bundle.v1",
+  "auto_production_deploy": false,
+  "files": {
+    "000-mad4b-environment-sandbox.php": "fedaf5ff7a0bbc96ea96c49c847e6ca5d5bccfc75f2294f7c48c3d0229dd08b0",
+    "005-mad4b-staging-mail-admission.php": "d9c3555bfbffebfe6811cf0d9b4208a5cb0e22460f1eea66b17091a03d2d81aa"
+  }
+}

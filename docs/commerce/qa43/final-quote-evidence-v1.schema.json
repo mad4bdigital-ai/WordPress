@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:mad4b:commerce:final-quote-evidence:v1",
+  "title": "Non-authorizing provider receipt interoperability contract",
+  "description": "A JSON document satisfying this schema alone NEVER certifies quote authenticity, funds, supplier inventory or customer acceptance. Actual issuers must be independently authenticated through domain-native provider adapters.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "site_uuid",
+    "company_policy_revision",
+    "preflight_digest",
+    "plan_digest",
+    "provider_issuer",
+    "quote_currency",
+    "supplier_cost_minor",
+    "tax_minor",
+    "total_minor",
+    "inventory_reference",
+    "expires_at_utc",
+    "source_evidence"
+  ],
+  "properties": {
+    "contract": {
+      "const": "commerce.final-quote-evidence.v1"
+    },
+    "site_uuid": {
+      "type": "string",
+      "minLength": 1
+    },
+    "company_policy_revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "preflight_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "plan_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "provider_issuer": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 128
+    },
+    "quote_currency": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$"
+    },
+    "supplier_cost_minor": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "tax_minor": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "total_minor": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "inventory_reference": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "expires_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cost_receipt",
+        "tax_receipt",
+        "availability_receipt",
+        "pricing_receipt"
+      ],
+      "properties": {
+        "cost_receipt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "tax_receipt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "availability_receipt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "pricing_receipt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      }
+    }
+  },
+  "x-not-an-authority": "A domain provider must verify each evidence reference, identity, quote digest, expiry and issuer credentials. Never accept this object from an untrusted client as payment or booking authority."
+}
