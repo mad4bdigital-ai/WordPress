@@ -119,8 +119,10 @@ final class MAD4B_JetEngine_Hub_Addon {
             $term=get_term($row['canonical_term_id'],'tour-types');
             if (!$term || is_wp_error($term) ||
                 $term->taxonomy!=='tour-types' ||
-                (string)$term->slug!==(string)$row['source_slug']) {
-                return self::deny('target_taxonomy_slug_mismatch');
+                // EN canonical slugs are stable. Translated source slugs
+                // are NOT transport IDs and are allowed to differ by locale.
+                ($row['language']==='en' && (string)$term->slug!==(string)$row['source_slug'])) {
+                return self::deny('target_taxonomy_identity_mismatch');
             }
             global $wpdb;
             if (!defined('ICL_SITEPRESS_VERSION'))return self::deny('wpml_unavailable');
@@ -140,17 +142,46 @@ final class MAD4B_JetEngine_Hub_Addon {
         }
         $langs=array_count_values(array_column($result,'language'));
         if (($langs['en']??0)!==9 || ($langs['ar']??0)!==9)return self::deny('wpml_language_set_incomplete');
-        // Source parent and canonical parent must represent the same hierarchy.
+        // Preserve translation group identity across both languages. Source and
+        // target translation group NUMBERS differ across sites; pair within each.
+        $bySourceGroup=array();$byTargetGroup=array();
+        foreach($result as $row) {
+            $group=(int)$row['source_wpml_group'];
+            $targetGroup=(int)$row['target_wpml_group'];
+            if($group<1 || $targetGroup<1)return self::deny('translation_group_missing');
+            $bySourceGroup[$group][$row['language']]=$row;
+            $byTargetGroup[$targetGroup][$row['language']]=$row;
+        }
+        if(count($bySourceGroup)!==9 || count($byTargetGroup)!==9)
+            return self::deny('translation_groups_unpaired');
+        foreach($bySourceGroup as $translations) {
+            if(count($translations)!==2 || !isset($translations['en'],$translations['ar']) ||
+               $translations['en']['target_wpml_group']!==$translations['ar']['target_wpml_group'])
+                return self::deny('translation_pair_mismatch');
+        }
+        foreach($byTargetGroup as $translations) {
+            if(count($translations)!==2 || !isset($translations['en'],$translations['ar']) ||
+               $translations['en']['source_wpml_group']!==$translations['ar']['source_wpml_group'])
+                return self::deny('reverse_translation_pair_mismatch');
+        }
+        // A source parent is a source-local ID; destination parent may be a
+        // translated OR base-language canonical term in the same WPML group.
         foreach($result as $row) {
             $sourceParent=(int)$row['source_parent_id'];
             $targetParent=(int)$row['canonical_parent_id'];
-            if (!$sourceParent && $targetParent) return self::deny('root_parent_mismatch');
-            if ($sourceParent) {
-                $key=$row['language'].':'.$sourceParent;
-                if (!isset($result[$key]) ||
-                    (int)$result[$key]['canonical_term_id']!==$targetParent)
-                    return self::deny('canonical_parent_mismatch');
-            }
+            if (!$sourceParent && $targetParent)return self::deny('root_parent_mismatch');
+            if (!$sourceParent)continue;
+            $key=$row['language'].':'.$sourceParent;
+            if(!isset($result[$key]))return self::deny('source_parent_not_found');
+            $parentGroup=$result[$key]['target_wpml_group'];
+            $parentTerm=get_term($targetParent,'tour-types');
+            if(!$parentTerm || is_wp_error($parentTerm))return self::deny('target_parent_missing');
+            global $wpdb;
+            $parentWpml=$wpdb->get_row($wpdb->prepare(
+                "SELECT trid FROM {$wpdb->prefix}icl_translations WHERE element_type=%s AND element_id=%d LIMIT 1",
+                'tax_tour-types',$targetParent),ARRAY_A);
+            if(!$parentWpml || (int)$parentWpml['trid']!==(int)$parentGroup)
+                return self::deny('target_parent_translation_mismatch');
         }
         return $result;
     }
