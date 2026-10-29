@@ -6,11 +6,18 @@ on:
     paths: ['wp-content/plugins/wpml-meta-id-mapper-ui/**']
 permissions:
   contents: read
+
+concurrency:
+  group: mad4b-wpml-mapper-source-recovery-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
 jobs:
   source-recovery:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
