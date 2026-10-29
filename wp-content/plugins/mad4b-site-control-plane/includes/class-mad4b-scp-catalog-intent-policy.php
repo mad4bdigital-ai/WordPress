@@ -119,6 +119,11 @@ final class MAD4B_SCP_Catalog_Intent_Policy {
             || 'filter_control' === $context || 'pagination_control' === $context ) {
             return array( 'discovery_expansion', 'functional_navigation_can_expand_relevant_catalog' );
         }
+        if ( 'collection' === $type && 'tour_catalog' === $intent
+            && 'navigation' === $context
+            && in_array( $relation, array( 'direct', 'supporting', 'exploration' ), true ) ) {
+            return array( 'discovery_expansion', 'related_catalog_category_can_expand_inventory' );
+        }
         $primary_types = 'destination_guide' === $intent
             ? array( 'destination', 'attraction' ) : array( 'individual_tour', 'package_tour' );
         if ( 'direct' === $relation && 'listing_card' === $context
