@@ -1,0 +1,85 @@
+name: ETG Woo Lab Portable MU — serial approved deployment
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'packages/etg-woo-lab-portable-mu/**'
+      - '.github/workflows/etg-woo-lab-portable-mu-deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: woo-lab-mu-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify-source:
+    name: Verify exact master commit package before release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          coverage: none
+      - name: Check source hash and deployer fail-closed behavior
+        run: |
+          python3 packages/etg-woo-lab-portable-mu/tools/deploy_reviewed_mu.py --check
+          python3 packages/etg-woo-lab-portable-mu/tests/test_deploy.py
+
+  deploy-woo-lab:
+    name: Controlled master-commit deployment to isolated Woo Lab
+    needs: verify-source
+    if: ${{ github.ref == 'refs/heads/master' && vars.WOO_LAB_MU_AUTO_DEPLOY == 'true' }}
+    runs-on: ubuntu-latest
+    environment: woo-lab
+    timeout-minutes: 15
+    env:
+      LAB_HOST: ${{ secrets.WOO_LAB_MU_SSH_HOST }}
+      LAB_USER: ${{ secrets.WOO_LAB_MU_SSH_USER }}
+      LAB_KEY: ${{ secrets.WOO_LAB_MU_SSH_PRIVATE_KEY }}
+      LAB_HOST_KEYS: ${{ secrets.WOO_LAB_MU_SSH_KNOWN_HOSTS }}
+      RELEASE_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Require configured SSH identity and pinned host keys
+        run: |
+          set -euo pipefail
+          test -n "$LAB_HOST" && test -n "$LAB_USER"
+          test -n "$LAB_KEY" && test -n "$LAB_HOST_KEYS"
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+          printf '%s\n' "$LAB_KEY" > "$HOME/.ssh/woo_lab_key"
+          printf '%s\n' "$LAB_HOST_KEYS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/woo_lab_key" "$HOME/.ssh/known_hosts"
+      - name: Copy exact commit package and deploy only the specified Woo Lab MU files
+        run: |
+          set -euo pipefail
+          BASE=/opt/commerce-components/deploy/woo-lab-mu
+          INCOMING="$BASE/incoming/$RELEASE_SHA"
+          BACKUP="$BASE/backups/$RELEASE_SHA"
+          TARGET=/opt/hostinger-migrations/hosting-3/etg-woocommerce-lab/site-copy/wp-content/mu-plugins
+          SSH=(ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -i "$HOME/.ssh/woo_lab_key")
+          SCP=(scp -o BatchMode=yes -o StrictHostKeyChecking=yes -i "$HOME/.ssh/woo_lab_key")
+          tar -czf woo-lab-source.tar.gz -C packages etg-woo-lab-portable-mu
+          "${SSH[@]}" "$LAB_USER@$LAB_HOST" "mkdir -p '$INCOMING' '$BASE/backups'"
+          "${SCP[@]}" woo-lab-source.tar.gz "$LAB_USER@$LAB_HOST:$INCOMING/source.tar.gz"
+          "${SSH[@]}" "$LAB_USER@$LAB_HOST" \
+            "set -eu; tar -xzf '$INCOMING/source.tar.gz' -C '$INCOMING'; \
+            chmod +x '$INCOMING/etg-woo-lab-portable-mu/tools/php_lint_via_lab_docker.sh'; \
+            MU_PHP_BIN='$INCOMING/etg-woo-lab-portable-mu/tools/php_lint_via_lab_docker.sh' \
+            python3 '$INCOMING/etg-woo-lab-portable-mu/tools/deploy_reviewed_mu.py' --apply \
+            --target '$TARGET' --backup-dir '$BACKUP'; \
+            MU_PHP_BIN='$INCOMING/etg-woo-lab-portable-mu/tools/php_lint_via_lab_docker.sh' \
+            python3 '$INCOMING/etg-woo-lab-portable-mu/tools/deploy_reviewed_mu.py' --dry-run --target '$TARGET'; \
+            curl -fsS --max-time 10 -H 'Host: tours.dev.mad4b.com' -o /dev/null http://127.0.0.1:8091/wp-json/; \
+            printf '%s\n' '$RELEASE_SHA' > '$INCOMING/deployed-exact-head.txt'"
