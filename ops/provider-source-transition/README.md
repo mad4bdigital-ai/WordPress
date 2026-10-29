@@ -31,3 +31,13 @@ From the repository root:
 5. Remove deprecated aliases only after zero active consumers and explicit owner approval.
 
 This stage adds a source decision policy, a read-only resolver and CI tests. No Production or Staging mutation.
+
+## Native consumer audit (Phase 2 — source only)
+
+Run `python3 ops/provider-source-transition/audit_consumer_readiness.py`. The audit inspects the **actual repository source**, not a guessed company identity. It checks the source-registered legacy read and write adapter classes, compatibility abilities, native option aliases and version pins against the canonical plugin's declared version. It is deliberately non-authorizing.
+
+At the inspected master revision, the old Control Plane read and write adapters require `0.4.0-alpha.13`, whereas the canonical neutral plugin declares `0.4.0-alpha.14-local.1`. Version compatibility must not be inferred from the neutral package's `ETG_DFSB_VERSION` alias alone. The newer isolated candidate `alpha.15-rc.1` in another branch is likewise not yet a deployed/runtime-authorized source.
+
+Do **not** change the historical `etg-dfsb/...` ability names, old `etg_dfsb_...` option keys or the write/rollback adapter at this point. They are registered provider/source interfaces. Real neutral read migration first requires exact Control Plane `rc.118` source parity and a certified native plugin/read adapter; actual write migration is a separate signed execution process.
+
+This audit and its negative tests do not deploy code, approve a provider, publish content or send messages.

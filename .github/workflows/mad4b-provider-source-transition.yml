@@ -23,12 +23,19 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m unittest discover -s ops/provider-source-transition -p 'test_*.py' -v
+          python3 ops/provider-source-transition/audit_consumer_readiness.py > /tmp/dfsb-consumer-readiness.json
           python3 ops/provider-source-transition/resolve_source.py --mode new_site > /tmp/neutral-transition.json
           python3 - <<'PY'
           import json
           with open('/tmp/neutral-transition.json', encoding='utf-8') as f:
               p = json.load(f)
           assert p['source_id'] == 'dynamic-filter-seo-bridge'
+          with open('/tmp/dfsb-consumer-readiness.json', encoding='utf-8') as f:
+              audit = json.load(f)
+          assert audit['source_only_audit'] and not audit['safe_to_cutover']
+          assert not audit['new_write_authority']
+          assert not audit['legacy_read_version_compatible']
+          assert not audit['legacy_write_version_compatible']
           assert not p['execution_allowed'] and not p['publication_allowed']
           assert not p['mutation_allowed'] and not p['legacy_fallback_used']
           print('PROVIDER_NEUTRAL_SOURCE_TRANSITION: PASS')
