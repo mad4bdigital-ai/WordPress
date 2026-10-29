@@ -153,6 +153,7 @@ final class MAD4B_Tourism_Source_View_V1 {
             strtolower((string)wp_parse_url($url,PHP_URL_HOST))!==self::HOST)return;
         // Temporary, reversible redirect; LiteSpeed may otherwise cache 302 for a week.
         nocache_headers();
+        do_action('litespeed_control_set_nocache','MAD4B Legacy Demo Source Redirect');
         header('X-LiteSpeed-Cache-Control: no-cache',true);
         wp_safe_redirect($url,302,'MAD4B Verified Tourism Source');
         exit;
