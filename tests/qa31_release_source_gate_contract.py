@@ -4,7 +4,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import json,sys,hashlib
 sys.path.insert(0,str(Path(__file__).resolve().parents[1] / 'tools'))
-from qa31_release_source_gate import evaluate
+from qa31_release_source_gate import evaluate,reviewed_bootstrap_successor
 def chk(ok,label):
     if not ok:raise AssertionError(label)
     print('PASS '+label)
@@ -47,4 +47,26 @@ with TemporaryDirectory() as directory:
     try:evaluate(e,p)
     except ValueError:print('PASS duplicate_source_records_rejected')
     else:raise AssertionError('duplicate source')
+# Current Git HEAD bootstrap may evolve under separate exact CI-only source
+# review without rewriting the *historical* staging/GitHub SHA256 evidence.
+# It remains PENDING, never a parity/installation/release approval.
+repo=Path(__file__).resolve().parents[1]
+plugin=repo/'wp-content/plugins/mad4b-site-control-plane'
+ledger=json.loads((repo/'governance/release-parity/qa31-commerce-staging-source-parity.json').read_text(encoding='utf-8'))
+current=(plugin/'mad4b-site-control-plane.php').read_bytes()
+chk(reviewed_bootstrap_successor(plugin,'mad4b-site-control-plane.php',current),
+    'exact_git_reviewed_bootstrap_accepted_ci_only')
+checked=evaluate(ledger,plugin)
+chk(checked['reviewed_github_successor_paths']==['mad4b-site-control-plane.php']
+    and checked['unexpected_count']==0 and checked['pending_count']>0
+    and checked['decision']=='BLOCKED_SOURCE_RECONCILIATION',
+    'reviewed_successor_remains_pending_without_version_parity')
+chk(not reviewed_bootstrap_successor(plugin,'mad4b-site-control-plane.php',current+b'\nmodified'),
+    'tampered_bootstrap_bytes_denied')
+chk(not reviewed_bootstrap_successor(plugin,'includes/unapproved.php',current),
+    'unlisted_successor_scope_denied')
+with TemporaryDirectory() as foreign:
+    chk(not reviewed_bootstrap_successor(Path(foreign),'mad4b-site-control-plane.php',current),
+        'foreign_checkout_cannot_self_certify')
+
 print('QA31_SOURCE_PARITY_NEGATIVE_REGRESSIONS: PASS')
