@@ -46,3 +46,15 @@ Both require `manage_options`. The resolve endpoint is read-only and returns sou
 Implement server-side signed collection route, per-company grants and nonce protection, server-owned binding registry for endpoint IDs/listing/query IDs, authorized outbound signature injection and JetSmartFilters provider bindings. These must be independently tested before enabling a customer-facing collection. Source-local attachment/media IDs and historical prices remain excluded. The existing plugin currently validates the Tourism Nile fixture; other companies must supply their own verified mapping manifests, language contracts and ownership permissions before this adapter can be generalized.
 
 Rollback the staging add-on by deactivating `mad4b-jetengine-hub-addon`. It has no private database tables or created content to uninstall. The Site Control Plane will then deny runtime Hub distribution without the required adapter.
+
+## Market policy & selective QueryPlan extension — Staging v0.3.0 (2026-10-30)
+
+A new `MAD4B_Hub_Market_Policy` adds **explicit server-registered market scopes** to the read-only Selection Manifest/QueryPlan. Choose only selected source records for an approved market, locale, nationality/residency/POS segments, destination country, channel, currency and ISO-date validity window. The same plan retains selected native JetEngine Query/Listing/Filter identifiers; it does not rewrite existing native providers.
+
+Policy inheritance now includes a `market` level and nested `market_limits`, with DENY-WINS and strict non-widening. No `markets` selection produces `UNSCOPED_DENY`; requesting a wider scope than the server registry or inherited policy returns 422. The output includes distinct market-specific predicate slices with `plan_executable=false`.
+
+**Signed market authority is mandatory:** Control Plane `admit_runtime()` requires a market-scoped `selection_manifest` matching source and destination identities, plus trusted server-side `mad4b_scp_hub_consumer_market_authority` in addition to the existing source-signature and native-binding proofs. The market registry alone is not permission to distribute, and no real company markets are currently registered.
+
+Tests: 22 market failure cases; existing provider discovery/Query/Options/WPML/Elementor tests green; direct Control Plane denial confirmed for missing/unscoped manifests and unauthorized REST. Staging Add-on `0.3.0` active, 417 private Hub items preserved, no new endpoint/query/listing or commercial price activation.
+
+Read [Market Policy and QueryPlan specification](docs/MARKET-POLICY-SELECTION-QUERYPLAN.md) and [test evidence](../../../ops/central-company-rest/evidence/STAGING-MARKET-POLICY-QUERYPLAN-20261030.json).
