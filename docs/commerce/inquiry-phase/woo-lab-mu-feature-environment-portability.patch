@@ -41,6 +41,19 @@
  add_shortcode('pricing_header_switcher', static function () {
   $settings=get_option('_wcml_settings',[]);
   if(($settings['enable_multi_currency']??0)!=2 || !function_exists('pricing_public_fx_snapshot') || !pricing_public_fx_snapshot())return '';
+--- a/wp-content/mu-plugins/rate-dates-ui.php
++++ b/wp-content/mu-plugins/rate-dates-ui.php
+@@ -2,8 +2,9 @@
+ /** Non-invasive UI adapter for lab, with no direct JetSmartFilters file changes. */
+ if (!defined('ABSPATH')) exit;
+ add_action('wp_enqueue_scripts',function(){
+- if(wp_get_environment_type()!=='local'||!is_singular('tours-and-activities'))return;
++ if(!is_singular('tours-and-activities'))return;
+  $tour=get_queried_object_id();if(!$tour)return;
++ if(!is_readable(__DIR__.'/woo-lab-assets/rate-dates-adapter.js'))return;
+  wp_enqueue_script('etg-lab-rate-dates-ui',content_url('mu-plugins/woo-lab-assets/rate-dates-adapter.js'),[], '0.2.0',true);
+  wp_add_inline_script('etg-lab-rate-dates-ui','window.ETGLabRateDates='.wp_json_encode(['tourId'=>(int)$tour,'endpoint'=>rest_url('shared-product/v1/rate-dates')]).';','before');
+ },30);
 --- a/wp-content/mu-plugins/registry-destination-activity.php
 +++ b/wp-content/mu-plugins/registry-destination-activity.php
 @@ -1,7 +1,7 @@
@@ -63,6 +76,17 @@
  
  /** Descendants, never parents or siblings; depth is not artificially limited. */
  function registry_destination_activity_descendants(int $term_id):array {
+--- a/wp-content/mu-plugins/registry-destination-presentation-ui.php
++++ b/wp-content/mu-plugins/registry-destination-presentation-ui.php
+@@ -4,7 +4,7 @@
+  * Read-only projection; never alter stored data or override a pricing engine.
+  */
+ defined('ABSPATH')||exit;
+-if(wp_get_environment_type()!=='local')return;
++
+ function shared_destination_presentation_context():?array {
+  if(!class_exists('Shared_Product_Destination_Term_Presentation_v1'))return null;
+  $term=Shared_Product_Destination_Term_Presentation_v1::current();
 --- a/wp-content/mu-plugins/shared-listing-empty-ajax-guard.php
 +++ b/wp-content/mu-plugins/shared-listing-empty-ajax-guard.php
 @@ -1,7 +1,7 @@
