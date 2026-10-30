@@ -336,67 +336,140 @@ final class MAD4B_Hub_Source_Import_V1 {
         }
         return $result;
     }
+    /**
+     * InnoDB guarded commit. Source records are completely validated BEFORE entry.
+     * Cross-transport downgrade, stale revisions and ambiguous identities fail closed.
+     * WordPress hooks can have external side effects: never treat this as publication.
+     */
     private static function save_batch($company,array $types,array $incoming) {
-        $existing=self::existing_map($company);
-        if(is_wp_error($existing))return $existing;
-        // Batch hash is content-addressed, not time-based; reruns of identical
-        // source data do not modify content or generate additional duplicates.
-        $hash=hash('sha256',wp_json_encode($incoming,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
-        $created=0;$updated=0;
-        foreach($incoming as $key=>$row) {
-            $id=$existing[$key]??0;
-            $itemHash=hash('sha256',wp_json_encode($row,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
-            $unchanged=$id && get_post_meta($id,'_mad4b_hub_import_item_hash',true)===$itemHash;
-            if ($unchanged)continue;
-            $data=[
-                'post_type'=>self::CPT,'post_status'=>'private',
-                'post_title'=>$row['title'],'post_content'=>$row['body'],
-                'post_excerpt'=>$row['summary'],
-                'comment_status'=>'closed','ping_status'=>'closed',
-            ];
-            if($id)$data['ID']=$id;
-            $written=$id?wp_update_post($data,true):wp_insert_post($data,true);
-            if(is_wp_error($written) || !$written)return self::failure('write_failed',503);
-            $id=(int)$written;
-            $meta=[
-                '_mad4b_hub_import_owner'=>$company,
-                '_mad4b_hub_import_type'=>$row['source_post_type'],
-                '_mad4b_hub_import_kind'=>$row['kind'],
-                '_mad4b_hub_import_source_id'=>$row['source_id'],
-                '_mad4b_hub_import_language'=>$row['language'],
-                '_mad4b_hub_import_source_modified'=>$row['modified_gmt'],
-                '_mad4b_hub_import_item_hash'=>$itemHash,
-                '_mad4b_hub_import_reference_only'=>'yes',
-                '_mad4b_hub_import_may_publish'=>'no',
-                '_mad4b_hub_import_may_checkout'=>'no',
-            ];
-            if(isset($row['source_wpml_trid'])) {
-                $meta['_mad4b_hub_import_translation_trid']=$row['source_wpml_trid'];
-                $meta['_mad4b_hub_import_source_slug']=$row['source_slug'];
-                $meta['_mad4b_hub_import_source_url']=$row['source_url'];
-                $meta['_mad4b_hub_import_text_origin']=$row['source_text_origin'];
-                $meta['_mad4b_hub_import_taxonomy_refs']=$row['source_taxonomy_refs'];
-                $meta['_mad4b_hub_import_identity_facts']=$row['source_identity_facts'];
-                $meta['_mad4b_hub_import_source_metadata']=$row['source_metadata'];
+        global $wpdb;
+        if(!is_object($wpdb) || !method_exists($wpdb,'prepare') ||
+            !method_exists($wpdb,'get_var') || !method_exists($wpdb,'query'))
+            return self::failure('transaction_backend_unavailable',503);
+        $lockName='mad4b_hub_import_'.substr(hash('sha256',$company),0,30);
+        $locked=(string)$wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s, 0)',$lockName));
+        if($locked!=='1')return self::failure('import_locked',409);
+        $started=false;$touched=[];$created=0;$updated=0;
+        try {
+            // All three touched WordPress tables must support rollback.
+            foreach(['posts','postmeta','options'] as $suffix) {
+                $engine=(string)$wpdb->get_var($wpdb->prepare(
+                    'SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=%s',
+                    $wpdb->prefix.$suffix));
+                if(strtoupper($engine)!=='INNODB')
+                    throw new RuntimeException('transaction_engine_unavailable');
             }
-            foreach($meta as $field=>$value)update_post_meta($id,$field,$value);
-            if($key!==$company.':'.$row['source_post_type'].':'.$row['language'].':'.$row['source_id']) {
-                return self::failure('identity_drift',409);
+            $existing=self::existing_map($company);
+            if(is_wp_error($existing))throw new RuntimeException('existing_identity_invalid');
+            foreach($incoming as $key=>$row) {
+                if($key!==$company.':'.$row['source_post_type'].':'.$row['language'].':'.$row['source_id'])
+                    throw new RuntimeException('source_identity_drift');
+                $id=$existing[$key]??0;
+                if(!$id)continue;
+                $prior=get_post($id);
+                if(!$prior || $prior->post_type!==self::CPT || $prior->post_status!=='private')
+                    throw new RuntimeException('existing_not_private');
+                $oldTrid=(int)get_post_meta($id,'_mad4b_hub_import_translation_trid',true);
+                if($oldTrid>0) {
+                    // A legacy REST row must never erase enriched JetEngine text while
+                    // leaving old SSH source metadata under the same source identity.
+                    if(!isset($row['source_wpml_trid']))
+                        throw new RuntimeException('transport_schema_downgrade');
+                    if($oldTrid!==(int)$row['source_wpml_trid'])
+                        throw new RuntimeException('source_translation_identity_changed');
+                }
+                $oldModified=(string)get_post_meta($id,'_mad4b_hub_import_source_modified',true);
+                if($oldModified!=='' && $oldModified!=='0000-00-00 00:00:00' &&
+                   $row['modified_gmt']!=='0000-00-00 00:00:00' &&
+                   strtotime($row['modified_gmt'])<strtotime($oldModified))
+                    throw new RuntimeException('stale_source_revision');
             }
-            if(isset($existing[$key]))$updated++;else{$created++;$existing[$key]=$id;}
+            // START TRANSACTION must occur after the complete preflight and lock.
+            if($wpdb->query('START TRANSACTION')===false)
+                throw new RuntimeException('transaction_start_failed');
+            $started=true;
+            $hash=hash('sha256',wp_json_encode($incoming,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
+            foreach($incoming as $key=>$row) {
+                $id=$existing[$key]??0;
+                $itemHash=hash('sha256',wp_json_encode($row,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
+                if($id && get_post_meta($id,'_mad4b_hub_import_item_hash',true)===$itemHash)
+                    continue;
+                $data=[
+                    'post_type'=>self::CPT,'post_status'=>'private',
+                    'post_title'=>$row['title'],'post_content'=>$row['body'],
+                    'post_excerpt'=>$row['summary'],
+                    'comment_status'=>'closed','ping_status'=>'closed',
+                ];
+                if($id)$data['ID']=$id;
+                $written=$id?wp_update_post($data,true):wp_insert_post($data,true);
+                if(is_wp_error($written) || !$written)
+                    throw new RuntimeException('post_write_failed');
+                $id=(int)$written;$touched[]=$id;
+                $meta=[
+                    '_mad4b_hub_import_owner'=>$company,
+                    '_mad4b_hub_import_type'=>$row['source_post_type'],
+                    '_mad4b_hub_import_kind'=>$row['kind'],
+                    '_mad4b_hub_import_source_id'=>$row['source_id'],
+                    '_mad4b_hub_import_language'=>$row['language'],
+                    '_mad4b_hub_import_source_modified'=>$row['modified_gmt'],
+                    '_mad4b_hub_import_item_hash'=>$itemHash,
+                    '_mad4b_hub_import_provider_key'=>'tourism_wp',
+                    '_mad4b_hub_import_dataset_key'=>'tourism_main',
+                    '_mad4b_hub_import_reference_only'=>'yes',
+                    '_mad4b_hub_import_may_publish'=>'no',
+                    '_mad4b_hub_import_may_checkout'=>'no',
+                ];
+                if(isset($row['source_wpml_trid'])) {
+                    $meta['_mad4b_hub_import_translation_trid']=$row['source_wpml_trid'];
+                    $meta['_mad4b_hub_import_source_slug']=$row['source_slug'];
+                    $meta['_mad4b_hub_import_source_url']=$row['source_url'];
+                    $meta['_mad4b_hub_import_text_origin']=$row['source_text_origin'];
+                    $meta['_mad4b_hub_import_taxonomy_refs']=$row['source_taxonomy_refs'];
+                    $meta['_mad4b_hub_import_identity_facts']=$row['source_identity_facts'];
+                    $meta['_mad4b_hub_import_source_metadata']=$row['source_metadata'];
+                }
+                foreach($meta as $field=>$value) {
+                    $ok=update_post_meta($id,$field,$value);
+                    if($ok===false && get_post_meta($id,$field,true)!==$value)
+                        throw new RuntimeException('metadata_write_failed');
+                }
+                if(isset($existing[$key]))$updated++;else{$created++;$existing[$key]=$id;}
+            }
+            $active=['source_company'=>$company,'types'=>$types,
+                'snapshot_sha256'=>$hash,'keys'=>array_keys($incoming),
+                'saved_at'=>gmdate('c'),'record_count'=>count($incoming)];
+            if(update_option(self::ACTIVE,$active,false)===false &&
+               get_option(self::ACTIVE,[])!==$active)
+                throw new RuntimeException('active_index_write_failed');
+            $receipt=['source_company'=>$company,'imported'=>count($incoming),
+                'created'=>$created,'updated'=>$updated,
+                'unchanged'=>count($incoming)-$created-$updated,
+                'snapshot_sha256'=>$hash,'status'=>'imported',
+                'source_provider'=>'tourism_wp','source_dataset'=>'tourism_main'];
+            if(update_option(self::RECEIPT,$receipt,false)===false &&
+               get_option(self::RECEIPT,[])!==$receipt)
+                throw new RuntimeException('receipt_write_failed');
+            if($wpdb->query('COMMIT')===false)
+                throw new RuntimeException('transaction_commit_failed');
+            $started=false;
+            return $receipt;
+        } catch(Throwable $e) {
+            if($started)$wpdb->query('ROLLBACK');
+            // WordPress cache changes are not SQL transactional. Explicitly drop
+            // affected post/meta and options cache after rollback.
+            foreach($touched as $id) {
+                if(function_exists('clean_post_cache'))clean_post_cache($id);
+                if(function_exists('wp_cache_delete'))wp_cache_delete($id,'post_meta');
+            }
+            if(function_exists('wp_cache_delete'))wp_cache_delete('alloptions','options');
+            if(function_exists('wp_cache_delete')) {
+                wp_cache_delete(self::ACTIVE,'options');
+                wp_cache_delete(self::RECEIPT,'options');
+            }
+            return self::failure('atomic_import_aborted',503);
+        } finally {
+            $wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)',$lockName));
         }
-        // Atomic active index swap: removed source records are not distributed,
-        // even though their private Hub posts are retained for manual review.
-        $active=['source_company'=>$company,'types'=>$types,
-            'snapshot_sha256'=>$hash,'keys'=>array_keys($incoming),
-            'saved_at'=>gmdate('c'),'record_count'=>count($incoming)];
-        update_option(self::ACTIVE,$active,false);
-        $receipt=['source_company'=>$company,'imported'=>count($incoming),
-            'created'=>$created,'updated'=>$updated,
-            'unchanged'=>count($incoming)-$created-$updated,
-            'snapshot_sha256'=>$hash,'status'=>'imported'];
-        update_option(self::RECEIPT,$receipt,false);
-        return $receipt;
     }
     public static function active_items($company,array $kinds,array $languages,$selected_ids=[],$auto_include=true) {
         $active=get_option(self::ACTIVE,[]);
