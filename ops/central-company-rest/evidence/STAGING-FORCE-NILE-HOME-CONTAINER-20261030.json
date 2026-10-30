@@ -1,0 +1,64 @@
+{
+  "contract": "mad4b.elementor.home-tourism-nile-force-container.v1",
+  "event_date": "2026-10-30",
+  "environment": "Staging",
+  "site": "https://tours.dev.mad4b.com/",
+  "operator_intent": "Force creation of an independent Elementor Container above the existing Home Tours filter and listing grid, without bypassing structural/data integrity",
+  "execution": {
+    "template_post_id": 25917,
+    "homepage_post_id": 35138,
+    "parent_elementor_container_id": "1cefa40",
+    "inserted_container_id": "ab4d2f1",
+    "moved_existing_shortcode_widget_id": "c4a2d91",
+    "shortcode": "[mad4b_tourism_nile_catalog mode=\"home_subcategories\"]",
+    "final_order": [
+      "11456f6",
+      "ab4d2f1",
+      "78c6d0e",
+      "e3b8601"
+    ],
+    "preserved_filter_widget_id": "92664ff",
+    "preserved_listing_grid_id": "e3b8601",
+    "categories_rendered": 8,
+    "duplicate_standalone_home_section_count": 0,
+    "source_company": "tourism-almallahgroup",
+    "force_semantics": "Skipped stale previous expected SHA, but required approved exact template/widget IDs, correct Home context, no duplicates, and verified backup SHA",
+    "backup": {
+      "private_vps_path": "/opt/mad4b-company-release-prep/20261029/central-rest/nile-container-20261030/25917-before.json",
+      "sha256": "c98cdcd596a371e7264b2ee94665278f89fb671f7f96ce35cf09dce249939c3b",
+      "file_permissions": "0600",
+      "publicly_served": false
+    },
+    "saved_elementor_json_sha256": "8be303e1d9d97da05bd653ef2d9626052e5cdfbd6280dc65100e8c406362f8a8",
+    "rollback": "Under reviewed rollback restore _elementor_data for post 25917 from exact private SHA-verified backup using wp_slash, then purge Elementor and LiteSpeed caches."
+  },
+  "verification": {
+    "template_post_status": "publish",
+    "homepage_http": 200,
+    "rendered_elementor_container_in_homepage": true,
+    "front_end_order": "container > shortcode subcategories, then JetSmartFilters, then JetListingGrid",
+    "source_tenant_tag_present": true,
+    "source_category_count": 8,
+    "old_standalone_home_section_count": 0,
+    "elementor_and_litespeed_cache_purged": true,
+    "company_homepages_http": {
+      "tours_dev": 200,
+      "tourism": 200,
+      "all_royal_egypt": 200,
+      "egypt_tour_gates": 200
+    },
+    "current_price_or_checkout_activation": false,
+    "production_mutated": false
+  },
+  "notes": [
+    "The first attempt failed before a write because the PHP container cannot see a private backup path on the VPS host; backup extraction was corrected to take place on the host, then verified by SHA passed to the PHP executor.",
+    "The first public HTML position check counted CSS selectors in the head and gave a false ordering failure; validating data-id attributes inside the actual body DOM showed the correct visual order."
+  ],
+  "governance": {
+    "pr": 631,
+    "branch": "feature/central-company-rest-pairing-20261029",
+    "pr_draft": true,
+    "merged": false,
+    "owner_attestation_and_ci_still_required_for_production": true
+  }
+}

@@ -1,0 +1,89 @@
+{
+  "contract": "mad4b.jetengine-hub-addon-staging-acceptance.v1",
+  "captured_date": "2026-10-30",
+  "site": "https://tours.dev.mad4b.com",
+  "environment": "Staging",
+  "repo": "mad4bdigital-ai/WordPress",
+  "pr_number": 631,
+  "addon": {
+    "plugin_slug": "mad4b-jetengine-hub-addon",
+    "main_file": "wp-content/plugins/mad4b-jetengine-hub-addon/mad4b-jetengine-hub-addon.php",
+    "version": "0.1.0",
+    "activated": true,
+    "installed_file_sha256": "18546e9376206d169b3b3c570e9656e4616dba3ec91180d6c505abff447f4105",
+    "requires": [
+      "JetEngine REST API Listings",
+      "MAD4B Site Control Plane",
+      "WPML bilingual canonical terms"
+    ],
+    "jetengine_query_args_hook_priority": 25,
+    "jetengine_response_body_hook_priority": 25,
+    "no_vendor_file_edits": true,
+    "no_new_elementor_template_or_shortcode": true,
+    "no_new_jetengine_endpoints_or_queries": true
+  },
+  "taxonomy": {
+    "company": "tourism-almallahgroup",
+    "canonical_taxonomy": "tour-types",
+    "source_taxonomy": "tour-types_jet",
+    "verified_source_term_links": 18,
+    "verified_translation_groups": 9,
+    "languages": [
+      "en",
+      "ar"
+    ],
+    "ar_source_slug_can_differ_from_canonical_slug": true,
+    "ar_children_can_reference_parent_in_canonical_en_translation_group": true,
+    "exact_term_rows_queried_without_wpml_get_term_translation": true,
+    "preexisting_parent_or_slug_data_mutated": false
+  },
+  "security": {
+    "control_plane_addon_prerequisite_enforced": true,
+    "admin_status_route": "GET /wp-json/mad4b/v1/jetengine-hub-addon/status",
+    "admin_mapping_route": "POST /wp-json/mad4b/v1/jetengine-hub-addon/resolve",
+    "anonymous_admin_route_status": 401,
+    "authenticated_admin_route_status": 200,
+    "source_data_projection_allowlist": true,
+    "raw_price_sale_price_customer_email_account_key_checkout_url_not_emitted": true,
+    "foreign_tenant_response_rejected": true,
+    "unknown_or_unmapped_term_rejected": true,
+    "unsupported_locale_rejected": true,
+    "manually_passing_raw_source_id_rejected": true,
+    "approved_endpoint_configurations": 0,
+    "current_binding_state": "unpaired",
+    "unapproved_outbound_hub_distribution_fetch": "blocked",
+    "unapproved_fetch_error": "mad4b_hub_jetengine_unapproved_remote_fetch",
+    "runtime_access_approved": false
+  },
+  "tests": {
+    "php_syntax": "PASS",
+    "preactivation_contract_tests": "PASS",
+    "postactivation_contract_tests": "PASS",
+    "read_only_category_resolution": "PASS",
+    "synthetic_native_query_conversion": "PASS",
+    "unbound_native_queries_unchanged": "PASS",
+    "response_sanitization": "PASS",
+    "wrong_source_tenant_rejected": "PASS",
+    "cross_language_wpml_mapping": "PASS",
+    "direct_network_fence": "PASS"
+  },
+  "runtime_data": {
+    "internal_hub_records": 417,
+    "temporary_catalog_pages_67883_and_67884": "draft",
+    "homepage_response_http": 200,
+    "tourism_source_home_response_http": 200,
+    "source_db_not_imported": true,
+    "published_or_bookable_rates_activated": false,
+    "production_environment_mutated": false
+  },
+  "limitation": "The Add-on maps the existing signed Tourism Nile staging fixture, but the new signed Hub distribution API endpoint and per-company JetEngine endpoint/query/listing bindings are not yet deployed or approved. No live remote Query Builder consumption occurs.",
+  "next_required_steps": [
+    "Implement signed read-only Hub distribution collections and per-consumer grants on Control Plane",
+    "Implement server-side signed request injection without storing secrets in JetEngine GUI",
+    "Enroll and certify exact JetEngine endpoint/query/listing bindings",
+    "Bind JetSmartFilters to the JetEngine REST query rather than native post WP_Query",
+    "Authorize additional company-specific taxonomies and translation groups through signed manifests",
+    "Complete mobile/desktop, pagination, caching, image authority and commercial segregation QA",
+    "PR exact-head CI and owner release approval before Production"
+  ]
+}

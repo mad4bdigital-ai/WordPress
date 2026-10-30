@@ -1,0 +1,88 @@
+{
+  "contract": "mad4b.central.nile-selective-reference-acceptance.v1",
+  "observed_date": "2026-10-29",
+  "environment": "tours.dev.mad4b.com STAGING",
+  "source_company": "tourism-almallahgroup",
+  "source_origin": "https://tourism.almallahgroup-mg.com",
+  "source_read_contract": "POST /wp-json/mad4b-company/v1/nile-source-read-v1",
+  "source_mu_file": "ops/central-company-rest/remote/180-mad4b-tourism-nile-source-read.php",
+  "central_mu_file": "ops/central-company-rest/central/180-mad4b-central-nile-reference.php",
+  "signed_connection": {
+    "algorithm": "ECDSA-P256-SHA256",
+    "pinned_company_origin": true,
+    "signed_request_payload_hash": true,
+    "signed_response_payload_hash": true,
+    "exact_company_and_nonce_validation": true,
+    "no_private_keys_transmitted": true,
+    "unsigned_source_post_http": 403,
+    "unsupported_source_get_http": 404,
+    "first_signed_source_post_http": 200,
+    "exact_nonce_replay_source_post_http": 403
+  },
+  "source_counts": {
+    "nile_cruise_categories.read": {
+      "verified_records": 18,
+      "verified_pages": 1,
+      "source_taxonomy": "tour-types_jet"
+    },
+    "nile_cruise_catalog.read": {
+      "verified_records": 35,
+      "verified_pages": 2,
+      "wpml_languages": {
+        "en": 19,
+        "ar": 16
+      },
+      "records_with_cruise_run_variants": 33,
+      "records_with_itinerary_days": 2
+    },
+    "nile_rate_history.read": {
+      "verified_records": 364,
+      "verified_pages": 19,
+      "reference_only": true,
+      "price_validity_review_pending": true
+    }
+  },
+  "staging_snapshot": {
+    "wordpress_option": "mad4b_nile_source_reference_v1",
+    "autoload": "off",
+    "serialized_bytes": 405379,
+    "source_owned_record_ids_unique_within_each_scope": true,
+    "no_partial_snapshot_written": true,
+    "all_scopes_complete": true,
+    "reference_only": true,
+    "publish_allowed": false,
+    "checkout_enabled": false,
+    "sales_product_records_created": 0,
+    "sales_price_records_published": 0,
+    "full_wp_database_import": false,
+    "source_customer_order_export": false,
+    "tenant_media_copied": false
+  },
+  "security": {
+    "central_preview": "POST /wp-json/mad4b-central/v1/companies/tourism-almallahgroup/nile-preview",
+    "central_snapshot": "POST /wp-json/mad4b-central/v1/companies/tourism-almallahgroup/nile-reference-sync",
+    "requires_central_WordPress_manage_options": true,
+    "exact_scopes_only": true,
+    "max_page_size": 20,
+    "request_url_pinned_and_tls_verified": true,
+    "no_general_remote_rest_proxy": true,
+    "anonymous_central_route_http": 423,
+    "anonymous_route_explanation": "Separate MAD4B Staging runtime admission fail closed before REST capability evaluation",
+    "no_auto_promotion_to_sales": true
+  },
+  "source_provenance": {
+    "github_repo": "mad4bdigital-ai/WordPress",
+    "github_pr": 631,
+    "source_files_commit_after_program_enrichment": "a95269ba714b220842443d2646776b4da73b6751",
+    "central_module_sha256": "7eda4c2192a5efed669c1859f27b76959b05c5ed9c93b0619e41723f6524f496",
+    "remote_module_sha256": "533f8e807f800044ce28343b70b1fcf48fa7aa5646811732667db17db8111915",
+    "merged_to_master": false
+  },
+  "pending_gates": [
+    "GitHub CI for PR #631 and owner exact-head release review",
+    "Review authoritative per-country pricing and historical rate validity before any sale",
+    "Map source term/tour IDs to target-independent IDs only in a later approved content promotion",
+    "Catalog presentation and media bindings remain local to owner company"
+  ],
+  "verdict": "STAGING_SELECTIVE_REFERENCE_SNAPSHOT_COMPLETE_NOT_FOR_SALE"
+}

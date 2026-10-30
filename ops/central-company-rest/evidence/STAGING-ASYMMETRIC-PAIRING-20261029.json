@@ -1,0 +1,72 @@
+{
+  "contract": "mad4b.central-companies.asymmetric-pairing-qa.v2",
+  "observed_date": "2026-10-29",
+  "central_origin": "https://tours.dev.mad4b.com",
+  "sources": {
+    "github_pr": 631,
+    "audited_v3_head": "eb510745a70952e44917fd0a75f45254a68e96de",
+    "central_v3_sha256": "dc792f53e157ab2329dc75089bb14f9dca38c0e6afe940761dbf584c9edd578e",
+    "remote_v3_sha256": "2828bb6269288725061c55b6bc52c89825f9c18f0660bb13193b7a6b558b4723"
+  },
+  "pairing_protocol": {
+    "algorithm": "ECDSA-P256-SHA256",
+    "private_keys_generated_and_kept_on_each_local_wordpress_host": true,
+    "secrets_or_private_keys_transmitted": false,
+    "public_keys_shared_via_pinned_ssh": true,
+    "authentication_request_method": "POST",
+    "remote_route": "/wp-json/mad4b-company/v1/identity-v3",
+    "nonce_replay_storage": "atomic INSERT IGNORE against wp_options unique option_name",
+    "old_signed_GET_route": "removed, cache purged, 404 on all three"
+  },
+  "companies": [
+    {
+      "id": "all-royal-egypt",
+      "signed_mutual_verification_http": 200,
+      "state": "authenticated_read_only",
+      "unsigned_post_http": 403,
+      "old_v2_get_http_after_purge": 404
+    },
+    {
+      "id": "egypt-tour-gates",
+      "signed_mutual_verification_http": 200,
+      "state": "authenticated_read_only",
+      "unsigned_post_http": 403,
+      "nonce_first_signed_http": 200,
+      "nonce_exact_replay_http": 403,
+      "old_v2_get_http_after_purge": 404
+    },
+    {
+      "id": "tourism-almallahgroup",
+      "signed_mutual_verification_http": 200,
+      "state": "authenticated_read_only",
+      "unsigned_post_http": 403,
+      "old_v2_get_http_after_purge": 404
+    }
+  ],
+  "central_registry": {
+    "company_count": 3,
+    "unauthenticated_get_http": 401,
+    "administrator_get_http": 200,
+    "public_write_authority": false
+  },
+  "safety_eligibility": {
+    "company_identity_read_only": true,
+    "customers_orders_exports_allowed": false,
+    "live_price_publication_allowed": false,
+    "cross_tenant_media_transfer_allowed": false,
+    "full_database_import_allowed": false,
+    "remote_mutation_allowed": false,
+    "nile_catalog_read_contract_deployed": false
+  },
+  "known_issue_resolved": {
+    "original_issue": "LiteSpeed cached signed GET v2 response and served a replayed 200",
+    "initial_replay_test_result": "FAILED_200_200",
+    "mitigation": "POST v3 + SQL atomic nonce unique insertion",
+    "post_fix_replay_test_result": "PASS_200_403",
+    "targeted_litespeed_v2_purge_results": "all three 404 rest_no_route; x-litespeed-cache miss"
+  },
+  "status": "STAGING_THREE_COMPANIES_IDENTITY_VERIFIED_READ_ONLY",
+  "production_plugin_promotion_approved": false,
+  "github_merge_approved": false,
+  "review_note": "Key rotation, periodic revalidation and scoped Nile content read APIs remain separate governed steps."
+}

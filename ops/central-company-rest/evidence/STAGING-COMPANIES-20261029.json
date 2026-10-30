@@ -1,0 +1,84 @@
+{
+  "contract": "mad4b.central-company-rest.staging-acceptance.v1",
+  "date": "2026-10-29",
+  "deployment": {
+    "source_pr": 631,
+    "source_head": "603066bae06a788bfcd38a38a36edb24090a41cd",
+    "central_origin": "https://tours.dev.mad4b.com",
+    "central_mu_file": "wp-content/mu-plugins/160-mad4b-central-companies-rest.php",
+    "central_sha256": "288b955bfbd58a35331fe9543ba26f792dc7aba5a86030b43599ae61df8c0117",
+    "remote_mu_file": "wp-content/mu-plugins/160-mad4b-remote-company-identity.php",
+    "remote_sha256": "669c504113a522d1d3ac31f9fd0fe543cf400bbc8387856e8f8b863f5e7d9fb6",
+    "files_syntax_validated": true,
+    "source_from_exact_github_head": true,
+    "source_pr_merged": false
+  },
+  "companies": [
+    {
+      "id": "all-royal-egypt",
+      "hostname": "www.allroyalegypt.com",
+      "company_http": 200,
+      "remote_unsigned_identity_http": 403,
+      "connection_state": "pending_authenticated_pairing",
+      "feature_variant": "multi_country_tours"
+    },
+    {
+      "id": "egypt-tour-gates",
+      "hostname": "egypttourgates.com",
+      "company_http": 200,
+      "remote_unsigned_identity_http": 403,
+      "connection_state": "pending_authenticated_pairing",
+      "feature_variant": "daytour_your_way"
+    },
+    {
+      "id": "tourism-almallahgroup",
+      "hostname": "tourism.almallahgroup-mg.com",
+      "company_http": 200,
+      "remote_unsigned_identity_http": 403,
+      "connection_state": "pending_authenticated_pairing",
+      "feature_variant": "discover_nile_your_way"
+    }
+  ],
+  "central_api": {
+    "administrator_get_companies_http": 200,
+    "anonymous_get_companies_http": 401,
+    "registered_company_count": 3,
+    "admin_post_verify_without_secret_http": 409,
+    "admin_post_verify_without_secret_code": "mad4b_company_unpaired",
+    "admission_full_control_plane_environment_verified": true,
+    "admission_skip_plugins_rest_write_status": 423,
+    "note": "423 is expected when exact Site Profile is unavailable in stripped WP-CLI runtime, not a failure of full Site Profile",
+    "endpoints": [
+      "GET /wp-json/mad4b-central/v1/companies",
+      "GET /wp-json/mad4b-central/v1/companies/{company}/status",
+      "POST /wp-json/mad4b-central/v1/companies/{company}/verify"
+    ]
+  },
+  "security": {
+    "management_authentication": "WordPress administrator manage_options",
+    "remote_authentication": "HMAC-SHA256 with exact tenant/domain/route/time/nonce and replay veto",
+    "no_arbitrary_urls": true,
+    "no_public_company_list": true,
+    "no_unsigned_remote_identity": true,
+    "per_company_credential_provisioning_completed": false,
+    "credential_provisioning_attempt_blocked_by_execution_safety": true,
+    "secrets_created": false,
+    "signed_remote_identity_tested": false,
+    "company_remote_control_plane_activated": false,
+    "no_full_database_import": true,
+    "no_remote_mutation_endpoint": true,
+    "no_customer_order_pricing_transfer": true,
+    "no_media_moved": true,
+    "existing_public_websites_status_200": true,
+    "read_only_admin_scope": "company_identity.read"
+  },
+  "release_status": "STAGING_REGISTRY_READY__REMOTE_PAIRING_PENDING__DATA_TRANSFER_NOT_AUTHORIZED",
+  "next_gates": [
+    "Owner-authorized secret provisioning via a supported credential/connection workflow (do not circumvent execution safeguard)",
+    "Three actual signed remote identity tests with exact hostname and canonical origin",
+    "Confirm source company remote Control Plane version/provenance separately before activation",
+    "Add approved read-only selective Nile Cruise category/tours/historical price endpoints; no customer/order/secret exposure",
+    "Source-specific stale price policy: reference-only and never current checkout",
+    "GitHub source review and owner attestation before general deployment or GitHub merge"
+  ]
+}
