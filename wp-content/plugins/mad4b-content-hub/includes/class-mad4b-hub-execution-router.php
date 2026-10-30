@@ -198,6 +198,8 @@ final class MAD4B_Hub_Execution_Router {
             'next_input'=>array('job_id'=>$job['job_id']),
             'next_input_needs_client_enrichment'=> $mode==='chatgpt_client'
                 && $stage==='INFORMATION_GAIN',
+            'client_evidence_submit_ability'=>$stage==='INFORMATION_GAIN'
+                && $mode==='chatgpt_client'?'mad4b/hub-executor-submit-keywords':'',
             'suggested_skill'=>$skill,'skill_executed'=>false,
             'client_execution_required'=>$mode==='chatgpt_client',
             'background_execution_available'=>$selection['background_ai_ready'],
@@ -207,6 +209,119 @@ final class MAD4B_Hub_Execution_Router {
                 ?'ChatGPT Client inspects source Artifacts and invokes the next authenticated MCP Ability with evidence-based input. The server has not called an AI model.'
                 :'Background execution is opt-in and requires a registered worker and explicit dispatch. No silent fallback or invented execution.',
         );
+    }
+
+    /**
+     * Accept evidence observed by a live, authorized client. The server does
+     * not run a model, invent search metrics, or infer ChatGPT OAuth from WP-CLI.
+     */
+    public static function submit_keywords($input) {
+        if(!self::writable())return self::error('write_permission_denied',403);
+        if(!is_array($input))return self::error('input_invalid',400);
+        $job=self::job((string)($input['job_id']??''));
+        if(is_wp_error($job))return $job;
+        if(self::selected($job,self::state())!=='chatgpt_client')
+            return self::error('wrong_executor');
+        if(($job['state']??'')!=='RUNNING' || ($job['stage']??'')!=='INFORMATION_GAIN')
+            return self::error('research_stage_not_ready');
+        $key=(string)($input['client_step_key']??'');
+        if(!preg_match('/^[A-Za-z0-9._:-]{8,100}$/D',$key))
+            return self::error('client_step_key_invalid',400);
+        $revision=(int)($input['expected_job_revision']??-1);
+        if($revision<1)return self::error('expected_revision_required',400);
+        $records=$input['records']??null;
+        $refs=$input['source_refs']??null;
+        if(!is_array($records)||count($records)<1||count($records)>20
+            ||!is_array($refs)||count($refs)<1||count($refs)>12)
+            return self::error('evidence_bounds_invalid',400);
+        $clean_refs=array();
+        foreach($refs as $ref){
+            if(!is_string($ref)||strlen($ref)>1200
+                ||strpos($ref,'https://')!==0||!filter_var($ref,FILTER_VALIDATE_URL))
+                return self::error('source_url_invalid',400);
+            $clean_refs[]=$ref;
+        }
+        $clean_refs=array_values(array_unique($clean_refs));
+        $clean=array();
+        foreach($records as $item){
+            if(!is_array($item))return self::error('record_invalid',400);
+            $term=trim((string)($item['keyword']??''));
+            $intent=sanitize_key((string)($item['intent']??''));
+            $evidence=(string)($item['evidence_url']??'');
+            if(strlen($term)<3||strlen($term)>160
+                ||!in_array($intent,array('commercial_research','informational',
+                    'navigational','transactional'),true)
+                ||!in_array($evidence,$clean_refs,true))
+                return self::error('keyword_evidence_invalid',400);
+            if(array_key_exists('search_volume',$item) ||
+                array_key_exists('google_rank',$item))
+                return self::error('unverified_search_metrics_not_allowed',400);
+            $clean[]=array('keyword'=>sanitize_text_field($term),
+                'intent'=>$intent,'evidence_url'=>$evidence,
+                'search_volume_state'=>'not_measured',
+                'google_rank_state'=>'not_measured');
+        }
+        $language=sanitize_key((string)($input['language']??'en'));
+        if(!in_array($language,array('en','ar','fr','de','it','es'),true))
+            return self::error('language_invalid',400);
+        $market=sanitize_text_field((string)($input['market']??'Egypt'));
+        if($market===''||strlen($market)>64)return self::error('market_invalid',400);
+        $intent_data=array('job_id'=>$job['job_id'],
+            'expected_job_revision'=>$revision,
+            'client_step_key'=>$key,'records'=>$clean,
+            'source_refs'=>$clean_refs,'language'=>$language,'market'=>$market);
+        $encoded=wp_json_encode($intent_data,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+        if(!is_string($encoded)||$encoded==='')return self::error('serialization_failed');
+        $fingerprint=hash('sha256',$encoded);
+        $request_sha=hash('sha256','hub-client-keyword|'.$job['site_uuid'].'|'.
+            $job['brand_id'].'|'.$job['job_id'].'|'.$key);
+        $existing=MAD4B_SCP_Artifacts::list_artifacts(array(
+            'job_id'=>$job['job_id'],'artifact_type'=>'keyword_research'));
+        if(is_wp_error($existing))return $existing;
+        foreach((array)($existing['items']??array()) as $row){
+            $payload=$row['payload']??array();
+            if(($payload['request_sha256']??'')!==$request_sha)continue;
+            if(($payload['usage']['client_submission_sha256']??'')!==$fingerprint)
+                return self::error('client_step_payload_conflict');
+            return array('contract'=>self::CONTRACT,
+                'state'=>'client_keyword_evidence_recorded',
+                'job_id'=>$job['job_id'],'artifact_id'=>$row['artifact_id'],
+                'replayed'=>true,'evidence_only'=>true,
+                'next_ability'=>'mad4b/research-coverage-build',
+                'server_model_called'=>false,'publication_performed'=>false);
+        }
+        if((int)($job['job_revision']??-1)!==$revision)
+            return self::error('job_revision_changed');
+        if(!class_exists('MAD4B_SCP_Research_Intelligence'))
+            return self::error('research_runtime_unavailable',503);
+        $client_verified=class_exists('MAD4B_SCP_OAuth_Resource_Bridge')
+            && method_exists('MAD4B_SCP_OAuth_Resource_Bridge','verified_bearer_client_is')
+            && MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is(
+                'https://chatgpt.com/oauth/client.json');
+        $result=MAD4B_SCP_Research_Intelligence::record_keyword(array(
+            'job_id'=>$job['job_id'],'provider_id'=>'client_observed_web',
+            'provider_state'=>'succeeded','request_sha256'=>$request_sha,
+            'collected_at'=>gmdate('c'),'source_refs'=>$clean_refs,
+            'records'=>$clean,'seed_terms'=>array_column($clean,'keyword'),
+            'market'=>$market,'language'=>$language,
+            'freshness_policy'=>'verify_before_publication',
+            'usage'=>array('executor'=>'chatgpt_client',
+                'client_step_key'=>$key,'client_submission_sha256'=>$fingerprint,
+                'chatgpt_oauth_verified'=>$client_verified,
+                'source_type'=>'client_supplied_public_web_pages',
+                'google_serp_rank_verified'=>false,
+                'search_volume_measured'=>false,
+                'server_model_called'=>false),
+        ));
+        if(is_wp_error($result))return $result;
+        return array('contract'=>self::CONTRACT,
+            'state'=>'client_keyword_evidence_recorded',
+            'job_id'=>$job['job_id'],
+            'artifact_id'=>(string)($result['artifact']['artifact_id']??''),
+            'replayed'=>!empty($result['replayed']),
+            'chatgpt_oauth_verified'=>$client_verified,
+            'evidence_only'=>true,'next_ability'=>'mad4b/research-coverage-build',
+            'server_model_called'=>false,'publication_performed'=>false);
     }
 
     /** Only a real installed background worker can accept actual dispatch. */
@@ -250,11 +365,12 @@ final class MAD4B_Hub_Execution_Router {
             'methods'=>'GET','callback'=>static function($r){return self::status($r->get_params());},
             'permission_callback'=>array(__CLASS__,'readable')));
         foreach(array('configure'=>'configure','select'=>'select',
-            'handoff'=>'handoff','dispatch'=>'dispatch') as $name=>$method){
+            'handoff'=>'handoff','dispatch'=>'dispatch',
+            'submit-keywords'=>'submit_keywords') as $name=>$method){
             register_rest_route($base,'/execution/'.$name,array(
                 'methods'=>'POST','callback'=>static function($r)use($method){
                     return self::$method($r->get_json_params());
-                },'permission_callback'=>in_array($name,array('configure','select','dispatch'),true)
+                },'permission_callback'=>in_array($name,array('configure','select','dispatch','submit-keywords'),true)
                     ?array(__CLASS__,'writable'):array(__CLASS__,'readable')));
         }
     }
@@ -265,18 +381,26 @@ final class MAD4B_Hub_Execution_Router {
             'mad4b/hub-executor-configure'=>'configure',
             'mad4b/hub-executor-select'=>'select',
             'mad4b/hub-executor-handoff'=>'handoff',
-            'mad4b/hub-executor-dispatch'=>'dispatch') as $name=>$method){
+            'mad4b/hub-executor-dispatch'=>'dispatch',
+            'mad4b/hub-executor-submit-keywords'=>'submit_keywords') as $name=>$method){
             if(function_exists('wp_has_ability')&&wp_has_ability($name))continue;
             $schema=array('type'=>'object','properties'=>array(
                 'job_id'=>array('type'=>'string'),
                 'operation_key'=>array('type'=>'string'),
                 'executor_mode'=>array('type'=>'string','enum'=>self::MODES),
-                'background_ai_enabled'=>array('type'=>'boolean')),
+                'background_ai_enabled'=>array('type'=>'boolean'),
+                'client_step_key'=>array('type'=>'string'),
+                'expected_job_revision'=>array('type'=>'integer'),
+                'source_refs'=>array('type'=>'array','items'=>array('type'=>'string')),
+                'records'=>array('type'=>'array','items'=>array('type'=>'object','additionalProperties'=>true)),
+                'language'=>array('type'=>'string'),'market'=>array('type'=>'string')),
                 'additionalProperties'=>false);
             if($method==='configure')$schema['required']=array('background_ai_enabled');
             if($method==='select')$schema['required']=array('job_id','executor_mode');
             if($method==='handoff')$schema['required']=array('operation_key');
             if($method==='dispatch')$schema['required']=array('job_id');
+            if($method==='submit_keywords')$schema['required']=array('job_id',
+                'client_step_key','expected_job_revision','records','source_refs');
             $read=in_array($method,array('status','handoff'),true);
             wp_register_ability($name,array(
                 'label'=>'MAD4B Hub Executor '.$method,
