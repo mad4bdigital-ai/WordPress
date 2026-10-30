@@ -99,9 +99,9 @@ final class MAD4B_Hub_Auto_Distribute_V1 {
         if (!post_type_exists('mad4b_hub_nile')) return self::fail('hub_unavailable',409);
         $ids=get_posts([
             'post_type'=>'mad4b_hub_nile','post_status'=>'publish',
-            'numberposts'=>500,'fields'=>'ids','suppress_filters'=>true
+            'numberposts'=>-1,'fields'=>'ids','suppress_filters'=>true
         ]);
-        if (!is_array($ids))return self::fail('hub_read_failed',503);
+        if (!is_array($ids) || count($ids)>5000)return self::fail('hub_read_failed',503);
         $selected = array_fill_keys($policy['selected_source_ids'], true);
         $out=[];$seen=[];
         foreach ($ids as $hubId) {
@@ -255,8 +255,9 @@ final class MAD4B_Hub_Auto_Distribute_V1 {
         echo '</form><h2>Last Run</h2><pre>'.esc_html(wp_json_encode($state,JSON_PRETTY_PRINT)).'</pre></div>';
     }
     private static function redirect_screen($message) {
+        $parent=post_type_exists('mad4b_hub_nile')?'edit.php?post_type=mad4b_hub_nile':'tools.php';
         wp_safe_redirect(add_query_arg(['page'=>'mad4b-hub-auto-distribute','result'=>$message],
-            admin_url('tools.php')));exit;
+            admin_url($parent)));exit;
     }
     public static function save_form() {
         if (!self::admin() || !check_admin_referer('mad4b_hub_auto_save'))wp_die('Forbidden');
