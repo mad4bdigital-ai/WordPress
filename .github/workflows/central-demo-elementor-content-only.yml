@@ -24,5 +24,7 @@ jobs:
     steps:
       - name: Check out reviewed source
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Validate field governance and protected Elementor copy mutations
         run: python3 -m unittest discover -s tests/company-clone-field-governance -p 'test_*.py' -v
