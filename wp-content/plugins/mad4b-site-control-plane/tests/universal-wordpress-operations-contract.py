@@ -87,7 +87,20 @@ assert len(ids) == len(set(ids))
 assert "wordpress.plugin.transaction" in ids
 assert "wordpress.provider.recertify" in ids
 optional_ids = {row["id"] for row in operation["operations"] if row.get("required_runtime") is False}
-assert optional_ids == {"wordpress.content.import", "wordpress.content.export", "search.serp.capture"}
+assert optional_ids == {
+    "wordpress.content.import", "wordpress.content.export", "search.serp.capture",
+    "company.plugin-sync.request",
+}
+# Staging-specific semantic operations may be provisioned independently by
+# their native MU adapter. Optional registration is not proof of availability:
+# no runtime ability is invented and no execution authority is inherited.
+optional_external = {"company.plugin-sync.request"}
+for row in operation["operations"]:
+    if row["id"] in optional_external:
+        assert row["required_runtime"] is False
+        assert row["generic_mutation_dispatch"] is False
+        assert row["supports"] == ["queue_plan_only"]
+
 serp_capture = next(row for row in operation["operations"] if row["id"] == "search.serp.capture")
 assert serp_capture["target_kind"] == "search_target"
 assert serp_capture["generic_mutation_dispatch"] is False
@@ -98,12 +111,14 @@ assert serp_capture["production_policy"] == "deny"
 for row in operation["operations"]:
     assert row["planner"]
     assert row["executor"]
-    assert runtime_represents_ability(row["planner"]), f"planner not represented in runtime source: {row['planner']}"
+    if row["id"] not in optional_external:
+        assert runtime_represents_ability(row["planner"]), f"planner not represented in runtime source: {row['planner']}"
     if row["executor"] == "exact_executor_from_plan":
         assert row["id"] == "wordpress.plugin.transaction"
         assert row.get("generic_mutation_dispatch") is False
     else:
-        assert runtime_represents_ability(row["executor"]), f"executor not represented in runtime source: {row['executor']}"
+        if row["id"] not in optional_external:
+            assert runtime_represents_ability(row["executor"]), f"executor not represented in runtime source: {row['executor']}"
 
 assert "wp_register_ability( 'mad4b/wordpress-operation-discover', array(" in registry
 assert "wp_register_ability( 'mad4b/universal-operation-discover', array(" not in registry
