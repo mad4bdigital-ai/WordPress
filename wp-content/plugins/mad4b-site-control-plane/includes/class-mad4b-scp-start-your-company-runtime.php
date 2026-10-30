@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: MAD4B Start Your Company — Governed Runtime
+ * Component: MAD4B Start Your Company — Governed Runtime
  * Description: Reusable company create/repair stage planner and bounded remote-job handoff (central Staging only).
  * Version: 0.3.0
  */
