@@ -18,7 +18,9 @@ final class MAD4B_SCP_Hub_JetEngine_Consumer_Governance {
     const DATA_FIELDS = array(
         'source_company','source_id','source_kind','title','summary','language',
         'source_term_id','canonical_term_id','taxonomy','parent_term_id',
-        'itinerary','duration','source_version','source_updated_at','media_reference'
+        'itinerary','duration','source_version','source_updated_at','media_reference',
+        'direct_starting_prices','rate_entries','price_effective_state',
+        'pricing_policy_revision','source_rate_key','currency','price_source_status'
     );
 
     private static function denial($code) {
@@ -66,6 +68,12 @@ final class MAD4B_SCP_Hub_JetEngine_Consumer_Governance {
             'independent_shortcodes_forbidden'=>true,
             'wordpress_bulk_import_forbidden'=>true,
             'historical_rates_sale_authority'=>false,
+            'reference_starting_prices_supported'=>class_exists('MAD4B_Hub_Price_Sources_V1'),
+            'reference_product_rates_supported'=>class_exists('MAD4B_Hub_Price_Sources_V1'),
+            'consumer_company_repricing_supported'=>class_exists('MAD4B_Hub_Company_Pricing_V1'),
+            'rate_generator_mode'=>'preview_only_not_checkout',
+            'pricing_fields_share_mode'=>'source_company_and_consumer_policy_reference_only',
+            'native_live_checkout_price_replaced'=>false,
             'manual_or_automatic_rest_activation_performed'=>false,
             'runtime_admission_default'=>'deny',
         );
