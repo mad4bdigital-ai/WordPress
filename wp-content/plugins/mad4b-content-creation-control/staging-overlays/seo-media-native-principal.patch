@@ -1,0 +1,65 @@
+--- a/includes/class-mad4b-scp-mutation-principal.php
++++ b/includes/class-mad4b-scp-mutation-principal.php
+@@ -11,6 +11,10 @@
+             'mad4b/content-create-post',
+             'mad4b/taxonomy-create-term',
+             'mad4b/taxonomy-set-object-terms',
++            // The original WP principal may perform only these exact reversible
++            // SEO/media mutations, with its own per-object capabilities and undo.
++            'seo/update-meta',
++            'media/update-metadata',
+         );
+     }
+ 
+@@ -110,6 +114,15 @@
+             $object = $taxonomy ? get_taxonomy( $taxonomy ) : null;
+             if ( ! $object || ! user_can( $user, $object->cap->manage_terms ) )
+                 return new WP_Error( 'mad4b_undo_wordpress_taxonomy_denied', 'User cannot manage this taxonomy.' );
++        } elseif ( 'seo/update-meta' === $ability ) {
++            $id = absint( $target['post_id'] ?? 0 );
++            if ( ! $id || ! get_post( $id ) || ! user_can( $user, 'edit_post', $id ) )
++                return new WP_Error( 'mad4b_undo_seo_post_cap_denied', 'Original user cannot restore Rank Math fields on this post.' );
++        } elseif ( 'media/update-metadata' === $ability ) {
++            $id = absint( $target['attachment_id'] ?? 0 );
++            if ( ! $id || 'attachment' !== get_post_type( $id )
++                || ! user_can( $user, 'edit_post', $id ) )
++                return new WP_Error( 'mad4b_undo_media_cap_denied', 'Original user cannot restore shared attachment metadata.' );
+         } elseif ( 'mad4b/taxonomy-set-object-terms' === $ability ) {
+             $taxonomy = sanitize_key( (string) ( $target['taxonomy'] ?? '' ) );
+             $object = $taxonomy ? get_taxonomy( $taxonomy ) : null;
+--- a/includes/class-mad4b-scp-delegation-mode.php
++++ b/includes/class-mad4b-scp-delegation-mode.php
+@@ -358,6 +358,33 @@
+             return true;
+         }
+ 
++        // Exact native SEO/media adapter scope: real enrolled WP administrator
++        // + WordPress object's own edit capability + native reversible journal.
++        // Does not grant arbitrary provider/ContentJob mutation authority.
++        if ( in_array( $ability_name, array( 'seo/update-meta', 'media/update-metadata' ), true ) ) {
++            if ( ! user_can( $user, 'manage_options' ) )
++                return new WP_Error( 'mad4b_native_seo_media_admin_denied', 'WordPress administrator permission required.' );
++            if ( 'seo/update-meta' === $ability_name ) {
++                $id = absint( $input['post_id'] ?? 0 );
++                $post = $id ? get_post( $id ) : null;
++                if ( ! $post || in_array( $post->post_type, array( 'attachment', 'revision' ), true )
++                    || ! user_can( $user, 'edit_post', $id ) )
++                    return new WP_Error( 'mad4b_native_seo_post_denied', 'SEO metadata target requires exact post edit permission.' );
++                if ( ! is_array( $input['fields'] ?? null ) || ! count( $input['fields'] ) )
++                    return new WP_Error( 'mad4b_native_seo_fields_required', 'An explicit SEO field patch is required.' );
++            } else {
++                $id = absint( $input['attachment_id'] ?? 0 );
++                if ( ! $id || 'attachment' !== get_post_type( $id )
++                    || ! user_can( $user, 'edit_post', $id ) )
++                    return new WP_Error( 'mad4b_native_media_attachment_denied', 'Media metadata target requires exact attachment edit permission.' );
++                $fields = array_intersect( array_keys( $input ), array( 'title', 'caption', 'description', 'alt' ) );
++                if ( ! $fields ) return new WP_Error( 'mad4b_native_media_fields_required', 'Explicit media metadata fields required.' );
++                if ( in_array( 'alt', $fields, true ) && ! wp_attachment_is_image( $id ) )
++                    return new WP_Error( 'mad4b_native_media_alt_image_only', 'ALT metadata requires an image attachment.' );
++            }
++            return true;
++        }
++
+         // ContentJob is a site/brand-scoped WordPress aggregate: its writer,
+         // immutable event log, CAS transition and audit remain authoritative.
+         // A real WP administrator with edit_posts needs no NHI alias.
