@@ -190,8 +190,20 @@ final class MAD4B_Start_Company_Runtime {
         $rows=array();
         foreach(self::STAGES as $id=>$spec){
             $missing=array_values(array_filter($spec['deps'],static function($dep)use($verified){return !$verified[$dep];}));
+            // Stage-specific execution digest is independent of unrelated
+            // Access/Commerce changes. Owner email edits cannot invalidate
+            // an already queued, correctly bound plugin/configuration job.
+            $revision=self::stage_revision($c,$id);
+            $dep_receipts=array();
+            foreach($spec['deps'] as $dep)$dep_receipts[$dep]=array(
+               'verified'=>$verified[$dep],'revision'=>self::stage_revision($c,$dep));
+            $execution_sha=hash('sha256',wp_json_encode(array(
+              'company'=>$c,'mode'=>$mode,'stage'=>$id,'revision'=>$revision,
+              'dependencies'=>$dep_receipts),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
             $rows[$id]=array('group'=>$spec['group'],'state'=>$verified[$id]?'VERIFIED':($missing?'WAITING_DEPENDENCY':'READY'),
-              'missing_dependencies'=>$missing,'stage_revision'=>self::stage_revision($c,$id),
+              'missing_dependencies'=>$missing,'stage_revision'=>$revision,
+              'execution_plan_sha256'=>$execution_sha,
+              'action'=>self::ACTIONS[$id],
               'executor'=>'enrolled_vps_mcp_client','mutation_authorized'=>false);
         }
         $base=array('company'=>$c,'mode'=>$mode,'stages'=>$rows);
@@ -236,7 +248,7 @@ final class MAD4B_Start_Company_Runtime {
         $stage=(string)($payload['stage']??'');
         $row=$plan['stages'][$stage]??null;
         if(!is_array($row)||$row['state']!=='READY' ||
-          !hash_equals($plan['plan_sha256'],(string)($payload['plan_sha256']??'')) ||
+          !hash_equals($row['execution_plan_sha256'],(string)($payload['plan_sha256']??'')) ||
           !hash_equals($row['stage_revision'],(string)($payload['stage_revision']??'')))return false;
         $all=get_option(MAD4B_SCP_Company_Provisioning_Work_Operations::EXECUTORS,array());
         $executor=is_array($all)?($all[$c['company_code']]??null):null;
@@ -290,7 +302,7 @@ final class MAD4B_Start_Company_Runtime {
         $payload=array('contract'=>MAD4B_SCP_Company_Provisioning_Work_Operations::CONTRACT,
           'company_code'=>$c['company_code'],'site_uuid'=>$c['site_uuid'],'origin'=>$c['origin'],
           'mode'=>$plan['mode'],'stage'=>$stage,'action'=>self::ACTIONS[$stage],
-          'plan_sha256'=>$plan['plan_sha256'],'stage_revision'=>$s['stage_revision'],
+          'plan_sha256'=>$s['execution_plan_sha256'],'stage_revision'=>$s['stage_revision'],
           'preserve_existing'=>$plan['mode']==='repair_existing','mutation_authorized'=>false);
         if(!MAD4B_SCP_Company_Provisioning_Work_Operations::validate_payload($payload) ||
           !self::stage_job_authorized($payload))
