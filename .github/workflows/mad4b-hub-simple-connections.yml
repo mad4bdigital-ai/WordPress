@@ -12,6 +12,7 @@ on:
       - 'ops/central-company-rest/central/273-mad4b-hub-field-fusion.php'
       - 'ops/central-company-rest/central/274-mad4b-tourism-field-policy.php'
       - 'ops/central-company-rest/central/275-mad4b-hub-source-provider-registry.php'
+      - 'ops/central-company-rest/central/276-mad4b-hub-source-sync-jobs.php'
       - 'ops/central-company-rest/ssh/tourism-source-export.php'
       - 'ops/central-company-rest/remote/240-mad4b-company-simple-identity.php'
       - 'ops/central-company-rest/remote/250-mad4b-company-private-hub-inbox.php'
@@ -22,6 +23,7 @@ on:
       - 'ops/central-company-rest/tests/test-hub-dedup-intelligence.php'
       - 'ops/central-company-rest/tests/test-hub-field-fusion.php'
       - 'ops/central-company-rest/tests/test-hub-source-provider-registry.php'
+      - 'ops/central-company-rest/tests/test-hub-source-sync-jobs.php'
       - '.github/workflows/mad4b-hub-simple-connections.yml'
   workflow_dispatch:
 
@@ -65,6 +67,7 @@ jobs:
             ops/central-company-rest/central/273-mad4b-hub-field-fusion.php \
             ops/central-company-rest/central/274-mad4b-tourism-field-policy.php \
             ops/central-company-rest/central/275-mad4b-hub-source-provider-registry.php \
+            ops/central-company-rest/central/276-mad4b-hub-source-sync-jobs.php \
             ops/central-company-rest/ssh/tourism-source-export.php \
             ops/central-company-rest/remote/240-mad4b-company-simple-identity.php \
             ops/central-company-rest/remote/250-mad4b-company-private-hub-inbox.php \
@@ -74,7 +77,8 @@ jobs:
             ops/central-company-rest/tests/test-hub-source-import.php \
             ops/central-company-rest/tests/test-hub-dedup-intelligence.php \
             ops/central-company-rest/tests/test-hub-field-fusion.php \
-            ops/central-company-rest/tests/test-hub-source-provider-registry.php; do
+            ops/central-company-rest/tests/test-hub-source-provider-registry.php \
+            ops/central-company-rest/tests/test-hub-source-sync-jobs.php; do
             php -l "$file"
           done
       - name: Functional safety contracts
@@ -87,3 +91,4 @@ jobs:
           php ops/central-company-rest/tests/test-hub-dedup-intelligence.php
           php ops/central-company-rest/tests/test-hub-field-fusion.php
           php ops/central-company-rest/tests/test-hub-source-provider-registry.php
+          php ops/central-company-rest/tests/test-hub-source-sync-jobs.php
