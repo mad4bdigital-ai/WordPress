@@ -127,6 +127,7 @@ final class MAD4B_Hub_Price_Sources_V1 {
         $fixture=(string)get_post_meta($row->ID,'_booking_experience_qa_pricing_fixture',true);
         $test=(string)get_post_meta($row->ID,'_mad4b_is_test_data',true);
         return array('source_rate_id'=>(int)$row->ID,
+          'source_rate_key'=>'post:'.$row->ID,
           'source_rate_post_type'=>$row->post_type,'currency'=>$currency,
           'price_fields'=>$prices,'valid_from'=>strval(get_post_meta($row->ID,$cfg['start_field'],true)),
           'valid_until'=>strval(get_post_meta($row->ID,$cfg['end_field'],true)),
@@ -135,6 +136,56 @@ final class MAD4B_Hub_Price_Sources_V1 {
              in_array(strtolower($fixture),array('1','yes','true','on'),true),
           'authority'=>'native_provider_unverified_reference',
           'bookable'=>false);
+    }
+    private static function cctTransportRates($postId){
+        if(!current_user_can('manage_options'))return array();
+        global $wpdb;
+        $table=$wpdb->prefix.'jet_cct_transport_rates';
+        if($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s',$table))!==$table)
+            return array();
+        $rows=$wpdb->get_results($wpdb->prepare(
+            "SELECT _ID,cct_status,related_transport_id,base_currency,
+             egyptians_currency,base_price,sale_price,base_price_egyptian,
+             sale_price_egyptian,is_on_sale,stop_sale,pricing_type,
+             trans_start_date,trans_end_date
+             FROM {$table} WHERE related_transport_id=%s
+               AND cct_status=%s ORDER BY _ID ASC LIMIT %d",
+             (string)$postId,'publish',self::MAX_RATE_ROWS+1),ARRAY_A);
+        if(count((array)$rows)>self::MAX_RATE_ROWS)
+            return self::fail('cct_rate_limit_exceeded',409);
+        $safe=array();
+        foreach((array)$rows as $row){
+            $rateId=(int)($row['_ID']??0);
+            if($rateId<1)continue;
+            $currency=self::currency($row['base_currency']??null);
+            $egyptCurrency=self::currency($row['egyptians_currency']??null);
+            $prices=array();
+            foreach(array('base_price','sale_price') as $field){
+                $amount=self::money($row[$field]??null);
+                if($amount!==null&&$currency!==null)$prices[$field]=$amount;
+            }
+            foreach(array('base_price_egyptian','sale_price_egyptian') as $field){
+                $amount=self::money($row[$field]??null);
+                if($amount!==null&&$egyptCurrency!==null)$prices[$field]=$amount;
+            }
+            if(!$prices)continue;
+            $stop=in_array(strtolower((string)($row['stop_sale']??'')),
+                array('1','true','yes','on'),true);
+            $safe[]=array('source_rate_id'=>$rateId,
+              'source_rate_key'=>'jet_cct_transport_rates:'.$rateId,
+              'source_rate_post_type'=>'jet_cct_transport_rates',
+              'currency'=>$currency,'egyptians_currency'=>$egyptCurrency,
+              'price_fields'=>$prices,
+              'valid_from'=>$row['trans_start_date']??null,
+              'valid_until'=>$row['trans_end_date']??null,
+              'pricing_type'=>$row['pricing_type']??null,
+              'stop_sale'=>$stop,
+              'is_on_sale'=>in_array(strtolower((string)($row['is_on_sale']??'')),
+                  array('1','true','yes','on'),true),
+              'authority'=>'jetengine_cct_transport_reference_only',
+              'bookable'=>false);
+        }
+        return $safe;
     }
     public static function local($postId,$requestedType) {
         if(!is_int($postId)||$postId<1||!is_string($requestedType))
@@ -192,10 +243,16 @@ final class MAD4B_Hub_Price_Sources_V1 {
                 }
             }
         }
+        if($requestedType==='transportations'){
+            $cct=self::cctTransportRates($postId);
+            if(is_wp_error($cct))return $cct;
+            $rates=array_merge($rates,$cct);
+        }
         return array('contract'=>self::CONTRACT,'source_mode'=>'native_product',
             'post_type'=>$requestedType,'source_post_id'=>$postId,
             'direct_starting_prices'=>$direct,'rates'=>$rates,
             'rate_count'=>count($rates),'total_matched_rates'=>$total,
+            'cct_transport_rates_included'=>$requestedType==='transportations',
             'no_valid_price_candidate'=>!$direct&&!$rates,
             'all_rates_current_certified'=>false,
             'checkout_authorized'=>false);
@@ -243,6 +300,7 @@ final class MAD4B_Hub_Price_Sources_V1 {
             $egyptian=self::currency($item['egyptians_currency']??null);
             if(!$currency&&!$egyptian)continue;
             $rates[]=array('source_rate_id'=>$item['source_rate_id'],
+                'source_rate_key'=>'tourism-almallahgroup:nile-rate:'.$item['source_rate_id'],
                 'source_rate_post_type'=>'signed_historical_nile_rate',
                 'currency'=>$currency,
                 'egyptians_currency'=>$egyptian,
