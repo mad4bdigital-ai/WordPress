@@ -25,6 +25,16 @@ def test():
     target["origin"]="https://wayfatours.mad4b.com"
     target["database"]="wayfatours_production"
     assert compat.compare(source,target)=={}
+    extended=copy.deepcopy(source)
+    extended["tables"]["jet_post_types"].update({
+        "count":308,"sha256":"9"*64,
+        "portable_count":307,"portable_sha256":"a"*64,
+        "source_scoped_exclusions":[{"id":390,"classification":"SOURCE_BOUND_RESEARCH_REST_ENDPOINT"}]})
+    assert compat.compare(extended,target)=={}
+    inherited=copy.deepcopy(target)
+    inherited["tables"]["jet_post_types"]["source_scoped_exclusions"]=[
+        {"id":390,"classification":"SOURCE_BOUND_RESEARCH_REST_ENDPOINT"}]
+    assert "jet_post_types:source_scoped_target" in compat.compare(extended,inherited)
     drift=copy.deepcopy(target)
     drift["tables"]["jet_post_types"]["sha256"]="0"*64
     assert "jet_post_types" in compat.compare(source,drift)
