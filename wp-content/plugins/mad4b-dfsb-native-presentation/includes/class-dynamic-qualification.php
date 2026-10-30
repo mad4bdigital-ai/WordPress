@@ -179,6 +179,32 @@ final class DynamicQualification {
         ));
     }
 
+    /** Read existing MU Presentation descriptors; do not create a competing registry. */
+    public static function muRegistryBinding(string $provider,string $queryId,string $postType=''): array {
+        static $registry=null;
+        if ($registry===null)
+            $registry=function_exists('shared_presentation_registry_v2')
+                ?(array)shared_presentation_registry_v2():array();
+        $slots=array();$mismatched=array();
+        $canonical=$provider.'/'.$queryId;
+        foreach ($registry as $name=>$entry) {
+            if (!is_array($entry) || ($entry['provider']??'')!==$canonical) continue;
+            $entity=(string)($entry['entity_type']??'');
+            $row=array(
+                'slot'=>(string)$name,
+                'entity_type'=>$entity,
+                'query_builder_id'=>(int)($entry['query_id']??0),
+                'listing_id'=>(int)($entry['listing_id']??0),
+                'facet_discovery'=>(string)($entry['facet_discovery']??'unavailable'),
+            );
+            if ($postType!=='' && $entity!=='' && $entity!==$postType)
+                $mismatched[]=$row;
+            else $slots[]=$row;
+        }
+        return array('source'=>'shared_presentation_registry_v2',
+            'matched'=>!empty($slots),'slots'=>$slots,'entity_mismatch'=>$mismatched);
+    }
+
     /** The route is inferred from actual registered CPT archive slugs, not hardcoded IDs. */
     public static function inferRoute(string $queryId, array $archives): array {
         // A term-specific or related-listing query is not the CPT's public archive.
@@ -285,6 +311,10 @@ final class DynamicQualification {
         usort($eligible,static fn($a,$b)=>$b['widget_uses']<=>$a['widget_uses'] ?: $a['id']<=>$b['id']);
         $route=self::inferRoute($group['query_id'],self::publicArchives());
         $company=isset($route['post_type'])?self::companyPolicy((string)$route['post_type']):null;
+        $registry=self::muRegistryBinding((string)$group['provider'],(string)$group['query_id'],
+            (string)($route['post_type']??''));
+        if (!empty($registry['entity_mismatch']))
+            $reasons[]='mu_presentation_registry_entity_mismatch';
         $companyDenied=$company !== null && $company['owner'] !== null
             && $company['standalone_allowed'] !== true;
         if ($companyDenied) $reasons[]='company_policy_standalone_disabled';
@@ -329,6 +359,7 @@ final class DynamicQualification {
             'suggested_max_three_filter_ids'=>array_column(array_slice($probe?$verifiedEligible:$eligible,0,3),'id'),
             'route'=>$route,'route_http'=>$code,
             'company_policy'=>$company,
+            'mu_presentation_registry'=>$registry,
             'public_widget_match'=>$widgetVisible,'rendered_filter_ids'=>$visibleIds,
             'proposed_rule'=>$ready ? array(
                 'state'=>'draft_requires_editorial_review',
