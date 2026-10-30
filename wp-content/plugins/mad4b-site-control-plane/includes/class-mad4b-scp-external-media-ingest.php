@@ -44,6 +44,16 @@ final class MAD4B_SCP_External_Media_Ingest {
     }
     public static function apply( $input = array() ) {
         if ( ! current_user_can( 'upload_files' ) ) return self::fail( 'mad4b_media_upload_denied', 'WordPress upload permission is required.' );
+        // A license document is not required for a staging import, but the
+        // operator must own the decision and the source must remain traceable.
+        if ( ! is_array( $input ) || empty( $input['operator_responsibility_accepted'] ) )
+            return self::fail( 'mad4b_media_operator_attestation_required', 'Operator acknowledgement is required.' );
+        if ( wp_get_environment_type() !== 'staging'
+            || ! class_exists( 'MAD4B_SCP_Site_Profile' )
+            || ! MAD4B_SCP_Site_Profile::user_is_enrolled( get_current_user_id() ) )
+            return self::fail( 'mad4b_media_operator_scope_denied', 'Enrolled staging operator required.' );
+        if ( ! empty( $input['known_takedown'] ) || ! empty( $input['known_legal_prohibition'] ) )
+            return self::fail( 'mad4b_media_source_restricted', 'Source is restricted.' );
         $plan = self::plan( $input );
         if ( is_wp_error( $plan ) ) return $plan;
         $expected = isset( $input['expected_scope_sha256'] ) ? (string) $input['expected_scope_sha256'] : '';
