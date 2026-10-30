@@ -33,6 +33,15 @@ check(is_array(MAD4B_Hub_Field_Fusion_V1::set_policy('tourism-almallahgroup','pr
 $r=MAD4B_Hub_Field_Fusion_V1::compare(11,12);
 check($r['field_proposals']['description']['decision']==='review_conflict_or_gap','custom policy applied');
 check(is_wp_error(MAD4B_Hub_Field_Fusion_V1::set_policy('tourism-almallahgroup','properties','source_wpml_trid','richest',95)),'WPML protected');
+$unverified=MAD4B_Hub_Field_Fusion_V1::compare(11,12);
+check($unverified['entity_resolution_state']==='identity_unverified_hold' &&
+    $unverified['canonical_draft']['status']==='blocked_unverified_identity',
+    'Hotels with missing place IDs are explicitly held, not review-ready');
+$GLOBALS['settings'][MAD4B_Hub_Field_Fusion_V1::OPTION]['tourism-almallahgroup']['properties']['property_place_id']
+    =['strategy'=>'richest','weight'=>0];
+$policy=MAD4B_Hub_Field_Fusion_V1::policies('tourism-almallahgroup','properties');
+check($policy['property_place_id']['strategy']==='exact',
+    'Unsafe stored option cannot downgrade exact identity at read time');
 $GLOBALS['metas'][11]['_mad4b_hub_import_identity_facts']=['property_place_id'=>'ABC'];
 $GLOBALS['metas'][12]['_mad4b_hub_import_identity_facts']=['property_place_id'=>'DEF'];
 $hold=MAD4B_Hub_Field_Fusion_V1::compare(11,12);
