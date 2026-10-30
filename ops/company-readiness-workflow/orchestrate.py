@@ -217,6 +217,24 @@ def run(refresh=False):
     design_policy_sha256 = hashlib.sha256(design_policy_file.read_bytes()).hexdigest()
     if design_policy.get("contract") != "mad4b.company-design-activation-policy.v2" or design_policy.get("default_action") != "DENY_UNTIL_QUALIFIED":
         raise RuntimeError("DESIGN_GOVERNANCE_POLICY_INVALID")
+    # Mandatory runtime gates execute in the governed company lifecycle on
+    # every evaluation. Prior cached snapshots are not trusted as fresh proof.
+    gates_tool=BASE/"bin/company-governed-runtime-gates.py"
+    gates_run=subprocess.run([sys.executable,str(gates_tool)],
+        capture_output=True,text=True,timeout=210)
+    if gates_run.returncode:
+        raise RuntimeError("MANDATORY_TENANT_RUNTIME_PREFLIGHT_FAILED:"+
+                           gates_run.stderr[-450:])
+    gates_report=json.loads((BASE/"reports/company-governed-runtime-gates-wayfatours.json").read_text())
+    if gates_report.get("contract")!="mad4b.company-governed-runtime-gates.v1" or (
+        gates_report.get("site_uuid")!=tenant.get("site_uuid")):
+        raise RuntimeError("TENANT_RUNTIME_GATE_BINDING_FAILED")
+    resolver_script=BASE/"bin/wayfa-template-diff-resolver.py"
+    if not gates_report.get("can_finalize_company_provisioning"):
+        resolution=subprocess.run([sys.executable,str(resolver_script)],
+            capture_output=True,text=True,timeout=30)
+        if resolution.returncode:
+            raise RuntimeError("SECONDARY_RUNTIME_RESOLUTION_FAILED:"+resolution.stderr[-420:])
     health={u:https("https://"+u+"/") for u in
             ("tours.dev.mad4b.com","wayfatours.mad4b.com")}
     # Only fixed company host and URL paths obtained from its own Elementor drafts.
@@ -283,6 +301,12 @@ def run(refresh=False):
           "state":"ACTIVE" if issues else "PASS",
           "detail":f"on_diff=true; grounded_issues={issues}; unsafe_rewrites=false",
           "next_action":"RESOLVE_BRAND_MEDIA_PROVIDERS_AND_DISPLAY_CONDITIONS"}
+    # Runtime dependency acceptance is mandatory for provisioning completion.
+    # Optional blank company fields may remain editable after provisioning, but
+    # unresolved real service providers and display conditions never get waived.
+    stages.update(gates_report["stages"])
+    commercial_runtime_approved=bool(gates_report["can_finalize_company_provisioning"])
+    eligible=bool(eligible and commercial_runtime_approved)
     reg=src.get("registry",{}).get("wayfatours",{})
     report={
       "contract":"mad4b.company-readiness-workflow.v1",
@@ -292,6 +316,10 @@ def run(refresh=False):
       "result":"READY" if eligible else "BLOCKED_FOR_COMMERCIAL_DISTRIBUTION",
       "template_activation_allowed":eligible,
       "content_distribution_allowed":eligible,
+      "company_provisioning_runtime_passed":commercial_runtime_approved,
+      "mandatory_runtime_gate_contract":gates_report["contract"],
+      "mandatory_runtime_gate_policy_sha256":gates_report["policy_sha256"],
+      "mandatory_runtime_gate_checked_utc":gates_report["generated_utc"],
       "checkout_enabled_by_workflow":False,
       "auto_template_rewrite":False,
       "auto_media_copy":False,
