@@ -53,7 +53,13 @@ final class MAD4B_Company_Readiness_Governance {
     public static function pre_dispatch($result, $server, $request) {
         if (is_wp_error($result) || !($request instanceof WP_REST_Request)) return $result;
         if (strpos($request->get_route(),self::PREFIX) !== 0) return $result;
-        $allowed = self::guard($request);
+        // rest_pre_dispatch runs before WordPress sets route URL parameters.
+        // Resolve the company directly from the verified route string.
+        $scoped = new WP_REST_Request($request->get_method(), $request->get_route());
+        if (preg_match('~^/mad4b/v1/company-brand-readiness/companies/([a-z][a-z0-9-]{2,47})(?:/|$)~D',
+            $request->get_route(), $matches))
+            $scoped->set_param('company', $matches[1]);
+        $allowed = self::guard($scoped);
         return is_wp_error($allowed) ? $allowed : $result;
     }
     public static function limit_companies_response($response, $server, $request) {
