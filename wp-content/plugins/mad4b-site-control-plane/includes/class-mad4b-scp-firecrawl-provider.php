@@ -29,7 +29,9 @@ final class MAD4B_SCP_Firecrawl_Provider {
   if(is_wp_error($sealed))wp_die(esc_html($sealed->get_error_message()),500);
   $endpoint=$mode==='cloud'?'https://api.firecrawl.dev':(isset($_POST['firecrawl_endpoint'])?esc_url_raw(wp_unslash($_POST['firecrawl_endpoint'])):'');
   if($mode==='self_hosted'&&(!str_starts_with($endpoint,'https://') || !wp_http_validate_url($endpoint)))wp_die('Self-hosted endpoint must be externally validated HTTPS; internal gateways require separately provisioned network binding.',400);
-  $config=array('mode'=>$mode,'endpoint'=>rtrim($endpoint,'/'),'secret_cipher'=>$sealed,'updated_by'=>get_current_user_id(),'updated_at'=>gmdate('c'));
+  $username=$mode==='self_hosted'&&isset($_POST['firecrawl_username'])?sanitize_user(wp_unslash($_POST['firecrawl_username']),true):'';
+  if($mode==='self_hosted'&&!preg_match('/^[A-Za-z0-9._-]{3,64}$/',$username))wp_die('Valid service username required',400);
+  $config=array('mode'=>$mode,'username'=>$username,'endpoint'=>rtrim($endpoint,'/'),'secret_cipher'=>$sealed,'updated_by'=>get_current_user_id(),'updated_at'=>gmdate('c'));
   update_option(self::OPTION,$config,false);
   wp_safe_redirect(admin_url('admin.php?page=mad4b-provider-connections&firecrawl_saved=1'));exit;
  }
@@ -39,7 +41,7 @@ final class MAD4B_SCP_Firecrawl_Provider {
   $url=rtrim($endpoint,'/').'/v2/scrape';
   if(!wp_http_validate_url($url))return array('ready'=>false,'reason'=>'unsafe_endpoint');
   // Safe HTTP API, no test crawl without explicit invocation.
-  return array('ready'=>true,'endpoint'=>$endpoint,'mode'=>$c['mode']??'cloud','credentials_saved'=>true,'network_probe_performed'=>false);
+  return array('ready'=>true,'endpoint'=>$endpoint,'mode'=>$c['mode']??'cloud','credentials_saved'=>true,'network_probe_performed'=>false,'authentication_mode'=>($c['mode']??'cloud')==='self_hosted'?'basic':'bearer');
  }
  public static function render() {
   if(!current_user_can('manage_options'))return;
@@ -53,7 +55,8 @@ final class MAD4B_SCP_Firecrawl_Provider {
   echo '<table class="form-table"><tr><th>Mode</th><td><select name="firecrawl_mode">';
   foreach(array('cloud'=>'Firecrawl Cloud','self_hosted'=>'Self-hosted (HTTPS gateway)') as $key=>$label)echo '<option value="'.esc_attr($key).'" '.selected($c['mode']??'cloud',$key,false).'>'.esc_html($label).'</option>';
   echo '</select></td></tr><tr><th>Self-hosted HTTPS URL</th><td><input type="url" class="regular-text" name="firecrawl_endpoint" value="'.esc_attr(($c['mode']??'')==='self_hosted'?($c['endpoint']??''):'').'" placeholder="https://firecrawl.example.com"></td></tr>';
-  echo '<tr><th>API Key</th><td><input type="password" name="firecrawl_secret" value="" autocomplete="new-password" class="regular-text" placeholder="Leave blank to keep existing">';
+  echo '<tr><th>Gateway Service Username</th><td><input type="text" name="firecrawl_username" autocomplete="off" class="regular-text" value="'.esc_attr($c['username']??'').'" placeholder="mad4b-control-plane"></td></tr>';
+  echo '<tr><th>API Key / Gateway Password</th><td><input type="password" name="firecrawl_secret" value="" autocomplete="new-password" class="regular-text" placeholder="Leave blank to keep existing">';
   echo '<p class="description">Credentials '.(!empty($c['secret_cipher'])?'saved':'not configured').' (encrypted at rest). No secret echoed.</p></td></tr></table>';
   submit_button('Save Firecrawl Connection');
   echo '</form>';
