@@ -124,6 +124,9 @@ add_action('plugins_loaded', static function (): void {
 add_action('plugins_loaded', static function (): void {
     (new DynamicFilterSEOBridge\Elementor\ContextTagRegistration())->registerHooks();
     DynamicFilterSEOBridge\Runtime\ReadOnlyFilterContext::register();
+    // Advanced Elementor/JetEngine read adapters only when Full SEO Boot is held.
+    // Uses verified evidence-only sources, never publication or managed routes.
+    DynamicFilterSEOBridge\Runtime\AdvancedPresentationRuntime::registerWhenHeld();
 }, 19);
 
 // Read-only authenticated REST previews always remain available under Safe
