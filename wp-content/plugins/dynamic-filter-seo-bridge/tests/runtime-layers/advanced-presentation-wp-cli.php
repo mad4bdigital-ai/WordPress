@@ -48,6 +48,21 @@ if(class_exists('\Elementor\Plugin') && isset(\Elementor\Plugin::$instance->dyna
     do_action('elementor/dynamic_tags/register',\Elementor\Plugin::$instance->dynamic_tags);
 }
 $after=$counters();
+$registeredTags=array_keys((array)\Elementor\Plugin::$instance->dynamic_tags->get_tags());
+$advancedTags=array_values(array_filter($registeredTags,static fn($name)=>str_starts_with((string)$name,'etg-')||str_starts_with((string)$name,'dfsb-')));
+echo 'TAG_NAMES='.wp_json_encode($advancedTags).PHP_EOL;
+$listingHook=$GLOBALS['wp_filter']['jet-engine/listings/dynamic-repeater/pre-get-saved']??null;
+$listingRegistered=false;
+if($listingHook instanceof \WP_Hook){
+    foreach($listingHook->callbacks as $callbacks){
+        foreach($callbacks as $cb){
+            $fn=$cb['function']??null;
+            if(is_array($fn) && isset($fn[0]) && $fn[0] instanceof \DynamicFilterSEOBridge\JetEngine\ListingIntegration){
+                $listingRegistered=true;
+            }
+        }
+    }
+}
 $resolved=DynamicTagRuntime::resolver();
 $context=$resolved?$resolved->context():array();
 remove_filter('query',$watch,999);
@@ -57,6 +72,9 @@ $checks=array(
     'advanced_registered'=>$initialized===true,
     'idempotent'=>$duplicate===false,
     'dynamic_resolver_connected'=>$resolved!==null,
+ 'advanced_tag_names_registered'=>count($advancedTags)>=13 && in_array('etg-filter-title',$advancedTags,true) && in_array('etg-filter-image',$advancedTags,true),
+ 'jetengine_listing_hook_registered'=>$listingRegistered,
+ 'unapproved_query_sources_disabled'=>$resolved!==null && $resolved->sourceCatalog()===array(),
     'no_unverified_context'=>empty($context['active'])
         ?($resolved->value('title')===''):true,
     'no_seo_hook_changes'=>$before===$after,
@@ -68,3 +86,4 @@ foreach($checks as $name=>$pass){
     echo ($pass?'PASS ':'FAIL ').$name.PHP_EOL;
 }
 if(in_array(false,$checks,true))exit(1);
+
