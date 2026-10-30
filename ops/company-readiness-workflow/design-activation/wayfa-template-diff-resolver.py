@@ -49,7 +49,24 @@ if __name__=="__main__":
     t_reasons=json.loads(os.environ["WAYFA_TEMPLATE_BLOCKERS"]) if "WAYFA_TEMPLATE_BLOCKERS" in os.environ else ((json.loads(t.read_text()).get("result") or {}).get("blocked_reasons",{}) if t.exists() else {})
     j_reasons=(json.loads(j.read_text()).get("result") or {}).get("blocked_reason_counts",{}) if j.exists() else {}
     report=run(schema,t_reasons,j_reasons)
+    live=ROOT/"reports/company-governed-runtime-gates-wayfatours.json"
+    if live.exists():
+        runtime=json.loads(live.read_text())
+        if (runtime.get("contract")=="mad4b.company-governed-runtime-gates.v1"
+            and runtime.get("company")=="wayfatours"):
+            for name,gate in runtime.get("stages",{}).items():
+                if gate.get("state")=="PASS":continue
+                report["resolutions"].append({
+                    "component":"mandatory_company_provisioning",
+                    "reason":name,"resolver":gate.get("next_action",
+                              "RUNTIME_DEPENDENCY_RESOLUTION"),
+                    "evidence":gate.get("detail"),
+                    "state":"RUNTIME_PROOF_REQUIRED",
+                    "production_mutated":False})
+            if report["resolutions"]:report["state"]="DIFFERENCES_DETECTED"
+            report["runtime_preflight_included"]=True
     dest=ROOT/"reports/wayfatours-compatibility-diff-resolution.json"
     dest.write_text(json.dumps(report,indent=2,ensure_ascii=False)+"\n")
     print(json.dumps({"state":report["state"],"issues":len(report["resolutions"]),
                        "production_mutated":False}))
+
