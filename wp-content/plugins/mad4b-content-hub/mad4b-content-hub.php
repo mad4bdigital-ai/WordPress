@@ -12,6 +12,7 @@ require_once __DIR__.'/includes/class-mad4b-hub-canonical-store.php';
 require_once __DIR__.'/includes/class-mad4b-hub-usage-rights.php';
 require_once __DIR__.'/includes/class-mad4b-hub-control-ingestion.php';
 require_once __DIR__.'/includes/class-mad4b-hub-workflow-continuity.php';
+require_once __DIR__.'/includes/class-mad4b-hub-release-gate.php';
 final class MAD4B_Content_Hub {
     const CONTRACT='mad4b.content-hub-bootstrap.v1';
     private static function authorized_host() {
@@ -37,6 +38,7 @@ final class MAD4B_Content_Hub {
         if(!self::authorized_host())return;
         MAD4B_Hub_Control_Ingestion::boot();
         MAD4B_Hub_Workflow_Continuity::boot();
+        MAD4B_Hub_Release_Gate::boot();
         add_action('admin_menu',[__CLASS__,'menu']);
         add_action('rest_api_init',[__CLASS__,'routes']);
     }
