@@ -313,12 +313,53 @@ final class MAD4B_Hub_Price_Sources_V1 {
                 'requires_manual_update'=>true,
                 'bookable'=>false);
         }
+        // A distinct signed scope delivers native starting-price fields.
+        // Never synthesize direct prices from occupancy Rate columns.
+        $direct=array();$snapshot=$data['nile_starting_prices.read']??null;
+        $sourceDirectAvailable=false;
+        if(is_array($snapshot)){
+            if(($snapshot['source_company']??null)!==$sourceCompany ||
+               ($snapshot['scope']??null)!=='nile_starting_prices.read' ||
+               ($snapshot['reference_only']??false)!==true ||
+               ($snapshot['may_checkout']??true)!==false ||
+               !is_array($snapshot['items']??null))
+                return self::fail('direct_signed_snapshot_invalid',409);
+            $matches=0;
+            foreach($snapshot['items'] as $entry){
+                if(($entry['source_tour_id']??null)!==$sourceTourId)continue;
+                if(++$matches>1 ||
+                   ($entry['source_company']??null)!==$sourceCompany ||
+                   ($entry['checkout_enabled']??true)!==false ||
+                   ($entry['validated_current_price']??true)!==false ||
+                   !is_array($entry['starting_price_references']??null))
+                    return self::fail('direct_signed_snapshot_untrusted',409);
+                foreach($entry['starting_price_references'] as $value){
+                    if(!is_array($value) ||
+                       !in_array($value['field']??null,
+                         array('start_price','egyptians_start_price'),true) ||
+                       ($value['reference_only']??false)!==true ||
+                       ($value['checkout_authorized']??true)!==false ||
+                       ($value['current_price_verified']??true)!==false ||
+                       !self::currency($value['currency']??null))
+                        return self::fail('direct_signed_price_unverified',409);
+                    $amount=self::money($value['amount']??null);
+                    if($amount===null)return self::fail('direct_signed_amount_invalid',409);
+                    $direct[]=array('field'=>$value['field'],
+                        'amount'=>$amount,
+                        'currency'=>self::currency($value['currency']),
+                        'origin'=>'signed_source_product_price_field',
+                        'source_reference_only'=>true,
+                        'current_price_verified'=>false);
+                }
+            }
+            $sourceDirectAvailable=$matches===1;
+        }
         return array('contract'=>self::CONTRACT,
             'source_mode'=>'signed_historical_nile_snapshot',
             'source_company'=>$sourceCompany,'source_post_id'=>$sourceTourId,
-            'direct_starting_prices'=>array(),
+            'direct_starting_prices'=>$direct,
             'rates'=>$rates,'rate_count'=>count($rates),
-            'direct_prices_remote_contract_missing'=>true,
+            'direct_prices_remote_contract_missing'=>!$sourceDirectAvailable,
             'all_rates_current_certified'=>false,
             'checkout_authorized'=>false);
     }
