@@ -416,7 +416,7 @@ check(!wp_next_scheduled(MAD4B_Hub_Auto_Distribute_V1::EVENT),
 // Verify that REST cannot overwrite SSH enriched data or leave stale metadata.
 $sshChanged=$cross;
 $sshChanged['items'][0]['body']='Enriched JetEngine description';
-$sshChanged['items'][0]['source_wpml_trid']=666111;
+// Preserve the original verified WPML identity during a source content revision.
 $sshChanged['items'][0]['modified_gmt']='2026-10-30 10:00:00';
 $first=MAD4B_Hub_Source_Import_V1::import_cross_ssh_snapshot($sshChanged);
 check(is_array($first) && $first['updated']===1,'Enriched SSH revision updates private source in place');
