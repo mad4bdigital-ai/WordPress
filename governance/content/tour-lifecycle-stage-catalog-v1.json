@@ -84,12 +84,23 @@
       "ordinal": 8,
       "id": "media_scraping_importing",
       "mode": "mutation",
-      "gate": "media_rights",
+      "gate": "operator_responsibility_and_technical_safety",
       "depends_on": [
         "wpml"
       ],
       "state": "not_started",
-      "implemented": false
+      "implemented": false,
+      "policy": {
+        "license_document_required": false,
+        "rights_verification_required_for_staging_import": false,
+        "operator_assertion_required": true,
+        "source_provenance_required": true,
+        "known_takedown_blocks": true,
+        "known_legal_prohibition_blocks": true,
+        "ssrf_and_malware_checks_required": true,
+        "publication_separate": true,
+        "unverified_rights_permitted_for_staging": true
+      }
     },
     {
       "ordinal": 9,
