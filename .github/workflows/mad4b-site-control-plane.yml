@@ -86,6 +86,8 @@ jobs:
           php ops/company-readiness-workflow/tests/test_start_company_runtime.php
           python3 ops/company-readiness-workflow/tests/test_executor_admission_contract.py
           python3 -m py_compile ops/company-readiness-workflow/executor/company_stage_executor.py
+          python3 -m py_compile ops/company-readiness-workflow/executor/company_stage_adapter.py
+          python3 ops/company-readiness-workflow/tests/test_native_stage_adapter.py
           python3 -m venv /tmp/mad4b-company-native-executor-venv
           /tmp/mad4b-company-native-executor-venv/bin/pip install --quiet --disable-pip-version-check cryptography==44.0.3
           /tmp/mad4b-company-native-executor-venv/bin/python ops/company-readiness-workflow/tests/test_native_stage_executor.py
