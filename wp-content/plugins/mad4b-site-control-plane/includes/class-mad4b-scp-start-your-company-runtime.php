@@ -47,11 +47,28 @@ final class MAD4B_SCP_Company_Provisioning_Work_Operations {
         $all=get_option(self::EXECUTORS,array());
         $row=is_array($all)?($all[$company['company_code']]??null):null;
         $now=time();$seen=is_array($row)?strtotime((string)($row['verified_at']??'')):false;
+        // An enrolled endpoint is not an executable company repair merely
+        // because an option says "ready". Require explicit semantic handlers
+        // and a recent restoration/readback probe. Evidence is advisory until
+        // the exact claimed job is independently admitted at provider entry.
+        $supported=is_array($row)?($row['supported_actions']??null):null;
+        $allowed=array_values(MAD4B_Start_Company_Runtime::ACTIONS);
+        $supported_ok=is_array($supported) && array_keys($supported)===range(0,count($supported)-1)
+          && count($supported)>0 && count($supported)===count(array_unique($supported))
+          && !array_diff($supported,$allowed);
         $eligible=is_array($row) && ($row['provider']??'')==='vps_mcp_client'
+          && ($row['contract']??'')==='mad4b.company-vps-executor.v1'
           && ($row['site_uuid']??'')===$company['site_uuid']
           && ($row['authority_profile']??'')==='company_stage_v1'
           && !empty($row['bound_to_exact_company'])
           && ($row['health']??'')==='ready'
+          && ($row['operation_adapter']??'')==='registered_wp_cli_stage_executor'
+          && ($row['apply_handler']??'')==='verified'
+          && ($row['rollback_handler']??'')==='verified'
+          && ($row['readback_handler']??'')==='verified'
+          && ($row['restoration_ready']??false)===true
+          && preg_match('/^[a-f0-9]{64}$/D',(string)($row['probe_evidence_sha256']??''))
+          && $supported_ok
           && is_string($row['executor_id']??null) && preg_match('/^[a-z0-9_-]{4,64}$/D',$row['executor_id'])
           && $seen && $now >= $seen && $now-$seen<=900;
         return array('registered'=>(bool)$eligible,'executor'=>'enrolled_vps_mcp_client',
