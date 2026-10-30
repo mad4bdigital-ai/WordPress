@@ -87,7 +87,7 @@ class NativeExecutorTest(unittest.TestCase):
 
     def ticket(self,purpose,valid=True):
         now=dt.datetime.now(dt.timezone.utc)
-        scope={k:self.manifest[k] for k in ("company_code","site_uuid","origin","mode","action","run_id","plan_sha256","stage_revision")}
+        scope={k:self.manifest[k] for k in ("company_code","site_uuid","origin","mode","stage","action","run_id","plan_sha256","stage_revision")}
         ticket={"contract":"mad4b.company-executor-ticket.v1",
              "purpose":purpose,"key_id":"test-only-ed25519","scope":scope,
              "bundle_sha256":engine.digest(engine.canonical(self.manifest["artifacts"])),
