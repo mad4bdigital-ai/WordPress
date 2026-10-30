@@ -11574,7 +11574,6 @@
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/main-bootstrap-staging-boundary-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/request-serving-zero-touch-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py"
       ],
       "owner_role": "Repository exact-source reviewer — CI evidence only; independent production release authority not conferred",
@@ -11583,7 +11582,7 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Current bootstrap adds conditional company, sender, readiness, AI, MCP and Site Lifecycle modules under preexisting access/zero-touch rules; reuse existing Platform, Security, MCP, Admin and source-integrity controls with executable Staging boundary and zero-touch regressions.",
-      "review_rationale": "Reviewed the exact current Git blob against baseline changes: 68 added and 7 removed lines in central plugin bootstrap, version rc.118. A hermetic source-bound test checks exactly fourteen Staging Company includes, three conditional Readiness includes and boots, two conditional Sender includes, passive WP-CLI early return, and unchanged read-only JetEngine and Adaptive UI bootstrap; negative mutations of these gates are rejected. Existing request-serving zero-touch contract passes. This review does not attest provider execution, Production isolation via live browser, consent, deployment readiness, Release Verdict, or external OAuth."
+      "review_rationale": "Reviewed the exact current Git blob against baseline changes: 68 added and 7 removed lines in central plugin bootstrap, version rc.118. A hermetic source-bound test checks exactly fourteen Staging Company includes, three conditional Readiness includes and boots, two conditional Sender includes, passive WP-CLI early return, and unchanged read-only JetEngine and Adaptive UI bootstrap; negative mutations of these gates are rejected. Existing request-serving zero-touch contract passes. This review does not attest provider execution, Production isolation via live browser, consent, deployment readiness, Release Verdict, or external OAuth. The existing passive Zero-Touch contract continues to run independently but is not counted as a newly modified same-PR regression in the Production Readiness evaluator."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php",
