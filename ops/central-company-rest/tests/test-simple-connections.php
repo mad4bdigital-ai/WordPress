@@ -26,7 +26,7 @@ function wp_is_application_passwords_available() { return true; }
 function is_wp_error($v) { return $v instanceof WP_Error; }
 function wp_remote_retrieve_response_code($r) { return $r['status']; }
 function wp_remote_retrieve_body($r) { return $r['body']; }
-function wp_safe_remote_get($url, $args) {
+function wp_safe_remote_request($url, $args) {
     $GLOBALS['remote_calls']++;
     $GLOBALS['last_request'] = ['url' => $url, 'args' => $args];
     if ($GLOBALS['fake_remote'] === 'fail') { return ['status' => 401, 'body' => '{}']; }
@@ -116,6 +116,7 @@ $ok = MAD4B_Central_Simple_Connections_V1::connect($request);
 check($ok instanceof WP_REST_Response && $ok->data['connected'] === true, 'Connect works after matching identity');
 check(($GLOBALS['last_request']['url'] ?? '') === 'https://tourism.almallahgroup-mg.com/wp-json/mad4b-company/v1/simple-identity', 'Exact host pinned');
 check($GLOBALS['last_request']['args']['redirection'] === 0 && $GLOBALS['last_request']['args']['sslverify'] === true, 'TLS and redirect fences enabled');
+check($GLOBALS['last_request']['args']['method'] === 'POST', 'Identity uses POST and avoids GET caching');
 check(strpos(serialize($GLOBALS['opts']), $password) === false, 'Plaintext app password not stored in options');
 check(strpos(serialize($GLOBALS['opts']), base64_encode('mad4b-service:'.$password)) === false, 'Basic header not stored');
 $state = MAD4B_Central_Simple_Connections_V1::status();
@@ -135,7 +136,7 @@ $GLOBALS['site_url'] = 'https://tourism.almallahgroup-mg.com';
 require $root . '/remote/240-mad4b-company-simple-identity.php';
 $GLOBALS['opts']['mad4b_simple_service_user_id_v1'] = 9;
 $GLOBALS['user_id'] = 9;
-$remote_request = new WP_REST_Request('', [], 'GET', '/mad4b-company/v1/simple-identity');
+$remote_request = new WP_REST_Request('', [], 'POST', '/mad4b-company/v1/simple-identity');
 $remote_deny = MAD4B_Company_Simple_Identity_V1::permission($remote_request);
 check($remote_deny instanceof WP_Error, 'Remote denies user without app-password authentication event');
 MAD4B_Company_Simple_Identity_V1::mark_app_password_auth((object)['ID'=>9]);
