@@ -105,24 +105,40 @@ final class SmartSeoAdminRest {
                 return new \WP_Error('policy_source_not_discovered',
                     'Source not discovered in current company',array('status'=>400));
         }
-        $lock='mad4b_smart_seo_policy_update_lock_v1';
-        // add_option is atomic on the unique option_name index.
-        if (!add_option($lock,wp_generate_uuid4(),'','no'))
-            return new \WP_Error('policy_update_busy','Policy update already in progress',array('status'=>409));
-        try {
-            if (!hash_equals(SmartSeoPolicyRegistry::revision(),$payload['expected_revision']))
-                return new \WP_Error('policy_revision_conflict','Policy changed; refresh and retry',array('status'=>409));
-            $ok=update_option(SmartSeoPolicyRegistry::OPTION,$validated,false);
-            if (!$ok && SmartSeoPolicyRegistry::stored()!==$validated)
-                return new \WP_Error('policy_update_failed','Unable to save site policy',array('status'=>500));
-            return rest_ensure_response(array(
-                'status'=>'saved','revision'=>SmartSeoPolicyRegistry::revision(),
-                'policy'=>SmartSeoPolicyRegistry::stored(),
-                'seo_indexing_activated'=>false,
-            ));
-        } finally {
-            delete_option($lock);
+        // Optimistic site-option CAS: no long-lived lock and no lost update.
+        global $wpdb;
+        $key=SmartSeoPolicyRegistry::OPTION;
+        $oldRaw=$wpdb->get_var($wpdb->prepare(
+            "SELECT option_value FROM {$wpdb->options} WHERE option_name=%s",$key));
+        $old=is_string($oldRaw)?maybe_unserialize($oldRaw):array();
+        if (!is_array($old)) return new \WP_Error('policy_storage_invalid',
+            'Existing policy is not a valid array',array('status'=>409));
+        $current=hash('sha256',wp_json_encode($old));
+        if (!hash_equals($current,$payload['expected_revision']))
+            return new \WP_Error('policy_revision_conflict',
+                'Policy changed; refresh and retry',array('status'=>409));
+        if ($old===$validated) return rest_ensure_response(array(
+            'status'=>'unchanged','revision'=>$current,'policy'=>$validated,
+            'seo_indexing_activated'=>false,
+        ));
+        if (!is_string($oldRaw)) {
+            $saved=add_option($key,$validated,'','no');
+        } else {
+            $saved=$wpdb->query($wpdb->prepare(
+                "UPDATE {$wpdb->options} SET option_value=%s WHERE option_name=%s AND BINARY option_value=BINARY %s",
+                maybe_serialize($validated),$key,$oldRaw))===1;
+            if ($saved) {
+                wp_cache_delete($key,'options');
+                wp_cache_delete('alloptions','options');
+            }
         }
+        if (!$saved) return new \WP_Error('policy_write_conflict',
+            'Policy changed while saving; refresh and retry',array('status'=>409));
+        return rest_ensure_response(array(
+            'status'=>'saved','revision'=>SmartSeoPolicyRegistry::revision(),
+            'policy'=>SmartSeoPolicyRegistry::stored(),
+            'seo_indexing_activated'=>false,
+        ));
     }
 
     public static function proposals(): \WP_REST_Response {
