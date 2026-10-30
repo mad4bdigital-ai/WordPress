@@ -130,6 +130,11 @@ def main():
             return
         p["config_mode"]="schema-auto"
         p["schema_attestation"]=receipt
+        options_registry=json.loads((ROOT/"policies/company-options-field-registry-v1.json").read_text())
+        if options_registry.get("contract")!="mad4b.company-options-field-registry.v1" or options_registry.get("value_authority")!="per_company_own_jetengine_options_page":
+            raise RuntimeError("COMPANY_OPTIONS_REGISTRY_INVALID")
+        p["defer_options_on_publish"]=True
+        p["options_registry_fingerprint"]=options_registry["fingerprint"]
     plan=wp("plan",p)
     if plan.get("state")!="DESIGN_ACTIVATION_PLAN" or plan.get("site_uuid")!="b0725ffa-87e1-47e3-b0c0-c4aa4eb8882b":
         raise RuntimeError("PLAN_IDENTITY_FAILURE")
@@ -161,4 +166,5 @@ def main():
     persist(REPORT,receipt)
     print(json.dumps(result,ensure_ascii=False))
 if __name__=="__main__":main()
+
 
