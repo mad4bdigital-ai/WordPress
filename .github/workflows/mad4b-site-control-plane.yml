@@ -94,6 +94,35 @@ jobs:
             unzip -tqq "$plugins/$archive"
           done
 
+      - name: Restore and verify pinned official WooCommerce CI archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive='wp-content/plugins/woocommerce.zip'
+          expected_sha='5317434cb381b5fdc7c1dd6ee258324f08c390976aaf8d1199f2a0e9a3ab8586'
+          expected_bytes='18060641'
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          base = Path('wp-content/plugins/mad4b-site-control-plane/config')
+          provider = json.loads((base / 'certified-providers.json').read_text())['providers']['woocommerce']
+          evidence = json.loads((base / 'evidence/woocommerce-11.2.1-lab-package.json').read_text())
+          for row in (provider, evidence):
+              assert row['version'] == '11.2.1', 'WooCommerce exact version changed'
+              assert row['archive_sha256'] == '5317434cb381b5fdc7c1dd6ee258324f08c390976aaf8d1199f2a0e9a3ab8586', 'WooCommerce pinned SHA drift'
+              assert row['archive_bytes'] == 18060641, 'WooCommerce pinned byte count drift'
+          assert provider['archive'] == evidence['archive'] == 'woocommerce.zip'
+          PY
+          if [[ ! -s "$archive" ]]; then
+            curl --fail --location --silent --show-error --retry 3 \
+              --connect-timeout 10 --max-time 120 \
+              'https://downloads.wordpress.org/plugin/woocommerce.11.2.1.zip' \
+              --output "$archive"
+          fi
+          test "$(stat -c '%s' "$archive")" = "$expected_bytes"
+          printf '%s  %s\n' "$expected_sha" "$archive" | sha256sum --check --strict
+          unzip -tqq "$archive"
+
       - name: Inspect and certify exact packaged provider contracts
         shell: bash
         run: |
