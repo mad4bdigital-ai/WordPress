@@ -241,6 +241,29 @@ def run(refresh=False):
                 f"total_fields={options_tenant.get('field_count')}; "
                 "owner_edit_via_jetengine_options_pages=True",
        "next_action":"OWNER_ENTERS_COMPANY_SPECIFIC_BRAND_MEDIA_CONTACT_AND_OFFERS_AFTER_WORKFLOW"}
+    v2file=BASE/"policies/company-configuration-registry-v2.json"
+    auditfile=BASE/"reports/company-runtime-configuration-v2-wayfatours.json"
+    if v2file.exists() and auditfile.exists():
+        v2=json.loads(v2file.read_text())
+        audit=json.loads(auditfile.read_text())
+        missing=int(audit.get("missing_fields",-1))
+        tags=sum(audit.get("missing_tag_counts",{}).values())
+        affected=sum(n for k,n in audit.get("affected_templates",{}).items()
+                     if k.endswith(":publish"))
+        paired=(v2.get("fingerprint")==audit.get("registry_sha256")
+                and len(v2.get("pages",{}))==12)
+        stages["company_options_schema_registry"]={
+            "state":"PASS" if paired and missing==0 else "BLOCKED",
+            "detail":f"runtime_registry_v2={paired}; pages=12; fields={audit.get('runtime_fields')}; missing={missing}",
+            "next_action":"RECHECK_RUNTIME_JETENGINE_OPTION_PROVIDERS"}
+        stages["runtime_dynamic_provider_coverage"]={
+            "state":"PASS" if tags==0 else "BLOCKED",
+            "detail":f"missing_tag_instances={tags}; published_templates_affected={affected}",
+            "next_action":"RESTORE_PORTABLE_TAG_IMPLEMENTATIONS_AND_PRICING_PROVIDERS"}
+        stages["company_scoped_editor_access"]={
+            "state":"PASS" if audit.get("security",{}).get("master_admin_has_company_operations") and not audit.get("security",{}).get("master_admin_has_manage_options") else "BLOCKED",
+            "detail":"company_roles_use_company_operations_capability_not_global_manage_options",
+            "next_action":"VERIFY_PAGE_ACCESS_AND_REST_READBACK"}
     compatibility_file=BASE/"reports/wayfatours-schema-compatibility.json"
     if compatibility_file.exists():
         compatibility=json.loads(compatibility_file.read_text())
