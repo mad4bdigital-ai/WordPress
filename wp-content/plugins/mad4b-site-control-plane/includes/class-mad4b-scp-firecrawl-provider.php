@@ -58,25 +58,46 @@ final class MAD4B_SCP_Firecrawl_Provider {
   if(!wp_http_validate_url($url))return array('ready'=>false,'reason'=>'unsafe_endpoint');
   return array('ready'=>true,'endpoint'=>$endpoint,'mode'=>$mode,'credentials_saved'=>true,'network_probe_performed'=>false,'authentication_mode'=>$mode==='self_hosted'?'basic':'bearer');
  }
+ /** A saved test belongs to the exact active credential profile, not only the mode. */
+ public static function test_status() {
+  $c=self::config();$mode=$c['mode']??'cloud';$profiles=self::profiles();
+  $profile=$profiles[$mode]??array();
+  $last=get_option('mad4b_firecrawl_last_connection_test_v1',array());
+  $fingerprint=hash('sha256',wp_json_encode(array($mode,$profile['endpoint']??'',$profile['username']??'',$profile['secret_cipher']??'')));
+  if(!is_array($last)||($last['mode']??'')!==$mode||($last['profile_sha256']??'')!==$fingerprint)return array('state'=>'network_test_pending','tested'=>false);
+  return array('state'=>sanitize_key((string)($last['result']??'unknown')),'tested'=>true,'at'=>(string)($last['at']??''));
+ }
  public static function test_connection() {
   if(!current_user_can('manage_options'))wp_die('Forbidden',403);
   check_admin_referer('mad4b_firecrawl_test');
   $c=self::config();$mode=$c['mode']??'cloud';$profiles=self::profiles();$profile=$profiles[$mode]??array();
   $endpoint=(string)($profile['endpoint']??'');$secret=self::decrypt($profile['secret_cipher']??'');
-  $state='missing';
-  if($endpoint!==''&&$secret!==''&&wp_http_validate_url($endpoint)) {
+  $state='configuration_missing';
+  $valid_mode=in_array($mode,array('cloud','self_hosted'),true);
+  $valid_endpoint=$valid_mode && $endpoint!=='' && strncmp($endpoint,'https://',8)===0 && wp_http_validate_url($endpoint);
+  if($mode==='cloud' && rtrim($endpoint,'/')!=='https://api.firecrawl.dev')$valid_endpoint=false;
+  if($valid_endpoint && $secret!=='') {
    $headers=array('Accept'=>'application/json');
    if($mode==='self_hosted'&&!empty($profile['username']))$headers['Authorization']='Basic '.base64_encode($profile['username'].':'.$secret);
    elseif($mode==='cloud')$headers['Authorization']='Bearer '.$secret;
-   else $headers=array();
    if(isset($headers['Authorization'])) {
-    $response=wp_remote_get(rtrim($endpoint,'/').'/',array('timeout'=>8,'redirection'=>0,'headers'=>$headers,'sslverify'=>true,'limit_response_size'=>2048));
-    if(is_wp_error($response))$state='network_error';
-    else {$status=(int)wp_remote_retrieve_response_code($response);$state=$status>=200&&$status<300?'reachable':($status===401||$status===403?'authentication_failed':($status===429?'rate_limited':'http_'.$status));}
+    // Cloud: authenticated read-only API operation; self-hosted: Basic-auth gateway check.
+    // Neither request performs scraping or establishes scrape capability certification.
+    $url=rtrim($endpoint,'/').($mode==='cloud'?'/v2/team/credit-usage':'/');
+    if(!wp_http_validate_url($url))$state='unsafe_endpoint';
+    else {
+     $response=wp_safe_remote_get($url,array('timeout'=>8,'redirection'=>0,'headers'=>$headers,'sslverify'=>true,'limit_response_size'=>2048));
+     if(is_wp_error($response))$state='network_error';
+     else {
+      $status=(int)wp_remote_retrieve_response_code($response);
+      $state=$status>=200&&$status<300?'reachable':($status===401||$status===403?'authentication_failed':($status===429?'rate_limited':($status===402?'quota_exhausted':'http_'.$status)));
+     }
+    }
    }
-  }
-  update_option('mad4b_firecrawl_last_connection_test_v1',array('mode'=>$mode,'result'=>$state,'at'=>gmdate('c'),'user_id'=>get_current_user_id()),false);
-  wp_safe_redirect(admin_url('admin.php?page=mad4b-provider-connections&firecrawl_tested=1'));exit;
+  } elseif($endpoint!=='' && !$valid_endpoint) $state='unsafe_endpoint';
+  $fingerprint=hash('sha256',wp_json_encode(array($mode,$profile['endpoint']??'',$profile['username']??'',$profile['secret_cipher']??'')));
+  update_option('mad4b_firecrawl_last_connection_test_v1',array('mode'=>$mode,'profile_sha256'=>$fingerprint,'result'=>$state,'at'=>gmdate('c'),'user_id'=>get_current_user_id()),false);
+  wp_safe_redirect(admin_url('admin.php?page=mad4b-provider-connections&firecrawl_tested=1#mad4b-provider-setup-coverage'));exit;
  }
  public static function render() {
   if(!current_user_can('manage_options'))return;
@@ -99,7 +120,14 @@ final class MAD4B_SCP_Firecrawl_Provider {
   submit_button('Save Firecrawl Connection');
   echo '</form>';
   echo '<script>(function(){var select=document.getElementById("mad4b-firecrawl-mode");if(!select)return;function toggle(){document.querySelectorAll("[data-mad4b-firecrawl-mode]").forEach(function(row){var active=row.getAttribute("data-mad4b-firecrawl-mode")===select.value;row.hidden=!active;row.style.display=active?"":"none";row.querySelectorAll("input").forEach(function(input){input.disabled=!active;});});}select.addEventListener("change",toggle);toggle();})();</script>';
-  $state=self::probe();echo '<p><strong>Readiness:</strong> '.esc_html($state['ready']?'Configured; network test pending':($state['reason']??'unavailable')).'</p>';
+  $state=self::probe();$last=self::test_status();
+  echo '<p><strong>Readiness:</strong> '.esc_html($state['ready']?'Configured (scrape not certified)':($state['reason']??'unavailable')).'</p>';
+  echo '<p><strong>Last connection test:</strong> '.esc_html($last['state']).( !empty($last['tested']) ? ' <small>'.esc_html($last['at']).'</small>' : '' ).'</p>';
+  if(!empty($state['ready'])) {
+   echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="mad4b_firecrawl_test">';
+   wp_nonce_field('mad4b_firecrawl_test');
+   echo '<button class="button button-secondary" type="submit">Test saved connection</button></form>';
+  }
  }
 }
 MAD4B_SCP_Firecrawl_Provider::boot();
