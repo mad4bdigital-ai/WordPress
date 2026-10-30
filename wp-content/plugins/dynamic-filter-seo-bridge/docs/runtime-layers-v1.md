@@ -12,7 +12,31 @@ Three distinct layers:
 | Filter Context Read | `ReadOnlyFilterContext` via `apply_filters('dfsb/filter-context/read', null)` | Read native WP/JSF provider **identity/status**, not authorization to run, alter, or publish provider queries |
 | SEO Publication | Existing `BootGuard` + `Bootstrap` + profile, Rank Math and publication gates | **Unchanged**. Safe Boot still blocks SEO Full Boot, canonical/robots/sitemap, mutating services and advanced integrations |
 
-The presentation layer is intentionally **limited to the source-backed native context tags and shortcodes** that can be verified independently. Broader DFSB advanced tags, JetEngine ListingIntegration and AJAX publication-sensitive integration retain Full Boot until their dependency graphs receive separate independent-source validation. Native JetEngine/JSF themselves continue to run regardless of DFSB.
+The presentation layer includes **native context tags and shortcodes**, plus a separate **AdvancedPresentationRuntime** for Elementor Dynamic Tags and JetEngine ListingIntegration. It only starts while SEO Full Boot is held and source verification succeeds. If SEO Full Boot is permitted, its existing Bootstrap remains the sole advanced initialization path. Native JetEngine/JSF run independently of DFSB.
+
+### Advanced presentation dependency slice
+
+- Build a **read-only** `FilterContextBuilder::buildEvidence()` from the existing site-local profiles and native JSF/WordPress observations. Never call the authorizing `build()` path, publish canonical/robots/sitemaps, or register managed rewrite routes.
+- Register the existing advanced `DynamicTagRegistrar` (19 tags observed on the Staging lab) and `ListingIntegration` via their existing Elementor/JetEngine hooks. No new tag name or JetEngine native widget override is introduced.
+- Preserve the original context validators: profile scope, published context, correct provider, term resolution, WPML language, verified media, malformed/unknown filter checks. Unbound or inactive context returns empty data, not synthetic values.
+- **During SEO hold, do not inject `ContentSourceResolver` into the advanced presenter.** Arbitrary Query Builder, relations, Users, CCT and listing-meta/slot-row execution is not approved for a source-only gate; those paths remain unavailable, with existing native repeater data unchanged. Their independent tenant/data-ownership certification is a separate follow-up.
+- No new public REST endpoint or independent AJAX presenter is registered under Safe Boot. Dynamic Tag server rendering is ready; advanced live AJAX refresh still requires an independently certified rate-limited endpoint, and must not be claimed complete.
+- Bootstrap retains advanced integration when SEO is fully certified. The isolated runtime is idempotent per request and does not modify configuration options or activate the plugin.
+
+### Advanced integration smoke
+
+Isolated candidate classes loaded into a **single WP-CLI process** against Wo Vacation Staging (installed plugin unchanged), with `elementor/dynamic_tags/register` fired in that test process:
+
+- 19 advanced Elementor tags, including image/gallery and term tags, registered.
+- JetEngine dynamic-repeater hook registered; normal (unmatched) JetEngine content remains native.
+- Read-only advanced runtime registered once; second call made no changes.
+- Empty/unverified filter context returned no fabricated title.
+- Source-backed arbitrary query/catalog access remained disabled.
+- SEO Rank Math hooks were unchanged, `etg_filter_seo_bridge_booted` was not fired, and the existing SEO BootGuard remained held.
+- Captured **zero** database DML statements during the isolated registration.
+- PHP 8.3 syntax checks and the 7-case independent-source/fault matrix passed.
+
+This is **source-level and isolated WordPress-process validation**, not a deployed-browser acceptance test. Never install unmanifested files directly into the active `alpha.14-local.1` package.
 
 ## Independent read gate
 
