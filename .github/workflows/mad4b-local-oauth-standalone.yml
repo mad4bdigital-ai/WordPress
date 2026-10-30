@@ -386,6 +386,30 @@ jobs:
           }
           ' --path="$WP_PATH" --user=mad4b-ci-admin
 
+          # MCP Adapter 0.7.0's early MU cache fence requires a real, byte-
+          # verified package manifest. This disposable CI fixture uses the
+          # canonical deterministic package builder against the *installed*
+          # plugin source; it is not a signed or deployable release attestation.
+          # Never bypass the MU guard to make a browser test pass.
+          if [ "$MAD4B_ADAPTER_PROFILE" = "target-0.7.0" ]; then
+            CI_PLUGIN="$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+            CI_VERSION="$(sed -nE 's/^ \\* Version: ([^ ]+).*/\\1/p' "$CI_PLUGIN/mad4b-site-control-plane.php" | head -n1)"
+            CI_SOURCE_SHA="$(git -C "$GITHUB_WORKSPACE" rev-parse HEAD)"
+            CI_ADAPTER_SHA="$(sha256sum /tmp/mcp-adapter-target.zip | awk '{print $1}')"
+            test -n "$CI_VERSION"
+            python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/build-deterministic-control-plane-package.py" \
+              --root "$CI_PLUGIN" \
+              --output-zip /tmp/mad4b-browser-ci-verification.zip \
+              --version "$CI_VERSION" \
+              --source-sha "$CI_SOURCE_SHA" \
+              --adapter-version 0.7.0 \
+              --adapter-sha "$CI_ADAPTER_SHA" \
+              --provenance-output /tmp/mad4b-browser-ci-provenance.json \
+              --receipt-output /tmp/mad4b-browser-ci-receipt.json
+            test -s "$CI_PLUGIN/MAD4B-BUILD-PROVENANCE.json"
+            test -s /tmp/mad4b-browser-ci-receipt.json
+          fi
+
           cat >/tmp/mad4b-wp-router.php <<'PHP'
           <?php
           $path = parse_url( $_SERVER['REQUEST_URI'], PHP_URL_PATH );
