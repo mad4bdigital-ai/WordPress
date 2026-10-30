@@ -86,6 +86,19 @@ ids = [row["id"] for row in operation["operations"]]
 assert len(ids) == len(set(ids))
 assert "wordpress.plugin.transaction" in ids
 assert "wordpress.provider.recertify" in ids
+for company_op, expected_mode in (
+    ("company.create", "create"),
+    ("company.repair", "repair_existing"),
+):
+    entry = next(x for x in operation["operations"] if x["id"] == company_op)
+    assert entry["host_runner_required"] is True
+    assert entry["executor"] == "mad4b/start-your-company-run"
+    assert entry["planner"] == "mad4b/start-your-company-plan"
+    assert entry["supports"] == [expected_mode]
+    assert entry["durable_resume"] is True
+    assert entry["retry_semantics"] == "readback_before_retry"
+    assert entry["generic_mutation_dispatch"] is False
+
 optional_ids = {row["id"] for row in operation["operations"] if row.get("required_runtime") is False}
 assert optional_ids == {
     "wordpress.content.import", "wordpress.content.export", "search.serp.capture",
