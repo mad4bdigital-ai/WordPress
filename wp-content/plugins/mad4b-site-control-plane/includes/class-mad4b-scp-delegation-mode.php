@@ -152,6 +152,7 @@ final class MAD4B_SCP_Delegation_Mode {
             'mad4b/content-job-transition',
             'mad4b/content-job-cancel',
             'mad4b/control-research-to-hub',
+            'mad4b/control-workflow-resume',
             'mad4b/hub-jetengine-consumer-configure',
             'mad4b/hub-jetengine-consumer-activate',
         );
@@ -364,7 +365,7 @@ final class MAD4B_SCP_Delegation_Mode {
                     'The authenticated WordPress user lacks ContentJob capability.' );
         }
 
-        if ( 'mad4b/control-research-to-hub' === $ability_name ) {
+        if ( in_array( $ability_name, array( 'mad4b/control-research-to-hub', 'mad4b/control-workflow-resume' ), true ) ) {
             return user_can( $user, 'manage_options' ) && user_can( $user, 'edit_posts' )
                 && class_exists( 'MAD4B_Content_Hub' ) && MAD4B_Content_Hub::permission()
                 ? true : new WP_Error( 'mad4b_control_hub_wordpress_cap_denied',
