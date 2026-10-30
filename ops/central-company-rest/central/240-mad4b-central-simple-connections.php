@@ -210,8 +210,72 @@ final class MAD4B_Central_Simple_Connections_V1 {
         }
         return $receipt;
     }
+
+    public static function menu(): void {
+        $parent = post_type_exists('mad4b_hub_nile') ?
+            'edit.php?post_type=mad4b_hub_nile' : 'tools.php';
+        add_submenu_page($parent, 'Content Hub Connections', 'Connections', 'manage_options',
+            'mad4b-simple-connections', [__CLASS__, 'screen']);
+    }
+    public static function screen(): void {
+        if (!self::admin_only()) return;
+        $data=self::status()->get_data();
+        echo '<div class="wrap"><h1>Content Hub — Connections</h1>';
+        echo '<p>Use a dedicated WordPress Application Password per company. Only the selected site identity is checked. No content is published.</p>';
+        if(isset($_GET['result']))echo '<p><strong>Result: '.esc_html(sanitize_key(wp_unslash($_GET['result']))).'</strong></p>';
+        foreach ($data['companies'] as $row) {
+            $id=$row['company_id'];
+            echo '<hr><h2>'.esc_html($row['company_name']).'</h2><p>Status: '.
+                esc_html($row['configured']?'Configured':'Not connected').
+                ' | Last test: '.esc_html((string)($row['last_test_at']?:'Never')).'</p>';
+            echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
+            wp_nonce_field('mad4b_simple_connections_action');
+            echo '<input type="hidden" name="action" value="mad4b_simple_connections_action">';
+            echo '<input type="hidden" name="company" value="'.esc_attr($id).'">';
+            echo '<p><input required autocomplete="username" name="username" placeholder="Service username" class="regular-text"></p>';
+            echo '<p><input required autocomplete="new-password" type="password" name="application_password" placeholder="WordPress Application Password" class="regular-text"></p>';
+            echo '<button type="submit" class="button button-primary" name="operation" value="connect">Connect</button>';
+            echo '</form><form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
+            wp_nonce_field('mad4b_simple_connections_action');
+            echo '<input type="hidden" name="action" value="mad4b_simple_connections_action">';
+            echo '<input type="hidden" name="company" value="'.esc_attr($id).'">';
+            echo '<p><button type="submit" class="button" name="operation" value="test">Test Connection</button> ';
+            echo '<button type="submit" class="button" name="operation" value="disconnect">Disconnect</button></p></form>';
+        }
+        echo '</div>';
+    }
+    public static function form_submit(): void {
+        if (!self::admin_only() || !check_admin_referer('mad4b_simple_connections_action'))wp_die('Forbidden');
+        $id=isset($_POST['company'])?sanitize_key(wp_unslash($_POST['company'])):'';
+        $operation=isset($_POST['operation'])?sanitize_key(wp_unslash($_POST['operation'])):'';
+        if (!self::company($id) || !in_array($operation,['connect','test','disconnect'],true)) {
+            $message='invalid_input';
+        } else {
+            $request=new WP_REST_Request('POST','/mad4b-central/v1/simple-connections/'.$id.'/'.$operation);
+            $request->set_url_params(['company'=>$id]);
+            if ($operation==='connect') {
+                $name=isset($_POST['username'])?trim((string)wp_unslash($_POST['username'])):'';
+                $pass=isset($_POST['application_password'])?trim((string)wp_unslash($_POST['application_password'])):'';
+                $request->set_header('Content-Type','application/json');
+                $request->set_body(wp_json_encode(['username'=>$name,'application_password'=>$pass]));
+                $result=self::connect($request);
+            } elseif ($operation==='test') {
+                $result=self::test_saved($request);
+            } else {
+                $result=self::disconnect($request);
+            }
+            $message=is_wp_error($result)?$result->get_error_code():'success';
+        }
+        $parent=post_type_exists('mad4b_hub_nile')?'edit.php?post_type=mad4b_hub_nile':'tools.php';
+        wp_safe_redirect(add_query_arg([
+            'page'=>'mad4b-simple-connections','result'=>sanitize_key($message)
+        ],admin_url($parent)));
+        exit;
+    }
     public static function boot(): void {
         if (!self::enabled()) { return; }
+        add_action('admin_menu', [__CLASS__, 'menu']);
+        add_action('admin_post_mad4b_simple_connections_action', [__CLASS__, 'form_submit']);
         add_action('rest_api_init', static function() {
             register_rest_route(self::API, '/simple-connections', [
                 'methods' => WP_REST_Server::READABLE,
