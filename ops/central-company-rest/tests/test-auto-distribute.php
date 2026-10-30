@@ -49,6 +49,7 @@ $GLOBALS['site_url']='https://tours.dev.mad4b.com';
 $GLOBALS['user_id']=1;
 require dirname(__DIR__).'/central/250-mad4b-hub-auto-distribute.php';
 require dirname(__DIR__).'/remote/250-mad4b-company-private-hub-inbox.php';
+check(MAD4B_Hub_Auto_Distribute_V1::settings()['source_mode']==='import_to_hub','Import to Hub is default');
 check(MAD4B_Hub_Auto_Distribute_V1::enabled(),'Central hub only');
 $bad=MAD4B_Hub_Auto_Distribute_V1::normalize([
     'enabled'=>true,'auto_include_new'=>true,'consumers'=>['tourism-almallahgroup'],
@@ -70,6 +71,7 @@ $all = MAD4B_Hub_Auto_Distribute_V1::normalize([
     'kinds'=>['nile_tour','nile_category'],'languages'=>['en','ar'],'selected_source_ids'=>[]
 ]);
 check(is_array($all) && $all['enabled'],'Valid policy normalized');
+$all['source_mode']='reference_only';
 $GLOBALS['opts'][MAD4B_Hub_Auto_Distribute_V1::OPTIONS]=$all;
 
 $source=[
