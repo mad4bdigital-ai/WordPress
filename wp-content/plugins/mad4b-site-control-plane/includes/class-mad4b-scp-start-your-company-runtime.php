@@ -343,16 +343,103 @@ final class MAD4B_Start_Company_Runtime {
         if(is_wp_error($ok))return $ok;
         return self::enqueue_ready($c,$mode,$stage);
     }
+    /**
+     * Single authoritative lifecycle result for create and repair_existing.
+     * Source definitions and Coolify candidate resources never imply success.
+     * Only independent readback-backed stage receipts can close this outcome.
+     */
     public static function status($req){
         $plan=self::plan($req);if(is_wp_error($plan))return $plan;
-        $all=get_option(self::SNAPSHOTS,array());
-        $code=$plan['company']['company_code'];
-        $record=is_array($all)?($all[$code]??null):null;
-        $match=is_array($record) && ($record['plan_sha256']??'')===$plan['plan_sha256'];
-        return array('contract'=>'mad4b.start-your-company.status.v3',
-          'plan'=>$plan,'recheck_receipt_matched'=>$match,
-          'snapshot_observed_at'=>$match?($record['observed_at']??null):null,
-          'mutation_performed'=>false);
+        $c=$plan['company'];
+        $code=$c['company_code'];
+        $snapshots=get_option(self::SNAPSHOTS,array());
+        $snapshot=is_array($snapshots)?($snapshots[$code]??null):null;
+        $recheck=is_array($snapshot) &&
+          ($snapshot['company']['site_uuid']??'')===$c['site_uuid'] &&
+          ($snapshot['plan_sha256']??'')===$plan['plan_sha256'];
+        $runs=get_option(self::RUNS,array());
+        $run=is_array($runs)?($runs[$code]??null):null;
+        if(!is_array($run)||($run['site_uuid']??'')!==$c['site_uuid'] ||
+          ($run['origin']??'')!==$c['origin'])$run=null;
+        $runId=is_array($run)?($run['run_id']??null):null;
+
+        $jobs=array();
+        $queueReadable=false;
+        if(class_exists('MAD4B_SCP_Remote_Work_Queue',false) &&
+          method_exists('MAD4B_SCP_Remote_Work_Queue','list_jobs')){
+            $listing=MAD4B_SCP_Remote_Work_Queue::list_jobs(
+              MAD4B_SCP_Company_Provisioning_Work_Operations::JOB);
+            if(is_array($listing)&&is_array($listing['items']??null)){
+                $queueReadable=true;
+                foreach($listing['items'] as $job){
+                    if(!is_array($job)||!is_array($job['payload']??null))continue;
+                    $p=$job['payload'];
+                    if(($p['company_code']??'')!==$code ||
+                      ($p['site_uuid']??'')!==$c['site_uuid'] ||
+                      ($p['origin']??'')!==$c['origin'] ||
+                      !isset(self::STAGES[$p['stage']??'']))continue;
+                    $jobs[]=array(
+                      'id'=>(string)($job['job_id']??''),
+                      'stage'=>(string)$p['stage'],
+                      'status'=>(string)($job['effective_status']??$job['status']??'unknown'),
+                      'reconciliation_required'=>!empty($job['reconciliation_required']),
+                      'provider_side_effect_possible'=>!empty($job['provider_side_effect_possible'])
+                    );
+                }
+            }
+        }
+        $hasActive=false;$hasReconciliation=false;
+        foreach($jobs as $job){
+            if(in_array($job['status'],array('pending','claimed','running'),true))$hasActive=true;
+            if($job['reconciliation_required'] ||
+              in_array($job['status'],array('reconciling','failed','expired','cancel_requested'),true))
+              $hasReconciliation=true;
+        }
+        $verified=array();$ready=array();$waiting=array();
+        foreach($plan['stages'] as $stage=>$row){
+            if($row['state']==='VERIFIED')$verified[]=$stage;
+            elseif($row['state']==='READY')$ready[]=$stage;
+            else $waiting[$stage]=$row['missing_dependencies'];
+        }
+        $complete=count($verified)===count(self::STAGES);
+        if($complete)$state='VERIFIED_COMPLETE';
+        elseif($hasReconciliation)$state='NEEDS_RECONCILIATION';
+        elseif($hasActive)$state='IN_PROGRESS';
+        elseif(!$queueReadable)$state='QUEUE_OBSERVATION_UNAVAILABLE';
+        elseif($ready && empty($plan['executor']['registered']))$state='WAITING_EXECUTOR';
+        elseif($ready && !self::authorized_run($c,$plan['mode']))$state='AWAITING_RUN';
+        elseif($ready)$state='READY_TO_CONTINUE';
+        else $state='WAITING_DEPENDENCIES';
+
+        // Legacy readiness is observational only; it cannot set completion.
+        $audits=get_option(self::READINESS,array());
+        $audit=is_array($audits)?($audits[$code]??null):null;
+        $auditBound=is_array($audit) && ($audit['site_uuid']??'')===$c['site_uuid'];
+        $evidence=array('stages'=>$verified,'jobs'=>$jobs,'plan_sha256'=>$plan['plan_sha256'],
+          'run_id'=>$runId);
+        return array(
+          'contract'=>'mad4b.start-your-company.outcome.v1',
+          'company'=>$c,'mode'=>$plan['mode'],'run_id'=>$runId,
+          'overall_state'=>$state,'successful'=>$complete,
+          'current_ready_stages'=>$ready,
+          'verified_stages'=>$verified,
+          'waiting_dependencies'=>$waiting,
+          'stage_count'=>count(self::STAGES),'verified_count'=>count($verified),
+          'readiness'=>$plan['readiness'],
+          'executor'=>$plan['executor'],
+          'jobs'=>$jobs,'job_observation_available'=>$queueReadable,
+          'recheck_receipt_matched'=>$recheck,
+          'snapshot_observed_at'=>$recheck?($snapshot['observed_at']??null):null,
+          'legacy_readiness_observation'=>$auditBound?array(
+             'result'=>(string)($audit['result']??'UNKNOWN'),
+             'generated_utc'=>$audit['generated_utc']??null):null,
+          'infrastructure_ownership'=>'UNVERIFIED_BY_NATIVE_RUNTIME',
+          'coolify_candidate_is_not_active_runtime'=>true,
+          'outcome_sha256'=>hash('sha256',wp_json_encode($evidence,
+             JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)),
+          'mutation_performed'=>false,
+          'plan'=>$plan
+        );
     }
     public static function routes() {
         register_rest_route('mad4b/v1',self::PATH.'/status',array('methods'=>'GET','callback'=>array(__CLASS__,'status'),'permission_callback'=>array(__CLASS__,'guard')));
