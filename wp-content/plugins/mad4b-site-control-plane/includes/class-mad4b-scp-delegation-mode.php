@@ -321,6 +321,33 @@ final class MAD4B_SCP_Delegation_Mode {
         $ability_name = (string) $ability_name;
         $input = is_array( $input ) ? $input : array();
 
+        if ( in_array( $ability_name,
+            array( 'mad4b/content-create-post', 'mad4b/taxonomy-create-term',
+                'mad4b/taxonomy-set-object-terms' ), true ) ) {
+            if ( ! user_can( $user, 'manage_options' ) )
+                return new WP_Error( 'mad4b_adapter_wp_admin_denied', 'WordPress administrator permission required.' );
+            if ( 'mad4b/content-create-post' === $ability_name ) {
+                $type = sanitize_key( (string) ( $input['post_type'] ?? '' ) );
+                $post_type = $type ? get_post_type_object( $type ) : null;
+                $status = sanitize_key( (string) ( $input['post_status'] ?? 'draft' ) );
+                if ( ! $post_type || ! in_array( $status, array( 'draft', 'pending' ), true )
+                    || ! user_can( $user, $post_type->cap->create_posts ?? $post_type->cap->edit_posts )
+                    || ( isset( $input['post_author'] ) && (int) $input['post_author'] !== (int) $user->ID ) )
+                    return new WP_Error( 'mad4b_adapter_native_draft_denied', 'Only authorized WordPress draft creation is supported.' );
+            } elseif ( 'mad4b/taxonomy-create-term' === $ability_name ) {
+                $tax = get_taxonomy( sanitize_key( (string) ( $input['taxonomy'] ?? '' ) ) );
+                if ( ! $tax || ! user_can( $user, $tax->cap->manage_terms ) )
+                    return new WP_Error( 'mad4b_adapter_native_tax_denied', 'WordPress taxonomy management denied.' );
+            } else {
+                $id = absint( $input['object_id'] ?? 0 );
+                $tax = get_taxonomy( sanitize_key( (string) ( $input['taxonomy'] ?? '' ) ) );
+                if ( ! $id || ! $tax || ! user_can( $user, 'edit_post', $id )
+                    || ! user_can( $user, $tax->cap->assign_terms ) )
+                    return new WP_Error( 'mad4b_adapter_native_assign_denied', 'WordPress taxonomy assignment denied.' );
+            }
+            return true;
+        }
+
         // ContentJob is a site/brand-scoped WordPress aggregate: its writer,
         // immutable event log, CAS transition and audit remain authoritative.
         // A real WP administrator with edit_posts needs no NHI alias.
@@ -403,10 +430,26 @@ final class MAD4B_SCP_Delegation_Mode {
         } elseif ( false !== strpos( $ability_name, 'media-upload' ) ) {
             $cap = 'upload_files';
         } else {
-            // Unmapped sensitive/custom operations remain available under the
-            // explicitly selected independent-NHI mode, not inherited by guess.
-            return new WP_Error( 'mad4b_delegation_ability_unmapped',
-                'This ability has no reviewed WordPress capability mapping. Select independent NHI or certify a mapping.' );
+            // Default WordPress-user inheritance applies to every REGISTERED
+            // MAD4B Ability, including host, SQL, developer and deployments.
+            // The original Ability, environment gates and provider runtime
+            // retain their own execution checks; this is principal selection,
+            // not a grant to execute arbitrary system commands.
+            if ( 0 !== strpos( $ability_name, 'mad4b/' )
+                || ! function_exists( 'wp_get_ability' ) || ! wp_get_ability( $ability_name ) )
+                return new WP_Error( 'mad4b_delegation_ability_unregistered',
+                    'WordPress principal inheritance requires a registered MAD4B Ability.' );
+            $cap = 'manage_options';
+            if ( false !== strpos( $ability_name, 'breakglass-shell' )
+                || false !== strpos( $ability_name, 'developer-breakglass-' ) )
+                if ( ! MAD4B_SCP_Policy::can_developer_breakglass() )
+                    return new WP_Error( 'mad4b_delegation_developer_gate_denied',
+                        'Developer breakglass runtime is not enabled for this WordPress site.' );
+            if ( false !== strpos( $ability_name, 'sql-breakglass' )
+                || false !== strpos( $ability_name, 'raw-sql' ) )
+                if ( ! MAD4B_SCP_Policy::can_breakglass() )
+                    return new WP_Error( 'mad4b_delegation_sql_gate_denied',
+                        'Raw SQL runtime gate is not enabled for this WordPress site.' );
         }
         return user_can( $user, $cap ) ? true
             : new WP_Error( 'mad4b_delegation_capability_denied', 'Delegating user lacks the necessary WordPress capability.' );
