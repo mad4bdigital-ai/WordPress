@@ -2096,7 +2096,8 @@
         "RECOVERY-01",
         "ROLLOUT-01",
         "GOVERNANCE-01",
-        "SECURITY-01"
+        "SECURITY-01",
+        "MCP-01"
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py"
@@ -2106,7 +2107,7 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "needs_new_control": false,
-      "coverage_reuse_rationale": "Existing update-coordinator, cross-plugin isolation, recovery, rollout, governance and security controls apply. The introduced source only mentions the established Ability as non-authorizing routing guidance; this review does not register, grant, invoke, install or certify it.",
+      "coverage_reuse_rationale": "Existing update-coordinator, cross-plugin isolation, recovery, rollout, governance and security controls apply. The introduced source only mentions the established Ability as non-authorizing routing guidance; this review does not register, grant, invoke, install or certify it. The static capability detector also maps this literal routing reference to the MCP domain via the class-mad4b-scp-control-plane-test-router.php source; MCP-01 supplies that required domain control without changing execution authority.",
       "review_rationale": "Static source scanner identifies the literal mad4b/control-plane-selected-head-plan in the new package route guidance. It is a pointer to an independent already-governed Control Plane planning surface, NOT a newly registered Ability or an executable provider-package action. Same-PR hermetic PHP test validates fail-closed MAD4B provider rejection, read-only guidance and no auto-apply/Production permission. Runtime discovery remains unverified. The same-PR Python regression contract executes both fixed PHP CLI fixtures with bounded timeout, checks nonzero exit codes and requires positive PASS markers; neither fixture is counted as a trusted standalone PHPUnit test."
     },
     {
@@ -11517,6 +11518,48 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing MCP catalog, WordPress Ability registration, source discovery and fail-closed capability descriptor controls cover optional read projection; mandatory core read tools remain unfiltered.",
       "review_rationale": "Exact-source runtime review: three company operation planners remained advertised as catalog entries before WordPress Abilities existed, causing capability_descriptor_binding_unavailable and preventing the entire mad4b-read web server. Only operation registry optional read projections are filtered by wp_has_ability at the MCP mount boundary; operation discovery retains them, no execution, authorization, write grant or source certificate is inferred. Disposable official Adapter 0.6.1 web lifecycle, Hostinger collision and hermetic dynamic registration pass."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "3dad6b38ce078b1a1239c9e6bd36aa7bcae5832c",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-optional-operation-read-projection-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-adapter-compatibility-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only, not Production authorizer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse source-integrity, MCP/REST permission, WordPress security, and fail-closed controls, without expanding tools or granting mutations.",
+      "review_rationale": "Exact nonauthorizing review of current MCP server facade: category and tool-catalog selection remain guarded by existing required Ability and capability-descriptor checks. The checked source includes the previous bounded direct Step-up and read-discovery behavior; the newly added dynamic registered-operation fixture and compatibility contract cover present/absent/late optional service dependencies. No new authority, persisted grant or production recovery is implied; independent browser and release evidence remain required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-user-lifecycle.php",
+      "source_blob_sha": "41327ef75e41e9892d981eaaacd1652eacfab9b6",
+      "control_ids": [
+        "SECURITY-01",
+        "OAUTH-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-user-rest-suspension-isolation-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/connection-readiness-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only, not Production authorizer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse source-integrity, MCP/REST permission, WordPress security, and fail-closed controls, without expanding tools or granting mutations.",
+      "review_rationale": "Exact-source review: Company User Lifecycle still denies suspended users via login and application password guards. The previous universal rest_authentication_errors callback conflicted with Control Plane REST route isolation and WPML. The request-local rest_pre_dispatch guard checks current suspension before any endpoint callback and preserves previous errors; hermetic positive, negative and restored-user cases execute in CI. No suspension removal, privilege grant, or Production authorization is inferred."
     }
   ],
   "code_change_rules": {

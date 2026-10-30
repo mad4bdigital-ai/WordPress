@@ -219,7 +219,12 @@ final class MAD4B_SCP_Company_User_Lifecycle {
     }
     public static function register():void {
         add_filter('authenticate',[__CLASS__,'authenticate'],95,3);
-        add_filter('rest_authentication_errors',[__CLASS__,'guardREST'],95);
+        // Enforce the suspension on every REST dispatch before its endpoint
+        // callback, without intercepting WordPress's global authentication
+        // handshake (including independent WPML, Woo and OAuth consumers).
+        // WP application passwords and normal login remain independently
+        // denied by the authentication hooks below.
+        add_filter('rest_pre_dispatch',[__CLASS__,'guardREST'],95,1);
         add_action('wp_authenticate_application_password_errors',[__CLASS__,'guardApplicationPassword'],95,4);
         add_action('rest_api_init',[__CLASS__,'rest'],30);
     }
