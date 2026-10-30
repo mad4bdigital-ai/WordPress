@@ -28,6 +28,11 @@ jobs:
         run: |
           python3 -m py_compile ops/company-readiness-workflow/design-activation/wayfa-wpml-resolve.py
           python3 -m py_compile ops/company-readiness-workflow/design-activation/wayfa-design-activate.py
+      - name: Schema-first and conditional resolution contract tests
+        run: |
+          python3 ops/company-readiness-workflow/design-activation/test_config_compatibility.py
+          python3 -m py_compile ops/company-readiness-workflow/design-activation/wayfa-schema-compatibility.py
+          python3 -m py_compile ops/company-readiness-workflow/design-activation/wayfa-template-diff-resolver.py
       - name: Source-neutral activation PHP syntax
         run: |
           php -l ops/company-readiness-workflow/design-activation/wayfa-wpml-resolve.php
