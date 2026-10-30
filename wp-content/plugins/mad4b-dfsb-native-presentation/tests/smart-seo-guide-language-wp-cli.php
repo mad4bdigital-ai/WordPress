@@ -47,8 +47,10 @@ $checks['guide_term_translate_independently']=!is_wp_error($arSite)
  && ($arSite['site_language']??'')==='ar'
  && ($arSite['guide_language']['slug']??'')==='french'
  && $arSite['matched_published_count']===4;
-$checks['localized_archive_not_published_without_route']=!is_wp_error($arSite)
- && in_array('localized_archive_url_not_distinct',$arSite['blockers'],true)
+$checks['localized_archive_route_distinct']=!is_wp_error($arSite)
+ && !in_array('localized_archive_url_not_distinct',$arSite['blockers'],true)
+ && ($arSite['archive_route']['route_distinct_from_english']??false)
+ && strpos($arSite['url'],'/ar/tours-and-activities/')!==false
  && $arSite['index_ready']===false;
 $arabic=C::withGuideLanguage($source,$four,'arabic');
 $noGuide=C::inspect($source,$arabic,'en');
