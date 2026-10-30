@@ -82,6 +82,9 @@ final class MAD4B_Hub_Field_Fusion_V1 {
                 $registry[$field]['weight']=max(0,min(100,(int)$override['weight']));
             // No override can lower the sensitive or identity isolation boundary.
             if($registry[$field]['sensitive'])$registry[$field]['strategy']='keep_separate';
+            if(($registry[$field]['strategy']??'')!=='keep_separate' &&
+                (self::registry($type)[$field]['strategy']??null)==='exact')
+                $registry[$field]['strategy']='exact';
             if($field==='source_wpml_trid')$registry[$field]['strategy']='keep_separate';
         }
         return $registry;
@@ -192,7 +195,7 @@ final class MAD4B_Hub_Field_Fusion_V1 {
         $policies=self::policies($ownerA,$typeA);
         if(count($policies)>self::MAX_FIELDS)return new WP_Error('fusion_registry_limit','Too many fields');
         $rows=[];$coverage=0;$quality=[(string)$left=>0,(string)$right=>0];$blocks=[];
-        $draft=[];$issues=[];
+        $draft=[];$issues=[];$unverifiedIdentity=[];
         $modifiedA=(string)get_post_meta($left,'_mad4b_hub_import_source_modified',true);
         $modifiedB=(string)get_post_meta($right,'_mad4b_hub_import_source_modified',true);
         foreach($policies as $field=>$spec) {
@@ -208,6 +211,10 @@ final class MAD4B_Hub_Field_Fusion_V1 {
             $quality[(string)$right]+=$rankB*$spec['weight'];
             $state='missing_both';$choice=null;
             if($spec['sensitive']||$strategy==='keep_separate')$state='keep_separate';
+            elseif($strategy==='exact' && (!$presentA || !$presentB)) {
+                $state='identity_unverified';
+                $unverifiedIdentity[]=$field;
+            }
             elseif(!$presentA&&!$presentB)$state='missing_both';
             elseif($same){$state='same_value_preserve_provenance';$choice=$left;}
             elseif($strategy==='manual')$state='review_conflict_or_gap';
@@ -256,6 +263,24 @@ final class MAD4B_Hub_Field_Fusion_V1 {
                 'auto_apply'=>false,
             ];
         }
+        // The absence of decisive identity evidence is a HOLD, not proof of sameness.
+        // An address requires verified corroboration; by itself it never licenses auto-merge.
+        if($typeA==='properties') {
+            $placeA=self::read($left,'property_place_id');
+            $placeB=self::read($right,'property_place_id');
+            $addressA=self::read($left,'property_address');
+            $addressB=self::read($right,'property_address');
+            if(!self::valid($placeA,'id') || !self::valid($placeB,'id')) {
+                if(!in_array('property_place_id',$unverifiedIdentity,true))
+                    $unverifiedIdentity[]='property_place_id';
+            }
+            if(self::valid($addressA,'text') && self::valid($addressB,'text') &&
+               self::canon($addressA)!==self::canon($addressB)) {
+                $issues[]='property_address';
+            }
+        }
+        $state=$blocks?'identity_conflict_hold':
+            ($unverifiedIdentity?'identity_unverified_hold':'candidate_not_verified');
         return [
             'contract'=>self::CONTRACT,'company_id'=>$ownerA,'source_type'=>$typeA,
             'language'=>$langA,'record_ids'=>[$left,$right],
@@ -263,10 +288,12 @@ final class MAD4B_Hub_Field_Fusion_V1 {
             'field_policy_count'=>count($policies),'field_coverage'=>$coverage,
             'per_record_quality_score'=>$quality,
             'identity_conflict_fields'=>$blocks,
-            'entity_resolution_state'=>$blocks?'identity_conflict_hold':'candidate_not_verified',
+            'identity_unverified_fields'=>array_values(array_unique($unverifiedIdentity)),
+            'entity_resolution_state'=>$state,
             'field_proposals'=>$rows,
             'canonical_draft'=>[
-                'status'=>$blocks?'blocked_identity_conflict':'review_required',
+                'status'=>$blocks?'blocked_identity_conflict':
+                    ($unverifiedIdentity?'blocked_unverified_identity':'review_required'),
                 'field_source_selection'=>$draft,
                 'unresolved_fields'=>array_values(array_unique($issues)),
                 'all_original_source_ids'=>[$sourceA,$sourceB],
