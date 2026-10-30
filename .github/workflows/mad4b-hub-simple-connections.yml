@@ -5,10 +5,13 @@ on:
     paths:
       - 'ops/central-company-rest/central/240-mad4b-central-simple-connections.php'
       - 'ops/central-company-rest/central/250-mad4b-hub-auto-distribute.php'
+      - 'ops/central-company-rest/central/260-mad4b-hub-source-import.php'
       - 'ops/central-company-rest/remote/240-mad4b-company-simple-identity.php'
       - 'ops/central-company-rest/remote/250-mad4b-company-private-hub-inbox.php'
+      - 'ops/central-company-rest/remote/260-mad4b-company-simple-content-feed.php'
       - 'ops/central-company-rest/tests/test-simple-connections.php'
       - 'ops/central-company-rest/tests/test-auto-distribute.php'
+      - 'ops/central-company-rest/tests/test-hub-source-import.php'
       - '.github/workflows/mad4b-hub-simple-connections.yml'
   workflow_dispatch:
 
@@ -45,10 +48,13 @@ jobs:
           for file in \
             ops/central-company-rest/central/240-mad4b-central-simple-connections.php \
             ops/central-company-rest/central/250-mad4b-hub-auto-distribute.php \
+            ops/central-company-rest/central/260-mad4b-hub-source-import.php \
             ops/central-company-rest/remote/240-mad4b-company-simple-identity.php \
             ops/central-company-rest/remote/250-mad4b-company-private-hub-inbox.php \
+            ops/central-company-rest/remote/260-mad4b-company-simple-content-feed.php \
             ops/central-company-rest/tests/test-simple-connections.php \
-            ops/central-company-rest/tests/test-auto-distribute.php; do
+            ops/central-company-rest/tests/test-auto-distribute.php \
+            ops/central-company-rest/tests/test-hub-source-import.php; do
             php -l "$file"
           done
       - name: Functional safety contracts
@@ -57,3 +63,4 @@ jobs:
           set -euo pipefail
           php ops/central-company-rest/tests/test-simple-connections.php
           php ops/central-company-rest/tests/test-auto-distribute.php
+          php ops/central-company-rest/tests/test-hub-source-import.php
