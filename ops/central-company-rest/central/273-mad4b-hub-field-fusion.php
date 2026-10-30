@@ -192,6 +192,9 @@ final class MAD4B_Hub_Field_Fusion_V1 {
         $policies=self::policies($ownerA,$typeA);
         if(count($policies)>self::MAX_FIELDS)return new WP_Error('fusion_registry_limit','Too many fields');
         $rows=[];$coverage=0;$quality=[(string)$left=>0,(string)$right=>0];$blocks=[];
+        $draft=[];$issues=[];
+        $modifiedA=(string)get_post_meta($left,'_mad4b_hub_import_source_modified',true);
+        $modifiedB=(string)get_post_meta($right,'_mad4b_hub_import_source_modified',true);
         foreach($policies as $field=>$spec) {
             $strategy=$spec['strategy'];
             $a=self::read($left,$field);$b=self::read($right,$field);
@@ -206,13 +209,21 @@ final class MAD4B_Hub_Field_Fusion_V1 {
             $state='missing_both';$choice=null;
             if($spec['sensitive']||$strategy==='keep_separate')$state='keep_separate';
             elseif(!$presentA&&!$presentB)$state='missing_both';
-            elseif($same)$state='same_value_preserve_provenance';
+            elseif($same){$state='same_value_preserve_provenance';$choice=$left;}
             elseif($strategy==='manual')$state='review_conflict_or_gap';
             elseif($strategy==='exact') {
                 $state=($presentA&&$presentB)?'identity_conflict_block':'identity_unverified';
                 if($state==='identity_conflict_block')$blocks[]=$field;
             } elseif($strategy==='union_review')$state='review_union';
-            elseif($strategy==='freshest')$state='review_freshness_requires_verified_revision';
+            elseif($strategy==='freshest') {
+                $stampA=strtotime($modifiedA);
+                $stampB=strtotime($modifiedB);
+                if($presentA&&$presentB&&$stampA&&$stampB&&$stampA!==$stampB &&
+                    $stampA>946684800 && $stampB>946684800) {
+                    $state='propose_fresher_value_review';
+                    $choice=$stampA>$stampB?$left:$right;
+                }else $state='review_freshness_requires_verified_revision';
+            }
             elseif($strategy==='richest'){
                 if($presentA&&!$presentB){$state='propose_fill_missing';$choice=$left;}
                 elseif(!$presentA&&$presentB){$state='propose_fill_missing';$choice=$right;}
@@ -221,6 +232,15 @@ final class MAD4B_Hub_Field_Fusion_V1 {
                     $choice=$rankA>$rankB?$left:$right;
                 }else $state='review_equal_quality_conflict';
             }
+            if($choice!==null && !$spec['sensitive'])$draft[$field]=[
+                'value_from_hub_id'=>$choice,
+                'source_post_id'=>$choice===$left?$sourceA:$sourceB,
+                'value_preview'=>self::sample($choice===$left?$a:$b),
+                'selection_state'=>$state,
+                'pending_review'=>true
+            ];
+            if($state==='identity_conflict_block'||$state==='review_equal_quality_conflict'||
+                $state==='review_conflict_or_gap')$issues[]=$field;
             // Never silently accept field winners as a full entity merge.
             $rows[$field]=[
                 'strategy'=>$strategy,'value_type'=>$spec['value_type'],
@@ -245,6 +265,13 @@ final class MAD4B_Hub_Field_Fusion_V1 {
             'identity_conflict_fields'=>$blocks,
             'entity_resolution_state'=>$blocks?'identity_conflict_hold':'candidate_not_verified',
             'field_proposals'=>$rows,
+            'canonical_draft'=>[
+                'status'=>$blocks?'blocked_identity_conflict':'review_required',
+                'field_source_selection'=>$draft,
+                'unresolved_fields'=>array_values(array_unique($issues)),
+                'all_original_source_ids'=>[$sourceA,$sourceB],
+                'can_apply'=>false,
+            ],
             'auto_merge'=>false,'auto_publish'=>false,'source_records_untouched'=>true,
         ];
     }
