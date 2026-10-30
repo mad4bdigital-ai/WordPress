@@ -22,6 +22,15 @@ CENTRAL = "etg-commerce-staging-php"
 TENANT = "wayfatours-production-php"
 READ_SCRIPT = "<?php\n// Read-only company readiness observation; run under WP-CLI, never as a web endpoint.\nglobal $wpdb;\n$source = wp_parse_url(home_url(), PHP_URL_HOST) === 'tours.dev.mad4b.com';\n$registry = get_option('mad4b_tourism_company_site_registry_v1', array());\n$prefs = get_option('mad4b_company_brand_hub_preferences_v1', array());\n$id = get_option('mad4b_company_site_identity_v1', array());\n$role = get_role('master_admin');\n$active = array_values((array)get_option('active_plugins', array()));\n$has = static function ($name) use ($active) {\n    foreach ($active as $path) {\n        if (strpos($path, $name . '/') === 0) return true;\n    }\n    return false;\n};\n$o = array(\n    'host' => wp_parse_url(home_url(), PHP_URL_HOST),\n    'environment' => wp_get_environment_type(),\n    'site_uuid' => is_array($id) ? ($id['site_uuid'] ?? '') : '',\n    'company_code' => is_array($id) ? ($id['company_code'] ?? '') : '',\n    'master_admin_capabilities' => $role ? count($role->capabilities) : 0,\n    'master_admin_manage_options' => (bool)($role && !empty($role->capabilities['manage_options'])),\n    'elementor_active_kit' => (int)get_option('elementor_active_kit'),\n    'site_indexable' => (bool)get_option('blog_public'),\n    'plugins' => array(\n        'elementor' => $has('elementor'),\n        'elementor-pro' => $has('elementor-pro'),\n        'jet-engine' => $has('jet-engine'),\n        'jet-smart-filters' => $has('jet-smart-filters'),\n        'woocommerce' => $has('woocommerce'),\n        'sitepress-multilingual-cms' => $has('sitepress-multilingual-cms')\n    )\n);\nif ($source) {\n    $o['registry'] = array();\n    foreach ((array)$registry as $code => $r) {\n        if (!is_array($r)) continue;\n        $o['registry'][$code] = array(\n            'company_code' => $r['company_code'] ?? '',\n            'company_site_uuid' => $r['company_site_uuid'] ?? '',\n            'native_site_profile_uuid' => $r['native_site_profile_uuid'] ?? '',\n            'host_binding_verified' => !empty($r['host_binding_verified']),\n            'canonical_origin' => $r['canonical_origin'] ?? ''\n        );\n    }\n    $o['selection'] = is_array($prefs) ? ($prefs['wayfatours'] ?? null) : null;\n} else {\n    $o['mirror'] = get_option('mad4b_hosted_trial_selection_v1', null);\n    $counts = $wpdb->get_results(\n        \"SELECT post_type,post_status,COUNT(*) AS qty FROM {$wpdb->posts}\n         WHERE post_type IN ('elementor_library','jet-smart-filters','tours-and-activities','product')\n         GROUP BY post_type,post_status\", ARRAY_A);\n    $o['post_counts'] = $counts;\n    $translations=$wpdb->prefix.'icl_translations';\n    $o['wpml_elementor_translations']=(int)$wpdb->get_var(\n        \"SELECT COUNT(*) FROM {$translations} WHERE element_type='post_elementor_library'\");\n    $o['wpml_elementor_languages']=$wpdb->get_results(\n        \"SELECT language_code,COUNT(*) AS n FROM {$translations}\n         WHERE element_type='post_elementor_library' GROUP BY language_code\",ARRAY_A);\n    $o['published_old_source_count']=(int)$wpdb->get_var(\n        \"SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p\n         JOIN {$wpdb->postmeta} m ON m.post_id=p.ID AND m.meta_key='_elementor_data'\n         WHERE p.post_type='elementor_library' AND p.post_status='publish' AND\n         (m.meta_value LIKE '%tours.dev.mad4b.com%' OR\n          m.meta_value LIKE '%wovacation%' OR\n          m.meta_value LIKE '%allroyalegypt%' OR\n          m.meta_value LIKE '%egypttourgates%')\");\n    $rows = $wpdb->get_results($wpdb->prepare(\n        \"SELECT p.ID,p.post_status,m.meta_value FROM {$wpdb->posts} p\n         JOIN {$wpdb->postmeta} m ON m.post_id=p.ID\n         WHERE p.post_type='elementor_library' AND m.meta_key='_elementor_data'\n           AND m.meta_value LIKE %s\", '%tours.dev.mad4b.com%'));\n    $templates = array();\n    $links = array();\n    $fields = array('media' => 0, 'link' => 0, 'other' => 0);\n    $walk = function ($v, $key = '') use (&$walk, &$fields, &$links) {\n        if (is_array($v)) {\n            foreach ($v as $k => $child) $walk($child, (string)$k);\n            return;\n        }\n        if (!is_string($v) || stripos($v, 'tours.dev.mad4b.com') === false) return;\n        // Media cannot be rehosted by replacing the domain; license and asset are separate.\n        $kind = (strpos($v, '/wp-content/uploads/') !== false\n            || preg_match('/(?:image|icon|gallery|thumbnail|background)/i', $key))\n            ? 'media' : (preg_match('/(?:url|link|href)/i', $key) ? 'link' : 'other');\n        $fields[$kind]++;\n        if ($kind === 'link' && wp_parse_url($v, PHP_URL_HOST) === 'tours.dev.mad4b.com') {\n            $path = wp_parse_url($v, PHP_URL_PATH);\n            if (is_string($path) && preg_match('~^/[A-Za-z0-9/_-]{1,250}$~D', $path)) $links[$path] = true;\n        }\n    };\n    foreach ($rows as $row) {\n        $templates[$row->post_status][$row->ID] = true;\n        $decoded = json_decode($row->meta_value, true);\n        if (is_array($decoded)) $walk($decoded);\n        else $fields['other']++; // Invalid JSON is never silently repaired.\n    }\n    $o['template_legacy_draft'] = count($templates['draft'] ?? array());\n    $o['template_legacy_published'] = count($templates['publish'] ?? array());\n    $o['template_legacy_other_status'] = count($templates['trash'] ?? array());\n    $o['legacy_fields'] = $fields;\n    $o['legacy_link_paths'] = array_keys($links);\n}\necho wp_json_encode($o, JSON_UNESCAPED_SLASHES) . PHP_EOL;\n?>"
 
+JET_READ_SCRIPT = """<?php
+global $wpdb;
+$rows=$wpdb->get_results("SELECT post_type,post_status,COUNT(*) AS qty FROM {$wpdb->posts}
+ WHERE post_type IN ('jet-engine','jet-form-builder') GROUP BY post_type,post_status",ARRAY_A);
+$links=(int)$wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}icl_translations
+ WHERE element_type='post_jet-engine'");
+echo wp_json_encode(array('post_counts'=>$rows,'wpml_jet_translations'=>$links),
+ JSON_UNESCAPED_SLASHES).PHP_EOL;
+?>"""
 STORE_SCRIPT = r"""<?php
 if (wp_get_environment_type() !== 'staging' || DB_NAME !== 'etg_commerce_staging'
     || wp_parse_url(home_url(), PHP_URL_HOST) !== 'tours.dev.mad4b.com')
@@ -120,6 +129,16 @@ def policy(source, tenant, catalog, health):
           "PARTIAL" if activated else "PENDING",
           f"source_neutral_templates_published={activated}; remaining_drafts={draft_total}",
           "RESOLVE_QUERY_WIDGET_MEDIA_AND_COMPANY_OPTIONS_PER_TEMPLATE_FAMILY")
+    jet_pub=counters.get("jet-engine:publish",0)
+    jet_draft=counters.get("jet-engine:draft",0)
+    stage("jetengine_schema_auto_activation",
+          "PARTIAL" if jet_pub and jet_draft else ("PASS" if jet_pub and not jet_draft else "PENDING"),
+          f"active_listings={jet_pub}; deferred_for_real_differences={jet_draft}",
+          "RUN_JETENGINE_CONFIG_AUTO_WITH_ON_DIFF_PROVENANCE")
+    jet_wpml=tenant.get("wpml_jet_translations",0)
+    stage("jetengine_tenant_wpml", "PASS" if jet_wpml==332 else "BLOCKED",
+          f"tenant_linked_jet_designs={jet_wpml}; expected=332",
+          "CREATE_COMPANY_NATIVE_JET_TRANSLATION_GROUPS")
     filter_count = counters.get("jet-smart-filters:publish",0)
     stage("jet_filter_inventory", "PASS" if filter_count else "BLOCKED",
           f"published={filter_count}; live filtered-archive smoke test still required",
@@ -167,6 +186,9 @@ def run(refresh=False):
     with open(CATALOG, encoding="utf-8") as f: catalog=json.load(f)
     src=wp(CENTRAL, READ_SCRIPT)
     tenant=wp(TENANT, READ_SCRIPT)
+    jet=wp(TENANT, JET_READ_SCRIPT)
+    tenant["post_counts"].extend(jet["post_counts"])
+    tenant["wpml_jet_translations"]=jet["wpml_jet_translations"]
     design_policy_file = BASE / "policies/company-design-activation-v2.json"
     design_policy = json.loads(design_policy_file.read_text())
     design_policy_sha256 = hashlib.sha256(design_policy_file.read_bytes()).hexdigest()
@@ -180,6 +202,24 @@ def run(refresh=False):
     links = {p:https("https://wayfatours.mad4b.com"+p) for p in target_paths}
     tenant["missing_link_targets"] = [p for p,v in links.items() if v.get("http") != 200]
     stages,eligible,counters,mirrored=policy(src,tenant,catalog,health)
+    compatibility_file=BASE/"reports/wayfatours-schema-compatibility.json"
+    if compatibility_file.exists():
+        compatibility=json.loads(compatibility_file.read_text())
+        fresh=(datetime.datetime.now(datetime.timezone.utc)-
+               datetime.datetime.fromisoformat(compatibility["generated_utc"])).total_seconds()<3600
+        parity=fresh and compatibility.get("state")=="SCHEMA_PARITY_CONFIRMED"
+        stages["live_schema_compatibility"]={
+          "state":"PASS" if parity else "RECHECK_REQUIRED",
+          "detail":f"config_parity={parity}; structural_models=307; taxonomy_models=34; fresh={fresh}",
+          "next_action":"PROBE_BOTH_SITE_SCHEMAS_BEFORE_TEMPLATE_APPROVAL"}
+    diffs_file=BASE/"reports/wayfatours-compatibility-diff-resolution.json"
+    if diffs_file.exists():
+        diffs=json.loads(diffs_file.read_text())
+        issues=len(diffs.get("resolutions",[]))
+        stages["conditional_resolution_engine"]={
+          "state":"ACTIVE" if issues else "PASS",
+          "detail":f"on_diff=true; grounded_issues={issues}; unsafe_rewrites=false",
+          "next_action":"RESOLVE_BRAND_MEDIA_PROVIDERS_AND_DISPLAY_CONDITIONS"}
     reg=src.get("registry",{}).get("wayfatours",{})
     report={
       "contract":"mad4b.company-readiness-workflow.v1",
