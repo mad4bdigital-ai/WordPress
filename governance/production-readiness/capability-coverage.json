@@ -2829,7 +2829,8 @@
       ],
       "status": "reviewed_for_ci_only",
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py"
       ],
       "owner_role": "Source/security CI technical review; not Repository/Site Owner attestation",
       "review_rationale": "Reviewed original bounded checkpoint broker source (actor/site/revision, expiry, no secret storage, typed CSO01 validation and no write replay), 34 original-class positive/negative PHP assertions on both PHP 7.4/8.3, including missing-provider protection and closed Staging/Production pilot. No live certification or credential exchange.",
