@@ -53,4 +53,7 @@ foreach ( array(
 $missing = $render( array( 'family' => 'research', 'provider_id' => 'firecrawl', 'credential_state' => 'not_configured' ) );
 $verify( strpos( $missing, '<form' ) === false, 'Firecrawl cannot be tested without saved credentials' );
 $verify( strpos( $missing, 'Save Firecrawl credentials' ) !== false, 'Missing credential guidance missing' );
+$ui_source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-provider-connections-admin-ui.php' );
+$verify( strpos( $ui_source, "is_readable( __DIR__ . '/class-mad4b-scp-firecrawl-discovery-preflight.php' )" ) !== false,
+    'Optional Firecrawl discovery preflight must never break an installed site when absent' );
 echo "PROVIDER_CONNECTION_TEST_ACTIONS: PASS (explicit POST, nonce, revision and unavailable paths)\n";
