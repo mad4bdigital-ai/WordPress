@@ -15,6 +15,38 @@ $GLOBALS['source_rows']=[];
 $GLOBALS['fail_feed']=false;
 $GLOBALS['registered_types']=[];
 $GLOBALS['changes']=0;
+$GLOBALS['fail_update_on_id']=0;
+$wpdb=new class {
+    public $prefix='wp_';
+    private $transaction=null;
+    public function prepare($sql,$value) {return str_replace('%s',"'".(string)$value."'",$sql);}
+    public function get_var($sql) {
+        if(strpos($sql,'GET_LOCK')!==false)return '1';
+        if(strpos($sql,'RELEASE_LOCK')!==false)return '1';
+        if(strpos($sql,'information_schema.TABLES')!==false)return 'InnoDB';
+        return null;
+    }
+    public function query($sql) {
+        if($sql==='START TRANSACTION') {
+            $this->transaction=[
+                'posts'=>$GLOBALS['hub_posts'],
+                'meta'=>$GLOBALS['hub_meta'],
+                'options'=>$GLOBALS['options'],
+                'next_id'=>$GLOBALS['next_post_id']
+            ];
+        } elseif($sql==='ROLLBACK') {
+            if($this->transaction) {
+                $GLOBALS['hub_posts']=$this->transaction['posts'];
+                $GLOBALS['hub_meta']=$this->transaction['meta'];
+                $GLOBALS['options']=$this->transaction['options'];
+                $GLOBALS['next_post_id']=$this->transaction['next_id'];
+            }
+            $this->transaction=null;
+        } elseif($sql==='COMMIT')$this->transaction=null;
+        return 0;
+    }
+};
+
 class WP_Error {
     public $code; public $data;
     public function __construct($code,$message,$data=[]) {$this->code=$code;$this->data=$data;}
@@ -56,7 +88,9 @@ function wp_insert_post($data,$wp_error=false) {
     $GLOBALS['changes']++;return $id;
 }
 function wp_update_post($data,$wp_error=false) {
-    $id=(int)$data['ID'];if(!isset($GLOBALS['hub_posts'][$id]))return new WP_Error('not_found','No post');
+    $id=(int)$data['ID'];
+    if($GLOBALS['fail_update_on_id']===$id)return new WP_Error('injected_write_failure','Injected failure');
+    if(!isset($GLOBALS['hub_posts'][$id]))return new WP_Error('not_found','No post');
     $GLOBALS['hub_posts'][$id]=(object)array_merge((array)$GLOBALS['hub_posts'][$id],$data);
     $GLOBALS['changes']++;return $id;
 }
@@ -378,4 +412,42 @@ check($repeated['created']===0 && $repeated['updated']===0 &&
 check(!wp_next_scheduled(MAD4B_Hub_Auto_Distribute_V1::EVENT),
     'Cross-SSH never schedules WordPress polling');
 
+
+// Verify that REST cannot overwrite SSH enriched data or leave stale metadata.
+$sshChanged=$cross;
+$sshChanged['items'][0]['body']='Enriched JetEngine description';
+$sshChanged['items'][0]['source_wpml_trid']=666111;
+$sshChanged['items'][0]['modified_gmt']='2026-10-30 10:00:00';
+$first=MAD4B_Hub_Source_Import_V1::import_cross_ssh_snapshot($sshChanged);
+check(is_array($first) && $first['updated']===1,'Enriched SSH revision updates private source in place');
+$beforeState=serialize([$GLOBALS['hub_posts'],$GLOBALS['hub_meta'],
+    get_option(MAD4B_Hub_Source_Import_V1::ACTIVE)]);
+$GLOBALS['feed_rows']['tours-and-activities']=[feed(1401,'tours-and-activities','fr','French Tour')];
+$GLOBALS['feed_rows']['tours-and-activities'][0]['body']='';
+$reduced=MAD4B_Hub_Source_Import_V1::import('tourism-almallahgroup',['tours-and-activities']);
+check(is_wp_error($reduced) &&
+    serialize([$GLOBALS['hub_posts'],$GLOBALS['hub_meta'],
+        get_option(MAD4B_Hub_Source_Import_V1::ACTIVE)])===$beforeState,
+    'REST downgrade fails closed before any post/metadata overwrite');
+$stale=$sshChanged;$stale['items'][0]['modified_gmt']='2026-10-29 06:00:00';
+$rejected=MAD4B_Hub_Source_Import_V1::import_cross_ssh_snapshot($stale);
+check(is_wp_error($rejected) &&
+    serialize([$GLOBALS['hub_posts'],$GLOBALS['hub_meta'],
+        get_option(MAD4B_Hub_Source_Import_V1::ACTIVE)])===$beforeState,
+    'Stale source revision cannot overwrite a newer source record');
+// Inject a failure on the second changed post AFTER first in-place update.
+// A successful transaction must restore both Hub content and active snapshot.
+$changes=$sshChanged;$changes['items'][0]['body']='First changed body';
+$changes['items'][1]['body']='Second changed body';
+$failureId=0;
+foreach($GLOBALS['hub_meta'] as $id=>$meta)
+    if(($meta['_mad4b_hub_import_source_id']??null)===1402)$failureId=$id;
+check($failureId>0,'Source metadata finds second record for failure injection');
+$GLOBALS['fail_update_on_id']=$failureId;
+$aborted=MAD4B_Hub_Source_Import_V1::import_cross_ssh_snapshot($changes);
+$GLOBALS['fail_update_on_id']=0;
+check(is_wp_error($aborted) &&
+    serialize([$GLOBALS['hub_posts'],$GLOBALS['hub_meta'],
+        get_option(MAD4B_Hub_Source_Import_V1::ACTIVE)])===$beforeState,
+    'Atomic rollback restores every post/meta/index after middle-row write failure');
 echo "PASS $tests native source pull and default Content Hub import tests\n";
