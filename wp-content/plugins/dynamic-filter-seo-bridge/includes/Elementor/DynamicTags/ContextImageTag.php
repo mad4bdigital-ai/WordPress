@@ -2,7 +2,7 @@
 namespace DynamicFilterSEOBridge\Elementor\DynamicTags;
 
 use DynamicFilterSEOBridge\Context\ContextValueResolver;
-use DynamicFilterSEOBridge\Runtime\BootGuard;
+use DynamicFilterSEOBridge\Runtime\RuntimeLayers;
 
 /** Elementor IMAGE_CATEGORY source backed by the same context as shortcodes. */
 final class ContextImageTag extends \Elementor\Core\DynamicTags\Data_Tag {
@@ -25,7 +25,7 @@ final class ContextImageTag extends \Elementor\Core\DynamicTags\Data_Tag {
     public function get_value(array $options=array()){
         $empty=array('id'=>0,'url'=>'');
         $editor=(is_admin() || wp_doing_ajax()) && current_user_can('manage_options');
-        if(BootGuard::shouldHold() && !$editor)return $empty;
+        if(!RuntimeLayers::canPresent())return $empty;
         $scope=$editor?sanitize_key((string)$this->get_settings('preview_scope')):'current';
         $id=$editor?absint($this->get_settings('preview_id')):0;
         $type=$editor?sanitize_key((string)$this->get_settings('preview_type')):'';

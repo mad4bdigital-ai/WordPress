@@ -121,7 +121,7 @@ final class BootGuard {
         if (!current_user_can('manage_options') || !self::shouldHold()) { return; }
         $state = self::state();
         $url = wp_nonce_url(admin_url('admin-post.php?action=' . self::RETRY_ACTION), self::RETRY_ACTION);
-        echo '<div class="notice notice-warning"><p><strong>Dynamic Filter SEO Bridge is in Safe Boot mode.</strong> Full Elementor/JetEngine integration is not loaded, so this request cannot white-screen wp-admin.</p>';
+        echo '<div class="notice notice-warning"><p><strong>Dynamic Filter SEO Bridge is in Safe Boot mode.</strong> SEO Full Boot and advanced integrations remain held. Independently source-verified, read-only Elementor context and native filter context can still operate; public SEO publication is disabled.</p>';
         if (!empty($state['faulted'])) {
             echo '<p>Last guarded failure: <code>' . esc_html((string)($state['surface'] ?? 'boot')) . '</code> — ' . esc_html((string)($state['message'] ?? 'unknown error'));
             if (!empty($state['file'])) { echo ' <code>' . esc_html((string)$state['file']) . ':' . esc_html((string)($state['line'] ?? 0)) . '</code>'; }

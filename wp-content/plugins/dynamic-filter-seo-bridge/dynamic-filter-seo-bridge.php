@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Dynamic Filter SEO Bridge
  * Description: Governed profile-driven bridge between JetSmartFilters filter URLs, WordPress taxonomies, WPML terms, Elementor rendering, and Rank Math metadata.
- * Version: 0.4.0-alpha.15-rc.1
+ * Version: 0.4.0-alpha.15-rc.2
  * Requires at least: 6.5
  * Requires PHP: 8.1
  * Author: Plugin Maintainers
@@ -11,11 +11,11 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'DFSB_VERSION', '0.4.0-alpha.15-rc.1' );
+define( 'DFSB_VERSION', '0.4.0-alpha.15-rc.2' );
 define( 'DFSB_DIR', plugin_dir_path( __FILE__ ) );
 define( 'DFSB_MAIN_FILE', __FILE__ );
 define( 'DFSB_BOOT_BUILD', 'alpha15-rc1-review-only-source' );
-define( 'DFSB_ASSET_VERSION', '0.4.0-alpha.15-rc.1' );
+define( 'DFSB_ASSET_VERSION', '0.4.0-alpha.15-rc.2' );
 define( 'DFSB_RUNTIME_REVISION', 'context-rest-repair-1' );
 
 // Public neutral API. Legacy symbols are read-only compatibility aliases for
@@ -120,9 +120,13 @@ add_action('plugins_loaded', static function (): void {
 }, 19);
 
 // New safe Dynamic Tag is registered for authorized Elementor admin previews
-// even during Safe Boot; public output stays blocked until certification.
+// even during Safe Boot; public output uses a separate verified read-only source gate.
 add_action('plugins_loaded', static function (): void {
     (new DynamicFilterSEOBridge\Elementor\ContextTagRegistration())->registerHooks();
+    DynamicFilterSEOBridge\Runtime\ReadOnlyFilterContext::register();
+    // Advanced Elementor/JetEngine read adapters only when Full SEO Boot is held.
+    // Uses verified evidence-only sources, never publication or managed routes.
+    DynamicFilterSEOBridge\Runtime\AdvancedPresentationRuntime::registerWhenHeld();
 }, 19);
 
 // Read-only authenticated REST previews always remain available under Safe
