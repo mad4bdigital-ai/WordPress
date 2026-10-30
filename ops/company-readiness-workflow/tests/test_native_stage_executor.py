@@ -134,7 +134,6 @@ class NativeExecutorTest(unittest.TestCase):
         self.assertFalse(out["commercial_distribution_authorized"])
         self.assertEqual((self.dest/NAME).read_text(),self.source_php)
         self.assertTrue(self.call("readback")["verified"])
-        self.assertEqual(self.call("apply",t)["reason"],"RUN_ALREADY_HAS_TRANSACTION_RECONCILE_FIRST") if False else None
         # Source removed and new applications disabled: signed emergency
         # restoration must work from the preimage without the source tree.
         (self.src/NAME).unlink()
