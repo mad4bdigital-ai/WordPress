@@ -1,0 +1,93 @@
+{
+  "contract": "mad4b.company-vps-executor-admission.v1",
+  "parent_operation": "company.repair",
+  "parent_interface": "mad4b/start-your-company-run",
+  "queue_operation": "company.stage.execute",
+  "executor_contract": "mad4b.company-vps-executor.v1",
+  "executor_provider": "vps_mcp_client",
+  "adapter": "registered_wp_cli_stage_executor",
+  "execution_authority": "exact_scoped_claimed_company_stage_only",
+  "initial_state": "NOT_ENROLLED",
+  "automatic_triggers": [
+    "company.recheck_observed",
+    "company.created",
+    "company.provider_changed"
+  ],
+  "manual_trigger": "authenticated_start-your-company_resume",
+  "supported_semantic_actions": [
+    "company.identity.verify",
+    "company.snapshot.collect",
+    "company.backup.ensure",
+    "company.plugins.converge",
+    "company.mu-providers.converge",
+    "company.configuration.converge",
+    "company.queries.reconcile",
+    "company.access.activate",
+    "company.pricing.converge",
+    "company.templates.qualify",
+    "company.forms.converge",
+    "company.content-hub.distribute",
+    "company.commercial.accept"
+  ],
+  "admission": {
+    "site_identity_fields": [
+      "company_code",
+      "site_uuid",
+      "origin"
+    ],
+    "bound_run_fields": [
+      "run_id",
+      "plan_sha256",
+      "stage_revision"
+    ],
+    "verify_stored_executor": [
+      "contract",
+      "site_uuid",
+      "executor_id",
+      "verified_at",
+      "supported_actions",
+      "probe_evidence_sha256"
+    ],
+    "require_handlers": [
+      "apply_handler",
+      "rollback_handler",
+      "readback_handler"
+    ],
+    "require_restoration_ready": true,
+    "require_recent_probe_seconds": 900,
+    "provider_entry_requires_claim": true,
+    "deny_synthetic_ready": true,
+    "deny_generic_command_transport": true,
+    "preserve_users_orders_media_secrets": true
+  },
+  "company_mu_provider_policy": {
+    "source": "registered_company_portable_artifact_catalog",
+    "trust": "exact_source_sha256_and_dependency_closure",
+    "copy_unreviewed_php": false,
+    "enable_commerce_runtime_only_after_compatible_providers": true,
+    "forbidden_effects": [
+      "raw_shell_from_queue_payload",
+      "copy_site_database",
+      "copy_customer_records",
+      "overwrite_company_values",
+      "distribute_without_verified_prices"
+    ]
+  },
+  "stage_result": {
+    "require_provider_return_checkpoint": true,
+    "require_exact_tenant_run_action_and_revision": true,
+    "require_independent_readback": true,
+    "require_postcondition_verified": true,
+    "require_evidence_sha256": true,
+    "allow_reconciliation_only_with_provider_no_effect_evidence": true,
+    "aggregate_completion": "all_13_verified_stage_receipts"
+  },
+  "rollout": {
+    "phase": "source_contract_only",
+    "source_review_is_not_deployment": true,
+    "production_mutation_authorized": false,
+    "existing_compose_state": "ACTIVE_EXTERNAL",
+    "never_deploy_coolify_draft_onto_live_site": true,
+    "require_staging_rollout_and_executable_handler_readback": true
+  }
+}
