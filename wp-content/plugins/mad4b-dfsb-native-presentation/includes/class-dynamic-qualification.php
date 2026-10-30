@@ -53,13 +53,21 @@ final class DynamicQualification {
                     'jet-smart-filters-checkboxes','jet-smart-filters-range',
                     'jet-smart-filters-date-range','jet-smart-filters-search',
                     'jet-smart-filters-color-image'),true)) {
+                    // Elementor stores SELECT2 filter IDs as arrays, even for one filter.
+                    // Do not infer IDs from labels, URL parameters, or unrelated widgets.
                     $raw=$settings['filter_id']??null;
-                    if ((is_string($raw)||is_int($raw)) && ctype_digit((string)$raw)
-                        && (int)$raw>0) {
-                        $id=(int)$raw;$g['filter_refs'][$id]=($g['filter_refs'][$id]??0)+1;
-                    } else {
-                        $g['filter_refs'][0]=($g['filter_refs'][0]??0)+1;
+                    $ids=is_array($raw)?$raw:array($raw);
+                    $identified=false;
+                    foreach ($ids as $ref) {
+                        if ((is_string($ref)||is_int($ref)) && ctype_digit((string)$ref)
+                            && (int)$ref>0) {
+                            $id=(int)$ref;
+                            $g['filter_refs'][$id]=($g['filter_refs'][$id]??0)+1;
+                            $identified=true;
+                        }
                     }
+                    if (!$identified)
+                        $g['filter_refs'][0]=($g['filter_refs'][0]??0)+1;
                 }
                 unset($g);
             });
