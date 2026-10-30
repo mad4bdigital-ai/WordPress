@@ -77,13 +77,13 @@ final class MAD4B_Hub_JetEngine_Consumer_Runtime {
 
     private static function schema_ready($kind,$language) {
         if (!self::native_ready())return self::fail('jetengine_dependencies_missing',503);
-        if(!in_array($kind,array('research_observation','tour','property','transport'),true))
+        if(!in_array($kind,array('research_observation','article','tour','property','transport'),true))
             return self::fail('content_kind_invalid',400);
         if(!in_array($language,array('en','ar','fr','de','it','es'),true))
             return self::fail('language_unsupported',400);
         if($language!=='en' && !defined('ICL_SITEPRESS_VERSION'))
             return self::fail('wpml_unavailable');
-        $post_type=array('tour'=>'tours-and-activities','property'=>'properties','transport'=>'transportations');
+        $post_type=array('article'=>'post','tour'=>'tours-and-activities','property'=>'properties','transport'=>'transportations');
         if(isset($post_type[$kind])&&!post_type_exists($post_type[$kind]))
             return self::fail('native_cpt_missing');
         return array('schema_status'=>'matched','native_provider'=>'jet-engine','wpml'=>defined('ICL_SITEPRESS_VERSION'));
@@ -122,7 +122,7 @@ final class MAD4B_Hub_JetEngine_Consumer_Runtime {
             if(true!==$verified)return self::fail('remote_signed_connection_unverified');
         }
         $fields=$input['field_map']??array('source_id'=>'source_id','title'=>'title','summary'=>'summary','language'=>'language','version'=>'version');
-        $safe_sources=array('source_id','title','summary','language','version','content_kind','source_company');
+        $safe_sources=array('source_id','title','summary','body','language','version','content_kind','source_company','consumer_company','source_url','license_state');
         if(!is_array($fields)||!$fields||count($fields)>count($safe_sources))
             return self::fail('field_map_invalid',400);
         $used=array();$clean=array();
@@ -354,10 +354,14 @@ final class MAD4B_Hub_JetEngine_Consumer_Runtime {
             $data=array('source_id'=>$record['record_key'],
                 'title'=>sanitize_text_field((string)($normalized['title']??'')),
                 'summary'=>sanitize_textarea_field((string)($normalized['description']??'')),
+                'body'=>wp_kses_post((string)($normalized['body']??'')),
+                'source_url'=>esc_url_raw((string)($record['provenance']['source_url']??'')),
+                'license_state'=>sanitize_key((string)($normalized['rights_state']??'not_verified')),
                 'language'=>$record['locale'],
                 'version'=>$record['version_sha256'],
                 'content_kind'=>$normalized['content_kind'],
-                'source_company'=>$config['company_id']);
+                'source_company'=>$record['brand_id'],
+                'consumer_company'=>$config['company_id']);
             if($data['title']==='')continue;
             $item=array();
             foreach($config['field_map'] as $destination=>$source)$item[$destination]=$data[$source];
