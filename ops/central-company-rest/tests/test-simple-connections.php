@@ -30,12 +30,15 @@ function wp_safe_remote_get($url, $args) {
     $GLOBALS['remote_calls']++;
     $GLOBALS['last_request'] = ['url' => $url, 'args' => $args];
     if ($GLOBALS['fake_remote'] === 'fail') { return ['status' => 401, 'body' => '{}']; }
-    $id = $GLOBALS['fake_remote'] === 'wrong_tenant' ? 'wrong-tenant' : 'tourism-almallahgroup';
+    $targetAre = strpos($url, 'www.allroyalegypt.com') !== false;
+    $id = $GLOBALS['fake_remote'] === 'wrong_tenant' ? 'wrong-tenant' :
+        ($targetAre ? 'all-royal-egypt' : 'tourism-almallahgroup');
+    $host = $targetAre ? 'www.allroyalegypt.com' : 'tourism.almallahgroup-mg.com';
     return ['status' => 200, 'body' => json_encode([
         'contract' => 'mad4b.company.simple-identity.v1',
         'company_id' => $id,
-        'canonical_host' => 'tourism.almallahgroup-mg.com',
-        'canonical_url' => 'https://tourism.almallahgroup-mg.com',
+        'canonical_host' => $host,
+        'canonical_url' => 'https://' . $host,
         'auth_method' => 'wp_application_password',
         'authenticated' => true, 'reference_only' => true,
         'writes_enabled' => false, 'checkout_enabled' => false
@@ -70,6 +73,11 @@ class MAD4B_Central_Company_REST_V1 {
             'name' => 'Tourism Almallah Group',
             'url' => 'https://tourism.almallahgroup-mg.com',
             'host' => 'tourism.almallahgroup-mg.com'
+        ],
+        'all-royal-egypt' => [
+            'name' => 'All Royal Egypt',
+            'url' => 'https://www.allroyalegypt.com',
+            'host' => 'www.allroyalegypt.com'
         ]
     ];
 }
