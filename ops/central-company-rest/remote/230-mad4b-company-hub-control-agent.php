@@ -72,6 +72,19 @@ final class MAD4B_Company_Hub_Control_Agent_V1 {
             "INSERT IGNORE INTO {$wpdb->options} (option_name,option_value,autoload)
              VALUES (%s,%s,'off')",$name,(string)time()));
         if($insert!==1)return self::err('replayed_or_storage_unavailable',409);
+        // Bounded nonce maintenance, never touch unrelated options or content.
+        // At most one in twenty authenticated requests; replay claims remain
+        // durable beyond the signed request's 120-second acceptance window.
+        try {
+            if(random_int(0,19)===0){
+                $prefix=$wpdb->esc_like(self::NONCE_PREFIX).'%';
+                $wpdb->query($wpdb->prepare(
+                    "DELETE FROM {$wpdb->options}
+                     WHERE option_name LIKE %s
+                     AND CAST(option_value AS UNSIGNED)<%d LIMIT 100",
+                    $prefix,time()-3600));
+            }
+        } catch(Throwable $ignored){}
         return $data;
     }
     private static function delegated($data) {
