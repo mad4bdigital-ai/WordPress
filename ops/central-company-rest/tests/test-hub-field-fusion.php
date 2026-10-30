@@ -6,6 +6,9 @@ $GLOBALS['settings']=[];
 class WP_Error { public $code; function __construct($c,$m){$this->code=$c;} }
 function add_action(){}
 function current_user_can($c){return true;}
+function wp_get_environment_type(){return 'staging';}
+function home_url($path='/'){return 'https://tours.dev.mad4b.com/';}
+function wp_parse_url($url,$part){return parse_url($url,$part);}
 function get_option($k,$d=[]){return $GLOBALS['settings'][$k]??$d;}
 function update_option($k,$v,$auto=false){$GLOBALS['settings'][$k]=$v;return true;}
 function get_post($id){return $GLOBALS['posts'][$id]??null;}
