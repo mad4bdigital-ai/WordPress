@@ -29,8 +29,8 @@ PROVIDERS = {
     "woocommerce": {
         "archive": "woocommerce.zip",
         "patterns": {
-            "woocommerce_core": r"class\\s+WooCommerce\\b",
-            "woocommerce_product": r"class\\s+WC_Product\\b",
+            "woocommerce_core": r"class\s+WooCommerce\b",
+            "woocommerce_product": r"class\s+WC_Product\b",
         },
         "required": ["woocommerce_core", "woocommerce_product"],
         "require_plugin_version": True,
