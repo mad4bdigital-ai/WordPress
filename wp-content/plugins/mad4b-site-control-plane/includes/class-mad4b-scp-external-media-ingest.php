@@ -101,10 +101,21 @@ final class MAD4B_SCP_External_Media_Ingest {
         update_post_meta( $id, self::KEY_META, $plan['scope_sha256'] );
         update_post_meta( $id, self::URL_META, esc_url_raw( $plan['source_url'] ) );
         update_post_meta( $id, self::HASH_META, $sha );
+        $operator_record = array(
+            'contract' => 'mad4b.operator-media-responsibility.v1',
+            'operator_id' => get_current_user_id(),
+            'acknowledged_at' => gmdate( 'c' ),
+            'source_url' => esc_url_raw( $plan['source_url'] ),
+            'source_file_sha256' => $sha,
+            'rights_status' => 'unverified',
+            'operator_responsibility_accepted' => true,
+        );
+        if ( ! update_post_meta( $id, self::OPERATOR_META, $operator_record ) )
+            return self::fail( 'mad4b_media_operator_evidence_write_failed', 'Operator import record requires reconciliation.' );
         if ( isset( $input['alt'] ) && is_string( $input['alt'] ) )
             update_post_meta( $id, '_wp_attachment_image_alt', sanitize_text_field( $input['alt'] ) );
         $back = get_post_meta( $id, self::KEY_META, true );
-        if ( ! hash_equals( $plan['scope_sha256'], (string) $back ) )
+        if ( ! hash_equals( $plan['scope_sha256'], (string) $back ) || ! get_post_meta( $id, self::OPERATOR_META, true ) )
             return self::fail( 'mad4b_media_import_readback_failed', 'Uploaded image could not be bound to its exact source identity.' );
         update_option( $lock, array( 'completed' => true, 'attachment_id' => $id ), false );
         return array( 'contract' => self::CONTRACT, 'attachment_id' => $id,
