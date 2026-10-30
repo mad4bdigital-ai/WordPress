@@ -218,6 +218,51 @@ final class MAD4B_Central_Hub_Remote_Control_V1 {
             'jetengine_query_mutated'=>false,
             'commercial_price_authorized'=>false);
     }
+    /** Central administration of operator scope; no source consent implied. */
+    public static function configure_operator(WP_REST_Request $request) {
+        if(!self::enabled()||!current_user_can('manage_options'))
+            return self::err('central_admin_required');
+        $data=$request->get_json_params();
+        if(!is_array($data) ||
+           array_diff(array_keys($data),array('enabled','expires_at',
+               'source_companies','consumer_companies','actions','operations')) ||
+           !is_bool($data['enabled']??null) ||
+           !is_int($data['expires_at']??null) ||
+           $data['expires_at']<=time()||
+           $data['expires_at']>time()+90*86400 ||
+           !is_array($data['source_companies']??null) ||
+           !is_array($data['consumer_companies']??null) ||
+           !$data['source_companies'] || !$data['consumer_companies'] ||
+           count($data['source_companies'])>12 ||
+           count($data['consumer_companies'])>12 ||
+           ($data['actions']??null)!==array('content_release_reference') ||
+           !is_array($data['operations']??null)||
+           !$data['operations'])
+            return self::err('operator_scope_invalid',422);
+        foreach(array_merge($data['source_companies'],
+                            $data['consumer_companies']) as $company){
+            if(!self::company($company))
+                return self::err('company_scope_unknown',422);
+        }
+        foreach($data['operations'] as $op){
+            if(!in_array($op,array('preflight','apply','revoke'),true))
+                return self::err('operation_not_allowlisted',422);
+        }
+        $user=get_current_user_id();
+        $option=self::OWNER_SCOPE;
+        $rows=get_option($option,array());
+        if(!is_array($rows))return self::err('scope_registry_invalid',409);
+        $rows[$user]=array_merge($data,array(
+            'approved_by'=>$user,'approved_at'=>time()));
+        update_option($option,$rows,false);
+        return array('contract'=>self::CONTRACT,
+            'central_host'=>'tours.dev.mad4b.com',
+            'user_id'=>$user,
+            'central_operator_scope_accepted'=>true,
+            'remote_source_delegation_verified'=>false,
+            'operations'=>$data['operations'],
+            'expires_at'=>$data['expires_at']);
+    }
     public static function admin() {
         return self::enabled() && current_user_can('manage_options');
     }
@@ -244,6 +289,10 @@ final class MAD4B_Central_Hub_Remote_Control_V1 {
             register_rest_route(self::NS,'/hub-remote-control/dispatch',array(
                 'methods'=>'POST',
                 'callback'=>array(__CLASS__,'rest_dispatch'),
+                'permission_callback'=>array(__CLASS__,'admin')));
+            register_rest_route(self::NS,'/hub-remote-control/operator',array(
+                'methods'=>'POST',
+                'callback'=>array(__CLASS__,'configure_operator'),
                 'permission_callback'=>array(__CLASS__,'admin')));
         },32);
     }
