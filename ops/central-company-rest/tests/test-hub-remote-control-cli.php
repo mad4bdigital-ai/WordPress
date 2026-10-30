@@ -104,8 +104,17 @@ assert_case(denied(MAD4B_Company_Hub_Control_Agent_V1::validate_intent(
 $failedPayload=$payload;
 $failedPayload['selection']['checkout_enabled']=true;
 assert_case(denied(MAD4B_Company_Hub_Control_Agent_V1::validate_intent(
+    $failedPayload),'mad4b_hubctl_intent_digest_mismatch'),
+    'remote rejects tampered selection under unchanged intent id');
+$failedPayload['intent_id']=hash('sha256',wp_json_encode(array(
+    'company_id'=>$failedPayload['company_id'],
+    'consumer_company'=>$failedPayload['consumer_company'],
+    'action'=>$failedPayload['action'],
+    'selection'=>$failedPayload['selection']
+),JSON_UNESCAPED_SLASHES));
+assert_case(denied(MAD4B_Company_Hub_Control_Agent_V1::validate_intent(
     $failedPayload),'mad4b_hubctl_selection_invalid'),
-    'remote rejects checkout activation');
+    'remote rejects checkout activation even with internally consistent hash');
 $failedDelegation=$delegation;
 $failedDelegation['consumer_companies']=array('egypt-tour-gates');
 assert_case(denied(MAD4B_Company_Hub_Control_Agent_V1::validate_intent(
@@ -124,5 +133,5 @@ echo json_encode(array('contract'=>'mad4b.hub.remote-control.v1',
         'arbitrary_operations_denied','historical_rates_noncommercial',
         'consumer_and_record_allowlist',
         'delegation_expiration','reference_only_no_checkout'),
-    'negative_cases'=>13,'real_vps_tested'=>false,
+    'negative_cases'=>14,'real_vps_tested'=>false,
     'public_jetengine_feed_enabled'=>false),JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES)."\n";
