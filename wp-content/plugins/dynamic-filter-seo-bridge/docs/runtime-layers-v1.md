@@ -78,3 +78,9 @@ The runtime source installed at `tours.dev.mad4b.com` is **alpha.14-local.1** wi
 5. Only then promote an independently approved presentation runtime and (separately) certify/publish SEO Full Boot. Production deployment requires a separate authorization.
 
 A false positive in the independent source gate is a release blocker. No implicit activation or tenant-wide rollout is permitted.
+
+### Held-mode Term Meta disclosure guard
+
+The independent runtime further denies direct arbitrary term metadata access while SEO Full Boot is held. The guard lives in the shared PresentationResolver term-meta token path and in the two JetEngine term-meta macros. It leaves normal Full Boot behavior unchanged after its own certification. Admin-defined arbitrary meta fields must not become an unintended public source solely because the source-integrity read gate passes. Public term-name/slug/description and validated source media remain available; generic term-meta tokens return empty during the hold.
+
+The final isolated WP-CLI smoke executed **13/13 checks** with the candidate PresentationResolver and ListingIntegration classes loaded before runtime registration. A direct request for a private term meta key was denied **before get_term_metadata could be called**. All 19 existing advanced tag names remained registered, the JetEngine hook was present, and no SEO hook changes or database writes were observed. The test runs only in a non-persistent Staging PHP process and is not evidence of a live frontend deploy.
