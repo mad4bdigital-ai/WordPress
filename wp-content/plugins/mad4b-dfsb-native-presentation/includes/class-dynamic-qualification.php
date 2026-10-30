@@ -154,7 +154,9 @@ final class DynamicQualification {
 
     /** The route is inferred from actual registered CPT archive slugs, not hardcoded IDs. */
     public static function inferRoute(string $queryId, array $archives): array {
-        if (strpos($queryId,'archive')===false) return array('status'=>'not_archive_query');
+        // A term-specific or related-listing query is not the CPT's public archive.
+        if (!str_ends_with($queryId,'_query_archive'))
+            return array('status'=>'not_archive_query');
         $tokens=preg_split('/[^a-z0-9]+/',strtolower($queryId),-1,PREG_SPLIT_NO_EMPTY);
         $matches=array();
         foreach ($archives as $type=>$url) {
@@ -274,6 +276,15 @@ final class DynamicQualification {
             'suggested_max_three_filter_ids'=>array_column(array_slice($probe?$verifiedEligible:$eligible,0,3),'id'),
             'route'=>$route,'route_http'=>$code,
             'public_widget_match'=>$widgetVisible,'rendered_filter_ids'=>$visibleIds,
+            'proposed_rule'=>$ready ? array(
+                'state'=>'draft_requires_editorial_review',
+                'url'=>trim((string)parse_url((string)$route['url'],PHP_URL_PATH),'/'),
+                'provider'=>$group['provider'],'query_id'=>$group['query_id'],
+                'filters'=>array_map('strval',array_column(array_slice($verifiedEligible,0,3),'id')),
+                'title'=>'EDITORIAL_REVIEW_REQUIRED',
+                'description'=>'EDITORIAL_REVIEW_REQUIRED',
+                'allow_indexing'=>false,
+            ) : null,
         );
     }
 }
