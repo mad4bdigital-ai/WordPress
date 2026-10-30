@@ -117,4 +117,63 @@ final class SmartSeoTranslationRest {
   $next['updated_at']=gmdate('c');
   return self::save($old,$next);
  }
+ public static function apply(\WP_REST_Request $r) {
+  $old=self::locked($r);if(is_wp_error($old))return $old;
+  $tax=get_taxonomy($old['taxonomy']);
+  if(!$tax||!current_user_can($tax->cap->edit_terms))
+   return new \WP_Error('edit_denied','Cannot edit taxonomy',['status'=>403]);
+  if($old['status']!=='reviewed'||empty($old['review']['approved'])||
+   ($old['review']['candidate_sha256']??'')!==hash('sha256',(string)$old['candidate']))
+   return new \WP_Error('review_required','Approved current translation required',['status'=>409]);
+  $live=SmartSeoTranslation::inspect($old['taxonomy'],(int)$old['source_id'],$old['target_language']);
+  if(is_wp_error($live))return $live;
+  if($live['source']['description_sha256']!==$old['source_sha256']||
+   $live['target']['description_sha256']!==$old['target_sha256']||
+   $live['target_id']!==(int)$old['target_id'])
+   return new \WP_Error('content_drift','Term changed; start a fresh task',['status'=>409]);
+  $lock='mad4b_translation_apply_lock_'.$old['id'];
+  if(!add_option($lock,wp_generate_uuid4(),'','no'))
+   return new \WP_Error('apply_busy','Another request is applying this task',['status'=>409]);
+  try {
+   $response=SmartSeoTranslation::withLanguage($old['target_language'],
+     static function()use($old) {
+      return wp_update_term((int)$old['target_id'],$old['taxonomy'],
+       ['description'=>(string)$old['candidate']]);
+     });
+   if(is_wp_error($response))return $response;
+   $read=SmartSeoTranslation::readTerm((int)$old['target_id'],$old['taxonomy'],$old['target_language']);
+   if(!is_array($read)||trim(wp_strip_all_tags($read['description']))!==
+       trim(wp_strip_all_tags($old['candidate'])))
+    return new \WP_Error('readback_failed','Translation write requires inspection',['status'=>500]);
+   $next=$old;$next['status']='applied';
+   $next['applied_sha256']=$read['description_sha256'];
+   $next['applied_at']=gmdate('c');$next['updated_at']=gmdate('c');
+   $saved=SmartSeoTranslation::write($old['id'],SmartSeoTranslation::revision($old),$next);
+   return is_wp_error($saved)?$saved:rest_ensure_response([
+      'status'=>'applied','term_id'=>$old['target_id'],
+      'revision'=>$saved['revision'],'seo_indexing_activated'=>false]);
+  }finally {delete_option($lock);}
+ }
+ public static function rollback(\WP_REST_Request $r) {
+  $old=self::locked($r);if(is_wp_error($old))return $old;
+  $tax=get_taxonomy($old['taxonomy']);
+  if(!$tax||!current_user_can($tax->cap->edit_terms))
+   return new \WP_Error('edit_denied','Cannot edit taxonomy',['status'=>403]);
+  if($old['status']!=='applied')
+   return new \WP_Error('rollback_invalid','Only applied tasks can be rolled back',['status'=>409]);
+  $current=SmartSeoTranslation::readTerm((int)$old['target_id'],$old['taxonomy'],$old['target_language']);
+  if(!is_array($current)||$current['description_sha256']!==$old['applied_sha256'])
+   return new \WP_Error('rollback_conflict','Target changed after apply',['status'=>409]);
+  $response=SmartSeoTranslation::withLanguage($old['target_language'],
+    static function()use($old){
+      return wp_update_term((int)$old['target_id'],$old['taxonomy'],
+        ['description'=>(string)$old['target_before_description']]);
+    });
+  if(is_wp_error($response))return $response;
+  $next=$old;$next['status']='rolled_back';$next['updated_at']=gmdate('c');
+  $saved=SmartSeoTranslation::write($old['id'],SmartSeoTranslation::revision($old),$next);
+  return is_wp_error($saved)?$saved:rest_ensure_response([
+    'status'=>'rolled_back','term_id'=>$old['target_id'],
+    'seo_indexing_activated'=>false,'revision'=>$saved['revision']]);
+ }
 }
