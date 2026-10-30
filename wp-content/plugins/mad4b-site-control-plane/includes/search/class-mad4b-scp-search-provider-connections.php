@@ -207,6 +207,16 @@ final class MAD4B_SCP_Search_Provider_Connections {
 		if ( is_wp_error( $result ) ) wp_die( esc_html( $result->get_error_message() ), '', array( 'response' => 400, 'back_link' => true ) );
 		$operation = isset( $_POST['operation'] ) && is_string( $_POST['operation'] ) ? wp_unslash( $_POST['operation'] ) : '';
 		$binding = $id . ':' . $result['revision'] . ':' . $operation . ':' . $result['connection_state'];
+        // The shared Provider Connections inventory may submit an exact existing
+        // adapter test. Return there only for that explicitly requested test.
+        $back = 'test' === $operation && isset( $_POST['return_to_provider_connections'] )
+            && '1' === (string) wp_unslash( $_POST['return_to_provider_connections'] );
+        if ( $back ) {
+            $args = array( 'page' => 'mad4b-provider-connections',
+                'mad4b_provider_notice' => $id, 'mad4b_provider_operation' => $operation,
+                'mad4b_notice_receipt' => MAD4B_SCP_Admin_Experience::notice_receipt( 'mad4b-provider-connections', 'provider_' . $operation, $binding ) );
+            wp_safe_redirect( add_query_arg( $args, admin_url( 'admin.php' ) ) . '#mad4b-provider-setup-coverage' ); exit;
+        }
 		$args = array( 'page' => 'mad4b-search-intelligence', 'section' => 'providers', 'profile_id' => $profile_id, 'mad4b_provider_notice' => $id, 'mad4b_provider_operation' => $operation, 'mad4b_notice_receipt' => MAD4B_SCP_Admin_Experience::notice_receipt( 'mad4b-search-intelligence', 'provider_' . $operation, $binding ) );
 		wp_safe_redirect( add_query_arg( $args, admin_url( 'admin.php' ) ) . '#search-providers' ); exit;
 	}

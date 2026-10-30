@@ -298,11 +298,22 @@ foreach ( $catalog['providers'] as $provider_id => $provider ) {
 
 $main_source = file_get_contents( dirname( __DIR__ ) . '/mad4b-site-control-plane.php' );
 $servers_source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-servers.php' );
+$core_catalog_source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-server-core-catalog.php' );
 $check( false !== strpos( $main_source, 'class-mad4b-scp-capability-traits.php' ), 'capability trait service is not loaded by plugin runtime' );
+// The runtime server uses the extracted Core Catalog trait. Verify the
+// complete load/trait/use chain, not an obsolete inline source location.
+$check( 1 === substr_count( $servers_source, "require_once __DIR__ . '/class-mad4b-scp-server-core-catalog.php';" ), 'server lost its exact Core Catalog loader' );
+$check( 1 === substr_count( $servers_source, 'use MAD4B_SCP_Server_Core_Catalog;' ), 'server lost its Core Catalog trait' );
+$check( false !== strpos( $core_catalog_source, "'mad4b-read' => array_merge( array(" ), 'canonical read server inventory absent' );
+$read_start = strpos( $core_catalog_source, "'mad4b-read' => array_merge( array(" );
+$read_end = strpos( $core_catalog_source, "'mad4b-chatgpt' => array_merge( array(", $read_start );
+$check( false !== $read_end && $read_end > $read_start, 'Core Catalog read/write scope separator absent' );
+$read_catalog = substr( $core_catalog_source, $read_start, $read_end - $read_start );
 foreach ( array( 'mad4b/capability-trait-profile', 'mad4b/capability-trait-resolve' ) as $ability ) {
-	$check( false !== strpos( $servers_source, "'" . $ability . "'" ), 'capability trait ability is not mounted on read plane: ' . $ability );
+	$check( 1 === substr_count( $read_catalog, "'" . $ability . "'" ), 'capability trait ability must mount exactly once on read plane: ' . $ability );
+	$check( false === strpos( $servers_source, "'" . $ability . "'" ), 'legacy inline server duplicate must not reappear: ' . $ability );
 }
-$check( false === strpos( $servers_source, "array( 'mad4b/capability-trait-profile', 'mad4b/capability-trait-resolve' )," ), 'capability trait mount guard ambiguity' );
+$check( false === strpos( $core_catalog_source, "array( 'mad4b/capability-trait-profile', 'mad4b/capability-trait-resolve' )," ), 'capability trait mount guard ambiguity' );
 $source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-capability-traits.php' );
 foreach ( array( 'wp_insert_post(', 'wp_update_post(', '$wpdb->insert', '$wpdb->update', 'shell_exec(', 'exec(', 'proc_open(' ) as $forbidden ) {
 	$check( false === strpos( $source, $forbidden ), 'capability trait resolver contains mutation primitive: ' . $forbidden );

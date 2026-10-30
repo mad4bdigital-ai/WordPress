@@ -780,6 +780,23 @@ final class MAD4B_SCP_Google_Drive_Context {
 		);
 	}
 
+	/**
+	 * A pending reconnection plan is stateless and indefinitely renewable.
+	 * Individual PKCE/state sessions MUST expire and are single-use.
+	 *
+	 * Local/Dedicated: 24-hour upper bound; Google authorization CODES
+	 * themselves are short-lived and must be redeemed immediately.
+	 * Managed: 10 minutes because the external broker owns its lifetime.
+	 */
+	const LOCAL_AUTHORIZATION_TTL_SECONDS = 86400;
+	const MANAGED_AUTHORIZATION_TTL_SECONDS = 600;
+
+	public static function authorization_session_ttl_seconds() {
+		return self::AUTH_MODE_MANAGED === self::auth_mode()
+			? self::MANAGED_AUTHORIZATION_TTL_SECONDS
+			: self::LOCAL_AUTHORIZATION_TTL_SECONDS;
+	}
+
 	public static function authorization_url( $access_mode = 'read_only' ) {
 		if ( ! in_array( self::auth_mode(), array( self::AUTH_MODE_CUSTOM, self::AUTH_MODE_DEDICATED ), true ) ) return new WP_Error( 'mad4b_google_drive_local_oauth_mode_inactive', 'Custom or Dedicated Site Google OAuth must be the active authentication mode.' );
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_google_drive_admin_required', 'Administrator capability is required to connect Google Drive.' );
@@ -818,7 +835,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 				'pkce_verifier' => $pkce_verifier,
 				'created_at' => time(),
 			),
-			10 * MINUTE_IN_SECONDS
+			self::LOCAL_AUTHORIZATION_TTL_SECONDS
 		);
 		return add_query_arg(
 			array(
@@ -983,7 +1000,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 				'auth_mode' => self::auth_mode(),
 				'created_at' => time(),
 			),
-			10 * MINUTE_IN_SECONDS
+			self::MANAGED_AUTHORIZATION_TTL_SECONDS
 		);
 		return $authorization_url;
 	}
@@ -3592,8 +3609,15 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$broker_previous = is_array( $broker_scope_context ) && isset( $broker_scope_context['previously_granted_scopes'] ) && is_array( $broker_scope_context['previously_granted_scopes'] ) ? self::scope_items( implode( ' ', array_map( 'strval', $broker_scope_context['previously_granted_scopes'] ) ) ) : array();
 		$broker_allowed = array_values( array_unique( array_merge( $broker_requested, $broker_previous ) ) );
 		if ( '' !== $expected_scope ) {
+			// Google returns standard OIDC identity scopes alongside Workspace grants.
+			// The saved grant may include those scopes on the next refresh.  Treat
+			// only the exact known provider identity supplements as non-capability
+			// scopes; arbitrary/unknown Workspace scopes remain denied.
+			$reviewed_requested_scopes = array_values( array_unique( array_merge(
+				self::allowed_scope_items(), self::provider_identity_scope_items()
+			) ) );
 			foreach ( $requested_items as $requested_item ) {
-				if ( ! in_array( $requested_item, self::allowed_scope_items(), true ) ) return new WP_Error( 'mad4b_google_workspace_requested_scope_not_allowed', 'Requested Google scope is outside the governed Workspace grant catalog.' );
+				if ( ! in_array( $requested_item, $reviewed_requested_scopes, true ) ) return new WP_Error( 'mad4b_google_workspace_requested_scope_not_allowed', 'Requested Google scope is outside the governed Workspace grant catalog.' );
 			}
 			if ( self::AUTH_MODE_MANAGED === $auth_mode && ! empty( $broker_allowed ) ) {
 				if ( ! empty( self::uncovered_scopes( $requested_items, $broker_requested ) ) ) return new WP_Error( 'mad4b_google_managed_scope_projection_invalid', 'Managed Google broker scope projection no longer covers the locally reviewed scope baseline.' );

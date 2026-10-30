@@ -2,11 +2,6 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-// Read-only source and composition modules are owned by this Skills provider.
-// Keep the canonical plugin bootstrap unchanged for its historical delivery contract.
-require_once __DIR__ . '/class-external-skill-sources.php';
-require_once __DIR__ . '/class-skill-task-composition.php';
-
 /**
  * Read-only MCP/Abilities projection for the file-backed Skill registry.
  * Authoring remains a local wp-admin operation behind explicit environment
@@ -68,75 +63,6 @@ final class MAD4B_SCP_Skill_Abilities {
 			),
 			array( __CLASS__, 'skill_get' )
 		);
-
-
-        // Untrusted external instruction text is read-only and never imported.
-        self::add(
-            'mad4b/skill-sources-list', 'List External Skill Sources',
-            array( 'type' => 'object', 'additionalProperties' => false ),
-            array( 'SCP_External_Skill_Sources', 'list_sources' )
-        );
-        self::add(
-            'mad4b/skill-source-skills', 'Discover External Skills',
-            array( 'type' => 'object', 'properties' => array(
-                'source_id' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{24}$' ),
-            ), 'required' => array( 'source_id' ), 'additionalProperties' => false ),
-            array( 'SCP_External_Skill_Sources', 'list_skills' )
-        );
-        self::add(
-            'mad4b/skill-source-get', 'Read External Skill',
-            array( 'type' => 'object', 'properties' => array(
-                'source_id' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{24}$' ),
-                'path' => array( 'type' => 'string', 'maxLength' => 512 ),
-                'blob_sha' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{40}$' ),
-            ), 'required' => array( 'source_id', 'path', 'blob_sha' ), 'additionalProperties' => false ),
-            array( 'SCP_External_Skill_Sources', 'get_skill' )
-        );
-        self::add(
-            'mad4b/skill-source-resource', 'Read External Skill Supporting Text',
-            array( 'type' => 'object', 'properties' => array(
-                'source_id' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{24}$' ),
-                'skill_path' => array( 'type' => 'string', 'maxLength' => 512 ),
-                'path' => array( 'type' => 'string', 'maxLength' => 512 ),
-                'blob_sha' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{40}$' ),
-            ), 'required' => array( 'source_id', 'skill_path', 'path', 'blob_sha' ), 'additionalProperties' => false ),
-            array( 'SCP_External_Skill_Sources', 'get_resource' )
-        );
-
-
-        // Read-only task matching; no source instructions are installed or executed.
-        self::add(
-            'mad4b/skill-match-task', 'Match Task to Skills',
-            array(
-                'type' => 'object',
-                'properties' => array(
-                    'task' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 4000 ),
-                    'task_context' => array( 'type' => 'string', 'maxLength' => 4000 ),
-                    'topics' => array( 'type' => 'array', 'maxItems' => 12, 'items' => array( 'type' => 'string', 'maxLength' => 80 ) ),
-                    'source_ids' => array( 'type' => 'array', 'maxItems' => 40, 'items' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{24}$' ) ),
-                    'source_offset' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 40 ),
-                    'max_results' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 12 ),
-                ),
-                'required' => array( 'task' ), 'additionalProperties' => false,
-            ),
-            array( 'SCP_Skill_Task_Composition', 'match_task' )
-        );
-        self::add(
-            'mad4b/skill-composition-plan', 'Suggest Skill Composition',
-            array(
-                'type' => 'object',
-                'properties' => array(
-                    'task' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 4000 ),
-                    'task_context' => array( 'type' => 'string', 'maxLength' => 4000 ),
-                    'topics' => array( 'type' => 'array', 'maxItems' => 12, 'items' => array( 'type' => 'string', 'maxLength' => 80 ) ),
-                    'source_ids' => array( 'type' => 'array', 'maxItems' => 40, 'items' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{24}$' ) ),
-                    'source_offset' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 40 ),
-                    'max_results' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 12 ),
-                ),
-                'required' => array( 'task' ), 'additionalProperties' => false,
-            ),
-            array( 'SCP_Skill_Task_Composition', 'composition_plan' )
-        );
 
 		// Report blocked authoring Context without exposing assets, instructions or receipts.
 		self::add(
@@ -258,7 +184,19 @@ final class MAD4B_SCP_Skill_Abilities {
 		$preflight = MAD4B_SCP_Context_Preflight::preflight_entry( $skill, $task_scope, $intended_ability );
 		if ( is_wp_error( $preflight ) ) return $preflight;
 		if ( empty( $preflight['ready'] ) ) {
-			return new WP_Error(
+			$automatic = class_exists( 'MAD4B_SCP_Guided_Continuation' ) ? MAD4B_SCP_Guided_Continuation::run( array( 'next_ability' => 'context/brand-core-control-loop', 'original_operation_sha256' => hash( 'sha256', (string)( $skill['logical_id'] ?? '' ) . '|' . $task_scope . '|' . $intended_ability ), 'max_steps' => 2 ) ) : array( 'state' => 'UNAVAILABLE' );
+			// Automatic reads never authorize publication. If they observe a
+			// recovered Brand Core, re-run the SAME write-bound preflight once,
+			// for the SAME Skill, task scope and mutation ability. This is the
+			// only path to a new signed Context Receipt; a read hint alone is
+			// not evidence that the earlier receipt can be reused.
+			if ( is_array( $automatic ) && ! empty( $automatic['resume_original_request'] ) ) {
+				$rechecked = MAD4B_SCP_Context_Preflight::preflight_entry( $skill, $task_scope, $intended_ability );
+				if ( ! is_wp_error( $rechecked ) && is_array( $rechecked ) && ! empty( $rechecked['ready'] ) ) {
+					$preflight = $rechecked;
+				}
+			}
+			if ( empty( $preflight['ready'] ) ) return new WP_Error(
 				'mad4b_required_brand_context_unavailable',
 				'This Skill requires governed Brand Context that is not currently ready.',
 				array(
@@ -270,6 +208,7 @@ final class MAD4B_SCP_Skill_Abilities {
 					'blockers' => isset( $preflight['blockers'] ) && is_array( $preflight['blockers'] ) ? array_values( array_map( 'strval', $preflight['blockers'] ) ) : array( 'context_not_ready' ),
 					'missing_context_sets' => isset( $preflight['missing_context_sets'] ) && is_array( $preflight['missing_context_sets'] ) ? array_values( array_map( 'strval', $preflight['missing_context_sets'] ) ) : array(),
 					'next_read_ability' => 'mad4b/brand-content-gate-triage',
+                    'automatic_read_continuation' => $automatic,
 					'recovery_handoff' => array(
 						'contract' => 'mad4b.content-job-dependency-recovery.v1',
 						'state' => 'PRESERVE_ORIGINAL_TASK_AND_RECOVER_BRAND',

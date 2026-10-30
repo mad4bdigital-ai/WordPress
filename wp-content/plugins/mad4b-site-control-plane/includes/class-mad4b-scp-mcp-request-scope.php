@@ -418,7 +418,26 @@ final class MAD4B_SCP_MCP_Request_Scope {
 	private static function cli_mcp_opt_in() {
 		if ( ! ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) ) return false;
 		if ( defined( 'MAD4B_SCP_MCP_CLI_REQUEST' ) && constant( 'MAD4B_SCP_MCP_CLI_REQUEST' ) ) return true;
-		return '1' === (string) getenv( 'MAD4B_SCP_MCP_CLI_REQUEST' );
+		if ( '1' === (string) getenv( 'MAD4B_SCP_MCP_CLI_REQUEST' ) ) return true;
+		return self::cli_mcp_serve_requested();
+	}
+
+	/** An explicit MAD4B STDIO command is an MCP request without a flag. */
+	private static function cli_mcp_serve_requested() {
+		$args = isset( $_SERVER['argv'] ) && is_array( $_SERVER['argv'] ) ? $_SERVER['argv'] : array();
+		$names = array( 'mad4b-read', 'mad4b-chatgpt', 'mad4b-enrollment',
+			'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-developer',
+			'mad4b-developer-breakglass', 'mad4b-breakglass' );
+		for ( $i = 0; $i + 1 < count( $args ); $i++ ) {
+			if ( 'mcp-adapter' !== (string) $args[ $i ] || 'serve' !== (string) $args[ $i + 1 ] ) continue;
+			for ( $j = $i + 2; $j < count( $args ); $j++ ) {
+				$arg = (string) $args[ $j ];
+				$server = 0 === strpos( $arg, '--server=' ) ? substr( $arg, 9 ) : '';
+				if ( '--server' === $arg && isset( $args[ $j + 1 ] ) ) $server = (string) $args[ $j + 1 ];
+				if ( in_array( $server, $names, true ) ) return true;
+			}
+		}
+		return false;
 	}
 
 	public static function current_request_requires_mcp_runtime() {

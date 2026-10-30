@@ -33,6 +33,13 @@
         "name": "woocommerce-catalog-diagnostics",
         "description": "Inspect WooCommerce product catalog structure, product metadata, taxonomy, visibility, and MAD4B product read coverage without touching orders or payments.",
         "body": "1. Identify the product, archive, taxonomy, or catalog surface in scope.\n2. Inspect product status, type, taxonomy, visibility, price/meta sources, and template dependencies using read tools.\n3. Keep orders, payments, refunds, and customer-sensitive operations outside this workflow.\n4. Separate WooCommerce data issues from Elementor or JetEngine rendering issues.\n5. Return current state, root cause, evidence, and safe remediation."
+      },
+      {
+        "level": "provider",
+        "target": "woocommerce",
+        "name": "woocommerce-commercial-release-readiness",
+        "description": "Audit quote-to-order prerequisites and WooCommerce source-product identity without creating orders or adopting raw catalog prices.",
+        "body": "1. Inspect exact original service CPT/product identity, eligible Rate, signed final quote revision and full financial/readiness evidence.\\n2. Treat a read-only price preview and an operational review acceptance as NOT a commercial approval.\\n3. Require distinct manager quote approval and first-party traveler acceptance for that exact quote digest.\\n4. Keep age, FX, tax, accommodations, transport, extras and supplier coverage unknown until certified by their domain owners.\\n5. Check order-item mapping and provider capability certification; a checkout-draft or pending order is not a confirmed sale.\\n6. Never create orders, take payments, write supplier bookings or bypass an absent governed Woo ability."
       }
     ],
     "polylang": [
@@ -87,6 +94,13 @@
         "name": "bitflows-automation-diagnostics",
         "description": "Inspect BitFlows automation definitions, flow state, trigger/action coverage, and governed execution readiness through MAD4B.",
         "body": "1. Identify the flow and expected trigger/action path.\n2. Inspect flow configuration and runtime-read evidence exposed by MAD4B.\n3. Separate configuration defects from execution-authority or provider-runtime blockers.\n4. Do not execute a flow unless separately authorized.\n5. Return current state, blocker, evidence, and next safe action."
+      },
+      {
+        "level": "provider",
+        "target": "bitflows",
+        "name": "bitflows-commerce-lifecycle-routing",
+        "description": "Inspect Commerce event routing and Bit Flows history while ensuring workflow notifications never become quote, customer or supplier authority.",
+        "body": "1. Inspect the original Commerce event owner, verified source envelope, signed webhook boundary and existing durable Queue/Worker.\\n2. Read configured WordPress Action Hook triggers, flow status and history through certified provider read surfaces only.\\n3. Require per-site key isolation, replay/idempotency and deduplication; webhook HMAC authenticates transport, NOT price approval or customer acceptance.\\n4. Use Bit Flows for notifications, routing, waits and retries only when independently certified.\\n5. Do not create, enable, mutate, retry or execute flows from this Skill; return the exact unavailable-capability blocker when needed.\\n6. Never claim a supplier booking or completed financial workflow from a flow-history success alone."
       }
     ],
     "fluentforms": [
@@ -96,6 +110,13 @@
         "name": "fluentforms-workflow-diagnostics",
         "description": "Inspect Fluent Forms definitions and integration context through governed form inventory without exposing submissions.",
         "body": "1. Identify the Fluent Form in scope using governed form inventory.\\n2. Read bounded form metadata and definition fingerprint only.\\n3. Keep entries, submissions, payments, and user-entered values outside this workflow.\\n4. Separate form-definition issues from submission-routing or integration issues.\\n5. Return evidence and safe remediation without submitting forms or changing provider state."
+      },
+      {
+        "level": "provider",
+        "target": "fluentforms",
+        "name": "fluentforms-inquiry-qualification-evidence",
+        "description": "Inspect original saved inquiry provenance and form-role routing only through separately certified submission-owner access; never infer a booking or expose PII.",
+        "body": "1. Discover site-local form-role mapping; no hardcoded form ID is a generic contract.\\n2. Read bounded form inventory via existing read adapters only; metadata access does not include submission values.\\n3. Require an explicitly authorized submission-owner read for immutable form/submission identity, status and source digest.\\n4. Keep customer details redacted; reject invented post IDs, hidden-field price authority and orphaned records.\\n5. Report whether the inquiry is qualified, requires human service/Rate choice or remains an unpriced custom plan.\\n6. Never write form entries or create Commerce Requests without a separately certified exact capability and approval."
       }
     ],
     "wpml": [

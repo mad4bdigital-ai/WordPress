@@ -123,6 +123,30 @@ final class MAD4B_SCP_Servers {
 	}
 
 	/**
+	 * Current live provider resolution in a single runtime snapshot.
+	 *
+	 * A deep governance projection must not call provider_for_ability()
+	 * separately for every Write tool: its uncached dynamic resolution
+	 * reconstructs and re-certifies the entire provider catalog per tool.
+	 * Use the SAME eligibility list (write_tools) and provider precedence
+	 * (core first, then certified registered adapter) as the single-tool
+	 * resolver; never cache this map across requests or changes.
+	 */
+	public static function live_write_provider_snapshot() {
+		$mounted = self::write_tools();
+		$core = array_fill_keys( self::core_write_candidates(), true );
+		$adapters = self::registered_adapter_write_candidates();
+		$result = array();
+		foreach ( $mounted as $ability ) {
+			$ability = (string) $ability;
+			if ( isset( $core[ $ability ] ) ) $result[ $ability ] = 'core';
+			elseif ( isset( $adapters[ $ability ] ) && '' !== $adapters[ $ability ] )
+				$result[ $ability ] = $adapters[ $ability ];
+		}
+		return $result;
+	}
+
+	/**
 	 * Stable governed ChatGPT write catalog. Discovery is deliberately independent
 	 * of provider activation state; execution still requires the ability to be in
 	 * write_tools(), an exact NHI grant, and a one-time approval ticket.
@@ -756,7 +780,16 @@ final class MAD4B_SCP_Servers {
 			$diagnostic_target = MAD4B_SCP_MCP_Request_Scope::endpoint_diagnostic_server_id();
 			if ( in_array( $diagnostic_target, self::expected_server_ids(), true ) ) return $diagnostic_target;
 		}
-		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return '';
+		// Normal WP-CLI (including plugin updates) does not invoke MAD4B MCP.
+		// Rank Math or another provider may already own mixed MCP DTO classes;
+		// advertising nine full catalogs here would validate schemas under
+		// the wrong ABI and surface false connection blockers. Keep route-only
+		// registrations; explicit MCP CLI diagnostics opt in to actual tooling.
+		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) {
+			$cli_mcp = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+				&& MAD4B_SCP_MCP_Request_Scope::current_request_requires_mcp_runtime();
+			return $cli_mcp ? '' : '__mad4b_non_mcp_cli__';
+		}
 
 		$route = '';
 		if ( isset( $_GET['rest_route'] ) && is_string( $_GET['rest_route'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
@@ -785,6 +818,10 @@ final class MAD4B_SCP_Servers {
 		foreach ( self::expected_server_ids() as $server_id ) {
 			if ( '/mcp/' . $server_id === $route ) return $server_id;
 		}
+		// Unrelated WordPress REST/frontend requests only need Adapter routes.
+		// They must not eagerly build every MAD4B MCP server using whichever
+		// third-party MCP class set happens to be present in this request.
+		if ( '' !== $uri || isset( $_GET['rest_route'] ) ) return '__mad4b_non_mcp_http__';
 		return '';
 	}
 

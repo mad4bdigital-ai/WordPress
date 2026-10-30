@@ -224,6 +224,12 @@
         "api.github.com"
       ],
       "rationale": "Immutable public GitHub REST source-reader authority only, not a tenant or site default. This exact hostname pin rejects config drift to unreviewed providers; HTTPS, TLS, DNS and redirect checks remain governed by Egress Policy."
+    },
+    "config/evidence/woocommerce-11.2.1-lab-package.json": {
+      "hosts": [
+        "downloads.wordpress.org"
+      ],
+      "rationale": "Version-pinned official WooCommerce ZIP origin is present only in non-authorizing package evidence; this review does not authorize downloads or installation."
     }
   },
   "optional_named_tag_integrations": [

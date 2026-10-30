@@ -4,6 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 require_once __DIR__ . '/class-mad4b-scp-developer-preparation-bridge.php';
+require_once __DIR__ . '/class-mad4b-scp-schema-status-projection.php';
 
 final class MAD4B_SCP_Abilities {
 	const MAX_WRITE_DISPATCH_CONTEXT_RECEIPT_BYTES = 65536;
@@ -404,6 +405,11 @@ final class MAD4B_SCP_Abilities {
 			$meta = $ability->get_meta();
 			$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
 			if ( ! array_key_exists( 'readonly', $annotations ) || true !== $annotations['readonly'] ) continue;
+			// Discovery must not suggest admin/content-authority abilities as
+			// generic reads merely because their callback is non-mutating.
+			// Original lane enforcement in governed_read_target remains unchanged.
+			$surface = isset( $meta['mcp']['surface'] ) ? sanitize_key( (string) $meta['mcp']['surface'] ) : '';
+			if ( ! in_array( $surface, array( '', 'read' ), true ) ) continue;
 			$label = method_exists( $ability, 'get_label' ) ? (string) $ability->get_label() : '';
 			$description = method_exists( $ability, 'get_description' ) ? (string) $ability->get_description() : '';
 			$category = method_exists( $ability, 'get_category' ) ? (string) $ability->get_category() : '';
@@ -729,8 +735,16 @@ final class MAD4B_SCP_Abilities {
 	public function can_write_dispatch( $input = null ) {
 		$request_scope = self::request_scope_admit( 'can_write_dispatch' );
 		if ( is_wp_error( $request_scope ) ) return $request_scope;
-		if ( ! MAD4B_SCP_Policy::can_admin() ) return false;
-		if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_write_dispatch_mutation_disabled', 'Governed mutation authority is not currently ready.' );
+		$delegation_identity = class_exists( 'MAD4B_SCP_Identity_Context' )
+			&& method_exists( 'MAD4B_SCP_Identity_Context', 'current' )
+			? MAD4B_SCP_Identity_Context::current() : null;
+		$delegated = class_exists( 'MAD4B_SCP_Delegation_Mode' )
+			&& is_array( $delegation_identity )
+			&& MAD4B_SCP_Delegation_Mode::DELEGATED
+				=== MAD4B_SCP_Delegation_Mode::mode_for_identity( $delegation_identity );
+		if ( ! $delegated && ! MAD4B_SCP_Policy::can_admin() ) return false;
+		if ( ! $delegated && ! MAD4B_SCP_Policy::can_mutate() )
+			return new WP_Error( 'mad4b_write_dispatch_mutation_disabled', 'Governed mutation authority is not currently ready.' );
 		if ( ! is_array( $input ) || empty( $input['ability_name'] ) || empty( $input['expected_input_schema_sha256'] ) ) return new WP_Error( 'mad4b_write_dispatch_target_required', 'A governed write target and prepared schema identity are required.' );
 		$ability_name = (string) $input['ability_name'];
 		$ability = $this->governed_write_target( $ability_name, true );
@@ -740,6 +754,25 @@ final class MAD4B_SCP_Abilities {
 		$actual = $this->ability_input_schema_sha256( $ability );
 		$expected = strtolower( trim( (string) $input['expected_input_schema_sha256'] ) );
 		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $expected ) || ! hash_equals( strtolower( $actual ), $expected ) ) return new WP_Error( 'mad4b_write_dispatch_schema_drift', 'Requested write ability input schema changed after planning.', array( 'ability_name' => $ability_name, 'current_input_schema_sha256' => $actual ) );
+		if ( $delegated ) {
+			// No owner impersonation, generic admin control or approval issuance:
+			// only a verified signed preparation for a draft content bundle can
+			// enroll an exact WordPress-user-owned execution actor.
+			if ( 'mad4b/content-apply-bundle' !== $ability_name
+				|| ! is_array( $input['input'] ?? null )
+				|| empty( $input['_mad4b_approval_ticket_id'] )
+				|| ! is_string( $input['_mad4b_approval_ticket_id'] ) )
+				return new WP_Error( 'mad4b_delegation_prepared_draft_only', 'Verified delegated write dispatch requires a prepared draft target and exact approval-ticket reference.' );
+			$capability_guard = MAD4B_SCP_Delegation_Mode::authorize_ability(
+				$delegation_identity, $ability_name, $input['input'] );
+			if ( is_wp_error( $capability_guard ) || true !== $capability_guard )
+				return is_wp_error( $capability_guard ) ? $capability_guard
+					: new WP_Error( 'mad4b_delegation_capability_denied', 'WordPress user lacks exact draft permission.' );
+			$actor = MAD4B_SCP_Delegation_Mode::ensure_content_actor( $delegation_identity, true );
+			if ( is_wp_error( $actor ) ) return $actor;
+			if ( ! MAD4B_SCP_Policy::can_mutate() )
+				return new WP_Error( 'mad4b_delegation_runtime_gate_denied', 'Delegated content actor is enrolled but the site write gate is not ready.' );
+		}
 		// Governance metadata is bound only after the signed preparation contract
 		// and exact schema identity have passed current-request revalidation.
 		$captured = $this->capture_write_dispatch_governance_envelope( $input );
@@ -781,20 +814,55 @@ final class MAD4B_SCP_Abilities {
 		$ability = $this->governed_write_target( $ability_name, false );
 		if ( is_wp_error( $ability ) ) return $ability;
 		$schema = method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null;
+		$schema_sha256 = $this->ability_input_schema_sha256( $ability );
 		$meta = $ability->get_meta();
-		return array(
+		$eligible = in_array( $ability_name, MAD4B_SCP_Servers::write_tools(), true );
+		$result = array(
 			'contract' => 'mad4b.chatgpt-write-ability-info.v1',
 			'ability_name' => $ability_name,
 			'label' => method_exists( $ability, 'get_label' ) ? (string) $ability->get_label() : '',
 			'description' => method_exists( $ability, 'get_description' ) ? (string) $ability->get_description() : '',
 			'category' => method_exists( $ability, 'get_category' ) ? (string) $ability->get_category() : '',
 			'input_schema' => $schema,
-			'input_schema_sha256' => $this->ability_input_schema_sha256( $ability ),
+			'input_schema_sha256' => $schema_sha256,
 			'annotations' => isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array(),
-			'runtime_eligible' => in_array( $ability_name, MAD4B_SCP_Servers::write_tools(), true ),
+			'runtime_eligible' => $eligible,
 			'read_only' => true,
 			'mutation_performed' => false,
 		);
+		// Preparation is non-authorizing. Write-execute still enforces signed
+		// identity, target permission, one-time approval and anti-replay.
+		if ( ! $eligible ) return $result;
+		if ( ! class_exists( 'MAD4B_SCP_Capability_Descriptor_Registry' )
+			|| ! class_exists( 'MAD4B_SCP_Ability_Catalog_Transport' )
+			|| ! class_exists( 'MAD4B_SCP_Preparation_Receipt' ) ) {
+			return new WP_Error( 'mad4b_write_preparation_runtime_unavailable', 'Governed write preparation is unavailable; execution remains denied.' );
+		}
+		$row = MAD4B_SCP_Capability_Descriptor_Registry::describe( $ability_name );
+		if ( is_wp_error( $row ) ) return $row;
+		if ( empty( $row['execution_eligible'] )
+			|| ! in_array( $row['execution_lane'] ?? '', array( 'write', 'content', 'admin' ), true ) ) {
+			return new WP_Error( 'mad4b_write_preparation_target_denied', 'Target is not eligible for governed write preparation.' );
+		}
+		if ( ! isset( $row['input_schema_sha256'], $row['classification_sha256'] )
+			|| ! hash_equals( (string) $row['input_schema_sha256'], $schema_sha256 ) ) {
+			return new WP_Error( 'mad4b_write_preparation_schema_drift', 'Target schema changed during write preparation.' );
+		}
+		$receipt = MAD4B_SCP_Preparation_Receipt::issue( $row );
+		if ( is_wp_error( $receipt ) ) return $receipt;
+		if ( ! is_string( $receipt ) || '' === $receipt ) {
+			return new WP_Error( 'mad4b_write_preparation_receipt_unavailable', 'Signed preparation evidence is unavailable; execution remains denied.' );
+		}
+		$result['prepared_dispatch'] = array(
+			'expected_input_schema_sha256' => $schema_sha256,
+			'expected_execution_lane' => (string) $row['execution_lane'],
+			'expected_classification_sha256' => (string) $row['classification_sha256'],
+			'expected_authority_scope_sha256' => MAD4B_SCP_Ability_Catalog_Transport::current_authority_scope(),
+			'preparation_receipt' => $receipt,
+		);
+		$result['dispatch_tool'] = 'mad4b/write-execute';
+		$result['preparation_contract'] = MAD4B_SCP_Preparation_Receipt::CONTRACT;
+		return $result;
 	}
 
 	private function governance_envelope_hash( $value ) {
@@ -1000,11 +1068,49 @@ final class MAD4B_SCP_Abilities {
 		);
 	}
 
+	/**
+	 * QA14 non-authorizing transport checkpoints, only for staging Brand
+	 * Append. Never log the document, Context Receipt, signed preparation token,
+	 * OAuth identity or full ticket ID. Nothing in this diagnostic changes
+	 * claims, approval or provider mutation admission, and audit-storage errors
+	 * do not grant any execution privilege.
+	 */
+	private static function observe_brand_append_dispatch( $phase, $input ) {
+		if ( ! is_array( $input )
+			|| 'context/brand-draft-append' !== (string) ( $input['ability_name'] ?? '' )
+			|| ! function_exists( 'wp_get_environment_type' )
+			|| 'staging' !== wp_get_environment_type()
+			|| ! class_exists( 'MAD4B_SCP_Audit' ) ) return false;
+		if ( ! in_array( $phase, array( 'dispatch_entered', 'target_admitted' ), true ) ) return false;
+		$ticket = (string) ( $input['_mad4b_approval_ticket_id'] ?? '' );
+		$nested = isset( $input['input'] ) && is_array( $input['input'] ) ? $input['input'] : array();
+		if ( '' === $ticket ) $ticket = (string) ( $nested['_mad4b_approval_ticket_id'] ?? '' );
+		$logged = MAD4B_SCP_Audit::record(
+			'mad4b/write-append-transport-boundary',
+			array(
+				'contract' => 'mad4b.write-append-transport-boundary.qa14.v1',
+				'phase' => $phase,
+				'target_ability' => 'context/brand-draft-append',
+				'ticket_sha256' => '' !== $ticket ? hash( 'sha256', $ticket ) : '',
+				'schema_pin_present' => ! empty( $input['expected_input_schema_sha256'] ),
+				'signed_context_present' => isset( $input['_mad4b_context_receipt'] ) || isset( $nested['_mad4b_context_receipt'] ),
+				'mutation_performed' => false,
+			),
+			'observed'
+		);
+		return ! is_wp_error( $logged );
+	}
+
 	public function write_execute( $input ) {
 		$abuse = class_exists( 'MAD4B_SCP_Abuse_Budget' ) ? MAD4B_SCP_Abuse_Budget::admit( 'execute', is_array($input)?$input:array() ) : new WP_Error( 'mad4b_abuse_budget_unavailable', 'Execution abuse-budget runtime is unavailable.' );
 		if ( is_wp_error( $abuse ) ) return $abuse;
 		$request_scope = self::request_scope_admit( 'write_execute' );
 		if ( is_wp_error( $request_scope ) ) return $request_scope;
+		// QA14: a narrowly scoped, privacy-safe *entry* checkpoint. If this
+		// event is absent, the append request never reached this validated
+		// WordPress dispatch method (or failed before request-scope admission).
+		// This diagnostic never authorizes or executes the target operation.
+		self::observe_brand_append_dispatch( 'dispatch_entered', $input );
 		$ability_name = (string) $input['ability_name'];
 		$ability = $this->governed_write_target( $ability_name, true );
 		if ( is_wp_error( $ability ) ) return $ability;
@@ -1024,6 +1130,7 @@ final class MAD4B_SCP_Abilities {
 		// Keep the original one-time ticket for a *fresh* plan, never auto-retry.
 		$target_admission = $this->trusted_write_target_admission( $ability_name, $params );
 		if ( is_wp_error( $target_admission ) ) return $target_admission;
+		self::observe_brand_append_dispatch( 'target_admitted', $input );
 		$approval_ticket_id = class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
 			? MAD4B_SCP_Staging_Write_Authority::approval_ticket_from_input( $params )
 			: ( is_array( $params ) && isset( $params['_mad4b_approval_ticket_id'] ) ? strtolower( trim( (string) $params['_mad4b_approval_ticket_id'] ) ) : '' );
@@ -1321,7 +1428,7 @@ final class MAD4B_SCP_Abilities {
 			'enrollment',
 			$operation_id,
 			static function () use ( $input ) {
-				return MAD4B_SCP_Enrollment_Dispatch::execute( is_array( $input ) ? $input : array() );
+				return MAD4B_SCP_Enrollment_Dispatch::execute_for_mcp( is_array( $input ) ? $input : array() );
 			}
 		);
 		if ( is_wp_error( $execution ) ) {
@@ -1343,6 +1450,20 @@ final class MAD4B_SCP_Abilities {
 					'automatic_retry_performed' => false,
 					'production_mutation' => false,
 					'mutation_performed' => null,
+				);
+			}
+			if ( in_array( $operation_id, array( 'staging_write_grant_reconciliation', 'staging_write_authority_convergence' ), true ) ) {
+				$known = array( 'mad4b_approved_auto_grants_blocked', 'mad4b_enrollment_dispatch_dispatch_not_started', 'mad4b_enrollment_dispatch_dispatch_target_error', 'mad4b_enrollment_dispatch_dispatch_execution_exception' );
+				$raw = sanitize_key( (string) $execution->get_error_code() );
+				return array(
+					'contract' => 'mad4b.chatgpt-enrollment-mutation-reconciliation.v1',
+					'operation_id' => $operation_id, 'state' => 'reconciliation_required',
+					'dispatch_error_code' => in_array( $raw, $known, true ) ? $raw : 'enrollment_dispatch_rejected_unclassified',
+					'generic_checkpoint_supported' => false, 'authorizing' => false,
+					'grant_changes_not_assumed' => true, 'reconciliation_required' => true,
+					'blind_retry_allowed' => false, 'automatic_retry_performed' => false,
+					'mutation_performed' => null, 'production_mutation' => false,
+					'next_action' => 'read_exact_grant_plan_and_owner_journal_before_retry',
 				);
 			}
 			return $execution;
@@ -1445,71 +1566,7 @@ final class MAD4B_SCP_Abilities {
 	public function runtime_authority_status() { return MAD4B_SCP_Authorization::authority_status(); }
 
 	public function schema_status() {
-		$status = MAD4B_SCP_Schema::status( true );
-		$physical = isset( $status['physical_integrity'] ) && is_array( $status['physical_integrity'] ) ? $status['physical_integrity'] : array();
-		$migration = isset( $status['migration'] ) && is_array( $status['migration'] ) ? $status['migration'] : array();
-		$preflight = isset( $migration['preflight'] ) && is_array( $migration['preflight'] ) ? $migration['preflight'] : array();
-		$receipt = isset( $migration['receipt'] ) && is_array( $migration['receipt'] ) ? $migration['receipt'] : array();
-		$missing_tables = isset( $physical['missing_tables'] ) && is_array( $physical['missing_tables'] ) ? array_values( $physical['missing_tables'] ) : array();
-		$durable = array(
-			'content_jobs'       => ! in_array( 'content_jobs', $missing_tables, true ),
-			'content_job_events' => ! in_array( 'content_job_events', $missing_tables, true ),
-			'work_leases'        => ! in_array( 'work_leases', $missing_tables, true ),
-			'idempotency'        => ! in_array( 'idempotency', $missing_tables, true ),
-			'execution_outbox'   => ! in_array( 'outbox', $missing_tables, true ),
-			'execution_inbox'    => ! in_array( 'inbox', $missing_tables, true ),
-		);
-		return array(
-			'contract' => 'mad4b.schema-status.v1',
-			'read_only' => true,
-			'mutation_performed' => false,
-			'expected_version' => isset( $status['expected_version'] ) ? (int) $status['expected_version'] : MAD4B_SCP_Schema::VERSION,
-			'installed_version' => isset( $status['installed_version'] ) ? (int) $status['installed_version'] : 0,
-			'integrity_token_valid' => ! empty( $status['integrity_token_valid'] ),
-			'migration' => array(
-				'contract' => isset( $migration['contract'] ) && is_array( $migration['contract'] ) ? $migration['contract'] : array(),
-				'contract_sha256' => isset( $migration['contract_sha256'] ) ? (string) $migration['contract_sha256'] : '',
-				'preflight' => array(
-					'contract' => isset( $preflight['contract'] ) ? (string) $preflight['contract'] : '',
-					'migration_id' => isset( $preflight['migration_id'] ) ? (string) $preflight['migration_id'] : '',
-					'installed_version' => isset( $preflight['installed_version'] ) ? (int) $preflight['installed_version'] : 0,
-					'target_version' => isset( $preflight['target_version'] ) ? (int) $preflight['target_version'] : 0,
-					'fresh_install' => ! empty( $preflight['fresh_install'] ),
-					'repair_run' => ! empty( $preflight['repair_run'] ),
-					'contract_sha256' => isset( $preflight['contract_sha256'] ) ? (string) $preflight['contract_sha256'] : '',
-					'blockers' => isset( $preflight['blockers'] ) && is_array( $preflight['blockers'] ) ? array_values( $preflight['blockers'] ) : array(),
-					'ready' => ! empty( $preflight['ready'] ),
-					'read_only' => ! empty( $preflight['read_only'] ),
-					'mutation_performed' => ! empty( $preflight['mutation_performed'] ),
-				),
-				'receipt' => array(
-					'contract' => isset( $receipt['contract'] ) ? (string) $receipt['contract'] : '',
-					'migration_id' => isset( $receipt['migration_id'] ) ? (string) $receipt['migration_id'] : '',
-					'from_version' => isset( $receipt['from_version'] ) ? (int) $receipt['from_version'] : 0,
-					'to_version' => isset( $receipt['to_version'] ) ? (int) $receipt['to_version'] : 0,
-					'run_type' => isset( $receipt['run_type'] ) ? (string) $receipt['run_type'] : '',
-					'contract_sha256' => isset( $receipt['contract_sha256'] ) ? (string) $receipt['contract_sha256'] : '',
-					'target_integrity_token' => isset( $receipt['target_integrity_token'] ) ? (string) $receipt['target_integrity_token'] : '',
-					'physical_integrity_sha256' => isset( $receipt['physical_integrity_sha256'] ) ? (string) $receipt['physical_integrity_sha256'] : '',
-					'physical_verified' => ! empty( $receipt['physical_verified'] ),
-					'readiness_finalized' => ! empty( $receipt['readiness_finalized'] ),
-					'destructive' => ! empty( $receipt['destructive'] ),
-					'authority_widened' => ! empty( $receipt['authority_widened'] ),
-					'completed_at' => isset( $receipt['completed_at'] ) ? (string) $receipt['completed_at'] : '',
-				),
-				'receipt_valid' => ! empty( $migration['receipt_valid'] ),
-			),
-			'durable_tables' => $durable,
-			'physical_integrity' => array(
-				'contract' => isset( $physical['contract'] ) ? (string) $physical['contract'] : '',
-				'ready' => ! empty( $physical['ready'] ),
-				'missing_tables' => $missing_tables,
-				'missing_approval_columns' => isset( $physical['missing_approval_columns'] ) && is_array( $physical['missing_approval_columns'] ) ? array_values( $physical['missing_approval_columns'] ) : array(),
-				'missing_durable_columns' => isset( $physical['missing_durable_columns'] ) && is_array( $physical['missing_durable_columns'] ) ? array_values( $physical['missing_durable_columns'] ) : array(),
-				'missing_durable_indexes' => isset( $physical['missing_durable_indexes'] ) && is_array( $physical['missing_durable_indexes'] ) ? array_values( $physical['missing_durable_indexes'] ) : array(),
-			),
-			'ready' => ! empty( $status['ready'] ) && ! empty( $physical['ready'] ),
-		);
+		return MAD4B_SCP_Schema_Status_Projection::status();
 	}
 
 	public function diagnostics_health() {

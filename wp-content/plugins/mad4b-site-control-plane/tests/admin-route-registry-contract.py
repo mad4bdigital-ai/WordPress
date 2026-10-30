@@ -63,6 +63,19 @@ for marker in (
     if marker not in notice:
         raise SystemExit('FAIL admin environment notice lost a safety guard: ' + marker)
 
+# Company-level menus use an explicitly delegated operational capability.
+# They must never be forced to the CP manage_options route, nor allowed
+# to register early or introduce unrelated company pages unnoticed.
+company_menus = {
+    'class-mad4b-scp-readiness-integrations.php': (
+        3, 'self::CAP',
+        ('MAD4B_SCP_Content_Readiness_Alerts::PAGE',
+         'MAD4B_SCP_Readiness_Workflow_Options::PAGE',
+         'MAD4B_SCP_Content_Completeness::PAGE'),
+    ),
+    'class-mad4b-scp-readiness-scopes.php': (1, 'MAD4B_SCP_Readiness_Integrations::CAP', ('self::PAGE',)),
+    'class-mad4b-scp-readiness-preactivation.php': (1, 'self::CAP', ('self::PAGE',)),
+}
 checked = 0
 for path in (root / 'includes').rglob('*.php'):
     source = path.read_text(encoding='utf-8')
@@ -90,6 +103,20 @@ for path in (root / 'includes').rglob('*.php'):
     ):
         raise SystemExit(f'FAIL submenu bypasses parent-order contract: {path.name}')
     checked += 1
+    if path.name in company_menus:
+        count, expected_cap, slugs = company_menus[path.name]
+        blocks = re.findall(r'add_submenu_page\((.*?)\);', source, re.S)
+        if len(blocks) != count:
+            raise SystemExit('FAIL company menu shape changed: ' + path.name)
+        for block in blocks:
+            if not re.search(r"['\"]mad4b-company['\"]\s*,", block):
+                raise SystemExit('FAIL company route parent mismatch: ' + path.name)
+            if not re.search(re.escape(expected_cap) + r'\s*,', block):
+                raise SystemExit('FAIL company route capability mismatch: ' + path.name)
+        for slug in slugs:
+            if source.count(slug) < 1 or not any(slug in block for block in blocks):
+                raise SystemExit('FAIL company route identity mismatch: ' + path.name + ' ' + slug)
+        continue
     owner = re.search(r'final class (\w+)', source).group(1)
     slug = re.search(r"const (PAGE_SLUG|PAGE)\s*=\s*['\"](mad4b-[^'\"]+)['\"]", source)
     if slug:
