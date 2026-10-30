@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: MAD4B JetEngine Hub Add-on
- * Description: Governed native JetEngine REST source mapping, provider discovery, selective query planning and inheritance policy for MAD4B Content Hub.
- * Version: 0.4.1
+ * Description: Governed native JetEngine Hub selection, pricing source discovery, company-specific dynamic pricing, and rate generator reference previews.
+ * Version: 0.5.0
  * Requires Plugins: jet-engine, mad4b-site-control-plane
  * Author: NagyE
  * Author URI: https://nagy.essam.website/
@@ -356,8 +356,11 @@ add_action('plugins_loaded',array('MAD4B_JetEngine_Hub_Addon','boot'),30);
 // Capability inventory, selective planning and policy advice only. No runtime distribution.
 require_once __DIR__ . '/includes/class-mad4b-hub-market-policy.php';
 require_once __DIR__ . '/includes/class-mad4b-hub-language-baseline.php';
+require_once __DIR__ . '/includes/class-mad4b-hub-price-sources.php';
+require_once __DIR__ . '/includes/class-mad4b-hub-company-pricing.php';
 require_once __DIR__ . '/includes/class-mad4b-hub-signed-source-preview.php';
 require_once __DIR__ . '/includes/class-mad4b-hub-discovery-planner.php';
 add_action('plugins_loaded',array('MAD4B_Hub_Language_Baseline','boot'),34);
+add_action('plugins_loaded',array('MAD4B_Hub_Company_Pricing_V1','boot'),37);
 add_action('plugins_loaded',array('MAD4B_Hub_Discovery_Planner','boot'),35);
 add_action('plugins_loaded',array('MAD4B_Hub_Signed_Source_Preview','boot'),36);
