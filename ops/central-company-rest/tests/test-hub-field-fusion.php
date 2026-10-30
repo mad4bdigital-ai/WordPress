@@ -33,4 +33,21 @@ check(is_array(MAD4B_Hub_Field_Fusion_V1::set_policy('tourism-almallahgroup','pr
 $r=MAD4B_Hub_Field_Fusion_V1::compare(11,12);
 check($r['field_proposals']['description']['decision']==='review_conflict_or_gap','custom policy applied');
 check(is_wp_error(MAD4B_Hub_Field_Fusion_V1::set_policy('tourism-almallahgroup','properties','source_wpml_trid','richest',95)),'WPML protected');
-echo "PASS 6 field fusion tests\n";
+$GLOBALS['metas'][11]['_mad4b_hub_import_identity_facts']=['property_place_id'=>'ABC'];
+$GLOBALS['metas'][12]['_mad4b_hub_import_identity_facts']=['property_place_id'=>'DEF'];
+$hold=MAD4B_Hub_Field_Fusion_V1::compare(11,12);
+check($hold['entity_resolution_state']==='identity_conflict_hold','Conflicting property identity blocks canonical draft');
+check($hold['canonical_draft']['can_apply']===false,'Preview is never published or applied');
+check(is_wp_error(MAD4B_Hub_Field_Fusion_V1::set_policy('tourism-almallahgroup','properties','property_place_id','richest',80)),
+    'Critical exact identity cannot be demoted by company policy');
+$GLOBALS['metas'][12]['_mad4b_hub_import_identity_facts']=['property_place_id'=>'ABC'];
+$draft=MAD4B_Hub_Field_Fusion_V1::compare(11,12);
+check($draft['canonical_draft']['status']==='review_required','Verified identity still requires human review');
+check($draft['canonical_draft']['field_source_selection']['description']['value_from_hub_id']===12,
+    'Draft selects description and retains source provenance');
+$GLOBALS['posts'][13]=(object)['post_title'=>'Example Hotel','post_content'=>'Excellent description',
+    'post_excerpt'=>''];
+$GLOBALS['metas'][13]=array_merge($GLOBALS['metas'][12],[
+    '_mad4b_hub_import_owner'=>'another-company','_mad4b_hub_import_source_id'=>333]);
+check(is_wp_error(MAD4B_Hub_Field_Fusion_V1::compare(11,13)),'Cross-company fusion is blocked');
+echo "PASS 12 field fusion tests\n";
