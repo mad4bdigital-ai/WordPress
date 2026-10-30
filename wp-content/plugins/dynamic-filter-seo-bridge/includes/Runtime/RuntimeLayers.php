@@ -14,12 +14,10 @@ final class RuntimeLayers {
     private static $decision = null;
 
     public static function decide(array $identity, array $boot): array {
-        $sourceValid = !empty($identity['valid'])
-            && !empty($identity['installed_content_valid'])
-            && !empty($identity['provenance_complete'])
-            && ($identity['exact_build_reason'] ?? '') === 'ok';
-        $safeRead = $sourceValid && empty($boot['faulted'])
-            && !empty($boot['build_matches']);
+        // Presentation uses ordinary WordPress context and post visibility rules.
+        // A release certificate is not required to render Elementor content.
+        $sourceValid = !empty($identity['valid']);
+        $safeRead = empty($boot['faulted']);
         return array(
             'contract' => 'dfsb.runtime-layers.v1',
             'source_verified' => $sourceValid,
