@@ -41,6 +41,7 @@ check($hold['canonical_draft']['can_apply']===false,'Preview is never published 
 check(is_wp_error(MAD4B_Hub_Field_Fusion_V1::set_policy('tourism-almallahgroup','properties','property_place_id','richest',80)),
     'Critical exact identity cannot be demoted by company policy');
 $GLOBALS['metas'][12]['_mad4b_hub_import_identity_facts']=['property_place_id'=>'ABC'];
+MAD4B_Hub_Field_Fusion_V1::set_policy('tourism-almallahgroup','properties','description','richest',95);
 $draft=MAD4B_Hub_Field_Fusion_V1::compare(11,12);
 check($draft['canonical_draft']['status']==='review_required','Verified identity still requires human review');
 check($draft['canonical_draft']['field_source_selection']['description']['value_from_hub_id']===12,
