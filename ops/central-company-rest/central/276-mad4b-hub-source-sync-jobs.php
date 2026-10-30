@@ -239,9 +239,40 @@ final class MAD4B_Hub_Source_Sync_Jobs_V1 {
             ]);
         }
     }
+    /**
+     * Standard WordPress administrative REST controls. WP REST cookie nonce or
+     * Application Password auth applies, followed by manage_options. No shell
+     * execution occurs in a web request; VPS worker is an explicit separate step.
+     */
+    public static function register_rest(): void {
+        if(!self::enabled())return;
+        $permission=static function(){return current_user_can('manage_options');};
+        register_rest_route('mad4b-central/v1','/hub-source-sync/plan',[
+            'methods'=>WP_REST_Server::READABLE,
+            'permission_callback'=>$permission,
+            'callback'=>static function(){return rest_ensure_response(self::plan());},
+        ]);
+        register_rest_route('mad4b-central/v1','/hub-source-sync/jobs',[
+            'methods'=>WP_REST_Server::READABLE,
+            'permission_callback'=>$permission,
+            'callback'=>static function($request){return rest_ensure_response(self::status([
+                'job_id'=>(string)$request->get_param('job_id')
+            ]));},
+        ]);
+        register_rest_route('mad4b-central/v1','/hub-source-sync/request',[
+            'methods'=>WP_REST_Server::CREATABLE,
+            'permission_callback'=>$permission,
+            'callback'=>static function($request){
+                $input=$request->get_json_params();
+                $response=self::request(is_array($input)?$input:[]);
+                return is_wp_error($response)?$response:rest_ensure_response($response);
+            },
+        ]);
+    }
     public static function boot(): void {
         if(!self::enabled())return;
         add_action('wp_abilities_api_init',[__CLASS__,'register_abilities'],26);
+        add_action('rest_api_init',[__CLASS__,'register_rest']);
     }
 }
 MAD4B_Hub_Source_Sync_Jobs_V1::boot();
