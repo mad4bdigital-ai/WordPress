@@ -98,6 +98,29 @@ final class MAD4B_SCP_Market_Content_Exchange {
                 || $entry['role'] !== $role ) continue;
             $routes[] = array( 'route_id' => $id, 'skill_name' => $entry['skill_name'] );
         }
+        // A fresh Market Policy need not manually duplicate installed Skills.
+        // Auto-discover by exact names from the enabled Registry; do not
+        // confuse discovery with an authenticated execution grant.
+        if ( ! $routes ) {
+            $defaults = array(
+                'researcher' => array('research-provider-routing','firecrawl-competitive-research'),
+                'writer' => array('wordpress-content-authoring'),
+                'critic' => array('rankmath-seo-audit','wordpress-archive-audit'),
+                'reviewer' => array('wordpress-change-safety'),
+                'recovery' => array('wordpress-connection-diagnostics'),
+            );
+            $available = class_exists( 'MAD4B_SCP_Skill_Registry' )
+                ? MAD4B_SCP_Skill_Registry::list_skills( array() ) : array();
+            foreach ( (array) ( $defaults[$role] ?? array() ) as $wanted ) {
+                foreach ( is_array($available) ? $available : array() as $skill ) {
+                    if ( ! is_array($skill) || empty($skill['enabled'])
+                        || (string)($skill['name']??'') !== $wanted ) continue;
+                    $routes[] = array('route_id'=>'auto:'.$wanted,
+                        'skill_name'=>$wanted,'discovery'=>'enabled_registry_exact_name');
+                    break;
+                }
+            }
+        }
         $cert = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' )
             ? MAD4B_SCP_Skill_Runtime_Certification::current_status() : array();
         $ready = is_array( $cert ) && ! empty( $cert['ready'] )
@@ -121,6 +144,9 @@ final class MAD4B_SCP_Market_Content_Exchange {
             'role' => $role, 'configured_candidates' => $routes,
             'registered_enabled_candidates' => $resolved,
             'managed_skills_runtime_ready' => $ready,
+            'skill_route_discovery' => $routes && isset($routes[0]['discovery'])
+                ? 'automatic_registry_match' : 'configured_policy',
+            'skill_execution_confirmed' => false,
             'selected_for_research_or_draft' => ! empty( $resolved ) ? $resolved[0] : null,
             'fallback' => 'use_enabled_agent_or_assisted_manual_review',
             'exact_agent_identity_verified' => false,
