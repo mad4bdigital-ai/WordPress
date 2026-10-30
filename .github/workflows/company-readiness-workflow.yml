@@ -24,6 +24,22 @@ jobs:
         run: |
           php -l ops/company-readiness-workflow/staging-mu/241-mad4b-company-brand-readiness-hub.php
           php -l ops/company-readiness-workflow/staging-mu/242-mad4b-company-readiness-workflow.php
+          php -l ops/company-readiness-workflow/staging-mu/252-mad4b-start-your-company-runtime.php
+          php -l ops/company-readiness-workflow/tests/test_start_company_runtime.php
+      - name: Company stages and partial recovery contract tests
+        run: |
+          php ops/company-readiness-workflow/tests/test_start_company_runtime.php
+          python3 - <<'PY'
+          import json
+          d=json.load(open('wp-content/plugins/mad4b-site-control-plane/config/operation-registry.json'))
+          ids={x['id']:x for x in d['operations']}
+          assert all(n in ids for n in ('company.create','company.repair'))
+          for n in ('company.create','company.repair'):
+              assert ids[n]['planner']=='mad4b/start-your-company-plan'
+              assert ids[n]['executor']=='mad4b/start-your-company-resume'
+              assert ids[n]['generic_mutation_dispatch'] is False
+          assert d['generic_shell'] is False and d['default_mutation_policy']=='deny'
+          PY
       - name: Source-neutral activation Python syntax
         run: |
           python3 -m py_compile ops/company-readiness-workflow/design-activation/wayfa-wpml-resolve.py
