@@ -9,7 +9,7 @@ final class MAD4B_Central_Nile_Reference_V1 {
  const COMPANY='tourism-almallahgroup';
  const REMOTE_ROUTE='/mad4b-company/v1/nile-source-read-v1';
  const REGISTRY='mad4b_nile_source_reference_v1';
- const SCOPES=['nile_cruise_categories.read','nile_cruise_catalog.read','nile_rate_history.read'];
+ const SCOPES=['nile_cruise_categories.read','nile_cruise_catalog.read','nile_rate_history.read','nile_starting_prices.read'];
  public static function enabled(): bool {
   return class_exists('MAD4B_Central_PK_Pairing_V1')
    && MAD4B_Central_PK_Pairing_V1::enabled();
@@ -78,6 +78,35 @@ final class MAD4B_Central_Nile_Reference_V1 {
        (($item['reference_only']??false)!==true||($item['for_sale']??true)!==false||
         ($item['checkout_enabled']??true)!==false))
        return self::failure('mad4b_nile_rate_sale_risk','Historical price item not sealed');
+    if($scope==='nile_starting_prices.read'){
+       if(($item['source_post_type']??null)!=='tours-and-activities' ||
+          !is_int($item['source_tour_id']??null) ||
+          ($item['reference_only']??false)!==true ||
+          ($item['for_sale']??true)!==false ||
+          ($item['checkout_enabled']??true)!==false ||
+          ($item['validated_current_price']??true)!==false ||
+          !is_array($item['starting_price_references']??null) ||
+          count($item['starting_price_references'])>2)
+         return self::failure('mad4b_nile_start_price_unsealed',
+              'Source starting price reference invalid');
+       $known=['start_price','egyptians_start_price'];$seenFields=[];
+       foreach($item['starting_price_references'] as $value){
+         if(!is_array($value)||
+            !in_array($value['field']??null,$known,true) ||
+            isset($seenFields[$value['field']]) ||
+            !is_string($value['amount']??null) ||
+            !preg_match('/^[0-9]{1,10}(?:\\.[0-9]{1,4})?$/D',$value['amount']) ||
+            (float)$value['amount']<=0 ||
+            !is_string($value['currency']??null) ||
+            !preg_match('/^[A-Z]{3}$/D',$value['currency']) ||
+            ($value['reference_only']??false)!==true ||
+            ($value['checkout_authorized']??true)!==false ||
+            ($value['current_price_verified']??true)!==false)
+            return self::failure('mad4b_nile_start_price_projection_invalid',
+                'Untrusted direct source amount');
+         $seenFields[$value['field']]=true;
+       }
+    }
   }
   $digest=hash('sha256',wp_json_encode($data,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
   if(!hash_equals($digest,(string)$response['sha256']))
@@ -125,7 +154,8 @@ final class MAD4B_Central_Nile_Reference_V1 {
   $seen=[];
   foreach($all as $x){
     $field=$scope==='nile_cruise_categories.read'?'source_term_id':
-      ($scope==='nile_cruise_catalog.read'?'source_tour_id':'source_rate_id');
+      (in_array($scope,['nile_cruise_catalog.read','nile_starting_prices.read'],true)?
+        'source_tour_id':'source_rate_id');
     $id=(int)($x[$field]??0);
     if($id<1||isset($seen[$id]))return self::failure('mad4b_nile_duplicate_reference','Invalid or duplicate reference ID');
     $seen[$id]=true;
