@@ -51,3 +51,25 @@ Rollback: disable Auto Distribute, remove only the added central MU files (or re
 ## Identity cache-safety correction
 
 The Source read identity endpoint uses **POST only** (not GET), because LiteSpeed was observed returning a cached authenticated GET 200 without an active credential. The remote registered route uses POST; central exact-host verification uses wp_safe_remote_request with method POST over TLS; an explicit URL purge removed the previously cached GET response. Verified post-fix on Tourism: anonymous GET 404 and anonymous POST 403. Never trust public cached GET response as proof of Application Password authorization.
+
+## WP-CLI Cross SSH — native host-only source transport (2026-10-30)
+
+**Source:** Tourism Cloud Startup Hostinger SSH target `hosting-1` on registered port 65002. SSH key + pinned `known_hosts_verified` live exclusively on the primary MAD4B VPS in `/opt/hostinger-shell-mcp/external-targets/hosting-1`. No SSH key or Application Password is copied into WordPress.
+
+**Host runner:** `ops/central-company-rest/ssh/run-tourism-cross-ssh.sh`. Deploy as root, for example to `/opt/mad4b/operations/content-hub/cross-ssh/run-tourism-cross-ssh.sh`. The runner accepts no free-form hosts, usernames, WordPress paths or shell command arguments. It enforces the exact source and central WordPress site URLs, pinned SSH host key, mutual-exclusion flock, validated all-three-type JSON manifest and SHA256 byte-for-byte transfer.
+
+**Read-only source script:** `ssh/tourism-source-export.php` runs using source WP-CLI `eval-file` on the enrolled source host; reads only `publish` Tours, Properties and Transportations (all six WPML languages). It never changes source posts, settings, users, customers, bookings or rates. A fixed source deployment path is used, outside public_html.
+
+**Central receiver:** `ssh/central-receive.php` runs only through central Staging `wp eval-file`, accepts only the staged local manifest, requires `WP_CLI` and the explicit one-off host runner constant, revalidates source company, exact canonical host, type counts and 0..2000 record bounds, plus every noncommercial item before updating the private Content Hub post type. No HTTP import endpoint or SSH key access in WordPress.
+
+**Central Settings:** Content Hub → Auto Distribute → Source connection → **WP-CLI Cross SSH (VPS runner)**. Keep `source_mode=import_to_hub`, select all three source CPTs and the desired languages; `source_transport=wp_cli_cross_ssh`. A separate `wp_rest_application_password` choice remains supported. In Cross SSH mode, native WP-Cron import and the browser Run Distribution button are disabled intentionally. Host execution is explicit; a host scheduler is **not installed or enabled** by changing the dropdown. In this initial release, Cross SSH supports Tourism only, and does not automatically distribute to other companies.
+
+**Measured end-to-end Staging acceptance:** the source exported **827** published items (**217 tours, 597 properties, 13 transfers**), manifest SHA256 `e8998af9ad6ae4e896b95bc3931b253fc36cc52c8de65c49c4c0eb976344de01`. Content Hub central private storage verified **827** matching active records in EN/AR/FR/DE/IT/ES, zero publication/checkout/tenant violations. Repeat import gave `created=0, updated=0, unchanged=827` and central `last_run.status=imported_only`. Source and Staging websites returned HTTP 200. **No consumer distribution or public publishing.**
+
+To rerun manually on the authorized primary VPS as root:
+
+```bash
+bash /opt/mad4b/operations/content-hub/cross-ssh/run-tourism-cross-ssh.sh
+```
+
+Rollback: keep the source unchanged; leave automation disabled; restore backed-up central 250/260 MU adapters if needed. The 827 private posts remain accessible for inspection; to revert records, use the pre-import scoped backup (35 old records and Hub options) retained under `/opt/mad4b-company-release-prep/20261030/tourism-cross-ssh-release/backup-state/`. Do not delete anything automatically. Further dynamic tenant/provider discovery and per-company private distribution require their own receiver registration and run policy.
