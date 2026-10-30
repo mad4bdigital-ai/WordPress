@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B DFSB Native Presentation
  * Description: Read-only native Elementor and shortcode output from published WordPress context. Does not start DFSB SEO publication.
- * Version: 0.6.4
+ * Version: 0.6.5
  * Requires PHP: 8.1
  * Text Domain: mad4b-dfsb-native-presentation
  */
