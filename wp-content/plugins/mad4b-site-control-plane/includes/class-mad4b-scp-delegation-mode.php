@@ -151,6 +151,7 @@ final class MAD4B_SCP_Delegation_Mode {
             'mad4b/content-job-create',
             'mad4b/content-job-transition',
             'mad4b/content-job-cancel',
+            'mad4b/control-research-to-hub',
         );
     }
 
@@ -359,6 +360,13 @@ final class MAD4B_SCP_Delegation_Mode {
             return user_can( $user, 'edit_posts' ) && user_can( $user, 'manage_options' )
                 ? true : new WP_Error( 'mad4b_delegation_content_job_cap_denied',
                     'The authenticated WordPress user lacks ContentJob capability.' );
+        }
+
+        if ( 'mad4b/control-research-to-hub' === $ability_name ) {
+            return user_can( $user, 'manage_options' ) && user_can( $user, 'edit_posts' )
+                && class_exists( 'MAD4B_Content_Hub' ) && MAD4B_Content_Hub::permission()
+                ? true : new WP_Error( 'mad4b_control_hub_wordpress_cap_denied',
+                    'Only a verified central WordPress administrator may launch Hub ingestion.' );
         }
 
         if ( 'mad4b/content-apply-bundle' === $ability_name ) {
