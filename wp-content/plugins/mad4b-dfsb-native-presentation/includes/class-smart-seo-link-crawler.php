@@ -18,7 +18,7 @@ final class SmartSeoLinkCrawler {
    [$url,$depth]=array_shift($queue);$key=self::key($url);
    if($key===''||isset($seen[$key]))continue;
    $seen[$key]=true;
-   $response=wp_safe_remote_get($url,['timeout'=>7,'redirection'=>0,'limit_response_size'=>250000,
+   $response=wp_safe_remote_get($url,['timeout'=>7,'redirection'=>0,'limit_response_size'=>850000,
       'headers'=>['Accept'=>'text/html']]);
    $http=is_wp_error($response)?0:(int)wp_remote_retrieve_response_code($response);
    $pages[]=['url'=>$url,'depth'=>$depth,'http'=>$http];
