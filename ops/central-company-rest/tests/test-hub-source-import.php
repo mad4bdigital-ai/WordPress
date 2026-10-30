@@ -315,6 +315,7 @@ foreach($cliRows as $i=>$row) {
     $cliRows[$i]['source_text_origin']='source_meta';
     $cliRows[$i]['source_taxonomy_refs']=[];
     $cliRows[$i]['source_identity_facts']=[];
+    $cliRows[$i]['source_metadata']=[];
 }
 $cross=[
     'contract'=>'mad4b.hub.wp-cli-cross-ssh.v1',
@@ -331,6 +332,15 @@ check(is_wp_error($deny) && $GLOBALS['changes']===$before,'Cross-SSH wrong canon
 $invalid=$cross;$invalid['counts']['properties']=2;
 $deny=MAD4B_Hub_Source_Import_V1::import_cross_ssh_snapshot($invalid);
 check(is_wp_error($deny) && $GLOBALS['changes']===$before,'Cross-SSH incomplete manifest rejected before writes');
+$invalid=$cross;$invalid['items'][2]['source_metadata']=['wp_user_password'=>'should-not-import'];
+$deny=MAD4B_Hub_Source_Import_V1::import_cross_ssh_snapshot($invalid);
+check(is_wp_error($deny) && $GLOBALS['changes']===$before,
+    'Reject unapproved metadata keys before any write');
+$invalid=$cross;$invalid['items'][2]['source_metadata']=['trans_route_estimated_duration'=>'4h'];
+$accepted=MAD4B_Hub_Source_Import_V1::validate_item($invalid['items'][2],
+    'tourism-almallahgroup','transportations');
+check(!is_wp_error($accepted) && $accepted['source_metadata']['trans_route_estimated_duration']==='4h',
+    'Allow reviewed typed metadata field without exposing private records');
 $invalid=$cross;$invalid['items'][1]['source_url']='https://attacker.invalid/';
 $deny=MAD4B_Hub_Source_Import_V1::import_cross_ssh_snapshot($invalid);
 check(is_wp_error($deny) && $GLOBALS['changes']===$before,
