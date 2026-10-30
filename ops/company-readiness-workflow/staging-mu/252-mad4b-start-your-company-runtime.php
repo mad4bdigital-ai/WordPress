@@ -134,7 +134,7 @@ final class MAD4B_Start_Company_Runtime {
         add_action('rest_api_init',array(__CLASS__,'routes'),94);
         add_action('wp_abilities_api_init',array(__CLASS__,'abilities'),94);
         add_action(self::HOOK,array(__CLASS__,'recheck_event'),10,1);
-        add_action('mad4b/company/created',array(__CLASS__,'company_event'),10,1);
+        add_action('mad4b/company/created',array(__CLASS__,'created_event'),10,1);
         add_action('mad4b/company/provider_changed',array(__CLASS__,'company_event'),10,1);
         add_action('mad4b/company/content_selection_changed',array(__CLASS__,'company_event'),10,1);
         add_action('updated_option',array(__CLASS__,'option_event'),10,3);
@@ -190,20 +190,18 @@ final class MAD4B_Start_Company_Runtime {
         $rows=array();
         foreach(self::STAGES as $id=>$spec){
             $missing=array_values(array_filter($spec['deps'],static function($dep)use($verified){return !$verified[$dep];}));
-            // Stage-specific execution digest is independent of unrelated
-            // Access/Commerce changes. Owner email edits cannot invalidate
-            // an already queued, correctly bound plugin/configuration job.
+            // Each stage job has an independent plan digest. A change to
+            // the owner's access profile cannot invalidate plugin/config work.
             $revision=self::stage_revision($c,$id);
             $dep_receipts=array();
             foreach($spec['deps'] as $dep)$dep_receipts[$dep]=array(
-               'verified'=>$verified[$dep],'revision'=>self::stage_revision($c,$dep));
+              'verified'=>$verified[$dep],'revision'=>self::stage_revision($c,$dep));
             $execution_sha=hash('sha256',wp_json_encode(array(
               'company'=>$c,'mode'=>$mode,'stage'=>$id,'revision'=>$revision,
               'dependencies'=>$dep_receipts),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
             $rows[$id]=array('group'=>$spec['group'],'state'=>$verified[$id]?'VERIFIED':($missing?'WAITING_DEPENDENCY':'READY'),
               'missing_dependencies'=>$missing,'stage_revision'=>$revision,
-              'execution_plan_sha256'=>$execution_sha,
-              'action'=>self::ACTIONS[$id],
+              'execution_plan_sha256'=>$execution_sha,'action'=>self::ACTIONS[$id],
               'executor'=>'enrolled_vps_mcp_client','mutation_authorized'=>false);
         }
         $base=array('company'=>$c,'mode'=>$mode,'stages'=>$rows);
@@ -373,64 +371,11 @@ final class MAD4B_Start_Company_Runtime {
             $props=array('company'=>array('type'=>'string'),'mode'=>array('type'=>'string','enum'=>array('create','repair_existing')));
             $required=array('company');
             if(!$spec['read']) {
-                $props['expected_plan_sha256']=array('type'=>'string','pattern'=>'^[a-f0-9]{64}
-            wp_register_ability($name,array(
-              'label'=>$spec['read']?'Plan Company Lifecycle':'Queue Exact Company Stage',
-              'description'=>$spec['read']?'Read company-scoped stage DAG':'Queue an exact verified company stage; cannot execute tenant mutation',
-              'category'=>$spec['read']?'mad4b-read':'mad4b-write',
-              'input_schema'=>array('type'=>'object','properties'=>$props,'required'=>$required,'additionalProperties'=>false),
-              'output_schema'=>array('type'=>'object','additionalProperties'=>true),
-              'permission_callback'=>static function($input){$r=new WP_REST_Request('GET','/');$r->set_param('company',$input['company']??'');return self::guard($r);},
-              'execute_callback'=>static function($input)use($spec){$r=new WP_REST_Request($spec['read']?'GET':'POST','/');foreach($input as $k=>$v)$r->set_param($k,$v);
-                if(!$spec['read']){$r->set_header('Content-Type','application/json');$r->set_body(wp_json_encode($input));}
-                return call_user_func(array(__CLASS__,$spec['method']),$r);},
-              'meta'=>array('show_in_rest'=>false,'public'=>false,
-                'annotations'=>array('readonly'=>$spec['read'],'destructive'=>false,'idempotent'=>true),
-                'mcp'=>array('public'=>false,'type'=>'tool','surface'=>$spec['read']?'read':'write'))
-            ));
-        }
-    }
-    public static function company_event($payload){
-        $code=is_array($payload)?($payload['company_code']??''):$payload;
-        if(!self::central()||!is_string($code)||!preg_match('/^[a-z][a-z0-9-]{2,47}$/D',$code))return;
-        $c=self::company($code);if(is_wp_error($c))return;
-        if(!wp_next_scheduled(self::HOOK,array($code)))wp_schedule_single_event(time()+20,self::HOOK,array($code));
-    }
-    public static function option_event($name,$old,$new){
-        if(!in_array($name,array(self::REGISTRY,self::BOOTSTRAP,self::RECEIPTS),true)||!is_array($new))return;
-        $prev=is_array($old)?$old:array();
-        foreach($new as $code=>$row)if(!isset($prev[$code])||$row!==$prev[$code])self::company_event($code);
-    }
-    public static function recheck_event($code){
-        // Cron only computes and persists an unprivileged, read-only plan.
-        if(!self::central())return;
-        $c=self::company($code);if(is_wp_error($c))return;
-        $result=self::compute_plan($c,'repair_existing');
-        if(!is_array($result))return;
-        $all=get_option(self::SNAPSHOTS,array());if(!is_array($all))return;
-        $result['observed_at']=gmdate('c');
-        $all[$c['company_code']]=$result;
-        update_option(self::SNAPSHOTS,$all,false);
-        $check=get_option(self::SNAPSHOTS,array());
-        if(is_array($check) && ($check[$c['company_code']]['plan_sha256']??'')===$result['plan_sha256']) {
-          do_action('mad4b/company/recheck_observed',$c);
-          // Automatic continuation uses the operator's existing scoped
-          // run authorization, without impersonating an interactive user.
-          $run=get_option(self::RUNS,array());
-          $row=is_array($run)?($run[$c['company_code']]??null):null;
-          if(is_array($row) && self::authorized_run($c,(string)($row['mode']??''))) {
-            $out=self::enqueue_ready($c,$row['mode']);
-            if(is_wp_error($out))do_action('mad4b/company/stage_blocked',$c,$out->get_error_code());
-          }
-        }
-    }
-}
-MAD4B_Start_Company_Runtime::boot();
-);
+                $props['expected_plan_sha256']=array('type'=>'string','pattern'=>'^[a-f0-9]{64}$');
                 $required=array('company','expected_plan_sha256');
                 if($spec['method']==='resume') {
-                  $props['stage']=array('type'=>'string');
-                  $required[]='stage';
+                    $props['stage']=array('type'=>'string');
+                    $required[]='stage';
                 }
             }
             wp_register_ability($name,array(
@@ -449,6 +394,23 @@ MAD4B_Start_Company_Runtime::boot();
             ));
         }
     }
+    public static function created_event($payload) {
+        self::company_event($payload);
+        // Native authenticated company creation auto-starts the complete
+        // workflow; it does not require approvals for each plugin.
+        if(!self::central() ||
+          !((current_user_can('manage_options')&&current_user_can('activate_plugins')) ||
+            (current_user_can('mad4b_manage_company_operations')&&current_user_can('mad4b_propose_company_content'))))return;
+        $code=is_array($payload)?($payload['company_code']??''):$payload;
+        $c=self::company($code);if(is_wp_error($c))return;
+        $r=new WP_REST_Request('GET','/');$r->set_param('company',$code);
+        if(is_wp_error(self::guard($r)))return;
+        $plan=self::compute_plan($c,'create');
+        $auth=self::authorize_run($c,'create',$plan['plan_sha256']);
+        if(is_wp_error($auth))return;
+        $result=self::enqueue_ready($c,'create');
+        if(is_wp_error($result))do_action('mad4b/company/stage_blocked',$c,$result->get_error_code());
+    }
     public static function company_event($payload){
         $code=is_array($payload)?($payload['company_code']??''):$payload;
         if(!self::central()||!is_string($code)||!preg_match('/^[a-z][a-z0-9-]{2,47}$/D',$code))return;
@@ -456,9 +418,14 @@ MAD4B_Start_Company_Runtime::boot();
         if(!wp_next_scheduled(self::HOOK,array($code)))wp_schedule_single_event(time()+20,self::HOOK,array($code));
     }
     public static function option_event($name,$old,$new){
-        if(!in_array($name,array(self::REGISTRY,self::BOOTSTRAP),true)||!is_array($new))return;
+        if(!in_array($name,array(self::REGISTRY,self::BOOTSTRAP,self::RECEIPTS),true)||!is_array($new))return;
         $prev=is_array($old)?$old:array();
-        foreach($new as $code=>$row)if(!isset($prev[$code])||$row!==$prev[$code])self::company_event($code);
+        foreach($new as $code=>$row) {
+            if(!isset($prev[$code])) {
+                if($name===self::REGISTRY)self::created_event($code);
+                else self::company_event($code);
+            } elseif($row!==$prev[$code])self::company_event($code);
+        }
     }
     public static function recheck_event($code){
         // Cron only computes and persists an unprivileged, read-only plan.
@@ -471,8 +438,15 @@ MAD4B_Start_Company_Runtime::boot();
         $all[$c['company_code']]=$result;
         update_option(self::SNAPSHOTS,$all,false);
         $check=get_option(self::SNAPSHOTS,array());
-        if(is_array($check) && ($check[$c['company_code']]['plan_sha256']??'')===$result['plan_sha256'])
+        if(is_array($check) && ($check[$c['company_code']]['plan_sha256']??'')===$result['plan_sha256']) {
           do_action('mad4b/company/recheck_observed',$c);
+          $run=get_option(self::RUNS,array());
+          $row=is_array($run)?($run[$c['company_code']]??null):null;
+          if(is_array($row) && self::authorized_run($c,(string)($row['mode']??''))) {
+              $out=self::enqueue_ready($c,$row['mode']);
+              if(is_wp_error($out))do_action('mad4b/company/stage_blocked',$c,$out->get_error_code());
+          }
+        }
     }
 }
 MAD4B_Start_Company_Runtime::boot();
