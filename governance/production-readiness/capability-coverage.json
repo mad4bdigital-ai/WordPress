@@ -3368,12 +3368,13 @@
         "EXECUTION-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/local-ollama-ability-runtime.php"
       ],
       "needs_new_control": false,
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing MCP admission, platform identity, security, owner-scoped administrative rights and execution-denial controls cover these staging-only authorization surfaces, without granting Production execution or public access.",
-      "review_rationale": "New surface ability:mad4b/ollama-inference is source-pinned in the W1 authority integration and assessed with hermetic owner-browser, agent REST route, Site Profile, OAuth, replay, write grant, exact mapping and negative permission fixtures. This is only CI source review, not evidence that the route is registered, usable, or authorized in Production."
+      "review_rationale": "New surface ability:mad4b/ollama-inference is source-pinned in the W1 authority integration and assessed with hermetic owner-browser, agent REST route, Site Profile, OAuth, replay, write grant, exact mapping and negative permission fixtures. This is only CI source review, not evidence that the route is registered, usable, or authorized in Production. Added same-PR hermetic PHP runtime proof of Local-only registration/permission, nonexistent Staging admission, bounded task list, strict router model binding, nonpublic MCP metadata, duplicate-registration safety and non-authorizing response. The W1 Python runner executes and checks the PASS marker."
     },
     {
       "id": "ability:mad4b/agent-grant-applied",
