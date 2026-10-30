@@ -14137,6 +14137,60 @@
             "wp-content/plugins/mad4b-site-control-plane/tests/mcp-runtime-request-isolation-runtime.php"
         ],
         "review_rationale": "Explicit exact Git blob source review for request-scoped MCP catalog materialization across generic WP-CLI, explicit MCP CLI, OAuth discovery and unrelated REST. The regression validates route-only behavior for non-MCP requests and full materialization for explicit clients. Preserves the existing write-provider snapshot method and authorization callbacks. No new tool execution authority or Production promotion is permitted."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php",
+      "source_blob_sha": "def9bfc30f10c103184e8428a2b0e2cf97fc6a34",
+      "owner_role": "Repository integration source reviewer — CI-only; no Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-runtime-request-isolation-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-adapter-dynamic-upgrade-contract.py"
+      ],
+      "review_rationale": "Early MU scope and validated 0.7.x patch-layout compatibility, using only installed-path read-only class signatures and schema validation; no Production write promotion. Exact Git blob is review-only evidence. Operational deployment, OAuth consent and access checks are independent; historical delivery manifests remain immutable."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-request-scope.php",
+      "source_blob_sha": "058f28d6f7034eb960b8a0f889a4b5576b996179",
+      "owner_role": "Repository integration source reviewer — CI-only; no Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-runtime-request-isolation-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-adapter-dynamic-upgrade-contract.py"
+      ],
+      "review_rationale": "Explicit STDIO CLI server detection without enabling MCP catalogs on unrelated CLI commands. Scope remains restricted to exact known MAD4B server IDs. Exact Git blob is review-only evidence. Operational deployment, OAuth consent and access checks are independent; historical delivery manifests remain immutable."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "d0026cae2eaedeb95ef53b96372a73474a3a01f7",
+      "owner_role": "Repository integration source reviewer — CI-only; no Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-runtime-request-isolation-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-adapter-dynamic-upgrade-contract.py"
+      ],
+      "review_rationale": "Preserves live_write_provider_snapshot and routes generic CLI to zero-tool shells while allowing actual STDIO and HTTP MCP clients to materialize validated tools. Exact Git blob is review-only evidence. Operational deployment, OAuth consent and access checks are independent; historical delivery manifests remain immutable."
     }
   ],
   "code_change_rules": {

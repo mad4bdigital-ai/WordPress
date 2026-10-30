@@ -43,6 +43,7 @@ define( 'WP_CLI', 'http' !== $mode );
 function wp_unslash( $v ) { return $v; }
 function wp_parse_url( $v, $piece = -1 ) { return parse_url( $v, $piece ); }
 function rest_get_url_prefix() { return 'wp-json'; }
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-mcp-request-scope.php';
 $target = new ReflectionMethod( 'MAD4B_SCP_Servers', 'current_request_server_id' );
 $target->setAccessible( true );
 $allow = new ReflectionMethod( 'MAD4B_SCP_Servers', 'should_materialize_server_tools' );
@@ -50,7 +51,17 @@ $allow->setAccessible( true );
 function assertion( $ok, $msg ) { if ( ! $ok ) throw new RuntimeException( $msg ); }
 if ( WP_CLI ) {
     unset( $_SERVER['REQUEST_URI'] );
-    if ( 'numeric' === $mode ) {
+    if ( 'serve' === $mode ) {
+        putenv( 'MAD4B_SCP_MCP_CLI_REQUEST' );
+        $_SERVER['argv'] = array( 'wp', '--path=/tmp/wordpress', 'mcp-adapter', 'serve', '--server=mad4b-chatgpt' );
+        $automatic = $target->invoke( null );
+        assertion( '' === $automatic, 'Explicit STDIO serve must automatically enable MCP scope' );
+        assertion( $allow->invoke(null,'mad4b-chatgpt',$automatic), 'STDIO serve cannot mount its catalog' );
+        $_SERVER['argv'] = array( 'wp', 'mcp-adapter', 'serve', '--server=unrelated-server' );
+        $unrelated = $target->invoke( null );
+        assertion( '__mad4b_non_mcp_cli__' === $unrelated, 'Unrelated STDIO servers cannot mount MAD4B tools' );
+        unset( $_SERVER['argv'] );
+    } elseif ( 'numeric' === $mode ) {
         $numeric = $target->invoke(null);
         assertion( '' === $numeric, 'Truthy CLI marker must match canonical request scope' );
         assertion( $allow->invoke(null,'mad4b-chatgpt',$numeric), 'Numeric MCP marker must allow explicit catalog' );
