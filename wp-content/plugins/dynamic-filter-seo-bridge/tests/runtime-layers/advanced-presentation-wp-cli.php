@@ -8,6 +8,8 @@ if (!defined('WP_CLI') || !WP_CLI) {
     exit(2);
 }
 $plugin=dirname(__DIR__,2);
+require_once $plugin.'/includes/Presentation/PresentationResolver.php';
+require_once $plugin.'/includes/JetEngine/ListingIntegration.php';
 require_once $plugin.'/includes/Runtime/RuntimeLayers.php';
 require_once $plugin.'/includes/Runtime/AdvancedPresentationRuntime.php';
 
@@ -65,6 +67,18 @@ if($listingHook instanceof \WP_Hook){
 }
 $resolved=DynamicTagRuntime::resolver();
 $context=$resolved?$resolved->context():array();
+$metaReadCalls=0;
+$readProbe=static function($value)use(&$metaReadCalls){$metaReadCalls++;return $value;};
+add_filter('get_term_metadata',$readProbe,999);
+$metaResult='not_tested';
+if($resolved){
+    $method=new \ReflectionMethod($resolved,'termMeta');
+    $metaResult=$method->invoke($resolved,
+        array('terms'=>array('location'=>array('term_id'=>1))),
+        'location','private_auth_token');
+}
+remove_filter('get_term_metadata',$readProbe,999);
+
 remove_filter('query',$watch,999);
 $final=BootGuard::status();
 $checks=array(
@@ -75,6 +89,7 @@ $checks=array(
  'advanced_tag_names_registered'=>count($advancedTags)>=13 && in_array('etg-filter-title',$advancedTags,true) && in_array('etg-filter-image',$advancedTags,true),
  'jetengine_listing_hook_registered'=>$listingRegistered,
  'unapproved_query_sources_disabled'=>$resolved!==null && $resolved->sourceCatalog()===array(),
+ 'direct_term_meta_blocked'=>$metaResult==='' && $metaReadCalls===0,
     'no_unverified_context'=>empty($context['active'])
         ?($resolved->value('title')===''):true,
     'no_seo_hook_changes'=>$before===$after,
