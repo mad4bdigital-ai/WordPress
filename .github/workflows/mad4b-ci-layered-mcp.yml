@@ -190,7 +190,7 @@ jobs:
           {"jsonrpc":"2.0","id":40,"method":"initialize","params":{"protocolVersion":"2025-11-25","clientInfo":{"name":"ci-layer-3","version":"1.0.0"}}}
           {"jsonrpc":"2.0","id":41,"method":"tools/list","params":{}}
           JSONRPC
-          php /tmp/wp-cli.phar --path="$WP_PATH" mcp-adapter serve --server=mad4b-chatgpt --user=mad4b-ci-admin < /tmp/mad4b-ci-layer-rpc.jsonl > /tmp/mad4b-ci-layer-rpc-output.jsonl
+          MAD4B_SCP_MCP_CLI_REQUEST=1 php /tmp/wp-cli.phar --path="$WP_PATH" mcp-adapter serve --server=mad4b-chatgpt --user=mad4b-ci-admin < /tmp/mad4b-ci-layer-rpc.jsonl > /tmp/mad4b-ci-layer-rpc-output.jsonl
           python3 - <<'PY'
           import json
           from pathlib import Path

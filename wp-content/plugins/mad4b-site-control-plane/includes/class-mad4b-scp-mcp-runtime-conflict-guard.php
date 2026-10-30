@@ -112,8 +112,10 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 				// next request pins every certified builder/validator/DTO class before
 				// normal plugins can register competing Jetpack packages.
 				$status['state'] = $mixed ? 'mixed_runtime_class_set' : 'class_set_repair_requested';
-				$status['collision_risk_detected'] = $mixed;
-				$status['runtime_provenance_mismatch'] = $mixed;
+				// During explicitly requested recovery, retain accurate ownership
+				// diagnostics without treating fingerprint differences as blockers.
+				$status['collision_risk_detected'] = $mixed || ( ! empty( $status['runtime_class_loaded'] ) && empty( $status['runtime_from_official_plugin'] ) );
+				$status['runtime_provenance_mismatch'] = $status['collision_risk_detected'] || ! empty( $status['runtime_class_provenance_failure_count'] );
 				$status['blocker'] = '';
 				$status['next_request_required'] = true;
 

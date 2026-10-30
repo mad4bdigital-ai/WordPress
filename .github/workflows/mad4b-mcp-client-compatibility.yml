@@ -275,7 +275,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-tool-inventory-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+          MAD4B_SCP_MCP_CLI_REQUEST=1 php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-tool-inventory-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
       - name: Prove bounded session-safe identity, triage and full reads in live WordPress
         shell: bash
