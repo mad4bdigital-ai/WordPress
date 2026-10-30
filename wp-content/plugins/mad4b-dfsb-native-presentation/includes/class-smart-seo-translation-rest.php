@@ -78,5 +78,43 @@ final class SmartSeoTranslationRest {
   return is_wp_error($record)?$record:rest_ensure_response([
    'record'=>$record,'revision'=>SmartSeoTranslation::revision($record)]);
  }
+ public static function submit(\WP_REST_Request $r) {
+  $old=self::locked($r);if(is_wp_error($old))return $old;
+  if(!in_array($old['status'],['pending_translation','draft','rejected'],true))
+   return new \WP_Error('invalid_state','Task not editable',['status'=>409]);
+  $b=self::input($r);
+  if(!is_string($b['description']??null))
+   return new \WP_Error('description_required','Translation text required',['status'=>400]);
+  $copy=wp_kses_post($b['description']);
+  $plain=trim(wp_strip_all_tags($copy));
+  if(mb_strlen($plain)<100||mb_strlen($plain)>15000)
+   return new \WP_Error('invalid_length','Translation length 100–15000',['status'=>422]);
+  if($old['target_language']==='ar'&&!preg_match('/[\x{0600}-\x{06FF}]/u',$plain))
+   return new \WP_Error('script_invalid','Arabic script required',['status'=>422]);
+  $live=SmartSeoTranslation::inspect($old['taxonomy'],(int)$old['source_id'],$old['target_language']);
+  if(is_wp_error($live))return $live;
+  if($live['source']['description_sha256']!==$old['source_sha256']||
+   $live['target']['description_sha256']!==$old['target_sha256'])
+   return new \WP_Error('content_drift','Source or target changed',['status'=>409]);
+  if(hash('sha256',$plain)===$live['source']['content_sha256'])
+   return new \WP_Error('copied_source','English copy is not a translation',['status'=>422]);
+  $provider=(string)($b['provider']??'manual');
+  if(!in_array($provider,['manual','wpml_ate','custom_provider'],true))
+   return new \WP_Error('invalid_provider','Unknown translation provider',['status'=>422]);
+  $next=$old;$next['candidate']=$copy;$next['provider']=$provider;
+  $next['review']=null;$next['status']='draft';$next['updated_at']=gmdate('c');
+  return self::save($old,$next);
+ }
+ public static function review(\WP_REST_Request $r) {
+  $old=self::locked($r);if(is_wp_error($old))return $old;
+  $b=self::input($r);
+  if($old['status']!=='draft'||!is_bool($b['approved']??null)||!$old['candidate'])
+   return new \WP_Error('review_invalid','Review current draft',['status'=>409]);
+  $next=$old;$next['status']=$b['approved']?'reviewed':'rejected';
+  $next['review']=['approved'=>$b['approved'],
+   'reviewed_by'=>get_current_user_id(),
+   'candidate_sha256'=>hash('sha256',$old['candidate']),'at'=>gmdate('c')];
+  $next['updated_at']=gmdate('c');
+  return self::save($old,$next);
+ }
 }
-
