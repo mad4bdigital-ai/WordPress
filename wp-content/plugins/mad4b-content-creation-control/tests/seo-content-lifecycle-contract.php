@@ -6,6 +6,7 @@
 $dir=dirname(__DIR__);
 $engine=file_get_contents($dir.'/class-mad4b-seo-content-lifecycle.php');
 $ui=file_get_contents($dir.'/class-mad4b-seo-cycle-admin.php');
+$image=file_get_contents($dir.'/class-mad4b-seo-image-lifecycle.php');
 $plugin=file_get_contents($dir.'/mad4b-content-creation-control.php');
 $checks=[
   'plugin version'=>str_contains($plugin,'0.2.5-seo-cycle-staging'),
@@ -39,5 +40,24 @@ $checks=[
   'nonce protected apply'=>str_contains($ui,"check_admin_referer('mad4b_seo_cycle_apply')"),
   'no raw fallback in admin'=>str_contains($ui,'No raw post-meta fallback'),
 ];
+$checks['image plan ability']=str_contains($image,'mad4b/seo-image-plan');
+$checks['image generate ability']=str_contains($image,'mad4b/seo-image-generate');
+$checks['image apply ability']=str_contains($image,'mad4b/seo-image-apply');
+$checks['image verify ability']=str_contains($image,'mad4b/seo-image-verify');
+$checks['rank math native site name variable']=str_contains($engine,'%sitename%');
+$checks['title source wordpress site name']=str_contains($engine,"get_bloginfo('name')");
+$checks['SEO preview resolves token']=str_contains($engine,"str_replace('%sitename%'");
+$checks['image contextual site token']=str_contains($image,'{{site_name}}');
+$checks['context token resolves live site name']=str_contains($image,"get_bloginfo('name')");
+$checks['image requires visual review']=str_contains($image,'visual_confirmation_required');
+$checks['image exact revision']=str_contains($image,'stale_snapshot');
+$checks['image only draft contextual edit']=str_contains($image,'context_requires_draft');
+$checks['media global uses native adapter']=str_contains($image,"wp_get_ability('media/update-metadata')");
+$checks['image no direct global alt write']=!str_contains($image,"update_post_meta( $id, '_wp_attachment_image_alt'");
+$checks['image scoped usage meta']=str_contains($image,'_mad4b_seo_image_usage_v1');
+$checks['render integration explicitly limited']=str_contains($image,'wp_get_attachment_image_attributes');
+$checks['image metadata original preserved']=str_contains($image,'global_media_metadata_changed');
+$checks['image review UI']=str_contains($ui,'Image SEO &amp; Alt Text');
+$checks['image visual approval nonce']=str_contains($ui,"check_admin_referer('mad4b_seo_image_apply')");
 foreach($checks as $name=>$ok)if(!$ok){fwrite(STDERR,"FAIL SEO Lifecycle: $name\n");exit(1);}
 echo 'PASS MAD4B SEO Content Lifecycle source-only contract: '.count($checks).' checks'.PHP_EOL;
