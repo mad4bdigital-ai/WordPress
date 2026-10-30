@@ -626,8 +626,8 @@ def main() -> int:
     for result in plan.get("regression_results", []):
         if not result["passed"]:
             detail = str(result.get("error_tail") or "no error output")
-            detail = re.sub(r"(?i)(authorization:|bearer |token[=:]\\s*|password[=:]\\s*)\\S+", r"\\1[redacted]", detail)
-            detail = detail.replace("\\r", " ").replace("\\x00", "")
+            detail = re.sub(r"(?i)(authorization:\s*|bearer\s+|token[=:]\s*|password[=:]\s*)\S+", r"\1[redacted]", detail)
+            detail = detail.replace("\r", " ").replace("\x00", "")
             print("PREDICTIVE_REGRESSION_FAILURE: " + result["name"] + ": " + detail[-500:], file=sys.stderr)
     plan["ci_regression_coverage_ready"] = not plan["missing_regressions"] and not failed
     if args.output:
