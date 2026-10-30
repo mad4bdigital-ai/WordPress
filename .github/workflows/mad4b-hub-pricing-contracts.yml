@@ -8,6 +8,8 @@ on:
       - 'wp-content/plugins/mad4b-jetengine-hub-addon/includes/class-mad4b-hub-company-pricing.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-hub-jetengine-consumer-governance.php'
       - 'ops/central-company-rest/tests/test-hub-company-pricing-staging.php'
+      - 'ops/central-company-rest/remote/180-mad4b-tourism-nile-source-read.php'
+      - 'ops/central-company-rest/central/180-mad4b-central-nile-reference.php'
       - '.github/workflows/mad4b-hub-pricing-contracts.yml'
   workflow_dispatch:
 
@@ -31,5 +33,7 @@ jobs:
           php -l wp-content/plugins/mad4b-jetengine-hub-addon/includes/class-mad4b-hub-company-pricing.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-hub-jetengine-consumer-governance.php
           php -l ops/central-company-rest/tests/test-hub-company-pricing-staging.php
+          php -l ops/central-company-rest/remote/180-mad4b-tourism-nile-source-read.php
+          php -l ops/central-company-rest/central/180-mad4b-central-nile-reference.php
           test -f wp-content/plugins/mad4b-jetengine-hub-addon/docs/COMPANY-PRICING-RATES-DYNAMIC-GENERATOR.md
           echo 'Hub pricing syntax and contract sources: PASS'
