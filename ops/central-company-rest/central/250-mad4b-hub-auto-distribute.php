@@ -13,7 +13,9 @@ final class MAD4B_Hub_Auto_Distribute_V1 {
     const STATE = 'mad4b_hub_auto_distribute_state_v1';
     const EVENT = 'mad4b_hub_auto_distribute_tick';
     const SOURCE = 'tourism-almallahgroup';
-    const KINDS = ['nile_tour', 'nile_category'];
+    const KINDS = ['tour', 'property', 'transportation', 'nile_tour', 'nile_category'];
+    const MODES = ['import_to_hub', 'reference_only'];
+    const POST_TYPES = ['tours-and-activities', 'properties', 'transportations'];
     const LANGUAGES = ['en', 'ar'];
 
     public static function enabled(): bool {
@@ -29,17 +31,26 @@ final class MAD4B_Hub_Auto_Distribute_V1 {
         return is_array($raw) ? array_merge([
             'enabled'=>false, 'consumers'=>[], 'kinds'=>[], 'languages'=>[],
             'selected_source_ids'=>[], 'auto_include_new'=>false,
+            'source_mode'=>'import_to_hub', 'source_post_types'=>['tours-and-activities'],
         ], $raw) : ['enabled'=>false,'consumers'=>[],'kinds'=>[],'languages'=>[],
-            'selected_source_ids'=>[], 'auto_include_new'=>false];
+            'selected_source_ids'=>[], 'auto_include_new'=>false,
+            'source_mode'=>'import_to_hub', 'source_post_types'=>['tours-and-activities']];
     }
     public static function normalize($input) {
         if (!is_array($input) || array_diff(array_keys($input),
-            ['enabled','consumers','kinds','languages','selected_source_ids','auto_include_new'])) {
+            ['enabled','consumers','kinds','languages','selected_source_ids','auto_include_new','source_mode','source_post_types'])) {
             return self::fail('invalid_settings');
         }
         foreach (['enabled','auto_include_new'] as $bool) {
             if (!is_bool($input[$bool] ?? null)) return self::fail('invalid_boolean');
         }
+        $mode=$input['source_mode']??'import_to_hub';
+        if(!is_string($mode) || !in_array($mode,self::MODES,true))return self::fail('invalid_mode');
+        $types=$input['source_post_types']??['tours-and-activities'];
+        if(!is_array($types) || !$types || array_values($types)!==$types ||
+            count($types)>3 || count($types)!==count(array_unique($types)))return self::fail('invalid_post_types');
+        foreach($types as $type)if(!is_string($type)||!in_array($type,self::POST_TYPES,true))
+            return self::fail('invalid_post_types');
         $known = array_keys(MAD4B_Central_Company_REST_V1::COMPANIES);
         $consumerAllowed = array_values(array_diff($known,[self::SOURCE]));
         $selection = [];
@@ -63,8 +74,9 @@ final class MAD4B_Hub_Auto_Distribute_V1 {
             if (!is_int($id) || $id<=0 || isset($seen[$id])) return self::fail('invalid_source_ids');
             $seen[$id]=true;
         }
-        if ($input['enabled'] && (!$selection['consumers'] || !$selection['kinds'] || !$selection['languages'] ||
-            (!$ids && !$input['auto_include_new']))) {
+        if ($input['enabled'] && (!$selection['kinds'] || !$selection['languages'] ||
+            ($mode==='reference_only' && !$selection['consumers']) ||
+            ($selection['consumers'] && !$ids && !$input['auto_include_new']))) {
             return self::fail('incomplete_enabled_policy');
         }
         return [
@@ -73,7 +85,8 @@ final class MAD4B_Hub_Auto_Distribute_V1 {
             'kinds'=>$selection['kinds'],
             'languages'=>$selection['languages'],
             'selected_source_ids'=>$ids,
-            'auto_include_new'=>$input['auto_include_new']
+            'auto_include_new'=>$input['auto_include_new'],
+            'source_mode'=>$mode,'source_post_types'=>$types
         ];
     }
     public static function configure(WP_REST_Request $request) {
@@ -160,7 +173,14 @@ final class MAD4B_Hub_Auto_Distribute_V1 {
         if (!$policy['enabled'])return self::fail('not_enabled',409);
         $valid=self::normalize($policy);
         if (is_wp_error($valid))return $valid;
-        $items=self::eligible_references($valid);
+        $import=null;
+        if($valid['source_mode']==='import_to_hub') {
+            if(!class_exists('MAD4B_Hub_Source_Import_V1'))return self::fail('importer_unavailable',409);
+            $import=MAD4B_Hub_Source_Import_V1::import(self::SOURCE,$valid['source_post_types']);
+            if(is_wp_error($import))return $import;
+            $items=MAD4B_Hub_Source_Import_V1::active_items(self::SOURCE,
+                $valid['kinds'],$valid['languages'],$valid['selected_source_ids'],$valid['auto_include_new']);
+        } else $items=self::eligible_references($valid);
         if (is_wp_error($items))return $items;
         $digest=hash('sha256',wp_json_encode($items,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
         $success=[];$failures=[];
@@ -181,7 +201,10 @@ final class MAD4B_Hub_Auto_Distribute_V1 {
             'failed_consumer_ids'=>$failures,
             'source_reference_count'=>count($items),
             'snapshot_sha256'=>$digest,
-            'status'=>!$failures?'success':(!empty($success)?'partial':'failed')
+            'status'=>!$failures?($valid['consumers']?'success':'imported_only'):
+                (!empty($success)?'partial':'failed'),
+            'source_mode'=>$valid['source_mode'],
+            'hub_import'=>$import
         ];
         update_option(self::STATE,$state,false);
         return $state;
@@ -226,12 +249,19 @@ final class MAD4B_Hub_Auto_Distribute_V1 {
         $policy=self::settings();
         $state=get_option(self::STATE,[]);
         echo '<div class="wrap"><h1>Content Hub — Auto Distribute</h1>';
-        echo '<p>Distribute private reference previews every 15 minutes. No public publishing, bookings or prices.</p>';
+        echo '<p>Default: pull source content into Content Hub, then optionally distribute private previews every 15 minutes. No public publishing, bookings or prices.</p>';
         echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
         wp_nonce_field('mad4b_hub_auto_save');
         echo '<input type="hidden" name="action" value="mad4b_hub_auto_save">';
         echo '<p><label><input type="checkbox" name="enabled" value="1" '.checked($policy['enabled'],true,false).'> Enable auto distribution</label></p>';
-        echo '<h2>To companies</h2>';
+        echo '<h2>Source → Content Hub</h2><p>Default: import selected published source content into private Content Hub records. Importing does not publish or enable checkout.</p>';
+        echo '<p><label>Ingestion mode <select name="source_mode">';
+        foreach(self::MODES as $mode)echo '<option value="'.esc_attr($mode).'" '.
+            selected($policy['source_mode'],$mode,false).'>'.esc_html($mode==='import_to_hub'?'Import into Content Hub (default)':'Use existing Content Hub references').'</option>';
+        echo '</select></label></p><p>Content types to fetch</p>';
+        foreach(self::POST_TYPES as $type)echo '<label style="margin-right:20px"><input type="checkbox" name="source_post_types[]" value="'.
+            esc_attr($type).'" '.checked(in_array($type,$policy['source_post_types'],true),true,false).'> '.esc_html($type).'</label>';
+        echo '<h2>To companies (optional for import-only)</h2>';
         foreach (MAD4B_Central_Company_REST_V1::COMPANIES as $id=>$company) {
             if($id===self::SOURCE)continue;
             echo '<p><label><input type="checkbox" name="consumers[]" value="'.esc_attr($id).'" '.
@@ -276,7 +306,10 @@ final class MAD4B_Hub_Auto_Distribute_V1 {
             'consumers'=>isset($_POST['consumers'])&&is_array($_POST['consumers'])?array_map('sanitize_key',wp_unslash($_POST['consumers'])):[],
             'kinds'=>isset($_POST['kinds'])&&is_array($_POST['kinds'])?array_map('sanitize_key',wp_unslash($_POST['kinds'])):[],
             'languages'=>isset($_POST['languages'])&&is_array($_POST['languages'])?array_map('sanitize_key',wp_unslash($_POST['languages'])):[],
-            'selected_source_ids'=>$ids
+            'selected_source_ids'=>$ids,
+            'source_mode'=>isset($_POST['source_mode'])?sanitize_key(wp_unslash($_POST['source_mode'])):'import_to_hub',
+            'source_post_types'=>isset($_POST['source_post_types'])&&is_array($_POST['source_post_types'])?
+                array_map('sanitize_key',wp_unslash($_POST['source_post_types'])):['tours-and-activities']
         ];
         $out=self::normalize($input);
         if(is_wp_error($out))self::redirect_screen($out->code);
