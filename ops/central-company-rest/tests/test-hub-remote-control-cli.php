@@ -87,11 +87,19 @@ $GLOBALS['test_options']=array(
   'mad4b_company_central_pk_trust_v1'=>$public,
   'mad4b_central_companies_v1'=>array('tourism-almallahgroup'=>array(
       'connection_state'=>'authenticated_read_only',
-      'last_authenticated_check'=>gmdate('c')
+      'identity_protocol'=>'p256_mutual_signed_v3',
+      'last_authenticated_check'=>gmdate('c'),
+      'p256_last_verified_at'=>gmdate('c')
   ))
 );
 assert_case(MAD4B_Central_Hub_Remote_Control_V1::reference_share_eligible(
     'tourism-almallahgroup')===true,'fresh mutually signed REST grants reference sharing');
+$protocol=$GLOBALS['test_options']['mad4b_central_companies_v1'];
+$protocol['tourism-almallahgroup']['identity_protocol']='legacy_hmac_rest';
+$GLOBALS['test_options']['mad4b_central_companies_v1']=$protocol;
+assert_case(MAD4B_Central_Hub_Remote_Control_V1::reference_share_eligible(
+    'tourism-almallahgroup')===false,'legacy authenticated_read_only is not P256 proof');
+$GLOBALS['test_options']['mad4b_central_companies_v1']['tourism-almallahgroup']['identity_protocol']='p256_mutual_signed_v3';
 assert_case(MAD4B_Central_Hub_Remote_Control_V1::reference_share_eligible(
     'unknown-source')===false,'unregistered company denied');
 $readPlan=array('source_company'=>'tourism-almallahgroup',
@@ -191,5 +199,5 @@ echo json_encode(array('contract'=>'mad4b.hub.remote-control.v1',
         'arbitrary_operations_denied','historical_rates_noncommercial',
         'consumer_and_record_allowlist',
         'delegation_expiration','reference_only_no_checkout'),
-    'negative_cases'=>20,'real_vps_tested'=>false,
+    'negative_cases'=>21,'real_vps_tested'=>false,
     'public_jetengine_feed_enabled'=>false),JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES)."\n";
