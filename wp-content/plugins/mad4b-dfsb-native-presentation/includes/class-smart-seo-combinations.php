@@ -192,6 +192,15 @@ final class SmartSeoCombinations {
         if($count<$required)$blocked[]='not_enough_published_matching_products';
         if($restricted)$blocked[]='nonpublic_taxonomy_requires_company_policy_review';
         if($untranslated)$blocked[]='wpml_term_translation_missing';
+        if($lang!=='en') {
+            $translatedArchive=apply_filters('wpml_permalink',$source['archive_url'],$lang,true);
+            $englishArchive=apply_filters('wpml_permalink',$source['archive_url'],'en',true);
+            // Do not publish a localized canonical while the site has no
+            // distinct localized archive route. Search/preview still works.
+            if(untrailingslashit((string)$translatedArchive)
+                ===untrailingslashit((string)$englishArchive))
+                $blocked[]='localized_archive_url_not_distinct';
+        }
         // Locale review is a separate REST gate, not a permanent selection error.
         if(!$policy['enabled'])$blocked[]='source_policy_disabled';
         foreach($resolved as $x) {
