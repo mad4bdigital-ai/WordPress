@@ -8,6 +8,18 @@ if (!defined('ABSPATH')) { exit; }
  * Refuses when native SEO is enabled or another administrator changed settings.
  */
 final class SmartSeoNativeStore {
+    /** Atomic, byte-exact option CAS. Returns false on concurrent mutation. */
+    public static function compareAndSwapOption(string $key,string $oldRaw,string $newRaw): bool {
+        global $wpdb;
+        $n=$wpdb->query($wpdb->prepare(
+            "UPDATE {$wpdb->options} SET option_value=%s WHERE option_name=%s AND BINARY option_value=BINARY %s",
+            $newRaw,$key,$oldRaw));
+        if ($n!==1) return false;
+        wp_cache_delete($key,'options');
+        wp_cache_delete('alloptions','options');
+        return true;
+    }
+
     public static function appendDisabled(array $rule) {
         global $wpdb;
         $key='jet-smart-filters-settings';
@@ -35,13 +47,9 @@ final class SmartSeoNativeStore {
         $next['seo_sitemap_rules']=$rules;
         $nextRaw=maybe_serialize($next);
         // Byte-exact compare via BINARY. A concurrent settings update makes this fail.
-        $affected=$wpdb->query($wpdb->prepare(
-            "UPDATE {$wpdb->options} SET option_value=%s WHERE option_name=%s AND BINARY option_value=BINARY %s",
-            $nextRaw,$key,$oldRaw));
-        if ($affected!==1)
-            return new \WP_Error('native_settings_conflict','Native settings changed; retry after reviewing current rules',array('status'=>409));
-        wp_cache_delete($key,'options');
-        wp_cache_delete('alloptions','options');
+        if (!self::compareAndSwapOption($key,$oldRaw,$nextRaw))
+            return new \WP_Error('native_settings_conflict',
+                'Native settings changed; retry after reviewing current rules',array('status'=>409));
         if (function_exists('jet_smart_filters')) {
             $jsf=jet_smart_filters();
             $jsf->settings->all_settings=null;
