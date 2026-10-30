@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B JetEngine Hub Add-on
  * Description: Governed native JetEngine REST source mapping, provider discovery, selective query planning and inheritance policy for MAD4B Content Hub.
- * Version: 0.4.0
+ * Version: 0.4.1
  * Requires Plugins: jet-engine, mad4b-site-control-plane
  * Author: NagyE
  * Author URI: https://nagy.essam.website/
@@ -358,5 +358,6 @@ require_once __DIR__ . '/includes/class-mad4b-hub-market-policy.php';
 require_once __DIR__ . '/includes/class-mad4b-hub-language-baseline.php';
 require_once __DIR__ . '/includes/class-mad4b-hub-signed-source-preview.php';
 require_once __DIR__ . '/includes/class-mad4b-hub-discovery-planner.php';
+add_action('plugins_loaded',array('MAD4B_Hub_Language_Baseline','boot'),34);
 add_action('plugins_loaded',array('MAD4B_Hub_Discovery_Planner','boot'),35);
 add_action('plugins_loaded',array('MAD4B_Hub_Signed_Source_Preview','boot'),36);
