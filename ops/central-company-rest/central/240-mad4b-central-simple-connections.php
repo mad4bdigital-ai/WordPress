@@ -172,6 +172,44 @@ final class MAD4B_Central_Simple_Connections_V1 {
         }
         return new WP_REST_Response(['company_id' => $id, 'connected' => false], 200);
     }
+    /**
+     * Fixed-route, credential-safe internal reference delivery.
+     * Only opaque noncommercial reference snapshots; never arbitrary endpoints.
+     */
+    public static function deliver_references($id, array $snapshot) {
+        $company = self::company($id);
+        if (!self::enabled() || !$company || ($snapshot['consumer_company'] ?? '') !== $id ||
+            ($snapshot['contract'] ?? '') !== 'mad4b.hub.private-reference-snapshot.v1' ||
+            ($snapshot['may_publish'] ?? true) !== false || ($snapshot['may_checkout'] ?? true) !== false) {
+            return self::error('mad4b_simple_delivery_invalid', 'Invalid reference delivery.', 400);
+        }
+        $creds = self::unseal(get_option(self::key($id), false));
+        if (!$creds) { return self::error('mad4b_simple_not_connected', 'Connect company first.', 409); }
+        $json = wp_json_encode($snapshot, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        if (!is_string($json) || strlen($json) > 150000) {
+            return self::error('mad4b_simple_delivery_oversize', 'Reference snapshot too large.', 400);
+        }
+        $response = wp_safe_remote_post($company['url'] . '/wp-json/mad4b-company/v1/hub-reference-inbox', [
+            'headers' => [
+                'Authorization' => 'Basic ' . base64_encode($creds['username'] . ':' . $creds['application_password']),
+                'Content-Type' => 'application/json',
+                'Accept' => 'application/json'
+            ],
+            'body' => $json, 'timeout' => 18, 'redirection' => 0,
+            'sslverify' => true, 'reject_unsafe_urls' => true, 'limit_response_size' => 8192
+        ]);
+        if (is_wp_error($response) || wp_remote_retrieve_response_code($response) !== 200) {
+            return self::error('mad4b_simple_delivery_failed', 'Consumer reference inbox rejected delivery.', 502);
+        }
+        $receipt = json_decode(wp_remote_retrieve_body($response), true);
+        if (!is_array($receipt) || ($receipt['contract'] ?? '') !== 'mad4b.hub.private-reference-receipt.v1' ||
+            ($receipt['consumer_company'] ?? '') !== $id ||
+            ($receipt['snapshot_sha256'] ?? '') !== ($snapshot['snapshot_sha256'] ?? '') ||
+            ($receipt['reference_only'] ?? false) !== true) {
+            return self::error('mad4b_simple_receipt_mismatch', 'Consumer delivery confirmation mismatch.', 502);
+        }
+        return $receipt;
+    }
     public static function boot(): void {
         if (!self::enabled()) { return; }
         add_action('rest_api_init', static function() {
