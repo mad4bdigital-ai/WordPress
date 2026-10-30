@@ -42,6 +42,14 @@ $checks['guide_language_independent_of_wpml']=($frGuide['site_language']??'')===
  && ($frGuide['guide_language']['slug']??'')==='french'
  && $frGuide['guide_language']['date_specific_availability_verified']===false;
 $checks['guide_is_in_native_filter_url']=strpos($frGuide['url'],'guide-languages')!==false;
+$arSite=C::inspect($source,$five,'ar');
+$checks['guide_term_translate_independently']=!is_wp_error($arSite)
+ && ($arSite['site_language']??'')==='ar'
+ && ($arSite['guide_language']['slug']??'')==='french'
+ && $arSite['matched_published_count']===4;
+$checks['localized_archive_not_published_without_route']=!is_wp_error($arSite)
+ && in_array('localized_archive_url_not_distinct',$arSite['blockers'],true)
+ && $arSite['index_ready']===false;
 $arabic=C::withGuideLanguage($source,$four,'arabic');
 $noGuide=C::inspect($source,$arabic,'en');
 $checks['arabic_zero_match_blocks_index']=!is_wp_error($noGuide)
