@@ -77,8 +77,21 @@ final class MAD4B_Hub_Source_Sync_Jobs_V1 {
     public static function request($input=[]) {
         if(!self::enabled() || !current_user_can('manage_options'))
             return self::fail('administrator_required',403);
-        if(!is_array($input)||count($input)!==5 ||
-            count(array_intersect(array_keys($input),['company_id','provider_id','dataset_id','transport','request_key']))!==5 ||
+        // SCP adds governed-write authorization fields to native Write
+        // Abilities. Accept only its exact optional envelope, but never treat
+        // the envelope as a grant or store it in the source job.
+        $required=['company_id','provider_id','dataset_id','transport','request_key'];
+        $allowed=array_merge($required,['_mad4b_approval_ticket_id','_mad4b_context_receipt']);
+        if(!is_array($input) || count(array_intersect(array_keys($input),$required))!==5 ||
+            array_diff(array_keys($input),$allowed) ||
+            (isset($input['_mad4b_approval_ticket_id']) &&
+                (!is_string($input['_mad4b_approval_ticket_id']) ||
+                 !preg_match('/^[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-4[A-Fa-f0-9]{3}-[89ABab][A-Fa-f0-9]{3}-[A-Fa-f0-9]{12}$/D',
+                    $input['_mad4b_approval_ticket_id']))) ||
+            (isset($input['_mad4b_context_receipt']) &&
+                (!is_array($input['_mad4b_context_receipt']) ||
+                 count($input['_mad4b_context_receipt'])>64 ||
+                 strlen((string)wp_json_encode($input['_mad4b_context_receipt']))>16384)) ||
             ($input['company_id']??'')!==self::COMPANY ||
             ($input['provider_id']??'')!==self::NAME ||
             ($input['dataset_id']??'')!==self::DATASET ||
