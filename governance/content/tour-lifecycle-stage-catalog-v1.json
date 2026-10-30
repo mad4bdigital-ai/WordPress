@@ -1,0 +1,149 @@
+{
+  "contract": "mad4b.tour-lifecycle-stage-catalog.v1",
+  "authorizing": false,
+  "environment_default": "staging",
+  "source_locale": "en",
+  "ordering": "strict_dependencies_with_selective_replan",
+  "stages": [
+    {
+      "ordinal": 1,
+      "id": "source_discovery",
+      "mode": "research",
+      "gate": "source_rights",
+      "depends_on": [],
+      "state": "not_started",
+      "implemented": false
+    },
+    {
+      "ordinal": 2,
+      "id": "market_competitor_dominating",
+      "mode": "research",
+      "gate": "claim_evidence",
+      "depends_on": [
+        "source_discovery"
+      ],
+      "state": "not_started",
+      "implemented": false
+    },
+    {
+      "ordinal": 3,
+      "id": "content_intelligence",
+      "mode": "research",
+      "gate": "originality_and_factuality",
+      "depends_on": [
+        "market_competitor_dominating"
+      ],
+      "state": "not_started",
+      "implemented": false
+    },
+    {
+      "ordinal": 4,
+      "id": "data_mapping",
+      "mode": "plan",
+      "gate": "provider_schema",
+      "depends_on": [
+        "content_intelligence"
+      ],
+      "state": "not_started",
+      "implemented": false
+    },
+    {
+      "ordinal": 5,
+      "id": "jetengine_woocommerce_fields",
+      "mode": "mutation",
+      "gate": "write_authority",
+      "depends_on": [
+        "data_mapping"
+      ],
+      "state": "not_started",
+      "implemented": false
+    },
+    {
+      "ordinal": 6,
+      "id": "prices_itineraries",
+      "mode": "mutation",
+      "gate": "supplier_commercial",
+      "depends_on": [
+        "jetengine_woocommerce_fields"
+      ],
+      "state": "not_started",
+      "implemented": false
+    },
+    {
+      "ordinal": 7,
+      "id": "wpml",
+      "mode": "mutation",
+      "gate": "locale_mapping",
+      "depends_on": [
+        "prices_itineraries"
+      ],
+      "state": "not_started",
+      "implemented": false
+    },
+    {
+      "ordinal": 8,
+      "id": "media_scraping_importing",
+      "mode": "mutation",
+      "gate": "media_rights",
+      "depends_on": [
+        "wpml"
+      ],
+      "state": "not_started",
+      "implemented": false
+    },
+    {
+      "ordinal": 9,
+      "id": "elementor_qa",
+      "mode": "verification",
+      "gate": "render_and_accessibility",
+      "depends_on": [
+        "media_scraping_importing"
+      ],
+      "state": "not_started",
+      "implemented": false
+    },
+    {
+      "ordinal": 10,
+      "id": "approval",
+      "mode": "approval",
+      "gate": "reviewer_signature",
+      "depends_on": [
+        "elementor_qa"
+      ],
+      "state": "not_started",
+      "implemented": false
+    },
+    {
+      "ordinal": 11,
+      "id": "publication",
+      "mode": "mutation",
+      "gate": "publication_authority",
+      "depends_on": [
+        "approval"
+      ],
+      "state": "not_started",
+      "implemented": false
+    },
+    {
+      "ordinal": 12,
+      "id": "post_publish_monitoring",
+      "mode": "monitoring",
+      "gate": "scheduled_observation",
+      "depends_on": [
+        "publication"
+      ],
+      "state": "not_started",
+      "implemented": false
+    }
+  ],
+  "global_fences": [
+    "exact_tenant_site_environment_binding",
+    "independent_per_stage_approval",
+    "provider_capability_discovery",
+    "source_rights_and_commercial_truth",
+    "bounded_io_and_no_ssrf",
+    "versioned_hash_lineage",
+    "idempotency_and_compensation",
+    "no_implicit_publish"
+  ]
+}
