@@ -22,6 +22,8 @@ trait MAD4B_SCP_Server_Write_Catalog {
                 // Staging-only media permission and the global write kill switch.
                 // Never surface this as an unreviewed direct ChatGPT step-up.
                 'mad4b/attachment-transfer',
+                // Preserve the previously deployed Staging provider refresh Write mount.
+                'mad4b/provider-connection-refresh',
                 'mad4b/native-recovery-start', 'mad4b/native-recovery-cleanup',
                 'mad4b/deployment-binding-setup-apply', 'mad4b/deployment-binding-native-apply',
                 // Exact Staging-native bootstrap was previously visible only
