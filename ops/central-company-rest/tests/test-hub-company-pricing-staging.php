@@ -4,6 +4,11 @@
  * Zero database mutations, no checkout/form/public REST side effects.
  */
 defined('ABSPATH')||exit;
+// Private CCT provider rate reads require actual WordPress administrator
+// authority; WP-CLI root is not an authenticated WordPress user.
+$admin=get_users(array('role'=>'administrator','number'=>1,'fields'=>'ID'));
+if(!$admin)throw new RuntimeException('No Staging administrator for test');
+wp_set_current_user((int)$admin[0]);
 if(!class_exists('MAD4B_Hub_Price_Sources_V1') ||
    !class_exists('MAD4B_Hub_Company_Pricing_V1'))
     throw new RuntimeException('pricing modules unavailable');
