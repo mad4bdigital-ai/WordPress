@@ -222,11 +222,30 @@ final class MAD4B_SCP_Provider_Setup_Coverage {
         }
         return $out;
     }
+    public static function firecrawl_rows() {
+        if ( ! class_exists( 'MAD4B_SCP_Firecrawl_Provider' ) ) return array();
+        $config = MAD4B_SCP_Firecrawl_Provider::config();
+        $mode = ( $config['mode'] ?? '' ) === 'self_hosted' ? 'self_hosted' : 'cloud';
+        $profiles = method_exists( 'MAD4B_SCP_Firecrawl_Provider', 'profiles' ) ? MAD4B_SCP_Firecrawl_Provider::profiles() : array();
+        $active = is_array( $profiles[$mode] ?? null ) ? $profiles[$mode] : array();
+        $credential = !empty( $active['secret_cipher'] ) ? 'encrypted_saved' : 'not_configured';
+        $setup = admin_url( 'admin.php?page=mad4b-provider-connections#mad4b-firecrawl-provider' );
+        $last = get_option( 'mad4b_firecrawl_last_connection_test_v1', array() );
+        $tested = is_array( $last ) && ( $last['mode'] ?? '' ) === $mode && !empty( $last['at'] );
+        $result = $tested ? sanitize_key( (string) ( $last['result'] ?? 'unknown' ) ) : 'network_test_pending';
+        $fields = $mode === 'self_hosted'
+            ? array( 'firecrawl_endpoint', 'firecrawl_username', 'firecrawl_gateway_password' )
+            : array( 'firecrawl_cloud_secret' );
+        return array( self::row( 'research', 'firecrawl', 'Firecrawl ('.( $mode === 'cloud' ? 'Cloud' : 'Self-hosted' ).')',
+            'native_firecrawl_encrypted_site_option', $fields, $credential, $result,
+            $tested && $result === 'reachable' ? 'connection_test_only_not_scrape_certified' : 'scrape_not_certified',
+            $credential === 'not_configured' ? 'configure_firecrawl_credentials' : 'test_firecrawl_connection', $setup ) );
+    }
     public static function inventory() {
         if ( ! current_user_can( 'manage_options' ) )
             return new WP_Error( 'mad4b_provider_setup_admin_required', 'Administrator required.' );
         $rows = array_merge( self::browser_rows(), self::core_ai_rows(),
-            self::search_rows(), self::oauth_rows(), self::auxiliary_rows() );
+            self::search_rows(), self::oauth_rows(), self::auxiliary_rows(), self::firecrawl_rows() );
         return array( 'contract' => self::CONTRACT, 'read_only' => true,
             'authorizing' => false, 'mutation_performed' => false,
             'provider_count' => count( $rows ), 'providers' => $rows,
@@ -237,10 +256,10 @@ final class MAD4B_SCP_Provider_Setup_Coverage {
     }
     private static function diagnostic_link( $row ) {
         $family = (string) ( $row['family'] ?? '' );
-        if ( ! in_array( $family, array( 'search', 'oauth', 'browser_runner', 'browser_native', 'ai', 'growth' ), true ) ) return null;
+        if ( ! in_array( $family, array( 'search', 'oauth', 'browser_runner', 'browser_native', 'ai', 'growth', 'research' ), true ) ) return null;
         $url = (string) ( $row['setup_url'] ?? '' );
         if ( $url === '' || wp_validate_redirect( $url, '' ) === '' ) return null;
-        return array( 'url' => $url, 'label' => $family === 'browser_runner' ? 'Open external runner setup' : 'Open owner diagnostics' );
+        return array( 'url' => $url, 'label' => $family === 'research' ? 'Open Firecrawl connection test' : ( $family === 'browser_runner' ? 'Open external runner setup' : 'Open owner diagnostics' ) );
     }
     public static function render() {
         $data = self::inventory();
