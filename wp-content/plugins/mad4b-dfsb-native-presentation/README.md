@@ -35,3 +35,21 @@ Returns the same `title`, `description`, `language`, `page_kind`, `provider`, `q
 **SEO publisher:** Rank Math is left completely untouched for ordinary pages. On an exact JetSmartFilters SEO Rule page, JetSmartFilters' native Rank Math compatibility owns the SEO output. The adapter never registers `rank_math/frontend/*` callbacks or prints meta/canonical tags. Filtered page indexing remains off unless the operator configures native JetSmartFilters SEO Rules. This Staging site had no configured JSF SEO Rules during initial implementation.
 
 The context API is read-only, not an authorization channel. No private bookings, pricing records, user data, draft products or Content Hub tenant secrets enter the shared projection.
+
+## Dynamic discovery and qualification (v0.3.0)
+
+The old three-filter pilot is a historical snapshot, **not an allowlist**. Run the live read-only discovery pipeline on Staging:
+
+```bash
+wp mad4b jsf discover
+wp mad4b jsf discover --probe
+wp mad4b jsf discover --probe --format=json
+```
+
+The CLI scans all published Elementor templates/pages and their actual JetSmartFilters widgets. It resolves the Elementor SELECT2 filter-id arrays, the real JSF runtime query type/taxonomy/options, exact Provider + Query ID, languages, and inferred CPT archive route. The optional `--probe` fetches only WordPress-generated URLs on the same site and matches rendered `data-content-provider`, `data-query-id`, and `data-filter-id` before promoting a group to a **manual rule review candidate**.
+
+Each group is classified as `candidate_for_manual_rule_review`, `display_only`, `needs_filter_mapping`, `needs_validation`, or `route_blocked` with machine-readable reasons. Candidates may contain *more than three* valid filters: the report suggests up to three based on verified widget usage; an editor still reviews combinations, multilingual titles/descriptions, and actual filtered URL SEO behavior.
+
+A `proposed_rule` is a **proposal, not an active JetSmartFilters rule**. Scan does not write WordPress data, modify Rank Math/JSF options, authorize crawling, create sitemaps or issue certificates. Native JetSmartFilters SEO Rules must remain under the existing provider and WordPress operator controls.
+
+**Scope limits:** CPT archive query IDs with unambiguous mapping only; conditional destination/related/term listings are display-only until a real route is explicitly established. Search, price, availability, dates, hidden taxonomies and draft filters do not become indexable SEO candidates. The HTML probe runs only on explicit CLI invocation. Review the output before turning on one native SEO Rule; do not auto-index all combinations.
