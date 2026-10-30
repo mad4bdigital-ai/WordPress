@@ -9,6 +9,7 @@ final class SmartSeoCombinationRest {
         $p=array(__CLASS__,'authorized');
         $routes=array(
             array('/seo-intelligence/combinations/facets','GET','facets'),
+            array('/seo-intelligence/combinations/guide-languages','GET','guideLanguages'),
             array('/seo-intelligence/combinations/preview','POST','preview'),
             array('/seo-intelligence/combinations','GET','listing'),
             array('/seo-intelligence/combinations','POST','save'),
@@ -51,6 +52,25 @@ final class SmartSeoCombinationRest {
             'unlimited_discovery'=>true,
         ));
     }
+    /** Exposes actual tour guide language choices, distinct from WPML locales. */
+    public static function guideLanguages(\WP_REST_Request $req) {
+        $source=self::source($req->get_params());
+        if(is_wp_error($source)) return $source;
+        return rest_ensure_response(array('source'=>$source['key'],
+            'guide_languages'=>SmartSeoCombinations::guideLanguages($source)));
+    }
+
+    private static function expandedSelections(array $source,array $candidate) {
+        $selections=$candidate['selections']??array();
+        if(!is_array($selections))
+            return new \WP_Error('selections_invalid','Expected selections array',array('status'=>400));
+        if(isset($candidate['guide_language']) && isset($candidate['tour_guide_language']))
+            return new \WP_Error('guide_language_alias_conflict',
+                'Use only one guide language field',array('status'=>422));
+        $guide=$candidate['guide_language']??($candidate['tour_guide_language']??null);
+        return SmartSeoCombinations::withGuideLanguage($source,$selections,$guide);
+    }
+
     public static function preview(\WP_REST_Request $req) {
         $d=self::input($req);
         $source=self::source($d);
@@ -61,8 +81,9 @@ final class SmartSeoCombinationRest {
         $out=array();
         foreach($items as $item) {
             if(!is_array($item))return new \WP_Error('candidate_invalid','Malformed candidate',array('status'=>400));
-            $x=SmartSeoCombinations::inspect($source,
-                (array)($item['selections']??array()),(string)($item['language']??'en'));
+            $expanded=self::expandedSelections($source,$item);
+            $x=is_wp_error($expanded)?$expanded:SmartSeoCombinations::inspect($source,
+                $expanded,(string)($item['language']??'en'));
             $out[]=is_wp_error($x)?array('error'=>$x->get_error_code(),'message'=>$x->get_error_message()):$x;
         }
         return rest_ensure_response(array('source'=>$source['key'],
@@ -75,8 +96,10 @@ final class SmartSeoCombinationRest {
     public static function save(\WP_REST_Request $req) {
         $d=self::input($req);$source=self::source($d);
         if(is_wp_error($source))return $source;
+        $expanded=self::expandedSelections($source,$d);
+        if(is_wp_error($expanded))return $expanded;
         $inspected=SmartSeoCombinations::inspect($source,
-            (array)($d['selections']??array()),(string)($d['language']??'en'));
+            $expanded,(string)($d['language']??'en'));
         if(is_wp_error($inspected))return $inspected;
         $id=$inspected['id'];$existing=SmartSeoCombinations::get($id);
         if(!is_wp_error($existing))return new \WP_Error('combination_exists',
