@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B DFSB Native Presentation
  * Description: Read-only native Elementor and shortcode output from published WordPress context. Does not start DFSB SEO publication.
- * Version: 0.4.1
+ * Version: 0.5.0
  * Requires PHP: 8.1
  * Text Domain: mad4b-dfsb-native-presentation
  */
@@ -12,6 +12,8 @@ if (!defined('ABSPATH')) { exit; }
 
 require_once __DIR__ . '/includes/class-shared-context.php';
 require_once __DIR__ . '/includes/class-dynamic-qualification.php';
+require_once __DIR__ . '/includes/class-smart-seo-policy-registry.php';
+require_once __DIR__ . '/includes/class-smart-seo-native-store.php';
 require_once __DIR__ . '/includes/class-smart-seo-rules.php';
 require_once __DIR__ . '/includes/class-smart-seo-admin-rest.php';
 add_action('rest_api_init',array(__NAMESPACE__.'\\SmartSeoAdminRest','register'));
