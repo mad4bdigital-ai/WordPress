@@ -187,12 +187,13 @@ final class MAD4B_Central_Simple_Connections_V1 {
         }
         $creds=self::unseal(get_option(self::key($id),false));
         if (!$creds)return self::error('mad4b_simple_not_connected','Connect source company first.',409);
-        $url=$company['url'].'/wp-json/mad4b-company/v1/simple-content-feed?post_type='.rawurlencode($type).'&page='.$page;
-        $resp=wp_safe_remote_get($url,[
+        $url=$company['url'].'/wp-json/mad4b-company/v1/simple-content-feed';
+        $resp=wp_safe_remote_post($url,[
             'headers'=>[
                 'Authorization'=>'Basic '.base64_encode($creds['username'].':'.$creds['application_password']),
-                'Accept'=>'application/json',
+                'Accept'=>'application/json', 'Content-Type'=>'application/json',
             ],
+            'body'=>wp_json_encode(['post_type'=>$type,'page'=>$page],JSON_UNESCAPED_SLASHES),
             'timeout'=>18,'redirection'=>0,'sslverify'=>true,
             'reject_unsafe_urls'=>true,'limit_response_size'=>360000,
         ]);
