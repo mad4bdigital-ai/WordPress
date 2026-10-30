@@ -35,8 +35,9 @@ final class MAD4B_SCP_Delegation_Mode {
     public static function mode_for_identity( $identity ) {
         if ( self::INDEPENDENT === self::selected_mode() || ! is_array( $identity ) ) return self::INDEPENDENT;
         // Autonomous agents and Developer identities retain independent NHI.
-        return in_array( $identity['subject_type'] ?? '', array( 'oauth', 'wp_app_password' ), true )
-            ? self::DELEGATED : self::INDEPENDENT;
+        if ( in_array( $identity['subject_type'] ?? '', array( 'oauth', 'wp_app_password' ), true ) )
+            return self::DELEGATED;
+        return self::verified_wordpress_user( $identity ) ? self::DELEGATED : self::INDEPENDENT;
     }
 
     /**
@@ -87,13 +88,90 @@ final class MAD4B_SCP_Delegation_Mode {
     }
 
     /**
+     * Resolve the verified WordPress actor without an Agent Registry enrollment.
+     *
+     * Trust only:
+     *  - a core-validated WordPress login cookie (and REST nonce when relevant),
+     *  - an explicit WP-CLI --user on the authorized server,
+     *  - the existing verified OAuth/App Password -> WP user mapping.
+     *
+     * A user ID set in PHP alone, a REST request without nonce, and an
+     * unauthenticated/independent MCP subject never prove a WP principal.
+     */
+    public static function verified_wordpress_user( $identity = null ) {
+        if ( self::INDEPENDENT === self::selected_mode() ) return null;
+        if ( ! class_exists( 'MAD4B_SCP_Site_Profile' )
+            || ! MAD4B_SCP_Site_Profile::origin_enrolled() ) return null;
+        if ( null === $identity && class_exists( 'MAD4B_SCP_Identity_Context' ) )
+            $identity = MAD4B_SCP_Identity_Context::current();
+        if ( ! is_array( $identity ) ) return null;
+        $id = get_current_user_id();
+        if ( $id < 1 ) return null;
+        $user = get_userdata( $id );
+        if ( ! $user || ! user_can( $user, 'read' ) ) return null;
+
+        $type = (string) ( $identity['subject_type'] ?? '' );
+        if ( in_array( $type, array( 'oauth', 'wp_app_password' ), true ) )
+            return self::authenticated_user( $identity );
+        // Never reinterpret an authenticated independent Agent or a forged
+        // subject field as a native WP session.
+        if ( ! empty( $identity['authenticated'] ) || '' !== $type ) return null;
+
+        if ( defined( 'WP_CLI' ) && true === WP_CLI
+            && class_exists( 'WP_CLI' )
+            && ( ! defined( 'REST_REQUEST' ) || ! REST_REQUEST ) ) {
+            $selected = (string) WP_CLI::get_config( 'user' );
+            if ( '' === $selected ) return null;
+            if ( ctype_digit( $selected ) && (int) $selected === (int) $id ) return $user;
+            $by_login = get_user_by( 'login', $selected );
+            return $by_login && (int) $by_login->ID === (int) $id ? $user : null;
+        }
+
+        // WordPress itself validates the signed auth cookie and session.
+        // Setting wp_set_current_user() is not authentication.
+        if ( ! function_exists( 'wp_validate_auth_cookie' )
+            || (int) wp_validate_auth_cookie( '', 'logged_in' ) !== (int) $id ) return null;
+        if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+            $nonce = isset( $_SERVER['HTTP_X_WP_NONCE'] ) && is_string( $_SERVER['HTTP_X_WP_NONCE'] )
+                ? $_SERVER['HTTP_X_WP_NONCE'] : '';
+            if ( ! function_exists( 'wp_verify_nonce' ) || ! wp_verify_nonce( $nonce, 'wp_rest' ) )
+                return null;
+        }
+        return $user;
+    }
+
+    /**
+     * First-party WordPress abilities that already enforce their own native
+     * capability, schema, target, and provider constraints. This whitelist
+     * excludes raw SQL, host commands, filesystem editing, secrets, release
+     * control and breakglass operations.
+     */
+    public static function native_write_abilities() {
+        return array(
+            'mad4b/content-job-create',
+            'mad4b/content-job-transition',
+            'mad4b/content-job-cancel',
+            'mad4b/control-research-to-hub',
+            'mad4b/control-workflow-resume',
+            'mad4b/control-workflow-baseline',
+            'mad4b/hub-canonical-release',
+            'mad4b/hub-executor-configure',
+            'mad4b/hub-executor-select',
+            'mad4b/hub-executor-dispatch',
+            'mad4b/hub-executor-submit-keywords',
+            'mad4b/hub-jetengine-consumer-configure',
+            'mad4b/hub-jetengine-consumer-activate',
+        );
+    }
+
+    /**
      * An NHI agent referenced by the same OAuth subject must not silently act
      * on behalf of a DIFFERENT WordPress user in default delegation mode.
      * Unbound/foreign agents can still use the explicit independent NHI mode.
      */
     public static function agent_matches_user( $identity, $agent ) {
         if ( self::INDEPENDENT === self::mode_for_identity( $identity ) ) return true;
-        $user = self::authenticated_user( $identity );
+        $user = self::verified_wordpress_user( $identity );
         return $user && is_array( $agent )
             && (int) ( $agent['wp_user_id'] ?? 0 ) === (int) $user->ID;
     }
@@ -247,11 +325,69 @@ final class MAD4B_SCP_Delegation_Mode {
      */
     public static function authorize_ability( $identity, $ability_name, $input ) {
         if ( self::INDEPENDENT === self::mode_for_identity( $identity ) ) return true;
-        $user = self::authenticated_user( $identity );
+        $user = self::verified_wordpress_user( $identity );
         if ( ! $user ) return new WP_Error( 'mad4b_delegation_identity_unverified',
             'An authenticated, enrolled WordPress user must be verified for the delegated MCP request.' );
         $ability_name = (string) $ability_name;
         $input = is_array( $input ) ? $input : array();
+
+        if ( in_array( $ability_name,
+            array( 'mad4b/content-create-post', 'mad4b/taxonomy-create-term',
+                'mad4b/taxonomy-set-object-terms' ), true ) ) {
+            if ( ! user_can( $user, 'manage_options' ) )
+                return new WP_Error( 'mad4b_adapter_wp_admin_denied', 'WordPress administrator permission required.' );
+            if ( 'mad4b/content-create-post' === $ability_name ) {
+                $type = sanitize_key( (string) ( $input['post_type'] ?? '' ) );
+                $post_type = $type ? get_post_type_object( $type ) : null;
+                $status = sanitize_key( (string) ( $input['post_status'] ?? 'draft' ) );
+                if ( ! $post_type || ! in_array( $status, array( 'draft', 'pending' ), true )
+                    || ! user_can( $user, $post_type->cap->create_posts ?? $post_type->cap->edit_posts )
+                    || ( isset( $input['post_author'] ) && (int) $input['post_author'] !== (int) $user->ID ) )
+                    return new WP_Error( 'mad4b_adapter_native_draft_denied', 'Only authorized WordPress draft creation is supported.' );
+            } elseif ( 'mad4b/taxonomy-create-term' === $ability_name ) {
+                $tax = get_taxonomy( sanitize_key( (string) ( $input['taxonomy'] ?? '' ) ) );
+                if ( ! $tax || ! user_can( $user, $tax->cap->manage_terms ) )
+                    return new WP_Error( 'mad4b_adapter_native_tax_denied', 'WordPress taxonomy management denied.' );
+            } else {
+                $id = absint( $input['object_id'] ?? 0 );
+                $tax = get_taxonomy( sanitize_key( (string) ( $input['taxonomy'] ?? '' ) ) );
+                if ( ! $id || ! $tax || ! user_can( $user, 'edit_post', $id )
+                    || ! user_can( $user, $tax->cap->assign_terms ) )
+                    return new WP_Error( 'mad4b_adapter_native_assign_denied', 'WordPress taxonomy assignment denied.' );
+            }
+            return true;
+        }
+
+        // ContentJob is a site/brand-scoped WordPress aggregate: its writer,
+        // immutable event log, CAS transition and audit remain authoritative.
+        // A real WP administrator with edit_posts needs no NHI alias.
+        if ( in_array( $ability_name, array(
+            'mad4b/content-job-create',
+            'mad4b/content-job-transition',
+            'mad4b/content-job-cancel',
+        ), true ) ) {
+            return user_can( $user, 'edit_posts' ) && user_can( $user, 'manage_options' )
+                ? true : new WP_Error( 'mad4b_delegation_content_job_cap_denied',
+                    'The authenticated WordPress user lacks ContentJob capability.' );
+        }
+
+        if ( in_array( $ability_name, array( 'mad4b/control-research-to-hub', 'mad4b/control-workflow-resume', 'mad4b/control-workflow-baseline', 'mad4b/hub-canonical-release', 'mad4b/hub-executor-configure', 'mad4b/hub-executor-select', 'mad4b/hub-executor-dispatch', 'mad4b/hub-executor-submit-keywords' ), true ) ) {
+            return user_can( $user, 'manage_options' ) && user_can( $user, 'edit_posts' )
+                && class_exists( 'MAD4B_Content_Hub' ) && MAD4B_Content_Hub::permission()
+                ? true : new WP_Error( 'mad4b_control_hub_wordpress_cap_denied',
+                    'Only a verified central WordPress administrator may launch Hub ingestion.' );
+        }
+
+        if ( in_array( $ability_name, array(
+            'mad4b/hub-jetengine-consumer-configure',
+            'mad4b/hub-jetengine-consumer-activate',
+        ), true ) ) {
+            return user_can( $user, 'manage_options' )
+                && class_exists( 'MAD4B_Hub_JetEngine_Consumer_Runtime' )
+                && MAD4B_Hub_JetEngine_Consumer_Runtime::operator()
+                ? true : new WP_Error( 'mad4b_hub_jetengine_wordpress_cap_denied',
+                    'Only the verified central WordPress administrator can manage JetEngine Consumers.' );
+        }
 
         if ( 'mad4b/content-apply-bundle' === $ability_name ) {
             $type = isset( $input['post_type'] ) ? sanitize_key( $input['post_type'] ) : '';
@@ -322,10 +458,26 @@ final class MAD4B_SCP_Delegation_Mode {
         } elseif ( false !== strpos( $ability_name, 'media-upload' ) ) {
             $cap = 'upload_files';
         } else {
-            // Unmapped sensitive/custom operations remain available under the
-            // explicitly selected independent-NHI mode, not inherited by guess.
-            return new WP_Error( 'mad4b_delegation_ability_unmapped',
-                'This ability has no reviewed WordPress capability mapping. Select independent NHI or certify a mapping.' );
+            // Default WordPress-user inheritance applies to every REGISTERED
+            // MAD4B Ability, including host, SQL, developer and deployments.
+            // The original Ability, environment gates and provider runtime
+            // retain their own execution checks; this is principal selection,
+            // not a grant to execute arbitrary system commands.
+            if ( 0 !== strpos( $ability_name, 'mad4b/' )
+                || ! function_exists( 'wp_get_ability' ) || ! wp_get_ability( $ability_name ) )
+                return new WP_Error( 'mad4b_delegation_ability_unregistered',
+                    'WordPress principal inheritance requires a registered MAD4B Ability.' );
+            $cap = 'manage_options';
+            if ( false !== strpos( $ability_name, 'breakglass-shell' )
+                || false !== strpos( $ability_name, 'developer-breakglass-' ) )
+                if ( ! MAD4B_SCP_Policy::can_developer_breakglass() )
+                    return new WP_Error( 'mad4b_delegation_developer_gate_denied',
+                        'Developer breakglass runtime is not enabled for this WordPress site.' );
+            if ( false !== strpos( $ability_name, 'sql-breakglass' )
+                || false !== strpos( $ability_name, 'raw-sql' ) )
+                if ( ! MAD4B_SCP_Policy::can_breakglass() )
+                    return new WP_Error( 'mad4b_delegation_sql_gate_denied',
+                        'Raw SQL runtime gate is not enabled for this WordPress site.' );
         }
         return user_can( $user, $cap ) ? true
             : new WP_Error( 'mad4b_delegation_capability_denied', 'Delegating user lacks the necessary WordPress capability.' );

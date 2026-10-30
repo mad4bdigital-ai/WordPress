@@ -1,6 +1,7 @@
 <?php
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once __DIR__ . '/../class-mad4b-scp-mutation-principal.php';
 
 if ( ! class_exists( 'MAD4B_SCP_Provider_Compatibility_Certification' ) ) {
 	require_once dirname( __DIR__ ) . '/class-mad4b-scp-provider-compatibility-certification.php';
@@ -132,8 +133,8 @@ abstract class MAD4B_SCP_Adapter_Base {
 			// Direct, explicitly write-scoped OAuth content draft requests can
 			// enroll a user-owned execution actor. The existing compact ChatGPT
 			// read-scope path must instead use the signed prepared dispatcher.
-			if ( 'mad4b/content-apply-bundle' === $ability_name
-				&& class_exists( 'MAD4B_SCP_Delegation_Mode' )
+            if ( ! $native_draft && 'mad4b/content-apply-bundle' === $ability_name
+                && class_exists( 'MAD4B_SCP_Delegation_Mode' )
 				&& class_exists( 'MAD4B_SCP_Identity_Context' ) ) {
 				$subject = MAD4B_SCP_Identity_Context::current();
 				if ( is_array( $subject )
@@ -161,6 +162,26 @@ abstract class MAD4B_SCP_Adapter_Base {
 				}
 				if ( is_wp_error( $provider_guard ) || true !== $provider_guard ) return $provider_guard;
 			}
+            // Verified WordPress user inherits native reversible adapter
+            // capability after provider certification. The journal verifies
+            // actor binding and undoes only the original user's mutation.
+            if ( class_exists( 'MAD4B_SCP_Mutation_Principal' )
+                && in_array( $ability_name,
+                    MAD4B_SCP_Mutation_Principal::allowed_native_abilities(), true )
+                && class_exists( 'MAD4B_SCP_Identity_Context' )
+                && class_exists( 'MAD4B_SCP_Delegation_Mode' ) ) {
+                $who = MAD4B_SCP_Identity_Context::current();
+                if ( is_array( $who ) &&
+                    MAD4B_SCP_Delegation_Mode::verified_wordpress_user( $who ) ) {
+                    $cap = MAD4B_SCP_Delegation_Mode::authorize_ability(
+                        $who, $ability_name, is_array( $input ) ? $input : array() );
+                    if ( is_wp_error( $cap ) || true !== $cap ) return $cap;
+                    if ( ! MAD4B_SCP_Mutation_Principal::schema_ready() )
+                        return new WP_Error( 'mad4b_native_journal_migration_pending',
+                            'Typed mutation journal migration is not ready.' );
+                    return true;
+                }
+            }
 			// Native content draft work is an already-authorized local operator
 			// action, not a remote agent operation. Provider certification and
 			// the bundle's own exact-input, journal and rollback guards still run.
