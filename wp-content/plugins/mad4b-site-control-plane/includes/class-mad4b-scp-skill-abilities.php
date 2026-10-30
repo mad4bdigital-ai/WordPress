@@ -7,6 +7,9 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * Authoring remains a local wp-admin operation behind explicit environment
  * gates and is deliberately not exposed as a ChatGPT mutation tool.
  */
+require_once __DIR__ . '/class-external-skill-sources.php';
+require_once __DIR__ . '/class-skill-task-composition.php';
+
 final class MAD4B_SCP_Skill_Abilities {
 	const SNAPSHOT_ANCHOR_PREFIX = 'MAD4B-SNAPSHOT-ANCHOR';
 	const DYNAMIC_SNAPSHOT_CONTRACT = 'mad4b.external-snapshot-dynamic-attestation.v1';
@@ -30,6 +33,42 @@ final class MAD4B_SCP_Skill_Abilities {
 
 	public static function register_abilities() {
 		if ( ! function_exists( 'wp_register_ability' ) ) return;
+
+        // Read-only task routing and external Skill discovery. No install,
+        // execution, untrusted instruction authority or governed write surface.
+        $task_schema = array(
+            'type' => 'object',
+            'properties' => array(
+                'task' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 4000 ),
+                'task_context' => array( 'type' => 'string', 'maxLength' => 4000 ),
+                'topics' => array( 'type' => 'array', 'maxItems' => 12, 'items' => array( 'type' => 'string', 'maxLength' => 80 ) ),
+                'source_ids' => array( 'type' => 'array', 'maxItems' => 40, 'items' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{24}$' ) ),
+                'source_offset' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 40 ),
+                'max_results' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 12 ),
+            ),
+            'required' => array( 'task' ),
+            'additionalProperties' => false,
+        );
+        self::add( 'mad4b/skill-match-task', 'Match Skills to Task', $task_schema, array( 'SCP_Skill_Task_Composition', 'match_task' ) );
+        self::add( 'mad4b/skill-composition-plan', 'Plan Skill Composition', $task_schema, array( 'SCP_Skill_Task_Composition', 'composition_plan' ) );
+        $source_id = array( 'type' => 'string', 'pattern' => '^[a-f0-9]{24}$', 'maxLength' => 24 );
+        $skill_path = array( 'type' => 'string', 'maxLength' => 300 );
+        $blob_sha = array( 'type' => 'string', 'pattern' => '^[a-f0-9]{40}$', 'maxLength' => 40 );
+        self::add( 'mad4b/skill-sources-list', 'List Configured Skill Sources',
+            array( 'type' => 'object', 'properties' => array(), 'required' => array(), 'additionalProperties' => false ),
+            array( 'SCP_External_Skill_Sources', 'list_sources' ) );
+        self::add( 'mad4b/skill-source-skills', 'List Skills from Exact Reviewed Source',
+            array( 'type' => 'object', 'properties' => array( 'source_id' => $source_id ),
+                'required' => array( 'source_id' ), 'additionalProperties' => false ),
+            array( 'SCP_External_Skill_Sources', 'list_skills' ) );
+        self::add( 'mad4b/skill-source-get', 'Read Exact External Skill',
+            array( 'type' => 'object', 'properties' => array( 'source_id' => $source_id, 'path' => $skill_path, 'blob_sha' => $blob_sha ),
+                'required' => array( 'source_id', 'path', 'blob_sha' ), 'additionalProperties' => false ),
+            array( 'SCP_External_Skill_Sources', 'get_skill' ) );
+        self::add( 'mad4b/skill-source-resource', 'Read Exact External Skill Resource',
+            array( 'type' => 'object', 'properties' => array( 'source_id' => $source_id, 'skill_path' => $skill_path, 'path' => $skill_path, 'blob_sha' => $blob_sha ),
+                'required' => array( 'source_id', 'skill_path', 'path', 'blob_sha' ), 'additionalProperties' => false ),
+            array( 'SCP_External_Skill_Sources', 'get_resource' ) );
 
 		self::add(
 			'mad4b/skills-list',
