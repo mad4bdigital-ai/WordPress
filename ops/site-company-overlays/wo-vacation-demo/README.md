@@ -44,3 +44,40 @@ The 2026-10-29 discovered policy evidence is SHA-pinned and stays on
 Staging VPS. `TENANT_FIELD` / `TENANT_MEDIA` values must be provisioned
 for the new company, `RECONNECT_PROVIDER` requires new owner consent, and
 unknown fields default to `BLOCK_REVIEW`; do not replace them wholesale.
+
+## Site Profile rotation / authoritative binding (2026-10-30)
+
+A fresh read-only profile verification resolved the current Staging Site UUID
+to `e5e64bca-ed62-48d2-b2b3-dff693cd702a` (revision 8), with exact
+domain/environment/deployment binding and no profile blockers. The former
+observed UUID `4ef86619-35a5-4690-aa3e-6f298994965e` must not be used
+for authorization, source-to-tenant mappings or publication. No site profile
+change is made by this PR; checks read the live profile and block stale IDs.
+
+## Runtime-free company provisioning source gate
+
+`company-clone-gate.php` is a **pure, isolated dry-run planner**, not a hook
+in the live provisioning service. It pins the existing 56 JetEngine field
+classifications and the approved field-policy census hash. Unknown fields,
+changed policy maps, foreign/stale Site UUIDs, production targets, or attempts
+to submit old company field values are blocked. It emits *field source
+decisions*, never source data, media bytes, credentials or an apply permit.
+Source policies are validated at the exact known Staging site. Future
+integration into the actual provisioning path requires a separately reviewed
+service adapter and per-company acceptance tests.
+
+Run tests using a locally installed PHP CLI or the Staging PHP container:
+`php ops/site-company-overlays/wo-vacation-demo/test-company-clone-gate.php`.
+
+## Homepage attachment provenance check
+
+The CLI-only `audit-homepage-media.php` reads explicitly supplied attachment
+IDs from a verified Staging WordPress instance, verifies environment,
+database/domain and the latest authoritative Site UUID, and writes no database
+rows. The summary in `media-provenance-review.json` is a **review queue**,
+not an assertion that visible images are unlicensed. Five home-page images
+still contain the previous brand in attachment title and alt text; zero
+rights-related **attachment meta keys** were found on those five assets.
+Other rights storage was not certified by this check, so no new usage rights
+are inferred. The full read-only evidence stays locally on the VPS and
+must not be mistaken for user authorization to relabel, remove or republish.
