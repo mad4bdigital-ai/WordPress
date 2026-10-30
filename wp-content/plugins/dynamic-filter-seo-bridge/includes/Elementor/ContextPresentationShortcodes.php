@@ -15,7 +15,7 @@ final class ContextPresentationShortcodes {
         add_shortcode('dfsb_context_image',array($this,'image'));
     }
     public function image($attrs=array()): string {
-        if(\DynamicFilterSEOBridge\Runtime\BootGuard::shouldHold() || is_admin() || wp_doing_ajax())return '';
+        if(!\DynamicFilterSEOBridge\Runtime\RuntimeLayers::canPresent() || is_admin() || wp_doing_ajax())return '';
         $ctx=$this->content();
         $media=ContextValueResolver::image($ctx);
         if(empty($media['url']))return '';
@@ -29,7 +29,7 @@ final class ContextPresentationShortcodes {
     }
     /** Shared value contract with Elementor Dynamic Tag and REST previews. */
     public function value($attrs=array()): string {
-        if(\DynamicFilterSEOBridge\Runtime\BootGuard::shouldHold() || wp_doing_ajax())return '';
+        if(!\DynamicFilterSEOBridge\Runtime\RuntimeLayers::canPresent() || wp_doing_ajax())return '';
         $attrs=shortcode_atts(array('field'=>'title'),is_array($attrs)?$attrs:array(),'dfsb_context_value');
         $field=sanitize_key((string)$attrs['field']);
         $text=ContextValueResolver::value($this->content(),$field);
@@ -39,7 +39,7 @@ final class ContextPresentationShortcodes {
         return PageContextResolver::fromQuery();
     }
     public function heading($attrs=array()): string {
-        if(is_admin()||wp_doing_ajax()||\DynamicFilterSEOBridge\Runtime\BootGuard::shouldHold())return '';
+        if(is_admin()||wp_doing_ajax()||!\DynamicFilterSEOBridge\Runtime\RuntimeLayers::canPresent())return '';
         $ctx=$this->content();
         $slots=PresentationSlotPolicy::forContext($ctx);
         if($slots['placement']!=='after_listing')return '';
@@ -49,7 +49,7 @@ final class ContextPresentationShortcodes {
         return '<h2 class="dfsb-context-heading">'.esc_html($title).'</h2>';
     }
     public function editorial($attrs=array()): string {
-        if(is_admin()||wp_doing_ajax()||\DynamicFilterSEOBridge\Runtime\BootGuard::shouldHold())return '';
+        if(is_admin()||wp_doing_ajax()||!\DynamicFilterSEOBridge\Runtime\RuntimeLayers::canPresent())return '';
         $ctx=$this->content();
         $slots=PresentationSlotPolicy::forContext($ctx);
         if($slots['placement']!=='after_listing')return '';

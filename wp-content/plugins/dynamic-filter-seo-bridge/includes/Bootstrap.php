@@ -105,7 +105,7 @@ final class Bootstrap {
 
         // Opt-in generic Elementor Shortcode Widget slots. These do not
         // install/modify any template or publish SEO while Safe Boot is held.
-        add_action('init',array(new \DynamicFilterSEOBridge\Elementor\ContextPresentationShortcodes(),'register'),23);
+        // Standalone read-only layer already registered native shortcodes.
 
         $mediaRegistry=new MediaDiscoveryRegistry();
         $gallery=new GalleryComposer();
