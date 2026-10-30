@@ -11561,6 +11561,29 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Reuse source-integrity, MCP/REST permission, WordPress security, and fail-closed controls, without expanding tools or granting mutations.",
       "review_rationale": "Exact-source review: Company User Lifecycle still denies suspended users via login and application password guards. The previous universal rest_authentication_errors callback conflicted with Control Plane REST route isolation and WPML. The request-local rest_pre_dispatch guard checks current suspension before any endpoint callback and preserves previous errors; hermetic positive, negative and restored-user cases execute in CI. No suspension removal, privilege grant, or Production authorization is inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "29dbd111d2a0957ed61d9aadc3efcb81d19ff390",
+      "control_ids": [
+        "PLATFORM-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "MCP-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/main-bootstrap-staging-boundary-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/request-serving-zero-touch-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py"
+      ],
+      "owner_role": "Repository exact-source reviewer — CI evidence only; independent production release authority not conferred",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Current bootstrap adds conditional company, sender, readiness, AI, MCP and Site Lifecycle modules under preexisting access/zero-touch rules; reuse existing Platform, Security, MCP, Admin and source-integrity controls with executable Staging boundary and zero-touch regressions.",
+      "review_rationale": "Reviewed the exact current Git blob against baseline changes: 68 added and 7 removed lines in central plugin bootstrap, version rc.118. A hermetic source-bound test checks exactly fourteen Staging Company includes, three conditional Readiness includes and boots, two conditional Sender includes, passive WP-CLI early return, and unchanged read-only JetEngine and Adaptive UI bootstrap; negative mutations of these gates are rejected. Existing request-serving zero-touch contract passes. This review does not attest provider execution, Production isolation via live browser, consent, deployment readiness, Release Verdict, or external OAuth."
     }
   ],
   "code_change_rules": {

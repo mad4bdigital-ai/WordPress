@@ -66,6 +66,13 @@ require(".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
         "dynamic-mcp-hybrid-runtime.php", "version_compare(PHP_VERSION, \"8.5.11\", \"<\")",
         "php: ['7.4', '8.3', '8.4', '8.5']")
 
+# Executable companion to the current, non-authorizing main bootstrap
+# review. Reject staging module activation drift even when a hash is reviewed.
+subprocess.run(
+    ["python3", str(ROOT / "tests/main-bootstrap-staging-boundary-contract.py")],
+    check=True, timeout=20,
+)
+
 registry = json.loads((ROOT / "config/cross-plugin-sources.json").read_text(encoding="utf-8"))
 etg = next((x for x in registry.get("sources", []) if x.get("id") == "etg-dynamic-filter-seo-bridge"), None)
 if not etg or etg.get("package_certification") != "pending" or etg.get("artifact_sha256"):
