@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B DFSB Native Presentation
  * Description: Read-only native Elementor and shortcode output from published WordPress context. Does not start DFSB SEO publication.
- * Version: 0.2.0
+ * Version: 0.3.0
  * Requires PHP: 8.1
  * Text Domain: mad4b-dfsb-native-presentation
  */
@@ -11,6 +11,28 @@ namespace MAD4B\DFSB\NativePresentation;
 if (!defined('ABSPATH')) { exit; }
 
 require_once __DIR__ . '/includes/class-shared-context.php';
+if (defined('WP_CLI') && WP_CLI && class_exists('WP_CLI')) {
+    // Discovery runs on explicit CLI request; never on public page load.
+    require_once __DIR__ . '/includes/class-dynamic-qualification.php';
+    \WP_CLI::add_command('mad4b jsf discover',static function($args,$flags): void {
+        $probe=isset($flags['probe']);
+        $report=DynamicQualification::scan($probe);
+        if (($flags['format']??'')==='json') {
+            \WP_CLI::line(wp_json_encode($report,
+                JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
+            return;
+        }
+        \WP_CLI::log('Groups: '.$report['groups_discovered'].
+            ' | Templates: '.$report['templates_scanned'].
+            ' | JSF SEO rules: '.$report['native_jsf_rules_count']);
+        foreach ($report['groups'] as $group) {
+            \WP_CLI::log($group['status'].' '.$group['provider'].'/'.
+                $group['query_id'].' | filters='.
+                implode(',',$group['suggested_max_three_filter_ids']));
+        }
+        \WP_CLI::success('Read-only qualification. No rule or indexability changed.');
+    });
+}
 add_filter('jet-engine/listings/macros-list',array(__NAMESPACE__.'\\SharedContext','jetMacros'),25);
 add_action('init',array(__NAMESPACE__.'\\SharedContext','register'),85);
 
