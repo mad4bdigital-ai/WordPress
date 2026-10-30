@@ -1,0 +1,37 @@
+{
+  "contract": "mad4b.company-overlay.demo-identity.v1",
+  "scope": {
+    "kind": "test_only",
+    "environment": "staging",
+    "site_origin": "https://tours.dev.mad4b.com",
+    "site_uuid": "4ef86619-35a5-4690-aa3e-6f298994965e"
+  },
+  "company": {
+    "display_name": "Wo Vacation",
+    "brand_slug": "wo-vacation",
+    "site_description": "Journeys to imagine. Places to discover. | Wo Vacation Demo",
+    "is_demo": true,
+    "is_legal_business_profile": false,
+    "real_brand_site_connection": "not_authorized_by_this_overlay",
+    "brand_logo_source": "unset",
+    "brand_favicon_source": "unset",
+    "contact_email": "unset",
+    "contact_phone": "unset",
+    "whatsapp": "unset",
+    "social_accounts": "unset"
+  },
+  "language": {
+    "source_of_truth": "en",
+    "translations": "per-site WPML; do not copy language term IDs between websites"
+  },
+  "provenance": {
+    "source": "read-only WordPress and public homepage readback on 2026-10-29",
+    "previous_company_assets_are_not_wo_vacation_assets": true,
+    "no_implicit_import_from_all_royal_egypt_or_egypt_tour_gates": true
+  },
+  "release": {
+    "publish_demo_only": true,
+    "do_not_turn_demo_rates_reviews_into_real_offers": true,
+    "do_not_change_production": true
+  }
+}

@@ -1,0 +1,159 @@
+{
+  "contract": "mad4b.company-overlay.field-source-governance.v1",
+  "shared_core": {
+    "must_not_embed_brand": "Wo Vacation",
+    "sources": [
+      "MAD4B shared source libraries",
+      "Commerce staging runtime and general capabilities"
+    ],
+    "clone_rule": "reuse code only; do not copy site instance secrets/options/media ownership"
+  },
+  "per_company_fields": [
+    {
+      "name": "site_name",
+      "authority": "WordPress get_option(blogname)",
+      "expected": "Wo Vacation",
+      "clone_scope": "company"
+    },
+    {
+      "name": "site_tagline",
+      "authority": "WordPress get_option(blogdescription)",
+      "clone_scope": "company"
+    },
+    {
+      "name": "elementor_site_identity",
+      "authority": "Elementor active kit _elementor_page_settings site_name/site_description",
+      "kit_id_on_this_site": 60050,
+      "clone_scope": "company"
+    },
+    {
+      "name": "elementor_brand_media",
+      "authority": "Elementor active kit site_logo/site_favicon",
+      "clone_scope": "company",
+      "state": "empty / placeholder, not safe to reuse former company logo"
+    },
+    {
+      "name": "rank_math_organization",
+      "authority": "WordPress option rank-math-options-titles knowledgegraph_name/website_name",
+      "expected": "Wo Vacation",
+      "clone_scope": "company"
+    },
+    {
+      "name": "wpml_language_config",
+      "authority": "WordPress option icl_sitepress_settings",
+      "clone_scope": "company",
+      "translate_source": "en"
+    },
+    {
+      "name": "jetengine_options_pages",
+      "authority": "JetEngine site options and individual options page groups",
+      "clone_scope": "company",
+      "state": "require per-page discovery of post/settings/option keys before generic copy"
+    },
+    {
+      "name": "woo_store_identity",
+      "authority": "WooCommerce site-specific settings",
+      "clone_scope": "company",
+      "state": "must never clone billing addresses, tax identities or contact values"
+    },
+    {
+      "name": "marketing_contacts",
+      "authority": "Company option fields + page templates",
+      "clone_scope": "company",
+      "state": "unset until verified; never fill fake email, phone, WhatsApp, social media"
+    },
+    {
+      "name": "media_provenance",
+      "authority": "WordPress attachment meta and content references",
+      "clone_scope": "company",
+      "state": "legacy sources present; preservation of origin and rights required"
+    },
+    {
+      "name": "site_security_and_owner",
+      "authority": "MAD4B SCP Site Profile and independent authority registry",
+      "clone_scope": "site",
+      "state": "site UUID not reusable; no cross-tenant grants"
+    }
+  ],
+  "carryover_rules": {
+    "allowed": "template structure, styling, shared commercial logic, safe demo data with verified attribution",
+    "blocked": "old-company brand, customer/order databases, real tokens, media with unverified rights, company SEO/contact metadata",
+    "on_conflict": "prefer WordPress authoritative Site Profile and per-company option values; block cross-site substitution",
+    "real_domain": "wovacation.com must not be silently bound or overwritten by demo domain"
+  },
+  "jetengine_options_contract": {
+    "source": "Staging source-backed census 2026-10-29, no field values",
+    "source_sha256": "b6c79f53443d599c6d9b57c94fbb4a7d1e656d445f3e91877150376450938a0e",
+    "policy": "default_deny_unclassified",
+    "pages": {
+      "contact-and-help-info": {
+        "field_count": 17,
+        "field_policy": {
+          "support_group_url": "TENANT_FIELD",
+          "support_chat_url": "RECONNECT_PROVIDER",
+          "support_group_url_aria_label": "SHARED_DEFINITION",
+          "card-as-action1": "BLOCK_REVIEW",
+          "trip_advisor_review_shortcode": "RECONNECT_PROVIDER",
+          "site_icon_512x512": "TENANT_MEDIA",
+          "site_icon_280x100_site_header": "TENANT_MEDIA",
+          "site_whatsapp_num": "TENANT_FIELD",
+          "site_wa_tel_link": "TENANT_FIELD",
+          "site_email": "TENANT_FIELD",
+          "site_email_link": "TENANT_FIELD",
+          "site_location_address": "TENANT_FIELD",
+          "site_location_address_link": "TENANT_FIELD",
+          "social_links_tab": "SHARED_DEFINITION",
+          "social_links": "TENANT_FIELD",
+          "site_facebook_page_link": "RECONNECT_PROVIDER",
+          "site_instagram_page_link": "RECONNECT_PROVIDER"
+        }
+      },
+      "look-and-feel": {
+        "field_count": 39,
+        "field_policy": {
+          "home_page_header_image": "TENANT_MEDIA",
+          "tour_search_header_image": "TENANT_MEDIA",
+          "continents_archive_header_image": "TENANT_MEDIA",
+          "countries_archive_header_image": "TENANT_MEDIA",
+          "cities_archive_header_image": "TENANT_MEDIA",
+          "location_archive_header_image": "TENANT_MEDIA",
+          "attraction_archive_header_image": "TENANT_MEDIA",
+          "tours_archive_header_image": "TENANT_MEDIA",
+          "properties_archive_header_image": "TENANT_MEDIA",
+          "units_archive_header_image": "TENANT_MEDIA",
+          "transportations_archive_header_image": "TENANT_MEDIA",
+          "transportations_companies_archive_header_image": "TENANT_MEDIA",
+          "dmcs_archive_header_image": "TENANT_MEDIA",
+          "drivers_archive_header_image": "TENANT_MEDIA",
+          "jops_archive_header_image": "TENANT_MEDIA",
+          "guides_archive_header_image": "TENANT_MEDIA",
+          "busness_reviews_section_tab": "SHARED_DEFINITION",
+          "busness_reviews_section": "TENANT_FIELD",
+          "review_hero_image": "TENANT_MEDIA",
+          "company_about_customization": "TENANT_MEDIA",
+          "review_gellery_slider": "TENANT_MEDIA",
+          "destination_next_trip_heading": "SHARED_DEFINITION",
+          "destination_next_trip_subheading": "SHARED_DEFINITION",
+          "destination_stays_heading": "SHARED_DEFINITION",
+          "destination_transport_heading": "SHARED_DEFINITION",
+          "destination_tours_heading": "SHARED_DEFINITION",
+          "destination_quote_cta_label": "SHARED_DEFINITION",
+          "destination_services_note": "SHARED_DEFINITION",
+          "destination_no_results_label": "SHARED_DEFINITION",
+          "destination_road_heading": "SHARED_DEFINITION",
+          "destination_rail_heading": "SHARED_DEFINITION",
+          "destination_air_heading": "SHARED_DEFINITION",
+          "company_pattern_preset": "TENANT_FIELD",
+          "company_pattern_accent": "TENANT_FIELD",
+          "company_pattern_strength": "TENANT_FIELD",
+          "company_pattern_media": "TENANT_MEDIA",
+          "company_pattern_mobile": "TENANT_FIELD",
+          "destination_activity_card_primary": "SHARED_DEFINITION",
+          "destination_activity_card_alternate": "SHARED_DEFINITION"
+        }
+      }
+    },
+    "safe_clone": "share approved definitions only; all tenant fields and media remain per-company",
+    "current_wo_vacation_readback": "no copied contacts, social accounts, media rights or provider tokens authorized"
+  }
+}
