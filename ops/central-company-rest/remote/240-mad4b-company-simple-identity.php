@@ -34,10 +34,10 @@ final class MAD4B_Company_Simple_Identity_V1 {
         }
         return ['company_id' => self::HOSTS[$host], 'canonical_host' => $host, 'canonical_url' => 'https://' . $host];
     }
-    public static function permission($request) {
+    public static function authorized_for($request, $method, $route) {
         $site = self::identity_for_host();
         if (!$site || !($request instanceof WP_REST_Request) ||
-            $request->get_method() !== 'GET' || $request->get_route() !== self::ROUTE) {
+            $request->get_method() !== $method || $request->get_route() !== $route) {
             return new WP_Error('mad4b_simple_invalid_site', 'Connection unavailable.', ['status' => 403]);
         }
         $service_user_id = (int) get_option(self::USER_OPTION, 0);
@@ -47,6 +47,9 @@ final class MAD4B_Company_Simple_Identity_V1 {
             return new WP_Error('mad4b_simple_auth_required', 'Application Password access required.', ['status' => 403]);
         }
         return true;
+    }
+    public static function permission($request) {
+        return self::authorized_for($request, 'GET', self::ROUTE);
     }
     public static function identity() {
         $site = self::identity_for_host();
