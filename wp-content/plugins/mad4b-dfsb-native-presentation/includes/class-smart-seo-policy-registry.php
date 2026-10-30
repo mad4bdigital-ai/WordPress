@@ -88,7 +88,7 @@ final class SmartSeoPolicyRegistry {
 
     /** Strict config validation; rejects unknown keys instead of silently widening policy. */
     public static function validate($input) {
-        if (!is_array($input) || array_diff(array_keys($input),array('contract','global','sources')))
+        if (!is_array($input) || (isset($input['contract']) && $input['contract']!==self::CONTRACT) || array_diff(array_keys($input),array('contract','global','sources')))
             return new \WP_Error('policy_invalid_root','Only global and sources keys are accepted',array('status'=>400));
         $known=self::defaults()['global'];
         $rawGlobal=$input['global']??array();
