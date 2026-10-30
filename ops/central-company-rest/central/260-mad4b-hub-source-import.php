@@ -391,8 +391,25 @@ final class MAD4B_Hub_Source_Import_V1 {
             foreach($incoming as $key=>$row) {
                 $id=$existing[$key]??0;
                 $itemHash=hash('sha256',wp_json_encode($row,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
-                if($id && get_post_meta($id,'_mad4b_hub_import_item_hash',true)===$itemHash)
+                if($id && get_post_meta($id,'_mad4b_hub_import_item_hash',true)===$itemHash) {
+                    // Adopt existing 827 private source records into the provider
+                    // namespace without rewriting their unchanged rich content.
+                    $missingProvider=get_post_meta($id,'_mad4b_hub_import_provider_key',true)==='';
+                    $missingDataset=get_post_meta($id,'_mad4b_hub_import_dataset_key',true)==='';
+                    if($missingProvider||$missingDataset) {
+                        $touched[]=$id;
+                        foreach([
+                            '_mad4b_hub_import_provider_key'=>'tourism_wp',
+                            '_mad4b_hub_import_dataset_key'=>'tourism_main',
+                        ] as $field=>$value) {
+                            if(get_post_meta($id,$field,true)===$value)continue;
+                            $ok=update_post_meta($id,$field,$value);
+                            if($ok===false && get_post_meta($id,$field,true)!==$value)
+                                throw new RuntimeException('legacy_provenance_adoption_failed');
+                        }
+                    }
                     continue;
+                }
                 $data=[
                     'post_type'=>self::CPT,'post_status'=>'private',
                     'post_title'=>$row['title'],'post_content'=>$row['body'],
