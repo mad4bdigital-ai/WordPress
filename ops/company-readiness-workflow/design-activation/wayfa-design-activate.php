@@ -22,6 +22,25 @@ if(DB_NAME!=='wayfatours_production'||wp_get_environment_type()!=='production'||
 $originalBrand='~(?:woo[\s_-]*vacation|wovacation|all[\s_-]*royal[\s_-]*egypt|allroyalegypt|egypt[\s_-]*tour[\s_-]*gates|egypttourgates|dona[\s_-]*tours|donatours|\bETG\b)~i';
 $sourceHost='tours.dev.mad4b.com';
 $srcMap=$manifest['templates'];
+$compat=(string)($manifest['config_mode']??'strict');
+if(!in_array($compat,array('strict','schema-auto'),true))WP_CLI::error('INVALID_COMPATIBILITY_MODE');
+if($compat==='schema-auto'){
+    $att=$manifest['schema_attestation']??null;
+    if(!is_array($att)||($att['contract']??'')!=='mad4b.company-config-compatibility.v1'||
+       ($att['state']??'')!=='SCHEMA_PARITY_CONFIRMED'||
+       !is_array($att['target']['tables']??null))WP_CLI::error('SCHEMA_PARITY_PROOF_MISSING');
+    foreach(array('jet_post_types'=>307,'jet_taxonomies'=>34) as $name=>$count){
+        $table=$wpdb->prefix.$name;
+        $actual=$wpdb->get_results("SELECT * FROM {$table} ORDER BY id",ARRAY_A);
+        $expected=$att['target']['tables'][$name]??null;
+        if(!is_array($expected)||count($actual)!==$count ||
+           ($expected['count']??-1)!==$count ||
+           ($expected['sha256']??'')!==hash('sha256',wp_json_encode($actual)))
+           WP_CLI::error('ACTUAL_TENANT_SCHEMA_DRIFT_'.$name);
+    }
+    foreach(array('jet-engine','elementor','elementor-pro','jet-smart-filters') as $provider)
+        if(empty($att['target']['providers'][$provider]))WP_CLI::error('MISSING_PROVIDER_'.$provider);
+}
 $targetAccount=(string)get_permalink((int)get_option('woocommerce_myaccount_page_id'));
 $accountCanRemap=($targetAccount==='https://wayfatours.mad4b.com/my-account/' && get_post_status((int)get_option('woocommerce_myaccount_page_id'))==='publish');
 $linksRewritten=0;
@@ -61,13 +80,18 @@ foreach($data as $row){
  if(!isset($srcMap[(string)$id]))continue;
  $source=$srcMap[(string)$id];$block=array();$localLink=0;$localBrand=0;
  if($source['status']!=='publish'||$row['post_status']!=='draft')$block[]='not_published_source_draft_target';
- if(!in_array($row['template_type'],array('section','container'),true))$block[]='requires_theme_or_special_activation';
+ $allowedKinds=$compat==='schema-auto'?
+     array('section','container','popup','archive','single-page','single-post','page','jet-listing-items','header'):
+     array('section','container');
+ if(!in_array($row['template_type'],$allowedKinds,true))$block[]='requires_theme_or_special_activation';
  if($row['template_type']!==$source['kind'])$block[]='template_type_changed';
  if($row['language']!==$source['lang'])$block[]='missing_or_mismatched_wpml_language';
  if(!$accountCanRemap)$block[]='account_target_not_verified';
- if($row['conditions']!=='' && $row['conditions']!=='a:0:{}')$block[]='has_display_conditions';
+ if($row['conditions']!=='' && $row['conditions']!=='a:0:{}')$block[]='needs_scoped_theme_condition_resolver';
  if(preg_match($originalBrand,(string)$row['post_name']))$block[]='old_brand_slug';
- if(preg_match('~(?:book(?:ing)?|check.?out|cart|payment|order|rate|pricing|price|reservation)~i',$row['post_title']))$block[]='commerce_template_needs_separate_acceptance';
+ if($compat!=='schema-auto' &&
+    preg_match('~(?:book(?:ing)?|check.?out|cart|payment|order|rate|pricing|price|reservation)~i',$row['post_title']))
+     $block[]='commerce_template_needs_separate_acceptance';
  $media=maybe_unserialize($row['media_refs']);
  if(is_array($media)&&count(array_filter($media)))$block[]='unmapped_media_ids';
  $v=json_decode((string)$row['elementor_data'],true);
@@ -98,14 +122,16 @@ foreach($data as $row){
  }
  if(isset($widgetTypes['fluent-form-widget'])||isset($widgetTypes['uael-social-share']))
      $block[]='missing_qualified_widget_provider_or_form';
- if(isset($dynamicKinds['jet-option']))
+ if(isset($dynamicKinds['jet-option']) && $compat!=='schema-auto')
      $block[]='company_option_binding_not_resolved';
- if(!empty($source['commercial_risk']))
+ if(!empty($source['commercial_risk']) && $compat!=='schema-auto')
      $block[]='commercial_family_requires_rate_admission';
  if(preg_match($originalBrand,$next.' '.$row['post_content']))$block[]='unresolved_source_brand';
  if(stripos($next.' '.$row['post_content'],$sourceHost)!==false)$block[]='unresolved_source_host';
  if(preg_match('~(?:/wp-content/uploads/|wp-image-[0-9]+|[\"\\\\]image[\"\\\\]\s*:\s*\{)~i',$next.' '.$row['post_content']))$block[]='unmapped_media_asset';
- if(preg_match('~(?:query[_-]?id|listing[_-]?id|template[_-]?id|shortcode|dynamic-tags|\[fluentform|\[elementor-template)~i',$next.' '.$row['post_content']))$block[]='query_shortcode_or_dynamic_dependency';
+ if($compat!=='schema-auto' &&
+    preg_match('~(?:query[_-]?id|listing[_-]?id|template[_-]?id|shortcode|dynamic-tags|\[fluentform|\[elementor-template)~i',$next.' '.$row['post_content']))
+       $block[]='query_shortcode_or_dynamic_dependency';
  if(preg_match($originalBrand,$nextTitle))$nextTitle=$brandReplace($nextTitle);
  if(preg_match($originalBrand,$nextTitle))$block[]='unresolved_source_title';
  if(stripos($nextTitle,$sourceHost)!==false)$block[]='source_title_hostname';
@@ -133,7 +159,7 @@ $summary=array('contract'=>'mad4b.wayfatours-design-activation-plan.v1',
  'eligible_ids'=>array_keys($eligible),
  'brand_replacements'=>array_sum(array_column($public,'brand_replacements')),
  'link_replacements'=>array_sum(array_column($public,'link_replacements')),
- 'plan_sha256'=>$planHash,'kit_preserved'=>4,'media_copied'=>false,
+ 'plan_sha256'=>$planHash,'kit_preserved'=>4,'compatibility_mode'=>$compat,'media_copied'=>false,
  'automatic_theme_conditions_activated'=>false,'production_mutated'=>false);
 if($act==='plan'){
  echo wp_json_encode($summary,JSON_UNESCAPED_SLASHES).PHP_EOL;return;
