@@ -35,6 +35,7 @@ function wp_safe_remote_post($url,$args) {
     return is_wp_error($result) ? ['status'=>403,'body'=>'{}'] :
         ['status'=>$result->status,'body'=>json_encode($result->data)];
 }
+require __DIR__.'/test-simple-connections.php';
 class HubBodyRequest extends WP_REST_Request {
     private $raw;
     public function __construct($company, $params, $method, $route, $raw) {
@@ -43,7 +44,7 @@ class HubBodyRequest extends WP_REST_Request {
     public function get_body() { return $this->raw; }
     public function get_param($name) { return $this->params[$name]??null; }
 }
-require __DIR__.'/test-simple-connections.php';
+
 $GLOBALS['site_url']='https://tours.dev.mad4b.com';
 $GLOBALS['user_id']=1;
 require dirname(__DIR__).'/central/250-mad4b-hub-auto-distribute.php';
