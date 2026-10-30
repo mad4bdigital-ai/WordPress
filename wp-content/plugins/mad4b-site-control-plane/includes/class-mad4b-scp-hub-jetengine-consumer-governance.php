@@ -45,6 +45,11 @@ final class MAD4B_SCP_Hub_JetEngine_Consumer_Governance {
             'discovery_selection_contract'=>'mad4b.hub.capability-selection.v1',
             'market_policy_contract'=>'mad4b.hub.market-policy.v1',
             'market_scope_required_for_distribution'=>true,
+            'language_baseline_supported'=>class_exists('MAD4B_Hub_Language_Baseline'),
+            'language_baseline_opt_in'=>true,
+            'language_runtime_authority_filter'=>'mad4b_scp_hub_consumer_language_authority',
+            'content_release_authority_filter'=>'mad4b_scp_hub_consumer_content_release_authority',
+            'signed_source_read_does_not_authorize_publication'=>true,
             'market_source_proof_server_filter'=>'mad4b_scp_hub_consumer_market_authority',
             'inheritance_policy'=>'deny_wins_without_self_attested_source_grants',
             'assisted_mapping_mode'=>'deterministic_advisory_no_llm_no_auto_apply',
@@ -254,8 +259,18 @@ final class MAD4B_SCP_Hub_JetEngine_Consumer_Governance {
         }
         $sourceVerified = apply_filters('mad4b_scp_hub_consumer_signed_authority', false, $plan);
         $bindingVerified = apply_filters('mad4b_scp_hub_consumer_native_binding_authority', false, $plan);
-        $marketVerified = apply_filters('mad4b_scp_hub_consumer_market_authority', false, $plan, $scoped);
-        if ($sourceVerified !== true || $bindingVerified !== true || $marketVerified !== true) {
+        // Language-only scopes inherit visibility from both WPML sites.
+        // Unlike a licensed market, they do NOT self-authorize distribution.
+        $languageOnly=($scoped['market_scope_kind']??'')==='language_only';
+        $marketVerified=$languageOnly
+            ? apply_filters('mad4b_scp_hub_consumer_language_authority', false, $plan, $scoped)
+            : apply_filters('mad4b_scp_hub_consumer_market_authority', false, $plan, $scoped);
+        // Source signed READ permission is not the source's publication grant:
+        // the existing Tourism connector explicitly emits may_publish=false.
+        $contentReleased=apply_filters(
+            'mad4b_scp_hub_consumer_content_release_authority', false, $plan, $scoped);
+        if ($sourceVerified !== true || $bindingVerified !== true ||
+            $marketVerified !== true || $contentReleased !== true) {
             return self::denial('server_proof_missing');
         }
         // The runtime grant lasts only for this PHP request and exact company/path.
