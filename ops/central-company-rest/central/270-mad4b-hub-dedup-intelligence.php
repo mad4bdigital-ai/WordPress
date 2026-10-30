@@ -63,7 +63,7 @@ final class MAD4B_Hub_Dedup_Intelligence_V1 {
         $type=$scope['source_type']??'';
         if(!is_string($company)||!is_string($type)||
            ($company!==''&&!preg_match('/^[a-z0-9-]{3,70}$/D',$company)) ||
-           ($type!==''&&!in_array($type,['tours-and-activities','properties','transportations'],true)))
+           ($type!==''&&!preg_match('/^[a-z0-9_-]{1,55}$/D',$type)))
             return self::error('invalid_scope');
         if($company!=='' && class_exists('MAD4B_Central_Company_REST_V1') &&
            !array_key_exists($company,MAD4B_Central_Company_REST_V1::COMPANIES))
