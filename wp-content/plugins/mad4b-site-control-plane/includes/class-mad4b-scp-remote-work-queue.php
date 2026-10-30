@@ -463,6 +463,15 @@ final class MAD4B_SCP_Remote_Work_Queue {
 				if ( ! in_array( $current, array( 'not_entered', 'provider_entered' ), true ) ) return new WP_Error( 'mad4b_remote_work_provider_checkpoint_regression', 'Provider checkpoint cannot move backward.' );
 				if ( 0 === strpos( (string) ( $job['operation_id'] ?? '' ), 'assistant_' )
 					&& ! self::assistant_job_binding_matches( $job ) ) return self::assistant_binding_error();
+				// Source-level execution fence: an enqueued company plan is not
+				// authorization to mutate a tenant. Uncertified stages cannot enter.
+				if ( 'company.stage.execute' === (string) ( $job['operation_id'] ?? '' )
+					&& ( ! class_exists( 'MAD4B_SCP_Company_Provisioning_Work_Operations', false )
+						|| ! MAD4B_SCP_Company_Provisioning_Work_Operations::provider_entry_allowed( $job ) ) ) {
+					return new WP_Error( 'mad4b_company_provider_entry_denied',
+						'Exact company executor and stage authorization are missing.',
+						array( 'provider_entry_allowed'=>false, 'blind_retry_allowed'=>false ) );
+				}
 				$job['provider_checkpoint'] = 'provider_entered';
 				$job['provider_entry_at'] = '' !== (string) $job['provider_entry_at'] ? (string) $job['provider_entry_at'] : gmdate( 'c' );
 				$job['provider_side_effect_possible'] = true;
