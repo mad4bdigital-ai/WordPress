@@ -11,6 +11,7 @@ final class MAD4B_SCP_External_Media_Ingest {
     const KEY_META = '_mad4b_import_source_key';
     const URL_META = '_mad4b_import_source_url';
     const HASH_META = '_mad4b_import_file_sha256';
+    const OPERATOR_META = '_mad4b_media_operator_responsibility_v1';
     private static function fail( $code, $message ) { return new WP_Error( $code, $message ); }
     public static function url_allowed( $url ) {
         if ( ! is_string( $url ) || strlen( $url ) > 2048 ) return false;
