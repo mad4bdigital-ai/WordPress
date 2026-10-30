@@ -69,7 +69,9 @@ The Source read identity endpoint uses **POST only** (not GET), because LiteSpee
 To rerun manually on the authorized primary VPS as root:
 
 ```bash
-bash /opt/mad4b/operations/content-hub/cross-ssh/run-tourism-cross-ssh.sh
+bash /opt/mad4b/operations/content-hub/cross-ssh/run-tourism-source-fallback.sh --status
+# Governed sync only when explicitly invoked by authorized VPS root operator:
+bash /opt/mad4b/operations/content-hub/cross-ssh/run-tourism-source-fallback.sh --run --request-key <unique-idempotency-key>
 ```
 
 Rollback: keep the source unchanged; leave automation disabled; restore backed-up central 250/260 MU adapters if needed. The 827 private posts remain accessible for inspection; to revert records, use the pre-import scoped backup (35 old records and Hub options) retained under `/opt/mad4b-company-release-prep/20261030/tourism-cross-ssh-release/backup-state/`. Do not delete anything automatically. Further dynamic tenant/provider discovery and per-company private distribution require their own receiver registration and run policy.
@@ -78,7 +80,7 @@ Rollback: keep the source unchanged; leave automation disabled; restore backed-u
 
 **Operational source of truth**: the Tourism read-only exporter lives under the central `tours.dev.mad4b.com` Staging runtime on the MAD4B VPS, at `/opt/hostinger-migrations/hosting-3/etg-commerce-staging/runtime/source-providers/tourism/source-export.php` (root-owned, 0600; not web-served). The VPS host runner streams these source bytes over the pinned SSH connection via `wp --path=<Tourism root> --skip-themes eval-file -`. Tourism only provides its WordPress data and API runtime; there is **no requirement to install or update an exporter PHP script on the source**. The historical source-side exporter file is no longer used by the updated runner.
 
-**Safe verification**: `bash /opt/mad4b/operations/content-hub/cross-ssh/run-tourism-cross-ssh.sh --verify-only` runs export and contract/count checks, without any Content Hub import. Explicit `--import` (or the legacy no-argument mode) runs the existing private Staging receiver, subject to its own policy and data safeguards. No automatic scheduler is enabled.
+**Safe verification**: `bash /opt/mad4b/operations/content-hub/cross-ssh/run-tourism-cross-ssh.sh --verify-only` runs export and contract/count checks, without any Content Hub import. Direct `--import` and no-argument invocation are now intentionally refused; only `--run-queued` may mutate private Hub records after a registered Job is queued. No automatic scheduler is enabled.
 
 **Approval policy**: one recorded owner decision for the **exact proposed code version/HEAD** is sufficient for release or PR merge. GitHub serves only as version history and review audit. There is no independent release certificate, extra signing ceremony or third-party certification gate imposed by this integration. Runtime requirements still include correct authorized company, scoped credentials, SSH host-key verification, data validation, no implicit publishing and passing tests. The owner's general preference for single-owner attestation does not itself approve a specific HEAD or trigger deployment to Production.
 
@@ -99,3 +101,23 @@ Central Staging operational code and data live on `https://tours.dev.mad4b.com/`
 **Outstanding**: confirm an authenticated **remote MCP client** with the correct NHI/OAuth actor and one-time scoped approval successfully executes the now-mounted Write Ability. Separately validate real authenticated remote REST operation (current successful POST was in-process with an administrator WordPress context). Expand provider identity keys and source schema to more than Tourism. Hotel identity remains unresolved for 30/30 review pairs. Per-field canonical entity materialization, cross-company distribution and rollback drills are not enabled.
 
 **Approvals**: exact-version owner approval only. No additional release certificates, signatures or approval ceremonies are introduced. WordPress capability checks, source identity, SSH pinning, write atomicity and review holds remain mandatory runtime safeguards.
+
+## Default governed fallback: External Control MCP → VPS Local WP-CLI — 2026-10-30
+
+**Default policy is `external_first_vps_wpcli_fallback`, Staging-only, installed at central `tours.dev.mad4b.com`.** This is a transport fallback for an already-authorized operator initiating a specific Company source-sync task; it does **not** turn an anonymous or remotely denied operation into an approved local write. A visible external, verified OAuth client remains the preferred Control MCP route. When ChatGPT OAuth client binding is genuinely unbound, the default recovery route is the root-owned VPS WP-CLI dispatcher.
+
+- WordPress central MU file: `277-mad4b-hub-source-local-fallback.php`. Read-only native Ability: `mad4b/hub-source-fallback-status`. Default is enabled **only** on the exact enrolled Staging site; opt-out is available via WordPress option `mad4b_hub_source_local_fallback_enabled_v1=false`. `--status` does not write.
+- Host dispatcher: `/opt/mad4b/operations/content-hub/cross-ssh/run-tourism-source-fallback.sh` (root:root, 0700). Modes: `--status` (default), `--dry-run`, and **explicit** `--run [--request-key KEY]`. A stable request key prevents a retry from creating or importing a second Job. No Cron, no polling, no silent job creation, no stored OAuth impersonation.
+- Enforced boundaries: root operator of pinned VPS; exact central URL/environment `tours.dev.mad4b.com/staging`; one **enrolled WordPress administrator** in WP-CLI; registered `tourism-almallahgroup/tourism_wp/tourism_main` with `wp_cli_cross_ssh`; source mode `import_to_hub`; zero commercial consumers; Auto Distribute and Auto-Merge off; no active Job; no arbitrary host, company, CPT, credentials, or remote URL. Fallback triggers only on `external_client_unbound`, **never** on remote MCP authorization denial/401/403.
+- Prequeue audit: bounded WordPress option `mad4b_hub_source_fallback_decisions_v1` records UTC, actor WP user ID, source scope, reason, request key and safe outcome. A failed audit write prevents queue creation. Job and provider execution ledger separately record the import and SHA256 receipts. Root-owned scripts reject duplicate concurrent invocations with `flock`; unmatched retries do not enable publishing.
+- Hardening: `run-tourism-cross-ssh.sh` no longer accepts unchecked `--import` **or zero-argument import**. Its only modes are `--verify-only` (source read, no Hub write) and `--run-queued` (claim exact persisted Job, import and commit verified receipt). SSH known-host pinning and private export files remain unchanged.
+- Operational commands (on authorized VPS only):
+  ```bash
+  bash /opt/mad4b/operations/content-hub/cross-ssh/run-tourism-source-fallback.sh --status
+  bash /opt/mad4b/operations/content-hub/cross-ssh/run-tourism-source-fallback.sh --dry-run
+  bash /opt/mad4b/operations/content-hub/cross-ssh/run-tourism-source-fallback.sh --run --request-key vps-fallback-operation-001
+  ```
+- **Live acceptance:** a single intended request `vps-default-fallback-e2e-20261030` created Job `26effd9f-caf9-4cad-a509-98343f2850eb`, completed via the pinned source SSH reader. 827 published source records → 827 private Hub records; `created=0`, `updated=0`, `unchanged=827`. Provider ledger went from 6 to 7; active jobs zero. Full 827-record pre/post snapshot comparison (post titles/bodies/excerpts/status and all metadata) found **zero differences**. A same-key replay reported `FALLBACK_JOB_ALREADY_COMPLETED_NO_REIMPORT` and did not append a ledger entry. A concurrent invocation was rejected by the host file lock. No Production mutation.
+- Tests: `test-hub-source-local-fallback.php` (21 assertions), source sync lifecycle (26), import (68), provider registry (18), Field Fusion (12), Dedup (23), native Write mount (6). The Hub CI workflow lints the host scripts and runs PHP 7.4 / 8.3 tests. Backups and snapshot evidence are stored root-only on the VPS under `/opt/mad4b-company-release-prep/20261030/tourism-cross-ssh-release/default-local-fallback/`.
+
+**Security distinction:** this default fallback covers **local administrative source-sync transport only**. It is NOT an authentication fallback for remote ChatGPT requests. An external ChatGPT OAuth/NHI identity and SCP Write grant still need a real verified connection; no owner certificate or additional release attestation is imposed beyond owner version approval.
