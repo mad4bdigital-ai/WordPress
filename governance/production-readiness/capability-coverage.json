@@ -11584,6 +11584,50 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Current bootstrap adds conditional company, sender, readiness, AI, MCP and Site Lifecycle modules under preexisting access/zero-touch rules; reuse existing Platform, Security, MCP, Admin and source-integrity controls with executable Staging boundary and zero-touch regressions.",
       "review_rationale": "Reviewed the exact current Git blob against baseline changes: 68 added and 7 removed lines in central plugin bootstrap, version rc.118. A hermetic source-bound test checks exactly fourteen Staging Company includes, three conditional Readiness includes and boots, two conditional Sender includes, passive WP-CLI early return, and unchanged read-only JetEngine and Adaptive UI bootstrap; negative mutations of these gates are rejected. Existing request-serving zero-touch contract passes. This review does not attest provider execution, Production isolation via live browser, consent, deployment readiness, Release Verdict, or external OAuth."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php",
+      "source_blob_sha": "1f077eb90420f689ad895682bd21265099e89d4a",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-adapter-remote-grant-source-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/remote-operation-parity-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py"
+      ],
+      "owner_role": "Independent CI-only exact-source reviewer; no owner release consent or Production mutation authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP read admission, exact staging grant, immutable source scope and provider-bound authorization controls apply; no new executor class or privilege is introduced.",
+      "review_rationale": "Review exact 8-addition/1-removal successor: a single read-only native-capability-registry Ability delegates to Native Ability Trust catalog. Shared registration keeps can_read, non-public, REST-hidden and readonly metadata; source reports owner-pinned discovery without executing or minting authority. The hermetic test mutates the read surface, delegate and Ability identity to ensure fail-closed detection."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/remote-operation-catalog.php",
+      "source_blob_sha": "0e1bd3f67f5eac3bbb369eff5d45782fc882f9ae",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-adapter-remote-grant-source-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/remote-operation-parity-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py"
+      ],
+      "owner_role": "Independent CI-only exact-source reviewer; no owner release consent or Production mutation authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP read admission, exact staging grant, immutable source scope and provider-bound authorization controls apply; no new executor class or privilege is introduced.",
+      "review_rationale": "Review exact 16-addition successor: staging_write_grant_reconciliation maps the documented plan to the existing staging-specific reconciliation alias through the mad4b-enrollment surface, with production_policy deny. The existing grant reconciler preserves exact plan digest, staging/Production separation and Production auto-approval denial. Static negative mutations of production policy and executor alias fail; independent remote-operation parity contract PASS."
     }
   ],
   "code_change_rules": {

@@ -73,6 +73,13 @@ subprocess.run(
     check=True, timeout=20,
 )
 
+# Certify source-only native Ability discovery and existing exact staging grant
+# alias independently of release attestation and the historical manifest hashes.
+subprocess.run(
+    ["python3", str(ROOT / "tests/native-adapter-remote-grant-source-contract.py")],
+    check=True, timeout=20,
+)
+
 registry = json.loads((ROOT / "config/cross-plugin-sources.json").read_text(encoding="utf-8"))
 etg = next((x for x in registry.get("sources", []) if x.get("id") == "etg-dynamic-filter-seo-bridge"), None)
 if not etg or etg.get("package_certification") != "pending" or etg.get("artifact_sha256"):
