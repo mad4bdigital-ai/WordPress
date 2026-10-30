@@ -255,3 +255,24 @@ Regression:
 - `tests/smart-seo-guide-language-wp-cli.php` — 19/19, including independence between WPML locale and guide-language filter
 
 The existing per-combination result and editorial QA gates are **not** weakened. Publishing stays disabled pending separate content, translation, Rank Math and SEO acceptance.
+
+## WPML translation repair workflow (v0.6.4)
+
+WPML term descriptions MUST be read in the actual target-language context, not in an English WP-CLI session. A localized Term ID does not prove that an independent translation exists. The graph now resolves source-to-target term IDs and reads each term inside its WPML language, restoring the original language afterwards.
+
+Observed on Staging: English Cairo has 758 characters; Arabic, French and German Cairo descriptions are empty; Italian Cairo has 826 and Spanish Cairo 877 characters of distinct content. Day Tours lacks independently translated description content in AR/FR/DE/IT/ES. Existing IT/ES Cairo content is protected from accidental overwrite.
+
+All routes are native authenticated admin WordPress REST beneath /wp-json/mad4b/v1/seo-intelligence/translations/:
+- GET inspect: live per-language term IDs, content hashes, and missing/source-copy/rich-content classifications.
+- GET tasks; GET tasks/{id}: saved work and revision.
+- POST tasks: create site-scoped translation work, without changing public term content. Existing rich translated text is preserved unless replace_existing is explicitly true.
+- PUT tasks/{id}/submit: supply real translated description from manual, WPML ATE, or connected custom provider.
+- POST tasks/{id}/review: explicit editor approval of the exact candidate text.
+- POST tasks/{id}/apply: requires reviewed text, current source and target hashes, WordPress edit_terms capability; updates only the WPML target term through wp_update_term; verifies readback.
+- POST tasks/{id}/rollback: restores the original target description only when no concurrent edits happened.
+
+Mutations on existing tasks require expected_revision. The provider field records provenance, but does not itself invoke WPML ATE or third-party paid translation. Normal WordPress capabilities protect writes. No fake translations are created from English fallback, and no automatic SEO indexing is activated.
+
+Content Graph now returns wpml_read_language, term_language, translation_valid and translation_issue. Blank target descriptions are not accepted as editorial hubs or proof of multilingual SEO readiness. English remains the authoritative source while each locale requires independent actual copy and review.
+
+Staging-only regression: tests/smart-seo-translation-readiness-wp-cli.php. Do not modify Production or existing native JetSmartFilters SEO state as part of translation discovery.
