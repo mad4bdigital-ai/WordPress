@@ -31,6 +31,27 @@ $links=(int)$wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}icl_translations
 echo wp_json_encode(array('post_counts'=>$rows,'wpml_jet_translations'=>$links),
  JSON_UNESCAPED_SLASHES).PHP_EOL;
 ?>"""
+COMPANY_OPTIONS_READ_SCRIPT = """<?php
+$registry=get_option('mad4b_company_options_field_registry_v1',array());
+$out=array('contract'=>$registry['contract']??'',
+           'fingerprint'=>$registry['fingerprint']??'',
+           'page_count'=>count($registry['pages']??array()),
+           'field_count'=>$registry['field_count']??0,
+           'values'=>array());
+foreach(($registry['pages']??array()) as $page=>$definition){
+  $data=get_option($page,null);$filled=0;$pending=0;
+  foreach(($definition['fields']??array()) as $field){
+    $key=$field['key']??'';
+    if($key==='')continue;
+    if(is_array($data) && array_key_exists($key,$data)
+       && $data[$key]!==null && $data[$key]!=='' && $data[$key]!==array())$filled++;
+    else $pending++;
+  }
+  $out['values'][$page]=array('filled'=>$filled,'pending'=>$pending);
+}
+echo wp_json_encode($out,JSON_UNESCAPED_SLASHES).PHP_EOL;
+?>"""
+
 STORE_SCRIPT = r"""<?php
 if (wp_get_environment_type() !== 'staging' || DB_NAME !== 'etg_commerce_staging'
     || wp_parse_url(home_url(), PHP_URL_HOST) !== 'tours.dev.mad4b.com')
@@ -187,6 +208,8 @@ def run(refresh=False):
     src=wp(CENTRAL, READ_SCRIPT)
     tenant=wp(TENANT, READ_SCRIPT)
     jet=wp(TENANT, JET_READ_SCRIPT)
+    options_central=wp(CENTRAL, COMPANY_OPTIONS_READ_SCRIPT)
+    options_tenant=wp(TENANT, COMPANY_OPTIONS_READ_SCRIPT)
     tenant["post_counts"].extend(jet["post_counts"])
     tenant["wpml_jet_translations"]=jet["wpml_jet_translations"]
     design_policy_file = BASE / "policies/company-design-activation-v2.json"
@@ -202,6 +225,22 @@ def run(refresh=False):
     links = {p:https("https://wayfatours.mad4b.com"+p) for p in target_paths}
     tenant["missing_link_targets"] = [p for p,v in links.items() if v.get("http") != 200]
     stages,eligible,counters,mirrored=policy(src,tenant,catalog,health)
+    options_match=(options_central.get("contract")=="mad4b.company-options-field-registry.v1"
+      and options_central.get("fingerprint")==options_tenant.get("fingerprint")
+      and options_central.get("page_count")==4
+      and options_tenant.get("field_count")==112)
+    stages["company_options_schema_registry"]={
+       "state":"PASS" if options_match else "BLOCKED",
+       "detail":f"registry_schema_equal={options_match}; pages={options_tenant.get('page_count')}; "
+                f"fields={options_tenant.get('field_count')}; source_business_values_imported=False",
+       "next_action":"RECONCILE_CENTRAL_JETENGINE_PAGE_SCHEMAS_WITH_TENANT"}
+    options_filled=sum(v.get("filled",0) for v in options_tenant.get("values",{}).values())
+    stages["company_options_owner_customization"]={
+       "state":"AVAILABLE_FOR_OWNER_INPUT",
+       "detail":f"filled={options_filled}; "
+                f"total_fields={options_tenant.get('field_count')}; "
+                "owner_edit_via_jetengine_options_pages=True",
+       "next_action":"OWNER_ENTERS_COMPANY_SPECIFIC_BRAND_MEDIA_CONTACT_AND_OFFERS_AFTER_WORKFLOW"}
     compatibility_file=BASE/"reports/wayfatours-schema-compatibility.json"
     if compatibility_file.exists():
         compatibility=json.loads(compatibility_file.read_text())
