@@ -36,6 +36,7 @@ class McpToolValidator {
         return true;
     }
 }' );
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-mcp-adapter-compatibility.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-mcp-catalog-diagnostics.php';
 $fail = static function ( $message ) { fwrite( STDERR, 'FAIL mixed_mcp_schema: ' . $message . PHP_EOL ); exit( 1 ); };
 $dto = new class {
