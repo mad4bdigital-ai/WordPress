@@ -63,6 +63,7 @@ function wp_update_post($data,$wp_error=false) {
 function sanitize_text_field($s) {return trim(strip_tags($s));}
 function sanitize_textarea_field($s) {return trim(strip_tags($s));}
 function wp_strip_all_tags($s) {return strip_tags($s);}
+function wp_parse_url($url,$component) {return parse_url($url,$component);}
 function wp_json_encode($v,$flags=0) {return json_encode($v,$flags);}
 function apply_filters($filter,$default,$id) {return ['language_code'=>$GLOBALS['source_rows'][$id]->language];}
 function mb_substr_safe($s,$start,$len) {return substr($s,$start,$len);}
@@ -307,6 +308,14 @@ $cliRows=[
     feed(1402,'properties','en','Hotel One'),
     feed(1403,'transportations','ar','Transport One'),
 ];
+foreach($cliRows as $i=>$row) {
+    $cliRows[$i]['source_slug']='source-item-'.$row['source_id'];
+    $cliRows[$i]['source_url']='https://tourism.almallahgroup-mg.com/source-item-'.$row['source_id'].'/';
+    $cliRows[$i]['source_wpml_trid']=8000+$row['source_id'];
+    $cliRows[$i]['source_text_origin']='source_meta';
+    $cliRows[$i]['source_taxonomy_refs']=[];
+    $cliRows[$i]['source_identity_facts']=[];
+}
 $cross=[
     'contract'=>'mad4b.hub.wp-cli-cross-ssh.v1',
     'source_company'=>'tourism-almallahgroup',
@@ -322,12 +331,36 @@ check(is_wp_error($deny) && $GLOBALS['changes']===$before,'Cross-SSH wrong canon
 $invalid=$cross;$invalid['counts']['properties']=2;
 $deny=MAD4B_Hub_Source_Import_V1::import_cross_ssh_snapshot($invalid);
 check(is_wp_error($deny) && $GLOBALS['changes']===$before,'Cross-SSH incomplete manifest rejected before writes');
+$invalid=$cross;$invalid['items'][1]['source_url']='https://attacker.invalid/';
+$deny=MAD4B_Hub_Source_Import_V1::import_cross_ssh_snapshot($invalid);
+check(is_wp_error($deny) && $GLOBALS['changes']===$before,
+    'Cross-SSH rejects forged canonical source URL');
+$invalid=$cross;unset($invalid['items'][1]['source_wpml_trid']);
+$deny=MAD4B_Hub_Source_Import_V1::import_cross_ssh_snapshot($invalid);
+check(is_wp_error($deny) && $GLOBALS['changes']===$before,
+    'Cross-SSH rejects missing translation provenance');
+$invalid=$cross;$invalid['items'][1]['source_taxonomy_refs']=['property-types'=>[['id'=>0,'slug'=>'bad','parent'=>0]]];
+$deny=MAD4B_Hub_Source_Import_V1::import_cross_ssh_snapshot($invalid);
+check(is_wp_error($deny) && $GLOBALS['changes']===$before,
+    'Cross-SSH rejects invalid taxonomy term identity');
 $invalid=$cross;$invalid['items'][1]['may_checkout']=true;
 $deny=MAD4B_Hub_Source_Import_V1::import_cross_ssh_snapshot($invalid);
 check(is_wp_error($deny) && $GLOBALS['changes']===$before,'Cross-SSH unsafe commercial flags rejected before writes');
 $result=MAD4B_Hub_Source_Import_V1::import_cross_ssh_snapshot($cross);
 check(is_array($result) && $result['imported']===3 &&
     $result['transport']==='wp_cli_cross_ssh','Cross-SSH imports all three kinds privately');
+$newKey=array_key_first($GLOBALS['hub_posts']); // All tested records remain private.
+$proofFound=0;
+foreach($GLOBALS['hub_posts'] as $postId=>$post){
+ if(($GLOBALS['hub_meta'][$postId]['_mad4b_hub_import_source_id']??0)===1402){
+     check(($GLOBALS['hub_meta'][$postId]['_mad4b_hub_import_translation_trid']??null)===9402,
+         'WPML group ID persisted on imported record');
+     check(($GLOBALS['hub_meta'][$postId]['_mad4b_hub_import_source_slug']??'')==='source-item-1402',
+         'Native source canonical slug persisted');
+     $proofFound++;
+ }
+}
+check($proofFound===1,'Exact source identity keeps one private Hub record');
 $before=$GLOBALS['changes'];
 $repeated=MAD4B_Hub_Source_Import_V1::import_cross_ssh_snapshot($cross);
 check($repeated['created']===0 && $repeated['updated']===0 &&
