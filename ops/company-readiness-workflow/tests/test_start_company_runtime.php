@@ -20,6 +20,7 @@ function wp_is_uuid($v){return (bool)preg_match('/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f
 function sanitize_key($v){return preg_replace('/[^a-z0-9_-]/','',strtolower($v));}
 function current_user_can($cap){return true;}
 function get_current_user_id(){return 1;}
+function wp_generate_uuid4(){return '24629c27-5d94-4e70-a637-913d8ab21101';}
 function get_userdata($id){return (object)['ID'=>$id];}
 function user_can($user,$cap){return $user->ID===1;}
 function do_action(...$a){}
@@ -32,9 +33,17 @@ class MAD4B_SCP_Remote_Work_Queue {
   $sha=hash('sha256',json_encode([$o,$p,$i]));
   if(isset($GLOBALS['queue_seen'][$sha]))return ['state'=>'already_queued','job'=>$GLOBALS['queue_seen'][$sha]];
   $GLOBALS['queue_count']++;
-  $job=['job_id'=>sprintf('00000000-0000-4000-8000-%012d',$GLOBALS['queue_count']),'payload'=>$p];
+  $job=['job_id'=>sprintf('00000000-0000-4000-8000-%012d',$GLOBALS['queue_count']),'payload'=>$p,'status'=>'pending'];
   $GLOBALS['queue_seen'][$sha]=$job;
   return ['state'=>'queued','job'=>$job];
+ }
+ static function list_jobs($operation_id=''){
+  $items=array_values($GLOBALS['queue_seen']);
+  $items[]=['job_id'=>'foreign-tenant-job','payload'=>[
+    'company_code'=>'otherbrand','site_uuid'=>'12345678-1234-4123-8123-123456789abc',
+    'origin'=>'https://otherbrand.mad4b.com','mode'=>'repair_existing',
+    'stage'=>'plugins'],'status'=>'failed','reconciliation_required'=>true];
+  return ['items'=>$items];
  }
 }
 class MAD4B_SCP_Operation_Journal {
@@ -65,6 +74,11 @@ t('plugin_dep_requires_backup',$p['stages']['plugins']['state']==='WAITING_DEPEN
 t('commercial_not_ready',$p['readiness']['commercial_ready']===false);
 t('preserve_users',$p['preserve_existing_users']===true);
 t('preserve_options',$p['preserve_existing_options']===true);
+$out=MAD4B_Start_Company_Runtime::status(req('wayfatours'));
+t('single_outcome_contract',$out['contract']==='mad4b.start-your-company.outcome.v1');
+t('outcome_is_not_false_success',$out['successful']===false && $out['verified_count']===0);
+t('unregistered_executor_is_blocker',$out['overall_state']==='WAITING_EXECUTOR');
+t('foreign_jobs_are_filtered',count($out['jobs'])===0);
 $initial=['stage'=>'identity','mode'=>'repair_existing','expected_plan_sha256'=>$p['plan_sha256']];
 $before=MAD4B_Start_Company_Runtime::resume(req('wayfatours',$initial));
 t('no_unverified_executor',is_wp_error($before)&&$before->get_error_code()==='mad4b_company_executor_unregistered');
@@ -78,6 +92,11 @@ t('queue_semantic_identity',is_array($ok)&&$ok['state']==='queued'&&$ok['stage']
 t('queue_not_execution',$ok['executor_executed']===false);
 $again=MAD4B_Start_Company_Runtime::run(req('wayfatours',['mode'=>'repair_existing','expected_plan_sha256'=>$p['plan_sha256']]));
 t('one_start_auto_idempotent',$again['state']==='already_queued'&&$GLOBALS['queue_count']===1);
+$out=MAD4B_Start_Company_Runtime::status(req('wayfatours'));
+t('one_run_id_preserved',(bool)preg_match('/^[a-f0-9]{64}$/',$out['run_id']));
+t('one_outcome_scoped_job',count($out['jobs'])===1 && $out['jobs'][0]['stage']==='identity');
+t('single_outcome_reports_active',$out['overall_state']==='IN_PROGRESS'&&!$out['successful']);
+t('single_outcome_no_cross_company_jobs',!in_array('foreign-tenant-job',array_column($out['jobs'],'id'),true));
 $bad=MAD4B_Start_Company_Runtime::resume(req('wayfatours',['stage'=>'identity','expected_plan_sha256'=>str_repeat('0',64)]));
 t('plan_hash_cas',is_wp_error($bad)&&$bad->get_error_code()==='mad4b_company_plan_changed');
 $bad=MAD4B_Start_Company_Runtime::resume(req('wayfatours',['stage'=>'shell','expected_plan_sha256'=>$p['plan_sha256']]));
@@ -135,4 +154,8 @@ t('owner_change_preserves_plugins',$old['stages']['plugins']['stage_revision']==
 MAD4B_Start_Company_Runtime::recheck_event('wayfatours');
 t('event_snapshot_saved',isset($GLOBALS['opts']['mad4b_start_company_snapshots_v3']['wayfatours']['plan_sha256']));
 t('event_continue_without_duplicate',$GLOBALS['queue_count']===3);
+$after=MAD4B_Start_Company_Runtime::status(req('wayfatours'));
+t('partially_verified_not_complete',$after['verified_count']>=5 && $after['successful']===false);
+t('single_outcome_jobs_have_receipts_priority',$after['overall_state']==='IN_PROGRESS');
+t('single_outcome_still_keeps_external_ownership_unverified',$after['infrastructure_ownership']==='UNVERIFIED_BY_NATIVE_RUNTIME');
 t('typed_stage_registered',isset(MAD4B_SCP_Company_Provisioning_Work_Operations::definitions([])['company.stage.execute']));
