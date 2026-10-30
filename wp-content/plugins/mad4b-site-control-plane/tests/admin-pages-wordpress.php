@@ -26,6 +26,10 @@ $pages = array(
 	'mad4b-control-plane-skills' => array( 'MAD4B_SCP_Skills_Admin_UI', 'render_page', array( '' ) ),
 	'mad4b-browser-acceptance' => array( 'MAD4B_SCP_Browser_Acceptance_Admin_UI', 'render_page', array( '' ) ),
 	'mad4b-control-plane-oauth-canary' => array( 'MAD4B_SCP_Local_OAuth_Browser_Canary', 'render_page', array( '' ) ),
+    // Staging-only Brand Context test page and the exact principal-mode
+    // administration page must both render under the same read-only smoke.
+    'mad4b-staging-brand-trial' => array( 'MAD4B_SCP_Staging_Brand_Trial', 'page', array( '' ) ),
+    'mad4b-mcp-principal-mode' => array( 'MAD4B_SCP_Delegation_Mode', 'page', array( '' ) ),
 	'mad4b-runtime-components' => array( 'MAD4B_SCP_Runtime_Components_Admin_UI', 'render_page', array( 'overview', 'core', 'plugins', 'mu-plugins', 'drop-ins', 'themes', 'astra', 'maintenance' ) ),
 	'mad4b-adapter-coverage' => array( 'MAD4B_SCP_Adapter_Coverage_Admin_UI', 'render_page', array( 'overview', 'installed', 'priority', 'functional', 'mcp-routes', 'capabilities', 'native-peers', 'route-preview', 'requests' ) ),
 	'mad4b-operator-control-center' => array( 'MAD4B_SCP_Operator_Control_Center', 'render_page', array( '' ) ),
