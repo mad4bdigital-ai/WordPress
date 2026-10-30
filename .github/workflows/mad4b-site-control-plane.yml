@@ -71,6 +71,7 @@ jobs:
           php wp-content/plugins/mad4b-site-control-plane/tests/content-qa-review-mode-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/wordpress-principal-default-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/dual-principal-runtime.php
+          php wp-content/plugins/mad4b-content-hub/tests/company-responsibility-rights-runtime.php
 
       - name: Verify pointer-first self-update contract
         if: matrix.php == '8.1'
