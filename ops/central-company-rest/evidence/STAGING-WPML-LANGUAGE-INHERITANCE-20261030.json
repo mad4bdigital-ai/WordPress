@@ -1,0 +1,150 @@
+{
+  "contract": "mad4b.hub.language-inheritance-staging-acceptance.v1",
+  "date": "2026-10-30",
+  "staging_site": "https://tours.dev.mad4b.com",
+  "repository": "mad4bdigital-ai/WordPress",
+  "pr": 631,
+  "addon_version": "0.4.1",
+  "source_observation": {
+    "mode": "verified_read_only_ssh_wpml_settings",
+    "source_option": "mad4b_hub_source_wpml_observations_v1",
+    "source_option_autoload": "off",
+    "hosts": {
+      "tourism-almallahgroup": {
+        "hostname": "tourism.almallahgroup-mg.com",
+        "active": [
+          "en",
+          "es",
+          "de",
+          "fr",
+          "ar",
+          "it"
+        ],
+        "hidden": [
+          "es",
+          "de",
+          "fr",
+          "it"
+        ],
+        "effective_with_staging": [
+          "en",
+          "ar"
+        ]
+      },
+      "all-royal-egypt": {
+        "hostname": "www.allroyalegypt.com",
+        "active": [
+          "en",
+          "es",
+          "de",
+          "fr",
+          "ar",
+          "it"
+        ],
+        "hidden": [
+          "ar"
+        ],
+        "effective_with_staging": [
+          "en",
+          "es",
+          "de",
+          "fr",
+          "it"
+        ]
+      },
+      "egypt-tour-gates": {
+        "hostname": "egypttourgates.com",
+        "active": [
+          "en",
+          "es",
+          "de",
+          "fr",
+          "ar",
+          "it"
+        ],
+        "hidden": [
+          "ar",
+          "fr",
+          "de"
+        ],
+        "effective_with_staging": [
+          "en",
+          "es",
+          "it"
+        ]
+      }
+    },
+    "consumer_wpml_active": [
+      "en",
+      "es",
+      "de",
+      "fr",
+      "ar",
+      "it"
+    ],
+    "consumer_wpml_hidden": [],
+    "local_observation_sha256": "dbb49f66f6cd46cb25695be54d741320756695fec3632dd0000bc67cb1336e1f",
+    "freshness_limit_seconds": 604800,
+    "signed_publication_grant": false,
+    "signed_market_grant": false,
+    "production_source_sites_modified": false
+  },
+  "runtime": {
+    "selection_contract": "mad4b.hub.capability-selection.v1",
+    "mode": "inherit_language_baseline=true",
+    "market_plan_status": "LANGUAGE_BASELINE_DRY_RUN",
+    "query_plan_executable": false,
+    "explicit_source_record_selection_required": true,
+    "arbitrary_market_currencies_nationalities_inferred": false,
+    "commercial_pricing_enabled": false,
+    "control_plane_release_authority_filter": "mad4b_scp_hub_consumer_content_release_authority",
+    "control_plane_language_authority_filter": "mad4b_scp_hub_consumer_language_authority",
+    "source_signed_preview_endpoint": "POST /wp-json/mad4b/v1/hub-market-source/preview",
+    "language_status_endpoint": "GET /wp-json/mad4b/v1/hub-language-baseline/status",
+    "public_endpoint": "GET /wp-json/mad4b-central/v1/hub-distribution/tourism-almallahgroup/catalog",
+    "admin_language_status_http": 200,
+    "anonymous_language_status_http": 401,
+    "admin_source_status_http": 200,
+    "anonymous_source_status_http": 401,
+    "public_distribution_http": 403
+  },
+  "tests": {
+    "source_wpml_active_minus_hidden": "PASS",
+    "consumer_wpml_active_minus_hidden": "PASS",
+    "source_hidden_language_rejected": "PASS",
+    "consumer_hidden_language_rejected": "PASS",
+    "untrusted_or_stale_source_language_rejected": "PASS",
+    "ancestor_market_restrictions_not_bypassed": "PASS",
+    "explicit_only_language_baseline": "PASS",
+    "legacy_unspecified_market_status": "UNSCOPED_DENY",
+    "real_signed_tourism_catalog_read": "PASS",
+    "catalog_total_verified": 35,
+    "catalog_verified_pages": 2,
+    "selected_reference_tour_id": 24900,
+    "verified_canonical_term_id": 1865,
+    "selected_tour_can_be_published": false,
+    "PII_and_commercial_price_projection": "EXCLUDED",
+    "existing_market_policy_negative_cases": 22,
+    "existing_provider_discovery_negative_cases": 13,
+    "existing_queries_observed": 203,
+    "staging_hub_records_unchanged": 417,
+    "staging_front_page_http": 200,
+    "discarded_temporary_catalog_page_http": 404,
+    "real_market_grants_registered": 0,
+    "native_jetengine_distribution_bindings": 0,
+    "source_or_production_mutation": false
+  },
+  "verified_staging_file_sha256": {
+    "main_plugin": "cc349971a8b8771ea621c0310c1ec66b2e1ee3164b9ec472c0b4f3fc2256b4d5",
+    "language_baseline": "63f69b7d4e1f264f6388443dc8480bbbf1bedd791876aa9b7f99fe5e055807a1"
+  },
+  "private_rollback_dir": "/opt/mad4b-company-release-prep/20261029/hub-discovery-20261030/pre-language-0.4.0",
+  "missing_release_dependencies": [
+    "source-signed content publication and per-company authorizations",
+    "signed WPML capability change/revocation endpoint for source sites",
+    "actual native JetEngine endpoint/query/listing/filter per-company binding",
+    "market-specific legal/commercial sale policies only where needed",
+    "CI/owner exact-head approval and Production certification"
+  ],
+  "release_state": "STAGING_LANGUAGE_BASELINE_ADMIN_PREVIEW_ONLY__PUBLIC_DISTRIBUTION_DENIED"
+}
