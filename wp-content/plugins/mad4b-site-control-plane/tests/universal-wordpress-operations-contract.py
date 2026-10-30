@@ -29,6 +29,25 @@ servers = (PLUGIN / "includes/class-mad4b-scp-servers.php").read_text(encoding="
 servers += "\n" + (PLUGIN / "includes/class-mad4b-scp-server-core-catalog.php").read_text(encoding="utf-8")
 all_php = "\n".join(p.read_text(encoding="utf-8", errors="ignore") for p in (PLUGIN / "includes").rglob("*.php"))
 search_runtime = (PLUGIN / "includes/class-mad4b-scp-adaptive-search-intelligence.php").read_text(encoding="utf-8")
+# Company Plugin Sync is a native MU bridge installed on the exact central
+# Staging host, not an SCP core implementation. Pin its installed source and
+# verify denied cross-site/production requests before counting abilities.
+mu_file = ROOT / "wp-content/mu-plugins/250-mad4b-company-plugin-sync-operation.php"
+assert mu_file.is_file(), "Missing source-owned Company Sync MU bridge"
+company_mu = mu_file.read_text(encoding="utf-8")
+for marker in (
+    "MAD4B_Company_Bootstrap_Contract::record",
+    "mad4b_company_owner_email_required",
+    "MAD4B_SCP_Operation_Journal::begin",
+    "MAD4B_Company_Readiness_Governance::guard($request)",
+):
+    assert marker in company_mu, marker
+all_php += "\n" + company_mu
+import subprocess
+subprocess.run(["python3", str(PLUGIN / "tests/company-plugin-sync-mu-source-contract.py")],
+               check=True, timeout=20)
+subprocess.run(["php", "-n", str(PLUGIN / "tests/company-plugin-sync-mu-runtime.php")],
+               check=True, timeout=20)
 
 def runtime_represents_ability(ability: str) -> bool:
     if ability in all_php:
