@@ -1,0 +1,77 @@
+{
+  "contract": "mad4b.hub.signed-rest-connection-reference-sharing.v1",
+  "date": "2026-10-30",
+  "central_url": "https://tours.dev.mad4b.com/",
+  "scope": "reference_only_selected_public_source_posts",
+  "policy": {
+    "trigger": "fresh mutual P-256 signed REST identity connection, exact pinned company/host",
+    "ordinary_http_200_sufficient": false,
+    "local_source_owner_delegation_required": false,
+    "separate_central_operator_company_scope_required": false,
+    "company_wordpress_admin_required_to_send_management_actions": true,
+    "source_company_registered": true,
+    "signed_pairing_required": true,
+    "max_last_authenticated_age_seconds": 86400,
+    "source_site_public_post_type_required_for_reference_apply": true,
+    "protected_unpublished_private_orders_bookings_excluded": true,
+    "selection_manifest_required": true,
+    "exact_source_record_ids_and_languages_required": true,
+    "higher_priority_deny_wins": true,
+    "historical_prices_bookable": false,
+    "woo_checkout_authorized": false,
+    "global_wordpress_write_authorized": false,
+    "actual_public_jetengine_feed_activated": false
+  },
+  "staging_install": {
+    "central_controller_mu": "wp-content/mu-plugins/230-mad4b-central-hub-remote-control.php",
+    "central_sha256": "9c49f757e8246c213e655b47688ba4db2eeade6a5b2cdeea507a0da8ad4ecda8",
+    "control_plane_governance": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-hub-jetengine-consumer-governance.php",
+    "control_plane_sha256": "5322afe2cde1425122d255f71e4c86bc53c5976036cbd413c64bfee05a551af7",
+    "php_lint": "PASS",
+    "rollback": "/opt/mad4b-company-release-prep/20261030/connection-based-policy/old-control-plane-governance.php",
+    "remote_source_agents_installed": false,
+    "source_production_modified": false,
+    "central_staging_modified": true
+  },
+  "real_signed_rest_revalidation": [
+    {
+      "company_id": "all-royal-egypt",
+      "authenticated_http": 200,
+      "reference_share_allowed": true
+    },
+    {
+      "company_id": "egypt-tour-gates",
+      "authenticated_http": 200,
+      "reference_share_allowed": true
+    },
+    {
+      "company_id": "tourism-almallahgroup",
+      "authenticated_http": 200,
+      "reference_share_allowed": true
+    }
+  ],
+  "verification": {
+    "central_admin_rest_http": 200,
+    "anonymous_central_rest_http": 401,
+    "unknown_source_denied": true,
+    "expired_pairing_denied": true,
+    "inherited_read_deny_respected": true,
+    "automatic_release_filter_for_signed_tourism": true,
+    "automatic_language_baseline_filter_for_signed_tourism": true,
+    "public_catalog_http": 403,
+    "homepage_http": 200,
+    "internal_hub_reference_records": 417,
+    "wc_prices_or_checkout_changed": false,
+    "live_native_endpoint_query_listing_filters_bound": false,
+    "standalone_php_cli_contract_suite": "PASS_ON_VPS_STAGING_PHP",
+    "standalone_php_cli_negative_cases_reported": 20
+  },
+  "release_status": "STAGING_CONNECTION_BASED_REFERENCE_SHARE_POLICY_ACTIVE; PUBLIC_JETENGINE_DISTRIBUTION_NOT_ACTIVATED",
+  "pr_number": 631,
+  "pending": [
+    "exact-head GitHub CI and PR approval",
+    "consumer-side native JetEngine endpoint/query/listing/filter binding and signed distribution runtime",
+    "source remote agent rollout only if source-side reference grant commands are needed",
+    "live pagination, WPML, filtering, dedup and privacy QA"
+  ]
+}
