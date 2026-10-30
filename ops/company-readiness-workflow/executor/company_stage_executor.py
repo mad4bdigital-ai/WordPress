@@ -9,6 +9,7 @@ that expressly permits portable MU artifacts. Local default policy denies MU.
 import argparse
 import base64
 import datetime as dt
+import gzip
 import hashlib
 import json
 import os
@@ -17,6 +18,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 
 CONTRACT = "mad4b.company-stage-job.v1"
@@ -193,6 +195,28 @@ def verify_restorable_backup(policy):
         if not p.is_file() or p.is_symlink() or digest(p.read_bytes())!=hexdigest:
             raise Denied("BACKUP_SHA256_MISMATCH")
     if found!=expected:raise Denied("BACKUP_INCOMPLETE")
+    # SHA matches alone cannot prove an archive can be opened. Verify both
+    # formats; a separate isolated DB restore rehearsal is still required
+    # for production readiness.
+    try:
+        with gzip.open(folder/"wayfatours-db.sql.gz","rb") as stream:
+            if not stream.read(100):raise Denied("EMPTY_SQL_BACKUP")
+        with tarfile.open(folder/"wayfatours-site.tar.gz","r:gz") as archive:
+            if archive.next() is None:raise Denied("EMPTY_SITE_ARCHIVE")
+    except (OSError,tarfile.TarError) as exc:
+        raise Denied("BACKUP_ARCHIVE_UNREADABLE") from exc
+    drill=policy.get("isolated_restore_drill",{})
+    if not isinstance(drill,dict) or drill.get("result")!="PASS" or drill.get("isolated") is not True or drill.get("company")!=policy.get("company"):
+        raise Denied("ISOLATED_RESTORE_DRILL_REQUIRED")
+    if drill.get("backup_manifest_sha256")!=digest(sums.read_bytes()):
+        raise Denied("RESTORE_DRILL_NOT_BOUND_TO_BACKUP")
+    try:
+        checked=dt.datetime.fromisoformat(drill["verified_at"].replace("Z","+00:00"))
+    except (KeyError,AttributeError,ValueError) as exc:
+        raise Denied("RESTORE_DRILL_TIMESTAMP_INVALID") from exc
+    age=(dt.datetime.now(dt.timezone.utc)-checked).total_seconds()
+    if age<0 or age>86400:
+        raise Denied("RESTORE_DRILL_STALE")
 
 def transaction(manifest,policy,receipt_dir):
     items=validate(manifest,policy)
