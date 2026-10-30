@@ -47,6 +47,7 @@ $expected = array(
 	'mad4b status',
 	'mad4b diagnostics schema',
 	'mad4b diagnostics runtime',
+	'mad4b diagnostics write',
 	'mad4b package verify',
 	'mad4b operations',
 );

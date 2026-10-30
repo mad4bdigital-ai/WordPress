@@ -1,0 +1,31 @@
+name: MAD4B Content Readiness Contracts
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/**'
+  push:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/**'
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-content-readiness-contracts-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+jobs:
+  content-readiness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: Lint and isolated contract acceptance
+        run: |
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/isolated-contract.php

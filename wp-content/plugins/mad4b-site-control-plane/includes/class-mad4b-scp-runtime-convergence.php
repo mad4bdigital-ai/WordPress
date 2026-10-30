@@ -270,6 +270,9 @@ final class MAD4B_SCP_Runtime_Convergence {
 		// Preserve the existing site-approved read-only allowance for a
 		// historical managed-Skills checkpoint. This does not authorize any
 		// MCP write request or change the independent authority gate.
+		// A superseded update checkpoint must not prevent an authenticated
+		// Staging read-only MCP handshake solely because managed Skills await
+		// reconciliation. Keep the independent owner/write gate CLOSED.
 		$managed_skills_owner_only = array( 'managed_skills:pending', 'authority_binding:owner_gate' )
 			=== ( $graph['required_blockers'] ?? null )
 			&& ! empty( $graph['phases']['managed_skills']['required'] )

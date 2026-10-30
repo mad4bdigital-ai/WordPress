@@ -920,8 +920,55 @@ final class MAD4B_SCP_Reconnect_Hardening {
 	 * still receive restart_grace until the actual authority is reconciled.
 	 * This is a transport admission, not a tool ability permission grant.
 	 */
+	/**
+	 * A historical self-update checkpoint may outlive its own build. Pending
+	 * Skills or an obsolete native update offer must not prevent authenticated
+	 * diagnosis and the exact owner/apply operation from repairing the site.
+	 * This never certifies those dependencies as ready and never authorizes
+	 * target execution. The current build must have valid disk provenance.
+	 */
+	private static function historical_exact_package_recovery_lane( $grace ) {
+		if ( ! is_array($grace) || empty($grace['active'])
+			|| empty($grace['persisted_checkpoint_pending'])
+			|| 'pending_manual_resume' !== ($grace['state']??null)
+			|| empty($grace['resume_blocker'])
+			|| ! empty($grace['exact_runtime_identity_match'])
+			|| ! empty($grace['quiet_period_active'])
+			|| ! is_int($grace['checkpoint_age_seconds']??null)
+			|| $grace['checkpoint_age_seconds'] < 60
+			|| ! class_exists('MAD4B_SCP_Environment',false)
+			|| 'staging' !== MAD4B_SCP_Environment::effective()
+			|| ! class_exists('MAD4B_SCP_Site_Profile',false)
+			|| ! MAD4B_SCP_Site_Profile::origin_enrolled()
+			|| ! class_exists('MAD4B_SCP_OAuth_Resource_Bridge',false)
+			|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
+			|| ! class_exists('MAD4B_SCP_Local_OAuth_Server',false)
+			|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is(
+				MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID )
+			|| ! class_exists('MAD4B_SCP_Live_Acceptance_Observer',false)
+			|| ! method_exists('MAD4B_SCP_Live_Acceptance_Observer','build_provenance_status') ) return false;
+		$current = $grace['current_identity']??array();
+		$target = $grace['target_identity']??array();
+		if ( ! is_array($current) || ! is_array($target) ) return false;
+		$source = (string)($current['source_commit_sha']??'');
+		$previous = (string)($target['source_commit_sha']??'');
+		if ( ! preg_match('/^[a-f0-9]{40}$/D',$source)
+			|| ! preg_match('/^[a-f0-9]{40}$/D',$previous)
+			|| hash_equals($source,$previous) ) return false;
+		$verified = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
+		if ( ! is_array($verified) || empty($verified['runtime_manifest_match']) || ! empty($verified['stale']) ) return false;
+		foreach( array('source_commit_sha','build_fingerprint','package_manifest_digest') as $key ) {
+			if ( empty($current[$key]) || empty($verified[$key])
+				|| ! is_string($current[$key]) || ! is_string($verified[$key])
+				|| ! hash_equals($current[$key],$verified[$key]) ) return false;
+		}
+		return true;
+	}
+
 	private static function historical_authenticated_read_tool_admission( $request, $grace, $post_auth_phase ) {
-		if ( ! $post_auth_phase || empty($grace['active']) || empty($grace['historical_mcp_read_safe'])
+		if ( ! $post_auth_phase || empty($grace['active'])
+			|| ( empty($grace['historical_mcp_read_safe'])
+				&& ! self::historical_exact_package_recovery_lane($grace) )
 			|| ! function_exists('is_user_logged_in') || ! is_user_logged_in()
 			|| ! function_exists('current_user_can') || ! current_user_can('read')
 			|| ! is_object($request) || ! method_exists($request,'get_json_params') ) return false;
@@ -942,10 +989,11 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			'mad4b-enrollment-info','mad4b-enrollment-discover',
 		);
 		if ( in_array( $name, $read_only, true ) ) return true;
-		// A historic self-update may block new Write until the exact Write owner
-		// convergence operation completes. Admit only that purpose-built
-		// recovery tool to its *existing* owner-attested, SHA-pinned executor.
-		// This never admits arbitrary writes, tours, plugin installs or grants.
+		// A historical self-update may block the owner-attestation that
+		// exact-head Write convergence requires. Admit only that explicit
+		// non-granting owner decision or the reviewed convergence apply.
+		// The target callbacks still own approval, identity, receipt, audit
+		// and replay checks. This is transport admission, NOT authority.
 		if ( ! in_array( $name, array(
 			'mad4b-staging-write-authority-convergence-apply',
 			'mad4b-enrollment-execute'
@@ -958,14 +1006,36 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			? $rpc['params']['arguments'] : array();
 		$args = $dispatch;
 		if ( 'mad4b-enrollment-execute' === $name ) {
-			if ( 'staging_write_authority_convergence' !== ($dispatch['operation_id']??null)
-				|| ! isset($dispatch['input']) || ! is_array($dispatch['input']) ) return false;
+			$operation = $dispatch['operation_id'] ?? '';
+			$owner_attest = 'core_step_up_mad4b_staging_write_owner_attest_2cc8769d389d' === $operation;
+			if ( ! $owner_attest && 'staging_write_authority_convergence' !== $operation ) return false;
+			if ( count($dispatch) !== 5 || ! isset($dispatch['input']) || ! is_array($dispatch['input']) ) return false;
 			foreach( array( 'expected_registration_digest', 'expected_dispatch_policy_digest',
 				'expected_input_schema_sha256' ) as $field ) {
 				if( ! isset($dispatch[$field]) || ! is_string($dispatch[$field])
 					|| 1 !== preg_match( '/^[a-f0-9]{64}$/iD', $dispatch[$field] ) ) return false;
 			}
 			$args = $dispatch['input'];
+			if ( $owner_attest ) {
+				// This owner-only intent cannot grant Write, Developer or
+				// Breakglass. Do not admit another operation or altered schema.
+				if ( count($args) !== 2
+					|| 'AUTHORIZE EXACT STAGING WRITE CONVERGENCE' !== ($args['confirmation']??null)
+					|| ! isset($args['review_digest']) || ! is_string($args['review_digest'])
+					|| 1 !== preg_match('/^[a-f0-9]{64}$/D', $args['review_digest'])
+					|| ! class_exists('MAD4B_SCP_OAuth_Resource_Bridge', false)
+					|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
+					|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope(
+						MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE )
+					|| ! class_exists('MAD4B_SCP_Local_OAuth_Server', false)
+					|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is(
+						MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID )
+					|| ! class_exists('MAD4B_SCP_Site_Profile', false)
+					|| ! MAD4B_SCP_Site_Profile::user_is_enrolled(get_current_user_id())
+					|| ! class_exists('MAD4B_SCP_Staging_Write_Owner_Intent', false)
+					|| true !== MAD4B_SCP_Staging_Write_Owner_Intent::can_remote_attest() ) return false;
+				return true;
+			}
 		}
 		if ( 'ENABLE GOVERNED STAGING WRITE AUTHORITY' !== ( $args['confirmation'] ?? '' )
 			|| ! isset( $args['expected_plan_sha256'] )

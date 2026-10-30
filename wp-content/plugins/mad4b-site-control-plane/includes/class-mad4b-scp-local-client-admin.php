@@ -88,6 +88,37 @@ final class MAD4B_SCP_Local_Client_Admin {
         wp_safe_redirect( admin_url( 'tools.php?page=mad4b-local-client&pending=1' ) );
         exit;
     }
+    /**
+     * Prefer the explicit Context reviewer when valid. On an isolated,
+     * exact-bound Local Lab with human-only Context review, the canonical
+     * Site Profile governed-write Agent may provision the VPS client instead.
+     * This does NOT delegate AI review or grant any new NHI ability.
+     */
+    public static function approved_agent_public_id() {
+        $review = class_exists( 'MAD4B_SCP_Context_Authority' )
+            ? MAD4B_SCP_Context_Authority::review_policy() : array();
+        $current = isset( $review['ai_agent_public_id'] ) ? (string) $review['ai_agent_public_id'] : '';
+        if ( '' !== $current ) return $current;
+        if ( ! self::allowed() || ! self::provision_enabled()
+            || ! class_exists( 'MAD4B_SCP_Site_Profile' )
+            || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
+            || ! MAD4B_SCP_Site_Profile::write_enabled()
+            || ! class_exists( 'MAD4B_SCP_Agent_Registry' ) ) return '';
+        $slug = sanitize_key( (string) MAD4B_SCP_Site_Profile::agent_slug() );
+        if ( '' === $slug ) return '';
+        $agent = MAD4B_SCP_Agent_Registry::get_agent_by_slug( $slug );
+        if ( ! is_array( $agent ) || 'enabled' !== ( $agent['status'] ?? '' )
+            || $slug !== ( $agent['slug'] ?? '' ) ) return '';
+        $grant = MAD4B_SCP_Agent_Registry::exact_grant(
+            (int) $agent['id'], 'mad4b-write', 'mad4b/context-ai-review', 'core'
+        );
+        // Existing exact all-environment allow is necessary because this
+        // canonical Site Profile Agent was enrolled for Staging but runs
+        // through an isolated Local Lab. Deny-first grants remain authoritative.
+        return is_array( $grant ) && 'allow' === ( $grant['effect'] ?? '' )
+            && 'all' === ( $grant['environment'] ?? '' )
+            ? (string) ( $agent['public_id'] ?? '' ) : '';
+    }
     public static function menu() {
         if ( ! self::allowed() ) return;
         add_management_page( 'MAD4B Local Client', 'MAD4B Local Client', 'manage_options', 'mad4b-local-client', array( __CLASS__, 'page' ) );
@@ -102,6 +133,7 @@ final class MAD4B_SCP_Local_Client_Admin {
         $vault = self::vault();
         $provisioned = $vault && is_file( $vault );
         echo '<p>Local provisioning: ' . ( self::provision_enabled() ? 'enabled by site configuration' : 'disabled' ) . '</p>';
+        echo '<p>Exact Agent binding: ' . ( '' !== self::approved_agent_public_id() ? 'eligible' : 'not ready' ) . '</p>';
         echo '<p>External credential vault: ' . ( $vault ? 'configured' : 'not configured (provisioning disabled)' ) . '</p>';
         echo '<p>Credential: <strong>' . ( $provisioned ? 'stored on server' : 'not provisioned' ) . '</strong></p>';
         if ( $provisioned ) echo '<p>Use the MCP auth preflight and authenticated REST probe to confirm it is valid. Revoke from this page when no longer needed.</p>';
@@ -168,8 +200,7 @@ final class MAD4B_SCP_Local_Client_Admin {
         @chmod( $vault, 0600 );
         // Bind the WordPress-verified application password to the delegated agent.
         // Never leave an unbound credential live if enrollment fails.
-        $review = MAD4B_SCP_Context_Authority::review_policy();
-        $agent_id = isset( $review['ai_agent_public_id'] ) ? (string) $review['ai_agent_public_id'] : '';
+        $agent_id = self::approved_agent_public_id();
         $fingerprint = hash( 'sha256', implode( chr( 0 ), array( 'wp_app_password', MAD4B_SCP_Site_Profile::site_uuid(), (int) $user->ID, $uuid ) ) );
         $bound = '' !== $agent_id && class_exists( 'MAD4B_SCP_Agent_Registry' )
             ? MAD4B_SCP_Agent_Registry::bind_subject( $agent_id, 'wp_app_password', $fingerprint, 'Local client application password' )

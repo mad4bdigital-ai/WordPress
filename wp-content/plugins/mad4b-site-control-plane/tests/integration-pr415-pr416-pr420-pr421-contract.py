@@ -2,6 +2,7 @@
 """Fail-closed source and evidence contract for four-PR integrated candidate."""
 import hashlib
 import json
+import subprocess
 from pathlib import Path
 
 ROOT = Path("wp-content/plugins/mad4b-site-control-plane")
@@ -156,9 +157,28 @@ def reviewed_source_supersedes_snapshot(path):
         source_blob = hashlib.sha1(b"blob " + str(len(source)).encode("ascii") + b"\0" + source).hexdigest()
         # Reviewed successor adds the three Admin Route Registry smoke pages.
         # Pin exact current Git blob; keep historic Feature 007 snapshots immutable.
-        return (blob_sha == "0c0c2052254a5c893a79d45aa9d985b57d8361fd"
-                and (direct_profile, source_blob) in reviewed_exact_blobs
-                and b"'mad4b-direct-access-profile' => array( 'MAD4B_SCP_Direct_Profile', 'render_page'" in data)
+        # The originally reviewed Direct Profile fixture remains pinned. A
+        # second exact reviewed successor adds three Content Readiness pages
+        # to real disposable WordPress smoke, rather than excluding them.
+        original_reviewed = "0c0c2052254a5c893a79d45aa9d985b57d8361fd"
+        readiness_reviewed = "73f702209fff557737fd0aab8d30619f5a22d53f"
+        current_git_blob = subprocess.check_output(
+            ["git", "rev-parse", "HEAD:" + path], stderr=subprocess.DEVNULL,
+            timeout=8,
+        ).decode().strip()
+        required_new_pages = (
+            b"'mad4b-content-readiness-alerts' => array( 'MAD4B_SCP_Content_Readiness_Alerts', 'render'",
+            b"'mad4b-content-readiness-workflow' => array( 'MAD4B_SCP_Readiness_Workflow_Options', 'render'",
+            b"'mad4b-content-completeness' => array( 'MAD4B_SCP_Content_Completeness', 'render'",
+        )
+        return (
+            blob_sha == current_git_blob
+            and (direct_profile, source_blob) in reviewed_exact_blobs
+            and b"'mad4b-direct-access-profile' => array( 'MAD4B_SCP_Direct_Profile', 'render_page'" in data
+            and (blob_sha == original_reviewed
+                 or blob_sha == readiness_reviewed
+                 and all(marker in data for marker in required_new_pages))
+        )
     return (path, blob_sha) in reviewed_exact_blobs
 
 

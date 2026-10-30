@@ -189,6 +189,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-switcher-sources.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-market-context.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-market-preferences.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-season-calendar.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-content-readiness-alerts.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-source-hub.php';
 // Source-to-JetEngine REST contract: read-only preflight and fail-closed runtime admission.
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-hub-jetengine-consumer-governance.php';
@@ -587,6 +588,7 @@ require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-media-adapter.ph
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-remote-media-adapter.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-seo-adapter.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-woocommerce-adapter.php';
+require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-chatbotx-provider-adapter.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-polylang-adapter.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-litespeed-adapter.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-form-provider-adapters.php';
@@ -736,6 +738,7 @@ MAD4B_SCP_Market_Profiles::boot();
 MAD4B_SCP_Market_Context::boot();
 MAD4B_SCP_Market_Preferences::boot();
 MAD4B_SCP_Season_Calendar::boot();
+	MAD4B_SCP_Content_Readiness_Alerts::boot();
 MAD4B_SCP_Public_Holidays::boot();
 MAD4B_SCP_Source_Hub::boot();
 MAD4B_SCP_Staging_Autopilot::boot();

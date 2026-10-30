@@ -3,7 +3,12 @@
 defined('ABSPATH') || exit;
 if (wp_get_environment_type() !== 'local') return;
 
-add_action('wp_enqueue_scripts', static function (): void {
+// JSF registers its frontend handle on wp_footer priority 15 (when filters
+// are used). Queue this adapter at 16, before WordPress prints footer scripts
+// at priority 20. Never leave an unresolved dependency in the head queue.
+add_action('wp_footer', static function (): void {
+    if (!wp_script_is('jet-smart-filters', 'registered') ||
+        !wp_script_is('jet-smart-filters', 'enqueued')) return;
     // This script only serves the registered original Tour archive context.
     $context = shared_presentation_catalog_url_context_v1(
         (string)wp_parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) .
@@ -29,4 +34,4 @@ add_action('wp_enqueue_scripts', static function (): void {
         ]) . ';',
         'before'
     );
-}, 100);
+}, 16);
