@@ -185,7 +185,7 @@ final class MAD4B_Hub_Source_Import_V1 {
         if(!self::enabled() || !post_type_exists(self::CPT))return self::failure('not_installed',409);
         $incoming=self::collect($company,$types);
         if(is_wp_error($incoming))return $incoming;
-        return self::save_batch($company,$types,$incoming);
+        return self::save_batch($company,$types,$incoming,'wp_rest_application_password');
     }
     /**
      * Host-mediated WP-CLI Cross SSH source import.
@@ -252,26 +252,8 @@ final class MAD4B_Hub_Source_Import_V1 {
         }
         if($seenByType!==$totals)return self::failure('cross_ssh_type_count_mismatch',409);
         ksort($incoming,SORT_STRING);
-        $saved=self::save_batch(self::SOURCE,$manifest['types'],$incoming);
-        if(is_array($saved)) {
-            $saved['transport']='wp_cli_cross_ssh';
-            $saved['source_host']='tourism.almallahgroup-mg.com';
-            $saved['counts']=$totals;
-            $saved['commercial_publication']=false;
-            update_option(self::RECEIPT,$saved,false);
-            update_option(MAD4B_Hub_Auto_Distribute_V1::STATE,[
-                'last_run_at'=>gmdate('c'),
-                'last_successful_consumers'=>[],
-                'failed_consumer_ids'=>[],
-                'source_reference_count'=>$saved['imported'],
-                'snapshot_sha256'=>$saved['snapshot_sha256'],
-                'status'=>'imported_only',
-                'source_mode'=>'import_to_hub',
-                'source_transport'=>'wp_cli_cross_ssh',
-                'hub_import'=>$saved,
-            ],false);
-        }
-        return $saved;
+        return self::save_batch(self::SOURCE,$manifest['types'],$incoming,
+            'wp_cli_cross_ssh',$totals);
     }
 
     /**
@@ -347,8 +329,14 @@ final class MAD4B_Hub_Source_Import_V1 {
      * Cross-transport downgrade, stale revisions and ambiguous identities fail closed.
      * WordPress hooks can have external side effects: never treat this as publication.
      */
-    private static function save_batch($company,array $types,array $incoming) {
+    private static function save_batch($company,array $types,array $incoming,
+        $transport='wp_rest_application_password',array $counts=[]) {
         global $wpdb;
+        if(!class_exists('MAD4B_Hub_Source_Providers_V1'))
+            return self::failure('source_provider_registry_missing',503);
+        $authorized=MAD4B_Hub_Source_Providers_V1::authorize($company,'tourism_wp',
+            'tourism_main',$transport,$types,'tourism.almallahgroup-mg.com');
+        if(is_wp_error($authorized))return $authorized;
         if(!is_object($wpdb) || !method_exists($wpdb,'prepare') ||
             !method_exists($wpdb,'get_var') || !method_exists($wpdb,'query'))
             return self::failure('transaction_backend_unavailable',503);
@@ -456,10 +444,31 @@ final class MAD4B_Hub_Source_Import_V1 {
                 'created'=>$created,'updated'=>$updated,
                 'unchanged'=>count($incoming)-$created-$updated,
                 'snapshot_sha256'=>$hash,'status'=>'imported',
-                'source_provider'=>'tourism_wp','source_dataset'=>'tourism_main'];
+                'source_provider'=>'tourism_wp','source_dataset'=>'tourism_main',
+                'transport'=>$transport,'source_host'=>'tourism.almallahgroup-mg.com',
+                'commercial_publication'=>false];
+            if($transport==='wp_cli_cross_ssh')$receipt['counts']=$counts;
             if(update_option(self::RECEIPT,$receipt,false)===false &&
                get_option(self::RECEIPT,[])!==$receipt)
                 throw new RuntimeException('receipt_write_failed');
+            if(!MAD4B_Hub_Source_Providers_V1::record_import($receipt,$transport))
+                throw new RuntimeException('provider_ledger_write_failed');
+            if($transport==='wp_cli_cross_ssh') {
+                $state=[
+                    'last_run_at'=>gmdate('c'),
+                    'last_successful_consumers'=>[],
+                    'failed_consumer_ids'=>[],
+                    'source_reference_count'=>$receipt['imported'],
+                    'snapshot_sha256'=>$receipt['snapshot_sha256'],
+                    'status'=>'imported_only',
+                    'source_mode'=>'import_to_hub',
+                    'source_transport'=>'wp_cli_cross_ssh',
+                    'hub_import'=>$receipt,
+                ];
+                if(update_option(MAD4B_Hub_Auto_Distribute_V1::STATE,$state,false)===false &&
+                    get_option(MAD4B_Hub_Auto_Distribute_V1::STATE,[])!==$state)
+                    throw new RuntimeException('source_state_write_failed');
+            }
             if($wpdb->query('COMMIT')===false)
                 throw new RuntimeException('transaction_commit_failed');
             $started=false;
@@ -476,6 +485,8 @@ final class MAD4B_Hub_Source_Import_V1 {
             if(function_exists('wp_cache_delete')) {
                 wp_cache_delete(self::ACTIVE,'options');
                 wp_cache_delete(self::RECEIPT,'options');
+                wp_cache_delete(MAD4B_Hub_Source_Providers_V1::LEDGER,'options');
+                wp_cache_delete(MAD4B_Hub_Auto_Distribute_V1::STATE,'options');
             }
             return self::failure('atomic_import_aborted',503);
         } finally {
