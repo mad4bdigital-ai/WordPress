@@ -17,7 +17,12 @@ mkdir -p "$WORK";chmod 700 "$WORK"
 exec 9>/run/lock/mad4b-tourism-cross-ssh.lock
 flock -n 9 || { echo 'Import already running' >&2; exit 82; }
 FILE=$(mktemp "$WORK/import.XXXXXXXX.json")
-trap 'rm -f "$FILE"' EXIT
+cleanup_import_artifacts() {
+  rm -f "$FILE"
+  # Manifest is a short-lived private staging artifact, even on failed import.
+  docker exec -u root "$STAGING" rm -f /tmp/mad4b-hub-cross-ssh/manifest.json >/dev/null 2>&1 || true
+}
+trap cleanup_import_artifacts EXIT
 CENTRAL_HOME=$(docker exec -u www-data "$STAGING" wp --path=/var/www/html --skip-themes --skip-plugins option get home 2>/dev/null)
 test "$CENTRAL_HOME" = https://tours.dev.mad4b.com || { echo 'Central hostname mismatch' >&2;exit 83; }
 SSH="ssh -i $KEY_DIR/id_ed25519 -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$KEY_DIR/known_hosts_verified -o ConnectTimeout=10 -o PasswordAuthentication=no -p 65002"
