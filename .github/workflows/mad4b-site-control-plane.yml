@@ -66,6 +66,7 @@ jobs:
         run: |
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/provider-connections-test-actions-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/provider-test-feedback-runtime.php
 
       - name: Verify pointer-first self-update contract
         if: matrix.php == '8.1'
