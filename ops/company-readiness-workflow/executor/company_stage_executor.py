@@ -67,7 +67,10 @@ def guarded_file(root, name):
 def validate_scope(manifest, policy):
     if manifest.get("contract") != CONTRACT or manifest.get("action") != MUTABLE_ACTION:
         raise Denied("UNKNOWN_OPERATION_CONTRACT")
-    if manifest.get("mode") != "repair_existing" or manifest.get("preserve_existing") is not True:
+    if (manifest.get("mode") != "repair_existing" or
+        manifest.get("stage") != "mu_providers" or
+        manifest.get("preserve_existing") is not True or
+        "mutation_authorized" in manifest):
         raise Denied("INVALID_REPAIR_MODE")
     if manifest.get("company_code") != policy.get("company") or manifest.get("site_uuid") != policy.get("site_uuid"):
         raise Denied("COMPANY_IDENTITY_MISMATCH")
@@ -111,7 +114,7 @@ def verify_ticket(ticket, policy, manifest, purpose):
         raise Denied("INVALID_TICKET_CONTRACT")
     if ticket.get("key_id")!=policy.get("owner_public_key_id"):
         raise Denied("UNKNOWN_OWNER_AUTHORITY_KEY")
-    scope={k:manifest.get(k) for k in ("company_code","site_uuid","origin","mode","action","run_id","plan_sha256","stage_revision")}
+    scope={k:manifest.get(k) for k in ("company_code","site_uuid","origin","mode","stage","action","run_id","plan_sha256","stage_revision")}
     if ticket.get("scope")!=scope:
         raise Denied("TICKET_NOT_BOUND_TO_EXACT_STAGE")
     now=dt.datetime.now(dt.timezone.utc)
