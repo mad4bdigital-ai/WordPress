@@ -65,14 +65,34 @@ final class MAD4B_SCP_Firecrawl_Provider {
   $last=get_option('mad4b_firecrawl_last_connection_test_v1',array());
   $fingerprint=hash('sha256',wp_json_encode(array($mode,$profile['endpoint']??'',$profile['username']??'',$profile['secret_cipher']??'')));
   if(!is_array($last)||($last['mode']??'')!==$mode||($last['profile_sha256']??'')!==$fingerprint)return array('state'=>'network_test_pending','tested'=>false);
-  return array('state'=>sanitize_key((string)($last['result']??'unknown')),'tested'=>true,'at'=>(string)($last['at']??''));
+  $http_status=(int)($last['http_status']??0);
+  return array('state'=>sanitize_key((string)($last['result']??'unknown')),'tested'=>true,
+   'at'=>(string)($last['at']??''),'http_status'=>$http_status>=100&&$http_status<=599?$http_status:0);
+ }
+ /** UI interpretation only: a reachable gateway is not evidence of a successful scrape. */
+ public static function test_feedback($last) {
+  $state=(string)($last['state']??'network_test_pending');
+  $messages=array(
+   'reachable'=>array('success','Connection test successful','The saved credentials were accepted by the provider endpoint. Scrape execution was not tested.'),
+   'authentication_failed'=>array('error','Authentication failed','The provider rejected the saved credentials (HTTP 401/403). Check username, password or API key.'),
+   'network_error'=>array('error','Connection failed','The gateway could not be reached. Check DNS, TLS, firewall and timeout.'),
+   'unsafe_endpoint'=>array('error','Invalid endpoint','The saved endpoint failed the HTTPS security check.'),
+   'configuration_missing'=>array('warning','Configuration incomplete','Save the provider endpoint and credentials, then run the test.'),
+   'rate_limited'=>array('warning','Provider rate limit reached','The provider returned HTTP 429. Try again later.'),
+   'quota_exhausted'=>array('warning','Provider quota exhausted','The provider returned HTTP 402. Review the provider account.'),
+   'network_test_pending'=>array('info','Connection not tested','Run Test saved connection to confirm access using the stored credentials.')
+  );
+  $row=isset($messages[$state])?$messages[$state]:array('error','Connection test failed','The provider returned an unexpected response. Check its service health and API route.');
+  $http_status=(int)($last['http_status']??0);
+  if($http_status>=100&&$http_status<=599)$row[2].=' HTTP '.$http_status.'.';
+  return array('level'=>$row[0],'title'=>$row[1],'message'=>$row[2],'state'=>$state);
  }
  public static function test_connection() {
   if(!current_user_can('manage_options'))wp_die('Forbidden',403);
   check_admin_referer('mad4b_firecrawl_test');
   $c=self::config();$mode=$c['mode']??'cloud';$profiles=self::profiles();$profile=$profiles[$mode]??array();
   $endpoint=(string)($profile['endpoint']??'');$secret=self::decrypt($profile['secret_cipher']??'');
-  $state='configuration_missing';
+  $state='configuration_missing';$http_status=0;
   $valid_mode=in_array($mode,array('cloud','self_hosted'),true);
   $valid_endpoint=$valid_mode && $endpoint!=='' && strncmp($endpoint,'https://',8)===0 && wp_http_validate_url($endpoint);
   if($mode==='cloud' && rtrim($endpoint,'/')!=='https://api.firecrawl.dev')$valid_endpoint=false;
@@ -89,21 +109,21 @@ final class MAD4B_SCP_Firecrawl_Provider {
      $response=wp_safe_remote_get($url,array('timeout'=>8,'redirection'=>0,'headers'=>$headers,'sslverify'=>true,'limit_response_size'=>2048));
      if(is_wp_error($response))$state='network_error';
      else {
-      $status=(int)wp_remote_retrieve_response_code($response);
+      $status=(int)wp_remote_retrieve_response_code($response);$http_status=$status;
       $state=$status>=200&&$status<300?'reachable':($status===401||$status===403?'authentication_failed':($status===429?'rate_limited':($status===402?'quota_exhausted':'http_'.$status)));
      }
     }
    }
   } elseif($endpoint!=='' && !$valid_endpoint) $state='unsafe_endpoint';
   $fingerprint=hash('sha256',wp_json_encode(array($mode,$profile['endpoint']??'',$profile['username']??'',$profile['secret_cipher']??'')));
-  update_option('mad4b_firecrawl_last_connection_test_v1',array('mode'=>$mode,'profile_sha256'=>$fingerprint,'result'=>$state,'at'=>gmdate('c'),'user_id'=>get_current_user_id()),false);
-  wp_safe_redirect(admin_url('admin.php?page=mad4b-provider-connections&firecrawl_tested=1#mad4b-provider-setup-coverage'));exit;
+  update_option('mad4b_firecrawl_last_connection_test_v1',array('mode'=>$mode,'profile_sha256'=>$fingerprint,'result'=>$state,'http_status'=>$http_status,'at'=>gmdate('c'),'user_id'=>get_current_user_id()),false);
+  wp_safe_redirect(admin_url('admin.php?page=mad4b-provider-connections&firecrawl_tested=1#mad4b-firecrawl-provider'));exit;
  }
  public static function render() {
   if(!current_user_can('manage_options'))return;
   $c=self::config();$mode=$c['mode']??'cloud';$profiles=self::profiles();
   $gateway=$profiles['self_hosted']??array();$cloud=$profiles['cloud']??array();
-  echo '<hr><h2>Firecrawl — Native Provider Connection</h2>';
+  echo '<hr><h2 id="mad4b-firecrawl-provider">Firecrawl — Native Provider Connection</h2>';
   echo '<p>Choose Cloud (Bearer API key) or Self-hosted (HTTPS gateway with service username and password). Credentials are stored separately and never displayed.</p>';
   if(isset($_GET['firecrawl_saved']))echo '<div class="notice notice-success inline"><p>Firecrawl connection settings saved.</p></div>';
   echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
@@ -122,7 +142,12 @@ final class MAD4B_SCP_Firecrawl_Provider {
   echo '<script>(function(){var select=document.getElementById("mad4b-firecrawl-mode");if(!select)return;function toggle(){document.querySelectorAll("[data-mad4b-firecrawl-mode]").forEach(function(row){var active=row.getAttribute("data-mad4b-firecrawl-mode")===select.value;row.hidden=!active;row.style.display=active?"":"none";row.querySelectorAll("input").forEach(function(input){input.disabled=!active;});});}select.addEventListener("change",toggle);toggle();})();</script>';
   $state=self::probe();$last=self::test_status();
   echo '<p><strong>Readiness:</strong> '.esc_html($state['ready']?'Configured (scrape not certified)':($state['reason']??'unavailable')).'</p>';
-  echo '<p><strong>Last connection test:</strong> '.esc_html($last['state']).( !empty($last['tested']) ? ' <small>'.esc_html($last['at']).'</small>' : '' ).'</p>';
+  $feedback=self::test_feedback($last);
+  $notice_class=in_array($feedback['level'],array('success','error','warning','info'),true)?$feedback['level']:'info';
+  echo '<div class="notice notice-'.esc_attr($notice_class).' inline mad4b-provider-test-feedback" role="'.($notice_class==='error'?'alert':'status').'" aria-live="polite">';
+  echo '<p><strong>'.esc_html($feedback['title']).'</strong> — '.esc_html($feedback['message']).'</p>';
+  if(!empty($last['tested']))echo '<p class="description">Last test: '.esc_html($last['at']).' UTC | Result: '.esc_html($feedback['state']).'</p>';
+  echo '</div>';
   if(!empty($state['ready'])) {
    echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="mad4b_firecrawl_test">';
    wp_nonce_field('mad4b_firecrawl_test');
