@@ -96,10 +96,7 @@ final class SmartSeoAdminRest {
         }
         if (!$live || ($live['proposed_native_rule']??null)!==($record['native_rule']??null))
             return new \WP_Error('mad4b_seo_draft_stale','Discovery changed; regenerate the draft.',array('status'=>409));
-        if (!empty($live['translation_review_required']))
-            return new \WP_Error('mad4b_seo_translation_review_pending',
-                'Localized rules require editorial review before native staging.',array('status'=>409));
-        $rules=$jsf->settings->get('seo_sitemap_rules',array());
+        // Draft staging never enables SEO; multilingual editorial QA remains pending.\n        $rules=$jsf->settings->get('seo_sitemap_rules',array());
         if (!is_array($rules)) $rules=array();
         $new=$record['native_rule'];
         if (count($new['filters']??array())<1 || count($new['filters'])>3)
