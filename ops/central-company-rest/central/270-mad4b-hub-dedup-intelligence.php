@@ -74,6 +74,7 @@ final class MAD4B_Hub_Dedup_Intelligence_V1 {
         if(!is_array($ids)||count($ids)>self::MAX)
             return self::error('scan_limit',409);
         $index=[];$titleGroups=[];$fingerprints=[];$records=[];$sourceCounts=[];
+        $crossTitleGroups=[];$translationGroups=[];
         $emptyBodies=0;$nonemptyBodies=0;$unusable=0;$privateCount=0;
         foreach($ids as $id) {
             $id=(int)$id;$p=get_post($id);
@@ -89,7 +90,12 @@ final class MAD4B_Hub_Dedup_Intelligence_V1 {
             $sourceCounts[$owner]=($sourceCounts[$owner]??0)+1;
             if($p->post_status==='private')$privateCount++;
             $title=self::norm($p->post_title);
-            if($title!=='')$titleGroups[$owner.':'.$srcType.':'.$language.':'.$title][]=$id;
+            if($title!=='') {
+                $titleGroups[$owner.':'.$srcType.':'.$language.':'.$title][]=$id;
+                $crossTitleGroups[$srcType.':'.$language.':'.$title][$owner][]=$id;
+            }
+            $trid=(int)get_post_meta($id,'_mad4b_hub_import_translation_trid',true);
+            if($trid>0)$translationGroups[$owner.':'.$srcType.':'.$trid][$language][]=$id;
             $body=trim(wp_strip_all_tags((string)$p->post_content));
             if($body==='')$emptyBodies++;
             else {
@@ -105,6 +111,14 @@ final class MAD4B_Hub_Dedup_Intelligence_V1 {
                 'body_present'=>$body!=='',
             ];
         }
+        $crossCompany=[];
+        foreach($crossTitleGroups as $owners)if(count($owners)>1 && count($crossCompany)<self::SAMPLES) {
+            $crossCompany[]=['owner_post_ids'=>$owners,
+                'decision'=>'review_cross_company_title_only',
+                'source_authority_preserved'=>true,'auto_merge'=>false];
+        }
+        $translationFamilies=0;
+        foreach($translationGroups as $languages)if(count($languages)>1)$translationFamilies++;
         $specialists=[];
         foreach(self::$adapters as $id=>$callback) {
             try {
@@ -129,6 +143,8 @@ final class MAD4B_Hub_Dedup_Intelligence_V1 {
             'identity_duplicates'=>self::groups($index,'review_same_source_identity'),
             'title_candidates'=>self::groups($titleGroups,'review_same_title_distinct_identity'),
             'body_candidates'=>self::groups($fingerprints,'review_identical_nonempty_body'),
+            'cross_company_title_candidates'=>$crossCompany,
+            'translation_families_identified'=>$translationFamilies,
             'body_evidence'=>['nonempty'=>$nonemptyBodies,'empty'=>$emptyBodies,
                 'semantic_matching_ready'=>$nonemptyBodies>0],
             'specialists'=>$specialists,
