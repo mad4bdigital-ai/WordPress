@@ -30,7 +30,7 @@ $table=$wpdb->prefix.'icl_translations';
 $mapped=array();
 foreach($wpdb->get_results("SELECT element_id,trid,language_code,source_language_code FROM {$table} WHERE element_type='post_jet-engine'",ARRAY_A) as $row)
  $mapped[(int)$row['element_id']]=$row;
-$entries=array();$groups=array();$eligible=array();$reasons=array();
+$entries=array();$groups=array();$eligible=array();$reasons=array();$alreadyPublished=0;
 foreach($payload['rows'] as $r){
     $id=$r['id']??0;$trid=(string)($r['source_trid']??'');
     $lang=(string)($r['lang']??'');
@@ -46,8 +46,11 @@ foreach($payload['rows'] as $r){
     $groups[$trid][]=$id;
     $entries[$id]=$r;
     $blocks=array();
-    if($r['status']!=='publish'||$post->post_status!=='draft')
+    if($r['status']==='publish' && $post->post_status==='publish'){
+      $alreadyPublished++;
+    }elseif($r['status']!=='publish'||$post->post_status!=='draft'){
       $blocks[]='not_eligible_source_state';
+    }
     $data=(string)get_post_meta($id,'_elementor_data',true);
     $content=$data.' '.$post->post_content;
     if($data!=='' && !is_array(json_decode($data,true)))$blocks[]='invalid_elementor_json';
@@ -94,7 +97,8 @@ $planHash=hash('sha256',wp_json_encode(array('source'=>$sourceHash,
 $summary=array('contract'=>'mad4b.wayfatours-jet-design-autoload.v1',
  'state'=>'JET_CONFIG_AUTO_PLAN',
  'schema_parity'=>true,'post_count'=>332,'groups'=>count($groups),
- 'eligible'=>count($eligible),'eligible_ids'=>array_keys($eligible),
+ 'eligible'=>count($eligible),'already_published'=>$alreadyPublished,
+ 'eligible_ids'=>array_keys($eligible),
  'currently_linked'=>count($mapped),'linkable'=>332-count($mapped),
  'blocked_reason_counts'=>$reasons,'plan_sha256'=>$planHash,
  'source_sha256'=>$sourceHash,'site_uuid'=>$identity['site_uuid'],
