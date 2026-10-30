@@ -195,3 +195,43 @@ Mutation bodies after creation require `expected_revision` from the preceding re
 **Coverage:** The rule count is not generated from the Cartesian product. Real `WP_Query` intersection counts and returned published post IDs support editorial review. Empty results, private taxonomies, stale company policy, unsupported source, unresolved WPML, missing editorial review and unverified URLs prevent approval. One or more facets can be used; up to 12 are accepted, independent of a batch limit of 40.
 
 **Operational guardrail:** Exact-URL publishing is **OFF by default**. Tests must never publish SEO on an actual site. Production is not part of this Staging rollout. No certificates or non-WordPress owner signatures are needed to run the plugin.
+
+## Tour Guide Spoken Language — independent Smart SEO dimension (v0.6.2)
+
+Guide language is a **product/search preference**, not the page locale. On the current Staging site, the public `guide-languages` taxonomy is already registered against `tours-and-activities`, and the existing Shared Product Core `tours.archive` registry declares JetSmartFilters filter `15034`. No duplicate taxonomy or competing metadata is created.
+
+The dynamic registry exposes this as `dimension=tour_guide_spoken_language`. All existing guide-language terms shown by the registered native filter are selectable; QA-only terms absent from native options cannot be selected.
+
+**Administrator-only REST:**
+- `GET /wp-json/mad4b/v1/seo-intelligence/combinations/guide-languages?provider=jet-engine&query_id=tours_query_archive` returns actual native term choices and filter ID.
+- `POST /wp-json/mad4b/v1/seo-intelligence/combinations/preview` and `POST .../combinations` accept `guide_language` as a term slug or numeric term ID alongside other `selections`. `tour_guide_language` is an equivalent alias; supplying both aliases or also selecting the same native guide filter produces a validation error. The guide filter is resolved dynamically from the source registry.
+- Response fields `site_language` and `guide_language` are separate. `matched_published_count` counts actual published tours matching **all** selected terms. Guide-language matches prove a tour is tagged with a guide language, **not** real-time staff availability or a confirmed guide on a particular date.
+
+Five-dimensional example (site in English with French-speaking tour guide):
+
+```json
+{
+  "provider": "jet-engine",
+  "query_id": "tours_query_archive",
+  "candidates": [
+    {
+      "language": "en",
+      "guide_language": "french",
+      "selections": [
+        {"filter_id": 15035, "term_id": 192},
+        {"filter_id": 16204, "term_id": 123},
+        {"filter_id": 15903, "term_id": 232},
+        {"filter_id": 15904, "term_id": 235}
+      ]
+    }
+  ]
+}
+```
+
+On Staging, the full filter intersection gives **4 published tours** for French-speaking, Wednesday morning Cairo day tours; Arabic-speaking returns **0** for this same combination. These are sample live-data values and can change.
+
+WPML translates taxonomy term IDs when inspecting a localized page. An unresolved/missing localized archive route is explicitly marked `localized_archive_url_not_distinct`: search remains readable, but SEO publication is blocked. A translated term cannot by itself authorize a canonical or imply translated editorial approval. This is independent of the selected tour-guide language.
+
+To allow the guide facet in a per-company policy with an explicit allowlist, include the actual discovered guide filter ID; an **empty** `allowed_filter_ids` list instead allows all qualified native-registered filters, with the exclusions and all publication gates still enforced. Avoid a global cap on search dimensions; cap the QA preview batch instead.
+
+All publishing remains OFF until editorial/content graph, result coverage, canonical, Rank Math, WPML, and per-company policy requirements are satisfied. Tests: `tests/smart-seo-guide-language-wp-cli.php`.
