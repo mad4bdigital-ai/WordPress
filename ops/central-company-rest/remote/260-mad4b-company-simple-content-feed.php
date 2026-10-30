@@ -50,7 +50,7 @@ final class MAD4B_Company_Simple_Content_Feed_V1 {
             }
             $lang=apply_filters('wpml_post_language_details',null,$id);
             $lang=is_array($lang)?($lang['language_code']??''): '';
-            if (!in_array($lang,['en','ar'],true)) {
+            if (!in_array($lang,['en','ar','fr','de','it','es'],true)) {
                 return new WP_Error('mad4b_feed_language','Unknown source language',['status'=>409]);
             }
             $items[]=[
