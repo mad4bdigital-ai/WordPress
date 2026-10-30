@@ -13,7 +13,7 @@ Status: PROPOSED / NON-AUTHORIZING. Scope: Tours staging first; multi-tenant & m
 | 05 | JetEngine / WooCommerce Fields | bindings → CPT post (draft), post meta, taxonomy terms, JetEngine CCT only when registered, Woo product association | native APIs/abilities, capability scoped; idempotent upsert; snapshot, lock, readback |
 | 06 | Prices & Itineraries | supplier contract/rates + itinerary sources → versioned itinerary and offer/rate candidates | no synthetic live prices; dates, currency, taxes, pax, nationality, inventory, cancellation; approvals before selling |
 | 07 | WPML | canonical EN record + translation plan → translation sets and per-locale readback | English source; translation group/trid; term ID mapped per locale; fallback explicit, no duplicated catalog identity |
-| 08 | Media Scraping & Importing | rights-cleared asset manifests → downloaded, scanned, deduplicated Media Library entries | allowlist domains, SSRF prevention, robots/license/credit, consent, MIME/bytes, malware scan; reject unlicensed imports |
+| 08 | Media Scraping & Importing | operator-selected source asset manifests → downloaded, scanned, deduplicated Media Library entries | allowlist domains, SSRF prevention, MIME/bytes, malware scan, source provenance and operator accountability; no automatic license-document gate; deny legally prohibited uses |
 | 09 | Elementor QA | Elementor kit/template/listing references + rendered URLs → desktop/mobile QA findings and screenshots | no direct widget schema guesses; query/listing/filters, responsive, LCP/CLS, accessibility, design tokens & WPML locale |
 | 10 | Approval | evidence bundle + reviewer assignment → signed decision per content/price/rights/translation/media | separation of duties; exact hashes, SLA, expiration, deny-first; editorial approval ≠ commercial approval |
 | 11 | Publication | approved immutable release manifest → status transition and public-edge readback | exact current revision, separate publish ability, permissions, publication acceptance, rollback/unpublish |
@@ -27,7 +27,7 @@ Status: PROPOSED / NON-AUTHORIZING. Scope: Tours staging first; multi-tenant & m
 - Stage outputs are immutable versioned artifacts; downstream execution pins upstream hashes. Changed source/market data invalidates only dependent stages and forces replan, never silently rewrites live pages.
 - `operation_key` is stable across retries for one logical unit. Each attempt gets separate `operation_id`; lock and existing entity binding prevent duplication. On uncertain writes, stop and reconcile before retry.
 - No one-stage all-or-nothing claim across WordPress, Woo, WPML, media store and external providers. Each native provider writes with its own journal/compensation/readback; record partial success and `recovery_required`.
-- Manual gates are mandatory for supplier commercial truth, media rights, final publication and high-impact changes; AI may propose but not self-approve.
+- Manual gates are mandatory for supplier commercial truth, final publication and high-impact changes; media imports use explicit operator responsibility instead of a mandatory per-asset license-document gate; AI may propose but not self-approve.
 - Separate credentials and policies for scraping, content import, publishing, analytical monitoring; never reuse developer/breakglass authority.
 - Use English as canonical source for content fields then map locale-specific WPML IDs and translation groups. Geographic concepts use provider-neutral canonical keys (Place ID or equivalent), never cross-site raw term IDs.
 - SEO competitor data is research input, not license to copy photographs, descriptions, itineraries or pricing. Competitor share is not verifiable unless metric, timeframe and cohort are included.
@@ -55,7 +55,7 @@ Status: PROPOSED / NON-AUTHORIZING. Scope: Tours staging first; multi-tenant & m
 1. `plan` enumerates *all twelve* stage states and blockers with evidence/owner, never infers readiness from CPT alone.
 2. `apply` executes only ready authorized stage(s), pins snapshots, records journals, and returns per-stage readback.
 3. Multi-site/multi-language IDs are mapped using explicit canonical keys and target-site vocabularies.
-4. Media import skips any asset without rights provenance; competitors inform strategy, never implicit content reuse.
+4. Media import records source provenance and operator responsibility even without a license document; it still rejects known prohibited material or takedown-listed assets; competitors inform strategy, never implicit content reuse.
 5. Prices, inventory and booking remain non-public absent supplier contract and current verification.
 6. QA tests at least one desktop/mobile and each requested locale; approval and publication remain separate.
 7. Monitoring surfaces timestamped deltas and does not silently republish.
@@ -91,3 +91,13 @@ Prefer existing site-installed certified provider when capability, rights and ra
 - SERP rank changes across region/device/date: preserve separate observations, no bogus dominance claim.
 - Dependency and identity changes between planning and application: stale error; replan with new hashes.
 - Provider outage cannot unlock CMS mutation, approval, pricing or public publication.
+
+## Operator-responsibility media policy (v1)
+
+The import workflow **does not require a license document, per-asset rights approval, or a positive rights verification status** as prerequisites for staging ingestion. Operator-selected assets can be imported with `rights_status=unverified`, provided an authenticated operator accepts responsibility and source/asset provenance is recorded. This does not create or imply a copyright license.
+
+Preflight checks: valid enrolled operator; source URL and acquired timestamp; immutable source digest; site and stage write authority; format/size/MIME and malware checks; safe fetch (public hosts only, block SSRF/redirect-to-private, DNS rebinding); deduplication and source/takedown exclusion signals. A documented rights violation, valid takedown, or applicable legal prohibition remains a hard block. Unknown license status alone is not a hard block.
+
+Persist audit fields `operator_id`, `operator_assertion_at`, `source_url`, `source_content_sha256`, `asset_sha256`, `rights_status`, `rights_evidence_refs` (nullable), `takedown_status`, `import_run_id`, `media_attachment_id`, `provider_id`. Allow a site-configurable stricter policy. No unreviewed bulk publication or removal of existing high-risk security fences.
+
+**Test matrix:** unknown rights + operator assertion succeeds at policy-plan level; missing authenticated operator blocks; explicit takedown blocks; prohibited source blocks; unsafe URL or MIME blocks; duplicate asset returns existing binding; approval for publication remains separate; regression: no hidden rights-license prerequisite in media preflight.
