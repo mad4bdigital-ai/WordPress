@@ -74,12 +74,17 @@ $data=$wpdb->get_results("SELECT p.ID,p.post_title,p.post_name,p.post_status,p.p
  LEFT JOIN {$wpdb->postmeta} c ON p.ID=c.post_id AND c.meta_key='_elementor_conditions'
  LEFT JOIN {$wpml} w ON w.element_id=p.ID AND w.element_type='post_elementor_library'
  WHERE p.post_type='elementor_library' AND p.post_status IN ('draft','publish')",ARRAY_A);
-$eligible=array();$reasons=array();$stateMap=array();
+$eligible=array();$reasons=array();$stateMap=array();$alreadyPublished=0;
 foreach($data as $row){
  $id=(int)$row['ID'];
  if(!isset($srcMap[(string)$id]))continue;
  $source=$srcMap[(string)$id];$block=array();$localLink=0;$localBrand=0;
- if($source['status']!=='publish'||$row['post_status']!=='draft')$block[]='not_published_source_draft_target';
+ if($source['status']==='publish' && $row['post_status']==='publish') {
+     $alreadyPublished++;
+     continue;
+ }
+ if($source['status']!=='publish'||$row['post_status']!=='draft')
+     $block[]='not_published_source_draft_target';
  $allowedKinds=$compat==='schema-auto'?
      array('section','container','popup','archive','single-page','single-post','page','jet-listing-items','header'):
      array('section','container');
@@ -156,6 +161,7 @@ $summary=array('contract'=>'mad4b.wayfatours-design-activation-plan.v1',
  'state'=>'DESIGN_ACTIVATION_PLAN','source_sha256'=>$manifest['source_sha256'],
  'site_uuid'=>$identity['site_uuid'],'eligible'=>count($eligible),'blocked_reasons'=>$reasons,
  'eligible_by_type'=>array_count_values(array_column($public,'type')),
+ 'already_published_source_templates'=>$alreadyPublished,
  'eligible_ids'=>array_keys($eligible),
  'brand_replacements'=>array_sum(array_column($public,'brand_replacements')),
  'link_replacements'=>array_sum(array_column($public,'link_replacements')),
