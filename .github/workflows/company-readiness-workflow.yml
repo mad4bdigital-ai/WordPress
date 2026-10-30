@@ -4,11 +4,24 @@ on:
     paths:
       - 'ops/company-readiness-workflow/**'
       - '.github/workflows/company-readiness-workflow.yml'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-start-your-company-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-readiness-governance.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/operation-registry.json'
   push:
     branches: [master]
     paths:
       - 'ops/company-readiness-workflow/**'
       - '.github/workflows/company-readiness-workflow.yml'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-start-your-company-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-readiness-governance.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/operation-registry.json'
+permissions:
+  contents: read
+
+concurrency:
+  group: company-readiness-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   bounded-checks:
     runs-on: ubuntu-latest
@@ -29,8 +42,22 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-readiness-governance.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-work-queue.php
           php -l wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php
-          cmp ops/company-readiness-workflow/staging-mu/252-mad4b-start-your-company-runtime.php wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-start-your-company-runtime.php
-          cmp ops/company-readiness-workflow/staging-mu/242-mad4b-company-readiness-workflow.php wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-readiness-governance.php
+          python3 - <<'PY'
+          from pathlib import Path
+          pairs = (
+              ('ops/company-readiness-workflow/staging-mu/252-mad4b-start-your-company-runtime.php',
+               'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-start-your-company-runtime.php'),
+              ('ops/company-readiness-workflow/staging-mu/242-mad4b-company-readiness-workflow.php',
+               'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-readiness-governance.php'),
+          )
+          for staging, bundled in pairs:
+              raw = Path(staging).read_text()
+              embedded = Path(bundled).read_text()
+              # Only the packaging header differs: the included class is not
+              # a second activation candidate in the WordPress plugin archive.
+              assert raw.replace('* Plugin Name:', '* Component:', 1) == embedded, bundled
+              assert '* Plugin Name:' not in embedded, bundled
+          PY
           php -l ops/company-readiness-workflow/tests/test_start_company_runtime.php
       - name: Company stages and partial recovery contract tests
         run: |
