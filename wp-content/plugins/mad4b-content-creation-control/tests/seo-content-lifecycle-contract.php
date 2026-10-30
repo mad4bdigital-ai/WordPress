@@ -7,9 +7,10 @@ $dir=dirname(__DIR__);
 $engine=file_get_contents($dir.'/class-mad4b-seo-content-lifecycle.php');
 $ui=file_get_contents($dir.'/class-mad4b-seo-cycle-admin.php');
 $image=file_get_contents($dir.'/class-mad4b-seo-image-lifecycle.php');
+$render=file_get_contents($dir.'/class-mad4b-seo-render-audit.php');
 $plugin=file_get_contents($dir.'/mad4b-content-creation-control.php');
 $checks=[
-  'plugin version'=>str_contains($plugin,'0.2.6-seo-image-brand-staging'),
+  'plugin version'=>str_contains($plugin,'0.2.7-seo-render-audit-staging'),
   'SEO engine loaded'=>str_contains($plugin,"require_once __DIR__ . '/class-mad4b-seo-content-lifecycle.php'"),
   'SEO UI loaded'=>str_contains($plugin,"require_once __DIR__ . '/class-mad4b-seo-cycle-admin.php'"),
   'staging fence'=>str_contains($engine,"wp_get_environment_type()!=='staging'"),
@@ -59,5 +60,16 @@ $checks['render integration explicitly limited']=str_contains($image,'wp_get_att
 $checks['image metadata original preserved']=str_contains($image,'global_media_metadata_changed');
 $checks['image review UI']=str_contains($ui,'Image SEO &amp; Alt Text');
 $checks['image visual approval nonce']=str_contains($ui,"check_admin_referer('mad4b_seo_image_apply')");
+$checks['read-only rendered audit ability']=str_contains($render,'mad4b/seo-render-audit');
+$checks['WordPress content render']=str_contains($render,"apply_filters('the_content'");
+$checks['Elementor frontend renderer']=str_contains($render,'get_builder_content_for_display');
+$checks['no raw HTML mutation']=!str_contains($render,'wp_update_post(')&&!str_contains($render,'update_post_meta(');
+$checks['bounded DOM parse']=str_contains($render,'LIBXML_NONET');
+$checks['missing ALT counted']=str_contains($render,'without_alt_attribute');
+$checks['empty ALT separated from missing']=str_contains($render,'empty_alt_including_decorative');
+$checks['actual visual accuracy not claimed']=str_contains($render,"'visual_accuracy_checked'=>false");
+$checks['template coverage not overclaimed']=str_contains($render,"'template_level_coverage'=>false");
+$checks['Rank Math native facts only']=str_contains($engine,'requires_editor_client_scoring');
+$checks['Rank Math extraction no fake score']=str_contains($engine,"'rank_math_score_recomputed'=>false");
 foreach($checks as $name=>$ok)if(!$ok){fwrite(STDERR,"FAIL SEO Lifecycle: $name\n");exit(1);}
 echo 'PASS MAD4B SEO Content Lifecycle source-only contract: '.count($checks).' checks'.PHP_EOL;
