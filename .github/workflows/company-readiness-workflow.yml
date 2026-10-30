@@ -25,6 +25,12 @@ jobs:
           php -l ops/company-readiness-workflow/staging-mu/241-mad4b-company-brand-readiness-hub.php
           php -l ops/company-readiness-workflow/staging-mu/242-mad4b-company-readiness-workflow.php
           php -l ops/company-readiness-workflow/staging-mu/252-mad4b-start-your-company-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-start-your-company-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-readiness-governance.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-work-queue.php
+          php -l wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php
+          cmp ops/company-readiness-workflow/staging-mu/252-mad4b-start-your-company-runtime.php wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-start-your-company-runtime.php
+          cmp ops/company-readiness-workflow/staging-mu/242-mad4b-company-readiness-workflow.php wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-readiness-governance.php
           php -l ops/company-readiness-workflow/tests/test_start_company_runtime.php
       - name: Company stages and partial recovery contract tests
         run: |
