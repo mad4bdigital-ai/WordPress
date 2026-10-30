@@ -225,7 +225,7 @@ final class MAD4B_Hub_Source_Sync_Jobs_V1 {
             if(function_exists('wp_has_ability')&&wp_has_ability($name))continue;
             wp_register_ability($name,[
                 'label'=>$spec['label'],'description'=>$spec['description'],
-                'category'=>'mad4b-read',
+                'category'=>$spec['write']?'mad4b-write':'mad4b-read',
                 'execute_callback'=>$spec['callback'],
                 'permission_callback'=>static function(){return current_user_can('manage_options');},
                 'input_schema'=>$spec['input'],
