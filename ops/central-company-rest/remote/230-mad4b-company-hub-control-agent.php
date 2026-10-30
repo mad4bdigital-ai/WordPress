@@ -47,7 +47,11 @@ final class MAD4B_Company_Hub_Control_Agent_V1 {
             return self::err('payload_size');
         $data=json_decode($raw,true);
         if(!is_array($data) || ($data['contract']??null)!==self::CONTRACT ||
+            array_diff(array_keys($data),array('contract','company_id',
+                'consumer_company','target_host','operation','action',
+                'intent_id','selection')) ||
             ($data['company_id']??null)!==self::company() ||
+            ($data['target_host']??null)!==self::host() ||
             ($data['target_host']??null)!==self::host())
             return self::err('company_or_contract');
         $ts=(string)$request->get_header('x-mad4b-time');
