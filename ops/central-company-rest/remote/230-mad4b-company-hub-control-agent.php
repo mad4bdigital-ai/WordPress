@@ -103,6 +103,7 @@ final class MAD4B_Company_Hub_Control_Agent_V1 {
     }
     public static function validate_intent($data,$delegation=null) {
         if(!is_array($data) || ($data['contract']??null)!==self::CONTRACT ||
+            ($data['company_id']??null)!==self::company() ||
             !in_array(($data['operation']??''),array('preflight','apply','revoke'),true) ||
             !in_array(($data['action']??''),array('content_release_reference'),true) ||
             !is_string($data['intent_id']??null) ||
