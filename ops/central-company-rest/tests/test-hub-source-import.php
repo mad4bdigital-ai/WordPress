@@ -7,6 +7,7 @@ error_reporting(E_ALL & ~E_DEPRECATED);
 define('ABSPATH','/test/');
 $GLOBALS['options']=[];
 $GLOBALS['hub_posts']=[];
+$GLOBALS['verified_nile']=[];
 $GLOBALS['hub_meta']=[];
 $GLOBALS['next_post_id']=9000;
 $GLOBALS['feed_rows']=[];
@@ -40,9 +41,13 @@ function is_wp_error($x) {return $x instanceof WP_Error;}
 function get_option($key,$default=false) {return $GLOBALS['options'][$key]??$default;}
 function update_option($key,$value,$autoload=false) {$GLOBALS['options'][$key]=$value;return true;}
 function register_post_type($slug,$args) {$GLOBALS['registered_types'][$slug]=$args;return true;}
-function post_type_exists($slug) {return isset($GLOBALS['registered_types'][$slug]) ||
+function current_user_can($cap) {return $cap==='manage_options';}
+function post_type_exists($slug) {return $slug==='mad4b_hub_nile' || isset($GLOBALS['registered_types'][$slug]) ||
     in_array($slug,['tours-and-activities','properties','transportations'],true);}
-function get_posts($query) {return array_keys($GLOBALS['hub_posts']);}
+function get_posts($query) {
+    if($query['post_type']==='mad4b_hub_nile') return array_keys($GLOBALS['verified_nile']);
+    return array_keys($GLOBALS['hub_posts']);
+}
 function get_post($id) {return $GLOBALS['hub_posts'][$id]??$GLOBALS['source_rows'][$id]??null;}
 function get_post_meta($id,$key,$single=true) {return $GLOBALS['hub_meta'][$id][$key]??'';}
 function update_post_meta($id,$key,$value) {$GLOBALS['hub_meta'][$id][$key]=$value;return true;}
@@ -222,4 +227,42 @@ $invalid=MAD4B_Company_Simple_Content_Feed_V1::page(new WP_REST_Request([
     'post_type'=>'shop_order','page'=>1
 ]));
 check(is_wp_error($invalid),'Orders not exposable through source feed');
+
+$proof=[
+    'source_tour_id'=>5551,'source_company'=>'tourism-almallahgroup',
+    'title'=>'Previously authenticated Nile tour',
+    'summary'=>'Verified Tourism summary',
+    'source_content_text'=>'Verified published source content',
+    'translation_source'=>['language_code'=>'en'],
+    'publish_allowed'=>false,
+];
+$proofJson=json_encode($proof, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+$GLOBALS['verified_nile'][67515]=1;
+$GLOBALS['hub_meta'][67515]=[
+    '_mad4b_hub_source_company'=>'tourism-almallahgroup',
+    '_mad4b_hub_content_owned_by'=>'tourism-almallahgroup',
+    '_mad4b_hub_publication_state'=>'published_content_hub',
+    '_mad4b_hub_commerce_approved'=>'no',
+    '_mad4b_hub_bookable'=>'no',
+    '_mad4b_hub_source_payload_json'=>$proofJson,
+    '_mad4b_hub_source_sha256'=>hash('sha256',$proofJson),
+    '_mad4b_hub_source_id'=>5551,
+];
+$GLOBALS['hub_meta'][67515]['_mad4b_hub_source_sha256']=str_repeat('0',64);
+$before=count($GLOBALS['hub_posts']);
+$rejected=MAD4B_Hub_Source_Import_V1::bootstrap_verified_nile_tours();
+check(is_wp_error($rejected) && count($GLOBALS['hub_posts'])===$before,
+    'Tampered historical proof blocks bootstrap without Hub writes');
+$GLOBALS['hub_meta'][67515]['_mad4b_hub_source_sha256']=hash('sha256',$proofJson);
+$boot=MAD4B_Hub_Source_Import_V1::bootstrap_verified_nile_tours();
+check(is_array($boot) && $boot['imported']===1 &&
+    $boot['fresh_source_fetch']===false,'Bootstrap verified Staging source reference into private Hub');
+$active=get_option(MAD4B_Hub_Source_Import_V1::ACTIVE,[]);
+check(count($active['keys'])===1 && $active['record_count']===1,
+    'Old source records excluded from the currently active index');
+$before=$GLOBALS['changes'];
+$again=MAD4B_Hub_Source_Import_V1::bootstrap_verified_nile_tours();
+check($again['created']===0 && $again['updated']===0 && $GLOBALS['changes']===$before,
+    'Repeat bootstrap does not duplicate or rewrite prior Hub records');
+
 echo "PASS $tests native source pull and default Content Hub import tests\n";
