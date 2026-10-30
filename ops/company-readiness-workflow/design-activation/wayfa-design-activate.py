@@ -108,9 +108,20 @@ def main():
                 "diffs":receipt["diffs"],"changes_applied":0}))
             return
         if mode=="resolve-diff":
-            print(json.dumps({"state":"SECONDARY_RESOLVER_INVOKED",
-                "schema_diffs":receipt["diffs"],"action":"REMAP_ONLY_GROUNDED_DIFFERENCES",
-                "changes_applied":0}))
+            if receipt["state"]=="SCHEMA_PARITY_CONFIRMED":
+                p["config_mode"]="schema-auto"
+                p["schema_attestation"]=receipt
+                reason_report=wp("plan",p)
+                current=reason_report.get("blocked_reasons",{})
+            else:
+                current={}
+            env=dict(os.environ,WAYFA_TEMPLATE_BLOCKERS=json.dumps(current))
+            resolved=subprocess.run(
+                ["python3",str(ROOT/"bin/wayfa-template-diff-resolver.py")],
+                env=env,capture_output=True,text=True,timeout=45)
+            if resolved.returncode:
+                raise RuntimeError("SECONDARY_RESOLVER_FAILED:"+resolved.stderr[-300:])
+            print(resolved.stdout.strip())
             return
         p["config_mode"]="schema-auto"
         p["schema_attestation"]=receipt
