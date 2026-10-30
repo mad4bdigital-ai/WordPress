@@ -230,9 +230,9 @@ final class MAD4B_SCP_Provider_Setup_Coverage {
         $active = is_array( $profiles[$mode] ?? null ) ? $profiles[$mode] : array();
         $credential = !empty( $active['secret_cipher'] ) ? 'encrypted_saved' : 'not_configured';
         $setup = admin_url( 'admin.php?page=mad4b-provider-connections#mad4b-firecrawl-provider' );
-        $last = get_option( 'mad4b_firecrawl_last_connection_test_v1', array() );
-        $tested = is_array( $last ) && ( $last['mode'] ?? '' ) === $mode && !empty( $last['at'] );
-        $result = $tested ? sanitize_key( (string) ( $last['result'] ?? 'unknown' ) ) : 'network_test_pending';
+        $last = MAD4B_SCP_Firecrawl_Provider::test_status();
+        $tested = ! empty( $last['tested'] );
+        $result = (string) ( $last['state'] ?? 'network_test_pending' );
         $fields = $mode === 'self_hosted'
             ? array( 'firecrawl_endpoint', 'firecrawl_username', 'firecrawl_gateway_password' )
             : array( 'firecrawl_cloud_secret' );
@@ -355,7 +355,7 @@ final class MAD4B_SCP_Provider_Setup_Coverage {
     public static function render() {
         $data = self::inventory();
         if ( is_wp_error( $data ) ) return;
-        echo '<hr/><h2>Provider setup coverage</h2><p>Fields below are read-only names from their owning adapters. "Credential present" does not establish a live connection, signed browser evidence, paid API authorization or production readiness.</p>';
+        echo '<hr/><h2 id="mad4b-provider-setup-coverage">Provider setup coverage</h2><p>The Test buttons below submit an explicit administrator-authorized POST to each supported adapter. Credential presence alone does not establish a live connection, signed browser evidence, paid API authorization or production readiness.</p>';
         echo '<table class="widefat striped"><thead><tr><th>Provider</th><th>Required fields / credential owner</th><th>Credential state</th><th>Connection / execution evidence</th><th>Setup</th><th>Test / diagnostics</th></tr></thead><tbody>';
         foreach ( $data['providers'] as $row ) {
             echo '<tr><td><strong>'.esc_html( $row['label'] ).'</strong><br/><code>'.esc_html( $row['family'].'/'.$row['provider_id'] ).'</code></td>';
