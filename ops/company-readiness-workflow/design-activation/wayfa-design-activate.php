@@ -21,6 +21,81 @@ if(DB_NAME!=='wayfatours_production'||wp_get_environment_type()!=='production'||
 
 $originalBrand='~(?:woo[\s_-]*vacation|wovacation|all[\s_-]*royal[\s_-]*egypt|allroyalegypt|egypt[\s_-]*tour[\s_-]*gates|egypttourgates|dona[\s_-]*tours|donatours|\bETG\b)~i';
 $sourceHost='tours.dev.mad4b.com';
+
+$registry=get_option('mad4b_company_options_field_registry_v1',array());
+$deferOptions=!empty($manifest['defer_options_on_publish']);
+if($deferOptions){
+    if(!is_array($registry) ||
+       ($registry['contract']??'')!=='mad4b.company-options-field-registry.v1' ||
+       ($registry['fingerprint']??'')!==($manifest['options_registry_fingerprint']??'') ||
+       !isset($registry['pages']['look-and-feel'],$registry['pages']['contact-and-help-info']))
+       WP_CLI::error('COMPANY_OPTIONS_CANONICAL_REGISTRY_REQUIRED');
+}
+$sourceMediaHosts=array_fill_keys(array(
+  'tours.dev.mad4b.com','staging.egypttourgates.com',
+  'egypttourgates.com','www.egypttourgates.com',
+  'wovacation.com','www.wovacation.com',
+  'allroyalegypt.com','www.allroyalegypt.com'),true);
+$isSourceMedia=function($value)use($sourceMediaHosts){
+    if(!is_string($value)||!$value)return false;
+    $host=strtolower((string)wp_parse_url($value,PHP_URL_HOST));
+    return $host!=='' && isset($sourceMediaHosts[$host]);
+};
+$isRegistryField=function($page,$field,$expectedType)use($registry){
+    if(!isset($registry['pages'][$page]['fields']))return false;
+    foreach($registry['pages'][$page]['fields'] as $definition){
+        if(($definition['key']??'')===$field){
+            $type=(string)($definition['type']??'');
+            return $expectedType==='image'?
+                in_array($type,array('media','gallery'),true):
+                in_array($type,array('text','textarea','media','gallery'),true);
+        }
+    }
+    return false;
+};
+$blankMappedFallback=function(&$tree,$path='')use(&$blankMappedFallback,
+  $isSourceMedia,$isRegistryField,&$currentDeferredBindings){
+    if(!is_array($tree))return;
+    if(isset($tree['__dynamic__'])&&is_array($tree['__dynamic__'])){
+        foreach($tree['__dynamic__'] as $key=>$tag){
+            if(!is_string($tag)||strpos($tag,'jet-options-')===false ||
+               !preg_match('/settings="([^"]+)"/',$tag,$matches))continue;
+            $settings=json_decode(rawurldecode($matches[1]),true);
+            $reference=(string)($settings['option_field']??'');
+            $pos=strpos($reference,'::');
+            if($pos===false)continue;
+            $page=substr($reference,0,$pos);
+            $field=substr($reference,$pos+2);
+            $kind=(strpos($tag,'name="jet-options-image"')!==false ||
+                   strpos($tag,'name="jet-options-gallery"')!==false)?'image':'text';
+            if(!$isRegistryField($page,$field,$kind))continue;
+            if(!array_key_exists($key,$tree))continue;
+            $fallback=&$tree[$key];
+            $cleared=false;
+            if(is_array($fallback) && array_key_exists('url',$fallback) &&
+               $isSourceMedia($fallback['url'])){
+                $fallback['url']='';
+                if(array_key_exists('id',$fallback))$fallback['id']='';
+                $cleared=true;
+            }elseif(is_string($fallback)&&$isSourceMedia($fallback)){
+                $fallback='';$cleared=true;
+            }
+            unset($fallback);
+            if($cleared){
+                $currentDeferredBindings[]=array(
+                  'json_path'=>$path.'/'.(string)$key,
+                  'option_page'=>$page,'option_field'=>$field,
+                  'status'=>'WAITING_OWNER_JETENGINE_VALUE');
+            }
+        }
+    }
+    foreach($tree as $key=>&$value){
+        if((string)$key==='__dynamic__')continue;
+        if(is_array($value))$blankMappedFallback($value,$path.'/'.(string)$key);
+    }
+    unset($value);
+};
+
 $srcMap=$manifest['templates'];
 $compat=(string)($manifest['config_mode']??'strict');
 if(!in_array($compat,array('strict','schema-auto'),true))WP_CLI::error('INVALID_COMPATIBILITY_MODE');
@@ -78,7 +153,7 @@ $eligible=array();$reasons=array();$stateMap=array();$alreadyPublished=0;
 foreach($data as $row){
  $id=(int)$row['ID'];
  if(!isset($srcMap[(string)$id]))continue;
- $source=$srcMap[(string)$id];$block=array();$localLink=0;$localBrand=0;
+ $source=$srcMap[(string)$id];$block=array();$localLink=0;$localBrand=0;$currentDeferredBindings=array();
  if($source['status']==='publish' && $row['post_status']==='publish') {
      $alreadyPublished++;
      continue;
@@ -122,6 +197,7 @@ foreach($data as $row){
     $walker($v);
     $linksRewritten=0;$brandRewritten=0;
     $transform($v);
+    if($deferOptions)$blankMappedFallback($v,'data');
     $localLink=$linksRewritten;$localBrand=$brandRewritten;
     $next=wp_json_encode($v,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
     if(!is_string($next))$block[]='elementor_encode_failed';
@@ -151,7 +227,10 @@ foreach($data as $row){
     'new_sha256'=>hash('sha256',$next),
     'title_sha256'=>hash('sha256',$row['post_title']),
     'title_next'=>$nextTitle,'brand_replacements'=>$localBrand,
-    'link_replacements'=>$localLink,'_data'=>$next);
+    'link_replacements'=>$localLink,
+    'deferred_count'=>count($currentDeferredBindings),
+    'deferred_option_bindings'=>$currentDeferredBindings,
+    '_data'=>$next);
  $stateMap[$id]=$row;
 }
 ksort($eligible);ksort($reasons);
@@ -164,6 +243,9 @@ $summary=array('contract'=>'mad4b.wayfatours-design-activation-plan.v1',
  'eligible_by_type'=>array_count_values(array_column($public,'type')),
  'already_published_source_templates'=>$alreadyPublished,
  'eligible_ids'=>array_keys($eligible),
+ 'deferred_options_mode'=>$deferOptions?'mapped_option_fallbacks_blank':'off',
+ 'deferred_fields_total'=>array_sum(array_column($public,'deferred_count')),
+ 'deferred_templates'=>count(array_filter(array_column($public,'deferred_count'))),
  'brand_replacements'=>array_sum(array_column($public,'brand_replacements')),
  'link_replacements'=>array_sum(array_column($public,'link_replacements')),
  'plan_sha256'=>$planHash,'kit_preserved'=>4,'compatibility_mode'=>$compat,'media_copied'=>false,
@@ -175,7 +257,9 @@ if($act==='backup'){
     $backup=array();
     foreach($eligible as $i=>$change){$old=$stateMap[$i];$backup[]=array(
      'id'=>$i,'post_status'=>$old['post_status'],'post_title'=>$old['post_title'],
-     '_elementor_data'=>$old['elementor_data'],'source_sha256'=>$manifest['source_sha256']);
+     '_elementor_data'=>$old['elementor_data'],
+     'previous_deferred_bindings'=>get_post_meta($i,'_mad4b_deferred_option_bindings_v1',true),
+     'source_sha256'=>$manifest['source_sha256']);
     }
     echo wp_json_encode(array('state'=>'DESIGN_ACTIVATION_BACKUP',
        'site_uuid'=>$identity['site_uuid'],'plan_sha256'=>$planHash,'records'=>$backup),
@@ -207,6 +291,20 @@ try{
           array('post_id'=>$i,'meta_key'=>'_elementor_data'),array('%s'),array('%d','%s'));
       if($m!==1)throw new Exception('UPDATE_ELEMENTOR_DATA_FAILED_'.$i);
     }
+    if($change['deferred_count']>0){
+        $key='_mad4b_deferred_option_bindings_v1';
+        $already=$wpdb->get_var($wpdb->prepare("SELECT meta_id FROM {$wpdb->postmeta}
+            WHERE post_id=%d AND meta_key=%s LIMIT 1",$i,$key));
+        if($already)throw new Exception('OPTION_BINDINGS_ALREADY_PRESENT_'.$i);
+        $value=wp_json_encode(array('contract'=>'mad4b.company-deferred-option-bindings.v1',
+            'company'=>'wayfatours','state'=>'OWNER_INPUT_PENDING',
+            'bindings'=>$change['deferred_option_bindings']),
+            JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+        if($wpdb->insert($wpdb->postmeta,array('post_id'=>$i,
+             'meta_key'=>$key,'meta_value'=>$value),
+             array('%d','%s','%s'))!==1)
+             throw new Exception('DEFERRED_OPTION_BINDINGS_INSERT_FAILED_'.$i);
+    }
     $updated++;
   }
   $n=0;foreach(array_keys($eligible) as $pid){
@@ -222,4 +320,5 @@ try{
   echo wp_json_encode($summary,JSON_UNESCAPED_SLASHES).PHP_EOL;
 }catch(Throwable $e){$wpdb->query('ROLLBACK');WP_CLI::error('ACTIVATION_ROLLED_BACK:'.$e->getMessage());}
 finally{$wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)',$lock));}
+
 
