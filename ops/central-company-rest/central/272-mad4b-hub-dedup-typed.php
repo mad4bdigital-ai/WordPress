@@ -74,7 +74,13 @@ final class MAD4B_Hub_Dedup_Typed_V1 {
         }
         $seen=[];$candidates=[];$checked=0;$truncated=false;
         foreach($blocks as $key=>$ids) {
-            if(count($ids)<2 || count($ids)>200)continue;
+            if(count($ids)<2)continue;
+            if(count($ids)>200) {
+                // Oversized token blocks are skipped for performance; never
+                // report complete duplicate coverage after skipping one.
+                $truncated=true;
+                continue;
+            }
             $size=count($ids);
             for($i=0;$i<$size;$i++)for($j=$i+1;$j<$size;$j++) {
                 $a=$ids[$i];$b=$ids[$j];
@@ -147,6 +153,8 @@ final class MAD4B_Hub_Dedup_Typed_V1 {
             'records_with_taxonomy_provenance'=>$taxReady,
             'records_with_typed_identity_facts'=>$factsReady,
             'candidate_pairs_checked'=>$checked,'scan_truncated'=>$truncated,
+            'scan_complete'=>!$truncated,
+            'auto_merge_eligible'=>false,
             'review_candidate_count'=>count($candidates),
             'review_candidates'=>array_slice($candidates,0,self::REVIEW_LIMIT),
         ];
