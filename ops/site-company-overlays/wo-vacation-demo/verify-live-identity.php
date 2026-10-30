@@ -11,7 +11,7 @@ $environment=wp_get_environment_type();
 $siteUuid=class_exists('MAD4B_SCP_Site_Profile')
     ? MAD4B_SCP_Site_Profile::site_uuid() : '';
 $homeHost=parse_url(home_url(), PHP_URL_HOST);
-$expectedUuid='4ef86619-35a5-4690-aa3e-6f298994965e';
+$expectedUuid='e5e64bca-ed62-48d2-b2b3-dff693cd702a';
 if ($environment !== 'staging' || $homeHost !== 'tours.dev.mad4b.com' ||
     $siteUuid !== $expectedUuid || DB_NAME !== 'etg_commerce_staging') {
     fwrite(STDERR, "BLOCKED: wrong site, database, or environment\n");
