@@ -302,11 +302,17 @@ final class MAD4B_Hub_Auto_Distribute_V1 {
         echo '<p><label>Selected Content Hub post IDs (comma-separated; used when auto-include is off)<br><input type="text" class="regular-text" name="selected_source_ids" value="'.
             esc_attr(implode(',',$policy['selected_source_ids'])).'"></label></p>';
         submit_button('Save Distribution Settings');
-        echo '</form><hr><form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
-        wp_nonce_field('mad4b_hub_auto_run');
-        echo '<input type="hidden" name="action" value="mad4b_hub_auto_run">';
-        submit_button('Run Distribution Now','secondary');
-        echo '</form><h2>Last Run</h2><pre>'.esc_html(wp_json_encode($state,JSON_PRETTY_PRINT)).'</pre></div>';
+        echo '</form><hr>';
+        if($policy['source_transport']==='wp_cli_cross_ssh') {
+            echo '<p><strong>WP-CLI Cross SSH:</strong> Import runs from the VPS host using the pinned registered SSH target. Use the installed <code>run-tourism-cross-ssh.sh</code> command, not a browser or WP-Cron. The site stores no SSH key. This imports privately and does not publish or deliver content.</p>';
+        } else {
+            echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
+            wp_nonce_field('mad4b_hub_auto_run');
+            echo '<input type="hidden" name="action" value="mad4b_hub_auto_run">';
+            submit_button('Run Distribution Now','secondary');
+            echo '</form>';
+        }
+        echo '<h2>Last Run</h2><pre>'.esc_html(wp_json_encode($state,JSON_PRETTY_PRINT)).'</pre></div>';
     }
     private static function redirect_screen($message) {
         $parent=post_type_exists('mad4b_hub_nile')?'edit.php?post_type=mad4b_hub_nile':'tools.php';
