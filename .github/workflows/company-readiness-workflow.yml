@@ -34,6 +34,7 @@ jobs:
           python3 -m py_compile ops/company-readiness-workflow/design-activation/wayfa-schema-compatibility.py
           python3 -m py_compile ops/company-readiness-workflow/design-activation/wayfa-template-diff-resolver.py
           python3 -m py_compile ops/company-readiness-workflow/design-activation/wayfa-jet-config-autoload.py
+          python3 -m py_compile ops/company-readiness-workflow/design-activation/wayfa-design-lifecycle.py
       - name: Source-neutral activation PHP syntax
         run: |
           php -l ops/company-readiness-workflow/design-activation/wayfa-wpml-resolve.php
