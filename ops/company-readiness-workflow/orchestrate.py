@@ -167,6 +167,11 @@ def run(refresh=False):
     with open(CATALOG, encoding="utf-8") as f: catalog=json.load(f)
     src=wp(CENTRAL, READ_SCRIPT)
     tenant=wp(TENANT, READ_SCRIPT)
+    design_policy_file = BASE / "policies/company-design-activation-v2.json"
+    design_policy = json.loads(design_policy_file.read_text())
+    design_policy_sha256 = hashlib.sha256(design_policy_file.read_bytes()).hexdigest()
+    if design_policy.get("contract") != "mad4b.company-design-activation-policy.v2" or design_policy.get("default_action") != "DENY_UNTIL_QUALIFIED":
+        raise RuntimeError("DESIGN_GOVERNANCE_POLICY_INVALID")
     health={u:https("https://"+u+"/") for u in
             ("tours.dev.mad4b.com","wayfatours.mad4b.com")}
     # Only fixed company host and URL paths obtained from its own Elementor drafts.
@@ -193,6 +198,7 @@ def run(refresh=False):
       "template_counts":counters,
       "stages":stages,
       "https":health,
+      "design_policy": {"contract":design_policy["contract"],"sha256":design_policy_sha256},
       "target_link_readback":links
     }
     fingerprint=json.dumps(report,sort_keys=True,separators=(",",":")).encode()
