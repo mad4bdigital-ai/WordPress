@@ -108,7 +108,7 @@ final class SmartSeoCombinations {
         $blocked=array();
         if($count<$required)$blocked[]='not_enough_published_matching_products';
         if($restricted)$blocked[]='nonpublic_taxonomy_requires_company_policy_review';
-        if($lang!=='en')$blocked[]='localized_terms_and_copy_require_review';
+        // Locale review is a separate REST gate, not a permanent selection error.
         if(!$policy['enabled'])$blocked[]='source_policy_disabled';
         foreach($resolved as $x) {
             if(in_array($x['filter_id'],$policy['excluded_filter_ids'],true))
@@ -127,6 +127,7 @@ final class SmartSeoCombinations {
             'min_result_count'=>$required,'url'=>$url,
             'qualified_for_editorial_review'=>!$blocked,'index_ready'=>false,
             'blockers'=>array_values(array_unique($blocked)),
+            'localization_review_required'=>$lang!=='en',
             'result_evidence'=>'wordpress_wp_query_taxonomy_intersection',
             'public_url_evidence'=>'not_yet_verified',
         );
