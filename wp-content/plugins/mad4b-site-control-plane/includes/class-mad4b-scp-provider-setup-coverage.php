@@ -307,12 +307,50 @@ final class MAD4B_SCP_Provider_Setup_Coverage {
             'live_connection_tests_performed' => false,
             'unverified_not_equivalent_to_ready' => true );
     }
-    private static function diagnostic_link( $row ) {
+    /**
+     * Only source-owned local POST test handlers are offered here. A setup URL
+     * must never be labelled a connection test, and discovery must stay read-only.
+     */
+    private static function render_test_control( $row ) {
         $family = (string) ( $row['family'] ?? '' );
-        if ( ! in_array( $family, array( 'search', 'oauth', 'browser_runner', 'browser_native', 'ai', 'growth', 'research' ), true ) ) return null;
+        $id = (string) ( $row['provider_id'] ?? '' );
+        if ( $family === 'research' && $id === 'firecrawl'
+            && class_exists( 'MAD4B_SCP_Firecrawl_Provider' ) ) {
+            if ( ( $row['credential_state'] ?? '' ) !== 'encrypted_saved' ) {
+                echo '<span>Save Firecrawl credentials before testing.</span>';
+                return;
+            }
+            echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+            echo '<input type="hidden" name="action" value="mad4b_firecrawl_test">';
+            wp_nonce_field( 'mad4b_firecrawl_test' );
+            echo '<button type="submit" class="button button-secondary">Test Firecrawl connection</button></form>';
+            echo '<p class="description">Authenticated gateway check (self-hosted) or credit-usage check (Cloud); no scrape is performed.</p>';
+            return;
+        }
+        if ( $family === 'search' && class_exists( 'MAD4B_SCP_Search_Provider_Connections' )
+            && class_exists( 'MAD4B_SCP_Search_Runtime' )
+            && MAD4B_SCP_Search_Runtime::can_configure() ) {
+            $state = MAD4B_SCP_Search_Provider_Connections::status( $id );
+            if ( is_wp_error( $state ) || ! is_array( $state ) || empty( $state['configured'] ) ) {
+                echo '<span>Save the account credentials before testing.</span>';
+                return;
+            }
+            echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+            echo '<input type="hidden" name="action" value="mad4b_search_provider_connection">';
+            echo '<input type="hidden" name="provider_id" value="' . esc_attr( $id ) . '">';
+            echo '<input type="hidden" name="expected_revision" value="' . esc_attr( (string) $state['revision'] ) . '">';
+            echo '<input type="hidden" name="operation" value="test">';
+            echo '<input type="hidden" name="return_to_provider_connections" value="1">';
+            wp_nonce_field( 'mad4b_search_provider_connection:' . $id );
+            echo '<button type="submit" class="button button-secondary">Test saved connection</button></form>';
+            echo '<p class="description">Uses the registered SERP adapter account check. It does not certify search capture.</p>';
+            return;
+        }
+        echo '<span>Live test unavailable through this adapter.</span>';
         $url = (string) ( $row['setup_url'] ?? '' );
-        if ( $url === '' || wp_validate_redirect( $url, '' ) === '' ) return null;
-        return array( 'url' => $url, 'label' => $family === 'research' ? 'Open Firecrawl connection test' : ( $family === 'browser_runner' ? 'Open external runner setup' : 'Open owner diagnostics' ) );
+        if ( $url !== '' && wp_validate_redirect( $url, '' ) !== '' )
+            echo '<p><a href="' . esc_url( $url ) . '">Open provider controls / diagnostics</a></p>';
+        echo '<p class="description">No network test has been performed. A provider-owned test adapter is required.</p>';
     }
     public static function render() {
         $data = self::inventory();
@@ -328,11 +366,9 @@ final class MAD4B_SCP_Provider_Setup_Coverage {
             echo '<td><code>'.esc_html( $row['next_step'] ).'</code>';
             if ( $row['setup_url'] !== '' && wp_validate_redirect( $row['setup_url'], '' ) !== '' )
                 echo '<p><a href="'.esc_url( $row['setup_url'] ).'">Open original setup</a></p>';
-            $link = self::diagnostic_link( $row );
             echo '</td><td>';
-            if ( $link ) echo '<a class="button button-secondary" href="'.esc_url( $link['url'] ).'">'.esc_html( $link['label'] ).'</a>';
-            else echo '<span>Test not available</span>';
-            echo '<p class="description">Navigation only; no live test is implied.</p></td></tr>';
+            self::render_test_control( $row );
+            echo '</td></tr>';
         }
         echo '</tbody></table><p>Browserbase, Browserless, Steel and Cloudflare browser credentials live in the independently operated external runner. WordPress has no authority to test or save those runner keys. The Browser Acceptance page describes their exact secret names and signed-evidence requirements; do not paste those secrets into an unrelated WordPress setting.</p>';
     }
