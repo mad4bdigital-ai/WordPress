@@ -570,6 +570,63 @@ final class MAD4B_SCP_Authorization {
 				return call_user_func( $original, $input );
 			}
 
+            // Verified native WordPress principal for reviewed core Abilities.
+            // No Agent enrollment; unreviewed filesystem, SQL, host, secrets,
+            // developer, production deployment and breakglass routes stay on
+            // their original, separately authorized execution path.
+            if ( class_exists( 'MAD4B_SCP_Delegation_Mode' )
+                && class_exists( 'MAD4B_SCP_Identity_Context' )
+                && in_array( $name,
+                    MAD4B_SCP_Delegation_Mode::native_write_abilities(), true ) ) {
+                $subject = MAD4B_SCP_Identity_Context::current();
+                $wp_actor = MAD4B_SCP_Delegation_Mode::verified_wordpress_user( $subject );
+                if ( $wp_actor ) {
+                    if ( ! MAD4B_SCP_Policy::can_mutate() )
+                        return new WP_Error( 'mad4b_wordpress_principal_write_disabled',
+                            'WordPress site write authority or actor capability is unavailable.' );
+                    $capability_guard = MAD4B_SCP_Delegation_Mode::authorize_ability(
+                        $subject, $name, $input );
+                    if ( is_wp_error( $capability_guard ) || true !== $capability_guard )
+                        return is_wp_error( $capability_guard ) ? $capability_guard
+                            : new WP_Error( 'mad4b_wordpress_principal_cap_denied',
+                                'WordPress user lacks the exact ContentJob permission.' );
+                    // MCP peer isolation and restore binding still apply,
+                    // independent of whether an Agent is involved.
+                    if ( ! class_exists( 'MAD4B_SCP_MCP_Peer_Governance' ) )
+                        return new WP_Error( 'mcp_peer_inventory_unavailable',
+                            'MCP peer governance is unavailable.' );
+                    $peer_guard = MAD4B_SCP_MCP_Peer_Governance::mutation_guard();
+                    if ( is_wp_error( $peer_guard ) ) return $peer_guard;
+                    if ( ! class_exists( 'MAD4B_SCP_Restore_Epoch' ) )
+                        return new WP_Error( 'mad4b_restore_epoch_unavailable',
+                            'Restore epoch binding is unavailable.' );
+                    $epoch_guard = MAD4B_SCP_Restore_Epoch::ensure_bound();
+                    if ( is_wp_error( $epoch_guard ) ) return $epoch_guard;
+                    // OAuth is only permitted when its verified bearer has
+                    // an actual write scope; read-only bearer cannot write.
+                    if ( is_array( $subject ) && 'oauth' === ( $subject['subject_type'] ?? '' ) ) {
+                        if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
+                            || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( 'mad4b:write' ) )
+                            return new WP_Error( 'mad4b_wordpress_oauth_write_scope_required',
+                                'Authenticated OAuth user requires verified mad4b:write scope.' );
+                    }
+                    if ( ! class_exists( 'MAD4B_SCP_Audit' )
+                        || empty( MAD4B_SCP_Audit::storage_status()['ready'] ) )
+                        return new WP_Error( 'mad4b_wordpress_principal_audit_unavailable',
+                            'Native WordPress mutation requires a durable site audit.' );
+                    $record = MAD4B_SCP_Audit::record( 'mad4b/native-wordpress-ability', array(
+                        'ability' => $name,
+                        'actor_type' => 'wordpress_user',
+                        'actor_user_id' => (int) $wp_actor->ID,
+                        'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
+                    ), 'ok' );
+                    if ( is_wp_error( $record ) ) return $record;
+                    // Each original provider still owns its validation,
+                    // transactional persistence and readback.
+                    return call_user_func( $original, $input );
+                }
+            }
+
 			$provider = MAD4B_SCP_Authorization::provider_for_execution( $name, $declared_server );
 			if ( is_wp_error( $provider ) ) return $provider;
 			$claim = MAD4B_SCP_Authorization::claim_mutation( $name, $declared_server, $provider, $input );
