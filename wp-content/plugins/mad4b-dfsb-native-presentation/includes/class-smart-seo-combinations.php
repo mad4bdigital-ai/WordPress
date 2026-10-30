@@ -48,6 +48,7 @@ final class SmartSeoCombinations {
                 if (($args['query_type']??'')!=='tax_query' || !$object)continue;
                 $items=array();
                 foreach((array)($args['options']??array())as $value) {
+                    if (is_array($value) && isset($value['value'])) $value=get_term((int)$value['value'],$actual);
                     if($value instanceof \WP_Term) {
                         $items[(int)$value->term_id]=array('term_id'=>(int)$value->term_id,
                           'slug'=>$value->slug,'label'=>$value->name,
