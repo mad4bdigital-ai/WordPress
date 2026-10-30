@@ -89,5 +89,36 @@
     "existing_compose_state": "ACTIVE_EXTERNAL",
     "never_deploy_coolify_draft_onto_live_site": true,
     "require_staging_rollout_and_executable_handler_readback": true
+  },
+  "native_runtime_implementation": {
+    "module": "ops/company-readiness-workflow/executor/company_stage_executor.py",
+    "queue_adapter": "ops/company-readiness-workflow/executor/company_stage_adapter.py",
+    "implemented_semantic_actions": [
+      "company.mu-providers.converge"
+    ],
+    "not_implemented_semantic_actions": [
+      "company.identity.verify",
+      "company.snapshot.collect",
+      "company.backup.ensure",
+      "company.plugins.converge",
+      "company.configuration.converge",
+      "company.queries.reconcile",
+      "company.access.activate",
+      "company.pricing.converge",
+      "company.templates.qualify",
+      "company.forms.converge",
+      "company.content-hub.distribute",
+      "company.commercial.accept"
+    ],
+    "tests": [
+      "ops/company-readiness-workflow/tests/test_native_stage_executor.py",
+      "ops/company-readiness-workflow/tests/test_native_stage_adapter.py"
+    ],
+    "installed_on_vps": false,
+    "enrolled_in_central_wp": false,
+    "owner_signed_execution_ticket_issuer_registered": false,
+    "company_mutation_executed": false,
+    "requires_independent_wp_runtime_readback": true,
+    "requires_isolated_restore_drill": true
   }
 }
