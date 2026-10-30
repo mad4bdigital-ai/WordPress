@@ -84,8 +84,36 @@ def persist(file,obj):
 
 def main():
     args=sys.argv[1:]
-    if args not in ([],["--plan"],["--apply"]):raise RuntimeError("USE --plan / --apply")
+    mode="strict"
+    if "--mode" in args:
+        at=args.index("--mode")
+        if at+1>=len(args):raise RuntimeError("MODE_REQUIRED")
+        mode=args[at+1]
+        args=args[:at]+args[at+2:]
+    if mode not in ("strict","schema-auto","resolve-diff"):
+        raise RuntimeError("UNKNOWN_COMPATIBILITY_MODE")
+    if args not in ([],["--plan"],["--apply"]):
+        raise RuntimeError("USE --mode strict|schema-auto|resolve-diff --plan|--apply")
+    if mode=="resolve-diff" and args==["--apply"]:
+        raise RuntimeError("RESOLVER_DISCOVERY_DOES_NOT_MUTATE")
     p=source()
+    if mode in ("schema-auto","resolve-diff"):
+        command=["python3",str(ROOT/"bin/wayfa-schema-compatibility.py"),"--resolve-on-diff"]
+        preflight=subprocess.run(command,capture_output=True,text=True,timeout=230)
+        if preflight.returncode:
+            raise RuntimeError("SCHEMA_PREFLIGHT_FAILED:"+preflight.stderr[-500:])
+        receipt=json.loads((ROOT/"reports/wayfatours-schema-compatibility.json").read_text())
+        if mode=="schema-auto" and receipt["state"]!="SCHEMA_PARITY_CONFIRMED":
+            print(json.dumps({"state":"SECONDARY_RESOLVER_INVOKED",
+                "diffs":receipt["diffs"],"changes_applied":0}))
+            return
+        if mode=="resolve-diff":
+            print(json.dumps({"state":"SECONDARY_RESOLVER_INVOKED",
+                "schema_diffs":receipt["diffs"],"action":"REMAP_ONLY_GROUNDED_DIFFERENCES",
+                "changes_applied":0}))
+            return
+        p["config_mode"]="schema-auto"
+        p["schema_attestation"]=receipt
     plan=wp("plan",p)
     if plan.get("state")!="DESIGN_ACTIVATION_PLAN" or plan.get("site_uuid")!="b0725ffa-87e1-47e3-b0c0-c4aa4eb8882b":
         raise RuntimeError("PLAN_IDENTITY_FAILURE")
