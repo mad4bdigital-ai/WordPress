@@ -53,7 +53,16 @@ class NativeAbilityQuarantine(unittest.TestCase):
                   'independent_source_review_required'):
             self.assertIs(d[f],True)
         self.assertEqual(d['release_status'],'BLOCKED_SOURCE_RECONCILIATION')
-        self.assertFalse((ACTIVE/'includes/class-mad4b-scp-native-ability-trust.php').exists())
+        # The dated intake was non-executable. A later consolidated branch may
+        # independently include the reviewed read-only provider module.
+        integrated = ACTIVE/'includes/class-mad4b-scp-native-ability-trust.php'
+        if integrated.exists():
+            body = integrated.read_text()
+            self.assertIn('final class MAD4B_SCP_Native_Ability_Trust', body)
+            self.assertNotIn('register_rest_route(', body)
+            self.assertNotIn('wp_execute_ability(', body)
+        else:
+            self.assertFalse(integrated.exists())
         candidate=d['matching_github_draft_source']
         self.assertEqual(candidate['candidate_pr'],607)
         self.assertEqual(candidate['candidate_commit_sha'],'eaf502ea8bc471ff02b290fa3d652249d07d92c1')

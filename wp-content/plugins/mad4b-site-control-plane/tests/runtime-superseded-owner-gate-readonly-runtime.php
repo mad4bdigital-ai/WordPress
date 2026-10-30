@@ -47,6 +47,7 @@ $graph = array(
     ),
 );
 $method = new ReflectionMethod( 'MAD4B_SCP_Runtime_Convergence', 'superseded_checkpoint_graph_safe' );
+$method->setAccessible( true ); // PHP 7.4 compatibility for private method regression checks.
 $check = static function ( $expected, $checkpoint, $current, $graph, $description ) use ( $method ) {
     $result = $method->invoke( null, $checkpoint, $current, time() - 5, $graph );
     if ( $result !== $expected ) {
