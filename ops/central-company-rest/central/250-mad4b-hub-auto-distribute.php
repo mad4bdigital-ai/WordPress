@@ -15,6 +15,7 @@ final class MAD4B_Hub_Auto_Distribute_V1 {
     const SOURCE = 'tourism-almallahgroup';
     const KINDS = ['tour', 'property', 'transportation', 'nile_tour', 'nile_category'];
     const MODES = ['import_to_hub', 'reference_only'];
+    const TRANSPORTS = ['wp_rest_application_password','wp_cli_cross_ssh'];
     const POST_TYPES = ['tours-and-activities', 'properties', 'transportations'];
     const LANGUAGES = ['en', 'ar', 'fr', 'de', 'it', 'es'];
 
@@ -32,13 +33,15 @@ final class MAD4B_Hub_Auto_Distribute_V1 {
             'enabled'=>false, 'consumers'=>[], 'kinds'=>[], 'languages'=>[],
             'selected_source_ids'=>[], 'auto_include_new'=>false,
             'source_mode'=>'import_to_hub', 'source_post_types'=>['tours-and-activities'],
+            'source_transport'=>'wp_rest_application_password',
         ], $raw) : ['enabled'=>false,'consumers'=>[],'kinds'=>[],'languages'=>[],
             'selected_source_ids'=>[], 'auto_include_new'=>false,
-            'source_mode'=>'import_to_hub', 'source_post_types'=>['tours-and-activities']];
+            'source_mode'=>'import_to_hub', 'source_post_types'=>['tours-and-activities'],
+            'source_transport'=>'wp_rest_application_password'];
     }
     public static function normalize($input) {
         if (!is_array($input) || array_diff(array_keys($input),
-            ['enabled','consumers','kinds','languages','selected_source_ids','auto_include_new','source_mode','source_post_types'])) {
+            ['enabled','consumers','kinds','languages','selected_source_ids','auto_include_new','source_mode','source_post_types','source_transport'])) {
             return self::fail('invalid_settings');
         }
         foreach (['enabled','auto_include_new'] as $bool) {
@@ -46,6 +49,8 @@ final class MAD4B_Hub_Auto_Distribute_V1 {
         }
         $mode=$input['source_mode']??'import_to_hub';
         if(!is_string($mode) || !in_array($mode,self::MODES,true))return self::fail('invalid_mode');
+        $transport=$input['source_transport']??'wp_rest_application_password';
+        if(!is_string($transport)||!in_array($transport,self::TRANSPORTS,true))return self::fail('invalid_transport');
         $types=$input['source_post_types']??['tours-and-activities'];
         if(!is_array($types) || !$types || array_values($types)!==$types ||
             count($types)>3 || count($types)!==count(array_unique($types)))return self::fail('invalid_post_types');
@@ -86,7 +91,7 @@ final class MAD4B_Hub_Auto_Distribute_V1 {
             'languages'=>$selection['languages'],
             'selected_source_ids'=>$ids,
             'auto_include_new'=>$input['auto_include_new'],
-            'source_mode'=>$mode,'source_post_types'=>$types
+            'source_mode'=>$mode,'source_post_types'=>$types,'source_transport'=>$transport
         ];
     }
     public static function configure(WP_REST_Request $request) {
@@ -176,6 +181,8 @@ final class MAD4B_Hub_Auto_Distribute_V1 {
         $import=null;
         if($valid['source_mode']==='import_to_hub') {
             if(!class_exists('MAD4B_Hub_Source_Import_V1'))return self::fail('importer_unavailable',409);
+            if($valid['source_transport']==='wp_cli_cross_ssh')
+                return self::fail('cross_ssh_run_on_vps_host_only',409);
             $import=MAD4B_Hub_Source_Import_V1::import(self::SOURCE,$valid['source_post_types']);
             if(is_wp_error($import))return $import;
             $items=$valid['consumers'] ? MAD4B_Hub_Source_Import_V1::active_items(self::SOURCE,
@@ -230,7 +237,7 @@ final class MAD4B_Hub_Auto_Distribute_V1 {
     }
     public static function schedule(): void {
         if (!self::enabled())return;
-        if (self::settings()['enabled']) {
+        if (self::settings()['enabled'] && self::settings()['source_transport']!=='wp_cli_cross_ssh') {
             if (!wp_next_scheduled(self::EVENT))wp_schedule_event(time()+60,'mad4b_15_minutes',self::EVENT);
         } elseif (wp_next_scheduled(self::EVENT))wp_clear_scheduled_hook(self::EVENT);
     }
@@ -272,7 +279,10 @@ final class MAD4B_Hub_Auto_Distribute_V1 {
         echo '<p><label>Ingestion mode <select name="source_mode">';
         foreach(self::MODES as $mode)echo '<option value="'.esc_attr($mode).'" '.
             selected($policy['source_mode'],$mode,false).'>'.esc_html($mode==='import_to_hub'?'Import into Content Hub (default)':'Use existing Content Hub references').'</option>';
-        echo '</select></label></p><p>Content types to fetch</p>';
+        echo '</select></label></p><p><label>Source connection <select name="source_transport">';
+        foreach(self::TRANSPORTS as $transport) echo '<option value="'.esc_attr($transport).'" '.selected($policy['source_transport'],$transport,false).'>'.
+            esc_html($transport==='wp_cli_cross_ssh'?'WP-CLI Cross SSH (VPS runner, pinned host key, no App Password)':'WordPress REST (Application Password)').'</option>';
+        echo '</select></label></p><p>SSH mode runs from the VPS host, not from WordPress or WP-Cron. No SSH key is stored in this site. Import and distribution remain separate; enabling this selection never executes SSH from PHP.</p><p>Content types to fetch</p>';
         foreach(self::POST_TYPES as $type)echo '<label style="margin-right:20px"><input type="checkbox" name="source_post_types[]" value="'.
             esc_attr($type).'" '.checked(in_array($type,$policy['source_post_types'],true),true,false).'> '.esc_html($type).'</label>';
         echo '<h2>To companies (optional for import-only)</h2>';
@@ -322,6 +332,7 @@ final class MAD4B_Hub_Auto_Distribute_V1 {
             'languages'=>isset($_POST['languages'])&&is_array($_POST['languages'])?array_map('sanitize_key',wp_unslash($_POST['languages'])):[],
             'selected_source_ids'=>$ids,
             'source_mode'=>isset($_POST['source_mode'])?sanitize_key(wp_unslash($_POST['source_mode'])):'import_to_hub',
+            'source_transport'=>isset($_POST['source_transport'])?sanitize_key(wp_unslash($_POST['source_transport'])):'wp_rest_application_password',
             'source_post_types'=>isset($_POST['source_post_types'])&&is_array($_POST['source_post_types'])?
                 array_map('sanitize_key',wp_unslash($_POST['source_post_types'])):['tours-and-activities']
         ];
