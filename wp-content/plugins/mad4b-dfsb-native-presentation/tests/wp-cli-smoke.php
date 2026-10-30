@@ -2,7 +2,9 @@
 // Usage on an authorized WordPress Staging lab:
 // wp eval-file wp-content/plugins/mad4b-dfsb-native-presentation/tests/wp-cli-smoke.php
 if (!defined('WP_CLI') || !WP_CLI) { throw new \RuntimeException('WP-CLI required'); }
-require_once dirname(__DIR__).'/mad4b-dfsb-native-presentation.php';
+if (!function_exists('MAD4B\\DFSB\\NativePresentation\\ready')) {
+    require_once dirname(__DIR__).'/mad4b-dfsb-native-presentation.php';
+}
 \MAD4B\DFSB\NativePresentation\register_shortcodes();
 $bootBefore=\DynamicFilterSEOBridge\Runtime\BootGuard::status();
 $ids=get_posts(array('post_type'=>array('post','tours-and-activities'),
