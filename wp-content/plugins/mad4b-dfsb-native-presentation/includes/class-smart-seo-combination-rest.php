@@ -101,6 +101,9 @@ final class SmartSeoCombinationRest {
         $record=SmartSeoCombinations::get((string)$req['id']);
         if(is_wp_error($record))return $record;
         $rev=self::revision($req,$record);if(is_wp_error($rev))return $rev;
+        if(($record['status']??'')==='published')
+            return new \WP_Error('rollback_first',
+                'Rollback published SEO before editing localized content',array('status'=>409));
         $d=self::input($req);$lang=(string)($d['language']??'');
         if($lang!==$record['language'])
             return new \WP_Error('language_mismatch','Use a distinct candidate for each language',array('status'=>422));
@@ -138,6 +141,9 @@ final class SmartSeoCombinationRest {
         $record=SmartSeoCombinations::get((string)$req['id']);
         if(is_wp_error($record))return $record;
         $rev=self::revision($req,$record);if(is_wp_error($rev))return $rev;
+        if(($record['status']??'')==='published')
+            return new \WP_Error('use_postpublish_qa',
+                'Use postpublish-qa for an active exact URL',array('status'=>409));
         $fresh=self::inspectSaved($record);if(is_wp_error($fresh))return $fresh;
         $http=0;$canonical='';$robots='';$pageTitle='';
         $url=$fresh['url'];
