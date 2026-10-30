@@ -182,6 +182,18 @@ final class MAD4B_Hub_Source_Import_V1 {
             $saved['source_host']='tourism.almallahgroup-mg.com';
             $saved['counts']=$totals;
             $saved['commercial_publication']=false;
+            update_option(self::RECEIPT,$saved,false);
+            update_option(MAD4B_Hub_Auto_Distribute_V1::STATE,[
+                'last_run_at'=>gmdate('c'),
+                'last_successful_consumers'=>[],
+                'failed_consumer_ids'=>[],
+                'source_reference_count'=>$saved['imported'],
+                'snapshot_sha256'=>$saved['snapshot_sha256'],
+                'status'=>'imported_only',
+                'source_mode'=>'import_to_hub',
+                'source_transport'=>'wp_cli_cross_ssh',
+                'hub_import'=>$saved,
+            ],false);
         }
         return $saved;
     }
