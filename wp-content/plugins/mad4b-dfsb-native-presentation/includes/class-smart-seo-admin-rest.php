@@ -40,6 +40,10 @@ final class SmartSeoAdminRest {
             'methods'=>'POST','permission_callback'=>$admin,
             'callback'=>array(__CLASS__,'generate'),
         ));
+        register_rest_route(self::NS,'/seo-intelligence/proposals/(?P<id>[0-9a-f]{40})/reconcile',array(
+            'methods'=>'POST','permission_callback'=>$admin,
+            'callback'=>array(__CLASS__,'reconcile'),
+        ));
         register_rest_route(self::NS,'/seo-intelligence/proposals/(?P<id>[0-9a-f]{40})/stage',array(
             'methods'=>'POST','permission_callback'=>$admin,
             'callback'=>array(__CLASS__,'stage'),
@@ -154,6 +158,50 @@ final class SmartSeoAdminRest {
             'status'=>'generated','qualified'=>$report['qualified'],
             'draft_count'=>count($drafts),'drafts'=>$drafts,
             'native_rules_modified'=>false,'indexing_enabled'=>false,
+        ));
+    }
+
+    /** Explicit Staging policy customization update; never activates indexing. */
+    public static function reconcile(\WP_REST_Request $req) {
+        $id=(string)$req->get_param('id');
+        $records=get_option(SmartSeoRules::OPTION,array());
+        $record=is_array($records)?($records[$id]??null):null;
+        if (!is_array($record) || ($record['status']??'')!=='staged_disabled'
+            || ($record['pending_revision']['state']??'')!=='reconciliation_required')
+            return new \WP_Error('reconciliation_missing','No pending staged rule revision',array('status'=>404));
+        $pending=$record['pending_revision'];
+        if (($record['policy_state']??'')==='source_requalification_required'
+            || ($pending['source_policy_revision']??'')!==SmartSeoPolicyRegistry::revision())
+            return new \WP_Error('reconciliation_policy_stale',
+                'Current company policy changed; regenerate drafts',array('status'=>409));
+        $report=SmartSeoRules::recommend(true);
+        $live=null;
+        foreach($report['recommendations'] as $item) {
+            if ($item['id']===$id && $item['status']==='qualified_draft') {
+                $live=$item;break;
+            }
+        }
+        if (!$live || $pending['proposed_native_rule']!==$live['proposed_native_rule'])
+            return new \WP_Error('reconciliation_discovery_changed',
+                'Provider/query/filter evidence changed; regenerate before editing',array('status'=>409));
+        $result=SmartSeoNativeStore::reconcileDisabled(
+            (array)$record['native_rule'],(array)$pending['proposed_native_rule']);
+        if (is_wp_error($result)) return $result;
+        $records[$id]['native_rule']=$pending['proposed_native_rule'];
+        $records[$id]['reconciled_at']=gmdate('c');
+        $records[$id]['publication_blockers']=$live['publication_blockers'];
+        $records[$id]['technical_score']=$live['technical_score'];
+        $records[$id]['content_score']=$live['content_score'];
+        $records[$id]['seo_score']=$live['seo_score'];
+        $records[$id]['index_ready']=false;
+        $records[$id]['policy_state']='source_qualified';
+        unset($records[$id]['pending_revision']);
+        update_option(SmartSeoRules::OPTION,$records,false);
+        return rest_ensure_response(array(
+            'status'=>'reconciled_disabled','id'=>$id,
+            'native_rule_count'=>$result['rule_count'],
+            'seo_indexing_enabled'=>false,'native_rule'=>$records[$id]['native_rule'],
+            'publication_blockers'=>$live['publication_blockers'],
         ));
     }
 
