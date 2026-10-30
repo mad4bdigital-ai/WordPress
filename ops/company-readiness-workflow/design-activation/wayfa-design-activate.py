@@ -52,8 +52,13 @@ def source():
             "kind":m.get("_elementor_template_type",""),"lang":entry["language"]["language_code"],
             "commercial_risk":bool(commercial)}
     if len(templates)!=470:raise RuntimeError("SOURCE_TEMPLATE_COUNT_MISMATCH")
+    allowed=policy.get("compatibility_modes",{}).get("schema-auto",{}).get("allowed_types",[])
+    if not isinstance(allowed,list) or "kit" in allowed or "section" not in allowed:
+        raise RuntimeError("INVALID_SCHEMA_AUTO_POLICY")
     return {"contract":"mad4b.wayfatours-template-source.v1",
-            "source_sha256":sha,"templates":templates}
+            "source_sha256":sha,"templates":templates,
+            "compat_policy":{"schema_auto_types":allowed,
+                             "policy_sha256":hashlib.sha256(POLICY.read_bytes()).hexdigest()}}
 
 def wp(action,payload,*,plan="",backup=False):
     cmd=["docker","exec","-i","-u","33:33",
