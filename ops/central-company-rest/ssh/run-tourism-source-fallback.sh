@@ -52,7 +52,13 @@ $result=MAD4B_Hub_Source_Local_Fallback_V1::request_from_host([
 if(is_wp_error($result)){echo "FALLBACK_ERROR:".$result->get_error_code();exit(93);}
 echo wp_json_encode($result,JSON_UNESCAPED_SLASHES);
 ' 2>/dev/null)
-JOB=$(printf '%s' "$REQUEST" | python3 -c 'import sys,json,uuid;r=json.load(sys.stdin);j=r["job_id"];assert str(uuid.UUID(j))==j and r["status"]=="queued" and r["path"]=="vps_wpcli_fallback";print(j)')
+JOB=$(printf '%s' "$REQUEST" | python3 -c 'import sys,json,uuid;r=json.load(sys.stdin);j=r["job_id"];assert str(uuid.UUID(j))==j and r["status"] in ["queued","completed"] and r["path"]=="vps_wpcli_fallback";print(j)')
+JOB_STATE=$(printf '%s' "$REQUEST" | python3 -c 'import sys,json;print(json.load(sys.stdin)["status"])')
+if test "$JOB_STATE" = completed;then
+  echo "FALLBACK_JOB_ALREADY_COMPLETED_NO_REIMPORT=$JOB"
+  exit 0
+fi
+test "$JOB_STATE" = queued || { echo 'Unexpected fallback job state' >&2;exit 84; }
 echo "QUEUED_FALLBACK_JOB=$JOB"
 # This worker ONLY claims a pre-authorized, registered Company source job.
 bash "$RUNNER" --run-queued
