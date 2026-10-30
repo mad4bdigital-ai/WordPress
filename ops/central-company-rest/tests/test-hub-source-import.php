@@ -73,6 +73,12 @@ class WP_Query {
 }
 class MAD4B_Central_Simple_Connections_V1 {
     public static function enabled() {return true;}
+    public static function deliver_references($consumer,array $snapshot) {
+        $GLOBALS['last_distributed_snapshot']=$snapshot;
+        if($consumer!=='all-royal-egypt' || ($snapshot['may_publish']??true)!==false ||
+            ($snapshot['may_checkout']??true)!==false)return new WP_Error('invalid_delivery','Denied');
+        return ['stored_items'=>count($snapshot['items'])];
+    }
     public static function fetch_published_page($company,$type,$page) {
         if($GLOBALS['fail_feed'])return new WP_Error('unavailable','Source offline');
         $rows=$GLOBALS['feed_rows'][$type]??[];
@@ -184,6 +190,17 @@ $policy['source_mode']='import_to_hub';
 $GLOBALS['options'][MAD4B_Hub_Auto_Distribute_V1::OPTIONS]=$policy;
 $run=MAD4B_Hub_Auto_Distribute_V1::distribute();
 check(is_array($run) && $run['status']==='imported_only','Automatic import-only run completes');
+$policy['consumers']=['all-royal-egypt'];
+$policy['auto_include_new']=true;
+$GLOBALS['options'][MAD4B_Hub_Auto_Distribute_V1::OPTIONS]=$policy;
+$autoRun=MAD4B_Hub_Auto_Distribute_V1::distribute();
+check(is_array($autoRun) && $autoRun['status']==='success','Default import then distribute completes');
+$sent=$GLOBALS['last_distributed_snapshot']??[];
+check(($sent['source_company']??'')==='tourism-almallahgroup' && count($sent['items']??[])===2,
+    'Only current imported Hub records distributed');
+check(($sent['may_publish']??true)===false && ($sent['may_checkout']??true)===false,
+    'Imported content never gains commerce permissions');
+
 
 // Remote endpoint only exposes published post fields; no private orders.
 $GLOBALS['source_rows']=[
