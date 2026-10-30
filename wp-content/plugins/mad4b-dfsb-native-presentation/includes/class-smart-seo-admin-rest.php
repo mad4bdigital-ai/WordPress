@@ -41,8 +41,17 @@ final class SmartSeoAdminRest {
     }
     public static function status(): \WP_REST_Response {
         $jsf=function_exists('jet_smart_filters')?jet_smart_filters():null;
+        $services=array();
+        if (function_exists('product_navigation_registry')) {
+            foreach ((array)product_navigation_registry() as $service=>$definition) {
+                $postType=(string)($definition['post_type']??'');
+                if ($postType==='' || !post_type_exists($postType)) continue;
+                $services[$service]=DynamicQualification::companyPolicy($postType);
+            }
+        }
         return rest_ensure_response(array(
             'status'=>'ok','contract'=>SmartSeoRules::CONTRACT,
+            'company_service_channels'=>$services,
             'site'=>site_url('/'),'generation_mode'=>'admin_rest_draft',
             'native_seo_enabled'=>$jsf?(bool)$jsf->settings->is_seo_enabled:false,
             'native_rule_count'=>$jsf?count((array)$jsf->settings->get('seo_sitemap_rules',array())):0,
