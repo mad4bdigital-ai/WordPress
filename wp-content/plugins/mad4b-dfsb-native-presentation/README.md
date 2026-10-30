@@ -53,3 +53,31 @@ Each group is classified as `candidate_for_manual_rule_review`, `display_only`, 
 A `proposed_rule` is a **proposal, not an active JetSmartFilters rule**. Scan does not write WordPress data, modify Rank Math/JSF options, authorize crawling, create sitemaps or issue certificates. Native JetSmartFilters SEO Rules must remain under the existing provider and WordPress operator controls.
 
 **Scope limits:** CPT archive query IDs with unambiguous mapping only; conditional destination/related/term listings are display-only until a real route is explicitly established. Search, price, availability, dates, hidden taxonomies and draft filters do not become indexable SEO candidates. The HTML probe runs only on explicit CLI invocation. Review the output before turning on one native SEO Rule; do not auto-index all combinations.
+
+## Smart Intelligence SEO Rules + administrative REST (v0.4.0)
+
+This is **explainable rule-based intelligence**, not a remote language model. It qualifies live JetSmartFilters providers and query IDs by publicly available archive status, exact rendered provider/query/filters, published taxonomy terms with real content, taxonomy semantics and detected WPML languages. It excludes volatile prices/dates, unpublished filters, ambiguous routes and non-public taxonomies.
+
+Recommendations receive an explainable 0–100 score and `high/medium/low` confidence. Only groups with exact live query matching, HTTP 200, stable published taxonomy terms and score ≥80 can become **qualified drafts**. It prioritizes destination, type and duration filters over unrelated / commercial filters, and limits the native proposal to at most three filters. The `proposed_native_rule` uses JetSmartFilters' real contract `{url,provider,query_id,filters,title,description}` and native `{{filter_123}}` macros; it does not inject Rank Math metadata.
+
+### WordPress-native, administrator-only REST routes
+
+Base: `/wp-json/mad4b/v1/seo-intelligence`. Every endpoint uses `current_user_can('manage_options')`; standard WordPress REST cookie/nonce or Application Password authentication applies. No separate signing, operational provider certificate or custom security authority.
+
+| Method | Path | Effect |
+| --- | --- | --- |
+| GET | `/status` | Current SEO feature and draft count |
+| GET | `/discover?probe=true` | Live read-only scoring, evidence, exclusions and native rule proposals |
+| GET | `/proposals` | Saved intelligent drafts |
+| POST | `/proposals/generate` | Automatically generate or refresh qualified drafts under a **separate WordPress option** |
+| POST | `/proposals/{40-character-id}/stage` | Reverify the current site, then append an exact native JetSmartFilters SEO Rule **only while native SEO is OFF**; prevent duplicate or stale drafts |
+
+The `/stage` action is administrator-initiated, not an automatic publisher. It snapshots the original native JSF rules and prevents more than 50 staged rules. It **never enables `use_seo_sitemap`**. Rule activation, crawling and translation review stay separate because this Staging site currently has 0 native SEO Rules, mixed WPML languages, and unresolved hotel/transport archive routes.
+
+### Tests
+
+`wp eval-file tests/smart-seo-rest-wp-cli.php` checks admin vs anonymous REST permissions, live discovery, automatic drafts and absence of native SEO changes.
+
+`wp eval-file tests/smart-seo-stage-wp-cli.php` checks the **full native disabled-rule staging lifecycle** and guaranteed restoration of original JSF options after the test.
+
+For a first rollout, call GET `/discover?probe=true`, then POST `/proposals/generate` as a WordPress administrator. Review draft copy in EN first and translated versions separately before manually staging or activating a native SEO Rule. The plugin does not publish sitemap/canonical/robots itself.
