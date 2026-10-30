@@ -81,3 +81,19 @@ The `/stage` action is administrator-initiated, not an automatic publisher. It s
 `wp eval-file tests/smart-seo-stage-wp-cli.php` checks the **full native disabled-rule staging lifecycle** and guaranteed restoration of original JSF options after the test.
 
 For a first rollout, call GET `/discover?probe=true`, then POST `/proposals/generate` as a WordPress administrator. Review draft copy in EN first and translated versions separately before manually staging or activating a native SEO Rule. The plugin does not publish sitemap/canonical/robots itself.
+
+## Per-company MU Presentation ownership (v0.4.1)
+
+**Do not interpret all service archive HTTP 404s as broken WordPress routes.** On the staging company, `service-activation` is the owning JetEngine Option Page, read through MU Presentation `service_channel_owner()`, `service_channel_mode()` and `service_channel_allowed()`.
+
+- `tours`: `standalone_and_tour` → public tour archive and filter SEO can be reviewed.
+- `properties`: `tour_only` → component in verified tour / destination discovery, no public standalone archive and no standalone SEO indexing.
+- `transportations`: `tour_only` → component in verified tour / destination discovery, no public standalone archive and no standalone SEO indexing.
+
+The per-company service mode is NEVER overwritten by Smart SEO. To change a company's distribution channels, configure its own `service-activation` Option Page; do not create a custom rewrite/redirect that circumvents `registry-service-public-access.php`.
+
+The qualifier reuses the current site's `product_navigation_registry()` and `shared_presentation_registry_v2()` to resolve actual service/CPT/query ownership. `companyPolicy()` scopes the decision to the current site's hostname and blog ID. A `tour_only` service is classified `company_component_only` (not `route_blocked`), and its native SEO proposal is always null. The REST `/status` response includes `company_service_channels` for admin review.
+
+Draft staging always requalifies the company's current policy and rejects a blocked/changed source, even when an older recommendation was saved. Automatic draft refresh preserves existing `staged_disabled` states instead of resetting them.
+
+Run `tests/company-mu-presentation-policy-wp-cli.php` to verify the current MU policy, company scope, exact tours registry slot, intentional exclusion of component-only archives and absence of settings mutations. Public SEO remains disabled until native JSF editorial, WPML and filtered-URL checks.
