@@ -4,8 +4,8 @@
   "reviewed_base_sha": "b8f2e0a60fa45e28b49643f1eae6f73570c2fee8",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 484,
-  "changed_paths_sha256": "63ef4d913edc521e6b8a0c693466fb8969e04594f467907441278d5407d51bfe",
+  "changed_file_count": 485,
+  "changed_paths_sha256": "254a209e18dbab94d1f9728fcf0ab805584db08fa400f294a857d03a4d68f8fd",
   "slices": [
     {
       "id": "unified-ci-01",
@@ -22,6 +22,7 @@
         ".github/workflows/content-readiness-contracts.yml",
         ".github/workflows/etg-woo-lab-portable-mu-deploy.yml",
         ".github/workflows/etg-woo-lab-portable-mu.yml",
+        ".github/workflows/feature-007-spec-ci.yml",
         ".github/workflows/mad4b-chatgpt-attachment-transfer.yml",
         ".github/workflows/mad4b-company-critical-css-contract.yml",
         ".github/workflows/mad4b-company-performance-intelligence.yml",

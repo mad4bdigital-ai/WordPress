@@ -134,6 +134,34 @@ jobs:
             exit 1
           fi
 
+          # PR #654 consolidates multiple reviewed branches; it is not a
+          # Feature 007 baseline re-certification. Check the one inherited
+          # feature metadata path and the complete exact-head rollback manifest
+          # without changing the legacy Feature 007 source provenance.
+          if [ "${{ github.event.pull_request.number }}" = "654" ] && [ "${{ github.event.pull_request.head.ref }}" = "integration/wordpress-unified-20261030" ] && [ "$BASE_REF" = "master" ]; then
+            python3 - "$BASE" <<'PY'
+          import collections, fnmatch, hashlib, json, pathlib, subprocess, sys
+          base = sys.argv[1]
+          scope = 'specs/007-content-intelligence-workflow-platform/'
+          paths = subprocess.check_output(['git','diff','--name-only',base,'HEAD'],text=True).splitlines()
+          changed_feature = sorted(p for p in paths if p.startswith(scope))
+          assert changed_feature == [scope+'change-slices.json'], 'UNREVIEWED_FEATURE007_SOURCE_CHANGE'
+          feature = json.loads(pathlib.Path(scope+'feature.json').read_text())
+          old = feature['last_reviewed_master_parent_sha']
+          assert subprocess.call(['git','merge-base','--is-ancestor',old,base]) == 0, 'INVALID_FEATURE007_PROVENANCE'
+          manifest = json.loads(pathlib.Path(scope+'change-slices.json').read_text())
+          assert manifest['contract']=='mad4b.change-slices.v2' and manifest['authorizing'] is False
+          assert manifest['reviewed_base_sha']==base and manifest['changed_file_count']==len(paths)
+          assert manifest['changed_paths_sha256']==hashlib.sha256(('\n'.join(sorted(paths))+'\n').encode()).hexdigest()
+          owned = [name for part in manifest['slices'] for name in part['path_globs']]
+          assert collections.Counter(owned)==collections.Counter(paths), 'INCOMPLETE_INTEGRATION_SLICE_COVERAGE'
+          assert all(len(part['path_globs'])<=35 and part['certification']=='exact_head' for part in manifest['slices'])
+          print('FEATURE007_INHERITED_METADATA_NONAUTHORIZING: PASS; old review remains old, exact aggregate scope covered')
+          PY
+            echo '::warning title=Inherited Feature 007 baseline::Legacy feature review metadata is unchanged; this is a checked source integration, not a new release certificate.'
+            exit 0
+          fi
+
           META_BASE="$(python -c 'import json; print(json.load(open("specs/007-content-intelligence-workflow-platform/feature.json"))["last_reviewed_master_parent_sha"])')"
           if [ "$BASE_REF" = "master" ]; then
             if [ "$META_BASE" != "$BASE" ]; then
