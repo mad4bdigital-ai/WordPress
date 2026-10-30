@@ -211,8 +211,12 @@ final class MAD4B_SEO_Image_Lifecycle {
             if(!update_post_meta($o['id'],self::USAGE_META,$values))
                 return self::err('usage_write_failed');
             $read=get_post_meta($o['id'],self::USAGE_META,true);
-            if(!is_array($read)||($read[$id]['alt_template']??null)!==$values[$id]['alt_template'])
-                return self::err('usage_readback_failed');
+            if(!is_array($read)||($read[$id]['alt_template']??null)!==$values[$id]['alt_template']){
+                // Exact post-scoped compensation. Never touch the shared attachment.
+                if($before)update_post_meta($o['id'],self::USAGE_META,$before);
+                else delete_post_meta($o['id'],self::USAGE_META);
+                return self::err('usage_readback_failed_rollback_attempted');
+            }
             $after=self::plan($input);if(is_wp_error($after))return $after;
             if(class_exists('MAD4B_SCP_Audit'))MAD4B_SCP_Audit::record(
                 'mad4b/seo-image-context-alt',
