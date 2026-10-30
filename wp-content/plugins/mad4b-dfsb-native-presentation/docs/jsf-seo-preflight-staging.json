@@ -1,0 +1,137 @@
+{
+  "contract": "mad4b.jsf.seo-preflight.v1",
+  "created_utc": "2026-10-30",
+  "scope": "staging-only",
+  "site_url": "https://tours.dev.mad4b.com/",
+  "mode": "discovery_and_draft_only",
+  "install_effect": "none",
+  "seo_rules_write": false,
+  "enable_jet_smartfilters_seo": false,
+  "allow_filtered_url_indexing": false,
+  "expected_runtime": {
+    "jet_smart_filters": "3.8.5.1",
+    "jet_engine": "3.8.15.2",
+    "rank_math": "1.0.280",
+    "shared_context_adapter": "0.2.0"
+  },
+  "inventory": {
+    "filter_posts": 179,
+    "published_filter_posts": 177,
+    "draft_filter_posts": 2,
+    "elementor_templates_scanned": 104,
+    "provider_query_groups": 21,
+    "current_enabled_rules": 0,
+    "current_jet_smartfilters_seo_enabled": false,
+    "scope_note": "Provider groups include archive, destination, blog and product-level widgets; not all should become SEO rules."
+  },
+  "pilot_rule": {
+    "enabled": false,
+    "decision": "READY_FOR_FILTERED_URL_QA_ONLY",
+    "page_slug": "tours-and-activities",
+    "page_status_http": 200,
+    "source_cpt": "tours-and-activities",
+    "cpt_published_posts": 221,
+    "provider": "jet-engine",
+    "query_id": "tours_query_archive",
+    "allow_filter_ids": [
+      16204,
+      15035,
+      15033
+    ],
+    "allowed_filters": [
+      {
+        "id": 16204,
+        "title": "Location",
+        "resolved_query_type": "tax_query",
+        "resolved_query_var": "destinations",
+        "taxonomy": "destinations",
+        "status": "published",
+        "options_present": true
+      },
+      {
+        "id": 15035,
+        "title": "Tour type",
+        "resolved_query_type": "tax_query",
+        "resolved_query_var": "tour-types",
+        "taxonomy": "tour-types",
+        "status": "published",
+        "options_present": true
+      },
+      {
+        "id": 15033,
+        "title": "Duration",
+        "resolved_query_type": "tax_query",
+        "resolved_query_var": "duration-options",
+        "taxonomy": "duration-options",
+        "status": "published",
+        "options_present": true
+      }
+    ],
+    "native_jsf_rule_shape": {
+      "url": "tours-and-activities",
+      "provider": "jet-engine",
+      "query_id": "tours_query_archive",
+      "filters": [
+        "16204",
+        "15035",
+        "15033"
+      ]
+    },
+    "seo_title_template": "REQUIRES_EDITORIAL_REVIEW",
+    "seo_description_template": "REQUIRES_EDITORIAL_REVIEW",
+    "languages": "WPML per-language rule and translated label QA required",
+    "search_engine_policy": "No indexability change until real filtered URL, title/meta/canonical/robots and crawl controls tested"
+  },
+  "explicitly_excluded_from_pilot": [
+    {
+      "id": 24515,
+      "reason": "price/range filter; volatile values and empty runtime options"
+    },
+    {
+      "id": 46259,
+      "reason": "date-range filter; booking availability/date combinations not evergreen"
+    },
+    {
+      "id": 66031,
+      "reason": "season taxonomy not public"
+    },
+    {
+      "query_id": "tour_rates",
+      "reason": "pricing/availability transactional data"
+    },
+    {
+      "query_id": "registry_destination_activity_grid",
+      "reason": "AJAX-only filter scope; no confirmed indexable URL"
+    },
+    {
+      "query_id": "tours_query",
+      "reason": "search-page scope requires distinct page-slug and actual query verification"
+    }
+  ],
+  "pending_route_repair": [
+    {
+      "post_type": "properties",
+      "wordpress_archive_path": "/properties/",
+      "last_observed_http": 404,
+      "expected_group": "property_query_archive",
+      "seo_rules_enabled": false
+    },
+    {
+      "post_type": "transportations",
+      "wordpress_archive_path": "/transportations/",
+      "last_observed_http": 404,
+      "expected_group": "trans_query_archive",
+      "seo_rules_enabled": false
+    }
+  ],
+  "remaining_gates": [
+    "Verify real filtered URL for pilot via native JSF URL state",
+    "Confirm provider/query id in rendered filter widgets and Listing Grid on the same page",
+    "Confirm 3 allowed filters have stable public taxonomy terms and native results",
+    "Review per-language title and description composition, including Arabic WPML",
+    "Confirm one canonical, one description and one robots directive, no duplicate SEO publisher",
+    "Confirm indexing policy is intentional; retain noindex by default on unreviewed filter combinations",
+    "Fix 404 archive routes before adding hotel/transport SEO rules"
+  ],
+  "governance": "Plain WordPress configuration. No release signing, provider CA or optional certificates are required to read this draft. Does not change plugin activation or existing production behavior."
+}
