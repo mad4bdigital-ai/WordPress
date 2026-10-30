@@ -96,6 +96,11 @@ final class MAD4B_Hub_Field_Fusion_V1 {
             !is_numeric($weight)||(int)$weight<0||(int)$weight>100)
             return new WP_Error('fusion_policy_invalid','Invalid policy scope or rule');
         $spec=self::registry($type)[$field];
+        if(class_exists('MAD4B_Central_Company_REST_V1') &&
+            !array_key_exists($company,MAD4B_Central_Company_REST_V1::COMPANIES))
+            return new WP_Error('fusion_company_unknown','Company is not registered');
+        if($spec['strategy']==='exact' && $strategy!=='exact')
+            return new WP_Error('fusion_identity_required','An identity field must remain exact');
         if($spec['sensitive'] && $strategy!=='keep_separate')
             return new WP_Error('fusion_sensitive_field','Sensitive data cannot be fused');
         if(in_array($field,['source_wpml_trid'],true)&&$strategy!=='keep_separate')
@@ -222,9 +227,10 @@ final class MAD4B_Hub_Field_Fusion_V1 {
                 'weight'=>$spec['weight'],'localized'=>$spec['localized'],
                 'present'=>[(string)$left=>$presentA,(string)$right=>$presentB],
                 'quality'=>[(string)$left=>$rankA,(string)$right=>$rankB],
-                'value_preview'=>[(string)$left=>self::sample($a),(string)$right=>self::sample($b)],
-                'value_sha256'=>[(string)$left=>$presentA?hash('sha256',self::canon($a)):null,
-                    (string)$right=>$presentB?hash('sha256',self::canon($b)):null],
+                'value_preview'=>[(string)$left=>$spec['sensitive']?'[redacted]':self::sample($a),
+                    (string)$right=>$spec['sensitive']?'[redacted]':self::sample($b)],
+                'value_sha256'=>[(string)$left=>$presentA&&!$spec['sensitive']?hash('sha256',self::canon($a)):null,
+                    (string)$right=>$presentB&&!$spec['sensitive']?hash('sha256',self::canon($b)):null],
                 'decision'=>$state,'proposed_value_from_hub_id'=>$choice,
                 'requires_review'=>!$same && ($presentA||$presentB),
                 'auto_apply'=>false,
