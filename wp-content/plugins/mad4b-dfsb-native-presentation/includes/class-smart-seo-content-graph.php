@@ -3,7 +3,16 @@ namespace MAD4B\DFSB\NativePresentation;
 if(!defined('ABSPATH'))exit;
 final class SmartSeoContentGraph {
  const CONTRACT='mad4b.seo.content-graph.v1';
- public static function term(int $id,string $tax='') {
+ public static function term(int $id,string $tax='',string $language='') {
+  if($language!==''){
+   if($tax==='')return new \WP_Error('taxonomy_required','Taxonomy required for language-specific term',['status'=>400]);
+   $source=(int)apply_filters('wpml_object_id',$id,$tax,false,'en');
+   if(!$source)return new \WP_Error('source_not_found','English source term missing',['status'=>404]);
+   $localized=SmartSeoTranslation::translationId($source,$tax,$language);
+   if(!$localized)return new \WP_Error('locale_term_missing','Translated term unavailable',['status'=>404]);
+   return SmartSeoTranslation::withLanguage($language,
+      static fn()=>self::term($localized,$tax));
+  }
   $t=$tax?get_term($id,$tax):get_term($id);
   if(!$t instanceof \WP_Term)return new \WP_Error('term_missing','Unknown term',['status'=>404]);
   $taxobj=get_taxonomy($t->taxonomy);
@@ -36,21 +45,28 @@ final class SmartSeoContentGraph {
   }
   $characters=mb_strlen(trim($description));
   $public=(bool)($taxobj->public??false);
+  $readLanguage=(string)apply_filters('wpml_current_language','en');
+  $actualLanguage=apply_filters('wpml_element_language_code',null,[
+   'element_id'=>$t->term_id,'element_type'=>'tax_'.$t->taxonomy]);
+  $wrongLocale= $actualLanguage!==$readLanguage;
   return ['contract'=>self::CONTRACT,'type'=>'taxonomy_term','id'=>$id,
     'taxonomy'=>$t->taxonomy,'title'=>$t->name,'url'=>$url,
     'public_taxonomy'=>$public,'description_characters'=>$characters,
     'hierarchy_depth'=>count($parents),'parents'=>$parents,'children'=>$children,
     'assigned_published_posts'=>$posts,'linked_editorial_posts'=>$incoming,
     'editorial_scan_posts'=>$scanned,
+    'wpml_read_language'=>$readLanguage,'term_language'=>$actualLanguage,
+    'translation_valid'=>!$wrongLocale && $characters>0,
+    'translation_issue'=>$wrongLocale?'wrong_locale_term':($characters===0?'description_missing':null),
     'related_blog_topic_candidates'=>array_slice($topicCandidates,0,15),
     'topic_mention_not_verified_link'=>true,
-    'classification'=>!$public?'private_taxonomy':($characters>=180?'editorial_hub_candidate':'thin_term'),
+    'classification'=>!$public?'private_taxonomy':($wrongLocale?'wrong_language':($characters===0?'missing_translation':($characters>=180?'editorial_hub_candidate':'thin_term'))),
     'indexing_approved'=>false,'scope'=>'Saved taxonomy, published post assignments and literal editorial anchors'];
  }
  public static function combination(array $record): array {
   $nodes=[];$rich=[];$thin=[];
   foreach((array)($record['selections']??[]) as $x) {
-   $n=self::term((int)$x['term_id'],(string)$x['taxonomy']);
+   $n=self::term((int)$x['term_id'],(string)$x['taxonomy'],(string)($record['language']??'en'));
    if(is_wp_error($n))continue;
    $nodes[]=$n;
    if($n['classification']==='editorial_hub_candidate')$rich[]=$n['url'];
