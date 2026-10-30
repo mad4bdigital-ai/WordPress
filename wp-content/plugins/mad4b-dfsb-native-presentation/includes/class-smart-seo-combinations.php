@@ -95,10 +95,31 @@ final class SmartSeoCombinations {
                 'terms'=>array($termId),'operator'=>'IN','include_children'=>true);
         }
         usort($resolved,static fn($a,$b)=>strcmp($a['taxonomy'],$b['taxonomy']));
-        // Real intersection, not each term's individual count or a sitemap guess.
-        $q=new \WP_Query(array('post_type'=>$source['post_type'],'post_status'=>'publish',
-            'posts_per_page'=>3,'fields'=>'ids','tax_query'=>$taxQuery,
-            'ignore_sticky_posts'=>true,'no_found_rows'=>false));
+        $untranslated=array();
+        if ($lang!=='en') {
+            $taxQuery=array('relation'=>'AND');
+            foreach ($resolved as $item) {
+                $translated=apply_filters('wpml_object_id',(int)$item['term_id'],
+                    $item['taxonomy'],false,$lang);
+                if (!$translated) $untranslated[]=$item['term_id'];
+                $taxQuery[]=array('taxonomy'=>$item['taxonomy'],'field'=>'term_id',
+                    'terms'=>array($translated?(int)$translated:0),
+                    'operator'=>'IN','include_children'=>true);
+            }
+        }
+        // Evaluate matching posts in the correct WPML language, then restore
+        // the original language context for the REST request.
+        $current=(string)apply_filters('wpml_current_language','en');
+        if($lang!==$current && has_action('wpml_switch_language'))
+            do_action('wpml_switch_language',$lang);
+        try {
+            $q=new \WP_Query(array('post_type'=>$source['post_type'],'post_status'=>'publish',
+                'posts_per_page'=>3,'fields'=>'ids','tax_query'=>$taxQuery,
+                'ignore_sticky_posts'=>true,'no_found_rows'=>false));
+        } finally {
+            if($lang!==$current && has_action('wpml_switch_language'))
+                do_action('wpml_switch_language',$current);
+        }
         $count=(int)$q->found_posts;
         $policy=SmartSeoPolicyRegistry::effective($source['provider'],$source['query_id']);
         $required=(int)$policy['min_result_count'];
@@ -108,6 +129,7 @@ final class SmartSeoCombinations {
         $blocked=array();
         if($count<$required)$blocked[]='not_enough_published_matching_products';
         if($restricted)$blocked[]='nonpublic_taxonomy_requires_company_policy_review';
+        if($untranslated)$blocked[]='wpml_term_translation_missing';
         // Locale review is a separate REST gate, not a permanent selection error.
         if(!$policy['enabled'])$blocked[]='source_policy_disabled';
         foreach($resolved as $x) {
@@ -128,6 +150,7 @@ final class SmartSeoCombinations {
             'qualified_for_editorial_review'=>!$blocked,'index_ready'=>false,
             'blockers'=>array_values(array_unique($blocked)),
             'localization_review_required'=>$lang!=='en',
+            'untranslated_term_ids'=>$untranslated,
             'result_evidence'=>'wordpress_wp_query_taxonomy_intersection',
             'public_url_evidence'=>'not_yet_verified',
         );
