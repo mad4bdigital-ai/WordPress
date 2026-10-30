@@ -120,8 +120,20 @@ final class MAD4B_SCP_Policy {
 		if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) || ! class_exists( 'MAD4B_SCP_Agent_Registry' ) ) return false;
 		$identity = MAD4B_SCP_Identity_Context::current();
 		if ( is_wp_error( $identity ) ) return false;
-		// A verified delegated user's live capabilities are an upper bound;
-		// independent NHI still uses its pre-existing exact agent/grant path.
+        // Native WordPress principal: the authenticated WP user is the actor.
+        // No NHI enrollment is needed for an interactive site user or an
+        // explicit local WP-CLI --user. Exact per-Ability caps still apply.
+        $native_user = MAD4B_SCP_Delegation_Mode::verified_wordpress_user( $identity );
+        if ( $native_user ) {
+            if ( ! MAD4B_SCP_Site_Profile::governed_write_ready() ) return false;
+            // This global mutation predicate is used by many admin/write
+            // routes. Require administrator capability here; content editors
+            // are admitted through their exact, per-post WordPress path.
+            if ( ! user_can( $native_user, 'manage_options' ) ) return false;
+            return true === apply_filters( 'mad4b_scp_wordpress_mutation_permission', true,
+                (int) $native_user->ID, $identity );
+        }
+		// Independent NHI still uses the existing exact agent/grant path.
 		if ( ! MAD4B_SCP_Delegation_Mode::principal_allowed( $identity ) ) return false;
 		// Actor enrollment occurs only at the exact prepared write dispatch
 		// boundary (or explicitly scoped direct content mutation). This read-like
@@ -153,8 +165,12 @@ final class MAD4B_SCP_Policy {
 		if ( empty( $gate['effective'] ) || 'staging' !== ( $gate['environment'] ?? '' )
 			|| ! class_exists( 'MAD4B_SCP_Schema' )
 			|| ! MAD4B_SCP_Schema::is_ready() ) return false;
-		$user_id = get_current_user_id();
-		if ( $user_id < 1 || ! self::can_connect_user( $user_id ) ) return false;
+        $identity = class_exists( 'MAD4B_SCP_Identity_Context' )
+            ? MAD4B_SCP_Identity_Context::current() : null;
+        $user = class_exists( 'MAD4B_SCP_Delegation_Mode' )
+            ? MAD4B_SCP_Delegation_Mode::verified_wordpress_user( $identity ) : null;
+        if ( ! $user ) return false;
+        $user_id = (int) $user->ID;
 		$type = sanitize_key( (string) ( $input['post_type'] ?? '' ) );
 		$obj = '' !== $type ? get_post_type_object( $type ) : null;
 		if ( ! $obj || ! post_type_exists( $type ) ) return false;
