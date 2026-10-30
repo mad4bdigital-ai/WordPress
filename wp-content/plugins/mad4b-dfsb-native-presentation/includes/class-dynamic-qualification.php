@@ -152,11 +152,58 @@ final class DynamicQualification {
         );
     }
 
+    /**
+     * Reuse the current company's MU Presentation source of truth.
+     * A tour-only service is an intentional 404 outside a verified tour.
+     */
+    public static function companyPolicy(string $postType): array {
+        $identity=array(
+            'site_host'=>(string)parse_url(home_url('/'),PHP_URL_HOST),
+            'blog_id'=>function_exists('get_current_blog_id')?(int)get_current_blog_id():0,
+        );
+        $owner=function_exists('service_channel_owner')?service_channel_owner($postType):null;
+        if (!$owner) return array_merge($identity,array(
+            'owner'=>null,'source'=>'unmanaged_service',
+            'mode'=>'unmanaged','standalone_allowed'=>null,
+            'tour_component_allowed'=>null,'destination_discovery_allowed'=>null,
+        ));
+        $mode=function_exists('service_channel_mode')?
+            service_channel_mode($owner):'policy_unavailable';
+        $allowed=function_exists('service_channel_allowed');
+        return array_merge($identity,array(
+            'owner'=>$owner,'source'=>'mu_presentation/service-activation',
+            'mode'=>$mode,
+            'standalone_allowed'=>$allowed?service_channel_allowed($owner,'standalone'):false,
+            'tour_component_allowed'=>$allowed?service_channel_allowed($owner,'tour_component'):false,
+            'destination_discovery_allowed'=>$allowed?service_channel_allowed($owner,'destination_discovery'):false,
+        ));
+    }
+
     /** The route is inferred from actual registered CPT archive slugs, not hardcoded IDs. */
     public static function inferRoute(string $queryId, array $archives): array {
         // A term-specific or related-listing query is not the CPT's public archive.
         if (!str_ends_with($queryId,'_query_archive'))
             return array('status'=>'not_archive_query');
+        // Native company service registry defines service -> CPT, not arbitrary URL aliases.
+        // Use unique semantic roots before the generic fuzzy CPT match.
+        if (function_exists('product_navigation_registry')) {
+            $starts=(string)explode('_',$queryId)[0];
+            $mapped=array();
+            foreach ((array)product_navigation_registry() as $service=>$definition) {
+                $type=(string)($definition['post_type']??'');
+                if (strlen($starts)<5 || $type==='' || !isset($archives[$type])) continue;
+                if (str_starts_with((string)$service,substr($starts,0,5))
+                    || str_starts_with($type,substr($starts,0,5))) {
+                    $mapped[$type]=$archives[$type];
+                }
+            }
+            if (count($mapped)===1) {
+                $type=array_key_first($mapped);
+                return array('status'=>'inferred_archive_route',
+                    'post_type'=>$type,'url'=>$mapped[$type],
+                    'inference'=>'company_product_navigation_registry');
+            }
+        }
         $tokens=preg_split('/[^a-z0-9]+/',strtolower($queryId),-1,PREG_SPLIT_NO_EMPTY);
         $matches=array();
         foreach ($archives as $type=>$url) {
@@ -237,8 +284,12 @@ final class DynamicQualification {
         }
         usort($eligible,static fn($a,$b)=>$b['widget_uses']<=>$a['widget_uses'] ?: $a['id']<=>$b['id']);
         $route=self::inferRoute($group['query_id'],self::publicArchives());
+        $company=isset($route['post_type'])?self::companyPolicy((string)$route['post_type']):null;
+        $companyDenied=$company !== null && $company['owner'] !== null
+            && $company['standalone_allowed'] !== true;
+        if ($companyDenied) $reasons[]='company_policy_standalone_disabled';
         $evidence=array('http'=>null,'widget_keys'=>array(),'filter_ids'=>array());
-        if ($probe && ($route['status']??'')==='inferred_archive_route')
+        if ($probe && !$companyDenied && ($route['status']??'')==='inferred_archive_route')
             $evidence=self::probe((string)$route['url'],$cache);
         $code=$evidence['http'];
         $groupKey=$group['provider'].'/'.$group['query_id'];
@@ -257,13 +308,15 @@ final class DynamicQualification {
         $warnings=array();
         if (count($eligible)>3)
             $warnings[]='more_than_three_eligible_filters_select_subset';
-        $ready=!$reasons && count($verifiedEligible)>0 && $code===200;
-        $status=$ready?'candidate_for_manual_rule_review':
+        $ready=!$reasons && !$companyDenied && count($verifiedEligible)>0 && $code===200;
+        $status=$companyDenied
+            ? (($company['mode']??'')==='tour_only'?'company_component_only':'company_service_disabled')
+            : ($ready?'candidate_for_manual_rule_review':
             (in_array('archive_http_not_200',$reasons,true)?'route_blocked':
             (in_array('not_archive_query',$reasons,true)?'display_only':
             (in_array('no_direct_filter_widgets',$reasons,true) ||
                 in_array('no_eligible_taxonomy_filters',$reasons,true)?'needs_filter_mapping':
-            'needs_validation')));
+            'needs_validation'))));
         return array(
             'provider'=>$group['provider'],'query_id'=>$group['query_id'],
             'status'=>$status,'reasons'=>$reasons,'warnings'=>$warnings,
@@ -275,6 +328,7 @@ final class DynamicQualification {
             'filters'=>$filters,'eligible_filter_ids'=>array_column($eligible,'id'),
             'suggested_max_three_filter_ids'=>array_column(array_slice($probe?$verifiedEligible:$eligible,0,3),'id'),
             'route'=>$route,'route_http'=>$code,
+            'company_policy'=>$company,
             'public_widget_match'=>$widgetVisible,'rendered_filter_ids'=>$visibleIds,
             'proposed_rule'=>$ready ? array(
                 'state'=>'draft_requires_editorial_review',
