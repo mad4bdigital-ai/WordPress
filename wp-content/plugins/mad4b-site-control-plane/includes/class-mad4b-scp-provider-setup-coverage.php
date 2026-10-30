@@ -338,4 +338,6 @@ final class MAD4B_SCP_Provider_Setup_Coverage {
     }
 }
 
-add_action( 'admin_post_mad4b_custom_provider_register', array( 'MAD4B_SCP_Provider_Setup_Coverage', 'save_custom' ) );
+if ( function_exists( 'add_action' ) ) {
+    add_action( 'admin_post_mad4b_custom_provider_register', array( 'MAD4B_SCP_Provider_Setup_Coverage', 'save_custom' ) );
+}
