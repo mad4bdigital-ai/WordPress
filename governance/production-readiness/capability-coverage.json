@@ -13424,6 +13424,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Exact source guard assertions, six executed security test suites and existing mapped controls remain enforced: AUTOMATION-01, PERFORMANCE-01.",
       "review_rationale": "class-mad4b-scp-readiness-workflow-options.php: Admin/Company Content Readiness service remains subject to explicit WordPress role-capability checks, nonce and readback verification; no automatic task, notification or credential handling accepted. CI-only review is not live site acceptance or deployment clearance."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "8fb108c91b35f3d7d2c1c168b66de007f95ce20d",
+      "owner_role": "Integration source review (CI only; plugin activation does not require a release certificate or owner signature)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa30-native-general-settings-rest-lifecycle.py",
+        "tests/plugin_native_runtime_minimal_gates_contract.py"
+      ],
+      "review_rationale": "Combined bootstrap retains private REST security fence, source-owned Settings guard, and late registration of required native/company integration modules. Verified with PHP lint and minimal-gates regression. These are source checks only; they are not a certificate, release attestation or prerequisite for standard WordPress plugin activation."
     }
   ],
   "code_change_rules": {
