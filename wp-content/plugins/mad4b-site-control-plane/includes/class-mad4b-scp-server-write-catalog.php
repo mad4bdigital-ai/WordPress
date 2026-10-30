@@ -8,6 +8,8 @@ trait MAD4B_SCP_Server_Write_Catalog {
 			array(
 				'mad4b/content-get-post', 'mad4b/content-update-post',
 				'mad4b/content-job-create', 'mad4b/content-job-transition', 'mad4b/content-job-cancel',
+                // Native manager queue request, Staging-only; governed Write authorization is unchanged.
+                'mad4b/hub-source-sync-request',
 				'mad4b/intent-registry-reconcile', 'mad4b/draft-apply', 'mad4b/data-processing-record-decision', 'mad4b/rights-record-apply', 'mad4b/data-processing-profile-apply', 'mad4b/data-processing-bound-decision-record', 'mad4b/rights-takedown-apply', 'mad4b/scheduler-backlog-enqueue', 'mad4b/scheduler-backlog-claim-next', 'mad4b/scheduler-backlog-heartbeat', 'mad4b/scheduler-backlog-complete', 'mad4b/scheduler-backlog-reconcile', 'mad4b/decommission-quiesce-apply', 'mad4b/decommission-resume-apply', 'mad4b/decommission-finalize-apply', 'mad4b/portability-import-quarantine-apply',
 			),
 			array(
