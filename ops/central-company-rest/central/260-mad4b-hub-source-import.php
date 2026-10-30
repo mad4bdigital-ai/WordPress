@@ -54,7 +54,57 @@ final class MAD4B_Hub_Source_Import_V1 {
             ($row['may_checkout']??true)!==false) {
             return self::failure('invalid_source_item');
         }
-        return [
+        // Extended authenticated SSH metadata; old REST snapshots remain valid.
+        $extra=['source_slug','source_url','source_wpml_trid','source_text_origin',
+            'source_taxonomy_refs','source_identity_facts'];
+        $present=0;
+        foreach($extra as $key)if(array_key_exists($key,$row))$present++;
+        if($present!==0 && $present!==count($extra))
+            return self::failure('incomplete_extended_identity');
+        if($present) {
+            if(!is_string($row['source_slug']) || trim($row['source_slug'])==='' ||
+                strlen($row['source_slug'])>250 ||
+                !is_string($row['source_url']) ||
+                strlen($row['source_url'])>2048 ||
+                wp_parse_url($row['source_url'],PHP_URL_HOST)!=='tourism.almallahgroup-mg.com' ||
+                wp_parse_url($row['source_url'],PHP_URL_SCHEME)!=='https' ||
+                !is_int($row['source_wpml_trid']) || $row['source_wpml_trid']<1 ||
+                !in_array($row['source_text_origin'],['post_content','source_meta','excerpt_fallback','none'],true) ||
+                !is_array($row['source_taxonomy_refs']) ||
+                !is_array($row['source_identity_facts']) ||
+                count($row['source_taxonomy_refs'])>3 || count($row['source_identity_facts'])>3)
+                return self::failure('extended_identity_invalid');
+            $allowedTax=[
+                'tours-and-activities'=>['tour-types_jet','tour_categories_jet','location_jet'],
+                'properties'=>['property-types','location_jet'],
+                'transportations'=>['transportation-types','transport-service-type','location_jet']
+            ][$type]??[];
+            $allowedFacts=[
+                'tours-and-activities'=>['origin_place_id','origin_location_term'],
+                'properties'=>[],
+                'transportations'=>['from_station_id','to_station_id'],
+            ][$type]??[];
+            foreach($row['source_identity_facts'] as $key=>$value)
+                if(!in_array($key,$allowedFacts,true) || !is_string($value) ||
+                   strlen($value)>100 || preg_match('/[^a-zA-Z0-9_. -]/',$value))
+                    return self::failure('extended_fact_invalid');
+            foreach($row['source_taxonomy_refs'] as $tax=>$terms) {
+                if(!in_array($tax,$allowedTax,true) || !is_array($terms) ||
+                    array_values($terms)!==$terms || count($terms)>40)
+                    return self::failure('extended_taxonomy_invalid');
+                $seen=[];
+                foreach($terms as $term) {
+                    if(!is_array($term) || array_keys($term)!==['id','slug','parent'] ||
+                        !is_int($term['id']) || $term['id']<1 ||
+                        !is_int($term['parent']) || $term['parent']<0 ||
+                        !is_string($term['slug']) || trim($term['slug'])==='' ||
+                        strlen($term['slug'])>250 || isset($seen[$term['id']]))
+                        return self::failure('extended_term_invalid');
+                    $seen[$term['id']]=true;
+                }
+            }
+        }
+        $safe=[
             'source_company'=>$company,'source_post_type'=>$type,'kind'=>self::TYPES[$type],
             'source_id'=>$row['source_id'],'language'=>$row['language'],
             'title'=>sanitize_text_field($row['title']),
@@ -62,6 +112,8 @@ final class MAD4B_Hub_Source_Import_V1 {
             'body'=>sanitize_textarea_field($row['body']),
             'modified_gmt'=>$row['modified_gmt'],
         ];
+        if($present)foreach($extra as $key)$safe[$key]=$row[$key];
+        return $safe;
     }
     /** Source pages are all read and checked before writing; no partial page accepted. */
     public static function collect($company,array $types) {
@@ -167,6 +219,11 @@ final class MAD4B_Hub_Source_Import_V1 {
             if(!is_array($row) || !in_array($row['source_post_type']??null,$manifest['types'],true))
                 return self::failure('cross_ssh_item_type',409);
             $type=$row['source_post_type'];
+            // Cross SSH must provide provenance fields on EVERY row; unlike legacy REST.
+            if(!array_key_exists('source_wpml_trid',$row) ||
+                !array_key_exists('source_taxonomy_refs',$row) ||
+                !array_key_exists('source_url',$row))
+                return self::failure('cross_ssh_extended_identity_required',409);
             $safe=self::validate_item($row,self::SOURCE,$type);
             if(is_wp_error($safe))return $safe;
             $key=self::SOURCE.':'.$type.':'.$safe['language'].':'.$safe['source_id'];
@@ -300,6 +357,14 @@ final class MAD4B_Hub_Source_Import_V1 {
                 '_mad4b_hub_import_may_publish'=>'no',
                 '_mad4b_hub_import_may_checkout'=>'no',
             ];
+            if(isset($row['source_wpml_trid'])) {
+                $meta['_mad4b_hub_import_translation_trid']=$row['source_wpml_trid'];
+                $meta['_mad4b_hub_import_source_slug']=$row['source_slug'];
+                $meta['_mad4b_hub_import_source_url']=$row['source_url'];
+                $meta['_mad4b_hub_import_text_origin']=$row['source_text_origin'];
+                $meta['_mad4b_hub_import_taxonomy_refs']=$row['source_taxonomy_refs'];
+                $meta['_mad4b_hub_import_identity_facts']=$row['source_identity_facts'];
+            }
             foreach($meta as $field=>$value)update_post_meta($id,$field,$value);
             if($key!==$company.':'.$row['source_post_type'].':'.$row['language'].':'.$row['source_id']) {
                 return self::failure('identity_drift',409);
