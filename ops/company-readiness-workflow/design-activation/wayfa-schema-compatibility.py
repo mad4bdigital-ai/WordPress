@@ -25,8 +25,9 @@ foreach(array('jet_post_types','jet_taxonomies') as $name){
     $sourceOnly=($name==='jet_post_types' &&
       ($row['status']??'')==='rest-api-endpoint' &&
       preg_match('/^mad4b-hub-[a-f0-9]{12,}$/D',(string)($row['slug']??'')) &&
-      stripos((string)($row['labels']??''),'wo-vacation')!==false &&
-      stripos((string)($row['labels']??''),'research_observation')!==false &&
+      stripos((string)($row['labels']??''),'MAD4B Hub wo-vacation ')!==false &&
+      preg_match('/MAD4B Hub wo-vacation (?:research_observation|article|tour) en/',
+       (string)($row['labels']??'')) &&
       strpos((string)($row['args']??''),'tours.dev.mad4b.com')!==false);
     if($sourceOnly){
       $sourceScoped[]=array('id'=>(int)$row['id'],
