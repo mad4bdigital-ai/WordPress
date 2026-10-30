@@ -94,6 +94,10 @@ final class MAD4B_Central_PK_Pairing_V1 {
    if(!isset($registry[$id])||!is_array($registry[$id]))$registry[$id]=[];
    $registry[$id]['connection_state']='authenticated_read_only';
    $registry[$id]['last_authenticated_check']=gmdate('c');
+   // Distinguish mutual P-256 from older REST/HMAC checks sharing the same
+   // connection_state; only this proof qualifies for reference sharing.
+   $registry[$id]['identity_protocol']='p256_mutual_signed_v3';
+   $registry[$id]['p256_last_verified_at']=$registry[$id]['last_authenticated_check'];
    update_option(MAD4B_Central_Company_REST_V1::OPTION,$registry,false);
    $out=new WP_REST_Response([
     'contract'=>'mad4b.central-companies.public-key-identity-proof.v1',
