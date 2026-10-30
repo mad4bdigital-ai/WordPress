@@ -335,6 +335,64 @@ final class MAD4B_Hub_Company_Pricing_V1 {
         $result['quote_sha256']=hash('sha256',wp_json_encode($result,JSON_UNESCAPED_SLASHES));
         return $result;
     }
+    /**
+     * Reuse the EXISTING Shared Product Rate Generator, not an invented CPT.
+     * Prepare is read-only. Creating a real draft requires the native provider
+     * create() path and its separate review / remote authority.
+     */
+    public static function native_generator_preview($input){
+        if(!is_array($input) ||
+           array_diff(array_keys($input),array(
+             'consumer_company','generator_input','quote_sha256')))
+            return self::err('native_generator_input_invalid');
+        if(!self::company($input['consumer_company']??null) ||
+           !is_array($input['generator_input']??null))
+            return self::err('native_generator_company_invalid');
+        if(!class_exists('Shared_Product_Rate_Generation') ||
+           !is_callable(array('Shared_Product_Rate_Generation','prepare')))
+            return self::err('native_rate_generator_not_active',503);
+        $params=$input['generator_input'];
+        $kind=$params['kind']??null;
+        if(!in_array($kind,array('tour','accommodation','transport'),true))
+            return self::err('native_generator_kind_invalid');
+        $parents=array('tour'=>'tours-and-activities',
+            'accommodation'=>'properties','transport'=>'transportations');
+        $id=$params['parent_id']??null;
+        if(!self::positiveId($id)||get_post_type($id)!==$parents[$kind] ||
+           get_post_status($id)!=='publish')
+            return self::err('native_generator_parent_invalid');
+        $plan=Shared_Product_Rate_Generation::prepare($params);
+        if(is_wp_error($plan))return $plan;
+        if(!is_array($plan) ||
+           ($plan['schema']??null)!=='shared-rate-generation.v1' ||
+           ($plan['post_status']??null)!=='draft' ||
+           ($plan['checkout_ready']??true)!==false ||
+           ($plan['commercial_ready']??true)!==false ||
+           !is_string($plan['fingerprint']??null))
+            return self::err('native_generator_contract_mismatch',409);
+        // A quote digest may be passed for later audit joining but it cannot
+        // self-authorize creating or publishing any Rate.
+        $quoteDigest=$input['quote_sha256']??null;
+        if($quoteDigest!==null &&
+           (!is_string($quoteDigest)||!preg_match('/^[a-f0-9]{64}$/D',$quoteDigest)))
+            return self::err('quote_digest_invalid');
+        return array('contract'=>self::CONTRACT,
+          'provider'=>'Shared_Product_Rate_Generation',
+          'native_schema'=>$plan['schema'],
+          'consumer_company'=>$input['consumer_company'],
+          'kind'=>$kind,'parent_id'=>$id,
+          'native_post_type'=>$plan['post_type'],
+          'native_fingerprint'=>$plan['fingerprint'],
+          'native_draft_plan'=>$plan,
+          'linked_company_quote_sha256'=>$quoteDigest,
+          'creation_performed'=>false,
+          'provider_create_invoked'=>false,
+          'commercial_ready'=>false,
+          'checkout_ready'=>false);
+    }
+    public static function rest_native_generator($request){
+        return self::native_generator_preview($request->get_json_params());
+    }
     public static function admin(){return current_user_can('manage_options');}
     public static function rest_inventory(){return MAD4B_Hub_Price_Sources_V1::discover();}
     public static function rest_policies(){return self::policies_summary();}
@@ -364,7 +422,8 @@ final class MAD4B_Hub_Company_Pricing_V1 {
                 '/hub-pricing/sources'=>array('GET','rest_inventory'),
                 '/hub-pricing/policies'=>array('GET','rest_policies'),
                 '/hub-pricing/policy'=>array('POST','rest_policy'),
-                '/hub-pricing/quote-preview'=>array('POST','rest_quote')
+                '/hub-pricing/quote-preview'=>array('POST','rest_quote'),
+                '/hub-pricing/rate-generator-preview'=>array('POST','rest_native_generator')
             );
             foreach($routes as $path=>$spec)
                 register_rest_route('mad4b/v1',$path,array(
