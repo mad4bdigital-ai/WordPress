@@ -84,6 +84,7 @@ jobs:
           php -l ops/company-readiness-workflow/staging-mu/252-mad4b-start-your-company-runtime.php
           php -l ops/company-readiness-workflow/tests/test_start_company_runtime.php
           php ops/company-readiness-workflow/tests/test_start_company_runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/remote-work-queue-cancellation-runtime.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py
           php wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php
           python3 - <<'PY'
