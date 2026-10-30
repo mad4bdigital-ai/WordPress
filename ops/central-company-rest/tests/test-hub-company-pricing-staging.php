@@ -77,6 +77,12 @@ if(is_wp_error($gen)||!$gen['rate_entries'][0]['generated_rate_preview']||
    !$gen['rate_generator_only_generates_preview']||
    $gen['checkout_ready']!==false)
  throw new RuntimeException('Rate Generator preview contract violated');
+$badContext=MAD4B_Hub_Company_Pricing_V1::quote($historic,'all-royal-egypt',
+ array('language'=>'en','date'=>'2026-02-30'),$policy);
+if(!is_wp_error($badContext))throw new RuntimeException('Invalid date market context accepted');
+$badContext=MAD4B_Hub_Company_Pricing_V1::quote($historic,'all-royal-egypt',
+ array('nationality_country'=>'*'),$policy);
+if(!is_wp_error($badContext))throw new RuntimeException('Wildcard nationality context accepted');
 $wrong=$policy;$wrong['source_product_id']=24901;
 if(!is_wp_error(MAD4B_Hub_Company_Pricing_V1::quote($historic,
  'all-royal-egypt',$context,$wrong)))
