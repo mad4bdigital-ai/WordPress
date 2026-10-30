@@ -29,7 +29,7 @@ final class MAD4B_Hub_Usage_Rights {
         if (!is_array($source) || !is_array($draft)) {
             return self::blocked('evidence_missing');
         }
-        if (!in_array($purpose, array('research', 'reference', 'distribution'), true)) {
+        if (!in_array($purpose, array('research', 'reference', 'display', 'publish', 'distribution'), true)) {
             return self::blocked('purpose_unknown');
         }
         $company = sanitize_key((string)($source['consumer_company_id']
@@ -70,6 +70,10 @@ final class MAD4B_Hub_Usage_Rights {
         if ($purpose === 'research' || $purpose === 'reference') {
             return self::allow('source_reference_available',$metadata);
         }
+        // Public display, publication and company distribution share the
+        // same normal QA/policy route. Unverified license metadata is not a
+        // global veto for any of these three actions.
+        $metadata['requested_purpose'] = $purpose;
         if ($company === '') return self::blocked('responsible_company_missing',$metadata);
         if (($draft['quality_state'] ?? '') !== 'passed' || !empty($draft['hard_blockers'])) {
             return self::blocked('content_qa_not_passed',$metadata);
