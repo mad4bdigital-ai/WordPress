@@ -4,11 +4,14 @@
 Never uses VPS, WordPress, networking, databases or real customer data.
 """
 import base64
+import gzip
+import io
 import datetime as dt
 import importlib.util
 import json
 from pathlib import Path
 import tempfile
+import tarfile
 import unittest
 from unittest.mock import patch
 
@@ -34,10 +37,14 @@ class NativeExecutorTest(unittest.TestCase):
         self.previous_php="<?php echo 'tenant previous version';\n"
         (self.src/NAME).write_text(self.source_php)
         (self.dest/NAME).write_text(self.previous_php)
+        (self.backup/"wayfatours-db.sql.gz").write_bytes(gzip.compress(b"-- isolated database fixture\\nCREATE TABLE example(id INT);\\n"))
+        with tarfile.open(self.backup/"wayfatours-site.tar.gz","w:gz") as archive:
+            body=b"<?php // isolated site archive fixture\\n"
+            info=tarfile.TarInfo("index.php");info.size=len(body)
+            archive.addfile(info,io.BytesIO(body))
         sums=[]
         for name in ("wayfatours-db.sql.gz","wayfatours-site.tar.gz"):
-            body=("fixture-"+name).encode()
-            (self.backup/name).write_bytes(body)
+            body=(self.backup/name).read_bytes()
             sums.append(engine.digest(body)+"  "+name)
         (self.backup/"SHA256SUMS").write_text("\n".join(sums)+"\n")
         self.key=Ed25519PrivateKey.from_private_bytes(b"K"*32)
@@ -53,6 +60,11 @@ class NativeExecutorTest(unittest.TestCase):
             "wordpress_database":"wayfatours_production",
             "owner_public_key_id":"test-only-ed25519",
             "owner_ed25519_public_key":base64.b64encode(pub).decode(),
+            "isolated_restore_drill":{
+                "company":"wayfatours","result":"PASS","isolated":True,
+                "verified_at":dt.datetime.now(dt.timezone.utc).isoformat(),
+                "backup_manifest_sha256":engine.digest((self.backup/"SHA256SUMS").read_bytes()),
+            },
         }
         self.manifest={
             "contract":"mad4b.company-stage-job.v1","company_code":"wayfatours",
@@ -153,6 +165,23 @@ class NativeExecutorTest(unittest.TestCase):
         with patch.object(engine,"inspect_live_wordpress",return_value=None):
             self.assertEqual(self.call("apply",t)["reason"],"BACKUP_HAS_NO_CHECKSUM_MANIFEST")
         self.assertEqual((self.dest/NAME).read_text(),self.previous_php)
+
+    def test_reject_unverified_restoration_drill(self):
+        self.policy["mutation_enabled"]=True
+        self.policy["isolated_restore_drill"]["result"]="NOT_EXECUTED"
+        self.save()
+        t=self.ticket("apply")
+        with patch.object(engine,"inspect_live_wordpress",return_value=None):
+            self.assertEqual(self.call("apply",t)["reason"],"ISOLATED_RESTORE_DRILL_REQUIRED")
+
+    def test_replay_does_not_repeat_write(self):
+        self.policy["mutation_enabled"]=True;self.save()
+        t=self.ticket("apply")
+        with patch.object(engine,"inspect_live_wordpress",return_value=None):
+            first=self.call("apply",t)
+            again=self.call("apply",t)
+        self.assertEqual(first["state"],"APPLIED_FILES_VERIFIED")
+        self.assertEqual(again["reason"],"RUN_ALREADY_HAS_TRANSACTION_RECONCILE_FIRST")
 
     def test_symlink_escape_denied(self):
         (self.src/NAME).unlink()
