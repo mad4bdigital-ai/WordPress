@@ -139,11 +139,13 @@ final class MAD4B_SEO_Content_Lifecycle {
         $keyword=self::text((string)($input['focus_keyword']??$t['seo_meta']['focus_keyword']),150);
         if($keyword==='')$keyword=self::text($t['title'],120);
         $title=self::text($t['title'],90);
-        $site=self::text(get_bloginfo('name'),45);
-        $generated_title=$title;
-        if($site!=='' && stripos($title,$site)===false && self::length($title)<48)
-            $generated_title.=' | '.$site;
-        $generated_title=self::text($generated_title,68);
+        // Rank Math resolves %sitename% from WordPress Settings > General > Site Title.
+        // Store the variable, not a hard-coded company name or stale resolved value.
+        $site=self::text(get_bloginfo('name'),90);
+        $generated_title=self::text($title,60);
+        if($site!=='' && stripos($title,$site)===false && stripos($title,'%sitename%')===false
+           && self::length($title)<54)
+            $generated_title.=' | %sitename%';
         $plain=self::text(strip_shortcodes($t['content']),210);
         if($plain==='')$plain=$title;
         $description=self::text($plain,155);
@@ -151,6 +153,10 @@ final class MAD4B_SEO_Content_Lifecycle {
             'target_kind'=>$t['target_kind'],'target_id'=>$t['target_id'],
             'expected_sha256'=>$t['sha256'],
             'fields'=>['title'=>$generated_title,'description'=>$description,'focus_keyword'=>$keyword],
+            'site_name'=>['source'=>'wordpress_site_title','rank_math_variable'=>'%sitename%',
+                'current_preview_value'=>$site,
+                'title_preview'=>str_replace('%sitename%',$site,$generated_title),
+                'is_dynamic'=>str_contains($generated_title,'%sitename%')],
             'source_basis'=>'stored_first_party_title_and_content_only',
             'generation_mode'=>'deterministic_baseline_not_llm',
             'needs_editorial_review'=>true,
