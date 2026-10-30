@@ -18,3 +18,20 @@ Use `wp eval-file wp-content/plugins/mad4b-dfsb-native-presentation/tests/wp-cli
 
 ## Installation
 Install as a *separate normal WordPress plugin* using WordPress's ordinary plugin installer after source review. Do not overwrite DFSB or reuse the old DFSB signed ZIP identity. Stage-only rollout and rollback: deactivate and remove **MAD4B DFSB Native Presentation** to restore the original behavior; no database migrations or persisted settings are introduced.
+
+
+## Shared dynamic context (v0.2.0)
+Read-only WordPress filter: `apply_filters('mad4b/shared-context/read', array())`.
+Returns the same `title`, `description`, `language`, `page_kind`, `provider`, `query_id`, and `seo_publisher` decision for each request.
+
+**Source precedence:** published WordPress/WPML page context → *only when a matching active JetSmartFilters SEO Rule and actual filters exist*, the native JetSmartFilters evaluated SEO title/description. Provider and Query ID are taken from JetSmartFilters' native rule resolver. No guessed filters, raw URL parameter storage or arbitrary JetEngine query execution.
+
+**Elementor:** existing `dfsb-context-value` tag uses composed title/description for public view; image remains the local attachment source.
+
+**JetEngine:** registered listing macros `%mad4b_shared_title%`, `%mad4b_shared_description%`, `%mad4b_shared_language%`.
+
+**Shortcodes:** `[mad4b_shared_title]`, `[mad4b_shared_description]`, and the existing `[dfsb_context_value field="title"]` / `description`. On approved filtered pages, the new shared shortcodes use native JetSmartFilters SEO selectors to receive its existing AJAX label updates; no custom AJAX transport or client-side changes to canonical/robots are performed.
+
+**SEO publisher:** Rank Math is left completely untouched for ordinary pages. On an exact JetSmartFilters SEO Rule page, JetSmartFilters' native Rank Math compatibility owns the SEO output. The adapter never registers `rank_math/frontend/*` callbacks or prints meta/canonical tags. Filtered page indexing remains off unless the operator configures native JetSmartFilters SEO Rules. This Staging site had no configured JSF SEO Rules during initial implementation.
+
+The context API is read-only, not an authorization channel. No private bookings, pricing records, user data, draft products or Content Hub tenant secrets enter the shared projection.
