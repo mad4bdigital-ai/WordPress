@@ -95,6 +95,8 @@ final class MAD4B_Company_Readiness_Governance {
                   'permission_callback'=>array(__CLASS__,'guard')));
     }
     public static function workflow($request) {
+        $permit=self::guard($request);
+        if(is_wp_error($permit))return $permit;
         $company = sanitize_key((string)$request->get_param('company'));
         $registry = self::registry();
         if (empty($registry[$company]['host_binding_verified']))
