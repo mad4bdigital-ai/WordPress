@@ -140,7 +140,7 @@ def policy(source, tenant, catalog, health):
     is_up = all(v.get("http")==200 and v.get("tls_verified") for v in health.values())
     stage("site_https", "PASS" if is_up else "BLOCKED",
           "Real HTTPS CA validation on both named sites", "REPAIR_SITE_HTTPS")
-    stage("wp_cli_memory", "PASS", "Audit executed PHP WP-CLI using 512M; default 256M still requires optimization",
+    stage("wp_cli_memory", "PENDING", "Audit executed PHP WP-CLI using 512M; default 256M still requires optimization",
           "OPTIMIZE_DEFAULT_CLI_MEMORY_LOAD")
     # No route from this workflow directly to publish, checkout or tenant asset rewriting.
     can_distribute = all(x["state"]=="PASS" for x in stages.values())
