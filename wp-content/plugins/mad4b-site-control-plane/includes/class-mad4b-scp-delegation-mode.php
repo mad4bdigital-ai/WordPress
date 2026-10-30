@@ -152,6 +152,8 @@ final class MAD4B_SCP_Delegation_Mode {
             'mad4b/content-job-transition',
             'mad4b/content-job-cancel',
             'mad4b/control-research-to-hub',
+            'mad4b/hub-jetengine-consumer-configure',
+            'mad4b/hub-jetengine-consumer-activate',
         );
     }
 
@@ -367,6 +369,17 @@ final class MAD4B_SCP_Delegation_Mode {
                 && class_exists( 'MAD4B_Content_Hub' ) && MAD4B_Content_Hub::permission()
                 ? true : new WP_Error( 'mad4b_control_hub_wordpress_cap_denied',
                     'Only a verified central WordPress administrator may launch Hub ingestion.' );
+        }
+
+        if ( in_array( $ability_name, array(
+            'mad4b/hub-jetengine-consumer-configure',
+            'mad4b/hub-jetengine-consumer-activate',
+        ), true ) ) {
+            return user_can( $user, 'manage_options' )
+                && class_exists( 'MAD4B_Hub_JetEngine_Consumer_Runtime' )
+                && MAD4B_Hub_JetEngine_Consumer_Runtime::operator()
+                ? true : new WP_Error( 'mad4b_hub_jetengine_wordpress_cap_denied',
+                    'Only the verified central WordPress administrator can manage JetEngine Consumers.' );
         }
 
         if ( 'mad4b/content-apply-bundle' === $ability_name ) {
