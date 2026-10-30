@@ -103,6 +103,7 @@ t('plan_hash_cas',is_wp_error($bad)&&$bad->get_error_code()==='mad4b_company_pla
 $bad=MAD4B_Start_Company_Runtime::resume(req('wayfatours',['stage'=>'shell','expected_plan_sha256'=>$p['plan_sha256']]));
 t('reject_arbitrary_stage',is_wp_error($bad)&&$bad->get_error_code()==='mad4b_company_stage_invalid');
 $job=[
+ 'run_id'=>$out['run_id'],
  'contract'=>'mad4b.company-stage-job.v1','company_code'=>'wayfatours','site_uuid'=>UUID,
  'origin'=>'https://wayfatours.mad4b.com','mode'=>'repair_existing','stage'=>'identity',
  'action'=>MAD4B_Start_Company_Runtime::ACTIONS['identity'],'plan_sha256'=>$p['stages']['identity']['execution_plan_sha256'],
@@ -110,6 +111,10 @@ $job=[
  'preserve_existing'=>true,'mutation_authorized'=>false
 ];
 t('bound_job_valid',MAD4B_SCP_Company_Provisioning_Work_Operations::validate_payload($job));
+$unscoped=$job;unset($unscoped['run_id']);
+t('deny_missing_run_id',!MAD4B_SCP_Company_Provisioning_Work_Operations::validate_payload($unscoped));
+$forgedRun=$job;$forgedRun['run_id']=str_repeat('0',64);
+t('deny_forged_run_at_entry',!MAD4B_Start_Company_Runtime::stage_job_authorized($forgedRun));
 $claimed=['operation_id'=>'company.stage.execute','payload'=>$job,'status'=>'claimed',
  'lease_expires_at_epoch'=>time()+600,'executor_id'=>'vps-runner-1'];
 t('admit_verified_identity',MAD4B_SCP_Company_Provisioning_Work_Operations::provider_entry_allowed($claimed));
@@ -154,7 +159,7 @@ t('owner_change_invalidates_access',$old['stages']['access']['stage_revision']!=
 t('owner_change_preserves_plugins',$old['stages']['plugins']['stage_revision']===$new['stages']['plugins']['stage_revision'] && $old['stages']['plugins']['execution_plan_sha256']===$new['stages']['plugins']['execution_plan_sha256']);
 MAD4B_Start_Company_Runtime::recheck_event('wayfatours');
 t('event_snapshot_saved',isset($GLOBALS['opts']['mad4b_start_company_snapshots_v3']['wayfatours']['plan_sha256']));
-t('event_dispatches_next_ready_stage',$GLOBALS['queue_count']===4);
+t('event_reuses_pending_stage_without_duplicate',$GLOBALS['queue_count']===3);
 $after=MAD4B_Start_Company_Runtime::status(req('wayfatours'));
 t('partially_verified_not_complete',$after['verified_count']>=5 && $after['successful']===false);
 t('single_outcome_jobs_have_receipts_priority',$after['overall_state']==='IN_PROGRESS');
