@@ -42,7 +42,7 @@ final class MAD4B_Hub_Source_Import_V1 {
             ($row['source_post_type']??'')!==$type ||
             ($row['kind']??'')!==(self::TYPES[$type]??null) ||
             !is_int($row['source_id']??null) || $row['source_id']<1 ||
-            !in_array($row['language']??null,['en','ar'],true) ||
+            !in_array($row['language']??null,['en','ar','fr','de','it','es'],true) ||
             !is_string($row['title']??null) || trim($row['title'])==='' ||
             strlen($row['title'])>1500 ||
             !is_string($row['summary']??null) || strlen($row['summary'])>3000 ||
@@ -161,7 +161,7 @@ final class MAD4B_Hub_Source_Import_V1 {
             if(!is_array($data) || ($data['source_company']??'')!==$company ||
                 ($data['publish_allowed']??true)!==false ||
                 !is_int($data['source_tour_id']??null) || $data['source_tour_id']!==$sourceId ||
-                !in_array($lang,['en','ar'],true) ||
+                !in_array($lang,['en','ar','fr','de','it','es'],true) ||
                 !is_string($data['title']??null) || !is_string($data['summary']??null) ||
                 !is_string($data['source_content_text']??null)) {
                 return self::failure('bootstrap_reference_invalid',409);
