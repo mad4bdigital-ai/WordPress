@@ -60,7 +60,7 @@ class WP_REST_Request implements ArrayAccess {
     public function get_method() { return $this->method; }
     public function get_route() { return $this->route; }
     public function offsetExists($o): bool { return $o === 'company'; }
-    public function offsetGet($o): mixed { return $o === 'company' ? $this->company : null; }
+    public function offsetGet($o) { return $o === 'company' ? $this->company : null; }
     public function offsetSet($o, $v): void {}
     public function offsetUnset($o): void {}
 }
@@ -108,8 +108,8 @@ $ok = MAD4B_Central_Simple_Connections_V1::connect($request);
 check($ok instanceof WP_REST_Response && $ok->data['connected'] === true, 'Connect works after matching identity');
 check(($GLOBALS['last_request']['url'] ?? '') === 'https://tourism.almallahgroup-mg.com/wp-json/mad4b-company/v1/simple-identity', 'Exact host pinned');
 check($GLOBALS['last_request']['args']['redirection'] === 0 && $GLOBALS['last_request']['args']['sslverify'] === true, 'TLS and redirect fences enabled');
-check(!str_contains(serialize($GLOBALS['opts']), $password), 'Plaintext app password not stored in options');
-check(!str_contains(serialize($GLOBALS['opts']), base64_encode('mad4b-service:'.$password)), 'Basic header not stored');
+check(strpos(serialize($GLOBALS['opts']), $password) === false, 'Plaintext app password not stored in options');
+check(strpos(serialize($GLOBALS['opts']), base64_encode('mad4b-service:'.$password)) === false, 'Basic header not stored');
 $state = MAD4B_Central_Simple_Connections_V1::status();
 check($state->data['companies'][0]['configured'] === true, 'Configuration visible without credentials');
 check(!isset($state->data['companies'][0]['username']), 'Status redacts username');
