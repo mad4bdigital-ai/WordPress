@@ -162,6 +162,11 @@ def reviewed_source_supersedes_snapshot(path):
         # to real disposable WordPress smoke, rather than excluding them.
         original_reviewed = "0c0c2052254a5c893a79d45aa9d985b57d8361fd"
         readiness_reviewed = "73f702209fff557737fd0aab8d30619f5a22d53f"
+        # Reviewed third exact admin fixture: both Staging Brand Trial and
+        # MCP Principal Mode are now actually rendered by the disposable WP
+        # regression, with nonce, action and read-only GET verification.
+        # Historical manifests stay immutable; no live/Production authority.
+        principal_brand_reviewed = "134faf1d30a2027420f441a4bd5458add64053ea"
         current_git_blob = subprocess.check_output(
             ["git", "rev-parse", "HEAD:" + path], stderr=subprocess.DEVNULL,
             timeout=8,
@@ -176,8 +181,14 @@ def reviewed_source_supersedes_snapshot(path):
             and (direct_profile, source_blob) in reviewed_exact_blobs
             and b"'mad4b-direct-access-profile' => array( 'MAD4B_SCP_Direct_Profile', 'render_page'" in data
             and (blob_sha == original_reviewed
-                 or blob_sha == readiness_reviewed
-                 and all(marker in data for marker in required_new_pages))
+                 or (blob_sha == readiness_reviewed
+                     and all(marker in data for marker in required_new_pages))
+                 or (blob_sha == principal_brand_reviewed
+                     and all(marker in data for marker in required_new_pages)
+                     and all(marker in data for marker in (
+                         b"'mad4b-staging-brand-trial' => array( 'MAD4B_SCP_Staging_Brand_Trial', 'page'",
+                         b"'mad4b-mcp-principal-mode' => array( 'MAD4B_SCP_Delegation_Mode', 'page'",
+                     ))))
         )
     return (path, blob_sha) in reviewed_exact_blobs
 
