@@ -280,7 +280,6 @@ final class MAD4B_Hub_JetEngine_Consumer_Runtime {
         $provenance=$record['provenance']??array();
         if(($record['state']??'')!=='approved' ||
             ($normalized['quality_state']??'')!=='passed' ||
-            ($normalized['rights_state']??'')!=='cleared' ||
             ($normalized['publish_authorized']??false)!==true ||
             ($provenance['external_distribution_authorized']??false)!==true ||
             !empty($provenance['test_only']))return false;
@@ -288,7 +287,23 @@ final class MAD4B_Hub_JetEngine_Consumer_Runtime {
             ($record['brand_id']??'')!==($config['source_brand_id']??'') ||
             ($record['locale']??'')!==($config['language']??'') ||
             ($normalized['content_kind']??'')!==($config['content_kind']??''))return false;
-        return true;
+        // Per-company legal/rights risk is not a global publication veto.
+        // Do not confuse this policy choice with a license, and keep
+        // canonical QA, approval, provenance and scope gates independent.
+        if (!class_exists('MAD4B_Hub_Usage_Rights')) return false;
+        $source = array(
+            'origin' => (string)($provenance['source_origin'] ?? $provenance['origin'] ?? 'external_reference'),
+            'company_id' => (string)($record['brand_id'] ?? ''),
+            'consumer_company_id' => (string)($config['company_id'] ?? ''),
+            'license_id' => (string)($provenance['license_id'] ?? ''),
+        );
+        $draft = array(
+            'quality_state' => (string)($normalized['quality_state'] ?? ''),
+            'hard_blockers' => $normalized['hard_blockers'] ?? array(),
+            'external_media' => !empty($normalized['external_media']) || !empty($provenance['external_media']),
+        );
+        $decision = MAD4B_Hub_Usage_Rights::assess($source,$draft,'distribution');
+        return is_array($decision) && ($decision['allowed'] ?? false) === true;
     }
 
     /**
