@@ -2,81 +2,99 @@
 defined('ABSPATH') || exit;
 
 /**
- * Source rights never follow merely from a successful scrape or connection.
- * This policy is deterministic and reviewer-neutral; the normal QA workflow
- * may use the same author as reviewer. No release or publication occurs here.
+ * Company responsibility for third-party content and media.
+ * This is an internal distribution policy, not a license grant or a finding
+ * that reuse is lawful. Security, QA, source permissions and release gates
+ * remain separate. No reviewer signature is required by default.
  */
 final class MAD4B_Hub_Usage_Rights {
-    const CONTRACT = 'mad4b.hub.usage-rights.v1';
+    const CONTRACT = 'mad4b.hub.usage-rights.v2';
+    const POLICIES = 'mad4b_hub_company_usage_policies_v2';
 
-    public static function assess($source, $draft, $purpose) {
+    public static function company_policy($company) {
+        $rules = get_option(self::POLICIES, array());
+        $stored = is_array($rules) ? ($rules[$company] ?? array()) : array();
+        $stored = is_array($stored) ? $stored : array();
+        return array(
+            'responsibility_mode' => 'company',
+            'allow_external_content' => !array_key_exists('allow_external_content', $stored)
+                || $stored['allow_external_content'] === true,
+            'allow_external_media' => !array_key_exists('allow_external_media', $stored)
+                || $stored['allow_external_media'] === true,
+            'require_verified_license' => !empty($stored['require_verified_license']),
+        );
+    }
+
+    public static function assess($source, $draft, $purpose, $override = array()) {
         if (!is_array($source) || !is_array($draft)) {
             return self::blocked('evidence_missing');
         }
         if (!in_array($purpose, array('research', 'reference', 'distribution'), true)) {
             return self::blocked('purpose_unknown');
         }
-        $origin = (string) ($source['origin'] ?? 'unknown');
-        $company = sanitize_key((string) ($source['company_id'] ?? ''));
-        $is_original = ($draft['kind'] ?? '') === 'original_article'
-            && ($draft['lineage_verified'] ?? false) === true;
-        $is_clear = ($draft['quality_state'] ?? '') === 'passed'
-            && empty($draft['hard_blockers']);
-        $has_foreign_media = !empty($draft['external_media']);
-        $rights_holder = (string) ($draft['rights_holder'] ?? '');
-
-        if ($purpose === 'research') {
-            return self::allow('research_only');
-        }
-        if ($origin === 'external_reference') {
-            // A scraped source can be cited but not copied or republished.
-            return $purpose === 'reference'
-                ? self::allow('attributed_reference_only')
-                : self::blocked('external_copy_rights_unverified');
-        }
-        if ($origin === 'signed_company_reference') {
-            $verified = $company !== ''
-                && class_exists('MAD4B_Central_Hub_Remote_Control_V1')
-                && MAD4B_Central_Hub_Remote_Control_V1::reference_share_eligible($company);
-            if (!$verified) return self::blocked('signed_source_not_verified');
-            return $purpose === 'reference'
-                ? self::allow('signed_reference_only')
-                : self::blocked('source_connection_does_not_grant_publication');
-        }
-        if ($origin !== 'owned_original' && $origin !== 'licensed_content') {
-            return self::blocked('rights_source_unknown');
-        }
-        if ($purpose === 'reference') return self::allow('internal_owned_reference');
-        if (!$is_original || !$is_clear) return self::blocked('original_draft_or_qa_missing');
-        if ($has_foreign_media) return self::blocked('embedded_media_license_missing');
-
-        if ($origin === 'owned_original') {
-            if ($company === '' || $rights_holder !== $company) {
-                return self::blocked('rights_holder_mismatch');
+        $company = sanitize_key((string)($source['consumer_company_id']
+            ?? $source['company_id'] ?? $draft['responsible_company_id'] ?? ''));
+        $origin = sanitize_key((string)($source['origin'] ?? 'unknown'));
+        $external = !in_array($origin, array('owned_original', 'licensed_content'), true);
+        $external_media = !empty($draft['external_media']);
+        $policy = self::company_policy($company);
+        if (is_array($override)) {
+            // Callers may make policy stricter but cannot override stored denial.
+            foreach (array('allow_external_content','allow_external_media','require_verified_license') as $field) {
+                if (array_key_exists($field,$override)) {
+                    $value = $override[$field] === true;
+                    $policy[$field] = $field === 'require_verified_license'
+                        ? ($policy[$field] || $value) : ($policy[$field] && $value);
+                }
             }
-            return self::allow('owned_original_distribution');
         }
-        // A license must come from the managed rights registry, not a
-        // caller-controlled "licensed":true flag.
-        $license = sanitize_text_field((string) ($source['license_id'] ?? ''));
+        $metadata = array(
+            'responsible_company_id'=>$company,
+            'source_origin'=>$origin,
+            'external_content'=>$external,
+            'external_media'=>$external_media,
+            'rights_handling'=>'company_responsibility',
+            'license_state'=>'not_verified',
+            'legal_reuse_permission'=>'not_determined_by_system',
+        );
+        $license = sanitize_text_field((string)($source['license_id'] ?? ''));
         $licenses = get_option('mad4b_hub_usage_licenses_v1', array());
-        $row = is_array($licenses) ? ($licenses[$license] ?? null) : null;
-        if (!is_array($row) || ($row['company_id'] ?? '') !== $company
-            || ($row['status'] ?? '') !== 'active'
-            || empty($row['commercial_redistribution_allowed'])) {
-            return self::blocked('managed_license_not_verified');
+        $registered = is_array($licenses) && $license !== ''
+            ? ($licenses[$license] ?? null) : null;
+        if (is_array($registered) && ($registered['company_id'] ?? '') === $company
+            && ($registered['status'] ?? '') === 'active'
+            && !empty($registered['commercial_redistribution_allowed'])) {
+            $metadata['license_state'] = 'registered_verified';
         }
-        return self::allow('licensed_original_distribution');
+
+        if ($purpose === 'research' || $purpose === 'reference') {
+            return self::allow('source_reference_available',$metadata);
+        }
+        if ($company === '') return self::blocked('responsible_company_missing',$metadata);
+        if (($draft['quality_state'] ?? '') !== 'passed' || !empty($draft['hard_blockers'])) {
+            return self::blocked('content_qa_not_passed',$metadata);
+        }
+        if ($external && !$policy['allow_external_content']) {
+            return self::blocked('company_policy_external_content_denied',$metadata);
+        }
+        if ($external_media && !$policy['allow_external_media']) {
+            return self::blocked('company_policy_external_media_denied',$metadata);
+        }
+        if ($policy['require_verified_license'] && $metadata['license_state'] !== 'registered_verified') {
+            return self::blocked('company_policy_verified_license_required',$metadata);
+        }
+        // The company's acceptance is the system's policy selection, not a
+        // substitute for copyright permissions or a representation of a license.
+        return self::allow('distribution_under_company_responsibility',$metadata);
     }
 
-    private static function allow($reason) {
-        return array('contract' => self::CONTRACT, 'allowed' => true,
-            'reason' => $reason, 'independent_reviewer_required' => false,
-            'publication_performed' => false);
+    private static function allow($reason,$metadata) {
+        return array('contract'=>self::CONTRACT,'allowed'=>true,'reason'=>$reason,
+            'rights_metadata'=>$metadata,'independent_reviewer_required'=>false,
+            'publication_performed'=>false);
     }
-
-    private static function blocked($reason) {
-        return array('contract' => self::CONTRACT, 'allowed' => false,
-            'reason' => $reason, 'publication_performed' => false);
+    private static function blocked($reason,$metadata=array()) {
+        return array('contract'=>self::CONTRACT,'allowed'=>false,'reason'=>$reason,
+            'rights_metadata'=>$metadata,'publication_performed'=>false);
     }
 }
