@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Read-only second-stage resolver for actual Company configuration differences."""
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -45,7 +46,7 @@ if __name__=="__main__":
     schema=json.loads((ROOT/"reports/wayfatours-schema-compatibility.json").read_text())
     t=ROOT/"reports/wayfatours-design-activation.json"
     j=ROOT/"reports/wayfatours-jet-config-autoload.json"
-    t_reasons=(json.loads(t.read_text()).get("result") or {}).get("blocked_reasons",{}) if t.exists() else {}
+    t_reasons=json.loads(os.environ["WAYFA_TEMPLATE_BLOCKERS"]) if "WAYFA_TEMPLATE_BLOCKERS" in os.environ else ((json.loads(t.read_text()).get("result") or {}).get("blocked_reasons",{}) if t.exists() else {})
     j_reasons=(json.loads(j.read_text()).get("result") or {}).get("blocked_reason_counts",{}) if j.exists() else {}
     report=run(schema,t_reasons,j_reasons)
     dest=ROOT/"reports/wayfatours-compatibility-diff-resolution.json"
