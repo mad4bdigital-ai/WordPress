@@ -33,8 +33,8 @@ final class SmartSeoRules {
         $policy=SmartSeoPolicyRegistry::effective((string)($group['provider']??''),
             (string)($group['query_id']??''));
         if (!$policy['enabled']) $issues[]='policy_source_disabled';
-        if (!empty($company['owner']) && $policy['require_mu_source_binding']
-            && empty($registry['matched'])) $issues[]='mu_source_binding_missing';
+        if ($policy['require_mu_source_binding'] && empty($registry['matched']))
+            $issues[]='mu_source_binding_missing';
         $filters=(array)($group['filters']??array());
         $rendered=array_map('intval',(array)($group['rendered_filter_ids']??array()));
         $qualifiers=array();
