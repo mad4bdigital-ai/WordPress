@@ -87,6 +87,29 @@ $GLOBALS['opts']['mad4b_company_vps_executor_registry_v1']['wayfatours']=[
  'provider'=>'vps_mcp_client','site_uuid'=>UUID,'authority_profile'=>'company_stage_v1',
  'bound_to_exact_company'=>true,'health'=>'ready','executor_id'=>'vps-runner-1',
  'verified_at'=>gmdate('c'),'supported_actions'=>array_values(MAD4B_Start_Company_Runtime::ACTIONS)];
+$company=['company_code'=>'wayfatours','site_uuid'=>UUID];
+t('ready_label_alone_is_not_verified_executor',
+ !MAD4B_SCP_Company_Provisioning_Work_Operations::executor_status($company)['registered']);
+$GLOBALS['opts']['mad4b_company_vps_executor_registry_v1']['wayfatours']+= [
+ 'contract'=>'mad4b.company-vps-executor.v1',
+ 'operation_adapter'=>'registered_wp_cli_stage_executor',
+ 'apply_handler'=>'verified','rollback_handler'=>'verified',
+ 'readback_handler'=>'verified','restoration_ready'=>true,
+ 'probe_evidence_sha256'=>str_repeat('9',64)];
+t('registered_capabilities_required',
+ MAD4B_SCP_Company_Provisioning_Work_Operations::executor_status($company)['registered']);
+$GLOBALS['opts']['mad4b_company_vps_executor_registry_v1']['wayfatours']['rollback_handler']='missing';
+t('missing_rollback_denied',
+ !MAD4B_SCP_Company_Provisioning_Work_Operations::executor_status($company)['registered']);
+$GLOBALS['opts']['mad4b_company_vps_executor_registry_v1']['wayfatours']['rollback_handler']='verified';
+$GLOBALS['opts']['mad4b_company_vps_executor_registry_v1']['wayfatours']['readback_handler']='missing';
+t('missing_readback_denied',
+ !MAD4B_SCP_Company_Provisioning_Work_Operations::executor_status($company)['registered']);
+$GLOBALS['opts']['mad4b_company_vps_executor_registry_v1']['wayfatours']['readback_handler']='verified';
+$GLOBALS['opts']['mad4b_company_vps_executor_registry_v1']['wayfatours']['restoration_ready']=false;
+t('unverified_restore_denied',
+ !MAD4B_SCP_Company_Provisioning_Work_Operations::executor_status($company)['registered']);
+$GLOBALS['opts']['mad4b_company_vps_executor_registry_v1']['wayfatours']['restoration_ready']=true;
 $ok=MAD4B_Start_Company_Runtime::resume(req('wayfatours',$initial));
 t('queue_semantic_identity',is_array($ok)&&$ok['state']==='queued'&&$ok['stage']==='identity');
 t('queue_not_execution',$ok['executor_executed']===false);
