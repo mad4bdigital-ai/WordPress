@@ -11896,6 +11896,44 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php"
       ],
       "review_rationale": "Control Plane source inclusion is checked for exactly one bundled runtime and prevents accidental independent WordPress plugin registration. Source was matched by exact Git blob SHA. CI test evidence only; staging rollout, tenant isolation certification, user consent and release gates remain mandatory."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/operation-registry.json",
+      "source_blob_sha": "d7d124f72ec101559607a3f2523fdcf6cc036901",
+      "owner_role": "MAD4B code reviewer for company executor admission; no tenant or release mutation authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-vps-executor-admission-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py"
+      ],
+      "review_rationale": "Exact current Git blob reviewed for company.create and company.repair requiring a registered VPS host runner while generic mutation dispatch remains disabled. Executable CI source contracts are committed in the same pull request. Owner approval and live provider evidence remain separate."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-start-your-company-runtime.php",
+      "source_blob_sha": "9b1f9688964557dd0315f2c48259c6c5e3b5ae47",
+      "owner_role": "MAD4B code reviewer for company executor admission; no tenant or release mutation authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-vps-executor-admission-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py"
+      ],
+      "review_rationale": "Exact current Git blob reviewed for company-scoped executor admission requiring explicit staged apply, rollback and independent readback handlers, scoped supported actions and a fresh probe. This is only CI source evidence and does not certify or install a VPS executor."
     }
   ],
   "code_change_rules": {
