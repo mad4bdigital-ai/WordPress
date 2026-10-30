@@ -92,7 +92,7 @@ def validate(manifest, policy):
     files=validate_scope(manifest,policy)
     if not isinstance(policy.get("portable_mu_allowlist"),list):
         raise Denied("NO_PORTABLE_ARTIFACT_POLICY")
-    if not set(names).issubset(set(policy["portable_mu_allowlist"])):
+    if not {item["path"] for item in files}.issubset(set(policy["portable_mu_allowlist"])):
         raise Denied("UNAPPROVED_PORTABLE_ARTIFACT")
     if "mu-plugins" in policy.get("never_copy",[]):
         raise Denied("EXISTING_POLICY_FORBIDS_MU_COPY")
@@ -156,10 +156,50 @@ def safe_write(path, data):
     finally:
         if os.path.exists(tmp):os.unlink(tmp)
 
+def inspect_live_wordpress(manifest,policy):
+    container=policy.get("wordpress_container")
+    if not isinstance(container,str) or not re.fullmatch(r"[a-z0-9_-]{4,80}",container):
+        raise Denied("WORDPRESS_CONTAINER_NOT_ENROLLED")
+    code='echo wp_json_encode(array("origin"=>home_url(),"company"=>get_option("mad4b_company_site_identity_v1",array())["company_code"]??null,"site_uuid"=>get_option("mad4b_company_site_identity_v1",array())["site_uuid"]??null,"database"=>DB_NAME));'
+    cmd=["docker","exec","-u","33:33",container,"php","-d","memory_limit=1024M",
+         "/usr/local/bin/wp","eval",code,"--path=/var/www/html","--skip-themes"]
+    proc=subprocess.run(cmd,capture_output=True,text=True,timeout=90,check=False)
+    if proc.returncode!=0:
+        raise Denied("WORDPRESS_RUNTIME_IDENTITY_PROBE_FAILED")
+    rows=[line for line in proc.stdout.splitlines() if line.startswith("{")]
+    if len(rows)!=1:raise Denied("WORDPRESS_IDENTITY_PROBE_AMBIGUOUS")
+    actual=json.loads(rows[0])
+    if actual != {"origin":manifest["origin"],"company":manifest["company_code"],
+                  "site_uuid":manifest["site_uuid"],"database":policy.get("wordpress_database")}:
+        raise Denied("LIVE_WORDPRESS_COMPANY_IDENTITY_MISMATCH")
+
+def verify_restorable_backup(policy):
+    folder=Path(policy["backup_root"]).resolve(strict=True)
+    if not folder.is_dir() or folder.is_symlink():
+        raise Denied("RESTORE_BACKUP_NOT_ENROLLED")
+    sums=folder/"SHA256SUMS"
+    if not sums.is_file():raise Denied("BACKUP_HAS_NO_CHECKSUM_MANIFEST")
+    lines=sums.read_text().strip().splitlines()
+    expected={"wayfatours-db.sql.gz","wayfatours-site.tar.gz"}
+    if len(lines)!=len(expected):raise Denied("BACKUP_SET_INCOMPLETE")
+    found=set()
+    for line in lines:
+        match=re.fullmatch(r"([a-f0-9]{64})\\s+\\*?(wayfatours-db\\.sql\\.gz|wayfatours-site\\.tar\\.gz)",line)
+        if not match:raise Denied("BACKUP_MANIFEST_INVALID")
+        hexdigest,name=match.groups()
+        if name in found:raise Denied("DUPLICATE_BACKUP_ENTRY")
+        found.add(name)
+        p=folder/name
+        if not p.is_file() or p.is_symlink() or digest(p.read_bytes())!=hexdigest:
+            raise Denied("BACKUP_SHA256_MISMATCH")
+    if found!=expected:raise Denied("BACKUP_INCOMPLETE")
+
 def transaction(manifest,policy,receipt_dir):
     items=validate(manifest,policy)
     if policy.get("executor_contract")!="mad4b.company-vps-executor.v1" or policy.get("mutation_enabled") is not True:
         raise Denied("MUTATION_NOT_ENROLLED")
+    inspect_live_wordpress(manifest,policy)
+    verify_restorable_backup(policy)
     root=Path(receipt_dir).resolve()
     root.mkdir(mode=0o700,parents=True,exist_ok=True)
     txn=root/manifest["run_id"]
@@ -206,7 +246,8 @@ def transaction(manifest,policy,receipt_dir):
 def rollback(manifest,policy,receipt_dir):
     txn=Path(receipt_dir).resolve()/manifest["run_id"]
     pre=load(txn/"preimage.json")
-    if pre["run_id"]!=manifest["run_id"] or pre["scope"]["site_uuid"]!=manifest["site_uuid"]:
+    scope={k:manifest[k] for k in ("company_code","site_uuid","origin","action","stage_revision")}
+    if pre["run_id"]!=manifest["run_id"] or pre["scope"]!=scope:
         raise Denied("ROLLBACK_SCOPE_MISMATCH")
     for name,value in pre["before"].items():
         dest=guarded_file(policy["target_mu_root"],name)
