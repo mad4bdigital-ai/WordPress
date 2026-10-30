@@ -11628,6 +11628,29 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing MCP read admission, exact staging grant, immutable source scope and provider-bound authorization controls apply; no new executor class or privilege is introduced.",
       "review_rationale": "Review exact 16-addition successor: staging_write_grant_reconciliation maps the documented plan to the existing staging-specific reconciliation alias through the mad4b-enrollment surface, with production_policy deny. The existing grant reconciler preserves exact plan digest, staging/Production separation and Production auto-approval denial. Static negative mutations of production policy and executor alias fail; independent remote-operation parity contract PASS."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php",
+      "source_blob_sha": "3cfc7707ade401f055fc1d794b68994aff0b91b4",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/write-provider-snapshot-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/write-catalog-source-review-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-catalog-parity-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py"
+      ],
+      "owner_role": "Repository CI-only exact-source reviewer, not an owner-issued Production authorization or grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Core governed Write inventory still requires registered and eligible WP Abilities and independent approval/Write gates. Provider mapping reuses existing certified core-first adapter precedence with request-local snapshot, no new grant or arbitrary executor.",
+      "review_rationale": "Reviewed exact 33-addition/23-removal successor source: two named core Write candidates for Hub source sync and provider refresh require pre-existing Abilities and ordinary SCP governed authorization before mounting. The moved live_write_provider_snapshot method now reads one currently mounted write_tools inventory and overlays core-before-certified-adapter provenance without caching across requests. Hermetic executed snapshot regression proves unmounted/unreviewed exclusion, provider precedence, current-candidate migration, and fresh per-request observation. Static negative mutation tests and existing staging write owner-parity contract PASS. Source review alone cannot certify live Staging or Production execution."
     }
   ],
   "code_change_rules": {

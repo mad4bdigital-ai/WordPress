@@ -80,6 +80,17 @@ subprocess.run(
     check=True, timeout=20,
 )
 
+# Exact source-reviewed Write catalog may only resolve providers for already
+# mounted eligible Abilities; snapshot results must never create grants.
+subprocess.run(
+    ["python3", str(ROOT / "tests/write-catalog-source-review-contract.py")],
+    check=True, timeout=20,
+)
+subprocess.run(
+    ["php", "-n", str(ROOT / "tests/write-provider-snapshot-runtime.php")],
+    check=True, timeout=20,
+)
+
 registry = json.loads((ROOT / "config/cross-plugin-sources.json").read_text(encoding="utf-8"))
 etg = next((x for x in registry.get("sources", []) if x.get("id") == "etg-dynamic-filter-seo-bridge"), None)
 if not etg or etg.get("package_certification") != "pending" or etg.get("artifact_sha256"):
