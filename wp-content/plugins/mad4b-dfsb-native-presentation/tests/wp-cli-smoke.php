@@ -20,6 +20,24 @@ $tests=array(
  'image_shortcode_registered'=>shortcode_exists('dfsb_context_image'),
  'seo_boot_unchanged'=>$bootBefore===\DynamicFilterSEOBridge\Runtime\BootGuard::status(),
 );
+// A WP-CLI request has no front controller query; supply an actual published
+// post as the main query to exercise the real shortcodes without page edits.
+if ($id>0 && get_post($id)) {
+    $oldQuery=$GLOBALS['wp_query']??null;
+    $q=new \WP_Query();
+    $q->is_singular=true;
+    $q->is_single=true;
+    $q->queried_object=get_post($id);
+    $q->queried_object_id=$id;
+    $q->post=get_post($id);
+    $q->posts=array($q->post);
+    $q->post_count=1;
+    $GLOBALS['wp_query']=$q;
+    do_action('wp',$GLOBALS['wp']);
+    $rendered=do_shortcode('[dfsb_context_value field="title"]');
+    $tests['public_shortcode_renders_current_post']=html_entity_decode($rendered,ENT_QUOTES) === $title;
+    $GLOBALS['wp_query']=$oldQuery;
+}
 if (class_exists('Elementor\\Plugin')) {
     $manager=\Elementor\Plugin::$instance->dynamic_tags;
     \MAD4B\DFSB\NativePresentation\register_tags($manager);
