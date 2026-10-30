@@ -24,6 +24,12 @@ final class SmartSeoRules {
         $issues=array_values(array_unique((array)($group['reasons']??array())));
         $status=(string)($group['status']??'');
         $route=(array)($group['route']??array());
+        $company=(array)($group['company_policy']??array());
+        if (!empty($company['owner']) && ($company['standalone_allowed']??null)!==true)
+            $issues[]='company_policy_standalone_disabled';
+        $registry=(array)($group['mu_presentation_registry']??array());
+        if (!empty($registry['entity_mismatch']))
+            $issues[]='mu_presentation_registry_entity_mismatch';
         $filters=(array)($group['filters']??array());
         $rendered=array_map('intval',(array)($group['rendered_filter_ids']??array()));
         $qualifiers=array();
@@ -160,7 +166,8 @@ final class SmartSeoRules {
         $old=get_option(self::OPTION,array());
         if (!is_array($old)) $old=array();
         foreach ($valid as $id=>$new) {
-            if (isset($old[$id]) && in_array(($old[$id]['status']??''),array('approved','published'),true)) continue;
+            if (isset($old[$id]) && in_array(($old[$id]['status']??''),
+                array('approved','published','staged_disabled'),true)) continue;
             $old[$id]=$new;
         }
         update_option(self::OPTION,$old,false);
