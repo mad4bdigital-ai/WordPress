@@ -27,6 +27,11 @@ def source():
     if src.get("source")!="tours.dev.mad4b.com" or src.get("mode")!="draft_only":
         raise RuntimeError("SOURCE_SCOPE_MISMATCH")
     templates={}
+    family_titles={}
+    for entry in src["posts"]:
+        p=entry.get("post",{})
+        if p.get("post_type")=="elementor_library":
+            family_titles.setdefault(str(entry["language"]["trid"]),[]).append(str(p.get("post_title","")))
     for entry in src["posts"]:
         p=entry.get("post",{})
         if p.get("post_type")!="elementor_library":continue
@@ -37,8 +42,11 @@ def source():
         else:raise RuntimeError("SOURCE_META_SCHEMA_MISMATCH")
         target=str(70006 if int(p["ID"])==6 else int(p["ID"]))
         if target in templates:raise RuntimeError("SOURCE_DUPLICATE_TEMPLATE_ID")
+        family=str(entry["language"]["trid"])
+        commercial=any(__import__("re").search(r"(?:book(?:ing)?|check.?out|cart|payment|order|rate|pricing|price|reservation|prenotazion)", t, __import__("re").I) for t in family_titles[family])
         templates[target]={"status":p["post_status"],
-            "kind":m.get("_elementor_template_type",""),"lang":entry["language"]["language_code"]}
+            "kind":m.get("_elementor_template_type",""),"lang":entry["language"]["language_code"],
+            "commercial_risk":bool(commercial)}
     if len(templates)!=470:raise RuntimeError("SOURCE_TEMPLATE_COUNT_MISMATCH")
     return {"contract":"mad4b.wayfatours-template-source.v1",
             "source_sha256":sha,"templates":templates}
