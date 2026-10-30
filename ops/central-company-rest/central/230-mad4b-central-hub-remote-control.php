@@ -40,9 +40,12 @@ final class MAD4B_Central_Hub_Remote_Control_V1 {
         $rows=get_option(MAD4B_Central_Company_REST_V1::OPTION,array());
         $row=is_array($rows)?($rows[$companyId]??null):null;
         if(!is_array($row) ||
-           ($row['connection_state']??null)!=='authenticated_read_only')
+           ($row['connection_state']??null)!=='authenticated_read_only' ||
+           ($row['identity_protocol']??null)!=='p256_mutual_signed_v3' ||
+           ($row['last_authenticated_check']??null)!==
+             ($row['p256_last_verified_at']??null))
             return false;
-        $at=$row['last_authenticated_check']??null;
+        $at=$row['p256_last_verified_at']??null;
         $stamp=is_string($at)?strtotime($at):false;
         if(!$stamp || $stamp>time()+120 || time()-$stamp>86400)
             return false;
@@ -50,11 +53,17 @@ final class MAD4B_Central_Hub_Remote_Control_V1 {
             self::PRIVATE_KEY_OPTION,''));
         $remote=openssl_pkey_get_public((string)get_option(
             self::REMOTE_PUBLIC_PREFIX.str_replace('-','_',$companyId),''));
-        return (bool)($private&&$remote);
+        if(!$private||!$remote)return false;
+        $localDetails=openssl_pkey_get_details($private);
+        $remoteDetails=openssl_pkey_get_details($remote);
+        return is_array($localDetails)&&is_array($remoteDetails)&&
+            ($localDetails['type']??null)===OPENSSL_KEYTYPE_EC &&
+            ($remoteDetails['type']??null)===OPENSSL_KEYTYPE_EC &&
+            ($localDetails['ec']['curve_name']??null)==='prime256v1' &&
+            ($remoteDetails['ec']['curve_name']??null)==='prime256v1';
     }
     /** Central Control Plane callback, invoked only on trusted server paths. */
     public static function reference_release_authority($previous,$plan,$scoped){
-        if($previous===true)return true;
         if(!is_array($plan)||!is_array($scoped)||
            ($plan['content_model']??null)!=='remote_reference' ||
            ($plan['pricing_strategy']??null)!=='commercial_review_required' ||
@@ -66,7 +75,6 @@ final class MAD4B_Central_Hub_Remote_Control_V1 {
         return self::reference_share_eligible($plan['source_company']??null);
     }
     public static function inherited_language_authority($previous,$plan,$scoped){
-        if($previous===true)return true;
         if(!is_array($scoped) ||
            ($scoped['market_scope_kind']??null)!=='language_only' ||
            empty($scoped['market_scoped']) ||
