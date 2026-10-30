@@ -16,7 +16,7 @@ final class MAD4B_Hub_Auto_Distribute_V1 {
     const KINDS = ['tour', 'property', 'transportation', 'nile_tour', 'nile_category'];
     const MODES = ['import_to_hub', 'reference_only'];
     const POST_TYPES = ['tours-and-activities', 'properties', 'transportations'];
-    const LANGUAGES = ['en', 'ar'];
+    const LANGUAGES = ['en', 'ar', 'fr', 'de', 'it', 'es'];
 
     public static function enabled(): bool {
         return class_exists('MAD4B_Central_Simple_Connections_V1') &&
