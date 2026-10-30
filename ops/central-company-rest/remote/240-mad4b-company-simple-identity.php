@@ -49,7 +49,7 @@ final class MAD4B_Company_Simple_Identity_V1 {
         return true;
     }
     public static function permission($request) {
-        return self::authorized_for($request, 'GET', self::ROUTE);
+        return self::authorized_for($request, 'POST', self::ROUTE);
     }
     public static function identity() {
         $site = self::identity_for_host();
@@ -72,7 +72,7 @@ final class MAD4B_Company_Simple_Identity_V1 {
         add_action('rest_api_init', static function() {
             if (!self::identity_for_host()) { return; }
             register_rest_route('mad4b-company/v1', '/simple-identity', [
-                'methods' => WP_REST_Server::READABLE,
+                'methods' => WP_REST_Server::CREATABLE,
                 'permission_callback' => [__CLASS__, 'permission'],
                 'callback' => [__CLASS__, 'identity'],
             ]);
