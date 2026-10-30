@@ -22,6 +22,20 @@ class FakeDB{
  }
 }
 $GLOBALS['wpdb']=new FakeDB();
+// Isolated semantic company executor fixture: never executes or connects to a tenant.
+class MAD4B_SCP_Company_Provisioning_Work_Operations {
+ static function definitions(array $registered) {
+  $registered['company.stage.execute']=['executor'=>'vps_mcp_client',
+    'validate_payload'=>[__CLASS__,'validate_payload']];
+  return $registered;
+ }
+ static function validate_payload($p) {
+  return is_array($p)&&($p['stage']??'')==='plugins'&&isset($p['run_id'],$p['site_uuid']);
+ }
+ static function provider_entry_allowed($job) {
+  return ($job['status']??'')==='claimed'&&self::validate_payload($job['payload']??null);
+ }
+}
 require dirname(__DIR__).'/includes/class-mad4b-scp-remote-work-queue.php';
 $fail=static function($m){fwrite(STDERR,"FAIL remote-work-queue-cancellation: {$m}\n");exit(1);};
 $check=static function($c,$m)use($fail){if(!$c)$fail($m);};
@@ -89,5 +103,45 @@ $check(is_array($returned)&&'provider_returned'===$returned['job']['provider_che
 $proof=array('postcondition_verified'=>true,'provider_effect_state'=>'applied','provider_execution_ref'=>'provider:fixture:3','evidence_sha256'=>str_repeat('f',64));
 $done=MAD4B_SCP_Remote_Work_Queue::complete($job,'worker6',$cl['lease_token'],$proof);
 $check('completed'===$done['state']&&!$done['job']['reconciliation_required'],'post-entry cancellation did not require and consume postcondition proof');
+
+// Company stage: no "success" without provider-return checkpoint and
+// independently scoped readback, even if the worker owns a valid lease.
+$tenantPayload=[
+ 'company_code'=>'fixture-co','site_uuid'=>'11111111-1111-4111-8111-111111111111',
+ 'origin'=>'https://fixture.example','mode'=>'repair_existing',
+ 'stage'=>'plugins','action'=>'company.plugins.converge',
+ 'run_id'=>str_repeat('1',64),'stage_revision'=>str_repeat('2',64)
+];
+$enqueue=MAD4B_SCP_Remote_Work_Queue::enqueue('company.stage.execute',$tenantPayload,$id,3600);
+$tenantJob=$enqueue['job']['job_id'];
+$tenantClaim=MAD4B_SCP_Remote_Work_Queue::claim($tenantJob,'worker7',300,$id);
+$check(is_array($tenantClaim)&&$tenantClaim['state']==='claimed','company stage not claimable');
+$proof=[
+ 'company_code'=>$tenantPayload['company_code'],
+ 'site_uuid'=>$tenantPayload['site_uuid'],'origin'=>$tenantPayload['origin'],
+ 'mode'=>$tenantPayload['mode'],'stage'=>$tenantPayload['stage'],
+ 'action'=>$tenantPayload['action'],'run_id'=>$tenantPayload['run_id'],
+ 'stage_revision'=>$tenantPayload['stage_revision'],
+ 'independent_readback'=>true,'postcondition_verified'=>true,
+ 'evidence_sha256'=>str_repeat('a',64),'provider_execution_ref'=>'fixture:stage:readback',
+ 'provider_effect_state'=>'applied'
+];
+$blocked=MAD4B_SCP_Remote_Work_Queue::complete($tenantJob,'worker7',$tenantClaim['lease_token'],$proof);
+$check($code($blocked)==='mad4b_company_completion_evidence_invalid','company stage falsely completed before provider entry');
+MAD4B_SCP_Remote_Work_Queue::provider_checkpoint($tenantJob,'worker7',$tenantClaim['lease_token'],'provider_entered');
+$blocked=MAD4B_SCP_Remote_Work_Queue::complete($tenantJob,'worker7',$tenantClaim['lease_token'],$proof);
+$check($code($blocked)==='mad4b_company_completion_evidence_invalid','company stage falsely completed before provider return');
+MAD4B_SCP_Remote_Work_Queue::provider_checkpoint($tenantJob,'worker7',$tenantClaim['lease_token'],'provider_returned');
+$wrong=$proof;$wrong['run_id']=str_repeat('f',64);
+$blocked=MAD4B_SCP_Remote_Work_Queue::complete($tenantJob,'worker7',$tenantClaim['lease_token'],$wrong);
+$check($code($blocked)==='mad4b_company_completion_evidence_invalid','wrong run result was accepted');
+$wrong=$proof;$wrong['site_uuid']='11111111-1111-4111-8111-222222222222';
+$blocked=MAD4B_SCP_Remote_Work_Queue::complete($tenantJob,'worker7',$tenantClaim['lease_token'],$wrong);
+$check($code($blocked)==='mad4b_company_completion_evidence_invalid','cross-tenant result was accepted');
+$wrong=$proof;$wrong['independent_readback']=false;
+$blocked=MAD4B_SCP_Remote_Work_Queue::complete($tenantJob,'worker7',$tenantClaim['lease_token'],$wrong);
+$check($code($blocked)==='mad4b_company_completion_evidence_invalid','unverified readback was accepted');
+$verified=MAD4B_SCP_Remote_Work_Queue::complete($tenantJob,'worker7',$tenantClaim['lease_token'],$proof);
+$check(is_array($verified)&&$verified['state']==='completed','fully verified stage did not complete');
 
 echo "mad4b.remote-work-queue-cancellation.runtime.v1: PASS\n";
