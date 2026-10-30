@@ -72,7 +72,8 @@ final class MAD4B_Central_Simple_Connections_V1 {
     }
     private static function probe($id, $company, $username, $password) {
         // No redirects, caller-provided hosts, unverified TLS, or credential URLs.
-        $response = wp_safe_remote_get($company['url'] . '/wp-json/mad4b-company/v1/simple-identity', [
+        $response = wp_safe_remote_request($company['url'] . '/wp-json/mad4b-company/v1/simple-identity', [
+            'method' => 'POST',
             'headers' => [
                 'Authorization' => 'Basic ' . base64_encode($username . ':' . $password),
                 'Accept' => 'application/json'
