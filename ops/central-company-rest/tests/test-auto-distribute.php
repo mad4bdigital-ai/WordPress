@@ -106,13 +106,51 @@ check(is_array($empty) && $empty['status']==='failed' &&
     $GLOBALS['hub_delivery_count']===0,'Unconnected consumer fails closed');
 $creds=['username'=>'mad4b-service','application_password'=>'abcd efgh ijkl mnop qrst uvwx'];
 $connect=MAD4B_Central_Simple_Connections_V1::connect(new WP_REST_Request(
-    'tourism-almallahgroup',$creds
+    'all-royal-egypt',$creds
 ));
-check($connect instanceof WP_REST_Response,'Source connection valid');
-class MAD4B_Test_Company_Registry_Backfill {}
-// Add recipient to existing test registry only in this isolated CLI process.
-// Create a second auth envelope using encrypted connection via a dedicated
-// fixture class; source and consumer registry names match production constants.
-$registry=MAD4B_Central_Company_REST_V1::COMPANIES;
-check(!isset($registry['all-royal-egypt']),'Test harness intentionally has only one original company');
-echo "PREPARED reference-only Auto Distribute boundary cases\n";
+check($connect instanceof WP_REST_Response,'Consumer App Password connection valid');
+$result=MAD4B_Hub_Auto_Distribute_V1::distribute();
+check(is_array($result) && $result['status']==='success', 'Private auto-distribute delivered');
+check($result['source_reference_count']===3, 'Only tour and category refs delivered; no historical rates');
+check($GLOBALS['hub_delivery_count']===1,'Consumer received exactly once');
+$inbox=$GLOBALS['opts'][MAD4B_Company_Hub_Inbox_V1::STORE]??[];
+check(count($inbox['items']??[])===3,'Consumer stores three safe reference items');
+check(($inbox['may_publish']??true)===false && ($inbox['may_checkout']??true)===false,
+    'Inbox remains private and non-bookable');
+$strings=json_encode($inbox);
+check(strpos($strings,'123 USD')===false,'Historical rate data never sent');
+$second=MAD4B_Hub_Auto_Distribute_V1::distribute();
+check(is_array($second) && $second['snapshot_sha256']===$result['snapshot_sha256'],
+    'Repeated delivery idempotent digest');
+$GLOBALS['hub_meta'][7001]['_mad4b_hub_source_sha256']=str_repeat('a',64);
+$badDigest=MAD4B_Hub_Auto_Distribute_V1::distribute();
+check(is_wp_error($badDigest) && $badDigest->code==='mad4b_hub_auto_source_digest_mismatch',
+    'Source tampering blocks delivery');
+$GLOBALS['hub_meta'][7001]['_mad4b_hub_source_sha256']=hash('sha256',
+    $GLOBALS['hub_meta'][7001]['_mad4b_hub_source_payload_json']);
+$badPolicy=MAD4B_Hub_Auto_Distribute_V1::normalize([
+    'enabled'=>true,'auto_include_new'=>true,
+    'consumers'=>['all-royal-egypt','all-royal-egypt'],
+    'kinds'=>['nile_tour'],'languages'=>['en'],'selected_source_ids'=>[]
+]);
+check(is_wp_error($badPolicy),'Duplicate consumer rejected');
+$GLOBALS['opts'][MAD4B_Hub_Auto_Distribute_V1::OPTIONS]['enabled']=false;
+$disabled=MAD4B_Hub_Auto_Distribute_V1::distribute();
+check(is_wp_error($disabled) && $disabled->code==='mad4b_hub_auto_not_enabled',
+    'Disable stops distribution');
+$GLOBALS['site_url']='https://www.allroyalegypt.com';
+$GLOBALS['user_id']=9;
+MAD4B_Company_Simple_Identity_V1::mark_app_password_auth((object)['ID'=>9]);
+$tamperItem=$inbox['items'][0];$tamperItem['may_publish']=true;
+$payload=['contract'=>'mad4b.hub.private-reference-snapshot.v1',
+    'source_company'=>'tourism-almallahgroup',
+    'consumer_company'=>'all-royal-egypt','reference_only'=>true,
+    'may_publish'=>false,'may_checkout'=>false,
+    'items'=>[$tamperItem],
+    'snapshot_sha256'=>hash('sha256',json_encode([$tamperItem],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE))];
+$invalidDelivery=MAD4B_Company_Hub_Inbox_V1::accept(new HubBodyRequest('',
+    [],'POST','/mad4b-company/v1/hub-reference-inbox',json_encode($payload)));
+check(is_wp_error($invalidDelivery),'Inbox forbids publishable payload');
+check(count($GLOBALS['opts'][MAD4B_Company_Hub_Inbox_V1::STORE]['items'])===3,
+    'Rejected delivery preserves last good snapshot');
+echo "PASS $check_count combined simple REST / hub auto-distribution tests\n";
