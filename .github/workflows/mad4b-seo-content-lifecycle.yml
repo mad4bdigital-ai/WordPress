@@ -1,0 +1,38 @@
+name: MAD4B SEO Content Lifecycle
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-content-creation-control/**'
+      - '.github/workflows/mad4b-seo-content-lifecycle.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'wp-content/plugins/mad4b-content-creation-control/**'
+      - '.github/workflows/mad4b-seo-content-lifecycle.yml'
+permissions:
+  contents: read
+concurrency:
+  group: mad4b-seo-content-lifecycle-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  seo-contract:
+    name: SEO cycle source and permission contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: Validate syntax and policy guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=wp-content/plugins/mad4b-content-creation-control
+          find "$root" -maxdepth 1 -name '*.php' -print0 | xargs -0 -n1 php -l
+          php -l "$root/tests/seo-content-lifecycle-contract.php"
+          php "$root/tests/seo-content-lifecycle-contract.php"
