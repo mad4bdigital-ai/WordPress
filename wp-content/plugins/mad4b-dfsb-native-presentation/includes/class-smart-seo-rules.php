@@ -234,9 +234,38 @@ final class SmartSeoRules {
         $old=get_option(self::OPTION,array());
         if (!is_array($old)) $old=array();
         foreach ($valid as $id=>$new) {
-            if (isset($old[$id]) && in_array(($old[$id]['status']??''),
-                array('approved','published','staged_disabled'),true)) continue;
+            $previous=$old[$id]??null;
+            if (is_array($previous)
+                && in_array(($previous['status']??''),array('approved','published','staged_disabled'),true)) {
+                if (($previous['native_rule']??null)!==($new['native_rule']??null)) {
+                    // Never overwrite an existing native rule automatically.
+                    $old[$id]['pending_revision']=array(
+                        'state'=>'reconciliation_required',
+                        'proposed_native_rule'=>$new['native_rule'],
+                        'source_policy_revision'=>SmartSeoPolicyRegistry::revision(),
+                        'technical_score'=>$new['technical_score'],
+                        'publication_blockers'=>$new['publication_blockers'],
+                        'created_at'=>gmdate('c'),
+                    );
+                } else {
+                    unset($old[$id]['pending_revision']);
+                }
+                continue;
+            }
             $old[$id]=$new;
+        }
+        // An existing staged rule may become ineligible when company policy changes.
+        // Record the drift; never silently delete or publish native rules.
+        $available=array_column((array)($report['recommendations']??array()),null,'id');
+        foreach ($old as $id=>$record) {
+            if (!is_array($record) || ($record['status']??'')!=='staged_disabled') continue;
+            $current=$available[$id]??null;
+            if (!$current || ($current['status']??'')!=='qualified_draft') {
+                $old[$id]['policy_state']='source_requalification_required';
+                unset($old[$id]['pending_revision']);
+            } else {
+                $old[$id]['policy_state']='source_qualified';
+            }
         }
         update_option(self::OPTION,$old,false);
         return array_values($old);
