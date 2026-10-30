@@ -100,6 +100,36 @@ $localTour=MAD4B_Hub_Price_Sources_V1::local(64948,'tours-and-activities');
 if(is_wp_error($localTour))throw new RuntimeException('Local tour source read failed: '.$localTour->get_error_code());
 $localTransport=MAD4B_Hub_Price_Sources_V1::local(39707,'transportations');
 if(is_wp_error($localTransport))throw new RuntimeException('Local transport source read failed: '.$localTransport->get_error_code());
+$cct=array_values(array_filter($localTransport['rates'],static function($rate){
+    return ($rate['source_rate_post_type']??'')==='jet_cct_transport_rates';
+}));
+if(count($cct)!==2 ||
+   $cct[0]['source_rate_key']!=='jet_cct_transport_rates:1' ||
+   $cct[1]['source_rate_key']!=='jet_cct_transport_rates:2' ||
+   $cct[0]['bookable']!==false)
+ throw new RuntimeException('Transport CCT native rate mapping missing');
+$transportPolicy=array('source_company'=>'mad4b-central',
+ 'consumer_company'=>'egypt-tour-gates',
+ 'product_type'=>'transportations','source_product_id'=>39707,
+ 'enabled'=>true,
+ 'starting_rule'=>null,
+ 'rate_rules'=>array(array(
+  'rate_key'=>$cct[0]['source_rate_key'],
+  'field'=>'base_price',
+  'mode'=>'rate_generator',
+  'percent_basis_points'=>1500)),
+ 'default_rate_rule'=>null);
+$tp=MAD4B_Hub_Company_Pricing_V1::quote($localTransport,
+ 'egypt-tour-gates',array(),$transportPolicy);
+if(is_wp_error($tp))throw new RuntimeException('CCT override rejected: '.$tp->get_error_code());
+$cctQuote=array_values(array_filter($tp['rate_entries'],static function($row){
+    return $row['source_rate_key']==='jet_cct_transport_rates:1';
+}));
+if(count($cctQuote)!==1 ||
+   !$cctQuote[0]['generated_rate_preview'] ||
+   ($cctQuote[0]['price_fields']['base_price']['mode']??'')!=='rate_generator' ||
+   $tp['checkout_ready']!==false)
+ throw new RuntimeException('CCT override did not select provider-qualified rate');
 $wrongType=MAD4B_Hub_Price_Sources_V1::local(64948,'properties');
 if(!is_wp_error($wrongType))throw new RuntimeException('Incorrect post type not rejected');
 $missing=MAD4B_Hub_Price_Sources_V1::signedHistorical('tourism-almallahgroup',9999999);
@@ -113,6 +143,8 @@ echo wp_json_encode(array(
  'remote_start_price_field_feed_status'=>'NOT_YET_AVAILABLE',
  'local_tour_direct_candidates'=>count($localTour['direct_starting_prices']),
  'local_transport_direct_candidates'=>count($localTransport['direct_starting_prices']),
+ 'jetengine_transport_cct_rates_found'=>count($cct),
+ 'provider_qualified_rate_generator'=>'PASS',
  'company_rate_override'=>'PASS',
  'per_language_rule'=>'PASS',
  'rate_generator_preview'=>'PASS',
