@@ -46,6 +46,13 @@ jobs:
           php -l ops/company-readiness-workflow/company-options/registry-store.php
           php -l ops/company-readiness-workflow/company-options/tenant-mu/243-mad4b-company-options-registry.php
           python3 -c "import json;d=json.load(open('ops/company-readiness-workflow/company-options/company-options-field-registry-v1.json')); assert d['page_count']==4 and d['field_count']==112 and d['rules']['all_source_option_values_excluded'] is True"
+      - name: Runtime company configuration code syntax
+        run: |
+          python3 -m py_compile ops/company-readiness-workflow/company-options/runtime-registry-v2.py
+          python3 -m py_compile ops/company-readiness-workflow/company-options/runtime-acceptance-v2.py
+          php -l ops/company-readiness-workflow/company-options/tenant-mu/245-mad4b-company-brand-fields.php
+          php -l ops/company-readiness-workflow/company-options/tenant-mu/246-mad4b-company-option-tags.php
+          php -l ops/company-readiness-workflow/company-options/tenant-mu/247-mad4b-portable-service-fields.php
       - name: Require tenant isolation and exact plan gates
         run: |
           grep -q "wayfatours_production" ops/company-readiness-workflow/design-activation/wayfa-design-activate.php
