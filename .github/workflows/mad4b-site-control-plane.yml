@@ -74,6 +74,7 @@ jobs:
           php wp-content/plugins/mad4b-content-hub/tests/company-responsibility-rights-runtime.php
           php wp-content/plugins/mad4b-content-hub/tests/workflow-continuity-contract-runtime.php
           php wp-content/plugins/mad4b-content-hub/tests/chatgpt-client-executor-default-runtime.php
+          php wp-content/plugins/mad4b-content-hub/tests/vps-wpcli-fallback-contract.php
           php wp-content/plugins/mad4b-content-hub/tests/hub-release-policy-smoke.php
 
       - name: Verify pointer-first self-update contract
