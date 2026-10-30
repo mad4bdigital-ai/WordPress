@@ -208,6 +208,10 @@ final class MAD4B_Central_Hub_Remote_Control_V1 {
            !hash_equals(hash('sha256',$payloadBytes),(string)($body['body_sha256']??''))||
            openssl_verify($payloadBytes,$sig,$remote,OPENSSL_ALGO_SHA256)!==1)
             return self::err('source_receipt_signature_invalid',409);
+        $expected=array('preflight'=>'ready_for_owner_approved_apply',
+            'apply'=>'active','revoke'=>'revoked');
+        if(($receipt['result']['state']??null)!==$expected[$operation])
+            return self::err('source_receipt_outcome_mismatch',409);
         return array('contract'=>self::CONTRACT,
             'company_id'=>$validated['company_id'],
             'intent_id'=>$validated['intent_id'],
