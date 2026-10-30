@@ -62,7 +62,7 @@ def guarded_file(root, name):
         raise Denied("ARTIFACT_ESCAPES_DECLARED_ROOT")
     return item
 
-def validate(manifest, policy):
+def validate_scope(manifest, policy):
     if manifest.get("contract") != CONTRACT or manifest.get("action") != MUTABLE_ACTION:
         raise Denied("UNKNOWN_OPERATION_CONTRACT")
     if manifest.get("mode") != "repair_existing" or manifest.get("preserve_existing") is not True:
@@ -82,6 +82,14 @@ def validate(manifest, policy):
     names=[x.get("path") for x in files if isinstance(x,dict)]
     if len(names)!=len(files) or len(set(names))!=len(names):
         raise Denied("DUPLICATE_ARTIFACT_OR_SCHEMA")
+    for item in files:
+        if not SHA.fullmatch(str(item.get("sha256",""))):
+            raise Denied("INVALID_SOURCE_CHECKSUM")
+        guarded_file(policy["target_mu_root"],item["path"])
+    return files
+
+def validate(manifest, policy):
+    files=validate_scope(manifest,policy)
     if not isinstance(policy.get("portable_mu_allowlist"),list):
         raise Denied("NO_PORTABLE_ARTIFACT_POLICY")
     if not set(names).issubset(set(policy["portable_mu_allowlist"])):
@@ -94,7 +102,6 @@ def validate(manifest, policy):
         source=guarded_file(policy["source_mu_root"],item["path"])
         if not source.is_file() or digest(source.read_bytes())!=item["sha256"]:
             raise Denied("SOURCE_ARTIFACT_HASH_MISMATCH")
-        guarded_file(policy["target_mu_root"],item["path"])
     return files
 
 def verify_ticket(ticket, policy, manifest, purpose):
@@ -173,7 +180,10 @@ def transaction(manifest,policy,receipt_dir):
         safe_write(txn/"preimage.json",canonical(pre))
         for item in items:
             dest=guarded_file(policy["target_mu_root"],item["path"])
-            safe_write(dest,guarded_file(policy["source_mu_root"],item["path"]).read_bytes())
+            payload=guarded_file(policy["source_mu_root"],item["path"]).read_bytes()
+            if digest(payload)!=item["sha256"]:
+                raise Denied("SOURCE_CHANGED_AFTER_SYNTAX_TEST")
+            safe_write(dest,payload)
             written.append(item["path"])
         if any(digest(guarded_file(policy["target_mu_root"],i["path"]).read_bytes())!=i["sha256"] for i in items):
             raise Denied("INDEPENDENT_FILE_READBACK_MISMATCH")
@@ -222,6 +232,13 @@ def main(argv=None):
     try:
         policy=load(args.policy)
         manifest=load(args.manifest)
+        # Emergency rollback must remain possible when the source changes,
+        # an enrolled artifact is revoked, or the copy policy is disabled.
+        if args.operation=="rollback":
+            validate_scope(manifest,policy)
+            if not args.ticket:raise Denied("CENTRAL_SIGNED_TICKET_REQUIRED")
+            verify_ticket(load(args.ticket),policy,manifest,"rollback")
+            return rollback(manifest,policy,args.receipt_dir)
         result=checks(manifest,policy)
         if args.operation=="plan":return result
         if args.operation=="readback":
@@ -231,8 +248,7 @@ def main(argv=None):
                 "not_a_commercial_readiness_receipt":True}
         if not args.ticket:raise Denied("CENTRAL_SIGNED_TICKET_REQUIRED")
         verify_ticket(load(args.ticket),policy,manifest,args.operation)
-        if args.operation=="apply":return transaction(manifest,policy,args.receipt_dir)
-        return rollback(manifest,policy,args.receipt_dir)
+        return transaction(manifest,policy,args.receipt_dir)
     except (Denied,OSError,ValueError,KeyError,json.JSONDecodeError) as exc:
         return {"contract":ADAPTER,"state":"DENIED_OR_FAILED",
             "reason":str(exc)[:220],"mutation_complete":False}
