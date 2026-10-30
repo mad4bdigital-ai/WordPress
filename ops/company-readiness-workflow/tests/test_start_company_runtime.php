@@ -85,7 +85,7 @@ t('reject_arbitrary_stage',is_wp_error($bad)&&$bad->get_error_code()==='mad4b_co
 $job=[
  'contract'=>'mad4b.company-stage-job.v1','company_code'=>'wayfatours','site_uuid'=>UUID,
  'origin'=>'https://wayfatours.mad4b.com','mode'=>'repair_existing','stage'=>'identity',
- 'action'=>MAD4B_Start_Company_Runtime::ACTIONS['identity'],'plan_sha256'=>$p['plan_sha256'],
+ 'action'=>MAD4B_Start_Company_Runtime::ACTIONS['identity'],'plan_sha256'=>$p['stages']['identity']['execution_plan_sha256'],
  'stage_revision'=>$p['stages']['identity']['stage_revision'],
  'preserve_existing'=>true,'mutation_authorized'=>false
 ];
@@ -110,7 +110,7 @@ $plugRequest=MAD4B_Start_Company_Runtime::run(req('wayfatours',['mode'=>'repair_
 t('auto_dispatch_plugins',$plugRequest['stage']==='plugins'&&$plugRequest['action']==='company.plugins.converge');
 $plugJob=$claimed;$plugJob['payload']['stage']='plugins';
 $plugJob['payload']['action']=MAD4B_Start_Company_Runtime::ACTIONS['plugins'];
-$plugJob['payload']['plan_sha256']=$plug['plan_sha256'];
+$plugJob['payload']['plan_sha256']=$plug['stages']['plugins']['execution_plan_sha256'];
 $plugJob['payload']['stage_revision']=$plug['stages']['plugins']['stage_revision'];
 t('permit_plugins_to_executor',MAD4B_SCP_Company_Provisioning_Work_Operations::provider_entry_allowed($plugJob));
 $GLOBALS['opts']['mad4b_company_vps_executor_registry_v1']['wayfatours']['supported_actions']=['company.identity.verify'];
@@ -122,7 +122,7 @@ $configRequest=MAD4B_Start_Company_Runtime::run(req('wayfatours',['mode'=>'repai
 t('auto_dispatch_configuration',$configRequest['stage']==='configuration'&&$configRequest['action']==='company.configuration.converge');
 $cfgJob=$claimed;$cfgJob['payload']['stage']='configuration';
 $cfgJob['payload']['action']=MAD4B_Start_Company_Runtime::ACTIONS['configuration'];
-$cfgJob['payload']['plan_sha256']=$cfg['plan_sha256'];
+$cfgJob['payload']['plan_sha256']=$cfg['stages']['configuration']['execution_plan_sha256'];
 $cfgJob['payload']['stage_revision']=$cfg['stages']['configuration']['stage_revision'];
 t('permit_configuration_to_executor',MAD4B_SCP_Company_Provisioning_Work_Operations::provider_entry_allowed($cfgJob));
 $cfgJob['payload']['plan_sha256']=str_repeat('0',64);
@@ -131,7 +131,7 @@ $old=plan();
 $GLOBALS['opts']['mad4b_company_bootstrap_registry_v1']['wayfatours']['revision']=2;
 $new=plan();
 t('owner_change_invalidates_access',$old['stages']['access']['stage_revision']!==$new['stages']['access']['stage_revision']);
-t('owner_change_preserves_plugins',$old['stages']['plugins']['stage_revision']===$new['stages']['plugins']['stage_revision']);
+t('owner_change_preserves_plugins',$old['stages']['plugins']['stage_revision']===$new['stages']['plugins']['stage_revision'] && $old['stages']['plugins']['execution_plan_sha256']===$new['stages']['plugins']['execution_plan_sha256']);
 MAD4B_Start_Company_Runtime::recheck_event('wayfatours');
 t('event_snapshot_saved',isset($GLOBALS['opts']['mad4b_start_company_snapshots_v3']['wayfatours']['plan_sha256']));
 t('event_continue_without_duplicate',$GLOBALS['queue_count']===3);
