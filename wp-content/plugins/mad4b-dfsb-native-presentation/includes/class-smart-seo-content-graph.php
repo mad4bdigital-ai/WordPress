@@ -13,6 +13,13 @@ final class SmartSeoContentGraph {
    return SmartSeoTranslation::withLanguage($language,
       static fn()=>self::term($localized,$tax));
   }
+  if($language==='' && $tax!=='') {
+   $assigned=(string)apply_filters('wpml_element_language_code',null,[
+     'element_id'=>$id,'element_type'=>'tax_'.$tax]);
+   $current=(string)apply_filters('wpml_current_language','en');
+   if($assigned!==''&&$assigned!==$current)
+     return self::term($id,$tax,$assigned);
+  }
   $t=$tax?get_term($id,$tax):get_term($id);
   if(!$t instanceof \WP_Term)return new \WP_Error('term_missing','Unknown term',['status'=>404]);
   $taxobj=get_taxonomy($t->taxonomy);
