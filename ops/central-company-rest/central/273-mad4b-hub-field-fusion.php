@@ -14,6 +14,10 @@ final class MAD4B_Hub_Field_Fusion_V1 {
     const MAX_TEXT=15000;
     const MAX_FIELDS=75;
     private static $custom=[];
+    public static function enabled(): bool {
+        return wp_get_environment_type()==='staging' &&
+            strtolower((string)wp_parse_url(home_url('/'),PHP_URL_HOST))==='tours.dev.mad4b.com';
+    }
 
     /** Extend the registry, never override a registered key silently. */
     public static function register_field($type,$field,array $spec): bool {
@@ -84,7 +88,7 @@ final class MAD4B_Hub_Field_Fusion_V1 {
     }
     /** Save a bounded policy override. Does NOT run, approve or publish any fusion. */
     public static function set_policy($company,$type,$field,$strategy,$weight) {
-        if(!current_user_can('manage_options'))return new WP_Error('fusion_forbidden','Admin only');
+        if(!self::enabled()||!current_user_can('manage_options'))return new WP_Error('fusion_forbidden','Central Staging admin only');
         if(!is_string($company)||!preg_match('/^[a-z0-9-]{3,70}$/D',$company)||
             !is_string($type)||!preg_match('/^[a-z0-9_-]{2,55}$/D',$type)||
             !is_string($field)||!isset(self::registry($type)[$field])||
@@ -94,7 +98,7 @@ final class MAD4B_Hub_Field_Fusion_V1 {
         $spec=self::registry($type)[$field];
         if($spec['sensitive'] && $strategy!=='keep_separate')
             return new WP_Error('fusion_sensitive_field','Sensitive data cannot be fused');
-        if($field==='source_wpml_trid'&&$strategy!=='keep_separate')
+        if(in_array($field,['source_wpml_trid'],true)&&$strategy!=='keep_separate')
             return new WP_Error('fusion_translation_identity','WPML identity cannot be merged');
         $config=get_option(self::OPTION,[]);
         if(!is_array($config))$config=[];
@@ -162,7 +166,7 @@ final class MAD4B_Hub_Field_Fusion_V1 {
      * No post meta writes, no taxonomy reassignment, no cross-tenant publication.
      */
     public static function compare($left,$right,array $scope=[]) {
-        if(!is_int($left)||!is_int($right)||$left<1||$right<1||$left===$right)
+        if(!self::enabled() || !is_int($left)||!is_int($right)||$left<1||$right<1||$left===$right)
             return new WP_Error('fusion_invalid_pair','Invalid pair');
         $ownerA=(string)get_post_meta($left,'_mad4b_hub_import_owner',true);
         $ownerB=(string)get_post_meta($right,'_mad4b_hub_import_owner',true);
@@ -239,7 +243,7 @@ final class MAD4B_Hub_Field_Fusion_V1 {
         ];
     }
     public static function save_action(): void {
-        if(!current_user_can('manage_options'))wp_die('Forbidden',403);
+        if(!self::enabled()||!current_user_can('manage_options'))wp_die('Forbidden',403);
         check_admin_referer('mad4b_hub_field_fusion_update');
         $company=isset($_POST['company'])?sanitize_key(wp_unslash($_POST['company'])):'';
         $type=isset($_POST['source_type'])?sanitize_key(wp_unslash($_POST['source_type'])):'';
@@ -253,12 +257,13 @@ final class MAD4B_Hub_Field_Fusion_V1 {
         exit;
     }
     public static function menu(): void {
+        if(!self::enabled())return;
         add_submenu_page('edit.php?post_type=mad4b_hub_nile',
             'Content Hub Field Fusion Policies','Field Fusion Policies',
             'manage_options','mad4b-hub-field-fusion',[__CLASS__,'screen']);
     }
     public static function screen(): void {
-        if(!current_user_can('manage_options'))return;
+        if(!self::enabled()||!current_user_can('manage_options'))return;
         $company=isset($_GET['company'])?sanitize_key(wp_unslash($_GET['company'])):'tourism-almallahgroup';
         $type=isset($_GET['source_type'])?sanitize_key(wp_unslash($_GET['source_type'])):'properties';
         $fields=self::policies($company,$type);
