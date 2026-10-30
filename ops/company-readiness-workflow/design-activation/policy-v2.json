@@ -93,5 +93,54 @@
     "central_content_authority": "canonical_Content_Hub_database",
     "publication_gate_separate_from_design": true,
     "per_tenant_isolation_required": true
+  },
+  "compatibility_modes": {
+    "strict": {
+      "allowed_types": [
+        "section",
+        "container"
+      ],
+      "requires_schema_parity": false
+    },
+    "schema-auto": {
+      "allowed_types": [
+        "section",
+        "container",
+        "popup",
+        "archive",
+        "single-page",
+        "single-post",
+        "page",
+        "jet-listing-items",
+        "header"
+      ],
+      "requires_schema_parity": true,
+      "requires_registered_providers": true,
+      "query_and_dynamic_fields_are_structural_dependencies": true,
+      "do_not_block_on_query_id_alone": true,
+      "do_not_block_on_dynamic_field_alone": true,
+      "requires_tenant_wpml_mapping": true,
+      "deny_unresolved_media_source_brand_or_links": true,
+      "theme_conditions_need_scoped_resolver": true,
+      "commercial_publication_is_separate": true
+    },
+    "resolve-diff": {
+      "run_only_when_differences_found": true,
+      "resolution_engines": [
+        "schema-provider-reconcile",
+        "wpml-group-rebind",
+        "company-field-context",
+        "identity-url-map",
+        "media-provenance",
+        "theme-conditions-deduplicate"
+      ],
+      "automatic_repairs": [
+        "verified_tenant_wpml_rebind",
+        "verified_tenant_page_url_map"
+      ],
+      "schema_writes_require_independent_verified_source": true,
+      "preserve_tenant_kit": true,
+      "safe_rollback_required": true
+    }
   }
 }
