@@ -72,6 +72,7 @@ jobs:
         run: |
           php ops/company-readiness-workflow/tests/test_start_company_runtime.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py
+          python3 ops/company-readiness-workflow/tests/test_executor_admission_contract.py
           php wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php
           python3 - <<'PY'
           import json
