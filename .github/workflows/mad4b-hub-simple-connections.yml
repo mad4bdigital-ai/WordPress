@@ -13,6 +13,9 @@ on:
       - 'ops/central-company-rest/central/274-mad4b-tourism-field-policy.php'
       - 'ops/central-company-rest/central/275-mad4b-hub-source-provider-registry.php'
       - 'ops/central-company-rest/central/276-mad4b-hub-source-sync-jobs.php'
+      - 'ops/central-company-rest/central/277-mad4b-hub-source-local-fallback.php'
+      - 'ops/central-company-rest/ssh/run-tourism-source-fallback.sh'
+      - 'ops/central-company-rest/ssh/run-tourism-cross-ssh.sh'
       - 'ops/central-company-rest/ssh/tourism-source-export.php'
       - 'ops/central-company-rest/remote/240-mad4b-company-simple-identity.php'
       - 'ops/central-company-rest/remote/250-mad4b-company-private-hub-inbox.php'
@@ -25,6 +28,7 @@ on:
       - 'ops/central-company-rest/tests/test-hub-source-provider-registry.php'
       - 'ops/central-company-rest/tests/test-hub-source-sync-jobs.php'
       - 'ops/central-company-rest/tests/test-hub-native-write-mount.php'
+      - 'ops/central-company-rest/tests/test-hub-source-local-fallback.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php'
       - '.github/workflows/mad4b-hub-simple-connections.yml'
   workflow_dispatch:
@@ -70,6 +74,7 @@ jobs:
             ops/central-company-rest/central/274-mad4b-tourism-field-policy.php \
             ops/central-company-rest/central/275-mad4b-hub-source-provider-registry.php \
             ops/central-company-rest/central/276-mad4b-hub-source-sync-jobs.php \
+            ops/central-company-rest/central/277-mad4b-hub-source-local-fallback.php \
             ops/central-company-rest/ssh/tourism-source-export.php \
             ops/central-company-rest/remote/240-mad4b-company-simple-identity.php \
             ops/central-company-rest/remote/250-mad4b-company-private-hub-inbox.php \
@@ -82,6 +87,7 @@ jobs:
             ops/central-company-rest/tests/test-hub-source-provider-registry.php \
             ops/central-company-rest/tests/test-hub-source-sync-jobs.php \
             ops/central-company-rest/tests/test-hub-native-write-mount.php \
+            ops/central-company-rest/tests/test-hub-source-local-fallback.php \
             wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php; do
             php -l "$file"
           done
@@ -97,3 +103,13 @@ jobs:
           php ops/central-company-rest/tests/test-hub-source-provider-registry.php
           php ops/central-company-rest/tests/test-hub-source-sync-jobs.php
           php ops/central-company-rest/tests/test-hub-native-write-mount.php
+          php ops/central-company-rest/tests/test-hub-source-local-fallback.php
+      - name: Host fallback shell contract
+        shell: bash
+        run: |
+          bash -n ops/central-company-rest/ssh/run-tourism-source-fallback.sh
+          bash -n ops/central-company-rest/ssh/run-tourism-cross-ssh.sh
+          if grep -qE '(^|[[:space:]])--import([[:space:]|]|$)' ops/central-company-rest/ssh/run-tourism-cross-ssh.sh; then
+            echo 'Direct unchecked --import must remain disabled' >&2
+            exit 1
+          fi
