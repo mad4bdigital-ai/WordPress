@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: MAD4B Central Hub Remote Control
- * Version: 0.1.0
+ * Version: 0.2.0
  * Description: Governed signed single-company source control from tours.dev.mad4b.com.
  * This controller never installs plugins or silently changes JetEngine templates.
  */
@@ -30,6 +30,50 @@ final class MAD4B_Central_Hub_Remote_Control_V1 {
             return null;
         return MAD4B_Central_Company_REST_V1::COMPANIES[$id]??null;
     }
+    /**
+     * REST connection itself is sufficient for REFERENCE sharing.
+     * No operator/source owner grant option, no manifest-supplied flags.
+     * Only the last real P256 bidirectional REST handshake is trusted.
+     */
+    public static function reference_share_eligible($companyId){
+        if(!self::enabled()||!self::company($companyId))return false;
+        $rows=get_option(MAD4B_Central_Company_REST_V1::OPTION,array());
+        $row=is_array($rows)?($rows[$companyId]??null):null;
+        if(!is_array($row) ||
+           ($row['connection_state']??null)!=='authenticated_read_only')
+            return false;
+        $at=$row['last_authenticated_check']??null;
+        $stamp=is_string($at)?strtotime($at):false;
+        if(!$stamp || $stamp>time()+120 || time()-$stamp>86400)
+            return false;
+        $private=openssl_pkey_get_private((string)get_option(
+            self::PRIVATE_KEY_OPTION,''));
+        $remote=openssl_pkey_get_public((string)get_option(
+            self::REMOTE_PUBLIC_PREFIX.str_replace('-','_',$companyId),''));
+        return (bool)($private&&$remote);
+    }
+    /** Central Control Plane callback, invoked only on trusted server paths. */
+    public static function reference_release_authority($previous,$plan,$scoped){
+        if($previous===true)return true;
+        if(!is_array($plan)||!is_array($scoped)||
+           ($plan['content_model']??null)!=='remote_reference' ||
+           ($plan['pricing_strategy']??null)!=='commercial_review_required' ||
+           !empty($scoped['query_plan']['policy_blocks_read']) ||
+           empty($scoped['selected']['source_record_ids']) ||
+           empty($scoped['selected']['languages']) ||
+           empty($scoped['market_scoped']))
+            return false;
+        return self::reference_share_eligible($plan['source_company']??null);
+    }
+    public static function inherited_language_authority($previous,$plan,$scoped){
+        if($previous===true)return true;
+        if(!is_array($scoped) ||
+           ($scoped['market_scope_kind']??null)!=='language_only' ||
+           empty($scoped['market_scoped']) ||
+           empty($scoped['market_plan']['effective_visible_languages']))
+            return false;
+        return self::reference_release_authority(false,$plan,$scoped);
+    }
     public static function status() {
         $states=get_option(MAD4B_Central_Company_REST_V1::OPTION,array());
         $scopes=get_option(self::OWNER_SCOPE,array());
@@ -37,13 +81,14 @@ final class MAD4B_Central_Hub_Remote_Control_V1 {
         foreach(MAD4B_Central_Company_REST_V1::COMPANIES as $id=>$company) {
             $paired=is_string(get_option(self::REMOTE_PUBLIC_PREFIX.
                 str_replace('-','_',$id),null));
+            $eligible=self::reference_share_eligible($id);
             $out[]=array('company_id'=>$id,'canonical_host'=>$company['host'],
                 'signed_identity_paired'=>$paired,
                 'read_connection_state'=>$states[$id]['connection_state']??'unverified',
                 'remote_control_delegation_verified'=>false,
-                'active_hub_control'=>$paired &&
-                    ($states[$id]['connection_state']??null)==='authenticated_read_only'
-                        ?'signed_reference_sharing_eligible':'unverified',
+                'active_hub_control'=>$eligible?
+                    'signed_reference_sharing_eligible':'unverified',
+                'reference_sharing_allowed'=>$eligible,
                 'source_grant_authority'=>'mutual_signed_rest_identity_reference_only');
         }
         return array('contract'=>self::CONTRACT,
@@ -60,7 +105,9 @@ final class MAD4B_Central_Hub_Remote_Control_V1 {
             'independent_source_permission_required_for_reference'=>false,
             'non_reference_writes_authorized'=>false,
             'jetengine_provider_binding_separately_certified'=>false,
-            'source_read_signature_not_equivalent_to_release'=>true);
+            'source_read_signature_suffices_for_reference_release'=>true,
+            'ordinary_http_200_not_accepted_as_connection'=>true,
+            'reverification_required_after_seconds'=>86400);
     }
     private static function is_list($ids) {
         return is_array($ids) && $ids &&
@@ -282,6 +329,23 @@ final class MAD4B_Central_Hub_Remote_Control_V1 {
             'operations'=>$data['operations'],
             'expires_at'=>$data['expires_at']);
     }
+    /** Re-run genuine mutual P-256 REST identity check; grants no writes. */
+    public static function revalidate_rest_connection(WP_REST_Request $request){
+        $id=$request->get_param('company_id');
+        if(!self::company($id) ||
+           !class_exists('MAD4B_Central_PK_Pairing_V1'))
+            return self::err('company_or_identity_verifier_unavailable',409);
+        $probe=new WP_REST_Request('POST',
+            '/mad4b-central/v1/companies/'.$id.'/verify-public-key');
+        $probe->set_param('company',$id);
+        $result=MAD4B_Central_PK_Pairing_V1::verify($probe);
+        if(is_wp_error($result))return $result;
+        return array('contract'=>self::CONTRACT,'company_id'=>$id,
+            'p256_mutual_rest_verified'=>true,
+            'reference_sharing_allowed'=>self::reference_share_eligible($id),
+            'commercial_pricing_authorized'=>false,
+            'separate_owner_grant_required'=>false);
+    }
     public static function admin() {
         return self::enabled() && current_user_can('manage_options');
     }
@@ -296,6 +360,10 @@ final class MAD4B_Central_Hub_Remote_Control_V1 {
     }
     public static function boot() {
         if(!self::enabled())return;
+        add_filter('mad4b_scp_hub_consumer_content_release_authority',
+            array(__CLASS__,'reference_release_authority'),20,3);
+        add_filter('mad4b_scp_hub_consumer_language_authority',
+            array(__CLASS__,'inherited_language_authority'),20,3);
         add_action('rest_api_init',static function(){
             register_rest_route(self::NS,'/hub-remote-control/status',array(
                 'methods'=>'GET',
@@ -312,6 +380,10 @@ final class MAD4B_Central_Hub_Remote_Control_V1 {
             register_rest_route(self::NS,'/hub-remote-control/operator',array(
                 'methods'=>'POST',
                 'callback'=>array(__CLASS__,'configure_operator'),
+                'permission_callback'=>array(__CLASS__,'admin')));
+            register_rest_route(self::NS,'/hub-remote-control/revalidate',array(
+                'methods'=>'POST',
+                'callback'=>array(__CLASS__,'revalidate_rest_connection'),
                 'permission_callback'=>array(__CLASS__,'admin')));
         },32);
     }
