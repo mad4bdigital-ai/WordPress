@@ -469,7 +469,7 @@ final class MAD4B_SCP_Schema {
 			writer_profile_id varchar(191) NOT NULL DEFAULT '',
 			writer_profile_version varchar(64) NOT NULL DEFAULT '',
 			research_depth varchar(32) NOT NULL DEFAULT 'standard',
-			automation_level varchar(32) NOT NULL DEFAULT 'review_gated',
+			automation_level varchar(32) NOT NULL DEFAULT 'autonomous',
 			state varchar(32) NOT NULL,
 			stage varchar(64) NOT NULL,
 			target_post_type varchar(64) NOT NULL DEFAULT '',
