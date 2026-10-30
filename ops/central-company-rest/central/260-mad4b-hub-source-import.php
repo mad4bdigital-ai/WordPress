@@ -124,13 +124,6 @@ final class MAD4B_Hub_Source_Import_V1 {
         // Batch hash is content-addressed, not time-based; reruns of identical
         // source data do not modify content or generate additional duplicates.
         $hash=hash('sha256',wp_json_encode($incoming,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
-        $prev=get_option(self::ACTIVE,[]);
-        if(is_array($prev) && ($prev['source_company']??'')===$company &&
-            ($prev['snapshot_sha256']??'')===$hash && ($prev['types']??[])===$types) {
-            return ['source_company'=>$company,'imported'=>count($incoming),
-                'created'=>0,'updated'=>0,'unchanged'=>count($incoming),
-                'snapshot_sha256'=>$hash,'status'=>'unchanged'];
-        }
         $created=0;$updated=0;
         foreach($incoming as $key=>$row) {
             $id=$existing[$key]??0;
