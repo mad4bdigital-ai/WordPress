@@ -26,6 +26,37 @@ if($historic['source_mode']!=='signed_historical_nile_snapshot' ||
    !$historic['rate_count'] ||
    !$historic['rates'][0]['bookable']===false)
   throw new RuntimeException('Historical source contract incorrect');
+// The source's NEW price-field scope has not been deployed remotely yet.
+ // Verify its future signed payload projection via an in-process synthetic
+ // snapshot, with no database save and no claim of real source values.
+$originalSnapshot=get_option('mad4b_nile_source_reference_v1',array());
+$simulatedSnapshot=$originalSnapshot;
+$simulatedSnapshot['nile_starting_prices.read']=array(
+ 'scope'=>'nile_starting_prices.read',
+ 'source_company'=>'tourism-almallahgroup',
+ 'reference_only'=>true,'may_checkout'=>false,
+ 'items'=>array(array('source_tour_id'=>24900,
+    'source_company'=>'tourism-almallahgroup',
+    'checkout_enabled'=>false,'validated_current_price'=>false,
+    'starting_price_references'=>array(
+        array('field'=>'start_price','amount'=>'125.50',
+          'currency'=>'USD','reference_only'=>true,
+          'checkout_authorized'=>false,'current_price_verified'=>false)))));
+add_filter('pre_option_mad4b_nile_source_reference_v1',
+ static function()use($simulatedSnapshot){return $simulatedSnapshot;});
+$withDirect=MAD4B_Hub_Price_Sources_V1::signedHistorical('tourism-almallahgroup',24900);
+remove_all_filters('pre_option_mad4b_nile_source_reference_v1');
+if(is_wp_error($withDirect) || count($withDirect['direct_starting_prices'])!==1 ||
+   $withDirect['direct_starting_prices'][0]['currency']!=='USD' ||
+   $withDirect['direct_prices_remote_contract_missing']!==false)
+ throw new RuntimeException('Signed source direct price projection contract failed');
+$broken=$simulatedSnapshot;
+$broken['nile_starting_prices.read']['items'][0]['checkout_enabled']=true;
+add_filter('pre_option_mad4b_nile_source_reference_v1',
+ static function()use($broken){return $broken;});
+$bad=MAD4B_Hub_Price_Sources_V1::signedHistorical('tourism-almallahgroup',24900);
+remove_all_filters('pre_option_mad4b_nile_source_reference_v1');
+if(!is_wp_error($bad))throw new RuntimeException('Source price marked checkout allowed');
 $first=$historic['rates'][0];
 $rateId=$first['source_rate_id'];
 $priceField=null;$oldAmount=null;$currency=null;
@@ -166,6 +197,8 @@ echo wp_json_encode(array(
  'historic_tour_rates_for_selected_product'=>$historic['rate_count'],
  'historic_all_rates_reference_only'=>true,
  'remote_start_price_field_feed_status'=>'NOT_YET_AVAILABLE',
+ 'future_signed_direct_start_price_contract'=>'PASS_SYNTHETIC_NO_DB_WRITE',
+ 'unverified_source_start_price_for_checkout'=>'DENIED',
  'local_tour_direct_candidates'=>count($localTour['direct_starting_prices']),
  'local_transport_direct_candidates'=>count($localTransport['direct_starting_prices']),
  'jetengine_transport_cct_rates_found'=>count($cct),
