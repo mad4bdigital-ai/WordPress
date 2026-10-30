@@ -133,7 +133,7 @@ class MAD4B_Central_Simple_Connections_V1 {
     }
 }
 class MAD4B_Central_Company_REST_V1 {
-    const COMPANIES=['tourism-almallahgroup'=>['name'=>'Tourism'],'all-royal-egypt'=>['name'=>'ARE']];
+    const COMPANIES=['tourism-almallahgroup'=>['name'=>'Tourism','host'=>'tourism.almallahgroup-mg.com'],'all-royal-egypt'=>['name'=>'ARE']];
 }
 class MAD4B_Company_Simple_Identity_V1 {
     public static function identity_for_host() {return ['company_id'=>'tourism-almallahgroup',
@@ -435,6 +435,15 @@ check(is_wp_error($rejected) &&
     serialize([$GLOBALS['hub_posts'],$GLOBALS['hub_meta'],
         get_option(MAD4B_Hub_Source_Import_V1::ACTIVE)])===$beforeState,
     'Stale source revision cannot overwrite a newer source record');
+// Provider namespace stays isolated even if an old row happens to have the same numeric source ID.
+$foreignId=0;
+foreach($GLOBALS['hub_meta'] as $id=>$meta)
+    if(($meta['_mad4b_hub_import_source_id']??null)===1402)$foreignId=$id;
+check($foreignId>0,'Foreign-provider test target exists');
+$GLOBALS['hub_meta'][$foreignId]['_mad4b_hub_import_provider_key']='other_provider';
+$foreign=MAD4B_Hub_Source_Import_V1::import_cross_ssh_snapshot($sshChanged);
+check(is_wp_error($foreign),'Disallow same source ID from another provider');
+$GLOBALS['hub_meta'][$foreignId]['_mad4b_hub_import_provider_key']='tourism_wp';
 // Inject a failure on the second changed post AFTER first in-place update.
 // A successful transaction must restore both Hub content and active snapshot.
 $changes=$sshChanged;$changes['items'][0]['body']='First changed body';
