@@ -33,10 +33,12 @@ jobs:
           python3 ops/company-readiness-workflow/design-activation/test_config_compatibility.py
           python3 -m py_compile ops/company-readiness-workflow/design-activation/wayfa-schema-compatibility.py
           python3 -m py_compile ops/company-readiness-workflow/design-activation/wayfa-template-diff-resolver.py
+          python3 -m py_compile ops/company-readiness-workflow/design-activation/wayfa-jet-config-autoload.py
       - name: Source-neutral activation PHP syntax
         run: |
           php -l ops/company-readiness-workflow/design-activation/wayfa-wpml-resolve.php
           php -l ops/company-readiness-workflow/design-activation/wayfa-design-activate.php
+          php -l ops/company-readiness-workflow/design-activation/wayfa-jet-config-autoload.php
       - name: Require tenant isolation and exact plan gates
         run: |
           grep -q "wayfatours_production" ops/company-readiness-workflow/design-activation/wayfa-design-activate.php
