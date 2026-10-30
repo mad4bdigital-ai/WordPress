@@ -105,6 +105,10 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-isolated-php-contract.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/self-update-selected-head-release-trust-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/staging-source-selector-runtime.php",
+    # Company-specific remote queue fixture is hermetic: it uses a FakeDB,
+    # exits nonzero on any failed checkpoint/readback assertion, and emits PASS.
+    # This exact file is reviewed for CLI regression only, not tenant execution.
+    "wp-content/plugins/mad4b-site-control-plane/tests/remote-work-queue-cancellation-runtime.php",
     "tests/remote-execution/unified-operator-session-policy-smoke.php",
 ))
 
