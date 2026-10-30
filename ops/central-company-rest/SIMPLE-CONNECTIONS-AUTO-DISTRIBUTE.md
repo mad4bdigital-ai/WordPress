@@ -18,7 +18,7 @@ The optional alternative **Use existing Content Hub references** (reference_only
 
 ## Import behavior
 
-- Source endpoint: GET /wp-json/mad4b-company/v1/simple-content-feed?post_type=tours-and-activities&page=1 (exact registered source hostname, no redirects, TLS validated, native Application Password).
+- Source endpoint: POST /wp-json/mad4b-company/v1/simple-content-feed with JSON body {"post_type":"tours-and-activities","page":1} (exact registered source hostname, no redirects, TLS validated, native Application Password, avoids caching of authenticated GET).
 - Supported source CPTs: tours-and-activities, properties, transportations. Only published posts; only verified EN/AR language tags in this pilot.
 - Imported fields: source company, post type, original post ID, source language, title, summary, sanitized body text, source modified time. No private metadata, users, orders, submissions, media bytes, WooCommerce prices or secrets.
 - Each import upserts an existing private Content Hub post keyed by company + post type + language + source ID. The latest complete source collection defines the active index; missing source items are removed from distribution but retained privately for review.
