@@ -111,6 +111,15 @@ final class MAD4B_Company_Hub_Control_Agent_V1 {
             !is_array($data['selection']??null))
             return self::err('intent_invalid',422);
         $s=$data['selection'];
+        // Bind the signed intent ID to its exact immutable selection and
+        // company identities, not merely to a valid hex-shaped string.
+        $intentBody=array('company_id'=>$data['company_id']??self::company(),
+            'consumer_company'=>$data['consumer_company'],
+            'action'=>$data['action'],'selection'=>$s);
+        $canonical=wp_json_encode($intentBody,JSON_UNESCAPED_SLASHES);
+        if(!is_string($canonical) ||
+           !hash_equals(hash('sha256',$canonical),$data['intent_id']))
+            return self::err('intent_digest_mismatch',409);
         if(array_diff(array_keys($s),array('record_ids','languages','source_post_type',
             'valid_until','reference_only','checkout_enabled')) ||
             !is_array($s['record_ids']??null)||
