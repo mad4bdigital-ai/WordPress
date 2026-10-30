@@ -41,6 +41,7 @@ function wp_get_environment_type(){return 'staging';}
 function home_url($path='/'){return 'https://tours.dev.mad4b.com/';}
 function wp_parse_url($url,$part){return parse_url($url,$part);}
 function is_wp_error($v){return $v instanceof WP_Error;}
+function wp_json_encode($value,$flags=0){return json_encode($value,$flags);}
 function get_option($key,$default=false){return $GLOBALS['opts'][$key]??$default;}
 function update_option($key,$val,$autoload=false){$GLOBALS['opts'][$key]=$val;$GLOBALS['writes']++;return true;}
 function current_user_can($cap){return $GLOBALS['admin'] && $cap==='manage_options';}
@@ -72,6 +73,25 @@ check(is_wp_error($K::request($wrong)),'Noncompliant request key denied');
 $first=$K::request($input);
 check(is_array($first)&&$first['status']==='queued','Queue one source sync request');
 check($K::request($input)['job_id']===$first['job_id'],'Idempotent request key');
+$governed=$input;
+$governed['_mad4b_approval_ticket_id']='12345678-1234-4234-a234-123456789abc';
+$governed['_mad4b_context_receipt']=['contract'=>'mad4b.context-receipt.v1'];
+$replayed=$K::request($governed);
+check($replayed['job_id']===$first['job_id'],
+    'Governed Write fields accepted without recreating job');
+check(!array_key_exists('_mad4b_approval_ticket_id',$replayed) &&
+    !array_key_exists('_mad4b_context_receipt',$replayed),
+    'One-time authorization and context not persisted');
+$badEnvelope=$governed;$badEnvelope['_mad4b_approval_ticket_id']='fake-ticket';
+check(is_wp_error($K::request($badEnvelope)),
+    'Forged ticket-shaped values rejected at the boundary');
+$badEnvelope=$input;$badEnvelope['unexpected']='should-not-pass';
+check(is_wp_error($K::request($badEnvelope)),
+    'Unknown Write envelope keys rejected');
+$badEnvelope=$input;$badEnvelope['_mad4b_context_receipt']=str_repeat('x',600);
+check(is_wp_error($K::request($badEnvelope)),
+    'Context receipt must be a structured object');
+
 $second=$input;$second['request_key']='tourism-source-test-02';
 check(is_wp_error($K::request($second)),'One active job per source');
 $claimed=$K::claim();
