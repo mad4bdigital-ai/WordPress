@@ -210,7 +210,8 @@ def run(refresh=False):
         parity=fresh and compatibility.get("state")=="SCHEMA_PARITY_CONFIRMED"
         stages["live_schema_compatibility"]={
           "state":"PASS" if parity else "RECHECK_REQUIRED",
-          "detail":f"config_parity={parity}; structural_models=307; taxonomy_models=34; fresh={fresh}",
+          "detail":f"config_parity={parity}; portable_models=307; taxonomy_models=34; "
+                   f"source_only_exclusions={compatibility.get('source_only_exclusions',{})}; fresh={fresh}",
           "next_action":"PROBE_BOTH_SITE_SCHEMAS_BEFORE_TEMPLATE_APPROVAL"}
     diffs_file=BASE/"reports/wayfatours-compatibility-diff-resolution.json"
     if diffs_file.exists():
