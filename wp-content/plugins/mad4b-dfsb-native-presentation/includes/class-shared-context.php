@@ -97,8 +97,36 @@ final class SharedContext {
 
     public static function register(): void {
         add_filter('mad4b/shared-context/read',array(__CLASS__,'project'),10,1);
+        add_filter('jet-engine/listings/macros-list',array(__CLASS__,'jetMacros'),25,1);
         add_shortcode('mad4b_shared_title',array(__CLASS__,'titleShortcode'));
         add_shortcode('mad4b_shared_description',array(__CLASS__,'descriptionShortcode'));
+    }
+
+    /** Native JetEngine listing macro contract: no custom SQL or Query Builder. */
+    public static function jetMacros($macros): array {
+        if (!is_array($macros)) return array();
+        $macros['mad4b_shared_title']=array(
+            'label'=>'MAD4B Shared Title',
+            'cb'=>array(__CLASS__,'macroTitle'),
+        );
+        $macros['mad4b_shared_description']=array(
+            'label'=>'MAD4B Shared Description',
+            'cb'=>array(__CLASS__,'macroDescription'),
+        );
+        $macros['mad4b_shared_language']=array(
+            'label'=>'MAD4B Shared Language',
+            'cb'=>array(__CLASS__,'macroLanguage'),
+        );
+        return $macros;
+    }
+    public static function macroTitle($args=array()): string {
+        return esc_html(self::field('title'));
+    }
+    public static function macroDescription($args=array()): string {
+        return esc_html(self::field('description'));
+    }
+    public static function macroLanguage($args=array()): string {
+        return esc_html(self::field('language'));
     }
 
     public static function project($original) {
