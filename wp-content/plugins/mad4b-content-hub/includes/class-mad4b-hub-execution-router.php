@@ -92,6 +92,10 @@ final class MAD4B_Hub_Execution_Router {
                 && method_exists('MAD4B_SCP_OAuth_Resource_Bridge','verified_bearer_client_is')
                 && MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is(
                     'https://chatgpt.com/oauth/client.json'),
+            'client_transport_priority'=>array('direct_chatgpt_mcp','vps_wpcli_fallback'),
+            'wpcli_fallback_enabled'=>class_exists('MAD4B_Hub_CLI_Fallback'),
+            'wpcli_fallback_requires_verified_wp_user'=>true,
+            'wpcli_fallback_no_oauth_impersonation'=>true,
             'chatgpt_client_server_background_execution'=>false,
             'background_ai_requires_explicit_opt_in'=>true,
             'settings_revision'=>$settings['revision'],
@@ -298,6 +302,8 @@ final class MAD4B_Hub_Execution_Router {
             && method_exists('MAD4B_SCP_OAuth_Resource_Bridge','verified_bearer_client_is')
             && MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is(
                 'https://chatgpt.com/oauth/client.json');
+        $transport=$client_verified?'direct_chatgpt_mcp'
+            :((defined('WP_CLI')&&WP_CLI)?'vps_wpcli_fallback':'authenticated_wp_request');
         $result=MAD4B_SCP_Research_Intelligence::record_keyword(array(
             'job_id'=>$job['job_id'],'provider_id'=>'client_observed_web',
             'provider_state'=>'succeeded','request_sha256'=>$request_sha,
@@ -307,6 +313,7 @@ final class MAD4B_Hub_Execution_Router {
             'freshness_policy'=>'verify_before_publication',
             'usage'=>array('executor'=>'chatgpt_client',
                 'client_step_key'=>$key,'client_submission_sha256'=>$fingerprint,
+                'execution_transport'=>$transport,
                 'chatgpt_oauth_verified'=>$client_verified,
                 'source_type'=>'client_supplied_public_web_pages',
                 'google_serp_rank_verified'=>false,
@@ -320,6 +327,7 @@ final class MAD4B_Hub_Execution_Router {
             'artifact_id'=>(string)($result['artifact']['artifact_id']??''),
             'replayed'=>!empty($result['replayed']),
             'chatgpt_oauth_verified'=>$client_verified,
+            'execution_transport'=>$transport,
             'evidence_only'=>true,'next_ability'=>'mad4b/research-coverage-build',
             'server_model_called'=>false,'publication_performed'=>false);
     }
