@@ -72,6 +72,7 @@ final class MAD4B_SCP_Company_Provisioning_Work_Operations {
 }
 
 final class MAD4B_Start_Company_Runtime {
+    const SNAPSHOTS='mad4b_start_company_snapshots_v3';
     const REGISTRY='mad4b_tourism_company_site_registry_v1';
     const BOOTSTRAP='mad4b_company_bootstrap_registry_v1';
     const RECEIPTS='mad4b_company_lifecycle_receipt_index_v1';
@@ -146,6 +147,9 @@ final class MAD4B_Start_Company_Runtime {
         $mode=(string)($req->get_param('mode')??'repair_existing');
         if(!in_array($mode,array('create','repair_existing'),true))
             return new WP_Error('mad4b_mode_invalid','Unknown company mode',array('status'=>422));
+        return self::compute_plan($c,$mode);
+    }
+    private static function compute_plan($c,$mode) {
         $verified=array();foreach(self::STAGES as $id=>$spec)$verified[$id]=self::receipt_ok($c,$id);
         $rows=array();
         foreach(self::STAGES as $id=>$spec){
@@ -208,7 +212,19 @@ final class MAD4B_Start_Company_Runtime {
           'company'=>$c['company_code'],'stage'=>$stage,'job_id'=>$queued['job']['job_id'],
           'executor_executed'=>false,'production_mutation_authorized'=>false);
     }
+    public static function status($req){
+        $plan=self::plan($req);if(is_wp_error($plan))return $plan;
+        $all=get_option(self::SNAPSHOTS,array());
+        $code=$plan['company']['company_code'];
+        $record=is_array($all)?($all[$code]??null):null;
+        $match=is_array($record) && ($record['plan_sha256']??'')===$plan['plan_sha256'];
+        return array('contract'=>'mad4b.start-your-company.status.v3',
+          'plan'=>$plan,'recheck_receipt_matched'=>$match,
+          'snapshot_observed_at'=>$match?($record['observed_at']??null):null,
+          'mutation_performed'=>false);
+    }
     public static function routes() {
+        register_rest_route('mad4b/v1',self::PATH.'/status',array('methods'=>'GET','callback'=>array(__CLASS__,'status'),'permission_callback'=>array(__CLASS__,'guard')));
         register_rest_route('mad4b/v1',self::PATH.'/plan',array('methods'=>'GET','callback'=>array(__CLASS__,'plan'),'permission_callback'=>array(__CLASS__,'guard')));
         register_rest_route('mad4b/v1',self::PATH.'/resume',array('methods'=>'POST','callback'=>array(__CLASS__,'resume'),'permission_callback'=>array(__CLASS__,'guard')));
     }
@@ -246,14 +262,22 @@ final class MAD4B_Start_Company_Runtime {
     }
     public static function option_event($name,$old,$new){
         if(!in_array($name,array(self::REGISTRY,self::BOOTSTRAP),true)||!is_array($new))return;
-        foreach($new as $code=>$row)if(!isset($old[$code])||$row!==$old[$code])self::company_event($code);
+        $prev=is_array($old)?$old:array();
+        foreach($new as $code=>$row)if(!isset($prev[$code])||$row!==$prev[$code])self::company_event($code);
     }
     public static function recheck_event($code){
-        // Automatic events only refresh read-only plans; never queue tenant mutations.
-        $r=new WP_REST_Request('GET','/');$r->set_param('company',$code);
-        // Cron runs without user; use no grant or impersonation here.
-        $c=self::company($code);
-        if(!is_wp_error($c))do_action('mad4b/company/recheck_requested',$c);
+        // Cron only computes and persists an unprivileged, read-only plan.
+        if(!self::central())return;
+        $c=self::company($code);if(is_wp_error($c))return;
+        $result=self::compute_plan($c,'repair_existing');
+        if(!is_array($result))return;
+        $all=get_option(self::SNAPSHOTS,array());if(!is_array($all))return;
+        $result['observed_at']=gmdate('c');
+        $all[$c['company_code']]=$result;
+        update_option(self::SNAPSHOTS,$all,false);
+        $check=get_option(self::SNAPSHOTS,array());
+        if(is_array($check) && ($check[$c['company_code']]['plan_sha256']??'')===$result['plan_sha256'])
+          do_action('mad4b/company/recheck_observed',$c);
     }
 }
 MAD4B_Start_Company_Runtime::boot();
