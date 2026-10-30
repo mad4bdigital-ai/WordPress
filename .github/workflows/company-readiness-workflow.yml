@@ -53,6 +53,13 @@ jobs:
           php -l ops/company-readiness-workflow/company-options/tenant-mu/245-mad4b-company-brand-fields.php
           php -l ops/company-readiness-workflow/company-options/tenant-mu/246-mad4b-company-option-tags.php
           php -l ops/company-readiness-workflow/company-options/tenant-mu/247-mad4b-portable-service-fields.php
+      - name: Mandatory governed company runtime acceptance
+        run: |
+          python3 -m py_compile ops/company-readiness-workflow/runtime-gates/company-governed-runtime-gates.py
+          python3 -m py_compile ops/company-readiness-workflow/runtime-gates/test_governed_runtime_gates.py
+          python3 ops/company-readiness-workflow/runtime-gates/test_governed_runtime_gates.py
+          php -l ops/company-readiness-workflow/runtime-gates/tenant-mu/248-mad4b-company-login-presentation.php
+          python3 -c "import json; p=json.load(open('ops/company-readiness-workflow/runtime-gates/company-governed-runtime-contract-v1.json')); assert p['contract']=='mad4b.company-governed-runtime-contract.v1'; assert p['allow_production_mutation'] is False"
       - name: Require tenant isolation and exact plan gates
         run: |
           grep -q "wayfatours_production" ops/company-readiness-workflow/design-activation/wayfa-design-activate.php
