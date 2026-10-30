@@ -1396,7 +1396,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 				'country' => '' !== $country ? $country : 'global',
 				'content_type' => 'brand_context_generation',
 				'research_depth' => 'evidence_bound',
-				'automation_level' => 'review_gated',
+				'automation_level' => MAD4B_SCP_Content_Workflow_Modes::DEFAULT_MODE,
 				'reason' => 'Generate a missing Brand Core draft from exact live evidence.',
 			)
 		);
