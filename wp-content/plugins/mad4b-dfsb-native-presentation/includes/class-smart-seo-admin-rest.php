@@ -22,6 +22,16 @@ final class SmartSeoAdminRest {
             'callback'=>array(__CLASS__,'discover'),
             'args'=>array('probe'=>array('type'=>'boolean','default'=>false)),
         ));
+        register_rest_route(self::NS,'/seo-intelligence/registry',array(
+            'methods'=>'GET','permission_callback'=>$admin,
+            'callback'=>array(__CLASS__,'registry'),
+        ));
+        register_rest_route(self::NS,'/seo-intelligence/policies',array(
+            array('methods'=>'GET','permission_callback'=>$admin,
+                'callback'=>array(__CLASS__,'policies')),
+            array('methods'=>'PUT','permission_callback'=>$admin,
+                'callback'=>array(__CLASS__,'updatePolicies')),
+        ));
         register_rest_route(self::NS,'/seo-intelligence/proposals',array(
             'methods'=>'GET','permission_callback'=>$admin,
             'callback'=>array(__CLASS__,'proposals'),
@@ -56,6 +66,8 @@ final class SmartSeoAdminRest {
             'native_seo_enabled'=>$jsf?(bool)$jsf->settings->is_seo_enabled:false,
             'native_rule_count'=>$jsf?count((array)$jsf->settings->get('seo_sitemap_rules',array())):0,
             'draft_count'=>count(SmartSeoRules::drafts()),
+            'policy_revision'=>SmartSeoPolicyRegistry::revision(),
+            'policy_mode'=>'company_scoped_configurable',
             'auto_indexing'=>false,'requires_release_certificate'=>false,
             'routes'=>array('discover','proposals','proposals/generate','proposals/{id}/stage'),
         ));
@@ -66,6 +78,53 @@ final class SmartSeoAdminRest {
         $report=SmartSeoRules::recommend($probe);
         return rest_ensure_response($report);
     }
+    public static function registry(): \WP_REST_Response {
+        return rest_ensure_response(SmartSeoPolicyRegistry::discovered());
+    }
+
+    public static function policies(): \WP_REST_Response {
+        return rest_ensure_response(array(
+            'revision'=>SmartSeoPolicyRegistry::revision(),
+            'stored'=>SmartSeoPolicyRegistry::stored(),
+            'defaults'=>SmartSeoPolicyRegistry::defaults(),
+            'site'=>home_url('/'), 'indexing_enabled_by_policy'=>false,
+        ));
+    }
+
+    public static function updatePolicies(\WP_REST_Request $req) {
+        $payload=$req->get_json_params();
+        if (!is_array($payload) || !isset($payload['expected_revision'],$payload['policy'])
+            || !is_string($payload['expected_revision']))
+            return new \WP_Error('policy_request_invalid','Expected revision and policy object required',array('status'=>400));
+        $validated=SmartSeoPolicyRegistry::validate($payload['policy']);
+        if (is_wp_error($validated)) return $validated;
+        // Never allow writes to arbitrary source IDs not discovered in this company.
+        $known=SmartSeoPolicyRegistry::discovered()['sources'];
+        foreach ($validated['sources'] as $source=>$settings) {
+            if (!isset($known[$source]))
+                return new \WP_Error('policy_source_not_discovered',
+                    'Source not discovered in current company',array('status'=>400));
+        }
+        $lock='mad4b_smart_seo_policy_update_lock_v1';
+        // add_option is atomic on the unique option_name index.
+        if (!add_option($lock,wp_generate_uuid4(),'','no'))
+            return new \WP_Error('policy_update_busy','Policy update already in progress',array('status'=>409));
+        try {
+            if (!hash_equals(SmartSeoPolicyRegistry::revision(),$payload['expected_revision']))
+                return new \WP_Error('policy_revision_conflict','Policy changed; refresh and retry',array('status'=>409));
+            $ok=update_option(SmartSeoPolicyRegistry::OPTION,$validated,false);
+            if (!$ok && SmartSeoPolicyRegistry::stored()!==$validated)
+                return new \WP_Error('policy_update_failed','Unable to save site policy',array('status'=>500));
+            return rest_ensure_response(array(
+                'status'=>'saved','revision'=>SmartSeoPolicyRegistry::revision(),
+                'policy'=>SmartSeoPolicyRegistry::stored(),
+                'seo_indexing_activated'=>false,
+            ));
+        } finally {
+            delete_option($lock);
+        }
+    }
+
     public static function proposals(): \WP_REST_Response {
         return rest_ensure_response(array(
             'status'=>'ok','drafts'=>SmartSeoRules::drafts(),
@@ -106,36 +165,17 @@ final class SmartSeoAdminRest {
         if (!$live || ($live['proposed_native_rule']??null)!==($record['native_rule']??null))
             return new \WP_Error('mad4b_seo_draft_stale','Discovery changed; regenerate the draft.',array('status'=>409));
         // Draft staging never enables SEO; multilingual editorial QA remains pending.
-        $rules=$jsf->settings->get('seo_sitemap_rules',array());
-        if (!is_array($rules)) $rules=array();
         $new=$record['native_rule'];
         if (count($new['filters']??array())<1 || count($new['filters'])>3)
             return new \WP_Error('mad4b_seo_filter_limit','Native SEO Rule needs 1–3 verified filters.',array('status'=>400));
-        foreach ($rules as $old) {
-            if (($old['url']??'')===$new['url']
-                && ($old['provider']??'')===$new['provider']
-                && ($old['query_id']??'')===$new['query_id'])
-                return new \WP_Error('mad4b_seo_rule_conflict',
-                    'A native SEO Rule already exists for this page/provider/query.',array('status'=>409));
-        }
-        if (count($rules)>=50)
-            return new \WP_Error('mad4b_seo_rule_limit','Maximum 50 manually staged rules.',array('status'=>409));
-        // Snapshot previous native settings; activate only through normal operator action.
-        $backup=get_option('mad4b_jsf_smart_seo_native_backup_v1',array());
-        if (!is_array($backup) || empty($backup)) {
-            update_option('mad4b_jsf_smart_seo_native_backup_v1',array(
-                'rules'=>$rules,'created_at'=>gmdate('c'),
-                'native_seo_enabled'=>false,
-            ),false);
-        }
-        $rules[]=$new;
-        $jsf->settings->update('seo_sitemap_rules',$rules);
-        // Guard against unexpected side effects; native SEO is deliberately left OFF.
-        if (filter_var($jsf->settings->get('use_seo_sitemap',false),FILTER_VALIDATE_BOOLEAN)) {
-            $jsf->settings->update('seo_sitemap_rules',array_slice($rules,0,-1));
-            return new \WP_Error('mad4b_seo_activation_guard',
-                'SEO was unexpectedly activated. Changes rolled back.',array('status'=>409));
-        }
+        $effective=SmartSeoPolicyRegistry::effective((string)$new['provider'],(string)$new['query_id']);
+        if (!$effective['enabled'])
+            return new \WP_Error('policy_source_disabled','Source disabled by company SEO policy',array('status'=>409));
+        // A configured policy change makes the old draft stale, even if HTML is identical.
+        if (isset($record['effective_policy']) && $record['effective_policy']!==$effective)
+            return new \WP_Error('policy_revision_stale','Draft policy changed; regenerate first',array('status'=>409));
+        $store=SmartSeoNativeStore::appendDisabled($new);
+        if (is_wp_error($store)) return $store;
         $stored=get_option(SmartSeoRules::OPTION,array());
         if (isset($stored[$id])) {
             $stored[$id]['status']='staged_disabled';
@@ -144,7 +184,7 @@ final class SmartSeoAdminRest {
         }
         return rest_ensure_response(array(
             'status'=>'staged_disabled','id'=>$id,
-            'native_rule'=>$new,'native_rule_count'=>count($rules),
+            'native_rule'=>$new,'native_rule_count'=>$store['rule_count'],
             'native_seo_enabled'=>false,'indexing_enabled'=>false,
             'next'=>'Review localized copy and filtered URL QA in native JetSmartFilters before enabling.',
         ));
