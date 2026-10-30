@@ -185,7 +185,7 @@ if not core_catalog.is_file():
     raise SystemExit('FAIL implementation-core-catalog: missing extracted core catalog')
 impl['servers'] += read(core_catalog)
 
-require(impl['schema'], 'const VERSION = 13;', 'implementation-schema-v13')
+require(impl['schema'], 'const VERSION = 14;', 'implementation-schema-v14')
 require(impl['schema'], "'budget_windows'", 'implementation-budget-windows')
 require(impl['schema'], "'audit_events'", 'implementation-audit-events')
 require(impl['schema'], "'audit_heads'", 'implementation-audit-heads')
