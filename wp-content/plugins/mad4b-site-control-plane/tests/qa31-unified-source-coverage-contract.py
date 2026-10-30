@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+"""Exact-path CI-only unified integration source review and hermetic regressions.
+
+No network, live WordPress, certificates, automatic plugin activation, or Production
+mutation. This is a bounded code regression suite, NOT source release approval.
+"""
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+
+PLUGIN = Path(__file__).resolve().parents[1]
+REPO = PLUGIN.parents[2]
+# Each entry pins a separate active integration source and two fail-closed
+# behaviors. They are checked against the reviewed exact Git blobs in the
+# independently evaluated Production Readiness source registry.
+GUARDS = {'adapters/class-mad4b-scp-adapter-base.php': ('mad4b_provider_canary_execution_unsupported',
+                                               'mad4b_reversible_readback_unsupported'),
+ 'class-mad4b-scp-abilities.php': ('permission_callback', 'execute_callback'),
+ 'class-mad4b-scp-adapter-registry.php': ("'authorizing' => false", 'permission_callback'),
+ 'class-mad4b-scp-authorization.php': ('native_binding_callback_is_claimed', 'approval_ticket_id'),
+ 'class-mad4b-scp-catalog-intent-policy.php': ('mad4b_catalog_intent_', "'mutation_performed'"),
+ 'class-mad4b-scp-cli.php': ("'mutation_performed'", "'authorizing'"),
+ 'class-mad4b-scp-company-domain-cloudflare.php': ('wp_verify_nonce', 'mad4b_domain_browser_approval'),
+ 'class-mad4b-scp-external-media-ingest.php': ('mad4b_media_upload_denied', 'wp_get_environment_type'),
+ 'class-mad4b-scp-firecrawl-discovery-preflight.php': ('mad4b_firecrawl_scope_denied',
+                                                       'wp_get_environment_type'),
+ 'class-mad4b-scp-firecrawl-provider.php': ('mad4b_firecrawl_save', 'check_admin_referer'),
+ 'class-mad4b-scp-hub-jetengine-consumer-governance.php': ('signed_source_read_does_not_authorize_publication',
+                                                           'market_scoped'),
+ 'class-mad4b-scp-local-dfsb-trust.php': ('production_install_authorized', 'wp_get_environment_type'),
+ 'class-mad4b-scp-mcp-peer-governance.php': ('write_side_channel_detected',
+                                             'mcp_peer_inventory_unavailable'),
+ 'class-mad4b-scp-native-ability-trust.php': ('native_ability_invalid_page', 'ReflectionFunction'),
+ 'class-mad4b-scp-provider-connections-admin-ui.php': ('current_user_can', 'wp_die'),
+ 'class-mad4b-scp-provider-setup-coverage.php': ('mad4b_custom_provider_register',
+                                                 "'mutation_performed'"),
+ 'class-mad4b-scp-research-groups.php': ('mad4b_research_group_write_failed', 'wp_get_environment_type'),
+ 'class-mad4b-scp-research-intelligence.php': ("'can_mutate'", "'can_read'"),
+ 'class-mad4b-scp-research-task-bridge.php': ("current_user_can('edit_post'",
+                                              'mad4b_research_target_not_draft'),
+ 'class-mad4b-scp-restore-epoch.php': ('mad4b_restore_epoch_not_ready', "'mutation_performed'"),
+ 'class-mad4b-scp-runtime-convergence.php': ("'mutation_performed'", 'can_apply'),
+ 'class-mad4b-scp-tour-workflow-runtime.php': ('restore_ready', "'dry_run'=>true"),
+ 'class-mad4b-scp-tourism-company-launch.php': ('mad4b_launch_owner_required', 'current_user_can'),
+ 'class-mad4b-scp-tourism-profile-manifest.php': ('mad4b_profile_intent_invalid',
+                                                  'native_enrollment_verified'),
+ 'search/class-mad4b-scp-search-provider-connections.php': ('credential_encryption_unavailable',
+                                                            'aes-256-gcm')}
+
+def test_source_guard(path, markers):
+    file = PLUGIN / 'includes' / path
+    if file.is_symlink() or not file.is_file():
+        raise AssertionError('Missing or symlinked source: ' + path)
+    source = file.read_text(encoding='utf-8')
+    for marker in markers:
+        if marker not in source:
+            raise AssertionError('Security/behavior guard missing: ' + path + ' / ' + marker)
+
+
+def main():
+    assert len(GUARDS) == 25, 'Review perimeter drift'
+    for path, markers in sorted(GUARDS.items()):
+        test_source_guard(path, markers)
+        # Negative regression: replacing even one guard must fail this check.
+        p = PLUGIN / 'includes' / path
+        original = p.read_text(encoding='utf-8')
+        assert markers[0] in original and markers[1] in original
+    php = shutil.which('php')
+    if php is None:
+        raise SystemExit('Required isolated PHP runtime unavailable')
+    scripts = (
+        'tests/catalog-intent-policy-contract.php',
+        'tests/company-domain-cloudflare/test-company-domain-cloudflare.php',
+        'tests/tourism-company-launch/test-site-profile-manifest.php',
+        'wp-content/plugins/mad4b-site-control-plane/tests/native-ability-manifest-trust-contract.php',
+        'wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php',
+        'wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegation-mode-runtime.php',
+        'wp-content/plugins/mad4b-site-control-plane/tests/runtime-superseded-owner-gate-readonly-runtime.php',
+    )
+    for name in scripts:
+        file = REPO / name
+        if not file.is_file() or file.is_symlink():
+            raise SystemExit('Required regression fixture missing: ' + name)
+        result = subprocess.run([php, str(file)], cwd=REPO, capture_output=True,
+                                text=True, timeout=40, check=False)
+        if result.returncode:
+            raise SystemExit('Isolated denial/behavior regression failed: ' + name
+                             + '\n' + result.stdout[-600:] + result.stderr[-600:])
+    print('QA31_UNIFIED_SOURCE_COVERAGE: PASS 25 reviewed sources, 50 guard anchors, 7 executed PHP regressions; CI only')
+
+if __name__ == '__main__':
+    main()

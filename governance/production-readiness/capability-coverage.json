@@ -4540,6 +4540,258 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Exact source guard assertions, six executed security test suites and existing mapped controls remain enforced: AUTOMATION-01, PERFORMANCE-01.",
       "review_rationale": "class-mad4b-scp-readiness-workflow-options.php: Admin/Company Content Readiness service remains subject to explicit WordPress role-capability checks, nonce and readback verification; no automatic task, notification or credential handling accepted. CI-only review is not live site acceptance or deployment clearance."
+    },
+    {
+      "id": "ability:mad4b/catalog-intent-plan",
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing GOVERNANCE-02, OAUTH-01, TICKETS-01, SECURITY-01 controls cover the inspected source guard pair and hermetic negative behavior; no new control authorization or runtime entitlement.",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-catalog-intent-policy.php retains verified guard anchors 'mad4b_catalog_intent_' and \"'mutation_performed'\". The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "id": "ability:mad4b/content-orchestration-plan",
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing GOVERNANCE-02, OAUTH-01, TICKETS-01, SECURITY-01 controls cover the inspected source guard pair and hermetic negative behavior; no new control authorization or runtime entitlement.",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-catalog-intent-policy.php retains verified guard anchors 'mad4b_catalog_intent_' and \"'mutation_performed'\". The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "id": "ability:mad4b/firecrawl-discovery-preflight",
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP-01, PROVIDERS-01, EXECUTION-01 controls cover the inspected source guard pair and hermetic negative behavior; no new control authorization or runtime entitlement.",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-firecrawl-discovery-preflight.php retains verified guard anchors 'mad4b_firecrawl_scope_denied' and 'wp_get_environment_type'. The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-intent-policy.php",
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing GOVERNANCE-02, OAUTH-01, TICKETS-01, SECURITY-01 controls cover the inspected source guard pair and hermetic negative behavior; no new control authorization or runtime entitlement.",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-catalog-intent-policy.php retains verified guard anchors 'mad4b_catalog_intent_' and \"'mutation_performed'\". The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-domain-cloudflare.php",
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing GOVERNANCE-01, PLATFORM-01, SECURITY-01 controls cover the inspected source guard pair and hermetic negative behavior; no new control authorization or runtime entitlement.",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-company-domain-cloudflare.php retains verified guard anchors 'wp_verify_nonce' and 'mad4b_domain_browser_approval'. The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-firecrawl-discovery-preflight.php",
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing GOVERNANCE-01, PLATFORM-01, SECURITY-01 controls cover the inspected source guard pair and hermetic negative behavior; no new control authorization or runtime entitlement.",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-firecrawl-discovery-preflight.php retains verified guard anchors 'mad4b_firecrawl_scope_denied' and 'wp_get_environment_type'. The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-firecrawl-provider.php",
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP-01, PROVIDERS-01, EXECUTION-01 controls cover the inspected source guard pair and hermetic negative behavior; no new control authorization or runtime entitlement.",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-firecrawl-provider.php retains verified guard anchors 'mad4b_firecrawl_save' and 'check_admin_referer'. The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-hub-jetengine-consumer-governance.php",
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing GOVERNANCE-01, PLATFORM-01, SECURITY-01 controls cover the inspected source guard pair and hermetic negative behavior; no new control authorization or runtime entitlement.",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-hub-jetengine-consumer-governance.php retains verified guard anchors 'signed_source_read_does_not_authorize_publication' and 'market_scoped'. The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-dfsb-trust.php",
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing GOVERNANCE-01, PLATFORM-01, SECURITY-01 controls cover the inspected source guard pair and hermetic negative behavior; no new control authorization or runtime entitlement.",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-local-dfsb-trust.php retains verified guard anchors 'production_install_authorized' and 'wp_get_environment_type'. The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-groups.php",
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing DATABASE-01, PERFORMANCE-01 controls cover the inspected source guard pair and hermetic negative behavior; no new control authorization or runtime entitlement.",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-research-groups.php retains verified guard anchors 'mad4b_research_group_write_failed' and 'wp_get_environment_type'. The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-task-bridge.php",
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing DATABASE-01, PERFORMANCE-01 controls cover the inspected source guard pair and hermetic negative behavior; no new control authorization or runtime entitlement.",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-research-task-bridge.php retains verified guard anchors \"current_user_can('edit_post'\" and 'mad4b_research_target_not_draft'. The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-workflow-runtime.php",
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing AUTOMATION-01, PERFORMANCE-01 controls cover the inspected source guard pair and hermetic negative behavior; no new control authorization or runtime entitlement.",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-tour-workflow-runtime.php retains verified guard anchors 'restore_ready' and \"'dry_run'=>true\". The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tourism-company-launch.php",
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing GOVERNANCE-01, PLATFORM-01, SECURITY-01 controls cover the inspected source guard pair and hermetic negative behavior; no new control authorization or runtime entitlement.",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-tourism-company-launch.php retains verified guard anchors 'mad4b_launch_owner_required' and 'current_user_can'. The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tourism-profile-manifest.php",
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing GOVERNANCE-01, PLATFORM-01, SECURITY-01 controls cover the inspected source guard pair and hermetic negative behavior; no new control authorization or runtime entitlement.",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-tourism-profile-manifest.php retains verified guard anchors 'mad4b_profile_intent_invalid' and 'native_enrollment_verified'. The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
     }
   ],
   "lifecycle": [],
@@ -13443,6 +13695,430 @@
         "tests/plugin_native_runtime_minimal_gates_contract.py"
       ],
       "review_rationale": "Combined bootstrap retains private REST security fence, source-owned Settings guard, and late registration of required native/company integration modules. Verified with PHP lint and minimal-gates regression. These are source checks only; they are not a certificate, release attestation or prerequisite for standard WordPress plugin activation."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-adapter-base.php",
+      "source_blob_sha": "e1ff1b757c151e3f19413f5741cb99b4f329e01b",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source adapters/class-mad4b-scp-adapter-base.php retains verified guard anchors 'mad4b_provider_canary_execution_unsupported' and 'mad4b_reversible_readback_unsupported'. The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+      "source_blob_sha": "3d3ef02919d812fa606e64a565955e68863cd548",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-abilities.php retains verified guard anchors 'permission_callback' and 'execute_callback'. The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php",
+      "source_blob_sha": "1f077eb90420f689ad895682bd21265099e89d4a",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-adapter-registry.php retains verified guard anchors \"'authorizing' => false\" and 'permission_callback'. The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php",
+      "source_blob_sha": "3580e0f233fd81c5f674c7bd5cbff552093513d0",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-authorization.php retains verified guard anchors 'native_binding_callback_is_claimed' and 'approval_ticket_id'. The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-intent-policy.php",
+      "source_blob_sha": "5dd85c058236b580efe0e990467655e877a3585a",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-catalog-intent-policy.php retains verified guard anchors 'mad4b_catalog_intent_' and \"'mutation_performed'\". The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli.php",
+      "source_blob_sha": "0b60ae169749bc41696c781ba69430bddf6b722a",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-cli.php retains verified guard anchors \"'mutation_performed'\" and \"'authorizing'\". The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-domain-cloudflare.php",
+      "source_blob_sha": "b2e78e1e0c4d9e341dbda7d6b95584e8df746cbc",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-company-domain-cloudflare.php retains verified guard anchors 'wp_verify_nonce' and 'mad4b_domain_browser_approval'. The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-external-media-ingest.php",
+      "source_blob_sha": "fedf9dbeba76cc5d359abbc50e8d4f8ca391a3e1",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-external-media-ingest.php retains verified guard anchors 'mad4b_media_upload_denied' and 'wp_get_environment_type'. The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-firecrawl-discovery-preflight.php",
+      "source_blob_sha": "4b470d65c3ed687af337782f0cea687308e44095",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-firecrawl-discovery-preflight.php retains verified guard anchors 'mad4b_firecrawl_scope_denied' and 'wp_get_environment_type'. The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-firecrawl-provider.php",
+      "source_blob_sha": "8de4cee68963b198619e60a9c986b87ebe882b54",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-firecrawl-provider.php retains verified guard anchors 'mad4b_firecrawl_save' and 'check_admin_referer'. The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-hub-jetengine-consumer-governance.php",
+      "source_blob_sha": "a6bed76dbef1b03df615b85f299e0cbe142c822e",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-hub-jetengine-consumer-governance.php retains verified guard anchors 'signed_source_read_does_not_authorize_publication' and 'market_scoped'. The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-dfsb-trust.php",
+      "source_blob_sha": "96d51abab8215e71b076724e7d68008de5c2a2ae",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-local-dfsb-trust.php retains verified guard anchors 'production_install_authorized' and 'wp_get_environment_type'. The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-peer-governance.php",
+      "source_blob_sha": "df75b0dc20a70e5a561eb34034762234821ca0d9",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-mcp-peer-governance.php retains verified guard anchors 'write_side_channel_detected' and 'mcp_peer_inventory_unavailable'. The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-ability-trust.php",
+      "source_blob_sha": "54f0d30d3807fa4545114d2dddf00509296e3000",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-native-ability-trust.php retains verified guard anchors 'native_ability_invalid_page' and 'ReflectionFunction'. The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-connections-admin-ui.php",
+      "source_blob_sha": "2d8d1e1ca4554e3336d385fcf6afd1618a6f7b53",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-provider-connections-admin-ui.php retains verified guard anchors 'current_user_can' and 'wp_die'. The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-setup-coverage.php",
+      "source_blob_sha": "11f03925660c37a0e76524c220b521ddbc953de8",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-provider-setup-coverage.php retains verified guard anchors 'mad4b_custom_provider_register' and \"'mutation_performed'\". The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-groups.php",
+      "source_blob_sha": "5ed182a92486d18bfead42513ccc3432f03cfef9",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-research-groups.php retains verified guard anchors 'mad4b_research_group_write_failed' and 'wp_get_environment_type'. The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-intelligence.php",
+      "source_blob_sha": "034d84d89c7290a98ce1bc44b4548442ff3cc8d9",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-research-intelligence.php retains verified guard anchors \"'can_mutate'\" and \"'can_read'\". The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-task-bridge.php",
+      "source_blob_sha": "987613dbca1a122ea2d09aab16e36a3ee983dc08",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-research-task-bridge.php retains verified guard anchors \"current_user_can('edit_post'\" and 'mad4b_research_target_not_draft'. The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-restore-epoch.php",
+      "source_blob_sha": "ae8e59166e7826328e25b18f7d8056b20229f9ea",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-restore-epoch.php retains verified guard anchors 'mad4b_restore_epoch_not_ready' and \"'mutation_performed'\". The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-convergence.php",
+      "source_blob_sha": "55a77ddf83b2bc106090d3052830fde4ed5e929e",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-runtime-convergence.php retains verified guard anchors \"'mutation_performed'\" and 'can_apply'. The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-workflow-runtime.php",
+      "source_blob_sha": "73ad0d8ceb913cc1c7a9ec1944683ff51a0e1557",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-tour-workflow-runtime.php retains verified guard anchors 'restore_ready' and \"'dry_run'=>true\". The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tourism-company-launch.php",
+      "source_blob_sha": "1c176944e3a729172707f6324df5c6607d51b572",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-tourism-company-launch.php retains verified guard anchors 'mad4b_launch_owner_required' and 'current_user_can'. The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tourism-profile-manifest.php",
+      "source_blob_sha": "008e0a6028d7d0516a8c99da9d615ac9e55fd954",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source class-mad4b-scp-tourism-profile-manifest.php retains verified guard anchors 'mad4b_profile_intent_invalid' and 'native_enrollment_verified'. The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-provider-connections.php",
+      "source_blob_sha": "426f4a82ba035127cdaacb7ad729e7b3e7a1d76d",
+      "owner_role": "CI-only integration source reviewer; no owner impersonation, plugin release signature, or production promotion authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "review_rationale": "Exact integrated source search/class-mad4b-scp-search-provider-connections.php retains verified guard anchors 'credential_encryption_unavailable' and 'aes-256-gcm'. The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
     }
   ],
   "code_change_rules": {
