@@ -77,7 +77,8 @@ final class MAD4B_Hub_Source_Sync_Jobs_V1 {
     public static function request($input=[]) {
         if(!self::enabled() || !current_user_can('manage_options'))
             return self::fail('administrator_required',403);
-        if(!is_array($input)||array_keys($input)!==['company_id','provider_id','dataset_id','transport','request_key'] ||
+        if(!is_array($input)||count($input)!==5 ||
+            count(array_intersect(array_keys($input),['company_id','provider_id','dataset_id','transport','request_key']))!==5 ||
             ($input['company_id']??'')!==self::COMPANY ||
             ($input['provider_id']??'')!==self::NAME ||
             ($input['dataset_id']??'')!==self::DATASET ||
@@ -167,7 +168,10 @@ final class MAD4B_Hub_Source_Sync_Jobs_V1 {
                     ($receipt['transport']??'')===self::TRANSPORT &&
                     ($receipt['snapshot_sha256']??'')!=='' &&
                     ($receipt['snapshot_sha256']??'')===($last['snapshot_sha256']??null) &&
-                    ($receipt['imported']??-1)===($last['imported']??null);
+                    ($receipt['imported']??-1)===($last['imported']??null) &&
+                    is_string($last['at']??null) &&
+                    strtotime($last['at'])!==false &&
+                    strtotime($last['at'])>=strtotime($job['started_at']);
                 if($success&&!$verified)$error='receipt_mismatch';
                 $job['status']=$verified?'completed':'failed';
                 $job['finished_at']=gmdate('c');
