@@ -120,6 +120,77 @@ final class MAD4B_Hub_Source_Import_V1 {
         if(!self::enabled() || !post_type_exists(self::CPT))return self::failure('not_installed',409);
         $incoming=self::collect($company,$types);
         if(is_wp_error($incoming))return $incoming;
+        return self::save_batch($company,$types,$incoming);
+    }
+    /**
+     * Reuse already validated Tourism Nile references from CENTRAL Staging.
+     * A transitional bootstrap; not proof of a fresh live source sync.
+     * Only tours, never 364 historical rates or cross-company references.
+     */
+    public static function bootstrap_verified_nile_tours() {
+        if(!self::enabled() || !current_user_can('manage_options') ||
+            !post_type_exists(self::CPT) || !post_type_exists('mad4b_hub_nile')) {
+            return self::failure('bootstrap_forbidden',403);
+        }
+        $ids=get_posts([
+            'post_type'=>'mad4b_hub_nile','post_status'=>'publish',
+            'numberposts'=>-1,'fields'=>'ids','suppress_filters'=>true,
+            'meta_query'=>[['key'=>'_mad4b_hub_source_kind','value'=>'nile_tour']]
+        ]);
+        if(!is_array($ids) || count($ids)<1 || count($ids)>2000) {
+            return self::failure('bootstrap_source_unavailable',409);
+        }
+        $company=self::SOURCE;$type='tours-and-activities';
+        $incoming=[];$seen=[];
+        foreach($ids as $id) {
+            $id=(int)$id;
+            if(get_post_meta($id,'_mad4b_hub_source_company',true)!==$company ||
+                get_post_meta($id,'_mad4b_hub_content_owned_by',true)!==$company ||
+                get_post_meta($id,'_mad4b_hub_publication_state',true)!=='published_content_hub' ||
+                get_post_meta($id,'_mad4b_hub_commerce_approved',true)!=='no' ||
+                get_post_meta($id,'_mad4b_hub_bookable',true)!=='no') {
+                return self::failure('bootstrap_source_owner_invalid',409);
+            }
+            $raw=(string)get_post_meta($id,'_mad4b_hub_source_payload_json',true);
+            $hash=(string)get_post_meta($id,'_mad4b_hub_source_sha256',true);
+            if(!$raw || !preg_match('/^[a-f0-9]{64}$/D',$hash) ||
+                !hash_equals($hash,hash('sha256',$raw)))return self::failure('bootstrap_source_tampered',409);
+            $data=json_decode($raw,true);
+            $sourceId=(int)get_post_meta($id,'_mad4b_hub_source_id',true);
+            $lang=$data['translation_source']['language_code']??null;
+            if(!is_array($data) || ($data['source_company']??'')!==$company ||
+                ($data['publish_allowed']??true)!==false ||
+                !is_int($data['source_tour_id']??null) || $data['source_tour_id']!==$sourceId ||
+                !in_array($lang,['en','ar'],true) ||
+                !is_string($data['title']??null) || !is_string($data['summary']??null) ||
+                !is_string($data['source_content_text']??null)) {
+                return self::failure('bootstrap_reference_invalid',409);
+            }
+            $row=[
+                'source_company'=>$company,'source_post_type'=>$type,'kind'=>'tour',
+                'source_id'=>$sourceId,'language'=>$lang,
+                'title'=>$data['title'],
+                'summary'=>$data['summary'],
+                'body'=>mb_substr(wp_strip_all_tags($data['source_content_text']),0,12000),
+                'modified_gmt'=>'0000-00-00 00:00:00',
+                'reference_only'=>true,'may_publish'=>false,'may_checkout'=>false
+            ];
+            $safe=self::validate_item($row,$company,$type);
+            if(is_wp_error($safe))return $safe;
+            $key=$company.':'.$type.':'.$lang.':'.$sourceId;
+            if(isset($seen[$key]))return self::failure('bootstrap_duplicate_reference',409);
+            $seen[$key]=true;
+            $incoming[$key]=$safe;
+        }
+        ksort($incoming,SORT_STRING);
+        $result=self::save_batch($company,[$type],$incoming);
+        if(is_array($result)){
+            $result['input']='previously_verified_staging_nile_references';
+            $result['fresh_source_fetch']=false;
+        }
+        return $result;
+    }
+    private static function save_batch($company,array $types,array $incoming) {
         $existing=self::existing_map($company);
         if(is_wp_error($existing))return $existing;
         // Batch hash is content-addressed, not time-based; reruns of identical
@@ -219,6 +290,17 @@ final class MAD4B_Hub_Source_Import_V1 {
     public static function boot(): void {
         if(!self::enabled())return;
         add_action('init',[__CLASS__,'register'],12);
+        add_action('rest_api_init',static function() {
+            register_rest_route('mad4b-central/v1','/hub-source-import/bootstrap-verified-nile',[
+                'methods'=>WP_REST_Server::CREATABLE,
+                'permission_callback'=>static function(){return current_user_can('manage_options');},
+                'callback'=>static function() {
+                    $result=self::bootstrap_verified_nile_tours();
+                    return is_wp_error($result)?$result:new WP_REST_Response($result,200);
+                }
+            ]);
+        });
+
     }
 }
 MAD4B_Hub_Source_Import_V1::boot();
