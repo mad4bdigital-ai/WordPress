@@ -26,6 +26,7 @@ class MAD4B_Company_PK_Identity_V1 {
     public static function identity(){return 'tourism-almallahgroup';}
 }
 function add_action($hook,$callback,$priority=null){return true;}
+function add_filter($hook,$callback,$priority=null,$accepted_args=null){return true;}
 function home_url($path='/'){return 'https://tours.dev.mad4b.com'.$path;}
 function wp_parse_url($url,$part=-1){return parse_url($url,$part);}
 function wp_json_encode($value,$options=0){return json_encode($value,$options);}
