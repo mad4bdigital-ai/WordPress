@@ -30,6 +30,11 @@ class WP_REST_Request {
     public function get_param($key) {return $this->params[$key]??null;}
 }
 function add_action() {}
+function add_filter() {}
+function current_user_can($cap) { return $cap==='manage_options'; }
+function wp_next_scheduled($hook) { return false; }
+function wp_schedule_event() { return true; }
+function wp_clear_scheduled_hook() { return true; }
 function is_wp_error($x) {return $x instanceof WP_Error;}
 function get_option($key,$default=false) {return $GLOBALS['options'][$key]??$default;}
 function update_option($key,$value,$autoload=false) {$GLOBALS['options'][$key]=$value;return true;}
