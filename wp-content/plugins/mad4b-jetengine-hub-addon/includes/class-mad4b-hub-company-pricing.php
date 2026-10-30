@@ -16,6 +16,11 @@ final class MAD4B_Hub_Company_Pricing_V1 {
     private static function company($id){
         if(!is_string($id)||!preg_match('/^[a-z0-9][a-z0-9-]{2,79}$/D',$id))
             return false;
+        if(class_exists('MAD4B_Hub_JetEngine_Consumer_Runtime')){
+            foreach(MAD4B_Hub_JetEngine_Consumer_Runtime::registry() as $consumer)
+                if(is_array($consumer) && ($consumer['company_id']??'')===$id)
+                    return true;
+        }
         return $id==='mad4b-central' ||
             (class_exists('MAD4B_Central_Company_REST_V1') &&
              isset(MAD4B_Central_Company_REST_V1::COMPANIES[$id]));
