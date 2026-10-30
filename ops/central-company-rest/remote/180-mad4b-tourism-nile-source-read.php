@@ -9,7 +9,7 @@ final class MAD4B_Tourism_Nile_Source_V1 {
  const COMPANY='tourism-almallahgroup';
  const HOST='tourism.almallahgroup-mg.com';
  const ROUTE='/mad4b-company/v1/nile-source-read-v1';
- const SCOPES=['nile_cruise_categories.read','nile_cruise_catalog.read','nile_rate_history.read'];
+ const SCOPES=['nile_cruise_categories.read','nile_cruise_catalog.read','nile_rate_history.read','nile_starting_prices.read'];
  public static function enabled(): bool {
   return strtolower((string)wp_parse_url(home_url('/'),PHP_URL_HOST))===self::HOST
    && class_exists('MAD4B_Company_PK_Identity_V1')
@@ -202,6 +202,39 @@ final class MAD4B_Tourism_Nile_Source_V1 {
   }
   return $items;
  }
+ private static function strict_start_price(int $id,string $field,string $currencyField): ?array {
+  $raw=get_post_meta($id,$field,true);
+  $money=is_scalar($raw)?trim((string)$raw):'';
+  $currency=strtoupper(trim((string)get_post_meta($id,$currencyField,true)));
+  // Never derive money from formatting, an absent field or a fallback currency.
+  if(!preg_match('/^[0-9]{1,10}(?:\\.[0-9]{1,4})?$/D',$money)||
+     (float)$money<=0||(float)$money>1000000000||
+     !preg_match('/^[A-Z]{3}$/D',$currency))return null;
+  return ['field'=>$field,'amount'=>$money,'currency'=>$currency,
+   'source'=>'source_wordpress_product_meta','reference_only'=>true,
+   'current_price_verified'=>false,'checkout_authorized'=>false];
+ }
+ private static function starting_price_items(): array {
+  $out=[];
+  foreach(self::tour_ids() as $id){
+   $post=get_post($id);
+   if(!$post||$post->post_status!=='publish'||$post->post_password!=='')continue;
+   $fields=[];
+   foreach([
+    ['start_price','tour_base_currency'],
+    ['egyptians_start_price','tour_egyptians_currency']
+   ] as $pair){
+     $v=self::strict_start_price($id,$pair[0],$pair[1]);
+     if($v!==null)$fields[]=$v;
+   }
+   $out[]=['source_tour_id'=>$id,'source_company'=>self::COMPANY,
+     'source_post_type'=>'tours-and-activities',
+     'starting_price_references'=>$fields,
+     'reference_only'=>true,'for_sale'=>false,
+     'checkout_enabled'=>false,'validated_current_price'=>false];
+  }
+  return $out;
+ }
  private static function price_value($postId,$key): ?string {
   $v=get_post_meta($postId,$key,true);
   if(is_array($v)||is_object($v))return null;
@@ -249,6 +282,7 @@ final class MAD4B_Tourism_Nile_Source_V1 {
   try{
    if($request['scope']===self::SCOPES[0])$all=self::cat_items();
    elseif($request['scope']===self::SCOPES[1])$all=self::catalog_items();
+   elseif($request['scope']==='nile_starting_prices.read')$all=self::starting_price_items();
    else $all=self::rate_items();
   }catch(Throwable $e){
    return new WP_Error('mad4b_nile_source_unavailable','Nile source read failed',['status'=>503]);
