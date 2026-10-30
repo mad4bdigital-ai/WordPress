@@ -184,7 +184,7 @@ def verify_restorable_backup(policy):
     if len(lines)!=len(expected):raise Denied("BACKUP_SET_INCOMPLETE")
     found=set()
     for line in lines:
-        match=re.fullmatch(r"([a-f0-9]{64})\\s+\\*?(wayfatours-db\\.sql\\.gz|wayfatours-site\\.tar\\.gz)",line)
+        match=re.fullmatch(r"([a-f0-9]{64})\s+\*?(wayfatours-db\.sql\.gz|wayfatours-site\.tar\.gz)",line)
         if not match:raise Denied("BACKUP_MANIFEST_INVALID")
         hexdigest,name=match.groups()
         if name in found:raise Denied("DUPLICATE_BACKUP_ENTRY")
