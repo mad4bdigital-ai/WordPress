@@ -17,6 +17,7 @@ final class SmartSeoCombinationRest {
             array('/seo-intelligence/combinations/(?P<id>[a-f0-9]{64})/verify','POST','verify'),
             array('/seo-intelligence/combinations/(?P<id>[a-f0-9]{64})/approve','POST','approve'),
             array('/seo-intelligence/combinations/(?P<id>[a-f0-9]{64})/publish','POST','publish'),
+            array('/seo-intelligence/combinations/(?P<id>[a-f0-9]{64})/postpublish-qa','POST','postpublishQa'),
             array('/seo-intelligence/combinations/(?P<id>[a-f0-9]{64})/rollback','POST','rollback'),
         );
         foreach($routes as $r) {
@@ -222,6 +223,57 @@ final class SmartSeoCombinationRest {
             'id'=>$record['id'],'publisher'=>'rank_math_exact_url',
             'next'=>'Run post-publication SEO QA; rollback if tags are inconsistent'));
     }
+    /** Confirms actual Rank Math output on an approved exact URL; fail closed. */
+    public static function postpublishQa(\WP_REST_Request $req) {
+        $record=SmartSeoCombinations::get((string)$req['id']);
+        if(is_wp_error($record))return $record;
+        $rev=self::revision($req,$record);if(is_wp_error($rev))return $rev;
+        if(($record['status']??'')!=='published')
+            return new \WP_Error('not_published','Publish before final SEO QA',array('status'=>409));
+        $response=wp_safe_remote_get($record['url'],array('timeout'=>15,
+            'redirection'=>0,'limit_response_size'=>2500000,
+            'headers'=>array('Accept'=>'text/html')));
+        $http=is_wp_error($response)?0:(int)wp_remote_retrieve_response_code($response);
+        $html=is_wp_error($response)?'':(string)wp_remote_retrieve_body($response);
+        $pageTitle='';$canonical='';$descriptions=array();$robots=array();
+        if(preg_match('~<title[^>]*>(.*?)</title>~is',$html,$m))
+            $pageTitle=html_entity_decode(wp_strip_all_tags($m[1]),ENT_QUOTES,'UTF-8');
+        if(preg_match_all('/<link\\s+[^>]*>/i',$html,$links))
+            foreach($links[0] as $tag)
+                if(preg_match('/\\brel=["\x27]canonical["\x27]/i',$tag)
+                    &&preg_match('/\\bhref=["\x27]([^"\x27]+)/i',$tag,$m))
+                    $canonical=html_entity_decode($m[1],ENT_QUOTES,'UTF-8');
+        if(preg_match_all('/<meta\\s+[^>]*>/i',$html,$metas))
+            foreach($metas[0] as $tag) {
+                if(preg_match('/\\bname=["\x27]description["\x27]/i',$tag)
+                    &&preg_match('/\\bcontent=["\x27]([^"\x27]+)/i',$tag,$m))
+                    $descriptions[]=html_entity_decode($m[1],ENT_QUOTES,'UTF-8');
+                if(preg_match('/\\bname=["\x27]robots["\x27]/i',$tag)
+                    &&preg_match('/\\bcontent=["\x27]([^"\x27]+)/i',$tag,$m))
+                    $robots[]=strtolower($m[1]);
+            }
+        $review=$record['locale_reviews'][$record['language']]??array();
+        $pass=$http===200 && $pageTitle===(string)($review['title']??'')
+            && $canonical===$record['url']
+            && count($descriptions)===1
+            && $descriptions[0]===(string)($review['description']??'')
+            && count($robots)<=1 && !preg_match('/noindex/i',implode(',', $robots));
+        $record['postpublish_qa']=array('passed'=>$pass,'http'=>$http,
+            'title'=>$pageTitle,'canonical'=>$canonical,
+            'description_tags'=>count($descriptions),'robots'=>$robots,
+            'checked_at'=>gmdate('c'));
+        if(!$pass) {
+            // Fail closed: remove exact mapping immediately, do not leave wrong SEO live.
+            delete_option(SmartSeoExactPublisher::indexKey($record['url']));
+            $record['status']='qa_failed_rolled_back';
+            $record['approval']=null;
+        } else {
+            $record['status']='published';
+        }
+        $record['updated_at']=gmdate('c');
+        return self::saveRevision((string)$req['id'],$rev,$record);
+    }
+
     public static function rollback(\WP_REST_Request $req) {
         $record=SmartSeoCombinations::get((string)$req['id']);
         if(is_wp_error($record))return $record;
