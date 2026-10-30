@@ -1,0 +1,37 @@
+name: MAD4B Company Performance Fragments Contract
+
+on:
+  pull_request:
+    paths:
+      - 'ops/company-performance-fragments-v2/**'
+      - '.github/workflows/company-performance-fragments-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-company-fragments-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  portable-staging-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Checkout exact PR source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Validate tenant-neutral preset contract
+        run: python3 ops/company-performance-fragments-v2/test-contract.py
+      - name: Check PHP source syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in ops/company-performance-fragments-v2/*.php; do
+            php -l "$f"
+          done
+      - name: Test bounded, tenant-isolated cache cleanup
+        run: php ops/company-performance-fragments-v2/test-gc.php

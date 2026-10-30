@@ -4,6 +4,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+// Principal-model policy is additive; legacy autonomous NHI remains supported.
+require_once __DIR__ . '/class-mad4b-scp-delegation-mode.php';
+
 final class MAD4B_SCP_Policy {
 
 	public static function connection_capability() {
@@ -19,12 +22,28 @@ final class MAD4B_SCP_Policy {
 		if ( $user_id < 1 ) return false;
 		$user = get_userdata( $user_id );
 		if ( ! $user ) return false;
-		$capability = self::connection_capability();
-		if ( '' === $capability || ! user_can( $user, $capability ) ) return false;
-		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::configured() ) {
-			return MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id );
+		$profile_configured = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::configured();
+		if ( $profile_configured && ( ! MAD4B_SCP_Site_Profile::origin_enrolled()
+			|| ! MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id ) ) ) return false;
+		// An explicitly enrolled WordPress user may connect in the default
+		// delegation mode even without administrative privileges; actual MCP
+		// abilities still check their exact WordPress capabilities and scopes.
+		if ( $profile_configured && class_exists( 'MAD4B_SCP_Delegation_Mode' )
+			&& MAD4B_SCP_Delegation_Mode::DELEGATED === MAD4B_SCP_Delegation_Mode::selected_mode() ) {
+			// Explicit site operator restrictions remain effective. Only the
+			// historical implicit manage_options default is relaxed for enrolled
+			// readers; a site-defined cap or extension filter is never bypassed.
+			$explicit_connection_cap = defined( 'MAD4B_MCP_LOCAL_OAUTH_REQUIRED_CAPABILITY' )
+				|| ( function_exists( 'has_filter' )
+					&& false !== has_filter( 'mad4b_scp_connection_capability' ) );
+			if ( $explicit_connection_cap ) {
+				$required = self::connection_capability();
+				return user_can( $user, 'read' ) && '' !== $required && user_can( $user, $required );
+			}
+			return user_can( $user, 'read' );
 		}
-		return true;
+		$capability = self::connection_capability();
+		return '' !== $capability && user_can( $user, $capability );
 	}
 
 	public static function can_plan_mutations() {
@@ -101,9 +120,69 @@ final class MAD4B_SCP_Policy {
 		if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) || ! class_exists( 'MAD4B_SCP_Agent_Registry' ) ) return false;
 		$identity = MAD4B_SCP_Identity_Context::current();
 		if ( is_wp_error( $identity ) ) return false;
+		// A verified delegated user's live capabilities are an upper bound;
+		// independent NHI still uses its pre-existing exact agent/grant path.
+		if ( ! MAD4B_SCP_Delegation_Mode::principal_allowed( $identity ) ) return false;
+		// Actor enrollment occurs only at the exact prepared write dispatch
+		// boundary (or explicitly scoped direct content mutation). This read-like
+		// global predicate must never create a principal as a side effect.
 		$agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
 		if ( is_wp_error( $agent ) ) return false;
+		if ( ! MAD4B_SCP_Delegation_Mode::agent_matches_user( $identity, $agent ) ) return false;
 		return (bool) apply_filters( 'mad4b_scp_mutation_permission', true, get_current_user_id(), $agent, $identity );
+	}
+
+
+	/**
+	 * Trusted local WordPress-operator draft execution.
+	 *
+	 * WP-CLI is an explicitly privileged server operator channel, not an OAuth
+	 * impersonation shortcut: a real --user, current-site enrollment, site write
+	 * gate, active schema, exact post-type and per-post WordPress capability are
+	 * mandatory. This is limited to Staging draft/pending content and never
+	 * authorizes a remote MCP/REST request, public publication, or any other
+	 * Control Plane ability. Normal NHI/approval rules remain unchanged elsewhere.
+	 */
+	public static function can_native_content_draft( $input = array() ) {
+		if ( ! defined( 'WP_CLI' ) || true !== WP_CLI
+			|| ( defined( 'REST_REQUEST' ) && REST_REQUEST )
+			|| ! is_array( $input )
+			|| ! class_exists( 'MAD4B_SCP_Delegation_Mode' )
+			|| MAD4B_SCP_Delegation_Mode::DELEGATED !== MAD4B_SCP_Delegation_Mode::selected_mode() ) return false;
+		$gate = self::mutation_gate_status();
+		if ( empty( $gate['effective'] ) || 'staging' !== ( $gate['environment'] ?? '' )
+			|| ! class_exists( 'MAD4B_SCP_Schema' )
+			|| ! MAD4B_SCP_Schema::is_ready() ) return false;
+		$user_id = get_current_user_id();
+		if ( $user_id < 1 || ! self::can_connect_user( $user_id ) ) return false;
+		$type = sanitize_key( (string) ( $input['post_type'] ?? '' ) );
+		$obj = '' !== $type ? get_post_type_object( $type ) : null;
+		if ( ! $obj || ! post_type_exists( $type ) ) return false;
+		$post = is_array( $input['post'] ?? null ) ? $input['post'] : array();
+		$status = sanitize_key( (string) ( $post['post_status'] ?? 'draft' ) );
+		if ( ! in_array( $status, array( 'draft', 'pending' ), true ) ) return false;
+		$mode = sanitize_key( (string) ( $input['mode'] ?? 'create' ) );
+		if ( 'create' === $mode ) {
+			$cap = $obj->cap->create_posts ?? $obj->cap->edit_posts ?? '';
+			if ( '' === $cap || ! current_user_can( $cap )
+				|| ! empty( $input['post_id'] ) ) return false;
+		} elseif ( 'update' === $mode ) {
+			$id = absint( $input['post_id'] ?? 0 );
+			$target = $id > 0 ? get_post( $id ) : null;
+			if ( ! $target || $type !== $target->post_type
+				|| ! in_array( $target->post_status, array( 'draft', 'pending' ), true )
+				|| ! current_user_can( 'edit_post', $id ) ) return false;
+		} else {
+			return false;
+		}
+		if ( isset( $post['post_author'] ) && (int) $post['post_author'] !== $user_id ) {
+			$others = $obj->cap->edit_others_posts ?? '';
+			if ( '' === $others || ! current_user_can( $others ) ) return false;
+		}
+		// Last-mile site policy is deny-only. The normal bundle validator will
+		// still re-check exact plan hashes, taxonomy/meta capabilities, locks,
+		// source policies and operation journaling before writing any content.
+		return true === apply_filters( 'mad4b_scp_native_content_draft_allowed', true, $input, $user_id );
 	}
 
 	public static function can_developer_read() {

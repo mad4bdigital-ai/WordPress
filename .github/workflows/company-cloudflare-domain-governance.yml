@@ -1,0 +1,37 @@
+name: Cloudflare Company Domain REST Governance
+
+on:
+  pull_request:
+    paths:
+      - "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-domain-cloudflare.php"
+      - "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php"
+      - "wp-content/mu-plugins/mad4b-scp-cloudflare-staging-bridge.php"
+      - "tests/company-domain-cloudflare/**"
+      - "docs/commerce/cloudflare-company-domains-v1.md"
+      - ".github/workflows/company-cloudflare-domain-governance.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cloudflare-domain-contract:
+    name: Cloudflare company-domain REST contract PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ["7.4", "8.3"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: PHP lint and isolated Cloudflare REST contract
+        run: |
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-domain-cloudflare.php
+          php -l wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php
+          php -l wp-content/mu-plugins/mad4b-scp-cloudflare-staging-bridge.php
+          php tests/company-domain-cloudflare/test-company-domain-cloudflare.php

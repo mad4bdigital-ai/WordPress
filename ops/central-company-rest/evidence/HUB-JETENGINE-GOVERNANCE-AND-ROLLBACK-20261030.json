@@ -1,0 +1,107 @@
+{
+  "contract": "mad4b.hub.jetengine-native-consumer-governance-acceptance.v1",
+  "as_of": "2026-10-30",
+  "repository": "mad4bdigital-ai/WordPress",
+  "pr_number": 631,
+  "branch": "feature/central-company-rest-pairing-20261029",
+  "staging": "https://tours.dev.mad4b.com",
+  "change_type": "Revoke unapproved parallel Hub shortcode presentation; add governed native JetEngine REST consumer admission",
+  "rollback": {
+    "original_home_tours_template": 25917,
+    "restored_original_sha256": "d9059be305b86668e9dfbadb7d917b081b7ba96758a2a3cb13ae800e45b73f2f",
+    "preserved_original_elementor_widgets": [
+      "11456f6",
+      "78c6d0e",
+      "e3b8601"
+    ],
+    "homepage_post_id": 35138,
+    "homepage_original_and_unchanged": true,
+    "temporary_catalog_pages": {
+      "67883": "draft",
+      "67884": "draft"
+    },
+    "public_catalog_page_http": {
+      "en": 404,
+      "ar": 404
+    },
+    "temporary_mu_adapter": "220-mad4b-tourism-nile-catalog.php",
+    "adapter_active": false,
+    "adapter_source_deleted_from_pr": true,
+    "original_jet_smartfilters_preserved": true,
+    "original_jet_listinggrid_preserved": true,
+    "old_forced_container_removed": true,
+    "private_rollback_snapshot": "/opt/mad4b-company-release-prep/20261029/central-rest/nile-catalog-retirement-20261030/current-state.json",
+    "private_restore_receipt": "/opt/mad4b-company-release-prep/20261029/central-rest/nile-catalog-retirement-20261030/rollback-receipt.json",
+    "source_records_untouched": 417,
+    "production_mutation": false,
+    "esmerada_preview_exception": "Separate source-backed Esmerada legacy fallback remains for an existing redirected URL; not the approved distribution method. Requires dependency-safe retirement."
+  },
+  "control_plane": {
+    "source_file": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-hub-jetengine-consumer-governance.php",
+    "plugin_main_loader_updated": true,
+    "staging_main_sha256": "40a72eeb936b664a00daea664f3ba3dd3aae3892b4212b23e3f14169f1c039f9",
+    "policy_contract": "mad4b.hub.jetengine-native-consumer.v1",
+    "policy_http_route": "GET /wp-json/mad4b/v1/hub-jetengine-consumer/policy",
+    "plan_http_route": "POST /wp-json/mad4b/v1/hub-jetengine-consumer/validate",
+    "route_management_permission": "manage_options",
+    "anonymous_policy_status": 401,
+    "authorized_admin_status": 200,
+    "jetengine_native_rest_api_module_enabled": true,
+    "runtime_admission_default": "deny",
+    "admin_plan_review_side_effects": false,
+    "runtime_server_signed_source_authority_required": true,
+    "runtime_server_native_binding_authority_required": true,
+    "server_filter_proofs_default": false,
+    "per_php_request_authorization_only": true,
+    "scoped_remote_http_fence": {
+      "host": "tours.dev.mad4b.com",
+      "path_prefix": "/wp-json/mad4b-central/v1/hub-distribution/",
+      "unapproved_fetch_denied": true,
+      "denied_error": "mad4b_hub_jetengine_unapproved_remote_fetch",
+      "unrelated_center_route_unchanged": true,
+      "read_method_only": "GET"
+    },
+    "forbidden": [
+      "parallel_shortcode",
+      "standalone_frontend_section",
+      "bulk_company_database_copy",
+      "native_post_overwrite",
+      "duplicate_canonical_taxonomy",
+      "cross_tenant_brand_or_media",
+      "historical_rate_checkout",
+      "public_exposure_of_private_hub_cpt"
+    ],
+    "allowed_design": "signed Control Plane REST response consumed through existing JetEngine REST API Listings, Query Builder REST Query and existing Elementor Listing Grid; per-company WPML, taxonomy and JetSmartFilters mappings",
+    "client_signature_flag_accepted_as_proof": false
+  },
+  "tests": {
+    "valid_plan_only": "PASS",
+    "default_runtime_without_server_proof": "DENIED",
+    "parallel_shortcode": "DENIED",
+    "parallel_section": "DENIED",
+    "bulk_database_import": "DENIED",
+    "cross_tenant_brand_mutation": "DENIED",
+    "unsafe_historical_pricing": "DENIED",
+    "unapproved_media_import": "DENIED",
+    "wrong_source_company_url": "DENIED",
+    "url_query_credentials": "DENIED",
+    "missing_native_listing": "DENIED",
+    "consumer_identity_same_as_source": "DENIED",
+    "client_claimed_signature": "DENIED",
+    "malformed_taxonomy": "DENIED",
+    "forbidden_customer_email": "DENIED",
+    "missing_language_field": "DENIED",
+    "unapproved_direct_rest_http_fetch": "DENIED",
+    "unrelated_control_plane_rest_path": "UNAFFECTED"
+  },
+  "remaining_before_live_distribution": [
+    "Implement verified, scoped, authenticated hub-distribution REST collection endpoint",
+    "Bind signed Control Plane source authority and native JetEngine endpoint/query/listing proofs",
+    "Verify taxonomy and WPML mapping per company and source",
+    "Connect JetSmartFilters to actual REST query rather than native WP_Query",
+    "Verify response shape, pagination, cache, language, mobile/desktop, media and rollback",
+    "Require PR CI and owner exact-head approval prior to Production"
+  ],
+  "rollout_state": "STAGING_READ_ONLY_GOVERNANCE_ACTIVE__DISTRIBUTION_DENIED_UNTIL_SIGNED_SERVER_PROOFS",
+  "prod_untouched": true
+}

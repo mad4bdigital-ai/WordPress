@@ -2,7 +2,7 @@
   "schema": "mad4b.commerce-composition.release-snapshot.v1",
   "release_state": "lab_source_snapshot_not_production_authorized",
   "plugin_slug": "commerce-composition",
-  "source_count": 73,
+  "source_count": 79,
   "source_files": [
     {
       "path": "bin/process-workflow-queue.php",
@@ -16,8 +16,8 @@
     },
     {
       "path": "composition.php",
-      "sha256": "8cd1f9aa5b818c8c289a41ff450bad1a4e5732dfac2cda6f37e4eebd1829f02e",
-      "bytes": 8863
+      "sha256": "b0f67477a473e76a873fcc089360eb3c195b7d50a85ad24f9842079a001df18e",
+      "bytes": 10065
     },
     {
       "path": "includes/Admin.php",
@@ -155,6 +155,11 @@
       "bytes": 6037
     },
     {
+      "path": "includes/FluentInquiryCrmIntegration.php",
+      "bytes": 8863,
+      "sha256": "1e87f1f0a4d37ce168cf4c59c0358c5e196aabc67eaa251cf76e3431d80dee19"
+    },
+    {
       "path": "includes/FluentSubmissionAdapter.php",
       "sha256": "bbd276b5817b231ad25738f676b028ca982ef4c462b28c91a369e35a495a93d1",
       "bytes": 7930
@@ -185,9 +190,19 @@
       "bytes": 17466
     },
     {
+      "path": "includes/InquiryPhaseOperations.php",
+      "bytes": 11315,
+      "sha256": "2398782714ca57e3a1ba3b705f359f99b17bea4c4c00646aa9fb12eacb186148"
+    },
+    {
       "path": "includes/InquiryQualification.php",
-      "sha256": "1bab280d788e07250333f462d327366d1de6ce522f377e71f1fbb746213c134e",
-      "bytes": 13607
+      "sha256": "3dcca8b122554dc74f8603978fef6673c6018e74bf94afb34a89d53a3a97660f",
+      "bytes": 13660
+    },
+    {
+      "path": "includes/InquirySelectionSnapshot.php",
+      "bytes": 14624,
+      "sha256": "bae456d76a53d15c288c986eff8462c6cef2a8c7aeb036ab626b6fa03a513c27"
     },
     {
       "path": "includes/IntakeCaseApi.php",
@@ -245,6 +260,11 @@
       "bytes": 4386
     },
     {
+      "path": "includes/ProductFormSourceReceipt.php",
+      "bytes": 5927,
+      "sha256": "92fb8127066c9971e3f1bc8c03ee295b41c48cfa13d37792a7c00d526bb450a6"
+    },
+    {
       "path": "includes/PropertyUnitSourceCertification.php",
       "bytes": 3113,
       "sha256": "ce486a0cbc9a4815eb61dd07efc6920a22a66fe15ce880b90a28c75df0b378ba"
@@ -290,14 +310,24 @@
       "bytes": 6549
     },
     {
+      "path": "includes/RequestMailReply.php",
+      "bytes": 14039,
+      "sha256": "d064081edb2272ae9eb1e1670810bc5e87079c03244db487d110187e8e043bec"
+    },
+    {
+      "path": "includes/RequestMailReplyAdmin.php",
+      "bytes": 4733,
+      "sha256": "b01a3ff0262824582e2002159bf270b7f6044723a1bcab13c2515070e960b57d"
+    },
+    {
       "path": "includes/RequestReview.php",
       "sha256": "97c42f88467f58540e2b8ed8fa76d8f842a3ae3b1c9224e696b0d3bef7a061cf",
       "bytes": 13644
     },
     {
       "path": "includes/RequestReviewAdmin.php",
-      "sha256": "fb81a3ea69f654b7e496f8b71596cd408f2e20cd47bb18ac243411658d4fdd04",
-      "bytes": 18684
+      "sha256": "10166525dd9f2c423e60ad864b7abbde2e7d0bc0cbfc51ff414866735eff1310",
+      "bytes": 18969
     },
     {
       "path": "includes/RequestReviewApi.php",

@@ -1,0 +1,230 @@
+{
+  "contract": "mad4b.tour-lifecycle-stage-catalog.v1",
+  "authorizing": false,
+  "environment_default": "staging",
+  "source_locale": "en",
+  "ordering": "strict_dependencies_with_selective_replan",
+  "stages": [
+    {
+      "ordinal": 1,
+      "id": "source_discovery",
+      "mode": "research",
+      "gate": "source_rights",
+      "depends_on": [],
+      "state": "not_started",
+      "implemented": false
+    },
+    {
+      "ordinal": 2,
+      "id": "market_competitor_dominating",
+      "mode": "research",
+      "gate": "claim_evidence",
+      "depends_on": [
+        "source_discovery"
+      ],
+      "state": "not_started",
+      "implemented": false
+    },
+    {
+      "ordinal": 3,
+      "id": "content_intelligence",
+      "mode": "research",
+      "gate": "originality_and_factuality",
+      "depends_on": [
+        "market_competitor_dominating"
+      ],
+      "state": "not_started",
+      "implemented": false
+    },
+    {
+      "ordinal": 4,
+      "id": "data_mapping",
+      "mode": "plan",
+      "gate": "provider_schema",
+      "depends_on": [
+        "content_intelligence"
+      ],
+      "state": "not_started",
+      "implemented": false
+    },
+    {
+      "ordinal": 5,
+      "id": "jetengine_woocommerce_fields",
+      "mode": "mutation",
+      "gate": "write_authority",
+      "depends_on": [
+        "data_mapping"
+      ],
+      "state": "not_started",
+      "implemented": false
+    },
+    {
+      "ordinal": 6,
+      "id": "prices_itineraries",
+      "mode": "mutation",
+      "gate": "supplier_commercial",
+      "depends_on": [
+        "jetengine_woocommerce_fields"
+      ],
+      "state": "not_started",
+      "implemented": false
+    },
+    {
+      "ordinal": 7,
+      "id": "wpml",
+      "mode": "mutation",
+      "gate": "locale_mapping",
+      "depends_on": [
+        "prices_itineraries"
+      ],
+      "state": "not_started",
+      "implemented": false
+    },
+    {
+      "ordinal": 8,
+      "id": "media_scraping_importing",
+      "mode": "mutation",
+      "gate": "operator_responsibility_and_technical_safety",
+      "depends_on": [
+        "wpml"
+      ],
+      "state": "not_started",
+      "implemented": false,
+      "policy": {
+        "license_document_required": false,
+        "rights_verification_required_for_staging_import": false,
+        "operator_assertion_required": true,
+        "source_provenance_required": true,
+        "known_takedown_blocks": true,
+        "known_legal_prohibition_blocks": true,
+        "ssrf_and_malware_checks_required": true,
+        "publication_separate": true,
+        "unverified_rights_permitted_for_staging": true
+      }
+    },
+    {
+      "ordinal": 9,
+      "id": "elementor_qa",
+      "mode": "verification",
+      "gate": "render_and_accessibility",
+      "depends_on": [
+        "media_scraping_importing"
+      ],
+      "state": "not_started",
+      "implemented": false
+    },
+    {
+      "ordinal": 10,
+      "id": "approval",
+      "mode": "approval",
+      "gate": "reviewer_signature",
+      "depends_on": [
+        "elementor_qa"
+      ],
+      "state": "not_started",
+      "implemented": false
+    },
+    {
+      "ordinal": 11,
+      "id": "publication",
+      "mode": "mutation",
+      "gate": "publication_authority",
+      "depends_on": [
+        "approval"
+      ],
+      "state": "not_started",
+      "implemented": false
+    },
+    {
+      "ordinal": 12,
+      "id": "post_publish_monitoring",
+      "mode": "monitoring",
+      "gate": "scheduled_observation",
+      "depends_on": [
+        "publication"
+      ],
+      "state": "not_started",
+      "implemented": false
+    }
+  ],
+  "global_fences": [
+    "exact_tenant_site_environment_binding",
+    "independent_per_stage_approval",
+    "provider_capability_discovery",
+    "source_rights_and_commercial_truth",
+    "bounded_io_and_no_ssrf",
+    "versioned_hash_lineage",
+    "idempotency_and_compensation",
+    "no_implicit_publish"
+  ],
+  "plan_preflight": {
+    "required": [
+      "principal_identity_and_enrollment",
+      "target_site_tenant_environment",
+      "restore_epoch_ready_and_binding",
+      "mcp_peer_inventory_and_foreign_transport_classification",
+      "provider_discovery_and_capabilities",
+      "source_rights_and_robots_policy",
+      "required_credentials_present_without_disclosure",
+      "per_provider_rate_limits_and_budgets",
+      "operation_journal_and_idempotency",
+      "rollback_or_compensation_contract",
+      "upstream_stage_artifacts_and_dependency_hashes",
+      "approval_class_and_missing_evidence"
+    ],
+    "authorizing": false,
+    "render_blockers_with_owner": true,
+    "reevaluate_at_apply": true,
+    "fail_closed_on_drift": true
+  },
+  "providers": [
+    {
+      "id": "firecrawl",
+      "family": "research_crawl",
+      "display_name": "Firecrawl",
+      "stages": [
+        "source_discovery",
+        "market_competitor_dominating",
+        "content_intelligence",
+        "media_scraping_importing",
+        "post_publish_monitoring"
+      ],
+      "capabilities": [
+        "search",
+        "scrape",
+        "map",
+        "crawl",
+        "extract"
+      ],
+      "transport": "outbound_https_scoped",
+      "credential_ref": "secret://providers/firecrawl/api_key",
+      "credential_resolution": "runtime_only",
+      "scope": "site_tenant",
+      "enabled_by_default": false,
+      "mode": "discovery_only_until_certified"
+    },
+    {
+      "id": "serp_search",
+      "family": "search_results",
+      "display_name": "SERP API provider (Serph naming pending verification)",
+      "stages": [
+        "source_discovery",
+        "market_competitor_dominating",
+        "content_intelligence",
+        "post_publish_monitoring"
+      ],
+      "capabilities": [
+        "organic_search",
+        "keyword_serp",
+        "regional_locale_serp",
+        "competitor_position_observation"
+      ],
+      "transport": "outbound_https_scoped",
+      "credential_ref": "secret://providers/serp_search/api_key",
+      "credential_resolution": "runtime_only",
+      "scope": "site_tenant",
+      "enabled_by_default": false,
+      "mode": "provider_endpoint_and_identity_confirmation_required"
+    }
+  ]
+}

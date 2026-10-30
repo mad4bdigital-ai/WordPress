@@ -128,6 +128,27 @@ for filename, slug in (
     if 'MAD4B_SCP_Admin_Route_Registry::schedule_submenu(' not in src:
         raise SystemExit('FAIL direct admin submenu bypass: ' + slug)
 
+# Principal-mode settings must be discoverable in the same canonical
+# navigation manifest as the full/zero-touch admin shell. The real callback
+# must be registered through the ordered route registry, not a direct hook.
+manifest = (root / 'includes/class-mad4b-scp-admin-navigation-manifest.php').read_text(encoding='utf-8')
+delegation = (root / 'includes/class-mad4b-scp-delegation-mode.php').read_text(encoding='utf-8')
+for marker in (
+    "'mad4b-mcp-principal-mode' => array(",
+    "'connect', '', array()",
+):
+    if marker not in manifest:
+        raise SystemExit('FAIL delegated principal mode missing canonical navigation: ' + marker)
+for marker in (
+    "const PAGE_SLUG = 'mad4b-mcp-principal-mode';",
+    "MAD4B_SCP_Admin_Route_Registry::register( self::PAGE_SLUG, 'manage_options' );",
+    "MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'menu' ) );",
+    "MAD4B_SCP_Admin_Navigation_Manifest::PARENT",
+    "'manage_options', self::PAGE_SLUG, array( __CLASS__, 'page' )",
+):
+    if marker not in delegation:
+        raise SystemExit('FAIL delegated mode bypasses governed page route: ' + marker)
+
 if checked < 14:
     raise SystemExit('FAIL incomplete admin page inventory')
 print(f'Admin route link contract: PASS ({checked} page declarations)')

@@ -1,0 +1,33 @@
+name: Shared Company Template Identity
+
+on:
+  pull_request:
+    paths:
+      - "wp-content/mu-plugins/mad4b-company-template-identity.php"
+      - "tests/company-template-identity/**"
+      - "docs/commerce/shared-company-template-text-inheritance-v1.md"
+      - ".github/workflows/company-template-identity.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  identity-text-only:
+    name: Company text identity on PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ["7.4", "8.3"]
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: PHP syntax
+        run: php -l wp-content/mu-plugins/mad4b-company-template-identity.php
+      - name: Public company identity and Elementor structure preservation
+        run: php tests/company-template-identity/test-company-template-identity.php

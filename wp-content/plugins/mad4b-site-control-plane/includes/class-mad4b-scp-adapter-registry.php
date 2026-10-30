@@ -6,6 +6,7 @@ require_once __DIR__ . '/adapters/class-mad4b-scp-core-content-modeling-adapter.
 require_once __DIR__ . '/adapters/class-mad4b-scp-dynamic-content-adapter.php';
 require_once __DIR__ . '/adapters/class-mad4b-scp-dynamic-recovery-adapter.php';
 require_once __DIR__ . '/class-mad4b-scp-external-adapter-trust.php';
+require_once __DIR__ . '/class-mad4b-scp-native-ability-trust.php';
 
 final class MAD4B_SCP_Adapter_Registry {
 	private static $instance;
@@ -210,6 +211,7 @@ final class MAD4B_SCP_Adapter_Registry {
 		$this->register_defaults();
 		$this->register_registry_ability( 'mad4b/adapters-inventory', 'Adapters Inventory', 'inventory', 'List registered MAD4B adapters and their runtime availability/reversible contracts.' );
 		$this->register_registry_ability( 'mad4b/adapter-candidates', 'Unreviewed Adapter Candidates', 'candidate_inventory', 'Observe safe metadata-only named and anonymous Adapter candidates, never grant or execute their callbacks.' );
+		$this->register_registry_ability( 'mad4b/native-capability-registry', 'Owner-Verified Native Ability Registry', 'native_capability_registry', 'Discover WordPress Abilities and report exact owner-pinned read-source eligibility without executing a callback or approving write scope.', array( 'type'=>'object', 'additionalProperties'=>false, 'properties'=>array( 'prefix'=>array('type'=>'string','maxLength'=>64), 'limit'=>array('type'=>'integer','minimum'=>1,'maximum'=>96), 'offset'=>array('type'=>'integer','minimum'=>0,'maximum'=>10000) ) ) );
 		$this->register_registry_ability( 'mad4b/plugin-adapter-coverage', 'Plugin Adapter Coverage', 'plugin_coverage', 'Discover installed plugins and classify their governed adapter coverage without installing, enabling or generating code.' );
 		$this->register_registry_ability( 'mad4b/adapter-support-requests', 'Adapter Support Requests', 'adapter_support_requests', 'Return deterministic read-only support requirements for plugins that need an adapter, provider certification, reversible certification, or side-channel isolation.' );
 		$this->register_registry_ability( 'mad4b/provider-functional-coverage', 'Provider Functional Coverage', 'provider_functional_coverage', 'Show capability-level provider coverage, status-only candidates, safety blockers and next safe actions.' );
@@ -272,8 +274,13 @@ final class MAD4B_SCP_Adapter_Registry {
 			'unknown_adapter_discovery_supported' => true,
 			'new_candidate_write_enabled' => false,
 			'registration_policy' => 'source_reviewed_bundled_or_owner_pinned_external',
-			'external_admission' => MAD4B_SCP_External_Adapter_Trust::status() );
+			'external_admission' => MAD4B_SCP_External_Adapter_Trust::status(),
+			'native_ability_admission' => 'owner_pinned_manifest_required',
+			'native_ability_discovery_not_execution' => true );
 	}
+	public function native_capability_registry( $input=array() ) {
+        return MAD4B_SCP_Native_Ability_Trust::catalog( $input );
+    }
 	public function plugin_coverage() {
 		return class_exists( 'MAD4B_SCP_Plugin_Discovery' ) ? MAD4B_SCP_Plugin_Discovery::coverage() : array( 'contract' => 'mad4b.plugin-adapter-discovery.v1', 'discovery_only' => true, 'error' => 'plugin_discovery_unavailable' );
 	}

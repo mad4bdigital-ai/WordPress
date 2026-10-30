@@ -1,0 +1,46 @@
+name: Company Kit Navigation and Mobile Tour TOC
+
+on:
+  pull_request:
+    paths:
+      - "wp-content/mu-plugins/199-mad4b-client-header-and-tour-toc.php"
+      - "wp-content/mu-plugins/assets/mad4b-header-tour-ux.css"
+      - "wp-content/mu-plugins/assets/mad4b-mobile-tour-toc.js"
+      - "governance/ui/elementor-kit-navigation-tokens-v1.json"
+      - "scripts/audit_company_navigation_kit.php"
+      - "scripts/reconcile_wo_staging_kit_duplicates.php"
+      - "wp-content/mu-plugins/198-mad4b-elementor-kit-integrity.php"
+      - "tests/ui-kit-navigation/**"
+      - ".github/workflows/company-kit-navigation-toc.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  company-kit-navigation:
+    name: Kit menu + nested TOC (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ["7.4", "8.3"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: PHP syntax and no-mutation contracts
+        run: |
+          php -l wp-content/mu-plugins/199-mad4b-client-header-and-tour-toc.php
+          php -l scripts/audit_company_navigation_kit.php
+          php -l scripts/reconcile_wo_staging_kit_duplicates.php
+          php -l wp-content/mu-plugins/198-mad4b-elementor-kit-integrity.php
+          php tests/ui-kit-navigation/test-kit-integrity.php
+          php tests/ui-kit-navigation/test-header.php
+      - name: Node Kit tokens / UI behavior / TOC safety
+        run: |
+          node --check wp-content/mu-plugins/assets/mad4b-mobile-tour-toc.js
+          node tests/ui-kit-navigation/test-kit-toc.js

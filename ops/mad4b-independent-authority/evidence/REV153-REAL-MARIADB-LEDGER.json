@@ -1,0 +1,30 @@
+{
+  "contract": "rev153.ssh-recreated-ledger-mariadb.v1",
+  "status": "PASS",
+  "passed": 18,
+  "total": 18,
+  "checks": {
+    "test_policy_signed_permit": true,
+    "signed_permit_registered": true,
+    "duplicate_nonce_rejected": true,
+    "registered_event": true,
+    "cross_tenant_denied": true,
+    "artifact_drift_denied": true,
+    "plan_drift_denied": true,
+    "real_innodb_lock_denied": true,
+    "one_reservation_wins": true,
+    "reservation_replay_rejected": true,
+    "reserved_cannot_revoke": true,
+    "reservation_audited": true,
+    "unsigned_completion_denied": true,
+    "wrong_reservation_token_denied": true,
+    "signed_completion_fences_database": true,
+    "completion_replay_denied": true,
+    "applied_state_with_three_events": true,
+    "secrets_not_exposed": true
+  },
+  "test_only": true,
+  "real_authority_mutated": false,
+  "operational_ca_enrolled": false,
+  "deployment_performed": false
+}

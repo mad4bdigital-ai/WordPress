@@ -1,0 +1,49 @@
+name: MAD4B QA31 RC118 Staging Source Intake
+on:
+  pull_request:
+    paths:
+      - 'ops/qa31/rc118-source-intake/**'
+      - 'tests/qa31_rc118_unexecuted_source_intake_contract.py'
+      - 'tests/qa31_rc118_runtime_drift_lineage_contract.py'
+      - 'tests/qa31_rc118_security_boundary_source_contract.py'
+      - 'tests/qa31_rc118_source_reconciliation_worklist_contract.py'
+      - 'docs/qa31/rc118-source-intake-review-20261029.md'
+      - '.github/workflows/mad4b-qa31-rc118-source-intake.yml'
+permissions:
+  contents: read
+concurrency:
+  group: qa31-rc118-intake-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+jobs:
+  source-intake-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.3', '8.5']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Install runtime for syntax checking only
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          tools: none
+      - name: Verify non-authorizing SHA-pinned intake
+        run: |
+          set -euo pipefail
+          python3 tests/qa31_rc118_unexecuted_source_intake_contract.py
+          python3 tests/qa31_rc118_runtime_drift_lineage_contract.py
+          python3 tests/qa31_rc118_security_boundary_source_contract.py
+          python3 tests/qa31_rc118_source_reconciliation_worklist_contract.py
+          php -l ops/qa31/rc118-source-intake/source/class-mad4b-scp-native-ability-trust.php.txt
+          for f in ops/qa31/rc118-source-intake/source/*.php; do php -l "$f"; done
+          for stage in snapshot-20261028 observed-staging-20261029; do
+            for f in ops/qa31/rc118-source-intake/lineage/"$stage"/*.php.txt ops/qa31/rc118-source-intake/lineage/"$stage"/includes/*.php.txt; do
+              test -f "$f"
+              php -l "$f"
+            done
+          done

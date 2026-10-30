@@ -1,0 +1,164 @@
+{
+  "contract": "mad4b.elementor-kit-navigation-tokens.v1",
+  "status": "source_controlled_company_design_governance",
+  "scope": "All shared company navigation widgets, header preference controls and tour TOC across WPML locales; one WordPress site per company",
+  "authority": {
+    "company_kit": "Use Elementor active Kit as the only brand-color/typography authority. Source name, visual palette and menu states are never copied from another company's demo.",
+    "colors": {
+      "normal": "globals/colors?id=text",
+      "hover": "globals/colors?id=secondary",
+      "active": "globals/colors?id=accent",
+      "focus": "globals/colors?id=accent",
+      "pointer": "globals/colors?id=accent",
+      "surface": "globals/colors?id=bnav001"
+    },
+    "typography": "Use globals/typography?id=text or relevant active Kit typography token, not standalone font or hardcoded named brand",
+    "layout": "Component-specific responsive layout may define padding, radius, height and scroll; these are nonbrand UX dimensions requiring separate review if changed",
+    "customer_labels": "Public client control is localized as Passport; backend market_country and nationality fields retain existing verified meanings",
+    "no_color_literals": "No brand hex/rgb named literals in new navigation/TOC company CSS. Neutral shadow alpha is documented as a non-brand visual affordance."
+  },
+  "templates": {
+    "tour_content_ids": [
+      24784,
+      42179,
+      35121,
+      35123,
+      35119,
+      40121
+    ],
+    "nav_menu_element": "9757cf2",
+    "toc_element": "b29a19b",
+    "fields": {
+      "9757cf2": {
+        "color_menu_item": "text",
+        "color_menu_item_active": "accent",
+        "pointer_color_menu_item_active": "accent",
+        "toggle_background_color": "bnav001",
+        "toggle_color": "text",
+        "background_color_dropdown_item": "bnav001",
+        "nav_menu_divider_color": "accent"
+      },
+      "b29a19b": {
+        "item_text_color_normal": "text",
+        "item_text_color_active": "accent",
+        "marker_color": "accent",
+        "border_color": "accent",
+        "background_color": "bnav001"
+      }
+    },
+    "geometry_policy": "Only change settings.__globals__ colors in source templates with exact ID and source expected; do not change widget types, headings, price fields, links, nested order or Elementor JSON elsewhere",
+    "real_header_mega_menu": {
+      "widget_id": "6072b3f",
+      "template_ids": [
+        26212,
+        43484,
+        43486,
+        43488,
+        43490,
+        43492
+      ],
+      "require_global_colors": {
+        "menu_item_title_text_color_normal": "primary",
+        "menu_item_title_text_color_hover": "accent",
+        "menu_item_title_text_color_active": "secondary",
+        "menu_toggle_icon_color_normal": "primary"
+      },
+      "require_typography": "globals/typography?id=text",
+      "forbid_raw_setting_names": [
+        "menu_item_title_text_color_normal",
+        "menu_item_title_text_color_hover",
+        "menu_item_title_text_color_active",
+        "menu_toggle_icon_color_normal"
+      ],
+      "forbid_setting_prefixes": [
+        "menu_item_title_typography_"
+      ],
+      "exception": "__globals__.menu_item_title_typography_typography is required",
+      "underline_css_target": ".elementor-location-header .elementor-element-6072b3f .e-n-menu-title > .e-n-menu-title-container::after",
+      "verified_changes": "Six WPML headers: 24 hardcoded color fields removed, 36 independent typography settings removed, Kit typography and existing color token binds preserved"
+    }
+  },
+  "kit_integrity": {
+    "required_system_tokens": [
+      "primary",
+      "secondary",
+      "text",
+      "accent"
+    ],
+    "required_unique_custom_tokens": [
+      "bnav001"
+    ],
+    "current_legacy_duplicate_ids": [],
+    "provisioning_policy": "BLOCK onboarding on any duplicate _id, missing required semantic token or missing unique bnav001. Current Staging is now valid after reconciliation. External site provisioning must call admission.",
+    "existing_site_policy": "Reconciled live site on 2026-10-30. New duplicate or missing semantic tokens are blocked on Kit save by MU plugin; no legacy debt remains for this Kit.",
+    "kit_save_policy": "Any intended Kit change requires source-backed diff and distinct authorized design approval; never promote demo-only palette to another tenant",
+    "fallback": "If semantic global is missing, flag invalid configuration instead of using a second company's palette",
+    "reconciled_duplicate_ids": [
+      "e14cd5e",
+      "80789f7",
+      "62e8100",
+      "272e6c6",
+      "6f02953",
+      "0ce0fb4",
+      "3a5c55e",
+      "c18767c",
+      "e3861c0",
+      "9f7c109",
+      "36b053a",
+      "a558f6f",
+      "887fd61"
+    ],
+    "exact_reconciliation_site": "tours.dev.mad4b.com",
+    "exact_reconciliation_kit_id": 60050,
+    "before_custom_color_count": 56,
+    "after_custom_color_count": 19,
+    "removed_redundant_rows": 37,
+    "reconciliation_rule": "Keep last definition per ID, only after public rendered CSS verifies it equals last definition; no template source changes.",
+    "winner_values": {
+      "e14cd5e": "#F6AE22",
+      "80789f7": "#F9F7F5",
+      "62e8100": "#D9D1CA",
+      "272e6c6": "#EDE0CF",
+      "6f02953": "#4E596A",
+      "0ce0fb4": "#FFFFFF",
+      "3a5c55e": "#FBFBFB",
+      "c18767c": "#9FA1AC",
+      "e3861c0": "#FFFCF4",
+      "9f7c109": "#5D452F",
+      "36b053a": "#474035",
+      "a558f6f": "#D4B483",
+      "887fd61": "#78614C"
+    },
+    "runtime_guard": {
+      "wp_mu_plugin": "wp-content/mu-plugins/198-mad4b-elementor-kit-integrity.php",
+      "actions": [
+        "elementor/document/save/data",
+        "update_post_metadata",
+        "add_post_metadata",
+        "rest_request_before_callbacks for /mad4b/v1/company-activation/commit"
+      ],
+      "admission_function": "mad4b_kit_integrity_admission()",
+      "new_site_provisioning": "External site-creation pipeline is a separate authority: must invoke admission on target site. Do not claim it is coupled to this WordPress company-operations activation endpoint.",
+      "direct_sql": "Not intercepted. Run governed source-based migrations rather than raw writes.",
+      "required": "all intended company Kit saves and native company-operations activation fail closed on invalid palette"
+    }
+  },
+  "mobile_toc": {
+    "scope": "body.single-tours-and-activities and viewport width <=767px",
+    "behavior": "HTML details disclosure closed by default; section groups with nested native anchor links, scroll cap 58dvh, proper keyboard semantics",
+    "source": "Existing Elementor TOC anchor links; no new or altered heading ids; desktop retains native TOC when viewport changes",
+    "locale": "EN AR FR DE IT ES, labels from current HTML language",
+    "fallback": "If native TOC has no links yet, retain existing Elementor markup; augment only after anchors are available"
+  },
+  "release_gate": [
+    "Verify same-target host and site identity with company/site_uuid for all writes",
+    "Snapshot source metadata in memory, exact compare-and-swap updates, readback",
+    "Audit active Kit semantic tokens and list duplicate custom IDs",
+    "Block new nonsemantic or ambiguous Kit color bindings in shared company navigation widgets",
+    "CSS and runtime JS only for documented header/menu/TOC components, with mobile scope; no Elementor node redesign",
+    "Check hover/focus/active and dropdown at desktop, native TOC restored on resize, mobile nested anchors work",
+    "All six WPML templates have same global color refs and independent translated copy",
+    "PR CI before promotion, no Production write without authorized deployment approval",
+    "Verify live Elementor Mega Menu widget 6072b3f on all six WPML headers: no literal brand colors, no custom Cairo typography, active/hover/focus and Kit text typography inherited"
+  ]
+}

@@ -1,0 +1,368 @@
+{
+  "contract": "mad4b.company-clone-field-source-governance.v1",
+  "status": "proposed_source_controlled_policy_no_runtime_apply",
+  "issue": "https://github.com/mad4bdigital-ai/WordPress/issues/626",
+  "evidence": {
+    "target_site": "tours.dev.mad4b.com",
+    "demo_brand_desired": "Wo Vacation",
+    "staging_brand_at_census": "Egypt Tour Gates",
+    "observed_at_utc_date": "2026-10-29",
+    "raw_census_sha256": "7d9401c5748dab414fb883b2b46c65d9c9c5c1c8857e651dd7fd73fb7c604291",
+    "source_occurrences": 4837,
+    "option_keys": 2461,
+    "postmeta_type_key_pairs": 801,
+    "termmeta_taxonomy_key_pairs": 148,
+    "usermeta_keys": 253,
+    "provider_tables": 111,
+    "nested_keys_explicit": 85,
+    "unclassified_provisional": 2008,
+    "jetengine_registered_pages": 11,
+    "jetengine_registered_top_level_fields": 180,
+    "jetengine_registered_repeater_child_fields": 64,
+    "jetengine_legacy_stored_only_keys": 3,
+    "language_fr_now_visible": true
+  },
+  "semantics": {
+    "SHARED_DEFINITION": "Copy approved neutral schema, headings and component structure only; scrub media, content references, provider IDs and URLs",
+    "TENANT_SOURCE": "Provision from new company's authoritative source; may be blank on demo if no verified value",
+    "TENANT_MEDIA": "Use destination company-owned media and media-source provenance; never reuse an originating company photo gallery or local attachment ID",
+    "RECONNECT_PROVIDER": "Disconnect original account and require new-company account consent, credentials and verified ownership",
+    "NO_CROSS_TENANT_COPY": "No customers, submissions, orders, bookings, payment tokens, credentials, events, grants, runtime audits or person-specific data",
+    "SANDBOX_ONLY": "Test fixtures belong only in isolated test database",
+    "REBUILD": "Regenerate caches, CSS artifacts, job state and indexes for destination",
+    "REMAP_GEO": "Copy global geography semantics only; map site/language-specific term IDs and treat term media as tenant-owned",
+    "REVIEW_REQUIRED": "Stop cloning this source until independently classified"
+  },
+  "default_unknown_action": "REVIEW_REQUIRED",
+  "origin": {
+    "wordpress_environment": "staging",
+    "current_database_role": "etg_commerce_staging",
+    "allowed_use": "inventory and planning only",
+    "disallowed_actions": [
+      "Production mutation",
+      "bulk SQL copy",
+      "clone credentials",
+      "copy media/gallery bindings",
+      "copy same origin site UUID",
+      "enable sending before provider reconnect"
+    ],
+    "core_demo_site_name_alignment_verified": true,
+    "full_demo_brand_neutralization_verified": false,
+    "verified_name_sources": [
+      "wp_options.blogname",
+      "elementor_active_kit_60050.site_name",
+      "WPML.WP_Blog_Title",
+      "rank_math.knowledgegraph_name",
+      "rank_math.website_name"
+    ],
+    "legacy_company_contact_media_provider_bindings_pending": true
+  },
+  "core_wordpress_options": {
+    "blogname": "TENANT_SOURCE",
+    "blogdescription": "TENANT_SOURCE",
+    "home": "TENANT_SOURCE",
+    "siteurl": "TENANT_SOURCE",
+    "admin_email": "TENANT_SOURCE",
+    "site_icon": "TENANT_MEDIA",
+    "timezone_string": "TENANT_SOURCE"
+  },
+  "nested_options": {
+    "contact-and-help-info": {
+      "support_group_url": "TENANT_SOURCE",
+      "support_chat_url": "RECONNECT_PROVIDER",
+      "support_group_url_aria_label": "TENANT_SOURCE",
+      "card-as-action1": "REVIEW_REQUIRED",
+      "trip_advisor_review_shortcode": "RECONNECT_PROVIDER",
+      "site_icon_512x512": "TENANT_MEDIA",
+      "site_icon_280x100_site_header": "TENANT_MEDIA",
+      "site_whatsapp_num": "TENANT_SOURCE",
+      "site_wa_tel_link": "TENANT_SOURCE",
+      "site_email": "TENANT_SOURCE",
+      "site_email_link": "TENANT_SOURCE",
+      "site_location_address": "TENANT_SOURCE",
+      "site_location_address_link": "TENANT_SOURCE",
+      "social_links": "TENANT_SOURCE",
+      "site_facebook_page_link": "RECONNECT_PROVIDER",
+      "site_instagram_page_link": "RECONNECT_PROVIDER"
+    },
+    "look-and-feel": {
+      "home_page_header_image": "TENANT_MEDIA",
+      "tour_search_header_image": "TENANT_MEDIA",
+      "continents_archive_header_image": "TENANT_MEDIA",
+      "countries_archive_header_image": "TENANT_MEDIA",
+      "cities_archive_header_image": "TENANT_MEDIA",
+      "location_archive_header_image": "TENANT_MEDIA",
+      "attraction_archive_header_image": "TENANT_MEDIA",
+      "tours_archive_header_image": "TENANT_MEDIA",
+      "properties_archive_header_image": "TENANT_MEDIA",
+      "units_archive_header_image": "TENANT_MEDIA",
+      "transportations_archive_header_image": "TENANT_MEDIA",
+      "transportations_companies_archive_header_image": "TENANT_MEDIA",
+      "dmcs_archive_header_image": "TENANT_MEDIA",
+      "drivers_archive_header_image": "TENANT_MEDIA",
+      "jops_archive_header_image": "TENANT_MEDIA",
+      "guides_archive_header_image": "TENANT_MEDIA",
+      "busness_reviews_section": "TENANT_SOURCE",
+      "review_hero_image": "TENANT_MEDIA",
+      "company_about_customization": "TENANT_MEDIA",
+      "review_gellery_slider": "TENANT_MEDIA",
+      "destination_next_trip_heading": "TENANT_SOURCE",
+      "destination_next_trip_subheading": "TENANT_SOURCE",
+      "destination_stays_heading": "TENANT_SOURCE",
+      "destination_transport_heading": "TENANT_SOURCE",
+      "destination_tours_heading": "TENANT_SOURCE",
+      "destination_quote_cta_label": "TENANT_SOURCE",
+      "destination_services_note": "TENANT_SOURCE",
+      "destination_no_results_label": "TENANT_SOURCE",
+      "destination_road_heading": "TENANT_SOURCE",
+      "destination_rail_heading": "TENANT_SOURCE",
+      "destination_air_heading": "TENANT_SOURCE",
+      "company_pattern_preset": "TENANT_SOURCE",
+      "company_pattern_accent": "TENANT_SOURCE",
+      "company_pattern_strength": "TENANT_SOURCE",
+      "company_pattern_media": "TENANT_MEDIA",
+      "company_pattern_mobile": "TENANT_SOURCE",
+      "destination_activity_card_primary": "TENANT_SOURCE",
+      "presentation_home_media_tab": "SHARED_DEFINITION",
+      "presentation_home_media_tab_section_intro": "SHARED_DEFINITION",
+      "presentation_destinations_tab": "SHARED_DEFINITION",
+      "presentation_destinations_tab_section_intro": "SHARED_DEFINITION",
+      "presentation_product_archives_tab": "SHARED_DEFINITION",
+      "presentation_product_archives_tab_section_intro": "SHARED_DEFINITION",
+      "busness_reviews_section_section_intro": "SHARED_DEFINITION",
+      "presentation_tours_copy_tab": "SHARED_DEFINITION",
+      "presentation_tours_copy_tab_section_intro": "SHARED_DEFINITION",
+      "presentation_stays_copy_tab": "SHARED_DEFINITION",
+      "presentation_stays_copy_tab_section_intro": "SHARED_DEFINITION",
+      "presentation_transport_copy_tab": "SHARED_DEFINITION",
+      "presentation_transport_copy_tab_section_intro": "SHARED_DEFINITION",
+      "presentation_messages_copy_tab": "SHARED_DEFINITION",
+      "presentation_messages_copy_tab_section_intro": "SHARED_DEFINITION",
+      "company_pattern_backgrounds_tab": "SHARED_DEFINITION",
+      "company_pattern_backgrounds_tab_intro": "SHARED_DEFINITION"
+    },
+    "rank-math-options-titles": {
+      "knowledgegraph_name": "TENANT_SOURCE",
+      "website_name": "TENANT_SOURCE",
+      "url": "TENANT_SOURCE",
+      "knowledgegraph_logo": "TENANT_MEDIA",
+      "knowledgegraph_logo_id": "TENANT_MEDIA",
+      "open_graph_image": "TENANT_MEDIA",
+      "open_graph_image_id": "TENANT_MEDIA",
+      "facebook_app_id": "RECONNECT_PROVIDER",
+      "facebook_secret": "RECONNECT_PROVIDER"
+    }
+  },
+  "provision_group_policy": [
+    {
+      "source": "Elementor template and JetEngine listing/template definitions",
+      "policy": "SHARED_DEFINITION",
+      "caveat": "Only structural widget/query/filter definitions; embedded layout JSON must be scrubbed/rebound to destination media, pages, people, links, colors and forms"
+    },
+    {
+      "source": "JetEngine destinations, location_jet, tour_type, trans_mode, trans_type taxonomies",
+      "policy": "REMAP_GEO",
+      "caveat": "Term hierarchy reusable when globally neutral; WPML translation families and IDs per site; logo/featured_image excluded"
+    },
+    {
+      "source": "WordPress posts/pages and tours-and-activities/properties/transportations content",
+      "policy": "TENANT_SOURCE",
+      "caveat": "Can reuse independently licensed generic copy after source review; company products, itineraries, prices, media and promotion remain tenant-owned"
+    },
+    {
+      "source": "Tour-rates, property-rates, transport-rates and jet_cct_transport_rates",
+      "policy": "TENANT_SOURCE",
+      "caveat": "Prices, availability, suppliers, allotments, currencies, discounts, origin/destination conditions per company; never clone another company's commercial rows"
+    },
+    {
+      "source": "WooCommerce products, stock, payment methods, orders and payment tokens",
+      "policy": "NO_CROSS_TENANT_COPY",
+      "caveat": "Install product type and rate schemas, but generate target-company product/rate records with source proof; do not clone transactions"
+    },
+    {
+      "source": "Fluent Forms form definitions and multilingual layouts",
+      "policy": "SHARED_DEFINITION",
+      "caveat": "Do not inherit form notification recipients, endpoints, submission history or company-specific form mappings"
+    },
+    {
+      "source": "Fluent Forms submissions, CRM, support tickets and e-mail delivery logs",
+      "policy": "NO_CROSS_TENANT_COPY",
+      "caveat": "Personal and company operational records are not template data"
+    },
+    {
+      "source": "Tenant users, roles, capabilities, WordPress application passwords",
+      "policy": "NO_CROSS_TENANT_COPY",
+      "caveat": "Provision fresh owner and scoped role grants; never copy users or authority tokens"
+    },
+    {
+      "source": "MAD4B company grants, site UUID, control-plane site profile, audit and outbox",
+      "policy": "NO_CROSS_TENANT_COPY",
+      "caveat": "Provision site UUID and authority from trusted enrollment; preserve audit of source but don't replay to target"
+    },
+    {
+      "source": "WPML translated strings, post/term family IDs",
+      "policy": "REVIEW_REQUIRED",
+      "caveat": "EN source may anchor neutral template text; target language families created only from verified translation mapping, not raw IDs"
+    },
+    {
+      "source": "Our traveler reviews template",
+      "policy": "SHARED_DEFINITION",
+      "caveat": "Share only Elementor widget/layout; review image collection, media source, content ratings, profile identities and third-party provider bindings are TENANT_MEDIA/TENANT_SOURCE"
+    },
+    {
+      "source": "QA fixtures marked _booking_experience_qa_pricing_fixture",
+      "policy": "SANDBOX_ONLY",
+      "caveat": "No published QA fixture in staging/Production tenant clone; existing 93 quarantined to Draft on Staging"
+    },
+    {
+      "source": "WordPress cache, LiteSpeed runtime cache, Elementor page assets, transients and runtime jobs",
+      "policy": "REBUILD",
+      "caveat": "Provider account connections are RECONNECT_PROVIDER and do not survive reset"
+    }
+  ],
+  "external_provider_bindings": [
+    {
+      "provider": "Trustindex / TripAdvisor",
+      "option_patterns": [
+        "trustindex-tripadvisor-*",
+        "contact-and-help-info.trip_advisor_review_shortcode"
+      ],
+      "policy": "RECONNECT_PROVIDER"
+    },
+    {
+      "provider": "LiteSpeed Cache / QUIC.cloud",
+      "option_patterns": [
+        "litespeed.cloud.*",
+        "litespeed.conf.api_key",
+        "litespeed.conf.cdn-*"
+      ],
+      "policy": "RECONNECT_PROVIDER"
+    },
+    {
+      "provider": "Google Tag Manager / Google Analytics",
+      "option_patterns": [
+        "gtm4wp-options",
+        "rank_math_google_analytic_*"
+      ],
+      "policy": "RECONNECT_PROVIDER"
+    },
+    {
+      "provider": "Rank Math SEO Google / Search Console",
+      "option_patterns": [
+        "rank_math_google_oauth_tokens",
+        "rank_math_analytics_*"
+      ],
+      "policy": "RECONNECT_PROVIDER"
+    },
+    {
+      "provider": "Meta Facebook/Instagram / Pixel",
+      "option_patterns": [
+        "rank-math-options-titles.facebook_app_id",
+        "rank-math-options-titles.facebook_secret",
+        "elementor_pro_facebook_app_id",
+        "contact-and-help-info.site_facebook_page_link"
+      ],
+      "policy": "RECONNECT_PROVIDER"
+    },
+    {
+      "provider": "Fluent SMTP and FluentCRM delivery",
+      "option_patterns": [
+        "fluentmail-settings",
+        "fluentcrm-global-settings",
+        "_fluentform_reCaptcha*"
+      ],
+      "policy": "RECONNECT_PROVIDER"
+    },
+    {
+      "provider": "WooCommerce gateways / Elementor payment",
+      "option_patterns": [
+        "woocommerce_paypal_settings",
+        "elementor_pro_stripe_*",
+        "jet_form_builder_settings__payments-gateways"
+      ],
+      "policy": "RECONNECT_PROVIDER"
+    },
+    {
+      "provider": "Google Drive OAuth and AI providers",
+      "option_patterns": [
+        "mad4b_scp_google_drive_*",
+        "connectors_ai_*",
+        "mwai_options"
+      ],
+      "policy": "RECONNECT_PROVIDER"
+    },
+    {
+      "provider": "Hostinger / DNS / Cloudflare / mail",
+      "option_patterns": [
+        "siteurl",
+        "home",
+        "litespeed.conf.cdn-cloudflare*",
+        "mailserver_*"
+      ],
+      "policy": "RECONNECT_PROVIDER"
+    },
+    {
+      "provider": "WhatsApp / social / support destinations",
+      "option_patterns": [
+        "contact-and-help-info.site_whatsapp_num",
+        "contact-and-help-info.site_wa_tel_link",
+        "contact-and-help-info.support_chat_url"
+      ],
+      "policy": "TENANT_SOURCE"
+    }
+  ],
+  "supported_existing_contracts": [
+    "MAD4B_Tenant_Field_Registry::definitions",
+    "MAD4B_Tenant_Override_Policy::effective_modes",
+    "MAD4B_SCP_Company_Tenant_Migration::plan"
+  ],
+  "required_preflight": [
+    "New target site_uuid, database, site origin and owner independently enrolled",
+    "Full source inventory/digest and zero unclassified selected fields",
+    "Every company-specific and media value sourced from approved new company",
+    "Public site name, logos, colors, support/contact and SEO Organization validated",
+    "Provider accounts disconnected by default; all credentials, API secrets, provider IDs and tokens must be newly issued for the target company and individually rebound with explicit consent",
+    "No customer/user/order/booking/payment/submission/audit history copied",
+    "Canonical media catalog IDs resolved to new attachment ownership and checked for licensing",
+    "Translation EN origin preserved with per-language target term/post ID remapping",
+    "No QA fixtures or cross-tenant leaked strings in published HTML, cards, Schema or media",
+    "All provider outbound tasks disabled until owner-governed activation",
+    "Dry-run, rollback, before/after snapshots and readback on target; no Production mutations"
+  ],
+  "taxonomy_term_fields": {
+    "destinations": {
+      "destination_type": "REMAP_GEO",
+      "google_address": "REMAP_GEO",
+      "google_place_id": "REMAP_GEO",
+      "featured_image": "TENANT_MEDIA",
+      "image_gellery": "TENANT_MEDIA",
+      "locations_gallery_attachment_ids": "TENANT_MEDIA"
+    }
+  },
+  "taxonomy_term_note": "Six observed destination term meta keys explicitly reviewed; hashed lat/lng cache-style keys remain REVIEW_REQUIRED until normalized stable geo resolver is certified. WPML term IDs must be remapped.",
+  "jetengine_options_ref": "governance/company-clone/jetengine-options-source-policy-v1.json",
+  "jetengine_options_requirements": {
+    "field_definitions": "11 registered JetEngine pages, 180 active fields, 64 nested repeater child fields; exact source manifest gates",
+    "legacy_stored_values": [
+      "look-and-feel.busness_reviews_section_tab",
+      "look-and-feel.destination_activity_card_alternate",
+      "contact-and-help-info.social_links_tab"
+    ],
+    "unregistered_stored_values_rule": "BLOCK_REVIEW: stored-only legacy keys are not company-owned configuration source; do not clone, do not auto-delete from existing site",
+    "demo_placeholder_rule": "Only for Wo Vacation demo; normal companies must supply their own brand/marketing/media and contact values, or leave disabled/blank",
+    "company_scope_rule": "JetEngine native get_option is site-global; a single-site multi-company deployment cannot reuse these values across company_ids without a strict per-company resolver and separate persistence",
+    "runtime_effect": "reviewed contract only, not enforced on existing WordPress settings save"
+  },
+  "elementor_copy_only_contract": "governance/company-clone/elementor-demo-content-only-policy-v1.json",
+  "elementor_demo_design_restoration": {
+    "affected_documents": 17,
+    "restored_gallery_widgets": 1,
+    "restored_nested_tabs_widgets": 6,
+    "restored_fluent_form_widgets": 6,
+    "removed_unapproved_translated_home_sections": 5,
+    "restored_editor_markup_skeleton_documents": 8,
+    "validated_against_archived_reference_documents": 26,
+    "detected_editor_html_skeleton_drift": 0,
+    "unrelated_preexisting_settings_schema_differences_preserved": 13
+  }
+}

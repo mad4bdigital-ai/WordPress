@@ -1,0 +1,42 @@
+name: MAD4B Native Ability Manifest Contract
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-ability-trust.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php'
+      - 'ops/native-capability-manifest-v1/**'
+      - '.github/workflows/mad4b-native-ability-manifest-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-native-ability-manifest-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  source-and-trust-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Checkout exact PR source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Enforce tenant-neutral registration and owner-pin contract
+        run: python3 ops/native-capability-manifest-v1/test-contract.py
+      - name: Lint trusted PHP core files
+        run: |
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-ability-trust.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php
+      - name: Exercise mapped hermetic native trust matrix
+        run: python3 wp-content/plugins/mad4b-site-control-plane/tests/native-ability-manifest-trust-contract.py
+      - name: Reject self approval, source drift and write escalation
+        run: |
+          set -euo pipefail
+          for case in valid source_drift schema_drift scope_write wrong_host wrong_callback pin_mismatch manifest_inside_content pagination; do
+            php wp-content/plugins/mad4b-site-control-plane/tests/native-ability-manifest-trust-contract.php "$case"
+          done
