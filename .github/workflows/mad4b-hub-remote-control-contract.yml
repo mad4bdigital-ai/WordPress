@@ -12,6 +12,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: mad4b-hub-mad4b-hub-remote-control-contract-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
 jobs:
   contract:
     runs-on: ubuntu-latest
@@ -19,6 +23,9 @@ jobs:
     steps:
       - name: Checkout exact PR code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - name: PHP syntax and isolated contract tests
         shell: bash
         run: |
