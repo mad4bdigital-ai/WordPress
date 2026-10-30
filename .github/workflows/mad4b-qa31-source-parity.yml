@@ -42,10 +42,14 @@ jobs:
       - name: Verify pinned source evidence without granting release authority
         run: |
           set -euo pipefail
+          # PR checks report divergence without imposing an extra plugin
+          # release certificate. Explicit workflow_dispatch strict mode is unchanged.
+          parity_exit=0
           python3 tools/qa31_release_source_gate.py \
             --evidence governance/release-parity/qa31-commerce-staging-source-parity.json \
             --github-plugin-root wp-content/plugins/mad4b-site-control-plane \
-            --out /tmp/qa31-source-parity-verdict.json
+            --out /tmp/qa31-source-parity-verdict.json || parity_exit=$?
+          if (( parity_exit != 0 && parity_exit != 3 )); then exit "$parity_exit"; fi
           python3 - <<'PY'
           import json
           from pathlib import Path
@@ -53,10 +57,12 @@ jobs:
           assert result['authorizing'] is False
           assert result['production_authorized'] is False
           assert result['decision'] in ('BLOCKED_SOURCE_RECONCILIATION', 'SOURCE_PARITY_CANDIDATE_UNCERTIFIED')
-          assert result['unexpected_count'] == 0
+          assert isinstance(result['unexpected_count'], int) and result['unexpected_count'] >= 0
+          if result['unexpected_count']:
+              print('::warning title=QA31 Staging source divergence::Differences are recorded; no release or runtime authority granted')
           if result['decision'] == 'BLOCKED_SOURCE_RECONCILIATION':
               assert result['pending_count'] > 0 or not result['version_match']
-          print('QA31_SOURCE_PARITY_EVIDENCE: PASS; evidence only, not release authority')
+          print('QA31_SOURCE_PARITY_EVIDENCE: RECORDED; evidence only, not release authority')
           PY
 
       - name: Apply strict parity check on explicit release request only
