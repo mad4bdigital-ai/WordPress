@@ -16,7 +16,8 @@ final class SmartSeoContentGraphRest {
  public static function authorized(): bool {return current_user_can('manage_options');}
  public static function term(\WP_REST_Request $req) {
   $term=SmartSeoContentGraph::term((int)$req->get_param('id'),
-    (string)($req->get_param('taxonomy')??''));
+    (string)($req->get_param('taxonomy')??''),
+    (string)($req->get_param('language')??''));
   return is_wp_error($term)?$term:rest_ensure_response($term);
  }
  public static function crawl(\WP_REST_Request $req) {
