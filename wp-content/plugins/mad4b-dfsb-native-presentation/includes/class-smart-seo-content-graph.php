@@ -22,11 +22,13 @@ final class SmartSeoContentGraph {
      'no_found_rows'=>false,'tax_query'=>[['taxonomy'=>$t->taxonomy,'field'=>'term_id','terms'=>[$id],'include_children'=>false]]]);
    if($q->found_posts)$posts[$type]=['count'=>(int)$q->found_posts,'sample_ids'=>array_map('intval',$q->posts)];
   }
-  $incoming=[];$scanned=0;
+  $incoming=[];$topicCandidates=[];$scanned=0;
   foreach(['post','page'] as $type) {
    foreach(get_posts(['post_type'=>$type,'post_status'=>'publish','posts_per_page'=>100,'suppress_filters'=>true]) as $p) {
     $scanned++;
     $content=(string)$p->post_content;
+    if($type==='post' && mb_strlen($t->name)>=5 && mb_stripos($p->post_title.' '.wp_strip_all_tags($content),$t->name)!==false)
+      $topicCandidates[]=['id'=>$p->ID,'title'=>$p->post_title,'url'=>get_permalink($p),'evidence'=>'topic_mention_only'];
     if(str_contains($content,(string)wp_parse_url($url,PHP_URL_PATH))
       && preg_match('~<a[^>]+href=["\x27][^"\x27]*'.preg_quote((string)wp_parse_url($url,PHP_URL_PATH),'~').'[^"\x27]*["\x27]~i',$content))
       $incoming[]=['id'=>$p->ID,'url'=>get_permalink($p),'title'=>$p->post_title,'type'=>$type];
@@ -40,6 +42,8 @@ final class SmartSeoContentGraph {
     'hierarchy_depth'=>count($parents),'parents'=>$parents,'children'=>$children,
     'assigned_published_posts'=>$posts,'linked_editorial_posts'=>$incoming,
     'editorial_scan_posts'=>$scanned,
+    'related_blog_topic_candidates'=>array_slice($topicCandidates,0,15),
+    'topic_mention_not_verified_link'=>true,
     'classification'=>!$public?'private_taxonomy':($characters>=180?'editorial_hub_candidate':'thin_term'),
     'indexing_approved'=>false,'scope'=>'Saved taxonomy, published post assignments and literal editorial anchors'];
  }
