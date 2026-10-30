@@ -58,6 +58,10 @@ final class SmartSeoTranslationRest {
   if(is_wp_error($info))return $info;
   if(!$info['can_apply_to_existing_term'])return new \WP_Error(
     'target_missing','Create WPML term first',['status'=>409]);
+  if(in_array($info['status'],['candidate_for_editorial_review','short_content_review'],true)
+    && ($body['replace_existing']??false)!==true)
+   return new \WP_Error('translation_existing_content',
+    'Existing translated description preserved; explicit replace_existing=true required',['status'=>409]);
   $id=SmartSeoTranslation::taskId($tax,$source,$lang);
   if(!is_wp_error(SmartSeoTranslation::get($id)))
    return new \WP_Error('task_exists','Reuse existing task',['status'=>409]);
