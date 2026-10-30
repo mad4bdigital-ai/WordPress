@@ -23,7 +23,7 @@ final class MAD4B_SCP_Company_Provisioning_Work_Operations {
     public static function validate_payload($payload) {
         if (!is_array($payload) || array_diff(array_keys($payload),
             array('contract','company_code','site_uuid','origin','mode','stage','action',
-                  'plan_sha256','stage_revision','preserve_existing','mutation_authorized'))) return false;
+                  'plan_sha256','stage_revision','run_id','preserve_existing','mutation_authorized'))) return false;
         if (($payload['contract']??'') !== self::CONTRACT ||
             !in_array($payload['mode']??'',array('create','repair_existing'),true) ||
             !isset(MAD4B_Start_Company_Runtime::STAGES[$payload['stage']??'']) ||
@@ -241,7 +241,10 @@ final class MAD4B_Start_Company_Runtime {
         if(is_wp_error($c) ||
           $c['site_uuid']!==($payload['site_uuid']??null) ||
           $c['origin']!==($payload['origin']??null))return false;
-        if(!self::authorized_run($c,(string)($payload['mode']??'')))return false;
+        $authorized=self::authorized_run($c,(string)($payload['mode']??''));
+        if(!is_array($authorized))return false;
+        if(isset($payload['run_id']) &&
+          !hash_equals((string)($authorized['run_id']??''),(string)$payload['run_id']))return false;
         $plan=self::compute_plan($c,$payload['mode']);
         $stage=(string)($payload['stage']??'');
         $row=$plan['stages'][$stage]??null;
@@ -261,8 +264,12 @@ final class MAD4B_Start_Company_Runtime {
         $plan=self::compute_plan($c,$mode);
         if(!hash_equals($plan['plan_sha256'],(string)$expected_plan_sha256))
             return new WP_Error('mad4b_company_plan_changed','Recheck exact company plan',array('status'=>409));
+        // Repeated Resume or automatic events retain the same durable run.
+        $active=self::authorized_run($c,$mode);
+        if(is_array($active))return true;
         $all=get_option(self::RUNS,array());if(!is_array($all))return new WP_Error('mad4b_company_run_store_invalid','Run store invalid',array('status'=>503));
         $all[$c['company_code']]=array('company_code'=>$c['company_code'],
+          'run_id'=>hash('sha256',$c['site_uuid'].'|'.$mode.'|'.wp_generate_uuid4()),
           'site_uuid'=>$c['site_uuid'],'origin'=>$c['origin'],'mode'=>$mode,
           'initial_plan_sha256'=>$plan['plan_sha256'],
           'authorized_by'=>get_current_user_id(),'created_at'=>gmdate('c'),
@@ -300,6 +307,7 @@ final class MAD4B_Start_Company_Runtime {
         $payload=array('contract'=>MAD4B_SCP_Company_Provisioning_Work_Operations::CONTRACT,
           'company_code'=>$c['company_code'],'site_uuid'=>$c['site_uuid'],'origin'=>$c['origin'],
           'mode'=>$plan['mode'],'stage'=>$stage,'action'=>self::ACTIONS[$stage],
+          'run_id'=>(string)(self::authorized_run($c,$mode)['run_id']??''),
           'plan_sha256'=>$s['execution_plan_sha256'],'stage_revision'=>$s['stage_revision'],
           'preserve_existing'=>$plan['mode']==='repair_existing','mutation_authorized'=>false);
         if(!MAD4B_SCP_Company_Provisioning_Work_Operations::validate_payload($payload) ||
@@ -349,6 +357,21 @@ final class MAD4B_Start_Company_Runtime {
      * Only independent readback-backed stage receipts can close this outcome.
      */
     public static function status($req){
+        $auth=self::guard($req);if(is_wp_error($auth))return $auth;
+        // Without an explicit mode show the current authorized lifecycle,
+        // rather than silently changing an in-progress create to repair.
+        if(!$req->get_param('mode')){
+            $bound=self::company($req->get_param('company'));
+            if(!is_wp_error($bound)){
+                $stored=get_option(self::RUNS,array());
+                $r=is_array($stored)?($stored[$bound['company_code']]??null):null;
+                if(is_array($r) &&
+                  ($r['site_uuid']??'')===$bound['site_uuid'] &&
+                  ($r['origin']??'')===$bound['origin'] &&
+                  in_array(($r['mode']??''),array('create','repair_existing'),true))
+                  $req->set_param('mode',$r['mode']);
+            }
+        }
         $plan=self::plan($req);if(is_wp_error($plan))return $plan;
         $c=$plan['company'];
         $code=$c['company_code'];
@@ -377,7 +400,10 @@ final class MAD4B_Start_Company_Runtime {
                     if(($p['company_code']??'')!==$code ||
                       ($p['site_uuid']??'')!==$c['site_uuid'] ||
                       ($p['origin']??'')!==$c['origin'] ||
+                      ($p['mode']??'')!==$plan['mode'] ||
                       !isset(self::STAGES[$p['stage']??'']))continue;
+                    if(isset($p['run_id']) && $runId!==null &&
+                      !hash_equals((string)$runId,(string)$p['run_id']))continue;
                     $jobs[]=array(
                       'id'=>(string)($job['job_id']??''),
                       'stage'=>(string)$p['stage'],
@@ -390,6 +416,9 @@ final class MAD4B_Start_Company_Runtime {
         }
         $hasActive=false;$hasReconciliation=false;
         foreach($jobs as $job){
+            // A stale failed job cannot override a newer independently
+            // verified stage receipt; historical jobs stay visible.
+            if(($plan['stages'][$job['stage']]['state']??'')==='VERIFIED')continue;
             if(in_array($job['status'],array('pending','claimed','running'),true))$hasActive=true;
             if($job['reconciliation_required'] ||
               in_array($job['status'],array('reconciling','failed','expired','cancel_requested'),true))
