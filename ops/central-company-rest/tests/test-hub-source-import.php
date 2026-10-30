@@ -264,4 +264,33 @@ $again=MAD4B_Hub_Source_Import_V1::bootstrap_verified_nile_tours();
 check($again['created']===0 && $again['updated']===0 && $GLOBALS['changes']===$before,
     'Repeat bootstrap does not duplicate or rewrite prior Hub records');
 
+foreach(['fr','de','it','es'] as $lang) {
+    $sample=feed(14000,'tours-and-activities',$lang,'Localized Tour');
+    check(!is_wp_error(MAD4B_Hub_Source_Import_V1::validate_item(
+        $sample,'tourism-almallahgroup','tours-and-activities')),'Six-language source contract includes '.$lang);
+}
+$GLOBALS['feed_rows']['tours-and-activities']=[];
+for($n=1;$n<=160;$n++) {
+    $GLOBALS['feed_rows']['tours-and-activities'][]=feed(
+        10000+$n,'tours-and-activities','de','Tour '.$n);
+}
+$GLOBALS['feed_rows']['properties']=[];
+$bulkPolicy=[
+    'enabled'=>true,
+    'source_mode'=>'import_to_hub',
+    'source_post_types'=>['tours-and-activities'],
+    'consumers'=>[],
+    'kinds'=>['tour'],
+    'languages'=>['en','ar','fr','de','it','es'],
+    'selected_source_ids'=>[],
+    'auto_include_new'=>true,
+];
+$GLOBALS['options'][MAD4B_Hub_Auto_Distribute_V1::OPTIONS]=$bulkPolicy;
+$bulkRun=MAD4B_Hub_Auto_Distribute_V1::distribute();
+check(is_array($bulkRun) && $bulkRun['status']==='imported_only'
+    && $bulkRun['source_reference_count']===160,
+    'Import-only supports more than 150 records without distribution limit');
+check(empty($bulkRun['last_successful_consumers']),
+    'No consumers means no network distribution');
+
 echo "PASS $tests native source pull and default Content Hub import tests\n";
