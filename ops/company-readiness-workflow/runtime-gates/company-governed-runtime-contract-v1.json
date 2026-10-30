@@ -1,0 +1,29 @@
+{
+  "contract": "mad4b.company-governed-runtime-contract.v1",
+  "company_code": "wayfatours",
+  "company_name": "Wayfatours",
+  "site_host": "wayfatours.mad4b.com",
+  "site_uuid": "b0725ffa-87e1-47e3-b0c0-c4aa4eb8882b",
+  "database": "wayfatours_production",
+  "wordpress_container": "wayfatours-production-php",
+  "required_runtime_plugins": [
+    "elementor",
+    "elementor-pro",
+    "jet-engine",
+    "jet-smart-filters",
+    "woocommerce",
+    "woocommerce-multilingual",
+    "sitepress-multilingual-cms"
+  ],
+  "required_commercial_plugins": [
+    "mad4b-pricing-registry",
+    "commerce-composition",
+    "cpt-woo-integration",
+    "woocommerce-travel-bridge",
+    "mad4b-jetengine-hub-addon"
+  ],
+  "require_provider_runtime": true,
+  "owner_editable_fields_do_not_block_design": true,
+  "source_specific_rest_endpoints_not_copied": true,
+  "allow_production_mutation": false
+}
