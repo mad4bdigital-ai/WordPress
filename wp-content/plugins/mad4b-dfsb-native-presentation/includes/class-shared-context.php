@@ -97,7 +97,6 @@ final class SharedContext {
 
     public static function register(): void {
         add_filter('mad4b/shared-context/read',array(__CLASS__,'project'),10,1);
-        add_filter('jet-engine/listings/macros-list',array(__CLASS__,'jetMacros'),25,1);
         add_shortcode('mad4b_shared_title',array(__CLASS__,'titleShortcode'));
         add_shortcode('mad4b_shared_description',array(__CLASS__,'descriptionShortcode'));
     }
