@@ -10,6 +10,9 @@ namespace MAD4B\DFSB\NativePresentation;
 
 if (!defined('ABSPATH')) { exit; }
 
+require_once __DIR__ . '/includes/class-shared-context.php';
+add_action('init',array(__NAMESPACE__.'\\SharedContext','register'),85);
+
 function ready(): bool {
     return class_exists('DynamicFilterSEOBridge\\Context\\ContextValueResolver')
         && class_exists('DynamicFilterSEOBridge\\Context\\PageContextResolver');
@@ -41,7 +44,8 @@ function register_shortcodes(): void {
     add_shortcode('dfsb_context_value',static function($attributes): string {
         $attrs=shortcode_atts(array('field'=>'title'),is_array($attributes)?$attributes:array(),'dfsb_context_value');
         $field=sanitize_key((string)$attrs['field']);
-        $out=value($field,context());
+        $out=in_array($field,array('title','description'),true)
+            ? SharedContext::field($field) : value($field,context());
         return $field==='image_url' ? esc_url($out) : esc_html($out);
     });
     add_shortcode('dfsb_context_image',static fn($a): string=>render_image(context()));
@@ -97,7 +101,10 @@ function register_tags($manager): void {
                 $scope=$editor?sanitize_key((string)$this->get_settings('preview_scope')):'current';
                 $id=$editor?absint($this->get_settings('preview_id')):0;
                 $type=$editor?sanitize_key((string)$this->get_settings('preview_type')):'';
-                return value((string)$this->get_settings('field'),context($scope?:'current',$id,$type));
+                $field=(string)$this->get_settings('field');
+                if (!$editor && in_array($field,array('title','description'),true))
+                    return SharedContext::field($field);
+                return value($field,context($scope?:'current',$id,$type));
             }
             public function render(): void {
                 $v=(string)$this->get_value();
