@@ -176,6 +176,44 @@ final class MAD4B_Central_Simple_Connections_V1 {
      * Fixed-route, credential-safe internal reference delivery.
      * Only opaque noncommercial reference snapshots; never arbitrary endpoints.
      */
+
+    /** Fetch one page from a fixed published-content endpoint; no custom signer. */
+    public static function fetch_published_page($id, $type, $page) {
+        $company=self::company($id);
+        if (!self::enabled() || !$company ||
+            !in_array($type,['tours-and-activities','properties','transportations'],true) ||
+            !is_int($page) || $page<1 || $page>100) {
+            return self::error('mad4b_simple_source_invalid','Invalid source selection.',400);
+        }
+        $creds=self::unseal(get_option(self::key($id),false));
+        if (!$creds)return self::error('mad4b_simple_not_connected','Connect source company first.',409);
+        $url=$company['url'].'/wp-json/mad4b-company/v1/simple-content-feed?post_type='.rawurlencode($type).'&page='.$page;
+        $resp=wp_safe_remote_get($url,[
+            'headers'=>[
+                'Authorization'=>'Basic '.base64_encode($creds['username'].':'.$creds['application_password']),
+                'Accept'=>'application/json',
+            ],
+            'timeout'=>18,'redirection'=>0,'sslverify'=>true,
+            'reject_unsafe_urls'=>true,'limit_response_size'=>360000,
+        ]);
+        if (is_wp_error($resp) || wp_remote_retrieve_response_code($resp)!==200) {
+            return self::error('mad4b_simple_source_unavailable','Source content feed unavailable.',502);
+        }
+        $data=json_decode(wp_remote_retrieve_body($resp),true);
+        if (!is_array($data) ||
+            ($data['contract']??'')!=='mad4b.company.published-content-page.v1' ||
+            ($data['company_id']??'')!==$id ||
+            ($data['canonical_host']??'')!==$company['host'] ||
+            ($data['source_post_type']??'')!==$type ||
+            ($data['page']??null)!==$page || ($data['per_page']??null)!==20 ||
+            !is_int($data['total']??null) || $data['total']<0 || $data['total']>2000 ||
+            !is_array($data['items']??null) || count($data['items'])>20 ||
+            ($data['reference_only']??false)!==true ||
+            ($data['may_publish']??true)!==false || ($data['may_checkout']??true)!==false) {
+            return self::error('mad4b_simple_source_invalid','Source content identity mismatch.',409);
+        }
+        return $data;
+    }
     public static function deliver_references($id, array $snapshot) {
         $company = self::company($id);
         if (!self::enabled() || !$company || ($snapshot['consumer_company'] ?? '') !== $id ||
