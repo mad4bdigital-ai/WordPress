@@ -2,7 +2,7 @@
 // Read-only fixture + native WP/JetEngine checks. No writes or SEO publication.
 if (!defined('WP_CLI') || !WP_CLI) throw new \RuntimeException('WP-CLI only');
 if (!class_exists('MAD4B\\DFSB\\NativePresentation\\SharedContext')) {
-    require_once dirname(__DIR__).'/mad4b-dfsb-native-presentation.php';
+    require_once dirname(__DIR__).'/includes/class-shared-context.php';
 }
 use MAD4B\DFSB\NativePresentation\SharedContext;
 
