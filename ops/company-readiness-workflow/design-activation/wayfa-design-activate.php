@@ -74,13 +74,34 @@ foreach($data as $row){
  if(!is_array($v) || json_last_error()!==JSON_ERROR_NONE)$block[]='elementor_json_invalid';
  $next=$row['elementor_data'];
  $nextTitle=$row['post_title'];
+ $widgetTypes=array();
+ $dynamicKinds=array();
+ $walker=function($a)use(&$walker,&$widgetTypes,&$dynamicKinds){
+   if(!is_array($a))return;
+   if(isset($a['widgetType']) && is_string($a['widgetType']))
+     $widgetTypes[$a['widgetType']]=true;
+   if(isset($a['__dynamic__']) && is_array($a['__dynamic__'])){
+     foreach($a['__dynamic__'] as $dv)if(is_string($dv)){
+       if(strpos($dv,'jet-option')!==false)$dynamicKinds['jet-option']=true;
+       if(strpos($dv,'jet-post-')!==false)$dynamicKinds['jet-post']=true;
+     }
+   }
+   foreach($a as $nested)$walker($nested);
+ };
  if(is_array($v)){
+    $walker($v);
     $linksRewritten=0;$brandRewritten=0;
     $transform($v);
     $localLink=$linksRewritten;$localBrand=$brandRewritten;
     $next=wp_json_encode($v,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
     if(!is_string($next))$block[]='elementor_encode_failed';
  }
+ if(isset($widgetTypes['fluent-form-widget'])||isset($widgetTypes['uael-social-share']))
+     $block[]='missing_qualified_widget_provider_or_form';
+ if(isset($dynamicKinds['jet-option']))
+     $block[]='company_option_binding_not_resolved';
+ if(!empty($source['commercial_risk']))
+     $block[]='commercial_family_requires_rate_admission';
  if(preg_match($originalBrand,$next.' '.$row['post_content']))$block[]='unresolved_source_brand';
  if(stripos($next.' '.$row['post_content'],$sourceHost)!==false)$block[]='unresolved_source_host';
  if(preg_match('~(?:/wp-content/uploads/|wp-image-[0-9]+|[\"\\\\]image[\"\\\\]\s*:\s*\{)~i',$next.' '.$row['post_content']))$block[]='unmapped_media_asset';
@@ -109,6 +130,7 @@ $summary=array('contract'=>'mad4b.wayfatours-design-activation-plan.v1',
  'state'=>'DESIGN_ACTIVATION_PLAN','source_sha256'=>$manifest['source_sha256'],
  'site_uuid'=>$identity['site_uuid'],'eligible'=>count($eligible),'blocked_reasons'=>$reasons,
  'eligible_by_type'=>array_count_values(array_column($public,'type')),
+ 'eligible_ids'=>array_keys($eligible),
  'brand_replacements'=>array_sum(array_column($public,'brand_replacements')),
  'link_replacements'=>array_sum(array_column($public,'link_replacements')),
  'plan_sha256'=>$planHash,'kit_preserved'=>4,'media_copied'=>false,
