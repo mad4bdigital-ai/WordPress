@@ -56,12 +56,63 @@ final class SmartSeoCombinations {
                     }
                 }
                 $out[] =array('id'=>(int)$id,'label'=>$post->post_title,
-                    'taxonomy'=>$actual,'public_taxonomy'=>(bool)$object->public,
+                    'taxonomy'=>$actual,
+                    'dimension'=>$actual==='guide-languages'?'tour_guide_spoken_language':$actual,
+                    'distinct_from_site_language'=>$actual==='guide-languages',
+                    'public_taxonomy'=>(bool)$object->public,
                     'options'=>array_values($items),'options_count'=>count($items),
                     'language_specific'=>preg_match('/- (AR|FR|DE|IT|ES)$/i',$post->post_title)===1);
             }
         }
         return $out;
+    }
+
+    /**
+     * Separate commercial guide spoken language from WPML page locale.
+     * Uses the actual source registry; never assumes a particular filter ID.
+     */
+    public static function withGuideLanguage(array $source,array $selections,$requested) {
+        if ($requested===null || $requested==='') return $selections;
+        if (!is_scalar($requested) || is_bool($requested))
+            return new \WP_Error('guide_language_invalid',
+                'Guide language must be a term slug or numeric ID',array('status'=>400));
+        $facet=null;
+        foreach(self::facets($source) as $candidate) {
+            if (($candidate['taxonomy']??'')==='guide-languages') {
+                $facet=$candidate;break;
+            }
+        }
+        if (!$facet) return new \WP_Error('guide_language_unavailable',
+            'No guide-language filter registered for this provider/query',array('status'=>422));
+        foreach($selections as $choice) {
+            if(!is_array($choice) || !isset($choice['filter_id'])) continue;
+            if((int)$choice['filter_id']===(int)$facet['id'])
+                return new \WP_Error('guide_language_duplicate',
+                    'Choose guide language either in selections or guide_language',array('status'=>422));
+        }
+        $text=(string)$requested;
+        $matches=array_values(array_filter($facet['options'],static function($item)use($text) {
+            return (ctype_digit($text) && (int)$text===(int)$item['term_id'])
+                || $text===(string)$item['slug'];
+        }));
+        if(count($matches)!==1)return new \WP_Error('guide_language_not_selectable',
+            'Guide language is not an allowed current filter option',array('status'=>422));
+        $selections[]=array('filter_id'=>(int)$facet['id'],
+            'term_id'=>(int)$matches[0]['term_id']);
+        return $selections;
+    }
+
+    public static function guideLanguages(array $source): array {
+        foreach(self::facets($source) as $f) {
+            if(($f['taxonomy']??'')==='guide-languages')return array(
+                'dimension'=>'tour_guide_spoken_language',
+                'filter_id'=>(int)$f['id'],'taxonomy'=>$f['taxonomy'],
+                'terms'=>$f['options'],
+                'separate_from_wpml_page_language'=>true,
+                'availability_semantics'=>'Tour taxonomy association, not date-specific guide availability');
+        }
+        return array('dimension'=>'tour_guide_spoken_language',
+            'filter_id'=>null,'terms'=>array(),'available'=>false);
     }
 
     public static function inspect(array $source,array $selections,string $lang='en') {
@@ -125,6 +176,17 @@ final class SmartSeoCombinations {
         $required=(int)$policy['min_result_count'];
         $restricted=array_values(array_column(array_filter($resolved,
             static fn($x)=>!$x['taxonomy_public']),'taxonomy'));
+        $guideLanguage=null;
+        foreach($resolved as $item) {
+            if($item['taxonomy']==='guide-languages') {
+                $guideLanguage=array('term_id'=>(int)$item['term_id'],
+                    'slug'=>$item['slug'],'label'=>$item['label'],
+                    'filter_id'=>(int)$item['filter_id'],
+                    'evidence'=>'published_tour_term_intersection',
+                    'date_specific_availability_verified'=>false);
+                break;
+            }
+        }
         $url=self::url($source,$resolved,$lang);
         $blocked=array();
         if($count<$required)$blocked[]='not_enough_published_matching_products';
@@ -143,7 +205,9 @@ final class SmartSeoCombinations {
         $id=hash('sha256',wp_json_encode(array($key,$lang,
             array_map(static fn($x)=>array($x['filter_id'],$x['term_id']),$resolved))));
         return array(
-            'contract'=>self::CONTRACT,'id'=>$id,'source'=>$key,'language'=>$lang,
+            'contract'=>self::CONTRACT,'id'=>$id,'source'=>$key,
+            'language'=>$lang,'site_language'=>$lang,
+            'guide_language'=>$guideLanguage,
             'post_type'=>$source['post_type'],'selections'=>$resolved,
             'matched_published_count'=>$count,'sample_post_ids'=>array_map('intval',$q->posts),
             'min_result_count'=>$required,'url'=>$url,
