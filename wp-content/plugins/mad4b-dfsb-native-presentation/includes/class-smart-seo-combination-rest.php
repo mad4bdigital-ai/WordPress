@@ -10,6 +10,7 @@ final class SmartSeoCombinationRest {
         $routes=array(
             array('/seo-intelligence/combinations/facets','GET','facets'),
             array('/seo-intelligence/combinations/guide-languages','GET','guideLanguages'),
+            array('/seo-intelligence/combinations/archive-routes','GET','archiveRoutes'),
             array('/seo-intelligence/combinations/preview','POST','preview'),
             array('/seo-intelligence/combinations','GET','listing'),
             array('/seo-intelligence/combinations','POST','save'),
@@ -53,6 +54,29 @@ final class SmartSeoCombinationRest {
         ));
     }
     /** Exposes actual tour guide language choices, distinct from WPML locales. */
+    /**
+     * Inspect all configured WPML site languages for this registered archive.
+     * URL mapping is read-only; do not infer that its filtered SEO is approved.
+     */
+    public static function archiveRoutes(\WP_REST_Request $req) {
+        $source=self::source($req->get_params());
+        if(is_wp_error($source))return $source;
+        $active=(array)get_option('icl_sitepress_settings',array());
+        $languages=(array)($active['active_languages']??array('en'));
+        $routes=array();
+        foreach($languages as $lang) {
+            if(!is_string($lang) || !in_array($lang,SmartSeoPolicyRegistry::LANGUAGES,true))
+                continue;
+            $routes[$lang]=SmartSeoCombinations::archiveRoute($source,$lang);
+        }
+        return rest_ensure_response(array(
+            'source'=>$source['key'],'archive_base'=>$source['archive_url'],
+            'default_language'=>(string)($active['default_language']??'en'),
+            'routes'=>$routes,'read_only'=>true,
+            'seo_publication_authorized'=>false,
+        ));
+    }
+
     public static function guideLanguages(\WP_REST_Request $req) {
         $source=self::source($req->get_params());
         if(is_wp_error($source)) return $source;
