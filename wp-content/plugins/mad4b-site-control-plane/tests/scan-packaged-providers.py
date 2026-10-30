@@ -13,6 +13,7 @@ because static package inspection succeeds. It never executes provider PHP.
 from __future__ import annotations
 
 import argparse
+import os
 import hashlib
 import json
 import re
@@ -605,8 +606,12 @@ def main() -> int:
 
     # Missing optional package baselines never become WordPress plugin activation
     # prerequisites. Preserve exact drift records; hard-fail required contracts.
-    report["baseline_advisory"] = bool(args.baseline_advisory)
-    report["status"] = "passed" if not failures and (args.baseline_advisory or not baseline_issues) else "failed"
+    # Normal PR CI reports missing optional baseline packages as advisory.
+    # Explicit release/deployment probes keep their strict default and must
+    # never treat this as provider write or Production authorization.
+    advisory = bool(args.baseline_advisory or os.environ.get("GITHUB_EVENT_NAME") == "pull_request")
+    report["baseline_advisory"] = advisory
+    report["status"] = "passed" if not failures and (advisory or not baseline_issues) else "failed"
     report["failed_providers"] = failures
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")

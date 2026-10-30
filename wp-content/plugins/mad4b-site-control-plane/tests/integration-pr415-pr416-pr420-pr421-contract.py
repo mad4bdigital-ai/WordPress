@@ -162,6 +162,8 @@ def reviewed_source_supersedes_snapshot(path):
         # to real disposable WordPress smoke, rather than excluding them.
         original_reviewed = "0c0c2052254a5c893a79d45aa9d985b57d8361fd"
         readiness_reviewed = "73f702209fff557737fd0aab8d30619f5a22d53f"
+        principal_mode_reviewed = "e03467de3894be4aefe3d1f0e595108decf65e74"
+        principal_mode_marker = b"'mad4b-mcp-principal-mode' => array( 'MAD4B_SCP_Delegation_Mode', 'page'"
         current_git_blob = subprocess.check_output(
             ["git", "rev-parse", "HEAD:" + path], stderr=subprocess.DEVNULL,
             timeout=8,
@@ -177,6 +179,9 @@ def reviewed_source_supersedes_snapshot(path):
             and b"'mad4b-direct-access-profile' => array( 'MAD4B_SCP_Direct_Profile', 'render_page'" in data
             and (blob_sha == original_reviewed
                  or blob_sha == readiness_reviewed
+                 and all(marker in data for marker in required_new_pages)
+                 or blob_sha == principal_mode_reviewed
+                 and principal_mode_marker in data
                  and all(marker in data for marker in required_new_pages))
         )
     return (path, blob_sha) in reviewed_exact_blobs
