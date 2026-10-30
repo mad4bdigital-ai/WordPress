@@ -12,6 +12,7 @@ import tempfile
 ROOT=pathlib.Path("/opt/mad4b-company-provisioning")
 BLUEPRINT=ROOT/"blueprints/tourism-foundation-v1/elementor-and-jet-design.json"
 MANIFEST=ROOT/"blueprints/tourism-foundation-v1/foundation-manifest.json"
+POLICY=ROOT/"policies/company-design-activation-v2.json"
 SCRIPT=ROOT/"bin/wayfa-design-activate.php"
 BACKUP=ROOT/"private/wayfatours-design-activation-20261030"
 REPORT=ROOT/"reports/wayfatours-design-activation.json"
@@ -26,6 +27,9 @@ def source():
     src=json.loads(raw)
     if src.get("source")!="tours.dev.mad4b.com" or src.get("mode")!="draft_only":
         raise RuntimeError("SOURCE_SCOPE_MISMATCH")
+    policy=json.loads(POLICY.read_text())
+    if policy.get("contract")!="mad4b.company-design-activation-policy.v2" or        policy.get("default_action")!="DENY_UNTIL_QUALIFIED" or        policy.get("activation",{}).get("allow_auto_activation_when_qualified")!=["section","container"] or        policy.get("activation",{}).get("rewrite_source_media_domains") is not False or        policy.get("activation",{}).get("requires_exact_plan_digest") is not True:
+        raise RuntimeError("COMPANY_DESIGN_POLICY_INVALID")
     templates={}
     family_titles={}
     for entry in src["posts"]:
