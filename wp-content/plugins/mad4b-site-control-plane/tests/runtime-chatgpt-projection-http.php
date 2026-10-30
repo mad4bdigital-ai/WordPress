@@ -145,7 +145,23 @@ try {
     $expired = $call( $read, $read_session, 'mad4b-chatgpt-tool-projection-discover', array( 'transport_action' => 'schema', 'snapshot' => str_repeat( 'f', 64 ), 'schema_sha256' => $descriptor['sha256'] ) );
     $error_text = $expired['result']['content'][0]['text'] ?? '';
     $error_envelope = json_decode( $error_text, true );
-    if ( empty( $expired['result']['isError'] ) || 410 !== ( $error_envelope['status'] ?? null ) || 'mad4b.catalog-error.v1' !== ( $error_envelope['contract'] ?? '' ) ) $fail( 'Pinned Adapter lost catalog expiry status on the wire.' );
+    if ( empty( $expired['result']['isError'] ) || 410 !== ( $error_envelope['status'] ?? null ) || 'mad4b.catalog-error.v1' !== ( $error_envelope['contract'] ?? '' ) ) {
+        // Keep this runtime negative assertion fail-closed. Only emit
+        // bounded protocol codes, never bearer tokens, arguments or content.
+        $rpc_error = isset( $expired['error'] ) && is_array( $expired['error'] ) ? $expired['error'] : array();
+        $rpc_data = isset( $rpc_error['data'] ) && is_array( $rpc_error['data'] ) ? $rpc_error['data'] : array();
+        $code = isset( $rpc_error['code'] ) && is_scalar( $rpc_error['code'] ) ? (string) $rpc_error['code'] : '';
+        $blocker = isset( $rpc_data['blocker'] ) && is_scalar( $rpc_data['blocker'] ) ? (string) $rpc_data['blocker'] : '';
+        $meta = array(
+            'jsonrpc_error_code' => substr( $code, 0, 64 ),
+            'catalog_blocker' => substr( $blocker, 0, 96 ),
+            'result_is_error' => ! empty( $expired['result']['isError'] ),
+            'catalog_error_status' => is_array( $error_envelope ) ? (int) ( $error_envelope['status'] ?? 0 ) : 0,
+            'catalog_error_contract_match' => 'mad4b.catalog-error.v1' === ( $error_envelope['contract'] ?? '' ),
+            'rpc_data_field_names' => array_slice( array_map( 'strval', array_keys( $rpc_data ) ), 0, 8 ),
+        );
+        $fail( 'Pinned Adapter lost catalog expiry status on the wire. ' . wp_json_encode( $meta ) );
+    }
     list( $response, $catalog ) = $dispatch( $read, 'tools/list', array(), $read_session );
     $names = array_column( $catalog['result']['tools'] ?? array(), 'name' );
     if ( ! in_array( 'mad4b-diagnostics-health', $names, true ) || in_array( 'mad4b-ci-unsafe-write-projection-fixture', $names, true ) ) $fail( 'Read catalog did not enforce dynamic classification.' );
