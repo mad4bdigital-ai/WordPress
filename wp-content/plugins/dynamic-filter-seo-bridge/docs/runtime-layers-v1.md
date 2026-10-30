@@ -1,5 +1,10 @@
 # DFSB Runtime Layers V1 — source and deployment contract
 
+## Versioned release boundary
+
+This separate advanced read-only runtime candidate is `0.4.0-alpha.15-rc.2`. The previously signed RC15 review artifact was built from a different source at version `0.4.0-alpha.15-rc.1`; its attestation, ZIP SHA and detached-receipt eligibility must never be reused for RC2. RC2 requires a fresh exact-head owner attestation, signed source-review workflow, independent provider certificate, immutable package publication, and site-specific governance review. All remain pending. The installed `alpha.14-local.1` is unchanged.
+
+
 ## Goal
 
 A blocked **SEO Full Boot** must not, by itself, disable independently verified **native read-only Elementor context** and **read-only filter context**. Rank Math remains the sole SEO publisher; JetEngine and JetSmartFilters own their native listings and filters.
