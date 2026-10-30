@@ -269,21 +269,32 @@ final class MAD4B_Hub_Field_Fusion_V1 {
         $fields=self::policies($company,$type);
         echo '<div class="wrap"><h1>Content Hub — Field-Level Fusion</h1><p>Review-only policy. Nothing is merged, published or deleted.</p>';
         echo '<p>Company: '.esc_html($company).' | Type: '.esc_html($type).'</p>';
-        echo '<table class="widefat striped"><thead><tr><th>Field</th><th>Strategy</th><th>Weight</th><th>Action</th></tr></thead><tbody>';
+        echo '<form method="get" action="'.esc_url(admin_url('edit.php')).'">';
+        echo '<input type="hidden" name="post_type" value="mad4b_hub_nile"><input type="hidden" name="page" value="mad4b-hub-field-fusion">';
+        echo '<label>Source Company <select name="company">';
+        $companies=class_exists('MAD4B_Central_Company_REST_V1')?array_keys(MAD4B_Central_Company_REST_V1::COMPANIES):[$company];
+        foreach($companies as $id)
+            echo '<option value="'.esc_attr($id).'" '.selected($company,$id,false).'>'.esc_html($id).'</option>';
+        echo '</select></label> <label>Content type <select name="source_type">';
+        foreach(['tours-and-activities'=>'Tours','properties'=>'Hotels & Properties','transportations'=>'Transportations'] as $slug=>$name)
+            echo '<option value="'.esc_attr($slug).'" '.selected($type,$slug,false).'>'.esc_html($name).'</option>';
+        echo '</select></label> ';
+        submit_button('Load field policies','secondary','submit',false);
+        echo '</form><hr>';
         foreach($fields as $field=>$spec) {
-            echo '<tr><form action="'.esc_url(admin_url('admin-post.php')).'" method="post">';
+            echo '<form action="'.esc_url(admin_url('admin-post.php')).'" method="post" style="margin:7px 0;padding:12px;background:#fff;border:1px solid #ccc;display:flex;flex-wrap:wrap;gap:14px;align-items:center">';
             wp_nonce_field('mad4b_hub_field_fusion_update');
             echo '<input type="hidden" name="action" value="mad4b_hub_field_fusion_update">';
             foreach(['company'=>$company,'source_type'=>$type,'field'=>$field] as $key=>$value)
                 echo '<input type="hidden" name="'.esc_attr($key).'" value="'.esc_attr($value).'">';
-            echo '<td>'.esc_html($field).'</td><td><select name="strategy">';
+            echo '<strong style="min-width:210px">'.esc_html($field).'</strong><label>Strategy <select name="strategy">';
             foreach(self::STRATEGIES as $key=>$label)
                 echo '<option value="'.esc_attr($key).'" '.selected($spec['strategy'],$key,false).'>'.esc_html($label).'</option>';
-            echo '</select></td><td><input name="weight" type="number" min="0" max="100" value="'.(int)$spec['weight'].'"></td><td>';
+            echo '</select></label><label>Weight <input name="weight" type="number" min="0" max="100" value="'.(int)$spec['weight'].'" style="width:75px"></label>';
             submit_button('Save rule','secondary','submit',false);
-            echo '</td></form></tr>';
+            echo '</form>';
         }
-        echo '</tbody></table><p>Field-level proposals preserve competing values and provenance; review before choosing any canonical representation.</p></div>';
+        echo '<p>Field-level proposals preserve competing values and provenance; review before choosing any canonical representation.</p></div>';
     }
     public static function boot(): void {
         add_action('admin_menu',[__CLASS__,'menu']);
