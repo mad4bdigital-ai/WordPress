@@ -53,18 +53,24 @@ final class MAD4B_SCP_Company_Provisioning_Work_Operations {
           && is_string($row['executor_id']??null) && preg_match('/^[a-z0-9_-]{4,64}$/D',$row['executor_id'])
           && $seen && $now >= $seen && $now-$seen<=900;
         return array('registered'=>(bool)$eligible,'executor'=>'enrolled_vps_mcp_client',
+            'executor_id'=>$eligible?(string)$row['executor_id']:null,
             'reason'=>$eligible?'ready':'verified_company_executor_missing_or_stale');
     }
+    // Provider admission is not restricted to discovery. This exact-stage
+    // fence allows installation/configuration once its own prerequisites,
+    // authenticated company run and registered executor have been verified.
     public static function provider_entry_allowed($job) {
         if (!is_array($job) || ($job['operation_id']??'')!==self::JOB) return false;
         $payload=$job['payload']??null;
         if (!self::validate_payload($payload)) return false;
         $company=array('company_code'=>$payload['company_code'],'site_uuid'=>$payload['site_uuid']);
-        if (empty(self::executor_status($company)['registered'])) return false;
-        // The current client contract supports typed read-only discovery.
-        // Backup, activation, configuration, pricing and publishing remain
-        // denied until a separate exact-stage mutation authorization exists.
-        return in_array($payload['stage'],array('identity','snapshot'),true);
+        $executor=self::executor_status($company);
+        if (empty($executor['registered']) ||
+            !hash_equals((string)$executor['executor_id'],(string)($job['executor_id']??'')) ||
+            ($job['status']??'')!=='claimed' ||
+            (int)($job['lease_expires_at_epoch']??0)<=time() ||
+            !empty($job['cancel_requested_at']))return false;
+        return MAD4B_Start_Company_Runtime::stage_job_authorized($payload);
     }
     public static function build_identity() {
         if (!class_exists('MAD4B_SCP_Live_Acceptance_Observer')
