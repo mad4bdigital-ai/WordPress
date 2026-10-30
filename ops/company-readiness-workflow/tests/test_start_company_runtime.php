@@ -96,6 +96,7 @@ $out=MAD4B_Start_Company_Runtime::status(req('wayfatours'));
 t('one_run_id_preserved',(bool)preg_match('/^[a-f0-9]{64}$/',$out['run_id']));
 t('one_outcome_scoped_job',count($out['jobs'])===1 && $out['jobs'][0]['stage']==='identity');
 t('single_outcome_reports_active',$out['overall_state']==='IN_PROGRESS'&&!$out['successful']);
+t('run_returns_same_authoritative_outcome',($again['outcome']['run_id']??null)===$out['run_id']);
 t('single_outcome_no_cross_company_jobs',!in_array('foreign-tenant-job',array_column($out['jobs'],'id'),true));
 $bad=MAD4B_Start_Company_Runtime::resume(req('wayfatours',['stage'=>'identity','expected_plan_sha256'=>str_repeat('0',64)]));
 t('plan_hash_cas',is_wp_error($bad)&&$bad->get_error_code()==='mad4b_company_plan_changed');
@@ -153,7 +154,7 @@ t('owner_change_invalidates_access',$old['stages']['access']['stage_revision']!=
 t('owner_change_preserves_plugins',$old['stages']['plugins']['stage_revision']===$new['stages']['plugins']['stage_revision'] && $old['stages']['plugins']['execution_plan_sha256']===$new['stages']['plugins']['execution_plan_sha256']);
 MAD4B_Start_Company_Runtime::recheck_event('wayfatours');
 t('event_snapshot_saved',isset($GLOBALS['opts']['mad4b_start_company_snapshots_v3']['wayfatours']['plan_sha256']));
-t('event_continue_without_duplicate',$GLOBALS['queue_count']===3);
+t('event_dispatches_next_ready_stage',$GLOBALS['queue_count']===4);
 $after=MAD4B_Start_Company_Runtime::status(req('wayfatours'));
 t('partially_verified_not_complete',$after['verified_count']>=5 && $after['successful']===false);
 t('single_outcome_jobs_have_receipts_priority',$after['overall_state']==='IN_PROGRESS');
