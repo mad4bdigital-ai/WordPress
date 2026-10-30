@@ -92,18 +92,21 @@ final class MAD4B_Company_Hub_Control_Agent_V1 {
         return $data;
     }
     private static function delegated($data) {
-        $delegation=get_option(self::DELEGATION,null);
-        if(!is_array($delegation) ||
-            ($delegation['company_id']??null)!==self::company() ||
-            ($delegation['enabled']??false)!==true ||
-            !is_int($delegation['approved_by_user_id']??null) ||
-            !user_can((int)$delegation['approved_by_user_id'],'manage_options') ||
-            !is_int($delegation['expires_at']??null) ||
-            $delegation['expires_at']<=time() ||
-            !is_array($delegation['allowed_actions']??null) ||
-            !in_array($data['action']??null,$delegation['allowed_actions'],true))
-            return self::err('source_delegation_missing');
-        return $delegation;
+        // The existing paired ECDSA central identity is the ONLY approval
+        // needed for a narrowly selected, public-source REFERENCE share.
+        // signed_request() already verified the exact pinned central public
+        // key, company/host, request body, timestamp and nonce. No separate
+        // site-local owner enrollment or market-commercial approval.
+        if(($data['action']??null)==='content_release_reference' &&
+           ($data['selection']['reference_only']??null)===true &&
+           ($data['selection']['checkout_enabled']??null)===false &&
+           self::public_key()){
+            return array('consumer_companies'=>array($data['consumer_company']),
+                'source_post_types'=>array($data['selection']['source_post_type']),
+                'expires_at'=>$data['selection']['valid_until'],
+                'authority'=>'verified_signed_rest_connection');
+        }
+        return self::err('action_not_permitted_by_connection');
     }
     public static function validate_intent($data,$delegation=null) {
         if(!is_array($data) || ($data['contract']??null)!==self::CONTRACT ||
@@ -166,6 +169,14 @@ final class MAD4B_Company_Hub_Control_Agent_V1 {
         $s=$data['selection'];
         if(!post_type_exists($s['source_post_type']))
             return self::err('source_type_missing',409);
+        $type=get_post_type_object($s['source_post_type']);
+        // A successful REST pairing is NEVER authorization to share private
+        // orders, bookings, customers, unpublished entries or internal CPTs.
+        if(!$type || !$type->public || !$type->publicly_queryable ||
+           in_array($s['source_post_type'],array(
+             'tour_orders','tour_bookings','shop_order','shop_order_refund',
+             'fluentform_submissions','attachment'),true))
+            return self::err('source_type_not_shareable',403);
         $wpml=(array)get_option('icl_sitepress_settings',array());
         $active=(array)($wpml['active_languages']??array());
         $hidden=(array)($wpml['hidden_languages']??array());
@@ -175,7 +186,7 @@ final class MAD4B_Company_Hub_Control_Agent_V1 {
         foreach($s['record_ids'] as $id){
             $post=get_post($id);
             if(!$post || $post->post_type!==$s['source_post_type'] ||
-               $post->post_status!=='publish')
+               $post->post_status!=='publish' || $post->post_password!=='')
                 return self::err('source_record_missing',409);
             $lang=$wpdb->get_var($wpdb->prepare(
                 "SELECT language_code FROM {$wpdb->prefix}icl_translations
