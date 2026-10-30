@@ -56,7 +56,7 @@ final class MAD4B_Hub_Source_Import_V1 {
         }
         // Extended authenticated SSH metadata; old REST snapshots remain valid.
         $extra=['source_slug','source_url','source_wpml_trid','source_text_origin',
-            'source_taxonomy_refs','source_identity_facts'];
+            'source_taxonomy_refs','source_identity_facts','source_metadata'];
         $present=0;
         foreach($extra as $key)if(array_key_exists($key,$row))$present++;
         if($present!==0 && $present!==count($extra))
@@ -72,7 +72,9 @@ final class MAD4B_Hub_Source_Import_V1 {
                 !in_array($row['source_text_origin'],['post_content','source_meta','excerpt_fallback','none'],true) ||
                 !is_array($row['source_taxonomy_refs']) ||
                 !is_array($row['source_identity_facts']) ||
-                count($row['source_taxonomy_refs'])>3 || count($row['source_identity_facts'])>3)
+                !is_array($row['source_metadata']) ||
+                count($row['source_taxonomy_refs'])>3 || count($row['source_identity_facts'])>3 ||
+                count($row['source_metadata'])>10)
                 return self::failure('extended_identity_invalid');
             $allowedTax=[
                 'tours-and-activities'=>['tour-types_jet','tour_categories_jet','location_jet'],
@@ -84,6 +86,17 @@ final class MAD4B_Hub_Source_Import_V1 {
                 'properties'=>[],
                 'transportations'=>['from_station_id','to_station_id'],
             ][$type]??[];
+            $allowedMeta=[
+                'tours-and-activities'=>['tour_mode','tour_type'],
+                'properties'=>[],
+                'transportations'=>['trans_route_estimated_duration','trans_train_operator']
+            ][$type]??[];
+            foreach($row['source_metadata'] as $metaKey=>$metaValue) {
+                if(!in_array($metaKey,$allowedMeta,true) || !is_string($metaValue) ||
+                    $metaValue==='' || strlen($metaValue)>300 ||
+                    preg_match('/[\\x00-\\x1F\\x7F]/',$metaValue))
+                    return self::failure('extended_metadata_invalid');
+            }
             foreach($row['source_identity_facts'] as $key=>$value)
                 if(!in_array($key,$allowedFacts,true) || !is_string($value) ||
                    strlen($value)>100 || preg_match('/[^a-zA-Z0-9_. -]/',$value))
@@ -364,6 +377,7 @@ final class MAD4B_Hub_Source_Import_V1 {
                 $meta['_mad4b_hub_import_text_origin']=$row['source_text_origin'];
                 $meta['_mad4b_hub_import_taxonomy_refs']=$row['source_taxonomy_refs'];
                 $meta['_mad4b_hub_import_identity_facts']=$row['source_identity_facts'];
+                $meta['_mad4b_hub_import_source_metadata']=$row['source_metadata'];
             }
             foreach($meta as $field=>$value)update_post_meta($id,$field,$value);
             if($key!==$company.':'.$row['source_post_type'].':'.$row['language'].':'.$row['source_id']) {
