@@ -235,11 +235,18 @@ final class MAD4B_SCP_Provider_Setup_Coverage {
             'live_connection_tests_performed' => false,
             'unverified_not_equivalent_to_ready' => true );
     }
+    private static function diagnostic_link( $row ) {
+        $family = (string) ( $row['family'] ?? '' );
+        if ( ! in_array( $family, array( 'search', 'oauth', 'browser_runner', 'browser_native', 'ai', 'growth' ), true ) ) return null;
+        $url = (string) ( $row['setup_url'] ?? '' );
+        if ( $url === '' || wp_validate_redirect( $url, '' ) === '' ) return null;
+        return array( 'url' => $url, 'label' => $family === 'browser_runner' ? 'Open external runner setup' : 'Open owner diagnostics' );
+    }
     public static function render() {
         $data = self::inventory();
         if ( is_wp_error( $data ) ) return;
         echo '<hr/><h2>Provider setup coverage</h2><p>Fields below are read-only names from their owning adapters. "Credential present" does not establish a live connection, signed browser evidence, paid API authorization or production readiness.</p>';
-        echo '<table class="widefat striped"><thead><tr><th>Provider</th><th>Required fields / credential owner</th><th>Credential state</th><th>Connection / execution evidence</th><th>Setup</th></tr></thead><tbody>';
+        echo '<table class="widefat striped"><thead><tr><th>Provider</th><th>Required fields / credential owner</th><th>Credential state</th><th>Connection / execution evidence</th><th>Setup</th><th>Test / diagnostics</th></tr></thead><tbody>';
         foreach ( $data['providers'] as $row ) {
             echo '<tr><td><strong>'.esc_html( $row['label'] ).'</strong><br/><code>'.esc_html( $row['family'].'/'.$row['provider_id'] ).'</code></td>';
             echo '<td>'.esc_html( $row['credential_custody'] ).'<ul>';
@@ -249,7 +256,11 @@ final class MAD4B_SCP_Provider_Setup_Coverage {
             echo '<td><code>'.esc_html( $row['next_step'] ).'</code>';
             if ( $row['setup_url'] !== '' && wp_validate_redirect( $row['setup_url'], '' ) !== '' )
                 echo '<p><a href="'.esc_url( $row['setup_url'] ).'">Open original setup</a></p>';
-            echo '</td></tr>';
+            $link = self::diagnostic_link( $row );
+            echo '</td><td>';
+            if ( $link ) echo '<a class="button button-secondary" href="'.esc_url( $link['url'] ).'">'.esc_html( $link['label'] ).'</a>';
+            else echo '<span>Test not available</span>';
+            echo '<p class="description">Navigation only; no live test is implied.</p></td></tr>';
         }
         echo '</tbody></table><p>Browserbase, Browserless, Steel and Cloudflare browser credentials live in the independently operated external runner. WordPress has no authority to test or save those runner keys. The Browser Acceptance page describes their exact secret names and signed-evidence requirements; do not paste those secrets into an unrelated WordPress setting.</p>';
     }
