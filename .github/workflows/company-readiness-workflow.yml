@@ -7,6 +7,8 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-start-your-company-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-readiness-governance.php'
       - 'wp-content/plugins/mad4b-site-control-plane/config/operation-registry.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py'
+      - 'governance/production-readiness/capability-coverage.json'
   push:
     branches: [master]
     paths:
@@ -15,6 +17,8 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-start-your-company-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-readiness-governance.php'
       - 'wp-content/plugins/mad4b-site-control-plane/config/operation-registry.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py'
+      - 'governance/production-readiness/capability-coverage.json'
 permissions:
   contents: read
 
@@ -65,6 +69,7 @@ jobs:
       - name: Company stages and partial recovery contract tests
         run: |
           php ops/company-readiness-workflow/tests/test_start_company_runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py
           python3 - <<'PY'
           import json
           d=json.load(open('wp-content/plugins/mad4b-site-control-plane/config/operation-registry.json'))
