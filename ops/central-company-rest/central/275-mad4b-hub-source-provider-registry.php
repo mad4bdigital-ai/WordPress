@@ -102,6 +102,28 @@ final class MAD4B_Hub_Source_Providers_V1 {
         $result=update_option(self::LEDGER,$rows,false);
         return $result!==false || get_option(self::LEDGER,[])===$rows;
     }
+    /** Native read Ability so Control MCP can discover this registered source.
+     * No executor, permission escalation, release certificate, or write operation.
+     */
+    public static function register_abilities(): void {
+        if(!self::enabled() || !function_exists('wp_register_ability'))return;
+        $ability='mad4b/hub-source-providers';
+        if(function_exists('wp_has_ability') && wp_has_ability($ability))return;
+        wp_register_ability($ability,[
+            'label'=>'Content Hub Source Providers',
+            'description'=>'Read registered company-scoped source providers, capabilities and committed Staging import receipts.',
+            'category'=>'mad4b-read',
+            'execute_callback'=>[__CLASS__,'inspect'],
+            'permission_callback'=>static function(){return current_user_can('manage_options');},
+            'input_schema'=>['type'=>'object','properties'=>[],'additionalProperties'=>false],
+            'output_schema'=>['type'=>'object','additionalProperties'=>true],
+            'meta'=>[
+                'public'=>false,'show_in_rest'=>false,
+                'mcp'=>['public'=>false,'type'=>'tool','surface'=>'read'],
+                'annotations'=>['readonly'=>true,'destructive'=>false,'idempotent'=>true],
+            ],
+        ]);
+    }
     public static function rest(): void {
         register_rest_route('mad4b-central/v1','/hub-source-providers',[
             'methods'=>WP_REST_Server::READABLE,
@@ -113,6 +135,7 @@ final class MAD4B_Hub_Source_Providers_V1 {
         if(!self::enabled())return;
         add_action('init',[__CLASS__,'defaults'],14);
         add_action('rest_api_init',[__CLASS__,'rest']);
+        add_action('wp_abilities_api_init',[__CLASS__,'register_abilities'],25);
     }
 }
 MAD4B_Hub_Source_Providers_V1::boot();
