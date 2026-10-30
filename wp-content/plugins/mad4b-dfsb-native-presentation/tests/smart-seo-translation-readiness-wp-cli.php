@@ -65,6 +65,12 @@ try {
  $reviews->set_body(wp_json_encode(['expected_revision'=>$rev,'approved'=>true]));
  $bad=rest_do_request($reviews);
  $checks['no_candidate_review_denied']=$bad->get_status()===409;
+ $preserve=new WP_REST_Request('POST','/mad4b/v1/seo-intelligence/translations/tasks');
+ $preserve->set_header('Content-Type','application/json');
+ $preserve->set_body(wp_json_encode(['taxonomy'=>'destinations','source_id'=>123,'language'=>'it']));
+ $guard=rest_do_request($preserve);
+ $checks['existing_italian_description_protected']=$guard->get_status()===409
+  && ($guard->get_data()['code']??'')==='translation_existing_content';
  $duplicate=rest_do_request($prepare);
  $checks['duplicate_prepare_denied']=$duplicate->get_status()===409;
 } finally {
