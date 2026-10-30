@@ -53,7 +53,7 @@ final class MAD4B_SCP_Company_Provisioning_Work_Operations {
         // the exact claimed job is independently admitted at provider entry.
         $supported=is_array($row)?($row['supported_actions']??null):null;
         $allowed=array_values(MAD4B_Start_Company_Runtime::ACTIONS);
-        $supported_ok=is_array($supported) && array_is_list($supported)
+        $supported_ok=is_array($supported) && array_keys($supported)===range(0,count($supported)-1)
           && count($supported)>0 && count($supported)===count(array_unique($supported))
           && !array_diff($supported,$allowed);
         $eligible=is_array($row) && ($row['provider']??'')==='vps_mcp_client'
