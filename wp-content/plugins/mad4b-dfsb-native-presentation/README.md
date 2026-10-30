@@ -235,3 +235,23 @@ WPML translates taxonomy term IDs when inspecting a localized page. An unresolve
 To allow the guide facet in a per-company policy with an explicit allowlist, include the actual discovered guide filter ID; an **empty** `allowed_filter_ids` list instead allows all qualified native-registered filters, with the exclusions and all publication gates still enforced. Avoid a global cap on search dimensions; cap the QA preview batch instead.
 
 All publishing remains OFF until editorial/content graph, result coverage, canonical, Rank Math, WPML, and per-company policy requirements are satisfied. Tests: `tests/smart-seo-guide-language-wp-cli.php`.
+
+## WPML localized CPT archive URL fix (v0.6.3)
+
+**Root cause (verified):** For this site, `apply_filters('wpml_permalink', get_post_type_archive_link('tours-and-activities'), $locale, true)` performs **full post permalink resolution**, incorrectly returning the default English URL for otherwise valid CPT archive URLs. WPML, language-directory rewrites and Rank Math canonical output were already correctly configured. The same WPML filter with `full_resolution=false` returns the correct language-prefixed CPT archive URL. Do not disable WPML, force global rewrite changes, or synthesize language prefixes in business code.
+
+`SmartSeoCombinations::archiveUrl($source,$lang)` is the single centralized archive URL resolver; `archiveRoute()` returns its evidence and checks the same-site host and distinction from the English route. Both URL generation (`url()`) and index-eligibility validation (`inspect()`) use the **same** resolver so that generated links and blockers cannot contradict each other. The query's taxonomy term IDs still translate via `wpml_object_id` in the requested locale and the post intersection is evaluated in that language. Guide spoken language remains independent of the WPML site language.
+
+The administrator-only read-only endpoint:
+
+`GET /wp-json/mad4b/v1/seo-intelligence/combinations/archive-routes?provider=jet-engine&query_id=tours_query_archive`
+
+returns each configured language's generated archive URL, its base source URL and route-difference evidence. This route **never approves SEO publication**.
+
+On Staging, all six language archives (EN, AR, FR, DE, IT, ES) returned HTTP 200 with matching HTML `lang` and Rank Math canonical URL. The exact filtered URL in EN, AR and FR contained the corresponding language prefix, translated taxonomy term IDs, and five simultaneous facets including a French-speaking tour guide; WordPress reported 4 matching published tours for each sampled language. This evidence does **not** attest to date-specific guide availability, editorial uniqueness or permission to index.
+
+Regression:
+- `tests/smart-seo-wpml-archive-routes-wp-cli.php` — 27/27, including real HTTP/canonicals and REST authorization
+- `tests/smart-seo-guide-language-wp-cli.php` — 19/19, including independence between WPML locale and guide-language filter
+
+The existing per-combination result and editorial QA gates are **not** weakened. Publishing stays disabled pending separate content, translation, Rank Math and SEO acceptance.
