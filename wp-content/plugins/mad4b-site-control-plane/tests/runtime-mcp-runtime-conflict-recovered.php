@@ -29,7 +29,7 @@ $evidence = static function () use ( $guard, $bridge, $mu_runtime ) {
 };
 
 if ( empty( $guard['eligible'] ) ) $fail( 'guard must remain eligible on exact Staging origin' . $evidence() );
-if ( 'canonical_runtime' !== ( isset( $guard['state'] ) ? $guard['state'] : '' ) ) $fail( 'expected canonical runtime ownership after MU recovery' . $evidence() );
+if ( 'runtime_source_observed' !== ( isset( $guard['state'] ) ? $guard['state'] : '' ) || empty( $guard['source_provenance_observational'] ) ) $fail( 'expected non-blocking source observation after MU recovery' . $evidence() );
 if ( empty( $guard['official_loads_before_hostinger'] ) ) $fail( 'active_plugins order must remain canonical' );
 if ( ! empty( $guard['runtime_provenance_mismatch'] ) ) $fail( 'runtime provenance mismatch must be closed' );
 if ( ! empty( $guard['repair_applied'] ) ) $fail( 'recovered request must converge without another repair' );

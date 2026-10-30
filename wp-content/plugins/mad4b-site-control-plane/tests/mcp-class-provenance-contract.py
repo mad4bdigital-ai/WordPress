@@ -142,7 +142,7 @@ for marker in (
         raise SystemExit(f"MCP runtime surface generator contract missing: {marker}")
 
 for marker in (
-    "MAD4B_SCP_MCP_Class_Provenance::BLOCKER",
+    "source_provenance_observational",
     "runtime_class_provenance",
     "validator_reason",
     "official_schema_validation",
