@@ -50,6 +50,10 @@ $bad=MAD4B_Start_Company_Runtime::resume(req('wayfatours',['stage'=>'shell','exp
 t('no_arbitrary_stage',is_wp_error($bad)&&$bad->get_error_code()==='mad4b_company_stage_invalid');
 $job=['contract'=>'mad4b.company-stage-job.v1','company_code'=>'wayfatours','site_uuid'=>'b0725ffa-87e1-47e3-b0c0-c4aa4eb8882b','origin'=>'https://wayfatours.mad4b.com','mode'=>'repair_existing','stage'=>'identity','plan_sha256'=>$p['plan_sha256'],'stage_revision'=>$p['stages']['identity']['stage_revision'],'preserve_existing'=>true,'mutation_authorized'=>false];
 t('job_payload_valid',MAD4B_SCP_Company_Provisioning_Work_Operations::validate_payload($job));
+$readjob=['operation_id'=>'company.stage.execute','payload'=>$job];
+t('read_stage_provider_entry_allowed',MAD4B_SCP_Company_Provisioning_Work_Operations::provider_entry_allowed($readjob));
+$readjob['payload']['stage']='plugins';
+t('mutation_provider_entry_denied_without_authority',!MAD4B_SCP_Company_Provisioning_Work_Operations::provider_entry_allowed($readjob));
 $job['site_uuid']='12345678-1234-4123-8123-123456789abc';
 t('cross_tenant_job_rejected',!MAD4B_SCP_Company_Provisioning_Work_Operations::validate_payload($job));
 $old=MAD4B_Start_Company_Runtime::plan(req('wayfatours'));
