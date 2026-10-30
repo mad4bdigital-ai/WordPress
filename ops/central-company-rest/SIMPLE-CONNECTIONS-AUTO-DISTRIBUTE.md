@@ -73,3 +73,13 @@ bash /opt/mad4b/operations/content-hub/cross-ssh/run-tourism-cross-ssh.sh
 ```
 
 Rollback: keep the source unchanged; leave automation disabled; restore backed-up central 250/260 MU adapters if needed. The 827 private posts remain accessible for inspection; to revert records, use the pre-import scoped backup (35 old records and Hub options) retained under `/opt/mad4b-company-release-prep/20261030/tourism-cross-ssh-release/backup-state/`. Do not delete anything automatically. Further dynamic tenant/provider discovery and per-company private distribution require their own receiver registration and run policy.
+
+## Central Staging code ownership and owner-only release attestation — 2026-10-30
+
+**Operational source of truth**: the Tourism read-only exporter lives under the central `tours.dev.mad4b.com` Staging runtime on the MAD4B VPS, at `/opt/hostinger-migrations/hosting-3/etg-commerce-staging/runtime/source-providers/tourism/source-export.php` (root-owned, 0600; not web-served). The VPS host runner streams these source bytes over the pinned SSH connection via `wp --path=<Tourism root> --skip-themes eval-file -`. Tourism only provides its WordPress data and API runtime; there is **no requirement to install or update an exporter PHP script on the source**. The historical source-side exporter file is no longer used by the updated runner.
+
+**Safe verification**: `bash /opt/mad4b/operations/content-hub/cross-ssh/run-tourism-cross-ssh.sh --verify-only` runs export and contract/count checks, without any Content Hub import. Explicit `--import` (or the legacy no-argument mode) runs the existing private Staging receiver, subject to its own policy and data safeguards. No automatic scheduler is enabled.
+
+**Approval policy**: one recorded owner decision for the **exact proposed code version/HEAD** is sufficient for release or PR merge. GitHub serves only as version history and review audit. There is no independent release certificate, extra signing ceremony or third-party certification gate imposed by this integration. Runtime requirements still include correct authorized company, scoped credentials, SSH host-key verification, data validation, no implicit publishing and passing tests. The owner's general preference for single-owner attestation does not itself approve a specific HEAD or trigger deployment to Production.
+
+**Observed verification**: the centrally stored script was executed remotely by WP-CLI over pinned SSH and read 827 published language-specific records (217 tours, 597 properties, 13 transportations), with no content mutations. The updated installed host runner passed `--verify-only` on the same 827-record source. SHA256 checks are transfer-integrity checks, not release certificates.
