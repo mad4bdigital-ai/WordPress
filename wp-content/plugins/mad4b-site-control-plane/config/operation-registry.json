@@ -300,7 +300,7 @@
       "pipeline_profile": "governed_mutation_v1",
       "side_effect_class": "governed_stage_queue_request",
       "retry_semantics": "readback_before_retry",
-      "host_runner_required": false
+      "host_runner_required": true
     },
     {
       "id": "company.repair",
@@ -318,7 +318,7 @@
       "pipeline_profile": "governed_mutation_v1",
       "side_effect_class": "governed_stage_queue_request",
       "retry_semantics": "readback_before_retry",
-      "host_runner_required": false
+      "host_runner_required": true
     },
     {
       "id": "company.plugin-sync.request",
