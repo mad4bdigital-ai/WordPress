@@ -78,7 +78,10 @@ clearstatcache( true, $validator );
 $mixed = MAD4B_SCP_MCP_Class_Provenance::inspect_contract( $contract, $runtime );
 check( empty( $mixed['ready'] ), 'drifted class set must fail closed' );
 check( 'mixed_runtime' === $mixed['state'], 'single drift among verified classes must classify as mixed runtime' );
-check( MAD4B_SCP_MCP_Class_Provenance::BLOCKER === $mixed['blocker'], 'mixed runtime blocker mismatch' );
+// Source hashes are diagnostic/advisory, never an extra owner release gate;
+ // a mixed class set must still be reported as NOT certified and with exact drift.
+check( '' === $mixed['blocker'] && ! empty( $mixed['source_provenance_observational'] ),
+    'mixed runtime must remain observational, never an implicit source-authority gate' );
 check( 1 === $mixed['failure_count'], 'one drifted file must produce one class failure' );
 check( 'tool_validator' === $mixed['failures'][0]['alias'], 'validator drift alias mismatch' );
 check( 'runtime_class_sha256_mismatch' === $mixed['failures'][0]['reason'], 'validator drift reason mismatch' );
