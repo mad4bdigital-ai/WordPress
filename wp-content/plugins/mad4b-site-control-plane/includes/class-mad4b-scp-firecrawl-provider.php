@@ -176,7 +176,7 @@ final class MAD4B_SCP_Firecrawl_Provider {
   echo '</select></td></tr>';
   echo '<tr data-mad4b-firecrawl-mode="cloud"><th>Cloud API Endpoint</th><td><code>https://api.firecrawl.dev</code></td></tr>';
   echo '<tr data-mad4b-firecrawl-mode="cloud"><th>Cloud API Key</th><td><input type="password" name="firecrawl_cloud_secret" autocomplete="new-password" class="regular-text" placeholder="Leave blank to retain saved Cloud key"><p class="description">'.(!empty($cloud['secret_cipher'])?'Cloud key saved':'No Cloud key saved').'; encrypted at rest.</p></td></tr>';
-  echo '<tr data-mad4b-firecrawl-mode="self_hosted"><th>Self-hosted HTTPS URL</th><td><input type="url" name="firecrawl_endpoint" class="regular-text" value="'.esc_attr($gateway['endpoint']??'').'" placeholder="https://firecrawl.mad4b.com"></td></tr>';
+  echo '<tr data-mad4b-firecrawl-mode="self_hosted"><th>Self-hosted HTTPS URL</th><td><input type="url" name="firecrawl_endpoint" class="regular-text" value="'.esc_attr($gateway['endpoint']??'').'" placeholder="https://"></td></tr>';
   echo '<tr data-mad4b-firecrawl-mode="self_hosted"><th>Gateway Service Username</th><td><input type="text" name="firecrawl_username" autocomplete="off" class="regular-text" value="'.esc_attr($gateway['username']??'').'" placeholder="mad4b-control-plane"></td></tr>';
   echo '<tr data-mad4b-firecrawl-mode="self_hosted"><th>Gateway Password</th><td><input type="password" name="firecrawl_gateway_password" autocomplete="new-password" class="regular-text" placeholder="Leave blank to retain saved Gateway password"><p class="description">'.(!empty($gateway['secret_cipher'])?'Gateway password saved':'No Gateway password saved').'; encrypted at rest.</p></td></tr></table>';
   submit_button('Save Firecrawl Connection');

@@ -122,29 +122,6 @@ final class MAD4B_SCP_Servers {
 		return array_values( array_unique( $write ) );
 	}
 
-	/**
-	 * Current live provider resolution in a single runtime snapshot.
-	 *
-	 * A deep governance projection must not call provider_for_ability()
-	 * separately for every Write tool: its uncached dynamic resolution
-	 * reconstructs and re-certifies the entire provider catalog per tool.
-	 * Use the SAME eligibility list (write_tools) and provider precedence
-	 * (core first, then certified registered adapter) as the single-tool
-	 * resolver; never cache this map across requests or changes.
-	 */
-	public static function live_write_provider_snapshot() {
-		$mounted = self::write_tools();
-		$core = array_fill_keys( self::core_write_candidates(), true );
-		$adapters = self::registered_adapter_write_candidates();
-		$result = array();
-		foreach ( $mounted as $ability ) {
-			$ability = (string) $ability;
-			if ( isset( $core[ $ability ] ) ) $result[ $ability ] = 'core';
-			elseif ( isset( $adapters[ $ability ] ) && '' !== $adapters[ $ability ] )
-				$result[ $ability ] = $adapters[ $ability ];
-		}
-		return $result;
-	}
 
 	/**
 	 * Stable governed ChatGPT write catalog. Discovery is deliberately independent

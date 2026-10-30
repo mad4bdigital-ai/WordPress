@@ -230,6 +230,18 @@
         "downloads.wordpress.org"
       ],
       "rationale": "Version-pinned official WooCommerce ZIP origin is present only in non-authorizing package evidence; this review does not authorize downloads or installation."
+    },
+    "includes/class-mad4b-scp-company-domain-cloudflare.php": {
+      "hosts": [
+        "api.cloudflare.com"
+      ],
+      "rationale": "Official Cloudflare API endpoint; explicit provider route, not site identity"
+    },
+    "includes/class-mad4b-scp-firecrawl-provider.php": {
+      "hosts": [
+        "api.firecrawl.dev"
+      ],
+      "rationale": "Official Firecrawl cloud API; self-hosted service URL is user configuration, never hard-coded"
     }
   },
   "optional_named_tag_integrations": [

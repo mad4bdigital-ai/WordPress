@@ -8,7 +8,7 @@ final class MAD4B_SCP_Tour_Workflow_Runtime {
  public static function evaluate($post_id){
   if(!self::gate())return new WP_Error('mad4b_workflow_scope_denied','Staging administrator required.');
   $post=get_post(absint($post_id));
-  if(!$post||$post->post_type!=='tours-and-activities')return new WP_Error('mad4b_workflow_target_invalid','Tour target required.');
+  if(!$post||!in_array($post->post_type,array_values(get_post_types(array('public'=>true),'names')),true))return new WP_Error('mad4b_workflow_target_invalid','Tour target required.');
   $prior=MAD4B_SCP_Research_Task_Bridge::preflight($post_id);
   if(is_wp_error($prior))return $prior;
   $site=class_exists('MAD4B_SCP_Restore_Epoch')?MAD4B_SCP_Restore_Epoch::status(false,true):array();

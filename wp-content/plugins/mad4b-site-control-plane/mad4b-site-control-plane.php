@@ -39,7 +39,7 @@ if ( function_exists( 'is_admin' ) && is_admin() ) {
 // Keep this tiny lifecycle hook available even on the foreign REST kernel.
 // Sender and notification consumer hooks must remain available in CRM/F Forms
 // AJAX, cron and CLI contexts while foreign REST stays in the zero-touch kernel.
-if ( 'staging' === wp_get_environment_type() ) {
+if ( function_exists( 'wp_get_environment_type' ) && 'staging' === wp_get_environment_type() ) {
     require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-company-email-routing.php';
     require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-company-sender-policy.php';
 }

@@ -288,7 +288,7 @@ final class MAD4B_SCP_Provider_Setup_Coverage {
         echo '<input type="hidden" name="action" value="mad4b_custom_provider_register"><table class="form-table">';
         echo '<tr><th>Provider ID</th><td><input required name="provider_id" pattern="[a-z][a-z0-9_-]{2,47}" placeholder="my_provider"></td></tr>';
         echo '<tr><th>Name</th><td><input required name="provider_label" maxlength="100" placeholder="My Provider"></td></tr>';
-        echo '<tr><th>Public HTTPS API URL</th><td><input required type="url" name="provider_endpoint" class="regular-text" placeholder="https://api.example.com"></td></tr>';
+        echo '<tr><th>Public HTTPS API URL</th><td><input required type="url" name="provider_endpoint" class="regular-text" placeholder="https://"></td></tr>';
         echo '<tr><th>Authentication type</th><td><select name="provider_auth"><option value="api_key">API Key</option><option value="bearer">Bearer</option><option value="basic">Basic</option><option value="oauth2">OAuth 2</option><option value="none">None</option></select></td></tr>';
         echo '</table>';
         submit_button( 'Register Custom Provider', 'secondary' );

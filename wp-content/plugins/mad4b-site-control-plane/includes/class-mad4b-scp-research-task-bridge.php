@@ -13,7 +13,7 @@ final class MAD4B_SCP_Research_Task_Bridge {
  public static function bind($task_key,$site_uuid,$post_id,$locale='en'){
   if(!self::allowed())return self::error('mad4b_research_bind_denied','Staging operator required.');
   $post_id=absint($post_id);$post=get_post($post_id);
-  if(!$post||$post->post_type!=='tours-and-activities'||$post->post_status!=='draft'||!current_user_can('edit_post',$post_id))return self::error('mad4b_research_target_not_draft','A writable tour draft is required.');
+  if(!$post||!in_array($post->post_type,array_values(get_post_types(array('public'=>true),'names')),true)||$post->post_status!=='draft'||!current_user_can('edit_post',$post_id))return self::error('mad4b_research_target_not_draft','A writable tour draft is required.');
   $group=MAD4B_SCP_Research_Groups::group($task_key,$site_uuid,$locale);
   if(is_wp_error($group))return $group;
   $prev=(string)get_post_meta($post_id,self::BINDING_META,true);

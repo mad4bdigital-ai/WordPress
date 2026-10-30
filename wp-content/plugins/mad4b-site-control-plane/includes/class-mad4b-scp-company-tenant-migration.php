@@ -45,7 +45,7 @@ final class MAD4B_SCP_Company_Tenant_Migration {
     private static function preservationCandidates(): array {
         global $wpdb;
         // Preview only. Never perform an SQL content import or rewrite.
-        $supported=['post','page','tours-and-activities','properties','transportations'];
+        $supported=array_values(get_post_types(array('public'=>true),'names'));
         $types=implode(',',array_fill(0,count($supported),'%s'));
         $posts=$wpdb->posts;
         $meta=$wpdb->postmeta;
@@ -112,7 +112,10 @@ final class MAD4B_SCP_Company_Tenant_Migration {
             'tour_rates_cpt_registered'=>post_type_exists('tour-rates'),
             'form_6_present'=>$bookingForm6===1,
             'location_taxonomy_registered'=>taxonomy_exists('location_jet'),
-            'tour_type_taxonomy_registered'=>taxonomy_exists('tour_type'),
+            'tour_type_taxonomy_registered'=>(static function(){
+                $configured = sanitize_key((string)get_option('mad4b_company_tour_type_taxonomy',''));
+                return $configured !== '' && taxonomy_exists($configured);
+            })(),
             'wpml_translation_table_rows'=>$tables['wpml_translations']['rows'],
             'custom_configuration_tables'=>$tables
         ];
@@ -149,8 +152,7 @@ final class MAD4B_SCP_Company_Tenant_Migration {
                 $wpdb->esc_like($table)))===$table);
         }
         $posts=[];
-        foreach(['tours-and-activities','properties','transportations','tour-rates',
-            'tour_orders','tour_bookings','product','shop_order'] as $type) {
+        foreach(array_values(get_post_types(array(), 'names')) as $type) {
             if(post_type_exists($type)){
                 $count=wp_count_posts($type);
                 $posts[$type]=array_sum(array_map('intval',(array)$count));
