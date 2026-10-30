@@ -67,7 +67,7 @@ final class SmartSeoContentGraph {
     'translation_issue'=>$wrongLocale?'wrong_locale_term':($characters===0?'description_missing':null),
     'related_blog_topic_candidates'=>array_slice($topicCandidates,0,15),
     'topic_mention_not_verified_link'=>true,
-    'classification'=>!$public?'private_taxonomy':($wrongLocale?'wrong_language':($characters===0?'missing_translation':($characters>=180?'editorial_hub_candidate':'thin_term'))),
+    'classification'=>!$public?'private_taxonomy':($wrongLocale?'wrong_language':($characters===0&&$actualLanguage!=='en'?'missing_translation':($characters>=180?'editorial_hub_candidate':'thin_term'))),
     'indexing_approved'=>false,'scope'=>'Saved taxonomy, published post assignments and literal editorial anchors'];
  }
  public static function combination(array $record): array {
