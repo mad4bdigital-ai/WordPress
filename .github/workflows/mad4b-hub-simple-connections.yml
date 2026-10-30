@@ -24,6 +24,8 @@ on:
       - 'ops/central-company-rest/tests/test-hub-field-fusion.php'
       - 'ops/central-company-rest/tests/test-hub-source-provider-registry.php'
       - 'ops/central-company-rest/tests/test-hub-source-sync-jobs.php'
+      - 'ops/central-company-rest/tests/test-hub-native-write-mount.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php'
       - '.github/workflows/mad4b-hub-simple-connections.yml'
   workflow_dispatch:
 
@@ -78,7 +80,9 @@ jobs:
             ops/central-company-rest/tests/test-hub-dedup-intelligence.php \
             ops/central-company-rest/tests/test-hub-field-fusion.php \
             ops/central-company-rest/tests/test-hub-source-provider-registry.php \
-            ops/central-company-rest/tests/test-hub-source-sync-jobs.php; do
+            ops/central-company-rest/tests/test-hub-source-sync-jobs.php \
+            ops/central-company-rest/tests/test-hub-native-write-mount.php \
+            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php; do
             php -l "$file"
           done
       - name: Functional safety contracts
@@ -92,3 +96,4 @@ jobs:
           php ops/central-company-rest/tests/test-hub-field-fusion.php
           php ops/central-company-rest/tests/test-hub-source-provider-registry.php
           php ops/central-company-rest/tests/test-hub-source-sync-jobs.php
+          php ops/central-company-rest/tests/test-hub-native-write-mount.php
