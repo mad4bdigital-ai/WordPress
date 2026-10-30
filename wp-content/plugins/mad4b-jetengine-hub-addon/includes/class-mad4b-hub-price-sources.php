@@ -153,8 +153,14 @@ final class MAD4B_Hub_Price_Sources_V1 {
         $direct=array();
         foreach($d['direct'] as $field){
             $value=self::money(get_post_meta($postId,$field,true));
-            if($value!==null&&$curr!==null){
-                $direct[]=array('field'=>$field,'amount'=>$value,'currency'=>$curr,
+            $fieldCurrency=$curr;
+            if($requestedType==='tours-and-activities' &&
+               $field==='egyptians_start_price'){
+                $fieldCurrency=self::currency(get_post_meta($postId,
+                    'tour_egyptians_currency',true));
+            }
+            if($value!==null&&$fieldCurrency!==null){
+                $direct[]=array('field'=>$field,'amount'=>$value,'currency'=>$fieldCurrency,
                     'origin'=>'native_product_price_field',
                     'source_reference_only'=>true);
             }
@@ -162,7 +168,10 @@ final class MAD4B_Hub_Price_Sources_V1 {
         $rates=array();$total=0;$cfg=$d['rates'];
         if($cfg && post_type_exists($cfg['post_type'])){
             $obj=get_post_type_object($cfg['post_type']);
-            if($obj && $obj->public){
+            // Rate CPTs are frequently private data models even when
+            // their parent product is public. Only the authenticated Hub
+            // administrator can inspect their published rate references.
+            if($obj && current_user_can('manage_options')){
                 $ids=get_posts(array('post_type'=>$cfg['post_type'],
                  'post_status'=>'publish','fields'=>'ids','posts_per_page'=>self::MAX_RATE_ROWS+1,
                  'orderby'=>'ID','order'=>'ASC','suppress_filters'=>true,
