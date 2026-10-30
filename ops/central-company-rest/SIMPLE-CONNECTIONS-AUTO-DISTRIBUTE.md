@@ -19,7 +19,7 @@ The optional alternative **Use existing Content Hub references** (reference_only
 ## Import behavior
 
 - Source endpoint: POST /wp-json/mad4b-company/v1/simple-content-feed with JSON body {"post_type":"tours-and-activities","page":1} (exact registered source hostname, no redirects, TLS validated, native Application Password, avoids caching of authenticated GET).
-- Supported source CPTs: tours-and-activities, properties, transportations. Only published posts; only verified EN/AR language tags in this pilot.
+- Supported source CPTs: tours-and-activities, properties, transportations. Only published posts; verified EN/AR/FR/DE/IT/ES WPML language tags on the Tourism source.
 - Imported fields: source company, post type, original post ID, source language, title, summary, sanitized body text, source modified time. No private metadata, users, orders, submissions, media bytes, WooCommerce prices or secrets.
 - Each import upserts an existing private Content Hub post keyed by company + post type + language + source ID. The latest complete source collection defines the active index; missing source items are removed from distribution but retained privately for review.
 - A failed or partial source fetch does not activate a new import index. No automatic publication or WooCommerce checkout.
@@ -34,6 +34,16 @@ The optional alternative **Use existing Content Hub references** (reference_only
 
 Tests: test-simple-connections.php, test-auto-distribute.php, test-hub-source-import.php under ops/central-company-rest/tests. Run with PHP 7.4/8.3 CI and in isolated Staging PHP CLI.
 
-Deploy the **central** 240/250/260 files to Central Staging with Auto Distribute disabled, verify REST route registration and the default import mode. Consumer source-side installations require separate authorized Staging validation before touching any company Production site. With no source endpoint/credentials installed yet, the import mode is configured but cannot retrieve live content.
+Deploy the **central** 240/250/260 files to Central Staging with Auto Distribute disabled, verify REST route registration and the default import mode. The user explicitly authorized SSH preparation on the Tourism source host. The two read-only source MU adapters 240/260 have been installed there, with a dedicated subscriber user (ID 12). Production source content was not modified. The native service Application Password was tested once and later revoked after automated central credential handoff was blocked; no connection secret remains in the handoff files. The central connection is still unconfigured and automatic source synchronization cannot start.
 
 Rollback: disable Auto Distribute, remove only the added central MU files (or restore prior 250 version), and clear its cron. Keep original source site, existing Hub data, and former signed connectors unchanged.
+
+## SSH acceptance checkpoint — 2026-10-30
+
+- Verified source hosting account: registered SSH target hosting-1 (Cloud Startup), WordPress root under almallahgroup-mg.com/public_html/tourism.almallahgroup-mg.com.
+- Source mu-plugins/240 identity and /260 source feed installed; WordPress 7.1.4/PHP 8.3, both REST routes registered, unauthenticated 403, site HTTP 200.
+- Dedicated reader subscriber account bound by option mad4b_simple_service_user_id_v1 (user ID 12). Authenticated application-password identity verified as HTTP 200 once; that temporary password was revoked and its plaintext handoff copies deleted after central enrollment was blocked by tool safeguards.
+- Feed internal callback: 200 for tours 217, properties 597, transportations 13; published content in six WPML languages (EN, AR, FR, DE, IT, ES).
+- Central Staging now supports the same six languages; import-only runs are not restricted by the 150-item *consumer delivery* batch limit. Auto Distribute disabled. 35 older Tourism Nile references remain stored as private Hub items.
+- Isolated regression: 23 connection tests, 43 combined delivery tests, 45 source-import tests passed. No live 827-item source-to-Hub sync occurred.
+- Next operation is native credential pairing through an authorized secure credential entry flow in Content Hub Connections. Only after a successful source page and import test should scheduled import be enabled; consumers still require their own private inbox connection.
