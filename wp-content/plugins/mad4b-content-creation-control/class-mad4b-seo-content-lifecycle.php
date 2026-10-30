@@ -273,9 +273,56 @@ final class MAD4B_SEO_Content_Lifecycle {
             'requires_rendered_acceptance'=>true,'publication_performed'=>false,
             'mutation_performed'=>false];
     }
+    public static function evaluate($input=[]) {
+        if(!is_array($input))return self::error('input_invalid');
+        $p=self::plan($input);if(is_wp_error($p))return $p;
+        $t=$p['target'];
+        $post_id=(int)$t['target_id'];
+        $base=['contract'=>self::CONTRACT.'.evaluation.v1',
+            'target_kind'=>$t['target_kind'],'target_id'=>$post_id,
+            'rank_math_cached_score'=>$p['rank_math_score'],
+            'cached_score_freshness'=>'unknown',
+            'rank_math_score_recomputed'=>false,
+            'source'=>'rank_math_native_content_analysis_data',
+            'test_outcomes_by_plugin'=>null,
+            'requires_editor_client_scoring'=>true,
+            'object_sha256'=>$t['sha256'],'mutation_performed'=>false];
+        if($t['target_kind']!=='post') {
+            $base['source']='taxonomy_meta_diagnostics_only';
+            $base['diagnostic_checks']=$p['checks'];
+            $base['native_analysis_available']=false;
+            return $base;
+        }
+        $class='RankMath\\Abilities\\Content_Analysis\\Content_Analysis_Data';
+        if(!class_exists($class)||!current_user_can('rank_math_onpage_analysis')) {
+            $base['native_analysis_available']=false;
+            $base['diagnostic_checks']=$p['checks'];
+            return $base;
+        }
+        $post=get_post($post_id);
+        if(!$post||!current_user_can('edit_post',$post_id))return self::error('rank_math_analysis_permission');
+        $keyword=self::text($t['seo_meta']['focus_keyword']??'',150);
+        $data=(new $class())->get($post,$keyword);
+        $content=$data['content']??[];
+        $images=$content['images']??[];
+        $base['native_analysis_available']=true;
+        $base['native_test_count']=count($data['tests_to_run']??[]);
+        $base['native_test_ids']=$data['tests_to_run']??[];
+        $base['native_content_facts']=[
+            'word_count'=>(int)($content['word_count']??0),
+            'heading_count'=>count((array)($content['headings']??[])),
+            'image_count'=>count((array)$images),
+            'link_count'=>count((array)($content['links']??[])),
+            'keyword'=>$keyword,
+        ];
+        $base['diagnostic_checks']=$p['checks'];
+        $base['source_disclosure']='Native Rank Math extracts facts/test IDs; it does not calculate a new score in PHP. Run Rank Math editor scoring and save it for a new certified score.';
+        return $base;
+    }
     public static function routes() {
         foreach(['seo-cycle-plan'=>['plan',false],'seo-cycle-generate'=>['generate',false],
-            'seo-cycle-apply'=>['apply',true],'seo-cycle-verify'=>['verify',false]] as $route=>$row)
+            'seo-cycle-apply'=>['apply',true],'seo-cycle-verify'=>['verify',false],
+            'seo-cycle-evaluate'=>['evaluate',false]] as $route=>$row)
             register_rest_route('mad4b/content-creation/v1','/'.$route,[
                 'methods'=>$row[1]?'POST':'GET',
                 'permission_callback'=>[__CLASS__,$row[1]?'can_write':'can_read'],
@@ -289,7 +336,8 @@ final class MAD4B_SEO_Content_Lifecycle {
         foreach(['mad4b/seo-cycle-plan'=>['plan',true],
             'mad4b/seo-cycle-generate'=>['generate',true],
             'mad4b/seo-cycle-apply'=>['apply',false],
-            'mad4b/seo-cycle-verify'=>['verify',true]] as $name=>$row){
+            'mad4b/seo-cycle-verify'=>['verify',true],
+            'mad4b/seo-cycle-evaluate'=>['evaluate',true]] as $name=>$row){
             if(function_exists('wp_has_ability')&&wp_has_ability($name))continue;
             $props=['target_kind'=>['type'=>'string','enum'=>['post','term']],
                 'target_id'=>['type'=>'integer','minimum'=>1],
