@@ -1,32 +1,26 @@
 <?php
-
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 if ( ! class_exists( 'MAD4B_SCP_Approval_Impact_Binding' ) ) require_once __DIR__ . '/class-mad4b-scp-approval-impact-binding.php';
 if ( ! class_exists( 'MAD4B_SCP_Authorization_Decision_Graph' ) ) require_once __DIR__ . '/class-mad4b-scp-authorization-decision-graph.php';
 if ( ! class_exists( 'MAD4B_SCP_Execution_Receipt' ) ) require_once __DIR__ . '/class-mad4b-scp-execution-receipt.php';
 if ( ! class_exists( 'MAD4B_SCP_Authorization_Target_Fingerprint' ) ) require_once __DIR__ . '/class-mad4b-scp-authorization-target-fingerprint.php';
-
 final class MAD4B_SCP_Authorization {
 	const TARGET_FINGERPRINT_CONTRACT = 'mad4b.authorization-target.v1';
 	const EXECUTION_BOUNDARY_CONTRACT = 'mad4b.authorization-execution-boundary.v1';
 	const PERMISSION_DENIAL_AUDIT_CONTRACT = 'mad4b.authorization-permission-denial-audit.v1';
 	const MAX_TARGET_CANONICAL_BYTES = 65536;
 	const MAX_TARGET_DEPTH = 8;
-
 	private static $booted = false;
 	private static $execution_callback_started = array();
 	private static $trusted_execution_boundaries = array();
     /** Ephemeral proof minted ONLY inside the existing governed callback. */
     private static $operation_claim_in_callback = array();
-
     public static function native_binding_callback_is_claimed( $input ) {
         return self::operation_callback_is_claimed( 'mad4b/deployment-binding-native-apply', $input );
     }
-
     public static function google_revocation_callback_is_claimed( $input ) {
         return self::operation_callback_is_claimed( 'mad4b/google-revocation-retry', $input );
     }
-
     private static function operation_callback_is_claimed( $name, $input ) {
         if ( ! is_array( $input )
             || ! is_array( self::$operation_claim_in_callback )
@@ -42,7 +36,6 @@ final class MAD4B_SCP_Authorization {
             (string) self::$operation_claim_in_callback['claim_sha256'],
             hash( 'sha256', $encoded ) );
     }
-
 
     /**
      * Called solely by the immutable wrapper after the first and only
@@ -75,15 +68,12 @@ final class MAD4B_SCP_Authorization {
             self::$operation_claim_in_callback = array();
         }
     }
-
 	public static function boot() {
 		if ( self::$booted || ! function_exists( 'add_filter' ) ) return;
 		self::$booted = true;
 		add_filter( 'wp_register_ability_args', array( __CLASS__, 'wrap_execution_boundary' ), 190, 2 );
 	}
-
 	private static $remote_permission_denial_codes = array();
-
 	public static function begin_execution_callback_observation( $ability_name ) {
 		$ability_name = (string) $ability_name;
 		if ( '' !== $ability_name ) {
@@ -91,24 +81,20 @@ final class MAD4B_SCP_Authorization {
 			unset( self::$remote_permission_denial_codes[ $ability_name ] );
 		}
 	}
-
 	public static function mark_execution_callback_started( $ability_name ) {
 		$ability_name = (string) $ability_name;
 		if ( '' !== $ability_name ) self::$execution_callback_started[ $ability_name ] = true;
 	}
-
 	public static function execution_callback_started( $ability_name ) {
 		$ability_name = (string) $ability_name;
 		return '' !== $ability_name && ! empty( self::$execution_callback_started[ $ability_name ] );
 	}
-
 	public static function remote_permission_denial_code( $ability_name ) {
 		$ability_name = (string) $ability_name;
 		// Request-local, ability-scoped diagnostic only. No ticket or OAuth evidence is exposed.
 		return array_key_exists( $ability_name, self::$execution_callback_started )
 			? ( isset( self::$remote_permission_denial_codes[ $ability_name ] ) ? (string) self::$remote_permission_denial_codes[ $ability_name ] : '' ) : '';
 	}
-
 	public static function clear_execution_callback_observation( $ability_name ) {
 		$ability_name = (string) $ability_name;
 		if ( '' !== $ability_name ) {
@@ -116,7 +102,6 @@ final class MAD4B_SCP_Authorization {
 			unset( self::$remote_permission_denial_codes[ $ability_name ] );
 		}
 	}
-
 	public static function request_scope_state() {
 		$active = array();
 		foreach ( self::$execution_callback_started as $ability_name => $started ) {
@@ -127,7 +112,6 @@ final class MAD4B_SCP_Authorization {
 			'observation_count' => count( self::$execution_callback_started ),
 		);
 	}
-
 	public static function reset_request_cache() {
 		foreach ( self::$execution_callback_started as $started ) {
 			if ( $started ) return new WP_Error( 'mad4b_request_scope_execution_active', 'An execution callback observation is still active at the request boundary.' );
@@ -137,16 +121,13 @@ final class MAD4B_SCP_Authorization {
         self::$operation_claim_in_callback = array();
 		return true;
 	}
-
 	public static function capability_descriptor_binding( $ability_name ) {
 		if ( ! class_exists( 'MAD4B_SCP_Capability_Descriptor_Registry' ) ) return new WP_Error( 'mad4b_capability_descriptor_registry_unavailable', 'Canonical Capability Descriptor Registry is unavailable at authorization admission.' );
 		return MAD4B_SCP_Capability_Descriptor_Registry::binding( $ability_name, 'authorization' );
 	}
-
 	public static function permission_result_from_authorization( $result ) {
 		return MAD4B_SCP_Authorization_Decision_Graph::permission_result( $result );
 	}
-
 	private static function remember_trusted_execution_boundary( $ability_name, $callback ) {
 		$ability_name = (string) $ability_name;
 		if ( '' === $ability_name || ! ( $callback instanceof Closure ) ) return false;
@@ -159,7 +140,6 @@ final class MAD4B_SCP_Authorization {
 		while ( count( self::$trusted_execution_boundaries[ $ability_name ] ) > 16 ) array_shift( self::$trusted_execution_boundaries[ $ability_name ] );
 		return true;
 	}
-
 	public static function propagate_trusted_execution_boundary( $ability_name, $outer_callback, $inner_callback ) {
 		$ability_name = (string) $ability_name;
 		if ( '' === $ability_name || ! ( $outer_callback instanceof Closure ) || ! ( $inner_callback instanceof Closure ) ) return false;
@@ -167,18 +147,15 @@ final class MAD4B_SCP_Authorization {
 			|| ! in_array( $inner_callback, self::$trusted_execution_boundaries[ $ability_name ], true ) ) return false;
 		return self::remember_trusted_execution_boundary( $ability_name, $outer_callback );
 	}
-
 	public static function target_fingerprint( $ability_name, $provider, $input, array $agent = array(), array $identity = array() ) {
 		return MAD4B_SCP_Authorization_Target_Fingerprint::fingerprint( $ability_name, $provider, $input, $agent, $identity );
 	}
-
 	public static function probe_mutation( $ability_name, $server_id, $provider = 'core', $input = null ) {
 		$result = self::authorize_mutation_impl( $ability_name, $server_id, $provider, $input );
 		return class_exists( 'MAD4B_SCP_Authorization_Decision_Graph' )
 			? MAD4B_SCP_Authorization_Decision_Graph::decorate( $result, $ability_name, $server_id, $provider )
 			: $result;
 	}
-
 	public static function authorize_mutation( $ability_name, $server_id, $provider = 'core', $input = null ) {
 		$call = static function() use ( $ability_name, $server_id, $provider, $input ) {
 			return self::probe_mutation( $ability_name, $server_id, $provider, $input );
@@ -191,7 +168,6 @@ final class MAD4B_SCP_Authorization {
 			) )
 			: $call();
 	}
-
 	private static function authorize_mutation_impl( $ability_name, $server_id, $provider = 'core', $input = null ) {
 		if ( class_exists( 'MAD4B_SCP_Request_Generation' ) ) {
 			$request_scope = MAD4B_SCP_Request_Generation::admit( 'authorization' );
@@ -205,7 +181,6 @@ final class MAD4B_SCP_Authorization {
 		if ( ! class_exists( 'MAD4B_SCP_MCP_Peer_Governance' ) ) return self::error( 'mcp_peer_inventory_unavailable', 'MCP peer governance is unavailable.' );
 		$peer_guard = MAD4B_SCP_MCP_Peer_Governance::mutation_guard();
 		if ( is_wp_error( $peer_guard ) ) return $peer_guard;
-
 		$declared_server_id = sanitize_key( (string) $server_id );
 		if ( ! class_exists( 'MAD4B_SCP_Transport_Context' ) ) return self::error( 'mad4b_transport_context_unavailable', 'MCP transport context is unavailable; governed mutation fails closed.' );
 		$resolved_server_id = MAD4B_SCP_Transport_Context::resolve_server_for_ability( $declared_server_id, $ability_name, $input );
@@ -215,7 +190,6 @@ final class MAD4B_SCP_Authorization {
 		$capability_descriptor = self::capability_descriptor_binding( $ability_name );
 		if ( is_wp_error( $capability_descriptor ) ) return $capability_descriptor;
 		if ( 'none' === (string) $capability_descriptor['execution_lane'] ) return self::error( 'mad4b_capability_descriptor_execution_ineligible', 'Canonical Capability Descriptor does not admit execution for this Ability.' );
-
 		$identity = MAD4B_SCP_Identity_Context::current();
 		if ( is_wp_error( $identity ) ) return $identity;
 		$agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
@@ -224,12 +198,10 @@ final class MAD4B_SCP_Authorization {
 		if ( 'mad4b-breakglass' === $server_id && ! MAD4B_SCP_Policy::can_breakglass() ) return self::error( 'mad4b_breakglass_disabled', 'Breakglass capability is disabled.' );
 		if ( 'mad4b-developer' === $server_id && ! MAD4B_SCP_Policy::can_developer() ) return self::error( 'mad4b_developer_disabled', 'Developer execution capability is disabled or the exact Developer Agent is not bound.' );
 		if ( 'mad4b-developer-breakglass' === $server_id && ! MAD4B_SCP_Policy::can_developer_breakglass() ) return self::error( 'mad4b_developer_breakglass_disabled', 'Developer Breakglass capability is disabled.' );
-
 		$provider = sanitize_key( (string) $provider );
 		if ( '' === $provider ) $provider = 'core';
 		$grant = MAD4B_SCP_Agent_Registry::exact_grant( $agent['id'], $server_id, $ability_name, $provider );
 		if ( is_wp_error( $grant ) ) return $grant;
-
 		// Persisted authority + exact candidate binding is intentionally a cheap
 		// request-serving predicate. Once a normal governed write reaches mutation
 		// admission, fail closed unless the current bulk grant snapshot is still
@@ -253,7 +225,6 @@ final class MAD4B_SCP_Authorization {
 				);
 			}
 		}
-
 		$authorization_input = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::authorization_input( $input, $ability_name ) : $input;
 		if ( ! class_exists( 'MAD4B_SCP_Resource_Constraint_Set' ) ) return self::error( 'mad4b_resource_constraint_compiler_unavailable', 'Provider-neutral resource constraint compiler is unavailable at mutation admission.' );
 		$resource_set = MAD4B_SCP_Resource_Constraint_Set::compile( $ability_name, $provider, is_array( $authorization_input ) ? $authorization_input : array() );

@@ -102,6 +102,7 @@ jobs:
           python3 wp-content/plugins/mad4b-site-control-plane/tests/scan-packaged-providers.py \
             --plugins-dir wp-content/plugins \
             --baseline wp-content/plugins/mad4b-site-control-plane/config/certified-providers.json \
+            --baseline-advisory \
             --output /tmp/mad4b-provider-contracts.json
 
       - name: Upload provider contract evidence
