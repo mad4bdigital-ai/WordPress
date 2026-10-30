@@ -64,3 +64,30 @@ Status: PROPOSED / NON-AUTHORIZING. Scope: Tours staging first; multi-tenant & m
 ## Current implementation boundary (2026-10-30)
 
 Confirmed: `mad4b/content-orchestration-plan`, `mad4b/content-apply-bundle`, WordPress CPT draft, lock/journal/binding/compensation/readback; staging canary post 67887. Not yet evidenced as end-to-end implementation: competitor ranking, structured rates/itinerary verification, WPML creation, rights-cleared media import, automated Elementor QA, publication approval and monitoring. This proposal intentionally does not claim those stages are implemented.
+
+## Full Plan Preflight contract (required before returning ready)
+
+The orchestrator must return a structured per-stage `readiness` vector with principal identity (kind, enrollment and capability), provider ID/version/capability certification, exact tenant/site/environment/locale, Restore Epoch binding and ready/blockers, MCP peer inventory and foreign transport classification, credential presence **only** (never secret values), provider egress/robots/ToS/media rights, request cost/rate budgets, input and dependency hashes, current journal/lock/idempotency state, compensation support and missing approvals/evidence. An explicit `reason_code`, `remediation_owner`, `provenance_sha256` and `checked_at` accompany every blocker. `PLAN_READY` must be false if an execution-fatal prerequisite is known missing; no premature approval claims. Apply **always** rechecks at runtime, even if plan was ready. This is a design requirement; not yet the live planner's current behavior.
+
+## Discovery providers
+
+**Firecrawl** (`firecrawl`): bounded, separately authorized search/scrape/map/crawl/extract; structured source evidence carries source URL, retrieval time, HTTP status, locale, content digest, rights decision, crawl batch ID and attribution. Credential is runtime secret ref, not WordPress post meta or logged API key. Firecrawl search results may supply leads; competitors' data is research, **not** publishing permission. Media ingestion is a separate rights-reviewed import gate.
+
+**SERP results provider** (`serp_search`): search-region/locale/date/keyword, rank and result type normalization, domain grouping, confidence/measurement method, cohort/timeframe and source provenance. Supports strategy research and observation of competitor positioning, not fabricated market share. The user called this "Serph API"; exact API brand and endpoint must be confirmed by discovery before configuring a live connector (possible SERPHouse, SerpApi or another provider). Do not silently treat these services as identical. No credential creation or API call occurs from this manifest.
+
+Both provider contracts require discover → validate authentication → inspect allowed capabilities/regions/costs → bounded plan → execute public-data retrieval → normalize → cite provenance → store read-only research artifact. No arbitrary URL proxy, SSRF, private subnet access, unbounded crawl, rate-limit evasion, or direct WordPress mutation. Timeout, retries, spending limits, and tenant isolation are explicit.
+
+## Provider normalization and fallback
+
+Prefer existing site-installed certified provider when capability, rights and rate budget align. Search results may come from the configured SERP provider while Firecrawl fetches source pages. If one fails, planned fallback is only to an explicitly certified equivalent with cost/rights approval; never auto-switch secrets, compliance regime or billing account. Deduplicate by canonical URL and content digest while preserving independent search observations.
+
+### Provider rollout tests
+
+- Invalid/missing API key: plan blocked, key never exposed in logs.
+- Unknown provider ID, different tenant, or unverified endpoint: fail closed.
+- HTTP 429/402/5xx or quota exhaustion: stage-specific status and bounded retry, not infinite polling.
+- robots/terms disallow or insufficient image license: no crawl/import.
+- private/loopback/link-local URLs or redirected egress: deny.
+- SERP rank changes across region/device/date: preserve separate observations, no bogus dominance claim.
+- Dependency and identity changes between planning and application: stale error; replan with new hashes.
+- Provider outage cannot unlock CMS mutation, approval, pricing or public publication.
