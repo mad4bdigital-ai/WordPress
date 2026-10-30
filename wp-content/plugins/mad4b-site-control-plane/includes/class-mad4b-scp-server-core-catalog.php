@@ -2,11 +2,26 @@
 /** Core server catalog declarations, extracted without changing the dispatch contract. */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 trait MAD4B_SCP_Server_Core_Catalog {
+    /**
+     * Project only registered optional operation planners into the MCP read
+     * catalog. Missing optional planners remain discoverable in the source
+     * Operation Registry, but cannot prevent required tools from mounting.
+     */
+    private static function registered_operation_read_tools() {
+        $reads = class_exists( 'MAD4B_SCP_Operation_Registry' )
+            ? MAD4B_SCP_Operation_Registry::read_projection( 'catalog' ) : array();
+        if ( function_exists( 'wp_has_ability' ) ) {
+            $reads = array_values( array_filter( $reads,
+                static function ( $name ) { return wp_has_ability( $name ); } ) );
+        }
+        return $reads;
+    }
 	private static function declared_core_tools( $server_id ) {
         $cso_read = in_array( $server_id, array( 'mad4b-read', 'mad4b-chatgpt' ), true )
             && class_exists( 'MAD4B_SCP_CSO01_Read_Foundation', false )
             ? MAD4B_SCP_CSO01_Read_Foundation::read_ability_names() : array();
-		$governed_status = 'mad4b-read' === $server_id ? array( 'mad4b/write-authority-status', 'mad4b/write-authority-reconciliation-plan', 'mad4b/write-runtime-certification', 'mad4b/rest-compatibility-status', 'mad4b/staging-certification-status', 'mad4b/staging-convergence-plan', 'mad4b/staging-write-candidate-binding-plan' ) : array();
+		$operation_reads = self::registered_operation_read_tools();
+        $governed_status = 'mad4b-read' === $server_id ? array( 'mad4b/write-authority-status', 'mad4b/write-authority-reconciliation-plan', 'mad4b/write-runtime-certification', 'mad4b/rest-compatibility-status', 'mad4b/staging-certification-status', 'mad4b/staging-convergence-plan', 'mad4b/staging-write-candidate-binding-plan' ) : array();
 		$map = array(
 			'mad4b-read' => array_merge( array(
 				'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/environment-journey', 'mad4b/site-autopilot-fast-status', 'mad4b/list-post-types', 'mad4b/post-identity', 'mad4b/list-plugins', 'mad4b/abilities-inventory', 'mad4b/filesystem-list', 'mad4b/filesystem-read',
@@ -34,7 +49,7 @@ trait MAD4B_SCP_Server_Core_Catalog {
                 'mad4b/staging-write-owner-reconciliation-diagnose',
                 'mad4b/host-doctor', 'mad4b/host-operation-capabilities', 'mad4b/host-operation-plan',
                 'mad4b/host-operation-status', 'mad4b/host-operation-receipt',
-			), class_exists( 'MAD4B_SCP_Operation_Registry' ) ? MAD4B_SCP_Operation_Registry::read_projection( 'catalog' ) : array(), $governed_status, $cso_read ),
+			), $operation_reads, $governed_status, $cso_read ),
 			'mad4b-chatgpt' => array_merge( array(
 				'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/environment-journey', 'mad4b/site-autopilot-fast-status',
 				'mad4b/session-safe-diagnostics', 'mad4b/optional-governance-status', 'mad4b/optional-governance-plan', 'mad4b/optional-governance-verify',

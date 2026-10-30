@@ -11496,6 +11496,27 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing pinned source validation, exact SHA identity, bounded GitHub HTTPS and protected candidate deploy controls cover the compact Git Data lookup.",
       "review_rationale": "The GitHub /commits/{sha} REST response may exceed the existing 262144-byte budget for multi-parent integration changes. Only the exact immutable commit lookup changes to /git/commits/{sha} (small Git object metadata). Do not raise limits, change other source selectors or treat any redirect/invalid/mismatched response as verified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-core-catalog.php",
+      "source_blob_sha": "4a92ca86bbb926de6f18ceafe29bb521cd96370c",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-optional-operation-read-projection-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-adapter-compatibility-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Staging or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP catalog, WordPress Ability registration, source discovery and fail-closed capability descriptor controls cover optional read projection; mandatory core read tools remain unfiltered.",
+      "review_rationale": "Exact-source runtime review: three company operation planners remained advertised as catalog entries before WordPress Abilities existed, causing capability_descriptor_binding_unavailable and preventing the entire mad4b-read web server. Only operation registry optional read projections are filtered by wp_has_ability at the MCP mount boundary; operation discovery retains them, no execution, authorization, write grant or source certificate is inferred. Disposable official Adapter 0.6.1 web lifecycle, Hostinger collision and hermetic dynamic registration pass."
     }
   ],
   "code_change_rules": {
