@@ -18,7 +18,20 @@ if (!is_array($identity) ||
 }
 $types=['tours-and-activities'=>'tour','properties'=>'property','transportations'=>'transportation'];
 $languages=['en','ar','fr','de','it','es'];
-$rows=[];$counts=[];
+$rows=[];$counts=[];$wpdb=$GLOBALS['wpdb'];
+$taxonomyAllow=[
+ 'tours-and-activities'=>['tour-types_jet','tour_categories_jet','location_jet'],
+ 'properties'=>['property-types','location_jet'],
+ 'transportations'=>['transportation-types','transport-service-type','location_jet']
+];
+$cleanDescription=static function($value) {
+    if(!is_string($value))return '';
+    return sanitize_textarea_field(mb_substr(wp_strip_all_tags($value),0,12000));
+};
+$cleanLocation=static function($raw) {
+    $value=is_scalar($raw)?trim((string)$raw):'';
+    return preg_match('/^[a-zA-Z0-9_. -]{1,100}$/D',$value)?$value:'';
+};
 foreach($types as $type=>$kind) {
     if(!post_type_exists($type)){fwrite(STDERR,"CROSS_SSH_SOURCE_TYPE_MISSING\n");exit(85);}
     $q=new WP_Query([
@@ -44,8 +57,52 @@ foreach($types as $type=>$kind) {
             fwrite(STDERR,"CROSS_SSH_SOURCE_LANGUAGE_MISSING\n");exit(88);
         }
         $title=sanitize_text_field((string)$post->post_title);
-        $summary=sanitize_textarea_field(wp_strip_all_tags((string)$post->post_excerpt));
-        $body=sanitize_textarea_field(mb_substr(wp_strip_all_tags((string)$post->post_content),0,12000));
+        $summary=$cleanDescription((string)$post->post_excerpt);
+        $body=$cleanDescription((string)$post->post_content);
+        $textOrigin=$body!==''?'post_content':'none';
+        if($body==='') {
+            $field=['tours-and-activities'=>'_description','properties'=>'prop__description',
+                'transportations'=>'trans_description'][$type];
+            $body=$cleanDescription(get_post_meta($id,$field,true));
+            if($body!=='')$textOrigin='source_meta';
+        }
+        if($body==='' && $summary!==''){$body=$summary;$textOrigin='excerpt_fallback';}
+        $slug=(string)$post->post_name;
+        if($slug===''||strlen($slug)>250) {
+            fwrite(STDERR,"CROSS_SSH_SOURCE_SLUG_INVALID\n");exit(91);
+        }
+        $url=get_permalink($id);
+        if(!is_string($url) || wp_parse_url($url,PHP_URL_HOST)!=='tourism.almallahgroup-mg.com' ||
+            strlen($url)>2048 || wp_parse_url($url,PHP_URL_SCHEME)!=='https') {
+            fwrite(STDERR,"CROSS_SSH_SOURCE_PERMALINK_INVALID\n");exit(92);
+        }
+        $trid=(int)$wpdb->get_var($wpdb->prepare(
+            "SELECT trid FROM {$wpdb->prefix}icl_translations WHERE element_type=%s AND element_id=%d",
+            'post_'.$type,$id
+        ));
+        if($trid<1){fwrite(STDERR,"CROSS_SSH_SOURCE_WPML_TRID_MISSING\n");exit(93);}
+        $taxonomies=[];
+        foreach($taxonomyAllow[$type] as $taxonomy) {
+            $terms=wp_get_post_terms($id,$taxonomy,['fields'=>'all']);
+            if(is_wp_error($terms)) {fwrite(STDERR,"CROSS_SSH_SOURCE_TERMS_ERROR\n");exit(94);}
+            if(count($terms)>40) {fwrite(STDERR,"CROSS_SSH_SOURCE_TERMS_EXCESS\n");exit(95);}
+            $refs=[];
+            foreach($terms as $term) {
+                $refs[]=['id'=>(int)$term->term_id,'slug'=>(string)$term->slug,
+                    'parent'=>(int)$term->parent];
+            }
+            usort($refs,static function($a,$b){return $a['id']<=>$b['id'];});
+            $taxonomies[$taxonomy]=$refs;
+        }
+        $facts=[];
+        if($type==='tours-and-activities'){
+            $facts['origin_place_id']=$cleanLocation(get_post_meta($id,'tour_origin_address_place_id',true));
+            $facts['origin_location_term']=$cleanLocation(get_post_meta($id,'tour_origin_location_term',true));
+        } elseif($type==='transportations'){
+            $facts['from_station_id']=$cleanLocation(get_post_meta($id,'trans_from_station_id',true));
+            $facts['to_station_id']=$cleanLocation(get_post_meta($id,'trans_to_station_id',true));
+        }
+        $facts=array_filter($facts,static function($v){return $v!=='';});
         if(trim($title)==='' || strlen($title)>1500 || strlen($summary)>3000 ||
             strlen($body)>50000) {
             fwrite(STDERR,"CROSS_SSH_SOURCE_CONTENT_INVALID\n");exit(89);
@@ -58,6 +115,9 @@ foreach($types as $type=>$kind) {
             'source_post_type'=>$type,'kind'=>$kind,'source_id'=>$id,
             'language'=>$language,'title'=>$title,'summary'=>$summary,
             'body'=>$body,'modified_gmt'=>$modified,
+            'source_slug'=>$slug,'source_url'=>$url,'source_wpml_trid'=>$trid,
+            'source_text_origin'=>$textOrigin,'source_taxonomy_refs'=>$taxonomies,
+            'source_identity_facts'=>$facts,
             'reference_only'=>true,'may_publish'=>false,'may_checkout'=>false,
         ];
     }
