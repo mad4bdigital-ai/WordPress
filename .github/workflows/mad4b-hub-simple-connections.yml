@@ -1,0 +1,52 @@
+name: MAD4B Simple REST and Hub Auto Distribute
+
+on:
+  pull_request:
+    paths:
+      - 'ops/central-company-rest/central/240-mad4b-central-simple-connections.php'
+      - 'ops/central-company-rest/central/250-mad4b-hub-auto-distribute.php'
+      - 'ops/central-company-rest/remote/240-mad4b-company-simple-identity.php'
+      - 'ops/central-company-rest/remote/250-mad4b-company-private-hub-inbox.php'
+      - 'ops/central-company-rest/tests/test-simple-connections.php'
+      - 'ops/central-company-rest/tests/test-auto-distribute.php'
+      - '.github/workflows/mad4b-hub-simple-connections.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  simple-rest-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP ${{ matrix.php }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, openssl
+          coverage: none
+      - name: Syntax lint
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in \
+            ops/central-company-rest/central/240-mad4b-central-simple-connections.php \
+            ops/central-company-rest/central/250-mad4b-hub-auto-distribute.php \
+            ops/central-company-rest/remote/240-mad4b-company-simple-identity.php \
+            ops/central-company-rest/remote/250-mad4b-company-private-hub-inbox.php \
+            ops/central-company-rest/tests/test-simple-connections.php \
+            ops/central-company-rest/tests/test-auto-distribute.php; do
+            php -l "$file"
+          done
+      - name: Functional safety contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          php ops/central-company-rest/tests/test-simple-connections.php
+          php ops/central-company-rest/tests/test-auto-distribute.php
