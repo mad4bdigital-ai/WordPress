@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 from pathlib import Path
+import subprocess
 
 root = Path(__file__).resolve().parents[1]
 compat = (root / 'includes/class-mad4b-scp-mcp-client-compatibility.php').read_text(encoding='utf-8')
@@ -298,4 +299,7 @@ assert "MAX_TOOLS = 36" in catalog_diagnostics  # legacy default, not fixed acti
 assert "MAD4B_SCP_MCP_Catalog_Budget::limits" in catalog_diagnostics
 assert "class-mad4b-scp-mcp-catalog-budget.php" in catalog_diagnostics
 assert "MAD4B_SCP_MCP_Catalog_Budget::observe" in catalog_diagnostics
+# Ensure a reviewed direct step-up can actually build its schema across
+# supported WordPress MCP Adapters without changing bearer or grant checks.
+subprocess.run( [ 'php', '-n', str( root / 'tests/operator-grant-output-schema-runtime.php' ) ], check=True )
 print('mad4b.site-control-plane.mcp-client-compatibility.v12: PASS')
