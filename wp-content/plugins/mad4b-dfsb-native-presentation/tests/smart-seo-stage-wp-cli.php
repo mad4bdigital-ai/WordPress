@@ -14,6 +14,10 @@ $admins=get_users(array('role'=>'administrator','fields'=>'ID','number'=>1));
 if (!$admins) throw new RuntimeException('No admin');
 if (filter_var(jet_smart_filters()->settings->get('use_seo_sitemap',false),FILTER_VALIDATE_BOOLEAN))
     throw new RuntimeException('Native SEO already enabled. Test will not stage.');
+if (count((array)jet_smart_filters()->settings->get('seo_sitemap_rules',array()))>0) {
+    echo "SKIP: existing native SEO rules; run the isolated CAS-option test instead.\\n";
+    return;
+}
 $before=get_option('jet-smart-filters-settings',array());
 $backup=get_option('mad4b_jsf_smart_seo_native_backup_v1',null);
 $drafts=get_option(S::OPTION,null);
