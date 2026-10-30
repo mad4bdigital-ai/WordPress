@@ -1,6 +1,7 @@
 """Execute standalone recovery/broker fixtures; never treat them as PHPUnit."""
 from pathlib import Path
 import subprocess
+import sys
 
 root = Path(__file__).resolve().parents[1]
 for fixture in ('runtime-update-recovery-runtime.php', 'dynamic-first-party-enrollment-runtime.php',
@@ -43,3 +44,10 @@ assert handler.index('self::require_admin( self::ACTION_SCAN_SOURCE )') < handle
 assert 'source_scan_apply_admission' in handler
 authority = (includes / 'class-mad4b-scp-context-authority.php').read_text()
 assert "isset( $scan['expected_registry_revision'] ) && (int) $scan['expected_registry_revision'] !== self::registry_revision()" in authority
+
+
+# CI-only reviewed coverage for the newly mapped Brand Core remote status.
+# This is a read-only diagnostic; executable host recovery keeps separate
+# authorization and approvals. Both tests contain fail-closed assertions.
+subprocess.run([sys.executable, str(root / 'tests/brand-core-remote-recovery-contract.py')], check=True)
+subprocess.run(['php', '-n', str(root / 'tests/brand-core-remote-recovery-runtime.php')], check=True)
