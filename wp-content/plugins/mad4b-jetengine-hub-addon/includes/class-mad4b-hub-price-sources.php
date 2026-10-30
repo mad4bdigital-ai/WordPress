@@ -22,7 +22,11 @@ final class MAD4B_Hub_Price_Sources_V1 {
         return is_finite($x)&&$x>0&&$x<=self::MAX_AMOUNT?$s:null;
     }
     private static function currency($raw) {
-        return is_string($raw)&&preg_match('/^[A-Z]{3}$/D',$raw)?$raw:null;
+        if(!is_string($raw))return null;
+        // Historic Tourism saved lower-case ISO codes. Normalize CODE CASE
+        // only; never perform exchange or substitute an unknown currency.
+        $v=strtoupper(trim($raw));
+        return preg_match('/^[A-Z]{3}$/D',$v)?$v:null;
     }
     private static function descriptors() {
         $builtin=array(
