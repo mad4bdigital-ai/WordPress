@@ -332,7 +332,12 @@ final class MAD4B_Start_Company_Runtime {
           return new WP_Error('mad4b_company_run_invalid','Exact run mode and plan hash required',array('status'=>422));
         $ok=self::authorize_run($c,$mode,$input['expected_plan_sha256']);
         if(is_wp_error($ok))return $ok;
-        return self::enqueue_ready($c,$mode);
+        $queued=self::enqueue_ready($c,$mode);
+        if(is_wp_error($queued))return $queued;
+        $outcome=self::status($req);
+        if(is_wp_error($outcome))return $outcome;
+        $queued['outcome']=$outcome;
+        return $queued;
     }
     public static function resume($req) {
         $auth=self::guard($req);if(is_wp_error($auth))return $auth;
@@ -349,7 +354,12 @@ final class MAD4B_Start_Company_Runtime {
           return new WP_Error('mad4b_company_stage_invalid','Exact stage and plan required',array('status'=>422));
         $ok=self::authorize_run($c,$mode,$input['expected_plan_sha256']);
         if(is_wp_error($ok))return $ok;
-        return self::enqueue_ready($c,$mode,$stage);
+        $queued=self::enqueue_ready($c,$mode,$stage);
+        if(is_wp_error($queued))return $queued;
+        $outcome=self::status($req);
+        if(is_wp_error($outcome))return $outcome;
+        $queued['outcome']=$outcome;
+        return $queued;
     }
     /**
      * Single authoritative lifecycle result for create and repair_existing.
@@ -480,6 +490,7 @@ final class MAD4B_Start_Company_Runtime {
         if(!self::central()||!function_exists('wp_register_ability'))return;
         foreach(array(
            'mad4b/start-your-company-plan'=>array('read'=>true,'method'=>'plan'),
+           'mad4b/start-your-company-outcome'=>array('read'=>true,'method'=>'status'),
            'mad4b/start-your-company-resume'=>array('read'=>false,'method'=>'resume'),
            'mad4b/start-your-company-run'=>array('read'=>false,'method'=>'run')
         ) as $name=>$spec) {
@@ -495,8 +506,8 @@ final class MAD4B_Start_Company_Runtime {
                 }
             }
             wp_register_ability($name,array(
-              'label'=>$spec['read']?'Plan Company Lifecycle':'Queue Exact Company Stage',
-              'description'=>$spec['read']?'Read company-scoped stage DAG':'Queue an exact verified company stage; cannot execute tenant mutation',
+              'label'=>$spec['read']?($spec['method']==='status'?'Read Single Company Outcome':'Plan Company Lifecycle'):'Start or Resume Company Lifecycle',
+              'description'=>$spec['read']?($spec['method']==='status'?'One readback-backed company lifecycle outcome':'Read company-scoped stage DAG'):'Initiate one scoped company run; stages are independently verified',
               'category'=>$spec['read']?'mad4b-read':'mad4b-write',
               'input_schema'=>array('type'=>'object','properties'=>$props,'required'=>$required,'additionalProperties'=>false),
               'output_schema'=>array('type'=>'object','additionalProperties'=>true),
