@@ -47,3 +47,7 @@ Rollback: disable Auto Distribute, remove only the added central MU files (or re
 - Central Staging now supports the same six languages; import-only runs are not restricted by the 150-item *consumer delivery* batch limit. Auto Distribute disabled. 35 older Tourism Nile references remain stored as private Hub items.
 - Isolated regression: 23 connection tests, 43 combined delivery tests, 45 source-import tests passed. No live 827-item source-to-Hub sync occurred.
 - Next operation is native credential pairing through an authorized secure credential entry flow in Content Hub Connections. Only after a successful source page and import test should scheduled import be enabled; consumers still require their own private inbox connection.
+
+## Identity cache-safety correction
+
+The Source read identity endpoint uses **POST only** (not GET), because LiteSpeed was observed returning a cached authenticated GET 200 without an active credential. The remote registered route uses POST; central exact-host verification uses wp_safe_remote_request with method POST over TLS; an explicit URL purge removed the previously cached GET response. Verified post-fix on Tourism: anonymous GET 404 and anonymous POST 403. Never trust public cached GET response as proof of Application Password authorization.
