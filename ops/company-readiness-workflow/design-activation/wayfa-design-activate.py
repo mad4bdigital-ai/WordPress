@@ -134,6 +134,14 @@ def main():
     if plan.get("state")!="DESIGN_ACTIVATION_PLAN" or plan.get("site_uuid")!="b0725ffa-87e1-47e3-b0c0-c4aa4eb8882b":
         raise RuntimeError("PLAN_IDENTITY_FAILURE")
     print(json.dumps(plan,ensure_ascii=False))
+    if mode=="schema-auto" and plan.get("blocked_reasons"):
+        env=dict(os.environ,WAYFA_TEMPLATE_BLOCKERS=json.dumps(plan["blocked_reasons"]))
+        secondary=subprocess.run(
+            ["python3",str(ROOT/"bin/wayfa-template-diff-resolver.py")],
+            env=env,capture_output=True,text=True,timeout=45)
+        if secondary.returncode:
+            raise RuntimeError("SECONDARY_RESOLVER_FAILED:"+secondary.stderr[-350:])
+        print(secondary.stdout.strip())
     if args!=["--apply"]:return
     backup=wp("backup",p)
     if backup.get("state")!="DESIGN_ACTIVATION_BACKUP" or backup.get("plan_sha256")!=plan["plan_sha256"] or len(backup.get("records",[]))!=plan["eligible"]:
