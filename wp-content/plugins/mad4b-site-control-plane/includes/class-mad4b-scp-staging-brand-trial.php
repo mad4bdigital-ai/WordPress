@@ -80,7 +80,8 @@ final class MAD4B_SCP_Staging_Brand_Trial {
     }
     public static function boot():void {
         if(wp_get_environment_type()!=='staging')return;
-        add_action('admin_menu',static function(){
+        MAD4B_SCP_Admin_Route_Registry::register(self::MENU,'manage_options');
+        MAD4B_SCP_Admin_Route_Registry::schedule_submenu(static function(){
             add_submenu_page('mad4b-control-plane','Staging Test Brand','Staging Test Brand',
                 'manage_options',self::MENU,[__CLASS__,'page']);
         },70);

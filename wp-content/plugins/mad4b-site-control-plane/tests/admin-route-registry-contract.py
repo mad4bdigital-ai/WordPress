@@ -97,6 +97,68 @@ for path in (root / 'includes').rglob('*.php'):
             if marker not in manifest:
                 raise SystemExit('FAIL native manifest guard missing: ' + marker)
         continue
+    # Team handoffs are a deliberately delegated, standalone company page,
+    # not a Control Plane manage_options submenu. Verify its exact capability,
+    # slug, recipient admission and per-request nonce gates before exempting
+    # it from the privileged parent-page registration contract.
+    if path.name == 'class-mad4b-scp-company-task-handoff.php':
+        for marker in (
+            "add_menu_page('My Task Handoffs','Task Handoffs','mad4b_work_company_tasks',",
+            "'mad4b-task-handoffs',[__CLASS__,'screen'",
+            "current_user_can('mad4b_work_company_tasks')",
+            "self::allowed(get_current_user_id())",
+            "wp_nonce_field('mad4b_company_task_handoff')",
+            "add_action('admin_post_mad4b_company_task_handoff'",
+        ):
+            if marker not in source:
+                raise SystemExit('FAIL delegated handoff menu permission invariant: ' + marker)
+        if 'add_submenu_page(' in source:
+            raise SystemExit('FAIL delegated handoff must not create hidden privileged submenu')
+        checked += 1
+        continue
+    # Separate company operations parent is scoped to its delegated company
+    # management capability, and is not a hidden Control Plane admin route.
+    if path.name == 'class-mad4b-scp-company-master-admin.php':
+        for marker in (
+            "const CAP",
+            "'mad4b_manage_company_operations'",
+            "add_menu_page('Company Operations','Company',self::CAP,'mad4b-company'",
+            "add_submenu_page('mad4b-company','Team & Translation','Team & Translation',self::CAP",
+            "add_action('admin_menu',array(__CLASS__,'menus')",
+            "current_user_can(self::CAP)",
+        ):
+            if marker not in source:
+                raise SystemExit('FAIL company admin parent permission contract: ' + marker)
+        checked += 1
+        continue
+    # Company-specific extensions use a delegated company parent, not the
+    # Control Plane privileged parent. Check the exact allowed parent and
+    # delegated capability in every submenu instead of silently omitting them.
+    if path.name.startswith('class-mad4b-scp-company-') and 'add_submenu_page(' in source:
+        company_blocks = re.findall(r'add_submenu_page\((.*?)\);', source, re.S)
+        if not company_blocks:
+            raise SystemExit('FAIL company submenu not parseable: ' + path.name)
+        for block in company_blocks:
+            if not re.search(r"['\"]mad4b-company(?:-workspace)?['\"]\s*,", block):
+                raise SystemExit('FAIL company submenu parent not governed: ' + path.name)
+            if not ('mad4b_manage_company_operations' in block
+                    or ('self::CAP' in block and "'mad4b_manage_company_operations'" in source)):
+                raise SystemExit('FAIL company delegated submenu capability: ' + path.name)
+        if not ('add_action(' in source or 'schedule_submenu(' in source):
+            raise SystemExit('FAIL company submenu lifecycle hook missing: ' + path.name)
+        checked += 1
+        continue
+    if path.name == 'class-mad4b-scp-staging-context-fixtures.php':
+        for marker in (
+            "wp_get_environment_type()!=='staging'",
+            "add_submenu_page('mad4b-company','Staging Context Fixtures'",
+            "'mad4b_manage_company_operations',self::MENU",
+            "current_user_can('mad4b_manage_company_operations')",
+        ):
+            if marker not in source:
+                raise SystemExit('FAIL staging-only context fixture delegated route: ' + marker)
+        checked += 1
+        continue
     if 'add_submenu_page(' in source and (
         'MAD4B_SCP_Admin_Route_Registry::schedule_submenu(' not in source
         or re.search(r"add_action\(\s*['\"]admin_menu['\"]", source)
@@ -118,7 +180,7 @@ for path in (root / 'includes').rglob('*.php'):
                 raise SystemExit('FAIL company route identity mismatch: ' + path.name + ' ' + slug)
         continue
     owner = re.search(r'final class (\w+)', source).group(1)
-    slug = re.search(r"const (PAGE_SLUG|PAGE)\s*=\s*['\"](mad4b-[^'\"]+)['\"]", source)
+    slug = re.search(r"const (PAGE_SLUG|PAGE|MENU)\s*=\s*['\"](mad4b-[^'\"]+)['\"]", source)
     if slug:
         # Both explicit ClassName::PAGE and same-class self::PAGE are valid.
         # Require exact constant and manage_options: an unrelated route or

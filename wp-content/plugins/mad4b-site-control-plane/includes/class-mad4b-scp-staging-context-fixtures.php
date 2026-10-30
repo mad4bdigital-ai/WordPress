@@ -138,7 +138,7 @@ final class MAD4B_SCP_Staging_Context_Fixtures {
     public static function register():void {
         if(wp_get_environment_type()!=='staging')return;
         add_action('admin_menu',static function(){
-            add_submenu_page('mad4b-control-plane','Staging Context Fixtures',
+            add_submenu_page('mad4b-company','Staging Context Fixtures',
                 'Staging Context Fixtures','mad4b_manage_company_operations',self::MENU,[__CLASS__,'page']);
         },73);
         add_action('rest_api_init',static function(){
