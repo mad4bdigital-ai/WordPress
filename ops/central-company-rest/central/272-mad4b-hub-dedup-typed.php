@@ -113,7 +113,18 @@ final class MAD4B_Hub_Dedup_Typed_V1 {
                     ($kindShared?.05:0) + ($samePlace?.06:0) +
                     ($routeMatched?.07:0) + ($sameContent?.10:0),3));
                 if($score<.59)continue;
+                $fusion=null;
+                if(class_exists('MAD4B_Hub_Field_Fusion_V1')) {
+                    $proposal=MAD4B_Hub_Field_Fusion_V1::compare($a,$b,[
+                        'company_id'=>$x['company'],'source_type'=>$x['type']
+                    ]);
+                    if(is_wp_error($proposal))
+                        throw new RuntimeException('Field fusion evaluation failed');
+                    // Candidate evidence is read-only; no source or Hub mutation.
+                    $fusion=$proposal;
+                }
                 $candidates[]=[
+                    'field_fusion'=>$fusion,
                     'hub_ids'=>[$a,$b],
                     'source_post_ids'=>[$x['source_id'],$y['source_id']],
                     'company_id'=>$x['company'],'source_type'=>$x['type'],'language'=>$x['lang'],
