@@ -109,6 +109,17 @@ check(is_wp_error($wrong),'Unknown company fails closed');
 $custom=MAD4B_Hub_Dedup_Intelligence_V1::discover(['source_type'=>'custom-cpt']);
 check(is_array($custom) && $custom['imported_records_scanned']===0,
     'Generic source type namespace is extensible');
+set_import(105,'tourism-almallahgroup','properties','ar',777,'Nile Cruise');
+$twoCompanies=MAD4B_Hub_Dedup_Intelligence_V1::discover();
+check(count($twoCompanies['cross_company_title_candidates'])===1 &&
+    !$twoCompanies['cross_company_title_candidates'][0]['auto_merge'],
+    'Cross-company matching title is review-only and ownership remains separate');
+set_import(106,'tourism-almallahgroup','properties','fr',800,'French Hotel');
+$GLOBALS['test_meta'][104]['_mad4b_hub_import_translation_trid']=900;
+$GLOBALS['test_meta'][106]['_mad4b_hub_import_translation_trid']=900;
+$translations=MAD4B_Hub_Dedup_Intelligence_V1::discover();
+check($translations['translation_families_identified']===1,
+    'Multiple languages of a verified translation family are not duplicates');
 $GLOBALS['user_can']=false;
 $blocked=MAD4B_Hub_Dedup_Intelligence_V1::discover();
 check(is_wp_error($blocked),'Unauthorized discovery denied');
