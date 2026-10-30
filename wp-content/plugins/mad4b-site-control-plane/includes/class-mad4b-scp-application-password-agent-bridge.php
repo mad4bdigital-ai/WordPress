@@ -46,6 +46,10 @@ final class MAD4B_SCP_Application_Password_Agent_Bridge {
         $grant = MAD4B_SCP_Agent_Registry::exact_grant((int)$agent['id'], 'mad4b-write', 'mad4b/context-ai-review', 'core');
         return is_array($grant) && isset($grant['effect']) && 'allow' === $grant['effect'];
     }
+    /** Already-verified request-local subject; never exposes the password. */
+    public static function verified_context() {
+        return is_array(self::$verified) ? self::$verified : array();
+    }
     public static function context($context) {
         if (!self::$verified || !is_array($context) || !empty($context['authenticated'])) return $context;
         foreach(self::$verified as $k=>$v) $context[$k]=$v;

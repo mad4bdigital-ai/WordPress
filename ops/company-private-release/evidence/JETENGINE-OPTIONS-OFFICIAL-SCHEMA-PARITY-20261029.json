@@ -1,0 +1,78 @@
+{
+  "contract": "mad4b.company-copy.jetengine-official-schema-parity.v1",
+  "observed_date": "2026-10-29",
+  "source": "read-only wp_jet_post_types WHERE status='page' on each company's current WordPress database",
+  "values_exfiltrated": false,
+  "credentials_exfiltrated": false,
+  "mutated_production": false,
+  "result": "SCHEMA_PARITY_WITH_TWO_ADDITIVE_FIELDS",
+  "shared_pages": [
+    {
+      "slug": "contact-and-help-info",
+      "page_label": "Contact and Help Info",
+      "all_royal_fields": 16,
+      "egypt_tour_gates_fields": 16,
+      "type_conflicts": 0,
+      "policy": "shared_page_schema_tenant_specific_contact_and_identity_values"
+    },
+    {
+      "slug": "calculate-booking-price",
+      "page_label": "Calculate Booking Price",
+      "all_royal_fields": 2,
+      "egypt_tour_gates_fields": 2,
+      "type_conflicts": 0,
+      "policy": "shared_page_schema_tenant_specific_operational_values"
+    },
+    {
+      "slug": "look-and-feel",
+      "page_label": "Look and Feel",
+      "all_royal_fields": 18,
+      "egypt_tour_gates_fields": 20,
+      "shared_field_types_identical": 18,
+      "type_conflicts": 0,
+      "new_shared_definition_fields": [
+        {
+          "key": "company_about_customization",
+          "type": "media",
+          "target": "All Royal Egypt schema-only addition; no value migration"
+        },
+        {
+          "key": "review_gellery_slider",
+          "type": "gallery",
+          "target": "All Royal Egypt schema-only addition; no value migration"
+        }
+      ],
+      "values_currently_saved_in_look_and_feel": {
+        "allroyalegypt.com": 16,
+        "egypttourgates.com": 21
+      },
+      "etg_review_gallery_url_count": 19,
+      "etg_review_gallery_urls_host_own_domain": true,
+      "no_donor_gallery_or_company_media_import": true
+    }
+  ],
+  "actual_storage": {
+    "jetengine_page_definitions": "wp_jet_post_types (status='page')",
+    "saved_values": "WordPress wp_options options keyed by option page slug (subject to option page storage settings)",
+    "no_registered_page_with_slug_brand_detected": true,
+    "brand_related_page_label": "Contact and Help Info; other Brand UI settings may be owned by separate components and must be inspected independently",
+    "separate_local_schema_row_ids": true
+  },
+  "dry_run_audit": {
+    "source_file": "ops/company-private-release/audit_jetengine_options_schema.php",
+    "all_royal": "PASS",
+    "egypt_tour_gates": "PASS"
+  },
+  "policy": {
+    "share": "page definitions, labels, field types, rules, widget source contracts",
+    "isolate": "all saved field content, media URLs, colors, logos, typography, company contact content, query IDs and account values",
+    "schema_update": "additive only, preserve all existing target values, never default to donor content",
+    "physical_migration_completed": false
+  },
+  "promotion_gates": [
+    "schema-only authenticated clone patch",
+    "test target values preserved and new fields unpopulated",
+    "verify correct target media and source binding",
+    "independent QA and owner authorization"
+  ]
+}

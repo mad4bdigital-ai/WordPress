@@ -118,6 +118,42 @@ jobs:
           php /tmp/wp-cli.phar plugin status mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin status mad4b-site-control-plane --path="$WP_PATH"
 
+      - name: Diagnose exact MCP registration blockers (read-only, disposable WordPress)
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval '
+            // No payloads, credentials, source paths, or mutable capabilities.
+            // Observe the identical lazy REST bootstrap as the runtime smoke.
+            rest_get_server();
+            $rows = MAD4B_SCP_Servers::registration_status();
+            $summary = array();
+            foreach ( MAD4B_SCP_Servers::expected_server_ids() as $id ) {
+              $row = isset( $rows[$id] ) && is_array( $rows[$id] ) ? $rows[$id] : array();
+              $failures = isset( $row["capability_descriptor_evidence"]["blockers"] )
+                && is_array( $row["capability_descriptor_evidence"]["blockers"] )
+                ? $row["capability_descriptor_evidence"]["blockers"] : array();
+              $bounded = array();
+              foreach ( array_slice( $failures, 0, 12 ) as $item ) {
+                if ( !is_string( $item ) ) continue;
+                if ( preg_match( "/^mad4b\/[a-z0-9-]{1,120}:[a-z][a-z0-9_]{0,90}$/D", $item ) ) $bounded[] = $item;
+              }
+              $summary[$id] = array(
+                "registered" => !empty( $row["registered"] ),
+                "error_code" => sanitize_key( (string)($row["error"] ?? "") ),
+                "requested_tools" => isset( $row["requested_tool_count"] ) ? (int)$row["requested_tool_count"] : null,
+                "failed_descriptor_bindings" => count( $failures ),
+                "bounded_descriptor_failures" => $bounded,
+              );
+            }
+            echo "MAD4B_MCP_DISPOSABLE_REGISTRATION=" . wp_json_encode( array(
+              "mcp_init" => did_action( "mcp_adapter_init" ),
+              "abilities_init" => did_action( "wp_abilities_api_init" ),
+              "rest_init" => did_action( "rest_api_init" ),
+              "servers" => $summary,
+            ) ) . PHP_EOL;
+          ' --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
       - name: Execute baseline runtime acceptance smoke
         shell: bash
         run: |

@@ -7,9 +7,10 @@ final class InquiryQualification
 {
     private static function table():string {global $wpdb;return $wpdb->prefix.'commerce_inquiry_qualifications';}
     public static function enabled():bool {
-        return wp_get_environment_type()==='local'
-            && defined('SHARED_PRODUCT_LAB_ONLY') && SHARED_PRODUCT_LAB_ONLY===true
-            && get_option('commerce_inquiry_qualification_enabled',false)==='1';
+        // Qualification is a normal site capability, not a sandbox feature.
+        // Its site-owned option and the operator's permissions govern use.
+        return in_array(get_option('commerce_inquiry_qualification_enabled',false),
+            [true,1,'1'],true);
     }
     public static function install():true|\WP_Error {
         global $wpdb;

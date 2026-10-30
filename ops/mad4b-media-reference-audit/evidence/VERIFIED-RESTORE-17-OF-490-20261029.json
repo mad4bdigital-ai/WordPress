@@ -1,0 +1,82 @@
+{
+  "contract": "mad4b.media.repaired-missing-originals-and-derivatives.v1",
+  "date": "2026-10-29",
+  "target": "ETG Commerce Staging on Hostinger primary VPS",
+  "status": "STAGING_PARTIAL_RECOVERY_VERIFIED",
+  "before": {
+    "missing_attachment_records": 490,
+    "reference_review_holds": 49
+  },
+  "after": {
+    "missing_attachment_records": 473,
+    "restored_attachment_records": 17,
+    "restored_original_paths": 13,
+    "additional_non_scaled_original_paths": 1,
+    "created_original_file_copies_across_staging_and_media_origin": 28,
+    "unique_regenerated_thumbnail_files_synced_to_media_origin": 85,
+    "originals_present_for_17_attachments": 17,
+    "thumbnail_metadata_references_checked": 106,
+    "thumbnail_metadata_references_missing": 0,
+    "duplicate_image_metadata_entries_reconciled": 4,
+    "attachments_total": 22782,
+    "image_attachments_total": 22740
+  },
+  "recovery_gates": {
+    "image_name_match": true,
+    "width_height_match": true,
+    "mime_match": true,
+    "expected_source_filesize_match": true,
+    "source_sha256_checked": true,
+    "backup_local_restore_verified": true,
+    "no_overwrite": true,
+    "preflight_rollback_test": true,
+    "derivatives_rollback_test": true
+  },
+  "proof": {
+    "backup": "/opt/mad4b-media-backups/etg-20261029T161708Z/BACKUP-RECEIPT.json",
+    "main_plan_sha256": "1587394aa71a61beee07970da4581aab0624cf6ae8b225c917a11774de4a638e",
+    "main_restore_receipt_sha256": "0076545dfdf9b32da4284a2b84159bc2b63c5eb05410538fca38b3b1659d915b",
+    "non_scaled_original_receipt_sha256": "04eec5cc884b33967b3b0b3b120d86be85048a6c3674e5a1f201442d8f0e21b4",
+    "metadata_plan_sha256": "f9824a90f0e363f53ec14014ac4916ce204730d61f0b9481e7d9500aa6d471e6",
+    "metadata_apply_receipt_sha256": "6ca94c9040546029e798986ae8f24578735268c03c1e8bd3da2806f6019e79f8",
+    "thumbnail_origin_sync_receipt_sha256": "7c524585fbc8f8aaf6f5e36957255a73eff220174e86c3f0bb262f0063392e29",
+    "staging_original_http_status": 200,
+    "staging_thumbnail_http_status": 200
+  },
+  "policy": {
+    "ability": "mad4b/media-reference-audit",
+    "source_file_state": "present_or_missing",
+    "active_cron_and_systemd_timer": true,
+    "delete_allowed": false,
+    "review_holds_preserved": 49,
+    "public_gateway_unchanged": true
+  },
+  "source_status": {
+    "branch": "feature/media-orphan-audit-policy-20261029",
+    "pr": 616,
+    "merge_pending": true,
+    "owner_attestation_pending": true
+  },
+  "operations": {
+    "staging_files_added": true,
+    "media_origin_files_added": true,
+    "staging_attachment_metadata_updated": true,
+    "production_modified": false,
+    "company_hosting_modified": false,
+    "dns_modified": false,
+    "old_files_overwritten": 0,
+    "files_deleted": 0,
+    "offsite_backup_deferred_by_owner": true
+  },
+  "not_recovered": {
+    "records": 473,
+    "reason": "No same-company, verified source bytes meeting exact size/MIME/dimensions and provenance checks",
+    "action": "retain for source reconciliation; do not synthesize or delete"
+  },
+  "distinct_risks": [
+    "This is ETG Commerce Staging and not current Hostinger Production source",
+    "External URLs and remote consumers of 49 review-held records not independently certified",
+    "Thumbnail size references are verified for 17 restored attachments only, not entire image library",
+    "Local backup/origin on same VPS disk; offsite copy deferred by owner"
+  ]
+}

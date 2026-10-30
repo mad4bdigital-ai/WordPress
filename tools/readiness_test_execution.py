@@ -25,6 +25,24 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/remote-execution/chatgpt-optional-catalog-smoke.php",
     "tests/remote-execution/developer-preparation-bridge-smoke.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/mcp-catalog-adaptive-budget.php",
+    # These exact source-reviewed QA31 fixtures passed isolated, no-network,
+    # read-only filesystem PHP 8.3/8.5 execution. Their assertions must
+    # return zero and a genuine PASS marker; arbitrary PHP remains denied.
+    "wp-content/plugins/mad4b-site-control-plane/tests/brand-append-retry-budget-qa18.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/event-automation-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/isolated-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/preactivation-team-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-route-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/enrollment-dispatch-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/historical-owner-attestation-transport-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/historical-staging-mcp-read-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-rest-routing-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w2a-readonly-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-live-write-diagnostic-runtime.php",
     # QA31 exact hermetic PHP fixtures; arbitrary PHP execution remains blocked.
     "wp-content/plugins/mad4b-site-control-plane/tests/live-write-provider-snapshot-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/native-plugin-management-menu-runtime.php",
@@ -75,6 +93,14 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-source-repair-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/unified-approval-ai-first/local-rest-fastpath-contract.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/public-holiday-hermetic-runtime.php",
+    # New exact hermetic delegated-WordPress and independent-NHI policy fixtures.
+    # No database, secrets, network or live WordPress; checks fail explicitly.
+    # Separate reviewed staged-only user-owned content actor regression.
+    "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegated-content-actor-hermetic.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegated-oauth-map-hermetic.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/native-delegated-content-draft-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegation-mode-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegation-connection-policy-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/application-password-agent-bridge-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-media-evidence-runtime.php",

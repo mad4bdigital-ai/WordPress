@@ -19,7 +19,7 @@ def inspect(path, text, policy):
     errors = []
     if TENANT.search(text):
         errors.append("TENANT_DOMAIN")
-    if BUSINESS.search(text):
+    if BUSINESS.search(text) and path not in policy.get("optional_business_model_integrations", []):
         errors.append("FIXED_BUSINESS_MODEL")
     if "ETG_DFSB_EXTERNAL_WAF_RATE_LIMIT_VERIFIED" in text:
         errors.append("SITE_SPECIFIC_CORE_AUTHORITY")
@@ -54,6 +54,11 @@ def self_test(policy):
     path = next(iter(policy["reviewed_literal_endpoints"]))
     assert inspect(path, "'https://new-tenant.biz'", policy)
     assert not inspect(generic, "get_post_types(); home_url(); 'product-price';", policy)
+    # A business-specific module may be explicitly listed, but a generic core file
+    # must continue to reject the same hardcoded post type. Tenant URL checks remain mandatory.
+    specialized = policy.get("optional_business_model_integrations", [])
+    assert specialized and not inspect(specialized[0], "'tours-and-activities'", policy)
+    assert any(e == "TENANT_DOMAIN" for e in inspect(specialized[0], "'https://staging.allroyalegypt.com'", policy))
     print("SITE_NEUTRALITY_SELF_TEST: PASS (tenant, unknown host, business model, optional boundary)")
 
 

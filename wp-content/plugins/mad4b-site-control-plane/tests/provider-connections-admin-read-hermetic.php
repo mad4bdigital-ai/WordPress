@@ -11,6 +11,14 @@ function esc_html__($v,$domain=''){return htmlspecialchars($v,ENT_QUOTES,'UTF-8'
 function __($v,$domain=''){return $v;}
 function esc_html($v){return htmlspecialchars((string)$v,ENT_QUOTES,'UTF-8');}
 function esc_url($v){return htmlspecialchars((string)$v,ENT_QUOTES,'UTF-8');}
+function esc_attr($v){return htmlspecialchars((string)$v,ENT_QUOTES,'UTF-8');}
+function add_action($hook,$callback){$GLOBALS['actions'][$hook][]=$callback;}
+function get_option($key,$fallback=null){return $GLOBALS['saved_options'][$key]??$fallback;}
+function wp_json_encode($value){return json_encode($value);}
+function admin_url($path=''){return 'https://example.test/wp-admin/'.ltrim($path,'/');}
+function wp_nonce_field($action){echo '<input type="hidden" name="_wpnonce" value="fixture-'.esc_attr($action).'">';}
+function selected($actual,$desired,$echo=true){$html=$actual===$desired?'selected="selected"':'';if($echo)echo $html;return $html;}
+function submit_button($label){echo '<button type="submit">'.esc_html($label).'</button>';}
 function wp_die($message){throw new RuntimeException((string)$message);}
 function add_submenu_page($parent,$page_title,$menu_title,$capability,$slug,$callback){
  $GLOBALS['submenus'][$slug]=['parent'=>$parent,'cap'=>$capability,'callback'=>$callback];
@@ -28,6 +36,7 @@ class MAD4B_SCP_Provider_Connection_Center{
 }
 class MAD4B_SCP_Provider_Setup_Coverage{
  static function render(){$GLOBALS['coverage_render']++;echo '<div class="provider-setup-fixture">Setup guidance only</div>';}
+ static function render_custom_registration(){echo '<div class="custom-provider-readonly-fixture">Custom provider discovery only</div>';}
 }
 require dirname(__DIR__).'/includes/class-mad4b-scp-provider-connections-admin-ui.php';
 $n=0;
@@ -70,7 +79,18 @@ ck('refresh note requires separate ticket',strpos($html,'separate exact owner ap
 ck('oauth handoff requires owner browser',strpos($html,'provider browser')!==false);
 ck('pending revocation cannot reconnect',strpos($html,'Resolve the pending provider revocation first')!==false);
 ck('missing handoff explicitly displayed',strpos($html,'No certified handoff available')!==false);
-ck('UI never emits auto-submit buttons for mutations',strpos($html,'<form')===false&&strpos($html,'method="post"')===false);
+ck('Firecrawl admin settings use a single explicit nonce-protected POST only',
+ substr_count($html,'<form')===1
+ && strpos($html,'name="action" value="mad4b_firecrawl_save"')!==false
+ && strpos($html,'name="_wpnonce" value="fixture-mad4b_firecrawl_save"')!==false
+ && strpos($html,'mad4b-write-execute')===false);
+ck('Firecrawl adapter registers its bounded admin save and test callbacks',
+ isset($GLOBALS['actions']['admin_post_mad4b_firecrawl_save'])
+ && isset($GLOBALS['actions']['admin_post_mad4b_firecrawl_test'])
+ && in_array(['MAD4B_SCP_Firecrawl_Provider','save'],$GLOBALS['actions']['admin_post_mad4b_firecrawl_save'],true)
+ && in_array(['MAD4B_SCP_Firecrawl_Provider','test_connection'],$GLOBALS['actions']['admin_post_mad4b_firecrawl_test'],true));
+ck('empty credential profile does not render a network test submission',
+ strpos($html,'name="action" value="mad4b_firecrawl_test"')===false);
 ck('requires certified providers, no wildcard mutator',strpos($html,'No wildcard provider mutation authority')!==false);
 ck('sensitive credential bytes never used',strpos($html,'secret-token')===false&&$GLOBALS['mutations']===0);
 ck('original setup coverage remains advisory',$GLOBALS['coverage_render']===2);

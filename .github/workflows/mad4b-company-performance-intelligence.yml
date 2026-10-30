@@ -1,0 +1,35 @@
+name: MAD4B Company Performance Intelligence Contract
+
+on:
+  pull_request:
+    paths:
+      - 'ops/company-performance-intelligence-v1/**'
+      - '.github/workflows/mad4b-company-performance-intelligence.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-company-performance-intelligence-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  read-only-scan-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Checkout exact pull request revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Verify staging-only read-only source contract
+        run: python3 ops/company-performance-intelligence-v1/test-contract.py
+      - name: PHP source syntax
+        run: php -l ops/company-performance-intelligence-v1/company-performance-intelligence.php
+
+      - name: Verify authenticated read-only REST interface contract
+        run: python3 ops/company-performance-intelligence-v1/test-rest-contract.py
+      - name: PHP REST route syntax
+        run: php -l ops/company-performance-intelligence-v1/company-performance-rest.php

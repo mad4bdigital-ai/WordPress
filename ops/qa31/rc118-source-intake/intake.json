@@ -1,0 +1,55 @@
+{
+  "contract": "mad4b.qa31.rc118-staging-source-intake.v1",
+  "staging_site_origin": "https://tours.dev.mad4b.com",
+  "staging_control_plane_version": "0.4.0-rc.118",
+  "baseline_github_commit_sha": "a6beb2d0b4d235169183ba4985e61c21f3caf131",
+  "baseline_github_control_plane_version": "0.4.0-rc.104",
+  "previous_manifest_entries": 877,
+  "previous_manifest_matching_entries": 876,
+  "loader_post_manifest_lines": 3,
+  "loader_bytes_added": 266,
+  "loader_original_manifest_sha256": "32d3aa84b15b0fa549c6dd8ffc131c2c292640e5b63991dab1a94f3f0e97cc00",
+  "loader_current_runtime_sha256": "b67a6be43d4057d2061b980cc3abb0e2b2605c954a4fccabf38d6daa682ef4e3",
+  "previous_manifest_lists_new_modules": false,
+  "files": [
+    {
+      "candidate_path": "source/class-mad4b-scp-company-tenant-migration.php",
+      "runtime_origin": "includes/class-mad4b-scp-company-tenant-migration.php",
+      "sha256": "06447093ff420e76af963d07285922972ff29be17ca1cb5d2072738d9c41bbf9",
+      "bytes": 24988,
+      "php_lint_required": true,
+      "review_status": "SOURCE_CANDIDATE_UNREVIEWED"
+    },
+    {
+      "candidate_path": "source/class-mad4b-scp-migration-decision-catalog.php",
+      "runtime_origin": "includes/class-mad4b-scp-migration-decision-catalog.php",
+      "sha256": "2321244f43113cc998887c03ad923ab8dfc50510c33a73d435a4127afc787b8d",
+      "bytes": 14006,
+      "php_lint_required": true,
+      "review_status": "SOURCE_CANDIDATE_UNREVIEWED"
+    },
+    {
+      "candidate_path": "source/class-mad4b-scp-company-migration-decisions.php",
+      "runtime_origin": "includes/class-mad4b-scp-company-migration-decisions.php",
+      "sha256": "408febe1cea99ce389f84e9035f91dce1930843ec2f535e9cbc9d987198e2488",
+      "bytes": 30909,
+      "php_lint_required": true,
+      "review_status": "SOURCE_CANDIDATE_UNREVIEWED"
+    }
+  ],
+  "non_executable_source_intake": true,
+  "source_candidate_only": true,
+  "authorizing": false,
+  "staging_install_authorized": false,
+  "production_install_authorized": false,
+  "provider_certified": false,
+  "staging_mutation_performed": false,
+  "remaining_gates": [
+    "independent_capability_and_permission_review",
+    "source_parent_reconciliation",
+    "new_immutable_versioned_control_plane_build",
+    "signed_package_provenance",
+    "site_bound_owner_approval",
+    "backup_restore_and_exact_readback"
+  ]
+}

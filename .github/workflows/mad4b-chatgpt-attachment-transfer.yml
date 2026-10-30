@@ -33,6 +33,8 @@ jobs:
           python3 wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-contract.py
           php -l wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-permission-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-permission-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/staging-attachment-transfer-grant-policy-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/staging-attachment-transfer-grant-policy-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-roundtrip-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-file-transfer-roundtrip-runtime.php
           python3 -m py_compile tools/mad4b_chatgpt_attachment_sender.py

@@ -1,0 +1,26 @@
+{
+  "contract": "mad4b.company-performance-fragments.v1",
+  "enabled": false,
+  "environment": "staging",
+  "site_host": "staging.example.org",
+  "page_paths": [
+    "/"
+  ],
+  "language": "en",
+  "fragment_ttl_seconds": 20,
+  "scope": "anonymous_get_without_cookie_or_authorization",
+  "cache_targets": [
+    "mega_menu_markup",
+    "individual_attractions_cards"
+  ],
+  "targets": {
+    "menu_document_id": 101,
+    "menu_widget_id": "abc1234",
+    "attractions_document_id": 102,
+    "attractions_widget_id": "abc1235",
+    "attractions_listing_id": 103,
+    "attractions_taxonomy": "destinations"
+  },
+  "unsafe_dynamic_injections": "never_cache",
+  "geo_policy": "unverified"
+}

@@ -1,0 +1,30 @@
+name: Central Demo Elementor Content-Only Governance
+
+on:
+  pull_request:
+    paths:
+      - "governance/company-clone/**"
+      - "scripts/elementor_demo_content_guard.py"
+      - "tests/company-clone-field-governance/**"
+      - ".github/workflows/central-demo-elementor-content-only.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  elementor-content-only-contract:
+    name: Elementor design integrity contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out reviewed source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Validate field governance and protected Elementor copy mutations
+        run: python3 -m unittest discover -s tests/company-clone-field-governance -p 'test_*.py' -v

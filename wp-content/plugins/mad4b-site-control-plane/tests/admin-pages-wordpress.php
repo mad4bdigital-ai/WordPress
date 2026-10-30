@@ -20,6 +20,7 @@ $pages = array(
 	'mad4b-control-plane-connection' => array( 'MAD4B_SCP_Connection_Admin_UI', 'render_page', array( 'readiness', 'oauth', 'endpoints', 'isolation', 'certification' ) ),
 	'mad4b-control-plane-chatgpt' => array( 'MAD4B_SCP_ChatGPT_Connection_Admin_UI', 'render_page', array( '' ) ),
 	'mad4b-direct-access-profile' => array( 'MAD4B_SCP_Direct_Profile', 'render_page', array( '' ) ),
+	'mad4b-mcp-principal-mode' => array( 'MAD4B_SCP_Delegation_Mode', 'page', array( '' ) ),
 	'mad4b-control-plane-content-pipeline' => array( 'MAD4B_SCP_Dynamic_Content_Pipeline_Admin', 'render', array( '' ) ),
 	'mad4b-control-plane-site-profile' => array( 'MAD4B_SCP_Site_Profile_Admin', 'render_page', array( '' ) ),
 	'mad4b-control-plane-performance' => array( 'MAD4B_SCP_Admin_Query_Performance_UI', 'render_page', array( '' ) ),
@@ -40,6 +41,11 @@ $pages = array(
     'mad4b-market-profiles' => array( 'MAD4B_SCP_Market_Profiles', 'admin_page', array( '' ) ),
     'mad4b-season-calendar' => array( 'MAD4B_SCP_Season_Calendar', 'admin_page', array( '' ) ),
     'mad4b-source-hub' => array( 'MAD4B_SCP_Source_Hub', 'admin_page', array( '' ) ),
+    // Content Readiness routes are parent-ordered via the same guarded registry.
+    // These are administrator views; company-delegated menus are separate.
+    'mad4b-content-readiness-alerts' => array( 'MAD4B_SCP_Content_Readiness_Alerts', 'render', array( '' ) ),
+    'mad4b-content-readiness-workflow' => array( 'MAD4B_SCP_Readiness_Workflow_Options', 'render', array( '' ) ),
+    'mad4b-content-completeness' => array( 'MAD4B_SCP_Content_Completeness', 'render', array( '' ) ),
 );
 $routes = MAD4B_SCP_Admin_Route_Registry::routes();
 $check( ! array_diff( array_keys( $routes ), array_keys( $pages ) ) && ! array_diff( array_keys( $pages ), array_keys( $routes ) ), 'Every declared page must have a smoke case. Missing: ' . implode( ', ', array_diff( array_keys( $routes ), array_keys( $pages ) ) ) . '; stale: ' . implode( ', ', array_diff( array_keys( $pages ), array_keys( $routes ) ) ) );

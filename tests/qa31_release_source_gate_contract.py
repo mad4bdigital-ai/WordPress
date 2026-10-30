@@ -75,10 +75,22 @@ with TemporaryDirectory() as foreign:
         (plugin/'config/cross-plugin-sources.json').read_bytes()),
         'foreign_ci_successor_root_denied')
 checked=evaluate(ledger,plugin)
+# The three exactly reviewed CI-only successors do not resolve other changed
+# Git blobs. Unlike the release gate, this negative regression must PASS when
+# unexpected differences are detected *and correctly rejected*: never require
+# unexpected_count == 0 while the source ledger is unreconciled.
 chk(set(checked['reviewed_github_successor_paths'])==reviewed_paths
-    and checked['unexpected_count']==0 and checked['pending_count']>0
-    and checked['decision']=='BLOCKED_SOURCE_RECONCILIATION',
+    and checked['reviewed_github_successor_count']==len(reviewed_paths)
+    and checked['pending_count']>0
+    and checked['version_match'] is False
+    and checked['decision']=='BLOCKED_SOURCE_RECONCILIATION'
+    and checked['authorizing'] is False
+    and checked['production_authorized'] is False,
     'reviewed_successor_remains_pending_without_version_parity')
+chk(checked['unexpected_count']==len(checked['unexpected_paths'])
+    and set(checked['unexpected_paths']).isdisjoint(reviewed_paths)
+    and checked['unexpected_count']>0,
+    'unreviewed_github_drift_explicitly_blocks_source_parity')
 chk(not reviewed_bootstrap_successor(plugin,'mad4b-site-control-plane.php',current+b'\nmodified'),
     'tampered_bootstrap_bytes_denied')
 chk(not reviewed_bootstrap_successor(plugin,'includes/unapproved.php',current),
@@ -86,5 +98,14 @@ chk(not reviewed_bootstrap_successor(plugin,'includes/unapproved.php',current),
 with TemporaryDirectory() as foreign:
     chk(not reviewed_bootstrap_successor(Path(foreign),'mad4b-site-control-plane.php',current),
         'foreign_checkout_cannot_self_certify')
+
+# QA31 W2A read-only native source checks preserve QA31/QA32 reviewed-source restrictions.
+import subprocess, shutil
+php=shutil.which('php')
+if not php: raise AssertionError('QA31 W2A PHP runtime unavailable')
+fixture=plugin/'tests/qa31-w2a-readonly-runtime.php'
+execution=subprocess.run([php,str(fixture)],cwd=repo,capture_output=True,text=True,timeout=30,check=False)
+chk(execution.returncode==0 and 'QA31_W2A_READONLY_RUNTIME: PASS' in execution.stdout,
+    'qa31_w2a_native_and_unified_gate_hermetic_runtime')
 
 print('QA31_SOURCE_PARITY_NEGATIVE_REGRESSIONS: PASS')

@@ -1,0 +1,1 @@
+{"contract":"mad4b.native-ability-trust.v1","site_host":"staging.example.org","abilities":[{"name":"example/read-status","scope":"read","source_relpath":"mu-plugins/example-read-provider.php","source_sha256":"0000000000000000000000000000000000000000000000000000000000000000","input_schema_sha256":"0000000000000000000000000000000000000000000000000000000000000000"}]}

@@ -1,0 +1,36 @@
+name: MAD4B Hub Remote Control Contract
+
+on:
+  pull_request:
+    paths:
+      - 'ops/central-company-rest/central/230-mad4b-central-hub-remote-control.php'
+      - 'ops/central-company-rest/remote/230-mad4b-company-hub-control-agent.php'
+      - 'ops/central-company-rest/tests/test-hub-remote-control-cli.php'
+      - '.github/workflows/mad4b-hub-remote-control-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact PR code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: PHP syntax and isolated contract tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -v
+          php -l ops/central-company-rest/central/230-mad4b-central-hub-remote-control.php
+          php -l ops/central-company-rest/remote/230-mad4b-company-hub-control-agent.php
+          php -l ops/central-company-rest/tests/test-hub-remote-control-cli.php
+          php ops/central-company-rest/tests/test-hub-remote-control-cli.php

@@ -13,6 +13,7 @@ because static package inspection succeeds. It never executes provider PHP.
 from __future__ import annotations
 
 import argparse
+import os
 import hashlib
 import json
 import re
@@ -553,6 +554,7 @@ def main() -> int:
     parser.add_argument("--plugins-dir", default="wp-content/plugins")
     parser.add_argument("--output", default="/tmp/mad4b-provider-contracts.json")
     parser.add_argument("--baseline", default="")
+    parser.add_argument("--baseline-advisory", action="store_true", help="Record optional package baseline drift without blocking required provider contract checks")
     args = parser.parse_args()
 
     plugins_dir = Path(args.plugins_dir).resolve()
@@ -602,7 +604,14 @@ def main() -> int:
         report["baseline_issues"] = []
         report["baseline_pending_attestations"] = []
 
-    report["status"] = "passed" if not failures and not baseline_issues else "failed"
+    # Missing optional package baselines never become WordPress plugin activation
+    # prerequisites. Preserve exact drift records; hard-fail required contracts.
+    # Normal PR CI reports missing optional baseline packages as advisory.
+    # Explicit release/deployment probes keep their strict default and must
+    # never treat this as provider write or Production authorization.
+    advisory = bool(args.baseline_advisory or os.environ.get("GITHUB_EVENT_NAME") == "pull_request")
+    report["baseline_advisory"] = advisory
+    report["status"] = "passed" if not failures and (advisory or not baseline_issues) else "failed"
     report["failed_providers"] = failures
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")

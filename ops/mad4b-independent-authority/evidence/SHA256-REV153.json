@@ -1,0 +1,22 @@
+{
+  "contract": "mad4b.independent-authority.source-parity.rev153.v1",
+  "date": "2026-10-29",
+  "mode": "source-only",
+  "repository": "mad4bdigital-ai/WordPress",
+  "origin": "verified standalone source recreated by authorized SSH on isolated Staging",
+  "files": {
+    "src/IndependentAuthority.php": "620dac832cdb46e1ede3f2248d4950c2ec9f88ad1feff04e6108241e99e30d73",
+    "src/AuthorityLedger.php": "834583a1a249221a566db2897fa9aabb1270bc5b7b7d317bc24c19b97144d8e3",
+    "tests/standalone-ledger-qa.php": "7a12feafa47ec8f93cb7dcb2f72a067e3ac5b34688f21e8fef8ec297230a61e7"
+  },
+  "result": "18/18 isolated MariaDB QA checks passed; no live operational permit issued",
+  "caveat": "GitHub is source/version control only. Not a permit issuer, operational CA, approval or completion certificate.",
+  "activation": {
+    "independent_authority_source_uploaded": true,
+    "independent_authority_live_issuance_enabled": false,
+    "github_governed_retained": true,
+    "automatic_fallback": false,
+    "production_authorized": false
+  },
+  "secrets": "No private keys, password files, database dumps, runtime authentication tokens or live site credentials included."
+}

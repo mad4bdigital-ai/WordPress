@@ -392,6 +392,97 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 		}
 	}
 
+	/**
+	 * A typed, read-only OAuth preflight for owner step-up operations.
+	 *
+	 * Enrollment Info previously reported 'ready_for_exact_owner_decision'
+	 * while concealing that the actual ChatGPT bearer only had read scope.
+	 * A subsequently invoked mutation then failed as an opaque MCP error.
+	 * This interrogates only the current authenticated request; it never
+	 * mints a credential, sets an approval, or bypasses a target permission.
+	 */
+	private static function owner_step_up_permission_preflight( $operation_id ) {
+		$server = class_exists( 'MAD4B_SCP_Transport_Context', false )
+			&& method_exists( 'MAD4B_SCP_Transport_Context', 'current_server_id' )
+			? (string) MAD4B_SCP_Transport_Context::current_server_id() : '';
+		$result = array(
+			'contract' => 'mad4b.enrollment-owner-step-up-preflight.v1',
+			'operation_id' => (string) $operation_id,
+			'state' => 'not_evaluated',
+			'evaluated_current_request' => false,
+			'permission_observed' => false,
+			'blocker_code' => '',
+			'next_safe_action' => 'inspect_current_transport_and_oauth_step_up',
+			'step_up_scope_required' => MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE,
+			// Parent scope and the exact owner target permission are different
+			// gates. Neither is an execution ticket or a durable owner decision.
+			'target_permission_state' => 'not_evaluated',
+			'target_permission_blocker' => '',
+			'execution_authorized' => false,
+			'owner_decision_recorded' => false,
+			'mutation_performed' => false,
+			'blind_retry_allowed' => false,
+			'same_request_only' => true,
+		);
+		if ( 'mad4b-chatgpt' !== $server ) return $result;
+		$result['evaluated_current_request'] = true;
+		try {
+			$allowed = self::can_execute( array( 'operation_id' => $operation_id ) );
+			if ( true === $allowed ) {
+				$result['state'] = 'request_permission_observed';
+				$result['permission_observed'] = true;
+				$result['next_safe_action'] = 'confirm_fresh_exact_owner_plan_then_step_up_execute_once';
+				// Check the exact owner target's read-only permission predicate,
+				// but never call its execute callback, audit writer or claim path.
+				if ( 'core_step_up_mad4b_staging_write_owner_attest_2cc8769d389d' === $operation_id ) {
+					if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Owner_Intent', false )
+						|| ! method_exists( 'MAD4B_SCP_Staging_Write_Owner_Intent', 'can_remote_attest' ) ) {
+						$result['target_permission_state'] = 'target_guard_unavailable';
+						$result['next_safe_action'] = 'inspect_exact_owner_target_registration';
+						return $result;
+					}
+					$target = MAD4B_SCP_Staging_Write_Owner_Intent::can_remote_attest();
+					if ( true === $target ) {
+						$result['target_permission_state'] = 'target_permission_observed';
+					} else {
+						// Errors from arbitrary callbacks are not exposed to the MCP
+						// read channel; return only the reviewed owner guard codes.
+						$code = is_wp_error( $target ) ? (string) $target->get_error_code() : '';
+						$known = array(
+							'mad4b_staging_owner_not_explicitly_enrolled',
+							'mad4b_staging_owner_oauth_step_up_required',
+							'mad4b_staging_owner_chatgpt_client_required',
+							'mad4b_staging_owner_identity_missing',
+							'mad4b_staging_owner_oauth_subject_required',
+						);
+						$result['target_permission_state'] = 'target_permission_blocked';
+						$result['target_permission_blocker'] = in_array( $code, $known, true )
+							? $code : 'target_permission_denied_unclassified';
+						$result['next_safe_action'] = 'inspect_exact_owner_target_permission';
+					}
+				}
+				return $result;
+			}
+			$code = is_wp_error( $allowed ) ? (string) $allowed->get_error_code() : '';
+			$next = array(
+				'mad4b_enrollment_dispatch_step_up_scope_required' => 'reauthorize_chatgpt_authority_step_up_scope',
+				'mad4b_enrollment_dispatch_bearer_required' => 'reauthorize_oauth_bearer',
+				'mad4b_enrollment_dispatch_chatgpt_client_required' => 'review_exact_chatgpt_cimd_oauth_client_attribution',
+				'mad4b_enrollment_dispatch_subject_not_enrolled' => 'review_site_profile_subject_enrollment',
+				'mad4b_enrollment_dispatch_admin_required' => 'review_enrolled_wordpress_administrator',
+				'mad4b_enrollment_dispatch_staging_profile_required' => 'review_exact_staging_site_profile',
+				'mad4b_enrollment_dispatch_breakglass_denied' => 'keep_breakglass_disabled',
+			);
+			$result['state'] = 'request_permission_blocked';
+			$result['blocker_code'] = isset( $next[ $code ] ) ? $code : 'request_permission_denied_unclassified';
+			$result['next_safe_action'] = isset( $next[ $code ] ) ? $next[ $code ] : 'inspect_current_transport_and_oauth_step_up';
+		} catch ( Throwable $error ) {
+			$result['state'] = 'request_permission_blocked';
+			$result['blocker_code'] = 'request_permission_guard_failed';
+		}
+		return $result;
+	}
+
 	private static function live_managed_skills_preflight() {
 		// In partially loaded/isolated environments, never infer a
 		// Staging grant from the presence of a class without the status API.
@@ -695,7 +786,11 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 			'execution_preflight' => 'managed_skills_reconciliation' === $operation_id
 				? self::live_managed_skills_preflight() : null,
 			'request_permission_preflight' => 'managed_skills_reconciliation' === $operation_id
-				? self::live_managed_skills_permission_preflight() : null,
+				? self::live_managed_skills_permission_preflight()
+				: ( in_array( $operation_id, array(
+					'core_step_up_mad4b_staging_write_owner_attest_2cc8769d389d',
+					'staging_write_authority_convergence',
+				), true ) ? self::owner_step_up_permission_preflight( $operation_id ) : null ),
 			'step_up_scope_required' => MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE,
 			'human_decision_required' => ! empty( $row['human_decision_required'] ),
 			'production_mutation_allowed' => false,

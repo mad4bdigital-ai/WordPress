@@ -1,0 +1,193 @@
+{
+  "contract": "mad4b.qa31.rc118-source-reconciliation-worklist.v1",
+  "source_snapshot": "ETG Commerce Staging, 2026-10-29, read-only",
+  "source_commit_declared_in_original_manifest": "0e83ec7ecfdb02ff2f946753721921e4e45523c7",
+  "original_manifest_digest": "1aec439fd266dc1bc3dc866096d2e5c3aa701de78505e95564dd448a964ad001",
+  "original_manifest_members": 877,
+  "original_manifest_exact_matches": 873,
+  "original_manifest_sha_mismatches": 4,
+  "unmanifested_runtime_dependencies": 4,
+  "total_reconciliation_entries": 8,
+  "github_candidate_byte_matches": 2,
+  "unresolved_exact_github_source_candidates": 6,
+  "github_exact_candidate_is_not_deploy_receipt": true,
+  "authorizing": false,
+  "staging_install_authorized": false,
+  "production_install_authorized": false,
+  "provider_certified": false,
+  "owner_release_attested": false,
+  "source_parity_certified": false,
+  "mutation_performed": false,
+  "no_four_eyes_override_for_single_operator": true,
+  "decision": "BLOCKED_SOURCE_RECONCILIATION",
+  "entries": [
+    {
+      "path": "config/cross-plugin-sources.json",
+      "kind": "original_manifest_member_modified",
+      "original_manifest_sha256": "c6edc0909e01996f53ce957e519cb54f6e9017df4fa325b501c17cea3536a156",
+      "current_staging_sha256": "d469041ce8aff754c94ff6cd754fa0b21dc2ee0da98a8355fd4ecfe0f5038fbb",
+      "candidate_bytes": 2020,
+      "quarantined_candidate_path": "lineage/observed-staging-20261029/config/cross-plugin-sources.json",
+      "historical_snapshot_sha256": "c6edc0909e01996f53ce957e519cb54f6e9017df4fa325b501c17cea3536a156",
+      "candidate_github_exact_match": null,
+      "independent_source_lineage_verified": false,
+      "semantic_source_approved": false,
+      "runtime_install_authorized": false,
+      "owner_release_attested": false,
+      "provider_certificate_issued": false,
+      "required_independent_reviews": [
+        "DFSB provider source review",
+        "source registry policy semantics",
+        "immutable release digest"
+      ]
+    },
+    {
+      "path": "includes/class-mad4b-scp-adapter-registry.php",
+      "kind": "original_manifest_member_modified",
+      "original_manifest_sha256": "efa2c762bd91f2d6ba1964d7b53993c3fadc6ba01977e0232142eb3e4198b782",
+      "current_staging_sha256": "bf761a66478374f4002817065d87a68519db7b6b0a2365fed45aefc98989c794",
+      "candidate_bytes": 35165,
+      "quarantined_candidate_path": "lineage/observed-staging-20261029/includes/class-mad4b-scp-adapter-registry.php.txt",
+      "historical_snapshot_sha256": "efa2c762bd91f2d6ba1964d7b53993c3fadc6ba01977e0232142eb3e4198b782",
+      "candidate_github_exact_match": {
+        "pr": 607,
+        "head_sha": "eaf502ea8bc471ff02b290fa3d652249d07d92c1",
+        "state": "OPEN_DRAFT_UNMERGED"
+      },
+      "independent_source_lineage_verified": false,
+      "semantic_source_approved": false,
+      "runtime_install_authorized": false,
+      "owner_release_attested": false,
+      "provider_certificate_issued": false,
+      "required_independent_reviews": [
+        "native Ability read catalog registration",
+        "original permission callbacks",
+        "exact provider source and schema trust"
+      ]
+    },
+    {
+      "path": "includes/class-mad4b-scp-company-migration-decisions.php",
+      "kind": "unmanifested_new_runtime_dependency",
+      "original_manifest_sha256": null,
+      "current_staging_sha256": "408febe1cea99ce389f84e9035f91dce1930843ec2f535e9cbc9d987198e2488",
+      "candidate_bytes": 30909,
+      "quarantined_candidate_path": "source/class-mad4b-scp-company-migration-decisions.php",
+      "historical_snapshot_sha256": null,
+      "candidate_github_exact_match": null,
+      "independent_source_lineage_verified": false,
+      "semantic_source_approved": false,
+      "runtime_install_authorized": false,
+      "owner_release_attested": false,
+      "provider_certificate_issued": false,
+      "required_independent_reviews": [
+        "proposer/reviewer separation even under single-owner operation",
+        "source and target SHA/revision gates",
+        "transactional policy rollback without external asset writes"
+      ]
+    },
+    {
+      "path": "includes/class-mad4b-scp-company-tenant-migration.php",
+      "kind": "unmanifested_new_runtime_dependency",
+      "original_manifest_sha256": null,
+      "current_staging_sha256": "06447093ff420e76af963d07285922972ff29be17ca1cb5d2072738d9c41bbf9",
+      "candidate_bytes": 24988,
+      "quarantined_candidate_path": "source/class-mad4b-scp-company-tenant-migration.php",
+      "historical_snapshot_sha256": null,
+      "candidate_github_exact_match": null,
+      "independent_source_lineage_verified": false,
+      "semantic_source_approved": false,
+      "runtime_install_authorized": false,
+      "owner_release_attested": false,
+      "provider_certificate_issued": false,
+      "required_independent_reviews": [
+        "Staging/owner browser authority",
+        "explicit confirmation and source digest",
+        "role capability rollback and post-commit audit"
+      ]
+    },
+    {
+      "path": "includes/class-mad4b-scp-market-profiles.php",
+      "kind": "original_manifest_member_modified",
+      "original_manifest_sha256": "3b2abf3dab1eea550859a7fa06f0a848702d30be061cdd0c0b14b1165bff7c60",
+      "current_staging_sha256": "5489499dbd9ecbaef3ac37f04c3e9bfc26fa3481cb412efa24a04a12d3bdcd67",
+      "candidate_bytes": 19076,
+      "quarantined_candidate_path": "lineage/observed-staging-20261029/includes/class-mad4b-scp-market-profiles.php.txt",
+      "historical_snapshot_sha256": "3b2abf3dab1eea550859a7fa06f0a848702d30be061cdd0c0b14b1165bff7c60",
+      "candidate_github_exact_match": null,
+      "independent_source_lineage_verified": false,
+      "semantic_source_approved": false,
+      "runtime_install_authorized": false,
+      "owner_release_attested": false,
+      "provider_certificate_issued": false,
+      "required_independent_reviews": [
+        "WPML language metadata without global query mutation",
+        "strict tenant locale identity",
+        "draft and approved market write authorization"
+      ]
+    },
+    {
+      "path": "includes/class-mad4b-scp-migration-decision-catalog.php",
+      "kind": "unmanifested_new_runtime_dependency",
+      "original_manifest_sha256": null,
+      "current_staging_sha256": "2321244f43113cc998887c03ad923ab8dfc50510c33a73d435a4127afc787b8d",
+      "candidate_bytes": 14006,
+      "quarantined_candidate_path": "source/class-mad4b-scp-migration-decision-catalog.php",
+      "historical_snapshot_sha256": null,
+      "candidate_github_exact_match": null,
+      "independent_source_lineage_verified": false,
+      "semantic_source_approved": false,
+      "runtime_install_authorized": false,
+      "owner_release_attested": false,
+      "provider_certificate_issued": false,
+      "required_independent_reviews": [
+        "source and target snapshot comparability",
+        "legal-page protection",
+        "non-executing catalog reads"
+      ]
+    },
+    {
+      "path": "includes/class-mad4b-scp-native-ability-trust.php",
+      "kind": "unmanifested_new_runtime_dependency",
+      "original_manifest_sha256": null,
+      "current_staging_sha256": "bf76bcdbcd240716f8276a9c764a103250141223a8882839a8fd5c4186c3ee49",
+      "candidate_bytes": 10495,
+      "quarantined_candidate_path": "source/class-mad4b-scp-native-ability-trust.php.txt",
+      "historical_snapshot_sha256": null,
+      "candidate_github_exact_match": {
+        "pr": 607,
+        "head_sha": "eaf502ea8bc471ff02b290fa3d652249d07d92c1",
+        "state": "OPEN_DRAFT_UNMERGED"
+      },
+      "independent_source_lineage_verified": false,
+      "semantic_source_approved": false,
+      "runtime_install_authorized": false,
+      "owner_release_attested": false,
+      "provider_certificate_issued": false,
+      "required_independent_reviews": [
+        "external owner-pinned exact manifest",
+        "private read-only discovery without execution",
+        "source and input schema SHA and callback provenance"
+      ]
+    },
+    {
+      "path": "mad4b-site-control-plane.php",
+      "kind": "original_manifest_member_modified",
+      "original_manifest_sha256": "32d3aa84b15b0fa549c6dd8ffc131c2c292640e5b63991dab1a94f3f0e97cc00",
+      "current_staging_sha256": "b67a6be43d4057d2061b980cc3abb0e2b2605c954a4fccabf38d6daa682ef4e3",
+      "candidate_bytes": 64182,
+      "quarantined_candidate_path": "lineage/observed-staging-20261029/mad4b-site-control-plane.php.txt",
+      "historical_snapshot_sha256": "1a299f83f24efe2e91ae682e1e97d06a0809216c47d698bbf3085830f7898681",
+      "candidate_github_exact_match": null,
+      "independent_source_lineage_verified": false,
+      "semantic_source_approved": false,
+      "runtime_install_authorized": false,
+      "owner_release_attested": false,
+      "provider_certificate_issued": false,
+      "required_independent_reviews": [
+        "boot order and migration class inclusion",
+        "no auto activation of unreviewed modules",
+        "exact plugin release and dependency manifest"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+[Unit]
+Description=Schedule MAD4B read-only media reference audit (%i)
+
+[Timer]
+OnCalendar=*-*-* *:0/5:00
+AccuracySec=30s
+RandomizedDelaySec=15s
+Persistent=true
+Unit=mad4b-media-reference-audit@%i.service
+
+[Install]
+WantedBy=timers.target

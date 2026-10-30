@@ -224,9 +224,38 @@
         "api.github.com"
       ],
       "rationale": "Immutable public GitHub REST source-reader authority only, not a tenant or site default. This exact hostname pin rejects config drift to unreviewed providers; HTTPS, TLS, DNS and redirect checks remain governed by Egress Policy."
+    },
+    "includes/class-mad4b-scp-firecrawl-provider.php": {
+      "hosts": [
+        "api.firecrawl.dev",
+        "firecrawl.mad4b.com"
+      ],
+      "rationale": "Cloud provider API and explicitly user-configured self-hosted gateway placeholder only. Self-hosted endpoint is saved by an administrator with HTTPS URL validation, never a tenant default."
+    },
+    "includes/class-mad4b-scp-provider-setup-coverage.php": {
+      "hosts": [
+        "api.example.com"
+      ],
+      "rationale": "Reserved example placeholder displayed only in the custom provider registration form; not used for outbound requests or as a configured default."
+    },
+    "config/evidence/woocommerce-11.2.1-lab-package.json": {
+      "hosts": [
+        "downloads.wordpress.org"
+      ],
+      "rationale": "Version-pinned official WooCommerce ZIP origin is present only in non-authorizing package evidence; this review does not authorize downloads or installation."
+    },
+    "includes/class-mad4b-scp-company-domain-cloudflare.php": {
+      "hosts": [
+        "api.cloudflare.com"
+      ],
+      "rationale": "Official Cloudflare account API hostname for optional company-domain onboarding. Zone ID/token are company configuration, not a site default; no tenant URL is hardcoded."
     }
   },
   "optional_named_tag_integrations": [
     "includes/integrations/class-mad4b-scp-elementor-bridge-compatibility.php"
+  ],
+  "optional_business_model_integrations": [
+    "includes/class-mad4b-scp-research-task-bridge.php",
+    "includes/class-mad4b-scp-tour-workflow-runtime.php"
   ]
 }

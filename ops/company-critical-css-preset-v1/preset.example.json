@@ -1,0 +1,22 @@
+{
+  "contract": "mad4b.company-critical-css-preset.v1",
+  "enabled": false,
+  "environment": "staging",
+  "site_host": "staging.example.org",
+  "uael_version": "X.Y.Z",
+  "handles": [
+    "uael-frontend"
+  ],
+  "routes": [
+    {
+      "path": "/",
+      "language": "en",
+      "page_id": 101
+    }
+  ],
+  "document_guard": {
+    "101": "0000000000000000000000000000000000000000000000000000000000000000",
+    "102": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "defer_webfontloader": false
+}

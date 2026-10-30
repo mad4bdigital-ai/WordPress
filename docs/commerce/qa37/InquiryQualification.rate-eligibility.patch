@@ -1,0 +1,64 @@
+--- a/includes/InquiryQualification.php
++++ b/includes/InquiryQualification.php
+@@ -75,7 +75,7 @@
+             'source_sha256'=>hash_hmac('sha256',$body,wp_salt('secure_auth'))
+         ];
+     }
+-    private static function source(int $tour,?int $rate):true|\WP_Error {
++    private static function source(int $tour,?int $rate,?string $travelDate):true|\WP_Error {
+         if($tour<1||get_post_type($tour)!=='tours-and-activities'||get_post_status($tour)!=='publish')
+             return new \WP_Error('qualification_tour_unavailable');
+         if(get_post_meta($tour,'_booking_experience_qa_pricing_fixture',true)!=='')
+@@ -88,6 +88,34 @@
+                 return new \WP_Error('qualification_rate_not_owned');
+             if(get_post_meta($rate,'_booking_experience_qa_pricing_fixture',true)!=='')
+                 return new \WP_Error('qualification_test_rate_forbidden');
++            if((int)get_post_meta($rate,'_etg_last_synced_tour_id',true)!==$tour)
++                return new \WP_Error('qualification_rate_mirror_mismatch');
++            if(in_array(get_post_meta($rate,'stop_sale',true),['1',1,true],true))
++                return new \WP_Error('qualification_rate_stop_sale');
++            if(in_array(get_post_meta($rate,'avilabile_status',true),['0',0,false],true))
++                return new \WP_Error('qualification_rate_unavailable');
++            if(!preg_match('/^[A-Z]{3}$/D',(string)get_post_meta($rate,'base_currency',true)))
++                return new \WP_Error('qualification_rate_currency_invalid');
++            $parsed=is_string($travelDate)
++                ?\DateTimeImmutable::createFromFormat('!Y-m-d',$travelDate):false;
++            if(!is_string($travelDate)||!preg_match('/^\d{4}-\d{2}-\d{2}$/D',$travelDate)
++                ||!$parsed||$parsed->format('Y-m-d')!==$travelDate)
++                return new \WP_Error('qualification_travel_date_invalid');
++            $start=get_post_meta($rate,'tour_rate_start_date',true);
++            $end=get_post_meta($rate,'tour_rate_end_date',true);
++            if(!is_scalar($start)||!is_scalar($end)||!ctype_digit((string)$start)
++                ||!ctype_digit((string)$end)||(int)$start<946684800||(int)$end>4102444799
++                ||(int)$start>(int)$end)
++                return new \WP_Error('qualification_rate_window_invalid');
++            if(!TourRateEligibility::withinWindow($travelDate,(int)$start,(int)$end))
++                return new \WP_Error('qualification_rate_outside_window');
++            $seasons=wp_get_object_terms($rate,'season',['fields'=>'ids']);
++            if(is_wp_error($seasons)||!is_array($seasons)||count($seasons)!==1)
++                return new \WP_Error('qualification_rate_season_not_unique');
++            $season=(int)$seasons[0];
++            if(get_term_meta($season,'season_enabled',true)!=='1'
++                ||!TourRateEligibility::withinSeason($travelDate,$season))
++                return new \WP_Error('qualification_rate_outside_season');
+         }
+         return true;
+     }
+@@ -102,7 +130,7 @@
+             return new \WP_Error('qualification_context_invalid');
+         $original=self::original($form,$id);
+         if(is_wp_error($original))return $original;
+-        $source=self::source($tour,$rate);
++        $source=self::source($tour,$rate,$original['date']);
+         if(is_wp_error($source))return $source;
+         $t=self::table();
+         $sql=$wpdb->prepare(
+@@ -144,7 +172,7 @@
+             return new \WP_Error('qualification_source_changed');
+         $tour=(int)$saved['tour_id'];
+         $rate=$saved['rate_id']===null?null:(int)$saved['rate_id'];
+-        $verified=self::source($tour,$rate);
++        $verified=self::source($tour,$rate,$original['date']);
+         if(is_wp_error($verified))return $verified;
+         $result=['qualification_id'=>(int)$saved['id'],
+             'form_id'=>$form,'submission_id'=>$id,'tour_id'=>$tour,'rate_id'=>$rate,

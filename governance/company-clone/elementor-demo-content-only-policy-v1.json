@@ -1,0 +1,73 @@
+{
+  "contract": "mad4b.central-demo-elementor-content-only.v1",
+  "status": "governed-text-only-update-contract",
+  "scope": {
+    "environment": "staging",
+    "site_host": "tours.dev.mad4b.com",
+    "site_brand": "Wo Vacation",
+    "applies_to": "All demo-copy changes on Elementor layouts, homepages, JetEngine/Elementor presentation templates and WPML counterparts",
+    "not_equivalent_to": "Global WordPress/Elementor editor hook; explicit, governed content-only workflow validator"
+  },
+  "source_of_truth": "Versioned Elementor template documents and native widget design; not the text seed or a previous chat transformation",
+  "change_classes": {
+    "allowed": [
+      "Existing heading.title and other approved existing widget text fields",
+      "Existing text-editor.editor text content without changing its HTML tags or attributes",
+      "Existing button.text label with its link/format unchanged",
+      "Localization of existing text values inside unchanged widget structures"
+    ],
+    "denied": [
+      "Converting uael-image-gallery, nested-tabs, fluent-form-widget, template, jet-listing-grid, shortcode or any widget to another type",
+      "Adding/removing containers, sections, widgets, rows, columns, templates or translation homepage sections",
+      "Changing element ID, widgetType, elType, node identity, child order, position, or hierarchy",
+      "Changing layout, spacing, margin, padding, color, typography, breakpoints, CSS, animations, responsive settings or page settings",
+      "Changing nested tab/gallery/form source IDs, shortcode, post listings, dynamic tags or provider account/mapping",
+      "Replacing visual widgets with text/buttons as a shortcut for data-source neutralization",
+      "Modifying existing editor HTML structure or attributes rather than its text nodes",
+      "Inserting fake customer reviews, real company-owned marketing facts or outbound integrations as placeholder content"
+    ]
+  },
+  "enforcement": {
+    "validator": "scripts/elementor_demo_content_guard.py",
+    "input_contract": "Before and after actual Elementor _elementor_data JSON arrays of the same source document",
+    "execution_mode": "Verify before any write; if validation fails, abort and do not touch original document; after write verify readback, on error roll back with user-authorized procedure",
+    "failure_mode": "FAIL_CLOSED",
+    "error_code": "DEMO_ELEMENTOR_STRUCTURAL_CHANGE_DENIED",
+    "requires_explicit_separate_approval_for_design_changes": true,
+    "requires_source_provenance": true,
+    "requires_exact_site_and_company_identity": true,
+    "requires_wpml_same_layout_integrity": true,
+    "do_not_use_instead_of_native_wpml_and_jetengine_provisioning": true,
+    "metadata_only_GitHub_contract_not_current_WP_runtime_guard": true,
+    "note": "This validator is mandatory for future governed automated Demo placeholder edits when executed through the approved workflow. The PR does NOT yet install a WordPress-wide runtime save hook; intentional design changes require a separately approved workflow."
+  },
+  "verified_repair": {
+    "source": "Original Woo Lab database archive from 2026-10-29; source-specific element JSON only",
+    "site": "tours.dev.mad4b.com",
+    "restored_original_gallery_widgets": 1,
+    "restored_original_nested_tabs_widgets": 6,
+    "restored_original_fluent_form_widgets": 6,
+    "removed_unapproved_translated_homepage_containers": 5,
+    "modified_elementor_documents": 17,
+    "marketing_text_edits_preserved": true,
+    "new_backups_created": false,
+    "production_modified": false,
+    "rendered_http_200_languages": [
+      "en",
+      "ar",
+      "fr",
+      "de",
+      "it",
+      "es"
+    ],
+    "open_risks": [
+      "Fluent Forms subscription form 2 is published after restoring its original widget; submission/notification policies require separate review",
+      "Review tabs and archive media source isolation still needs verified company-specific data",
+      "No runtime enforcement of this policy on manual WordPress/Elementor editing until a reviewed deployable hook is implemented"
+    ],
+    "restored_original_editor_markup_skeleton_documents": 8,
+    "full_layout_comparison_documents": 26,
+    "residual_markup_or_child_structure_drift": 0,
+    "existing_outside_scope_settings_differences_left_unchanged": 13
+  }
+}

@@ -1,0 +1,357 @@
+# MAD4B Content Readiness & Alerts v1
+
+A site-neutral module within MAD4B Site Control Plane, reusing existing WordPress, WPML and provider contracts.
+
+The scanner reads configured published CPTs, source meta fields (origin, location, media, owner, date and stop sale), missing WPML languages, WP-Cron backlog, and optionally Fluent Forms unread follow-ups. Rules are stored in WordPress option mad4b_content_readiness_rules_v1 and are independently configurable per company. There are no fixed business domains, Tour IDs, brand names, or commercial fields in the shared module.
+
+Admin UI: MAD4B Control Plane > Content Readiness. Editors can inspect issues. An administrator can save rules and explicitly scan. Issues use stable site-ID + type + object-ID + gap-code digests to prevent duplicates, auto-resolve after a complete scan and reopen on regression. A dashboard notice and admin bar counter expose critical issues. No emails or webhooks are fired on page loads.
+
+Fluent Boards: the module can create a governed task linked to an open issue and store its task ID; the central MAD4B mutation gate, administrator permission, and an explicitly selected board and stage must authorize execution. The site has no approved content board yet and its global write gate is disabled, so no external tasks or mail notifications were created during tests. Fluent Support and Bit Flows outbound routes remain separate follow-on certification; never broadcast unapproved mass alerts.
+
+Source example for ETG Lab (SITE POLICY ONLY): post types tours-and-activities, properties, transportations, tour-rates; origin meta tour_origin_address; taxonomy location_jet; property gallery key property_gallery; Tour Rate owner related_tour_id, date tour_rate_end_date and stop_sale. Configure Fluent Forms ID 6 only on the proper origin. An empty media meta field signals review, not conclusively missing visitor-facing imagery.
+
+No automatic booking, pricing, content modification, extension of expired rates, or generic REST write endpoint. Source scan has a 3000-post cap per CPT and a 3000-issue storage cap. Partial scans do not reconcile. The operator must explicitly trigger a scan; scheduled scans depend on verified scheduler readiness and are NOT enabled while WP-Cron is unhealthy.
+
+Acceptance: isolated ledger tests exercise discovery purity, deduplication, resolution, reopening and permission rejection. Main Lab bootstrap is reversible from the VPS backup created before deployment. Production remains unchanged.
+
+
+## Source-provenance extensions (2026-10-28)
+
+Additional per-tenant fields: origin_source_fields maps post types to term-ID meta;
+origin_source_taxonomies resolves its registered taxonomy; invalid_origin_levels
+declares forbidden term levels. The detector resolves selected terms through the
+current site's WPML reference language before examining authoritative
+destination_type metadata. A broad continent source is not a pickup address. An invalid broad origin and the empty derived address are treated as one root-cause issue containing term ID and hierarchy evidence. Broken origin term references have a separate explicit integrity issue.
+
+Media reuse detection is opt-in with media_reuse_threshold (0 disables).
+An identical gallery source reused by multiple distinct content records raises
+a review issue, but the detector never deletes images, fabricates photo URLs or
+automatically changes hotel ownership. A missing or malformed configured rate
+end-date also raises a separate high-priority issue.
+
+### ETG WooCommerce Lab remediation receipt (not a portable data seed)
+
+- Confirmed local DB: etg_woocommerce_lab; Production and external Staging unchanged.
+- 85 published Tour Rates expired before 2026-10-28 had stop_sale activated.
+  A readback proved all 90 expired Rates now have stop_sale=1. Commercial prices,
+  currencies, availability dates and publication status were untouched.
+- 32 Tour origin records were refreshed solely from valid selected destination
+  term IDs resolved to canonical WPML reference terms, preserving Google Place
+  ID and coordinates. Seven literal 'Africa' origin placeholders tied to
+  continent-level selected terms were cleared; selected source terms retained.
+  The existing save hook now refuses to regenerate continent-level pickups.
+- No source-backed remediation was available for 30 tours missing WPML language
+  registrations, 584 properties missing configured galleries, or 51 unlinked
+  destination assignments. Those remain in the reviewer-facing issue ledger,
+  not silently translated or assigned a shared/stock hotel image.
+- 19 populated property galleries use an identical asset set, so the shared
+  gallery review issue is intentionally open rather than certifying hotel media.
+- Configured rules use the site's actual destinations taxonomy, not the absent
+  location_jet alias. Form ID 6 is only part of this local site's rule config.
+- After root-cause issue deduplication, 781 issues remain open: 45 high and 736 medium. Thirteen former duplicate empty-origin alerts were resolved without deleting the source term issue.
+  Two independent scans confirmed ledger key stability, no external tasks,
+  and 3 pre-existing Fluent Boards tasks unchanged.
+- Backup and exact rollback evidence reside on the authorized VPS under
+  /opt/staging/content-gap-repair-20261028/backups/.
+- Avoid distributing the one-time Lab SQL/content repair scripts as part of
+  a tenant-wide plugin update. General code reads the target company's own
+  fields, WPML and taxonomy definitions.
+
+## Origin provenance and single-root-cause audit (2026-10-28)
+
+The source-selection review found 13 published English tours referencing a source
+taxonomy term in the continent level. In the ETG Lab this was Africa (term 2306).
+A continent is not a passenger pickup location. Source titles such as From Cairo
+are not verified operational pickup addresses: no location, place ID, coordinates
+or WPML translation was guessed or written.
+
+The generic source classifier verifies source terms in the company-configured
+taxonomy, resolves source-language term via WPML, flags invalid references, and
+reports a too-broad origin with term ID, taxonomy, destination_type and native
+term edit link. It suppresses the duplicate empty-pickup alert until the invalid
+source is corrected. On subsequent validation, an empty pickup still becomes
+an actionable alert. All rules remain site-configured.
+
+Admin issue list now sorts open-first, critical/high-first. The lab scan covered
+1092 published records and returned 781 current issues (45 high, 736 medium).
+The ledger retained 794 historical IDs: 781 open and 13 resolved duplicate
+origin_missing alerts. The 13 broad-origin issues remain OPEN: resolved here
+never means a pickup location has been created.
+
+Readback confirmed all 90 expired Tour Rates have stop_sale=1. No pricing,
+booking, rate dates, public Staging or Production was changed. Board ID remains
+0 and central MAD4B write policy remains closed, so no task or outbound alert
+was sent. No scheduled scans were enabled.
+
+The isolated contract tests source discovery, deduplication, resolution/reopen,
+permissions, gallery reuse, root-cause suppression, origin source evidence,
+missing term reference rejection and missing commercial date classification.
+Rollback files on VPS: /opt/staging/chatbotx-deploy/backups/content-readiness-origin-20261028/
+One-time Lab data corrections are NOT distributed as plugin updates.
+
+
+## Governed administrative REST readback (2026-10-28)
+
+- GET /wp-json/mad4b-content-readiness/v1/summary returns current Open / High /
+  Critical / Resolved counts, last reconciliation timestamp, and snapshot size.
+- GET /wp-json/mad4b-content-readiness/v1/issues returns sanitized source
+  issue evidence and status. Optional filters: status (open, resolved, all),
+  code, post_type, severity, page and per_page (1-100).
+- Both require an authenticated user with WordPress edit_others_posts
+  capability, verified by a route permission callback. The API has no
+  Create, Update, Delete, bulk scan or task creation endpoint.
+- No public host is hardcoded; the current WordPress site serves its routes.
+  Read endpoints do not execute the content scan or mutate Issue / Board data.
+- Exact Lab REST checks: summary HTTP 200 with 781 open; filtered 13
+  origin_source_too_broad entries; unauthenticated GET HTTP 401; POST
+  HTTP 404; issue registry and Fluent Boards task counts unchanged.
+- The isolated test is portable between staging sources and the plugin's
+  GitHub tests/content-readiness layout.
+
+These routes are intended for a future governed Control Plane diagnostics
+consumer. They do not imply approval for automated external notifications or
+unrestricted ChatbotX operations.
+
+## DFSB source-backed Content Readiness adapter — 28 October 2026
+
+The active Dynamic Filter SEO Bridge registers a read-only
+`mad4b/content_readiness/external_issues` provider that emits four
+site-wide SEO readiness diagnoses, each with a deterministic fingerprint:
+
+- `dfsb_brand_identity_drift` — High, company identity drift in Rank Math.
+- `dfsb_archive_meta_missing` — Medium, archive meta description unavailable.
+- `dfsb_breadcrumb_owner_conflict` — Medium, possible duplicated schema owner.
+- `dfsb_release_not_certified` — High, DFSB release certification incomplete.
+
+The Control Plane validates exact issue identity against current WordPress
+blog ID and source issue code; requires a scoped site issue, fixed provider
+marker, a known severity, and a bounded label; rejects forged status,
+task ID, duplicate fingerprints or malformed provider responses. A provider
+failure makes the complete scan ineligible for reconciliation. When the
+provider is detached, existing source issues remain open rather than being
+misclassified as resolved. When a functioning provider explicitly emits
+an empty result, the corresponding saved issue may resolve. A later
+regression reopens the same original issue ID.
+
+Exact ETG Lab certification on the isolated DB `etg_woocommerce_lab`:
+
+- Discovery: 1,092 content records, 785 active issues including four DFSB issues.
+- Ledger after save: 798 historical records, 785 open (47 High, 738 Medium)
+  and 13 previously resolved empty-origin duplicate alerts.
+- Two consecutive reconciliations returned identical summary and IDs.
+- Fluent Boards task count remained **3 → 3**; no external notification
+  or message was dispatched, and the central mutation gate remains closed.
+- REST GET: guest 401, authenticated manager 200 with filtered DFSB record;
+  REST POST: 404. REST readback did not modify the ledger.
+
+These are Content/SEO **readiness alerts** only, not certified facts about
+search engine ranking, indexing or actual customer-facing schema duplication.
+Provider rules are kept in the DFSB integration and are not reimplemented
+inside the central readiness engine.
+
+Full rollback: original plugin source and pre-change ledger snapshot at
+`/opt/staging/mad4b-content-readiness/backups/external-source-20261028/`.
+Do not copy this Lab issue ledger into other companies or Production.
+
+## Issue ledger pagination and reopen semantics — 28 October 2026
+
+- The WordPress Content Readiness admin page defaults to Open issues. Editors
+  may filter by Open / Resolved / All and by Critical / High / Medium / Low.
+  The result table displays 100 issues per page, with bounded Previous / Next
+  links and the displayed-versus-matched issue count.
+- High-priority issues remain first within each selection, and a manager can
+  navigate the entire issue history instead of the first 100 rows only.
+- When a previously resolved source issue reappears, reconciliation increments
+  its reopen counter, preserves its fingerprint and first-seen timestamp, and
+  clears its obsolete resolved_at timestamp. A missing issue is closed only
+  after a complete eligible scan.
+- This change does not create Board tasks, send notifications, change external
+  provider rules, or modify prices or source content.
+- Local contract suite: reopen timestamp acceptance plus existing DFSB
+  source-validation, authorization, REST filtering and ledger tests.
+- Site-specific issue counts are operational snapshots, not bundled defaults.
+
+## Company-scoped scheduled scanning and source-review triage (2026-10-28)
+
+- A scheduled job may run the scanner only from PHP CLI with
+  `MAD4B_READINESS_SCHEDULED_RUN` explicitly defined in its trusted runner,
+  and only when the site administrator enables `scheduled_scan_enabled`.
+- Interval (15-1440 minutes, default 60) respects recent manual scans.
+- The scheduled scanner writes only its issue ledger, NOT Board tasks,
+  customer records, pricing, bookings, notifications, or other content.
+- Missing media, origin and WPML languages require verified source values,
+  not values inferred from titles or generated images.
+- Deploy a separate scoped scheduler and rules for each company.
+
+- The editor dashboard supports nonce-protected CSV export of filtered issues
+  with source term evidence, content edit links and timestamps, so the team
+  can work from a concrete repair queue. The export does not change content
+  or issue state and escapes spreadsheet formula prefixes.
+
+## Per-company Follow-up & Notifications Option Page
+
+- Control Plane -> Content Follow-up. This stores a company-local WordPress
+  option: mad4b_content_readiness_workflow_v1. No tenant shares this option.
+- Board and stage are validated against native Fluent Boards records.
+- Group routing: media, origin, wpml, pricing, destinations, operations,
+  seo and general. Each group supports a role plus an optional named owner.
+  A role resolves automatically only when exactly one eligible editor is found.
+- Dashboard alerts are on by default; native Fluent Boards creation remains
+  opt-in and requires MAD4B_SCP_Policy::can_mutate() at execution time.
+- A known source_id equal to issue fingerprint is persisted on task creation.
+  Readback finds a matching native task receipt before creating another one.
+- Direct Email and Bit Flows / WhatsApp are disabled until an approved,
+  separately certified adapter exists. Do not imply delivery is enabled.
+- Site Profile identity on ETG Lab currently points at an old localhost
+  origin. No global write override or automatic re-enrollment is performed.
+- Operator must enroll exact current origin through official Site Profile
+  workflow and validate governed agent, schema and audit before enabling
+  Content Readiness task creation. This may affect other connectors.
+
+- Batch Sync is a nonce-protected administrator action; it uses the same
+  central governed write gate as single-task sync and respects company
+  minimum severity and 1-25 task batch limit.
+- Fluent Boards source/source_id readback recovers the exact issue task
+  when a prior attempt created a task but ledger linking was interrupted.
+- External email and Bit Flows checkboxes remain disabled on the Option Page;
+  they do not claim to send messages without certified dispatch adapters.
+
+## Official VPS local-client write binding
+
+- The Site Profile has been re-enrolled at the exact canonical origin on ETG
+  Local Lab through the audited Site Profile save API. Re-enrollment correctly
+  reset the site UUID, requiring host local-client UUID rebind.
+- MAD4B_LOCAL_CLIENT_SITE_UUID in the Lab wp-config is now bound to the new
+  exact Site Profile UUID; this does not authenticate an Agent request.
+- A real WordPress Application Password must be provisioned in the private
+  host vault and bound to an enabled Site Profile governed-write Agent by
+  the official Local Client provisioning workflow. Do NOT fake a request
+  subject or weaken MAD4B_SCP_Policy::can_mutate().
+- POST /wp-json/mad4b-content-readiness/v1/sync-one accepts an exact 64-hex
+  issue fingerprint. POST /sync-batch is capped by per-company settings.
+  Both fail closed unless a WordPress admin has a *verified* app-password
+  identity, an exact Site Profile local-client binding, and the existing
+  NHI/Agent-governed mutation gate passes. Other HTTP methods do not write.
+- The prior Brand Context record and assets retain their original site UUID,
+  and require separately certified transfer/migration. They are not silently
+  reparented to the new site identity.
+
+## Content Completeness & SEO Readiness Engine (2026-10-28)
+
+- Company-local Option Page: Control Plane → Completeness & SEO. Rules are stored
+  independently in `mad4b_content_completeness_rules_v1`; disabled by default.
+- Never inject JetEngine, pricing, repeaters or taxonomy values into `post_content`.
+  It is an optional WordPress editorial field, not the assumed source of truth.
+- Each rule targets either a registered CPT or taxonomy, and declares an exact
+  trusted source: JetEngine meta text, JetEngine repeater rows, local attachment,
+  featured image ALT, WordPress excerpt/title, Rank Math explicit/template
+  value, Elementor local widget source, or taxonomy description/meta.
+- WPML languages are evaluated independently; each issue fingerprint includes
+  the concrete post/term, rule ID and language. Optional per-language rules
+  and explicit related-post inheritance are supported.
+- Rule fields can include `fallback_meta_keys` (up to six literal meta keys),
+  `conditional_meta`+`conditional_value`, and `inherit_from_meta` +
+  `inherit_post_type`; unverifiable relationships are not guessed.
+- `repeater_rows` counts nonempty JetEngine row arrays; `min_chars` for this
+  field means the minimum number of nonempty rows, not a character count.
+- Empty Rank Math overrides do not automatically imply missing output: global
+  templates and known source values are checked. Unknown template variables,
+  shortcodes, dynamic tags and structured meta remain `unknown` rather than
+  generating confirmed missing-content alerts.
+- The shared issue ledger only resolves configured completeness fingerprints
+  after a complete scan. Disabling a scanner or removing a rule preserves the
+  existing open issue for editorial/audit review; no content is modified.
+- Admin REST: GET/PATCH `/admin/completeness`, GET
+  `/admin/completeness/preview`, POST `/admin/completeness/scan`; normal WP REST
+  admin permission, JSON validation, revision conflict protection (HTTP 409).
+- Routing into Fluent Boards uses `content`, `seo`, and `media` group ownership,
+  but issuing a task still requires the existing MAD4B governed Agent write gate.
+- Lab initial preset intentionally omits `post_content`, gallery (already
+  monitored by Media Readiness) and broad hotel description requirements where
+  the authoritative imported content source is not yet established.
+
+## Company operations + Fluent Boards + Bit Flows readiness bridge (2026-10-28)
+
+- `MAD4B_SCP_Readiness_Integrations` uses the existing Company Master Admin capability `mad4b_manage_company_operations`; it does not grant `manage_options`, WordPress Settings, plugin-install or plugin-activation privileges.
+- Same-site event journal `mad4b_content_readiness_events_v1` holds transitions: `discovered`, `reopened`, and `resolved`. It initializes with an empty baseline so legacy open issues are not bulk-notified. History is bounded to 300 events and scoped to the current WordPress site.
+- `GET /wp-json/mad4b-content-readiness/v1/notifications/inbox` is filtered to the current assigned WP user; the Company Master Admin or Administrator may request `scope=all`. `GET /notifications/backlog` exposes active, source-backed issues assigned to the current user (or all to an authorized manager).
+- `GET /admin/team`, `GET /admin/routing`, `PATCH /admin/routing` select exact WordPress users/roles, revision-checked. Company Master Admin can assign only its approved managed staff. An ambiguous role membership never auto-picks a user.
+- `GET /admin/integrations` gives per-company provider and assignment readiness. `GET /admin/integrations/preview?issue_id=<exact 64hex>` renders a sanitized, dry-run event payload.
+- Bit Flows 1.32.0 supports the native `WordPress Action Hooks` trigger with `addAction`; the dedicated event hook is `mad4b/readiness/issue_transition` with one whitelisted, site-local array payload. Existing site Bit Flows have no active flow for this hook, so outbound notifications are NOT configured.
+- The hook is NEVER invoked by scanner/reconcile or `GET`; `POST /admin/integrations/dispatch` requires a verified application-password Agent, central mutation grant, explicit company `bitflows_notifications` approval, a dedicated active native Bit Flows flow and an atomic single-use claim. The receipt says `hook_invoked`, not delivered. No automatic retries of unknown outcomes.
+- Fluent Boards task creation remains separately governed by the existing `POST /sync-one` and `POST /sync-batch`, preserving its native source ID, board, stage and team assignee checks. Existing 843 open issues have no linked Board tasks and existing setup tasks are not considered gap tasks.
+- Current company roles: 4 `master_admin`, 9 administrators, no active `editor` or `shop_manager` users. Routing defaults therefore remain unassigned until named managed staff are chosen. The administrator can use the company team UI to create/assign scoped editorial staff without granting site configuration privileges.
+- Email and Bit Flows outbound remain disabled by default, even though Fluent SMTP and Bit Flows are installed. No recipient address, API key or external flow is created or mutated in this patch.
+
+## WPML-inspired Work Scope & Batch Management (2026-10-28)
+
+WPML source design reviewed (read-only): `classes/translation-batch/class-wpml-tm-translation-batch.php`, `classes/translation-batch/class-wpml-tm-translation-batch-element.php`, and the installed translation-batch query/domain classes. WPML maintains individual translation elements, named batches, language-specific translators, task states, and per-job assignments. MAD4B **does not copy WPML implementation** or write into `icl_translation_batches`, `icl_translation_status`, `icl_translations`, `icl_translate_job`.
+
+MAD4B independently models: source issue -> bounded work packet -> parent work batch -> manually approved Fluent Boards task -> optional one Bit Flows digest.
+
+- A work packet groups a company site's open source issues by owner group + WPML language + severity + source post type/taxonomy. Every packet has a stable site-scoped fingerprint and a revision derived from the exact issue identifiers.
+- Packet maximum: 50 issues. Oversized groups are deterministically subpartitioned by source issue fingerprint prefix. The parent batch remains the grouping key. Lab dry run: 843 open issues -> 53 bounded work packets (largest 47) -> 24 parent batches, with no writes or external notifications.
+- `GET /wp-json/mad4b-content-readiness/v1/scope-batches` shows parent digests; `GET /scopes` shows the owner's work packets; `GET /scopes/{scope_id}` paginates underlying source issue references; `GET /scope-batches/{batch_id}/digest-preview` previews one aggregation without dispatch.
+- Company Master Admin may `POST /scopes/{scope_id}/approve` only for a current revision with a single enrolled, company-managed WP user. No active editorial users are currently named as owners; therefore the 53 packets fail closed in `needs_owner` state.
+- Governed app-password Agent may `POST /scopes/{scope_id}/sync` to create **one** native Fluent Boards task for the approved packet, using an exact source ID and an atomic single-use claim to prevent duplicates. Successful provider receipt is stored; a second call returns the existing task. An uncertain claim is not retried automatically.
+- Only after all packets in a parent batch are synced, a separate governed request can attempt `POST /scope-batches/{batch_id}/notify`, requiring the current batch revision, company Bit Flows opt-in, an explicitly active native `WordPress Action Hooks` flow for `mad4b/readiness/scope_digest`, and an atomic single-use digest key. A response of `hook_invoked` **does not** assert that the recipient received an email or message.
+- The older per-issue `POST /admin/integrations/dispatch` is retired (HTTP 410), eliminating the future accidental 843-email failure mode. No scanner or scheduler emits external messages.
+- A company menu `Company -> Content Work Scopes` provides the operational overview. REST list/read pagination is bounded; there is no WPML translation-status mutation.
+- Bit Flows 1.32.0 is installed but has no active dedicated readiness-digest Flow. External dispatch is disabled and remains blocked until explicitly configured and certified. Fluent Boards notifications follow their native member settings and are only considered after a governed task-create operation.
+
+## Pre-Activation Console — company-local preparation only (2026-10-28)
+
+New module: `includes/class-mad4b-scp-readiness-preactivation.php`. Registered by the existing Content Readiness bootstrap without a second plugin or an additional background job.
+
+- Admin URL: `wp-admin/admin.php?page=mad4b-readiness-preactivation` under the **Company** menu. Administrator or existing `mad4b_manage_company_operations` capability only; company Master Admin does not receive WordPress Settings/Plugins caps.
+- Settings option `mad4b_readiness_preactivation_v1` stores versioned **drafts only**. No provider table/Flow, user role, WPML translation job, Fluent Boards task, SMTP setting, or source post meta is changed by draft saving.
+- The UI edits task title/body and Bit Flows digest text, priority/legacy backlog preview policy and future per-cycle task/digest limits. Templates whitelist known `{variables}`; arbitrary PHP, unknown template variables and HTML markup are rejected.
+- Defaults: 50 issues per work packet (matches the current scope engine; immutable here), at most five **future** tasks per cycle, one **future** digest per cycle, 60-minute digest cooldown, mandatory human approval, first-cycle quarantine and full batch completion. These limits are **planned** policies, not an activation channel.
+- REST under `/wp-json/mad4b-content-readiness/v1`:
+  - `GET /admin/preactivation` — saved draft and revision
+  - `PATCH /admin/preactivation` — exact JSON schema, `if_match` revision, readback and capped audit; draft only
+  - `GET /admin/preactivation/report` — actual current issue/batch preview, team and provider diagnostics and activation blockers; read-only
+  - `GET /admin/preactivation/task-preview/{scope_id}` — formatted native Fluent Boards task proposal, no task creation
+  - `GET /admin/preactivation/digest-preview/{batch_id}` — Bit Flows WordPress action blueprint and one batch digest, no flow registration, no webhook, no delivery
+- **Hard execution lock:** Pre-Activation always returns `true` for `execution_locked()`. The new work-scope `POST /scopes/{id}/sync` and batch `POST /scope-batches/{id}/notify` return HTTP 423 until a *separately reviewed and released* activation contract supersedes the lock. This does not modify older unrelated governed `sync-one` behavior.
+- No per-issue outbound notifications are generated. Existing event history and work scopes remain available for read-only preparation. Existing Bit Flows active commerce flows are neither disabled nor modified.
+- Team candidate listing does not create or promote WordPress users; Company Master Admin only sees their managed staff. Preview reports distinguish current source backlog from policy-eligible preview counts.
+- Test: PHP 8.3 lint, isolated Readiness contract suite including immutable lock, stale revision rejection, forbidden provider activation, template safety, no side effects and read-only report; no real provider writes.
+- Rollback: remove the new bootstrap `require_once` / `boot()` lines and file, or restore the backed-up original Readiness and Scopes classes. Draft option `mad4b_readiness_preactivation_v1` is isolated and can remain for audit; do not remove or rewrite any source issue or provider history.
+- **Deployment caveat:** At preparation time the `etg-woo-lab-php` and `etg-woo-lab-nginx` containers and its 15-minute timer were stopped. An HTTP 200 from `tours.dev.mad4b.com` may resolve to a separate running staging stack. Do not claim live-Lab runtime certification without independently identifying and testing the intended environment; do not reactivate stopped containers or timers as a side effect of this feature.
+
+## Team Preparation Draft — Woo Lab Staging (2026-10-28)
+
+The live tours.dev.mad4b.com environment is etg-commerce-staging-php / etg_commerce_staging, Control Plane 0.4.0-rc.109. The old etg-woo-lab-php container is stopped. Deployment here was an additive Staging compatibility extension, not a downgrade of rc.109.
+
+Added class-mad4b-scp-readiness-team-preparation.php, loaded by the existing Pre-Activation class and exposed on the Company Pre-Activation screen. It provides role and staff proposals for nine content groups, with independent revision-checked draft storage. No WordPress user or active owner mapping is changed.
+
+REST: GET/PATCH /wp-json/mad4b-content-readiness/v1/admin/preactivation/team-plan and GET /admin/preactivation/blueprints. The blueprint surfaces sample Fluent Boards tasks and Bit Flows batch digests, without calling either provider. All external execution is still locked.
+
+At setup, 834 open issues form 53 packets and 24 batches. Media: 605, origin: 77, destinations: 54, content: 39, WPML: 30, pricing: 23, SEO: 5, operations: 1. No editor, operator, shop_manager or company_translation_manager has an active member; the proposal therefore leaves all actual assignee IDs at zero. Administrators and Master Admins are not auto-selected. The preview priority now matches the existing workflow minimum severity High: 47 issues in five packets. The total backlog is still visible for review.
+
+The independent test at tests/content-readiness/preactivation-team-contract.php validates drafts, eligibility, version conflicts, role restrictions, and provider isolation. Live readback verified unchanged Fluent Boards tasks 3/3, Bit Flows flows 3/3, WP users 14/14, with no issue-ledger changes. Fluent SMTP is not active in the target Staging stack.
+
+Rollback: restore class-mad4b-scp-readiness-preactivation.php from /opt/staging/mad4b-content-readiness/backups/commerce-staging-rc109-team-drafts-20261028/ and remove only the new team-preparation class. Preserve the draft option for audit. The rc.109 bootstrap overlay remains a separate distribution/merge concern.
+
+## Event automation and governed email alerts — ETG Commerce Staging (2026-10-28)
+
+**Live site:** tours.dev.mad4b.com, container etg-commerce-staging-php, database etg_commerce_staging, existing Control Plane version 0.4.0-rc.109. An additive Staging overlay retained the newer main plugin and preserved all source issue data and production environments.
+
+**Automatic event intake:** Confirmed discovered, resolved and reopened source transitions now pass through MAD4B_SCP_Readiness_Integrations::record_changes() and the WordPress hook mad4b/readiness/events_recorded after issue-ledger readback. The independently installed MAD4B_SCP_Readiness_Event_Automation captures events into its isolated wp_mad4b_readiness_event_outbox SQL table. Each event has a 64-char unique identity and is inserted idempotently, with held status. Grouping is by site, UTC day, issue group, severity and resolved/source WPML language. The historic 834-item issue ledger is not replayed: the event journal was baselined empty before enabling the scanner bridge. The existing 15-minute mad4b-commerce-staging-content-readiness.timer is the source scheduler; this feature adds no second source-scanning scheduler. External messages are never triggered from a scan.
+
+**Email policy:** Pre-Activation Console offers plain-text subject/body template drafts, a time window, cooldown and up to 5 recipients selected from approved company-managed WP Users only. The separate `mad4b_readiness_email_policy_v1` option stores revision-checked draft configuration. The authenticated REST routes under /mad4b-content-readiness/v1/admin/preactivation are: GET event-automation, GET email-preview, GET/PATCH email-policy, and POST email-dispatch. The dispatch endpoint returns HTTP 423 unconditionally during Pre-Activation; no wp_mail, SMTP or webhook operation is called from the scanning or preview path. No user emails or secrets appear in group summaries.
+
+**Fluent SMTP:** fluent-smtp/fluent-smtp.php v2.4.1 is active, but native option fluentmail-settings is absent on this Staging installation. Therefore the SMTP transport is *not* certified and no test or live mail was sent.
+
+**Bit Flows:** Using BitFlows' native FlowService, a trigger-only, explicitly inactive Flow #6 was created: MAD4B Readiness Batch Digest — INACTIVE PRE-ACTIVATION BLUEPRINT, hook mad4b/readiness/scope_digest, is_active=0. It has NO email/WhatsApp action. Existing three Flows were untouched and the new Flow does not listen or send. Pre-Activation reports it as an inactive native blueprint and still blocks activation.
+
+**WPML:** the source-backed language audit identified 65 currently 'und' gaps: 5 site-level events are explicitly site_wide (language not applicable); 60 content-related events (30 WPML group, 30 Origin group) require source-language registration/review. No language ID or translation was guessed or rewritten. Native WPML language evidence is preferred when present.
+
+**Staging runtime tests:** new REST routes loaded; unauthenticated access 401; authenticated Master Admin GET 200 and email send POST 423; enabling delivery from an email-policy draft returns 422. A synthetic event was inserted in a database transaction, reinserted with the same ID (0 additional rows), rendered into a held email digest, then rolled back. Production outbox remained empty; no email was sent. PHP 8.3 lint passed. Hermetic contract tests include tests/content-readiness/event-automation-contract.php (template/recipient validation, WPML source resolution, delivery lock) and the existing isolated-contract.php (now has an Action Hook test shim) with all prior assertions passing.
+
+**Activation blockers:** no enrolled company editor/operator/shop_manager/translation-manager recipients yet; no approved work-packet owners or real Fluent Boards tasks for gaps; Fluent SMTP transport configuration missing; WPML source registrations for 60 affected gaps require review; native Bit Flows draft intentionally inactive; external delivery certification and explicit owner approval are not present. `activation_ready=false` remains the only valid conclusion.
+
+**Rollback** for this feature: restore readiness-integrations.php, readiness-preactivation.php and content-readiness-alerts.php from /opt/staging/mad4b-content-readiness/backups/commerce-staging-rc109-event-automation-20261028/; remove only the new readiness-event-automation.php class; retain the isolated SQL outbox table and email policy option for evidence until separately approved for deletion. Do not roll back the entire rc.109 plugin or modify Production.
+
+**High-volume acceptance extension (2026-10-28):** The legacy UI event journal intentionally retains only the last 300 receipts. The outbox now validates every additional source event against its native issue-ledger status, reopen cycle and SHA-256 transition fingerprint, so events beyond the journal retention limit are not silently dropped. A Staging MySQL transaction created **301 distinct source-backed synthetic events**, yielding **301 outbox receipts and exactly one held email digest**. Replaying one event inserted zero additional receipts. The transaction was rolled back; live outbox row count remained zero. No external mail/Bit Flows action was called. Hermetic event automation tests verify the missing-journal fallback and reject incompatible source transitions.
