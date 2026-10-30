@@ -39,6 +39,7 @@ final class MAD4B_SCP_Provider_Connections_Admin_UI {
             echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'No verified provider adapters are available to inspect.', 'mad4b-site-control-plane' ) . '</p></div>';
             if ( class_exists('MAD4B_SCP_Provider_Setup_Coverage') )
                 MAD4B_SCP_Provider_Setup_Coverage::render();
+                MAD4B_SCP_Provider_Setup_Coverage::render_custom_registration();
             echo '</div>';return;
         }
         echo '<table class="widefat striped"><thead><tr><th>' . esc_html__( 'Provider', 'mad4b-site-control-plane' ) . '</th><th>' . esc_html__( 'Live state', 'mad4b-site-control-plane' ) . '</th><th>' . esc_html__( 'Recommended action', 'mad4b-site-control-plane' ) . '</th><th>' . esc_html__( 'Owner handoff', 'mad4b-site-control-plane' ) . '</th></tr></thead><tbody>';
