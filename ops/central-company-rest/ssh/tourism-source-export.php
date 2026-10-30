@@ -19,6 +19,18 @@ if (!is_array($identity) ||
 $types=['tours-and-activities'=>'tour','properties'=>'property','transportations'=>'transportation'];
 $languages=['en','ar','fr','de','it','es'];
 $rows=[];$counts=[];$wpdb=$GLOBALS['wpdb'];
+// Narrow, audited field metadata registry. Extend via a reviewed source adapter;
+// do not export arbitrary postmeta (customer data, pricing, tokens, rates).
+$fieldAllow=[
+    'tours-and-activities'=>[
+        'tour_mode'=>'text','tour_type'=>'text',
+    ],
+    'properties'=>[],
+    'transportations'=>[
+        'trans_route_estimated_duration'=>'text',
+        'trans_train_operator'=>'text',
+    ],
+];
 $taxonomyAllow=[
  'tours-and-activities'=>['tour-types_jet','tour_categories_jet','location_jet'],
  'properties'=>['property-types','location_jet'],
@@ -103,6 +115,13 @@ foreach($types as $type=>$kind) {
             $facts['to_station_id']=$cleanLocation(get_post_meta($id,'trans_to_station_id',true));
         }
         $facts=array_filter($facts,static function($v){return $v!=='';});
+        $metadata=[];
+        foreach($fieldAllow[$type] as $field=>$valueType) {
+            $raw=get_post_meta($id,$field,true);
+            if(!is_scalar($raw) || is_bool($raw))continue;
+            $value=sanitize_text_field(mb_substr((string)$raw,0,300));
+            if($value!=='')$metadata[$field]=$value;
+        }
         if(trim($title)==='' || strlen($title)>1500 || strlen($summary)>3000 ||
             strlen($body)>50000) {
             fwrite(STDERR,"CROSS_SSH_SOURCE_CONTENT_INVALID\n");exit(89);
@@ -118,6 +137,7 @@ foreach($types as $type=>$kind) {
             'source_slug'=>$slug,'source_url'=>$url,'source_wpml_trid'=>$trid,
             'source_text_origin'=>$textOrigin,'source_taxonomy_refs'=>$taxonomies,
             'source_identity_facts'=>$facts,
+            'source_metadata'=>$metadata,
             'reference_only'=>true,'may_publish'=>false,'may_checkout'=>false,
         ];
     }
