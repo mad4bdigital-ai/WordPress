@@ -33,8 +33,11 @@ final class MAD4B_SCP_Remote_Work_Queue {
 		$registered = class_exists( 'MAD4B_SCP_Search_Work_Operations' ) ? MAD4B_SCP_Search_Work_Operations::definitions( $base ) : $base;
 		$registered = class_exists( 'MAD4B_SCP_Assistant_Read_Work_Operations', false )
 			? MAD4B_SCP_Assistant_Read_Work_Operations::definitions( $registered ) : $registered;
-		return class_exists( 'MAD4B_SCP_Standalone_Build_Control', false )
+		$registered = class_exists( 'MAD4B_SCP_Standalone_Build_Control', false )
 			? MAD4B_SCP_Standalone_Build_Control::work_definitions( $registered ) : $registered;
+		// Registered semantic company stages only; never raw shell, SQL or arbitrary commands.
+		return class_exists( 'MAD4B_SCP_Company_Provisioning_Work_Operations', false )
+			? MAD4B_SCP_Company_Provisioning_Work_Operations::definitions( $registered ) : $registered;
 	}
 
 	private static function now() { return time(); }
