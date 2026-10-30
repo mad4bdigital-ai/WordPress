@@ -18,7 +18,7 @@ class WP_Error {
     public $code; public $data;
     public function __construct($code,$message,$data=[]) {$this->code=$code;$this->data=$data;}
 }
-class WP_REST_Server { const READABLE='GET'; }
+class WP_REST_Server { const READABLE='GET'; const CREATABLE='POST'; }
 class WP_REST_Response {
     public $data;public $status;
     public function __construct($data,$status=200) {$this->data=$data;$this->status=$status;}
@@ -28,6 +28,7 @@ class WP_REST_Request {
     public $params;
     public function __construct($params=[]) {$this->params=$params;}
     public function get_param($key) {return $this->params[$key]??null;}
+    public function get_json_params() {return $this->params;}
 }
 function add_action() {}
 function add_filter() {}
@@ -212,13 +213,13 @@ $GLOBALS['source_rows']=[
         'post_content'=>'Secret','post_modified_gmt'=>'2026-10-30 09:00:00'],
 ];
 $response=MAD4B_Company_Simple_Content_Feed_V1::page(new WP_REST_Request([
-    'post_type'=>'tours-and-activities','page'=>'1'
+    'post_type'=>'tours-and-activities','page'=>1
 ]));
 check($response instanceof WP_REST_Response && $response->data['total']===1,'Only published post appears');
 check($response->data['items'][0]['body']==='Hello World','Source body sanitized');
 check($response->data['may_checkout']===false,'Source feed prohibits checkout');
 $invalid=MAD4B_Company_Simple_Content_Feed_V1::page(new WP_REST_Request([
-    'post_type'=>'shop_order','page'=>'1'
+    'post_type'=>'shop_order','page'=>1
 ]));
 check(is_wp_error($invalid),'Orders not exposable through source feed');
 echo "PASS $tests native source pull and default Content Hub import tests\n";
