@@ -30,6 +30,7 @@ final class MAD4B_SCP_Company_Provisioning_Work_Operations {
             ($payload['action']??'') !== (MAD4B_Start_Company_Runtime::ACTIONS[$payload['stage']??'']??null) ||
             !preg_match('/^[a-f0-9]{64}$/D',(string)($payload['plan_sha256']??'')) ||
             !preg_match('/^[a-f0-9]{64}$/D',(string)($payload['stage_revision']??'')) ||
+            !preg_match('/^[a-f0-9]{64}$/D',(string)($payload['run_id']??'')) ||
             !empty($payload['mutation_authorized']) ||
             !is_bool($payload['preserve_existing']??null) ||
             !wp_is_uuid((string)($payload['site_uuid']??''))) return false;
@@ -243,8 +244,7 @@ final class MAD4B_Start_Company_Runtime {
           $c['origin']!==($payload['origin']??null))return false;
         $authorized=self::authorized_run($c,(string)($payload['mode']??''));
         if(!is_array($authorized))return false;
-        if(isset($payload['run_id']) &&
-          !hash_equals((string)($authorized['run_id']??''),(string)$payload['run_id']))return false;
+        if(!hash_equals((string)($authorized['run_id']??''),(string)($payload['run_id']??'')))return false;
         $plan=self::compute_plan($c,$payload['mode']);
         $stage=(string)($payload['stage']??'');
         $row=$plan['stages'][$stage]??null;
