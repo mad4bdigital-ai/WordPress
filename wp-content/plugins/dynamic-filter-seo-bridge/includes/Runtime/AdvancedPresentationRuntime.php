@@ -8,18 +8,12 @@ use DynamicFilterSEOBridge\Content\ContentComposer;
 use DynamicFilterSEOBridge\Content\GalleryComposer;
 use DynamicFilterSEOBridge\Context\FilterContextBuilder;
 use DynamicFilterSEOBridge\Elementor\DynamicTagRegistrar;
-use DynamicFilterSEOBridge\JetEngine\FieldDiscovery;
-use DynamicFilterSEOBridge\JetEngine\ListingContextResolver;
 use DynamicFilterSEOBridge\JetEngine\ListingIntegration;
 use DynamicFilterSEOBridge\JetEngine\QueryIdentityResolver;
-use DynamicFilterSEOBridge\JetEngine\QueryRunner;
-use DynamicFilterSEOBridge\JetEngine\RelationResolver;
-use DynamicFilterSEOBridge\JetEngine\ValueNormalizer;
 use DynamicFilterSEOBridge\JetSmartFilters\AjaxFilterStateParser;
 use DynamicFilterSEOBridge\JetSmartFilters\FilterUrlParser;
 use DynamicFilterSEOBridge\Language\LocaleLanguageResolver;
 use DynamicFilterSEOBridge\Presentation\ContentSlotRegistry;
-use DynamicFilterSEOBridge\Presentation\ContentSourceResolver;
 use DynamicFilterSEOBridge\Presentation\InventoryContentCatalog;
 use DynamicFilterSEOBridge\Presentation\MediaDiscoveryRegistry;
 use DynamicFilterSEOBridge\Presentation\PresentationResolver;
@@ -87,14 +81,12 @@ final class AdvancedPresentationRuntime {
                 $e['url_authority']=false;
                 return $e;
             };
-            $normalizer=new ValueNormalizer();
-            $listing=new ListingContextResolver($normalizer);
-            $source=new ContentSourceResolver(
-                $listing,new QueryRunner(),new RelationResolver(),
-                $normalizer,new FieldDiscovery($normalizer,$listing)
-            );
+            // Do not let Safe Boot execute arbitrary Query Builder, User/CCT,
+            // relation or listing-meta sources via saved content slots.
+            // Native filter terms, verified gallery media and composed fields
+            // remain available. Advanced source queries need separate audit.
             $resolver=new PresentationResolver(
-                $readEvidence,$content,$gallery,$slots,$readEvidence,$source
+                $readEvidence,$content,$gallery,$slots,$readEvidence,null
             );
             $catalog=static function()use($profiles):array{
                 // No runtime/topology discovery or executable provider query here.
