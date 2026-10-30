@@ -20,7 +20,25 @@ foreach(array('jet_post_types','jet_taxonomies') as $name){
   $table=$wpdb->prefix.$name;
   if($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s",$table))!==$table)WP_CLI::error('SCHEMA_TABLE_NOT_FOUND_'.$name);
   $rows=$wpdb->get_results("SELECT * FROM {$table} ORDER BY id",ARRAY_A);
-  $tables[$name]=array('count'=>count($rows),'sha256'=>hash('sha256',wp_json_encode($rows)));
+  $portable=array();$sourceScoped=array();
+  foreach($rows as $row){
+    $sourceOnly=($name==='jet_post_types' &&
+      ($row['status']??'')==='rest-api-endpoint' &&
+      preg_match('/^mad4b-hub-[a-f0-9]{12,}$/D',(string)($row['slug']??'')) &&
+      stripos((string)($row['labels']??''),'wo-vacation')!==false &&
+      stripos((string)($row['labels']??''),'research_observation')!==false &&
+      strpos((string)($row['args']??''),'tours.dev.mad4b.com')!==false);
+    if($sourceOnly){
+      $sourceScoped[]=array('id'=>(int)$row['id'],
+        'classification'=>'SOURCE_BOUND_RESEARCH_REST_ENDPOINT',
+        'portable'=>false);
+    }else $portable[]=$row;
+  }
+  $tables[$name]=array('count'=>count($rows),
+    'sha256'=>hash('sha256',wp_json_encode($rows)),
+    'portable_count'=>count($portable),
+    'portable_sha256'=>hash('sha256',wp_json_encode($portable)),
+    'source_scoped_exclusions'=>$sourceScoped);
 }
 $plugins=(array)get_option('active_plugins',array());
 $find=function($slug)use($plugins){
@@ -60,8 +78,14 @@ def compare(source,target):
         reasons["target_identity"]="TENANT_ORIGIN_UNEXPECTED"
     for table,count in (("jet_post_types",307),("jet_taxonomies",34)):
         a=source["tables"][table];b=target["tables"][table]
-        if a!=b or a["count"]!=count:
+        portable_source=(a.get("portable_count",a["count"]),a.get("portable_sha256",a["sha256"]))
+        portable_target=(b.get("portable_count",b["count"]),b.get("portable_sha256",b["sha256"]))
+        if portable_source!=portable_target or portable_source[0]!=count:
             reasons[table]={"source":a,"target":b,"action":"SCHEMA_DIFF_RESOLVER"}
+        if b.get("source_scoped_exclusions"):
+            reasons[table+":source_scoped_target"]={
+                "action":"REMOVE_INHERITED_SOURCE_BOUND_ENDPOINT",
+                "rows":b["source_scoped_exclusions"]}
     needed=["jet-engine","elementor","elementor-pro","jet-smart-filters"]
     for x in needed:
         if not target["providers"].get(x):
@@ -91,6 +115,10 @@ def run():
       "source":s,
       "target":t,
       "diffs":diffs,
+      "source_only_exclusions":{table:details.get("source_scoped_exclusions",[])
+                                for table,details in s["tables"].items()
+                                if details.get("source_scoped_exclusions")},
+      "source_only_entries_are_not_cloned":True,
       "resolution_mode":"on-diff",
       "engine":"schema-provider-compatibility-resolver",
       "next_action":"AUTO_APPROVE_SCHEMA_BACKED_TEMPLATES" if not diffs else "RUN_SECONDARY_DIFF_RESOLUTION",
