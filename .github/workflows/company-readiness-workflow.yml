@@ -42,7 +42,7 @@ jobs:
           assert all(n in ids for n in ('company.create','company.repair'))
           for n in ('company.create','company.repair'):
               assert ids[n]['planner']=='mad4b/start-your-company-plan'
-              assert ids[n]['executor']=='mad4b/start-your-company-resume'
+              assert ids[n]['executor']=='mad4b/start-your-company-run'
               assert ids[n]['generic_mutation_dispatch'] is False
           assert d['generic_shell'] is False and d['default_mutation_policy']=='deny'
           PY
