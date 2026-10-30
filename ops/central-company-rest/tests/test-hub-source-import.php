@@ -293,4 +293,46 @@ check(is_array($bulkRun) && $bulkRun['status']==='imported_only'
 check(empty($bulkRun['last_successful_consumers']),
     'No consumers means no network distribution');
 
+
+if(!defined('WP_CLI'))define('WP_CLI',true);
+if(!defined('MAD4B_HUB_CROSS_SSH_HOST_RUNNER'))define('MAD4B_HUB_CROSS_SSH_HOST_RUNNER',true);
+$GLOBALS['options'][MAD4B_Hub_Auto_Distribute_V1::OPTIONS]=array_merge($bulkPolicy,[
+    'enabled'=>false,
+    'source_transport'=>'wp_cli_cross_ssh',
+    'source_post_types'=>['tours-and-activities','properties','transportations'],
+]);
+$srcTypes=['tours-and-activities','properties','transportations'];
+$cliRows=[
+    feed(1401,'tours-and-activities','fr','French Tour'),
+    feed(1402,'properties','en','Hotel One'),
+    feed(1403,'transportations','ar','Transport One'),
+];
+$cross=[
+    'contract'=>'mad4b.hub.wp-cli-cross-ssh.v1',
+    'source_company'=>'tourism-almallahgroup',
+    'canonical_host'=>'tourism.almallahgroup-mg.com',
+    'types'=>$srcTypes,
+    'counts'=>['tours-and-activities'=>1,'properties'=>1,'transportations'=>1],
+    'items'=>$cliRows,
+];
+$before=$GLOBALS['changes'];
+$invalid=$cross;$invalid['canonical_host']='untrusted.invalid';
+$deny=MAD4B_Hub_Source_Import_V1::import_cross_ssh_snapshot($invalid);
+check(is_wp_error($deny) && $GLOBALS['changes']===$before,'Cross-SSH wrong canonical host rejected before writes');
+$invalid=$cross;$invalid['counts']['properties']=2;
+$deny=MAD4B_Hub_Source_Import_V1::import_cross_ssh_snapshot($invalid);
+check(is_wp_error($deny) && $GLOBALS['changes']===$before,'Cross-SSH incomplete manifest rejected before writes');
+$invalid=$cross;$invalid['items'][1]['may_checkout']=true;
+$deny=MAD4B_Hub_Source_Import_V1::import_cross_ssh_snapshot($invalid);
+check(is_wp_error($deny) && $GLOBALS['changes']===$before,'Cross-SSH unsafe commercial flags rejected before writes');
+$result=MAD4B_Hub_Source_Import_V1::import_cross_ssh_snapshot($cross);
+check(is_array($result) && $result['imported']===3 &&
+    $result['transport']==='wp_cli_cross_ssh','Cross-SSH imports all three kinds privately');
+$before=$GLOBALS['changes'];
+$repeated=MAD4B_Hub_Source_Import_V1::import_cross_ssh_snapshot($cross);
+check($repeated['created']===0 && $repeated['updated']===0 &&
+    $GLOBALS['changes']===$before,'Cross-SSH unchanged snapshot is idempotent');
+check(!wp_next_scheduled(MAD4B_Hub_Auto_Distribute_V1::EVENT),
+    'Cross-SSH never schedules WordPress polling');
+
 echo "PASS $tests native source pull and default Content Hub import tests\n";
