@@ -9,7 +9,7 @@ $ui=file_get_contents($dir.'/class-mad4b-seo-cycle-admin.php');
 $image=file_get_contents($dir.'/class-mad4b-seo-image-lifecycle.php');
 $plugin=file_get_contents($dir.'/mad4b-content-creation-control.php');
 $checks=[
-  'plugin version'=>str_contains($plugin,'0.2.5-seo-cycle-staging'),
+  'plugin version'=>str_contains($plugin,'0.2.6-seo-image-brand-staging'),
   'SEO engine loaded'=>str_contains($plugin,"require_once __DIR__ . '/class-mad4b-seo-content-lifecycle.php'"),
   'SEO UI loaded'=>str_contains($plugin,"require_once __DIR__ . '/class-mad4b-seo-cycle-admin.php'"),
   'staging fence'=>str_contains($engine,"wp_get_environment_type()!=='staging'"),
@@ -53,7 +53,7 @@ $checks['image requires visual review']=str_contains($image,'visual_confirmation
 $checks['image exact revision']=str_contains($image,'stale_snapshot');
 $checks['image only draft contextual edit']=str_contains($image,'context_requires_draft');
 $checks['media global uses native adapter']=str_contains($image,"wp_get_ability('media/update-metadata')");
-$checks['image no direct global alt write']=!str_contains($image,"update_post_meta( $id, '_wp_attachment_image_alt'");
+$checks['image no direct global alt write']=!str_contains($image,'_wp_attachment_image_alt');
 $checks['image scoped usage meta']=str_contains($image,'_mad4b_seo_image_usage_v1');
 $checks['render integration explicitly limited']=str_contains($image,'wp_get_attachment_image_attributes');
 $checks['image metadata original preserved']=str_contains($image,'global_media_metadata_changed');
