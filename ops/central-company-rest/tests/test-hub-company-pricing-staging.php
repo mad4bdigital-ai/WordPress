@@ -135,6 +135,20 @@ if(count($cctQuote)!==1 ||
    ($cctQuote[0]['price_fields']['base_price']['mode']??'')!=='rate_generator' ||
    $tp['checkout_ready']!==false)
  throw new RuntimeException('CCT override did not select provider-qualified rate');
+$native=MAD4B_Hub_Company_Pricing_V1::native_generator_preview(array(
+ 'consumer_company'=>'all-royal-egypt',
+ 'generator_input'=>array('kind'=>'transport','parent_id'=>39707,
+  'amount'=>'125','currency'=>'USD','price_unit'=>'per_day',
+  'valid_from'=>'2026-11-01','valid_to'=>'2026-11-30','rate_scope'=>'both')));
+if(is_wp_error($native) ||
+   $native['provider']!=='Shared_Product_Rate_Generation' ||
+   $native['native_schema']!=='shared-rate-generation.v1' ||
+   $native['native_post_type']!=='transport-rates' ||
+   $native['creation_performed']!==false ||
+   $native['provider_create_invoked']!==false ||
+   $native['native_draft_plan']['post_status']!=='draft' ||
+   $native['checkout_ready']!==false)
+ throw new RuntimeException('Existing native rate generator preview bridge failed');
 $wrongType=MAD4B_Hub_Price_Sources_V1::local(64948,'properties');
 if(!is_wp_error($wrongType))throw new RuntimeException('Incorrect post type not rejected');
 $missing=MAD4B_Hub_Price_Sources_V1::signedHistorical('tourism-almallahgroup',9999999);
@@ -150,6 +164,9 @@ echo wp_json_encode(array(
  'local_transport_direct_candidates'=>count($localTransport['direct_starting_prices']),
  'jetengine_transport_cct_rates_found'=>count($cct),
  'provider_qualified_rate_generator'=>'PASS',
+ 'native_shared_product_rate_generator_bridge'=>'PASS',
+ 'native_draft_post_type'=>$native['native_post_type'],
+ 'native_create_invoked'=>false,
  'company_rate_override'=>'PASS',
  'per_language_rule'=>'PASS',
  'rate_generator_preview'=>'PASS',
