@@ -41,7 +41,6 @@ function is_wp_error($x) {return $x instanceof WP_Error;}
 function get_option($key,$default=false) {return $GLOBALS['options'][$key]??$default;}
 function update_option($key,$value,$autoload=false) {$GLOBALS['options'][$key]=$value;return true;}
 function register_post_type($slug,$args) {$GLOBALS['registered_types'][$slug]=$args;return true;}
-function current_user_can($cap) {return $cap==='manage_options';}
 function post_type_exists($slug) {return $slug==='mad4b_hub_nile' || isset($GLOBALS['registered_types'][$slug]) ||
     in_array($slug,['tours-and-activities','properties','transportations'],true);}
 function get_posts($query) {
