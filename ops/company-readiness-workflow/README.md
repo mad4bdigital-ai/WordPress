@@ -1,5 +1,45 @@
 # Company & Brand Readiness — governed workflow v1
 
+## Start Your Company v3 — automatic create and partial recovery
+
+The existing readiness collector remains strictly read-only. The **separate**
+native Start Your Company runtime in
+`wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-start-your-company-runtime.php`
+owns **authenticated run requests**, stage dispatch and verified resume.
+
+- `company.create` is launched on an authenticated company-created event.
+- `company.repair` resumes existing tenants without duplicating users, orders,
+  media or previously verified stages.
+- A single scoped operator grant authorizes the lifecycle for 24 hours.
+  No per-plugin approval or extra owner signature is required.
+- The central Remote Work Queue accepts only `company.stage.execute` with
+  a fixed semantic action, company origin, Site UUID, stage digest and exact
+  WordPress build identity.
+- The enrolled VPS MCP Client must advertise the stage action in
+  `supported_actions`. A generic shell is never treated as a registered
+  company executor.
+- Once Identity → Snapshot → verified Backup pass, the workflow permits
+  `company.plugins.converge`, `company.mu-providers.converge` and
+  `company.configuration.converge`. These are **apply** actions, not
+  permanent denial gates.
+- A verified receipt in the existing Operation Journal advances the next
+  dependency-ready stage. Provider uncertainty enters reconciliation;
+  no blind replay or unverified SUCCESS is accepted.
+- Access Ready and Commercial Ready are separate from Infrastructure Ready.
+  External mailbox / credential issues must not block independent plugin
+  and configuration remediation.
+- The source registration **does not execute a VPS stage** by itself.
+  Operational completion requires a deployed runtime, an enrolled real
+  worker that implements these semantic actions, and independent readback.
+
+Authenticated endpoints: `GET /wp-json/mad4b/v1/start-your-company/companies/{company}/plan`,
+`POST /wp-json/mad4b/v1/start-your-company/companies/{company}/run`,
+and `POST /wp-json/mad4b/v1/start-your-company/companies/{company}/resume`.
+`run` requires the exact current plan hash, then the system advances
+automatically as verified stage receipts arrive.
+
+
+
 Scope: central **Staging** Control Plane (tours.dev.mad4b.com) audits enrolled **Wayfatours Production** in read-only mode. The named WordPress tenant stays independent; no content, users, media, payments or secrets are cloned.
 
 ## Lifecycle
