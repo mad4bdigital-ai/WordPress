@@ -45,7 +45,7 @@ final class MAD4B_Hub_Company_Pricing_V1 {
     public static function validate_rule($row){
         if(!is_array($row) ||
            array_diff(array_keys($row),
-            array('mode','amount','percent_basis_points','currency','conditions','rate_id','field')))
+            array('mode','amount','percent_basis_points','currency','conditions','rate_id','rate_key','field')))
             return self::err('rule_structure_invalid');
         $mode=$row['mode']??null;
         if(!in_array($mode,array('inherit','fixed','percent_adjust','fixed_adjust','rate_generator'),true))
@@ -84,6 +84,10 @@ final class MAD4B_Hub_Company_Pricing_V1 {
         $rateId=$row['rate_id']??null;
         if($rateId!==null&&!self::positiveId($rateId))
             return self::err('rate_id_invalid');
+        $rateKey=$row['rate_key']??null;
+        if($rateKey!==null && (!is_string($rateKey) ||
+            !preg_match('/^[a-z0-9_-]+(?::[a-z0-9_-]+){1,3}$/D',$rateKey)))
+            return self::err('rate_key_invalid');
         $field=$row['field']??null;
         if($field!==null && (!is_string($field)||
              !preg_match('/^[_a-z][a-z0-9_]{1,69}$/D',$field)))
@@ -93,7 +97,7 @@ final class MAD4B_Hub_Company_Pricing_V1 {
             'basis_points'=>$bps,
             'currency'=>$currency,
             'conditions'=>$when,
-            'rate_id'=>$rateId,'field'=>$field);
+            'rate_id'=>$rateId,'rate_key'=>$rateKey,'field'=>$field);
     }
     public static function validate_policy($payload){
         if(!is_array($payload)||array_diff(array_keys($payload),array(
@@ -123,9 +127,11 @@ final class MAD4B_Hub_Company_Pricing_V1 {
         foreach($rateRules as $rule){
             $validated=self::validate_rule($rule);
             if(is_wp_error($validated))return $validated;
-            if($validated['rate_id']===null || $validated['field']===null)
+            if(($validated['rate_id']===null && $validated['rate_key']===null) ||
+                $validated['field']===null)
                 return self::err('rate_rule_needs_exact_id_and_field');
-            $key=$validated['rate_id'].'/'.$validated['field'].
+            $key=($validated['rate_key']??$validated['rate_id']).'/'.
+                $validated['field'].
                 '/'.hash('sha256',wp_json_encode($validated['conditions']));
             if(isset($seen[$key]))return self::err('duplicate_rate_rule');
             $seen[$key]=true;$clean[]=$validated;
@@ -231,9 +237,12 @@ final class MAD4B_Hub_Company_Pricing_V1 {
             'source_amount'=>$amount,
             'calculated_preview_only'=>true);
     }
-    private static function choose($policy,$rateId,$field,$context){
+    private static function choose($policy,$rateId,$rateKey,$field,$context){
         foreach($policy['rate_rules'] as $rule)
-            if($rule['rate_id']===$rateId && $rule['field']===$field &&
+            if(($rule['rate_key']!==null
+                ? $rule['rate_key']===$rateKey
+                : $rule['rate_id']===$rateId)
+               && $rule['field']===$field &&
                self::matches($rule['conditions'],$context))return $rule;
         $fallback=$policy['default_rate_rule'];
         return $fallback && self::matches($fallback['conditions'],$context)?$fallback:null;
@@ -268,22 +277,40 @@ final class MAD4B_Hub_Company_Pricing_V1 {
             if(is_wp_error($result))return $result;
             $direct[]=array('field'=>$entry['field'],'price'=>$result,'source_reference'=>$entry);
         }
-        $rates=array();
+        $rates=array();$idToRateKeys=array();
+        foreach($source['rates']??array() as $rate){
+            if(!is_array($rate)||!self::positiveId($rate['source_rate_id']??null))
+                return self::err('source_rate_invalid');
+            $id=(int)$rate['source_rate_id'];
+            $key=(string)($rate['source_rate_key']??('legacy:'.$id));
+            if(!isset($idToRateKeys[$id]))$idToRateKeys[$id]=array();
+            $idToRateKeys[$id][$key]=true;
+        }
+        if($effective)foreach($effective['rate_rules'] as $rule){
+            if($rule['rate_key']===null && $rule['rate_id']!==null &&
+               count($idToRateKeys[$rule['rate_id']]??array())>1)
+                return self::err('ambiguous_rate_id_requires_provider_key',409);
+        }
         foreach($source['rates']??array() as $rate){
             if(!is_array($rate)||!self::positiveId($rate['source_rate_id']??null))
                 return self::err('source_rate_invalid');
             $fields=array();$rId=$rate['source_rate_id'];
             foreach($rate['price_fields']??array() as $field=>$amount){
-                $currency=(strpos($field,'egyptians_')===0 && !empty($rate['egyptians_currency']))?
-                   $rate['egyptians_currency']:($rate['currency']??null);
+                $isEgyptian=(strpos($field,'egyptians_')===0 ||
+                    substr($field,-9)==='_egyptian');
+                $currency=($isEgyptian&&!empty($rate['egyptians_currency']))?
+                    $rate['egyptians_currency']:($rate['currency']??null);
                 if(!self::guardCurrency($currency))continue;
-                $rule=$effective?self::choose($effective,$rId,$field,$context):null;
+                $rule=$effective?self::choose($effective,$rId,
+                    (string)($rate['source_rate_key']??('legacy:'.$rId)),
+                    $field,$context):null;
                 $result=self::apply_price($amount,$currency,$rule);
                 if(is_wp_error($result))return $result;
                 $fields[$field]=$result;
             }
             $rates[]=array(
                 'source_rate_id'=>$rId,
+                'source_rate_key'=>$rate['source_rate_key']??('legacy:'.$rId),
                 'original_rate_reference'=>$rate['authority']??'unverified',
                 'original_valid_from'=>$rate['valid_from']??null,
                 'original_valid_until'=>$rate['valid_until']??null,
