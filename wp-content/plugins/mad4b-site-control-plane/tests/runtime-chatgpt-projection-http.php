@@ -159,6 +159,12 @@ try {
             'catalog_error_status' => is_array( $error_envelope ) ? (int) ( $error_envelope['status'] ?? 0 ) : 0,
             'catalog_error_contract_match' => 'mad4b.catalog-error.v1' === ( $error_envelope['contract'] ?? '' ),
             'rpc_data_field_names' => array_slice( array_map( 'strval', array_keys( $rpc_data ) ), 0, 8 ),
+            'response_field_names' => array_slice( array_map( 'strval', array_keys( is_array( $expired ) ? $expired : array() ) ), 0, 12 ),
+            'result_field_names' => array_slice( array_map( 'strval', array_keys( isset( $expired['result'] ) && is_array( $expired['result'] ) ? $expired['result'] : array() ) ), 0, 12 ),
+            'content_block_count' => isset( $expired['result']['content'] ) && is_array( $expired['result']['content'] ) ? count( $expired['result']['content'] ) : 0,
+            'first_content_type' => isset( $expired['result']['content'][0]['type'] ) && is_scalar( $expired['result']['content'][0]['type'] ) ? substr( (string) $expired['result']['content'][0]['type'], 0, 20 ) : '',
+            'first_content_text_bytes' => isset( $expired['result']['content'][0]['text'] ) && is_string( $expired['result']['content'][0]['text'] ) ? strlen( $expired['result']['content'][0]['text'] ) : 0,
+            'structured_content_present' => isset( $expired['result']['structuredContent'] ),
         );
         $fail( 'Pinned Adapter lost catalog expiry status on the wire. ' . wp_json_encode( $meta ) );
     }
