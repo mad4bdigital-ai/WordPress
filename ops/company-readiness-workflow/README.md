@@ -15,7 +15,7 @@ Scope: central **Staging** Control Plane (tours.dev.mad4b.com) audits enrolled *
 
 Source-controlled runtime: \`ops/company-readiness-workflow/orchestrate.py\`.
 
-On the enrolled VPS, place the source at \`/opt/mad4b-company-provisioning/bin/company-readiness-workflow\` and install the companion MU file on **central Staging only** at \`wp-content/mu-plugins/242-mad4b-company-readiness-workflow.php\`.
+On the enrolled VPS, place the source at \`/opt/mad4b-company-provisioning/bin/company-readiness-workflow\` and install the exact 241 Company & Brand Readiness source and 242 companion MU files on **central Staging only** at \`wp-content/mu-plugins/242-mad4b-company-readiness-workflow.php\`.
 
 \`\`\`bash
 python3 /opt/mad4b-company-provisioning/bin/company-readiness-workflow --selftest
