@@ -39,7 +39,8 @@ final class MAD4B_Company_Hub_Control_Agent_V1 {
         if($request->get_method()!=='POST' ||
             $request->get_route()!==self::ROUTE ||
             !self::company() ||
-            (string)$request->get_header('content-type')!=='application/json')
+            strpos(strtolower((string)$request->get_header('content-type')),
+                'application/json')!==0)
             return self::err('request_shape');
         $raw=$request->get_body();
         if(!is_string($raw)||strlen($raw)<20||strlen($raw)>16000)
@@ -78,6 +79,8 @@ final class MAD4B_Company_Hub_Control_Agent_V1 {
         if(!is_array($delegation) ||
             ($delegation['company_id']??null)!==self::company() ||
             ($delegation['enabled']??false)!==true ||
+            !is_int($delegation['approved_by_user_id']??null) ||
+            !user_can((int)$delegation['approved_by_user_id'],'manage_options') ||
             !is_int($delegation['expires_at']??null) ||
             $delegation['expires_at']<=time() ||
             !is_array($delegation['allowed_actions']??null) ||
@@ -186,8 +189,12 @@ final class MAD4B_Company_Hub_Control_Agent_V1 {
         if(is_wp_error($delegation))return $delegation;
         $validated=self::validate_intent($data,$delegation);
         if(is_wp_error($validated))return $validated;
-        $verified=self::source_records($data);
-        if(is_wp_error($verified))return $verified;
+        // Revocation must remain possible even when a source record has
+        // become unpublished or deleted.
+        if($data['operation']!=='revoke'){
+            $verified=self::source_records($data);
+            if(is_wp_error($verified))return $verified;
+        }
         if($data['operation']==='preflight'){
             return self::receipt($data,array('state'=>'ready_for_owner_approved_apply',
                 'content_release_authorized'=>false,'records_verified'=>count($data['selection']['record_ids']),
@@ -196,6 +203,15 @@ final class MAD4B_Company_Hub_Control_Agent_V1 {
         // No arbitrary endpoint/listing/plugin/option edits. Only an explicitly
         // delegated reference-content release grant can change.
         $option=self::GRANTS;
+        $lockName='mad4b_hubctl_lock_v1_'.substr($data['intent_id'],0,48);
+        // Atomic option-name uniqueness prevents two distinct nonces from
+        // committing the same intent at the same time.
+        global $wpdb;
+        $locked=$wpdb->query($wpdb->prepare(
+            "INSERT IGNORE INTO {$wpdb->options} (option_name,option_value,autoload)
+             VALUES (%s,%s,'off')",$lockName,(string)time()));
+        if($locked!==1)return self::err('intent_locked',409);
+        try {
         $all=get_option($option,array());
         if(!is_array($all))return self::err('grant_registry_invalid',409);
         $key=$data['consumer_company'].':'.$data['intent_id'];
@@ -227,6 +243,54 @@ final class MAD4B_Company_Hub_Control_Agent_V1 {
             return self::err('grant_registry_commit_failed',503);
         return self::receipt($data,array('state'=>$state,'reference_only'=>true,
             'checkout_enabled'=>false,'content_grant_written'=>true));
+        } finally {
+            $wpdb->delete($wpdb->options,array('option_name'=>$lockName),
+                array('%s'));
+        }
+    }
+    /** One-time, source-local enrollment. Paired identity alone grants no writes. */
+    public static function configure_delegation(WP_REST_Request $request){
+        if(!current_user_can('manage_options') || !self::company())
+            return self::err('local_source_owner_required');
+        $data=$request->get_json_params();
+        if(!is_array($data) ||
+           array_diff(array_keys($data),array('enabled','expires_at',
+                'consumer_companies','source_post_types','allowed_actions')) ||
+           !is_bool($data['enabled']??null) ||
+           !is_int($data['expires_at']??null) ||
+           $data['expires_at']<=time() ||
+           $data['expires_at']>time()+90*86400 ||
+           !is_array($data['consumer_companies']??null) ||
+           !$data['consumer_companies'] ||
+           count($data['consumer_companies'])>12 ||
+           !is_array($data['source_post_types']??null) ||
+           !$data['source_post_types'] ||
+           count($data['source_post_types'])>12 ||
+           ($data['allowed_actions']??null)!==array('content_release_reference'))
+            return self::err('delegation_policy_invalid',422);
+        foreach($data['consumer_companies'] as $company){
+            if(!self::id($company)||$company===self::company())
+                return self::err('delegation_company_invalid',422);
+        }
+        foreach($data['source_post_types'] as $type){
+            if(!is_string($type) ||
+               !preg_match('/^[a-z][a-z0-9_-]{1,45}$/D',$type) ||
+               !post_type_exists($type))
+                return self::err('delegation_type_invalid',422);
+        }
+        $record=array_merge($data,array('company_id'=>self::company(),
+            'approved_by_user_id'=>get_current_user_id(),
+            'approved_at'=>time()));
+        update_option(self::DELEGATION,$record,false);
+        $response=new WP_REST_Response(array(
+            'contract'=>self::CONTRACT,'company_id'=>self::company(),
+            'delegation_enabled'=>$data['enabled'],
+            'expires_at'=>$data['expires_at'],
+            'allowed_actions'=>array('content_release_reference'),
+            'approved_by_user_id'=>get_current_user_id(),
+            'central_key_trust_does_not_grant_write'=>true),200);
+        $response->header('Cache-Control','no-store, private');
+        return $response;
     }
     public static function boot(){
         if(!self::company())return;
@@ -234,6 +298,12 @@ final class MAD4B_Company_Hub_Control_Agent_V1 {
             register_rest_route('mad4b-company/v1','/hub-control',array(
                 'methods'=>'POST','callback'=>array(__CLASS__,'handle'),
                 'permission_callback'=>'__return_true'));
+            register_rest_route('mad4b-company/v1','/hub-control/delegation',array(
+                'methods'=>'POST',
+                'callback'=>array(__CLASS__,'configure_delegation'),
+                'permission_callback'=>static function(){
+                    return current_user_can('manage_options');
+                }));
         },32);
     }
 }
