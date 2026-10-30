@@ -3,9 +3,10 @@
 # Runs only on MAD4B VPS host; no SSH keys inside WordPress.
 set -euo pipefail
 umask 077
-MODE="--import"
-if test "$#" -gt 0;then MODE="$1";fi
-case "$MODE" in --import|--verify-only|--run-queued) ;; *) echo 'Use --import, --verify-only or --run-queued' >&2;exit 79;; esac
+MODE="${1:-}"
+# No unchecked import path: every database mutation must have a queued Job.
+case "$MODE" in --verify-only|--run-queued) ;; *) echo 'Only --verify-only or --run-queued are supported; direct import is disabled' >&2;exit 79;; esac
+if test "$#" -ne 1;then echo 'Exactly one mode is required' >&2;exit 79;fi
 KEY_DIR=/opt/hostinger-shell-mcp/external-targets/hosting-1
 SRC=u338416126@147.93.49.130
 SRC_WP=/home/u338416126/domains/almallahgroup-mg.com/public_html/tourism.almallahgroup-mg.com
