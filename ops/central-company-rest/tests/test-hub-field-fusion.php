@@ -1,0 +1,33 @@
+<?php
+define('ABSPATH','/test/');
+$GLOBALS['posts']=[];
+$GLOBALS['metas']=[];
+$GLOBALS['settings']=[];
+class WP_Error { public $code; function __construct($c,$m){$this->code=$c;} }
+function add_action(){}
+function current_user_can($c){return true;}
+function get_option($k,$d=[]){return $GLOBALS['settings'][$k]??$d;}
+function update_option($k,$v,$auto=false){$GLOBALS['settings'][$k]=$v;return true;}
+function get_post($id){return $GLOBALS['posts'][$id]??null;}
+function get_post_meta($id,$key,$single=true){return $GLOBALS['metas'][$id][$key]??'';}
+function wp_strip_all_tags($s){return strip_tags($s);}
+function wp_json_encode($x,$flags=0){return json_encode($x,$flags);}
+function is_wp_error($x){return $x instanceof WP_Error;}
+function check($pass,$label){if(!$pass)throw new Exception('Failed: '.$label);}
+require dirname(__DIR__).'/central/273-mad4b-hub-field-fusion.php';
+foreach([11,12] as $id){
+ $GLOBALS['posts'][$id]=(object)['post_title'=>'Example Hotel','post_content'=>$id===11?'':'A spacious hotel with a swimming pool and friendly staff.','post_excerpt'=>''];
+ $GLOBALS['metas'][$id]=[
+  '_mad4b_hub_import_owner'=>'tourism-almallahgroup','_mad4b_hub_import_type'=>'properties',
+  '_mad4b_hub_import_language'=>'en','_mad4b_hub_import_source_id'=>$id
+ ];
+}
+$r=MAD4B_Hub_Field_Fusion_V1::compare(11,12);
+check(is_array($r),'proposal');
+check($r['field_proposals']['description']['proposed_value_from_hub_id']===12,'richer text');
+check($r['auto_merge']===false,'review only');
+check(is_array(MAD4B_Hub_Field_Fusion_V1::set_policy('tourism-almallahgroup','properties','description','manual',95)),'field policy');
+$r=MAD4B_Hub_Field_Fusion_V1::compare(11,12);
+check($r['field_proposals']['description']['decision']==='review_conflict_or_gap','custom policy applied');
+check(is_wp_error(MAD4B_Hub_Field_Fusion_V1::set_policy('tourism-almallahgroup','properties','source_wpml_trid','richest',95)),'WPML protected');
+echo "PASS 6 field fusion tests\n";
