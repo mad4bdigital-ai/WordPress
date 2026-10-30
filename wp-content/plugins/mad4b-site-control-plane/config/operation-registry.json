@@ -289,7 +289,7 @@
       "target_kind": "company",
       "risk": "high",
       "planner": "mad4b/start-your-company-plan",
-      "executor": "mad4b/start-your-company-resume",
+      "executor": "mad4b/start-your-company-run",
       "supports": [
         "create"
       ],
@@ -307,7 +307,7 @@
       "target_kind": "company",
       "risk": "high",
       "planner": "mad4b/start-your-company-plan",
-      "executor": "mad4b/start-your-company-resume",
+      "executor": "mad4b/start-your-company-run",
       "supports": [
         "repair_existing"
       ],
