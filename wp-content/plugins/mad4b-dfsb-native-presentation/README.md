@@ -149,3 +149,11 @@ Rule generation bounds the theoretical combination count from native filter opti
 Native rule staging is *still disabled-only* and uses an atomic SQL compare-and-swap on the WordPress JetSmartFilters option, rejecting duplicates, conflicting concurrent edits, or previously enabled indexing. The original native rules are preserved; this fixes the v0.4.1 line-comment omission that could drop existing rules.
 
 **No automatic crawling or indexing is authorized by these policies.** Operator activation needs separate real filtered-URL QA, index quality, WPML, result coverage, and a manual WordPress action. No optional release signatures or external CA are needed for WordPress plugin operation.
+
+### Policy drift reconciliation (v0.5.1)
+
+If a site-specific policy changes while a native JetSmartFilters rule is already `staged_disabled`, `POST /proposals/generate` retains the original rule, but adds `pending_revision` with the new evidence-derived selection, rule template, and exact policy revision.
+
+`POST /wp-json/mad4b/v1/seo-intelligence/proposals/{id}/reconcile` is a separate **administrator-initiated** action. It requires (1) the old staged rule to be present and unchanged, (2) the same URL / provider / Query ID identity, (3) the same policy revision and requalified live evidence, (4) native JetSmartFilters SEO still disabled. It replaces exactly one matching native rule by a byte-exact compare-and-swap and leaves all unrelated rules untouched. Reconciliation never enables `use_seo_sitemap`, modifies Rank Math, or certifies Content and SEO quality.
+
+Policy changes **do not silently replace existing native rules**. They create a reviewable proposed revision. Use `GET /proposals` to inspect its `pending_revision`, then reconcile only after confirming source and expected copy. Retain a site-options backup for rollback.
