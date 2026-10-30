@@ -157,3 +157,41 @@ If a site-specific policy changes while a native JetSmartFilters rule is already
 `POST /wp-json/mad4b/v1/seo-intelligence/proposals/{id}/reconcile` is a separate **administrator-initiated** action. It requires (1) the old staged rule to be present and unchanged, (2) the same URL / provider / Query ID identity, (3) the same policy revision and requalified live evidence, (4) native JetSmartFilters SEO still disabled. It replaces exactly one matching native rule by a byte-exact compare-and-swap and leaves all unrelated rules untouched. Reconciliation never enables `use_seo_sitemap`, modifies Rank Math, or certifies Content and SEO quality.
 
 Policy changes **do not silently replace existing native rules**. They create a reviewable proposed revision. Use `GET /proposals` to inspect its `pending_revision`, then reconcile only after confirming source and expected copy. Retain a site-options backup for rollback.
+
+## Multi-facet search intelligence and full REST lifecycle (v0.6.0)
+
+**Do not reduce a source to one SEO filter.** The provider registry may contain destination, tour type, duration, weekday, day period, season, style and other useful facets. The system discovers every native published filter registered in `shared_presentation_registry_v2()`, and evaluates explicit combinations of up to **12** different taxonomies per candidate. The `40` limit applies only to the number of combinations in a single REST preview batch, **not** the available filters or possible search combinations. Requests for other combinations remain available on demand. Site-specific allow/exclude lists are customizable and empty allowlist means any qualified registered facet.
+
+Sample dimensions from this Staging site:
+- `tour-types:day-tours` + `destinations:cairo` + `schudle-days-of-weak:wednesday` + `day-times:morning`.
+- `tour-types:nile-cruises` + `destinations:aswan-gov` + `season:winter` + `schudle-days-of-weak:sunday`.
+
+The second example currently has zero matching published tours; the first has actual matches. A valid filter combination is **not** automatically an indexable page. The `season` taxonomy is currently nonpublic on this company site: it is discoverable and searchable but requires a company policy review before SEO publication. It is never enabled through a secret override.
+
+### Administrator REST lifecycle
+
+All endpoints are authenticated native WordPress REST with `manage_options`:
+
+| Method | Route beneath `/wp-json/mad4b/v1` | Behavior |
+| --- | --- | --- |
+| GET | `/seo-intelligence/combinations/facets?provider=jet-engine&query_id=tours_query_archive` | Live MU registry + native JSF facets and values |
+| POST | `/seo-intelligence/combinations/preview` | Up to 40 full-dimensional searches; real `WP_Query` published intersection, no writes |
+| GET | `/seo-intelligence/combinations` | Saved exact combinations, revisions and statuses |
+| POST | `/seo-intelligence/combinations` | Create specific draft, never publish |
+| GET | `/seo-intelligence/combinations/{64-char-id}` | Current draft, evidence and optimistic revision |
+| PUT | `/seo-intelligence/combinations/{id}/localize` | Editorial title/description for the candidate's specific WPML language |
+| POST | `/seo-intelligence/combinations/{id}/verify` | Requery published results in selected WPML language and inspect real URL, HTTP, canonical, robots |
+| POST | `/seo-intelligence/combinations/{id}/approve` | Explicit administrator approval only after results, URL and editorial checks |
+| POST | `/seo-intelligence/combinations/{id}/publish` | Activate **only this approved exact filtered URL** through Rank Math's existing metadata hooks; native JetSmartFilters SEO must be disabled |
+| POST | `/seo-intelligence/combinations/{id}/postpublish-qa` | Verify actual HTTP title, description, canonical and robots; automatically remove the URL mapping on failure |
+| POST | `/seo-intelligence/combinations/{id}/rollback` | Remove exact-URL SEO override before changing state |
+
+Mutation bodies after creation require `expected_revision` from the preceding response. Each candidate is stored as its own WordPress option with byte-exact concurrency protection. A separate exact-URL index prevents scanning all saved combinations during every public page request.
+
+**SEO owner:** Rank Math publishes the title, meta description and canonical for *explicitly approved exact URLs only*. No new meta tags are printed by the adapter. JetSmartFilters continues filtering the results, JetEngine/Shared Product Core own queries, and MU Presentation owns company visibility policy. The existing broad native JSF SEO Rule remains disabled; do not enable both SEO publishers simultaneously.
+
+**WPML:** English is the source. Every language gets a distinct candidate, translated term IDs, route and a manually reviewed title/description. The verify step checks term translation and the localized page; it must not infer a translated approval from the English rule.
+
+**Coverage:** The rule count is not generated from the Cartesian product. Real `WP_Query` intersection counts and returned published post IDs support editorial review. Empty results, private taxonomies, stale company policy, unsupported source, unresolved WPML, missing editorial review and unverified URLs prevent approval. One or more facets can be used; up to 12 are accepted, independent of a batch limit of 40.
+
+**Operational guardrail:** Exact-URL publishing is **OFF by default**. Tests must never publish SEO on an actual site. Production is not part of this Staging rollout. No certificates or non-WordPress owner signatures are needed to run the plugin.
