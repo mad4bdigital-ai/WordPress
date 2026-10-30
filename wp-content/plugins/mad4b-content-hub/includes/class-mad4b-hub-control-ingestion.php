@@ -99,7 +99,15 @@ final class MAD4B_Hub_Control_Ingestion {
                 return new WP_Error('mad4b_hub_database_not_initialized','Install central Hub tables before running.');
         $claim=MAD4B_Hub_Canonical_Store::claim_run($key,$site,$brand);
         if(is_wp_error($claim))return $claim;
-        if($claim['state']==='persisted')return self::status($input);
+        if($claim['state']==='persisted') {
+            // Resume exact stored job; a replay must not call Firecrawl again.
+            $continued=MAD4B_Hub_Workflow_Continuity::resume($input);
+            if(is_wp_error($continued))return $continued;
+            $status=self::status($input);
+            if(is_wp_error($status))return $status;
+            $status['continuity']=$continued;
+            return $status;
+        }
         if($claim['state']==='already_running')
             return array('contract'=>self::CONTRACT,'state'=>'in_progress',
                 'run_key'=>$key,'job_id'=>$claim['row']['job_id'],
@@ -161,7 +169,14 @@ final class MAD4B_Hub_Control_Ingestion {
                 'state'=>'persisted','record_key'=>$record['record_key'],'last_error_code'=>'',
             ));
             if(is_wp_error($saved))throw new RuntimeException($saved->get_error_code());
+            $continued=MAD4B_Hub_Workflow_Continuity::resume($input);
+            if(is_wp_error($continued))
+                return new WP_Error('mad4b_hub_research_persisted_continuity_pending',
+                    'Research persisted. Resume the same idempotency key; do not rescrape.',
+                    array('run_key'=>$key,'job_id'=>$job_id,
+                        'continuity_error'=>$continued->get_error_code(),'no_rescrape'=>true));
             return array('contract'=>self::CONTRACT,'state'=>'research_candidate_persisted',
+                'continuity'=>$continued,
                 'run_key'=>$key,'content_job_id'=>$job_id,
                 'research_group_uid'=>$group['group_uid'],
                 'research_record_uid'=>$research['record_uid'],
