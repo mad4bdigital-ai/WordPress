@@ -1,6 +1,7 @@
 <?php
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+if ( ! class_exists( 'MAD4B_SCP_Content_Workflow_Modes' ) ) require_once __DIR__ . '/class-mad4b-scp-content-workflow-modes.php';
 
 /**
  * Provider-neutral semantic pipeline over the immutable Artifact Registry.
@@ -202,6 +203,10 @@ final class MAD4B_SCP_Content_Intelligence_Pipeline {
 		if ( is_wp_error( $blueprint ) ) return $blueprint;
 		$hard = isset( $input['hard_blockers'] ) && is_array( $input['hard_blockers'] ) ? array_values( $input['hard_blockers'] ) : array();
 		$warnings = isset( $input['warnings'] ) && is_array( $input['warnings'] ) ? array_values( $input['warnings'] ) : array();
+        $mode = MAD4B_SCP_Content_Workflow_Modes::for_job( $job_id );
+        if ( is_wp_error( $mode ) ) return $mode;
+        $decision = MAD4B_SCP_Content_Workflow_Modes::review_result( $mode, $hard, true );
+        if ( is_wp_error( $decision ) ) return $decision;
 		$payload = array(
 			'contract' => 'mad4b.blueprint-qa.v1',
 			'blueprint_artifact_id' => $blueprint_id,
@@ -209,7 +214,10 @@ final class MAD4B_SCP_Content_Intelligence_Pipeline {
 			'warnings' => $warnings,
 			'pass' => empty( $hard ),
 			'can_write' => empty( $hard ),
-			'quality_evidence_status' => 'NEEDS_INDEPENDENT_REVIEW',
+            'quality_evidence_status' => $decision['quality_evidence_status'],
+            'review_mode' => $mode,
+            'writer_can_self_review' => $decision['writer_can_self_review'],
+            'self_review_accepted' => $decision['self_review_accepted'],
 			'independent_review_certified' => false,
 			'publication_authorized' => false,
 		);
@@ -246,6 +254,8 @@ final class MAD4B_SCP_Content_Intelligence_Pipeline {
 		$content = isset( $input['content'] ) ? (string) $input['content'] : '';
 		if ( '' === trim( $content ) ) return new WP_Error( 'mad4b_draft_content_required', 'ArticleDraft content is required.' );
 		if ( strlen( $content ) > self::MAX_DRAFT_BYTES ) return new WP_Error( 'mad4b_draft_size_limit', 'ArticleDraft exceeds bounded payload budget.' );
+        $mode = MAD4B_SCP_Content_Workflow_Modes::for_job( $job_id );
+        if ( is_wp_error( $mode ) ) return $mode;
 		$payload = array(
 			'contract' => 'mad4b.article-draft.v1',
 			'blueprint_artifact_id' => $blueprint_id,
@@ -258,7 +268,8 @@ final class MAD4B_SCP_Content_Intelligence_Pipeline {
 			'section_count' => isset( $input['section_count'] ) ? max( 0, (int) $input['section_count'] ) : 0,
 			'can_write' => true,
 			'draft_only' => true,
-			'quality_evidence_status' => 'NEEDS_INDEPENDENT_REVIEW',
+            'quality_evidence_status' => 'DRAFT_PENDING_QA',
+            'review_mode' => $mode,
 			'publication_authorized' => false,
 		);
 		$result = self::append( $job_id, 'draft', 'WRITING', $payload, array(), 'append ArticleDraft from approved blueprint' );
@@ -299,6 +310,8 @@ final class MAD4B_SCP_Content_Intelligence_Pipeline {
 					return new WP_Error( 'mad4b_qa_blocker_invalid', 'QA blockers must be bounded typed reason codes.' );
 			}
 		}
+        $mode = MAD4B_SCP_Content_Workflow_Modes::for_job( $job_id );
+        if ( is_wp_error( $mode ) ) return $mode;
 		$created = array();
 		$hard_blockers = array();
 		foreach ( $definitions as $type => $def ) {
@@ -306,6 +319,7 @@ final class MAD4B_SCP_Content_Intelligence_Pipeline {
 			if ( null === $row ) return new WP_Error( 'mad4b_qa_component_required', 'QA component is required: ' . $def['input'] );
 			$component_hard = isset( $row['hard_blockers'] ) && is_array( $row['hard_blockers'] ) ? array_values( $row['hard_blockers'] ) : array();
 			foreach ( $component_hard as $blocker ) $hard_blockers[] = $type . ':' . (string) $blocker;
+            $component_decision = MAD4B_SCP_Content_Workflow_Modes::review_result( $mode, $component_hard, true );
 			$payload = array_merge( $row, array(
 				'contract' => $def['contract'],
 				'draft_artifact_id' => $draft_id,
@@ -314,7 +328,9 @@ final class MAD4B_SCP_Content_Intelligence_Pipeline {
 				'writer_profile_fingerprint' => $writer['writer_profile_fingerprint'],
 				'hard_blockers' => $component_hard,
 				'pass' => empty( $component_hard ),
-				'quality_evidence_status' => 'NEEDS_INDEPENDENT_REVIEW',
+                'quality_evidence_status' => $component_decision['quality_evidence_status'],
+                'review_mode' => $mode,
+                'self_review_accepted' => $component_decision['self_review_accepted'],
 				'independent_review_certified' => false,
 				'publication_authorized' => false,
 			) );
@@ -325,9 +341,15 @@ final class MAD4B_SCP_Content_Intelligence_Pipeline {
 			if ( is_wp_error( $link ) ) return $link;
 			$created[ $type ] = $id;
 		}
+        $decision = MAD4B_SCP_Content_Workflow_Modes::review_result( $mode, $hard_blockers, true );
+        if ( is_wp_error( $decision ) ) return $decision;
 		$final = array(
 			'contract' => 'mad4b.final-qa.v1',
-			'quality_evidence_status' => 'NEEDS_INDEPENDENT_REVIEW',
+            'quality_evidence_status' => $decision['quality_evidence_status'],
+            'review_mode' => $mode,
+            'writer_can_self_review' => $decision['writer_can_self_review'],
+            'self_review_accepted' => $decision['self_review_accepted'],
+            'can_store_in_hub' => $decision['can_store_in_hub'],
 			'independent_review_certified' => false,
 			'draft_artifact_id' => $draft_id,
 			'writer_profile_id' => $writer['writer_profile_id'],
@@ -336,8 +358,8 @@ final class MAD4B_SCP_Content_Intelligence_Pipeline {
 			'component_artifact_ids' => $created,
 			'hard_blockers' => $hard_blockers,
 			'pass' => empty( $hard_blockers ),
-			'can_publish' => false,
-			'publication_authorized' => false,
+            'can_publish' => false,
+            'publication_authorized' => false,
 		);
 		$result = self::append( $job_id, 'final_qa', 'FINAL_QA', $final, array(), 'combine QA hard blockers without averaging' );
 		if ( is_wp_error( $result ) ) return $result;
@@ -346,7 +368,11 @@ final class MAD4B_SCP_Content_Intelligence_Pipeline {
 		if ( is_wp_error( $link ) ) return $link;
 		return array(
 			'contract' => self::CONTRACT,
-			'quality_evidence_status' => 'NEEDS_INDEPENDENT_REVIEW',
+            'quality_evidence_status' => $decision['quality_evidence_status'],
+            'review_mode' => $mode,
+            'writer_can_self_review' => $decision['writer_can_self_review'],
+            'self_review_accepted' => $decision['self_review_accepted'],
+            'can_store_in_hub' => $decision['can_store_in_hub'],
 			'independent_review_certified' => false,
 			'qa_artifact_ids' => $created,
 			'final_qa_artifact_id' => $final_id,
