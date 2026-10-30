@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Content Creation Control Bridge
  * Description: Central ContentJob inspection, governed first-party intake, native company assignment and event-scoped review backlog.
- * Version: 0.2.5-seo-cycle-staging
+ * Version: 0.2.6-seo-image-brand-staging
  * Author: MAD4B
  */
 defined('ABSPATH') || exit;
@@ -20,6 +20,7 @@ if ( 'staging' === wp_get_environment_type() ) {
         require_once __DIR__ . '/class-mad4b-serp-policy-admin.php';
     require_once __DIR__ . '/class-mad4b-seo-content-lifecycle.php';
     require_once __DIR__ . '/class-mad4b-seo-cycle-admin.php';
+    require_once __DIR__ . '/class-mad4b-seo-image-lifecycle.php';
     }
 }
 
@@ -603,3 +604,4 @@ add_action('plugins_loaded', ['MAD4B_SERP_Presentation_Policy','boot'], 108);
 if (class_exists('MAD4B_SERP_Policy_Admin', false)) add_action('plugins_loaded', ['MAD4B_SERP_Policy_Admin','boot'], 109);
 add_action('plugins_loaded', ['MAD4B_SEO_Content_Lifecycle','boot'], 110);
 add_action('plugins_loaded', ['MAD4B_SEO_Cycle_Admin','boot'], 111);
+add_action('plugins_loaded', ['MAD4B_SEO_Image_Lifecycle','boot'], 112);
