@@ -49,11 +49,19 @@ final class MAD4B_Hub_Language_Baseline {
         if(is_array($source)){
             foreach($source as $id=>$row){
                 if(!is_array($row))continue;
+                $active=self::codes($row['active_languages']??null);
+                $hidden=self::codes($row['hidden_languages']??array(),true);
+                $visible=($active!==false&&$hidden!==false&&
+                    !array_diff($hidden,$active))?
+                    array_values(array_diff($active,$hidden)):array();
                 $out[$id]=array('observed_at'=>$row['observed_at']??null,
                     'authority'=>'observational_only_no_publication_grant',
                     'is_fresh'=>isset($row['observed_at'])&&is_int($row['observed_at'])&&
                         (time()-$row['observed_at'])>=0 &&
-                        (time()-$row['observed_at'])<=self::MAX_AGE_SECONDS);
+                        (time()-$row['observed_at'])<=self::MAX_AGE_SECONDS,
+                    'source_visible_languages'=>$visible,
+                    'effective_visible_languages'=>is_wp_error($wpml)?array():
+                        array_values(array_intersect($visible,$wpml['visible'])));
             }
         }
         return array('contract'=>self::CONTRACT,
@@ -64,6 +72,16 @@ final class MAD4B_Hub_Language_Baseline {
             'pricing_authorized'=>false);
     }
 
+    public static function admin_only(){return current_user_can('manage_options');}
+    public static function boot(){
+        add_action('rest_api_init',static function(){
+            register_rest_route('mad4b/v1','/hub-language-baseline/status',array(
+                'methods'=>'GET',
+                'permission_callback'=>array(__CLASS__,'admin_only'),
+                'callback'=>array(__CLASS__,'summary')
+            ));
+        },35);
+    }
     public static function evaluate($company, $selected, $layers) {
         if(!is_string($company)||!is_array($selected)||!is_array($layers))
             return self::err('input_invalid');
