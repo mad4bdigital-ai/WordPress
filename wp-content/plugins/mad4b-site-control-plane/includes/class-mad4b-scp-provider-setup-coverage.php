@@ -352,6 +352,54 @@ final class MAD4B_SCP_Provider_Setup_Coverage {
             echo '<p><a href="' . esc_url( $url ) . '">Open provider controls / diagnostics</a></p>';
         echo '<p class="description">No network test has been performed. A provider-owned test adapter is required.</p>';
     }
+    /**
+     * Show human-readable results without claiming that saved credentials or
+     * provider registration establishes a live or executable integration.
+     */
+    public static function connection_feedback( $row ) {
+        $family = (string) ( $row['family'] ?? '' );
+        $state = (string) ( $row['connection_state'] ?? '' );
+        $credential = (string) ( $row['credential_state'] ?? '' );
+        if ( $family === 'research' && ( $row['provider_id'] ?? '' ) === 'firecrawl'
+             && class_exists( 'MAD4B_SCP_Firecrawl_Provider' ) )
+            return MAD4B_SCP_Firecrawl_Provider::test_feedback( MAD4B_SCP_Firecrawl_Provider::test_status() );
+        if ( $family === 'search' ) {
+            if ( $state === 'VERIFIED' )
+                return array('level'=>'success','title'=>'Account connection verified','message'=>'Provider account check succeeded; search capture was not tested.');
+            if ( $state === 'CHECK_FAILED' )
+                return array('level'=>'error','title'=>'Account test failed','message'=>'The saved provider account did not pass its last check. Open provider settings to review and retry.');
+            if ( $state === 'CHECK_EXPIRED' )
+                return array('level'=>'warning','title'=>'Account check expired','message'=>'Run the account test again.');
+            if ( $state === 'NOT_CONFIGURED' )
+                return array('level'=>'warning','title'=>'Credentials missing','message'=>'Save API credentials before testing.');
+            return array('level'=>'info','title'=>'Not tested','message'=>'Account credentials are saved, but a live account test has not succeeded.');
+        }
+        if ( $family === 'oauth' ) {
+            if ( $state === 'token_unreadable' )
+                return array('level'=>'error','title'=>'OAuth connection needs attention','message'=>'Stored token cannot be read. Reconnect from the provider controls.');
+            if ( $state === 'connected' )
+                return array('level'=>'info','title'=>'OAuth connection recorded','message'=>'A separate scoped provider request is needed to verify live access.');
+        }
+        if ( $family === 'ai' )
+            return strpos($credential,'configured_')===0
+                ? array('level'=>'info','title'=>'Key saved — not tested','message'=>'No model request was performed; use a supported inference test.')
+                : array('level'=>'warning','title'=>'Provider not configured','message'=>'Save credentials and activate its adapter before testing.');
+        if ( $family === 'custom' )
+            return array('level'=>'info','title'=>'Registered, not connected','message'=>'Add the provider adapter and test contract to enable a live test.');
+        if ( $family === 'browser_runner' || $family === 'browser_native' )
+            return array('level'=>'info','title'=>'External test not available here','message'=>'The WordPress inventory cannot test the independent browser runner.');
+        if ( strpos($state,'incomplete')!==false || strpos($credential,'missing')!==false )
+            return array('level'=>'warning','title'=>'Configuration incomplete','message'=>'Required credentials or connection settings are missing.');
+        return array('level'=>'info','title'=>'Connection not verified','message'=>'No successful live connection test has been recorded for this adapter.');
+    }
+    private static function render_connection_feedback( $row ) {
+        $feedback = self::connection_feedback( $row );
+        $level = in_array( $feedback['level'],array('success','error','warning','info'),true ) ? $feedback['level'] : 'info';
+        echo '<div class="notice notice-'.esc_attr($level).' inline" role="'.($level==='error'?'alert':'status').'" style="margin:0 0 6px;padding:6px 10px">';
+        echo '<strong>'.esc_html($feedback['title']).'</strong><p style="margin:3px 0">'.esc_html($feedback['message']).'</p></div>';
+        echo '<code>'.esc_html((string)($row['connection_state']??'unknown')).'</code>';
+        echo '<p><code>'.esc_html((string)($row['execution_state']??'unverified')).'</code></p>';
+    }
     public static function render() {
         $data = self::inventory();
         if ( is_wp_error( $data ) ) return;
@@ -362,7 +410,7 @@ final class MAD4B_SCP_Provider_Setup_Coverage {
             echo '<td>'.esc_html( $row['credential_custody'] ).'<ul>';
             foreach ( $row['field_names'] as $name ) echo '<li><code>'.esc_html( $name ).'</code></li>';
             echo '</ul></td><td><code>'.esc_html( $row['credential_state'] ).'</code></td>';
-            echo '<td><code>'.esc_html( $row['connection_state'] ).'</code><p><code>'.esc_html( $row['execution_state'] ).'</code></p></td>';
+            echo '<td>'; self::render_connection_feedback( $row ); echo '</td>';
             echo '<td><code>'.esc_html( $row['next_step'] ).'</code>';
             if ( $row['setup_url'] !== '' && wp_validate_redirect( $row['setup_url'], '' ) !== '' )
                 echo '<p><a href="'.esc_url( $row['setup_url'] ).'">Open original setup</a></p>';
