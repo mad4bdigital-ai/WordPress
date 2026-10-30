@@ -20,7 +20,8 @@ final class MAD4B_Hub_Source_Import_V1 {
         register_post_type(self::CPT,[
             'label'=>'Content Hub Imported Sources',
             'public'=>false,'publicly_queryable'=>false,
-            'show_ui'=>true, 'show_in_rest'=>false,'exclude_from_search'=>true,
+            'show_ui'=>true,'show_in_menu'=>'edit.php?post_type=mad4b_hub_nile',
+            'show_in_rest'=>false,'exclude_from_search'=>true,
             'has_archive'=>false,'rewrite'=>false,
             'supports'=>['title','editor','excerpt'],
             'capabilities'=>[
