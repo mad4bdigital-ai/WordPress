@@ -45,7 +45,7 @@ final class MAD4B_Company_Hub_Inbox_V1 {
             if (!is_array($item) || count($item) !== 9 ||
                 ($item['source_company'] ?? '') !== self::SOURCE ||
                 !in_array($item['kind'] ?? '', ['tour', 'property', 'transportation', 'nile_category', 'nile_tour'], true) ||
-                !in_array($item['language'] ?? '', ['en', 'ar'], true) ||
+                !in_array($item['language'] ?? '', ['en', 'ar', 'fr', 'de', 'it', 'es'], true) ||
                 !is_int($item['source_id'] ?? null) || $item['source_id'] <= 0 ||
                 !is_string($item['title'] ?? null) ||
                 strlen($item['title']) < 1 || strlen($item['title']) > 750 ||
