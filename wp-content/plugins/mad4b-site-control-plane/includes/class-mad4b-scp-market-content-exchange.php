@@ -82,6 +82,10 @@ final class MAD4B_SCP_Market_Content_Exchange {
     // the site-owned addon, never in the reusable Control Plane core.
 
     public static function assistant_route( $input = array() ) {
+        if ( ! class_exists( 'MAD4B_SCP_Content_Workflow_Modes' ) )
+            require_once __DIR__ . '/class-mad4b-scp-content-workflow-modes.php';
+        $mode = MAD4B_SCP_Content_Workflow_Modes::for_input( $input );
+        if ( is_wp_error( $mode ) ) return $mode;
         $input = is_array( $input ) ? $input : array();
         $registry = MAD4B_SCP_Market_Growth_Policies::current();
         if ( is_wp_error( $registry ) ) return $registry;
@@ -117,11 +121,12 @@ final class MAD4B_SCP_Market_Content_Exchange {
             'role' => $role, 'configured_candidates' => $routes,
             'registered_enabled_candidates' => $resolved,
             'managed_skills_runtime_ready' => $ready,
-            'selected_for_research_or_draft' => $ready && ! empty( $resolved ) ? $resolved[0] : null,
-            'fallback' => 'human_agent_with_independent_capability_review',
+            'selected_for_research_or_draft' => ! empty( $resolved ) ? $resolved[0] : null,
+            'fallback' => 'use_enabled_agent_or_assisted_manual_review',
             'exact_agent_identity_verified' => false,
             'exact_write_grant_verified' => false,
-            'writer_cannot_self_review' => true,
+            'review_mode' => $mode,
+            'writer_cannot_self_review' => 'strict' === $mode,
             'mutation_authorized' => false, 'read_only' => true,
             'mutation_performed' => false );
     }
