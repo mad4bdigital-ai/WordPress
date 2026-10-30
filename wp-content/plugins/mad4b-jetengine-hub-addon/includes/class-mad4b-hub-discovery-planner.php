@@ -383,11 +383,24 @@ final class MAD4B_Hub_Discovery_Planner {
         if(is_wp_error($policy))return $policy;
         if(!class_exists('MAD4B_Hub_Market_Policy'))
             return self::err('market_policy_module_unavailable');
-        // "markets" are server-registered scopes; absence is an explicit
-        // UNSCOPED_DENY, not an implicit all-country import.
-        $marketPlan=MAD4B_Hub_Market_Policy::evaluate(
-            $manifest['markets']??null,$selected,
-            $manifest['policy_layers'],$source);
+        // A narrowly opted-in language-only read plan inherits visible WPML
+        // locales; otherwise no market stays UNSCOPED_DENY, not "all markets".
+        $baselineRequested=($manifest['inherit_language_baseline']??false)===true;
+        if(isset($manifest['inherit_language_baseline']) &&
+           !is_bool($manifest['inherit_language_baseline']))
+           return self::err('language_inheritance_flag_invalid');
+        if($baselineRequested && isset($manifest['markets']))
+           return self::err('conflicting_language_and_market_modes');
+        if($baselineRequested){
+            if(!class_exists('MAD4B_Hub_Language_Baseline'))
+                return self::err('language_baseline_module_missing');
+            $marketPlan=MAD4B_Hub_Language_Baseline::evaluate(
+                $source,$selected,$manifest['policy_layers']);
+        } else {
+            $marketPlan=MAD4B_Hub_Market_Policy::evaluate(
+                $manifest['markets']??null,$selected,
+                $manifest['policy_layers'],$source);
+        }
         if(is_wp_error($marketPlan))return $marketPlan;
         $queryKinds=array();
         foreach($caps['jet_engine']['queries'] as $item){
@@ -400,8 +413,8 @@ final class MAD4B_Hub_Discovery_Planner {
             $predicate=array_merge(array(
                 'source_company'=>$source,
                 'market_id'=>$scope['market_id'],
-                'valid_from'=>$scope['valid_from'],
-                'valid_until'=>$scope['valid_until'],
+                'valid_from'=>$scope['valid_from']??null,
+                'valid_until'=>$scope['valid_until']??null,
             ),$scope['dimensions']);
             $marketSlices[]=array('market_id'=>$scope['market_id'],
                 'predicate'=>$predicate,
@@ -428,7 +441,9 @@ final class MAD4B_Hub_Discovery_Planner {
             'source_company'=>$source,'provider'=>$provider,
             'selected'=>$selected,'query_types'=>$queryKinds,
             'policy'=>$policy,'market_plan'=>$marketPlan,
-            'market_scoped'=>($marketPlan['status']==='MARKET_SCOPED_DRY_RUN'),
+            'market_scoped'=>in_array($marketPlan['status'],
+                array('MARKET_SCOPED_DRY_RUN','LANGUAGE_BASELINE_DRY_RUN'),true),
+            'market_scope_kind'=>$baselineRequested?'language_only':'explicit_market',
             'query_plan'=>array('contract'=>'mad4b.hub.selective-market-queryplan.v1',
                 'market_slices'=>$marketSlices,
                 'query_provider'=>'native_provider_pending_proof',
