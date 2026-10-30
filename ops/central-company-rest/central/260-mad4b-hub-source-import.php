@@ -123,6 +123,70 @@ final class MAD4B_Hub_Source_Import_V1 {
         return self::save_batch($company,$types,$incoming);
     }
     /**
+     * Host-mediated WP-CLI Cross SSH source import.
+     * Never accepts browser requests, public REST, or arbitrary source companies.
+     * The paired host runner pins SSH keys/hosts and supplies an all-types manifest.
+     */
+    public static function import_cross_ssh_snapshot($manifest) {
+        if(!defined('WP_CLI') || !WP_CLI ||
+            !defined('MAD4B_HUB_CROSS_SSH_HOST_RUNNER') ||
+            MAD4B_HUB_CROSS_SSH_HOST_RUNNER!==true ||
+            !self::enabled() || !post_type_exists(self::CPT)) {
+            return self::failure('cross_ssh_cli_only',403);
+        }
+        if(!class_exists('MAD4B_Hub_Auto_Distribute_V1'))return self::failure('policy_missing');
+        $policy=MAD4B_Hub_Auto_Distribute_V1::settings();
+        if(($policy['source_transport']??'')!=='wp_cli_cross_ssh' ||
+            ($policy['source_mode']??'')!=='import_to_hub' ||
+            !empty($policy['consumers']))return self::failure('cross_ssh_policy_invalid',409);
+        if(!is_array($manifest) ||
+            array_keys($manifest)!==['contract','source_company','canonical_host','types','counts','items'] ||
+            $manifest['contract']!=='mad4b.hub.wp-cli-cross-ssh.v1' ||
+            $manifest['source_company']!==self::SOURCE ||
+            $manifest['canonical_host']!=='tourism.almallahgroup-mg.com' ||
+            !is_array($manifest['types']) ||
+            !is_array($manifest['counts']) ||
+            !is_array($manifest['items']) ||
+            $manifest['types']!==array_keys(self::TYPES) ||
+            $manifest['types']!==$policy['source_post_types'] ||
+            count($manifest['items'])>6000) {
+            return self::failure('cross_ssh_manifest_invalid',409);
+        }
+        $totals=[];$sum=0;
+        foreach($manifest['types'] as $type) {
+            $count=$manifest['counts'][$type]??null;
+            if(!is_int($count) || $count<0 || $count>2000)
+                return self::failure('cross_ssh_count_invalid',409);
+            $totals[$type]=$count;
+            $sum+=$count;
+        }
+        if(count($manifest['counts'])!==count($totals) || $sum!==count($manifest['items']))
+            return self::failure('cross_ssh_incomplete',409);
+        $incoming=[];$seenByType=array_fill_keys($manifest['types'],0);
+        foreach($manifest['items'] as $row) {
+            if(!is_array($row) || !in_array($row['source_post_type']??null,$manifest['types'],true))
+                return self::failure('cross_ssh_item_type',409);
+            $type=$row['source_post_type'];
+            $safe=self::validate_item($row,self::SOURCE,$type);
+            if(is_wp_error($safe))return $safe;
+            $key=self::SOURCE.':'.$type.':'.$safe['language'].':'.$safe['source_id'];
+            if(isset($incoming[$key]))return self::failure('cross_ssh_duplicate',409);
+            $incoming[$key]=$safe;
+            $seenByType[$type]++;
+        }
+        if($seenByType!==$totals)return self::failure('cross_ssh_type_count_mismatch',409);
+        ksort($incoming,SORT_STRING);
+        $saved=self::save_batch(self::SOURCE,$manifest['types'],$incoming);
+        if(is_array($saved)) {
+            $saved['transport']='wp_cli_cross_ssh';
+            $saved['source_host']='tourism.almallahgroup-mg.com';
+            $saved['counts']=$totals;
+            $saved['commercial_publication']=false;
+        }
+        return $saved;
+    }
+
+    /**
      * Reuse already validated Tourism Nile references from CENTRAL Staging.
      * A transitional bootstrap; not proof of a fresh live source sync.
      * Only tours, never 364 historical rates or cross-company references.
