@@ -122,7 +122,7 @@ final class MAD4B_Hub_JetEngine_Consumer_Runtime {
             if(true!==$verified)return self::fail('remote_signed_connection_unverified');
         }
         $fields=$input['field_map']??array('source_id'=>'source_id','title'=>'title','summary'=>'summary','language'=>'language','version'=>'version');
-        $safe_sources=array('source_id','title','summary','body','language','version','content_kind','source_company','consumer_company','source_url','license_state');
+        $safe_sources=array('source_id','title','summary','body','language','version','content_kind','source_company','consumer_company','source_url','license_state','starting_prices','product_rates','pricing_state');
         if(!is_array($fields)||!$fields||count($fields)>count($safe_sources))
             return self::fail('field_map_invalid',400);
         $used=array();$clean=array();
@@ -351,6 +351,21 @@ final class MAD4B_Hub_JetEngine_Consumer_Runtime {
             if(!self::eligible($record,$config)){if($preview)$held++;continue;}
             $eligible++;
             $normalized=$record['normalized'];
+            $quote=null;
+            $kind=(string)($config['content_kind']??'');
+            $productType=array('tour'=>'tours-and-activities',
+                'property'=>'properties','transport'=>'transportations');
+            $sourceId=(int)($normalized['source_post_id']??0);
+            if($config['transport']==='local' && isset($productType[$kind]) && $sourceId>0
+                && class_exists('MAD4B_Hub_Price_Sources_V1')
+                && class_exists('MAD4B_Hub_Company_Pricing_V1')){
+                $source=MAD4B_Hub_Price_Sources_V1::local($sourceId,$productType[$kind]);
+                if(!is_wp_error($source)){
+                    $quote=MAD4B_Hub_Company_Pricing_V1::quote(
+                        $source,$config['company_id'],array('language'=>$config['language']));
+                    if(is_wp_error($quote))$quote=null;
+                }
+            }
             $data=array('source_id'=>$record['record_key'],
                 'title'=>sanitize_text_field((string)($normalized['title']??'')),
                 'summary'=>sanitize_textarea_field((string)($normalized['description']??'')),
@@ -361,7 +376,10 @@ final class MAD4B_Hub_JetEngine_Consumer_Runtime {
                 'version'=>$record['version_sha256'],
                 'content_kind'=>$normalized['content_kind'],
                 'source_company'=>$record['brand_id'],
-                'consumer_company'=>$config['company_id']);
+                'consumer_company'=>$config['company_id'],
+                'starting_prices'=>$quote['starting_price_options']??array(),
+                'product_rates'=>$quote['rate_entries']??array(),
+                'pricing_state'=>$quote?'indicative_company_quote':'not_available');
             if($data['title']==='')continue;
             $item=array();
             foreach($config['field_map'] as $destination=>$source)$item[$destination]=$data[$source];
