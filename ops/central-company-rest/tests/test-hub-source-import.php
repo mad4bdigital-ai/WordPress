@@ -135,6 +135,23 @@ class MAD4B_Central_Simple_Connections_V1 {
 class MAD4B_Central_Company_REST_V1 {
     const COMPANIES=['tourism-almallahgroup'=>['name'=>'Tourism','host'=>'tourism.almallahgroup-mg.com'],'all-royal-egypt'=>['name'=>'ARE']];
 }
+class MAD4B_Hub_Source_Providers_V1 {
+    const LEDGER='mad4b_hub_import_execution_ledger_v1';
+    public static function authorize($company,$provider,$dataset,$transport,array $types,$host) {
+        if($company!=='tourism-almallahgroup'||$provider!=='tourism_wp'||
+            $dataset!=='tourism_main'||$host!=='tourism.almallahgroup-mg.com'||
+            !in_array($transport,['wp_cli_cross_ssh','wp_rest_application_password'],true)||
+            array_diff($types,['tours-and-activities','properties','transportations']))
+            return new WP_Error('provider_unauthorized','Denied');
+        return true;
+    }
+    public static function record_import(array $receipt,$transport): bool {
+        $rows=get_option(self::LEDGER,[]);
+        $rows[]=['transport'=>$transport,'hash'=>$receipt['snapshot_sha256'],
+            'source_company'=>$receipt['source_company']];
+        return update_option(self::LEDGER,$rows,false);
+    }
+}
 class MAD4B_Company_Simple_Identity_V1 {
     public static function identity_for_host() {return ['company_id'=>'tourism-almallahgroup',
         'canonical_host'=>'tourism.almallahgroup-mg.com'];}
@@ -459,4 +476,12 @@ check(is_wp_error($aborted) &&
     serialize([$GLOBALS['hub_posts'],$GLOBALS['hub_meta'],
         get_option(MAD4B_Hub_Source_Import_V1::ACTIVE)])===$beforeState,
     'Atomic rollback restores every post/meta/index after middle-row write failure');
+$receipt=get_option(MAD4B_Hub_Source_Import_V1::RECEIPT,[]);
+check(($receipt['source_provider']??'')==='tourism_wp' &&
+    ($receipt['source_dataset']??'')==='tourism_main',
+    'Committed import binds to canonical registered provider and dataset');
+$ledger=get_option(MAD4B_Hub_Source_Providers_V1::LEDGER,[]);
+check(is_array($ledger)&&count($ledger)>0,
+    'Committed source imports have a central execution ledger');
+
 echo "PASS $tests native source pull and default Content Hub import tests\n";
