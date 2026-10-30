@@ -192,15 +192,11 @@ final class SmartSeoCombinations {
         if($count<$required)$blocked[]='not_enough_published_matching_products';
         if($restricted)$blocked[]='nonpublic_taxonomy_requires_company_policy_review';
         if($untranslated)$blocked[]='wpml_term_translation_missing';
-        if($lang!=='en') {
-            $translatedArchive=apply_filters('wpml_permalink',$source['archive_url'],$lang,true);
-            $englishArchive=apply_filters('wpml_permalink',$source['archive_url'],'en',true);
-            // Do not publish a localized canonical while the site has no
-            // distinct localized archive route. Search/preview still works.
-            if(untrailingslashit((string)$translatedArchive)
-                ===untrailingslashit((string)$englishArchive))
-                $blocked[]='localized_archive_url_not_distinct';
-        }
+        $archiveRoute=self::archiveRoute($source,$lang);
+        if(!$archiveRoute['same_site_host'])
+            $blocked[]='archive_host_mismatch';
+        if(!$archiveRoute['route_distinct_from_english'])
+            $blocked[]='localized_archive_url_not_distinct';
         // Locale review is a separate REST gate, not a permanent selection error.
         if(!$policy['enabled'])$blocked[]='source_policy_disabled';
         foreach($resolved as $x) {
@@ -220,6 +216,7 @@ final class SmartSeoCombinations {
             'post_type'=>$source['post_type'],'selections'=>$resolved,
             'matched_published_count'=>$count,'sample_post_ids'=>array_map('intval',$q->posts),
             'min_result_count'=>$required,'url'=>$url,
+            'archive_route'=>$archiveRoute,
             'qualified_for_editorial_review'=>!$blocked,'index_ready'=>false,
             'blockers'=>array_values(array_unique($blocked)),
             'localization_review_required'=>$lang!=='en',
@@ -229,9 +226,38 @@ final class SmartSeoCombinations {
         );
     }
 
+    /**
+     * WPML archive routes are URL translations, not translated post permalinks.
+     * WPML full-resolution=true falls back to the source URL for CPT archives
+     * even when a valid /fr/, /ar/, etc archive already exists.
+     */
+    public static function archiveUrl(array $source,string $lang): string {
+        $base=(string)($source['archive_url']??'');
+        if ($base==='') return '';
+        $translated=(string)apply_filters('wpml_permalink',$base,$lang,false);
+        return $translated!==''?$translated:$base;
+    }
+
+    public static function archiveRoute(array $source,string $lang): array {
+        $url=self::archiveUrl($source,$lang);
+        $default=self::archiveUrl($source,'en');
+        $host=(string)wp_parse_url($url,PHP_URL_HOST);
+        $site=(string)wp_parse_url(home_url('/'),PHP_URL_HOST);
+        $distinct=$lang==='en'||untrailingslashit($url)!==untrailingslashit($default);
+        $sameHost=$host!=='' && strcasecmp($host,$site)===0;
+        return array(
+            'site_language'=>$lang,
+            'url'=>$url,'default_language_url'=>$default,
+            'route_distinct_from_english'=>$distinct,
+            'same_site_host'=>$sameHost,
+            'status'=>$sameHost&&$distinct?'candidate_for_http_verification':
+                (!$sameHost?'archive_host_mismatch':'localized_archive_url_not_distinct'),
+            'wpml_resolution_mode'=>'archive_url_translation_no_full_post_resolution',
+        );
+    }
+
     public static function url(array $source,array $resolved,string $lang): string {
-        $base=$source['archive_url'];
-        if($lang!=='en')$base=apply_filters('wpml_permalink',$base,$lang,true);
+        $base=self::archiveUrl($source,$lang);
         $sections=array();
         foreach($resolved as $x) {
             $id=(int)$x['term_id'];
