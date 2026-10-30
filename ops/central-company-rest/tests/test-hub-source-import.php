@@ -155,7 +155,11 @@ check($second['created']===0&&$second['updated']===0&&$GLOBALS['changes']===$cou
 $GLOBALS['feed_rows']['tours-and-activities'][0]['body']='Updated source body';
 $third=MAD4B_Hub_Source_Import_V1::import('tourism-almallahgroup',['tours-and-activities','properties']);
 check($third['updated']===1 && count($GLOBALS['hub_posts'])===3,'Updated source updates original Hub post');
-$firstPostId=array_key_first($GLOBALS['hub_posts']);
+$firstPostId=0;
+foreach($GLOBALS['hub_meta'] as $id=>$meta) {
+    if(($meta['_mad4b_hub_import_source_id']??null)===11) $firstPostId=$id;
+}
+check($firstPostId>0,'Source record 11 mapped to Hub post');
 check(strpos($GLOBALS['hub_posts'][$firstPostId]->post_content,'Updated source body')!==false,
     'Updated source content present');
 array_pop($GLOBALS['feed_rows']['tours-and-activities']);
