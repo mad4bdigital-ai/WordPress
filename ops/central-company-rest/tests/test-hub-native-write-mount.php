@@ -4,7 +4,9 @@
  * without making its source sync callback a Read tool or a bypassed host command.
  */
 define('ABSPATH', '/test/');
-require dirname(__DIR__, 3) .
+$repoRoot=getenv('MAD4B_HUB_TEST_REPO_ROOT');
+if(!is_string($repoRoot) || $repoRoot==='')$repoRoot=dirname(__DIR__,3);
+require rtrim($repoRoot,'/') .
     '/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php';
 
 final class MAD4B_Hub_Source_Write_Mount_Test {
