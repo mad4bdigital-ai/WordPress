@@ -187,6 +187,8 @@ final class SmartSeoCombinationRest {
         if(is_wp_error($record))return $record;
         $rev=self::revision($req,$record);if(is_wp_error($rev))return $rev;
         $review=$record['locale_reviews'][$record['language']]??null;
+        if(empty($record['content_review']['approved']) || empty($record['content_graph']['editorial_hubs']))
+            return new \WP_Error('content_graph_review_pending','Content graph editorial review is required',['status'=>409]);
         if(($record['status']??'')!=='verified' || empty($review['manual_review_complete'])
             || empty($record['seo_probe']['pass_prepublication']))
             return new \WP_Error('approval_gates_incomplete',
