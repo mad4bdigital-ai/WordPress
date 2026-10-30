@@ -97,3 +97,55 @@ The qualifier reuses the current site's `product_navigation_registry()` and `sha
 Draft staging always requalifies the company's current policy and rejects a blocked/changed source, even when an older recommendation was saved. Automatic draft refresh preserves existing `staged_disabled` states instead of resetting them.
 
 Run `tests/company-mu-presentation-policy-wp-cli.php` to verify the current MU policy, company scope, exact tours registry slot, intentional exclusion of component-only archives and absence of settings mutations. Public SEO remains disabled until native JSF editorial, WPML and filtered-URL checks.
+
+## Data-driven Company SEO Registry / customizable Policies (v0.5.0)
+
+The Site's MU Presentation `service-activation` mode, `product_navigation_registry()`, and `shared_presentation_registry_v2()` are authoritative. This plugin reads their exact current-company service, CPT, provider, query, filter, and WPML language evidence. **It never creates a duplicate MU registry or changes standalone permissions.**
+
+Admin WordPress REST (normal WP authentication and `manage_options`):
+- `GET /wp-json/mad4b/v1/seo-intelligence/registry`: the live discovered source graph with effective policy and site/blog identity.
+- `GET /wp-json/mad4b/v1/seo-intelligence/policies`: current revision, defaults, and per-site overrides.
+- `PUT /wp-json/mad4b/v1/seo-intelligence/policies`: validate and save policy with `{"expected_revision":"SHA256_FROM_GET","policy":{"global":{...},"sources":{"jet-engine/tours_query_archive":{...}}}}`. Optimistic revision check and WordPress option update lock. Undiscovered providers cannot be configured.
+- Existing `GET /discover?probe=true`, `POST /proposals/generate`, and `POST /proposals/{id}/stage` use the new effective policy.
+
+### Global and per-source policy
+
+Global: `max_filters` 1–3, `max_combinations` 1–1000, `min_result_count` 1–20, `require_result_evidence`, `require_localized_copy`, `require_mu_source_binding` and locked `allow_auto_indexing=false`. Source overrides: `enabled`, `allowed_filter_ids`, `excluded_filter_ids`, `weight_overrides`, `max_filters`, `max_combinations`, and localized `templates` for `en/ar/fr/de/it/es`. Only safe placeholders `{primary}`, `{secondary}`, `{collection}`, `{site}` are accepted. Native JetSmartFilters `{{filter_ID}}` macro values are computed from actual qualified filters; input templates do not gain arbitrary execution.
+
+**Example for the discovered tours provider:**
+
+```json
+{
+  "global": {
+    "max_filters": 3,
+    "max_combinations": 200,
+    "min_result_count": 1,
+    "require_result_evidence": true,
+    "require_localized_copy": true,
+    "require_mu_source_binding": true,
+    "allow_auto_indexing": false
+  },
+  "sources": {
+    "jet-engine/tours_query_archive": {
+      "enabled": true,
+      "max_filters": 2,
+      "max_combinations": 150,
+      "allowed_filter_ids": [16204,15032,15035],
+      "excluded_filter_ids": [24515],
+      "weight_overrides": {"16204": 100},
+      "templates": {
+        "en": {
+          "title": "{primary} {collection} | {site}",
+          "description": "Explore {collection} in {primary}. Compare tours and choose your trip."
+        }
+      }
+    }
+  }
+}
+```
+
+Rule generation bounds the theoretical combination count from native filter option counts before choosing up to three candidate filters. A Technical Score of 100 is **not** a Content or SEO Score: `content_score=null`, `seo_score=null`, `index_ready=false`, with explicit result-coverage and localization blockers until evidence exists. A multilingual page gets individual template overrides but **never silently claims translation was reviewed**.
+
+Native rule staging is *still disabled-only* and uses an atomic SQL compare-and-swap on the WordPress JetSmartFilters option, rejecting duplicates, conflicting concurrent edits, or previously enabled indexing. The original native rules are preserved; this fixes the v0.4.1 line-comment omission that could drop existing rules.
+
+**No automatic crawling or indexing is authorized by these policies.** Operator activation needs separate real filtered-URL QA, index quality, WPML, result coverage, and a manual WordPress action. No optional release signatures or external CA are needed for WordPress plugin operation.
