@@ -120,6 +120,32 @@ $GLOBALS['test_meta'][106]['_mad4b_hub_import_translation_trid']=900;
 $translations=MAD4B_Hub_Dedup_Intelligence_V1::discover();
 check($translations['translation_families_identified']===1,
     'Multiple languages of a verified translation family are not duplicates');
+require dirname(__DIR__).'/central/272-mad4b-hub-dedup-typed.php';
+MAD4B_Hub_Dedup_Typed_V1::boot();
+$GLOBALS['test_meta'][101]['_mad4b_hub_import_taxonomy_refs']=[
+    'location_jet'=>[['id'=>111,'slug'=>'luxor','parent'=>0]]
+];
+$GLOBALS['test_meta'][102]['_mad4b_hub_import_taxonomy_refs']=[
+    'location_jet'=>[['id'=>111,'slug'=>'luxor','parent'=>0]]
+];
+$scored=MAD4B_Hub_Dedup_Intelligence_V1::discover();
+check(isset($scored['specialists']['typed_evidence_v1']),
+    'Typed intelligence plugged into generic engine');
+$typed=$scored['specialists']['typed_evidence_v1'];
+check($typed['review_candidate_count']>=1,'Matching localized title and source location produce candidate');
+check($typed['review_candidates'][0]['auto_merge']===false &&
+    $typed['score_is_probability']===false,
+    'Scoring is heuristic evidence, never probability or mutation');
+check(count($typed['review_candidates'][0]['evidence'])>=2,
+    'Typed similarity shows underlying signals');
+$noForeign=MAD4B_Hub_Dedup_Intelligence_V1::discover(['company_id'=>'another-company']);
+check($noForeign['specialists']['typed_evidence_v1']['review_candidate_count']===0,
+    'Typed specialist isolates other company tenant');
+$GLOBALS['test_meta'][102]['_mad4b_hub_import_translation_trid']=9000;
+$GLOBALS['test_meta'][101]['_mad4b_hub_import_translation_trid']=9000;
+$translated=MAD4B_Hub_Dedup_Intelligence_V1::discover();
+check($translated['specialists']['typed_evidence_v1']['review_candidate_count']===0,
+    'Same verified WPML group does not produce false duplicate');
 $GLOBALS['user_can']=false;
 $blocked=MAD4B_Hub_Dedup_Intelligence_V1::discover();
 check(is_wp_error($blocked),'Unauthorized discovery denied');
