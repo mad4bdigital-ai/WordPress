@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: MAD4B Company Readiness — Governed Workflow
+ * Component: MAD4B Company Readiness — Governed Workflow
  * Description: Read-only readiness receipts, per-company access boundary and closure gates.
  * Version: 1.0.0
  */
