@@ -86,8 +86,9 @@ foreach($data as $row){
  if($source['status']!=='publish'||$row['post_status']!=='draft')
      $block[]='not_published_source_draft_target';
  $allowedKinds=$compat==='schema-auto'?
-     array('section','container','popup','archive','single-page','single-post','page','jet-listing-items','header'):
+     (array)($manifest['compat_policy']['schema_auto_types']??array()):
      array('section','container');
+ if(!$allowedKinds || in_array('kit',$allowedKinds,true))WP_CLI::error('INVALID_COMPATIBILITY_ALLOWED_TYPES');
  if(!in_array($row['template_type'],$allowedKinds,true))$block[]='requires_theme_or_special_activation';
  if($row['template_type']!==$source['kind'])$block[]='template_type_changed';
  if($row['language']!==$source['lang'])$block[]='missing_or_mismatched_wpml_language';
