@@ -29,8 +29,8 @@ if(!in_array('mad4b/content-job-create',$names,true) ||
 }
 $sync=file_get_contents(dirname(__DIR__).'/central/276-mad4b-hub-source-sync-jobs.php');
 if(!is_string($sync) ||
-   strpos($sync,"'category'=>$spec['write']?'mad4b-write':'mad4b-read'")===false ||
-   strpos($sync,"'surface'=>$spec['write']?'write':'read'")===false ||
+   strpos($sync, "'category'=>".'$spec'."['write']?'mad4b-write':'mad4b-read'")===false ||
+   strpos($sync, "'surface'=>".'$spec'."['write']?'write':'read'")===false ||
    strpos($sync,"'queued_execution_automatic'=>false")===false ||
    strpos($sync,"'requires_vps_runner'=>true")===false ||
    strpos($sync,"'auto_merge_enabled'=>false")===false) {
