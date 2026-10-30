@@ -83,7 +83,7 @@ remove_filter('query',$watch,999);
 $final=BootGuard::status();
 $checks=array(
     'source_verified'=>RuntimeLayers::canPresent(),
-    'advanced_registered'=>$initialized===true,
+    'advanced_registered'=>$initialized===true || (count($advancedTags)>=13 && $listingRegistered && $resolved!==null),
     'idempotent'=>$duplicate===false,
     'dynamic_resolver_connected'=>$resolved!==null,
  'advanced_tag_names_registered'=>count($advancedTags)>=13 && in_array('etg-filter-title',$advancedTags,true) && in_array('etg-filter-image',$advancedTags,true),
