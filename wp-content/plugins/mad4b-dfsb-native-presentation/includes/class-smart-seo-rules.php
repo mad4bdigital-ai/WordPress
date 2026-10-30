@@ -30,6 +30,11 @@ final class SmartSeoRules {
         $registry=(array)($group['mu_presentation_registry']??array());
         if (!empty($registry['entity_mismatch']))
             $issues[]='mu_presentation_registry_entity_mismatch';
+        $policy=SmartSeoPolicyRegistry::effective((string)($group['provider']??''),
+            (string)($group['query_id']??''));
+        if (!$policy['enabled']) $issues[]='policy_source_disabled';
+        if (!empty($company['owner']) && $policy['require_mu_source_binding']
+            && empty($registry['matched'])) $issues[]='mu_source_binding_missing';
         $filters=(array)($group['filters']??array());
         $rendered=array_map('intval',(array)($group['rendered_filter_ids']??array()));
         $qualifiers=array();
@@ -52,11 +57,31 @@ final class SmartSeoRules {
             }
             $f['kind']=$kind;
             $f['public_terms_with_content']=$termCount;
-            $f['priority']=self::kindWeight($kind)+(int)($f['widget_uses']??0);
+            if (in_array($id,$policy['excluded_filter_ids'],true)
+                || ($policy['allowed_filter_ids']
+                && !in_array($id,$policy['allowed_filter_ids'],true))) {
+                $rejections[$id]=array('policy_filter_excluded');
+                continue;
+            }
+            $customWeights=$policy['weight_overrides'];
+            $f['priority']=(int)($customWeights[$id]??self::kindWeight($kind))
+                +(int)($f['widget_uses']??0);
             $qualifiers[]=$f;
         }
         usort($qualifiers,static fn($a,$b)=>($b['priority']<=>$a['priority']) ?: ($a['id']<=>$b['id']));
-        $chosen=array_slice($qualifiers,0,3);
+        // Candidate combinations are NOT proof of non-empty filtered results.
+        // Bound the projected sitemap expansion before proposing a native rule.
+        $chosen=array();
+        $combinationBudget=max(1,(int)$policy['max_combinations']);
+        $projected=1;
+        foreach ($qualifiers as $candidate) {
+            if (count($chosen)>=(int)$policy['max_filters']) break;
+            $next=$projected*(1+max(0,(int)($candidate['options_count']??0)));
+            if ($next-1>$combinationBudget) continue;
+            $projected=$next;
+            $chosen[]=$candidate;
+        }
+        $projectedCombinations=$projected-1;
         $score=0;
         if (($route['status']??'')==='inferred_archive_route' && (int)($group['route_http']??0)===200) $score+=25;
         if (!empty($group['public_widget_match'])) $score+=25;
@@ -73,6 +98,10 @@ final class SmartSeoRules {
         if (empty($group['public_widget_match'])) $issues[]='no_live_provider_query_match';
         if ((int)($group['route_http']??0)!==200) $issues[]='archive_http_not_200';
         $ready= !$issues && $score>=80;
+        // Technical qualification != content or SEO approval.
+        $contentVerified=false; // No real per-combination result evidence yet.
+        $localeVerified=false;  // No per-language editorial sign-off yet.
+        $indexReady=$ready && $contentVerified && $localeVerified;
         $id=sha1(implode('|',array(
             (string)($group['provider']??''),(string)($group['query_id']??''),
             (string)($route['url']??''),
@@ -97,6 +126,26 @@ final class SmartSeoRules {
             $title=trim($label.' '.$collection.' | '.$siteLabel);
             $description=trim('Explore '.$collection.' for '.$label.'. Compare experiences and choose what suits your plans.');
         }
+        // Data-driven copy templates (EN as source). Others require native WPML
+        // translation/term evidence; no blanket translation claim is made.
+        $labels=array(
+            'primary'=>$label,
+            'secondary'=>isset($chosen[1])?'{{filter_'.$chosen[1]['id'].'}}':'',
+            'collection'=>$collection,'site'=>$siteLabel,
+        );
+        $english=$policy['templates']['en']??array();
+        $title=SmartSeoPolicyRegistry::formatTemplate((string)($english['title']??''),$labels,$title);
+        $description=SmartSeoPolicyRegistry::formatTemplate((string)($english['description']??''),$labels,$description);
+        $localized=array();
+        foreach (SmartSeoPolicyRegistry::LANGUAGES as $locale) {
+            $t=$policy['templates'][$locale]??array();
+            if (!isset($t['title'],$t['description'])) continue;
+            $localized[$locale]=array(
+                'title'=>SmartSeoPolicyRegistry::formatTemplate((string)$t['title'],$labels,$title),
+                'description'=>SmartSeoPolicyRegistry::formatTemplate((string)$t['description'],$labels,$description),
+                'reviewed'=>false,
+            );
+        }
         // Keep macro IDs unchanged, native JSF resolves labels on matching URLs.
         $native=array(
             'url'=>trim((string)parse_url((string)($route['url']??''),PHP_URL_PATH),'/'),
@@ -110,6 +159,18 @@ final class SmartSeoRules {
             'id'=>$id,'contract'=>self::CONTRACT,
             'source'=>$group['provider'].'/'.$group['query_id'],
             'source_status'=>$status,'score'=>$score,
+            'technical_score'=>$score,
+            'content_score'=>null,'seo_score'=>null,
+            'index_ready'=>$indexReady,
+            'publication_blockers'=>array_values(array_filter(array(
+                !$contentVerified?'content_result_evidence_missing':null,
+                !$localeVerified?'localized_seo_review_missing':null,
+                $projectedCombinations>$combinationBudget?'combination_budget_exceeded':null,
+            ))),
+            'projected_combinations'=>$projectedCombinations,
+            'max_combinations'=>$combinationBudget,
+            'effective_policy'=>$policy,
+            'localized_templates'=>$localized,
             'confidence'=>$score>=90?'high':($score>=70?'medium':'low'),
             'status'=>$ready?'qualified_draft':'blocked',
             'issues'=>array_values(array_unique($issues)),
@@ -160,6 +221,13 @@ final class SmartSeoRules {
                 'languages'=>$rec['languages'],
                 'editorial_review_required'=>true,
                 'indexing_approved'=>false,
+                'index_ready'=>false,'technical_score'=>$rec['technical_score'],
+                'content_score'=>$rec['content_score'],'seo_score'=>$rec['seo_score'],
+                'publication_blockers'=>$rec['publication_blockers'],
+                'projected_combinations'=>$rec['projected_combinations'],
+                'max_combinations'=>$rec['max_combinations'],
+                'effective_policy'=>$rec['effective_policy'],
+                'localized_templates'=>$rec['localized_templates'],
                 'generated_at'=>gmdate('c'),
             );
         }
