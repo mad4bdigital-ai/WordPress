@@ -237,6 +237,27 @@ final class MAD4B_Hub_Company_Pricing_V1 {
             'source_amount'=>$amount,
             'calculated_preview_only'=>true);
     }
+    private static function validate_context($context){
+        if(!is_array($context) ||
+           array_diff(array_keys($context),array('language','market_id','channel',
+              'nationality_country','residence_country','date')))
+            return self::err('quote_context_invalid');
+        foreach($context as $key=>$value){
+            if(!is_string($value))return self::err('quote_context_type_invalid');
+            if(in_array($key,array('nationality_country','residence_country'),true)){
+                if(!preg_match('/^[A-Z]{2}$/D',$value))
+                    return self::err('quote_country_invalid');
+            }elseif($key==='date'){
+                $dt=DateTimeImmutable::createFromFormat('!Y-m-d',$value);
+                if(!$dt || $dt->format('Y-m-d')!==$value)
+                    return self::err('quote_date_invalid');
+            }elseif($key==='language'){
+                if(!in_array($value,array('en','ar','de','fr','it','es'),true))
+                    return self::err('quote_language_invalid');
+            }elseif(!self::stringValue($value))return self::err('quote_context_token_invalid');
+        }
+        return true;
+    }
     private static function choose($policy,$rateId,$rateKey,$field,$context){
         foreach($policy['rate_rules'] as $rule)
             if(($rule['rate_key']!==null
@@ -254,6 +275,8 @@ final class MAD4B_Hub_Company_Pricing_V1 {
            array_diff(array_keys($context),array('language','market_id','channel',
              'nationality_country','residence_country','date')))
             return self::err('quote_input_invalid');
+        $contextValid=self::validate_context($context);
+        if(is_wp_error($contextValid))return $contextValid;
         $sourceCompany=$source['source_company']??'mad4b-central';
         $postType=$source['post_type']??'tours-and-activities';
         $id=$source['source_post_id']??null;
