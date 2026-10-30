@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -146,4 +147,5 @@ for marker in (
 if "empty( $mad4b_mcp_mu_critical_classes )" not in mu:
     fail("legacy 0.6.1 class fallback is not bounded by an empty exact profile")
 
+subprocess.run(['php', '-n', str(ROOT / 'tests/mcp-legacy-schema-representation-runtime.php')], check=True)
 print("mad4b.site-control-plane.mcp-adapter-compatibility-contract.v1: PASS")

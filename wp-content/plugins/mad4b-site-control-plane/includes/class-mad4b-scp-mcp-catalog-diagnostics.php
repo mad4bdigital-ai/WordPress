@@ -297,7 +297,27 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 				&& method_exists( 'WP\\MCP\\Domain\\Tools\\McpToolValidator', 'validate_tool_dto' )
 				&& is_object( $dto )
 				&& method_exists( $dto, 'toArray' ) ) {
-				$valid = \WP\MCP\Domain\Tools\McpToolValidator::validate_tool_dto( $dto );
+                // Older MCP DTO validators may be loaded by another plugin
+                // while the official Adapter uses a newer runtime. The
+                // upstream validator expects PHP arrays for schema properties,
+                // but php-mcp-schema emits stdClass for valid JSON {}.
+                // Normalize ONLY a validation copy; retain the original
+                // Ability and actual MCP wire DTO unchanged.
+                if ( method_exists( 'WP\MCP\Domain\Tools\McpToolValidator', 'validate_tool_data' ) ) {
+                    $validation_data = $data;
+                    foreach ( array( 'inputSchema', 'outputSchema' ) as $schema_key ) {
+                        if ( isset( $validation_data[ $schema_key ] )
+                            && is_array( $validation_data[ $schema_key ] )
+                            && isset( $validation_data[ $schema_key ]['properties'] )
+                            && $validation_data[ $schema_key ]['properties'] instanceof \stdClass ) {
+                            $validation_data[ $schema_key ]['properties'] =
+                                get_object_vars( $validation_data[ $schema_key ]['properties'] );
+                        }
+                    }
+                    $valid = \WP\MCP\Domain\Tools\McpToolValidator::validate_tool_data( $validation_data );
+                } else {
+                    $valid = \WP\MCP\Domain\Tools\McpToolValidator::validate_tool_dto( $dto );
+                }
 				if ( is_wp_error( $valid ) ) return array(
 					'stage' => $stage,
 					'error_class' => 'WP_Error',
