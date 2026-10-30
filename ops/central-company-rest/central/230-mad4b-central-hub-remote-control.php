@@ -41,8 +41,10 @@ final class MAD4B_Central_Hub_Remote_Control_V1 {
                 'signed_identity_paired'=>$paired,
                 'read_connection_state'=>$states[$id]['connection_state']??'unverified',
                 'remote_control_delegation_verified'=>false,
-                'active_hub_control'=>'not_assumed',
-                'source_grant_authority'=>'remote_source_explicit_delegation_required');
+                'active_hub_control'=>$paired &&
+                    ($states[$id]['connection_state']??null)==='authenticated_read_only'
+                        ?'signed_reference_sharing_eligible':'unverified',
+                'source_grant_authority'=>'mutual_signed_rest_identity_reference_only');
         }
         return array('contract'=>self::CONTRACT,
             'central_host'=>'tours.dev.mad4b.com',
@@ -53,7 +55,10 @@ final class MAD4B_Central_Hub_Remote_Control_V1 {
             'remote_binding_actions_live'=>false,
             'jwt_or_shared_secret_required'=>false,
             'existing_p256_keypair_reused'=>true,
-            'source_owner_delegation_required'=>true,
+            'source_owner_delegation_required'=>false,
+            'connection_based_reference_sharing'=>true,
+            'independent_source_permission_required_for_reference'=>false,
+            'non_reference_writes_authorized'=>false,
             'jetengine_provider_binding_separately_certified'=>false,
             'source_read_signature_not_equivalent_to_release'=>true);
     }
@@ -150,14 +155,24 @@ final class MAD4B_Central_Hub_Remote_Control_V1 {
         if(is_wp_error($validated))return $validated;
         if(!hash_equals($validated['intent_id'],(string)($intent['intent_id']??'')))
             return self::err('intent_version_or_payload_conflict',409);
-        $owner=self::owner_scope($validated,$operation);
-        if(is_wp_error($owner))return $owner;
+        // For this one reference-only content action the authenticated
+        // central REST administrator + the mutually signed company link
+        // are sufficient. No separate central operator delegation is needed.
+        // Any future action must use explicit owner_scope().
+        if($validated['action']!=='content_release_reference'){
+            $owner=self::owner_scope($validated,$operation);
+            if(is_wp_error($owner))return $owner;
+        }
         $company=self::company($validated['company_id']);
         $knownHost=$company['host'];
         $registry=get_option(MAD4B_Central_Company_REST_V1::OPTION,array());
         $companyState=$registry[$validated['company_id']]['connection_state']??null;
-        if($companyState!=='authenticated_read_only')
-            return self::err('source_identity_connection_not_current',409);
+        $checkedAt=$registry[$validated['company_id']]['last_authenticated_check']??null;
+        $checkedTs=is_string($checkedAt)?strtotime($checkedAt):false;
+        if($companyState!=='authenticated_read_only'||
+           !$checkedTs || $checkedTs>time()+120 ||
+           time()-$checkedTs>86400)
+            return self::err('signed_rest_identity_check_stale_or_missing',409);
         $private=openssl_pkey_get_private((string)get_option(
             self::PRIVATE_KEY_OPTION,''));
         $remote=openssl_pkey_get_public((string)get_option(
