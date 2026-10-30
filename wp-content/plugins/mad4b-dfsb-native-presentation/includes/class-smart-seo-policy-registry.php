@@ -16,7 +16,7 @@ final class SmartSeoPolicyRegistry {
         return array(
             'contract'=>self::CONTRACT,
             'global'=>array(
-                'max_filters'=>3, 'max_combinations'=>200,
+                'max_filters'=>12, 'max_combinations'=>200,
                 'require_result_evidence'=>true,
                 'require_localized_copy'=>true,
                 'min_result_count'=>1,
@@ -96,7 +96,7 @@ final class SmartSeoPolicyRegistry {
             return new \WP_Error('policy_invalid_global','Unknown global policy field',array('status'=>400));
         foreach ($rawGlobal as $name=>$value) {
             if (in_array($name,array('max_filters','max_combinations','min_result_count'),true)) {
-                $cap=array('max_filters'=>3,'max_combinations'=>1000,'min_result_count'=>20)[$name];
+                $cap=array('max_filters'=>12,'max_combinations'=>1000,'min_result_count'=>20)[$name];
                 if (!is_int($value) || $value<1 || $value>$cap)
                     return new \WP_Error('policy_invalid_limit','Invalid policy integer limit',array('status'=>400));
             } elseif (!is_bool($value) || ($name==='allow_auto_indexing' && $value===true)) {
@@ -119,7 +119,7 @@ final class SmartSeoPolicyRegistry {
                     if (!is_bool($v)) return new \WP_Error('policy_invalid_enabled','Expected boolean',array('status'=>400));
                     $record[$field]=$v;
                 } elseif ($field==='max_filters'||$field==='max_combinations') {
-                    $limit=$field==='max_filters'?3:1000;
+                    $limit=$field==='max_filters'?12:1000;
                     if (!is_int($v) || $v<1 || $v>$limit)
                         return new \WP_Error('policy_invalid_source_limit','Source limit out of range',array('status'=>400));
                     $record[$field]=$v;
