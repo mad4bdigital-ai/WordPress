@@ -5,7 +5,7 @@ set -euo pipefail
 umask 077
 MODE="--import"
 if test "$#" -gt 0;then MODE="$1";fi
-case "$MODE" in --import|--verify-only) ;; *) echo 'Use --import or --verify-only' >&2;exit 79;; esac
+case "$MODE" in --import|--verify-only|--run-queued) ;; *) echo 'Use --import, --verify-only or --run-queued' >&2;exit 79;; esac
 KEY_DIR=/opt/hostinger-shell-mcp/external-targets/hosting-1
 SRC=u338416126@147.93.49.130
 SRC_WP=/home/u338416126/domains/almallahgroup-mg.com/public_html/tourism.almallahgroup-mg.com
@@ -20,7 +20,13 @@ mkdir -p "$WORK";chmod 700 "$WORK"
 exec 9>/run/lock/mad4b-tourism-cross-ssh.lock
 flock -n 9 || { echo 'Import already running' >&2; exit 82; }
 FILE=$(mktemp "$WORK/import.XXXXXXXX.json")
+JOB_ID=""
+JOB_FINISHED=0
 cleanup_import_artifacts() {
+  local status=$?
+  if test -n "$JOB_ID" && test "$JOB_FINISHED" != 1; then
+    docker exec -u www-data -e MAD4B_HUB_JOB_ID="$JOB_ID" "$STAGING"       wp --path=/var/www/html --skip-themes eval       'define("MAD4B_HUB_SOURCE_HOST_RUNNER",true);MAD4B_Hub_Source_Sync_Jobs_V1::finish((string)getenv("MAD4B_HUB_JOB_ID"),false,"source_import_failed");' >/dev/null 2>&1 || true
+  fi
   rm -f "$FILE"
   # Manifest is a short-lived private staging artifact, even on failed import.
   docker exec -u root "$STAGING" rm -f /tmp/mad4b-hub-cross-ssh/manifest.json >/dev/null 2>&1 || true
@@ -34,6 +40,11 @@ test "$CENTRAL_HOME" = https://tours.dev.mad4b.com || { echo 'Central hostname m
 SSH="ssh -i $KEY_DIR/id_ed25519 -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$KEY_DIR/known_hosts_verified -o ConnectTimeout=10 -o PasswordAuthentication=no -p 65002"
 SOURCE_HOME=$($SSH "$SRC" "wp --path=$SRC_WP --skip-themes --skip-plugins option get home 2>/dev/null")
 test "$SOURCE_HOME" = https://tourism.almallahgroup-mg.com || { echo 'Source hostname mismatch' >&2;exit 84; }
+if test "$MODE" = --run-queued; then
+  CLAIM=$(docker exec -u www-data "$STAGING" wp --path=/var/www/html --skip-themes eval     'define("MAD4B_HUB_SOURCE_HOST_RUNNER",true);$r=MAD4B_Hub_Source_Sync_Jobs_V1::claim();if(is_wp_error($r)){echo "CLAIM_ERROR:".$r->get_error_code();exit(91);}echo wp_json_encode($r,JSON_UNESCAPED_SLASHES);' 2>/dev/null)
+  JOB_ID=$(printf '%s' "$CLAIM" | python3 -c 'import sys,json,uuid;d=json.load(sys.stdin);v=d["job_id"];assert str(uuid.UUID(v))==v and d["status"]=="running";print(v)')
+  echo "CLAIMED_SOURCE_SYNC_JOB=$JOB_ID"
+fi
 cat "$CENTRAL_EXPORT" | $SSH "$SRC" "wp --path=$SRC_WP --skip-themes eval-file - 2>/dev/null" > "$FILE"
 python3 - "$FILE" <<'PY'
 import json,sys,os
@@ -62,4 +73,10 @@ test "$HOST_HASH" = "$CONTAINER_HASH" || { echo 'Transfer hash mismatch' >&2;exi
 echo "TRANSFER_SHA256=$HOST_HASH"
 docker exec -u www-data "$STAGING" wp --path=/var/www/html --skip-themes eval-file /tmp/mad4b-hub-cross-ssh/central-receive.php 2>/dev/null
 docker exec -u root "$STAGING" rm -f /tmp/mad4b-hub-cross-ssh/manifest.json
+if test "$MODE" = --run-queued; then
+  RESULT=$(docker exec -u www-data -e MAD4B_HUB_JOB_ID="$JOB_ID" "$STAGING"     wp --path=/var/www/html --skip-themes eval     'define("MAD4B_HUB_SOURCE_HOST_RUNNER",true);$r=MAD4B_Hub_Source_Sync_Jobs_V1::finish((string)getenv("MAD4B_HUB_JOB_ID"),true);if(is_wp_error($r)){echo "FINISH_ERROR:".$r->get_error_code();exit(92);}echo wp_json_encode($r,JSON_UNESCAPED_SLASHES);' 2>/dev/null)
+  printf '%s' "$RESULT" | python3 -c 'import sys,json;d=json.load(sys.stdin);assert d["status"]=="completed" and d["imported"]>=0'
+  JOB_FINISHED=1
+  echo "SOURCE_SYNC_JOB_COMMITTED=$JOB_ID"
+fi
 echo 'CROSS_SSH_IMPORT_FINISHED=YES'
