@@ -152,7 +152,8 @@ final class MAD4B_Hub_Source_Local_Fallback_V1 {
         ]);
     }
     public static function boot(): void {
-        if(!self::site_ready())return;
+        // MU plugins initialize before normal SCP plugin classes are loaded.
+        // Defer the site-scope decision until the native Ability initialization.
         add_action('wp_abilities_api_init',[__CLASS__,'register_abilities'],27);
     }
 }
