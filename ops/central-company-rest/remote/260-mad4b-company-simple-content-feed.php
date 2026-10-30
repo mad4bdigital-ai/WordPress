@@ -16,14 +16,19 @@ final class MAD4B_Company_Simple_Content_Feed_V1 {
         if (!class_exists('MAD4B_Company_Simple_Identity_V1')) {
             return new WP_Error('mad4b_feed_unavailable','Source feed unavailable',['status'=>403]);
         }
-        return MAD4B_Company_Simple_Identity_V1::authorized_for($request,'GET',self::ROUTE);
+        return MAD4B_Company_Simple_Identity_V1::authorized_for($request,'POST',self::ROUTE);
     }
     public static function page(WP_REST_Request $request) {
         $allowed=self::permission($request);
         if ($allowed!==true)return $allowed;
-        $type=(string)$request->get_param('post_type');
-        $page=filter_var($request->get_param('page'),FILTER_VALIDATE_INT);
-        if (!isset(self::TYPES[$type]) || !is_int($page) || $page<1 || $page>100 ||
+        $params=$request->get_json_params();
+        if(!is_array($params) || count($params)!==2 ||
+            !array_key_exists('post_type',$params) || !array_key_exists('page',$params)) {
+            return new WP_Error('mad4b_feed_invalid_selection','Invalid source request',['status'=>400]);
+        }
+        $type=$params['post_type'];
+        $page=$params['page'];
+        if (!is_string($type) || !isset(self::TYPES[$type]) || !is_int($page) || $page<1 || $page>100 ||
             !post_type_exists($type)) {
             return new WP_Error('mad4b_feed_invalid_selection','Invalid post type or page',['status'=>400]);
         }
@@ -78,7 +83,7 @@ final class MAD4B_Company_Simple_Content_Feed_V1 {
             !MAD4B_Company_Simple_Identity_V1::identity_for_host())return;
         add_action('rest_api_init',static function() {
             register_rest_route('mad4b-company/v1','/simple-content-feed',[
-                'methods'=>WP_REST_Server::READABLE,
+                'methods'=>WP_REST_Server::CREATABLE,
                 'permission_callback'=>[__CLASS__,'permission'],
                 'callback'=>[__CLASS__,'page'],
             ]);
