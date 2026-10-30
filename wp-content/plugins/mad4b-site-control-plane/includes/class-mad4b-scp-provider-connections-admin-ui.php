@@ -9,7 +9,9 @@ require_once __DIR__ . '/class-mad4b-scp-firecrawl-provider.php';
 require_once __DIR__ . '/class-mad4b-scp-research-groups.php';
 require_once __DIR__ . '/class-mad4b-scp-research-task-bridge.php';
 require_once __DIR__ . '/class-mad4b-scp-tour-workflow-runtime.php';
-require_once __DIR__ . '/class-mad4b-scp-firecrawl-discovery-preflight.php';
+if ( is_readable( __DIR__ . '/class-mad4b-scp-firecrawl-discovery-preflight.php' ) ) {
+    require_once __DIR__ . '/class-mad4b-scp-firecrawl-discovery-preflight.php';
+}
 final class MAD4B_SCP_Provider_Connections_Admin_UI {
     const PAGE_SLUG = 'mad4b-provider-connections';
     private static $booted = false;
