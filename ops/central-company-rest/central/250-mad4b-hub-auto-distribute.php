@@ -178,9 +178,23 @@ final class MAD4B_Hub_Auto_Distribute_V1 {
             if(!class_exists('MAD4B_Hub_Source_Import_V1'))return self::fail('importer_unavailable',409);
             $import=MAD4B_Hub_Source_Import_V1::import(self::SOURCE,$valid['source_post_types']);
             if(is_wp_error($import))return $import;
-            $items=MAD4B_Hub_Source_Import_V1::active_items(self::SOURCE,
-                $valid['kinds'],$valid['languages'],$valid['selected_source_ids'],$valid['auto_include_new']);
+            $items=$valid['consumers'] ? MAD4B_Hub_Source_Import_V1::active_items(self::SOURCE,
+                $valid['kinds'],$valid['languages'],$valid['selected_source_ids'],$valid['auto_include_new']) : [];
         } else $items=self::eligible_references($valid);
+        if (!$valid['consumers'] && $valid['source_mode']==='import_to_hub' && !is_wp_error($import)) {
+            $state=[
+                'last_run_at'=>gmdate('c'),
+                'last_successful_consumers'=>[],
+                'failed_consumer_ids'=>[],
+                'source_reference_count'=>(int)($import['imported']??0),
+                'snapshot_sha256'=>(string)($import['snapshot_sha256']??''),
+                'status'=>'imported_only',
+                'source_mode'=>'import_to_hub',
+                'hub_import'=>$import
+            ];
+            update_option(self::STATE,$state,false);
+            return $state;
+        }
         if (is_wp_error($items))return $items;
         $digest=hash('sha256',wp_json_encode($items,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
         $success=[];$failures=[];
