@@ -41,3 +41,13 @@ python3 /opt/mad4b-company-provisioning/bin/company-readiness-workflow --refresh
 The registry generator does not copy or print the business option contents; it only checks whether fields have been filled. The store step validates field IDs and both site identities and writes only schema metadata.
 
 The GitHub PR is source preservation; it remains separate from any merge/release and the current live tenant installation.
+
+## Verified deferred-fallback publication (Wayfatours)
+
+The Elementor resolver now consults the **same schema registry fingerprint** before blanking an inherited fallback. It only clears a source-host static value when the widget has an existing `jet-options-image` or `jet-options-page` Dynamic Tag referencing a *registered* JetEngine Options Page field. The tag remains untouched. Source-only references without a proven field mapping stay in the compatibility-resolution queue.
+
+On 2026-10-30, five multilingual Business Reviews section templates (IDs 43750, 43755, 43757, 43759, 43761) were published with a **blank** background image fallback and preserved dynamic binding `look-and-feel::review_hero_image`. Exact pre-change Elementor JSON was backed up before publication and the deferred binding written to each template's `_mad4b_deferred_option_bindings_v1` metadata. Live readback confirmed 5/5 published, 5/5 empty image URL/ID, 5/5 correct JetEngine binding; no source-image URLs in published Elementor JSON. The tenant Options Page still contains no inherited `look-and-feel` values.
+
+Current installed tenant admin UI: `/wp-admin/admin.php?page=mad4b-company-configuration`. The owner can enter the shared `review_hero_image` field on `/wp-admin/admin.php?page=look-and-feel`; the five templates use the same value automatically when present.
+
+**Not yet complete:** old static media URLs without an existing dynamic field binding are not yet ready for input through JetEngine; register and map those slots before publishing their templates. No misleading assumption that blanking a source URL by itself creates an editable JetEngine option.
