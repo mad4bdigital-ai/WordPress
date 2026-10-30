@@ -1,0 +1,35 @@
+name: MAD4B Hub Pricing Contracts
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-jetengine-hub-addon/mad4b-jetengine-hub-addon.php'
+      - 'wp-content/plugins/mad4b-jetengine-hub-addon/includes/class-mad4b-hub-price-sources.php'
+      - 'wp-content/plugins/mad4b-jetengine-hub-addon/includes/class-mad4b-hub-company-pricing.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-hub-jetengine-consumer-governance.php'
+      - 'ops/central-company-rest/tests/test-hub-company-pricing-staging.php'
+      - '.github/workflows/mad4b-hub-pricing-contracts.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  php-contract-syntax:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact PR code
+        uses: actions/checkout@v4
+      - name: Lint Hub pricing and Control Plane contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -v
+          php -l wp-content/plugins/mad4b-jetengine-hub-addon/mad4b-jetengine-hub-addon.php
+          php -l wp-content/plugins/mad4b-jetengine-hub-addon/includes/class-mad4b-hub-price-sources.php
+          php -l wp-content/plugins/mad4b-jetengine-hub-addon/includes/class-mad4b-hub-company-pricing.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-hub-jetengine-consumer-governance.php
+          php -l ops/central-company-rest/tests/test-hub-company-pricing-staging.php
+          test -f wp-content/plugins/mad4b-jetengine-hub-addon/docs/COMPANY-PRICING-RATES-DYNAMIC-GENERATOR.md
+          echo 'Hub pricing syntax and contract sources: PASS'
