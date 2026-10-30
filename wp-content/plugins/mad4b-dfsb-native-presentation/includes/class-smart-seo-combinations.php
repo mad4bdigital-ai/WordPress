@@ -160,7 +160,14 @@ final class SmartSeoCombinations {
         $base=$source['archive_url'];
         if($lang!=='en')$base=apply_filters('wpml_permalink',$base,$lang,true);
         $sections=array();
-        foreach($resolved as $x)$sections[]=$x['taxonomy'].':'.$x['term_id'];
+        foreach($resolved as $x) {
+            $id=(int)$x['term_id'];
+            if ($lang!=='en') {
+                $translated=apply_filters('wpml_object_id',$id,$x['taxonomy'],false,$lang);
+                if($translated)$id=(int)$translated;
+            }
+            $sections[]=$x['taxonomy'].':'.$id;
+        }
         $filter=implode(';',$sections);
         // Format is the native JetSmartFilters ?jsf=...&tax=... syntax.
         return add_query_arg(array('jsf'=>$source['provider'].':'.$source['query_id'],
