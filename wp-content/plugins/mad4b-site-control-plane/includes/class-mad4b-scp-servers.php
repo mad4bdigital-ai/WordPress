@@ -786,7 +786,7 @@ final class MAD4B_SCP_Servers {
 		// the wrong ABI and surface false connection blockers. Keep route-only
 		// registrations; explicit MCP CLI diagnostics opt in to actual tooling.
 		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) {
-			$cli_mcp = ( defined( 'MAD4B_SCP_MCP_CLI_REQUEST' ) && true === constant( 'MAD4B_SCP_MCP_CLI_REQUEST' ) )
+			$cli_mcp = ( defined( 'MAD4B_SCP_MCP_CLI_REQUEST' ) && (bool) constant( 'MAD4B_SCP_MCP_CLI_REQUEST' ) )
 				|| '1' === (string) getenv( 'MAD4B_SCP_MCP_CLI_REQUEST' );
 			return $cli_mcp ? '' : '__mad4b_non_mcp_cli__';
 		}

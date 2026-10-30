@@ -37,7 +37,9 @@ require dirname( __DIR__ ) . '/includes/class-mad4b-scp-transport-context.php';
 class MAD4B_SCP_Policy { public static $read = false; static function can_read() { return self::$read; } }
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-servers.php';
 
-define( 'WP_CLI', 'cli' === ( isset($argv[1]) ? $argv[1] : 'cli' ) );
+$mode = isset($argv[1]) ? (string) $argv[1] : 'cli';
+if ( 'numeric' === $mode ) define( 'MAD4B_SCP_MCP_CLI_REQUEST', 1 );
+define( 'WP_CLI', 'http' !== $mode );
 function wp_unslash( $v ) { return $v; }
 function wp_parse_url( $v, $piece = -1 ) { return parse_url( $v, $piece ); }
 function rest_get_url_prefix() { return 'wp-json'; }
@@ -48,6 +50,11 @@ $allow->setAccessible( true );
 function assertion( $ok, $msg ) { if ( ! $ok ) throw new RuntimeException( $msg ); }
 if ( WP_CLI ) {
     unset( $_SERVER['REQUEST_URI'] );
+    if ( 'numeric' === $mode ) {
+        $numeric = $target->invoke(null);
+        assertion( '' === $numeric, 'Truthy CLI marker must match canonical request scope' );
+        assertion( $allow->invoke(null,'mad4b-chatgpt',$numeric), 'Numeric MCP marker must allow explicit catalog' );
+    } else {
     putenv( 'MAD4B_SCP_MCP_CLI_REQUEST' );
     $generic = $target->invoke(null);
     assertion( '__mad4b_non_mcp_cli__' === $generic, 'Unscoped CLI must be route-only' );
@@ -57,6 +64,7 @@ if ( WP_CLI ) {
     assertion( '' === $explicit, 'Explicit MCP CLI opted into full materialization' );
     assertion( $allow->invoke( null, 'mad4b-chatgpt', $explicit ), 'Opt-in MCP CLI may materialize actual server' );
     putenv( 'MAD4B_SCP_MCP_CLI_REQUEST' );
+    }
 } else {
     $_SERVER['REQUEST_URI'] = '/wp-json/wp/v2/posts';
     $other = $target->invoke(null);
