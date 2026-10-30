@@ -24,6 +24,19 @@ jobs:
         run: |
           php -l ops/company-readiness-workflow/staging-mu/241-mad4b-company-brand-readiness-hub.php
           php -l ops/company-readiness-workflow/staging-mu/242-mad4b-company-readiness-workflow.php
+      - name: Source-neutral activation Python syntax
+        run: |
+          python3 -m py_compile ops/company-readiness-workflow/design-activation/wayfa-wpml-resolve.py
+          python3 -m py_compile ops/company-readiness-workflow/design-activation/wayfa-design-activate.py
+      - name: Source-neutral activation PHP syntax
+        run: |
+          php -l ops/company-readiness-workflow/design-activation/wayfa-wpml-resolve.php
+          php -l ops/company-readiness-workflow/design-activation/wayfa-design-activate.php
+      - name: Require tenant isolation and exact plan gates
+        run: |
+          grep -q "wayfatours_production" ops/company-readiness-workflow/design-activation/wayfa-design-activate.php
+          grep -q "MAD4B_DESIGN_EXPECTED_PLAN" ops/company-readiness-workflow/design-activation/wayfa-design-activate.php
+          grep -q "source_trids_reused.*false" ops/company-readiness-workflow/design-activation/wayfa-wpml-resolve.php
       - name: No automatic tenant change or credential files
         run: |
           ! grep -E 'auto_publish[[:space:]]*=[[:space:]]*True|checkout_enabled_by_workflow[[:space:]]*:[[:space:]]*True' ops/company-readiness-workflow/orchestrate.py
