@@ -756,7 +756,16 @@ final class MAD4B_SCP_Servers {
 			$diagnostic_target = MAD4B_SCP_MCP_Request_Scope::endpoint_diagnostic_server_id();
 			if ( in_array( $diagnostic_target, self::expected_server_ids(), true ) ) return $diagnostic_target;
 		}
-		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return '';
+		// Normal WP-CLI (including plugin updates) does not invoke MAD4B MCP.
+		// Rank Math or another provider may already own mixed MCP DTO classes;
+		// advertising nine full catalogs here would validate schemas under
+		// the wrong ABI and surface false connection blockers. Keep route-only
+		// registrations; explicit MCP CLI diagnostics opt in to actual tooling.
+		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) {
+			$cli_mcp = ( defined( 'MAD4B_SCP_MCP_CLI_REQUEST' ) && true === constant( 'MAD4B_SCP_MCP_CLI_REQUEST' ) )
+				|| '1' === (string) getenv( 'MAD4B_SCP_MCP_CLI_REQUEST' );
+			return $cli_mcp ? '' : '__mad4b_non_mcp_cli__';
+		}
 
 		$route = '';
 		if ( isset( $_GET['rest_route'] ) && is_string( $_GET['rest_route'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
@@ -785,6 +794,10 @@ final class MAD4B_SCP_Servers {
 		foreach ( self::expected_server_ids() as $server_id ) {
 			if ( '/mcp/' . $server_id === $route ) return $server_id;
 		}
+		// Unrelated WordPress REST/frontend requests only need Adapter routes.
+		// They must not eagerly build every MAD4B MCP server using whichever
+		// third-party MCP class set happens to be present in this request.
+		if ( '' !== $uri || isset( $_GET['rest_route'] ) ) return '__mad4b_non_mcp_http__';
 		return '';
 	}
 

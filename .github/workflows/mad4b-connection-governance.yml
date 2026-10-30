@@ -94,6 +94,8 @@ jobs:
           python3 "$root/tests/mcp-side-channel-governance-contract.py"
           python3 "$root/tests/mcp-provider-isolation-contract.py"
           python3 "$root/tests/mcp-registration-bridge-contract.py"
+          php "$root/tests/mcp-runtime-request-isolation-runtime.php" cli
+          php "$root/tests/mcp-runtime-request-isolation-runtime.php" http
           python3 "$root/tests/mcp-runtime-conflict-guard-contract.py"
           python3 "$root/tests/audit-scale-contract.py"
           php "$root/tests/mcp-mu-recovery-boundaries-runtime.php"
@@ -383,14 +385,14 @@ jobs:
           }
           ' --path="$WP_PATH" --user=mad4b-ci-admin
 
-          # Request 1: official Adapter entrypoint + preclaimed foreign validator
-          # must classify as a mixed class set. PHP classes are not swapped in the
-          # current request; the governed 000-* MU repair is armed for next request.
+          # Request 1: foreign validator is observed but must not block normal
+          # requests or automatically arm repair. Explicit managed maintenance
+          # can separately install the canonical MU loader for next request.
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-mixed-class-first-request.php" --path="$WP_PATH" --user=mad4b-ci-admin --exec='define("MAD4B_SCP_MCP_CLI_REQUEST", true);'
 
-          # Request 2: managed 000-* executes before 900-*, verifies the exact
-          # certified hashes, pins every critical class from mcp-adapter and
-          # converges to a single canonical runtime.
+          # Request 2: explicitly installed managed MU loader pins all reviewed
+          # classes before 900-*, restoring compatible schema construction.
+          # Source observation remains telemetry rather than an admission gate.
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-mixed-class-recovered.php" --path="$WP_PATH" --user=mad4b-ci-admin --exec='define("MAD4B_SCP_MCP_CLI_REQUEST", true);'
 
           # The real admin UI obtains the bounded routing proof on the page request

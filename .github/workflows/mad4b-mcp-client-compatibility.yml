@@ -66,6 +66,8 @@ jobs:
           php "$root/tests/catalog-lifecycle-runtime.php"
           php "$root/tests/catalog-decommission-bootstrap.php"
           php "$root/tests/mcp-class-provenance-runtime.php"
+          php "$root/tests/mcp-runtime-request-isolation-runtime.php" cli
+          php "$root/tests/mcp-runtime-request-isolation-runtime.php" http
           php "$root/tests/mcp-preflight-registration-failure-runtime.php"
           python3 "$root/tests/mcp-class-provenance-contract.py"
           python3 "$root/tests/plugin-lifecycle-data-retention-contract.py"
