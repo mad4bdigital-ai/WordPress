@@ -9,6 +9,7 @@ defined('ABSPATH') || exit;
 require_once __DIR__.'/includes/class-mad4b-hub-source-reader.php';
 require_once __DIR__.'/includes/class-mad4b-hub-research-feed.php';
 require_once __DIR__.'/includes/class-mad4b-hub-canonical-store.php';
+require_once __DIR__.'/includes/class-mad4b-hub-usage-rights.php';
 require_once __DIR__.'/includes/class-mad4b-hub-control-ingestion.php';
 final class MAD4B_Content_Hub {
     const CONTRACT='mad4b.content-hub-bootstrap.v1';
