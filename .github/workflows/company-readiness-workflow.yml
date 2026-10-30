@@ -27,6 +27,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - name: Python script syntax
         run: python3 -m py_compile ops/company-readiness-workflow/orchestrate.py
       - name: Policy self-test: deny unqualified distribution
