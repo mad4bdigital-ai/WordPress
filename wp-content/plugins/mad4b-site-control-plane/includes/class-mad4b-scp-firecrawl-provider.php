@@ -3,7 +3,7 @@ if (!defined('ABSPATH')) exit;
 /** Native Control Plane Firecrawl connection: explicit admin setup and bounded probe. */
 final class MAD4B_SCP_Firecrawl_Provider {
  const OPTION = 'mad4b_firecrawl_provider_v1';
- public static function boot() { add_action('admin_post_mad4b_firecrawl_save', array(__CLASS__,'save')); }
+ public static function boot() { add_action('admin_post_mad4b_firecrawl_save', array(__CLASS__,'save')); add_action('admin_post_mad4b_firecrawl_test', array(__CLASS__,'test_connection')); }
  private static function secret_key() { return hash('sha256', wp_salt('auth').'|mad4b-firecrawl-v1', true); }
  private static function encrypt($plain) {
   if (!function_exists('openssl_encrypt')) return new WP_Error('mad4b_firecrawl_crypto_missing','OpenSSL required.');
@@ -57,6 +57,26 @@ final class MAD4B_SCP_Firecrawl_Provider {
   $url=rtrim($endpoint,'/').'/v2/scrape';
   if(!wp_http_validate_url($url))return array('ready'=>false,'reason'=>'unsafe_endpoint');
   return array('ready'=>true,'endpoint'=>$endpoint,'mode'=>$mode,'credentials_saved'=>true,'network_probe_performed'=>false,'authentication_mode'=>$mode==='self_hosted'?'basic':'bearer');
+ }
+ public static function test_connection() {
+  if(!current_user_can('manage_options'))wp_die('Forbidden',403);
+  check_admin_referer('mad4b_firecrawl_test');
+  $c=self::config();$mode=$c['mode']??'cloud';$profiles=self::profiles();$profile=$profiles[$mode]??array();
+  $endpoint=(string)($profile['endpoint']??'');$secret=self::decrypt($profile['secret_cipher']??'');
+  $state='missing';
+  if($endpoint!==''&&$secret!==''&&wp_http_validate_url($endpoint)) {
+   $headers=array('Accept'=>'application/json');
+   if($mode==='self_hosted'&&!empty($profile['username']))$headers['Authorization']='Basic '.base64_encode($profile['username'].':'.$secret);
+   elseif($mode==='cloud')$headers['Authorization']='Bearer '.$secret;
+   else $headers=array();
+   if(isset($headers['Authorization'])) {
+    $response=wp_remote_get(rtrim($endpoint,'/').'/',array('timeout'=>8,'redirection'=>0,'headers'=>$headers,'sslverify'=>true,'limit_response_size'=>2048));
+    if(is_wp_error($response))$state='network_error';
+    else {$status=(int)wp_remote_retrieve_response_code($response);$state=$status>=200&&$status<300?'reachable':($status===401||$status===403?'authentication_failed':($status===429?'rate_limited':'http_'.$status));}
+   }
+  }
+  update_option('mad4b_firecrawl_last_connection_test_v1',array('mode'=>$mode,'result'=>$state,'at'=>gmdate('c'),'user_id'=>get_current_user_id()),false);
+  wp_safe_redirect(admin_url('admin.php?page=mad4b-provider-connections&firecrawl_tested=1'));exit;
  }
  public static function render() {
   if(!current_user_can('manage_options'))return;
