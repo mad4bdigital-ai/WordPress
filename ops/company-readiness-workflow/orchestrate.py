@@ -107,11 +107,12 @@ def policy(source, tenant, catalog, health):
     stage("jet_filter_inventory", "PASS" if filter_count else "BLOCKED",
           f"published={filter_count}; live filtered-archive smoke test still required",
           "RUN_FILTER_QUERY_ID_LISTING_SMOKE")
-    approved = (not catalog.get("catalog_discovery_only")
+    approved = (source.get("canonical_content_hub_database_readback_verified") is True
+                and not catalog.get("catalog_discovery_only")
                 and catalog.get("distribution_status") == "AUTHORIZED_FOR_TENANT_PUBLICATION"
                 and all(item.get("share_state") != "candidate_only" for item in catalog.get("items",[])))
     stage("canonical_hub_ingestion", "PASS" if approved else "BLOCKED",
-          f"candidate_count={len(catalog.get('items',[]))}; candidate_only={catalog.get('catalog_discovery_only')}",
+          f"candidate_count={len(catalog.get('items',[]))}; candidate_only={catalog.get('catalog_discovery_only')}; canonical_db_readback_verified={source.get('canonical_content_hub_database_readback_verified',False)}",
           "INGEST_QUALIFY_DEDUP_CANONICAL_HUB")
     selection_ok = isinstance(selection,dict) and len(selection.get("tours",[]))>0
     stage("company_selection", "PASS" if selection_ok else "WAITING_SELECTION",
