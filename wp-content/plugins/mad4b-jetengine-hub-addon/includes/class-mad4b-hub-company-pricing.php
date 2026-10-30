@@ -104,7 +104,7 @@ final class MAD4B_Hub_Company_Pricing_V1 {
            !self::company($payload['consumer_company']??null) ||
            !self::stringValue($payload['product_type']??null) ||
            !self::positiveId($payload['source_product_id']??null) ||
-           ($payload['enabled']??null)!==true)
+           !is_bool($payload['enabled']??null))
             return self::err('policy_identity_invalid');
         $starting=$payload['starting_rule']??null;
         if($starting!==null){
@@ -134,7 +134,7 @@ final class MAD4B_Hub_Company_Pricing_V1 {
             'consumer_company'=>$payload['consumer_company'],
             'product_type'=>$payload['product_type'],
             'source_product_id'=>$payload['source_product_id'],
-            'enabled'=>true,'starting_rule'=>$starting,
+            'enabled'=>$payload['enabled'],'starting_rule'=>$starting,
             'default_rate_rule'=>$default,'rate_rules'=>$clean,
             'contract'=>self::CONTRACT);
     }
@@ -163,23 +163,36 @@ final class MAD4B_Hub_Company_Pricing_V1 {
             return self::err('upsert_shape_invalid');
         $policy=self::validate_policy($input['policy']);
         if(is_wp_error($policy))return $policy;
-        $rows=get_option(self::OPTION,array());
-        if(!is_array($rows)||count($rows)>self::LIMIT)
-            return self::err('registry_over_capacity',409);
-        $key=self::key($policy);$current=$rows[$key]??null;
-        $actual=$current['revision']??0;
-        if($input['expected_revision']!==$actual)
-            return self::err('revision_conflict',409);
-        $policy['revision']=$actual+1;
-        $policy['updated_at']=time();
-        $rows[$key]=$policy;
-        if(!update_option(self::OPTION,$rows,false))
-            return self::err('policy_save_failed',503);
-        return array('contract'=>self::CONTRACT,'policy_key'=>$key,
-           'revision'=>$policy['revision'],
-           'staging_company_pricing_policy_saved'=>true,
-           'native_prices_or_rates_changed'=>false,
-           'checkout_authorized'=>false);
+        // Atomic cross-request lock: compare-and-set revisions must not
+        // race against another company's pricing policy update.
+        global $wpdb;
+        $lock='mad4b_hub_company_price_registry_lock_v1';
+        $got=$wpdb->query($wpdb->prepare(
+          "INSERT IGNORE INTO {$wpdb->options}(option_name,option_value,autoload)
+           VALUES (%s,%s,'off')",$lock,(string)time()));
+        if($got!==1)return self::err('pricing_registry_update_busy',409);
+        try {
+            $rows=get_option(self::OPTION,array());
+            if(!is_array($rows)||count($rows)>self::LIMIT)
+                return self::err('registry_over_capacity',409);
+            $key=self::key($policy);$current=$rows[$key]??null;
+            $actual=$current['revision']??0;
+            if($input['expected_revision']!==$actual)
+                return self::err('revision_conflict',409);
+            $policy['revision']=$actual+1;
+            $policy['updated_at']=time();
+            $rows[$key]=$policy;
+            if(!update_option(self::OPTION,$rows,false))
+                return self::err('policy_save_failed',503);
+            return array('contract'=>self::CONTRACT,'policy_key'=>$key,
+                'revision'=>$policy['revision'],
+                'company_pricing_policy_saved'=>true,
+                'native_prices_or_rates_changed'=>false,
+                'checkout_authorized'=>false);
+        } finally {
+            $wpdb->delete($wpdb->options,array('option_name'=>$lock),
+                array('%s'));
+        }
     }
     private static function matches($when,$context){
         foreach($when as $key=>$expected){
