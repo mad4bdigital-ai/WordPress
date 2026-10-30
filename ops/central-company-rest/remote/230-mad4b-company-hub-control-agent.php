@@ -203,9 +203,9 @@ final class MAD4B_Company_Hub_Control_Agent_V1 {
         // No arbitrary endpoint/listing/plugin/option edits. Only an explicitly
         // delegated reference-content release grant can change.
         $option=self::GRANTS;
-        $lockName='mad4b_hubctl_lock_v1_'.substr($data['intent_id'],0,48);
-        // Atomic option-name uniqueness prevents two distinct nonces from
-        // committing the same intent at the same time.
+        $lockName='mad4b_hubctl_lock_v1_global';
+        // One global atomic lock protects the shared grant option against
+        // lost updates from two DIFFERENT intents arriving concurrently.
         global $wpdb;
         $locked=$wpdb->query($wpdb->prepare(
             "INSERT IGNORE INTO {$wpdb->options} (option_name,option_value,autoload)
