@@ -25,14 +25,12 @@ final class MAD4B_Company_Brand_Readiness_Hub {
     private static function error($code,$msg,$status=409){
         return new WP_Error($code,$msg,array('status'=>$status));
     }
-    public static function permission(){
+    public static function permission($request=null){
         if(!self::context()) return self::error('mad4b_brand_wrong_site','Control Plane host mismatch.',403);
-        if((current_user_can('mad4b_manage_company_operations') &&
-            current_user_can('mad4b_propose_company_content')) ||
-           (current_user_can('manage_options')&&current_user_can('activate_plugins')))
-            return true;
-        return self::error('mad4b_brand_company_operator_required',
-            'Master admin company operations + content proposal capability required.',403);
+        // Same company scope for REST, MCP Ability, and direct handler calls.
+        if(!class_exists('MAD4B_Company_Readiness_Governance'))
+            return self::error('mad4b_brand_company_scope_unavailable','Company scope guard unavailable.',503);
+        return MAD4B_Company_Readiness_Governance::guard($request instanceof WP_REST_Request ? $request : null);
     }
     private static function response($value){
         $r=rest_ensure_response($value);$r->header('Cache-Control','private, no-store');return $r;
@@ -42,6 +40,7 @@ final class MAD4B_Company_Brand_Readiness_Hub {
         return is_array($r)?$r:array();
     }
     private static function company($request){
+        $permit=self::permission($request);if(is_wp_error($permit))return $permit;
         $code=sanitize_key((string)$request->get_param('company'));
         if(!preg_match('/^[a-z][a-z0-9-]{2,47}$/D',$code))
             return self::error('mad4b_brand_company_code_invalid','Invalid company code.',422);
@@ -83,10 +82,14 @@ final class MAD4B_Company_Brand_Readiness_Hub {
             'permission_callback'=>array(__CLASS__,'permission')));
     }
     public static function companies(){
+        $permit=self::permission();if(is_wp_error($permit))return $permit;
         $out=array();
         foreach(self::registry() as $code=>$r){
             if(!is_array($r) || empty($r['host_binding_verified']) ||
                !wp_is_uuid((string)($r['company_site_uuid']??'')))continue;
+            $scoped=new WP_REST_Request('GET','/');
+            $scoped->set_param('company',(string)$code);
+            if(is_wp_error(self::permission($scoped)))continue;
             $out[]=array('company_code'=>$code,'site_uuid'=>$r['company_site_uuid'],
               'origin'=>$r['canonical_origin']??null,
               'native_site_profile_uuid'=>$r['native_site_profile_uuid']??null);
@@ -266,10 +269,10 @@ final class MAD4B_Company_Brand_Readiness_Hub {
         }
     }
     private static function ability_dispatch($method,$input,$path){
-        $permit=self::permission();
-        if(is_wp_error($permit))return $permit;
         $req=new WP_REST_Request($method,'/mad4b/v1/company-brand-readiness/'.$path);
         foreach($input as $key=>$value)$req->set_param($key,$value);
+        $permit=self::permission($req);
+        if(is_wp_error($permit))return $permit;
         if($method==='POST'){
             $req->set_header('Content-Type','application/json');
             $req->set_body(wp_json_encode($input));
