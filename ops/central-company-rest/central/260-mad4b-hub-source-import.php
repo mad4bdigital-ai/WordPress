@@ -200,6 +200,12 @@ final class MAD4B_Hub_Source_Import_V1 {
             return self::failure('cross_ssh_cli_only',403);
         }
         if(!class_exists('MAD4B_Hub_Auto_Distribute_V1'))return self::failure('policy_missing');
+        // Bind the SSH operation to Company Controls' canonical company registry.
+        if(!class_exists('MAD4B_Central_Company_REST_V1') ||
+            !isset(MAD4B_Central_Company_REST_V1::COMPANIES[self::SOURCE]) ||
+            (MAD4B_Central_Company_REST_V1::COMPANIES[self::SOURCE]['host']??'')!==
+                'tourism.almallahgroup-mg.com')
+            return self::failure('company_controls_source_unregistered',403);
         $policy=MAD4B_Hub_Auto_Distribute_V1::settings();
         if(($policy['source_transport']??'')!=='wp_cli_cross_ssh' ||
             ($policy['source_mode']??'')!=='import_to_hub' ||
@@ -369,6 +375,11 @@ final class MAD4B_Hub_Source_Import_V1 {
                 $prior=get_post($id);
                 if(!$prior || $prior->post_type!==self::CPT || $prior->post_status!=='private')
                     throw new RuntimeException('existing_not_private');
+                $priorProvider=(string)get_post_meta($id,'_mad4b_hub_import_provider_key',true);
+                $priorDataset=(string)get_post_meta($id,'_mad4b_hub_import_dataset_key',true);
+                if(($priorProvider!=='' && $priorProvider!=='tourism_wp') ||
+                   ($priorDataset!=='' && $priorDataset!=='tourism_main'))
+                    throw new RuntimeException('source_provider_identity_collision');
                 $oldTrid=(int)get_post_meta($id,'_mad4b_hub_import_translation_trid',true);
                 if($oldTrid>0) {
                     // A legacy REST row must never erase enriched JetEngine text while
