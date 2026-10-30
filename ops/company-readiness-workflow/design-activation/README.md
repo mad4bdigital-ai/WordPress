@@ -45,3 +45,32 @@ python3 /opt/mad4b-company-provisioning/bin/company-readiness-workflow --refresh
 \`\`\`
 
 All steps are scoped to a known existing tenant, not a generic WordPress mutator. The current PR is source preservation, not proof of GitHub governance merge/release. Do not bypass failing checks or reinterpret a live proof as a certified release.
+
+## Schema-first automatic activation (supersedes the initial 15-template checkpoint)
+
+After confirming **exact live row-level structural parity** on Control Plane Staging and Wayfatours Production, the next mode does not reject valid Query IDs, JetEngine dynamic tags or tenant-local configuration simply because they are dynamic.
+
+- `jet_post_types`: **307/307**, exact row SHA-256 parity.
+- `jet_taxonomies`: **34/34**, exact row SHA-256 parity.
+- Active registration was checked for `tours-and-activities`, `properties`, `transportations`, Elementor and JetEngine.
+- `schema-auto` published an additional **203** Elementor templates: 81 sections, 64 containers, 54 non-auto-trigger popups and 4 archives without conditions. Together with the first 15 and the tenant Kit, total **219 published**; **252 still Draft**.
+- A dedicated schema-backed JetEngine design autoload admitted **204** of 330 originally published listings. **128** imported JetEngine records remain Draft, including the two originally Draft records. The importer created **332 tenant WPML rows** in **83** tenant-native translation groups.
+- Re-run: both auto engines reported **0 newly eligible** and the Jet WPML resolver reported **0 missing links**.
+- `resolve-diff` automatically launches the secondary resolver for actual schema, provider, brand, media, page-link or Theme Builder condition differences. Such differences produce specific staged reasons; no guessed media URLs or cross-tenant credentials.
+- Remaining conditions/Theme Builder bindings need a unique company-compatible selector and runtime/mobile readback. Publishing an archive without a display condition does not assign that archive automatically.
+- All source-backed scripts and the policy are committed into PR #655, which is **still Draft/unmerged**. The on-VPS live deployment is not a GitHub merge or production release certificate.
+
+### Commands
+
+```bash
+python3 /opt/mad4b-company-provisioning/bin/wayfa-schema-compatibility.py --probe
+python3 /opt/mad4b-company-provisioning/bin/wayfa-design-activate.py --mode schema-auto --plan
+python3 /opt/mad4b-company-provisioning/bin/wayfa-jet-config-autoload.py --plan
+python3 /opt/mad4b-company-provisioning/bin/wayfa-design-activate.py --mode resolve-diff
+# Authorized tenant provisioning stage only, not Cron:
+python3 /opt/mad4b-company-provisioning/bin/wayfa-design-activate.py --mode schema-auto --apply
+python3 /opt/mad4b-company-provisioning/bin/wayfa-jet-config-autoload.py --apply
+python3 /opt/mad4b-company-provisioning/bin/company-readiness-workflow --refresh
+```
+
+The state collector runs every ten minutes but is **read-only on the Production tenant**. Auto-apply runs only as an explicit bounded provisioning/compatibility action after exact source/tenant checks and protected backup.
