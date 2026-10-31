@@ -291,13 +291,13 @@ class ResolverTests(unittest.TestCase):
             with patch.dict(r.ADAPTERS,{name:forbidden for name in r.DOMAINS}):
                 with patch.dict(r.ADAPTERS,{
                     "central_source":lambda t,s:r.result("blocked_dependency","source","commit_changed"),
-                    "central_authority":forbidden,
+                    "central_authority":lambda t,s:r.result("review_required","authority","subject_conflict"),
                     "central_execution":lambda t,s:r.result("verified","host","original_scope_verified")}):
                     output=r.reconcile(self.con,event["event_id"],scoped)
         self.assertEqual(output["domains"]["central_execution"],"verified")
         self.assertEqual(output["domains"]["full_authority"],"not_applicable")
         self.assertEqual(output["domains"]["transport"],"not_applicable")
-        self.assertEqual(output["domains"]["central_authority"],"blocked_dependency")
+        self.assertEqual(output["domains"]["central_authority"],"review_required")
         self.assertFalse(output["production_mutation"])
 
 if __name__=="__main__":
