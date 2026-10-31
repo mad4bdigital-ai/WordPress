@@ -4,7 +4,7 @@ Version: 0.1.0-staging. This is an **additive, non-authorizing control-plane coo
 
 ## Roles
 
-- **Trigger:** WordPress post create/update, taxonomy edit, image add, image ALT update, manual authenticated request, or trusted `mad4b_lifecycle_event` action.
+- **Trigger:** WordPress post create/update, taxonomy edit, image add, image ALT update, Rank Math SEO Meta change, manual authenticated request, or trusted `mad4b_lifecycle_event` action.
 - **Dynamic resolution:** Reads registered WordPress Abilities and canonical provider certification. Resolves a ContentJob's brand from the existing authoritative job when supplied. It does not invent owner or commercial authority.
 - **Event record:** An immutable deterministic event ID built from site + goal + target + job + event source revision. Uses a durable unique WordPress option and replay returns the existing identity.
 - **States:** `RECOVERING` during diagnostic retries, `BLOCKED_AUTHORITY` for missing grants/certification, `PARTIAL` for incomplete independent capability resolution, `READY` for resolved registered prerequisites. `VERIFIED` is **reserved for future native provider readback receipts**, never asserted by a capability discovery.
