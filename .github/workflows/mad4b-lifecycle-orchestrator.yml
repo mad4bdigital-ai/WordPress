@@ -38,4 +38,5 @@ jobs:
           find "$ROOT" -type f -name '*.php' -print0 | xargs -0 -n1 php -l
           php -l wp-content/plugins/mad4b-company-portfolio-manager/mad4b-company-portfolio-manager.php
           php "$ROOT/tests/lifecycle-source-contract.php"
+          php wp-content/plugins/mad4b-company-portfolio-manager/tests-central-admin-proxy-source.php
           echo 'WP-CLI live fixtures are not run on GitHub Actions; Staging acceptance required.'
