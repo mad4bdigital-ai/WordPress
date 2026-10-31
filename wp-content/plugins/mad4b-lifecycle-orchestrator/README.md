@@ -48,3 +48,6 @@ Manual event input: `goal`, `target_kind`, `target_id`, `event_type`, `event_key
 - REST context: `GET /wp-json/mad4b/v1/central-admin/company-representation?company_code=wayfatours`.
 - REST request: `POST /wp-json/mad4b/v1/central-admin/company-representation`, using a valid WordPress REST nonce and the exact current binding SHA. Input: `company_code`, `operation`, `reason`, `event_key`, `expected_binding_sha256`.
 - The existing native provider's write and approval gates still apply. No arbitrary execution dispatch and no owner impersonation.
+
+## Unified Governed Lifecycle Policy v1 (0.3.0-staging)
+See UNIFIED-GOVERNED-LIFECYCLE-POLICY.md. Dynamic goal-scoped dependency graph, protected admin plan, read-only Ability, safe error classification. The original Provider retains all native write authority.
