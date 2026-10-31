@@ -1,0 +1,39 @@
+name: Tour Mobile Card and Company Policies
+
+on:
+  pull_request:
+    paths:
+      - "wp-content/mu-plugins/mad4b-tour-country-mobile-card.php"
+      - "wp-content/mu-plugins/mad4b-company-policy-library.php"
+      - "tests/tour-country-mobile-card/**"
+      - "tests/company-policy-library/**"
+      - "docs/commerce/company-policy-jetengine-options-and-tour-mobile-card-v1.md"
+      - ".github/workflows/tour-country-policy-governance.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-card-company-policies:
+    name: Mobile country card + JetEngine policy contract (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ["7.4", "8.3"]
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: PHP lint
+        run: |
+          php -l wp-content/mu-plugins/mad4b-tour-country-mobile-card.php
+          php -l wp-content/mu-plugins/mad4b-company-policy-library.php
+      - name: CSS only on single-tour phone country cards
+        run: php tests/tour-country-mobile-card/test-tour-country-mobile-card.php
+      - name: Company policy field/source/locale/approval contract
+        run: php tests/company-policy-library/test-company-policy-library.php
