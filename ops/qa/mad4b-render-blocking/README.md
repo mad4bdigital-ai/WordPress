@@ -1,0 +1,9 @@
+# MAD4B live mobile CSS regression (Staging, 2026-10-31)
+
+PageSpeed screenshot flags Ultimate Addons for Elementor comprehensive CSS as render blocking. 751,778 bytes uncompressed / 84,262 bytes gzip. Origin HTTP transfer about 16-19ms, but Lighthouse critical-path mobile savings can be ~2.8s.
+
+The fix preserves the plugin and stylesheet. It changes UAEL CSS to media=print onload=all with noscript fallback only on the source and WPML translated homepages. All other pages keep the stylesheet as blocking when required. The English homepage includes one UAEL gallery wrapper from template 27219 but the element currently has zero height and zero images; Arabic has no UAEL widget. Egypt destination has a real UAEL infobox height 248px; styles remain untouched there. The live browser verified CSS eventually applies and the no-JS fallback is present, header remains 96px and there is no mobile overflow.
+
+A bounded, read-only Chromium probe checks mobile CSS on all six home languages and Egypt destination. It records initial HTML media attributes and encoded resource bytes, plus observed UAEL widgets. High alerts for blocking CSS >=64KiB flow to the existing MAD4B Content Readiness external issue ledger, company dashboard and authenticated read-only MCP ability. Stale probes raise a separate alert. The staging runner is protected by host identity and cron flock twice per hour.
+
+Evidence: first live 7-page scan 7/7 HTTP 200. Homepages have no blocking UAEL CSS. Egypt destination still shows one High perf_rbcss_daa3ffea4aa4 needing later per-widget CSS optimization. This is not a claim that PageSpeed performance scores or LCP have been remeasured independently.

@@ -1,0 +1,4 @@
+# Staging-only browser CSS regression inspection; no Production site access.
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+8,38 * * * * root /usr/bin/flock -n /run/lock/mad4b-live-css-render-blocking.lock /usr/bin/timeout 95 /usr/bin/python3 /opt/commerce-components/qa/mad4b-live-css-render-blocking.py 2>&1 | /usr/bin/logger -t mad4b-live-css-performance
