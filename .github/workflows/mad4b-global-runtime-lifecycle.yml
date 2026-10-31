@@ -3,6 +3,10 @@ on:
   pull_request:
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-global-runtime-lifecycle.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-installed-artifact.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-compatibility-certification.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/provider-capability-contracts.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-installed-artifact-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-admission.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-backlog.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-work-queue.php'
@@ -18,6 +22,10 @@ on:
     branches: [master]
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-global-runtime-lifecycle.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-installed-artifact.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-compatibility-certification.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/provider-capability-contracts.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-installed-artifact-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-admission.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-backlog.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-work-queue.php'
@@ -49,6 +57,10 @@ jobs:
           php -l "$ROOT/includes/class-mad4b-scp-capability-dependency-planner.php"
           php "$ROOT/tests/global-runtime-lifecycle-contract.php"
           php "$ROOT/tests/global-runtime-native-lanes-contract.php"
+          php -l "$ROOT/includes/class-mad4b-scp-provider-installed-artifact.php"
+          php -l "$ROOT/includes/class-mad4b-scp-provider-compatibility-certification.php"
+          php "$ROOT/tests/provider-installed-artifact-contract.php"
+          php -r 'json_decode(file_get_contents("wp-content/plugins/mad4b-site-control-plane/config/provider-capability-contracts.json"), true, 512, JSON_THROW_ON_ERROR);'
           for file in scheduler-admission scheduler-backlog remote-work-queue adaptive-operation-router recovery-route-resolver; do
             php -l "$ROOT/includes/class-mad4b-scp-$file.php"
           done
