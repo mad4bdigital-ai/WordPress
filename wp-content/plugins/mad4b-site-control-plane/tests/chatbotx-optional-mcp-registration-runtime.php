@@ -23,7 +23,7 @@ abstract class MAD4B_SCP_Adapter_Base {
     abstract public function ability_names();
     abstract public function register_abilities();
     protected function schema( $properties, $required = array() ) {
-        return array( 'type' => 'object', 'properties' => $properties, 'required' => $required );
+        return array( 'type' => 'object', 'properties' => $properties, 'required' => $required, 'additionalProperties' => false );
     }
     protected function add_ability( $name, ...$details ) {
         $GLOBALS['cmb_registered_names'][] = $name;
