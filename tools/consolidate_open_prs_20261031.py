@@ -84,9 +84,11 @@ def resolve_exact_pr677_conflict(item_number, conflicts):
     old = "                $localization=preg_match('/^loc_(?:layout|text|missing|h1|brand|style)_(?:ar|de|en|es|fr|it)$/D',$code) &&"
     incoming = "                $localization=preg_match('/^loc_(?:layout|text|missing|h1|brand|binding|style)_(?:ar|de|en|es|fr|it)$/D',$code) &&"
     conflict = chr(10).join(["<<<<<<< HEAD", old, "=======", incoming, ">>>>>>> origin/pr/677"])
-    if source.count(conflict) != 1 or source.count("<<<<<<<") != 1:
+    alternatives = [conflict, conflict.replace("origin/pr/677", "refs/remotes/origin/pr/677")]
+    matches = [value for value in alternatives if source.count(value) == 1]
+    if len(matches) != 1 or source.count("<<<<<<<") != 1:
         return False
-    Path(path).write_text(source.replace(conflict, incoming), encoding="utf-8")
+    Path(path).write_text(source.replace(matches[0], incoming), encoding="utf-8")
     subprocess.run(["git", "add", path], check=True)
     return True
 
