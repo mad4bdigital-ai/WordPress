@@ -1,0 +1,35 @@
+name: MAD4B Central Staging Full Authority Contract
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-unified-full-authority/**'
+      - '.github/workflows/mad4b-central-staging-full-authority-contract.yml'
+  push:
+    paths:
+      - 'wp-content/plugins/mad4b-unified-full-authority/**'
+      - '.github/workflows/mad4b-central-staging-full-authority-contract.yml'
+permissions:
+  contents: read
+concurrency:
+  group: mad4b-central-staging-full-authority-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+jobs:
+  central-staging:
+    runs-on: ubuntu-latest
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: Web bootstrap and central staging contract
+        run: |
+          set -euo pipefail
+          ROOT=wp-content/plugins/mad4b-unified-full-authority
+          php -l "$ROOT/mad4b-unified-full-authority.php"
+          php -l "$ROOT/tests/central-staging-web-bootstrap-contract.php"
+          php "$ROOT/tests/central-staging-web-bootstrap-contract.php"
