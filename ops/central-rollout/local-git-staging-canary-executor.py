@@ -97,7 +97,7 @@ def build_artifact() -> tuple[str, Path, str, str]:
                  "--prefix=" + PLUGIN + "/", "-o", str(temp_zip),
                  sha, PLUGIN + ".php"])
     with zipfile.ZipFile(temp_zip) as z:
-        names = z.namelist()
+        names = [n for n in z.namelist() if not n.endswith("/")]
         if names != [MAIN]:
             raise RuntimeError("Unexpected archive entries")
         info = z.getinfo(MAIN)
@@ -164,11 +164,7 @@ def sign_verified_receipt(commit: str, archive_sha: str, manifest_sha: str,
     signature = subprocess.run(["openssl", "dgst", "-sha256", "-sign", str(PRIVATE_KEY)],
                                input=digest, stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE, timeout=20, check=True).stdout
-    result = subprocess.run(["openssl", "dgst", "-sha256", "-verify", str(PUBLIC_KEY),
-                             "-signature", "/dev/stdin"], input=signature,
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    # /dev/stdin cannot serve both data and signature; use a separate temp
-    # signature file and verify exactly the canonical bytes.
+    # Verify the exact canonical bytes via an isolated temporary signature.
     import tempfile
     with tempfile.TemporaryDirectory(prefix="mad4b-canary-sign-") as tmp:
         sp = Path(tmp) / "signature"
