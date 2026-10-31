@@ -16,6 +16,7 @@ namespace {
     define( 'WP_PLUGIN_DIR', __DIR__ . '/no-plugin-install/' );
     define( 'MAD4B_SCP_DIR', dirname( __DIR__ ) . '/' );
     $GLOBALS['adapter_test_version'] = '0.7.1';
+    function trailingslashit( $value ) { return rtrim( $value, '/\\' ) . '/'; }
     function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', $value ) ); }
     function get_plugins() {
         return array( 'mcp-adapter/mcp-adapter.php' => array( 'Version' => $GLOBALS['adapter_test_version'] ) );
