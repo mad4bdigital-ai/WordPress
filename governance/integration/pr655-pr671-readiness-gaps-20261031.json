@@ -1,0 +1,3106 @@
+{
+  "contract": "mad4b.integration-coverage-gap-audit.v1",
+  "authorizing": false,
+  "production_authorized": false,
+  "decision": "NO_GO",
+  "candidate_head_sha": "ea52ec340e5d5be0a1e4bad66f571a4abf1e47cb",
+  "baseline_sha": "b8f2e0a60fa45e28b49643f1eae6f73570c2fee8",
+  "counts": {
+    "gaps": 237,
+    "by_risk": {
+      "P0": 193,
+      "P1": 44
+    },
+    "by_kind": {
+      "ability": 10,
+      "cron": 1,
+      "rest": 24,
+      "service": 62,
+      "behavior": 140
+    },
+    "by_reason": {
+      "reviewed_coverage_missing": 97,
+      "exact_source_change_review_missing": 140
+    }
+  },
+  "gaps": [
+    {
+      "id": "ability:mad4b/central-company-rollout-plan",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-company-rollout.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "ability:mad4b/central-native-operator-handoff-plan",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-operator-handoff.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "ability:mad4b/content-apply-bundle",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-adapter-base.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "ability:mad4b/content-orchestration-plan",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-intent-policy.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "ability:mad4b/content-workflow-modes",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "ability:mad4b/firecrawl-discovery-preflight",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-firecrawl-discovery-preflight.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "ability:mad4b/native-capability-registry",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "ability:mad4b/plugin-remote-update-apply",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-update-recovery.php",
+      "risk": "P0",
+      "controls": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "ability:mad4b/plugin-remote-update-plan",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-update-recovery.php",
+      "risk": "P0",
+      "controls": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "ability:mad4b/write-append-transport-boundary",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "cron:hourly",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-auto-reconciliation.php",
+      "risk": "P1",
+      "controls": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "rest:mad4b/v1/admin/company-communication",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-communication.php",
+      "risk": "P1",
+      "controls": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "rest:mad4b/v1/admin/company-communication/preview",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-communication.php",
+      "risk": "P1",
+      "controls": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "rest:mad4b/v1/admin/company-communication/team",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-communication-team.php",
+      "risk": "P1",
+      "controls": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "rest:mad4b/v1/admin/company-communication/users",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-communication-team.php",
+      "risk": "P1",
+      "controls": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "rest:mad4b/v1/admin/company-sender-policy",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-sender-policy.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "rest:mad4b/v1/admin/company-sender-policy/preview",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-sender-policy.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "rest:mad4b/v1/admin/company-team",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-master-admin.php",
+      "risk": "P1",
+      "controls": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "rest:mad4b/v1/admin/company-team/assign-task",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-master-admin.php",
+      "risk": "P1",
+      "controls": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "rest:mad4b/v1/admin/company-team/create",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-master-admin.php",
+      "risk": "P1",
+      "controls": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "rest:mad4b/v1/admin/company-team/translation-manager",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-master-admin.php",
+      "risk": "P1",
+      "controls": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "rest:mad4b/v1/brand-staging-trial/",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-brand-trial.php",
+      "risk": "P1",
+      "controls": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "rest:mad4b/v1/brand-staging-trial/consumer-checks",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-context-fixtures.php",
+      "risk": "P1",
+      "controls": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "rest:mad4b/v1/brand-staging-trial/draft-fixtures",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-context-fixtures.php",
+      "risk": "P1",
+      "controls": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "rest:mad4b/v1/brand-staging-trial/fixtures",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-context-fixtures.php",
+      "risk": "P1",
+      "controls": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "rest:mad4b/v1/central-release/(?P<release_sha256>[a-f0-9]{64})",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-release-registry.php",
+      "risk": "P0",
+      "controls": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "rest:mad4b/v1/company-migration-decisions/action",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-migration-decisions.php",
+      "risk": "P0",
+      "controls": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "rest:mad4b/v1/company-migration-decisions/plan",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-migration-decisions.php",
+      "risk": "P0",
+      "controls": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "rest:mad4b/v1/company-release/status",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-release-status.php",
+      "risk": "P0",
+      "controls": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "rest:mad4b/v1/company-tasks/(?P<id>\\\\d+)/handoff",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-task-handoff.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "rest:mad4b/v1/company-tasks/(?P<id>\\\\d+)/handoff/",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-task-handoff.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "rest:mad4b/v1/company-tasks/handoffs",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-task-handoff.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "rest:mad4b/v1/company-tenant-migration/commit",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-tenant-migration.php",
+      "risk": "P0",
+      "controls": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "rest:mad4b/v1/company-tenant-migration/plan",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-tenant-migration.php",
+      "risk": "P0",
+      "controls": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "rest:mad4b/v1/core-ai/usage",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-ai-governance.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-dfsb-adapter.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-dfsb-adapter.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-local-brand-draft-adapter.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-local-brand-draft-adapter.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-interaction-ui.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-interaction-ui.php",
+      "risk": "P1",
+      "controls": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-task-routing.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-task-routing.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-auto-reconciliation.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-auto-reconciliation.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-reviews-bridge.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-reviews-bridge.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-background-agent-admission.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-background-agent-admission.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-background-agent-dispatch.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-background-agent-dispatch.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-company-rollout.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-company-rollout.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-operator-handoff.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-operator-handoff.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-release-registry.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-release-registry.php",
+      "risk": "P0",
+      "controls": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli-execution-context.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli-execution-context.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli-readiness.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli-readiness.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-communication-team.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-communication-team.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-communication.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-communication.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-domain-cloudflare.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-domain-cloudflare.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-email-routing.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-email-routing.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-master-admin.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-master-admin.php",
+      "risk": "P1",
+      "controls": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-migration-decisions.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-migration-decisions.php",
+      "risk": "P0",
+      "controls": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-release-status.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-release-status.php",
+      "risk": "P0",
+      "controls": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-sender-policy.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-sender-policy.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-task-handoff.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-task-handoff.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-tenant-migration.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-tenant-migration.php",
+      "risk": "P0",
+      "controls": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-completeness.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-completeness.php",
+      "risk": "P1",
+      "controls": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "risk": "P1",
+      "controls": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-workflow-modes.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-workflow-modes.php",
+      "risk": "P1",
+      "controls": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-ai-governance.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-ai-governance.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-connector-vault.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-connector-vault.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-delegation-mode.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-delegation-mode.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-authority.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-authority.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-firecrawl-discovery-preflight.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-firecrawl-discovery-preflight.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-firecrawl-provider.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-firecrawl-provider.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-global-runtime-lifecycle.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-global-runtime-lifecycle.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-hub-jetengine-consumer-governance.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-hub-jetengine-consumer-governance.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-ai-governance.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-ai-governance.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-dfsb-trust.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-dfsb-trust.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-ollama-ability.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-ollama-ability.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-transport-policy.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-transport-policy.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-migration-decision-catalog.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-migration-decision-catalog.php",
+      "risk": "P0",
+      "controls": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mutation-principal.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mutation-principal.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-ability-trust.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-ability-trust.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-settings-locator.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-settings-locator.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-auto-qualification.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-auto-qualification.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-installed-artifact.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-installed-artifact.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-event-automation.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-event-automation.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-integrations.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-integrations.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-preactivation.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-preactivation.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-scopes.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-scopes.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-team-preparation.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-team-preparation.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-workflow-options.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-workflow-options.php",
+      "risk": "P1",
+      "controls": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-groups.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-groups.php",
+      "risk": "P0",
+      "controls": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-task-bridge.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-task-bridge.php",
+      "risk": "P0",
+      "controls": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema-status-projection.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema-status-projection.php",
+      "risk": "P0",
+      "controls": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-lifecycle-rest.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-lifecycle-rest.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-brand-trial.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-brand-trial.php",
+      "risk": "P1",
+      "controls": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-context-fixtures.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-context-fixtures.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-fixture-drafts.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-fixture-drafts.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-workflow-runtime.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-workflow-runtime.php",
+      "risk": "P1",
+      "controls": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tourism-company-launch.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tourism-company-launch.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tourism-profile-manifest.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tourism-profile-manifest.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-gate-funnel.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-gate-funnel.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-operation-authority.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-operation-authority.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "reviewed_coverage_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/config/adapter-registration-policy.json",
+      "source": "wp-content/plugins/mad4b-site-control-plane/config/adapter-registration-policy.json",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/config/central-staging-source.json",
+      "source": "wp-content/plugins/mad4b-site-control-plane/config/central-staging-source.json",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/config/certified-providers.json",
+      "source": "wp-content/plugins/mad4b-site-control-plane/config/certified-providers.json",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/config/evidence/woocommerce-11.2.1-lab-package.json",
+      "source": "wp-content/plugins/mad4b-site-control-plane/config/evidence/woocommerce-11.2.1-lab-package.json",
+      "risk": "P0",
+      "controls": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/config/provider-capability-contracts.json",
+      "source": "wp-content/plugins/mad4b-site-control-plane/config/provider-capability-contracts.json",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/config/runtime-release-policy.json",
+      "source": "wp-content/plugins/mad4b-site-control-plane/config/runtime-release-policy.json",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/config/semantic-content-field-contracts.json",
+      "source": "wp-content/plugins/mad4b-site-control-plane/config/semantic-content-field-contracts.json",
+      "risk": "P1",
+      "controls": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/config/skill-provider-catalog.json",
+      "source": "wp-content/plugins/mad4b-site-control-plane/config/skill-provider-catalog.json",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/config/skill-seed-manifest.json",
+      "source": "wp-content/plugins/mad4b-site-control-plane/config/skill-seed-manifest.json",
+      "risk": "P1",
+      "controls": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/config/user-role-governance-contract.json",
+      "source": "wp-content/plugins/mad4b-site-control-plane/config/user-role-governance-contract.json",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-adapter-base.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-adapter-base.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-context-adapter.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-context-adapter.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-dfsb-adapter.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-dfsb-adapter.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-dynamic-content-adapter.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-dynamic-content-adapter.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-local-brand-draft-adapter.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-local-brand-draft-adapter.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-skills-adapter.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-skills-adapter.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-interaction-broker.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-interaction-broker.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-interaction-ui.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-interaction-ui.php",
+      "risk": "P1",
+      "controls": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-operation-router.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-operation-router.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-navigation-manifest.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-navigation-manifest.php",
+      "risk": "P1",
+      "controls": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-only-early-auth-guard.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-only-early-auth-guard.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-task-routing.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-task-routing.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-application-password-agent-bridge.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-application-password-agent-bridge.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-artifacts.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-artifacts.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-auto-reconciliation.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-auto-reconciliation.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-reviews-bridge.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-reviews-bridge.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-background-agent-admission.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-background-agent-admission.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-background-agent-dispatch.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-background-agent-dispatch.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-builder.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-builder.php",
+      "risk": "P1",
+      "controls": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-dependency-planner.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-dependency-planner.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-company-rollout.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-company-rollout.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-operator-handoff.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-operator-handoff.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-release-registry.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-release-registry.php",
+      "risk": "P0",
+      "controls": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli-execution-context.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli-execution-context.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli-readiness.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli-readiness.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-communication-team.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-communication-team.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-communication.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-communication.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-domain-cloudflare.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-domain-cloudflare.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-email-routing.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-email-routing.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-master-admin.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-master-admin.php",
+      "risk": "P1",
+      "controls": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-migration-decisions.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-migration-decisions.php",
+      "risk": "P0",
+      "controls": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-readiness-governance.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-readiness-governance.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-release-status.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-release-status.php",
+      "risk": "P0",
+      "controls": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-sender-policy.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-sender-policy.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-task-handoff.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-task-handoff.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-tenant-migration.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-tenant-migration.php",
+      "risk": "P0",
+      "controls": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-connection-status.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-connection-status.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-completeness.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-completeness.php",
+      "risk": "P1",
+      "controls": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-intelligence-pipeline.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-intelligence-pipeline.php",
+      "risk": "P1",
+      "controls": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php",
+      "risk": "P1",
+      "controls": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "risk": "P1",
+      "controls": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-workflow-modes.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-workflow-modes.php",
+      "risk": "P1",
+      "controls": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-preflight.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-preflight.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-ai-governance.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-ai-governance.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-connector-vault.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-connector-vault.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cross-plugin-deployment.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cross-plugin-deployment.php",
+      "risk": "P0",
+      "controls": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cross-plugin-lifecycle.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cross-plugin-lifecycle.php",
+      "risk": "P0",
+      "controls": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-delegation-mode.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-delegation-mode.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dependency-manager.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dependency-manager.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-authority.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-authority.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-enrollment-dispatch.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-enrollment-dispatch.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-authority.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-authority.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-external-media-ingest.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-external-media-ingest.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-firecrawl-discovery-preflight.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-firecrawl-discovery-preflight.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-firecrawl-provider.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-firecrawl-provider.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-full-staging-authority.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-full-staging-authority.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-global-runtime-lifecycle.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-global-runtime-lifecycle.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-hub-jetengine-consumer-governance.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-hub-jetengine-consumer-governance.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-ai-governance.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-ai-governance.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-client-admin.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-client-admin.php",
+      "risk": "P1",
+      "controls": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-dfsb-trust.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-dfsb-trust.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-ollama-ability.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-ollama-ability.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-transport-policy.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-transport-policy.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-market-content-exchange.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-market-content-exchange.php",
+      "risk": "P1",
+      "controls": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-market-profiles.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-market-profiles.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-catalog-diagnostics.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-catalog-diagnostics.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-class-provenance.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-class-provenance.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-peer-governance.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-peer-governance.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-request-scope.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-request-scope.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-runtime-conflict-guard.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-runtime-conflict-guard.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-migration-decision-catalog.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-migration-decision-catalog.php",
+      "risk": "P0",
+      "controls": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mutation-principal.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mutation-principal.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-ability-trust.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-ability-trust.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-general-settings-contract.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-general-settings-contract.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-settings-locator.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-settings-locator.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-subject-user-bridge.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-subject-user-bridge.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operational-remediation.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operational-remediation.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-grant-convergence.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-grant-convergence.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-journeys.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-journeys.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-transaction.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-transaction.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-update-recovery.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-update-recovery.php",
+      "risk": "P0",
+      "controls": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-auto-qualification.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-auto-qualification.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-compatibility-certification.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-compatibility-certification.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-connections-admin-ui.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-connections-admin-ui.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-installed-artifact.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-installed-artifact.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-setup-coverage.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-setup-coverage.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-transport-eligibility.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-transport-eligibility.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-event-automation.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-event-automation.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-integrations.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-integrations.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-preactivation.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-preactivation.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-scopes.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-scopes.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-team-preparation.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-team-preparation.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-workflow-options.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-workflow-options.php",
+      "risk": "P1",
+      "controls": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-reconnect-hardening.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-reconnect-hardening.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-recovery-attempt-budget.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-recovery-attempt-budget.php",
+      "risk": "P0",
+      "controls": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-recovery-route-resolver.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-recovery-route-resolver.php",
+      "risk": "P0",
+      "controls": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-work-queue.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-work-queue.php",
+      "risk": "P1",
+      "controls": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-groups.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-groups.php",
+      "risk": "P0",
+      "controls": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-intelligence.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-intelligence.php",
+      "risk": "P0",
+      "controls": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-task-bridge.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-task-bridge.php",
+      "risk": "P0",
+      "controls": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-restore-epoch.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-restore-epoch.php",
+      "risk": "P0",
+      "controls": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-reversible-adapter-mutations.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-reversible-adapter-mutations.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-obstacle-resolution.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-obstacle-resolution.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-release-set.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-release-set.php",
+      "risk": "P0",
+      "controls": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-admission.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-admission.php",
+      "risk": "P1",
+      "controls": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-backlog.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-backlog.php",
+      "risk": "P1",
+      "controls": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema-status-projection.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema-status-projection.php",
+      "risk": "P0",
+      "controls": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php",
+      "risk": "P0",
+      "controls": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-lifecycle-rest.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-lifecycle-rest.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile-admin.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile-admin.php",
+      "risk": "P1",
+      "controls": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-abilities.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-abilities.php",
+      "risk": "P1",
+      "controls": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-seeder.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-seeder.php",
+      "risk": "P1",
+      "controls": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skills-admin-ui.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skills-admin-ui.php",
+      "risk": "P1",
+      "controls": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-brand-trial.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-brand-trial.php",
+      "risk": "P1",
+      "controls": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-context-fixtures.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-context-fixtures.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-fixture-drafts.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-fixture-drafts.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-source-selector.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-source-selector.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-workflow-runtime.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-workflow-runtime.php",
+      "risk": "P1",
+      "controls": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tourism-company-launch.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tourism-company-launch.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tourism-profile-manifest.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tourism-profile-manifest.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-gate-funnel.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-gate-funnel.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-operation-authority.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-operation-authority.php",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    },
+    {
+      "id": "behavior:wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-provider-connections.php",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-provider-connections.php",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "reasons": [
+        "exact_source_change_review_missing"
+      ]
+    }
+  ]
+}
