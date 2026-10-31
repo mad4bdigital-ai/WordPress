@@ -43,6 +43,9 @@ for item in ordered:
     if subprocess.run(["git", "merge-base", "--is-ancestor", ref, "HEAD"]).returncode == 0:
         status, conflicts = "already_included", []
         diagnostic = ""
+    elif subprocess.run(["git", "merge-base", "HEAD", ref], capture_output=True).returncode != 0:
+        status, conflicts = "unrelated_history", []
+        diagnostic = "No common Git ancestor; manual source-intake review required"
     else:
         result = subprocess.run(["git", "merge", "--no-commit", "--no-ff", "--no-edit", ref],
                                 text=True, capture_output=True, timeout=100)
