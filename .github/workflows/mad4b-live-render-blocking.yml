@@ -6,6 +6,9 @@ on:
       - 'wp-content/mu-plugins/308-mad4b-live-render-blocking-monitor.php'
       - 'wp-content/mu-plugins/309-mad4b-astra-local-cairo.php'
       - 'wp-content/mu-plugins/310-mad4b-city-slider-lcp-preload.php'
+      - 'wp-content/mu-plugins/assets/mad4b-chosen-crawlable.js'
+      - 'wp-content/mu-plugins/321-mad4b-public-catalog-first-render.php'
+      - '.well-known/ard.json'
       - 'wp-content/mu-plugins/company-accessibility-contract.php'
       - 'wp-content/mu-plugins/assets/accessibility-swiper.js'
       - 'wp-content/mu-plugins/assets/accessibility-listing.js'
@@ -25,6 +28,9 @@ on:
       - 'wp-content/mu-plugins/308-mad4b-live-render-blocking-monitor.php'
       - 'wp-content/mu-plugins/309-mad4b-astra-local-cairo.php'
       - 'wp-content/mu-plugins/310-mad4b-city-slider-lcp-preload.php'
+      - 'wp-content/mu-plugins/assets/mad4b-chosen-crawlable.js'
+      - 'wp-content/mu-plugins/321-mad4b-public-catalog-first-render.php'
+      - '.well-known/ard.json'
       - 'wp-content/mu-plugins/company-accessibility-contract.php'
       - 'wp-content/mu-plugins/assets/accessibility-swiper.js'
       - 'wp-content/mu-plugins/assets/accessibility-listing.js'
@@ -58,6 +64,8 @@ jobs:
           php -l wp-content/mu-plugins/309-mad4b-astra-local-cairo.php
           php -l wp-content/mu-plugins/310-mad4b-city-slider-lcp-preload.php
           php -l wp-content/mu-plugins/company-accessibility-contract.php
+          php -l wp-content/mu-plugins/321-mad4b-public-catalog-first-render.php
+          php ops/qa/mad4b-render-blocking/tests/catalog-discovery-contract.php
           php -l wp-content/mu-plugins/311-mad4b-explore-global-contrast.php
           php -l wp-content/mu-plugins/312-mad4b-rate-css-resilience.php
           php -l wp-content/mu-plugins/313-mad4b-rate-departure-governance.php
@@ -75,7 +83,9 @@ jobs:
           node --check wp-content/mu-plugins/assets/accessibility-swiper.js
           node --check wp-content/mu-plugins/assets/accessibility-listing.js
           node ops/qa/mad4b-render-blocking/tests/test_swiper_source.js
+          node --check wp-content/mu-plugins/assets/mad4b-chosen-crawlable.js
       - name: Offline classification contracts
         run: |
           python3 -m py_compile ops/qa/mad4b-render-blocking/mad4b-live-css-render-blocking.py
           python3 ops/qa/mad4b-render-blocking/tests/test_classifier.py
+          python3 ops/qa/mad4b-render-blocking/tests/test_ard_chosen_cache.py

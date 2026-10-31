@@ -62,6 +62,20 @@ async def inspect(browser,path,sem):
                 }""")
             response=await page.goto(url,wait_until='domcontentloaded',timeout=25000)
             if not response or response.status!=200:raise RuntimeError('http_status_'+str(response.status if response else None))
+            ard_valid=None
+            if path=='/':
+                try:
+                    ard=await page.request.get(ORIGIN+'/.well-known/ard.json',timeout=10000)
+                    parsed=await ard.json() if ard.status==200 else {}
+                    entries=parsed.get('entries',[]) if isinstance(parsed,dict) else []
+                    ard_valid=(ard.status==200 and ard.headers.get('content-type','').split(';')[0]
+                        in ('application/ard+json','application/json') and isinstance(entries,list)
+                        and len(entries)>0 and all(isinstance(e,dict)
+                        and e.get('identifier','').startswith('urn:air:tours.dev.mad4b.com:')
+                        and e.get('displayName') and e.get('type') and (bool(e.get('url'))!=bool(e.get('data')))
+                        for e in entries))
+                except Exception:
+                    ard_valid=False
             raw=await response.text()
             parser=Links();parser.feed(raw)
             await page.wait_for_timeout(750)
@@ -82,6 +96,15 @@ async def inspect(browser,path,sem):
                 forcedLayout:(()=>{const items=window.__mad4b_loaf||[];return {
                     supported:PerformanceObserver.supportedEntryTypes.includes('long-animation-frame'),
                     frames:items.length,forced_ms:Math.round(items.reduce((a,x)=>a+x.total,0))};})(),
+                catalogInitial:(()=>{const items=[...document.querySelectorAll('.jet-listing-grid__items')];
+                    const list=items.find(x=>x.className.includes('jet-listing-grid--25102')&&x.getBoundingClientRect().width>300);
+                    const first=list?.querySelector('.jet-listing-grid__item');
+                    const layout=first?.querySelector('[data-id="82a8340"]');
+                    return {present:!!list,style_present:!!document.getElementById('mad4b-catalog-listing-native-first-paint-inline-css'),
+                        layout_direction:layout?getComputedStyle(layout).flexDirection:null};})(),
+                chosenWithoutHref:[...document.querySelectorAll('a.chosen-single')]
+                    .filter(x=>!x.getAttribute('href') || x.getAttribute('href')==='#').length,
+                ardHref:document.querySelector('link[rel="ard"]')?.href||null,
                 title:document.title,
                 pageOverflow:Math.max(0,document.documentElement.scrollWidth-innerWidth),
                 ttfbMs:Math.round(performance.getEntriesByType('navigation')[0]?.responseStart||0),
@@ -148,6 +171,11 @@ async def inspect(browser,path,sem):
                 'title':live['title'],'uael_widgets':live['uael'],'css':styles,
                 'horizontal_overflow_px':live['pageOverflow'],
                 'ttfb_ms':int(live['ttfbMs']),'lcp':lcp,
+                'catalog_initial':live['catalogInitial'],
+                'chosen_without_href':live['chosenWithoutHref'],
+                'ard_href':live['ardHref'],
+                'ard_manifest_valid':ard_valid,
+                'html_cache_status':response.headers.get('x-mad4b-preset-cache',''),
                 'header_literal_text_count':live['headerLiteralText'],
                 'forced_layout':live['forcedLayout'],
                 'swiper_active_inert':live['swiperActiveInert'],
@@ -250,6 +278,22 @@ def classify(pages,audit=None):
         elif not rate.get('original_present'):
             issues.append({'code':'perf_ratecss_source_missing','severity':'medium',
                 'label':'Elementor #56197 CSS is missing but MAD4B verified shadow keeps the tour rate cards styled; repair original generated asset.'})
+    for page in pages:
+        path=urlsplit(page['url']).path
+        cat=page.get('catalog_initial') or {}
+        if path in ('/tours-and-activities/','/ar/tours-and-activities/'):
+            if not cat.get('style_present') or not cat.get('present') or cat.get('layout_direction')!='row':
+                issues.append({'code':'perf_catalog_initial_layout','severity':'high',
+                    'label':'Initial Tour catalog List View lacks native Elementor CSS/Flex direction; preserve original template dimensions without user layout toggles.'})
+        if int(page.get('chosen_without_href') or 0)>0:
+            issues.append({'code':'perf_chosen_crawlability','severity':'medium',
+                'label':'JetSearch Chosen Tour Type control has an anchor without a valid public archive href on '+path})
+        if path=='/' and page.get('ard_manifest_valid') is False:
+            issues.append({'code':'perf_ard_manifest','severity':'high',
+                'label':'Canonical ARD v0.91 endpoint is invalid, unavailable, or does not declare a public site-anchored resource.'})
+        if page.get('ard_href') and page.get('ard_href')!='https://tours.dev.mad4b.com/.well-known/ard.json':
+            issues.append({'code':'perf_ard_manifest','severity':'medium',
+                'label':'ARD link points to a translated or invalid manifest URL; use canonical origin root.'})
     bad_header=[urlsplit(p['url']).path for p in pages if int(p.get('header_literal_text_count') or 0)>0]
     if bad_header:
         issues.append({'code':'perf_header_escape_text','severity':'high',
@@ -298,6 +342,11 @@ def classify(pages,audit=None):
             largest=(page.get('inline_css_largest') or [{}])[0]
             issues.append({'code':code,'severity':'high',
                 'label':f'Mobile HTML embeds {total//1024}KiB inline CSS on {path}; largest block {largest.get("id","")}. Consider governed external/critical split; do not remove widget CSS.'})
+    # Global, fixed issue codes occur only once per complete scan.
+    uniques={}
+    for issue in issues:
+        uniques.setdefault(issue['code'],issue)
+    issues=list(uniques.values())
     # A small external font CSS file may still add hundreds of milliseconds
     # through third-party connection setup, independent of its transfer size.
     for page in pages:

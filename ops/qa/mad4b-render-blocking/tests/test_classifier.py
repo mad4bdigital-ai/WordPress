@@ -153,3 +153,18 @@ clean_header['city_lcp_request_entries'][0]['start_ms']=125
 clean_header['swiper_active_inert']=1
 assert any(x['code'].startswith('perf_swiper_focus_') for x in m.classify([clean_header]))
 print('PASS: header literal, forced layout, LCP resource discovery and Swiper focus alerts')
+
+# Sitewide first-render/layout, manifest and crawlable-anchor detection.
+catalog={'url':'https://tours.dev.mad4b.com/tours-and-activities/','css':[],'uael_widgets':[],
+ 'catalog_initial':{'present':True,'style_present':True,'layout_direction':'row'},
+ 'chosen_without_href':0,'ard_href':'https://tours.dev.mad4b.com/.well-known/ard.json'}
+assert not any(i['code'] in ('perf_catalog_initial_layout','perf_chosen_crawlability','perf_ard_manifest') for i in m.classify([catalog]))
+catalog['catalog_initial']['layout_direction']='column'
+assert any(i['code']=='perf_catalog_initial_layout' for i in m.classify([catalog]))
+catalog['catalog_initial']['layout_direction']='row'
+home=dict(catalog,url='https://tours.dev.mad4b.com/',ard_manifest_valid=False,chosen_without_href=1)
+codes={i['code'] for i in m.classify([home])}
+assert 'perf_ard_manifest' in codes and 'perf_chosen_crawlability' in codes
+home['ard_manifest_valid']=True;home['chosen_without_href']=0
+assert not any(i['code'] in ('perf_ard_manifest','perf_chosen_crawlability') for i in m.classify([home]))
+print('PASS: initial CSS, ARD endpoint and Chosen href are discoverable regressions')

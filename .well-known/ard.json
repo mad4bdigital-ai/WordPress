@@ -1,0 +1,26 @@
+{
+  "entries": [
+    {
+      "identifier": "urn:air:tours.dev.mad4b.com:api:public-tour-catalog",
+      "displayName": "Wo Vacation Public Tour Catalog",
+      "type": "application/json",
+      "url": "https://tours.dev.mad4b.com/wp-json/wp/v2/tours-and-activities?per_page=10",
+      "description": "Public read-only REST listing of published Tours and Activities in the active WordPress site. Does not provide booking or private customer access.",
+      "capabilities": [
+        "ReadPublishedTours",
+        "DiscoverTourInformation"
+      ],
+      "representativeQueries": [
+        "Find published Egypt tour packages",
+        "Browse publicly listed Cairo day tours",
+        "Discover available Nile cruise tour descriptions"
+      ],
+      "tags": [
+        "tourism",
+        "travel",
+        "read-only",
+        "public"
+      ]
+    }
+  ]
+}

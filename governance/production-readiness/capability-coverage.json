@@ -14204,6 +14204,23 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/isolated-contract.php"
       ],
       "review_rationale": "This change is an exact-source read-only extension of provider-bound MAD4B performance issues. New statuses monitor visible raw newline text, LOAF high forced layout, delayed image preload despite early HTML, and active Swiper focus regression. Isolated tests verify allowed event codes with correct severity and rejection of forged providers. No authorization to mutate Production or third-party vendor scripts."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "source_blob_sha": "a18bb308751c035f519fcaaf1dcf4b0ad75ff45c",
+      "owner_role": "MAD4B Staging UI performance and discovery readiness reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/isolated-contract.php"
+      ],
+      "review_rationale": "Exact provider fingerprint-bound readonly alerts for public catalog first-paint Elementor CSS parity, ARD v0.91 manifest availability and Chosen Tour Type href crawlability. Tests assert supported approved provider, expected severity, and rejection of forged sources. Staging-only no production mutation or authority widening."
     }
   ],
   "code_change_rules": {
