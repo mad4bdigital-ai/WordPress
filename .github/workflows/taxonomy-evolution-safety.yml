@@ -1,0 +1,40 @@
+name: Taxonomy Evolution Source Safety
+on:
+  pull_request:
+    paths:
+      - 'ops/taxonomy-evolution/**'
+      - '.github/workflows/taxonomy-evolution-safety.yml'
+  push:
+    branches: ['feat/governed-taxonomy-evolution-20261101']
+    paths:
+      - 'ops/taxonomy-evolution/**'
+      - '.github/workflows/taxonomy-evolution-safety.yml'
+permissions:
+  contents: read
+jobs:
+  contract_and_shadow_safety:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax-check staging-only native WP-CLI shadow
+        run: php -l ops/taxonomy-evolution/wpcli-native-shadow.php
+      - name: Validate site-neutral governance and fail-closed shadow contract
+        run: |
+          python3 - <<'PY'
+          import json, pathlib
+          p = pathlib.Path('ops/taxonomy-evolution/taxonomy-evolution-operation.v1.json')
+          c = json.loads(p.read_text())
+          assert c['contract'] == 'mad4b.taxonomy-evolution-operation.v1'
+          assert c['site_independent'] is True
+          assert c['mutation_authorized_by_manifest'] is False
+          assert c['default'] == 'fail_closed'
+          assert c['shadow']['never_authorizes_live_apply'] is True
+          assert c['shadow']['production_allowed'] is False
+          assert len(c['registry_scope']) == 4
+          code = pathlib.Path('ops/taxonomy-evolution/wpcli-native-shadow.php').read_text()
+          for s in ['WP_CLI','MAD4B_EVOLVE_EXACT_HOME','wp_get_environment_type()','CREATE TEMPORARY TABLE','DROP TEMPORARY TABLE','rollback_hash_verified']:
+              assert s in code, s
+          for s in ['wp_insert_term(', 'wp_update_term(', 'update_option(', 'ALTER TABLE ', 'DROP TABLE ', 'TRUNCATE TABLE ']:
+              assert s not in code, s
+          print('PASS taxonomy evolution source contract and nonpersistent test-only semantics')
+          PY
