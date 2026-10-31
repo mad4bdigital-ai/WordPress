@@ -143,12 +143,9 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
             return self::error('record_not_found', 404);
         if (($record['state'] ?? '') === 'REVOKED')
             return rest_ensure_response(array('state'=>'REVOKED','object_id'=>$id));
-        $scope = self::scope($company,
-            $kind === 'grant' ? (string) ($record['operation'] ?? '') : 'maintenance.shell');
-        if (is_wp_error($scope)) return $scope;
-        foreach (array('site_uuid','environment','canonical_origin','assignment_revision') as $field)
-            if (($scope[$field] ?? null) !== ($record[$field] ?? null))
-                return self::error('scope_mismatch');
+        // Revocation always remains available to the issuing enrolled owner,
+        // even after the delegated company authority was suspended or removed.
+        // A revoked assignment must not trap a persistent host grant as active.
         $record['state'] = 'REVOKED';
         $record['revoked_epoch'] = time();
         $record['revoked_by'] = get_current_user_id();
