@@ -3605,6 +3605,120 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing MCP admission, platform identity, security, owner-scoped administrative rights and execution-denial controls cover these staging-only authorization surfaces, without granting Production execution or public access.",
       "review_rationale": "New surface ability:mad4b/staging-write-grant-reconcile-staging is source-pinned in the W1 authority integration and assessed with hermetic owner-browser, agent REST route, Site Profile, OAuth, replay, write grant, exact mapping and negative permission fixtures. This is only CI source review, not evidence that the route is registered, usable, or authorized in Production."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-auto-reconciliation.php",
+      "owner_role": "Central Runtime CI source reviewer; deployment must retain original authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/authority-auto-reconciliation-contract.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing governance, platform, provider, and execution-denial controls retain their original effective restrictions; this source review does not add a new runtime capability or grant.",
+      "review_rationale": "Source review for service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-auto-reconciliation.php, tied to actual same-PR authority-auto-reconciliation-contract.php regression evidence. Static source review alone is not registration, host enrollment, executable authority or verified live Production behavior."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-reviews-bridge.php",
+      "owner_role": "Central Runtime CI source reviewer; deployment must retain original authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/authority-reviews-bridge-contract.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing governance, platform, provider, and execution-denial controls retain their original effective restrictions; this source review does not add a new runtime capability or grant.",
+      "review_rationale": "Source review for service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-reviews-bridge.php, tied to actual same-PR authority-reviews-bridge-contract.php regression evidence. Static source review alone is not registration, host enrollment, executable authority or verified live Production behavior."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-authority.php",
+      "owner_role": "Central Runtime CI source reviewer; deployment must retain original authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-execution-authority-contract.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing governance, platform, provider, and execution-denial controls retain their original effective restrictions; this source review does not add a new runtime capability or grant.",
+      "review_rationale": "Source review for service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-authority.php, tied to actual same-PR unified-execution-authority-contract.php regression evidence. Static source review alone is not registration, host enrollment, executable authority or verified live Production behavior."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-global-runtime-lifecycle.php",
+      "owner_role": "Central Runtime CI source reviewer; deployment must retain original authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/global-runtime-lifecycle-contract.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing governance, platform, provider, and execution-denial controls retain their original effective restrictions; this source review does not add a new runtime capability or grant.",
+      "review_rationale": "Source review for service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-global-runtime-lifecycle.php, tied to actual same-PR global-runtime-lifecycle-contract.php regression evidence. Static source review alone is not registration, host enrollment, executable authority or verified live Production behavior."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-auto-qualification.php",
+      "owner_role": "Central Runtime CI source reviewer; deployment must retain original authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-auto-qualification-contract.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing governance, platform, provider, and execution-denial controls retain their original effective restrictions; this source review does not add a new runtime capability or grant.",
+      "review_rationale": "Source review for service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-auto-qualification.php, tied to actual same-PR provider-auto-qualification-contract.php regression evidence. Static source review alone is not registration, host enrollment, executable authority or verified live Production behavior."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-installed-artifact.php",
+      "owner_role": "Central Runtime CI source reviewer; deployment must retain original authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-installed-artifact-contract.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing governance, platform, provider, and execution-denial controls retain their original effective restrictions; this source review does not add a new runtime capability or grant.",
+      "review_rationale": "Source review for service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-installed-artifact.php, tied to actual same-PR provider-installed-artifact-contract.php regression evidence. Static source review alone is not registration, host enrollment, executable authority or verified live Production behavior."
     }
   ],
   "lifecycle": [],
@@ -11513,6 +11627,208 @@
       ],
       "owner_role": "Central Control Plane security and repository source integration reviewer",
       "review_rationale": "CI-only exact Git blob review for the selected central runtime bootstrap, retained while source-bound Agent Registry identity admission and deny-first grants are regression-tested on this PR. This review does not authorize a broker execution lane, issue an SSH grant, bypass production gate, approve an owner mutation, or certify a remote executor. End-to-end job/claim/scope verification remains mandatory.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-auto-reconciliation.php",
+      "source_blob_sha": "d53f6d0d224fa7fcd8318b57762a2e9c9219fe55",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/authority-auto-reconciliation-contract.php"
+      ],
+      "owner_role": "Central Runtime CI source reviewer; non-authorizing evidence only",
+      "review_rationale": "Exact source review of class-mad4b-scp-authority-auto-reconciliation.php: test authority-auto-reconciliation-contract.php covers the relevant deny-first and native lifecycle boundaries. Runtime enrollment, actual authenticated grant, independent host readback, and Production approval remain separate; this source record grants no operational rights.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-reviews-bridge.php",
+      "source_blob_sha": "e59e87b58595cec34284fdd4670077414f551e4b",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/authority-reviews-bridge-contract.php"
+      ],
+      "owner_role": "Central Runtime CI source reviewer; non-authorizing evidence only",
+      "review_rationale": "Exact source review of class-mad4b-scp-authority-reviews-bridge.php: test authority-reviews-bridge-contract.php covers the relevant deny-first and native lifecycle boundaries. Runtime enrollment, actual authenticated grant, independent host readback, and Production approval remain separate; this source record grants no operational rights.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-authority.php",
+      "source_blob_sha": "317bf207f325b50c386219597e8cd12700a20ba1",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-execution-authority-contract.php"
+      ],
+      "owner_role": "Central Runtime CI source reviewer; non-authorizing evidence only",
+      "review_rationale": "Exact source review of class-mad4b-scp-execution-authority.php: test unified-execution-authority-contract.php covers the relevant deny-first and native lifecycle boundaries. Runtime enrollment, actual authenticated grant, independent host readback, and Production approval remain separate; this source record grants no operational rights.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-global-runtime-lifecycle.php",
+      "source_blob_sha": "437bad33ea76f341ea1a5cbce6cd7d5a8d318ad5",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/global-runtime-lifecycle-contract.php"
+      ],
+      "owner_role": "Central Runtime CI source reviewer; non-authorizing evidence only",
+      "review_rationale": "Exact source review of class-mad4b-scp-global-runtime-lifecycle.php: test global-runtime-lifecycle-contract.php covers the relevant deny-first and native lifecycle boundaries. Runtime enrollment, actual authenticated grant, independent host readback, and Production approval remain separate; this source record grants no operational rights.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-auto-qualification.php",
+      "source_blob_sha": "9d1bc4482319493fb558eefdd1b7ba4ea6f733e2",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-auto-qualification-contract.php"
+      ],
+      "owner_role": "Central Runtime CI source reviewer; non-authorizing evidence only",
+      "review_rationale": "Exact source review of class-mad4b-scp-provider-auto-qualification.php: test provider-auto-qualification-contract.php covers the relevant deny-first and native lifecycle boundaries. Runtime enrollment, actual authenticated grant, independent host readback, and Production approval remain separate; this source record grants no operational rights.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-installed-artifact.php",
+      "source_blob_sha": "2d6c6282fdb22841992c1d4348613f49f38e4eea",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-installed-artifact-contract.php"
+      ],
+      "owner_role": "Central Runtime CI source reviewer; non-authorizing evidence only",
+      "review_rationale": "Exact source review of class-mad4b-scp-provider-installed-artifact.php: test provider-installed-artifact-contract.php covers the relevant deny-first and native lifecycle boundaries. Runtime enrollment, actual authenticated grant, independent host readback, and Production approval remain separate; this source record grants no operational rights.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-dependency-planner.php",
+      "source_blob_sha": "c6bb0a3cdfa413c21b41b36ac8f2753628ce3e80",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/global-runtime-lifecycle-contract.php"
+      ],
+      "owner_role": "Central Runtime CI source reviewer; non-authorizing evidence only",
+      "review_rationale": "Exact source review of class-mad4b-scp-capability-dependency-planner.php: test global-runtime-lifecycle-contract.php covers the relevant deny-first and native lifecycle boundaries. Runtime enrollment, actual authenticated grant, independent host readback, and Production approval remain separate; this source record grants no operational rights.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-work-queue.php",
+      "source_blob_sha": "7e0fa13944e7351173fe11f39623b564e1c779f4",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/global-runtime-native-lanes-contract.php"
+      ],
+      "owner_role": "Central Runtime CI source reviewer; non-authorizing evidence only",
+      "review_rationale": "Exact source review of class-mad4b-scp-remote-work-queue.php: test global-runtime-native-lanes-contract.php covers the relevant deny-first and native lifecycle boundaries. Runtime enrollment, actual authenticated grant, independent host readback, and Production approval remain separate; this source record grants no operational rights.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-admission.php",
+      "source_blob_sha": "592f6c26c91fa12b7e75ddd9a5c508c0841e64df",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/global-runtime-native-lanes-contract.php"
+      ],
+      "owner_role": "Central Runtime CI source reviewer; non-authorizing evidence only",
+      "review_rationale": "Exact source review of class-mad4b-scp-scheduler-admission.php: test global-runtime-native-lanes-contract.php covers the relevant deny-first and native lifecycle boundaries. Runtime enrollment, actual authenticated grant, independent host readback, and Production approval remain separate; this source record grants no operational rights.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-backlog.php",
+      "source_blob_sha": "7731508c4110b161090af056b5a36fadf994aa0b",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/global-runtime-native-lanes-contract.php"
+      ],
+      "owner_role": "Central Runtime CI source reviewer; non-authorizing evidence only",
+      "review_rationale": "Exact source review of class-mad4b-scp-scheduler-backlog.php: test global-runtime-native-lanes-contract.php covers the relevant deny-first and native lifecycle boundaries. Runtime enrollment, actual authenticated grant, independent host readback, and Production approval remain separate; this source record grants no operational rights.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-recovery-route-resolver.php",
+      "source_blob_sha": "cf1dfb4200c9b021896479a9c512f2f5f0a909ed",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/global-runtime-native-lanes-contract.php"
+      ],
+      "owner_role": "Central Runtime CI source reviewer; non-authorizing evidence only",
+      "review_rationale": "Exact source review of class-mad4b-scp-recovery-route-resolver.php: test global-runtime-native-lanes-contract.php covers the relevant deny-first and native lifecycle boundaries. Runtime enrollment, actual authenticated grant, independent host readback, and Production approval remain separate; this source record grants no operational rights.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-full-staging-authority.php",
+      "source_blob_sha": "af1a222b1e46ac93fcbc6f67f1da81e7a331febf",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/full-staging-cli-access-contract.php"
+      ],
+      "owner_role": "Central Runtime CI source reviewer; non-authorizing evidence only",
+      "review_rationale": "Exact source review of class-mad4b-scp-full-staging-authority.php: test full-staging-cli-access-contract.php covers the relevant deny-first and native lifecycle boundaries. Runtime enrollment, actual authenticated grant, independent host readback, and Production approval remain separate; this source record grants no operational rights.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
