@@ -3719,6 +3719,25 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing governance, platform, provider, and execution-denial controls retain their original effective restrictions; this source review does not add a new runtime capability or grant.",
       "review_rationale": "Source review for service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-installed-artifact.php, tied to actual same-PR provider-installed-artifact-contract.php regression evidence. Static source review alone is not registration, host enrollment, executable authority or verified live Production behavior."
+    },
+    {
+      "id": "cron:hourly",
+      "owner_role": "Central Runtime CI source and scheduled-readonly lifecycle reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/authority-auto-reconciliation-contract.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing hourly scheduler and scoped nonmutating audit controls govern the staging-only inspection; no fresh grant, owner step-up, or operational privilege is issued by scheduling.",
+      "review_rationale": "The exact source schedules only the existing bounded Staging inspection hook hourly, avoids duplicate scheduling, and refuses even scheduling its event in Production. The changed isolated PHP contract exercises schedule and schedule_soon in both environments, without enabling the privileged CLI reconciliation. CI review is not Production authorization."
     }
   ],
   "lifecycle": [],
