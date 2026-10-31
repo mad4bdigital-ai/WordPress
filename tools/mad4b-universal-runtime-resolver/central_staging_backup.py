@@ -63,34 +63,40 @@ def hashfile(path):
     return h.hexdigest()
 
 def export_sql(destination,available):
-    # Authenticated WP CLI first; if the PHP runtime lacks mysqldump, use the
-    # enrolled MariaDB server's local dump binary. Do not export credentials.
+    """WP-CLI first, enrolled MariaDB fallback on missing or failed binary."""
+    routes=[]
     if available["wp_mysqldump"]:
-        cmd=["docker","exec","-u","www-data",PHP,"wp","db","export","-",
+        routes.append(("wordpress_wpcli_mysqldump",
+            ["docker","exec","-u","www-data",PHP,"wp","db","export","-",
              "--tables="+",".join(TABLES),"--single-transaction",
-             "--path=/var/www/html","--skip-plugins","--skip-themes"]
-        lane="wordpress_wpcli_mysqldump"
-    elif available["db_mariadb_dump"]:
-        cmd=["docker","exec",DB,"sh","-c",
+             "--path=/var/www/html","--skip-plugins","--skip-themes"]))
+    if available["db_mariadb_dump"]:
+        routes.append(("native_mariadb_dump",
+            ["docker","exec",DB,"sh","-c",
              'exec mariadb-dump -uroot -p"$MARIADB_ROOT_PASSWORD" '
              "--single-transaction --quick --skip-lock-tables "
-             "etg_commerce_staging "+" ".join(TABLES)]
-        lane="native_mariadb_dump"
-    else:
+             "etg_commerce_staging "+" ".join(TABLES)]))
+    if not routes:
         raise RuntimeError("BOTH_DATABASE_DUMP_ROUTES_UNAVAILABLE")
-    with destination.open("xb") as stream:
-        os.fchmod(stream.fileno(),0o600)
-        p=subprocess.run(cmd,stdout=stream,stderr=subprocess.PIPE,
-                         timeout=180,check=False)
-    if p.returncode:
-        raise RuntimeError("DATABASE_DUMP_LANE_FAILED:"+lane)
-    payload=destination.read_bytes()
-    for table in TABLES:
-        if ("CREATE TABLE `"+table+"`").encode() not in payload:
-            raise RuntimeError("DUMP_READBACK_TABLE_MISSING:"+table)
-    if payload.count(b"CREATE TABLE")!=len(TABLES):
-        raise RuntimeError("DUMP_TABLE_COUNT_UNEXPECTED")
-    return lane
+    failures=[]
+    for lane,cmd in routes:
+        try:
+            with destination.open("xb") as stream:
+                os.fchmod(stream.fileno(),0o600)
+                p=subprocess.run(cmd,stdout=stream,stderr=subprocess.PIPE,
+                                 timeout=180,check=False)
+            if p.returncode:
+                raise RuntimeError("DUMP_ROUTE_RETURNED_ERROR")
+            payload=destination.read_bytes()
+            if any(("CREATE TABLE "+chr(96)+table+chr(96)).encode() not in payload for table in TABLES):
+                raise RuntimeError("DUMP_READBACK_TABLE_MISSING")
+            if payload.count(b"CREATE TABLE")!=len(TABLES):
+                raise RuntimeError("DUMP_TABLE_COUNT_UNEXPECTED")
+            return lane
+        except (RuntimeError,subprocess.TimeoutExpired) as error:
+            failures.append(lane+":"+type(error).__name__)
+            destination.unlink(missing_ok=True)
+    raise RuntimeError("ALL_DUMP_ROUTES_FAILED:"+",".join(failures))
 
 def snapshot_plugin(folder,available):
     source=PHP+":/var/www/html/wp-content/plugins/"+PLUGIN
