@@ -187,5 +187,71 @@ class ResolverTests(unittest.TestCase):
         plan["requires_independent_production_readback"]=True
         self.assertEqual(r.validate_original_owner_plan(PROD,scope,native,plan,proof)["state"],"verified")
 
+    def test_admin_shell_requires_original_host_scoped_grant_and_receipt(self):
+        root=Path(self.tmp.name)
+        policy=root/"native-operator-v1"
+        (policy/"receipts").mkdir(parents=True)
+        row={"contract":"mad4b.native-vps-operator.v1",
+            "revoked":False,"allow_general_shell":True,
+            "scopes":{SITE:{"allow_operator":True,"allow_remote_shell":True,
+                "allow_mutation":True,"allow_production_mutation":False,
+                "site_uuid":SCOPE["site_uuid"],
+                "expected_root":"/expected/staging",
+                "canonical_origin":SCOPE["canonical_origin"],
+                "registry_binding":SCOPE["transport_binding"]}}}
+        receipt={"contract":"mad4b.native-vps-operator.v1",
+                 "lane":"registered_remote_ssh","company":"all-royal-egypt",
+                 "environment":"staging","kind":"ssh","state":"VERIFIED",
+                 "readback_matches_expected":True,
+                 "mutating":False,"mutation_performed":False,
+                 "production_mutation_authorized":False,
+                 "readback_sha256":"c"*64}
+        (policy/"host-authority.json").write_text(json.dumps(row))
+        (policy/"receipts"/"are-staging-registry-general-shell-20261031.json").write_text(json.dumps(receipt))
+        scope={**SCOPE,"expected_root":"/expected/staging"}
+        with patch.object(r,"ROOT",root):
+            self.assertEqual(r.inspect_admin_shell(SITE,scope)["state"],"verified")
+            row["revoked"]=True
+            (policy/"host-authority.json").write_text(json.dumps(row))
+            self.assertEqual(r.inspect_admin_shell(SITE,scope)["state"],"blocked_authority")
+
+    def test_admin_shell_receipt_must_match_exact_target(self):
+        root=Path(self.tmp.name)
+        policy=root/"native-operator-v1"
+        (policy/"receipts").mkdir(parents=True)
+        row={"contract":"mad4b.native-vps-operator.v1",
+            "revoked":False,"allow_general_shell":True,
+            "scopes":{SITE:{"allow_operator":True,"allow_remote_shell":True,
+                "allow_mutation":True,"allow_production_mutation":False,
+                "site_uuid":SCOPE["site_uuid"],"expected_root":"/expected/staging",
+                "canonical_origin":SCOPE["canonical_origin"],
+                "registry_binding":SCOPE["transport_binding"]}}}
+        receipt={"contract":"mad4b.native-vps-operator.v1",
+                 "lane":"registered_remote_ssh","company":"different-company",
+                 "environment":"staging","kind":"ssh","state":"VERIFIED",
+                 "readback_matches_expected":True,
+                 "mutating":False,"mutation_performed":False,
+                 "production_mutation_authorized":False}
+        (policy/"host-authority.json").write_text(json.dumps(row))
+        (policy/"receipts"/"are-staging-registry-general-shell-20261031.json").write_text(json.dumps(receipt))
+        with patch.object(r,"ROOT",root):
+            observed=r.inspect_admin_shell(SITE,{**SCOPE,"expected_root":"/expected/staging"})
+        self.assertEqual(observed["state"],"review_required")
+
+    def test_execution_route_uses_existing_registry_admin_shell(self):
+        with patch.object(r,"inspect_admin_shell",return_value=r.result(
+            "verified","native_vps_operator","exact_registry_proof")):
+            out=r.inspect_execution_route(SITE,SCOPE)
+        self.assertEqual(out["state"],"verified")
+        self.assertEqual(out["evidence"]["selected_lane"],"registered_remote_ssh")
+        self.assertFalse(out["evidence"]["wordpress_queued_shell_granted"])
+        self.assertFalse(out["evidence"]["network_sandbox_equivalent"])
+
+    def test_execution_route_declines_unverified_shell(self):
+        with patch.object(r,"inspect_admin_shell",return_value=r.result(
+            "blocked_authority","native_vps_operator","grant_missing")):
+            out=r.inspect_execution_route(SITE,SCOPE)
+        self.assertEqual(out["state"],"blocked_dependency")
+
 if __name__=="__main__":
     unittest.main()
