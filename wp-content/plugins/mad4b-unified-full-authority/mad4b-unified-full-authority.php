@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Unified Full Authority
  * Description: Environment-neutral Full Authority discovery, planning, and native owner handoff for Staging and Production.
- * Version: 0.1.2
+ * Version: 0.1.3
  * Author: MAD4B
  * Text Domain: mad4b-unified-full-authority
  */
@@ -17,13 +17,15 @@ defined('ABSPATH') || exit;
 final class MAD4B_Unified_Full_Authority {
     const CONTRACT='mad4b.unified-full-authority.v1';
     const PRODUCTION_OWNER='MAD4B_SCP_Production_Full_Authority';
+    const CENTRAL_STAGING_ORIGIN='https://tours.dev.mad4b.com';
 
     public static function boot() {
         if(!function_exists('add_action'))return;
         add_action('admin_init',array(__CLASS__,'register'),20);
-        if(defined('WP_CLI') && WP_CLI && class_exists('WP_CLI'))
+        if (defined('WP_CLI') && WP_CLI && class_exists('WP_CLI')) {
             WP_CLI::add_command('mad4b full-authority-unified',array(__CLASS__,'cli_status'));
             WP_CLI::add_command('mad4b full-authority-lifecycle',array(__CLASS__,'cli_lifecycle'));
+        }
     }
 
     public static function plan() {
@@ -171,6 +173,16 @@ final class MAD4B_Unified_Full_Authority {
             'contract'=>'mad4b.unified-authority-lifecycle-status.v1',
             'environment'=>$env,'site_uuid'=>$plan['site_uuid'],
             'source_sha'=>$plan['source_commit_sha'],
+            'rollout_topology'=>array(
+                'contract'=>'mad4b.central-staging-company-rollout.v1',
+                'central_staging_origin'=>self::CENTRAL_STAGING_ORIGIN,
+                'per_company_staging_required'=>false,
+                'company_target_environment'=>'production',
+                'central_release_verified'=>false,
+                'company_compatibility_verified'=>false,
+                'company_production_authorized'=>false,
+                'note'=>'Central Staging qualifies the shared artifact; the company target still requires exact release readback, compatibility, scoped authorization, rollback and verification.'
+            ),
             'plan_sha256'=>$plan['plan_sha256'],
             'phases'=>$phases,
             'source_mismatch'=>array_slice((array)($source['provenance_mismatch']??array()),0,12),
