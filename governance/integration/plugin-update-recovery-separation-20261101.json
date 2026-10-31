@@ -1,0 +1,18 @@
+{
+  "contract": "mad4b.plugin-update-recovery-source-separation.v1",
+  "authorizing": false,
+  "production_authorized": false,
+  "local_candidate_head": "3da28f18c7bf82ccacbb1cff5ce04d61132f9825",
+  "initial_gaps": 183,
+  "reviewed_source_behavior_gaps": 1,
+  "remaining_gaps": 182,
+  "open_remote_update_capabilities": [
+    "ability:mad4b/plugin-remote-update-plan",
+    "ability:mad4b/plugin-remote-update-apply"
+  ],
+  "registration_file": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-plugin-update.php",
+  "referencing_file": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-update-recovery.php",
+  "test": "wp-content/plugins/mad4b-site-control-plane/tests/plugin-update-recovery-authority-separation-contract.py",
+  "readiness": "NO_GO",
+  "publication_note": "Test and audit published, exact coverage registry and integrated reconciled source remain isolated on VPS. Reference attribution has not been fixed in detector and requires separate code change."
+}
