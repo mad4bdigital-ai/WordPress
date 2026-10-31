@@ -31,9 +31,12 @@ assert "'mcp_adapter_dependency_incompatible'" in connection
 assert "mcp_adapter_not_certified" not in connection
 assert "'mcp_adapter_dependency_compatible'" in connection
 assert "array_key_exists( 'provider_isolation_enabled', $input )" in profile
-assert "existing_normalized['features']['provider_isolation']" in profile
-assert ": true )," in profile
-assert "empty( $status['configured'] ) ? true : ! empty( $features['provider_isolation'] )" in admin
+assert "provider_isolation_explicit_opt_out" in profile
+assert "'provider_isolation' => ! $provider_isolation_explicit_opt_out" in profile
+assert "'provider_isolation_legacy_default_pending_persist'" in profile
+assert "'provider_isolation' === $feature" in profile
+assert "MAD4B_SCP_Site_Profile::provider_isolation_enabled()" in admin
+assert "array_key_exists( $input_key, $input )" in admin
 assert release["dependency_admission"]["mode"] == "capability_first_any_installed_version"
 assert release["dependency_admission"]["installed_version_allowlist_required"] is False
 assert release["dependency_admission"]["installed_version_drift_blocks_connection"] is False
