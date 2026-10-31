@@ -48,6 +48,7 @@ $receipt=array(
     'staging_origin'=>'https://tours.dev.mad4b.com',
     'environment'=>'staging',
     'registry_readback_verified'=>true,
+    'rollout_scope'=>'company_production',
     'source_type'=>'local_git',
     'source_commit'=>str_repeat('b',40),
     'artifact_sha256'=>$release,
@@ -75,6 +76,11 @@ ck($good['company_site_uuid']===$site['site_uuid'] && $good['company_environment
 
 $untrusted=$c::assess($release,$receipt,$site,false);
 ck(!$untrusted['ready_for_separate_owner_authorization'] && in_array('trusted_central_release_readback_unavailable',$untrusted['blockers'],true),'caller-supplied pass is not trusted');
+
+$canary=$receipt; $canary['rollout_scope']='staging_canary_only';
+ck(in_array('central_release_promotion_scope_not_granted',$c::assess($release,$canary,$site,true)['blockers'],true), 'Staging canary cannot authorize a company Production promotion');
+$legacy=$receipt;unset($legacy['rollout_scope']);
+ck(in_array('central_release_promotion_scope_not_granted',$c::assess($release,$legacy,$site,true)['blockers'],true), 'legacy receipt without explicit rollout scope must be denied');
 
 $wrong=$receipt; $wrong['staging_origin']='https://company-staging.example';
 ck(in_array('central_staging_identity_unverified',$c::assess($release,$wrong,$site,true)['blockers'],true),'company staging origin cannot replace central');
