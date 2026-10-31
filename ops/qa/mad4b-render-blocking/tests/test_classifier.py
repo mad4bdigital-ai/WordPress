@@ -39,3 +39,12 @@ assert any(x['code'].startswith('perf_fontcss_') for x in m.classify([font_page]
 font_page['external_google_fonts']=[]
 assert m.classify([font_page])==[]
 print('PASS: external Google Fonts regression detection and resolution')
+
+# Inline CSS size is a separate performance signal; CSS is never removed by discovery.
+inline={'url':'https://tours.dev.mad4b.com/tours-and-activities/example/',
+ 'uael_widgets':[], 'css':[], 'inline_css_bytes':1380000,
+ 'inline_css_largest':[{'id':'elementor-post-24784','bytes':180000}]}
+assert any(x['code'].startswith('perf_inlinecss_') for x in m.classify([inline]))
+inline['inline_css_bytes']=30000
+assert m.classify([inline])==[]
+print('PASS: large inline CSS regression and safe non-destructive detection')

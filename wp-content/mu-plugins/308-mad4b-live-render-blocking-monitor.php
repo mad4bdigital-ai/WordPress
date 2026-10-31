@@ -38,7 +38,7 @@ final class MAD4B_Live_Render_Blocking_Monitor_V1 {
         }
         foreach($r['issues'] as $row){
             $code=(string)($row['code']??'');
-            if(!preg_match('/^perf_(?:rbcss|lcpdelay|fontcss)_[a-f0-9]{12}$|^perf_ttfb_site$/D',$code))continue;
+            if(!preg_match('/^perf_(?:rbcss|lcpdelay|fontcss|inlinecss)_[a-f0-9]{12}$|^perf_ttfb_site$/D',$code))continue;
             $input[]=self::issue($code,(string)($row['severity']??'high'),(string)($row['label']??'Render-blocking CSS detected.'));
         }
         return $input;
@@ -66,7 +66,7 @@ final class MAD4B_Live_Render_Blocking_Monitor_V1 {
         }
         foreach($j['issues'] as $issue){
             $code=(string)($issue['code']??'');
-            if(!preg_match('/^perf_(?:rbcss|lcpdelay|fontcss)_[a-f0-9]{12}$|^perf_ttfb_site$/D',$code) ||
+            if(!preg_match('/^perf_(?:rbcss|lcpdelay|fontcss|inlinecss)_[a-f0-9]{12}$|^perf_ttfb_site$/D',$code) ||
                 isset($seen[$code]) || !in_array($issue['severity']??'', ['critical','high','medium'],true) ||
                 strlen((string)($issue['label']??''))>225)WP_CLI::error('invalid_css_issue');
             $seen[$code]=true;

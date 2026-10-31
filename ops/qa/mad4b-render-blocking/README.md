@@ -22,3 +22,5 @@ All six language records of Tour product #60629 now use the same local image_ver
 A third-party fonts.googleapis.com CSS request is independently flagged as perf_fontcss_<hash>, even if transfer bytes are small, to catch regressions against the already verified same-origin Cairo WOFF2 policy.
 
 The dedicated Best of Egypt 12 Days product URL has been included as an 11th browser check, alongside the other sample tour and catalog pages.
+
+The runtime probe now reports large embedded Elementor CSS separately via perf_inlinecss_<hash> after 256KiB; it records largest style block IDs and does not strip any widget CSS. Initial offline HTML profiling measured approximately 1,349KiB embedded CSS on the requested product, 681KiB on tours archive, and 705KiB on homepage. External CSS Print Method is an independent, potentially broad Elementor change that requires before/after design certification before release.

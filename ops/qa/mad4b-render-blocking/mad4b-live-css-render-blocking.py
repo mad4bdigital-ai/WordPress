@@ -17,14 +17,23 @@ OUTPUT=OUT/'live-css-scan.json'
 CONTRACT='mad4b.live-render-blocking.v1'
 class Links(HTMLParser):
     def __init__(self):
-        super().__init__();self.styles=[]
+        super().__init__();self.styles=[];self.inline_styles=[];self._active_style=None
     def handle_starttag(self,tag,attrs):
+        if tag=='style':
+            self._active_style={'id':dict(attrs).get('id') or 'unnamed-inline','bytes':0}
+            return
         if tag!='link':return
         d=dict(attrs)
         if 'stylesheet' not in (d.get('rel') or '').split():return
         self.styles.append({'id':d.get('id') or '', 'href':d.get('href') or '',
             'media':d.get('media') or 'all',
             'onload':bool(d.get('onload'))})
+    def handle_data(self,content):
+        if self._active_style is not None:self._active_style['bytes']+=len(content.encode('utf-8'))
+    def handle_endtag(self,tag):
+        if tag=='style' and self._active_style is not None:
+            self.inline_styles.append(self._active_style)
+            self._active_style=None
 async def inspect(browser,path,sem):
     async with sem:
         page=await browser.new_page(viewport={'width':390,'height':844},is_mobile=True,has_touch=True)
@@ -79,6 +88,8 @@ async def inspect(browser,path,sem):
                 'title':live['title'],'uael_widgets':live['uael'],'css':styles,
                 'horizontal_overflow_px':live['pageOverflow'],
                 'ttfb_ms':int(live['ttfbMs']),'lcp':lcp,
+                'inline_css_bytes':sum(x['bytes'] for x in parser.inline_styles),
+                'inline_css_largest':sorted(parser.inline_styles,key=lambda x:x['bytes'],reverse=True)[:5],
                 'external_google_fonts':live['externalGoogleFonts']}
         finally:
             await page.close()
@@ -97,6 +108,14 @@ def classify(pages):
                 'UAEL widget present — retain styles.' if seen_uael else 'No visible UAEL widget — defer CSS safely.'
             )
             issues.append({'code':code,'severity':'high','label':label[:225]})
+    for page in pages:
+        total=int(page.get('inline_css_bytes') or 0)
+        if total>=256*1024:
+            path=urlsplit(page['url']).path
+            code='perf_inlinecss_'+hashlib.sha256(path.encode()).hexdigest()[:12]
+            largest=(page.get('inline_css_largest') or [{}])[0]
+            issues.append({'code':code,'severity':'high',
+                'label':f'Mobile HTML embeds {total//1024}KiB inline CSS on {path}; largest block {largest.get("id","")}. Consider governed external/critical split; do not remove widget CSS.'})
     # A small external font CSS file may still add hundreds of milliseconds
     # through third-party connection setup, independent of its transfer size.
     for page in pages:
