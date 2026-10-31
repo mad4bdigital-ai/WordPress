@@ -3897,6 +3897,82 @@
       ],
       "coverage_reuse_rationale": "Existing governance/platform/security controls apply because this source adds a non-authorizing read-only local preflight router with denied user-controlled plans, immutable signed package gates, admin policy enforcement and an explicit Production boundary.",
       "review_rationale": "Source-bound audit of the Staging-only Control Plane test router. Only its control-plane-test-route ability is registered, private and read-only with manage_options and governed Policy::can_read checks. All other ability identifiers in this file are displayed as next-step/readback references and not registered or executed here. Native and selected plans are read from local provider methods, signed source identity is required, altered plan SHA or Production environment is rejected, and the result explicitly forbids automatic mutation, promotion or certification. The same-PR hermetic PHP fixture tests eligibility, owner approval boundaries, signed identity, fallback, unauthorized input, authorization denial and Production refusal."
+    },
+    {
+      "id": "rest:mad4b/v1/provider-connections",
+      "owner_role": "AI-assisted exact source CI reviewer; independent owner and live provider acceptance still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP request admission, provider isolation and execution-denial controls already require the admin read-only discovery/plan path to use its original bound WordPress authority; this source adds a REST adapter but no independent authorization grant or new trusted provider.",
+      "review_rationale": "Exact source and same-PR hermetic regression review of four provider connection REST routes. The GET endpoints call admin-guarded discovery and plans. The POST refresh endpoint requires exact plan and approval-ticket fields, enrolled Staging authority, a verified ChatGPT OAuth client, central Authorization::authorize_mutation and claim_mutation, with invocation through the governed WP Ability rather than a direct provider callback. POST reconnect enforces an authenticated owner session and wp_rest nonce, exact bound reconnect plan and no scope expansion; actual OAuth consent remains browser-side. Invalid routes/roles/payloads and Production refresh are denied, and the regression tests verify no token mutation or authorization-url creation on denied requests. This is source-level CI assurance, not a live grant or Production release. Reviewed exact REST route: rest:mad4b/v1/provider-connections"
+    },
+    {
+      "id": "rest:mad4b/v1/provider-connections/(?P<provider>[a-z][a-z0-9_-]{0,63})/plan",
+      "owner_role": "AI-assisted exact source CI reviewer; independent owner and live provider acceptance still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP request admission, provider isolation and execution-denial controls already require the admin read-only discovery/plan path to use its original bound WordPress authority; this source adds a REST adapter but no independent authorization grant or new trusted provider.",
+      "review_rationale": "Exact source and same-PR hermetic regression review of four provider connection REST routes. The GET endpoints call admin-guarded discovery and plans. The POST refresh endpoint requires exact plan and approval-ticket fields, enrolled Staging authority, a verified ChatGPT OAuth client, central Authorization::authorize_mutation and claim_mutation, with invocation through the governed WP Ability rather than a direct provider callback. POST reconnect enforces an authenticated owner session and wp_rest nonce, exact bound reconnect plan and no scope expansion; actual OAuth consent remains browser-side. Invalid routes/roles/payloads and Production refresh are denied, and the regression tests verify no token mutation or authorization-url creation on denied requests. This is source-level CI assurance, not a live grant or Production release. Reviewed exact REST route: rest:mad4b/v1/provider-connections/(?P<provider>[a-z][a-z0-9_-]{0,63})/plan"
+    },
+    {
+      "id": "rest:mad4b/v1/provider-connections/(?P<provider>[a-z][a-z0-9_-]{0,63})/reconnect",
+      "owner_role": "AI-assisted exact source CI reviewer; independent owner and live provider acceptance still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP request admission, provider isolation and execution-denial controls already require the browser nonce OAuth reconsent path to use its original bound WordPress authority; this source adds a REST adapter but no independent authorization grant or new trusted provider.",
+      "review_rationale": "Exact source and same-PR hermetic regression review of four provider connection REST routes. The GET endpoints call admin-guarded discovery and plans. The POST refresh endpoint requires exact plan and approval-ticket fields, enrolled Staging authority, a verified ChatGPT OAuth client, central Authorization::authorize_mutation and claim_mutation, with invocation through the governed WP Ability rather than a direct provider callback. POST reconnect enforces an authenticated owner session and wp_rest nonce, exact bound reconnect plan and no scope expansion; actual OAuth consent remains browser-side. Invalid routes/roles/payloads and Production refresh are denied, and the regression tests verify no token mutation or authorization-url creation on denied requests. This is source-level CI assurance, not a live grant or Production release. Reviewed exact REST route: rest:mad4b/v1/provider-connections/(?P<provider>[a-z][a-z0-9_-]{0,63})/reconnect"
+    },
+    {
+      "id": "rest:mad4b/v1/provider-connections/(?P<provider>[a-z][a-z0-9_-]{0,63})/refresh",
+      "owner_role": "AI-assisted exact source CI reviewer; independent owner and live provider acceptance still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP request admission, provider isolation and execution-denial controls already require the owner-ticket token refresh path to use its original bound WordPress authority; this source adds a REST adapter but no independent authorization grant or new trusted provider.",
+      "review_rationale": "Exact source and same-PR hermetic regression review of four provider connection REST routes. The GET endpoints call admin-guarded discovery and plans. The POST refresh endpoint requires exact plan and approval-ticket fields, enrolled Staging authority, a verified ChatGPT OAuth client, central Authorization::authorize_mutation and claim_mutation, with invocation through the governed WP Ability rather than a direct provider callback. POST reconnect enforces an authenticated owner session and wp_rest nonce, exact bound reconnect plan and no scope expansion; actual OAuth consent remains browser-side. Invalid routes/roles/payloads and Production refresh are denied, and the regression tests verify no token mutation or authorization-url creation on denied requests. This is source-level CI assurance, not a live grant or Production release. Reviewed exact REST route: rest:mad4b/v1/provider-connections/(?P<provider>[a-z][a-z0-9_-]{0,63})/refresh"
     }
   ],
   "lifecycle": [],
@@ -11991,6 +12067,23 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Source-bound audit of the Staging-only Control Plane test router. Only its control-plane-test-route ability is registered, private and read-only with manage_options and governed Policy::can_read checks. All other ability identifiers in this file are displayed as next-step/readback references and not registered or executed here. Native and selected plans are read from local provider methods, signed source identity is required, altered plan SHA or Production environment is rejected, and the result explicitly forbids automatic mutation, promotion or certification. The same-PR hermetic PHP fixture tests eligibility, owner approval boundaries, signed identity, fallback, unauthorized input, authorization denial and Production refusal."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-connection-center.php",
+      "source_blob_sha": "fcd021f7e3d7d0fc9fc9684977f339f58a236ae3",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php"
+      ],
+      "owner_role": "AI-assisted exact-source reviewer, CI-only and nonauthorizing",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact source and same-PR hermetic regression review of four provider connection REST routes. The GET endpoints call admin-guarded discovery and plans. The POST refresh endpoint requires exact plan and approval-ticket fields, enrolled Staging authority, a verified ChatGPT OAuth client, central Authorization::authorize_mutation and claim_mutation, with invocation through the governed WP Ability rather than a direct provider callback. POST reconnect enforces an authenticated owner session and wp_rest nonce, exact bound reconnect plan and no scope expansion; actual OAuth consent remains browser-side. Invalid routes/roles/payloads and Production refresh are denied, and the regression tests verify no token mutation or authorization-url creation on denied requests. This is source-level CI assurance, not a live grant or Production release."
     }
   ],
   "code_change_rules": {
