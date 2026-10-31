@@ -95,11 +95,16 @@ final class MAD4B_SCP_Unified_Operation_Authority {
             $deny[] = 'exact_active_grant_not_verified';
 
         $now = time();
-        if ( ! is_int( $authority['valid_from'] ?? null ) ||
-            ! is_int( $authority['valid_until'] ?? null ) ||
-            $authority['valid_from'] > $now ||
-            $authority['valid_until'] < $now ||
-            $authority['valid_until'] - $authority['valid_from'] > 90 * 86400 )
+        // Standing grants are first-class. They may be indefinite when the
+        // existing authority store explicitly marks them standing and checks
+        // revocation on EACH execution, rather than forcing repeated approvals.
+        $valid_from = $authority['valid_from'] ?? null;
+        $valid_until = $authority['valid_until'] ?? null;
+        $standing = true === ( $authority['standing_grant'] ?? null );
+        if ( ! is_int( $valid_from ) || $valid_from > $now ||
+            ! ( ( is_int( $valid_until ) && $valid_until >= $now &&
+                  $valid_until >= $valid_from ) ||
+                ( null === $valid_until && $standing ) ) )
             $deny[] = 'grant_expired_or_unbounded';
 
         if ( true !== ( $authority['company_delegation_verified'] ?? null ) ||
