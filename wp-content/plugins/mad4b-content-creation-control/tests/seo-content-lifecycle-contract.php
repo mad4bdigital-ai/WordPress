@@ -75,5 +75,13 @@ $checks['full-render explicitly requested']=str_contains($render,"['render_mode'
 $checks['full-render requires admin permission']=str_contains($render,"current_user_can('manage_options')");
 $checks['default audit does not render']=str_contains($render,'full_render_not_requested');
 $checks['full render mode schema']=str_contains($render,"'render_mode'=>['type'=>'string'");
+$patch=file_get_contents($dir.'/staging-overlays/seo-media-native-principal.patch');
+$checks['Staging principal patch available']=is_string($patch)&&strlen($patch)>1200;
+$checks['Media native execute mapped']=substr_count($patch,"'media/update-metadata'")>=3;
+$checks['SEO native execute mapped']=substr_count($patch,"'seo/update-meta'")>=3;
+$checks['SEO per-object edit permission']=str_contains($patch,"'edit_post'");
+$checks['Media attachment exact permission']=str_contains($patch,"'attachment'");
+$checks['Native undo owner scope']=str_contains($patch,'mad4b_undo_media_cap_denied');
+$checks['Native WordPress authority not forged']=!str_contains($patch,'ensure_content_actor(');
 foreach($checks as $name=>$ok)if(!$ok){fwrite(STDERR,"FAIL SEO Lifecycle: $name\n");exit(1);}
 echo 'PASS MAD4B SEO Content Lifecycle source-only contract: '.count($checks).' checks'.PHP_EOL;
