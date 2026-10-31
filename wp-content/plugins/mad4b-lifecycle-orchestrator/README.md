@@ -1,6 +1,6 @@
 # MAD4B Lifecycle Orchestrator — Central Staging
 
-Version: 0.1.0-staging. This is an **additive, non-authorizing control-plane coordinator**, not a second provider executor.
+Version: 0.2.0-staging. This is an **additive, non-authorizing control-plane coordinator**, not a second provider executor.
 
 ## Roles
 
@@ -28,3 +28,11 @@ Manual event input: `goal`, `target_kind`, `target_id`, `event_type`, `event_key
 - Does not claim numerical SEO score recalculation, Elementor full-render acceptance, publication, or final verification.
 - The source is Staging-only. Do not activate on Production until separate verification and release decision.
 - On WP Cron starvation, an operator can call `lifecycle-reconcile` with the exact event ID after checking the source state.
+
+## Native producer integration (0.2.0-staging)
+
+- Control Plane content-job-created and content-job-transitioned post-commit hooks: exact job/revision/state/stage readback; no business mutation.
+- Content Hub bulk-task-finished hook: records task completion as a lifecycle event, not proof of publication.
+- Company Portfolio Manager company-portfolio-transitioned hook: emitted after successful assignment write. Company/manager/site-binding and revision read back.
+- VERIFIED is allowed only for a terminal ContentJob COMPLETED revision with trusted post-commit source hook and matching canonical readback. Its scope is content_job_terminal_transition_only. It does not certify article publication, SEO or media.
+- BLOCKED_AUTHORITY runs no provider mutation. WP Cron rechecks certification twice, on bounded backoff; new readiness event or manual reconciliation can refresh later.
