@@ -13,6 +13,7 @@ from pathlib import Path
 import re
 import secrets
 import subprocess
+import sqlite3
 import sys
 import time
 
@@ -24,6 +25,7 @@ ROOT = Path("/opt/mad4b-company-transport/broker-v1")
 KEY = ROOT / "host-ed25519-private.pem"
 PUB = ROOT / "host-ed25519-public.base64"
 JOURNAL = ROOT / "broker-events.jsonl"
+DISPATCH_DB = Path("/opt/mad4b-company-transport/dispatch-queue-v1.sqlite3")
 CONFIG = ROOT / "broker-config.json"
 LOCK = ROOT / "broker-poll.lock"
 DOCKER = "/usr/bin/docker"
@@ -85,6 +87,18 @@ def audit(event, **details):
         f.write(json.dumps(row, sort_keys=True) + "\n")
         f.flush()
         os.fsync(f.fileno())
+    # The original Dispatch V1 SQLite event log stays the common audit
+    # surface. The WordPress Broker does not create a competing job queue.
+    if not DISPATCH_DB.is_file():
+        raise RuntimeError("ORIGINAL_DISPATCH_EVENT_JOURNAL_MISSING")
+    job_id = str(details.get("job_id", "host"))[:64]
+    event_detail = json.dumps(
+        {k:v for k,v in details.items() if k not in ("command","signature","secret")},
+        sort_keys=True)[:300]
+    with sqlite3.connect(str(DISPATCH_DB),timeout=6) as db:
+        db.execute("INSERT INTO events(job_id,at,event,detail) VALUES(?,?,?,?)",
+                   ("broker:"+job_id,int(time.time()),event,event_detail))
+        db.commit()
 
 def heartbeat():
     now = int(time.time())
