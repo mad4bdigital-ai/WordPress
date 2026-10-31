@@ -259,7 +259,8 @@ final class MAD4B_Lifecycle_Orchestrator {
            !in_array($post->post_type,['post','page','tours-and-activities','product'],true))
             return;
         if(!in_array($post->post_status,['publish','draft','pending','future'],true))return;
-        $rev=hash('sha256',(string)$post->post_modified_gmt.'|'.$post->post_status.'|'.$post->post_title);
+        $rev=hash('sha256',(string)$post->post_modified_gmt.'|'.$post->post_status.'|'.
+            $post->post_title.'|'.hash('sha256',(string)$post->post_content));
         self::record(['goal'=>'seo','target_kind'=>'post','target_id'=>(int)$id,
             'event_type'=>$updated?'post_updated':'post_created','event_key'=>$rev],true);
     }
@@ -278,8 +279,19 @@ final class MAD4B_Lifecycle_Orchestrator {
             'event_type'=>'media_added','event_key'=>$revision],true);
     }
     public static function trigger_media_meta($meta_id,$post_id,$key,$value) {
-        if(!self::scoped()||$key!=='_wp_attachment_image_alt')return;
-        self::trigger_media((int)$post_id);
+        if(!self::scoped())return;
+        if($key==='_wp_attachment_image_alt') {
+            self::trigger_media((int)$post_id);
+            return;
+        }
+        if(!in_array($key,['rank_math_title','rank_math_description','rank_math_focus_keyword'],true))
+            return;
+        $post=get_post($post_id);
+        if(!$post||in_array($post->post_type,['attachment','revision'],true))return;
+        // The value only contributes a digest and is never saved in the event.
+        $revision=self::hash([$key,$value,$post->post_modified_gmt]);
+        self::record(['goal'=>'seo','target_kind'=>'post','target_id'=>(int)$post_id,
+            'event_type'=>'seo_meta_updated','event_key'=>$revision],true);
     }
     public static function external_event($event) {
         if(!self::scoped()||!is_array($event))return;
