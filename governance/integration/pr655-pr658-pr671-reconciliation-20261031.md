@@ -26,3 +26,13 @@ These are isolated source tests, not Production approval or a full WordPress run
 4. Recompute current open PR HEAD coverage after publishing and perform the branch's full CI gate. Do not label the branch merge-ready until all are proven.
 
 No writes to `master`, Production, or live WordPress instances occurred in this isolated reconciliation.
+
+## Additional isolated combined candidate evidence
+
+- A diagnostic candidate at `/opt/mad4b-qa31-fix/pr655-pr671-combined-audit` incorporated the reviewed PR655 source patch and both PR671 / PR658 commit histories. The merge used `-X theirs` **for a diagnostic trial only** across conflicting text. Its semantics have **not** been accepted; overlapping changes from previously aggregated branches may be lost. It must **not** be published as a final integrated release.
+- Candidate source review restored the immutable Feature007 workflow's exact reviewed branch source. Exact archived G4 and G9 proofs were verified against real historical Git commits and pinned to current Git blobs; CI-only review metadata was updated, with archived SHA/byte records unchanged.
+- Isolated Feature007 outcome: **DRIFT 0**, **10/10** rebind tests, **62** positive/negative historical evidence assertions. QA31 source reconciliation, company bootstrap, MCP Class Provenance, RC104 integrated source, and the targeted native executor tests passed; standalone admin-page test requires a disposable WordPress administrator fixture and is not certified here.
+- Latest isolated candidate commit: `ea52ec340e5d5be0a1e4bad66f571a4abf1e47cb`. The reviewed root source, two additional PHP sources and runtime-convergence regression checks are **CI-only**: no Production authority, grants or live execution are asserted.
+- Production Readiness against master `b8f2e0a60fa45e28b49643f1eae6f73570c2fee8` returned **FAIL_UNCOVERED_CHANGES**: **237** unresolved gaps across **142** source files (**193 P0**, **44 P1**; 97 missing capability reviews and 140 missing exact source-change reviews).
+- Complete structured read-only gap inventory: `governance/integration/pr655-pr671-readiness-gaps-20261031.json`.
+- **NO-GO**: do not synthesize approvals, auto-invent source reviews or push this diagnostic merge. First perform semantic conflict reconciliation and exact regression reviews for the 237 gaps, then use a GitHub identity explicitly authorized to update workflow files, and run full CI before merging.
