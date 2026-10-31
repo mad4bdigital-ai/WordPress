@@ -1,3 +1,51 @@
+--- a/includes/class-mad4b-scp-delegation-mode.php
++++ b/includes/class-mad4b-scp-delegation-mode.php
+@@ -161,6 +161,11 @@
+             'mad4b/hub-executor-submit-keywords',
+             'mad4b/hub-jetengine-consumer-configure',
+             'mad4b/hub-jetengine-consumer-activate',
++            // Reviewed native WordPress reversible adapters. Their exact
++            // object permission, provider certification, schema and Journal
++            // gates remain enforced by Authorization and Mutation_Principal.
++            'seo/update-meta',
++            'media/update-metadata',
+         );
+     }
+ 
+@@ -357,6 +362,33 @@
+             }
+             return true;
+         }
++
++        // Exact native SEO/media adapter scope: real enrolled WP administrator
++        // + WordPress object's own edit capability + native reversible journal.
++        // Does not grant arbitrary provider/ContentJob mutation authority.
++        if ( in_array( $ability_name, array( 'seo/update-meta', 'media/update-metadata' ), true ) ) {
++            if ( ! user_can( $user, 'manage_options' ) )
++                return new WP_Error( 'mad4b_native_seo_media_admin_denied', 'WordPress administrator permission required.' );
++            if ( 'seo/update-meta' === $ability_name ) {
++                $id = absint( $input['post_id'] ?? 0 );
++                $post = $id ? get_post( $id ) : null;
++                if ( ! $post || in_array( $post->post_type, array( 'attachment', 'revision' ), true )
++                    || ! user_can( $user, 'edit_post', $id ) )
++                    return new WP_Error( 'mad4b_native_seo_post_denied', 'SEO metadata target requires exact post edit permission.' );
++                if ( ! is_array( $input['fields'] ?? null ) || ! count( $input['fields'] ) )
++                    return new WP_Error( 'mad4b_native_seo_fields_required', 'An explicit SEO field patch is required.' );
++            } else {
++                $id = absint( $input['attachment_id'] ?? 0 );
++                if ( ! $id || 'attachment' !== get_post_type( $id )
++                    || ! user_can( $user, 'edit_post', $id ) )
++                    return new WP_Error( 'mad4b_native_media_attachment_denied', 'Media metadata target requires exact attachment edit permission.' );
++                $fields = array_intersect( array_keys( $input ), array( 'title', 'caption', 'description', 'alt' ) );
++                if ( ! $fields ) return new WP_Error( 'mad4b_native_media_fields_required', 'Explicit media metadata fields required.' );
++                if ( in_array( 'alt', $fields, true ) && ! wp_attachment_is_image( $id ) )
++                    return new WP_Error( 'mad4b_native_media_alt_image_only', 'ALT metadata requires an image attachment.' );
++            }
++            return true;
++        }
+ 
+         // ContentJob is a site/brand-scoped WordPress aggregate: its writer,
+         // immutable event log, CAS transition and audit remain authoritative.
 --- a/includes/class-mad4b-scp-mutation-principal.php
 +++ b/includes/class-mad4b-scp-mutation-principal.php
 @@ -11,6 +11,10 @@
@@ -27,39 +75,3 @@
          } elseif ( 'mad4b/taxonomy-set-object-terms' === $ability ) {
              $taxonomy = sanitize_key( (string) ( $target['taxonomy'] ?? '' ) );
              $object = $taxonomy ? get_taxonomy( $taxonomy ) : null;
---- a/includes/class-mad4b-scp-delegation-mode.php
-+++ b/includes/class-mad4b-scp-delegation-mode.php
-@@ -358,6 +358,33 @@
-             return true;
-         }
- 
-+        // Exact native SEO/media adapter scope: real enrolled WP administrator
-+        // + WordPress object's own edit capability + native reversible journal.
-+        // Does not grant arbitrary provider/ContentJob mutation authority.
-+        if ( in_array( $ability_name, array( 'seo/update-meta', 'media/update-metadata' ), true ) ) {
-+            if ( ! user_can( $user, 'manage_options' ) )
-+                return new WP_Error( 'mad4b_native_seo_media_admin_denied', 'WordPress administrator permission required.' );
-+            if ( 'seo/update-meta' === $ability_name ) {
-+                $id = absint( $input['post_id'] ?? 0 );
-+                $post = $id ? get_post( $id ) : null;
-+                if ( ! $post || in_array( $post->post_type, array( 'attachment', 'revision' ), true )
-+                    || ! user_can( $user, 'edit_post', $id ) )
-+                    return new WP_Error( 'mad4b_native_seo_post_denied', 'SEO metadata target requires exact post edit permission.' );
-+                if ( ! is_array( $input['fields'] ?? null ) || ! count( $input['fields'] ) )
-+                    return new WP_Error( 'mad4b_native_seo_fields_required', 'An explicit SEO field patch is required.' );
-+            } else {
-+                $id = absint( $input['attachment_id'] ?? 0 );
-+                if ( ! $id || 'attachment' !== get_post_type( $id )
-+                    || ! user_can( $user, 'edit_post', $id ) )
-+                    return new WP_Error( 'mad4b_native_media_attachment_denied', 'Media metadata target requires exact attachment edit permission.' );
-+                $fields = array_intersect( array_keys( $input ), array( 'title', 'caption', 'description', 'alt' ) );
-+                if ( ! $fields ) return new WP_Error( 'mad4b_native_media_fields_required', 'Explicit media metadata fields required.' );
-+                if ( in_array( 'alt', $fields, true ) && ! wp_attachment_is_image( $id ) )
-+                    return new WP_Error( 'mad4b_native_media_alt_image_only', 'ALT metadata requires an image attachment.' );
-+            }
-+            return true;
-+        }
-+
-         // ContentJob is a site/brand-scoped WordPress aggregate: its writer,
-         // immutable event log, CAS transition and audit remain authoritative.
-         // A real WP administrator with edit_posts needs no NHI alias.
