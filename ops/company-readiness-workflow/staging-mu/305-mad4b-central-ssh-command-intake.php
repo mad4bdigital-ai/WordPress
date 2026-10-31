@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: MAD4B Central Scoped SSH Grant and Command Intake
- * Description: Authenticated central grants and one-time host-command intake; execution requires independently authorized SSH transport.
- * Version: 0.1.0
+ * Description: Revocable one-time and persistent scoped grants and registered SSH connection references; SSH host authorization remains independent.
+ * Version: 0.2.0
  */
 defined('ABSPATH') || exit;
 
@@ -11,6 +11,7 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
     const PREFIX = 'mad4b_central_ssh_grant_v1_';
     const CLAIM_PREFIX = 'mad4b_central_ssh_claim_v1_';
     const REQUEST_PREFIX = 'mad4b_central_ssh_request_v1_';
+    const TRANSPORT_PREFIX = 'mad4b_central_ssh_transport_v1_';
     const AUDIT = 'mad4b_central_ssh_intake_audit_v1';
     const TTL_MAX = 900;
     const COMMAND_MAX_BYTES = 4096;
@@ -70,26 +71,140 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
             'assignment_revision' => (int) ($rights['assignment_revision'] ?? 0));
     }
 
+
+    /**
+     * Persist SSH connection configuration, not a live SSH session or secret.
+     * The host operator must independently attest the host key and secret
+     * reference through its authenticated transport before execution.
+     */
+    public static function register_transport(WP_REST_Request $request) {
+        if (!self::permitted($request)) return self::error('owner_step_up_required');
+        $company = (string) $request['company'];
+        $input = $request->get_json_params();
+        if (!is_array($input) || array_diff(array_keys($input),
+                array('host_id','host_principal','host_key_fingerprint','credential_ref','reason')))
+            return self::error('invalid_transport_shape', 422);
+        $host = (string) ($input['host_id'] ?? '');
+        $principal = (string) ($input['host_principal'] ?? '');
+        $fingerprint = (string) ($input['host_key_fingerprint'] ?? '');
+        $reference = (string) ($input['credential_ref'] ?? '');
+        $reason = (string) ($input['reason'] ?? '');
+        if (!preg_match('/^[A-Za-z0-9][A-Za-z0-9_.-]{2,79}$/D', $host)
+            || !preg_match('/^[a-z_][a-z0-9_-]{0,31}$/D', $principal)
+            || !preg_match('/^SHA256:[A-Za-z0-9+\\/]{43}=?$/D', $fingerprint)
+            || !preg_match('/^vault:[a-z0-9][a-z0-9_\\/-]{5,150}$/D', $reference)
+            || strlen($reason) < 10 || strlen($reason) > 240)
+            return self::error('invalid_ssh_transport_fields', 422);
+        $scope = self::scope($company, 'maintenance.shell');
+        if (is_wp_error($scope)) return $scope;
+        $id = bin2hex(random_bytes(16));
+        $record = array(
+            'contract' => self::CONTRACT, 'transport_id' => $id,
+            'mode' => 'persistent_ssh_configuration',
+            'company' => $company,
+            'site_uuid' => $scope['site_uuid'],
+            'canonical_origin' => $scope['canonical_origin'],
+            'environment' => $scope['environment'],
+            'assignment_revision' => $scope['assignment_revision'],
+            'central_principal_id' => get_current_user_id(),
+            'host_id' => $host, 'host_principal' => $principal,
+            'host_key_fingerprint' => $fingerprint,
+            'credential_ref' => $reference,
+            'created_epoch' => time(),
+            'state' => 'PENDING_INDEPENDENT_SSH_VERIFICATION',
+            'ssh_session_active' => false,
+            'host_authority_verified' => false,
+            'ssh_secret_stored_in_wordpress' => false,
+            'reason' => sanitize_text_field($reason)
+        );
+        if (!add_option(self::TRANSPORT_PREFIX . $id, $record, '', false))
+            return self::error('transport_persistence_failed', 503);
+        self::audit('transport_registered', $company, $id, $record['state']);
+        return new WP_REST_Response($record, 201);
+    }
+
+    /**
+     * Revoking either a permanent grant or its connection registration
+     * prevents new command claims. Host transport verifies the revocation
+     * state again before dispatch, not solely when the command was accepted.
+     */
+    public static function revoke(WP_REST_Request $request) {
+        if (!self::permitted($request)) return self::error('owner_step_up_required');
+        $company = (string) $request['company'];
+        $kind = (string) ($request->get_param('kind') ?: '');
+        $id = (string) ($request['object_id'] ?? '');
+        if (!in_array($kind, array('grant','transport'), true)
+            || !preg_match('/^[a-f0-9]{32}$/D', $id))
+            return self::error('invalid_revoke_scope', 422);
+        $prefix = $kind === 'grant' ? self::PREFIX : self::TRANSPORT_PREFIX;
+        $record = get_option($prefix . $id, null);
+        if (!is_array($record) || ($record['company'] ?? '') !== $company
+            || ($record['central_principal_id'] ?? null) !== get_current_user_id())
+            return self::error('record_not_found', 404);
+        if (($record['state'] ?? '') === 'REVOKED')
+            return rest_ensure_response(array('state'=>'REVOKED','object_id'=>$id));
+        $scope = self::scope($company,
+            $kind === 'grant' ? (string) ($record['operation'] ?? '') : 'maintenance.shell');
+        if (is_wp_error($scope)) return $scope;
+        foreach (array('site_uuid','environment','canonical_origin','assignment_revision') as $field)
+            if (($scope[$field] ?? null) !== ($record[$field] ?? null))
+                return self::error('scope_mismatch');
+        $record['state'] = 'REVOKED';
+        $record['revoked_epoch'] = time();
+        $record['revoked_by'] = get_current_user_id();
+        if (!update_option($prefix . $id, $record, false))
+            return self::error('revoke_persistence_failed', 503);
+        self::audit($kind . '_revoked', $company, $id, 'REVOKED');
+        return rest_ensure_response(array('state'=>'REVOKED','object_id'=>$id));
+    }
+
     public static function issue(WP_REST_Request $request) {
         if (!self::permitted($request)) return self::error('owner_step_up_required');
         $company = (string) $request['company'];
         $input = $request->get_json_params();
         if (!is_array($input)
             || array_diff(array_keys($input),
-                array('operation','host_id','host_principal','ttl_seconds','reason')))
+                array('operation','host_id','host_principal','ttl_seconds','reason','grant_mode','transport_id')))
             return self::error('invalid_grant_shape', 422);
         $operation = (string) ($input['operation'] ?? '');
         $host = (string) ($input['host_id'] ?? '');
         $host_principal = (string) ($input['host_principal'] ?? '');
         $reason = (string) ($input['reason'] ?? '');
+        $mode = (string) ($input['grant_mode'] ?? 'one_time');
+        $transport_id = (string) ($input['transport_id'] ?? '');
         $ttl = (int) ($input['ttl_seconds'] ?? 300);
+        if (!in_array($mode, array('one_time','persistent'), true))
+            return self::error('grant_mode_invalid', 422);
+        if ($mode === 'persistent') {
+            if (isset($input['ttl_seconds']) && $input['ttl_seconds'] !== null)
+                return self::error('persistent_grant_does_not_expire_by_ttl', 422);
+            if (!preg_match('/^[a-f0-9]{32}$/D', $transport_id))
+                return self::error('persistent_transport_reference_required', 422);
+            $transport = get_option(self::TRANSPORT_PREFIX . $transport_id, null);
+            if (!is_array($transport)
+                || ($transport['state'] ?? '') !== 'PENDING_INDEPENDENT_SSH_VERIFICATION')
+                return self::error('persistent_transport_missing_or_revoked');
+        } else {
+            $transport = null;
+            if ($transport_id !== '') return self::error('one_time_transport_reference_unsupported', 422);
+        }
         if (!preg_match('/^[a-zA-Z0-9][a-zA-Z0-9_.-]{2,79}$/D', $host)
             || !preg_match('/^[a-z_][a-z0-9_-]{0,31}$/D', $host_principal)
-            || $ttl < 30 || $ttl > self::TTL_MAX
+            || ($mode === 'one_time' && ($ttl < 30 || $ttl > self::TTL_MAX))
             || strlen($reason) < 10 || strlen($reason) > 240)
             return self::error('grant_fields_invalid', 422);
         $scope = self::scope($company, $operation);
         if (is_wp_error($scope)) return $scope;
+        if ($mode === 'persistent' && (
+            ($transport['company'] ?? '') !== $company
+            || ($transport['host_id'] ?? '') !== $host
+            || ($transport['host_principal'] ?? '') !== $host_principal
+            || ($transport['central_principal_id'] ?? null) !== get_current_user_id()
+            || ($transport['site_uuid'] ?? null) !== $scope['site_uuid']
+            || ($transport['canonical_origin'] ?? null) !== $scope['canonical_origin']
+            || ($transport['environment'] ?? null) !== $scope['environment']
+            || ($transport['assignment_revision'] ?? null) !== $scope['assignment_revision']))
+            return self::error('persistent_transport_scope_mismatch');
         // This is a central policy scope; host-level privilege is NOT minted.
         // The SSH transport must independently verify host principal/grants.
         $grant_id = bin2hex(random_bytes(16));
@@ -102,7 +217,9 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
             'assignment_revision' => $scope['assignment_revision'],
             'central_principal_id' => get_current_user_id(),
             'target_host_id' => $host, 'target_ssh_principal' => $host_principal,
-            'issued_epoch' => time(), 'expires_epoch' => time() + $ttl,
+            'issued_epoch' => time(), 'expires_epoch' => $mode === 'persistent' ? null : time() + $ttl,
+            'grant_mode' => $mode, 'transport_id' => $mode === 'persistent' ? $transport_id : null,
+            'requires_fresh_host_auth_for_each_command' => true,
             'state' => 'CENTRAL_OPERATION_SCOPE_GRANTED',
             'host_ssh_authority_verified' => false,
             'execution_authorized' => false, 'executed' => false,
@@ -139,7 +256,8 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
             || ($grant['company'] ?? '') !== $company
             || ($grant['central_principal_id'] ?? 0) !== get_current_user_id()
             || ($grant['state'] ?? '') !== 'CENTRAL_OPERATION_SCOPE_GRANTED'
-            || (int) ($grant['expires_epoch'] ?? 0) <= time())
+            || (($grant['grant_mode'] ?? 'one_time') !== 'persistent'
+                && (int) ($grant['expires_epoch'] ?? 0) <= time()))
             return self::error('grant_expired_or_mismatched');
         $scope = self::scope($company, (string) $grant['operation']);
         if (is_wp_error($scope)) return $scope;
@@ -147,10 +265,30 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
             if (($scope[$field] ?? null) !== ($grant[$field] ?? null))
                 return self::error('delegation_or_site_changed');
         }
+        $mode = (string) ($grant['grant_mode'] ?? 'one_time');
+        $transport_id = (string) ($grant['transport_id'] ?? '');
+        if ($mode === 'persistent') {
+            $transport = get_option(self::TRANSPORT_PREFIX . $transport_id, null);
+            if (!is_array($transport)
+                || ($transport['state'] ?? '') !== 'PENDING_INDEPENDENT_SSH_VERIFICATION'
+                || ($transport['company'] ?? null) !== $company
+                || ($transport['site_uuid'] ?? null) !== $scope['site_uuid']
+                || ($transport['canonical_origin'] ?? null) !== $scope['canonical_origin']
+                || ($transport['environment'] ?? null) !== $scope['environment']
+                || ($transport['assignment_revision'] ?? null) !== $scope['assignment_revision']
+                || ($transport['host_id'] ?? null) !== $grant['target_host_id']
+                || ($transport['host_principal'] ?? null) !== $grant['target_ssh_principal'])
+                return self::error('persistent_transport_revoked_or_changed');
+        } elseif ($mode !== 'one_time') return self::error('grant_mode_unknown');
         $request_id = bin2hex(random_bytes(16));
-        // Unique WordPress option insertion claims a one-time grant atomically.
-        if (!add_option(self::CLAIM_PREFIX . $id, $request_id, '', false))
-            return self::error('one_time_grant_already_claimed', 409);
+        // Persistent grants are reusable, but each correlation is single use.
+        // For one-time grants preserve the original one-time consumption.
+        $claim_key = self::CLAIM_PREFIX . $id;
+        if ($mode === 'persistent')
+            $claim_key .= '_' . hash('sha256', $correlation);
+        if (!add_option($claim_key, $request_id, '', false))
+            return self::error($mode === 'persistent'
+                ? 'correlation_already_claimed' : 'one_time_grant_already_claimed', 409);
         $receipt = array(
             'contract' => self::CONTRACT, 'request_id' => $request_id,
             'grant_id' => $id, 'company' => $company,
@@ -163,10 +301,13 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
             'correlation_id' => $correlation,
             'command_sha256' => hash('sha256', $command),
             'command_byte_length' => strlen($command),
+            'grant_mode' => $mode,
+            'transport_id' => $mode === 'persistent' ? $transport_id : null,
             // Exact command bytes must come from the authenticated operator
             // session at dispatch. Never store arbitrary shell text in WP options.
             'command_bytes_persisted' => false,
-            'created_epoch' => time(), 'expires_epoch' => $grant['expires_epoch'],
+            'created_epoch' => time(), 'expires_epoch' => $mode === 'persistent'
+                ? time() + 300 : $grant['expires_epoch'],
             'status' => 'ADMITTED_PENDING_INDEPENDENT_HOST_AUTHORITY',
             'host_ssh_grant_verified' => false, 'transport_registered' => false,
             'execution_performed' => false
@@ -195,6 +336,14 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
         if (!class_exists('MAD4B_Central_Dual_Lane_Registry_V1', false)
             || !MAD4B_Central_Dual_Lane_Registry_V1::central()) return;
         $base = '/central-execution-lanes/(?P<company>[a-z][a-z0-9-]{2,47})';
+        register_rest_route('mad4b/v1', $base . '/ssh-transports', array(
+            'methods' => 'POST', 'permission_callback' => array(__CLASS__, 'permitted'),
+            'callback' => array(__CLASS__, 'register_transport')
+        ));
+        register_rest_route('mad4b/v1', $base . '/(?P<kind>grant|transport)/(?P<object_id>[a-f0-9]{32})/revoke', array(
+            'methods' => 'POST', 'permission_callback' => array(__CLASS__, 'permitted'),
+            'callback' => array(__CLASS__, 'revoke')
+        ));
         register_rest_route('mad4b/v1', $base . '/grants', array(
             'methods' => 'POST', 'permission_callback' => array(__CLASS__, 'permitted'),
             'callback' => array(__CLASS__, 'issue')
