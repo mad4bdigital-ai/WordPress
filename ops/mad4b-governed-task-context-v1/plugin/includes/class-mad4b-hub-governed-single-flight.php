@@ -35,6 +35,9 @@ final class MAD4B_Hub_Governed_Single_Flight {
    tenant_id varchar(191) NOT NULL,
    brand_id varchar(191) NOT NULL,
    job_revision bigint(20) unsigned NOT NULL,
+   workflow_type varchar(40) NOT NULL,
+   source_company varchar(191) NOT NULL DEFAULT '',
+   source_record_id varchar(191) NOT NULL DEFAULT '',
    leader_task_id char(36) NOT NULL,
    admitted_at datetime NOT NULL,
    PRIMARY KEY  (work_hash),
@@ -80,7 +83,24 @@ final class MAD4B_Hub_Governed_Single_Flight {
  }
  static function plan(array $item,$claim_only=false){
   $jobid=(string)($item['job_id']??'');
-  if($jobid==='')return ['eligible'=>false,'decision'=>'NOT_CONTENT_JOB'];
+  if($jobid===''){
+   if(!class_exists('MAD4B_Hub_Unlinked_Task_Context'))
+    return self::error('unlinked_context_provider_missing',503);
+   $p=$item['payload']??null;
+   if(!is_array($p))return self::error('unlinked_payload_missing',409);
+   $o=$p['workflow_origin']??null;
+   if(!is_array($o))return self::error('legacy_unlinked_origin_requires_review',409);
+   $plan=MAD4B_Hub_Unlinked_Task_Context::plan($item,$o,$p);
+   if(is_wp_error($plan))return $plan;
+   $trigger=(string)($p['trigger_event_id']??'');
+   $batch=(string)($item['_batch_key']??'');
+   if(strlen($trigger)>128 || (!$claim_only && $trigger==='' && ($batch==='' || strlen($batch)>191)))
+    return self::error('unlinked_trigger_receipt_missing',409);
+   $trigger_id=$trigger!==''?$trigger:($claim_only?'claim_readback_only':$batch);
+   $plan['trigger_hash']=self::hash(['source'=>$p['trigger_source']??'direct_intake','receipt'=>$trigger_id]);
+   $plan['trigger_source']=(string)($p['trigger_source']??'direct_intake');
+   return $plan;
+  }
   if(!class_exists('MAD4B_SCP_Content_Jobs'))
    return self::error('original_content_job_unavailable',503);
   $original=MAD4B_SCP_Content_Jobs::get_job(['job_id'=>$jobid]);
@@ -139,12 +159,15 @@ final class MAD4B_Hub_Governed_Single_Flight {
    'stage_input'=>$p['stage_input']??[],
    'requested_step'=>$p['requested_step']??'',
    'preferred_ability'=>$p['preferred_ability']??'',
+   'executor_lane'=>$origin['executor_lane']??'',
+   'assigned_executor'=>$p['assigned_executor']??'mcp_client',
    'stage_adapter_id'=>$p['stage_adapter_id']??'',
    'stage_ability'=>$p['stage_ability']??'',
    'capability_query'=>$p['capability_query']??'',
    'provider'=>$p['provider']??'',
    'model_version'=>$p['model_version']??'',
    'prompt_version'=>$p['prompt_version']??'',
+   'dependencies'=>$item['depends_on']??[],
   ];
   $slot=['site_uuid'=>$job['site_uuid'],'tenant_id'=>$job['tenant_id'],
     'brand_id'=>$job['brand_id'],'job_id'=>$jobid,
@@ -160,7 +183,12 @@ final class MAD4B_Hub_Governed_Single_Flight {
   $trigger_identity=$trigger!==''?$trigger:($claim_only?'claim_readback_only':$batch_key);
   return ['eligible'=>true,'work_hash'=>self::hash($semantic),
     'slot_hash'=>self::hash($slot),
-    'job'=>$job,'trigger_hash'=>self::hash([
+    'job'=>$job,'workflow_type'=>'content_production',
+    'scope'=>['job_id'=>$jobid,'site_uuid'=>$job['site_uuid'],
+      'tenant_id'=>$job['tenant_id'],'brand_id'=>$job['brand_id'],
+      'job_revision'=>(int)$job['job_revision'],
+      'source_company'=>'','source_record_id'=>$jobid],
+    'trigger_hash'=>self::hash([
       'source'=>$p['trigger_source']??'direct_intake','receipt'=>$trigger_identity]),
     'trigger_source'=>(string)($p['trigger_source']??'direct_intake')];
  }
@@ -173,7 +201,7 @@ final class MAD4B_Hub_Governed_Single_Flight {
   if(is_wp_error($plan))return $plan;
   if(!$plan['eligible'])return ['decision'=>'UNSCOPED_OTHER_WORKFLOW'];
   $taskTable=$wpdb->prefix.'mad4b_hub_bulk_tasks';
-  $job=$plan['job'];
+  $scope=$plan['scope'];
   $occupied=$wpdb->get_row($wpdb->prepare(
     "SELECT work_hash,leader_task_id FROM $flights WHERE slot_hash=%s FOR UPDATE",
     $plan['slot_hash']),ARRAY_A);
@@ -204,10 +232,12 @@ final class MAD4B_Hub_Governed_Single_Flight {
   if($other>0)return self::error('overlapping_iteration_requires_review',409);
   $ok=$wpdb->query($wpdb->prepare(
     "INSERT IGNORE INTO $flights
-     (work_hash,slot_hash,job_id,site_uuid,tenant_id,brand_id,job_revision,leader_task_id,admitted_at)
-     VALUES (%s,%s,%s,%s,%s,%s,%d,%s,%s)",
-    $plan['work_hash'],$plan['slot_hash'],$item['job_id'],$job['site_uuid'],$job['tenant_id'],
-    $job['brand_id'],(int)$job['job_revision'],$taskid,gmdate('Y-m-d H:i:s')));
+     (work_hash,slot_hash,job_id,site_uuid,tenant_id,brand_id,job_revision,
+      workflow_type,source_company,source_record_id,leader_task_id,admitted_at)
+     VALUES (%s,%s,%s,%s,%s,%s,%d,%s,%s,%s,%s,%s)",
+    $plan['work_hash'],$plan['slot_hash'],$scope['job_id'],$scope['site_uuid'],$scope['tenant_id'],
+    $scope['brand_id'],(int)$scope['job_revision'],$plan['workflow_type'],
+    $scope['source_company'],$scope['source_record_id'],$taskid,gmdate('Y-m-d H:i:s')));
   if($ok!==1){
    if($ok===0){
     $collision=$wpdb->get_row($wpdb->prepare(
@@ -234,7 +264,8 @@ final class MAD4B_Hub_Governed_Single_Flight {
   if(!is_array($payload))return false;
   $plan=self::plan(['job_id'=>$row['content_job_id']??'',
     'stage'=>$row['stage']??'','operation'=>$row['operation']??'',
-    'target_ref'=>$row['target_ref']??'','payload'=>$payload],true);
+    'target_ref'=>$row['target_ref']??'','payload'=>$payload,
+    'depends_on'=>json_decode((string)($row['dependencies_json']??'[]'),true)],true);
   if(is_wp_error($plan)||!($plan['eligible']??false))return false;
   global $wpdb;[$f,]=self::tables();
   $leader=$wpdb->get_var($wpdb->prepare(
@@ -254,12 +285,15 @@ final class MAD4B_Hub_Governed_Single_Flight {
   $flight=$wpdb->get_row($wpdb->prepare(
     "SELECT * FROM $f WHERE work_hash=%s AND slot_hash=%s FOR UPDATE",
       $plan['work_hash'],$plan['slot_hash']),ARRAY_A);
-  $job=$plan['job'];
-  if(!$flight || ($flight['job_id']??'')!==$item['job_id']
-    ||($flight['site_uuid']??'')!==$job['site_uuid']
-    ||($flight['tenant_id']??'')!==$job['tenant_id']
-    ||($flight['brand_id']??'')!==$job['brand_id']
-    ||(int)($flight['job_revision']??-1)!==(int)$job['job_revision']){
+  $scope=$plan['scope'];
+  if(!$flight || ($flight['job_id']??'')!==$scope['job_id']
+    ||($flight['site_uuid']??'')!==$scope['site_uuid']
+    ||($flight['tenant_id']??'')!==$scope['tenant_id']
+    ||($flight['brand_id']??'')!==$scope['brand_id']
+    ||(int)($flight['job_revision']??-1)!==(int)$scope['job_revision']
+    ||($flight['workflow_type']??'')!==$plan['workflow_type']
+    ||($flight['source_company']??'')!==$scope['source_company']
+    ||($flight['source_record_id']??'')!==$scope['source_record_id']){
     $wpdb->query('ROLLBACK');return self::error('follower_scope_or_flight_invalid',409);
   }
   $written=$wpdb->query($wpdb->prepare(

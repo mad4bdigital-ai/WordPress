@@ -59,6 +59,8 @@ class StubDb {
      $this->flights[$h[1]]=['work_hash'=>$h[1],'job_id'=>MAD4B_SCP_Content_Jobs::$row['job_id'],
        'site_uuid'=>MAD4B_SCP_Content_Jobs::$row['site_uuid'],
        'tenant_id'=>'test-tenant','brand_id'=>'test-brand','job_revision'=>5,
+       'workflow_type'=>'content_production','source_company'=>'',
+       'source_record_id'=>MAD4B_SCP_Content_Jobs::$row['job_id'],
        'leader_task_id'=>'cccccccc-cccc-4ccc-8ccc-cccccccccccc'];
      return 1;
    }

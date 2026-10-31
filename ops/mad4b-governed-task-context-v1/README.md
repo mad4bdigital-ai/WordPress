@@ -18,11 +18,13 @@ executes, publishes, issues a grant, or changes a job.
 The `plugin/` directory is a source snapshot of the existing live Hub,
 with only these PHP files changed:
 
-- `mad4b-content-hub.php`: imports the new source class.
+- `mad4b-content-hub.php`: imports the semantic-flight and unlinked-origin classes.
 - `includes/class-mad4b-hub-bulk-jobs-queue.php`: wraps enqueue, claim
   with a guarded, feature-flagged check.
 - `includes/class-mad4b-hub-governed-single-flight.php`: new
   transaction-bound reservation and follower-trigger receipt.
+- `includes/class-mad4b-hub-unlinked-task-context.php`: source-backed
+  `product_data` contract and explicit QA, integration and legacy classifications.
 
 A _Work Slot_ digest is derived from original site + tenant + brand +
 Content Job + revision + stage + operation + target. Database
@@ -53,7 +55,9 @@ independent receipt verification remains unchanged.
   this admission class does **not** authorize them.
 - No fallback executor or authority lane is invented.
 
-The feature is OFF by default. An explicit original Staging deployment
+The feature is OFF by default. Incoming requests with verified
+predecessor dependencies or multi-item Batches must not record a partial
+follower receipt; they require an independent dependency handoff/review. An explicit original Staging deployment
 would set `MAD4B_HUB_SEMANTIC_FLIGHT_MODE=enforce` **after** the approved
 site operator installs the two tables with the class's `install()`
 method and certifies the old queued work. That change has **not**
@@ -72,9 +76,11 @@ receipts. New Work Slots require a new original job revision or an
 independent reviewed iteration mechanism. The current policy does not
 auto-reconcile older 322 tasks or the two independent Brand Context Jobs.
 
-Workflows without a Content Job (canonical inventory, pricing, etc.)
-retain their existing authorization and need their own origin-specific
-work-slot contract; they are **not** incorrectly treated as Content Jobs.
+Workflows without a Content Job are classified separately. Verified
+read-only Canonical Gap source inspections have their own Work Slot.
+QA, integration and legacy work remain fail-closed until their original
+provenance and effects are independently verified; see
+`UNLINKED_CONTRACTS.md`. None are fabricated as Content Jobs.
 
 Rollback: leave the source versioned, disable the feature flag, retain
 the evidence tables for audit. Do **not** drop durable receipts.

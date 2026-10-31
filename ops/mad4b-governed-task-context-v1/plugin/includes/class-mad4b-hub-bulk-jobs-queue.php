@@ -234,6 +234,10 @@ KEY content_job_stage (content_job_id,stage)
                 if(is_wp_error($admit)){
                     $wpdb->query('ROLLBACK');
                     if($admit->get_error_code()==='mad4b_hub_flight_existing_single_flight_requires_follower_handoff'){
+                        // A multi-item Batch or unverified predecessor DAG must not be
+                        // partially accepted by recording only one follower trigger.
+                        if(count($n['items'])!==1 || !empty($it['depends_on']))
+                            return self::fail('follower_dependency_or_batch_review_required',409);
                         // Link the follow-up trigger after rollback; never create a second task.
                         $receipt=MAD4B_Hub_Governed_Single_Flight::record_duplicate_trigger($it);
                         if(is_wp_error($receipt))return $receipt;
