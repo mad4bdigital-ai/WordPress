@@ -61,7 +61,8 @@ final class MAD4B_SCP_Central_Company_Rollout {
         if ( class_exists( 'MAD4B_SCP_Central_Release_Registry' ) &&
             is_callable( array( 'MAD4B_SCP_Central_Release_Registry', 'verified_readback' ) ) ) {
             $found = MAD4B_SCP_Central_Release_Registry::verified_readback( $hash );
-            if ( is_array( $found ) ) {
+            if ( is_array( $found ) && ! empty( $found ) &&
+                true === ( $found['registry_readback_verified'] ?? null ) ) {
                 $receipt = $found;
                 $readback = true;
             }
