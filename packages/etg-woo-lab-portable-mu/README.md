@@ -22,3 +22,7 @@ Two files also appear in the source-only shared-product-core snapshot: local-tou
 Automatic GitHub-to-Woo-Lab delivery is opt-in: WOO_LAB_MU_AUTO_DEPLOY=true repository variable, protected woo-lab GitHub Environment, and SSH host/user/private-key/pinned-known-host secrets. The workflow must receive approvals and a real deploy receipt before claiming active automated releases. No Production or Staging mutation.
 
 VPS evidence: /opt/commerce-components/evidence/etg-normal-feature-gates-20261029 and /opt/commerce-components/evidence/etg-mu-canonical-package-20261029.
+
+## Currency display regression fix — 2026-10-31
+
+The currency shortcode no longer disappears when the FX snapshot is missing or older than 48 hours. The USD recovery state remains visible and unsupported selections are disabled. This change replaces the prior switcher source and preserves the 32-file exact manifest. The separate `packages/mad4b-fx-resilience` package contains the independently scheduled FX refresh adapter; it must be deployed with the site-specific guarded release, not inferred to be enabled from this portable UI source alone.

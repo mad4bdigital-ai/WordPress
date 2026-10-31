@@ -1,0 +1,37 @@
+name: MAD4B FX Resilience Source Gate
+on:
+  push:
+    paths:
+      - 'packages/mad4b-fx-resilience/**'
+      - 'packages/etg-woo-lab-portable-mu/**'
+      - '.github/workflows/mad4b-fx-resilience.yml'
+  pull_request:
+    paths:
+      - 'packages/mad4b-fx-resilience/**'
+      - 'packages/etg-woo-lab-portable-mu/**'
+      - '.github/workflows/mad4b-fx-resilience.yml'
+jobs:
+  fx-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify PHP source syntax
+        run: |
+          php -l packages/mad4b-fx-resilience/mu-plugins/pricing-header-switcher.php
+          php -l packages/mad4b-fx-resilience/mu-plugins/pricing-fx-auto-refresh.php
+          php -l packages/etg-woo-lab-portable-mu/mu-plugins/pricing-header-switcher.php
+      - name: Assert degraded and recovered UI behavior
+        run: php packages/mad4b-fx-resilience/tests/switcher_contract.php
+      - name: Verify immutable source inventory
+        run: python3 packages/mad4b-fx-resilience/tests/verify_manifest.py
+      - name: Validate legacy portable source manifest
+        run: python3 - <<'PY'
+          import json,hashlib,pathlib
+          root=pathlib.Path('packages/etg-woo-lab-portable-mu')
+          j=json.loads((root/'manifest.json').read_text())
+          assert j['file_count']==32 and len(j['files'])==32
+          for entry in j['files']:
+              data=(root/'mu-plugins'/entry['path']).read_bytes()
+              assert len(data)==entry['bytes'] and hashlib.sha256(data).hexdigest()==entry['sha256'],entry['path']
+          print('PASS: portable MU source manifest 32/32')
+          PY

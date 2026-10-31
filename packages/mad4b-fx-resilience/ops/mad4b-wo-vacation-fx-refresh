@@ -1,0 +1,3 @@
+# Independent backstop for Wo Vacation Staging. WP-Cron also runs hourly.
+# Recheck currency data every 6 hours without affecting another company.
+17 */6 * * * root /usr/bin/flock -n /run/lock/mad4b-wo-vacation-fx-refresh.lock /usr/bin/docker exec -u www-data etg-commerce-staging-php wp cron event run mad4b_fx_rates_refresh --quiet >/dev/null 2>&1 || /usr/bin/logger -t mad4b-wo-vacation-fx-refresh 'Currency refresh cron execution failed'
