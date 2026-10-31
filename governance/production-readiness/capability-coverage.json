@@ -4068,6 +4068,322 @@
       ],
       "coverage_reuse_rationale": "Existing administrator read permission, browser safety and security-output controls restrict the independent internal service; the new same-PR hermetic test proves no self-granted permission and no mutation path.",
       "review_rationale": "Exact-source CI-only review of a read-only next-ability follower that cannot create an approval ticket, execute mutations, replay original writes, or initiate external OAuth. It accepts only a fixed, audited SAFE_READS list, requires the original managed read policy and WordPress Ability read-only annotation, a supported read category, and a zero-required-input schema. It executes a maximum of three steps, terminates on cycles and unsafe/write identifiers, and returns only bounded state/next-ability/error-code values. Same-PR hermetic PHP test is executed in Site Control Plane CI and verifies real registration, correct two-step read chain, no mutation flags, attempted write as a nonexecuting handoff, cycle and budget enforcement, denied policy, unsafe category/annotation/required inputs, malformed original hash, forbidden extra input, and redacted error output."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-provider-snapshot",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer; separate owner authorization required",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution controls cover this bounded optional-provider read or read-only preflight requiring original Policy::can_read. Exact same-PR negative tests verify no implicit authority, absent provider does not register, and direct mutator calls fail closed.",
+      "review_rationale": "Exact ChatbotX optional-provider adapter reviewed against the same-PR hermetic registration, write-preflight and direct governed-write tests. Availability is tied to the plugin's active_plugins entry plus loaded provider classes: absent/inactive provider registers and advertises no MCP tool, including after withdrawal. Exactly eleven read names use Policy::can_read and three mutation names use Policy::can_admin with write surface, non-readonly annotations, required idempotency keys and closed object schemas. Shared Adapter_Base central authorization and ChatbotX_Governed_Writes::guard retain independent mutation checks, denied-write tests and bounded provider-native targets. This review is source-level only; it does not certify connected provider credentials or grant Production/remote mutation authority. Specific documented surface: mad4b/chatbotx-provider-snapshot."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-channels-read",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer; separate owner authorization required",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution controls cover this bounded optional-provider read or read-only preflight requiring original Policy::can_read. Exact same-PR negative tests verify no implicit authority, absent provider does not register, and direct mutator calls fail closed.",
+      "review_rationale": "Exact ChatbotX optional-provider adapter reviewed against the same-PR hermetic registration, write-preflight and direct governed-write tests. Availability is tied to the plugin's active_plugins entry plus loaded provider classes: absent/inactive provider registers and advertises no MCP tool, including after withdrawal. Exactly eleven read names use Policy::can_read and three mutation names use Policy::can_admin with write surface, non-readonly annotations, required idempotency keys and closed object schemas. Shared Adapter_Base central authorization and ChatbotX_Governed_Writes::guard retain independent mutation checks, denied-write tests and bounded provider-native targets. This review is source-level only; it does not certify connected provider credentials or grant Production/remote mutation authority. Specific documented surface: mad4b/chatbotx-channels-read."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-remote-health",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer; separate owner authorization required",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution controls cover this bounded optional-provider read or read-only preflight requiring original Policy::can_read. Exact same-PR negative tests verify no implicit authority, absent provider does not register, and direct mutator calls fail closed.",
+      "review_rationale": "Exact ChatbotX optional-provider adapter reviewed against the same-PR hermetic registration, write-preflight and direct governed-write tests. Availability is tied to the plugin's active_plugins entry plus loaded provider classes: absent/inactive provider registers and advertises no MCP tool, including after withdrawal. Exactly eleven read names use Policy::can_read and three mutation names use Policy::can_admin with write surface, non-readonly annotations, required idempotency keys and closed object schemas. Shared Adapter_Base central authorization and ChatbotX_Governed_Writes::guard retain independent mutation checks, denied-write tests and bounded provider-native targets. This review is source-level only; it does not certify connected provider credentials or grant Production/remote mutation authority. Specific documented surface: mad4b/chatbotx-remote-health."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-business-context",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer; separate owner authorization required",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution controls cover this bounded optional-provider read or read-only preflight requiring original Policy::can_read. Exact same-PR negative tests verify no implicit authority, absent provider does not register, and direct mutator calls fail closed.",
+      "review_rationale": "Exact ChatbotX optional-provider adapter reviewed against the same-PR hermetic registration, write-preflight and direct governed-write tests. Availability is tied to the plugin's active_plugins entry plus loaded provider classes: absent/inactive provider registers and advertises no MCP tool, including after withdrawal. Exactly eleven read names use Policy::can_read and three mutation names use Policy::can_admin with write surface, non-readonly annotations, required idempotency keys and closed object schemas. Shared Adapter_Base central authorization and ChatbotX_Governed_Writes::guard retain independent mutation checks, denied-write tests and bounded provider-native targets. This review is source-level only; it does not certify connected provider credentials or grant Production/remote mutation authority. Specific documented surface: mad4b/chatbotx-business-context."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-cpt-product-source",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer; separate owner authorization required",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution controls cover this bounded optional-provider read or read-only preflight requiring original Policy::can_read. Exact same-PR negative tests verify no implicit authority, absent provider does not register, and direct mutator calls fail closed.",
+      "review_rationale": "Exact ChatbotX optional-provider adapter reviewed against the same-PR hermetic registration, write-preflight and direct governed-write tests. Availability is tied to the plugin's active_plugins entry plus loaded provider classes: absent/inactive provider registers and advertises no MCP tool, including after withdrawal. Exactly eleven read names use Policy::can_read and three mutation names use Policy::can_admin with write surface, non-readonly annotations, required idempotency keys and closed object schemas. Shared Adapter_Base central authorization and ChatbotX_Governed_Writes::guard retain independent mutation checks, denied-write tests and bounded provider-native targets. This review is source-level only; it does not certify connected provider credentials or grant Production/remote mutation authority. Specific documented surface: mad4b/chatbotx-cpt-product-source."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-write-preflight",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer; separate owner authorization required",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution controls cover this bounded optional-provider read or read-only preflight requiring original Policy::can_read. Exact same-PR negative tests verify no implicit authority, absent provider does not register, and direct mutator calls fail closed.",
+      "review_rationale": "Exact ChatbotX optional-provider adapter reviewed against the same-PR hermetic registration, write-preflight and direct governed-write tests. Availability is tied to the plugin's active_plugins entry plus loaded provider classes: absent/inactive provider registers and advertises no MCP tool, including after withdrawal. Exactly eleven read names use Policy::can_read and three mutation names use Policy::can_admin with write surface, non-readonly annotations, required idempotency keys and closed object schemas. Shared Adapter_Base central authorization and ChatbotX_Governed_Writes::guard retain independent mutation checks, denied-write tests and bounded provider-native targets. This review is source-level only; it does not certify connected provider credentials or grant Production/remote mutation authority. Specific documented surface: mad4b/chatbotx-write-preflight."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-integration-inventory",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer; separate owner authorization required",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution controls cover this bounded optional-provider read or read-only preflight requiring original Policy::can_read. Exact same-PR negative tests verify no implicit authority, absent provider does not register, and direct mutator calls fail closed.",
+      "review_rationale": "Exact ChatbotX optional-provider adapter reviewed against the same-PR hermetic registration, write-preflight and direct governed-write tests. Availability is tied to the plugin's active_plugins entry plus loaded provider classes: absent/inactive provider registers and advertises no MCP tool, including after withdrawal. Exactly eleven read names use Policy::can_read and three mutation names use Policy::can_admin with write surface, non-readonly annotations, required idempotency keys and closed object schemas. Shared Adapter_Base central authorization and ChatbotX_Governed_Writes::guard retain independent mutation checks, denied-write tests and bounded provider-native targets. This review is source-level only; it does not certify connected provider credentials or grant Production/remote mutation authority. Specific documented surface: mad4b/chatbotx-integration-inventory."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-commerce-route-plan",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer; separate owner authorization required",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution controls cover this bounded optional-provider read or read-only preflight requiring original Policy::can_read. Exact same-PR negative tests verify no implicit authority, absent provider does not register, and direct mutator calls fail closed.",
+      "review_rationale": "Exact ChatbotX optional-provider adapter reviewed against the same-PR hermetic registration, write-preflight and direct governed-write tests. Availability is tied to the plugin's active_plugins entry plus loaded provider classes: absent/inactive provider registers and advertises no MCP tool, including after withdrawal. Exactly eleven read names use Policy::can_read and three mutation names use Policy::can_admin with write surface, non-readonly annotations, required idempotency keys and closed object schemas. Shared Adapter_Base central authorization and ChatbotX_Governed_Writes::guard retain independent mutation checks, denied-write tests and bounded provider-native targets. This review is source-level only; it does not certify connected provider credentials or grant Production/remote mutation authority. Specific documented surface: mad4b/chatbotx-commerce-route-plan."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-pricing-preview",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer; separate owner authorization required",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution controls cover this bounded optional-provider read or read-only preflight requiring original Policy::can_read. Exact same-PR negative tests verify no implicit authority, absent provider does not register, and direct mutator calls fail closed.",
+      "review_rationale": "Exact ChatbotX optional-provider adapter reviewed against the same-PR hermetic registration, write-preflight and direct governed-write tests. Availability is tied to the plugin's active_plugins entry plus loaded provider classes: absent/inactive provider registers and advertises no MCP tool, including after withdrawal. Exactly eleven read names use Policy::can_read and three mutation names use Policy::can_admin with write surface, non-readonly annotations, required idempotency keys and closed object schemas. Shared Adapter_Base central authorization and ChatbotX_Governed_Writes::guard retain independent mutation checks, denied-write tests and bounded provider-native targets. This review is source-level only; it does not certify connected provider credentials or grant Production/remote mutation authority. Specific documented surface: mad4b/chatbotx-pricing-preview."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-booking-readiness",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer; separate owner authorization required",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution controls cover this bounded optional-provider read or read-only preflight requiring original Policy::can_read. Exact same-PR negative tests verify no implicit authority, absent provider does not register, and direct mutator calls fail closed.",
+      "review_rationale": "Exact ChatbotX optional-provider adapter reviewed against the same-PR hermetic registration, write-preflight and direct governed-write tests. Availability is tied to the plugin's active_plugins entry plus loaded provider classes: absent/inactive provider registers and advertises no MCP tool, including after withdrawal. Exactly eleven read names use Policy::can_read and three mutation names use Policy::can_admin with write surface, non-readonly annotations, required idempotency keys and closed object schemas. Shared Adapter_Base central authorization and ChatbotX_Governed_Writes::guard retain independent mutation checks, denied-write tests and bounded provider-native targets. This review is source-level only; it does not certify connected provider credentials or grant Production/remote mutation authority. Specific documented surface: mad4b/chatbotx-booking-readiness."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-presentation-context",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer; separate owner authorization required",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution controls cover this bounded optional-provider read or read-only preflight requiring original Policy::can_read. Exact same-PR negative tests verify no implicit authority, absent provider does not register, and direct mutator calls fail closed.",
+      "review_rationale": "Exact ChatbotX optional-provider adapter reviewed against the same-PR hermetic registration, write-preflight and direct governed-write tests. Availability is tied to the plugin's active_plugins entry plus loaded provider classes: absent/inactive provider registers and advertises no MCP tool, including after withdrawal. Exactly eleven read names use Policy::can_read and three mutation names use Policy::can_admin with write surface, non-readonly annotations, required idempotency keys and closed object schemas. Shared Adapter_Base central authorization and ChatbotX_Governed_Writes::guard retain independent mutation checks, denied-write tests and bounded provider-native targets. This review is source-level only; it does not certify connected provider credentials or grant Production/remote mutation authority. Specific documented surface: mad4b/chatbotx-presentation-context."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-support-create-ticket",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer; separate owner authorization required",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing ticket/OAuth/central-security controls cover this bounded optional-provider write requiring admin and original Site Profile/mutation grant. Exact same-PR negative tests verify no implicit authority, absent provider does not register, and direct mutator calls fail closed.",
+      "review_rationale": "Exact ChatbotX optional-provider adapter reviewed against the same-PR hermetic registration, write-preflight and direct governed-write tests. Availability is tied to the plugin's active_plugins entry plus loaded provider classes: absent/inactive provider registers and advertises no MCP tool, including after withdrawal. Exactly eleven read names use Policy::can_read and three mutation names use Policy::can_admin with write surface, non-readonly annotations, required idempotency keys and closed object schemas. Shared Adapter_Base central authorization and ChatbotX_Governed_Writes::guard retain independent mutation checks, denied-write tests and bounded provider-native targets. This review is source-level only; it does not certify connected provider credentials or grant Production/remote mutation authority. Specific documented surface: mad4b/chatbotx-support-create-ticket."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-support-add-note",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer; separate owner authorization required",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution controls cover this bounded optional-provider write requiring admin and original Site Profile/mutation grant. Exact same-PR negative tests verify no implicit authority, absent provider does not register, and direct mutator calls fail closed.",
+      "review_rationale": "Exact ChatbotX optional-provider adapter reviewed against the same-PR hermetic registration, write-preflight and direct governed-write tests. Availability is tied to the plugin's active_plugins entry plus loaded provider classes: absent/inactive provider registers and advertises no MCP tool, including after withdrawal. Exactly eleven read names use Policy::can_read and three mutation names use Policy::can_admin with write surface, non-readonly annotations, required idempotency keys and closed object schemas. Shared Adapter_Base central authorization and ChatbotX_Governed_Writes::guard retain independent mutation checks, denied-write tests and bounded provider-native targets. This review is source-level only; it does not certify connected provider credentials or grant Production/remote mutation authority. Specific documented surface: mad4b/chatbotx-support-add-note."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-cpt-create-draft",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer; separate owner authorization required",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution controls cover this bounded optional-provider write requiring admin and original Site Profile/mutation grant. Exact same-PR negative tests verify no implicit authority, absent provider does not register, and direct mutator calls fail closed.",
+      "review_rationale": "Exact ChatbotX optional-provider adapter reviewed against the same-PR hermetic registration, write-preflight and direct governed-write tests. Availability is tied to the plugin's active_plugins entry plus loaded provider classes: absent/inactive provider registers and advertises no MCP tool, including after withdrawal. Exactly eleven read names use Policy::can_read and three mutation names use Policy::can_admin with write surface, non-readonly annotations, required idempotency keys and closed object schemas. Shared Adapter_Base central authorization and ChatbotX_Governed_Writes::guard retain independent mutation checks, denied-write tests and bounded provider-native targets. This review is source-level only; it does not certify connected provider credentials or grant Production/remote mutation authority. Specific documented surface: mad4b/chatbotx-cpt-create-draft."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-provider-adapter.php",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer; separate owner authorization required",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP provider-adapter admission, original centralized mutation-gate and server registration controls apply. This is a bundled optional adapter, not an independent execution gateway, with availability and disappearance explicitly tested.",
+      "review_rationale": "Exact ChatbotX optional-provider adapter reviewed against the same-PR hermetic registration, write-preflight and direct governed-write tests. Availability is tied to the plugin's active_plugins entry plus loaded provider classes: absent/inactive provider registers and advertises no MCP tool, including after withdrawal. Exactly eleven read names use Policy::can_read and three mutation names use Policy::can_admin with write surface, non-readonly annotations, required idempotency keys and closed object schemas. Shared Adapter_Base central authorization and ChatbotX_Governed_Writes::guard retain independent mutation checks, denied-write tests and bounded provider-native targets. This review is source-level only; it does not certify connected provider credentials or grant Production/remote mutation authority."
     }
   ],
   "lifecycle": [],
@@ -12196,6 +12512,25 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Exact-source CI-only review of a read-only next-ability follower that cannot create an approval ticket, execute mutations, replay original writes, or initiate external OAuth. It accepts only a fixed, audited SAFE_READS list, requires the original managed read policy and WordPress Ability read-only annotation, a supported read category, and a zero-required-input schema. It executes a maximum of three steps, terminates on cycles and unsafe/write identifiers, and returns only bounded state/next-ability/error-code values. Same-PR hermetic PHP test is executed in Site Control Plane CI and verifies real registration, correct two-step read chain, no mutation flags, attempted write as a nonexecuting handoff, cycle and budget enforcement, denied policy, unsafe category/annotation/required inputs, malformed original hash, forbidden extra input, and redacted error output."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-provider-adapter.php",
+      "source_blob_sha": "8d2613302b60415114e4f94cefb4adcd7678e3b8",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "owner_role": "AI-assisted exact-source CI reviewer; separate owner authorization required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact ChatbotX optional-provider adapter reviewed against the same-PR hermetic registration, write-preflight and direct governed-write tests. Availability is tied to the plugin's active_plugins entry plus loaded provider classes: absent/inactive provider registers and advertises no MCP tool, including after withdrawal. Exactly eleven read names use Policy::can_read and three mutation names use Policy::can_admin with write surface, non-readonly annotations, required idempotency keys and closed object schemas. Shared Adapter_Base central authorization and ChatbotX_Governed_Writes::guard retain independent mutation checks, denied-write tests and bounded provider-native targets. This review is source-level only; it does not certify connected provider credentials or grant Production/remote mutation authority."
     }
   ],
   "code_change_rules": {
