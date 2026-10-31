@@ -57,4 +57,4 @@ check(str_contains($planner,'MAD4B_SCP_Global_Runtime_Lifecycle::evaluate('),
  'canonical Operation Registry projects with shared contract');
 check(str_contains($planner,"'routine_predecessor_wait_is_not_blocking'"),
  'canonical planner exposes ordinary waiting separately');
-echo "PASS global runtime lifecycle nonblocking contract (16 assertions)\\n";
+echo "PASS global runtime lifecycle nonblocking contract (16 assertions)\n";
