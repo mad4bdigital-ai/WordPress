@@ -4,6 +4,7 @@ on:
     paths:
       - 'wp-content/mu-plugins/307-mad4b-uael-critical-css-policy.php'
       - 'wp-content/mu-plugins/308-mad4b-live-render-blocking-monitor.php'
+      - 'wp-content/mu-plugins/309-mad4b-astra-local-cairo.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php'
       - 'ops/qa/mad4b-render-blocking/**'
       - '.github/workflows/mad4b-live-render-blocking.yml'
@@ -11,6 +12,7 @@ on:
     paths:
       - 'wp-content/mu-plugins/307-mad4b-uael-critical-css-policy.php'
       - 'wp-content/mu-plugins/308-mad4b-live-render-blocking-monitor.php'
+      - 'wp-content/mu-plugins/309-mad4b-astra-local-cairo.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php'
       - 'ops/qa/mad4b-render-blocking/**'
       - '.github/workflows/mad4b-live-render-blocking.yml'
@@ -31,6 +33,7 @@ jobs:
         run: |
           php -l wp-content/mu-plugins/307-mad4b-uael-critical-css-policy.php
           php -l wp-content/mu-plugins/308-mad4b-live-render-blocking-monitor.php
+          php -l wp-content/mu-plugins/309-mad4b-astra-local-cairo.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php
           php ops/qa/mad4b-render-blocking/tests/source_contract.php
       - name: Offline classification contracts

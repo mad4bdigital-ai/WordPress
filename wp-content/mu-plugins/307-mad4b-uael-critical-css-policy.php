@@ -25,8 +25,16 @@ final class MAD4B_UAEL_Critical_CSS_Policy_V1 {
         $active=apply_filters('wpml_active_languages',null,'skip_missing=0');
         return is_array($active)&&isset($active[$m[1]]);
     }
+    private static function mobile_tuned_product() {
+        $path=(string)wp_parse_url((string)($_SERVER['REQUEST_URI']??''),PHP_URL_PATH);
+        $setting=(array)get_option(self::OPTION,[]);
+        return in_array($path,(array)($setting['mobile_tuned_routes']??[]),true)
+            && in_array($path,['/tours-and-activities/',
+                '/tours-and-activities/best-of-egypt-cairo-luxor-nile-cruise-red-sea-12-days/'],true);
+    }
     public static function eligible() {
-        if(!self::bound() || is_admin() || is_customize_preview() || !self::translated_front_page())return false;
+        if(!self::bound() || is_admin() || is_customize_preview()
+            || !(self::translated_front_page() || self::mobile_tuned_product()))return false;
         if(defined('ELEMENTOR_VERSION') && class_exists('Elementor\Plugin')){
             try{if(Elementor\Plugin::$instance->editor->is_edit_mode() ||
                 Elementor\Plugin::$instance->preview->is_preview_mode())return false;}
@@ -46,8 +54,9 @@ final class MAD4B_UAEL_Critical_CSS_Policy_V1 {
         // The fallback handles browsers with scripting disabled.
         $replacement=preg_replace('/\smedia=[\'\"][^\'\"]*[\'\"]/i','',$html);
         if(!is_string($replacement)||!str_contains($replacement,'rel='))return $html;
+        $mobile_media=self::mobile_tuned_product() ? 'screen and (min-width: 769px)' : 'print';
         $changed=preg_replace('/(<link\b)([^>]*?)(\s*\/?>)/i',
-            '$1$2 media="print" onload="this.onload=null;this.media=\'all\'"$3',
+            '$1$2 media="'. $mobile_media .'" onload="this.onload=null;this.media=\'all\'"$3',
             $replacement,1,$count);
         if($count!==1||!is_string($changed))return $html;
         // A deliberately conservative CSS fallback, NOT an unloaded dependency.
