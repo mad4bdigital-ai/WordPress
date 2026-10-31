@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Provider Qualification Bridge
  * Description: Read-only native WordPress Ability for inherited provider qualification; no authorization or mutation.
- * Version: 0.1.0
+ * Version: 0.1.1
  * Author: MAD4B
  */
 defined('ABSPATH') || exit;
@@ -11,7 +11,7 @@ require_once __DIR__.'/includes/class-mad4b-scp-provider-auto-qualification.php'
 
 final class MAD4B_Provider_Qualification_Bridge {
     const ABILITY='mad4b/provider-auto-qualification-plan';
-    const VERSION='0.1.0';
+    const VERSION='0.1.1';
 
     public static function scope() {
         return function_exists('wp_get_environment_type')
@@ -110,3 +110,17 @@ final class MAD4B_Provider_Qualification_Bridge {
     }
 }
 add_action('wp_abilities_api_init',array('MAD4B_Provider_Qualification_Bridge','register'),99);
+
+if (defined('WP_CLI') && WP_CLI && class_exists('WP_CLI')) {
+    WP_CLI::add_command('mad4b provider-qualification',function($args,$assoc_args) {
+        $input=array();
+        if (isset($assoc_args['provider']))$input['provider_id']=(string)$assoc_args['provider'];
+        if (isset($assoc_args['ability']))$input['ability']=(string)$assoc_args['ability'];
+        $result=MAD4B_Provider_Qualification_Bridge::plan($input);
+        if (is_wp_error($result)) {
+            WP_CLI::error($result->get_error_code());
+            return;
+        }
+        WP_CLI::line(wp_json_encode($result,JSON_UNESCAPED_SLASHES));
+    },array('shortdesc'=>'Read native provider qualification plan, without mutation.'));
+}
