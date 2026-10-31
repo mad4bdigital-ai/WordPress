@@ -298,6 +298,42 @@
       "generic_mutation_dispatch": false,
       "required_runtime": true,
       "pipeline_profile": "governed_mutation_v1"
+    },
+    {
+      "id": "company.create",
+      "target_kind": "company",
+      "risk": "high",
+      "planner": "mad4b/start-your-company-plan",
+      "executor": "mad4b/start-your-company-run",
+      "supports": [
+        "create"
+      ],
+      "durable_resume": true,
+      "dependency_impact": true,
+      "generic_mutation_dispatch": false,
+      "required_runtime": true,
+      "pipeline_profile": "governed_mutation_v1",
+      "side_effect_class": "governed_stage_queue_request",
+      "retry_semantics": "readback_before_retry",
+      "host_runner_required": true
+    },
+    {
+      "id": "company.repair",
+      "target_kind": "company",
+      "risk": "high",
+      "planner": "mad4b/start-your-company-plan",
+      "executor": "mad4b/start-your-company-run",
+      "supports": [
+        "repair_existing"
+      ],
+      "durable_resume": true,
+      "dependency_impact": true,
+      "generic_mutation_dispatch": false,
+      "required_runtime": true,
+      "pipeline_profile": "governed_mutation_v1",
+      "side_effect_class": "governed_stage_queue_request",
+      "retry_semantics": "readback_before_retry",
+      "host_runner_required": true
     }
   ],
   "aliases": {

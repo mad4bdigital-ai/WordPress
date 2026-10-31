@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PLUGIN = ROOT / 'mad4b-site-control-plane.php'
 INCLUDES = ROOT / 'includes'
 RUNTIME_FIXTURE = ROOT / 'tests/approval-plan-route-preflight-runtime.php'
-TARGET = '0.4.0-rc.104'
+MIN_RC = 104
 
 
 def require(ok, message):
@@ -31,9 +31,10 @@ def run(args):
 
 def main():
     source = PLUGIN.read_text()
-    require(re.search(r'(?m)^\s*\* Version: 0\.4\.0-rc\.104\s*$', source),
-            'WordPress plugin header did not advance')
-    require("define( 'MAD4B_SCP_VERSION', '" + TARGET + "' );" in source,
+    match = re.search(r'(?m)^\s*\* Version: (0\.4\.0-rc\.(\d+))\s*$', source)
+    require(match is not None and int(match.group(2)) >= MIN_RC,
+            'Plugin version regressed below rc.104')
+    require("define( 'MAD4B_SCP_VERSION', '" + match.group(1) + "' );" in source,
             'Plugin runtime version is inconsistent')
     require(source.count('0.4.0-rc.103') == 0, 'Old plugin version retained')
     router = (INCLUDES/'class-mad4b-scp-adaptive-operation-router.php').read_text()

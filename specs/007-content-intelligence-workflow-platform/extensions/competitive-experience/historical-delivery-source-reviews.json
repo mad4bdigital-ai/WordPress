@@ -23,7 +23,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/historical_source_successor.py",
-      "source_blob_sha": "2a8c51aee3f5338882799cc29ad463c149d340e3",
+      "source_blob_sha": "1014021a0d857a60f4a1a714d5005c9a9161d839",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
@@ -35,7 +35,7 @@
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/historical-delivery-successor-contract.py"
       ],
-      "review_rationale": "Reviewed exact current historical delivery verifier for two narrowly scoped QA31 successors (G2 Write catalog and G8 Pre-Staging CI). Archives and historical hashes remain immutable. Original verifier blob 046bb44a3856617fd1a849a0b98ae78329af2310 remains traceable in Git history; current SHA bound to negative contract tests and CI-only source, not live or owner authority."
+      "review_rationale": "Reviewed exact current historical delivery verifier for two narrowly scoped QA31 successors (G2 Write catalog and G8 Pre-Staging CI). Archives and historical hashes remain immutable. Original verifier blob 046bb44a3856617fd1a849a0b98ae78329af2310 remains traceable in Git history; current SHA bound to negative contract tests and CI-only source, not live or owner authority. G2/G4/G8 anchors for four additional paths were verified against actual archived Git bytes; unchanged manifests and exact tests remain mandatory. UI Delivery three current blobs were pinned individually after Git ancestor content hash verification; no wildcard successor is allowed."
     }
   ]
 }

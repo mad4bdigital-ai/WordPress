@@ -134,7 +134,7 @@ final class MAD4B_SCP_Runtime_Cache_Convergence_MU {
             $total += $actual_size;
             if ( $actual_size !== $size || $total > self::BYTE_LIMIT
                 || ! hash_equals( $digest, hash_file( 'sha256', $target ) ) ) return $result;
-            if ( 1 === preg_match( '/\\.php$/i', $relative ) ) $files[] = $target;
+            if ( 1 === preg_match( '/\.php$/i', $relative ) ) $files[] = $target;
             $result['files_checked']++;
         }
         if ( ! hash_equals( $data['package_manifest_digest'], hash( 'sha256', $canonical ) )

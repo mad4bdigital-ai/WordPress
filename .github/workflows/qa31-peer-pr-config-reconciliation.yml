@@ -1,0 +1,36 @@
+name: QA31 Peer PR Config Reconciliation
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/config/operation-registry.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/cross-plugin-sources.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/provider-capability-contracts.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/qa31-peer-pr-config-reconcile.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-start-your-company-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-readiness-governance.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-bootstrap-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-stage-admission.php'
+      - '.github/workflows/qa31-peer-pr-config-reconciliation.yml'
+  workflow_dispatch:
+concurrency:
+  group: qa31-peer-pr-config-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  config-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Assert non-authorizing peer PR merge contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/qa31-peer-pr-config-reconcile.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-bootstrap-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-stage-admission.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-start-your-company-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-readiness-governance.php

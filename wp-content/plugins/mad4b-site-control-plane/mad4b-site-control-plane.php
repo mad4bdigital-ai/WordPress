@@ -15,6 +15,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 // Always register the managed AI credential fence before the foreign REST
 // zero-touch return. Missing/revoked enrollment must fail closed on every site.
 require_once __DIR__ . '/includes/class-mad4b-scp-ai-only-early-auth-guard.php';
+// Always enforce private Tour Orders/Bookings policy before early CLI and REST exits.
+require_once __DIR__ . '/includes/class-mad4b-scp-private-operations-boundary.php';
 
 // Request-local, O(1) bootstrap timing markers. No persistent cache, DB
 // writes, user context, file hashing or authority changes. The registration
@@ -595,6 +597,12 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-exporter.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-runtime-certification.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-abilities.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-remote-work-queue.php';
+// Install the runtime on every MAD4B site; actual operations are permission-bound.
+// Existing MU implementations keep precedence, preventing duplicate registration.
+if ( ! class_exists('MAD4B_Company_Readiness_Governance', false) )
+    require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-company-readiness-governance.php';
+if ( ! class_exists('MAD4B_Start_Company_Runtime', false) )
+    require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-start-your-company-runtime.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-remote-operation-parity.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-convergence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-enrollment-dispatch.php';

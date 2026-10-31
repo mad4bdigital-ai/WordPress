@@ -29,6 +29,8 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/live-write-provider-snapshot-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/native-plugin-management-menu-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php",
+    # QA31 executable standalone negative admission fixture, already run by peer CI.
+    "wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-stage-admission.php",
     # Exact, hermetic PHP scripts; never promote arbitrary runtime PHP to CLI.
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-domain-executors-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",

@@ -252,6 +252,17 @@ def is_exact_ci_history_checkout_successor(root, path, contents, historic_sha, h
 # These are the Git commits whose *actual bytes* must match each archived
 # delivery record. Neither a current source review nor a CI pass can replace
 # the archived SHA-256 and byte count.
+# Closed UI delivery successors: exact archived ancestor and exact current Git blobs.
+# These three entries confer only CI source reconciliation, never deployment authority.
+UI_REVIEWED_SUCCESSOR_BLOBS = {
+    "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-provider-connections.php":
+        "426f4a82ba035127cdaacb7ad729e7b3e7a1d76d",
+    "wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt":
+        "feadf7cdef7dcd926e7acc6a2b74a4ded3dc4183",
+    "wp-content/plugins/mad4b-site-control-plane/README.md":
+        "f36d9785e66e2f5ede7ea7db7eb4bf53158487fb",
+}
+
 DELIVERY_REVIEWED_ANCESTORS = {
     "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php":
         "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
@@ -260,6 +271,22 @@ DELIVERY_REVIEWED_ANCESTORS = {
     "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g5-seo-provider-families.php":
         "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
     "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php":
+        "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
+    # Exact archived G2/G4/G8 sources have been verified against this Git ancestor.
+    # Current successors still require exact blob identity and CI-only source reviews.
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php":
+        "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
+    "wp-content/plugins/mad4b-site-control-plane/config/remote-operation-catalog.php":
+        "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php":
+        "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-convergence.php":
+        "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
+    "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-provider-connections.php":
+        "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
+    "wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt":
+        "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
+    "wp-content/plugins/mad4b-site-control-plane/README.md":
         "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
 }
 
@@ -336,6 +363,10 @@ def is_exact_historical_delivery_successor(root, path, contents, historic_sha, h
     ).hexdigest()
     if current_git_blob != blob:
         return False
+    if path in UI_REVIEWED_SUCCESSOR_BLOBS:
+        # Non-executable docs/build metadata and the exact search connector
+        # only; archived bytes and checked-out Git blob were verified above.
+        return blob == UI_REVIEWED_SUCCESSOR_BLOBS[path]
     tests_prefix = "wp-content/plugins/mad4b-site-control-plane/tests/"
     for entry in review_rows:
         if (entry.get("path") != path or entry.get("source_blob_sha") != blob

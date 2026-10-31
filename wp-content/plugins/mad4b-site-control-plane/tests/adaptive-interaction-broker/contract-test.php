@@ -85,4 +85,11 @@ $key='mad4b_aib_v1_'.hash('sha256',$plan['checkpoint_ref']);$GLOBALS['options'][
 chk('expired checkpoint denied',is_wp_error(MAD4B_SCP_Adaptive_Interaction_Broker::status(['checkpoint_ref'=>$plan['checkpoint_ref']])));
 $qa31_agent_source=file_get_contents(dirname(__DIR__,2).'/includes/class-mad4b-scp-agent-grant-lifecycle.php');
 chk('qa31 W1 REST grant route owner-gated',is_string($qa31_agent_source)&&strpos($qa31_agent_source,"register_rest_route('mad4b/v1'")!==false&&strpos($qa31_agent_source,"'permission_callback'=>array(__CLASS__,'owner')")!==false);
+// QA31 same-branch regression evidence: a broker checkpoint is not a write grant.
+$GLOBALS['environment']='production';
+$GLOBALS['authorized']=false;
+chk('qa31 production anonymous checkpoint remains denied',
+    is_wp_error(MAD4B_SCP_Adaptive_Interaction_Broker::status(['checkpoint_ref'=>$plan['checkpoint_ref']])));
+$GLOBALS['environment']='local';
+$GLOBALS['authorized']=true;
 echo 'SUMMARY '.$count.' passed 0 failed'."\n";
