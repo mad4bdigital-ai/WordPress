@@ -53,9 +53,17 @@ final class MAD4B_Hub_Governed_Single_Flight {
    PRIMARY KEY  (id),
    UNIQUE KEY flight_trigger (work_hash,trigger_hash)
   ) ENGINE=InnoDB $collate;");
+  if(!class_exists('MAD4B_Hub_Semantic_Legacy_Cutover'))
+   return self::error('legacy_cutover_provider_unavailable',503);
+  $legacy=MAD4B_Hub_Semantic_Legacy_Cutover::install();
+  if(is_wp_error($legacy)||$legacy!==true)
+   return self::error('legacy_cutover_schema_unavailable',503);
   return ['contract'=>self::CONTRACT,'schema_ready'=>self::ready()];
  }
  static function ready(){
+  if(!class_exists('MAD4B_Hub_Semantic_Legacy_Cutover')
+     ||!MAD4B_Hub_Semantic_Legacy_Cutover::locked()
+     ||!MAD4B_Hub_Semantic_Legacy_Cutover::schema())return false;
   global $wpdb;[$f,$t]=self::tables();
   foreach([$f,$t] as $table){
    if($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s',$wpdb->esc_like($table)))!==$table)return false;
@@ -266,12 +274,18 @@ final class MAD4B_Hub_Governed_Single_Flight {
     'stage'=>$row['stage']??'','operation'=>$row['operation']??'',
     'target_ref'=>$row['target_ref']??'','payload'=>$payload,
     'depends_on'=>json_decode((string)($row['dependencies_json']??'[]'),true)],true);
-  if(is_wp_error($plan)||!($plan['eligible']??false))return false;
-  global $wpdb;[$f,]=self::tables();
-  $leader=$wpdb->get_var($wpdb->prepare(
-     "SELECT leader_task_id FROM $f WHERE work_hash=%s AND slot_hash=%s",
-      $plan['work_hash'],$plan['slot_hash']));
-  return is_string($leader) && hash_equals($leader,(string)($row['task_id']??''));
+  if(!is_wp_error($plan)&&($plan['eligible']??false)){
+    global $wpdb;[$f,]=self::tables();
+    $leader=$wpdb->get_var($wpdb->prepare(
+       "SELECT leader_task_id FROM $f WHERE work_hash=%s AND slot_hash=%s",
+        $plan['work_hash'],$plan['slot_hash']));
+    if(is_string($leader) && hash_equals($leader,(string)($row['task_id']??'')))
+      return true;
+  }
+  // Snapshot-only continuity: do NOT infer semantic equivalence or issue
+  // original permissions. Executor, lease and ContentJob guards remain active.
+  return class_exists('MAD4B_Hub_Semantic_Legacy_Cutover')
+       && MAD4B_Hub_Semantic_Legacy_Cutover::claim_allowed($row);
  }
  /** Record an observed follower trigger, not another executable task.
   * Call only AFTER original enqueue transaction has been rolled back.

@@ -1,6 +1,13 @@
 <?php
 /** Isolated transaction simulation of original Canonical Gap lane. */
 require __DIR__.'/test_unlinked.php';
+// Isolated cutover readiness proof; no real WordPress table is used.
+class MAD4B_Hub_Semantic_Legacy_Cutover {
+ static function locked(){return true;}
+ static function schema(){return true;}
+ static function claim_allowed(array $row){return false;}
+}
+
 function wp_get_environment_type(){return 'staging';}
 function home_url(){return 'https://tours.dev.mad4b.com';}
 class FlightHarnessDB extends MockUnlinkedDB {

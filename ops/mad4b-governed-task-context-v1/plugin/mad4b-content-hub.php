@@ -15,6 +15,7 @@ require_once __DIR__.'/includes/class-mad4b-hub-workflow-continuity.php';
 require_once __DIR__.'/includes/class-mad4b-hub-workflow-operations.php';
 require_once __DIR__.'/includes/class-mad4b-hub-workflow-origin.php';
 require_once __DIR__.'/includes/class-mad4b-hub-unlinked-task-context.php';
+require_once __DIR__.'/includes/class-mad4b-hub-semantic-legacy-cutover.php';
 require_once __DIR__.'/includes/class-mad4b-hub-governed-single-flight.php';
 require_once __DIR__.'/includes/class-mad4b-hub-bulk-jobs-queue.php';
 require_once __DIR__.'/includes/class-mad4b-hub-provider-receipt-bridge.php';

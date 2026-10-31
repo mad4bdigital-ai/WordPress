@@ -23,6 +23,8 @@ with only these PHP files changed:
   with a guarded, feature-flagged check.
 - `includes/class-mad4b-hub-governed-single-flight.php`: new
   transaction-bound reservation and follower-trigger receipt.
+- `includes/class-mad4b-hub-semantic-legacy-cutover.php`: exact, opt-in
+  grandfather snapshot for pre-enforcement tasks; no new authority.
 - `includes/class-mad4b-hub-unlinked-task-context.php`: source-backed
   `product_data` contract and explicit QA, integration and legacy classifications.
 
@@ -55,7 +57,9 @@ independent receipt verification remains unchanged.
   this admission class does **not** authorize them.
 - No fallback executor or authority lane is invented.
 
-The feature is OFF by default. Incoming requests with verified
+The feature is OFF by default. A verified and locked original-task
+cutover snapshot is required before readiness can be true; see
+`LEGACY_CUTOVER.md`. Incoming requests with verified
 predecessor dependencies or multi-item Batches must not record a partial
 follower receipt; they require an independent dependency handoff/review. An explicit original Staging deployment
 would set `MAD4B_HUB_SEMANTIC_FLIGHT_MODE=enforce` **after** the approved

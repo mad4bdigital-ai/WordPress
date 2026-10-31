@@ -2,11 +2,11 @@
 
 ## Proven in isolated tests
 
-- 49 source PHP files parse on Central Staging's PHP runtime.
+- 51 source PHP files parse on Central Staging's PHP runtime.
 - Python policy unit tests pass, including table-driven scope/version/
   effect/attempt/legacy proof cases.
 - 14 original ContentJob Single Flight checks, 27 original-source
-  unlinked contract checks, and 8 unlinked reservation/claim tests pass for original identity, same semantic
+  unlinked contract checks, and 8 unlinked reservation/claim tests and 12 Legacy Cutover checks pass for original identity, same semantic
   Work Hash across trigger origins, distinct follower receipts,
   stale revision and forged origin rejection, one leader/no second
   direct reserve, and receipt replay idempotence.
@@ -42,3 +42,9 @@ No new production mutation or original grant issuance has occurred.
 - Canonical Gap rows currently fail read-only effect evidence requirements: 2/2 correctly denied for Single Flight, without changing state.
 - Integration provider handoff currently has no eligible verified source receipt in this 135-row sample; future work requires an independent registered provider proof.
 - The new DB work reservation is SOURCE-ONLY and unproven under real concurrent transactions. No table was created or installed.
+
+## Real WP-CLI Staging concurrency proof
+
+MariaDB 11.8.9: competing insert waited 3.666 seconds on leader transaction held 5.001 seconds, created zero duplicate leaders; changed input in same Work Slot rejected; independent Work Slot rollback restored counts. Two isolated scratch tables were dropped and independently checked absent. No existing Content Hub task was altered.
+
+Legacy Cutover read-only snapshot of 20 outstanding tasks successfully generated and fingerprinted, but not applied; see LEGACY_CUTOVER.md. The original plugin remains unchanged and Full End-to-End test is pending.
