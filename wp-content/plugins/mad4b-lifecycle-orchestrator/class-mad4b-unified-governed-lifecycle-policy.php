@@ -175,6 +175,17 @@ final class MAD4B_Unified_Governed_Lifecycle_Policy {
         // carrying the shared global contract has been installed.
         if(class_exists('MAD4B_SCP_Global_Runtime_Lifecycle')) {
             $global_nodes=[];$source_evidence=[];
+            // resolve() already performed the original WordPress object,
+            // ContentJob and company scope readback. Its bound digest is the
+            // authoritative context receipt for this read-only DAG view.
+            $context_digest=(string)($resolution['resolution_sha256']??'');
+            if(preg_match('/^[a-f0-9]{64}$/D',$context_digest)) {
+                $source_evidence['context']=[
+                    'status'=>'verified','native_source_confirmed'=>true,
+                    'exact_target_bound'=>true,'readback_confirmed'=>true,
+                    'receipt_digest'=>$context_digest,
+                ];
+            }
             foreach($graph as $node) {
                 $registered=$node['ability']===null ? null :
                     (function_exists('wp_has_ability') && wp_has_ability($node['ability']));
