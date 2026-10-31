@@ -1,6 +1,7 @@
 <?php
 /** Standalone syntax/policy contract; does not bootstrap WordPress or mutate state. */
 $plugin=file_get_contents(dirname(__DIR__).'/mad4b-lifecycle-orchestrator.php');
+$company_plugin=file_get_contents(dirname(__DIR__,2).'/mad4b-company-portfolio-manager/mad4b-company-portfolio-manager.php');
 $checks=[
  'exact Staging fence'=>str_contains($plugin,"wp_get_environment_type()==='staging'"),
  'exact enrolled origin'=>str_contains($plugin,'https://tours.dev.mad4b.com'),
@@ -56,6 +57,11 @@ $checks=[
  'Provider readiness event'=>str_contains($plugin,'mad4b_lifecycle_provider_readiness_changed'),
  'BLOCKED read-only retries capped'=>str_contains($plugin,"['attempts']<3"),
  'No arbitrary queue execution'=>!str_contains($plugin,'MAD4B_Hub_Bulk_Jobs_Queue::complete('),
+ 'company plugin source present'=>is_string($company_plugin)&&strlen($company_plugin)>15000,
+ 'company plugin emits two post-commit events'=>substr_count($company_plugin,"do_action('mad4b_company_portfolio_transitioned'")===2,
+ 'company plugin retains source binding checks'=>str_contains($company_plugin,'binding_sha256'),
+ 'company plugin retains WordPress admin approval gate'=>str_contains($company_plugin,'admin_permission()'),
+
 
 ];
 foreach($checks as $label=>$ok)if(!$ok){fwrite(STDERR,"FAIL lifecycle source contract: $label\n");exit(1);}
