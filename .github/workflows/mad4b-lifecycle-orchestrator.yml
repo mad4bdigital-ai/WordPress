@@ -3,12 +3,14 @@ on:
   pull_request:
     paths:
       - 'wp-content/plugins/mad4b-lifecycle-orchestrator/**'
+      - 'wp-content/plugins/mad4b-company-portfolio-manager/**'
       - '.github/workflows/mad4b-lifecycle-orchestrator.yml'
   push:
     branches:
       - master
     paths:
       - 'wp-content/plugins/mad4b-lifecycle-orchestrator/**'
+      - 'wp-content/plugins/mad4b-company-portfolio-manager/**'
       - '.github/workflows/mad4b-lifecycle-orchestrator.yml'
 permissions:
   contents: read
@@ -34,5 +36,6 @@ jobs:
           set -euo pipefail
           ROOT=wp-content/plugins/mad4b-lifecycle-orchestrator
           find "$ROOT" -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+          php -l wp-content/plugins/mad4b-company-portfolio-manager/mad4b-company-portfolio-manager.php
           php "$ROOT/tests/lifecycle-source-contract.php"
           echo 'WP-CLI live fixtures are not run on GitHub Actions; Staging acceptance required.'
