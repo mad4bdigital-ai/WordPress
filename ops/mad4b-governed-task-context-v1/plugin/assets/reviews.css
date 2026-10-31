@@ -1,0 +1,403 @@
+/* MAD4B shared review surfaces — scoped to plugin admin pages only. */
+.mad4b-reviews{
+  --rv-text:#17223b;--rv-muted:#64748b;--rv-line:#e0e7f0;--rv-soft:#f6f8fc;
+  --rv-blue:#1459d8;--rv-blue-dark:#17459c;--rv-radius:14px;
+  color:var(--rv-text);font-size:14px;line-height:1.6;max-width:1800px;margin:18px 22px 45px 2px;
+}
+.mad4b-reviews,.mad4b-reviews *{box-sizing:border-box}
+.mad4b-reviews h1,.mad4b-reviews h2,.mad4b-reviews h3,.mad4b-reviews h4{
+  color:var(--rv-text);letter-spacing:-.025em;margin-top:0
+}
+.mad4b-reviews h1{font-size:30px;font-weight:750;line-height:1.25;margin:5px 0 5px}
+.mad4b-reviews h2{font-size:20px;line-height:1.45;font-weight:750}
+.mad4b-reviews h3{font-size:17px;line-height:1.45;font-weight:720}
+.mad4b-reviews p{margin-top:0}
+.mad4b-reviews a{text-decoration:none}
+.mad4b-reviews a:focus-visible,.mad4b-reviews button:focus-visible,.mad4b-reviews select:focus-visible,
+.mad4b-reviews input:focus-visible,.mad4b-reviews textarea:focus-visible{
+  outline:3px solid #76abf2;outline-offset:2px;box-shadow:0 0 0 2px #fff
+}
+.mad4b-rv-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px}
+.mad4b-rv-heading p{font-size:14px;color:var(--rv-muted);max-width:750px;margin:0}
+.mad4b-rv-kicker{font-size:11px;color:var(--rv-blue);text-transform:uppercase;letter-spacing:.085em;font-weight:800}
+.mad4b-rv-kicker span{color:var(--rv-muted);font-weight:600}
+.mad4b-rv-topmeta{margin-top:9px;white-space:nowrap;color:var(--rv-muted);font-size:12px}
+.mad4b-rv-topmeta .dashicons{font-size:16px;width:17px;height:17px;margin-right:3px;color:#29946c}
+.mad4b-rv-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 18px;padding:4px;background:#edf1f8;border-radius:12px;width:max-content;max-width:100%}
+.mad4b-rv-tabs a{display:block;color:#52637d;font-weight:650;padding:9px 16px;border-radius:9px}
+.mad4b-rv-tabs a[aria-current="page"]{color:var(--rv-blue-dark);background:#fff;box-shadow:0 1px 5px #17223b13}
+.mad4b-rv-tabs a:not([aria-current="page"]):hover{background:#e2e8f3;color:var(--rv-blue-dark)}
+.mad4b-rv-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.mad4b-rv-metric{border:1px solid var(--rv-line);background:#fff;border-radius:var(--rv-radius);padding:19px 16px;display:flex;align-items:center;gap:14px;min-width:0;box-shadow:0 4px 14px #203a5b06}
+.mad4b-rv-metric>.dashicons{font-size:25px;line-height:45px;text-align:center;width:46px;height:46px;flex:0 0 46px;border-radius:12px;background:#edf0fa;color:#6a58b8}
+.mad4b-rv-metric.is-changes>.dashicons{background:#fff1df;color:#d88a1c}
+.mad4b-rv-metric.is-approved>.dashicons{background:#e3f7ec;color:#169761}
+.mad4b-rv-metric.is-rejected>.dashicons{background:#fce9ea;color:#dc4353}
+.mad4b-rv-metric.is-neutral>.dashicons{background:#e8f2ff;color:#2675da}
+.mad4b-rv-metric strong{display:block;font-size:25px;line-height:1.15;color:#14213b;font-weight:800;white-space:nowrap}
+.mad4b-rv-metric div>span{display:block;font-weight:650;font-size:12px;margin-top:5px;color:#4f6077}
+.mad4b-rv-data-note{color:var(--rv-muted);font-size:12px;margin:9px 1px 17px}
+.mad4b-rv-filters{display:flex;gap:12px;align-items:end;flex-wrap:wrap;background:#fff;border:1px solid var(--rv-line);border-radius:var(--rv-radius);padding:17px;margin-bottom:16px;box-shadow:0 4px 13px #29395306}
+.mad4b-rv-filtersearch{display:flex;align-items:center;gap:8px;flex:2 1 250px;min-width:180px;background:var(--rv-soft);padding:0 10px;border-radius:9px;border:1px solid #dce3ed;height:42px}
+.mad4b-rv-filtersearch .dashicons{color:#637893}
+.mad4b-rv-filtersearch input[type="search"]{width:100%;border:0!important;box-shadow:none!important;background:transparent;min-width:0;outline:0}
+.mad4b-rv-select{display:flex;flex-direction:column;gap:3px;flex:1 1 125px;min-width:115px}
+.mad4b-rv-select>span{font-size:11px;color:var(--rv-muted);font-weight:650}
+.mad4b-rv-select select{width:100%;max-width:none;min-height:42px;background:#fff;border:1px solid #dce3ed;border-radius:8px;color:#34435a}
+.mad4b-rv-filters .button{min-height:42px;border-radius:8px;padding:0 15px}
+.mad4b-rv-clear{padding:10px 2px;white-space:nowrap;font-weight:600}
+.mad4b-rv-list{border:1px solid var(--rv-line);border-radius:var(--rv-radius);background:#fff;overflow:hidden;box-shadow:0 4px 14px #203a5b06}
+.mad4b-rv-listhead{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:17px 22px;border-bottom:1px solid var(--rv-line)}
+.mad4b-rv-listhead h2{font-size:17px;margin:0}
+.mad4b-rv-listhead span{font-size:12px;color:var(--rv-muted)}
+.mad4b-rv-item{display:grid;grid-template-columns:56px minmax(220px,1fr) 170px 155px;gap:18px;align-items:center;padding:19px 22px;border-bottom:1px solid #e9edf4}
+.mad4b-rv-item:last-child{border-bottom:0}
+.mad4b-rv-item:hover{background:#fbfcff}
+.mad4b-rv-fileicon,.mad4b-rv-bigicon{background:#e9efff;color:var(--rv-blue);border-radius:12px;display:flex;justify-content:center;align-items:center;width:52px;height:52px}
+.mad4b-rv-fileicon .dashicons{font-size:24px;width:24px;height:24px}
+.mad4b-rv-item-main h3{margin:0 0 6px;font-size:15px}
+.mad4b-rv-item-main h3 a{color:var(--rv-text)}
+.mad4b-rv-item-main h3 a:hover{text-decoration:underline;color:var(--rv-blue)}
+.mad4b-rv-item-main p{color:var(--rv-muted);font-size:13px;max-width:760px;margin:0 0 10px}
+.mad4b-rv-chips{display:flex;gap:6px;flex-wrap:wrap;max-width:100%}
+.mad4b-rv-chips>span{display:inline-flex;max-width:100%;overflow-wrap:anywhere;background:#eff3f8;color:#53667c;border-radius:99px;padding:3px 10px;font-size:11px;font-weight:600}
+.mad4b-rv-item-meta{display:flex;flex-direction:column;gap:4px;min-width:0;color:#445673;font-size:12px}
+.mad4b-rv-mini-label{color:#758399;font-size:11px}
+.mad4b-rv-conf>span{font-weight:700}
+.mad4b-rv-conf small{font-weight:400;color:var(--rv-muted)}
+.mad4b-rv-conf div{height:5px;width:100%;background:#e6ebf2;border-radius:99px;margin:5px 0;overflow:hidden}
+.mad4b-rv-conf div>span{display:block;height:100%;border-radius:99px;background:#efaa28}
+.mad4b-rv-conf div>span.is-high{background:#21a46b}
+.mad4b-rv-conf div>span.is-low{background:#dd5360}
+.mad4b-rv-item-action{display:flex;flex-direction:column;align-items:start;gap:11px}
+.mad4b-rv-badge{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;padding:5px 11px;border-radius:99px;font-size:11px;font-weight:750;color:#6e43b5;background:#f1e9ff}
+.mad4b-rv-badge:before{content:"";width:7px;height:7px;background:currentColor;border-radius:50%}
+.mad4b-rv-badge.is-approved{background:#e2f7ec;color:#08784b}
+.mad4b-rv-badge.is-changes{background:#fff0dd;color:#a96a09}
+.mad4b-rv-badge.is-rejected{background:#fce8eb;color:#bd3743}
+.mad4b-rv-item-action .button{min-height:34px;border-radius:8px;padding:1px 13px;color:var(--rv-blue)}
+.mad4b-rv-empty{text-align:center;padding:45px 22px;color:var(--rv-muted)}
+.mad4b-rv-empty>.dashicons{color:#8e9eb8;font-size:38px;width:45px;height:45px}
+.mad4b-rv-empty h3{margin:7px 0;font-size:19px}
+.mad4b-rv-switcher{display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin:12px 0}
+.mad4b-rv-switcher label{font-weight:700;color:#42516a}
+.mad4b-rv-switcher select{max-width:min(100%,690px);min-height:38px}
+.mad4b-rv-hero{border:1px solid var(--rv-line);background:#fff;border-radius:var(--rv-radius);padding:20px;display:flex;align-items:flex-start;gap:16px;margin:15px 0 12px;box-shadow:0 3px 12px #1c2b4610}
+.mad4b-rv-bigicon{width:65px;height:65px;flex:0 0 65px;background:#e8f2ff}
+.mad4b-rv-bigicon .dashicons{font-size:32px;width:32px;height:32px}
+.mad4b-rv-hero-text{min-width:0;flex:1}
+.mad4b-rv-hero-text h2{margin:3px 0 7px;font-size:21px;max-width:900px}
+.mad4b-rv-hero-text p{color:var(--rv-muted);margin:0;max-width:920px;font-size:13px}
+.mad4b-rv-detailsstrip{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;margin-bottom:16px}
+.mad4b-rv-detailchip{display:flex;align-items:center;gap:10px;border:1px solid var(--rv-line);padding:12px;border-radius:10px;background:#fff;min-width:0}
+.mad4b-rv-detailchip>.dashicons{color:var(--rv-blue);flex:0 0 20px}
+.mad4b-rv-detailchip small{color:var(--rv-muted);display:block;font-size:11px}
+.mad4b-rv-detailchip strong{color:#263852;display:block;overflow-wrap:anywhere;font-size:12px}
+.mad4b-rv-layout{display:grid;grid-template-columns:minmax(0,2.2fr) minmax(250px,1fr);gap:17px;align-items:start}
+.mad4b-rv-main,.mad4b-rv-aside{min-width:0;display:flex;flex-direction:column;gap:15px}
+.mad4b-rv-panel{border:1px solid var(--rv-line);border-radius:var(--rv-radius);padding:20px 22px;background:#fff;box-shadow:0 3px 12px #1c2b4607;min-width:0}
+.mad4b-rv-panel h3{display:flex;align-items:center;gap:9px;margin:0 0 16px}
+.mad4b-rv-panel h3>.dashicons{color:var(--rv-blue);font-size:21px;width:22px;height:22px}
+.mad4b-rv-panel h4{font-size:13px;margin:18px 0 8px}
+.mad4b-rv-prose{font-size:15px;line-height:1.95;max-width:85ch;color:#26324a;overflow-wrap:anywhere;white-space:normal}
+.mad4b-rv-prose p{margin-bottom:1.1em}
+.mad4b-rv-prose p:last-child{margin-bottom:0}
+.mad4b-rv-panel.is-warning{border-left:4px solid #e6a52c;background:#fff9ed}
+.mad4b-rv-panel.is-warning h3 .dashicons{color:#d89009}
+.mad4b-rv-panel.is-warning ul{padding-left:24px;margin-bottom:0}
+.mad4b-rv-panel.is-warning li{margin:8px 0;color:#634f28}
+.mad4b-rv-secondary,.mad4b-rv-muted{color:var(--rv-muted);font-size:12px}
+.mad4b-rv-textlist{list-style:disc;margin:0 0 6px 23px}
+.mad4b-rv-textlist li{margin:5px 0;overflow-wrap:anywhere}
+.mad4b-rv-panel blockquote{border-left:3px solid #b5bfe0;margin:10px 0;padding-left:13px;color:#42516a}
+.mad4b-rv-kv{display:grid;grid-template-columns:minmax(100px,.85fr) minmax(0,1.15fr);gap:10px;padding:10px 0;border-bottom:1px solid #edf0f6}
+.mad4b-rv-kv:last-child{border-bottom:0}
+.mad4b-rv-kv span{font-size:12px;color:#708094}
+.mad4b-rv-kv strong{font-weight:650;font-size:12px;overflow-wrap:anywhere}
+.mad4b-rv-check{display:flex;gap:9px;align-items:flex-start;padding:9px 0;border-bottom:1px solid #edf0f6;font-size:12px;color:#667389}
+.mad4b-rv-check:last-child{border-bottom:0}
+.mad4b-rv-check .dashicons{color:#b4c0ce;font-size:17px;height:20px;width:20px}
+.mad4b-rv-check.is-checked .dashicons{color:#189b66}
+.mad4b-rv-check.is-checked{color:#36546b}
+.mad4b-rv-aside-actions{display:flex;gap:9px;flex-wrap:wrap}
+.mad4b-rv-aside-actions .button{min-height:36px;border-radius:7px}
+.mad4b-rv-decision label{display:block}
+.mad4b-rv-required{color:#ad5572;font-size:11px;font-weight:600}
+.mad4b-rv-decision textarea{width:100%;max-width:100%;min-height:115px;resize:vertical;padding:13px;border-radius:9px;border:1px solid #bdc9da;font-size:14px;line-height:1.6;margin-top:8px}
+.mad4b-rv-ack{display:flex!important;align-items:flex-start;gap:9px;padding:13px 14px;background:#f2f5fb;border-radius:9px;margin:12px 0;font-size:12px;cursor:pointer;color:#3a4d65}
+.mad4b-rv-ack input{margin:3px 0 0;flex:0 0 16px}
+.mad4b-rv-actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center;padding-top:8px}
+.mad4b-rv-actions .button{display:inline-flex;align-items:center;gap:6px;min-height:42px;border-radius:8px;padding:3px 16px;font-weight:700}
+.mad4b-rv-actions .button .dashicons{font-size:17px;width:18px;height:18px}
+.mad4b-rv-actions .button.is-danger{border-color:#e8a4b0;color:#b73a4c}
+.mad4b-rv-actions .button.is-danger:hover{background:#fff2f4;border-color:#bf3d50}
+.mad4b-rv-compare-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:20px 0 8px}
+.mad4b-rv-compare-heading h3{margin:0}
+.mad4b-rv-compare{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:10px 0 15px}
+.mad4b-rv-compare .mad4b-rv-prose{font-size:14px}
+.mad4b-rv-diff{overflow-x:auto;font-size:13px}
+.mad4b-rv-diff table{width:100%;border-collapse:collapse}
+.mad4b-rv-diff td{padding:6px;border-bottom:1px solid #e0e7f0;vertical-align:top}
+.mad4b-rv-diff ins{background:#d8f5e3;text-decoration:none}
+.mad4b-rv-diff del{background:#ffe0e4}
+@media (max-width:1420px){
+ .mad4b-rv-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .mad4b-rv-detailsstrip{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .mad4b-rv-item{grid-template-columns:48px minmax(200px,1fr) 145px 125px;gap:12px}
+}
+@media (max-width:1080px){
+ .mad4b-rv-layout{grid-template-columns:minmax(0,1fr)}
+ .mad4b-rv-aside{display:grid;grid-template-columns:1fr 1fr}
+ .mad4b-rv-aside-actions{grid-column:1/-1}
+ .mad4b-rv-item{grid-template-columns:42px minmax(0,1fr) 115px}
+ .mad4b-rv-item-action{grid-column:2/-1;flex-direction:row;align-items:center}
+ .mad4b-rv-item-meta{align-items:start}
+}
+@media (max-width:782px){
+ .mad4b-reviews{margin:15px 10px 35px 0;font-size:14px}
+ .mad4b-reviews h1{font-size:25px}
+ .mad4b-rv-heading{flex-direction:column}
+ .mad4b-rv-topmeta{white-space:normal}
+ .mad4b-rv-tabs{width:100%}
+ .mad4b-rv-tabs a{flex:1;text-align:center;padding:8px}
+ .mad4b-rv-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .mad4b-rv-detailsstrip{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .mad4b-rv-filters{padding:12px}
+ .mad4b-rv-filters .mad4b-rv-select{flex:1 1 42%}
+ .mad4b-rv-hero{flex-wrap:wrap}
+ .mad4b-rv-hero .mad4b-rv-badge{margin-left:0}
+ .mad4b-rv-compare{grid-template-columns:1fr}
+ .mad4b-rv-panel{padding:16px}
+ .mad4b-rv-aside{grid-template-columns:1fr}
+}
+@media (max-width:520px){
+ .mad4b-rv-metrics{grid-template-columns:1fr 1fr;gap:8px}
+ .mad4b-rv-metric{padding:12px;gap:8px}
+ .mad4b-rv-metric>.dashicons{width:36px;height:36px;line-height:36px;flex-basis:36px;font-size:19px}
+ .mad4b-rv-metric strong{font-size:21px}
+ .mad4b-rv-detailchip{padding:10px;gap:7px}
+ .mad4b-rv-item{grid-template-columns:34px minmax(0,1fr);padding:15px;gap:10px}
+ .mad4b-rv-fileicon{width:32px;height:32px}
+ .mad4b-rv-fileicon .dashicons{font-size:16px;width:18px;height:18px}
+ .mad4b-rv-item-meta{grid-column:2;flex-direction:row;flex-wrap:wrap;align-items:center;gap:6px 9px}
+ .mad4b-rv-item-meta .mad4b-rv-mini-label{display:none}
+ .mad4b-rv-item-action{grid-column:2;align-items:start;flex-wrap:wrap}
+ .mad4b-rv-bigicon{width:42px;height:42px;flex-basis:42px}
+ .mad4b-rv-bigicon .dashicons{font-size:25px}
+ .mad4b-rv-hero-text h2{font-size:18px}
+ .mad4b-rv-actions .button{flex:1 1 100%;justify-content:center}
+ .mad4b-rv-compare-heading{flex-direction:column;align-items:start}
+ .mad4b-rv-kv{grid-template-columns:1fr;gap:2px}
+}
+@media (prefers-reduced-motion:reduce){.mad4b-reviews *{animation:none!important;transition:none!important}}
+
+/* Review-card contract v1: short decision first, details on demand */
+.mad4b-reviews .mad4b-rv-request{
+  background:linear-gradient(125deg,#f7faff,#fff 65%);border:1px solid #cddcf6;
+  border-radius:14px;padding:19px 22px;margin:15px 0;max-width:100%;box-shadow:0 3px 12px #11283b08
+}
+.mad4b-reviews .mad4b-rv-request-head{display:flex;gap:14px;align-items:center}
+.mad4b-reviews .mad4b-rv-step{display:flex;align-items:center;justify-content:center;
+  min-width:38px;height:38px;border-radius:12px;background:#e0ebff;color:#1a58c4;font-weight:800}
+.mad4b-reviews .mad4b-rv-request-head small{display:block;color:#617791;font-size:11px;font-weight:700}
+.mad4b-reviews .mad4b-rv-request-head h3{font-size:19px;line-height:1.65;margin:2px 0 0}
+.mad4b-reviews .mad4b-rv-request-lead{font-size:14px;line-height:1.8;max-width:90ch;
+  padding:13px 0 5px;margin:0;color:#344660}
+.mad4b-reviews .mad4b-rv-signal-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;list-style:none;margin:11px 0;padding:0}
+.mad4b-reviews .mad4b-rv-signal-list li{display:flex;align-items:flex-start;gap:7px;
+  padding:11px 12px;border:1px solid #e0e7ef;background:#fff;border-radius:9px;
+  color:#54637a;font-size:12px;line-height:1.7;min-width:0;overflow-wrap:anywhere}
+.mad4b-reviews .mad4b-rv-signal-list li.is-positive .dashicons{color:#159766}
+.mad4b-reviews .mad4b-rv-signal-list li.is-neutral .dashicons{color:#c68b2e}
+.mad4b-reviews .mad4b-rv-signal-list .dashicons{flex:0 0 18px;font-size:17px;width:18px;height:18px}
+.mad4b-reviews .mad4b-rv-request-hint{color:#60718b;font-size:12px;line-height:1.65;margin:3px 0}
+.mad4b-reviews .mad4b-rv-item-question{font-size:12px;font-weight:650;color:#355786;
+  line-height:1.85;margin:1px 0 10px;overflow-wrap:anywhere}
+.mad4b-reviews .mad4b-rv-visual{border:1px solid #dce5ef;background:#fff;
+  border-radius:14px;padding:14px 19px;margin:13px 0 16px;overflow:hidden}
+.mad4b-reviews .mad4b-rv-visual-heading{display:flex;align-items:flex-start;
+  justify-content:space-between;gap:10px}
+.mad4b-reviews .mad4b-rv-visual-heading strong{font-size:14px;font-weight:750;color:#243750}
+.mad4b-reviews .mad4b-rv-visual-heading p{font-size:11px;color:#76849b;margin:3px 0 0}
+.mad4b-reviews .mad4b-rv-visual-tag{white-space:nowrap;color:#6981a5;background:#edf3fb;
+  border-radius:18px;font-size:10px;padding:4px 9px}
+.mad4b-reviews .mad4b-rv-svg-scroll{overflow-x:auto;max-width:100%;padding:2px 0}
+.mad4b-reviews .mad4b-rv-svg-scroll svg{display:block;max-width:100%;height:auto;min-width:590px}
+.mad4b-reviews .mad4b-rv-svg-legend{display:flex;gap:12px;flex-wrap:wrap;
+  padding:9px 0 0;margin:0;list-style:none}
+.mad4b-reviews .mad4b-rv-svg-legend li{font-size:11px;line-height:1.6;color:#567088}
+.mad4b-reviews .mad4b-rv-document{padding:0!important}
+.mad4b-reviews .mad4b-rv-document>summary{cursor:pointer;display:flex;align-items:center;gap:9px;
+  padding:18px 20px;font-size:16px;font-weight:720;color:#23344d;list-style-position:inside}
+.mad4b-reviews .mad4b-rv-document>summary .dashicons{color:#165bd1}
+.mad4b-reviews .mad4b-rv-document[open]>summary{border-bottom:1px solid #e1e7f0}
+.mad4b-reviews .mad4b-rv-languages{padding:18px 20px;display:grid;grid-template-columns:1fr;gap:14px}
+.mad4b-reviews .mad4b-rv-locale-panel{border:1px solid #dce5f1;border-radius:12px;
+  background:#fff;overflow:hidden;min-width:0}
+.mad4b-reviews .mad4b-rv-locale-panel[lang="ar"]{background:#fbfcff}
+.mad4b-reviews .mad4b-rv-locale-head{display:flex;align-items:center;justify-content:space-between;
+  gap:10px;padding:11px 15px;background:#edf3fb;border-bottom:1px solid #dce5f1}
+.mad4b-reviews .mad4b-rv-locale-head h4{margin:0;font-size:14px;color:#244b76}
+.mad4b-reviews .mad4b-rv-translation-state{font-size:10px;font-weight:700;color:#537892}
+.mad4b-reviews .mad4b-rv-translation-state.is-missing{color:#995f18}
+.mad4b-reviews .mad4b-rv-translation-empty{background:#fffaef;border-inline-start:3px solid #cf9c36;
+  color:#6a5735;line-height:1.85;padding:14px;margin:14px;border-radius:5px}
+.mad4b-reviews .mad4b-rv-locale-body{padding:16px 19px}
+.mad4b-reviews .mad4b-rv-locale-body>h4{font-size:17px;font-weight:750;line-height:1.7;margin:0 0 12px}
+.mad4b-reviews .mad4b-rv-abstract{border-radius:9px;background:#f0f5fd;padding:12px 15px;margin-bottom:15px}
+.mad4b-reviews .mad4b-rv-abstract strong{color:#385d86;font-size:12px}
+.mad4b-reviews .mad4b-rv-abstract p{margin:5px 0 0;font-size:13px;line-height:1.9}
+.mad4b-reviews .mad4b-rv-locale-panel[lang="ar"] .mad4b-rv-prose{
+  text-align:start;font-family:Tahoma,Arial,sans-serif;line-height:2.15
+}
+.mad4b-reviews .mad4b-rv-inline-disclosure{border-top:1px solid #e2e8f1;padding:13px 18px}
+.mad4b-reviews .mad4b-rv-inline-disclosure summary{cursor:pointer;color:#80591e;font-weight:700}
+.mad4b-reviews .mad4b-rv-inline-disclosure li{margin:8px 0;line-height:1.8}
+.mad4b-reviews .mad4b-rv-arlabel{font-family:Tahoma,Arial,sans-serif;unicode-bidi:isolate}
+.mad4b-reviews .mad4b-rv-labelslash{padding-inline:3px;color:#a2b0bf}
+/* Review decision is a full-width row above the two-column reading layout. */
+.mad4b-reviews .mad4b-rv-decision{width:100%;max-width:none;min-width:0}
+.mad4b-reviews .mad4b-rv-suggest-head{font-weight:700;font-size:12px;margin:13px 0 8px;color:#455977}
+.mad4b-reviews .mad4b-rv-reason-presets{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.mad4b-reviews .mad4b-rv-reason-presets .button{min-height:34px;height:auto;white-space:normal;
+  text-align:start;line-height:1.6;padding:7px 11px;border-radius:9px;border-color:#cdd9eb;
+  color:#42638d;max-width:100%}
+.mad4b-reviews .mad4b-rv-reason-presets .button:hover,
+.mad4b-reviews .mad4b-rv-reason-presets .button:focus-visible{background:#edf4ff;border-color:#7eabef}
+.mad4b-reviews .mad4b-rv-country-settings{border:1px solid #d8e2ef;border-radius:10px;background:#fff;
+  margin:10px 0 15px;padding:9px 15px}
+.mad4b-reviews .mad4b-rv-country-settings summary{cursor:pointer;font-size:12px;color:#596d86}
+.mad4b-reviews .mad4b-rv-country-settings form{padding:12px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.mad4b-reviews .mad4b-rv-country-settings label{font-size:12px;font-weight:700}
+.mad4b-reviews .mad4b-rv-country-settings select{min-width:180px;max-width:100%}
+@media(max-width:1050px){
+ .mad4b-reviews .mad4b-rv-signal-list{grid-template-columns:1fr}
+ .mad4b-reviews .mad4b-rv-document .mad4b-rv-languages{padding:12px}
+}
+@media(max-width:600px){
+ .mad4b-reviews .mad4b-rv-request{padding:13px}
+ .mad4b-reviews .mad4b-rv-visual{padding:12px}
+ .mad4b-reviews .mad4b-rv-visual-heading{flex-wrap:wrap}
+ .mad4b-reviews .mad4b-rv-locale-body{padding:12px}
+ .mad4b-reviews .mad4b-rv-prose{font-size:14px}
+ .mad4b-reviews .mad4b-rv-reason-presets .button{width:100%}
+}
+
+/* Master Review: keep the right-hand context/checklist column available while
+   reading long drafts. WordPress desktop admin bar: 32px. */
+@media (min-width: 1081px) {
+  .mad4b-reviews .mad4b-rv-layout > .mad4b-rv-aside {
+    position: -webkit-sticky;
+    position: sticky;
+    top: calc(var(--wp-admin--admin-bar--height, 32px) + 16px);
+    align-self: start;
+    max-height: calc(100vh - 72px);
+    max-height: calc(100dvh - var(--wp-admin--admin-bar--height, 32px) - 32px);
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #c9d4e5 transparent;
+    padding-inline-end: 5px;
+  }
+}
+/* No nested scrolling or sticky overlay on single-column / touch layouts. */
+@media (max-width: 1080px) {
+  .mad4b-reviews .mad4b-rv-layout > .mad4b-rv-aside {
+    position: static;
+    top: auto;
+    max-height: none;
+    overflow: visible;
+    padding-inline-end: 0;
+  }
+}
+
+
+/* Adaptive desktop composition: concise review brief beside three source-based
+   QA signals. On narrower screens retain the familiar stacked reading order. */
+@media (min-width: 1150px) {
+  .mad4b-reviews .mad4b-rv-request {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(310px, .9fr);
+    column-gap: clamp(22px, 3vw, 52px);
+    align-items: start;
+  }
+  .mad4b-reviews .mad4b-rv-request-head { grid-column: 1 / -1; }
+  .mad4b-reviews .mad4b-rv-request-lead {
+    grid-column: 1;
+    grid-row: 2;
+    max-width: none;
+    padding-top: 15px;
+    font-size: 14px;
+    line-height: 1.95;
+    overflow-wrap: anywhere;
+  }
+  .mad4b-reviews .mad4b-rv-signal-list {
+    grid-column: 2;
+    grid-row: 2 / span 3;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    margin: 8px 0 0;
+  }
+  .mad4b-reviews .mad4b-rv-request-hint {
+    grid-column: 1;
+    max-width: none;
+  }
+  .mad4b-reviews .mad4b-rv-request-hint:last-child { margin-bottom: 0; }
+}
+.mad4b-reviews .mad4b-rv-svg-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+.mad4b-reviews .mad4b-rv-svg-scroll svg {
+  width: 100%;
+  max-width: none;
+  min-width: 740px;
+  height: auto;
+}
+@media (max-width: 780px) {
+  .mad4b-reviews .mad4b-rv-svg-scroll svg {
+    min-width: 740px;
+  }
+}
+
+/* Unified Content & Media Review — gallery uses local WordPress media refs. */
+.mad4b-reviews .mad4b-rv-gallery{width:100%;max-width:none;min-width:0}
+.mad4b-reviews .mad4b-rv-gallery-header,.mad4b-reviews .mad4b-rv-gallery-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.mad4b-reviews .mad4b-rv-gallery-header h3{margin:0}
+.mad4b-reviews .mad4b-rv-gallery-hash{font-size:12px;color:#566579}
+.mad4b-reviews .mad4b-rv-gallery-empty{background:#f7f9fc;padding:18px;border:1px dashed #a6b5c9;border-radius:8px;margin-top:16px}
+.mad4b-reviews .mad4b-rv-gallery-empty p{margin:8px 0 0}
+.mad4b-reviews .mad4b-rv-gallery-nav{justify-content:flex-end;margin:12px 0}
+.mad4b-reviews .mad4b-rv-gallery-nav [data-rv-count]{min-width:55px;text-align:center;font-weight:600;font-variant-numeric:tabular-nums}
+.mad4b-reviews .mad4b-rv-gallery-slide[hidden]{display:none!important}
+.mad4b-reviews .mad4b-rv-gallery-slide{margin:0}
+.mad4b-reviews .mad4b-rv-gallery-photo{background:#edf1f5;display:flex;justify-content:center;align-items:center;min-height:190px;border-radius:7px;overflow:hidden}
+.mad4b-reviews .mad4b-rv-gallery-photo img{display:block;width:100%;height:min(54vw,490px);max-height:490px;object-fit:contain;cursor:zoom-in}
+.mad4b-reviews .mad4b-rv-gallery-slide figcaption{display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between;padding:12px 0}
+.mad4b-reviews .mad4b-rv-gallery-metadata{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0 0 12px}
+.mad4b-reviews .mad4b-rv-gallery-metadata>div{padding:9px 12px;background:#f7f9fc;min-width:0;border:1px solid #e3e9f0;border-radius:5px}
+.mad4b-reviews .mad4b-rv-gallery-metadata dt{font-size:11px;color:#52627a;font-weight:600;margin-bottom:3px}
+.mad4b-reviews .mad4b-rv-gallery-metadata dd{font-size:13px;margin:0;overflow-wrap:anywhere}
+.mad4b-reviews .mad4b-rv-gallery-thumbs{display:flex;overflow-x:auto;gap:10px;padding:8px 1px;scrollbar-width:thin}
+.mad4b-reviews .mad4b-rv-gallery-thumbs button{flex:0 0 96px;border:2px solid transparent;border-radius:6px;background:#f4f6fa;padding:4px;cursor:pointer;min-width:0}
+.mad4b-reviews .mad4b-rv-gallery-thumbs button[aria-current="true"]{border-color:#2271b1;background:#eaf3fb}
+.mad4b-reviews .mad4b-rv-gallery-thumbs button:focus-visible{outline:3px solid #2271b1;outline-offset:2px}
+.mad4b-reviews .mad4b-rv-gallery-thumbs img{display:block;width:100%;height:58px;object-fit:cover;border-radius:3px}
+.mad4b-reviews .mad4b-rv-gallery-thumbs span{display:block;font-size:11px;margin-top:4px}
+.mad4b-rv-image-dialog{max-width:min(94vw,1200px);max-height:95vh;padding:12px;background:#fff;border:0;border-radius:8px;box-shadow:0 12px 70px #0005}
+.mad4b-rv-image-dialog::backdrop{background:#000b}
+.mad4b-rv-image-dialog button{display:block;margin:0 0 10px auto}
+.mad4b-rv-image-dialog img{max-width:100%;max-height:79vh;display:block;margin:auto;object-fit:contain}
+@media(max-width:780px){.mad4b-reviews .mad4b-rv-gallery-metadata{grid-template-columns:minmax(0,1fr)}.mad4b-reviews .mad4b-rv-gallery-photo img{height:auto;max-height:55vh}.mad4b-reviews .mad4b-rv-gallery-thumbs button{flex-basis:75px}}
+
+.mad4b-reviews .mad4b-rv-media-editor{margin:12px 0 4px;border:1px solid #dde5ed;border-radius:6px;padding:12px;background:#fff}
+.mad4b-reviews .mad4b-rv-media-editor summary{cursor:pointer;font-weight:600}
+.mad4b-reviews .mad4b-rv-media-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+.mad4b-reviews .mad4b-rv-media-form label{display:grid;gap:5px;min-width:0}
+.mad4b-reviews .mad4b-rv-media-form label span{font-weight:600;font-size:12px}
+.mad4b-reviews .mad4b-rv-media-form input,.mad4b-reviews .mad4b-rv-media-form textarea{width:100%;max-width:none;min-width:0}
+.mad4b-reviews .mad4b-rv-media-form p{grid-column:1/-1;margin:0}
+.mad4b-reviews .mad4b-rv-media-form button{justify-self:start}
+@media(max-width:780px){.mad4b-reviews .mad4b-rv-media-form{grid-template-columns:1fr}}
