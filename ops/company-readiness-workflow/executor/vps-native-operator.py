@@ -22,6 +22,22 @@ INTENTS=('read','diagnostic','repair','configuration','upgrade','deployment','ro
 MUTATING=('repair','configuration','upgrade','deployment','rollback')
 
 def sha(data): return hashlib.sha256(data).hexdigest()
+
+def safe_sql_read(data):
+    # All SQL readbacks are inspections, even when the primary SQL is a write.
+    try:
+        statement=data.decode('utf-8').strip()
+    except UnicodeDecodeError:
+        abort('SQL_INSPECTION_UTF8_REQUIRED')
+    if statement.endswith(';'): statement=statement[:-1].strip()
+    if (';' in statement or '--' in statement or '/*' in statement
+        or '#' in statement or not re.match(r'^(SELECT|SHOW|DESCRIBE|EXPLAIN)\s+',statement,re.I)
+        or re.search(
+            r'\b(INTO|OUTFILE|DUMPFILE|FOR\s+UPDATE|LOCK|CALL|LOAD_FILE|SLEEP|BENCHMARK|GET_LOCK|RELEASE_LOCK)\b|:=',
+            statement,re.I)):
+        abort('SQL_READ_DIAGNOSTIC_MUST_BE_SINGLE_SAFE_INSPECTION')
+    return statement.encode('utf-8')+b';'
+
 def emit(obj): print(json.dumps(obj,sort_keys=True,separators=(',',':')))
 def abort(reason): raise RuntimeError(reason)
 def root_session():
@@ -68,27 +84,18 @@ def preflight(args,policy):
         abort('PRODUCTION_MUTATION_NOT_AUTHORIZED')
     command=file_bytes(args.file)
     if args.kind=='sql' and not mutation:
-        # Restrict read/diagnostic to one conservative SQL inspection query.
-        # Other SQL, including procedures, multi-statements, SELECT INTO,
-        # locking, DDL and DML, requires mutating authority and rollback.
-        statement=command.decode('utf-8').strip()
-        if statement.endswith(';'):statement=statement[:-1].strip()
-        if (';' in statement or '--' in statement or '/*' in statement
-          or '#' in statement or not re.match(
-            r'^(SELECT|SHOW|DESCRIBE|EXPLAIN)\s+',statement,re.I)
-          or re.search(r'\b(INTO|OUTFILE|DUMPFILE|FOR\s+UPDATE|LOCK|CALL|LOAD_FILE|SLEEP|BENCHMARK)\b',
-            statement,re.I)):
-            abort('SQL_READ_DIAGNOSTIC_MUST_BE_SINGLE_SAFE_INSPECTION')
+        safe_sql_read(command)
     command_hash=sha(command)
     if not re.fullmatch('[a-f0-9]{64}',args.sha256 or '') or args.sha256!=command_hash:
         abort('EXACT_COMMAND_SHA256_MISMATCH')
     readback=file_bytes(args.readback_file)
+    if args.kind=='sql': safe_sql_read(readback)
     if not re.fullmatch('[a-f0-9]{64}',args.expected_readback_sha256 or ''):
         abort('INDEPENDENT_READBACK_SHA256_MISSING')
     if mutation:
         if not args.rollback_file or not args.backup_file:
             abort('MUTATION_REQUIRES_BACKUP_AND_ROLLBACK')
-        file_bytes(args.rollback_file)
+        rollback=file_bytes(args.rollback_file)
         snapshot=file_bytes(args.backup_file)
         if not re.fullmatch('[a-f0-9]{64}',args.backup_sha256 or '')            or sha(snapshot)!=args.backup_sha256:
             abort('BACKUP_DIGEST_MISMATCH')
@@ -96,7 +103,9 @@ def preflight(args,policy):
       'company':args.company,'environment':args.environment,
       'kind':args.kind,'intent':args.intent,'command_sha256':command_hash,
       'readback_command_sha256':sha(readback),'expected_readback_sha256':args.expected_readback_sha256,
-      'mutating':mutation, 'production_mutation_authorized':mutation and args.environment=='production',
+      'mutating':mutation,'backup_sha256':sha(snapshot) if mutation else None,
+      'rollback_sha256':sha(rollback) if mutation else None,
+      'production_mutation_authorized':mutation and args.environment=='production',
       'command_catalog_required':False,'authorization':'independent_root_ssh_plus_host_scoped_grant',
       'execution_performed':False}
 
@@ -106,8 +115,10 @@ def local_exec(cmd, timeout):
                      input=cmd,capture_output=True,timeout=timeout,check=False)
     return p
 
-def sql_exec(container, cmd, timeout):
+def sql_exec(container, cmd, timeout, read_only=False):
     script='MYSQL_PWD="$MARIADB_ROOT_PASSWORD" exec mariadb -uroot --database="$MARIADB_DATABASE" --batch --skip-column-names'
+    if read_only:
+        cmd=b'START TRANSACTION READ ONLY;\n'+safe_sql_read(cmd)+b'\nCOMMIT;\n'
     return subprocess.run(['/usr/bin/docker','exec','-i',container,'/bin/sh','-c',script],
                           input=cmd,capture_output=True,timeout=timeout,check=False)
 
@@ -128,6 +139,10 @@ def apply(args,plan):
     ident=args.correlation_id
     if not re.fullmatch('[A-Za-z0-9_.-]{8,90}',ident or ''):
         abort('CORRELATION_ID_REQUIRED')
+    if sha(file_bytes(args.file))!=plan['command_sha256'] or sha(file_bytes(args.readback_file))!=plan['readback_command_sha256']:
+        abort('COMMAND_OR_READBACK_CHANGED_SINCE_PREFLIGHT')
+    if plan['mutating'] and (sha(file_bytes(args.backup_file))!=plan['backup_sha256'] or sha(file_bytes(args.rollback_file))!=plan['rollback_sha256']):
+        abort('BACKUP_OR_ROLLBACK_CHANGED_SINCE_PREFLIGHT')
     path=receipt_file(ident)
     try: fd=os.open(str(path),os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
     except FileExistsError:abort('CORRELATION_ALREADY_CONSUMED_NO_REPLAY')
@@ -136,11 +151,12 @@ def apply(args,plan):
         f.write(json.dumps(start));f.flush();os.fsync(f.fileno())
     journal(ident,'OPERATOR_EXECUTION_ATTEMPTED',{'company':args.company,'kind':args.kind,
            'environment':args.environment,'intent':args.intent,'command_sha256':plan['command_sha256']})
-    runner=local_exec if args.kind=='shell' else lambda b,t:sql_exec(TARGETS[(args.company,args.environment)][0],b,t)
+    runner=local_exec if args.kind=='shell' else lambda b,t:sql_exec(TARGETS[(args.company,args.environment)][0],b,t,not plan['mutating'])
+    readback_runner=local_exec if args.kind=='shell' else lambda b,t:sql_exec(TARGETS[(args.company,args.environment)][0],b,t,True)
     # Direct host operator command supplied from a root-owned local file, never a web/queue payload.
     try:
         result=runner(file_bytes(args.file),args.timeout)
-        readback=runner(file_bytes(args.readback_file),args.timeout)
+        readback=readback_runner(file_bytes(args.readback_file),args.timeout)
         good=(result.returncode==0 and readback.returncode==0
             and sha(readback.stdout)==args.expected_readback_sha256)
         state='VERIFIED' if good else 'FAILED_EXECUTION_OR_READBACK'
@@ -149,10 +165,11 @@ def apply(args,plan):
           output_sha256=sha(result.stdout),readback_sha256=sha(readback.stdout),
           readback_matches_expected=good,stderr_present=bool(result.stderr or readback.stderr),
           finished_at=datetime.datetime.now(datetime.timezone.utc).isoformat(),
-          mutation_performed=plan['mutating'] and result.returncode==0)
+          mutation_possible=plan['mutating'],mutation_performed=plan['mutating'] and result.returncode==0)
         # Rollback is a separate explicit host operation, not a blind replay on uncertain outcome.
     except (OSError,subprocess.TimeoutExpired):
         final=dict(start,state='UNKNOWN_REQUIRES_RECONCILIATION',verified=False,
+          mutation_possible=plan['mutating'],
           finished_at=datetime.datetime.now(datetime.timezone.utc).isoformat())
     tmp=path.with_suffix('.tmp')
     with tmp.open('w') as f:
