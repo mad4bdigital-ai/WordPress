@@ -119,5 +119,18 @@
   },
   "current_status": "SOURCE_POLICY_TESTED_ON_ISOLATED_RC118_LIVE_ARTIFACT_AND_EXECUTOR_UNAVAILABLE",
   "live_staging_mutation": false,
-  "production_mutation": false
+  "production_mutation": false,
+  "execution_policy_ref": "ops/company-readiness-workflow/contracts/central-dual-execution-policy.v1.json",
+  "execution_lanes": [
+    "registered_executor",
+    "vps_ssh"
+  ],
+  "general_ssh_administration": {
+    "supported_by_policy": true,
+    "requires_registered_authenticated_ssh_transport": true,
+    "command_catalog_required": false,
+    "independent_from_company_stage_executor": true,
+    "default_execution_when_mcp_down": "only_with_separately_valid_ssh_scope",
+    "never_bypass_permission_denial": true
+  }
 }
