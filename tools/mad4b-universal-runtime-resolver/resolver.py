@@ -82,12 +82,13 @@ def result(state,provider,reason="",evidence=None):
             "evidence":evidence if isinstance(evidence,dict) else {}}
 
 def inspect_transport(target,scope):
-    if target!=SITE:
+    binding=scope.get("transport_binding")
+    if not isinstance(binding,str) or not re.fullmatch(r"[a-z0-9_-]{2,64}:staging",binding):
         return result("awaiting_provider","registry_ssh","site_transport_not_enrolled")
     binary=ROOT/"registry-remote-v1/registry_remote.py"
     if not binary.is_file():
         return result("blocked_dependency","registry_ssh","registry_remote_module_missing")
-    rc,out,_=command(["/usr/bin/python3",str(binary),"probe","--target","hosting-2:staging"])
+    rc,out,_=command(["/usr/bin/python3",str(binary),"probe","--target",binding])
     try:d=json.loads(out)
     except ValueError:d={}
     if rc==0 and d.get("state")=="SSH_AUTHENTICATED" and d.get("root")==scope.get("expected_root"):
@@ -98,7 +99,8 @@ def inspect_transport(target,scope):
                   d.get("state","ssh_unavailable"))
 
 def inspect_identity(target,scope):
-    if target!=SITE:return result("awaiting_provider","wpcli","site_identity_adapter_not_enrolled")
+    if scope.get("identity_adapter")!="central_scoped_v4":
+        return result("awaiting_provider","wpcli","site_identity_adapter_not_enrolled")
     args=["docker","exec","-u","www-data","etg-commerce-staging-php","wp",
           "mad4b-v4-scope","verify",target,"--user=1",
           "--path=/var/www/html","--skip-themes"]
@@ -119,8 +121,6 @@ def inspect_identity(target,scope):
 def inspect_authority(target,scope):
     # Identity alone never issues a grant. Authoritative transport enrollment
     # plus exact site-scoped operation policy can already permit an operation.
-    if target!=SITE:
-        return result("awaiting_provider","capability_policy","authority_scope_not_enrolled")
     ops=scope.get("operations",[])
     allowed={"remote_exec:site_root","remote_exec:file_sha256",
              "remote_file_transfer:verified_zip"}
@@ -132,7 +132,9 @@ def inspect_authority(target,scope):
        "p256_grants_write":False})
 
 def inspect_agent(target,scope):
-    if target!=SITE:return result("awaiting_provider","signed_v4","site_agent_not_enrolled")
+    # A source-specific adapter is not generalized by merely copying its name.
+    if scope.get("agent_adapter")!="are_signed_v4" or target!=SITE:
+        return result("awaiting_provider","signed_v4","site_agent_not_enrolled")
     path=ROOT/"native_v4_readback.py"
     if not path.is_file():
         return result("blocked_dependency","signed_v4","agent_readback_adapter_missing")
@@ -149,12 +151,17 @@ def inspect_agent(target,scope):
     return result("blocked_dependency","signed_v4",data.get("state","agent_readback_failed"))
 
 def inspect_package(target,scope):
-    if target!=SITE:return result("awaiting_provider","registry_transport","package_target_not_enrolled")
+    pkg=scope.get("package")
+    binding=scope.get("transport_binding")
+    if not isinstance(pkg,dict) or not isinstance(binding,str):
+        return result("awaiting_provider","registry_transport","package_target_not_enrolled")
+    filename=pkg.get("filename","")
+    expected=pkg.get("sha256","")
+    if not isinstance(filename,str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}[.]zip",filename) or not isinstance(expected,str) or not re.fullmatch(r"[a-f0-9]{64}",expected):
+        return result("review_required","registry_transport","invalid_package_contract")
     path=ROOT/"registry-remote-v1/registry_remote.py"
-    filename="mad4b-are-staging-p256-v4.zip"
-    expected="db544322956f2b50b6560b1ebfa0a80a98bd31e147d96df691fc185582dff863"
     rc,out,_=command(["/usr/bin/python3",str(path),"readback",
-        "--target","hosting-2:staging","--filename",filename,"--sha256",expected],timeout=35)
+        "--target",binding,"--filename",filename,"--sha256",expected],timeout=35)
     try:d=json.loads(out)
     except ValueError:d={}
     if rc==0 and d.get("status")=="READBACK_VERIFIED" and d.get("sha256")==expected:
@@ -166,7 +173,7 @@ def inspect_package(target,scope):
     if "remote_file_transfer:verified_zip" not in scope.get("operations",[]):
         return result("blocked_dependency","registry_transport","transfer_not_authorized")
     rc2,out2,_=command(["/usr/bin/python3",str(path),"transfer",
-        "--target","hosting-2:staging","--filename",filename,"--sha256",expected],timeout=45)
+        "--target",binding,"--filename",filename,"--sha256",expected],timeout=45)
     try:d2=json.loads(out2)
     except ValueError:d2={}
     if rc2==0 and d2.get("status")=="READBACK_VERIFIED" and d2.get("sha256")==expected:
@@ -178,12 +185,14 @@ def inspect_package(target,scope):
                   "registry_transport","artifact_transfer_"+error[:90])
 
 def inspect_workflow(target,scope):
-    if target!=SITE:return result("awaiting_provider","dispatcher_v1","workflow_target_not_enrolled")
+    operation=scope.get("workflow_operation")
+    if not isinstance(operation,str) or not re.fullmatch(r"[a-z0-9_]{3,80}",operation):
+        return result("awaiting_provider","dispatcher_v1","workflow_target_not_enrolled")
     rc,out,_=command(["/usr/local/bin/mad4b-dispatch","status"],timeout=15)
     try:d=json.loads(out)
     except ValueError:d={}
     rows=[x for x in d.get("recent",[]) if x.get("target")==target and
-          x.get("operation")=="signed_site_agent_install"]
+          x.get("operation")==operation]
     if rc==0 and rows and rows[0].get("state")=="succeeded" and \
        d.get("contract")=="mad4b.dispatch.v1":
         return result("verified","dispatcher_v1","existing_job_receipt_verified",
