@@ -23,11 +23,11 @@ INBOX=HOME/"inbox"
 CONTRACT="mad4b.universal-runtime-reconciler.v1"
 EVENTS={"intake","optin","handoff","provider_change","package_registered",
         "site_identity","permission_change","workflow_failed","manual","scheduled","dispatch"}
-DOMAINS=("transport","identity","authority","admin_shell","execution_route","full_authority","agent","package","workflow","central_source","central_authority","authentication_routes","operation_admission")
+DOMAINS=("transport","identity","authority","admin_shell","execution_route","full_authority","agent","package","workflow","central_source","central_authority","central_execution","authentication_routes","operation_admission")
 DEPENDS={"transport":(),"identity":("transport",),"authority":("transport",),
          "admin_shell":("transport","authority"),"execution_route":("admin_shell",),"full_authority":("identity",),
          "agent":("transport","identity"),"package":("authority",),
-         "workflow":("agent",),"central_source":(),"central_authority":("central_source",),
+         "workflow":("agent",),"central_source":(),"central_authority":("central_source",),"central_execution":(),
          "authentication_routes":(),"operation_admission":("authentication_routes",)}
 TRANSIENT={"timeout","unavailable","connection","busy","temporary","network"}
 SITE="all-royal-egypt:staging"
@@ -47,7 +47,23 @@ def inventory():
     d=json.loads((ROOT/"environment-inventory-v1.json").read_text())
     if d.get("contract")!="mad4b.company-transport-inventory.v1":
         raise ValueError("inventory_contract_invalid")
-    return d["targets"]
+    targets=d["targets"]
+    # The central VPS is a local Host Authority target, not an externally
+    # provisioned company. Company inventory refreshes MUST NOT erase its
+    # ability to reconcile independent Host control.
+    if "tours-central:staging" not in targets:
+        central=json.loads(POLICY.read_text()).get("scopes",{}).get("tours-central:staging",{})
+        if (central.get("site_uuid")=="e5e64bca-ed62-48d2-b2b3-dff693cd702a"
+            and central.get("canonical_origin")=="https://tours.dev.mad4b.com"
+            and central.get("environment")=="staging"
+            and central.get("central_execution_adapter")=="root_owned_host_operator_v1"):
+            targets["tours-central:staging"]={
+                "company_id":"tours-central","environment":"staging",
+                "canonical_origin":central["canonical_origin"],
+                "site_uuid":central["site_uuid"],
+                "onboarding_state":"LOCAL_VPS_ORIGINAL_HOST_AUTHORITY",
+                "production_mutation":False}
+    return targets
 def policy():
     p=json.loads(POLICY.read_text())
     if p.get("contract")!=CONTRACT or not p.get("enabled") or p.get("default_production_mutation") is not False:
@@ -267,6 +283,19 @@ def inspect_central_authority(target,scope):
     state,reason,evidence=module.probe("central_authority",scope)
     return result(state,"central_native_grants",reason,evidence)
 
+def inspect_central_execution(target,scope):
+    """Independent central host route, not the target Native Owner plan."""
+    if target!="tours-central:staging":
+        return result("awaiting_provider","native_vps_operator","central_host_route_not_enrolled")
+    file=ROOT/"universal-runtime-v1/central_execution_route.py"
+    if not file.is_file():
+        return result("awaiting_provider","native_vps_operator","central_host_route_adapter_missing")
+    spec=importlib.util.spec_from_file_location("mad4b_central_execution_route",file)
+    module=importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    state,reason,evidence=module.check(scope)
+    return result(state,"native_vps_operator",reason,evidence)
+
 def original_operation_authority():
     file=ROOT/"universal-runtime-v1/multi_transport_authority.py"
     spec=importlib.util.spec_from_file_location("mad4b_multi_transport_authority",file)
@@ -385,6 +414,7 @@ ADAPTERS={"transport":inspect_transport,"identity":inspect_identity,
           "authority":inspect_authority,"admin_shell":inspect_admin_shell,
           "execution_route":inspect_execution_route,"full_authority":inspect_full_authority,"agent":inspect_agent,"package":inspect_package,"workflow":inspect_workflow,
           "central_source":inspect_central_source,"central_authority":inspect_central_authority,
+          "central_execution":inspect_central_execution,
           "authentication_routes":inspect_authentication_routes,
           "operation_admission":inspect_operation_admission}
 def enqueue(con,target,trigger,source,idem):
@@ -435,6 +465,14 @@ def reconcile(con,event_id,p):
         scope=assigned
         out={}
         for domain in DOMAINS:
+            if target=="tours-central:staging" and domain not in (
+                    "central_source","central_authority","central_execution"):
+                # Central host runs locally; remote company SSH/Agent dependencies
+                # are not applicable. Native Owner readiness is NOT a global
+                # central administration prerequisite.
+                out[domain]=result("not_applicable","resolver",
+                                   "independent_central_host_execution_lane")
+                continue
             _,r=evaluate(con,target,domain,scope,{d:v["state"] for d,v in out.items()})
             out[domain]=r
     for domain,r in out.items():
