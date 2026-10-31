@@ -5,12 +5,14 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-authority.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/grant-reconcile-identity-before-grant-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/authority-transport-regression.php'
       - '.github/workflows/mad4b-grant-identity-preflight.yml'
   push:
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-authority.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/grant-reconcile-identity-before-grant-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/authority-transport-regression.php'
       - '.github/workflows/mad4b-grant-identity-preflight.yml'
 permissions:
   contents: read
@@ -35,3 +37,5 @@ jobs:
           ROOT=wp-content/plugins/mad4b-site-control-plane
           php -l "$ROOT/includes/class-mad4b-scp-staging-write-authority.php"
           python3 "$ROOT/tests/grant-reconcile-identity-before-grant-contract.py"
+          php -l "$ROOT/tests/authority-transport-regression.php"
+          sudo php "$ROOT/tests/authority-transport-regression.php"
