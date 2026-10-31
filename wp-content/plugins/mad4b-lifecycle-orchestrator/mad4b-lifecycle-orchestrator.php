@@ -134,7 +134,13 @@ final class MAD4B_Lifecycle_Orchestrator {
         foreach($write as $ability=>$registered)if(!$registered)$authority[]='write_ability_unregistered:'.$ability;
         // A background worker never acquires the user's write identity.
         // Delegated execution must go through the originating native Ability.
-        $state=$authority?'BLOCKED_AUTHORITY':($available&&empty($missing)?'READY':'PARTIAL');
+        // Discovery alone cannot establish mutation readiness. The provider
+        // must supply positive write certification before READY is considered.
+        $write_certified=false;
+        if($data['goal']==='seo' && isset($s) && is_array($s))
+            $write_certified=!empty($s['write_eligible']);
+        $state=$authority?'BLOCKED_AUTHORITY':
+            (!empty($available)&&empty($missing)&&$write_certified?'READY':'PARTIAL');
         $suggestions=[];
         // Registry discovery is advisory. It cannot make a missing or uncertified
         // write capability executable; exact provider preflight always wins.
@@ -158,6 +164,8 @@ final class MAD4B_Lifecycle_Orchestrator {
             'authority_blockers'=>array_values(array_unique($authority)),
             'state'=>$state,'recovery_route'=>'',
             'write_identity_required_at_execution'=>true,
+            'provider_write_certified'=>$write_certified,
+            'readiness_is_not_execution_authority'=>true,
             'mutation_authorized'=>false,'auto_write_performed'=>false,
             'handoff_owner'=>$data['goal']==='content'?'MAD4B_Hub_Dynamic_Runtime_Resolver':
                 ($data['goal']==='company'?'MAD4B_Company_Operations':'native_wordpress_ability'),
@@ -256,6 +264,13 @@ final class MAD4B_Lifecycle_Orchestrator {
     }
     public static function reconcile($id,$refresh=false) {
         if(!self::scoped()||!is_string($id)||!preg_match('/^[a-f0-9]{64}$/D',$id))return self::err('invalid_event_id');
+        // One native MySQL advisory lock per source event prevents two Cron /
+        // manual reconciliations from overwriting a newer VERIFIED receipt.
+        global $wpdb;
+        $mutex='mad4b_lifecycle_'.substr($id,0,32);
+        if((int)$wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s,2)',$mutex))!==1)
+            return self::err('reconciliation_busy');
+        try {
         $key=self::key($id);$row=get_option($key,false);
         if(!is_array($row)||($row['event_id']??'')!==$id)return self::err('event_missing');
         if(!in_array($row['state']??'',self::STATES,true))return self::err('state_invalid');
@@ -301,6 +316,9 @@ final class MAD4B_Lifecycle_Orchestrator {
                 wp_schedule_single_event($next,self::CRON,[$id]);
         }
         return self::status(['event_id'=>$id],true);
+        } finally {
+            $wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)',$mutex));
+        }
     }
     public static function status($input=[],$internal=false) {
         if(!$internal&&!self::can_read())return self::err('read_denied');
