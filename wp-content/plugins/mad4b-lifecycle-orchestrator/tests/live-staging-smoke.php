@@ -1,6 +1,6 @@
 <?php
 $report=['contract'=>'mad4b.lifecycle-orchestrator.live-smoke.v1','site'=>home_url('/'),
- 'environment'=>wp_get_environment_type(),'version'=>'0.1.0-staging'];
+ 'environment'=>wp_get_environment_type(),'version'=>'0.2.0-staging'];
 $names=['mad4b/lifecycle-resolve','mad4b/lifecycle-record','mad4b/lifecycle-status'];
 $report['registered_abilities']=array_combine($names,array_map('wp_has_ability',$names));
 $report['permissions']=['read'=>MAD4B_Lifecycle_Orchestrator::can_read(),
