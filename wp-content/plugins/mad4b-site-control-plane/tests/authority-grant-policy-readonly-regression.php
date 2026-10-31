@@ -12,6 +12,7 @@ class WP_Error {
 }
 function is_wp_error($r){return $r instanceof WP_Error;}
 function absint($v){return abs((int)$v);}
+function sanitize_key($s){return strtolower(preg_replace('/[^a-z0-9_\\-]/','',(string)$s));}
 $GLOBALS['env']='staging';
 $GLOBALS['ready']=true;
 $GLOBALS['production_write_approved']=false;
