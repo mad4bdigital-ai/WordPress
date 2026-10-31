@@ -47,10 +47,20 @@ denial(lambda:admission(b'SELECT 1',b'SELECT 1',kind='sql',intent='repair',
 denial(lambda:admission(b'SELECT 1',b'SELECT 1',kind='sql',
     environment='production',company='not-wayfatours'),
     'unenrolled production company')
+denial(lambda:admission(b'UPDATE canary SET state=1',
+    b'UPDATE canary SET state=2',kind='sql',intent='repair',
+    backup=b'database-backup-evidence',rollback=b'UPDATE canary SET state=0'),
+    'mutating readback must be denied even for mutating SQL')
+denial(lambda:admission(b'SELECT 1',b'SELECT 1; DELETE FROM canary',
+    kind='sql',intent='diagnostic'), 'multi-statement readback denied')
+denial(lambda:admission(b'SELECT 1',b'SELECT GET_LOCK(\'x\',1)',
+    kind='sql',intent='read'), 'SQL readback locking primitive denied')
 # Test that a scoped staging SQL write can be planned when BOTH
 # independent snapshot and rollback files are supplied. No DB changes.
 plan=admission(b'UPDATE canary SET state=1',b'SELECT state FROM canary',
     kind='sql',intent='repair',backup=b'database-backup-evidence',
     rollback=b'UPDATE canary SET state=0')
 assert plan['mutating'] is True and plan['environment']=='staging'
-print('PASS 9: native general SSH, SQL inspection, no unsafe read bypass, staging backup/rollback and production deny')
+assert plan['backup_sha256']==op.sha(b'database-backup-evidence')
+assert plan['rollback_sha256']==op.sha(b'UPDATE canary SET state=0')
+print('PASS 12: native general SSH, SQL inspection, no unsafe read bypass, staging backup/rollback and production deny')
