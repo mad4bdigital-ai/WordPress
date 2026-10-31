@@ -334,7 +334,9 @@ final class MAD4B_SCP_Cross_Plugin_Deployment {
         if ( 'production' === $environment ) {
             if ( empty( $source['production_promotion_attestation'] ) )
                 $blockers[] = 'independent_production_promotion_attestation_required';
-            $blockers[] = 'production_package_executor_not_yet_certified';
+            $blockers[] = $managed_private_source
+                ? 'production_private_source_executor_not_registered'
+                : 'production_package_executor_not_yet_certified';
         }
         $native = array();
         if ( $managed_private_source ) {
@@ -384,7 +386,7 @@ final class MAD4B_SCP_Cross_Plugin_Deployment {
             'package_certification_required' => ! $managed_private_source,
             'source_trust_mode' => $managed_private_source ? 'owner_registered_immutable_git_commit' : 'certified_provider_package',
             'source_commit_identity_verified' => true,
-            'private_source_installer_registered' => false,
+            'private_source_installer_registered' => $managed_private_source ? false : null,
             'declared_package_certificate_authoritative' => ! $managed_private_source,
             'native_plan_sha256' => (string) ( $native['plan_sha256'] ?? '' ),
             'native_executor' => 'staging' === $environment && empty( $blockers ) ? 'mad4b/plugin-package-apply' : '',
