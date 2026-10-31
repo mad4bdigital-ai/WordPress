@@ -1,0 +1,13 @@
+{
+  "contract": "mad4b.central-release-signed-readback-source-review.v1",
+  "authorizing": false,
+  "production_authorized": false,
+  "local_candidate_head": "f09b5f64ab08329012af21e72491384f19d838a7",
+  "previous_gaps": 180,
+  "locally_reviewed": 3,
+  "remaining_gaps": 177,
+  "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-release-registry.php",
+  "test": "wp-content/plugins/mad4b-site-control-plane/tests/central-release-signed-readback-boundary-contract.py",
+  "release": "NO_GO",
+  "note": "Only test and audit published; full source/coverage reconciliation and comprehensive GitHub CI pending."
+}
