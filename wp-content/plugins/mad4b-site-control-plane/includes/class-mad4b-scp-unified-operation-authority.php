@@ -140,10 +140,11 @@ final class MAD4B_SCP_Unified_Operation_Authority {
     }
 
     /**
-     * Connect the existing OAuth/MCP server identity to the same decision
-     * grammar. Never infer SSH or Broker proof from a WP-CLI --user option.
+     * Reuse the existing server-resolved Identity Context and deny-first agent
+     * registry across authenticated transports. Never infer SSH proof merely
+     * because a WP-CLI command supplies --user.
      */
-    public static function current_mcp_identity_plan( $operation ) {
+    public static function current_registered_identity_plan( $operation ) {
         if ( ! is_array( $operation ) || ! class_exists( 'MAD4B_SCP_Identity_Context' ) ||
             ! class_exists( 'MAD4B_SCP_Agent_Registry' ) )
             return new WP_Error( 'mad4b_unified_authority_backend_missing', 'Existing identity registry is unavailable.' );
@@ -165,7 +166,7 @@ final class MAD4B_SCP_Unified_Operation_Authority {
         if ( is_wp_error( $grant ) ) return $grant;
         return array(
             'contract' => self::CONTRACT,
-            'identity_source' => 'server_derived_identity_context',
+            'identity_source' => 'current_server_verified_identity_context',
             'authenticated' => true,
             'agent_public_id' => (string) ( $agent['public_id'] ?? '' ),
             'subject_fingerprint' => (string) ( $identity['subject_fingerprint'] ?? '' ),
