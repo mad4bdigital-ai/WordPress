@@ -58,8 +58,16 @@ final class MAD4B_Central_Dual_Lane_Registry_V1 {
             'one_time_maintenance_supported_as_policy_intent' => true,
             'failure_switch_requires_independent_transport_authority' => true,
             'security_denial_switch_allowed' => false,
-            'source_registry_only' => true,
+            'source_registry_only' => false,
+            'vps_broker_heartbeat_verified' => (static function () {
+                $hb = get_option('mad4b_central_broker_heartbeat_v1', array());
+                return is_array($hb) && !empty($hb['verified'])
+                    && (int)($hb['at'] ?? 0) > time()-600;
+            })(),
+            'vps_broker_host_id' => (string)get_option('mad4b_central_broker_host_id_v1',''),
+            'vps_broker_mode' => 'existing_dispatch_v1_systemd_claim_bridge',
             'live_ssh_adapter_registered' => false,
+            'mutating_ssh_executor_activated' => false,
             'live_executor_registered_by_this_component' => false,
             'execution_performed' => false
         );
