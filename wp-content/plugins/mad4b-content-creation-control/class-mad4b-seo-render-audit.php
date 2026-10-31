@@ -24,6 +24,20 @@ final class MAD4B_SEO_Render_Audit {
         if(!$post||!current_user_can('edit_post',$id)||in_array($post->post_type,['attachment','revision'],true))
             return new WP_Error('mad4b_render_audit_post','Editable post required');
         $mode=get_post_meta($id,'_elementor_edit_mode',true)==='builder'?'elementor':'wordpress_content';
+        $full=isset($input['render_mode']) && $input['render_mode']==='full';
+        // Elementor frontend output can consume substantial PHP/CPU. Explicit,
+        // admin-only full rendering avoids accidental bulk-triggered load.
+        if(!$full){
+            $source=(string)$post->post_content;
+            return [
+                'contract'=>self::CONTRACT,'post_id'=>$id,'renderer'=>$mode,
+                'render_status'=>'full_render_not_requested',
+                'rendered_html_checked'=>false,'source_content_bytes'=>strlen($source),
+                'requires_render_mode'=>'full','requires_admin_capability'=>true,
+                'template_level_coverage'=>false,'mutation_performed'=>false];
+        }
+        if(!current_user_can('manage_options'))
+            return new WP_Error('mad4b_render_audit_admin_required','Full render needs administrator permission');
         $html='';
         try{
             if($mode==='elementor' && class_exists('\\Elementor\\Plugin')){
@@ -85,7 +99,8 @@ final class MAD4B_SEO_Render_Audit {
             'description'=>'Read-only Staging image markup audit for WordPress and Elementor.',
             'category'=>'mad4b-read','permission_callback'=>[__CLASS__,'allowed'],
             'execute_callback'=>[__CLASS__,'audit'],
-            'input_schema'=>['type'=>'object','properties'=>['post_id'=>['type'=>'integer','minimum'=>1]],
+            'input_schema'=>['type'=>'object','properties'=>['post_id'=>['type'=>'integer','minimum'=>1],
+                'render_mode'=>['type'=>'string','enum'=>['summary','full']]],
                 'required'=>['post_id'],'additionalProperties'=>false],
             'output_schema'=>['type'=>'object','additionalProperties'=>true],
             'meta'=>['public'=>false,'show_in_rest'=>false,'mcp'=>[
