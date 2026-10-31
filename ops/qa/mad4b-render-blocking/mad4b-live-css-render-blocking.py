@@ -6,7 +6,11 @@ from urllib.parse import urlsplit
 from playwright.async_api import async_playwright
 ORIGIN='https://tours.dev.mad4b.com'
 SITE_ID='e5e64bca-ed62-48d2-b2b3-dff693cd702a'
-PAGES=['/','/ar/','/fr/','/de/','/es/','/it/','/destination/africa-containent/egypt/']
+PAGES=['/','/ar/','/fr/','/de/','/es/','/it/',
+       '/destination/africa-containent/egypt/',
+       '/tours-and-activities/',
+       '/tours-and-activities/nile-cruise-luxor-to-aswan-5-days/',
+       '/plan-a-trip/']
 OUT=pathlib.Path('/opt/hostinger-migrations/hosting-3/etg-commerce-staging/qa/render-blocking-uael-20261031')
 OUTPUT=OUT/'live-css-scan.json'
 CONTRACT='mad4b.live-render-blocking.v1'
