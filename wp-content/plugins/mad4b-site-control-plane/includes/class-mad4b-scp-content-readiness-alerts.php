@@ -7,9 +7,6 @@
 defined('ABSPATH') || exit;
 require_once __DIR__.'/class-mad4b-scp-readiness-workflow-options.php';
 require_once __DIR__.'/class-mad4b-scp-content-completeness.php';
-require_once __DIR__.'/class-mad4b-scp-readiness-integrations.php';
-require_once __DIR__.'/class-mad4b-scp-readiness-scopes.php';
-require_once __DIR__.'/class-mad4b-scp-readiness-preactivation.php';
 
 final class MAD4B_SCP_Content_Readiness_Alerts {
     const VERSION = '1.0.0';
@@ -21,8 +18,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
     const MAX_ISSUES = 3000;
 
     public static function boot() {
-        MAD4B_SCP_Admin_Route_Registry::register(self::PAGE,'manage_options');
-        MAD4B_SCP_Admin_Route_Registry::schedule_submenu(array(__CLASS__,'menu'),30);
+        MAD4B_SCP_Admin_Route_Registry::schedule_submenu(array(__CLASS__, 'menu'));
         add_action('admin_post_mad4b_readiness_scan', array(__CLASS__, 'handle_scan'));
         add_action('admin_post_mad4b_readiness_board_sync', array(__CLASS__, 'handle_board_sync'));
         add_action('admin_post_mad4b_readiness_batch_sync', array(__CLASS__, 'handle_batch_sync'));
@@ -33,9 +29,6 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         add_action('admin_notices', array(__CLASS__, 'admin_notice'));
         MAD4B_SCP_Readiness_Workflow_Options::boot();
         MAD4B_SCP_Content_Completeness::boot();
-        MAD4B_SCP_Readiness_Integrations::boot();
-        MAD4B_SCP_Readiness_Scopes::boot();
-        MAD4B_SCP_Readiness_PreActivation::boot();
     }
     public static function rules() {
         $saved = (array) get_option(self::POLICY, array());
@@ -249,11 +242,20 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                 // the issue through untrusted filter output.
                 $code=is_array($row)?(string)($row['code']??''):'';
                 $id=is_array($row)?(string)($row['id']??''):'';
-                $expected=hash('sha256',get_current_blog_id().'|site|0|'.$code);
-                $valid=is_array($row) && preg_match('/^dfsb_[a-z0-9_]+$/D',$code) &&
+                $type=is_array($row)?(string)($row['post_type']??''):'';
+                $object_id=is_array($row)?absint($row['object_id']??0):0;
+                $source=is_array($row)?(string)($row['source']??''):'';
+                $expected=hash('sha256',get_current_blog_id().'|'.$type.'|'.$object_id.'|'.$code);
+                $dfsb=preg_match('/^dfsb_[a-z0-9_]+$/D',$code) &&
+                    $source==='dynamic-filter-seo-bridge' && $type==='site' && $object_id===0;
+                $localization=preg_match('/^loc_(?:layout|text|missing|h1)_(?:ar|de|en|es|fr|it)$/D',$code) &&
+                    $source==='mad4b-elementor-localization' &&
+                    $object_id>0 && post_type_exists($type) &&
+                    get_post_type($object_id)===$type && get_post_status($object_id)==='publish' &&
+                    ((string)(apply_filters('wpml_post_language_details',null,$object_id)['language_code']??'')) ===
+                        (string)apply_filters('wpml_default_language',null);
+                $valid=is_array($row) && ($dfsb||$localization) &&
                     hash_equals($expected,$id) &&
-                    ($row['source']??'')==='dynamic-filter-seo-bridge' &&
-                    ($row['post_type']??'')==='site' && (int)($row['object_id']??-1)===0 &&
                     in_array($row['severity']??'',array('critical','high','medium','low'),true) &&
                     is_string($row['label']??null) &&
                     trim($row['label'])!=='' && strlen($row['label'])<=240 &&
@@ -262,9 +264,9 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                 if (!$valid) {$complete=false;break;}
                 $externalIds[$id]=true;
                 $issues[]=array(
-                    'id'=>$id,'post_type'=>'site','object_id'=>0,'code'=>$code,
+                    'id'=>$id,'post_type'=>$type,'object_id'=>$object_id,'code'=>$code,
                     'severity'=>$row['severity'],'label'=>sanitize_text_field($row['label']),
-                    'source'=>'dynamic-filter-seo-bridge'
+                    'source'=>$source
                 );
             }
         }
@@ -297,7 +299,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         if ($scheduled) {
             if (!self::trusted_scheduled_cli() || empty(self::rules()['scheduled_scan_enabled']))
                 return new WP_Error('mad4b_readiness_scheduler_unauthorized');
-        } elseif (!MAD4B_SCP_Readiness_Integrations::can_manage()) return new WP_Error('mad4b_readiness_permission_denied');
+        } elseif (!current_user_can('manage_options')) return new WP_Error('mad4b_readiness_permission_denied');
         if (!is_array($scan) || empty($scan['complete']) || !isset($scan['issues']))
             return new WP_Error('mad4b_readiness_incomplete_scan');
         $old=(array)get_option(self::STORE,array());$now=gmdate('c');$new=$old;
@@ -323,14 +325,20 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         if (count($new)>self::MAX_ISSUES)
             return new WP_Error('mad4b_readiness_capacity_exceeded','Issue registry capacity exceeded. Nothing saved.');
         update_option(self::STORE,$new,false);
-        if(serialize(get_option(self::STORE,array()))!==serialize($new))
-            return new WP_Error('mad4b_readiness_ledger_readback_failed','Issue ledger persistence was not confirmed.');
-        MAD4B_SCP_Readiness_Integrations::record_changes($old,$new);
+        $verified=(array)get_option(self::STORE,array());
+        if($verified!==$new)
+            return new WP_Error('mad4b_readiness_scan_readback_failed','Issue ledger write was not confirmed.');
         self::audit('scan',['scanned'=>$scan['scanned'],'current'=>count($scan['issues'])]);
+        // Only newly confirmed source transitions enter the local event journal.
+        // Event automation ingests held outbox rows, never dispatches email here.
+        if(class_exists('MAD4B_SCP_Readiness_Integrations'))
+            MAD4B_SCP_Readiness_Integrations::record_changes($old,$new);
         return self::summary($new);
     }
     private static function rule_enabled_for($issue,$cfg) {
         $type=$issue['post_type']??'';$code=$issue['code']??'';
+        if(str_starts_with($code,'loc_') && ($issue['source']??'')==='mad4b-elementor-localization')
+            return has_filter('mad4b/content_readiness/external_issues')!==false;
         if($type==='site' && str_starts_with($code,'dfsb_')){
             // Never resolve a source issue when its scanner is disconnected.
             return has_filter('mad4b/content_readiness/external_issues')!==false;
@@ -507,11 +515,12 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
     }
 
     public static function menu() {
+        MAD4B_SCP_Admin_Route_Registry::register(self::PAGE,'manage_options');
         add_submenu_page('mad4b-control-plane','Content Readiness & Alerts',
             'Content Readiness','manage_options',self::PAGE,array(__CLASS__,'render'));
     }
     public static function admin_bar($bar) {
-        if (!is_admin_bar_showing() || !current_user_can('edit_others_posts'))return;
+        if (!is_admin_bar_showing() || !current_user_can('manage_options'))return;
         $counts=self::summary();if(!$counts['open'])return;
         $bar->add_node(array('id'=>'mad4b-content-alerts','title'=>'Content Alerts: '.(int)$counts['open'],
             'href'=>admin_url('admin.php?page='.self::PAGE)));
@@ -569,7 +578,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         exit;
     }
     public static function handle_scan() {
-        if(!MAD4B_SCP_Readiness_Integrations::can_manage())wp_die('Forbidden',403);
+        if(!current_user_can('manage_options'))wp_die('Forbidden',403);
         check_admin_referer('mad4b_readiness_scan');
         $result=self::reconcile(self::discover());
         set_transient('mad4b_readiness_result_'.get_current_user_id(),
@@ -577,7 +586,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         wp_safe_redirect(admin_url('admin.php?page='.self::PAGE));exit;
     }
     public static function handle_save_rules() {
-        if(!MAD4B_SCP_Readiness_Integrations::can_manage())wp_die('Forbidden',403);
+        if(!current_user_can('manage_options'))wp_die('Forbidden',403);
         check_admin_referer('mad4b_readiness_rules');
         $names=['origin_fields','origin_source_fields','origin_source_taxonomies','location_taxonomies','media_fields','owner_fields','end_date_fields','stop_sale_fields'];
         $settings=array();
@@ -677,7 +686,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         return array('processed'=>count($results),'results'=>$results);
     }
     public static function handle_batch_sync() {
-        if(!MAD4B_SCP_Readiness_Integrations::can_manage())wp_die('Forbidden',403);
+        if(!current_user_can('manage_options'))wp_die('Forbidden',403);
         check_admin_referer('mad4b_readiness_batch_sync');
         $result=self::batch_sync();
         set_transient('mad4b_readiness_result_'.get_current_user_id(),
@@ -686,7 +695,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         exit;
     }
     public static function handle_board_sync() {
-        if(!MAD4B_SCP_Readiness_Integrations::can_manage())wp_die('Forbidden',403);
+        if(!current_user_can('manage_options'))wp_die('Forbidden',403);
         check_admin_referer('mad4b_readiness_board_sync');
         $issue=sanitize_text_field((string)($_POST['issue_id']??''));
         $result=self::sync_board($issue);

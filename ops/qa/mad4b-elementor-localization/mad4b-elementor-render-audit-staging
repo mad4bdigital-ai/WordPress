@@ -1,0 +1,5 @@
+# Browser-verified visible headings and English leakage in localized Elementor output.
+# Bounded to published staging pages, isolated browser, read-only HTTP requests.
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+37 2,8,14,20 * * * root /usr/bin/flock -n /run/lock/mad4b-elementor-render-audit.lock /usr/bin/timeout 100 /usr/bin/python3 /opt/commerce-components/qa/mad4b-elementor-render-audit.py 2>&1 | /usr/bin/logger -t mad4b-elementor-render-audit

@@ -1,0 +1,5 @@
+# Exact-site WordPress localization observability and MCP Client job outbox.
+# Host identity and staging policy validated on every WP-CLI invocation.
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+23,53 * * * * root /usr/bin/flock -n /run/lock/mad4b-elementor-localization-staging.lock /usr/bin/timeout 90 /usr/bin/python3 /opt/commerce-components/qa/mad4b-localization-runner.py 2>&1 | /usr/bin/logger -t mad4b-elementor-localization
