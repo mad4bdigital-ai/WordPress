@@ -1,0 +1,33 @@
+name: MAD4B Brand Surface Integrity
+on:
+  push:
+    paths:
+      - 'wp-content/mu-plugins/302-mad4b-brand-surface-integrity.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php'
+      - 'ops/qa/mad4b-brand-surface-integrity/**'
+      - '.github/workflows/mad4b-brand-surface-integrity.yml'
+  pull_request:
+    paths:
+      - 'wp-content/mu-plugins/302-mad4b-brand-surface-integrity.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php'
+      - 'ops/qa/mad4b-brand-surface-integrity/**'
+      - '.github/workflows/mad4b-brand-surface-integrity.yml'
+permissions:
+  contents: read
+concurrency:
+  group: mad4b-brand-surface-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  brand-surface-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: PHP syntax validation
+        run: |
+          php -l wp-content/mu-plugins/302-mad4b-brand-surface-integrity.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php
+      - name: Tenant brand isolation source contract
+        run: php ops/qa/mad4b-brand-surface-integrity/tests/source_contract.php

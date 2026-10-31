@@ -248,7 +248,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                 $expected=hash('sha256',get_current_blog_id().'|'.$type.'|'.$object_id.'|'.$code);
                 $dfsb=preg_match('/^dfsb_[a-z0-9_]+$/D',$code) &&
                     $source==='dynamic-filter-seo-bridge' && $type==='site' && $object_id===0;
-                $localization=preg_match('/^loc_(?:layout|text|missing|h1)_(?:ar|de|en|es|fr|it)$/D',$code) &&
+                $localization=preg_match('/^loc_(?:layout|text|missing|h1|brand)_(?:ar|de|en|es|fr|it)$/D',$code) &&
                     $source==='mad4b-elementor-localization' &&
                     $object_id>0 && post_type_exists($type) &&
                     get_post_type($object_id)===$type && get_post_status($object_id)==='publish' &&
