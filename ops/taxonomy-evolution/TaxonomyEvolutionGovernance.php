@@ -57,12 +57,17 @@ final class MAD4B_TaxonomyEvolutionGovernance {
   if($state==='DUAL_REGISTRATION')$blockers[]='dual_taxonomy_identity_conflict';
   if($state==='CANONICAL_ONLY' && ($counts['definitions']!==0||$counts['terms']!==0||$counts['translation_rows']!==0))$blockers[]='legacy_residue_requires_review';
   if($state==='NONE_REGISTERED' && ($counts['definitions']!==0||$counts['terms']!==0||$counts['translation_rows']!==0))$blockers[]='orphan_rows_without_registration';
-  if($action==='MIGRATE_LEGACY'&&empty($observed['preserve_rewrite_verified']))$blockers[]='rewrite_contract_unverified';
-  if($action==='MIGRATE_LEGACY'&&empty($observed['canonical_source_observed']))$blockers[]='canonical_definition_not_observed';
-  if($unsupported)$blockers[]='unresolved_provider_dependencies';
-  if(empty($observed['verified_restore_checkpoint']))$blockers[]='restore_checkpoint_missing';
-  if(empty($observed['native_executor_ready']))$blockers[]='native_executor_unverified';
-  if(empty($observed['exact_runtime_provider_certified']))$blockers[]='runtime_adapter_not_certified';
+  if($state==='CANONICAL_ONLY' && ($supported||$unsupported))$blockers[]='legacy_references_remain';
+  // No-op adoption is read-only; requiring a restore grant would be wrong.
+  // Mutations use the original native authority and independent restore.
+  if(in_array($action,['MIGRATE_LEGACY','PROVISION_SCHEMA'],true)) {
+   if($action==='MIGRATE_LEGACY'&&empty($observed['preserve_rewrite_verified']))$blockers[]='rewrite_contract_unverified';
+   if(empty($observed['canonical_source_observed']))$blockers[]='canonical_definition_not_observed';
+   if($unsupported)$blockers[]='unresolved_provider_dependencies';
+   if(empty($observed['verified_restore_checkpoint']))$blockers[]='restore_checkpoint_missing';
+   if(empty($observed['native_executor_ready']))$blockers[]='native_executor_unverified';
+   if(empty($observed['exact_runtime_provider_certified']))$blockers[]='runtime_adapter_not_certified';
+  }
   $reviews=[];
   if($counts['unbound_wpml_terms']>0)$reviews[]=['kind'=>'wpml_term_identity','count'=>$counts['unbound_wpml_terms'],'scope'=>'per_object_review','blocks_all_unrelated_objects'=>false];
   if($unsupported)$reviews[]=['kind'=>'provider_reference_adapter','references'=>$unsupported,'blocks_native_apply'=>true];
