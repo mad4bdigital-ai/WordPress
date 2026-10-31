@@ -4,7 +4,7 @@
 Direct operator lane only. NEVER accepts commands from WordPress broker queues.
 It binds the host SSH principal and a root-owned local operator policy, hashes
 the exact input bytes, journals before execution, and independently reads back.
-Production writes and all unbacked writes are fail-closed by default.
+Production supports the same capabilities as Staging under independent, exact-scope host authority and mutation safeguards.
 """
 import argparse, datetime, hashlib, json, os, pathlib, re, sqlite3, subprocess, sys, time, uuid
 
@@ -61,8 +61,6 @@ def authority():
     data=json.loads(raw)
     if data.get('contract')!=CONTRACT or data.get('host_id')!=HOST        or data.get('principal')!='root' or data.get('revoked') is True:
         abort('HOST_GRANT_MISSING_OR_REVOKED')
-    if data.get('allow_general_shell') is not True or data.get('allow_raw_sql') is not True:
-        abort('HOST_CAPABILITY_NOT_GRANTED')
     return data
 
 def preflight(args,policy):
@@ -70,6 +68,9 @@ def preflight(args,policy):
         abort('UNSUPPORTED_OPERATION')
     if args.kind=='sql' and (args.company,args.environment) not in TARGETS:
         abort('DATABASE_NOT_ENROLLED')
+    capability='allow_raw_sql' if args.kind=='sql' else 'allow_general_shell'
+    if policy.get(capability) is not True:
+        abort('HOST_CAPABILITY_NOT_GRANTED')
     if args.environment not in ('staging','production'):
         abort('ENVIRONMENT_NOT_ENROLLED')
     permitted=policy.get('scopes',{}).get(args.company+':'+args.environment,{})
@@ -103,9 +104,12 @@ def preflight(args,policy):
       'company':args.company,'environment':args.environment,
       'kind':args.kind,'intent':args.intent,'command_sha256':command_hash,
       'readback_command_sha256':sha(readback),'expected_readback_sha256':args.expected_readback_sha256,
-      'mutating':mutation,'shell_effects_cannot_be_proven_read_only':args.kind=='shell', 'backup_sha256:sha(snapshot) if mutation else None,
+      'mutating':mutation,
+      'risk_class':('production_write' if mutation else 'production_operator_shell' if args.kind=='shell' else 'production_read') if args.environment=='production' else ('staging_write' if mutation else 'staging_read_or_diagnostic'),
+      'shell_effects_cannot_be_proven_read_only':args.kind=='shell',
+      'backup_sha256':sha(snapshot) if mutation else None,
       'rollback_sha256':sha(rollback) if mutation else None,
-      'production_mutation_authorized':mutation and args.environment=='production',
+      'production_mutation_authorized':mutation and args.environment=='production' and permitted.get('allow_production_mutation') is True,
       'command_catalog_required':False,'authorization':'independent_root_ssh_plus_host_scoped_grant',
       'execution_performed':False}
 
