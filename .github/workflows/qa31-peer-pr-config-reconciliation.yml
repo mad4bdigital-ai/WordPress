@@ -12,6 +12,9 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-bootstrap-contract.py'
       - '.github/workflows/qa31-peer-pr-config-reconciliation.yml'
   workflow_dispatch:
+concurrency:
+  group: qa31-peer-pr-config-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
