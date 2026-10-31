@@ -34,6 +34,47 @@ while pending:
 subprocess.run(["git", "config", "user.name", "MAD4B Integration CI"], check=True)
 subprocess.run(["git", "config", "user.email", "integration-ci@users.noreply.github.com"], check=True)
 subprocess.run(["git", "fetch", "-q", "origin", "+refs/pull/*/head:refs/remotes/origin/pr/*"], check=True)
+def resolve_exact_pr669_review_registry(item_number, conflicts):
+    """Union reviewed entries; retain MCP-01 only in one known control-superset case."""
+    target = "governance/production-readiness/capability-coverage.json"
+    if item_number != 669 or conflicts != [target]:
+        return False
+    try:
+        records = [json.loads(subprocess.check_output(
+            ["git", "show", ":" + str(stage) + ":" + target])) for stage in (1, 2, 3)]
+        ancestor, ours, theirs = records
+        if set(ours) != set(theirs):
+            return False
+        if any(ours[k] != theirs[k] for k in ours
+               if k not in ("reviewed_changes", "reviewed_capabilities")):
+            return False
+        merged = dict(ours)
+        for kind in ("reviewed_changes", "reviewed_capabilities"):
+            identity = (lambda x: (x["path"], x["source_blob_sha"])) if kind == "reviewed_changes" else (lambda x: x["id"])
+            registry = {identity(row): row for row in ours[kind]}
+            if len(registry) != len(ours[kind]):
+                return False
+            for row in theirs[kind]:
+                rid = identity(row)
+                if rid in registry and registry[rid] != row:
+                    if kind != "reviewed_capabilities" or rid != "ability:mad4b/control-plane-selected-head-plan":
+                        return False
+                    old = registry[rid]
+                    if (set(old) != set(row) or
+                        set(old["control_ids"]) != set(row["control_ids"]) | {"MCP-01"} or
+                        any(old[k] != row[k] for k in old if k not in
+                            ("control_ids", "coverage_reuse_rationale"))):
+                        return False
+                    continue
+                registry[rid] = row
+            merged[kind] = list(registry.values())
+        Path(target).write_text(json.dumps(merged, indent=2) + "\n", encoding="utf-8")
+        subprocess.run(["git", "add", target], check=True)
+        return True
+    except (ValueError, KeyError, TypeError, subprocess.CalledProcessError):
+        return False
+
+
 def resolve_exact_pr675_conflict(item_number, conflicts):
     """Reviewed one-file union of brand/style localization codes; fail closed otherwise."""
     if item_number != 675 or conflicts != [
@@ -76,7 +117,8 @@ for item in ordered:
         if result.returncode != 0:
             conflicts = subprocess.run(["git", "diff", "--name-only", "--diff-filter=U"],
                                        capture_output=True, text=True).stdout.splitlines()
-            if resolve_exact_pr675_conflict(item["number"], conflicts):
+            if (resolve_exact_pr675_conflict(item["number"], conflicts)
+                    or resolve_exact_pr669_review_registry(item["number"], conflicts)):
                 subprocess.run(["git", "diff", "--cached", "--check"], check=True)
                 subprocess.run(["git", "commit", "-m",
                                 "integration: reconcile PR675 brand/style localization alerts"],
