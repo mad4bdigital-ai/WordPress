@@ -1,0 +1,12 @@
+{
+  "contract": "mad4b.vps-broker-poller.v1",
+  "host_id": "EXACT_ENROLLED_VPS_HOST_ID",
+  "companies": {
+    "example-company": {
+      "site_uuid": "EXACT_COMPANY_SITE_UUID",
+      "environment": "production",
+      "canonical_origin": "https://example-company.example",
+      "allow_claim": false
+    }
+  }
+}
