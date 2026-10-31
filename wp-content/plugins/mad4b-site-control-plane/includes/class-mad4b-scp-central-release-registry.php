@@ -21,11 +21,28 @@ final class MAD4B_SCP_Central_Release_Registry {
         $a = json_decode( (string) file_get_contents( $p ), true );
         if ( ! is_array( $a ) || ( $a['contract'] ?? '' ) !== self::SOURCE ||
             ( $a['signature_algorithm'] ?? '' ) !== 'RS256' ||
-            ! is_string( $a['origin'] ?? null ) ||
-            ! preg_match( '#^https://[a-z0-9.-]+$#D', $a['origin'] ) ||
+            ( $a['host_origin_provider'] ?? '' ) !== 'read_only_host_mount' ||
+            ( $a['host_origin_contract'] ?? '' ) !== 'mad4b.central-staging-origin.v1' ||
             ! is_string( $a['readback_route'] ?? null ) ||
             ! preg_match( '#^/wp-json/[a-z0-9/-]+/$#D', $a['readback_route'] ) )
             return array();
+
+        // A host-owned read-only binding chooses the same central endpoint
+        // for every company. Never hardcode tenant-specific origins in code
+        // or read an address supplied by the caller.
+        $host_file = defined( 'MAD4B_CENTRAL_STAGING_SOURCE_FILE' )
+            ? (string) MAD4B_CENTRAL_STAGING_SOURCE_FILE
+            : '/run/mad4b-native-abilities/central-staging-source.json';
+        if ( '' === $host_file || ! is_file( $host_file ) || is_link( $host_file ) ||
+            ! is_readable( $host_file ) || filesize( $host_file ) > 8192 )
+            return array();
+        $host = json_decode( (string) file_get_contents( $host_file ), true );
+        if ( ! is_array( $host ) ||
+            ( $host['contract'] ?? '' ) !== 'mad4b.central-staging-origin.v1' ||
+            ! is_string( $host['origin'] ?? null ) ||
+            ! preg_match( '#^https://[a-z0-9.-]+$#D', $host['origin'] ) )
+            return array();
+        $a['origin'] = $host['origin'];
         return $a;
     }
 
