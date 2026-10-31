@@ -1,0 +1,18 @@
+{
+  "contract": "mad4b.integration-staging-brand-ci-review.v1",
+  "authorizing": false,
+  "production_authorized": false,
+  "baseline": "b8f2e0a60fa45e28b49643f1eae6f73570c2fee8",
+  "local_candidate_head": "cdd6658486979dee88a58c19ca8c2da02293260d",
+  "prior_gaps": 205,
+  "locally_reviewed_in_batch": 8,
+  "remaining_gaps": 197,
+  "validated_sources": [
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-context-fixtures.php",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-brand-trial.php"
+  ],
+  "test": "wp-content/plugins/mad4b-site-control-plane/tests/staging-brand-fixture-route-guards-contract.py",
+  "ci_only": true,
+  "release_status": "NO_GO",
+  "note": "Source reviews and combined source live only in isolated VPS candidate; GitHub branch contains test and audit, not full candidate source, and workflow permission constraints remain."
+}
