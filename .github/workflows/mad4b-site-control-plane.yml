@@ -274,9 +274,27 @@ jobs:
           grep -Fq "CREATE\\s+(?:USER|ROLE)" "$abilities"
           grep -Fq "expected_modified_gmt" "$abilities"
           grep -Fq "max_affected" "$abilities"
-          grep -Fq "can_structured_database_read" "$abilities"
+          # ABI-preserving read-domain extraction is allowed only when the
+          # facade still owns the registered Ability callbacks and the new
+          # domain service retains the original WordPress/SQL policy checks.
+          read_owner="$abilities"
+          read_service="$root/includes/class-mad4b-scp-read-ability-service.php"
+          if grep -Fq "MAD4B_SCP_Read_Ability_Service::database_select" "$abilities"; then
+            test -f "$read_service"
+            grep -Fq "class-mad4b-scp-read-ability-service.php" "$abilities"
+            for callback in filesystem_list filesystem_read database_list_tables database_describe_table database_select; do
+              grep -Fq "MAD4B_SCP_Read_Ability_Service::${callback}" "$abilities"
+              grep -Fq "function ${callback}(" "$read_service"
+            done
+            grep -Fq "function where_sql(" "$read_service"
+            grep -Fq "MAD4B_SCP_Policy::resolve_path" "$read_service"
+            grep -Fq "MAD4B_SCP_Policy::can_structured_database_read" "$read_service"
+            grep -Fq "MAD4B_SCP_Policy::is_sensitive_database_column" "$read_service"
+            read_owner="$read_service"
+          fi
+          grep -Fq "can_structured_database_read" "$read_owner"
           grep -Fq "can_structured_database_write" "$abilities"
-          grep -Fq "is_sensitive_database_column" "$abilities"
+          grep -Fq "is_sensitive_database_column" "$read_owner"
           grep -Fq "START TRANSACTION" "$abilities"
           grep -Fq "FOR UPDATE" "$abilities"
           # Require both extracted mutators together; partial extraction fails closed.
