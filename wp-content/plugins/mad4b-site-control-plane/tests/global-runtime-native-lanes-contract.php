@@ -71,4 +71,19 @@ check_native($unconfirmed['steps'][2]['state']==='READY' && $unconfirmed['state'
  'native mutation receipt advances verifier but does not complete workflow');
 $confirmed=$cls::evaluate($graph,array('queue'=>$base,'native_execute'=>$base,'readback'=>$base));
 check_native($confirmed['state']==='VERIFIED','only independently source-bound readback finishes workflow');
-echo "PASS global runtime 21 native lane cases, 5 owner anchors, 7 progression checks\n";
+// Exercise the actual provider-neutral route normalizer. Discovery is never
+// permission to execute the selected native lane.
+function sanitize_key($key){return strtolower(preg_replace('/[^a-z0-9_-]/','',(string)$key));}
+require dirname(__DIR__).'/includes/class-mad4b-scp-adaptive-operation-router.php';
+$route='MAD4B_SCP_Adaptive_Operation_Router';
+$normalize=new ReflectionMethod($route,'normalize');
+$ok=$normalize->invoke(null,array('ability_name'=>'seo/update-meta','intent'=>'write','phase'=>'execute','max_candidates'=>3));
+check_native(is_array($ok) && $ok['max_candidates']===3,'source normalizer bounds route selection');
+$bad=$normalize->invoke(null,array('task'=>'deploy','ability_name'=>'seo/update-meta'));
+check_native($bad instanceof WP_Error,'ambiguous route target rejected');
+$bad=$normalize->invoke(null,array('task'=>'deploy','caller_shell_command'=>'printf unexpected'));
+check_native($bad instanceof WP_Error,'unknown caller execution field rejected');
+$bad=$normalize->invoke(null,array('task'=>'deploy','phase'=>'execute','max_candidates'=>9));
+check_native($bad instanceof WP_Error,'unbounded candidate count rejected');
+check_native($route::task_goal_alignment_bonus(array('task'=>'check update status'),'seo/meta-update-plan')===0,'status intent cannot promote write workflow');
+echo "PASS global runtime native lanes and route normalization deny-first boundaries\n";
