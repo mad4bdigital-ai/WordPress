@@ -1,0 +1,47 @@
+{
+  "contract": "mad4b.local-integration-readiness-coverage.v1",
+  "date": "2026-11-01",
+  "baseline_sha": "b8f2e0a60fa45e28b49643f1eae6f73570c2fee8",
+  "local_isolated_candidate_head": "6d6da387dd7ea77045e9b961b44a9c58b5ddd050",
+  "local_checkout": "/opt/mad4b-qa31-fix/pr655-pr671-combined-audit",
+  "local_evaluation": "PASS_COVERAGE_ONLY",
+  "previous_local_gaps": 175,
+  "remaining_local_coverage_gaps": 0,
+  "changed_source_paths": 1044,
+  "new_capabilities": 164,
+  "reviewed_behavior_changes": 163,
+  "postclosure_checks": {
+    "production_readiness_registry_negative_regressions": "PASS",
+    "source_guard_tests": "PASS 15 sources 71 deliberate-removal negative cases",
+    "provider_operator_runtime_batch": "PASS 16",
+    "release_schema_skills_runtime_batch": "PASS 11"
+  },
+  "publication": {
+    "github_branch": "integration/all-open-prs-20261031",
+    "latest_branch_head": "eb0ddc5cd0bafb3972111d4ee6ed2a263ee61723",
+    "new_tests_published": true,
+    "complete_candidate_source_published": false,
+    "coverage_registry_published": false,
+    "github_coverage_evaluation_verified": false
+  },
+  "ci": {
+    "latest_observed_workflow_run_id": 41241506137,
+    "latest_observed_conclusion": "failure",
+    "note": "Observed workflow run is from older head; no new green CI is evidenced."
+  },
+  "authorization": {
+    "production_mutation_performed": false,
+    "master_mutation_performed": false,
+    "release_authorized": false,
+    "live_site_evidence_required": true
+  },
+  "release_status": "NO_GO",
+  "open_gates": [
+    "Semantic review of local PR655/PR671 conflicts where trial used -X theirs",
+    "Converge integrated source and exact-blob coverage registry onto GitHub branch under authorized identity",
+    "Required workflow-file updates must use identity with authorized workflow permissions; no bypass",
+    "Run full GitHub CI and WordPress staging integration against published exact head",
+    "Independent live evidence and normal production approvals"
+  ],
+  "caveat": "Zero means the local dynamic source coverage ledger has no uncovered entries; it is not a certification of deployed code, security or end-to-end integrations."
+}
