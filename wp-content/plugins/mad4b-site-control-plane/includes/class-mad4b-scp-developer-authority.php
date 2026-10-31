@@ -208,6 +208,11 @@ final class MAD4B_SCP_Developer_Authority {
 	}
 
 	public static function status() {
+		$actor_user_id=get_current_user_id();
+		if(defined('WP_CLI') && WP_CLI && 0===$actor_user_id && class_exists('MAD4B_SCP_Execution_Authority')) {
+			$actor=MAD4B_SCP_Execution_Authority::resolve('read');
+			if(is_array($actor))$actor_user_id=(int)$actor['wp_user_id'];
+		}
 		$environment = class_exists( 'MAD4B_SCP_Site_Profile' ) ? sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ) : 'unknown';
 		$agent = self::configured_or_slug_agent();
 		$normal = self::grant_status( $agent, 'mad4b-developer', self::normal_tools() );
@@ -224,7 +229,7 @@ final class MAD4B_SCP_Developer_Authority {
 			'agent_slug' => is_array( $agent ) ? (string) $agent['slug'] : '',
 			'agent_status' => is_array( $agent ) ? (string) $agent['status'] : '',
 			'agent_revision' => is_array( $agent ) ? (int) $agent['revision'] : 0,
-			'agent_user_match' => is_array( $agent ) ? (int) $agent['wp_user_id'] === get_current_user_id() : false,
+			'agent_user_match' => is_array( $agent ) ? (int) $agent['wp_user_id'] === $actor_user_id : false,
 			'agent_environment_match' => is_array( $agent ) ? $environment === (string) $agent['environment'] : false,
 			'configured_agent_public_id' => class_exists( 'MAD4B_SCP_Developer_Runtime' ) ? MAD4B_SCP_Developer_Runtime::configured_agent_public_id() : '',
 			'developer_enabled' => class_exists( 'MAD4B_SCP_Developer_Runtime' ) && MAD4B_SCP_Developer_Runtime::developer_flag_enabled(),
