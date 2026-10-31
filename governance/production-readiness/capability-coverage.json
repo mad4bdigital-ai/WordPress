@@ -4592,6 +4592,291 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Inherited source governance, read and company-management capability gates, no direct external publication or execution authority."
+    },
+    {
+      "id": "ability:mad4b/company-readiness-workflow",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-stage-admission.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-peer-pr-config-reconcile.py"
+      ],
+      "owner_role": "QA31 repository source/CI reviewer; independent tenant owner acceptance pending",
+      "review_rationale": "Workflow receipt visibility is read-only and requires the company-scoped permission guard. CI source checks and isolated denial fixtures only; no live deployment or production authorization inferred.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing tenant authorization, provider isolation, and governed operation controls apply; no new blanket execution permission is conferred."
+    },
+    {
+      "id": "ability:mad4b/company/content_selection_changed",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-stage-admission.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-peer-pr-config-reconcile.py"
+      ],
+      "owner_role": "QA31 repository source/CI reviewer; independent tenant owner acceptance pending",
+      "review_rationale": "Event handoff does not itself authorize provider execution or tenant mutation. CI source checks and isolated denial fixtures only; no live deployment or production authorization inferred.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing tenant authorization, provider isolation, and governed operation controls apply; no new blanket execution permission is conferred."
+    },
+    {
+      "id": "ability:mad4b/company/created",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-stage-admission.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-peer-pr-config-reconcile.py"
+      ],
+      "owner_role": "QA31 repository source/CI reviewer; independent tenant owner acceptance pending",
+      "review_rationale": "Company-created event remains subject to authenticated operator and tenant binding. CI source checks and isolated denial fixtures only; no live deployment or production authorization inferred.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing tenant authorization, provider isolation, and governed operation controls apply; no new blanket execution permission is conferred."
+    },
+    {
+      "id": "ability:mad4b/company/provider_changed",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-stage-admission.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-peer-pr-config-reconcile.py"
+      ],
+      "owner_role": "QA31 repository source/CI reviewer; independent tenant owner acceptance pending",
+      "review_rationale": "Provider-change event is routed via scoped readiness operations, not direct shell. CI source checks and isolated denial fixtures only; no live deployment or production authorization inferred.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing tenant authorization, provider isolation, and governed operation controls apply; no new blanket execution permission is conferred."
+    },
+    {
+      "id": "ability:mad4b/company/recheck_observed",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-stage-admission.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-peer-pr-config-reconcile.py"
+      ],
+      "owner_role": "QA31 repository source/CI reviewer; independent tenant owner acceptance pending",
+      "review_rationale": "Recheck observation is informational and does not mint an execution grant. CI source checks and isolated denial fixtures only; no live deployment or production authorization inferred.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing tenant authorization, provider isolation, and governed operation controls apply; no new blanket execution permission is conferred."
+    },
+    {
+      "id": "ability:mad4b/company/stage_blocked",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-stage-admission.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-peer-pr-config-reconcile.py"
+      ],
+      "owner_role": "QA31 repository source/CI reviewer; independent tenant owner acceptance pending",
+      "review_rationale": "Blocked stage notification remains non-authorizing and scoped to the company. CI source checks and isolated denial fixtures only; no live deployment or production authorization inferred.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing tenant authorization, provider isolation, and governed operation controls apply; no new blanket execution permission is conferred."
+    },
+    {
+      "id": "ability:mad4b/start-your-company-outcome",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-stage-admission.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-peer-pr-config-reconcile.py"
+      ],
+      "owner_role": "QA31 repository source/CI reviewer; independent tenant owner acceptance pending",
+      "review_rationale": "Outcome is a read endpoint and cannot authorize a stage execution. CI source checks and isolated denial fixtures only; no live deployment or production authorization inferred.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing tenant authorization, provider isolation, and governed operation controls apply; no new blanket execution permission is conferred."
+    },
+    {
+      "id": "ability:mad4b/start-your-company-plan",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-stage-admission.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-peer-pr-config-reconcile.py"
+      ],
+      "owner_role": "QA31 repository source/CI reviewer; independent tenant owner acceptance pending",
+      "review_rationale": "Planning returns bounded stage intent, not an approved mutation. CI source checks and isolated denial fixtures only; no live deployment or production authorization inferred.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing tenant authorization, provider isolation, and governed operation controls apply; no new blanket execution permission is conferred."
+    },
+    {
+      "id": "ability:mad4b/start-your-company-resume",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-stage-admission.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-peer-pr-config-reconcile.py"
+      ],
+      "owner_role": "QA31 repository source/CI reviewer; independent tenant owner acceptance pending",
+      "review_rationale": "Resume requires an independently authorized stage and enrolled executor. CI source checks and isolated denial fixtures only; no live deployment or production authorization inferred.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing tenant authorization, provider isolation, and governed operation controls apply; no new blanket execution permission is conferred."
+    },
+    {
+      "id": "ability:mad4b/start-your-company-run",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-stage-admission.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-peer-pr-config-reconcile.py"
+      ],
+      "owner_role": "QA31 repository source/CI reviewer; independent tenant owner acceptance pending",
+      "review_rationale": "Run is subject to operator privileges, exact stage, lease and provider admission. CI source checks and isolated denial fixtures only; no live deployment or production authorization inferred.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing tenant authorization, provider isolation, and governed operation controls apply; no new blanket execution permission is conferred."
+    },
+    {
+      "id": "operation:company.create",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-stage-admission.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-peer-pr-config-reconcile.py"
+      ],
+      "owner_role": "QA31 repository source/CI reviewer; independent tenant owner acceptance pending",
+      "review_rationale": "Create operation is dispatched by the semantic company executor, never raw SQL or shell. CI source checks and isolated denial fixtures only; no live deployment or production authorization inferred.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing tenant authorization, provider isolation, and governed operation controls apply; no new blanket execution permission is conferred."
+    },
+    {
+      "id": "operation:company.repair",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-stage-admission.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-peer-pr-config-reconcile.py"
+      ],
+      "owner_role": "QA31 repository source/CI reviewer; independent tenant owner acceptance pending",
+      "review_rationale": "Repair operation preserves existing tenant records and uses bounded execution. CI source checks and isolated denial fixtures only; no live deployment or production authorization inferred.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing tenant authorization, provider isolation, and governed operation controls apply; no new blanket execution permission is conferred."
+    },
+    {
+      "id": "rest:mad4b/v1/company-brand-readiness/companies/(?P<company>[a-z][a-z0-9-]{2,47})/workflow",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-stage-admission.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-peer-pr-config-reconcile.py"
+      ],
+      "owner_role": "QA31 repository source/CI reviewer; independent tenant owner acceptance pending",
+      "review_rationale": "GET route is restricted to operator assignment and verified company ownership. CI source checks and isolated denial fixtures only; no live deployment or production authorization inferred.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing tenant authorization, provider isolation, and governed operation controls apply; no new blanket execution permission is conferred."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-readiness-governance.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-stage-admission.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-peer-pr-config-reconcile.py"
+      ],
+      "owner_role": "QA31 repository source/CI reviewer; independent tenant owner acceptance pending",
+      "review_rationale": "Readiness service imposes cross-tenant denial and WordPress permissions. CI source checks and isolated denial fixtures only; no live deployment or production authorization inferred.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing tenant authorization, provider isolation, and governed operation controls apply; no new blanket execution permission is conferred."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-start-your-company-runtime.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-stage-admission.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-peer-pr-config-reconcile.py"
+      ],
+      "owner_role": "QA31 repository source/CI reviewer; independent tenant owner acceptance pending",
+      "review_rationale": "Company runtime implements bounded payload and executor checks including unsupported actions. CI source checks and isolated denial fixtures only; no live deployment or production authorization inferred.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing tenant authorization, provider isolation, and governed operation controls apply; no new blanket execution permission is conferred."
     }
   ],
   "lifecycle": [],
