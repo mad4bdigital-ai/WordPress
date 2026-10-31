@@ -33,5 +33,20 @@
     "caller_package_bytes_allowed": false,
     "certified_profile_package_url_allowed": true,
     "archive_sha256_required": true
-  }
+  },
+  "dependency_admission": {
+    "mode": "capability_first_any_installed_version",
+    "installed_version_allowlist_required": false,
+    "installed_version_drift_blocks_connection": false,
+    "required_runtime_capabilities": [
+      "McpAdapter::instance",
+      "McpAdapter::create_server",
+      "McpTransportFactory",
+      "DefaultServerFactory",
+      "WordPress Abilities API"
+    ],
+    "site_profile_provider_isolation_default": true,
+    "never_grants_owner_or_write_authority": true
+  },
+  "existing_target_version_purpose": "explicit_package_install_or_rollback_only_not_connection_readiness"
 }
