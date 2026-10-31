@@ -366,7 +366,42 @@ final class MAD4B_SCP_Provider_Contracts {
 		);
 	}
 
+	/**
+	 * The official WordPress MCP Adapter is infrastructure, not a per-version
+	 * business provider. Its installed version is diagnostic metadata only.
+	 * Check the bounded interface actually used by MAD4B; never infer OAuth,
+	 * tool exposure or write authority from a successful dependency probe.
+	 */
+	private static function mcp_adapter_dependency_status( $available = null ) {
+		$adapter = '\\WP\\MCP\\Core\\McpAdapter';
+		$loaded = false !== $available && class_exists( $adapter );
+		$checks = array(
+			'adapter_loaded' => $loaded,
+			'instance' => $loaded && method_exists( $adapter, 'instance' ),
+			'create_server' => $loaded && method_exists( $adapter, 'create_server' ),
+			'transport_factory' => class_exists( '\\WP\\MCP\\Core\\McpTransportFactory' ),
+			'default_server_factory' => class_exists( '\\WP\\MCP\\Servers\\DefaultServerFactory' ),
+			'wordpress_abilities' => function_exists( 'wp_register_ability' ) && function_exists( 'wp_has_ability' ),
+		);
+		$ready = ! in_array( false, $checks, true );
+		return array(
+			'provider' => 'mcp_adapter',
+			'status' => $ready ? 'dependency_compatible' : 'dependency_incompatible',
+			'dependency_mode' => true,
+			'version_gate_enabled' => false,
+			'installed_version' => self::installed_version( 'mcp_adapter' ),
+			'capability_checks' => $checks,
+			'missing_capabilities' => array_keys( array_filter( $checks, static function ( $ok ) { return ! $ok; } ) ),
+			'identity_contract_ok' => $ready,
+			'runtime_contract_ok' => $ready,
+			'runtime_integrity_verification_deferred' => true,
+			'mutation_certified' => false,
+			'write_grants_created' => false,
+		);
+	}
+
 	public static function runtime_identity_status( $provider, $available = null ) {
+		if ( 'mcp_adapter' === sanitize_key( (string) $provider ) ) return self::mcp_adapter_dependency_status( $available );
 		$base_contract = self::get( $provider );
 		if ( empty( $base_contract ) ) {
 			return array(
@@ -434,6 +469,7 @@ final class MAD4B_SCP_Provider_Contracts {
 	}
 
 	public static function runtime_status( $provider, $available = null ) {
+		if ( 'mcp_adapter' === sanitize_key( (string) $provider ) ) return self::mcp_adapter_dependency_status( $available );
 		$base_contract = self::get( $provider );
 		// Deep certification/mutation truth must observe version drift that occurs
 		// after an earlier request-local identity read. Keep hot identity paths
@@ -545,6 +581,10 @@ final class MAD4B_SCP_Provider_Contracts {
 
 	public static function violations_for_status( array $status ) {
 		$violations = array();
+		if ( ! empty( $status['dependency_mode'] ) && 'mcp_adapter' === ( $status['provider'] ?? '' ) ) {
+			return ! empty( $status['runtime_contract_ok'] ) && 'dependency_compatible' === ( $status['status'] ?? '' )
+				? array() : array( 'mcp_adapter_dependency_incompatible' );
+		}
 		if ( empty( $status['status'] ) || 'certified' !== $status['status'] ) $violations[] = empty( $status['status'] ) ? 'unknown_status' : (string) $status['status'];
 		if ( ! empty( $status['candidate_attestation']['attestation_required'] ) ) {
 			$violations[] = 'candidate_attestation_required';
@@ -560,8 +600,9 @@ final class MAD4B_SCP_Provider_Contracts {
 	}
 
 	public static function runtime_violations( $provider, $available = null ) { return self::violations_for_status( self::runtime_status( $provider, $available ) ); }
-	public static function mutation_allowed( $provider, $available = null ) { return self::get( $provider ) && empty( self::runtime_violations( $provider, $available ) ); }
+	public static function mutation_allowed( $provider, $available = null ) { return 'mcp_adapter' !== sanitize_key( (string) $provider ) && self::get( $provider ) && empty( self::runtime_violations( $provider, $available ) ); }
 	public static function mutation_guard( $provider, $available = null ) {
+		if ( 'mcp_adapter' === sanitize_key( (string) $provider ) ) return new WP_Error( 'mad4b_mcp_adapter_dependency_not_mutation_authority', 'MCP Adapter dependency compatibility does not authorize installing, updating or mutating provider code. Use the exact governed release operation.' );
 		$status = self::runtime_status( $provider, $available );
 		$violations = self::violations_for_status( $status );
 		if ( empty( $violations ) ) return true;
