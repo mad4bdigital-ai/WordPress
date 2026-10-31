@@ -51,6 +51,15 @@ class Readiness_Test_Request {
 $module=dirname(__DIR__).'/includes/class-mad4b-scp-content-readiness-alerts.php';
 if (!is_file($module)) $module=dirname(__DIR__,2).'/includes/class-mad4b-scp-content-readiness-alerts.php';
 require $module;
+// Supply the integrated operational components used later in this same
+// isolated contract; no remote dispatch or production connection is invoked.
+foreach ([
+    'class-mad4b-scp-readiness-integrations.php',
+    'class-mad4b-scp-readiness-scopes.php',
+    'class-mad4b-scp-readiness-preactivation.php',
+] as $component) {
+    require_once dirname(__DIR__,2).'/includes/'.$component;
+}
 $cls='MAD4B_SCP_Content_Readiness_Alerts';
 function yes($condition,$label){if(!$condition){fwrite(STDERR,"FAIL $label\n");exit(3);}echo "PASS $label\n";}
 $GLOBALS['admin']=true;
