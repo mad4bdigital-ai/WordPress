@@ -83,5 +83,8 @@ $checks['SEO per-object edit permission']=str_contains($patch,"'edit_post'");
 $checks['Media attachment exact permission']=str_contains($patch,"'attachment'");
 $checks['Native undo owner scope']=str_contains($patch,'mad4b_undo_media_cap_denied');
 $checks['Native WordPress authority not forged']=!str_contains($patch,'ensure_content_actor(');
+$checks['Elementor emitted CSS isolated']=str_contains($render,'ob_start()')&&str_contains($render,'ob_end_clean()');
+$checks['oversize reported without false coverage']=str_contains($render,'oversize_needs_bounded_parser')&&str_contains($render,"'rendered_html_checked'=>false");
+$checks['full output requires exact admin']=str_contains($render,"current_user_can('manage_options')");
 foreach($checks as $name=>$ok)if(!$ok){fwrite(STDERR,"FAIL SEO Lifecycle: $name\n");exit(1);}
 echo 'PASS MAD4B SEO Content Lifecycle source-only contract: '.count($checks).' checks'.PHP_EOL;
