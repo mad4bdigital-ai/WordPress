@@ -169,6 +169,69 @@ final class MAD4B_Unified_Governed_Lifecycle_Policy {
             if($kind==='external')$row['source_owned_scoring_required']=true;
             $steps[]=$row;$by_id[$id]=$row;
         }
+        // Global non-blocking state projection: normal DAG precedence is not
+        // BLOCKED_DEPENDENCY, and write planning never issues native authority.
+        // Existing conservative plan remains the fallback until Control Plane
+        // carrying the shared global contract has been installed.
+        if(class_exists('MAD4B_SCP_Global_Runtime_Lifecycle')) {
+            $global_nodes=[];$source_evidence=[];
+            foreach($graph as $node) {
+                $registered=$node['ability']===null ? null :
+                    (function_exists('wp_has_ability') && wp_has_ability($node['ability']));
+                $global_nodes[]=[
+                    'id'=>$node['id'],'label'=>$node['label'],
+                    'kind'=>$node['execution_kind'],'depends_on'=>$node['depends_on'],
+                    'ability_registered'=>$registered,
+                    'requires_source_owner'=>in_array($node['execution_kind'],['external','release'],true),
+                ];
+                // This denial comes only from the original compatibility
+                // provider certification, not from a guessed write gate.
+                if($resolution['goal']==='seo' && $node['id']==='write_meta'
+                   && in_array('provider_write_not_certified',$auth,true)) {
+                    $source_evidence['write_meta']=[
+                        'status'=>'denied','native_source_confirmed'=>true,
+                    ];
+                }
+            }
+            $shared=MAD4B_SCP_Global_Runtime_Lifecycle::evaluate($global_nodes,$source_evidence);
+            if(!is_wp_error($shared)) {
+                $states_by_id=[];
+                foreach($shared['steps'] as $global_step)
+                    $states_by_id[$global_step['id']]=$global_step;
+                foreach($steps as &$step) {
+                    $source=$states_by_id[$step['id']];
+                    $step['state']=$source['state'];
+                    $step['reason']=$source['reason'];
+                    $step['blocked_by']=$source['waiting_on'];
+                    $step['verified']=$source['native_receipt_verified'];
+                    $step['dispatch_candidate']=$source['dispatch_candidate'];
+                }
+                unset($step);
+                return [
+                    'contract'=>self::CONTRACT,'policy_version'=>'1.1.0-staging',
+                    'global_contract'=>$shared['contract'],
+                    'goal'=>$resolution['goal'],'state'=>$shared['state'],
+                    'available_states'=>MAD4B_SCP_Global_Runtime_Lifecycle::STATES,
+                    'steps'=>$steps,
+                    'ready_independent_steps'=>$shared['ready_steps'],
+                    'pending_steps'=>$shared['waiting_steps'],
+                    'waiting_steps'=>$shared['waiting_steps'],
+                    'blocked_steps'=>$shared['blocked_steps'],
+                    'recovering_steps'=>$shared['recovering_steps'],
+                    'authority_blockers'=>$auth,
+                    'parallel_read_tasks_allowed'=>count($shared['ready_steps'])>1,
+                    'ordinary_wait_is_not_blocking'=>true,
+                    'readiness_not_write_permission'=>true,
+                    'provider_write_executed'=>false,
+                    'provider_mutation_receipt'=>null,
+                    'native_verification_complete'=>false,
+                    'automatic_retry_of_unknown_writes'=>false,
+                    'production_mutation_allowed'=>false,
+                    'delivery_release_approved'=>false,
+                    'source_resolution_sha256'=>$resolution['resolution_sha256']??'',
+                ];
+            }
+        }
         $ready=array_values(array_map(
             static fn($s)=>$s['id'],
             array_filter($steps,static fn($s)=>$s['state']==='READY')));
