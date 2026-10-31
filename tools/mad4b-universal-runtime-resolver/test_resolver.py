@@ -95,8 +95,9 @@ class ResolverTests(unittest.TestCase):
             return r.result("verified" if state["good"] else "review_required",
                             "fake","key_conflict")
         def rest(t,s):return r.result("verified","fake","readback")
-        with patch.dict(r.ADAPTERS,{"transport":transport,"identity":identity,
-                 "authority":rest,"agent":rest,"package":rest,"workflow":rest}):
+        adapters={name:rest for name in r.DOMAINS}
+        adapters.update({"transport":transport,"identity":identity})
+        with patch.dict(r.ADAPTERS,adapters):
             r.reconcile(self.con,self.event()["event_id"],POLICY)
             self.assertEqual(r.show_status(self.con)["open_reviews"],1)
             state["good"]=True
