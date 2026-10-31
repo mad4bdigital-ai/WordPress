@@ -44,6 +44,17 @@ $graph[1]['ability_registered']=false;
 $r=$class::evaluate($graph);
 check($r['steps'][1]['state']==='BLOCKED_DEPENDENCY','real missing ability is blocker');
 $graph[1]['ability_registered']=true;
+$graph[1]['required']=false;
+$graph[1]['ability_registered']=false;
+$r=$class::evaluate($graph);
+check($r['steps'][1]['state']==='PENDING','optional missing ability not hard blocked');
+$graph[1]['ability_registered']=true;
+$graph[1]['condition']='needs_media';
+$graph[1]['condition_evaluated']=false;
+$r=$class::evaluate($graph);
+check($r['steps'][1]['state']==='PENDING','unresolved conditional stage not hard blocked');
+unset($graph[1]['condition']);
+$graph[1]['condition_evaluated']=true;
 $proof=array('context'=>array('status'=>'not_applicable','native_source_confirmed'=>true,
  'exact_target_bound'=>true,'not_applicable_proven'=>true));
 $r=$class::evaluate($graph,$proof);
@@ -57,4 +68,4 @@ check(str_contains($planner,'MAD4B_SCP_Global_Runtime_Lifecycle::evaluate('),
  'canonical Operation Registry projects with shared contract');
 check(str_contains($planner,"'routine_predecessor_wait_is_not_blocking'"),
  'canonical planner exposes ordinary waiting separately');
-echo "PASS global runtime lifecycle nonblocking contract (16 assertions)\n";
+echo "PASS global runtime lifecycle nonblocking contract (18 assertions)\n";
