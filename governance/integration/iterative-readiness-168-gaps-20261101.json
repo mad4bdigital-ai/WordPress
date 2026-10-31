@@ -1,0 +1,20 @@
+{
+  "contract": "mad4b.readiness-iterative-source-reviewed.v1",
+  "release_authorized": false,
+  "production_mutation": false,
+  "base": "b8f2e0a60fa45e28b49643f1eae6f73570c2fee8",
+  "local_head": "e08110d35ee9a4539bdb4c1715e764f03a71e3f6",
+  "start_gaps": 175,
+  "cron_review": 1,
+  "content_workflow_mode_reviews": 2,
+  "background_agent_reviews": 4,
+  "remaining_gaps": 168,
+  "readiness": "FAIL_UNCOVERED_CHANGES",
+  "tests": [
+    "tests/authority_cron_identity_contract.py",
+    "tests/content_workflow_modes_runtime_contract.php",
+    "tests/background_agent_admission_dispatch_runtime.php"
+  ],
+  "scope": "Local candidate only: actual source review registry remains on isolated VPS checkout; GitHub branch includes tests and detector, but not complete candidate merged code",
+  "next": "Source-specific regression and semantic merge needed for 168 P0/P1 gaps; do not auto-attest without testing"
+}
