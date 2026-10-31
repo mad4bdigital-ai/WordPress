@@ -401,7 +401,12 @@ assert "MAD4B_SCP_Authorization::claim_mutation" in auth
 assert "MAD4B_SCP_Approval_Tickets::claim_exact" in auth
 assert "MAD4B_SCP_Budgets::reserve" in auth
 assert "finalize_execution_claim" in auth
-assert "array( 'content', 'write', 'admin', 'breakglass', 'developer', 'developer-breakglass' )" in auth
+# Server classification was extracted without changing the exact allowed
+# authority surfaces. Check both the lazy facade and the new implementation.
+projection = (inc / "class-mad4b-scp-execution-recovery-projection.php").read_text(encoding="utf-8")
+assert "MAD4B_SCP_Execution_Recovery_Projection::declared_server_for_registration" in auth
+assert "class-mad4b-scp-execution-recovery-projection.php" in auth
+assert "array( 'content', 'write', 'admin', 'breakglass', 'developer', 'developer-breakglass' )" in projection
 assert "MAD4B_SCP_Developer_Authority::chatgpt_dispatch_scope_allowed" in auth
 assert "'server_id' => array( 'type' => 'string', 'enum' => MAD4B_SCP_Servers::expected_server_ids() )" in governance
 for marker in [
