@@ -4,8 +4,8 @@
   "reviewed_base_sha": "b8f2e0a60fa45e28b49643f1eae6f73570c2fee8",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 231,
-  "changed_paths_sha256": "699691a183a9dbba24b2264aaf8e0dc9e532c22592ca6ba4646a1e9d7a43f31e",
+  "changed_file_count": 232,
+  "changed_paths_sha256": "c3a447a074a146be7554bae518fe051e95c7e8078a79380af798c2f681365808",
   "slices": [
     {
       "id": "admin-market-and-operator",
@@ -267,6 +267,7 @@
       "revert_boundary": "Revert readiness and approval projections with their event-denial tests, preserving owner consent and non-authorizing planning.",
       "certification": "exact_head",
       "path_globs": [
+        ".github/workflows/mad4b-site-control-plane.yml",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-interaction-broker.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-interaction-ui.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli-readiness.php",
