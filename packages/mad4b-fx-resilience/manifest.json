@@ -1,0 +1,23 @@
+{
+  "schema": "mad4b.fx-resilience.source-v1",
+  "scope": "wo-vacation-staging-only",
+  "release_status": "source-candidate",
+  "deployment_auto_enabled": false,
+  "files": [
+    {
+      "path": "mu-plugins/pricing-fx-auto-refresh.php",
+      "sha256": "bae24ac3cb538826da0c71a50b01baa09b9aacb22d98d3efd3d9b1d0957a108d",
+      "bytes": 7507
+    },
+    {
+      "path": "mu-plugins/pricing-header-switcher.php",
+      "sha256": "7d6702522d6367e3b45c5f532b4e3390373efee697dc12e0b07a02bfcec7909a",
+      "bytes": 4238
+    },
+    {
+      "path": "ops/mad4b-wo-vacation-fx-refresh",
+      "sha256": "f099a1e7882f0c36293f15acb3396d77fa33deec414fb09cbb17d89a58c233c2",
+      "bytes": 442
+    }
+  ]
+}

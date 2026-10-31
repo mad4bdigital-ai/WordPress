@@ -1,6 +1,6 @@
 {
   "schema": "mad4b.etg-woo-lab-portable-mu.v1",
-  "version": "0.1.0-rc.20261029",
+  "version": "0.1.1-rc.20261031",
   "deployment_scope": "explicit Woo Lab target only",
   "source_status": "review-candidate",
   "auto_deploy_enabled": false,
@@ -129,9 +129,9 @@
     },
     {
       "path": "pricing-header-switcher.php",
-      "sha256": "c838d9a6a5a346d07332228cdf5680227f94e312d292e731eed55f7a1fa77121",
-      "bytes": 3340,
-      "prior_sha256": "176470b8541c0a52ecb8a26a61ca9360801802b72e4b3db77037da1e09d240cc"
+      "sha256": "2a8ff0041db0e1d8fb850662cad7314bb217f4620ff29be63c038c4d49f0fac2",
+      "bytes": 4163,
+      "prior_sha256": "c838d9a6a5a346d07332228cdf5680227f94e312d292e731eed55f7a1fa77121"
     },
     {
       "path": "rate-dates-ui.php",
