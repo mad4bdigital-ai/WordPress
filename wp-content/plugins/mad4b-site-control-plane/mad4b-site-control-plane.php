@@ -268,6 +268,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-abuse-budget.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-legacy-dispatch-migration.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-agent-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-authority-auto-reconciliation.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-authority-reviews-bridge.php';
 // Assistant read-only GA/GB bootstrap is a first-class plugin lifecycle contract,
 // not a side effect of loading NHI Agent Registry. Hook registration precedes the
 // native WordPress Abilities/Adapter lifecycle and never grants execution.
