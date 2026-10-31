@@ -18,7 +18,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
     const MAX_ISSUES = 3000;
 
     public static function boot() {
-        add_action('admin_menu', array(__CLASS__, 'menu'), 30);
+        MAD4B_SCP_Admin_Route_Registry::schedule_submenu(array(__CLASS__, 'menu'));
         add_action('admin_post_mad4b_readiness_scan', array(__CLASS__, 'handle_scan'));
         add_action('admin_post_mad4b_readiness_board_sync', array(__CLASS__, 'handle_board_sync'));
         add_action('admin_post_mad4b_readiness_batch_sync', array(__CLASS__, 'handle_batch_sync'));
@@ -250,8 +250,8 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                     $source==='dynamic-filter-seo-bridge' && $type==='site' && $object_id===0;
                 $localization=preg_match('/^loc_(?:layout|text|missing|h1)_(?:ar|de|en|es|fr|it)$/D',$code) &&
                     $source==='mad4b-elementor-localization' &&
-                    in_array($type,array('page','tours-and-activities','elementor_library','product'),true) &&
-                    $object_id>0 && get_post_status($object_id)==='publish' &&
+                    $object_id>0 && post_type_exists($type) &&
+                    get_post_type($object_id)===$type && get_post_status($object_id)==='publish' &&
                     ((string)(apply_filters('wpml_post_language_details',null,$object_id)['language_code']??'')) ===
                         (string)apply_filters('wpml_default_language',null);
                 $valid=is_array($row) && ($dfsb||$localization) &&
@@ -515,11 +515,12 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
     }
 
     public static function menu() {
+        MAD4B_SCP_Admin_Route_Registry::register(self::PAGE,'manage_options');
         add_submenu_page('mad4b-control-plane','Content Readiness & Alerts',
-            'Content Readiness','edit_others_posts',self::PAGE,array(__CLASS__,'render'));
+            'Content Readiness','manage_options',self::PAGE,array(__CLASS__,'render'));
     }
     public static function admin_bar($bar) {
-        if (!is_admin_bar_showing() || !current_user_can('edit_others_posts'))return;
+        if (!is_admin_bar_showing() || !current_user_can('manage_options'))return;
         $counts=self::summary();if(!$counts['open'])return;
         $bar->add_node(array('id'=>'mad4b-content-alerts','title'=>'Content Alerts: '.(int)$counts['open'],
             'href'=>admin_url('admin.php?page='.self::PAGE)));
