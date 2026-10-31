@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Lifecycle Orchestrator
  * Description: Central staging-only event and manual runtime coordination; never grants provider write permissions.
- * Version: 0.1.0-staging
+ * Version: 0.2.0-staging
  * Author: MAD4B
  */
 defined('ABSPATH') || exit;
@@ -39,6 +39,8 @@ final class MAD4B_Lifecycle_Orchestrator {
         $kind=sanitize_key((string)($input['target_kind']??''));
         $id=absint($input['target_id']??0);
         $job=strtolower(trim((string)($input['job_id']??'')));
+        $company=(string)($input['company_code']??'');
+        $manager=(string)($input['manager_id']??'');
         $event=sanitize_key((string)($input['event_type']??'manual'));
         $nonce=(string)($input['event_key']??'');
         // Fail closed on malformed source keys rather than silently sanitizing
@@ -48,10 +50,14 @@ final class MAD4B_Lifecycle_Orchestrator {
            || !$id && !in_array($kind,['company','content_job'],true)
            || !preg_match('/^[a-z][a-z0-9_-]{2,63}$/D',$event)
            || strlen($nonce)>120 || ($nonce!==''&&!preg_match('/^[a-zA-Z0-9._:-]+$/D',$nonce))
-           || ($job!==''&&!wp_is_uuid($job))) return self::err('invalid_event');
-        if(in_array($kind,['company','content_job'],true)&&$job==='' && $nonce==='')
-            return self::err('identity_required');
+           || ($job!==''&&!wp_is_uuid($job))
+           || ($company!==''&&!preg_match('/^[a-z][a-z0-9-]{2,47}$/D',$company))
+           || ($manager!==''&&!wp_is_uuid($manager))) return self::err('invalid_event');
+        if($kind==='company' && ($company==='' || $manager===''))
+            return self::err('company_scope_required');
+        if($kind==='content_job' && $job==='')return self::err('job_identity_required');
         return ['goal'=>$goal,'target_kind'=>$kind,'target_id'=>$id,'job_id'=>$job,
+            'company_code'=>$company,'manager_id'=>$manager,
             'event_type'=>$event,'event_key'=>$nonce];
     }
     private static function object_scope($data) {
@@ -63,6 +69,16 @@ final class MAD4B_Lifecycle_Orchestrator {
         }elseif($kind==='term'){
             if(!$id||is_wp_error(get_term($id))||!get_term($id))return self::err('term_missing');
         }
+        if($kind==='company'){
+            if(!class_exists('MAD4B_Company_Portfolio_Manager_V1'))
+                return self::err('company_registry_unavailable');
+            $binding=MAD4B_Company_Portfolio_Manager_V1::company_binding($data['company_code']);
+            if(is_wp_error($binding))return $binding;
+            $manager=MAD4B_Company_Portfolio_Manager_V1::status($data['manager_id'],$data['company_code']);
+            if(is_wp_error($manager))return $manager;
+        }
+        if($kind==='content_job'&&!class_exists('MAD4B_SCP_Content_Jobs'))
+            return self::err('content_job_provider_missing');
         if($data['job_id']!=='' && class_exists('MAD4B_SCP_Content_Jobs')){
             $record=MAD4B_SCP_Content_Jobs::get_job(['job_id'=>$data['job_id']]);
             if(is_wp_error($record))return $record;
@@ -154,7 +170,7 @@ final class MAD4B_Lifecycle_Orchestrator {
         $context['resolution_sha256']=self::hash($context);
         return $context;
     }
-    public static function record($input=[],$internal=false) {
+    public static function record($input=[],$internal=false,$source_receipt=null) {
         if(!self::scoped())return self::err('staging_scope');
         if(!$internal&&!self::can_write())return self::err('write_permission');
         $event=self::clean(is_array($input)?$input:[]);
@@ -165,7 +181,8 @@ final class MAD4B_Lifecycle_Orchestrator {
         $identity=[
             'site'=>home_url('/'),'goal'=>$event['goal'],
             'kind'=>$event['target_kind'],'target'=>$event['target_id'],
-            'job'=>$event['job_id'],'type'=>$event['event_type'],
+            'job'=>$event['job_id'],'company'=>$event['company_code'],
+            'manager'=>$event['manager_id'],'type'=>$event['event_type'],
             'revision'=>$event['event_key'],
         ];
         $id=self::hash($identity);$key=self::key($id);
@@ -176,12 +193,24 @@ final class MAD4B_Lifecycle_Orchestrator {
                 'idempotent_replay'=>true,'state'=>$exists['state'],'scheduled'=>!empty($exists['scheduled']),
                 'mutation_performed'=>false];
         }
+        // Only authenticated native producer hooks may attach a source receipt.
+        // REST / manual record cannot invent a completed ContentJob.
+        $trusted_receipt=$internal && is_array($source_receipt)
+            && ($source_receipt['source']??'')==='content_job_transition'
+            && ($event['target_kind']==='content_job')
+            ? [
+                'source'=>'content_job_transition',
+                'revision'=>(int)($source_receipt['revision']??0),
+                'state'=>(string)($source_receipt['state']??''),
+                'stage'=>(string)($source_receipt['stage']??''),
+              ] : null;
         $row=['contract'=>self::CONTRACT.'.event.v1','event_id'=>$id,'event'=>$event,
             'identity_sha256'=>self::hash($identity),
             'state'=>'RECOVERING','attempts'=>0,
             'created_at'=>gmdate('c'),'updated_at'=>gmdate('c'),
             'retry_after'=>0,'last_error'=>'','scheduled'=>false,
-            'resolution'=>null,'write_executed'=>false];
+            'resolution'=>null,'write_executed'=>false,
+            'source_receipt'=>$trusted_receipt,'verification_scope'=>''];
         if(strlen(wp_json_encode($row))>self::MAX_EVENT_BYTES)return self::err('event_oversize');
         if(!add_option($key,$row,'',false)){
             $fresh=get_option($key,false);
@@ -199,17 +228,44 @@ final class MAD4B_Lifecycle_Orchestrator {
             'idempotent_replay'=>false,'state'=>'RECOVERING','scheduled'=>(bool)$scheduled,
             'mutation_performed'=>true,'provider_mutation_performed'=>false];
     }
-    public static function reconcile($id) {
+    private static function source_verified(array $row) {
+        $receipt=$row['source_receipt']??null;
+        if(!is_array($receipt)||($receipt['source']??'')!=='content_job_transition'
+           ||($receipt['state']??'')!=='COMPLETED'||(int)($receipt['revision']??0)<2)
+            return null;
+        $job_id=(string)($row['event']['job_id']??'');
+        if(!wp_is_uuid($job_id)||!class_exists('MAD4B_SCP_Content_Jobs'))
+            return null;
+        $actual=MAD4B_SCP_Content_Jobs::get_job(['job_id'=>$job_id]);
+        if(is_wp_error($actual)||!is_array($actual['job']??null))return null;
+        $job=$actual['job'];
+        if((int)($job['job_revision']??0)!==$receipt['revision']
+           ||(string)($job['state']??'')!=='COMPLETED'
+           ||(string)($job['stage']??'')!==$receipt['stage'])return null;
+        return [
+            'contract'=>self::CONTRACT.'.source-receipt.v1',
+            'scope'=>'content_job_terminal_transition_only',
+            'job_id'=>$job_id,'job_revision'=>$receipt['revision'],
+            'state'=>'COMPLETED','stage'=>$receipt['stage'],
+            'source_of_truth'=>'MAD4B_SCP_Content_Jobs::get_job',
+            'post_publication_verified'=>false,
+            'provider_seo_write_verified'=>false,
+            'content_job_transition_verified'=>true,
+            'readback_sha256'=>self::hash([$job_id,$receipt['revision'],$receipt['stage'],'COMPLETED']),
+        ];
+    }
+    public static function reconcile($id,$refresh=false) {
         if(!self::scoped()||!is_string($id)||!preg_match('/^[a-f0-9]{64}$/D',$id))return self::err('invalid_event_id');
         $key=self::key($id);$row=get_option($key,false);
         if(!is_array($row)||($row['event_id']??'')!==$id)return self::err('event_missing');
         if(!in_array($row['state']??'',self::STATES,true))return self::err('state_invalid');
-        if(in_array($row['state'],['VERIFIED','BLOCKED_AUTHORITY','READY'],true))
+        if($row['state']==='VERIFIED')return self::status(['event_id'=>$id],true);
+        if(!$refresh&&in_array($row['state'],['BLOCKED_AUTHORITY','READY'],true))
             return self::status(['event_id'=>$id],true);
-        if((int)$row['attempts']>=3)return self::status(['event_id'=>$id],true);
-        if((int)($row['retry_after']??0)>time())
+        if(!$refresh&&(int)$row['attempts']>=3)return self::status(['event_id'=>$id],true);
+        if(!$refresh&&(int)($row['retry_after']??0)>time())
             return self::status(['event_id'=>$id],true);
-        $row['attempts']++;
+        $row['attempts']=min(3,(int)$row['attempts']+1);
         $resolved=self::resolve($row['event']);
         if(is_wp_error($resolved)){
             $code=$resolved->get_error_code();
@@ -223,6 +279,12 @@ final class MAD4B_Lifecycle_Orchestrator {
             $row['state']=$resolved['state'];
             $row['last_error']='';
             $row['retry_after']=0;
+            $verified=self::source_verified($row);
+            if(is_array($verified)){
+                $row['state']='VERIFIED';
+                $row['verification_scope']=$verified['scope'];
+                $row['verification']=$verified;
+            }
         }
         $row['updated_at']=gmdate('c');
         if(!update_option($key,$row,false))return self::err('journal_update_failed');
@@ -231,6 +293,13 @@ final class MAD4B_Lifecycle_Orchestrator {
             return self::err('journal_readback_failed');
         if($row['state']==='RECOVERING'&&$row['attempts']<3)
             wp_schedule_single_event($row['retry_after'],self::CRON,[$id]);
+        // Provider readiness can be rechecked twice on bounded backoff.
+        // Never auto-retry a rejected mutation or fake certification.
+        if($row['state']==='BLOCKED_AUTHORITY'&&$row['attempts']<3) {
+            $next=time()+min(3600,300*(2**max(0,$row['attempts']-1)));
+            if(!wp_next_scheduled(self::CRON,[$id]))
+                wp_schedule_single_event($next,self::CRON,[$id]);
+        }
         return self::status(['event_id'=>$id],true);
     }
     public static function status($input=[],$internal=false) {
@@ -244,16 +313,90 @@ final class MAD4B_Lifecycle_Orchestrator {
             'target_kind'=>$row['event']['target_kind'],'target_id'=>$row['event']['target_id'],
             'attempts'=>$row['attempts'],'retry_after'=>$row['retry_after'],
             'last_error'=>$row['last_error'],'resolution'=>$row['resolution'],
-            'provider_mutation_performed'=>false,'verified'=>false,
+            'verification_scope'=>$row['verification_scope']??'',
+            'verification'=>$row['verification']??null,
+            'provider_mutation_performed'=>false,
+            'verified'=>($row['state']==='VERIFIED'&&is_array($row['verification']??null)),
             'manual_handoff_required'=>in_array($row['state'],['READY','BLOCKED_AUTHORITY'],true),
             'does_not_mint_approvals'=>true];
     }
     public static function manual_reconcile($input=[]) {
         if(!self::can_write())return self::err('write_permission');
         if(!is_array($input))return self::err('input_invalid');
-        return self::reconcile((string)($input['event_id']??''));
+        return self::reconcile((string)($input['event_id']??''),true);
     }
-    public static function cron($id) {self::reconcile($id);}
+    public static function cron($id) {self::reconcile($id,true);}
+    public static function content_job_event($payload,$event_type) {
+        if(!self::scoped()||!is_array($payload))return;
+        $job=(string)($payload['job_id']??'');
+        $revision=(int)($payload['job_revision']??0);
+        if(!wp_is_uuid($job)||$revision<1)return;
+        // Read back the canonical post-commit job before accepting a hook.
+        $canonical=MAD4B_SCP_Content_Jobs::get_job(['job_id'=>$job]);
+        if(is_wp_error($canonical)||!is_array($canonical['job']??null))return;
+        $data=$canonical['job'];
+        if((int)($data['job_revision']??0)!==$revision
+           ||(string)($data['state']??'')!==(string)($payload['state']??'')
+           ||(string)($data['stage']??'')!==(string)($payload['stage']??''))return;
+        $event=['goal'=>'content','target_kind'=>'content_job','target_id'=>0,
+            'job_id'=>$job,'event_type'=>$event_type,
+            'event_key'=>'rev-'.$revision.'-'.strtolower((string)$data['state'])];
+        $receipt=['source'=>'content_job_transition','revision'=>$revision,
+            'state'=>(string)$data['state'],'stage'=>(string)$data['stage']];
+        $result=self::record($event,true,$receipt);
+        // For final ContentJob transitions, verify exact source readback now;
+        // no claim about external publication or SEO score.
+        if(!is_wp_error($result) && $receipt['state']==='COMPLETED')
+            self::reconcile($result['event_id'],true);
+    }
+    public static function content_job_created($payload) {
+        self::content_job_event($payload,'content_job_created');
+    }
+    public static function content_job_transitioned($payload) {
+        self::content_job_event($payload,'content_job_transitioned');
+    }
+    public static function hub_task_finished($payload) {
+        if(!self::scoped()||!is_array($payload)||!wp_is_uuid((string)($payload['content_job_id']??'')))return;
+        $job=(string)$payload['content_job_id'];
+        $record=MAD4B_SCP_Content_Jobs::get_job(['job_id'=>$job]);
+        if(is_wp_error($record)||!is_array($record['job']??null))return;
+        $task=(string)($payload['task_id']??'');
+        if(!wp_is_uuid($task)||!class_exists('MAD4B_Hub_Bulk_Jobs_Queue'))return;
+        $queue=MAD4B_Hub_Bulk_Jobs_Queue::list_queue(['job_id'=>$job]);
+        if(is_wp_error($queue)||!is_array($queue['batches']??null))return;
+        $found=false;
+        foreach($queue['batches'] as $batch) {
+            foreach(($batch['tasks']??[]) as $live) {
+                if(($live['task_id']??'')!==$task)continue;
+                if(($live['content_job_id']??'')!==$job ||
+                   ($live['state']??'')!==($payload['state']??'') ||
+                   ($live['stage']??'')!==($payload['stage']??''))return;
+                $found=true;break 2;
+            }
+        }
+        if(!$found)return; // A forged task-finished action is not evidence.
+        $event=['goal'=>'content','target_kind'=>'content_job','target_id'=>0,
+            'job_id'=>$job,'event_type'=>'hub_task_finished',
+            'event_key'=>substr(hash('sha256',$task.'|'.($payload['state']??'')),0,48)];
+        self::record($event,true); // Task completion does not prove publication.
+    }
+    public static function company_transition($payload) {
+        if(!self::scoped()||!is_array($payload))return;
+        $company=(string)($payload['company_code']??'');
+        $manager=(string)($payload['manager_id']??'');
+        $revision=(int)($payload['revision']??0);
+        $state=(string)($payload['state']??'');
+        if(!wp_is_uuid($manager)||$revision<1)return;
+        if(!class_exists('MAD4B_Company_Portfolio_Manager_V1'))return;
+        $live=MAD4B_Company_Portfolio_Manager_V1::status($manager,$company);
+        if(is_wp_error($live)||($live['revision']??null)!==$revision
+           ||($live['state']??'')!==$state
+           ||empty($live['binding_current']))return;
+        $key='rev-'.$revision.'-'.$state.'-'.substr((string)$live['binding_sha256'],0,20);
+        self::record(['goal'=>'company','target_kind'=>'company',
+            'target_id'=>0,'manager_id'=>$manager,'company_code'=>$company,
+            'event_type'=>'company_transition','event_key'=>$key],true);
+    }
     public static function trigger_post($id,$post,$updated) {
         if(!self::scoped()||wp_is_post_revision($id)||!is_object($post) ||
            !in_array($post->post_type,['post','page','tours-and-activities','product'],true))
@@ -293,6 +436,13 @@ final class MAD4B_Lifecycle_Orchestrator {
         self::record(['goal'=>'seo','target_kind'=>'post','target_id'=>(int)$post_id,
             'event_type'=>'seo_meta_updated','event_key'=>$revision],true);
     }
+    public static function provider_readiness_changed($event_id) {
+        if(!self::scoped()||!is_string($event_id)||
+           !preg_match('/^[a-f0-9]{64}$/D',$event_id))return;
+        $record=get_option(self::key($event_id),false);
+        if(!is_array($record)||($record['event_id']??'')!==$event_id)return;
+        self::reconcile($event_id,true);
+    }
     public static function external_event($event) {
         if(!self::scoped()||!is_array($event))return;
         self::record($event,true);
@@ -325,6 +475,7 @@ final class MAD4B_Lifecycle_Orchestrator {
                 'input_schema'=>['type'=>'object','properties'=>[
                     'goal'=>['type'=>'string'],'target_kind'=>['type'=>'string'],
                     'target_id'=>['type'=>'integer'],'job_id'=>['type'=>'string'],
+                    'company_code'=>['type'=>'string'],'manager_id'=>['type'=>'string'],
                     'event_type'=>['type'=>'string'],'event_key'=>['type'=>'string'],
                     'event_id'=>['type'=>'string']],
                     'additionalProperties'=>false],
@@ -344,7 +495,13 @@ final class MAD4B_Lifecycle_Orchestrator {
         add_action('add_attachment',[__CLASS__,'trigger_media'],35,1);
         add_action('updated_post_meta',[__CLASS__,'trigger_media_meta'],70,4);
         add_action('added_post_meta',[__CLASS__,'trigger_media_meta'],70,4);
+        add_action('mad4b_scp_content_job_created',[__CLASS__,'content_job_created'],35,1);
+        add_action('mad4b_scp_content_job_transitioned',[__CLASS__,'content_job_transitioned'],35,1);
+        add_action('mad4b_hub_bulk_task_finished',[__CLASS__,'hub_task_finished'],35,1);
+        add_action('mad4b_company_portfolio_transitioned',[__CLASS__,'company_transition'],35,1);
         add_action('mad4b_lifecycle_event',[__CLASS__,'external_event'],35,1);
+        add_action('mad4b_lifecycle_provider_readiness_changed',
+            [__CLASS__,'provider_readiness_changed'],35,1);
     }
 }
 add_action('plugins_loaded',['MAD4B_Lifecycle_Orchestrator','boot'],120);
