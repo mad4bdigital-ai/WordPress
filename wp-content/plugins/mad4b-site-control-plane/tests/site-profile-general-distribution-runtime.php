@@ -600,4 +600,69 @@ file_put_contents($preset_path,json_encode(array('contract'=>MAD4B_SCP_Site_Prof
 ok(array()===$matching->invoke(null),'invalid preset was normalized into an authoritative record');
 @unlink($preset_path);
 
+
+// Provider MCP Isolation: default ON for new profiles and legacy records
+// without an explicit opt-out. A read must preserve the original bytes/digest.
+reset_state();
+$GLOBALS['mad4b_test_environment']='staging';
+$GLOBALS['mad4b_test_home']='https://provider-isolation-policy.test/';
+$create_input=array('expected_revision'=>0,'display_name'=>'Isolation Policy Fixture');
+$new=MAD4B_SCP_Site_Profile::save_current_site($create_input);
+ok(!is_wp_error($new),'new Site Profile enrollment succeeds with omitted isolation field');
+ok(MAD4B_SCP_Site_Profile::provider_isolation_enabled(),'new Site Profile has default ON isolation');
+$raw=get_option(MAD4B_SCP_Site_Profile::OPTION,array());
+ok(true===($raw['features']['provider_isolation']??null),'new enrollment persists isolation ON');
+ok(false===($raw['provider_isolation_explicit_opt_out']??null),'default-on record has no opt-out');
+require_once dirname(__DIR__).'/includes/class-mad4b-scp-site-profile-admin.php';
+ok(MAD4B_SCP_Site_Profile_Admin::persisted_readback_matches($create_input,$new,MAD4B_SCP_Site_Profile::status(),MAD4B_SCP_Site_Profile::profile()),'omitted isolation passes exact initial save readback');
+
+// Legacy default false has no explicit opt-out evidence: effective ON, no
+// read-time mutation, no site identity/revision/digest changes.
+$legacy=$raw;
+$legacy['features']['provider_isolation']=false;
+unset($legacy['provider_isolation_explicit_opt_out']);
+$GLOBALS['mad4b_test_options'][MAD4B_SCP_Site_Profile::OPTION]=$legacy;
+MAD4B_SCP_Site_Profile::reset_cache();
+$legacy_bytes=serialize($legacy);
+$legacy_digest=MAD4B_SCP_Site_Profile::profile_digest();
+ok(MAD4B_SCP_Site_Profile::provider_isolation_enabled(),'unmarked legacy default false is effective ON');
+ok(MAD4B_SCP_Site_Profile::feature_enabled('provider_isolation'),'generic feature check agrees with effective isolation policy');
+ok($legacy_bytes===serialize(get_option(MAD4B_SCP_Site_Profile::OPTION,array())),'legacy read never rewrites profile');
+ok($legacy_digest===MAD4B_SCP_Site_Profile::profile_digest(),'legacy read leaves site identity digest unchanged');
+
+// On next governed admin save, default ON is persisted without inventing
+// a new Site UUID or granting write/OAuth authority.
+$old_uuid=$legacy['site_uuid'];
+$update_input=array('expected_revision'=>(int)$legacy['revision'],'display_name'=>'Legacy Policy Enrollment');
+$updated=MAD4B_SCP_Site_Profile::save_current_site($update_input);
+ok(!is_wp_error($updated),'legacy update migrates unset isolation to ON');
+$stored=get_option(MAD4B_SCP_Site_Profile::OPTION,array());
+ok($old_uuid===$stored['site_uuid']&&true===($stored['features']['provider_isolation']??null),'legacy update retains identity and stores isolation ON');
+ok(MAD4B_SCP_Site_Profile_Admin::persisted_readback_matches($update_input,$updated,MAD4B_SCP_Site_Profile::status(),MAD4B_SCP_Site_Profile::profile()),'legacy default-on update readback verified');
+
+// Explicit administrator opt-out is a durable, typed decision and never
+// enables write authority or alters the OAuth principal.
+$off_input=array('expected_revision'=>(int)$stored['revision'],'provider_isolation_enabled'=>false);
+$off=MAD4B_SCP_Site_Profile::save_current_site($off_input);
+ok(!is_wp_error($off)&&!MAD4B_SCP_Site_Profile::provider_isolation_enabled(),'explicit OFF is respected');
+$off_raw=get_option(MAD4B_SCP_Site_Profile::OPTION,array());
+ok(true===($off_raw['provider_isolation_explicit_opt_out']??null),'explicit OFF writes provenance');
+ok(MAD4B_SCP_Site_Profile_Admin::persisted_readback_matches($off_input,$off,MAD4B_SCP_Site_Profile::status(),MAD4B_SCP_Site_Profile::profile()),'explicit OFF readback verified');
+$preserve_input=array('expected_revision'=>(int)$off_raw['revision'],'display_name'=>'Other Setting');
+$preserved=MAD4B_SCP_Site_Profile::save_current_site($preserve_input);
+ok(!is_wp_error($preserved)&&!MAD4B_SCP_Site_Profile::provider_isolation_enabled(),'omitted field preserves explicit OFF');
+ok(MAD4B_SCP_Site_Profile_Admin::persisted_readback_matches($preserve_input,$preserved,MAD4B_SCP_Site_Profile::status(),MAD4B_SCP_Site_Profile::profile()),'preserved OFF passes readback');
+$on_raw=get_option(MAD4B_SCP_Site_Profile::OPTION,array());
+$on=MAD4B_SCP_Site_Profile::save_current_site(array('expected_revision'=>(int)$on_raw['revision'],'provider_isolation_enabled'=>true));
+ok(!is_wp_error($on)&&MAD4B_SCP_Site_Profile::provider_isolation_enabled(),'administrator can restore ON');
+$on_raw=get_option(MAD4B_SCP_Site_Profile::OPTION,array());
+ok(false===($on_raw['provider_isolation_explicit_opt_out']??null),'opt-out marker cleared after explicit ON');
+ok(empty(MAD4B_SCP_Site_Profile::status()['write_enabled']),'isolation policy never creates write authority');
+
+// Malformed opt-out provenance is not accepted as a valid authority record.
+$invalid=$on_raw;$invalid['provider_isolation_explicit_opt_out']='false';
+$GLOBALS['mad4b_test_options'][MAD4B_SCP_Site_Profile::OPTION]=$invalid;
+MAD4B_SCP_Site_Profile::reset_cache();
+ok(empty(MAD4B_SCP_Site_Profile::status()['configured']),'malformed opt-out provenance fails closed');
+
 fwrite(STDOUT,"MAD4B Site Profile v2 general distribution runtime: PASS\n");
