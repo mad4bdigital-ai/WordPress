@@ -106,6 +106,11 @@ final class MAD4B_SCP_Central_Company_Rollout {
             ! preg_match( '/^[a-f0-9]{40}$/D', (string) ( $receipt['source_commit'] ?? '' ) ) )
             $blockers[] = 'immutable_source_identity_missing';
 
+        // A successful Staging canary is operational evidence, but must not
+        // automatically become permission to distribute the canary (or any
+        // release not explicitly scoped for company Production).
+        if ( (string) ( $receipt['rollout_scope'] ?? '' ) !== 'company_production' )
+            $blockers[] = 'central_release_promotion_scope_not_granted';
         if ( true !== ( $receipt['staging_pass'] ?? null ) ||
             ! is_array( $receipt['checks'] ?? null ) ||
             true !== ( $receipt['checks']['install'] ?? null ) ||
