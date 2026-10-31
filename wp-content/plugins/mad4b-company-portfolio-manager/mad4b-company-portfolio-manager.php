@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Company Portfolio Manager (Staging)
  * Description: Separate manager identity and company-scoped delegation lifecycle. No remote writes or implicit ownership.
- * Version: 0.1.1-event-hook-staging
+ * Version: 0.2.0-central-admin-proxy-staging
  * Requires PHP: 8.0
  */
 if (!defined('ABSPATH')) { exit; }
@@ -391,3 +391,4 @@ final class MAD4B_Company_Portfolio_Manager_V1 {
     }
 }
 MAD4B_Company_Portfolio_Manager_V1::boot();
+require_once __DIR__ . '/class-mad4b-central-admin-proxy.php';
