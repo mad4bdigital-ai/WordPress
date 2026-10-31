@@ -82,6 +82,10 @@ final class MAD4B_SCP_Global_Runtime_Lifecycle {
                 $state = 'RUNNING'; $reason = 'native_execution_in_progress';
             } elseif ($authoritative && $observed === 'queued') {
                 $state = 'QUEUED'; $reason = 'native_queue_accepted';
+            } elseif (!empty($node['condition']) && empty($node['condition_evaluated'])) {
+                $state = 'PENDING'; $reason = 'conditional_stage_scope_not_yet_evaluated';
+            } elseif (false === $ability && array_key_exists('required',$node) && $node['required'] === false) {
+                $state = 'PENDING'; $reason = 'optional_ability_absent_not_hard_blocker';
             } elseif (false === $ability) {
                 $state = 'BLOCKED_DEPENDENCY'; $reason = 'registered_ability_missing';
             } elseif ($wait) {
