@@ -236,7 +236,10 @@
             "evidence_strength": "behavioral_readback_required"
           }
         }
-      }
+      },
+      "artifact_plugin_files": [
+        "jet-engine/jet-engine.php"
+      ]
     },
     "jetsmartfilters": {
       "adapter_id": "jetsmartfilters",
@@ -355,7 +358,10 @@
             "evidence_strength": "exact_readback_and_rollback_required"
           }
         }
-      }
+      },
+      "artifact_plugin_files": [
+        "jet-smart-filters/jet-smart-filters.php"
+      ]
     },
     "bit_pi": {
       "adapter_id": "bitflows",
@@ -786,7 +792,10 @@
             "evidence_strength": "exact_readback_and_rollback_required"
           }
         }
-      }
+      },
+      "artifact_plugin_files": [
+        "seo-by-rank-math/rank-math.php"
+      ]
     },
     "elementor": {
       "adapter_id": "elementor",
@@ -1046,7 +1055,10 @@
             "evidence_strength": "exact_canary_readback_and_owner_promotion_required"
           }
         }
-      }
+      },
+      "artifact_plugin_files": [
+        "elementor/elementor.php"
+      ]
     },
     "litespeed": {
       "adapter_id": "litespeed",
@@ -1137,7 +1149,10 @@
             "evidence_strength": "behavioral_readback_required"
           }
         }
-      }
+      },
+      "artifact_plugin_files": [
+        "litespeed-cache/litespeed-cache.php"
+      ]
     },
     "polylang": {
       "adapter_id": "polylang",
@@ -1216,7 +1231,10 @@
             "evidence_strength": "exact_readback_and_rollback_required"
           }
         }
-      }
+      },
+      "artifact_plugin_files": [
+        "polylang/polylang.php"
+      ]
     },
     "woocommerce": {
       "adapter_id": "woocommerce",
@@ -1292,7 +1310,10 @@
             "evidence_strength": "exact_readback_and_rollback_required"
           }
         }
-      }
+      },
+      "artifact_plugin_files": [
+        "woocommerce/woocommerce.php"
+      ]
     },
     "google_drive_context": {
       "adapter_id": "context",
