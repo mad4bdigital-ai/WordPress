@@ -34,6 +34,7 @@ $assert(strpos($out,'id="mad4b-city-first-slide-lcp"')<1024,'preload appears in 
 $assert(str_contains($out,'fetchpriority="high"')&&str_contains($out,'as="image"')&&str_contains($out,'type="image/webp"'),'Chrome LCP discovery contract');
 $assert(str_contains($out,'media="(max-width: 767px)"'),'desktop does not request mobile preload');
 $assert(str_contains($out,$first),'JetEngine card and its CSS background remain fully intact');
+$assert(strpos($out,chr(92).'n')===false && strpos($out,'/n/n')===false,'HTML head preload never exposes escaped newline text');
 @unlink($fixture);
 $assert(MAD4B_City_First_Card_LCP_V1::first_visible_background($html)===null,'prevents duplicate load if WebP sibling is missing');
 $bad=str_replace('tours.dev.mad4b.com/wp-content/uploads/','foreign.invalid/wp-content/uploads/',$html);

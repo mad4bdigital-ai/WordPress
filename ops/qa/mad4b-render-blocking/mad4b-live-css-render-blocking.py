@@ -53,6 +53,13 @@ async def inspect(browser,path,sem):
                       tag:e.element?.tagName||'', element_id:e.element?.getAttribute('data-id')||'',
                       text:(e.element?.innerText||'').slice(0,75),resource:e.url||'',loading:e.element?.getAttribute('loading')||''});
                 }}).observe({type:'largest-contentful-paint',buffered:true});""")
+            await page.add_init_script("""window.__mad4b_loaf=[];
+                if(PerformanceObserver.supportedEntryTypes.includes('long-animation-frame')) {
+                  new PerformanceObserver(list=>list.getEntries().forEach(e=>{
+                    window.__mad4b_loaf.push({total:e.scripts.reduce((n,s)=>n+(s.forcedStyleAndLayoutDuration||0),0),
+                     scripts:e.scripts.length});
+                  })).observe({type:'long-animation-frame',buffered:true});
+                }""")
             response=await page.goto(url,wait_until='domcontentloaded',timeout=25000)
             if not response or response.status!=200:raise RuntimeError('http_status_'+str(response.status if response else None))
             raw=await response.text()
@@ -66,6 +73,15 @@ async def inspect(browser,path,sem):
                    .filter(x=>x.initiatorType==='link' || x.name.includes('/css/') || x.initiatorType==='css')
                    .map(x=>({url:x.name,encoded:x.encodedBodySize||0,
                       duration:Math.round(x.duration),responseEndMs:Math.round(x.responseEnd)})).slice(0,300),
+                headerLiteralText:[...document.body.childNodes].filter(n=>{
+                    if(n.nodeType!==Node.TEXT_NODE)return false;
+                    const t=(n.textContent||'').trim();
+                    return t.length>0 && t.length<20 && (t.includes(String.fromCharCode(92)+'n') || t.includes('/n/n'));
+                }).length,
+                swiperActiveInert:document.querySelectorAll('.jet-listing-grid__slider.swiper-initialized .swiper-slide-active[inert]').length,
+                forcedLayout:(()=>{const items=window.__mad4b_loaf||[];return {
+                    supported:PerformanceObserver.supportedEntryTypes.includes('long-animation-frame'),
+                    frames:items.length,forced_ms:Math.round(items.reduce((a,x)=>a+x.total,0))};})(),
                 title:document.title,
                 pageOverflow:Math.max(0,document.documentElement.scrollWidth-innerWidth),
                 ttfbMs:Math.round(performance.getEntriesByType('navigation')[0]?.responseStart||0),
@@ -132,6 +148,9 @@ async def inspect(browser,path,sem):
                 'title':live['title'],'uael_widgets':live['uael'],'css':styles,
                 'horizontal_overflow_px':live['pageOverflow'],
                 'ttfb_ms':int(live['ttfbMs']),'lcp':lcp,
+                'header_literal_text_count':live['headerLiteralText'],
+                'forced_layout':live['forcedLayout'],
+                'swiper_active_inert':live['swiperActiveInert'],
                 'is_tour_single':live['isTourSingle'],
                 'departure_details':live['departureDetails'],
                 'mobile_toc_bottom_gap_px':live['mobileTOCBottomGap'],
@@ -231,6 +250,21 @@ def classify(pages,audit=None):
         elif not rate.get('original_present'):
             issues.append({'code':'perf_ratecss_source_missing','severity':'medium',
                 'label':'Elementor #56197 CSS is missing but MAD4B verified shadow keeps the tour rate cards styled; repair original generated asset.'})
+    bad_header=[urlsplit(p['url']).path for p in pages if int(p.get('header_literal_text_count') or 0)>0]
+    if bad_header:
+        issues.append({'code':'perf_header_escape_text','severity':'high',
+            'label':'Literal escaped linebreaks render above the header on '+', '.join(bad_header[:3])+'; check head/preload source.'})
+    for page in pages:
+        if int(page.get('swiper_active_inert') or 0)>0:
+            path=urlsplit(page['url']).path
+            issues.append({'code':'perf_swiper_focus_'+hashlib.sha256(path.encode()).hexdigest()[:12],
+                'severity':'high','label':'An active Swiper slide became inert on '+path+'; preserve keyboard interaction.'})
+    home=next((p for p in pages if urlsplit(p['url']).path=='/'),None)
+    if home:
+        info=home.get('forced_layout') or {}
+        if info.get('supported') and int(info.get('forced_ms') or 0)>=250:
+            issues.append({'code':'perf_forced_reflow_home','severity':'high',
+                'label':f'Home mobile long-animation-frame scripts forced {info["forced_ms"]}ms layout in {info.get("frames",0)} frames; inspect Elementor/Swiper/LiteSpeed script scheduling.'})
     for page in pages:
         if urlsplit(page['url']).path!='/':continue
         preload=page.get('city_lcp_preload') or {}
@@ -249,6 +283,13 @@ def classify(pages,audit=None):
         if reason:
             issues.append({'code':'perf_lcpdiscover_home','severity':'high',
                 'label':reason+'; preserve JetEngine City Slider and global fonts.'})
+        reqs=page.get('city_lcp_request_entries') or []
+        if reqs and preload:
+            response_start=int(page.get('ttfb_ms') or 0)
+            gap=int(reqs[0].get('start_ms') or 0)-response_start
+            if gap>500:
+                issues.append({'code':'perf_lcp_request_wait','severity':'high',
+                    'label':f'City LCP preload request started {gap}ms after HTML first byte; correct early image discovery without removing JetEngine background.'})
     for page in pages:
         total=int(page.get('inline_css_bytes') or 0)
         if total>=256*1024:

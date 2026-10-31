@@ -50,8 +50,11 @@ final class MAD4B_City_First_Card_LCP_V1 {
         $url=self::first_visible_background($html);
         if(!$url)return $html;
         $type=str_ends_with(strtolower((string)wp_parse_url($url,PHP_URL_PATH)),'.webp')?' type="image/webp"':'';
-        $preload='\n<link id="mad4b-city-first-slide-lcp" rel="preload" as="image" href="'.esc_url($url).'"'.$type.' media="(max-width: 767px)" fetchpriority="high" data-no-optimize="1" />\n';
-        return preg_replace('~<head\b[^>]*>~i','$0'.$preload,$html,1);
+        // Never output escaped newline characters in the HTML: they become
+        // visible text nodes above the header and can even win initial LCP.
+        $preload='<link id="mad4b-city-first-slide-lcp" rel="preload" as="image" href="'.esc_url($url).'"'.$type.' media="(max-width: 767px)" fetchpriority="high" data-no-optimize="1" />';
+        return preg_replace_callback('~<head\b[^>]*>~i',static fn($m)=>$m[0].$preload,$html,1);
+
     }
     public static function boot(){
         if(self::should_buffer())ob_start([__CLASS__,'transform']);

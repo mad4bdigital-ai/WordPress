@@ -133,3 +133,23 @@ census['orphan_published_rate']=[8003]
 assert any(x['code']=='perf_rate_orphan' for x in m.classify([rate_page],census))
 assert any(x['code']=='perf_rate_locale_parity' for x in m.classify([dict(rate_page,departure_details=dict(rate_page['departure_details'],label_count=2)), dict(rate_page,url='https://tours.dev.mad4b.com/ar/tours-and-activities/unforgettable-egypt-budget-tour-cairo-to-luxor-nile-cruise-discovery-8-days/',departure_details=dict(rate_page['departure_details'],label_count=0))]))
 print('PASS: whole-site census, neutral hidden legacy data and translated product parity')
+
+# A literal header escape is never equivalent to a normal line break.
+clean_header={'url':'https://tours.dev.mad4b.com/','uael_widgets':[],'css':[],
+ 'header_literal_text_count':0,'swiper_active_inert':0,'forced_layout':{'supported':True,'frames':2,'forced_ms':30},
+ 'city_lcp_preload':{'href':'https://tours.dev.mad4b.com/wp-content/uploads/card.webp','priority':'high','as':'image'},
+ 'city_lcp_preload_head_offset':300,'ttfb_ms':100,'city_lcp_request_entries':[{'start_ms':125}],
+ 'lcp':{'element_id':'95d1c9c','resource':'https://tours.dev.mad4b.com/wp-content/uploads/card.webp'}}
+assert not any(x['code'] in ('perf_header_escape_text','perf_forced_reflow_home','perf_lcp_request_wait') for x in m.classify([clean_header]))
+clean_header['header_literal_text_count']=2
+assert len([x for x in m.classify([clean_header,dict(clean_header,url='https://tours.dev.mad4b.com/ar/')]) if x['code']=='perf_header_escape_text'])==1
+clean_header['header_literal_text_count']=0
+clean_header['forced_layout']['forced_ms']=300
+assert any(x['code']=='perf_forced_reflow_home' for x in m.classify([clean_header]))
+clean_header['forced_layout']['forced_ms']=30
+clean_header['city_lcp_request_entries'][0]['start_ms']=900
+assert any(x['code']=='perf_lcp_request_wait' for x in m.classify([clean_header]))
+clean_header['city_lcp_request_entries'][0]['start_ms']=125
+clean_header['swiper_active_inert']=1
+assert any(x['code'].startswith('perf_swiper_focus_') for x in m.classify([clean_header]))
+print('PASS: header literal, forced layout, LCP resource discovery and Swiper focus alerts')

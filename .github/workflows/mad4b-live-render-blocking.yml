@@ -6,6 +6,9 @@ on:
       - 'wp-content/mu-plugins/308-mad4b-live-render-blocking-monitor.php'
       - 'wp-content/mu-plugins/309-mad4b-astra-local-cairo.php'
       - 'wp-content/mu-plugins/310-mad4b-city-slider-lcp-preload.php'
+      - 'wp-content/mu-plugins/company-accessibility-contract.php'
+      - 'wp-content/mu-plugins/assets/accessibility-swiper.js'
+      - 'wp-content/mu-plugins/assets/accessibility-listing.js'
       - 'wp-content/mu-plugins/311-mad4b-explore-global-contrast.php'
       - 'wp-content/mu-plugins/312-mad4b-rate-css-resilience.php'
       - 'wp-content/mu-plugins/313-mad4b-rate-departure-governance.php'
@@ -22,6 +25,9 @@ on:
       - 'wp-content/mu-plugins/308-mad4b-live-render-blocking-monitor.php'
       - 'wp-content/mu-plugins/309-mad4b-astra-local-cairo.php'
       - 'wp-content/mu-plugins/310-mad4b-city-slider-lcp-preload.php'
+      - 'wp-content/mu-plugins/company-accessibility-contract.php'
+      - 'wp-content/mu-plugins/assets/accessibility-swiper.js'
+      - 'wp-content/mu-plugins/assets/accessibility-listing.js'
       - 'wp-content/mu-plugins/311-mad4b-explore-global-contrast.php'
       - 'wp-content/mu-plugins/312-mad4b-rate-css-resilience.php'
       - 'wp-content/mu-plugins/313-mad4b-rate-departure-governance.php'
@@ -51,6 +57,7 @@ jobs:
           php -l wp-content/mu-plugins/308-mad4b-live-render-blocking-monitor.php
           php -l wp-content/mu-plugins/309-mad4b-astra-local-cairo.php
           php -l wp-content/mu-plugins/310-mad4b-city-slider-lcp-preload.php
+          php -l wp-content/mu-plugins/company-accessibility-contract.php
           php -l wp-content/mu-plugins/311-mad4b-explore-global-contrast.php
           php -l wp-content/mu-plugins/312-mad4b-rate-css-resilience.php
           php -l wp-content/mu-plugins/313-mad4b-rate-departure-governance.php
@@ -65,6 +72,9 @@ jobs:
       - name: Hotel choice JavaScript contract
         run: |
           node --check wp-content/mu-plugins/listing-option-selection-assets/options.js
+          node --check wp-content/mu-plugins/assets/accessibility-swiper.js
+          node --check wp-content/mu-plugins/assets/accessibility-listing.js
+          node -e "const fs=require('fs');const s=fs.readFileSync('wp-content/mu-plugins/assets/accessibility-swiper.js','utf8');if(!s.includes('IntersectionObserver')||!s.includes("slide.classList.contains('swiper-slide-active')")||/getBoundingClientRect|offsetWidth|offsetHeight/.test(s))process.exit(1);"
       - name: Offline classification contracts
         run: |
           python3 -m py_compile ops/qa/mad4b-render-blocking/mad4b-live-css-render-blocking.py

@@ -14187,6 +14187,23 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/isolated-contract.php"
       ],
       "review_rationale": "Exact verified source adds only provider fingerprint-bound READ alerts for translated missing rate cards, false-by-default JetEngine schema drift, opted-in invalid Tour origin and orphan published Rates. Tests reject forged event providers, preserve optional legacy metadata, and verify new locale+site census classifications. Approval is CI-only; no Production activation, content migration or supplier updates."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "source_blob_sha": "f52c59abc49c9dfc7caec2fd9dd403e43d0653c1",
+      "owner_role": "MAD4B CI reviewer for staging header/JetEngine LCP and Swiper performance alerts",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/isolated-contract.php"
+      ],
+      "review_rationale": "This change is an exact-source read-only extension of provider-bound MAD4B performance issues. New statuses monitor visible raw newline text, LOAF high forced layout, delayed image preload despite early HTML, and active Swiper focus regression. Isolated tests verify allowed event codes with correct severity and rejection of forged providers. No authorization to mutate Production or third-party vendor scripts."
     }
   ],
   "code_change_rules": {
