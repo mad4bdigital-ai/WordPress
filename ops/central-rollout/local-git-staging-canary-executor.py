@@ -149,6 +149,7 @@ def sign_verified_receipt(commit: str, archive_sha: str, manifest_sha: str,
         "artifact_sha256": archive_sha,
         "file_manifest_sha256": manifest_sha,
         "staging_pass": True,
+        "rollout_scope": "staging_canary_only",
         "tested_at": int(time.time()),
         "checks": {"install": True, "smoke": True, "rollback": True},
         "requirements": {
