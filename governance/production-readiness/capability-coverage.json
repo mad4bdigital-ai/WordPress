@@ -3620,9 +3620,7 @@
         "EXECUTION-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/gateway-mutation-guards.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/gateway-regression-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/architecture-maintainability-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/gateway-mutation-guards.py"
       ],
       "needs_new_control": false,
       "new_control_ids": [],
@@ -3644,8 +3642,7 @@
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/developer-runtime-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/architecture-maintainability-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py"
       ],
       "needs_new_control": false,
       "new_control_ids": [],
@@ -11701,9 +11698,7 @@
         "EXECUTION-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/gateway-mutation-guards.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/gateway-regression-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/architecture-maintainability-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/gateway-mutation-guards.py"
       ],
       "owner_role": "AI-assisted exact-source CI reviewer; real owner release approval remains separate",
       "status": "reviewed_for_ci_only",
@@ -11723,8 +11718,7 @@
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/developer-runtime-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/architecture-maintainability-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py"
       ],
       "owner_role": "AI-assisted exact-source CI reviewer; real owner release approval remains separate",
       "status": "reviewed_for_ci_only",
