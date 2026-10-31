@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Lifecycle Orchestrator
  * Description: Central staging-only event and manual runtime coordination; never grants provider write permissions.
- * Version: 0.2.0-staging
+ * Version: 0.2.1-staging
  * Author: MAD4B
  */
 defined('ABSPATH') || exit;
@@ -41,6 +41,7 @@ final class MAD4B_Lifecycle_Orchestrator {
         $job=strtolower(trim((string)($input['job_id']??'')));
         $company=(string)($input['company_code']??'');
         $manager=(string)($input['manager_id']??'');
+        $representation=(string)($input['representation_mode']??'');
         $event=sanitize_key((string)($input['event_type']??'manual'));
         $nonce=(string)($input['event_key']??'');
         // Fail closed on malformed source keys rather than silently sanitizing
@@ -52,15 +53,20 @@ final class MAD4B_Lifecycle_Orchestrator {
            || strlen($nonce)>120 || ($nonce!==''&&!preg_match('/^[a-zA-Z0-9._:-]+$/D',$nonce))
            || ($job!==''&&!wp_is_uuid($job))
            || ($company!==''&&!preg_match('/^[a-z][a-z0-9-]{2,47}$/D',$company))
-           || ($manager!==''&&!wp_is_uuid($manager))) return self::err('invalid_event');
-        if($kind==='company' && ($company==='' || $manager===''))
+           || ($manager!==''&&!wp_is_uuid($manager))
+           || !in_array($representation,['','central_admin_proxy'],true)) return self::err('invalid_event');
+        if($representation==='central_admin_proxy' && $kind!=='company')
+            return self::err('representation_scope_mismatch');
+        if($kind==='company' && ($company==='' ||
+           ($manager==='' && $representation!=='central_admin_proxy')))
             return self::err('company_scope_required');
         if($kind==='content_job' && $job==='')return self::err('job_identity_required');
         return ['goal'=>$goal,'target_kind'=>$kind,'target_id'=>$id,'job_id'=>$job,
             'company_code'=>$company,'manager_id'=>$manager,
+            'representation_mode'=>$representation,
             'event_type'=>$event,'event_key'=>$nonce];
     }
-    private static function object_scope($data) {
+    private static function object_scope($data,$trusted_reconcile=false) {
         $id=$data['target_id'];$kind=$data['target_kind'];
         if($kind==='post'||$kind==='attachment'){
             if(!$id||!get_post($id))return self::err('post_missing');
@@ -74,8 +80,19 @@ final class MAD4B_Lifecycle_Orchestrator {
                 return self::err('company_registry_unavailable');
             $binding=MAD4B_Company_Portfolio_Manager_V1::company_binding($data['company_code']);
             if(is_wp_error($binding))return $binding;
-            $manager=MAD4B_Company_Portfolio_Manager_V1::status($data['manager_id'],$data['company_code']);
-            if(is_wp_error($manager))return $manager;
+            if(($data['representation_mode']??'')==='central_admin_proxy') {
+                // The represented company is a binding, not a substituted WP
+                // user. The originating admin remains the real principal.
+                $actor=$trusted_reconcile
+                    ?absint($data['actor_user_id']??0):get_current_user_id();
+                if(!$actor || !user_can($actor,'manage_options') ||
+                   !user_can($actor,'activate_plugins') ||
+                   (!$trusted_reconcile && get_current_user_id()!==$actor))
+                    return self::err('platform_admin_authority_required');
+            } else {
+                $manager=MAD4B_Company_Portfolio_Manager_V1::status($data['manager_id'],$data['company_code']);
+                if(is_wp_error($manager))return $manager;
+            }
         }
         if($kind==='content_job'&&!class_exists('MAD4B_SCP_Content_Jobs'))
             return self::err('content_job_provider_missing');
@@ -110,11 +127,14 @@ final class MAD4B_Lifecycle_Orchestrator {
     private static function capability_present($name) {
         return function_exists('wp_has_ability') && wp_has_ability($name);
     }
-    public static function resolve($input=[]) {
+    public static function resolve($input=[],$trusted_reconcile=false) {
         if(!self::scoped())return self::err('staging_scope');
         $data=self::clean(is_array($input)?$input:[]);
         if(is_wp_error($data))return $data;
-        $scope=self::object_scope($data);
+        if(($data['representation_mode']??'')==='central_admin_proxy')
+            $data['actor_user_id']=$trusted_reconcile
+                ?absint($input['actor_user_id']??0):get_current_user_id();
+        $scope=self::object_scope($data,$trusted_reconcile);
         if(is_wp_error($scope))return $scope;
         [$reads,$writes,$provider]=self::abilities_for($data['goal']);
         $available=[];$missing=[];$write=[];
@@ -158,6 +178,11 @@ final class MAD4B_Lifecycle_Orchestrator {
             'company_scope'=>'site_enrollment','goal'=>$data['goal'],
             'target_kind'=>$data['target_kind'],'target_id'=>$data['target_id'],
             'content_job_id'=>$data['job_id'],
+            'company_code'=>$data['company_code'],
+            'representation_mode'=>$data['representation_mode'],
+            'administrator_principal_user_id'=>$data['actor_user_id']??0,
+            'company_ownership_transferred'=>false,
+            'representation_is_not_provider_grant'=>true,
             'read_abilities'=>$available,'missing_read_abilities'=>$missing,
             'dynamically_discovered_candidates'=>$suggestions,
             'write_abilities_registered'=>$write,'provider_family'=>$provider,
@@ -183,6 +208,12 @@ final class MAD4B_Lifecycle_Orchestrator {
         if(!$internal&&!self::can_write())return self::err('write_permission');
         $event=self::clean(is_array($input)?$input:[]);
         if(is_wp_error($event))return $event;
+        if(($event['representation_mode']??'')==='central_admin_proxy'){
+            // Internal WordPress hooks cannot forge the current administrator.
+            if(!current_user_can('manage_options') || !current_user_can('activate_plugins'))
+                return self::err('platform_admin_authority_required');
+            $event['actor_user_id']=get_current_user_id();
+        }
         $scope=self::object_scope($event);
         if(is_wp_error($scope))return $scope;
         // Event-key is stable per source revision; replays read one durable row.
@@ -190,7 +221,10 @@ final class MAD4B_Lifecycle_Orchestrator {
             'site'=>home_url('/'),'goal'=>$event['goal'],
             'kind'=>$event['target_kind'],'target'=>$event['target_id'],
             'job'=>$event['job_id'],'company'=>$event['company_code'],
-            'manager'=>$event['manager_id'],'type'=>$event['event_type'],
+            'manager'=>$event['manager_id'],
+            'representation'=>$event['representation_mode'],
+            'administrator_actor'=>$event['actor_user_id']??0,
+            'type'=>$event['event_type'],
             'revision'=>$event['event_key'],
         ];
         $id=self::hash($identity);$key=self::key($id);
@@ -281,7 +315,7 @@ final class MAD4B_Lifecycle_Orchestrator {
         if(!$refresh&&(int)($row['retry_after']??0)>time())
             return self::status(['event_id'=>$id],true);
         $row['attempts']=min(3,(int)$row['attempts']+1);
-        $resolved=self::resolve($row['event']);
+        $resolved=self::resolve($row['event'],true);
         if(is_wp_error($resolved)){
             $code=$resolved->get_error_code();
             $authority=(bool)preg_match('/(authority|permission|scope|brand|denied|certif)/i',$code);
@@ -329,6 +363,9 @@ final class MAD4B_Lifecycle_Orchestrator {
         return ['contract'=>self::CONTRACT.'.status.v1',
             'event_id'=>$id,'state'=>$row['state'],'goal'=>$row['event']['goal'],
             'target_kind'=>$row['event']['target_kind'],'target_id'=>$row['event']['target_id'],
+            'company_code'=>$row['event']['company_code']??'',
+            'representation_mode'=>$row['event']['representation_mode']??'',
+            'administrator_actor_user_id'=>$row['event']['actor_user_id']??0,
             'attempts'=>$row['attempts'],'retry_after'=>$row['retry_after'],
             'last_error'=>$row['last_error'],'resolution'=>$row['resolution'],
             'verification_scope'=>$row['verification_scope']??'',
@@ -494,6 +531,7 @@ final class MAD4B_Lifecycle_Orchestrator {
                     'goal'=>['type'=>'string'],'target_kind'=>['type'=>'string'],
                     'target_id'=>['type'=>'integer'],'job_id'=>['type'=>'string'],
                     'company_code'=>['type'=>'string'],'manager_id'=>['type'=>'string'],
+                    'representation_mode'=>['type'=>'string'],
                     'event_type'=>['type'=>'string'],'event_key'=>['type'=>'string'],
                     'event_id'=>['type'=>'string']],
                     'additionalProperties'=>false],
