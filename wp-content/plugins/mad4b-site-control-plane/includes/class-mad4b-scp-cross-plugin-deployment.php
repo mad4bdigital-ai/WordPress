@@ -312,26 +312,44 @@ final class MAD4B_SCP_Cross_Plugin_Deployment {
         if ( ! class_exists( 'MAD4B_SCP_Site_Profile' )
             || ! MAD4B_SCP_Site_Profile::origin_enrolled() )
             $blockers[] = 'site_origin_not_enrolled';
+        // MAD4B-owned repositories are a distinct, owner-registered source
+        // route. Exact GitHub commit identity is required; a separate MAD4B
+        // package certificate is not a prerequisite for discovering or planning
+        // this source. Do not mistake the source plan for installer authority.
+        $managed_private_source = 0 === strpos( (string) $source['repository'], 'mad4bdigital-ai/' );
+        if ( $managed_private_source && 'commit' !== $selection['ref_type'] )
+            $blockers[] = 'immutable_private_source_commit_required';
         $cert_sha = (string) ( $source['source_commit_sha'] ?? '' );
         $artifact_sha = (string) ( $source['artifact_sha256'] ?? '' );
-        if ( 'source_reviewed_artifact_certified' !== (string) ( $source['review_state'] ?? '' ) )
-            $blockers[] = 'source_review_promotion_required';
-        if ( ! preg_match( '/^[a-f0-9]{40}$/D', $cert_sha ) || ! hash_equals( $cert_sha, $sha ) )
-            $blockers[] = 'exact_source_commit_not_certified';
-        if ( ! preg_match( '/^[a-f0-9]{64}$/D', $artifact_sha )
-            || 'certified' !== (string) ( $source['package_certification'] ?? '' ) )
-            $blockers[] = 'exact_zip_artifact_not_certified';
+        if ( ! $managed_private_source ) {
+            // Backward-compatible external certified-provider route.
+            if ( 'source_reviewed_artifact_certified' !== (string) ( $source['review_state'] ?? '' ) )
+                $blockers[] = 'source_review_promotion_required';
+            if ( ! preg_match( '/^[a-f0-9]{40}$/D', $cert_sha ) || ! hash_equals( $cert_sha, $sha ) )
+                $blockers[] = 'exact_source_commit_not_certified';
+            if ( ! preg_match( '/^[a-f0-9]{64}$/D', $artifact_sha )
+                || 'certified' !== (string) ( $source['package_certification'] ?? '' ) )
+                $blockers[] = 'exact_zip_artifact_not_certified';
+        }
         if ( 'production' === $environment ) {
             if ( empty( $source['production_promotion_attestation'] ) )
                 $blockers[] = 'independent_production_promotion_attestation_required';
             $blockers[] = 'production_package_executor_not_yet_certified';
         }
         $native = array();
-        if ( 'staging' === $environment
+        if ( $managed_private_source ) {
+            // No generic private-source installer is yet authorized here.
+            // It must independently verify the reviewed repository commit,
+            // plugin subtree, exact package hash, backup and rollback.
+            // Never route a GitHub source candidate through the certified
+            // package executor or a caller-supplied ZIP as a workaround.
+            $blockers[] = 'managed_private_source_installer_not_registered';
+        } elseif ( 'staging' === $environment
             && ( ! class_exists( 'MAD4B_SCP_Plugin_Package' )
-                || ! is_callable( array( 'MAD4B_SCP_Plugin_Package', 'plan' ) ) ) )
+                || ! is_callable( array( 'MAD4B_SCP_Plugin_Package', 'plan' ) ) ) ) {
             $blockers[] = 'native_package_planner_unavailable';
-        if ( 'staging' === $environment && empty( $blockers ) ) {
+        }
+        if ( ! $managed_private_source && 'staging' === $environment && empty( $blockers ) ) {
             $native = MAD4B_SCP_Plugin_Package::plan( array(
                 'provider_id' => $source['provider_id'],
                 'source' => 'auto_certified',
@@ -363,6 +381,11 @@ final class MAD4B_SCP_Cross_Plugin_Deployment {
             'resolved_sha' => $sha, 'certified_sha' => $cert_sha,
             'environment' => $environment, 'operation' => $current['installed'] ? 'replace' : 'install',
             'current' => $current, 'artifact_sha256' => $artifact_sha,
+            'package_certification_required' => ! $managed_private_source,
+            'source_trust_mode' => $managed_private_source ? 'owner_registered_immutable_git_commit' : 'certified_provider_package',
+            'source_commit_identity_verified' => true,
+            'private_source_installer_registered' => false,
+            'declared_package_certificate_authoritative' => ! $managed_private_source,
             'native_plan_sha256' => (string) ( $native['plan_sha256'] ?? '' ),
             'native_executor' => 'staging' === $environment && empty( $blockers ) ? 'mad4b/plugin-package-apply' : '',
             'native_apply_input' => 'staging' === $environment && empty( $blockers ) ? array(
