@@ -49,6 +49,33 @@ Create the event in a root-owned temporary file, then rename atomically to inbox
 - Uncertain writes are not automatically replayed.
 - Adapter effects require independent verification and must be authorized by policy.
 
+## Central Host control is independent of Native Owner readiness
+
+Central Staging (`tours-central:staging`) is a **local VPS target**, not an
+externally provisioned company. It is resolved from the exact centrally owned
+Resolver scope and independently checked against the original root-owned
+`mad4b.native-vps-operator.v1` policy, command hash and its original
+mode-0600 diagnostic receipt. A regenerated *company* inventory must not
+disable this special local target.
+
+The `central_execution` observer has no dependency on the native Full
+Staging Authority plan, remote company SSH transport, or Agent OAuth
+subject. It reports the availability of the original central host route,
+not blanket permission to write. Every NEW operation still requires its
+own original Host Operator preflight and readback.
+
+For this central target, remote-only adapters show `not_applicable`, while
+`central_execution` reports `verified` independently from
+`central_source` and `central_authority`. A mismatch in Source
+Provenance remains a separate release/deployment blocker, and an OAuth
+Agent-binding conflict remains a separate WordPress governed-write blocker.
+Neither prevents legitimate, individually authorized root Host maintenance.
+
+This does **not** alter the original `mad4b-unified-full-authority` plugin:
+its native `ready_to_apply=false` still applies to that plugin's OWN
+`apply` route. Central execution through its independent authorized host
+route must not be represented as native Full Authority.
+
 ## Original authority and registered SSH administrative fallback
 
 The main site `tours.dev.mad4b.com` uses its existing root-owned host operator,
