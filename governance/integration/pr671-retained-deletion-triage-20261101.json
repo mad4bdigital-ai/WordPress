@@ -1,0 +1,37 @@
+{
+  "contract": "mad4b.pr671-retained-deletion-triage.v1",
+  "date": "2026-11-01",
+  "base": "24aff1af0ba",
+  "pr": "origin/pr/671",
+  "local_candidate": "6d6da387dd7ea77045e9b961b44a9c58b5ddd050",
+  "comparison": "git diff --name-status --no-renames",
+  "retained_deletions": 635,
+  "retained_unchanged": 633,
+  "retained_modified": 2,
+  "retained_workflows": 41,
+  "by_area": {
+    "ops": 218,
+    "wp-content": 209,
+    "packages": 52,
+    ".github": 41,
+    "docs": 36,
+    "tools": 33,
+    "tests": 19,
+    "qa": 11,
+    "governance": 9,
+    "scripts": 7
+  },
+  "modified_retained": [
+    "ops/company-readiness-workflow/staging-mu/304-mad4b-central-dual-lane-registry.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegation-mode-runtime.php"
+  ],
+  "notes": [
+    "PR #671 and #658 are ancestors of local candidate; ancestry does not prove clean semantic merge.",
+    "Delete/retain decisions cannot be inferred automatically, especially when 41 workflows need additional GitHub permission.",
+    "An earlier rename-aware comparison reported 632 paths; --no-renames correctly yields 635 original deletions.",
+    "Zero dynamic coverage gaps remains local PASS_COVERAGE_ONLY; full source not yet published."
+  ],
+  "decision": "NO_GO_MERGE_UNTIL_DELETE_RETAIN_DECISIONS_AND_CI",
+  "no_master_mutation": true,
+  "no_production_mutation": true
+}
