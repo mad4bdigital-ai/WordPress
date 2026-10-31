@@ -961,7 +961,16 @@ final class MAD4B_SCP_Site_Profile {
 				'skills' => ! empty( $input['skills_enabled'] ),
 				'write' => $write,
 				'production_write_confirmed' => $production_confirmed,
-				'provider_isolation' => ! empty( $input['provider_isolation_enabled'] ),
+				// Deny-only provider MCP isolation defaults ON at first enrollment.
+                // Subsequent saves preserve an existing choice if omitted,
+                // while an explicit false always stays false. This never
+                // enables Production runtime suppression without its
+                // independent environment/owner approval gates.
+                'provider_isolation' => array_key_exists( 'provider_isolation_enabled', $input )
+                    ? (bool) $input['provider_isolation_enabled']
+                    : ( $existing_valid
+                        ? ! empty( $existing_normalized['features']['provider_isolation'] )
+                        : true ),
 				'managed_runtime' => ! empty( $input['managed_runtime_enabled'] ),
 				'acceptance' => ! empty( $input['acceptance_enabled'] ),
 			),
