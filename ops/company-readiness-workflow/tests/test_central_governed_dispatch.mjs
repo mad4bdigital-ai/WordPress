@@ -16,7 +16,7 @@ const req={kind:'general_vps_administration',lane:'vps_ssh',source:'authenticate
 const ctx={ssh_authenticated:true,ssh_host_fingerprint_verified:true,host_id:'vps-1',
  audit_journal_ready:true,rollback_planned:true,
  grant:{principal_id:'admin',authorization_ref:'scope-1',environment:'staging',
-  host_id:'vps-1',site_uuid:uuid,origin,allow_mutations:true,allow_production_mutations:false}};
+  host_id:'vps-1',site_uuid:uuid,origin,allow_mutations:true,allow_general_shell:true,allow_production_mutations:false}};
 function mock({exit_code=0,verified=true,throws=false}={}) {
  const journal=[],executions=[];
  const adapters={
