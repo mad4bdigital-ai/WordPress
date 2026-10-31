@@ -120,5 +120,16 @@
     "company_mutation_executed": false,
     "requires_independent_wp_runtime_readback": true,
     "requires_isolated_restore_drill": true
+  },
+  "independent_host_ssh_lane": {
+    "policy_ref": "ops/company-readiness-workflow/contracts/central-dual-execution-policy.v1.json",
+    "mode": "general_vps_administration",
+    "command_catalog_required": false,
+    "not_part_of_company_stage_queue": true,
+    "semantic_executor_scope_remains_bounded": true,
+    "no_security_denial_fallback": true,
+    "permits_direct_host_commands_only_under_authenticated_host_scope": true,
+    "require_readback_and_audit_for_mutations": true,
+    "status": "SOURCE_POLICY_ONLY_NOT_REGISTERED"
   }
 }
