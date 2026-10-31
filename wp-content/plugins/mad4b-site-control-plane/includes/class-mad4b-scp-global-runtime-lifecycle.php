@@ -10,7 +10,7 @@ final class MAD4B_SCP_Global_Runtime_Lifecycle {
     const MAX_NODES = 128;
     const STATES = array('PENDING','QUEUED','READY','RUNNING','WAITING_DEPENDENCY',
         'WAITING_PREFLIGHT','RECOVERING','BLOCKED_AUTHORITY','BLOCKED_DEPENDENCY',
-        'NEEDS_RECONCILIATION','SKIPPED_NOT_APPLICABLE','VERIFIED');
+        'NEEDS_RECONCILIATION','WAITING_VERIFICATION','CANCELLED','SKIPPED_NOT_APPLICABLE','VERIFIED');
 
     public static function classify_error($code) {
         $code = is_object($code) && method_exists($code, 'get_error_code')
@@ -134,5 +134,76 @@ final class MAD4B_SCP_Global_Runtime_Lifecycle {
             'journal_or_cas_modified'=>false,
             'scope'=>'all_mad4b_domains',
         );
+    }
+
+    /**
+     * Map *canonical owner observations* to a common state without enqueue,
+     * dispatch, claim, provider fallback or certificate changes. Values are
+     * read from native sources by their existing callers, not remote inputs.
+     */
+    public static function observe_native_lane($source, array $observed) {
+        if (!in_array($source, array('scheduler_admission','scheduler_backlog',
+            'remote_work_queue','adaptive_dispatcher','recovery_route'), true))
+            return self::invalid('Unknown native lane owner.');
+        $state='WAITING_DEPENDENCY'; $reason='native_progress_wait';
+        $next='inspect_canonical_owner'; $record='';
+        if ($source==='scheduler_admission') {
+            $decision=(string)($observed['decision']??'');
+            $reasons=array_values(array_filter((array)($observed['reasons']??array()),'is_string'));
+            if (in_array($decision,array('ADMIT','RESERVED_LANE'),true)) {
+                $state='WAITING_PREFLIGHT';$reason='scheduler_admitted_not_dispatched';$next='native_enqueue_with_exact_binding';
+            } elseif ($decision==='QUEUE') {
+                $state='QUEUED';$reason='concurrency_or_provider_backpressure';$next='native_queue_admission';
+            } elseif ($decision==='DENY' && in_array('queued_quota_exhausted',$reasons,true)) {
+                $state='RECOVERING';$reason='queue_capacity_exhausted';$next='await_bounded_capacity_release';
+            } elseif (in_array($decision,array('DENY','FAIL_CLOSED'),true)) {
+                $state='BLOCKED_AUTHORITY';$reason='native_scheduler_denial';$next='resolve_native_admission_reasons';
+            }
+        } elseif (in_array($source,array('scheduler_backlog','remote_work_queue'),true)) {
+            $record=strtolower((string)($observed['effective_status']??$observed['status']??''));
+            if (in_array($record,array('queued','pending','already_queued'),true)) {
+                $state='QUEUED';$reason='native_durable_queue_wait';$next='native_fair_claim';
+            } elseif (in_array($record,array('leased','claimed'),true)) {
+                $state='RUNNING';$reason='original_worker_claim_active';$next='observe_native_worker';
+            } elseif (in_array($record,array('reconciling','reconciliation_required'),true)) {
+                $state='NEEDS_RECONCILIATION';$reason='native_lease_or_write_uncertain';$next='original_provider_readback_before_retry';
+            } elseif ($record==='completed') {
+                $state='WAITING_VERIFICATION';$reason='queue_completion_not_provider_readback';$next='verify_original_provider_postcondition';
+            } elseif (in_array($record,array('cancelled_no_effect','expired'),true)) {
+                $state='CANCELLED';$reason='native_queue_terminal_no_verified_effect';$next='no_automatic_replay';
+            }
+        } elseif ($source==='adaptive_dispatcher') {
+            $failure=(string)($observed['failure_state']??'');
+            if (!empty($observed['write_uncertain']) || in_array($failure,
+                array('TRANSPORT_RESULT_INDETERMINATE','PREVIOUS_WRITE_REQUIRES_INDEPENDENT_READBACK'),true)) {
+                $state='NEEDS_RECONCILIATION';$reason='reported_mutation_outcome_unknown';$next='original_mutation_journal_readback';
+            } elseif (in_array($failure,array('HOST_SAFETY_REJECTION_NO_ALTERNATE_EXECUTION',
+                'AUTHORITY_DENIAL_NO_ALTERNATE_EXECUTION'),true)) {
+                $state='BLOCKED_AUTHORITY';$reason='native_or_host_authority_denial';$next='inspect_original_denial_no_alternate_mutation';
+            } elseif (!empty($observed['dependency_blocker'])) {
+                $state='BLOCKED_DEPENDENCY';$reason='canonical_dependency_planner_unavailable';$next='repair_exact_planner';
+            } elseif (!empty($observed['route_eligible'])) {
+                $state='WAITING_PREFLIGHT';$reason='canonical_dispatch_route_selected';$next='native_schema_pinned_execution_revalidation';
+            } else {
+                $state='WAITING_DEPENDENCY';$reason='route_discovery_or_preparation_required';$next='discover_registered_canonical_dispatch';
+            }
+        } else {
+            if (!empty($observed['authority_blockers'])) {
+                $state='BLOCKED_AUTHORITY';$reason='observed_authority_denial';$next='inspect_original_authority';
+            } elseif (!empty($observed['recommended_route'])) {
+                $state='RECOVERING';$reason='diagnostic_fallback_route_available';$next='inspect_recommended_native_route';
+            } elseif (!empty($observed['blockers'])) {
+                $state='RECOVERING';$reason='diagnose_bounded_recovery_route';$next='read_native_recovery_status';
+            } else {
+                $state='READY';$reason='no_reported_recovery_blocker';$next='continue_normal_native_workflow';
+            }
+        }
+        return array('contract'=>self::CONTRACT.'.native-lane.v1','owner'=>$source,
+            'native_status'=>$record,'state'=>$state,'reason'=>$reason,
+            'next_native_action'=>$next,'ordinary_wait_is_not_blocking'=>in_array($state,
+                array('QUEUED','WAITING_DEPENDENCY','WAITING_PREFLIGHT','WAITING_VERIFICATION','RUNNING','RECOVERING'),true),
+            'alternate_mutation_authorized'=>false,'dispatch_performed'=>false,
+            'blind_write_retry_allowed'=>false,'grants_created'=>false,
+            'mutation_performed'=>false);
     }
 }

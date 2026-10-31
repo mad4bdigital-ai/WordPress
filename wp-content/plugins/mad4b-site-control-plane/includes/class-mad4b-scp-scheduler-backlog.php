@@ -243,7 +243,17 @@ final class MAD4B_SCP_Scheduler_Backlog {
 		usort( $items, static function ( $a, $b ) {
 			return (int) $a['enqueued_at_epoch'] <=> (int) $b['enqueued_at_epoch'];
 		} );
-		return array( 'contract' => self::CONTRACT, 'count' => count( $items ), 'items' => $items, 'read_only' => true, 'dispatch_performed' => false, 'authorizing' => false, 'mutation_performed' => false );
+		$lifecycle_count = array();
+        foreach ( $items as &$observed_item ) {
+            $observed_item['global_runtime'] = class_exists( 'MAD4B_SCP_Global_Runtime_Lifecycle' )
+                ? MAD4B_SCP_Global_Runtime_Lifecycle::observe_native_lane( 'scheduler_backlog', $observed_item ) : null;
+            $state = is_array( $observed_item['global_runtime'] ) ? $observed_item['global_runtime']['state'] : 'UNAVAILABLE';
+            $lifecycle_count[$state] = (int) ( $lifecycle_count[$state] ?? 0 ) + 1;
+        }
+        unset( $observed_item );
+        return array( 'contract' => self::CONTRACT, 'count' => count( $items ), 'items' => $items,
+            'global_runtime_counts' => $lifecycle_count,
+            'read_only' => true, 'dispatch_performed' => false, 'authorizing' => false, 'mutation_performed' => false );
 	}
 
 	public static function claim_next( $input = array() ) {
