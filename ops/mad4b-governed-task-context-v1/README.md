@@ -63,7 +63,7 @@ cutover snapshot is required before readiness can be true; see
 predecessor dependencies or multi-item Batches must not record a partial
 follower receipt; they require an independent dependency handoff/review. An explicit original Staging deployment
 would set `MAD4B_HUB_SEMANTIC_FLIGHT_MODE=enforce` **after** the approved
-site operator installs the two tables with the class's `install()`
+site operator installs the three additive tables (two flight tables plus the legacy allowlist) with the class's `install()`
 method and certifies the old queued work. That change has **not**
 been performed.
 

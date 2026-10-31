@@ -96,13 +96,33 @@ final class MAD4B_Hub_Semantic_Legacy_Cutover {
             }
             if ((int)$wpdb->get_var("SELECT COUNT(*) FROM $table")!==count($map))
                 throw new RuntimeException('LEGACY_ALLOWLIST_COUNT_MISMATCH');
+            // Persist the lock in the SAME database transaction as the allowlist.
+            // A post-COMMIT update_option() could leave populated rows unlocked
+            // after a process crash, permanently blocking a safe retry.
+            $optionTable=$wpdb->options;
+            $optionName='mad4b_hub_semantic_legacy_cutover_locked';
+            $current=$wpdb->get_var($wpdb->prepare(
+                "SELECT option_value FROM $optionTable WHERE option_name=%s FOR UPDATE",
+                $optionName));
+            if($current==='1') throw new RuntimeException('LEGACY_ALLOWLIST_ALREADY_LOCKED');
+            if($current===null) {
+                $written=$wpdb->insert($optionTable,[
+                    'option_name'=>$optionName,'option_value'=>'1','autoload'=>'no']);
+            } else {
+                $written=$wpdb->update($optionTable,[
+                    'option_value'=>'1','autoload'=>'no'],['option_name'=>$optionName]);
+            }
+            if($written!==1) throw new RuntimeException('LEGACY_ALLOWLIST_LOCK_FAILED');
             if($wpdb->query('COMMIT')===false)
                 throw new RuntimeException('LEGACY_ALLOWLIST_COMMIT_UNCERTAIN');
         } catch(Throwable $e) {
             $wpdb->query('ROLLBACK');
             return new WP_Error('mad4b_legacy_capture_failed',$e->getMessage());
         }
-        update_option('mad4b_hub_semantic_legacy_cutover_locked','1',false);
+        // SQL bypassed update_option() so invalidate option caches AFTER COMMIT.
+        wp_cache_delete('mad4b_hub_semantic_legacy_cutover_locked','options');
+        wp_cache_delete('notoptions','options');
+        wp_cache_delete('alloptions','options');
         $base['applied']=self::locked();
         return $base;
     }

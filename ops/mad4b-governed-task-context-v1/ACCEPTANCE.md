@@ -48,3 +48,12 @@ No new production mutation or original grant issuance has occurred.
 MariaDB 11.8.9: competing insert waited 3.666 seconds on leader transaction held 5.001 seconds, created zero duplicate leaders; changed input in same Work Slot rejected; independent Work Slot rollback restored counts. Two isolated scratch tables were dropped and independently checked absent. No existing Content Hub task was altered.
 
 Legacy Cutover read-only snapshot of 20 outstanding tasks successfully generated and fingerprinted, but not applied; see LEGACY_CUTOVER.md. The original plugin remains unchanged and Full End-to-End test is pending.
+
+
+## Additional isolated atomic cutover verification
+
+Added transaction-scoped write of the immutable legacy lock option and
+post-commit cache invalidation. The new `test_legacy_atomic.php` exercises
+failure+ROLLBACK, successful insert+COMMIT, immutable claim readback,
+tamper denial, repeated apply denial and an existing disabled option.
+Source-only PASS does not change the operational NO-GO or create authority.

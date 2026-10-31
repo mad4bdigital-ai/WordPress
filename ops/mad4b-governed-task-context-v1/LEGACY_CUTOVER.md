@@ -21,3 +21,13 @@ Two overlapping WordPress WP-CLI connections against isolated scratch InnoDB tab
 - Live Hub task count remained 322.
 
 This establishes InnoDB unique-slot and rollback behavior, but does NOT certify the candidate plugin's complete Enqueue-Claim-Executor-Receipt path. That acceptance remains pending.
+
+
+## Atomic lock hardening (subsequent source candidate)
+
+The legacy allowlist rows and the locked option now write in one InnoDB
+transaction. Cache invalidation occurs only after COMMIT. A failed option
+insert/update rolls the entire allowlist back; no partial unlocked snapshot
+can be mistaken for an approved cutover. This change is exercised by
+`test_legacy_atomic.php` using a transaction-aware isolated DB mock.
+It is **not** yet an installed-site acceptance test.
