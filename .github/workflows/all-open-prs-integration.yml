@@ -27,6 +27,14 @@ jobs:
         run: |
           set -euo pipefail
           python3 tools/consolidate_open_prs_20261031.py
+      - name: Upload conflict report and integration diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-open-pr-conflict-audit
+          path: governance/integration/open-prs-20261031.json
+          if-no-files-found: warn
+          retention-days: 30
       - name: Integration conclusion
         if: always()
         run: |
