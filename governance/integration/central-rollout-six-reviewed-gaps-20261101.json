@@ -1,0 +1,16 @@
+{
+  "contract": "mad4b.ci-only-central-rollout-review.v1",
+  "authorizing": false,
+  "production_authorized": false,
+  "local_candidate_head": "86c27f0e38a07cd5dcd9be92bc070d493172ad46",
+  "prior_gaps": 192,
+  "locally_reviewed": 6,
+  "remaining_gaps": 186,
+  "source_paths": [
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-company-rollout.php",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-operator-handoff.php"
+  ],
+  "test": "wp-content/plugins/mad4b-site-control-plane/tests/central-rollout-handoff-read-policy-contract.py",
+  "release": "NO_GO",
+  "caution": "Only test and audit uploaded; source reconciliations and CI-only review registry remain in isolated VPS worktree. Full CI and semantic conflict review incomplete."
+}
