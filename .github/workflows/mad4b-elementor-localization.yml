@@ -1,0 +1,36 @@
+name: MAD4B Elementor Localization Integrity Contracts
+on:
+  push:
+    paths:
+      - 'wp-content/mu-plugins/301-mad4b-elementor-localization.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php'
+      - 'ops/qa/mad4b-elementor-localization/**'
+      - '.github/workflows/mad4b-elementor-localization.yml'
+  pull_request:
+    paths:
+      - 'wp-content/mu-plugins/301-mad4b-elementor-localization.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php'
+      - 'ops/qa/mad4b-elementor-localization/**'
+      - '.github/workflows/mad4b-elementor-localization.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-elementor-l10n-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Verify PHP syntax
+        run: |
+          php -l wp-content/mu-plugins/301-mad4b-elementor-localization.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php
+      - name: Verify source contracts
+        run: python3 ops/qa/mad4b-elementor-localization/tests/source_contract.py
