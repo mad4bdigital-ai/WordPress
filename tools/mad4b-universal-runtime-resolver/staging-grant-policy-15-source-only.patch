@@ -1,0 +1,42 @@
+From 4e81da221c6d5fee045fa20233399bc5763575e8 Mon Sep 17 00:00:00 2001
+From: MAD4B Local Source Reconciliation <source-reconcile@localhost>
+Date: Sat, 31 Oct 2026 16:10:37 +0000
+Subject: [PATCH] Allowlist 15 exact staging core content grant pairs for
+ native reconciliation
+
+---
+ ...scp-staging-write-grant-reconciliation.php | 21 +++++++++++++++++++
+ 1 file changed, 21 insertions(+)
+
+diff --git a/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation.php b/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation.php
+index bcb273c..a593f63 100644
+--- a/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation.php
++++ b/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation.php
+@@ -133,6 +133,27 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
+ 				// Staging grant. Other provider adapters are discovery-only until
+ 				// separately certified and explicitly allowlisted.
+ 				'mad4b/provider-connection-refresh' => 'core',
++				// Exact reviewed first-party WordPress content operations already
++				// present in the canonical Staging governed-write inventory.
++				// This enumerates eligibility only; it never creates a grant.
++				// The original owner plan, step-up, exact grant admission and
++				// independently audited execution continue to apply.
++				'mad4b/page-r1-create-apply' => 'core',
++				'mad4b/page-r1-publish-apply' => 'core',
++				'mad4b/page-r1-update-apply' => 'core',
++				'mad4b/post-r1-create-apply' => 'core',
++				'mad4b/post-r1-publish-apply' => 'core',
++				'mad4b/post-r1-update-apply' => 'core',
++				'mad4b/properties-r1-create-apply' => 'core',
++				'mad4b/properties-r1-publish-apply' => 'core',
++				'mad4b/properties-r1-update-apply' => 'core',
++				'mad4b/tours-and-activities-r1-create-apply' => 'core',
++				'mad4b/tours-and-activities-r1-publish-apply' => 'core',
++				'mad4b/tours-and-activities-r1-update-apply' => 'core',
++				'mad4b/transportations-r1-create-apply' => 'core',
++				'mad4b/transportations-r1-publish-apply' => 'core',
++				'mad4b/transportations-r1-update-apply' => 'core',
++
+ 				'context/brand-profile-save' => 'google_drive_context',
+ 				'context/governed-source-upsert' => 'google_drive_context',
+ 				'context/remote-owner-review-apply' => 'google_drive_context',
