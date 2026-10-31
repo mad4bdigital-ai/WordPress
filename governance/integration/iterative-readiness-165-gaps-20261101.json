@@ -1,0 +1,24 @@
+{
+  "contract": "mad4b.readiness-iterative-ci-source-reviewed.v2",
+  "authorizing": false,
+  "production_authorized": false,
+  "baseline": "b8f2e0a60fa45e28b49643f1eae6f73570c2fee8",
+  "local_candidate": "3ba51c1bd458cf7dde92dc76c30e9dded9b74104",
+  "initial_gaps": 175,
+  "source_reviewed_or_resolved_this_round": 10,
+  "remaining_gaps": 165,
+  "performed": [
+    "Corrected cron:hourly to actual named event; reviewed one real cron interface with staging-only schedule regression",
+    "Executed real PHP three-mode content workflow QA and nonpublication regression; reviewed two gaps",
+    "Executed real PHP Background Agent admission, lease, heartbeat and fencing denial regressions; reviewed four gaps",
+    "Executed real PHP immutable native settings and WooCommerce original-owner deny regressions; reviewed three gaps"
+  ],
+  "uploaded_tests": [
+    "tests/authority_cron_identity_contract.py",
+    "tests/content_workflow_modes_runtime_contract.php",
+    "tests/background_agent_admission_dispatch_runtime.php",
+    "tests/native_settings_owner_runtime.php"
+  ],
+  "status": "NO_GO",
+  "limitation": "CI-only coverage reviews and combined source remain on isolated VPS candidate. GitHub branch has tests/detector and audit but not full source, no verified end-to-end CI. Do not treat audit as release permission."
+}
