@@ -44,28 +44,56 @@ A source-only patch is in `central-control-plane-source-fix-02ad44f.patch` on th
 - Do not treat an initially unbound Candidate as a foreign owner conflict. Bind it through the original workflow after the new source is live and matches its provenance.
 - Host Authority is not a general-purpose background WordPress queue shell. Every new operation needs exact scope, original preflight, audit and readback.
 
-## Additional recurring design defect — fixed-date execution receipt
+## Fixed: live central Host execution readiness and dual backup (2026-10-31)
 
-The currently deployed `central_execution_route.py` determines central host
-readiness using a hard-coded, successful diagnostic Receipt from 2026-10-31
-and a 24-hour age limit. This will eventually report
-`previous_host_receipt_expired` even if the current root Host scope and
-WordPress Site Profile are healthy. Conversely a historic receipt is not
-evidence that a new operation is authorized.
+Installed `central_execution_route.py` no longer checks a hard-coded
+one-day-old receipt. It validates the **current root-owned Host Authority**
+policy and performs a fresh, exact WordPress WP-CLI readback of Site UUID,
+canonical Origin, environment and database. Historic receipts remain proof
+of past operations only; a future write still needs exact independent
+operation preflight. Current live result: `central_execution=verified`.
+Eight regression tests PASS (revocation, foreign site, wrong database, wrong
+origin, missing operator, unavailable WP-CLI, and current-state success).
 
-Required correction: inspect the *current* root-owned Host Authority policy
-and enrolled site identity using fixed read-only WP-CLI, and report capability
-readiness independently of any prior operation. For new operations keep
-`Native VPS Operator` exact command-plan, correlation ID, readback and
-rollback requirements. The dedicated live-code replacement attempt in this
-session was denied by the infrastructure channel's safety check. **Do not
-mark this item closed or claim it was deployed.**
+The original blanket backup attempt was replaced with two exact, independently
+checked routes. Source is
+`tools/mad4b-universal-runtime-resolver/central_staging_backup.py`,
+installed at `/opt/mad4b-company-transport/central-staging-backup.py`.
+
+Commands from the authenticated original Root SSH session:
+
+```shell
+python3 /opt/mad4b-company-transport/central-staging-backup.py plan
+python3 /opt/mad4b-company-transport/central-staging-backup.py backup
+```
+
+The backup runner prefers authenticated WP-CLI (`mysqldump`) when available,
+otherwise automatically uses `mariadb-dump` inside the enrolled MariaDB
+container, including runtime fallback if the first dump fails or is invalid.
+For plugin files it uses `docker cp`, with a fixed-source `docker exec tar`
+fallback when needed. All backup destinations are new, under a private
+Root-owned backup directory. Existing backup files are never overwritten.
+Eight isolated failure/fallback tests PASS.
+
+Verified Staging snapshot:
+`/opt/staging/mad4b-managed-backups/central-staging/20261031T173943Z-09fc13b4`.
+Receipt reports 907 plugin files, seven SQL tables, WordPress data unchanged,
+no Production mutation. SQL SHA-256:
+`89d0d123749bfe302086f31eef5e57b058ad1e4d9a52d40f3949d0f8b5d6f330`.
+This verifies an export and file manifest, **not a restored backup**.
 
 ## Remaining release gates
 
-The candidate was **built, linted and compared but not installed**: an additional pre-install backup step was denied by the infrastructure execution channel. Staging Control Plane therefore still reports the old live source until an authorized backup/restore path exists. Do not claim that the 20 missing grants or current OAuth conflict are fixed live.
+The candidate Control Plane package was **built, linted and compared but NOT
+installed**. The earlier backup blocker is resolved by the verified Staging
+snapshot above. Installation and original governed-write Agent reconciliation
+are separate workflow steps with their own approval, rollback and readback.
+Do not claim the 20 missing grants or OAuth/Agent conflict have been fixed live.
 
-Before install: protect original plugin files and relevant Agent/Grant tables; validate backup integrity, and register the exact source/archive. After staging-only install: confirm `runtime_manifest_match=true`, `stale=false`, `provenance_mismatch=[]`, Source SHA 02ad44f, delegated OAuth binding unchanged, authority-plan blockers/Grant counts and WP REST healthy. Candidate-binding enrollment and grant issuance are separate operations with independent readbacks. Production must not be changed implicitly.
+On any subsequent Staging-only deployment: verify candidate ZIP SHA and a
+matching independent backup, exact Source Commit, runtime manifest, stale
+status, candidate binding, persisted Agent/Subject identities, grant counts and
+WordPress operation health. Production must not be modified implicitly.
 
 ## CI
 
