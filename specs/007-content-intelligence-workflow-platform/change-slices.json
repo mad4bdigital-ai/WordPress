@@ -4,8 +4,8 @@
   "reviewed_base_sha": "b8f2e0a60fa45e28b49643f1eae6f73570c2fee8",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 230,
-  "changed_paths_sha256": "d8d35f2112011cc276ed6b08d99820c254f4c04f2ef8d240ca921acd1fcc58c3",
+  "changed_file_count": 231,
+  "changed_paths_sha256": "699691a183a9dbba24b2264aaf8e0dc9e532c22592ca6ba4646a1e9d7a43f31e",
   "slices": [
     {
       "id": "admin-market-and-operator",
@@ -124,6 +124,7 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/governed-draft-contract.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/maintainability-domain-service-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-first-party-context-artifact-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/qa31-remaining-source-security-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/site-neutrality-policy.json",
