@@ -42,6 +42,7 @@ for item in ordered:
         raise SystemExit("PR moved during integration: #" + str(item["number"]))
     if subprocess.run(["git", "merge-base", "--is-ancestor", ref, "HEAD"]).returncode == 0:
         status, conflicts = "already_included", []
+        diagnostic = ""
     else:
         result = subprocess.run(["git", "merge", "--no-commit", "--no-ff", "--no-edit", ref],
                                 text=True, capture_output=True, timeout=100)
@@ -50,11 +51,13 @@ for item in ordered:
                                        capture_output=True, text=True).stdout.splitlines()
             subprocess.run(["git", "merge", "--abort"], check=True)
             status = "conflict"
+            diagnostic = (result.stderr + "\\n" + result.stdout)[-1200:]
         else:
             subprocess.run(["git", "commit", "-m", f"integration: include open PR #{item['number']}"], check=True,
                            capture_output=True, text=True, timeout=60)
             status, conflicts = "merged", []
-    out.append(dict(number=item["number"], status=status, conflicts=conflicts,
+            diagnostic = ""
+    out.append(dict(number=item["number"], status=status, conflicts=conflicts, diagnostic=diagnostic if status == "conflict" else "",
                     base=item["base"], head_sha=item["head_sha"], draft=item["draft"]))
 Path("governance/integration").mkdir(parents=True, exist_ok=True)
 report = {"contract": "mad4b.open-prs-consolidation.v1", "production_mutation": False,
