@@ -1,0 +1,37 @@
+name: MAD4B Identity Before Grant Preflight
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-authority.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/grant-reconcile-identity-before-grant-contract.py'
+      - '.github/workflows/mad4b-grant-identity-preflight.yml'
+  push:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-authority.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/grant-reconcile-identity-before-grant-contract.py'
+      - '.github/workflows/mad4b-grant-identity-preflight.yml'
+permissions:
+  contents: read
+concurrency:
+  group: mad4b-identity-before-grant-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: PHP lint and read-only identity-before-grant test
+        run: |
+          set -euo pipefail
+          ROOT=wp-content/plugins/mad4b-site-control-plane
+          php -l "$ROOT/includes/class-mad4b-scp-staging-write-authority.php"
+          python3 "$ROOT/tests/grant-reconcile-identity-before-grant-contract.py"
