@@ -133,55 +133,17 @@ def inspect_authority(target,scope):
        "p256_grants_write":False})
 
 def inspect_full_authority(target,scope):
-    """Read the original Unified Full Authority native plan, never grant/apply.
-
-    The GitHub feature is not an enrolled live provider until its matching
-    WordPress installation and environment owner have been verified.
-    """
+    """Read status from the TARGET's native owner, never a central Hub plugin."""
     provider=scope.get("full_authority_provider")
-    if not isinstance(provider,dict) or provider.get("mode")!="native_wpcli":
+    current=inventory().get(target,{})
+    if not isinstance(provider,dict) or provider.get("mode")!="native_target_owner":
         return result("awaiting_provider","unified_full_authority",
-                      "native_full_authority_provider_not_enrolled")
-    if target!=SITE or provider.get("environment")!="staging" or \
-       provider.get("origin")!=scope.get("canonical_origin"):
-        return result("awaiting_provider","unified_full_authority",
-                      "native_environment_owner_binding_missing")
-    # A provider-backed read; never interpret a P-256 or SSH proof as Full
-    # Authority, and never use --user to impersonate its canonical principal.
-    rc,_,_=command(["docker","exec","-u","www-data","etg-commerce-staging-php",
-          "wp","plugin","is-active","mad4b-unified-full-authority",
-          "--path=/var/www/html","--skip-themes"],timeout=20)
-    if rc!=0:
-        return result("awaiting_provider","unified_full_authority",
-                      "unified_full_authority_plugin_not_installed_or_active")
-    rc,out,_=command(["docker","exec","-u","www-data","etg-commerce-staging-php",
-          "wp","mad4b","full-authority-unified",
-          "--path=/var/www/html","--skip-themes"],timeout=40)
-    if rc!=0:
-        return result("blocked_authority","unified_full_authority",
-                      "native_plan_or_actor_unavailable",{"native_plan_exit":rc})
-    try: data=json.loads(out)
-    except ValueError:
+                      "target_native_owner_provider_not_enrolled")
+    if provider.get("target")!=target or provider.get("environment")!=current.get("environment") or provider.get("origin")!=scope.get("canonical_origin"):
         return result("review_required","unified_full_authority",
-                      "invalid_native_plan_readback")
-    if data.get("contract")!="mad4b.unified-full-authority.v1" or \
-        data.get("site_uuid")!=scope["site_uuid"] or \
-        data.get("environment")!="staging":
-        return result("review_required","unified_full_authority",
-                      "native_full_authority_scope_mismatch")
-    if data.get("ready_to_apply") is True and \
-       data.get("mutation_performed") is False:
-        return result("verified","unified_full_authority",
-                      "native_full_authority_planned_ready",
-                      {"plan_sha256":data.get("plan_sha256"),
-                       "native_owner":data.get("native_owner"),
-                       "environment":data["environment"],
-                       "apply_executed":False})
-    return result("blocked_authority","unified_full_authority",
-                  "native_full_authority_not_ready",
-                  {"native_owner":data.get("native_owner"),
-                   "blockers":data.get("blockers",[]),
-                   "apply_executed":False})
+                      "target_native_owner_binding_mismatch")
+    return result("awaiting_provider","unified_full_authority",
+                  "target_native_owner_readback_adapter_not_connected")
 
 def inspect_agent(target,scope):
     # A source-specific adapter is not generalized by merely copying its name.
