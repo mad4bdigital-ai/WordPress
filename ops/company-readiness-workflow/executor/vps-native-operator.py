@@ -67,6 +67,18 @@ def preflight(args,policy):
     if mutation and args.environment=='production' and permitted.get('allow_production_mutation') is not True:
         abort('PRODUCTION_MUTATION_NOT_AUTHORIZED')
     command=file_bytes(args.file)
+    if args.kind=='sql' and not mutation:
+        # Restrict read/diagnostic to one conservative SQL inspection query.
+        # Other SQL, including procedures, multi-statements, SELECT INTO,
+        # locking, DDL and DML, requires mutating authority and rollback.
+        statement=command.decode('utf-8').strip()
+        if statement.endswith(';'):statement=statement[:-1].strip()
+        if (';' in statement or '--' in statement or '/*' in statement
+          or '#' in statement or not re.match(
+            r'^(SELECT|SHOW|DESCRIBE|EXPLAIN)\\s+',statement,re.I)
+          or re.search(r'\\b(INTO|OUTFILE|DUMPFILE|FOR\\s+UPDATE|LOCK|CALL|LOAD_FILE|SLEEP|BENCHMARK)\\b',
+            statement,re.I)):
+            abort('SQL_READ_DIAGNOSTIC_MUST_BE_SINGLE_SAFE_INSPECTION')
     command_hash=sha(command)
     if not re.fullmatch('[a-f0-9]{64}',args.sha256 or '') or args.sha256!=command_hash:
         abort('EXACT_COMMAND_SHA256_MISMATCH')
