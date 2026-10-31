@@ -1,0 +1,27 @@
+name: MAD4B Broker Exact Claim and Readback Contracts
+on:
+  pull_request:
+    paths:
+      - 'ops/mad4b-broker/**'
+      - '.github/workflows/mad4b-broker-exact-claim.yml'
+  push:
+    paths:
+      - 'ops/mad4b-broker/**'
+      - '.github/workflows/mad4b-broker-exact-claim.yml'
+permissions:
+  contents: read
+concurrency:
+  group: broker-exact-claim-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+jobs:
+  exact-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Source syntax and non-executing exact authorization invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile ops/mad4b-broker/broker-native-ssh-reconcile.py
+          python3 -m py_compile ops/mad4b-broker/vps-broker-remote-ssh-canary.py
+          python3 ops/mad4b-broker/tests/test_broker_scope_contract.py
