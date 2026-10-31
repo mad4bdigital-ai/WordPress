@@ -26,6 +26,7 @@ jobs:
       - name: Syntax-check staging-only native WP-CLI shadow
         run: |
           php -l ops/taxonomy-evolution/wpcli-native-shadow.php
+          php -l ops/taxonomy-evolution/wpcli-native-census.php
           php -l ops/taxonomy-evolution/TaxonomyEvolutionGovernance.php
           php ops/taxonomy-evolution/tests/classifier-test.php
       - name: Validate site-neutral governance and fail-closed shadow contract
@@ -46,5 +47,8 @@ jobs:
               assert s in code, s
           for s in ['wp_insert_term(', 'wp_update_term(', 'update_option(', 'ALTER TABLE ', 'DROP TABLE ', 'TRUNCATE TABLE ']:
               assert s not in code, s
+          census = pathlib.Path('ops/taxonomy-evolution/wpcli-native-census.php').read_text()
+          for s in ['WP_CLI','MAD4B_EVOLVE_EXACT_HOME','scope_verified','hidden_languages','observation_only','inventory_complete']:
+              assert s in census, s
           print('PASS taxonomy evolution source contract and nonpersistent test-only semantics')
           PY
