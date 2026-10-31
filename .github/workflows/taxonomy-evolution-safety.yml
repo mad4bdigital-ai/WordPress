@@ -30,6 +30,7 @@ jobs:
           php -l ops/taxonomy-evolution/wpcli-reference-shapes.php
           php -l ops/taxonomy-evolution/TaxonomyEvolutionGovernance.php
           php ops/taxonomy-evolution/tests/classifier-test.php
+          php ops/taxonomy-evolution/tests/readiness-regression.php
       - name: Validate site-neutral governance and fail-closed shadow contract
         run: |
           python3 - <<'PY'
