@@ -17,13 +17,13 @@ class MAD4B_SCP_Site_Profile {
     public static function provider_isolation_enabled() { return self::feature_enabled( 'provider_isolation' ); }
     public static function feature_enabled($feature) {
         $profile = self::profile();
-        $feature = sanitize_key( (string) $feature );
-        if ( ! self::origin_enrolled() || empty( $profile['features'] ) || ! is_array( $profile['features'] ) ) return false;
+		$feature = sanitize_key( (string) $feature );
+		if ( ! self::origin_enrolled() || empty( $profile['features'] ) || ! is_array( $profile['features'] ) ) return false;
     }
     public static function save_current_site() {
-        $record = array(
-            'contract' => self::CONTRACT,
-            'features' => array('provider_isolation' => ! empty( $input['provider_isolation_enabled'] )),
+		$record = array(
+			'contract' => self::CONTRACT,
+            'features' => array('provider_isolation' => ! empty( $input['provider_isolation_enabled'] ),),
         );
     }
     public static function migrate_legacy() {
@@ -31,7 +31,7 @@ class MAD4B_SCP_Site_Profile {
     }
     public static function build_status() {
         return array(
-            'write_enabled' => $authority_ready && self::record_feature_enabled( $profile, 'write', $environment ),
+			'write_enabled' => $authority_ready && self::record_feature_enabled( $profile, 'write', $environment ),
         );
     }
     public static function valid_record_shape() {
@@ -49,7 +49,7 @@ class MAD4B_SCP_Site_Profile_Admin {
     }
     public static function readback() {
        foreach ( array('provider_isolation' => 'provider_isolation_enabled') as $feature => $input_key ) {
-           if ( (bool) ! empty( $input[ $input_key ] ) !== (bool) ! empty( $features[ $feature ] ) ) return false;
+			if ( (bool) ! empty( $input[ $input_key ] ) !== (bool) ! empty( $features[ $feature ] ) ) return false;
        }
     }
 }
