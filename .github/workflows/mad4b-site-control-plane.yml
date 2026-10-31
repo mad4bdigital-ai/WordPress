@@ -86,6 +86,7 @@ jobs:
           php ops/company-readiness-workflow/tests/test_start_company_runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/mcp-adapter-version-independent-dependency.php
           php wp-content/plugins/mad4b-site-control-plane/tests/mcp-adapter-missing-capability-denied.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/mcp-dependency-isolation-source-contract.py
           python3 ops/company-readiness-workflow/tests/test_executor_admission_contract.py
           python3 -m py_compile ops/company-readiness-workflow/executor/company_stage_executor.py
           python3 -m py_compile ops/company-readiness-workflow/executor/company_stage_adapter.py
