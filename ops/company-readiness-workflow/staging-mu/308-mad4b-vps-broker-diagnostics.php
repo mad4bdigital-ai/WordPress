@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B VPS Broker Job Diagnostics
  * Description: Auditable, read-only WordPress Broker job/claim status for enrolled Central Administrators.
- * Version: 0.1.0
+ * Version: 0.2.0
  */
 defined('ABSPATH') || exit;
 final class MAD4B_VPS_Broker_Diagnostics_V1 {
@@ -74,6 +74,34 @@ final class MAD4B_VPS_Broker_Diagnostics_V1 {
             'company_production_mutation_claimed'=>false
         );
     }
+    /** Attested original host events are evidence of claim, never execution. */
+    public static function host_evidence(string $id): array {
+        $snapshot=get_option('mad4b_vps_broker_host_journal_v1',array());
+        if (!is_array($snapshot)
+            || empty($snapshot['signature_verified'])
+            || ($snapshot['host_id']??'')!==(string)get_option(
+                MAD4B_Central_VPS_Broker_V1::HOST_ID,''))
+            return array('journal_verified'=>false,'events'=>array(),
+                'host_claim_evidence'=>false,'shell_execution_verified'=>false);
+        $matched=array();
+        foreach ((array)($snapshot['events']??array()) as $event) {
+            if (!is_array($event) || ($event['job_id']??'')!==$id
+                || ($event['company']??'')!==self::COMPANY) continue;
+            if (!in_array($event['event']??'',array(
+              'CLAIM_ATTEMPTED','CLAIM_VERIFIED_NOT_EXECUTED','CLAIM_RESULT_UNCERTAIN'),true))
+              continue;
+            $matched[]=array(
+              'event'=>(string)$event['event'],
+              'at'=>(string)($event['at']??''));
+        }
+        $verified_claim=count(array_filter($matched,
+          static fn($row)=>$row['event']==='CLAIM_VERIFIED_NOT_EXECUTED'))>0;
+        return array('journal_verified'=>true,
+          'signed_snapshot_at'=>self::safe_time($snapshot['verified_at']??null),
+          'events'=>$matched,'host_claim_evidence'=>$verified_claim,
+          'shell_execution_verified'=>false);
+    }
+
     public static function detail(string $id) {
         if (!preg_match('/^[a-f0-9]{32}$/D',$id))
             return self::denial('invalid_job_id',422);
@@ -85,6 +113,7 @@ final class MAD4B_VPS_Broker_Diagnostics_V1 {
             return self::denial('job_not_found',404);
         $claim=get_option(MAD4B_Central_VPS_Broker_V1::CLAIM.$id, false);
         $state=self::classify($job,$claim);
+        $host=self::host_evidence($id);
         return array(
             'job_id'=>$id, 'company'=>self::COMPANY,
             'environment'=>(string)($job['environment']??''),
@@ -98,6 +127,9 @@ final class MAD4B_VPS_Broker_Diagnostics_V1 {
                 ? self::safe_time($claim['claimed_epoch']??null):null,
             'command_sha256'=>(string)($job['command_sha256']??''),
             'correlation_id'=>(string)($job['correlation_id']??''),
+            'host_journal'=>$host,
+            'claim_cross_checked_with_host'=>!empty($state['claim_record_matches'])
+                && !empty($host['host_claim_evidence']),
             ...$state
         );
     }
@@ -125,6 +157,9 @@ final class MAD4B_VPS_Broker_Diagnostics_V1 {
         $h=get_option(MAD4B_Central_VPS_Broker_V1::HEARTBEAT, array());
         $fresh=is_array($h) && !empty($h['verified'])
             && (int)($h['at']??0)>time()-600;
+        $journal=get_option('mad4b_vps_broker_host_journal_v1',array());
+        $has_journal=is_array($journal)&&!empty($journal['signature_verified'])
+          && ($journal['host_id']??'')===(string)get_option(MAD4B_Central_VPS_Broker_V1::HOST_ID,'');
         $rows=self::list_jobs(); $counts=array();
         foreach ($rows as $row) {
             $s=$row['status'];$counts[$s]=($counts[$s]??0)+1;
@@ -132,8 +167,9 @@ final class MAD4B_VPS_Broker_Diagnostics_V1 {
         return array(
             'contract'=>self::CONTRACT,
             'source'=>'original_wordpress_job_and_claim_options',
-            'host_journal_ingested'=>false,
-            'host_journal_note'=>'Root-owned VPS Broker events are not directly mounted into WordPress; no host execution success is inferred.',
+            'host_journal_ingested'=>$has_journal,
+            'host_journal_event_count'=>$has_journal?count($journal['events']??array()):0,
+            'host_journal_note'=>$has_journal?'Signed VPS event snapshot ingested; Claim events are not execution receipts.':'No signed VPS event snapshot has been received.',
             'read_only'=>true,
             'host_id'=>(string)get_option(MAD4B_Central_VPS_Broker_V1::HOST_ID,''),
             'signed_heartbeat_fresh'=>$fresh,
@@ -176,8 +212,8 @@ final class MAD4B_VPS_Broker_Diagnostics_V1 {
             esc_html((string)$snapshot['signed_heartbeat_at']).'</p>';
         echo '<p><a class="button" href="'.esc_url(admin_url('tools.php?page='.self::PAGE)).'">Refresh status</a> ';
         echo '<a class="button" href="'.esc_url(admin_url('tools.php?page=mad4b-broker-canary')).'">Dispatch diagnostic</a></p>';
-        echo '<p><strong>Important:</strong> CLAIMED proves only signed broker claim; VERIFIED requires a separate host execution receipt and independent readback. VPS journal integration is not yet active.</p>';
-        echo '<table class="widefat striped"><thead><tr><th>Job ID</th><th>Status</th><th>Original state</th><th>Host</th><th>Created</th><th>Claimed</th><th>Reason</th></tr></thead><tbody>';
+        echo '<p><strong>Important:</strong> CLAIMED proves only signed broker claim; VERIFIED requires a separate host execution receipt and independent readback. Signed VPS events: '.esc_html($snapshot['host_journal_ingested']?'verified':'not yet synced').'.</p>';
+        echo '<table class="widefat striped"><thead><tr><th>Job ID</th><th>Status</th><th>Original state</th><th>Host</th><th>Created</th><th>Claimed</th><th>VPS Evidence</th><th>Reason</th></tr></thead><tbody>';
         foreach($snapshot['jobs'] as $job){
             echo '<tr><td><code>'.esc_html($job['job_id']).'</code></td>'.
                 '<td><strong>'.esc_html($job['status']).'</strong></td>'.
@@ -185,9 +221,10 @@ final class MAD4B_VPS_Broker_Diagnostics_V1 {
                 '<td>'.esc_html($job['host_id']).'</td>'.
                 '<td>'.esc_html((string)$job['created_at']).'</td>'.
                 '<td>'.esc_html((string)$job['claimed_at']).'</td>'.
+                '<td>'.esc_html(!empty($job['claim_cross_checked_with_host'])?'Signed host Claim confirmed':'Not cross-checked').'</td>'.
                 '<td>'.esc_html($job['reason']).'</td></tr>';
         }
-        if(!$snapshot['jobs'])echo '<tr><td colspan="7">No Broker jobs recorded.</td></tr>';
+        if(!$snapshot['jobs'])echo '<tr><td colspan="8">No Broker jobs recorded.</td></tr>';
         echo '</tbody></table></div>';
     }
     public static function boot():void {
