@@ -24,6 +24,12 @@ final class MAD4B_SCP_Cross_Plugin_Lifecycle {
 
     private static function certificate( array $row ) {
         $blockers = array();
+        // An owner-registered MAD4B private source is NOT a certified
+        // third-party package. Its separately verified Git commit and
+        // safe native installer replace the extra package certificate.
+        // Source planning must still block if that installer is missing.
+        if ( 0 === strpos( (string) ( $row['repository'] ?? '' ), 'mad4bdigital-ai/' ) )
+            return $blockers;
         $expected_sha = (string) ( $row['candidate_source_commit_sha'] ?? '' );
         $expected_version = (string) ( $row['candidate_artifact_version'] ?? '' );
         $sha = (string) ( $row['source_commit_sha'] ?? '' );
@@ -60,13 +66,16 @@ final class MAD4B_SCP_Cross_Plugin_Lifecycle {
         $row = self::row( $input );
         if ( is_wp_error( $row ) ) return $row;
         $blockers = self::certificate( $row );
+        $private_source = 0 === strpos( (string) ( $row['repository'] ?? '' ), 'mad4bdigital-ai/' );
         return array(
             'contract' => self::CONTRACT, 'phase' => 'certification',
             'source_id' => $row['id'],
             'repository' => $row['repository'],
             'candidate_source_commit_sha' => (string) ( $row['candidate_source_commit_sha'] ?? '' ),
             'candidate_artifact_version' => (string) ( $row['candidate_artifact_version'] ?? '' ),
-            'candidate_is_certified' => empty( $blockers ),
+            'candidate_is_certified' => ! $private_source && empty( $blockers ),
+            'package_certification_required' => ! $private_source,
+            'private_source_registration_trusted' => $private_source,
             'certified_archive_sha256' => (string) ( $row['artifact_sha256'] ?? '' ),
             'blockers' => $blockers,
             'required_evidence' => array(
@@ -74,7 +83,8 @@ final class MAD4B_SCP_Cross_Plugin_Lifecycle {
                 'immutable_artifact_publication', 'exact_provider_certificate',
                 'source_registry_certification_review',
             ),
-            'next_phase' => empty( $blockers ) ? 'staging_apply_review' : 'independent_certification_review',
+            'next_phase' => $private_source ? 'immutable_source_preflight_and_native_installer_review'
+                : ( empty( $blockers ) ? 'staging_apply_review' : 'independent_certification_review' ),
             'ai_review_lifecycle' => class_exists('MAD4B_SCP_AI_Review_Lifecycle',false)
                 ? MAD4B_SCP_AI_Review_Lifecycle::decide('cross_plugin',
                     array('content_hash'=>(string)($row['artifact_sha256']??''),
@@ -120,6 +130,7 @@ final class MAD4B_SCP_Cross_Plugin_Lifecycle {
             'contract' => self::CONTRACT, 'phase' => 'staging_apply',
             'source_id' => $row['id'], 'environment' => self::environment(),
             'eligible_for_separate_owner_authorization' => ! $blockers,
+            'package_certification_required' => 0 !== strpos( (string) ( $row['repository'] ?? '' ), 'mad4bdigital-ai/' ),
             'blockers' => $blockers,
             'native_executor' => ! $blockers ? 'mad4b/plugin-package-apply' : '',
             'native_apply_input' => ! $blockers ? (array) ( $native['native_apply_input'] ?? array() ) : array(),
