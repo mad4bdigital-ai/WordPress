@@ -17,7 +17,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Syntax-check staging-only native WP-CLI shadow
-        run: php -l ops/taxonomy-evolution/wpcli-native-shadow.php
+        run: |
+          php -l ops/taxonomy-evolution/wpcli-native-shadow.php
+          php -l ops/taxonomy-evolution/TaxonomyEvolutionGovernance.php
+          php ops/taxonomy-evolution/tests/classifier-test.php
       - name: Validate site-neutral governance and fail-closed shadow contract
         run: |
           python3 - <<'PY'
