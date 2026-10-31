@@ -147,6 +147,28 @@ for marker in (
 if "empty( $mad4b_mcp_mu_critical_classes )" not in mu:
     fail("legacy 0.6.1 class fallback is not bounded by an empty exact profile")
 
+# Bounded, read-only cross-dependency diagnostic. Feature 007's authoritative
+# baseline-owned tests retain their own pass/fail decision unchanged; this
+# prints only the paths of inherited archive drift for scoped source review.
+archival_checker = ROOT.parents[2] / "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/rebind-delivery.py"
+if archival_checker.is_file():
+    archival_probe = subprocess.run(
+        ["python3", str(archival_checker)],
+        capture_output=True, text=True, check=False,
+    )
+    try:
+        archival_report = json.loads(archival_probe.stdout)
+        if archival_report.get("contract") == "mad4b.competitive-delivery-fingerprints.v1":
+            pending = [
+                {"manifest": row["manifest"], "paths": row["drift_paths"]}
+                for row in archival_report.get("results", []) if row.get("drift_paths")
+            ]
+            print("QA31_FEATURE007_ARCHIVAL_SOURCE_DRIFT_READONLY: "
+                  + json.dumps({"drift_count": archival_report.get("drift_count"),
+                                "pending_review": pending}, sort_keys=True))
+    except (ValueError, TypeError):
+        print("QA31_FEATURE007_ARCHIVAL_SOURCE_DIAGNOSTIC_UNAVAILABLE")
+
 # Run the same fail-closed fixtures, but expose the underlying PHP diagnostic.
 # A CalledProcessError alone hides which runtime representation invariant broke.
 for fixture in (
