@@ -1,0 +1,44 @@
+name: MAD4B Lifecycle Orchestrator
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-lifecycle-orchestrator/**'
+      - 'wp-content/plugins/mad4b-company-portfolio-manager/**'
+      - '.github/workflows/mad4b-lifecycle-orchestrator.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'wp-content/plugins/mad4b-lifecycle-orchestrator/**'
+      - 'wp-content/plugins/mad4b-company-portfolio-manager/**'
+      - '.github/workflows/mad4b-lifecycle-orchestrator.yml'
+permissions:
+  contents: read
+concurrency:
+  group: lifecycle-orchestrator-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  source-contract:
+    name: Central lifecycle source and safety contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: Syntax and source-only policy checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=wp-content/plugins/mad4b-lifecycle-orchestrator
+          find "$ROOT" -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+          php -l wp-content/plugins/mad4b-company-portfolio-manager/mad4b-company-portfolio-manager.php
+          php "$ROOT/tests/lifecycle-source-contract.php"
+          php "$ROOT/tests/unified-policy-source-contract.php"
+          php "$ROOT/tests/native-receipt-source-contract.php"
+          php wp-content/plugins/mad4b-company-portfolio-manager/tests-central-admin-proxy-source.php
+          echo 'WP-CLI live fixtures are not run on GitHub Actions; Staging acceptance required.'
