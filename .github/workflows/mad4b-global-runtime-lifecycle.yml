@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-global-runtime-lifecycle.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-dependency-planner.php'
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/global-runtime-lifecycle-contract.php'
       - 'wp-content/plugins/mad4b-lifecycle-orchestrator/**'
@@ -11,6 +12,7 @@ on:
     branches: [master]
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-global-runtime-lifecycle.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-dependency-planner.php'
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/global-runtime-lifecycle-contract.php'
       - '.github/workflows/mad4b-global-runtime-lifecycle.yml'
@@ -32,6 +34,7 @@ jobs:
           ROOT=wp-content/plugins/mad4b-site-control-plane
           php -l "$ROOT/includes/class-mad4b-scp-global-runtime-lifecycle.php"
           php -l "$ROOT/mad4b-site-control-plane.php"
+          php -l "$ROOT/includes/class-mad4b-scp-capability-dependency-planner.php"
           php "$ROOT/tests/global-runtime-lifecycle-contract.php"
           php -l wp-content/plugins/mad4b-lifecycle-orchestrator/class-mad4b-unified-governed-lifecycle-policy.php
           php wp-content/plugins/mad4b-lifecycle-orchestrator/tests/unified-policy-source-contract.php
