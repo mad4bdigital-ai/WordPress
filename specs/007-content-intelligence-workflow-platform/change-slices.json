@@ -4,8 +4,8 @@
   "reviewed_base_sha": "b8f2e0a60fa45e28b49643f1eae6f73570c2fee8",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 227,
-  "changed_paths_sha256": "98dec609ced3852e3fba905c5fd05a9e939b72f653542d57075825dae7011039",
+  "changed_file_count": 230,
+  "changed_paths_sha256": "d8d35f2112011cc276ed6b08d99820c254f4c04f2ef8d240ca921acd1fcc58c3",
   "slices": [
     {
       "id": "admin-market-and-operator",
@@ -119,6 +119,7 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/capability-traits-contract.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/event-automation-contract.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/isolated-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/developer-runtime-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/gateway-mutation-guards.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/governed-draft-contract.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py",
@@ -127,6 +128,7 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/site-neutrality-policy.json",
         "wp-content/plugins/mad4b-site-control-plane/tests/spec-consistency-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/universal-wordpress-operations-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/woocommerce-exact-package-onboarding-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/write-catalog-source-review-contract.py"
@@ -294,6 +296,7 @@
         "wp-content/plugins/mad4b-site-control-plane/bootstrap/mad4b-runtime-cache-convergence-mu.php",
         "wp-content/plugins/mad4b-site-control-plane/docs/RUNTIME-CACHE-CONVERGENCE.md",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-recovery-projection.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-migration-decision-catalog.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-recovery-attempt-budget.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-convergence.php",
