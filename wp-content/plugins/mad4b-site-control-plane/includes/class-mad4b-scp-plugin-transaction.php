@@ -77,6 +77,15 @@ final class MAD4B_SCP_Plugin_Transaction {
 			$planner = 'mad4b/plugin-remote-update-plan';
 			$executor = 'mad4b/plugin-remote-update-apply';
 			$planner_input += array( 'plugin_file' => $plugin );
+		} elseif ( 'replace' === $action && '' === $provider ) {
+			// Prefer the native WordPress update offer for installed plugins.
+			// The package is independently checked and read back by the existing
+			// remote updater; a provider certificate is not needed for this lane.
+			// Protected plugins and absent/unsafe update offers remain blocked.
+			if ( '' === $plugin ) return new WP_Error( 'mad4b_plugin_transaction_plugin_required', 'Installed plugin file is required for a native replacement.' );
+			$planner = 'mad4b/plugin-remote-update-plan';
+			$executor = 'mad4b/plugin-remote-update-apply';
+			$planner_input += array( 'plugin_file' => $plugin );
 		} elseif ( in_array( $action, array( 'install', 'replace' ), true ) ) {
 			if ( '' === $provider ) return new WP_Error( 'mad4b_plugin_transaction_provider_required', 'Certified provider_id is required for install/replace.' );
 			$planner = 'mad4b/plugin-package-plan';
@@ -101,7 +110,7 @@ final class MAD4B_SCP_Plugin_Transaction {
 		$compatibility_blockers = array();
 		$native_operation = isset( $native_plan['operation'] ) ? sanitize_key( (string) $native_plan['operation'] ) : '';
 		if ( 'install' === $action && 'install' !== $native_operation ) $compatibility_blockers[] = 'requested_install_requires_absent_plugin';
-		if ( 'replace' === $action && 'replace' !== $native_operation ) $compatibility_blockers[] = 'requested_replace_requires_installed_plugin';
+		if ( 'replace' === $action && ! in_array( $native_operation, array( 'replace', 'remote_update' ), true ) ) $compatibility_blockers[] = 'requested_replace_requires_installed_plugin';
 		if ( in_array( $action, array( 'activate', 'deactivate' ), true ) && $action !== $native_operation ) $compatibility_blockers[] = 'native_lifecycle_operation_mismatch';
 		if ( 'update' === $action && ! in_array( $native_operation, array( 'remote_update', 'update' ), true ) ) $compatibility_blockers[] = 'native_update_operation_mismatch';
 		$native_blockers = isset( $native_plan['blockers'] ) && is_array( $native_plan['blockers'] ) ? array_values( $native_plan['blockers'] ) : array();
@@ -122,6 +131,8 @@ final class MAD4B_SCP_Plugin_Transaction {
 			'blockers' => $blockers,
 			'dependency_impact' => $impact,
 			'native_plan' => $native_plan,
+			'package_certification_policy' => 'mad4b/plugin-remote-update-apply' === $executor ? 'optional_native_wordpress_offer' : 'existing_certified_provider_route',
+			'production_promotion_rule' => 'independent_staging_pass_and_exact_native_production_batch',
 			'execution_contract' => 'exact_executor_only',
 			'generic_mutation_dispatch' => false,
 			'resume_policy' => 'idempotency_and_reconciliation_before_retry',
