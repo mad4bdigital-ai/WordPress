@@ -51,6 +51,8 @@ def json_canonical(x):
 def file_manifest(root: Path):
     arr = []
     for p in root.rglob("*"):
+        if ".git" in p.relative_to(root).parts:
+            continue
         if p.is_symlink():
             raise RuntimeError("symlink in plugin directory")
         if p.is_file():
