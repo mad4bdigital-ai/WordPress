@@ -1,0 +1,33 @@
+name: MAD4B Elementor Style Parity
+on:
+  push:
+    paths:
+      - 'wp-content/mu-plugins/305-mad4b-elementor-style-parity.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php'
+      - 'ops/qa/mad4b-elementor-style-parity/**'
+      - '.github/workflows/mad4b-elementor-style-parity.yml'
+  pull_request:
+    paths:
+      - 'wp-content/mu-plugins/305-mad4b-elementor-style-parity.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php'
+      - 'ops/qa/mad4b-elementor-style-parity/**'
+      - '.github/workflows/mad4b-elementor-style-parity.yml'
+permissions:
+  contents: read
+concurrency:
+  group: mad4b-elementor-style-parity-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  style-parity-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Verify PHP source
+        run: |
+          php -l wp-content/mu-plugins/305-mad4b-elementor-style-parity.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php
+      - name: Verify interactive style parity safety
+        run: php ops/qa/mad4b-elementor-style-parity/tests/source_contract.php
