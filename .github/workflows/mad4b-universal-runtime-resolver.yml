@@ -23,8 +23,8 @@ jobs:
         with:
           python-version: '3.12'
       - name: Compile runtime and tests
-        run: python -m py_compile resolver.py test_resolver.py
+        run: python -m py_compile resolver.py test_resolver.py multi_transport_authority.py test_multi_transport_authority.py central_control_readback.py native_authority_status.py
         working-directory: tools/mad4b-universal-runtime-resolver
       - name: Isolated resolver contract tests
-        run: python -m unittest -v test_resolver
+        run: python -m unittest -v test_resolver test_multi_transport_authority
         working-directory: tools/mad4b-universal-runtime-resolver
