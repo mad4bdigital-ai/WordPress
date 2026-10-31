@@ -41,6 +41,7 @@ $checks=[
  'read-only policy REST'=>str_contains($core,"'policy'=>['policy','GET']"),
  'dynamic diagram not stored in journal'=>str_contains($core,"unset(")&&str_contains($core,"dependency_graph"),
  'reconciliation errors classified'=>str_contains($core,'::classify_error($resolved)'),
+ 'uncertain writes remain frozen'=>str_contains($core,"'VERIFIED','NEEDS_RECONCILIATION','RUNNING'"),
  'original user remains actor'=>str_contains($core,'administrator_actor_user_id'),
  'native provider execution absent'=>!str_contains($core,'wp_get_ability('),
  'old source-verification test retained'=>str_contains($core,'private static function source_verified'),
