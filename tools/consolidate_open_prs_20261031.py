@@ -34,10 +34,10 @@ while pending:
 subprocess.run(["git", "config", "user.name", "MAD4B Integration CI"], check=True)
 subprocess.run(["git", "config", "user.email", "integration-ci@users.noreply.github.com"], check=True)
 subprocess.run(["git", "fetch", "-q", "origin", "+refs/pull/*/head:refs/remotes/origin/pr/*"], check=True)
-def resolve_exact_pr669_review_registry(item_number, conflicts):
+def resolve_exact_review_registry(item_number, conflicts):
     """Union reviewed entries; retain MCP-01 only in one known control-superset case."""
     target = "governance/production-readiness/capability-coverage.json"
-    if item_number != 669 or conflicts != [target]:
+    if item_number not in (656, 664, 669) or conflicts != [target]:
         return False
     try:
         records = [json.loads(subprocess.check_output(
@@ -137,7 +137,7 @@ for item in ordered:
                                        capture_output=True, text=True).stdout.splitlines()
             if (resolve_exact_pr675_conflict(item["number"], conflicts)
                     or resolve_exact_pr677_conflict(item["number"], conflicts)
-                    or resolve_exact_pr669_review_registry(item["number"], conflicts)):
+                    or resolve_exact_review_registry(item["number"], conflicts)):
                 subprocess.run(["git", "diff", "--cached", "--check"], check=True)
                 subprocess.run(["git", "commit", "-m",
                                 "integration: reconcile PR675 brand/style localization alerts"],
