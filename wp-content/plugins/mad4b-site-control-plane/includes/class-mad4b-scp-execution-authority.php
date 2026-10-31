@@ -65,10 +65,23 @@ final class MAD4B_SCP_Execution_Authority {
         // user; this resolver never creates an agent or a grant.
         $agent = class_exists('MAD4B_SCP_Agent_Registry')
             ? MAD4B_SCP_Agent_Registry::resolve_agent($identity) : null;
-        if ( !is_array($agent) || (int)($agent['wp_user_id']??0) !== $uid
-            || (string)($agent['environment']??'') !== $environment )
-            return new WP_Error('mad4b_actor_registry_binding_required','Host operator must be bound to the existing canonical owner Agent.');
-        return self::actor($site,$uid,$environment,'host_cli',$identity);
+        if ( is_array($agent) ) {
+            if ((int)($agent['wp_user_id']??0) !== $uid
+                || (string)($agent['environment']??'') !== $environment)
+                return new WP_Error('mad4b_actor_registry_binding_conflict','Host subject belongs to a different principal.');
+            $actor=self::actor($site,$uid,$environment,'host_cli',$identity);
+            $actor['registry_bound']=true;
+            return $actor;
+        }
+        // A verified local host may inspect and plan missing bindings, but
+        // MUST NOT use an unbound subject to execute or obtain a grant.
+        if ('apply' === $operation)
+            return new WP_Error('mad4b_actor_registry_binding_required','Host execution requires the original Agent Registry binding.');
+        if (!is_wp_error($agent) || 'mad4b_nhi_subject_unbound'!==$agent->get_error_code())
+            return new WP_Error('mad4b_actor_registry_unavailable','Canonical Agent Registry did not confirm an unbound host subject.');
+        $actor=self::actor($site,$uid,$environment,'host_cli',$identity);
+        $actor['registry_bound']=false;
+        return $actor;
     }
 
     private static function actor($site,$uid,$environment,$transport,$identity) {
