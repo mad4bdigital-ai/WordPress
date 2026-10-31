@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B VPS Broker Job Diagnostics
  * Description: Auditable, read-only WordPress Broker job/claim status for enrolled Central Administrators.
- * Version: 0.2.0
+ * Version: 0.3.0
  */
 defined('ABSPATH') || exit;
 final class MAD4B_VPS_Broker_Diagnostics_V1 {
@@ -33,6 +33,19 @@ final class MAD4B_VPS_Broker_Diagnostics_V1 {
             && (int)($claim['claimed_epoch']??0)>0;
         $expired = (int)($job['expires_epoch']??0)>0
             && (int)$job['expires_epoch'] < time();
+        $expected=hash('sha256','MAD4B_BROKER_DIAGNOSTIC');
+        $receipt_ok=$claim_ok && is_array($receipt)
+           && ($receipt['contract']??'')==='mad4b.vps-broker.diagnostic-execute.v1'
+           && ($receipt['job_id']??'')===($job['job_id']??'')
+           && ($receipt['site_uuid']??'')===($job['site_uuid']??'')
+           && ($receipt['host_id']??'')===($job['target_host_id']??'')
+           && ($receipt['command_sha256']??'')===($job['command_sha256']??'')
+           && ($receipt['output_sha256']??'')===$expected
+           && ($receipt['readback_sha256']??'')===$expected
+           && ($receipt['state']??'')==='DIAGNOSTIC_EXECUTION_READBACK_VERIFIED'
+           && ($receipt['signed_host_execution']??false)===true
+           && ($receipt['independent_readback_verified']??false)===true
+           && ($receipt['company_production_mutation']??true)===false;
         $status = 'UNKNOWN';
         $reason = 'state_requires_review';
         if ($native === 'QUEUED_FOR_VPS_BROKER_CLAIM') {
@@ -54,23 +67,23 @@ final class MAD4B_VPS_Broker_Diagnostics_V1 {
                 $status = 'INCONSISTENT';
                 $reason = 'missing_or_mismatched_original_claim';
             }
+        } elseif ($native === 'DIAGNOSTIC_EXECUTION_READBACK_VERIFIED') {
+            $status=$receipt_ok?'VERIFIED':'INCONSISTENT';
+            $reason=$receipt_ok?'signed_canary_execution_and_independent_host_readback':'verified_state_lacks_exact_signed_receipt';
         } elseif (str_starts_with($native,'FAILED_') || in_array($native,
                 array('ERROR_UNCERTAIN','CANCELLED','REVOKED','EXPIRED'),true)) {
             $status = 'FAILED';
             $reason = strtolower($native);
         }
-        // Readback receipts are deliberately not available in Broker V1.
-        // No execution state is promoted to VERIFIED without an independent
-        // native execution receipt and a separately proven readback.
-        $execution_verified = false;
+        $execution_verified=$status==='VERIFIED';
         return array(
             'status'=>$status, 'reason'=>$reason, 'source_job_state'=>$native,
             'claim_record_matches'=>$claim_ok,
             'signed_claim_was_accepted_by_original_broker'=>$claim_ok,
             'shell_execution_verified'=>$execution_verified,
-            'independent_readback_verified'=>false,
+            'independent_readback_verified'=>$execution_verified,
             'host_execution_receipt_present'=>is_array($receipt),
-            'completion_verified'=>false,
+            'completion_verified'=>$execution_verified,
             'company_production_mutation_claimed'=>false
         );
     }
@@ -112,7 +125,8 @@ final class MAD4B_VPS_Broker_Diagnostics_V1 {
             || ($job['company']??'')!==self::COMPANY)
             return self::denial('job_not_found',404);
         $claim=get_option(MAD4B_Central_VPS_Broker_V1::CLAIM.$id, false);
-        $state=self::classify($job,$claim);
+        $receipt=get_option('mad4b_vps_broker_diagnostic_receipt_v1_'.$id,false);
+        $state=self::classify($job,$claim,$receipt);
         $host=self::host_evidence($id);
         return array(
             'job_id'=>$id, 'company'=>self::COMPANY,
@@ -212,7 +226,7 @@ final class MAD4B_VPS_Broker_Diagnostics_V1 {
             esc_html((string)$snapshot['signed_heartbeat_at']).'</p>';
         echo '<p><a class="button" href="'.esc_url(admin_url('tools.php?page='.self::PAGE)).'">Refresh status</a> ';
         echo '<a class="button" href="'.esc_url(admin_url('tools.php?page=mad4b-broker-canary')).'">Dispatch diagnostic</a></p>';
-        echo '<p><strong>Important:</strong> CLAIMED proves only signed broker claim; VERIFIED requires a separate host execution receipt and independent readback. Signed VPS events: '.esc_html($snapshot['host_journal_ingested']?'verified':'not yet synced').'.</p>';
+        echo '<p><strong>Important:</strong> CLAIMED proves only a signed claim; VERIFIED is restricted to the fixed, signed, non-mutating VPS canary with independent host readback. Signed VPS events: '.esc_html($snapshot['host_journal_ingested']?'verified':'not yet synced').'.</p>';
         echo '<table class="widefat striped"><thead><tr><th>Job ID</th><th>Status</th><th>Original state</th><th>Host</th><th>Created</th><th>Claimed</th><th>VPS Evidence</th><th>Reason</th></tr></thead><tbody>';
         foreach($snapshot['jobs'] as $job){
             echo '<tr><td><code>'.esc_html($job['job_id']).'</code></td>'.
