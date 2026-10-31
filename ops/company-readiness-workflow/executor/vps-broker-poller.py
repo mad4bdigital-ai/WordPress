@@ -137,7 +137,7 @@ def poll(limit):
             claimed = wp_call(["claim", "--job="+job_id, "--nonce="+nonce,
                 "--issued="+str(issued), "--expires="+str(expiry),
                 "--signature="+signature], timeout=45)
-            if (claimed.get("job_id") != job_id or claimed.get("state") != (
+            if (claimed.get("job_id") != job_id or claimed.get("state") !=
                 "BROKER_CLAIMED_PENDING_INDEPENDENT_HOST_AUTHORITY"):
                 raise RuntimeError("INVALID_CLAIM_READBACK")
             audit("CLAIM_VERIFIED_NOT_EXECUTED",job_id=job_id,company=name)
