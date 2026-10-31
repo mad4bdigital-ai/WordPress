@@ -5,6 +5,8 @@ on:
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-transaction.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/plugin-transaction-native-cert-optional.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-update-recovery.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/plugin-update-recovery-native-cert-optional.php'
       - '.github/workflows/mad4b-native-plugin-cert-optional.yml'
   workflow_dispatch:
 
@@ -25,3 +27,6 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-transaction.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/plugin-transaction-native-cert-optional.php
           php wp-content/plugins/mad4b-site-control-plane/tests/plugin-transaction-native-cert-optional.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-update-recovery.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/plugin-update-recovery-native-cert-optional.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/plugin-update-recovery-native-cert-optional.php
