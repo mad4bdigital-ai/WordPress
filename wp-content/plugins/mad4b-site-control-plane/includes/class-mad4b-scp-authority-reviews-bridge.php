@@ -25,16 +25,23 @@ final class MAD4B_SCP_Authority_Reviews_Bridge {
         $sealed=is_array($baseline)&&!empty($baseline['seal_verified'])
             &&!empty($baseline['captured_before_update'])
             &&!empty($baseline['audit_verified']);
+        $approved_capabilities=class_exists('MAD4B_SCP_Staging_Write_Grant_Reconciliation')
+            ? MAD4B_SCP_Staging_Write_Grant_Reconciliation::allowed_ability_providers():array();
         foreach($missing as $g) {
             if(!is_array($g)||'missing_exact_grant'!==($g['reason']??''))continue;
             $ability=(string)($g['ability']??'');
             $provider=sanitize_key((string)($g['provider']??''));
             if(''===$ability||''===$provider)continue;
+            $source_approved=isset($approved_capabilities[$ability])
+                && sanitize_key((string)$approved_capabilities[$ability])===$provider;
             $rows[]=array(
                 'kind'=>'exact_grant','subject'=>$ability.'@'.$provider,
-                'state'=>$sealed?'AWAITING_NATIVE_APPROVAL_EVALUATION':'REVIEW_REQUIRED',
-                'reason'=>$sealed?'preapproved_baseline_must_pass_native_delta_gate':'no_sealed_prior_grant_approval',
+                'state'=>!$source_approved?'SOURCE_POLICY_REVIEW_REQUIRED':(
+                    $sealed?'AWAITING_NATIVE_APPROVAL_EVALUATION':'REVIEW_REQUIRED'),
+                'reason'=>!$source_approved?'capability_provider_outside_reviewed_source_policy':(
+                    $sealed?'preapproved_baseline_must_pass_native_delta_gate':'no_sealed_prior_grant_approval'),
                 'native_owner'=>'MAD4B_SCP_Staging_Write_Grant_Reconciliation',
+                'source_reviewed'=>$source_approved,
                 'automatic_grant_issued'=>false,
             );
         }
