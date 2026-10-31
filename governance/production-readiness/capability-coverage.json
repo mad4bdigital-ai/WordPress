@@ -3973,6 +3973,101 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing MCP request admission, provider isolation and execution-denial controls already require the owner-ticket token refresh path to use its original bound WordPress authority; this source adds a REST adapter but no independent authorization grant or new trusted provider.",
       "review_rationale": "Exact source and same-PR hermetic regression review of four provider connection REST routes. The GET endpoints call admin-guarded discovery and plans. The POST refresh endpoint requires exact plan and approval-ticket fields, enrolled Staging authority, a verified ChatGPT OAuth client, central Authorization::authorize_mutation and claim_mutation, with invocation through the governed WP Ability rather than a direct provider callback. POST reconnect enforces an authenticated owner session and wp_rest nonce, exact bound reconnect plan and no scope expansion; actual OAuth consent remains browser-side. Invalid routes/roles/payloads and Production refresh are denied, and the regression tests verify no token mutation or authorization-url creation on denied requests. This is source-level CI assurance, not a live grant or Production release. Reviewed exact REST route: rest:mad4b/v1/provider-connections/(?P<provider>[a-z][a-z0-9_-]{0,63})/refresh"
+    },
+    {
+      "id": "ability:mad4b/guided-continuation-run",
+      "owner_role": "AI-assisted exact-source CI reviewer, independent owner approval remains mandatory",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/guided-continuation-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "coverage_reuse_rationale": "Original MCP policy, provider-safe read classification and execution-denial controls remain authoritative. This source registers only the guided-continuation-run tool; guided-continuation-run is that read-only tool with no independent credentials, permissions or dispatch authority.",
+      "review_rationale": "Exact-source CI-only review of a read-only next-ability follower that cannot create an approval ticket, execute mutations, replay original writes, or initiate external OAuth. It accepts only a fixed, audited SAFE_READS list, requires the original managed read policy and WordPress Ability read-only annotation, a supported read category, and a zero-required-input schema. It executes a maximum of three steps, terminates on cycles and unsafe/write identifiers, and returns only bounded state/next-ability/error-code values. Same-PR hermetic PHP test is executed in Site Control Plane CI and verifies real registration, correct two-step read chain, no mutation flags, attempted write as a nonexecuting handoff, cycle and budget enforcement, denied policy, unsafe category/annotation/required inputs, malformed original hash, forbidden extra input, and redacted error output. Exact static ability identifier: mad4b/guided-continuation-run"
+    },
+    {
+      "id": "ability:mad4b/runtime-convergence-status",
+      "owner_role": "AI-assisted exact-source CI reviewer, independent owner approval remains mandatory",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/guided-continuation-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "coverage_reuse_rationale": "Original MCP policy, provider-safe read classification and execution-denial controls remain authoritative. This source registers only the guided-continuation-run tool; runtime-convergence-status is a literal certified read-follow-up reference with no independent credentials, permissions or dispatch authority.",
+      "review_rationale": "Exact-source CI-only review of a read-only next-ability follower that cannot create an approval ticket, execute mutations, replay original writes, or initiate external OAuth. It accepts only a fixed, audited SAFE_READS list, requires the original managed read policy and WordPress Ability read-only annotation, a supported read category, and a zero-required-input schema. It executes a maximum of three steps, terminates on cycles and unsafe/write identifiers, and returns only bounded state/next-ability/error-code values. Same-PR hermetic PHP test is executed in Site Control Plane CI and verifies real registration, correct two-step read chain, no mutation flags, attempted write as a nonexecuting handoff, cycle and budget enforcement, denied policy, unsafe category/annotation/required inputs, malformed original hash, forbidden extra input, and redacted error output. Exact static ability identifier: mad4b/runtime-convergence-status"
+    },
+    {
+      "id": "ability:mad4b/skills-runtime-certification",
+      "owner_role": "AI-assisted exact-source CI reviewer, independent owner approval remains mandatory",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/guided-continuation-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "coverage_reuse_rationale": "Original MCP policy, provider-safe read classification and execution-denial controls remain authoritative. This source registers only the guided-continuation-run tool; skills-runtime-certification is a literal certified read-follow-up reference with no independent credentials, permissions or dispatch authority.",
+      "review_rationale": "Exact-source CI-only review of a read-only next-ability follower that cannot create an approval ticket, execute mutations, replay original writes, or initiate external OAuth. It accepts only a fixed, audited SAFE_READS list, requires the original managed read policy and WordPress Ability read-only annotation, a supported read category, and a zero-required-input schema. It executes a maximum of three steps, terminates on cycles and unsafe/write identifiers, and returns only bounded state/next-ability/error-code values. Same-PR hermetic PHP test is executed in Site Control Plane CI and verifies real registration, correct two-step read chain, no mutation flags, attempted write as a nonexecuting handoff, cycle and budget enforcement, denied policy, unsafe category/annotation/required inputs, malformed original hash, forbidden extra input, and redacted error output. Exact static ability identifier: mad4b/skills-runtime-certification"
+    },
+    {
+      "id": "ability:mad4b/write-runtime-certification",
+      "owner_role": "AI-assisted exact-source CI reviewer, independent owner approval remains mandatory",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/guided-continuation-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "coverage_reuse_rationale": "Original MCP policy, provider-safe read classification and execution-denial controls remain authoritative. This source registers only the guided-continuation-run tool; write-runtime-certification is a literal certified read-follow-up reference with no independent credentials, permissions or dispatch authority.",
+      "review_rationale": "Exact-source CI-only review of a read-only next-ability follower that cannot create an approval ticket, execute mutations, replay original writes, or initiate external OAuth. It accepts only a fixed, audited SAFE_READS list, requires the original managed read policy and WordPress Ability read-only annotation, a supported read category, and a zero-required-input schema. It executes a maximum of three steps, terminates on cycles and unsafe/write identifiers, and returns only bounded state/next-ability/error-code values. Same-PR hermetic PHP test is executed in Site Control Plane CI and verifies real registration, correct two-step read chain, no mutation flags, attempted write as a nonexecuting handoff, cycle and budget enforcement, denied policy, unsafe category/annotation/required inputs, malformed original hash, forbidden extra input, and redacted error output. Exact static ability identifier: mad4b/write-runtime-certification"
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-guided-continuation.php",
+      "owner_role": "AI-assisted exact-source CI reviewer, independent owner approval remains mandatory",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/guided-continuation-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "coverage_reuse_rationale": "Existing administrator read permission, browser safety and security-output controls restrict the independent internal service; the new same-PR hermetic test proves no self-granted permission and no mutation path.",
+      "review_rationale": "Exact-source CI-only review of a read-only next-ability follower that cannot create an approval ticket, execute mutations, replay original writes, or initiate external OAuth. It accepts only a fixed, audited SAFE_READS list, requires the original managed read policy and WordPress Ability read-only annotation, a supported read category, and a zero-required-input schema. It executes a maximum of three steps, terminates on cycles and unsafe/write identifiers, and returns only bounded state/next-ability/error-code values. Same-PR hermetic PHP test is executed in Site Control Plane CI and verifies real registration, correct two-step read chain, no mutation flags, attempted write as a nonexecuting handoff, cycle and budget enforcement, denied policy, unsafe category/annotation/required inputs, malformed original hash, forbidden extra input, and redacted error output."
     }
   ],
   "lifecycle": [],
@@ -12084,6 +12179,23 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Exact source and same-PR hermetic regression review of four provider connection REST routes. The GET endpoints call admin-guarded discovery and plans. The POST refresh endpoint requires exact plan and approval-ticket fields, enrolled Staging authority, a verified ChatGPT OAuth client, central Authorization::authorize_mutation and claim_mutation, with invocation through the governed WP Ability rather than a direct provider callback. POST reconnect enforces an authenticated owner session and wp_rest nonce, exact bound reconnect plan and no scope expansion; actual OAuth consent remains browser-side. Invalid routes/roles/payloads and Production refresh are denied, and the regression tests verify no token mutation or authorization-url creation on denied requests. This is source-level CI assurance, not a live grant or Production release."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-guided-continuation.php",
+      "source_blob_sha": "b09d5b79f69e8c0d7b4479669332c5f8a4661348",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/guided-continuation-runtime.php"
+      ],
+      "owner_role": "AI-assisted exact-source reviewer, CI only; not an owner attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact-source CI-only review of a read-only next-ability follower that cannot create an approval ticket, execute mutations, replay original writes, or initiate external OAuth. It accepts only a fixed, audited SAFE_READS list, requires the original managed read policy and WordPress Ability read-only annotation, a supported read category, and a zero-required-input schema. It executes a maximum of three steps, terminates on cycles and unsafe/write identifiers, and returns only bounded state/next-ability/error-code values. Same-PR hermetic PHP test is executed in Site Control Plane CI and verifies real registration, correct two-step read chain, no mutation flags, attempted write as a nonexecuting handoff, cycle and budget enforcement, denied policy, unsafe category/annotation/required inputs, malformed original hash, forbidden extra input, and redacted error output."
     }
   ],
   "code_change_rules": {
