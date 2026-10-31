@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Merge all open PR heads on an isolated integration branch; never auto-resolve conflicts."""
+"""Merge current open PR heads on an isolated integration branch; never auto-resolve conflicts."""
 import json
 import os
 import subprocess
@@ -16,8 +16,8 @@ request = urllib.request.Request(url, headers={
 })
 with urllib.request.urlopen(request, timeout=25) as response:
     items = json.load(response)
-if len(items) != 59:
-    raise SystemExit(f"Fail-closed: expected 59 open PRs at snapshot, found {len(items)}")
+if not items or len(items) >= 100:
+    raise SystemExit(f"Fail-closed: empty or possibly truncated open PR list ({len(items)})")
 prs = [dict(number=p["number"], head=p["head"]["ref"], head_sha=p["head"]["sha"],
             base=p["base"]["ref"], draft=p["draft"], title=p["title"]) for p in items]
 by_head = {p["head"]: p for p in prs}
