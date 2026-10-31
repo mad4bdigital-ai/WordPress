@@ -17,6 +17,11 @@ $checks=[
  'provider authority blocker'=>str_contains($plugin,'provider_write_not_certified'),
  'does not execute provider ability'=>!str_contains($plugin,'wp_get_ability('),
  'no arbitrary command executor'=>!str_contains($plugin,'shell_exec(')&&!str_contains($plugin,'eval('),
+ 'provider write readiness not inferred from registration'=>str_contains($plugin,'provider_write_certified'),
+ 'readiness not same as authority'=>str_contains($plugin,'readiness_is_not_execution_authority'),
+ 'reconcile uses per-event native DB lock'=>str_contains($plugin,'GET_LOCK(%s,2)'),
+ 'reconcile lock always released'=>str_contains($plugin,'RELEASE_LOCK(%s)'),
+
  'does not publish posts'=>!str_contains($plugin,'wp_update_post(')&&!str_contains($plugin,'wp_publish_post('),
  'no arbitrary file mutation'=>!str_contains($plugin,'file_put_contents('),
  'event key validated'=>str_contains($plugin,'invalid_event'),
