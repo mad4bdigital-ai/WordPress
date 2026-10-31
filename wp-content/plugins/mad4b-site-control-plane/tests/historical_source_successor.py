@@ -261,6 +261,16 @@ DELIVERY_REVIEWED_ANCESTORS = {
         "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
     "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php":
         "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
+    # Exact archived G2/G4/G8 sources have been verified against this Git ancestor.
+    # Current successors still require exact blob identity and CI-only source reviews.
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php":
+        "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
+    "wp-content/plugins/mad4b-site-control-plane/config/remote-operation-catalog.php":
+        "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php":
+        "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-convergence.php":
+        "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
 }
 
 
