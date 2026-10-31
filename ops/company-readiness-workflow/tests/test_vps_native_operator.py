@@ -9,7 +9,7 @@ policy={'contract':op.CONTRACT,'host_id':op.HOST,'principal':'root','revoked':Fa
  'tours-central:staging':{'allow_operator':True,'allow_sql':True,
    'allow_mutation':True,'allow_production_mutation':False},
  'wayfatours:production':{'allow_operator':True,'allow_sql':True,
-   'allow_mutation':False,'allow_production_mutation':False}}}
+   'allow_mutation':True,'allow_production_mutation':True}}}
 class Args:pass
 def admission(file_data,readback_data,kind='shell',intent='diagnostic',
  company='tours-central',environment='staging',backup=None,rollback=None):
@@ -41,9 +41,23 @@ denial(lambda:admission(b'SELECT 1 INTO OUTFILE \'/tmp/a\';',b'SELECT 1',
     kind='sql'), 'select into bypass')
 denial(lambda:admission(b'UPDATE wp_options SET option_value=1',b'SELECT 1',
     kind='sql',intent='repair'), 'backup and rollback mandatory')
-denial(lambda:admission(b'SELECT 1',b'SELECT 1',kind='sql',intent='repair',
-    environment='production',company='wayfatours',backup=b'backup',rollback=b'ROLLBACK'),
-    'production mutating grant denied')
+prod_read=admission(b'SELECT 1',b'SELECT 1',
+    kind='sql',intent='read',environment='production',company='wayfatours')
+assert prod_read['mutating'] is False and prod_read['risk_class']=='production_read'
+prod_write=admission(b'UPDATE canary SET state=1',b'SELECT state FROM canary',
+    kind='sql',intent='repair',environment='production',company='wayfatours',
+    backup=b'database-backup-evidence',rollback=b'UPDATE canary SET state=0')
+assert prod_write['mutating'] and prod_write['risk_class']=='production_write'
+assert prod_write['production_mutation_authorized'] is True
+denial(lambda:admission(b'UPDATE canary SET state=1',b'SELECT state FROM canary',
+    kind='sql',intent='repair',environment='production',company='wayfatours'),
+    'production write requires independent backup and rollback')
+policy['scopes']['wayfatours:production']['allow_production_mutation']=False
+denial(lambda:admission(b'UPDATE canary SET state=1',b'SELECT state FROM canary',
+    kind='sql',intent='repair',environment='production',company='wayfatours',
+    backup=b'database-backup-evidence',rollback=b'UPDATE canary SET state=0'),
+    'independently revoked production mutation denied')
+policy['scopes']['wayfatours:production']['allow_production_mutation']=True
 denial(lambda:admission(b'SELECT 1',b'SELECT 1',kind='sql',
     environment='production',company='not-wayfatours'),
     'unenrolled production company')
@@ -68,4 +82,4 @@ big=admission(b'UPDATE canary SET state=1',b'SELECT state FROM canary',
     kind='sql',intent='repair',backup=large_backup,
     rollback=b'UPDATE canary SET state=0')
 assert big['backup_sha256']==op.sha(large_backup)
-print('PASS 13: native general SSH, SQL inspection, no unsafe read bypass, staging backup/rollback and production deny')
+print('PASS 16: native SSH and SQL across staging/production, scoped authorization, production backup/rollback, deny bypass')
