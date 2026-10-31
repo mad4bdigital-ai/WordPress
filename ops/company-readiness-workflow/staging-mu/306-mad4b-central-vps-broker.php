@@ -173,7 +173,7 @@ final class MAD4B_Central_VPS_Broker_V1 {
             || !is_string($pub) || strlen($pub)!==SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES
             || !is_string($sig) || strlen($sig)!==SODIUM_CRYPTO_SIGN_BYTES)
             return false;
-        $msg=implode("\\n",array(self::CONTRACT,'heartbeat',$host,
+        $msg=implode("\n",array(self::CONTRACT,'heartbeat',$host,
             $nonce,(string)$iat,(string)$exp));
         return sodium_crypto_sign_verify_detached($sig,$msg,$pub);
     }
