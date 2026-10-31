@@ -66,5 +66,9 @@ report = {"contract": "mad4b.open-prs-consolidation.v1", "production_mutation": 
 Path("governance/integration/open-prs-20261031.json").write_text(json.dumps(report, indent=2) + "\n")
 subprocess.run(["git", "add", "governance/integration/open-prs-20261031.json"], check=True)
 subprocess.run(["git", "commit", "-m", "governance: record 59 open PR merge attempts and unresolved conflicts"], check=True)
+# Never publish a partial result as a fully consolidated branch.
+if report["blocked_conflicts"]:
+    raise SystemExit("CONSOLIDATION_BLOCKED: " + str(report["blocked_conflicts"]) +
+                     " PRs have unresolved semantic conflicts; report retained as CI artifact")
 subprocess.run(["git", "push", "origin", "HEAD:refs/heads/integration/all-open-prs-20261031"], check=True)
 print(json.dumps({key: report[key] for key in ("all_prs_attempted","merged","already_included","blocked_conflicts","merge_ready")}))
