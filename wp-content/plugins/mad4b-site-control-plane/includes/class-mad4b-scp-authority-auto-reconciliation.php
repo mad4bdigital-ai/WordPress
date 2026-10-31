@@ -149,7 +149,7 @@ final class MAD4B_SCP_Authority_Auto_Reconciliation {
             ||(int)$agent['wp_user_id']!==(int)$users[0])
             return new WP_Error('mad4b_auto_reconcile_agent_denied','Exact existing canonical owner Agent required.');
         $audit=class_exists('MAD4B_SCP_Audit')?MAD4B_SCP_Audit::storage_status():array();
-        if(empty($audit['ready'])||empty($audit['append_only']))
+        if(empty($audit['ready']) || 'append_only_no_automatic_deletion' !== ($audit['retention_mode'] ?? ''))
             return new WP_Error('mad4b_auto_reconcile_audit_denied','Append-only audit required.');
         // The current host attestation maps to exactly this agent. The bind
         // is idempotent and creates no new Agent or grant.
