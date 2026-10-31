@@ -36,3 +36,15 @@ Manual event input: `goal`, `target_kind`, `target_id`, `event_type`, `event_key
 - Company Portfolio Manager company-portfolio-transitioned hook: emitted after successful assignment write. Company/manager/site-binding and revision read back.
 - VERIFIED is allowed only for a terminal ContentJob COMPLETED revision with trusted post-commit source hook and matching canonical readback. Its scope is content_job_terminal_transition_only. It does not certify article publication, SEO or media.
 - BLOCKED_AUTHORITY runs no provider mutation. WP Cron rechecks certification twice, on bounded backoff; new readiness event or manual reconciliation can refresh later.
+
+## Central Administrator acting on behalf (0.2.1-staging)
+
+- Central Administrator can represent an enrolled company without inventing a Company Manager identity. Representative mode: `central_admin_proxy`.
+- The authentic actor is the logged-in WordPress Administrator, with `manage_options` and `activate_plugins`; the represented party is resolved from the verified Company Registry binding.
+- The request is a durable, idempotent scoped **operational intent**, not evidence of an owner-signed mandate, source owner approval, or successful provider mutation.
+- The actor ID and company/binding are stored as separate principals and retained during background readiness reconciliation. An anonymous or non-admin event cannot claim central representation.
+- Implementation lives in `mad4b-company-portfolio-manager/class-mad4b-central-admin-proxy.php`.
+- WordPress admin screen: `/wp-admin/admin.php?page=mad4b-company-admin-proxy`.
+- REST context: `GET /wp-json/mad4b/v1/central-admin/company-representation?company_code=wayfatours`.
+- REST request: `POST /wp-json/mad4b/v1/central-admin/company-representation`, using a valid WordPress REST nonce and the exact current binding SHA. Input: `company_code`, `operation`, `reason`, `event_key`, `expected_binding_sha256`.
+- The existing native provider's write and approval gates still apply. No arbitrary execution dispatch and no owner impersonation.
