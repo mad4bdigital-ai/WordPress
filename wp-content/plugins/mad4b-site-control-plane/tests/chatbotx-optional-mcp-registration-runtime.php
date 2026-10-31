@@ -9,6 +9,7 @@ define( 'ABSPATH', '/isolated-wordpress/' );
 define( 'WP_PLUGIN_DIR', '/isolated-wordpress/wp-content/plugins' );
 $GLOBALS['cmb_plugin_active'] = false;
 $GLOBALS['cmb_registered_names'] = array();
+$GLOBALS['cmb_registered_specs'] = array();
 
 function get_option( $key, $default = false ) {
     return 'active_plugins' === $key && $GLOBALS['cmb_plugin_active']
@@ -26,6 +27,7 @@ abstract class MAD4B_SCP_Adapter_Base {
     }
     protected function add_ability( $name, ...$details ) {
         $GLOBALS['cmb_registered_names'][] = $name;
+        $GLOBALS['cmb_registered_specs'][$name] = $details;
     }
 }
 class Customer_Messaging_Bridge { const API_ORIGIN = 'https://provider.example.invalid'; }
@@ -65,6 +67,27 @@ require_true( array() === array_diff(
     array_merge( $present['read'], $present['write'] ),
     $GLOBALS['cmb_registered_names']
 ), 'advertised ability missing from actual provider registration' );
+// Inspect the actual adapter registration arguments, not only its names.
+// The stub preserves source arg order: label, method, permission, schema,
+// surface, readonly, destructive, idempotent.
+foreach ( $present['write'] as $name ) {
+    $args = $GLOBALS['cmb_registered_specs'][$name] ?? array();
+    require_true( count( $args ) === 8 && $args[4] === 'write'
+        && $args[5] === false && $args[6] === true && $args[7] === true
+        && $args[2] === array('MAD4B_SCP_Policy', 'can_admin'),
+        'governed write must require admin permission and non-readonly surface: ' . $name );
+    $schema = $args[3];
+    require_true( is_array( $schema ) && ! $schema['additionalProperties']
+        && in_array( 'idempotency_key', $schema['required'] ?? array(), true )
+        && isset( $schema['properties']['idempotency_key'] ),
+        'write schema must disallow extra fields and require idempotency: ' . $name );
+}
+foreach ( $present['read'] as $name ) {
+    $args = $GLOBALS['cmb_registered_specs'][$name] ?? array();
+    require_true( isset( $args[2] ) && $args[2] === array('MAD4B_SCP_Policy', 'can_read'),
+        'read-only surface must depend on governed Policy::can_read: ' . $name );
+}
+echo "PASS provider adapter: write surfaces require admin, idempotency, strict schemas\n";
 echo "PASS present provider: exact 11 read and 3 governed-write declarations retained\n";
 
 $GLOBALS['cmb_plugin_active'] = false;
