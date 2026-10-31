@@ -142,5 +142,50 @@ class ResolverTests(unittest.TestCase):
         self.assertEqual(set(observed["domains"].values()),{"awaiting_provider"})
         self.assertFalse(observed["production_mutation"])
 
+    def test_native_owner_readback_requires_original_evidence(self):
+        native={"native_owner":"MAD4B_SCP_Full_Staging_Authority"}
+        plan={"contract":"mad4b.unified-full-authority.v1","site_uuid":SCOPE["site_uuid"],
+              "environment":"staging","native_owner":native["native_owner"],
+              "plan_sha256":"a"*64,"ready_to_apply":True,"native_owner_ready":True,
+              "blockers":[],"mutation_performed":False,
+              "production_mutation_performed":False}
+        proof={"native_source_confirmed":False,"readback_confirmed":True,
+               "exact_target_bound":True,"origin":SCOPE["canonical_origin"],
+               "receipt_digest":"b"*64}
+        observed=r.validate_original_owner_plan(SITE,SCOPE,native,plan,proof)
+        self.assertEqual(observed["state"],"review_required")
+        proof["native_source_confirmed"]=True
+        self.assertEqual(r.validate_original_owner_plan(SITE,SCOPE,native,plan,proof)["state"],"verified")
+        self.assertFalse(r.validate_original_owner_plan(SITE,SCOPE,native,plan,proof)["evidence"]["apply_executed"])
+
+    def test_native_owner_rejects_wrong_actor_owner(self):
+        native={"native_owner":"MAD4B_SCP_Full_Staging_Authority"}
+        proof={"native_source_confirmed":True,"readback_confirmed":True,
+               "exact_target_bound":True,"origin":SCOPE["canonical_origin"],
+               "receipt_digest":"b"*64}
+        plan={"contract":"mad4b.unified-full-authority.v1","site_uuid":SCOPE["site_uuid"],
+              "environment":"staging","native_owner":"Another_Authority",
+              "plan_sha256":"a"*64,"ready_to_apply":True,"native_owner_ready":True,
+              "mutation_performed":False,"production_mutation_performed":False}
+        observed=r.validate_original_owner_plan(SITE,SCOPE,native,plan,proof)
+        self.assertEqual(observed["state"],"review_required")
+
+    def test_production_requires_original_strict_policy(self):
+        native={"native_owner":"MAD4B_SCP_Production_Full_Authority"}
+        scope={"site_uuid":"b0725ffa-87e1-47e3-b0c0-c4aa4eb8882b",
+               "canonical_origin":"https://www.allroyalegypt.com"}
+        plan={"contract":"mad4b.unified-full-authority.v1","site_uuid":scope["site_uuid"],
+              "environment":"production","native_owner":native["native_owner"],
+              "plan_sha256":"a"*64,"ready_to_apply":True,"native_owner_ready":True,
+              "blockers":[],"mutation_performed":False,
+              "production_mutation_performed":False}
+        proof={"native_source_confirmed":True,"readback_confirmed":True,
+               "exact_target_bound":True,"origin":scope["canonical_origin"],
+               "receipt_digest":"b"*64}
+        self.assertEqual(r.validate_original_owner_plan(PROD,scope,native,plan,proof)["state"],"review_required")
+        plan["production_strict"]=True
+        plan["requires_independent_production_readback"]=True
+        self.assertEqual(r.validate_original_owner_plan(PROD,scope,native,plan,proof)["state"],"verified")
+
 if __name__=="__main__":
     unittest.main()
