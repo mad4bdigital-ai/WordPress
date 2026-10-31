@@ -147,6 +147,19 @@ for marker in (
 if "empty( $mad4b_mcp_mu_critical_classes )" not in mu:
     fail("legacy 0.6.1 class fallback is not bounded by an empty exact profile")
 
-subprocess.run(['php', '-n', str(ROOT / 'tests/mcp-legacy-schema-representation-runtime.php')], check=True)
-subprocess.run(['php', '-n', str(ROOT / 'tests/mcp-optional-operation-read-projection-runtime.php')], check=True)
+# Run the same fail-closed fixtures, but expose the underlying PHP diagnostic.
+# A CalledProcessError alone hides which runtime representation invariant broke.
+for fixture in (
+    "mcp-legacy-schema-representation-runtime.php",
+    "mcp-optional-operation-read-projection-runtime.php",
+):
+    result = subprocess.run(
+        ["php", "-n", str(ROOT / "tests" / fixture)],
+        capture_output=True, text=True, check=False,
+    )
+    if result.returncode:
+        detail = (result.stderr + "\n" + result.stdout).strip()
+        fail(f"PHP fixture {fixture} failed (exit={result.returncode}): {detail[-1200:]}")
+    if result.stdout:
+        print(result.stdout.strip())
 print("mad4b.site-control-plane.mcp-adapter-compatibility-contract.v1: PASS")
