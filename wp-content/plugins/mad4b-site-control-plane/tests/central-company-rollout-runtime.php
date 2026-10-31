@@ -18,6 +18,7 @@ class MAD4B_SCP_Site_Profile {
     public static function origin_enrolled() { return true; }
     public static function current_environment() { return 'production'; }
 }
+require dirname(__DIR__) . '/includes/class-mad4b-scp-central-release-registry.php';
 require dirname(__DIR__) . '/includes/class-mad4b-scp-central-company-rollout.php';
 function ck($ok, $msg) {
     if (!$ok) { fwrite(STDERR, 'FAIL: '.$msg.PHP_EOL); exit(1); }
