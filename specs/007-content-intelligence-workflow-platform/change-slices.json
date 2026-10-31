@@ -4,8 +4,8 @@
   "reviewed_base_sha": "b8f2e0a60fa45e28b49643f1eae6f73570c2fee8",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 232,
-  "changed_paths_sha256": "c3a447a074a146be7554bae518fe051e95c7e8078a79380af798c2f681365808",
+  "changed_file_count": 233,
+  "changed_paths_sha256": "09a1cec558cc967eddafd66fdad3941e1c0b8585638e719a7ff18ffd678ee3db",
   "slices": [
     {
       "id": "admin-market-and-operator",
@@ -122,6 +122,7 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/developer-runtime-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/gateway-mutation-guards.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/governed-draft-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/guided-continuation-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/maintainability-domain-service-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/provider-first-party-context-artifact-runtime.php",
