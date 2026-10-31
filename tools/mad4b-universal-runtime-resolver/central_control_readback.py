@@ -124,11 +124,15 @@ def authority(data,scope):
               "retirement_safe_count":state.get("safe_stale_retirement_count"),
               "needs_review_count":state.get("needs_review_count"),
               "source_commit_sha":state.get("source_commit_sha"),
+              "expected_source_commit_sha":scope.get("expected_source_commit_sha"),
+              "source_pin_verified":state.get("source_commit_sha")==scope.get("expected_source_commit_sha"),
               "grant_created":False,"production_mutation":False}
-    if state.get("source_commit_sha")!=scope.get("expected_source_commit_sha"):
-        return ("blocked_dependency","grant_plan_source_not_pinned",evidence)
+    # An identity conflict remains observable when the release pin is stale.
+    # Observation does not authorize grants or perform any operation.
     if conflict:
         return ("review_required","original_oauth_agent_binding_conflict",evidence)
+    if not evidence["source_pin_verified"]:
+        return ("blocked_dependency","grant_plan_source_not_pinned",evidence)
     if rows or state.get("candidate_binding_match") is not True:
         return ("blocked_authority","native_exact_grant_or_candidate_reconciliation_required",evidence)
     return ("verified","native_exact_authority_reconciled",evidence)
