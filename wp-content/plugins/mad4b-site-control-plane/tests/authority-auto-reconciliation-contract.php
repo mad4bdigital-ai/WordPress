@@ -7,6 +7,12 @@ class WP_Error {
 }
 function is_wp_error($v){return $v instanceof WP_Error;}
 function wp_json_encode($v,$opts=0){return json_encode($v,$opts);}
+// Exact WP-Cron fixture: inspection only, no delegated grant or remote dispatch.
+$GLOBALS['cron_registered']=false;$GLOBALS['cron_events']=array();
+function wp_next_scheduled($hook){return $GLOBALS['cron_registered'] ? time()+120 : false;}
+function wp_schedule_event($epoch,$frequency,$hook){$GLOBALS['cron_registered']=true;$GLOBALS['cron_events'][]=array('kind'=>'recurring','freq'=>$frequency,'hook'=>$hook);return true;}
+function wp_schedule_single_event($epoch,$hook){$GLOBALS['cron_events'][]=array('kind'=>'single','hook'=>$hook);return true;}
+
 class MAD4B_SCP_Site_Profile {
  public static function configured(){return true;}
  public static function current_environment(){return $GLOBALS['env'];}
@@ -49,8 +55,21 @@ check($p['subject_conflicts'][0]==='oauth_subject_bound_to_other_agent','preserv
 check(!$p['mutation_performed'],'planning performs no mutation');
 $a=MAD4B_SCP_Authority_Auto_Reconciliation::reconcile_safe();
 check(is_wp_error($a),'unverified CLI cannot mutate');
+MAD4B_SCP_Authority_Auto_Reconciliation::schedule();
+check(count($GLOBALS['cron_events'])===1,'staging creates one inspection cron');
+check($GLOBALS['cron_events'][0]['kind']==='recurring' && $GLOBALS['cron_events'][0]['freq']==='hourly','exact bounded hourly schedule');
+check($GLOBALS['cron_events'][0]['hook']===MAD4B_SCP_Authority_Auto_Reconciliation::EVENT,'same canonical inspection hook');
+MAD4B_SCP_Authority_Auto_Reconciliation::schedule();
+check(count($GLOBALS['cron_events'])===1,'duplicate staging cron prevented');
+MAD4B_SCP_Authority_Auto_Reconciliation::schedule_soon();
+check(count($GLOBALS['cron_events'])===2 && $GLOBALS['cron_events'][1]['kind']==='single','updates schedule one bounded inspection');
+$GLOBALS['env']='production';
+MAD4B_SCP_Authority_Auto_Reconciliation::schedule();
+MAD4B_SCP_Authority_Auto_Reconciliation::schedule_soon();
+check(count($GLOBALS['cron_events'])===2,'production never schedules authority reconciliation');
+$GLOBALS['env']='staging';
 $GLOBALS['stale']=true;
 check(is_wp_error(MAD4B_SCP_Authority_Auto_Reconciliation::plan()),'stale provenance denied');
 $GLOBALS['stale']=false;$GLOBALS['env']='production';
 check(is_wp_error(MAD4B_SCP_Authority_Auto_Reconciliation::plan()),'production denied');
-echo "PASS authority auto-reconciliation boundaries (9 checks)\n";
+echo "PASS authority auto-reconciliation boundaries and hourly staging-only inspection (15 checks)\n";
