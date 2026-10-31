@@ -26,7 +26,7 @@ INVENTORY={
           "canonical_origin":"https://www.allroyalegypt.com"},
 }
 POLICY={"contract":r.CONTRACT,"enabled":True,"default_production_mutation":False,
-        "scopes":{SITE:SCOPE,PROD:SCOPE}}
+        "scopes":{SITE:SCOPE}}
 
 class ResolverTests(unittest.TestCase):
     def setUp(self):
@@ -118,6 +118,29 @@ class ResolverTests(unittest.TestCase):
             v=r.inspect_package(SITE,{**SCOPE,"operations":[]})
         self.assertEqual(v["reason"],"transfer_not_authorized")
         self.assertEqual(v["state"],"blocked_dependency")
+
+    def test_full_authority_uses_target_provider_not_central_plugin(self):
+        scope={**SCOPE,"full_authority_provider":{
+            "mode":"native_target_owner","target":SITE,
+            "environment":"staging","origin":SCOPE["canonical_origin"],
+            "site_uuid":SCOPE["site_uuid"]}}
+        with patch.object(r,"command",side_effect=AssertionError("central plugin probe must not be called")):
+            observed=r.inspect_full_authority(SITE,scope)
+        self.assertEqual(observed["state"],"awaiting_provider")
+        self.assertEqual(observed["reason"],"target_native_owner_readback_adapter_not_connected")
+
+    def test_full_authority_rejects_foreign_target(self):
+        scope={**SCOPE,"full_authority_provider":{
+            "mode":"native_target_owner","target":PROD,
+            "environment":"staging","origin":SCOPE["canonical_origin"]}}
+        observed=r.inspect_full_authority(SITE,scope)
+        self.assertEqual(observed["state"],"review_required")
+        self.assertEqual(observed["reason"],"target_native_owner_binding_mismatch")
+
+    def test_unconfigured_production_scope_never_mutates(self):
+        observed=r.reconcile(self.con,self.event(PROD)["event_id"],POLICY)
+        self.assertEqual(set(observed["domains"].values()),{"awaiting_provider"})
+        self.assertFalse(observed["production_mutation"])
 
 if __name__=="__main__":
     unittest.main()
