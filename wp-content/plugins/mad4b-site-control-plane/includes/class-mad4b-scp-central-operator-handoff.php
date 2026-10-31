@@ -106,7 +106,8 @@ final class MAD4B_SCP_Central_Operator_Handoff {
             'transport' => 'native_ssh_via_registered_broker',
             'broker_authority_contract' => 'central_authority_verifier_312',
             'remote_readback_contract' => 'remote_readback_313',
-            'broker_host_is_ssh_target' => false,
+            'broker_target_separation_required' => true,
+            'broker_target_separation_verified' => false,
             'source' => array(
                 'artifact_sha256' => $artifact,
                 'manifest_sha256' => $manifest,
@@ -124,6 +125,8 @@ final class MAD4B_SCP_Central_Operator_Handoff {
             'blockers' => $blockers,
             // Authority verifier, command digest, target host, persistent
             // grant and postcondition are intentionally NOT guessed here.
+            'broker_signed_preflight_verified' => false,
+            'claim_and_delegation_verified' => false,
             'grant_verified' => false,
             'ssh_target_resolved' => false,
             'command_digest_verified' => false,
