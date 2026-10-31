@@ -143,8 +143,10 @@ final class MAD4B_Hub_Review_UI {
    $name=self::tr($names[0],$names[1]);
    echo '<a '.($active===$slug?'aria-current="page" ':'').'href="'.esc_url(self::route($slug)).'">'.$name.'</a>';
   }
-  if(class_exists('MAD4B_Hub_Property_Identity_Reviews_V1') && MAD4B_Hub_Property_Identity_Reviews_V1::authorized())
-   echo '<a href="'.esc_url(admin_url('admin.php?page=mad4b-property-identity-reviews')).'">Identity Reviews</a>';
+  // Link to the already installed read-only Canonical identity queue.
+  // This does not substitute for the separately reviewed Identity Reviews module.
+  if(class_exists('MAD4B_Hub_Canonical_Registry_V1') && current_user_can('manage_options'))
+   echo '<a href="'.esc_url(admin_url('admin.php?page=mad4b-canonical-registry')).'">Canonical Identity Queue</a>';
   echo '</nav>';
  }
  private static function header($title,$description,$active,$count='') {
