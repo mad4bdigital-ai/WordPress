@@ -254,5 +254,51 @@ class ResolverTests(unittest.TestCase):
             out=r.inspect_execution_route(SITE,SCOPE)
         self.assertEqual(out["state"],"blocked_dependency")
 
+    def test_central_scope_survives_rebuilt_company_inventory(self):
+        root=Path(self.tmp.name)
+        (root/"environment-inventory-v1.json").write_text(json.dumps({
+            "contract":"mad4b.company-transport-inventory.v1",
+            "targets":{SITE:INVENTORY[SITE]}}))
+        self_policy=root/"central-policy.json"
+        central={"site_uuid":"e5e64bca-ed62-48d2-b2b3-dff693cd702a",
+            "canonical_origin":"https://tours.dev.mad4b.com",
+            "environment":"staging",
+            "central_execution_adapter":"root_owned_host_operator_v1"}
+        self_policy.write_text(json.dumps({"scopes":{"tours-central:staging":central}}))
+        self.inventory.stop()
+        try:
+            with patch.object(r,"ROOT",root):
+                with patch.object(r,"POLICY",self_policy):
+                    sites=r.inventory()
+        finally:
+            self.inventory.start()
+        self.assertIn("tours-central:staging",sites)
+        self.assertEqual(sites["tours-central:staging"]["environment"],"staging")
+        self.assertFalse(sites["tours-central:staging"]["production_mutation"])
+
+    def test_central_host_not_blocked_by_oauth_or_native_owner(self):
+        central={"site_uuid":"e5e64bca-ed62-48d2-b2b3-dff693cd702a",
+            "canonical_origin":"https://tours.dev.mad4b.com",
+            "environment":"staging",
+            "central_execution_adapter":"root_owned_host_operator_v1"}
+        target="tours-central:staging"
+        inv={**INVENTORY,target:{**central,"onboarding_state":"LOCAL_HOST"}}
+        scoped={**POLICY,"scopes":{SITE:SCOPE,target:central}}
+        def forbidden(t,s):
+            raise AssertionError("remote transport or native owner must not run")
+        with patch.object(r,"inventory",return_value=inv):
+            event=self.event(target)
+            with patch.dict(r.ADAPTERS,{name:forbidden for name in r.DOMAINS}):
+                with patch.dict(r.ADAPTERS,{
+                    "central_source":lambda t,s:r.result("blocked_dependency","source","commit_changed"),
+                    "central_authority":forbidden,
+                    "central_execution":lambda t,s:r.result("verified","host","original_scope_verified")}):
+                    output=r.reconcile(self.con,event["event_id"],scoped)
+        self.assertEqual(output["domains"]["central_execution"],"verified")
+        self.assertEqual(output["domains"]["full_authority"],"not_applicable")
+        self.assertEqual(output["domains"]["transport"],"not_applicable")
+        self.assertEqual(output["domains"]["central_authority"],"blocked_dependency")
+        self.assertFalse(output["production_mutation"])
+
 if __name__=="__main__":
     unittest.main()
