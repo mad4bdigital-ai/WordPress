@@ -64,7 +64,13 @@ check(is_wp_error(MAD4B_SCP_Execution_Authority::resolve('plan')),'unmatched ori
 $GLOBALS['origin_ok']=true;$GLOBALS['bearer']=false;
 check(is_wp_error(MAD4B_SCP_Execution_Authority::resolve('apply')),'CLI --user is not authenticating');
 $GLOBALS['uid']=0;
-check(is_wp_error(MAD4B_SCP_Execution_Authority::resolve('plan')),'no self-binding of host actor');
+$unbound=MAD4B_SCP_Execution_Authority::resolve('plan');
+if(function_exists('posix_geteuid')&&posix_geteuid()===0) {
+  check(is_array($unbound)&&$unbound['registry_bound']===false,'unbound host may plan only');
+  check(is_wp_error(MAD4B_SCP_Execution_Authority::resolve('apply')),'unbound host may not execute');
+} else {
+  check(is_wp_error($unbound),'nonroot host cannot plan');
+}
 $GLOBALS['registered']=true;
 $host=MAD4B_SCP_Execution_Authority::resolve('plan');
 if(function_exists('posix_geteuid')&&posix_geteuid()===0) {
