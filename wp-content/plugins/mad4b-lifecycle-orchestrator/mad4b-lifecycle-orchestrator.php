@@ -323,7 +323,11 @@ final class MAD4B_Lifecycle_Orchestrator {
         $key=self::key($id);$row=get_option($key,false);
         if(!is_array($row)||($row['event_id']??'')!==$id)return self::err('event_missing');
         if(!in_array($row['state']??'',self::STATES,true))return self::err('state_invalid');
-        if($row['state']==='VERIFIED')return self::status(['event_id'=>$id],true);
+        // Reconciliation of an uncertain write is not ordinary readiness
+        // resolution. Preserve the state until the original provider supplies
+        // exact before/after evidence; never let Cron overwrite it.
+        if(in_array($row['state'],['VERIFIED','NEEDS_RECONCILIATION','RUNNING'],true))
+            return self::status(['event_id'=>$id],true);
         if(!$refresh&&in_array($row['state'],['BLOCKED_AUTHORITY','READY'],true))
             return self::status(['event_id'=>$id],true);
         if(!$refresh&&(int)$row['attempts']>=3)return self::status(['event_id'=>$id],true);
