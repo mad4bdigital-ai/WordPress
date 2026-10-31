@@ -1,0 +1,38 @@
+name: Consolidate all open WordPress PRs into integration branch
+on:
+  push:
+    branches:
+      - integration/all-open-prs-20261031
+    paths:
+      - '.github/workflows/all-open-prs-integration.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  merge-open-prs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: mad4b-open-prs-integration-20261031
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Merge exact open PR snapshot and preserve unresolved conflicts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 tools/consolidate_open_prs_20261031.py
+      - name: Integration conclusion
+        if: always()
+        run: |
+          if [ -f governance/integration/open-prs-20261031.json ]; then
+            python3 - <<'PY'
+          import json
+          r=json.load(open("governance/integration/open-prs-20261031.json"))
+          print(r["merged"],"merged;",r["already_included"],"included;",r["blocked_conflicts"],"conflicted")
+          PY
+          fi
