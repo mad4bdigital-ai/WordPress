@@ -8,6 +8,7 @@
     "agent",
     "authentication_routes",
     "authority",
+    "central_execution",
     "full_authority_status",
     "identity",
     "operation_admission",
@@ -48,6 +49,8 @@
       "identity_adapter": "central_scoped_v4",
       "independent_readback_required": true,
       "legacy_company_trust_unchanged": true,
+      "observed_operation_capability": "maintenance.shell",
+      "observed_operation_transport": "vps_ssh_wpcli",
       "operations": [
         "remote_exec:site_root",
         "remote_exec:file_sha256",
@@ -59,12 +62,11 @@
       },
       "site_uuid": "49c562d1-8f2f-456f-b454-26816c6ba4cb",
       "transport_binding": "hosting-2:staging",
-      "workflow_operation": "signed_site_agent_install",
-      "observed_operation_capability": "maintenance.shell",
-      "observed_operation_transport": "vps_ssh_wpcli"
+      "workflow_operation": "signed_site_agent_install"
     },
     "tours-central:staging": {
       "canonical_origin": "https://tours.dev.mad4b.com",
+      "central_execution_adapter": "root_owned_host_operator_v1",
       "environment": "staging",
       "expected_source_commit_sha": "73c6852f3a22148cf4e79c73643cbbdeffca7f8a",
       "independent_readback_required": true,
