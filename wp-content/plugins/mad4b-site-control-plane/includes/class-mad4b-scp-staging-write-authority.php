@@ -1865,6 +1865,42 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			return self::finish_blocked( $status, 'unreviewed_stale_write_authority' );
 		}
 
+		// Admission must finish BEFORE create/update of any Agent, subject or grant.
+		// An OAuth subject already bound to a delegated user is not free to move
+		// to the governed-write Agent. Preserve that binding and fail closed.
+		if ( ! empty( $preflight_plan['subject_preflight_blockers'] ) ) {
+			$status['subject_preflight_blockers'] = $preflight_plan['subject_preflight_blockers'];
+			$status['mutation_performed'] = false;
+			return self::finish_blocked( $status, 'write_identity_preflight_blocked' );
+		}
+
+		// Mounted ability != approved privilege. Every missing grant must
+		// match the exact, source-reviewed provider policy BEFORE any of the
+		// requested grants is issued or any stale grant is revoked.
+		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' ) ) {
+			return self::finish_blocked( $status, 'reviewed_grant_policy_unavailable' );
+		}
+		$reviewed_provider_policy = MAD4B_SCP_Staging_Write_Grant_Reconciliation::allowed_ability_providers();
+		if ( ! is_array( $reviewed_provider_policy ) ) {
+			return self::finish_blocked( $status, 'reviewed_grant_policy_unavailable' );
+		}
+		$unapproved_missing = array();
+		foreach ( (array) ( $preflight_plan['exact_grants_missing'] ?? array() ) as $grant_row ) {
+			$ability = (string) ( $grant_row['ability'] ?? '' );
+			$provider = sanitize_key( (string) ( $grant_row['provider'] ?? '' ) );
+			if ( 'missing_exact_grant' !== (string) ( $grant_row['reason'] ?? '' )
+				|| '' === $ability || '' === $provider
+				|| ! isset( $reviewed_provider_policy[ $ability ] )
+				|| sanitize_key( (string) $reviewed_provider_policy[ $ability ] ) !== $provider ) {
+				$unapproved_missing[] = $ability;
+			}
+		}
+		if ( ! empty( $unapproved_missing ) ) {
+			$status['source_policy_unapproved_missing_count'] = count( $unapproved_missing );
+			$status['mutation_performed'] = false;
+			return self::finish_blocked( $status, 'write_grant_source_policy_preflight_blocked' );
+		}
+
 		$environment = self::current_environment();
 		$agent_slug = self::agent_slug();
 		$agent = self::agent_by_slug( $agent_slug );

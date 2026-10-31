@@ -1,0 +1,36 @@
+name: MAD4B Broker Exact Claim and Readback Contracts
+on:
+  pull_request:
+    paths:
+      - 'ops/mad4b-broker/**'
+      - '.github/workflows/mad4b-broker-exact-claim.yml'
+  push:
+    paths:
+      - 'ops/mad4b-broker/**'
+      - '.github/workflows/mad4b-broker-exact-claim.yml'
+permissions:
+  contents: read
+concurrency:
+  group: broker-exact-claim-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+jobs:
+  exact-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Source syntax and non-executing exact authorization invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile ops/mad4b-broker/broker-native-ssh-reconcile.py
+          python3 -m py_compile ops/mad4b-broker/vps-broker-remote-ssh-canary.py
+          python3 ops/mad4b-broker/tests/test_broker_scope_contract.py
+          for component in 305-mad4b-central-ssh-command-intake.php 306-mad4b-central-vps-broker.php 312-mad4b-broker-exact-ssh-authority.php 313-mad4b-broker-remote-ssh-diagnostic.php; do
+            php -l "ops/mad4b-broker/central-mu/$component"
+          done
+          # Source-only check. Actual host enrollment and real signed receipts are separate gates.
+          grep -Fq "one_time_transport_reference_invalid" ops/mad4b-broker/central-mu/305-mad4b-central-ssh-command-intake.php
+          grep -Fq "'transport_id'=>\$source['transport_id']??null" ops/mad4b-broker/central-mu/306-mad4b-central-vps-broker.php
+          grep -Fq "ORIGINAL_GRANT_CLAIM_MISSING_OR_CHANGED" ops/mad4b-broker/central-mu/312-mad4b-broker-exact-ssh-authority.php

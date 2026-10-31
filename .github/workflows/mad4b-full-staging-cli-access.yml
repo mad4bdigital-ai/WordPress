@@ -1,0 +1,37 @@
+name: MAD4B Unified Execution Authority
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-authority.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-authority.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-full-staging-authority.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/unified-execution-authority-contract.php'
+      - '.github/workflows/mad4b-mad4b-full-staging-cli-access.yml'
+  push:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-full-staging-authority.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/unified-execution-authority-contract.php'
+      - '.github/workflows/mad4b-mad4b-full-staging-cli-access.yml'
+permissions:
+  contents: read
+concurrency:
+  group: mad4b-mad4b-full-staging-cli-access-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+jobs:
+  cli-authority:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: Native CLI authorization contract
+        run: |
+          ROOT=wp-content/plugins/mad4b-site-control-plane
+          php -l "$ROOT/includes/class-mad4b-scp-execution-authority.php"
+          php -l "$ROOT/includes/class-mad4b-scp-developer-authority.php"
+          php -l "$ROOT/includes/class-mad4b-scp-full-staging-authority.php"
+          php -l "$ROOT/tests/unified-execution-authority-contract.php"
+          php "$ROOT/tests/unified-execution-authority-contract.php"

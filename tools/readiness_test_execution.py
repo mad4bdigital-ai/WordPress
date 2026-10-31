@@ -38,6 +38,14 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-worker-guard-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-crossenv-scope-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-credential-expiry-hermetic.php",
+    # Exact GitHub CI-reviewed standalone policy contracts, each with explicit
+    # failure assertions and a positive PASS marker; no WordPress bootstrap.
+    "wp-content/plugins/mad4b-site-control-plane/tests/authority-auto-reconciliation-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/authority-reviews-bridge-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/unified-execution-authority-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/global-runtime-lifecycle-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/provider-auto-qualification-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/provider-installed-artifact-contract.php",
     # Exact signed-market and source-bootstrap fixtures execute without WordPress.
     # Review-bound paths only; unlisted PHP still requires PHPUnit.
     "tests/switchers/test-market-compatibility.php",
@@ -221,6 +229,17 @@ def self_test():
         "wp-content/plugins/mad4b-site-control-plane/tests/self-update-selected-head-release-trust-runtime.php",
     ):
         assert command_for(path) == ["php", str((ROOT / path).resolve())]
+    # Explicitly reviewed 2026-10-31 CI contracts, no blanket PHP admission.
+    for case in (
+        "authority-auto-reconciliation-contract.php",
+        "authority-reviews-bridge-contract.php",
+        "unified-execution-authority-contract.php",
+        "global-runtime-lifecycle-contract.php",
+        "provider-auto-qualification-contract.php",
+        "provider-installed-artifact-contract.php",
+    ):
+        exact = "wp-content/plugins/mad4b-site-control-plane/tests/" + case
+        assert command_for(exact) == ["php", str((ROOT / exact).resolve())]
     # No wildcard admission: unknown PHP still requires a trusted PHPUnit runner.
     try:
         command_for("wp-content/plugins/mad4b-site-control-plane/tests/private-operations-foreign-smoke.php")

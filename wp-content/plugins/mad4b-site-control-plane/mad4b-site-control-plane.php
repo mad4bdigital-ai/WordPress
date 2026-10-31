@@ -263,9 +263,12 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operator-attestation.php'
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operator-receipt-verifier.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-identifiers.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-identity-context.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-execution-authority.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-abuse-budget.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-legacy-dispatch-migration.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-agent-registry.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-authority-auto-reconciliation.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-authority-reviews-bridge.php';
 // Assistant read-only GA/GB bootstrap is a first-class plugin lifecycle contract,
 // not a side effect of loading NHI Agent Registry. Hook registration precedes the
 // native WordPress Abilities/Adapter lifecycle and never grants execution.
@@ -328,6 +331,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g7-read-surfaces.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g7-compensation-audit.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g7-release-acceptance-audit.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g7-workload-measurement.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-installed-artifact.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-compatibility-certification.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-auto-reconcile-scenarios.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-production-automation.php';
@@ -532,6 +536,7 @@ MAD4B_SCP_Ability_Catalog_Transport::boot();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-chatgpt-tool-projection.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-capability-search-index.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-capability-source-inventory.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-global-runtime-lifecycle.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-capability-dependency-planner.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-recovery-route-resolver.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-unified-capability-gateway.php';

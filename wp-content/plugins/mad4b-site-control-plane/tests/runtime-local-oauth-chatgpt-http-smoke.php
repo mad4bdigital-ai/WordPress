@@ -416,7 +416,8 @@ if ( ! $read_apply instanceof WP_REST_Response || 200 !== (int) $read_apply->get
 $read_apply_json = wp_json_encode( $normalize( $read_apply->get_data() ), JSON_UNESCAPED_SLASHES );
 if ( false === $read_apply_json
 	|| false === strpos( $read_apply_json, '"isError":true' )
-	|| false === strpos( $read_apply_json, 'The OAuth bearer does not grant the dedicated Full Staging Authority step-up scope.' ) ) {
+	|| false === strpos( $read_apply_json, 'The OAuth bearer does not grant the dedicated Full Staging Authority step-up scope.' )
+	&& false === strpos( $read_apply_json, 'Full authority OAuth step-up scope is required.' ) ) {
 	$fail( 'Read-only bearer was not denied by the dedicated authority step-up scope gate.', $normalize( $read_apply->get_data() ) );
 }
 

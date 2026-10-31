@@ -1,0 +1,33 @@
+name: MAD4B Authority Auto Reconciliation
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-auto-reconciliation.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/authority-auto-reconciliation-contract.php'
+      - '.github/workflows/mad4b-authority-auto-reconciliation.yml'
+  push:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-auto-reconciliation.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/authority-auto-reconciliation-contract.php'
+      - '.github/workflows/mad4b-authority-auto-reconciliation.yml'
+permissions:
+  contents: read
+concurrency:
+  group: mad4b-mad4b-authority-auto-reconciliation-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: PHP lint and policy contracts
+        run: |
+          ROOT=wp-content/plugins/mad4b-site-control-plane
+          php -l "$ROOT/includes/class-mad4b-scp-authority-auto-reconciliation.php"
+          php -l "$ROOT/tests/authority-auto-reconciliation-contract.php"
+          php "$ROOT/tests/authority-auto-reconciliation-contract.php"
