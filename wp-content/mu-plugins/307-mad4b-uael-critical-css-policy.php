@@ -26,7 +26,19 @@ final class MAD4B_UAEL_Critical_CSS_Policy_V1 {
         return is_array($active)&&isset($active[$m[1]]);
     }
     private static function mobile_tuned_product() {
+        // Resolve translations by their canonical WPML product identity. A locale's
+        // product slug is not guaranteed to match the English source slug.
+        if(function_exists('is_singular') && is_singular('tours-and-activities')){
+            $target=(int)get_queried_object_id();
+            $english=apply_filters('wpml_object_id',$target,'tours-and-activities',true,'en');
+            if((int)$english===60629)return true;
+        }
         $path=(string)wp_parse_url((string)($_SERVER['REQUEST_URI']??''),PHP_URL_PATH);
+        // WPML language prefix is a routing dimension, not a separate CSS design.
+        if(preg_match('~^/(ar|fr|de|es|it)(/.*)$~D',$path,$m)){
+            $active=apply_filters('wpml_active_languages',null,'skip_missing=0');
+            if(is_array($active)&&isset($active[$m[1]]))$path=$m[2];
+        }
         $setting=(array)get_option(self::OPTION,[]);
         return in_array($path,(array)($setting['mobile_tuned_routes']??[]),true)
             && in_array($path,['/tours-and-activities/',

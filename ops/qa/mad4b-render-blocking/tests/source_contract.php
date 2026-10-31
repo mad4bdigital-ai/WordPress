@@ -17,7 +17,9 @@ function get_option($k,$d=[]){
 function is_admin(){return false;}
 function is_customize_preview(){return false;}
 function is_front_page(){return $GLOBALS['front']??true;}
-function apply_filters($name,$value,...$other){return $name==='wpml_active_languages'?['en'=>[],'ar'=>[],'fr'=>[]]:$value;}
+function is_singular($type){return $GLOBALS['singular']??false;}
+function get_queried_object_id(){return $GLOBALS['qid']??0;}
+function apply_filters($name,$value,...$other){if($name==='wpml_active_languages')return ['en'=>[],'ar'=>[],'fr'=>[]];if($name==='wpml_object_id'&&$value===60631)return 60629;return $value;}
 function esc_url($u){return $u;}
 function get_current_blog_id(){return 1;}
 $assert=static function($test,$why){if(!$test){fwrite(STDERR,'FAIL '.$why."\n");exit(1);}echo 'PASS '.$why."\n";};
@@ -37,6 +39,11 @@ $assert(str_contains($product,'screen and (min-width: 769px)')&&str_contains($pr
 $_SERVER['REQUEST_URI']='/tours-and-activities/';
 $archive=MAD4B_UAEL_Critical_CSS_Policy_V1::stylesheet($src,'uael-frontend','https://tours.dev.mad4b.com/uael.css','all');
 $assert(str_contains($archive,'min-width: 769px'),'catalog archive uses mobile-only non-blocking UAEL');
+$GLOBALS['singular']=true;$GLOBALS['qid']=60631;
+$_SERVER['REQUEST_URI']='/fr/tours-and-activities/le-meilleur-de-legypte-le-caire-louxor-croisiere-sur-le-nil-et-mer-rouge-12-jours/';
+$translated=MAD4B_UAEL_Critical_CSS_Policy_V1::stylesheet($src,'uael-frontend','https://tours.dev.mad4b.com/uael.css','all');
+$assert(str_contains($translated,'min-width: 769px'),'translated product slug resolves original WPML product styling');
+$GLOBALS['singular']=false;
 $_SERVER['REQUEST_URI']='/destination/egypt/';$GLOBALS['front']=false;
 $assert(MAD4B_UAEL_Critical_CSS_Policy_V1::stylesheet($src,'uael-frontend','https://tours.dev.mad4b.com/uael.css','all')===$src,'destination UAEL remains render critical');
 $opts['mad4b_live_render_blocking_v1']=['complete'=>true,'observed_at'=>gmdate('c'),'pages'=>array_fill(0,7,['http_status'=>200]),'issues'=>[['code'=>'perf_rbcss_daa3ffea4aa4','severity'=>'high','label'=>'Observed CSS rendering blocked']], 'site_uuid'=>'e5e64bca-ed62-48d2-b2b3-dff693cd702a'];
@@ -63,3 +70,8 @@ $assert($local==='https://tours.dev.mad4b.com/wp-content/uploads/elementor/googl
 $assert(MAD4B_Astra_Local_Cairo_V1::url($rem,'unrelated')===$rem,'unrelated styles are not intercepted');
 $opts['mad4b_astra_local_cairo_v1']=['enabled'=>false];
 $assert(MAD4B_Astra_Local_Cairo_V1::url($rem,'astra-google-fonts')===$rem,'Cairo localization feature gate supports rollback');
+
+$opts['mad4b_live_render_blocking_v1']['observed_at']=gmdate('c');
+$opts['mad4b_live_render_blocking_v1']['issues']=[['code'=>'perf_ttfb_site','severity'=>'high','label'=>'Slow median server']];
+$ttfb=MAD4B_Live_Render_Blocking_Monitor_V1::external([],[]);
+$assert(count($ttfb)===1&&$ttfb[0]['code']==='perf_ttfb_site','TTFB high alert uses live-performance native provider');

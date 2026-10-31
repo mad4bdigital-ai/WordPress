@@ -11,3 +11,10 @@ Evidence: latest live 10-page scan 10/10 HTTP 200. Homepages have no blocking UA
 
 ## 2026-10-31 Mobile product/catalog plus font follow-up
 Exact product page and tours archive are now covered by a CSS media query: mobile downloads UAEL asynchronously and desktop remains blocking; script-disabled fallback remains enabled. Other routes are untouched. Astra Cairo font is redirected from Google stylesheets to verified same-site Elementor WOFF2 font assets. Product #60629 vertical LCP image source matched local pixels exactly (SHA256 69e30866c5dc483e2c3cc79620eb7430253877d18aefbd4c5ee088febf2643f7); its meta was rebound to local URL after original value backup and narrow page cache purge. The home H1 in nested Elementor template #41727 is currently hidden on mobile; separate custom widget should not be inferred from this built-in heading. Post-fix LCP score is not independently certified due high staging TTFB.
+
+
+### 10-page live LCP observation
+The browser probe now records Navigation Timing TTFB, buffered Largest Contentful Paint element identity and post-resource render delay. A reproducible 2,500ms+ element delay yields a per-page perf_lcpdelay High finding, and a 2,500ms+ site median TTFB across 7+ samples yields perf_ttfb_site High. Staging sampled ten pages on 2026-10-31: median TTFB 5,095ms, triggering the site alert; observed element delays ranged around 40–284ms and did not reproduce the supplied PageSpeed H1 3,880ms delay. Avoid treating the Lighthouse report as fixed or extrapolating it from a different environment. The original H1 is an Elementor Heading within hero template #41727 and is currently hidden on mobile.
+
+### Local image parity across WPML
+All six language records of Tour product #60629 now use the same local image_vertical URL; each translation had an exact old remote-image value and retained an independent backup. Their byte-identical image content is preserved and individual page caches purged. CSS mobile tuning resolves translated product slugs by WPML source ID, not by assuming translated slugs equal the English one.

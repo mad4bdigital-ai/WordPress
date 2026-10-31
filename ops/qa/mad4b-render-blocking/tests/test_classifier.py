@@ -20,3 +20,14 @@ assert len(m.classify([sample]))==1 and 'retain styles' in m.classify([sample])[
 sample['css'][0]['encoded_bytes']=10000
 assert m.classify([sample])==[]
 print('PASS: mobile CSS render-blocking classification, resolution, widget preservation and size threshold')
+
+# Separately classifies a long element-render delay and a consistent slow TTFB.
+slow=[{'url':f'https://tours.dev.mad4b.com/page-{i}/',
+       'uael_widgets':[], 'css':[], 'ttfb_ms':5100} for i in range(7)]
+slow[0]['lcp']={'ms':5200,'render_delay_ms':3880,'tag':'H1','element_id':'headline1'}
+regress=m.classify(slow)
+assert any(x['code']=='perf_ttfb_site' for x in regress), regress
+assert any(x['code'].startswith('perf_lcpdelay_') and '3880ms' in x['label'] for x in regress),regress
+slow[0]['lcp']['render_delay_ms']=160
+assert not any(x['code'].startswith('perf_lcpdelay_') for x in m.classify(slow))
+print('PASS: live TTFB and LCP element render-delay regression classifications')

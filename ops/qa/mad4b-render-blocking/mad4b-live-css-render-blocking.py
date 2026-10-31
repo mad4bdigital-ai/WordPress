@@ -29,6 +29,12 @@ async def inspect(browser,path,sem):
         page=await browser.new_page(viewport={'width':390,'height':844},is_mobile=True,has_touch=True)
         url=ORIGIN+path
         try:
+            await page.add_init_script("""window.__mad4b_lcp=[];
+                new PerformanceObserver(list=>{for(const e of list.getEntries()){
+                    window.__mad4b_lcp.push({ms:Math.round(e.startTime),
+                      tag:e.element?.tagName||'', element_id:e.element?.getAttribute('data-id')||'',
+                      text:(e.element?.innerText||'').slice(0,75),resource:e.url||''});
+                }}).observe({type:'largest-contentful-paint',buffered:true});""")
             response=await page.goto(url,wait_until='domcontentloaded',timeout=25000)
             if not response or response.status!=200:raise RuntimeError('http_status_'+str(response.status if response else None))
             raw=await response.text()
@@ -39,11 +45,13 @@ async def inspect(browser,path,sem):
                   .map(x=>({type:x.getAttribute('data-widget_type'),
                    height:Math.round(x.getBoundingClientRect().height)})),
                 resources:performance.getEntriesByType('resource')
-                   .filter(x=>x.initiatorType==='link' || x.name.includes('/css/'))
+                   .filter(x=>x.initiatorType==='link' || x.name.includes('/css/') || x.initiatorType==='css')
                    .map(x=>({url:x.name,encoded:x.encodedBodySize||0,
-                      duration:Math.round(x.duration)})).slice(0,300),
+                      duration:Math.round(x.duration),responseEndMs:Math.round(x.responseEnd)})).slice(0,300),
                 title:document.title,
-                pageOverflow:Math.max(0,document.documentElement.scrollWidth-innerWidth)})''')
+                pageOverflow:Math.max(0,document.documentElement.scrollWidth-innerWidth),
+                ttfbMs:Math.round(performance.getEntriesByType('navigation')[0]?.responseStart||0),
+                lcp:(window.__mad4b_lcp||[]).slice(-1)[0]||null})''')
             resources={r['url']:r for r in live['resources']}
             styles=[]
             for a in parser.styles:
@@ -55,9 +63,18 @@ async def inspect(browser,path,sem):
                        'duration_ms':int(resource.get('duration') or 0)}
                 entry['blocking']=a['media'].lower() in ('','all','screen') and not a['onload']
                 styles.append(entry)
+            lcp=live.get('lcp') or None
+            if lcp:
+                asset=next((x for x in live['resources'] if x['url']==lcp.get('resource')),None)
+                # When a cross-origin image lacks timing access, retain the LCP time
+                # but do not infer its post-resource render delay.
+                lcp['render_delay_ms']=max(0,int(lcp['ms'])-int(asset['responseEndMs'])) if asset and asset.get('responseEndMs') else None
+                if not lcp.get('resource'):
+                    lcp['render_delay_ms']=max(0,int(lcp['ms'])-int(live['ttfbMs']))
             return {'url':url,'http_status':response.status,'mobile_viewport':390,
                 'title':live['title'],'uael_widgets':live['uael'],'css':styles,
-                'horizontal_overflow_px':live['pageOverflow']}
+                'horizontal_overflow_px':live['pageOverflow'],
+                'ttfb_ms':int(live['ttfbMs']),'lcp':lcp}
         finally:
             await page.close()
 def classify(pages):
@@ -75,6 +92,24 @@ def classify(pages):
                 'UAEL widget present — retain styles.' if seen_uael else 'No visible UAEL widget — defer CSS safely.'
             )
             issues.append({'code':code,'severity':'high','label':label[:225]})
+    delayed=[]
+    for page in pages:
+        lcp=page.get('lcp') or {}
+        delay=lcp.get('render_delay_ms')
+        if isinstance(delay,(int,float)) and delay>=2500:
+            path=urlsplit(page['url']).path
+            code='perf_lcpdelay_'+hashlib.sha256(path.encode()).hexdigest()[:12]
+            delayed.append({'code':code,'severity':'high','label':
+                f'Mobile LCP element render delay {round(delay)}ms on {path}; '+
+                f'element {lcp.get("tag","")}/{lcp.get("element_id","")}. Diagnose widget/layout scheduling; do not delete the element.'})
+    issues.extend(delayed)
+    # Require several sampled routes before treating the server latency as a site-level issue.
+    slow=[p.get('ttfb_ms') for p in pages if isinstance(p.get('ttfb_ms'),(int,float))]
+    if len(slow)>=7:
+        median=sorted(slow)[len(slow)//2]
+        if median>=2500:
+            issues.append({'code':'perf_ttfb_site','severity':'high',
+                'label':f'Staging mobile median TTFB {median}ms across {len(slow)} sampled pages; server/cache diagnosis required.'})
     return issues
 
 async def run():
