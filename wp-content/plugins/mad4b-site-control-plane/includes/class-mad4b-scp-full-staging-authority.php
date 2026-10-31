@@ -196,7 +196,7 @@ final class MAD4B_SCP_Full_Staging_Authority {
 	 */
 	private static function trusted_local_wp_cli() {
 		return defined( 'WP_CLI' ) && true === WP_CLI && 'cli' === PHP_SAPI
-			&& ! isset( $_SERVER['REQUEST_METHOD'] ) && ! isset( $_SERVER['HTTP_AUTHORIZATION'] )
+			&& ! isset( $_SERVER['HTTP_AUTHORIZATION'] )
 			&& current_user_can( 'manage_options' ) && current_user_can( 'activate_plugins' )
 			&& class_exists( 'MAD4B_SCP_Site_Profile' )
 			&& MAD4B_SCP_Site_Profile::configured()
