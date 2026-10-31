@@ -1,0 +1,43 @@
+{
+  "contract": "mad4b.universal-runtime-reconciler.v1",
+  "enabled": true,
+  "version": 1,
+  "default_production_mutation": false,
+  "authority_model": "identity_proof_plus_capability_specific_provider_authority",
+  "mode": "converge_existing_authorized_capabilities",
+  "scopes": {
+    "all-royal-egypt:staging": {
+      "environment": "staging",
+      "canonical_origin": "https://staging.allroyalegypt.com",
+      "site_uuid": "49c562d1-8f2f-456f-b454-26816c6ba4cb",
+      "expected_root": "/home/u948953904/domains/allroyalegypt.com/public_html/staging",
+      "operations": [
+        "remote_exec:site_root",
+        "remote_exec:file_sha256",
+        "remote_file_transfer:verified_zip"
+      ],
+      "auto_register_missing_provider": false,
+      "independent_readback_required": true,
+      "legacy_company_trust_unchanged": true
+    }
+  },
+  "planned_domains": [
+    "identity_and_trust",
+    "authority",
+    "transport",
+    "provider",
+    "package",
+    "migration",
+    "data",
+    "workflow",
+    "reviews",
+    "runtime"
+  ],
+  "live_adapters": [
+    "transport",
+    "identity",
+    "agent",
+    "package",
+    "workflow"
+  ]
+}
