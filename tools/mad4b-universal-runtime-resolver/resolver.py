@@ -23,9 +23,9 @@ INBOX=HOME/"inbox"
 CONTRACT="mad4b.universal-runtime-reconciler.v1"
 EVENTS={"intake","optin","handoff","provider_change","package_registered",
         "site_identity","permission_change","workflow_failed","manual","scheduled","dispatch"}
-DOMAINS=("transport","identity","authority","full_authority","agent","package","workflow")
+DOMAINS=("transport","identity","authority","admin_shell","execution_route","full_authority","agent","package","workflow")
 DEPENDS={"transport":(),"identity":("transport",),"authority":("transport",),
-         "full_authority":("identity",),
+         "admin_shell":("transport","authority"),"execution_route":("admin_shell",),"full_authority":("identity",),
          "agent":("transport","identity"),"package":("authority",),
          "workflow":("agent",)}
 TRANSIENT={"timeout","unavailable","connection","busy","temporary","network"}
@@ -188,8 +188,63 @@ def inspect_full_authority(target,scope):
     if provider.get("target")!=target or provider.get("environment")!=current.get("environment") or provider.get("origin")!=scope.get("canonical_origin"):
         return result("review_required","unified_full_authority",
                       "target_native_owner_binding_mismatch")
+    if provider.get("reader")=="enrolled_site_wpcli_status_v1":
+        file=ROOT/"universal-runtime-v1/native_authority_status.py"
+        if not file.is_file():
+            return result("awaiting_provider","unified_full_authority",
+                          "native_status_readback_adapter_not_installed")
+        spec=importlib.util.spec_from_file_location("mad4b_source_native_status",file)
+        module=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        state,reason,evidence=module.probe(scope,provider)
+        return result(state,"original_staging_native_owner",reason,evidence)
     return result("awaiting_provider","unified_full_authority",
                   "target_native_owner_readback_adapter_not_connected")
+
+def inspect_admin_shell(target,scope):
+    """Original VPS host authority + enrolled Registry SSH, not a WP grant."""
+    policy_file=ROOT/"native-operator-v1/host-authority.json"
+    receipt=ROOT/"native-operator-v1/receipts/are-staging-registry-general-shell-20261031.json"
+    if target!=SITE:
+        return result("awaiting_provider","native_vps_operator","operator_scope_not_enrolled")
+    try:
+        native=json.loads(policy_file.read_text())
+        row=native.get("scopes",{}).get(target,{})
+        if native.get("contract")!="mad4b.native-vps-operator.v1" or native.get("revoked") is not False or native.get("allow_general_shell") is not True:
+            return result("blocked_authority","native_vps_operator","existing_host_authority_unavailable")
+        if row.get("allow_operator") is not True or row.get("allow_remote_shell") is not True or row.get("allow_mutation") is not True or row.get("allow_production_mutation") is not False or row.get("site_uuid")!=scope.get("site_uuid") or row.get("expected_root")!=scope.get("expected_root") or row.get("canonical_origin")!=scope.get("canonical_origin") or row.get("registry_binding")!=scope.get("transport_binding"):
+            return result("blocked_authority","native_vps_operator","exact_host_and_registry_scope_not_approved")
+        proof=json.loads(receipt.read_text())
+    except (OSError,ValueError,TypeError):
+        return result("awaiting_provider","native_vps_operator","admin_ssh_receipt_not_verified")
+    if proof.get("contract")!="mad4b.native-vps-operator.v1" or proof.get("lane")!="registered_remote_ssh" or proof.get("company")!="all-royal-egypt" or proof.get("environment")!="staging" or proof.get("kind")!="ssh" or proof.get("state")!="VERIFIED" or proof.get("readback_matches_expected") is not True or proof.get("mutating") is not False or proof.get("mutation_performed") is not False or proof.get("production_mutation_authorized") is not False:
+        return result("review_required","native_vps_operator","native_remote_shell_receipt_mismatch")
+    return result("verified","native_vps_operator","host_authority_inherited_via_enrolled_registry",
+       {"site_uuid":scope["site_uuid"],"execution_lane":"registered_remote_ssh",
+        "administrative_shell_ready":True,"unrestricted_wordpress_queue_shell":False,
+        "native_php_proc_open_required":False,
+        "production_mutation":False,"readback_sha256":proof.get("readback_sha256")})
+
+def inspect_execution_route(target,scope):
+    """Choose a pre-authorized admin SSH lane when PHP developer lane is down.
+
+    Router is a capability projection. It never consumes a queued shell
+    payload, creates a grant, or asserts native developer sandbox readiness.
+    """
+    if target!=SITE:
+        return result("awaiting_provider","execution_router","target_execution_route_not_enrolled")
+    native=inspect_admin_shell(target,scope)
+    if native["state"]!="verified":
+        return result("blocked_dependency","execution_router",
+                      "registered_admin_shell_fallback_not_verified")
+    return result("verified","execution_router","registered_ssh_administrative_lane_selected",
+                  {"selected_lane":"registered_remote_ssh",
+                   "supported_intents":["diagnostic","repair","configuration","upgrade","deployment","rollback"],
+                   "operator_mode":"direct_root_owned_command_files",
+                   "native_php_proc_open_required":False,
+                   "network_sandbox_equivalent":False,
+                   "wordpress_queued_shell_granted":False,
+                   "production_mutation":False})
 
 def inspect_agent(target,scope):
     # A source-specific adapter is not generalized by merely copying its name.
@@ -261,8 +316,8 @@ def inspect_workflow(target,scope):
                   {"pending_authority_count":d.get("pending_authority_count")})
 
 ADAPTERS={"transport":inspect_transport,"identity":inspect_identity,
-          "authority":inspect_authority,"full_authority":inspect_full_authority,
-          "agent":inspect_agent,"package":inspect_package,"workflow":inspect_workflow}
+          "authority":inspect_authority,"admin_shell":inspect_admin_shell,
+          "execution_route":inspect_execution_route,"full_authority":inspect_full_authority,"agent":inspect_agent,"package":inspect_package,"workflow":inspect_workflow}
 def enqueue(con,target,trigger,source,idem):
     if trigger not in EVENTS or not re.fullmatch(r"[a-z0-9_.:-]{3,100}",source):
         raise ValueError("unsupported_event")
