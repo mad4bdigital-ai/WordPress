@@ -44,6 +44,23 @@ A source-only patch is in `central-control-plane-source-fix-02ad44f.patch` on th
 - Do not treat an initially unbound Candidate as a foreign owner conflict. Bind it through the original workflow after the new source is live and matches its provenance.
 - Host Authority is not a general-purpose background WordPress queue shell. Every new operation needs exact scope, original preflight, audit and readback.
 
+## Additional recurring design defect — fixed-date execution receipt
+
+The currently deployed `central_execution_route.py` determines central host
+readiness using a hard-coded, successful diagnostic Receipt from 2026-10-31
+and a 24-hour age limit. This will eventually report
+`previous_host_receipt_expired` even if the current root Host scope and
+WordPress Site Profile are healthy. Conversely a historic receipt is not
+evidence that a new operation is authorized.
+
+Required correction: inspect the *current* root-owned Host Authority policy
+and enrolled site identity using fixed read-only WP-CLI, and report capability
+readiness independently of any prior operation. For new operations keep
+`Native VPS Operator` exact command-plan, correlation ID, readback and
+rollback requirements. The dedicated live-code replacement attempt in this
+session was denied by the infrastructure channel's safety check. **Do not
+mark this item closed or claim it was deployed.**
+
 ## Remaining release gates
 
 The candidate was **built, linted and compared but not installed**: an additional pre-install backup step was denied by the infrastructure execution channel. Staging Control Plane therefore still reports the old live source until an authorized backup/restore path exists. Do not claim that the 20 missing grants or current OAuth conflict are fixed live.
