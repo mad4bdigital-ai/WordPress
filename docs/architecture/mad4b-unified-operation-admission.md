@@ -49,3 +49,22 @@ No create/revoke grant call may happen **before** identity and source-policy pre
 ## Non-goals
 
 No new grant issuance, no Agent reassignment, no OAuth impersonation, no bypass of step-up where it applies, no raw SQL/shell escalation, no production mutation, and no rewrite of existing registry or authorization implementation.
+
+## Automatic authorization convergence after transport authentication
+
+The distinction between `SSH_AUTHENTICATED` and `OPERATION_AUTHORIZED` is **not** an extra manual approval stage. It is one transactionally linked workflow that wakes on authenticated transport, a newly admitted job, changed grants or delegation, target enrollment, and fresh signed readback.
+
+| Event | Automated next step | No action allowed without |
+| --- | --- | --- |
+| Registered SSH host becomes authenticated | Re-evaluate matching parked exact-scope jobs using current canonical registry snapshot | Canonical host principal, target site UUID/origin/environment and valid per-job grant |
+| New Broker Job / Claim | Verify source Job, signed Claim, approved operator, exact company/target/command and resource constraints | Active source grant, nonce/freshness, delegated role, provider mount |
+| Target Binding / Grant / Delegation changes | Invalidate cached eligibility, resnapshot and atomically re-evaluate dependent parked jobs | A fresh evidence chain; never reuse old eligibility |
+| All admission evidence passes | Transition that exact job to `OPERATION_AUTHORIZED`, then dispatch approved native executor and verify readback | Native approval, agent grant, non-replayable job and execution budget |
+| Missing evidence / grant expired | Mark `WAITING_EXACT_AUTHORITY` with machine-readable blockers; automatically retry on its **own** authoritative dependency change | Never forge or renew grants, promote one-time to persistent, or mutate job state merely to suppress diagnostics |
+| Execution failed or readback mismatched | Park job, emit audit and invoke original operation's bounded rollback or compensating action | A reversible mutation with verified prior snapshot; non-mutating diagnostics need no rollback mutation |
+
+**Essential liveness invariant:** a successful SSH identity check produces an authorization evaluation automatically, **not** automatic authorization. When valid exact evidence is already present, the handoff must be zero-touch. Where evidence is absent, return a precise reviewable dependency and retry only after the dependency changes; no unbounded polling and no generic manual approval ceremony.
+
+**Readback truth invariant:** `CENTRAL_GRANT_VERIFIER_NOT_BOUND` and `CENTRAL_REMOTE_TARGET_SCOPE_BINDING_PENDING` are honest blockers until the signed Registry observation demonstrates actual binding. Do not remove these strings via default boolean fields, an unsigned fallback, or an execution receipt derived from a Claim. The 312 verifier must report why a claim is ineligible, and 313 may only attest a genuinely executed, independently observed exact operation. Existing expired Job IDs must not be resurrected.
+
+**Release integrity:** executable Broker modules 301/312/313 and their dependency graph need exact source parity and replay/expiry/deny tests in the canonical central release before automatic remote execution can be considered deployment-ready. An existing VPS file alone is not release authorization.
