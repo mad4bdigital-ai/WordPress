@@ -52,6 +52,8 @@ $one = $accept( 'staging' );
 verify( 'revalidated' === $one['state'] && 2 === $one['php_invalidated']
     && true === $one['next_request_required'], 'new package invalidates exactly the PHP files' );
 verify( count( $calls ) === 2, 'no wildcard or unrelated file invalidation' );
+verify( $calls === array( $root . '/includes/first.php', $root . '/includes/second.php' ),
+    'exact PHP inventory invalidated; no text files or wildcard invalidation' );
 $two = $accept( 'staging' );
 verify( 'current' === $two['state'] && count( $calls ) === 2,
     'subsequent request has no invalidation or write' );
