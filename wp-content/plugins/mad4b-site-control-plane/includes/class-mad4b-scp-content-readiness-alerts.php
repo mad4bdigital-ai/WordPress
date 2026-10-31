@@ -254,7 +254,9 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                     get_post_type($object_id)===$type && get_post_status($object_id)==='publish' &&
                     ((string)(apply_filters('wpml_post_language_details',null,$object_id)['language_code']??'')) ===
                         (string)apply_filters('wpml_default_language',null);
-                $valid=is_array($row) && ($dfsb||$localization) &&
+                $performance=preg_match('/^perf_(?:(?:rbcss|lcpdelay|fontcss|inlinecss)_[a-f0-9]{12}|ttfb_site|lcpdiscover_home|probe_stale)$/D',$code) &&
+                    $source==='mad4b-live-performance' && $type==='site' && $object_id===0;
+                $valid=is_array($row) && ($dfsb||$localization||$performance) &&
                     hash_equals($expected,$id) &&
                     in_array($row['severity']??'',array('critical','high','medium','low'),true) &&
                     is_string($row['label']??null) &&
@@ -339,6 +341,10 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         $type=$issue['post_type']??'';$code=$issue['code']??'';
         if(str_starts_with($code,'loc_') && ($issue['source']??'')==='mad4b-elementor-localization')
             return has_filter('mad4b/content_readiness/external_issues')!==false;
+        if($type==='site' && str_starts_with($code,'perf_') &&
+           ($issue['source']??'')==='mad4b-live-performance')
+            return class_exists('MAD4B_Live_Render_Blocking_Monitor_V1') &&
+                MAD4B_Live_Render_Blocking_Monitor_V1::report()['fresh'];
         if($type==='site' && str_starts_with($code,'dfsb_')){
             // Never resolve a source issue when its scanner is disconnected.
             return has_filter('mad4b/content_readiness/external_issues')!==false;

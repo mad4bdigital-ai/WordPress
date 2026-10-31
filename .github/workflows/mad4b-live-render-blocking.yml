@@ -1,0 +1,49 @@
+name: MAD4B Live Render Blocking
+on:
+  pull_request:
+    paths:
+      - 'wp-content/mu-plugins/307-mad4b-uael-critical-css-policy.php'
+      - 'wp-content/mu-plugins/308-mad4b-live-render-blocking-monitor.php'
+      - 'wp-content/mu-plugins/309-mad4b-astra-local-cairo.php'
+      - 'wp-content/mu-plugins/310-mad4b-city-slider-lcp-preload.php'
+      - 'wp-content/mu-plugins/311-mad4b-explore-global-contrast.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php'
+      - 'ops/qa/mad4b-render-blocking/**'
+      - '.github/workflows/mad4b-live-render-blocking.yml'
+  push:
+    paths:
+      - 'wp-content/mu-plugins/307-mad4b-uael-critical-css-policy.php'
+      - 'wp-content/mu-plugins/308-mad4b-live-render-blocking-monitor.php'
+      - 'wp-content/mu-plugins/309-mad4b-astra-local-cairo.php'
+      - 'wp-content/mu-plugins/310-mad4b-city-slider-lcp-preload.php'
+      - 'wp-content/mu-plugins/311-mad4b-explore-global-contrast.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php'
+      - 'ops/qa/mad4b-render-blocking/**'
+      - '.github/workflows/mad4b-live-render-blocking.yml'
+permissions:
+  contents: read
+concurrency:
+  group: mad4b-render-blocking-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: PHP contracts
+        run: |
+          php -l wp-content/mu-plugins/307-mad4b-uael-critical-css-policy.php
+          php -l wp-content/mu-plugins/308-mad4b-live-render-blocking-monitor.php
+          php -l wp-content/mu-plugins/309-mad4b-astra-local-cairo.php
+          php -l wp-content/mu-plugins/310-mad4b-city-slider-lcp-preload.php
+          php -l wp-content/mu-plugins/311-mad4b-explore-global-contrast.php
+          php ops/qa/mad4b-render-blocking/tests/home-lcp-preload-contract.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php
+          php ops/qa/mad4b-render-blocking/tests/source_contract.php
+      - name: Offline classification contracts
+        run: |
+          python3 -m py_compile ops/qa/mad4b-render-blocking/mad4b-live-css-render-blocking.py
+          python3 ops/qa/mad4b-render-blocking/tests/test_classifier.py
