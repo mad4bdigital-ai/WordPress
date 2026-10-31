@@ -168,20 +168,43 @@ final class MAD4B_SCP_Developer_Authority {
 		);
 	}
 
+	/**
+	 * The transport resolver identifies the canonical principal; this class
+	 * remains the owner of Developer subject derivation and grant lifecycle.
+	 */
 	public static function can_access( $input = null ) {
-		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_developer_authority_admin_required', 'Administrator capability is required.' );
-		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return new WP_Error( 'mad4b_developer_authority_bearer_required', 'Verified OAuth bearer identity is required.' );
-		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured() ) return new WP_Error( 'mad4b_developer_authority_profile_missing', 'An enrolled Site Profile is required.' );
-		$environment = sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() );
-		if ( ! in_array( $environment, array( 'staging', 'development', 'local' ), true ) ) return new WP_Error( 'mad4b_developer_authority_non_production_only', 'Developer authority provisioning is limited to explicit non-Production environments.' );
-		if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return new WP_Error( 'mad4b_developer_authority_profile_not_exact', 'Current origin and URLs must exactly match the enrolled Site Profile.' );
-		$user_id = get_current_user_id();
-		if ( $user_id < 1 || ! MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id ) ) return new WP_Error( 'mad4b_developer_authority_subject_not_enrolled', 'The authenticated administrator is not enrolled in this Site Profile.' );
-		$identity = class_exists( 'MAD4B_SCP_Identity_Context' ) ? MAD4B_SCP_Identity_Context::current() : new WP_Error( 'mad4b_developer_authority_identity_unavailable', 'Governance identity is unavailable.' );
-		if ( is_wp_error( $identity ) ) return $identity;
-		if ( empty( $identity['authenticated'] ) || 'oauth' !== ( isset( $identity['subject_type'] ) ? (string) $identity['subject_type'] : '' ) || 'oauth2_bearer' !== ( isset( $identity['auth_method'] ) ? (string) $identity['auth_method'] : '' ) ) return new WP_Error( 'mad4b_developer_authority_normal_oauth_required', 'Provisioning must originate from the enrolled normal OAuth subject, not from Developer authority itself.' );
-		if ( ! self::identity_has_developer_derivation_material( $identity ) ) return new WP_Error( 'mad4b_developer_authority_client_identity_required', 'OAuth subject and client fingerprints are required to derive the isolated Developer identity.' );
+		if(!class_exists('MAD4B_SCP_Execution_Authority'))
+			return new WP_Error('mad4b_developer_actor_resolver_missing','Unified authority resolver unavailable.');
+		$actor=MAD4B_SCP_Execution_Authority::resolve('plan');
+		if(is_wp_error($actor))return $actor;
+		if(!in_array($actor['environment'],array('staging','development','local'),true))
+			return new WP_Error('mad4b_developer_authority_non_production_only','Developer provisioning requires a nonproduction site.');
+		if('oauth_mcp'===$actor['transport']){
+			$identity=MAD4B_SCP_Identity_Context::current();
+			if(is_wp_error($identity) || !is_array($identity) || !self::identity_has_developer_derivation_material($identity))
+				return new WP_Error('mad4b_developer_authority_client_identity_required','Verified OAuth subject and client fingerprints required.');
+		}
 		return true;
+	}
+
+	/**
+	 * Native CLI reuses the already-enrolled Developer subject; it must never
+	 * synthesize an OAuth identity or bind a new subject by itself.
+	 */
+	private static function subject_for_actor(array $actor,array $identity) {
+		if('oauth_mcp'===$actor['transport'])return self::derived_subject_fingerprint($identity);
+		if('host_cli'!==$actor['transport'])return new WP_Error('mad4b_developer_actor_invalid','Unsupported actor transport.');
+		$agent=self::configured_or_slug_agent();
+		if(!is_array($agent) || (int)($agent['wp_user_id']??0)!==(int)$actor['wp_user_id'])
+			return new WP_Error('mad4b_developer_native_agent_unbound','Canonical Developer Agent must already belong to the host owner.');
+		$subjects=MAD4B_SCP_Agent_Registry::subjects_for_agent((int)$agent['id'],self::SUBJECT_TYPE);
+		$enabled=array_values(array_filter($subjects,static function($s){
+			return is_array($s) && 'enabled'===($s['status']??'')
+				&& 1===preg_match('/^[a-f0-9]{64}$/',(string)($s['subject_fingerprint']??''));
+		}));
+		if(1!==count($enabled))
+			return new WP_Error('mad4b_developer_native_subject_ambiguous','Exactly one existing enabled Developer subject is required.');
+		return (string)$enabled[0]['subject_fingerprint'];
 	}
 
 	public static function status() {
@@ -227,8 +250,10 @@ final class MAD4B_SCP_Developer_Authority {
 	}
 
 	private static function build_plan( $breakglass ) {
-		$identity = MAD4B_SCP_Identity_Context::current();
-		if ( is_wp_error( $identity ) ) return $identity;
+		$actor=MAD4B_SCP_Execution_Authority::resolve('plan');
+		if(is_wp_error($actor))return $actor;
+		$identity=MAD4B_SCP_Identity_Context::current();
+		if(is_wp_error($identity))return $identity;
 		$provenance = self::provenance();
 		if ( is_wp_error( $provenance ) ) return $provenance;
 
@@ -236,14 +261,14 @@ final class MAD4B_SCP_Developer_Authority {
 		$site_uuid = strtolower( trim( (string) MAD4B_SCP_Site_Profile::site_uuid() ) );
 		$revision = (int) MAD4B_SCP_Site_Profile::revision();
 		$digest = strtolower( (string) MAD4B_SCP_Site_Profile::profile_digest() );
-		$derived_subject = self::derived_subject_fingerprint( $identity );
+		$derived_subject=self::subject_for_actor($actor,$identity);
 		if ( is_wp_error( $derived_subject ) ) return $derived_subject;
 
 		$agent = self::configured_or_slug_agent();
 		$blockers = array();
 		if ( is_array( $agent ) ) {
 			if ( self::AGENT_SLUG !== (string) $agent['slug'] ) $blockers[] = 'configured_agent_slug_mismatch';
-			if ( (int) $agent['wp_user_id'] !== get_current_user_id() ) $blockers[] = 'configured_agent_user_mismatch';
+			if ( (int) $agent['wp_user_id'] !== (int)$actor['wp_user_id'] ) $blockers[] = 'configured_agent_user_mismatch';
 			if ( $environment !== (string) $agent['environment'] ) $blockers[] = 'configured_agent_environment_mismatch';
 		}
 		$binding = MAD4B_SCP_Agent_Registry::resolve_agent( array(
@@ -309,6 +334,10 @@ final class MAD4B_SCP_Developer_Authority {
 		if ( self::$running ) return new WP_Error( 'mad4b_developer_authority_reentry_denied', 'Developer authority apply is already running in this request.' );
 		$access = self::can_access( $input );
 		if ( is_wp_error( $access ) || ! $access ) return $access;
+		$actor=MAD4B_SCP_Execution_Authority::resolve('apply');
+		if(is_wp_error($actor))return $actor;
+		if($breakglass && 'host_cli'===$actor['transport'])
+			return new WP_Error('mad4b_developer_native_breakglass_stepup_required','Local Breakglass requires separate verified operator step-up.');
 		if ( ! is_array( $input ) ) return new WP_Error( 'mad4b_developer_authority_input_invalid', 'Input must be an object.' );
 		$confirmation = $breakglass ? self::CONFIRM_BREAKGLASS : self::CONFIRM_PROVISION;
 		if ( $confirmation !== ( isset( $input['confirmation'] ) ? (string) $input['confirmation'] : '' ) ) return new WP_Error( 'mad4b_developer_authority_confirmation_required', 'Exact Developer authority confirmation is required.' );
