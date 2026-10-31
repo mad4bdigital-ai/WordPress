@@ -17,6 +17,10 @@ final class MAD4B_SCP_Central_Company_Rollout {
     public static function boot() {
         require_once __DIR__ . '/class-mad4b-scp-central-release-registry.php';
         MAD4B_SCP_Central_Release_Registry::boot();
+        // Existing native VPS Broker gets a read-only, exact-release handoff;
+        // execution still requires its independent 312/313 verification.
+        require_once __DIR__ . '/class-mad4b-scp-central-operator-handoff.php';
+        MAD4B_SCP_Central_Operator_Handoff::boot();
         add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 39 );
     }
 
