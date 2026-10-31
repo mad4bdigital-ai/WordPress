@@ -45,10 +45,22 @@ $GLOBALS['breakglass']=false; $_SERVER['HTTP_AUTHORIZATION']='unexpected';
 check_case(is_wp_error($cls::can_access()), 'mixed auth channel denied');
 // Separate Developer Plane: a valid host CLI identity must never become a
 // Production Developer grant or bypass the independent Breakglass step-up.
+// Explicit native authority fixture used solely for this isolated PHP test.
+// No OAuth identity, capability or write grant is created here.
 class MAD4B_SCP_Execution_Authority {
  public static function resolve($operation='read') {
   return array('environment'=>$GLOBALS['env'],'transport'=>'host_cli','wp_user_id'=>$GLOBALS['uid']);
  }
+ public static function require_access($operation='read',$environments=array('staging')) {
+  if($GLOBALS['uid']!==1 || !$GLOBALS['enrolled'] || !$GLOBALS['origin']
+   || !in_array($GLOBALS['env'],$environments,true)
+   || isset($_SERVER['HTTP_AUTHORIZATION']))
+   return new WP_Error('mad4b_fixture_exact_enrollment_required');
+  return self::resolve($operation);
+ }
+}
+class MAD4B_SCP_Governed_Runtime_Gates {
+ public static function raw_sql_breakglass_enabled(){return $GLOBALS['breakglass'];}
 }
 require dirname(__DIR__).'/includes/class-mad4b-scp-developer-authority.php';
 $dev='MAD4B_SCP_Developer_Authority';
