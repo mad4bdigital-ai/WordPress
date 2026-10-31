@@ -41,3 +41,12 @@ use the projector to obtain authorization.
    bounded when busy; no automatic write when authorization absent.
 4. Native dispatch, undo and endpoint-to-provider receipts proven separately.
 5. Production rollout only on independently approved release.
+
+## Native owner integration (v1.1 increment)
+- Scheduler Admission maps ADMIT to WAITING_PREFLIGHT, rate/concurrency throttling to QUEUED and quota saturation to RECOVERING. A native authority denial remains BLOCKED_AUTHORITY.
+- Scheduler Backlog status and Remote Work Queue list expose each item's canonical observed lifecycle state, plus an aggregate count. Claimed/leased is RUNNING; expired claim is NEEDS_RECONCILIATION; completed queue work is WAITING_VERIFICATION until original provider postcondition readback.
+- Adaptive Operation Router describes the canonical selected dispatch route as WAITING_PREFLIGHT; a route is not an execution grant. Unknown write outcome freezes replay; a platform safety denial never yields an alternate mutation route.
+- Recovery Route Resolver exposes a global projection for recommended diagnostic recovery, without executing fallback actions or minting approval.
+- Unresolved conditional and optional capabilities are PENDING, never false hard dependency blockers.
+
+No new queue, Dispatcher or fallback executor was created. These are **actual hooks into existing native owner readouts**, not claimed autonomous executor certification. The authoritative owner remains responsible for claims, handoff, native execution, publisher side effects, durable journal and rollback. Source-only regression simulates QUEUED → RUNNING → WAITING_VERIFICATION → VERIFIED but is not a live Staging provider transaction.
