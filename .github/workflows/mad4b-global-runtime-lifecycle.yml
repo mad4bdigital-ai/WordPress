@@ -3,6 +3,12 @@ on:
   pull_request:
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-global-runtime-lifecycle.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-admission.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-backlog.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-work-queue.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-operation-router.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-recovery-route-resolver.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/global-runtime-native-lanes-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-dependency-planner.php'
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/global-runtime-lifecycle-contract.php'
@@ -12,6 +18,12 @@ on:
     branches: [master]
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-global-runtime-lifecycle.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-admission.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-backlog.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-work-queue.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-operation-router.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-recovery-route-resolver.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/global-runtime-native-lanes-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-dependency-planner.php'
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/global-runtime-lifecycle-contract.php'
@@ -36,5 +48,9 @@ jobs:
           php -l "$ROOT/mad4b-site-control-plane.php"
           php -l "$ROOT/includes/class-mad4b-scp-capability-dependency-planner.php"
           php "$ROOT/tests/global-runtime-lifecycle-contract.php"
+          php "$ROOT/tests/global-runtime-native-lanes-contract.php"
+          for file in scheduler-admission scheduler-backlog remote-work-queue adaptive-operation-router recovery-route-resolver; do
+            php -l "$ROOT/includes/class-mad4b-scp-$file.php"
+          done
           php -l wp-content/plugins/mad4b-lifecycle-orchestrator/class-mad4b-unified-governed-lifecycle-policy.php
           php wp-content/plugins/mad4b-lifecycle-orchestrator/tests/unified-policy-source-contract.php
