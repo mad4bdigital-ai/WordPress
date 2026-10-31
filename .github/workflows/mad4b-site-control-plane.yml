@@ -190,7 +190,7 @@ jobs:
           set -euo pipefail
           root=wp-content/plugins/mad4b-site-control-plane/tests
           python3 "$root/company-plugin-sync-mu-source-contract.py"
-          for test in company-plugin-sync-mu-runtime.php company-user-rest-suspension-isolation-runtime.php; do
+          for test in company-plugin-sync-mu-runtime.php company-user-rest-suspension-isolation-runtime.php company-user-rest-route-security-runtime.php; do
             php -l "$root/$test"
             php "$root/$test"
           done
