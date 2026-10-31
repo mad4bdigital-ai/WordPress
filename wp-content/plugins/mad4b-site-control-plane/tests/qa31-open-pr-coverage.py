@@ -5,7 +5,7 @@ GitHub read-only API; report is diagnostic, NOT a merge, test-success, or review
 import argparse
 import json
 import os
-from pathlib import PurePosixPath
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.request import Request, urlopen
 from urllib.parse import quote
 
@@ -78,9 +78,14 @@ def main():
         prs=pages(base+"/pulls?state=open",token)
         changed=pages(base+"/pulls/"+str(args.qa31)+"/files",token)
         file_map={}
-        for pr in prs:
-            if pr["number"]!=args.qa31:
-                file_map[pr["number"]]=pages(base+"/pulls/"+str(pr["number"])+"/files",token)
+        peer_numbers=[int(pr["number"]) for pr in prs if int(pr["number"])!=args.qa31]
+        # Bounded parallel reads prevent dozens of sequential API round-trips
+        # while keeping the GitHub token and repository strictly read-only.
+        with ThreadPoolExecutor(max_workers=6) as pool:
+            futures={pool.submit(pages,base+"/pulls/"+str(number)+"/files",token):number
+                     for number in peer_numbers}
+            for future in as_completed(futures):
+                file_map[futures[future]]=future.result()
         report=classify(prs,file_map,{x["filename"] for x in changed},args.qa31)
     with open(args.out,"w",encoding="utf8") as f:
         json.dump(report,f,indent=2,ensure_ascii=False)
