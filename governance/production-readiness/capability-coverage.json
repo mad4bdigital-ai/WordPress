@@ -3605,6 +3605,149 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing MCP admission, platform identity, security, owner-scoped administrative rights and execution-denial controls cover these staging-only authorization surfaces, without granting Production execution or public access.",
       "review_rationale": "New surface ability:mad4b/staging-write-grant-reconcile-staging is source-pinned in the W1 authority integration and assessed with hermetic owner-browser, agent REST route, Site Profile, OAuth, replay, write grant, exact mapping and negative permission fixtures. This is only CI source review, not evidence that the route is registered, usable, or authorized in Production."
+    },
+    {
+      "id": "ability:mad4b/central-company-rollout-plan",
+      "owner_role": "MAD4B source-level CI security reviewer; independent owner release attestation still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/central-company-rollout-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Reuses existing security, identity, execution, updates and rollout checklist controls for a read-only, deny-first source change; runtime Production authorization requires fresh independent evidence.",
+      "review_rationale": "Read-only release planning checks trusted signed readback, company environment, rollback prerequisites, and explicit Production nonauthorization. This review is only static source and regression-test coverage; it is not a signed owner approval or proof of Production deployment."
+    },
+    {
+      "id": "ability:mad4b/central-native-operator-handoff-plan",
+      "owner_role": "MAD4B source-level CI security reviewer; independent owner release attestation still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/central-native-operator-handoff-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Reuses existing security, identity, execution, updates and rollout checklist controls for a read-only, deny-first source change; runtime Production authorization requires fresh independent evidence.",
+      "review_rationale": "Read-only handoff never executes Shell or invents grants; Broker 312 and independent 313 remain required for admission and completion. This review is only static source and regression-test coverage; it is not a signed owner approval or proof of Production deployment."
+    },
+    {
+      "id": "rest:mad4b/v1/central-release/(?P<release_sha256>[a-f0-9]{64})",
+      "owner_role": "MAD4B source-level CI security reviewer; independent owner release attestation still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/central-release-registry-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Reuses existing security, identity, execution, updates and rollout checklist controls for a read-only, deny-first source change; runtime Production authorization requires fresh independent evidence.",
+      "review_rationale": "Public Staging release readback is immutable and signed, validated against pinned issuer key and origin; endpoint cannot install or grant authority. This review is only static source and regression-test coverage; it is not a signed owner approval or proof of Production deployment."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-company-rollout.php",
+      "owner_role": "MAD4B source-level CI security reviewer; independent owner release attestation still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/central-company-rollout-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Reuses existing security, identity, execution, updates and rollout checklist controls for a read-only, deny-first source change; runtime Production authorization requires fresh independent evidence.",
+      "review_rationale": "Release rollouts require reviewed source and verified receipt, environment and rollback checks; pure assessment is nonauthorizing. This review is only static source and regression-test coverage; it is not a signed owner approval or proof of Production deployment."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-operator-handoff.php",
+      "owner_role": "MAD4B source-level CI security reviewer; independent owner release attestation still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/central-native-operator-handoff-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Reuses existing security, identity, execution, updates and rollout checklist controls for a read-only, deny-first source change; runtime Production authorization requires fresh independent evidence.",
+      "review_rationale": "Operator handoff is a read-only plan with explicit deny-first grant and remote-readback prerequisites; no target Shell dispatch is performed. This review is only static source and regression-test coverage; it is not a signed owner approval or proof of Production deployment."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-release-registry.php",
+      "owner_role": "MAD4B source-level CI security reviewer; independent owner release attestation still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/central-release-registry-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Reuses existing security, identity, execution, updates and rollout checklist controls for a read-only, deny-first source change; runtime Production authorization requires fresh independent evidence.",
+      "review_rationale": "Registry verifies pinned public-key issuer signatures for immutable Staging readback records, and does not promote a public receipt into Production authority. This review is only static source and regression-test coverage; it is not a signed owner approval or proof of Production deployment."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-operation-authority.php",
+      "owner_role": "MAD4B source-level CI security reviewer; independent owner release attestation still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-operation-authority-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Reuses existing security, identity, execution, updates and rollout checklist controls for a read-only, deny-first source change; runtime Production authorization requires fresh independent evidence.",
+      "review_rationale": "Pure shared authority assessor checks trusted identity, exact operation grants, company delegation, command binding and environment while refusing execution. This review is only static source and regression-test coverage; it is not a signed owner approval or proof of Production deployment."
     }
   ],
   "lifecycle": [],
@@ -11496,6 +11639,120 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing pinned source validation, exact SHA identity, bounded GitHub HTTPS and protected candidate deploy controls cover the compact Git Data lookup.",
       "review_rationale": "The GitHub /commits/{sha} REST response may exceed the existing 262144-byte budget for multi-parent integration changes. Only the exact immutable commit lookup changes to /git/commits/{sha} (small Git object metadata). Do not raise limits, change other source selectors or treat any redirect/invalid/mismatched response as verified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/central-staging-source.json",
+      "source_blob_sha": "3b8a2a31833d14d0ea1bfe772c34d65ceadbff12",
+      "control_ids": [
+        "UPDATES-01",
+        "SECURITY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/central-release-registry-runtime.php"
+      ],
+      "owner_role": "MAD4B source-level CI security reviewer; independent owner release attestation still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing security, immutable source, denial, staging regression and rollback controls cover this exact source change without granting new Production authority.",
+      "review_rationale": "Fixed central Staging issuer origin and RS256 readback route configuration; signed evidence trust is validated by registry tests. Source change review remains CI-only pending live readback and independent release authority."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-company-rollout.php",
+      "source_blob_sha": "51c91b1afd5be42bd9b0e701e2b3ce68d6eee59d",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/central-company-rollout-runtime.php"
+      ],
+      "owner_role": "MAD4B source-level CI security reviewer; independent owner release attestation still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing security, immutable source, denial, staging regression and rollback controls cover this exact source change without granting new Production authority.",
+      "review_rationale": "No mandatory per-company Staging; Production rollout remains deny-first until signature, source, compatibility and rollback requirements hold. Source change review remains CI-only pending live readback and independent release authority."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-operator-handoff.php",
+      "source_blob_sha": "0a0c1c5015a9a37c624e977477c9a4d535993165",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/central-native-operator-handoff-runtime.php"
+      ],
+      "owner_role": "MAD4B source-level CI security reviewer; independent owner release attestation still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing security, immutable source, denial, staging regression and rollback controls cover this exact source change without granting new Production authority.",
+      "review_rationale": "Handoff output is an inert read-only plan; exact Broker grant, Native SSH identity and 313 execution readback cannot be caller-supplied. Source change review remains CI-only pending live readback and independent release authority."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-release-registry.php",
+      "source_blob_sha": "cfaa179aa1c696e17552a7645f91a32c0634ba26",
+      "control_ids": [
+        "UPDATES-01",
+        "SECURITY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/central-release-registry-runtime.php"
+      ],
+      "owner_role": "MAD4B source-level CI security reviewer; independent owner release attestation still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing security, immutable source, denial, staging regression and rollback controls cover this exact source change without granting new Production authority.",
+      "review_rationale": "Pinned issuer key, fixed origin, checked RS256 envelope and immutable release digest guard central Staging readbacks without a new install authority. Source change review remains CI-only pending live readback and independent release authority."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-transaction.php",
+      "source_blob_sha": "80b014339774b0a620de421741c566e5d096e154",
+      "control_ids": [
+        "PLATFORM-01",
+        "SECURITY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/central-company-rollout-runtime.php"
+      ],
+      "owner_role": "MAD4B source-level CI security reviewer; independent owner release attestation still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing security, immutable source, denial, staging regression and rollback controls cover this exact source change without granting new Production authority.",
+      "review_rationale": "Existing Plugin Transaction remains a planning provider; central rollout contract test includes compatibility and rejects unauthorized deployment promotion. Source change review remains CI-only pending live readback and independent release authority."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-operation-authority.php",
+      "source_blob_sha": "8a4e227fe22f5791353293da5505faeb3507b04c",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-operation-authority-runtime.php"
+      ],
+      "owner_role": "MAD4B source-level CI security reviewer; independent owner release attestation still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing security, immutable source, denial, staging regression and rollback controls cover this exact source change without granting new Production authority.",
+      "review_rationale": "Common authority assessment for OAuth, SSH and Broker channels stays read-only, binds exact grant and company and never grants execution by itself. Source change review remains CI-only pending live readback and independent release authority."
     }
   ],
   "code_change_rules": {

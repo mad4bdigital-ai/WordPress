@@ -1,0 +1,75 @@
+name: MAD4B Central Staging Company Rollout
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-company-rollout.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-transaction.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/central-company-rollout-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-operator-handoff.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/central-native-operator-handoff-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-operation-authority.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/unified-operation-authority-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/unified-authority-staging-mu-bridge-contract.py'
+      - 'ops/central-rollout/315-mad4b-unified-authority-bridge.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-release-registry.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/central-staging-source.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/central-release-registry-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/central-local-git-canary-executor-contract.py'
+      - 'ops/central-rollout/local-git-staging-canary-executor.py'
+      - 'ops/central-rollout/content-hub-local-git-staging-cycle.py'
+      - 'ops/central-rollout/mu-local-git-staging-canary.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/central-content-hub-staging-cycle-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/central-mu-local-git-canary-contract.py'
+      - '.github/workflows/mad4b-central-company-rollout.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-central-company-rollout-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  central-to-company-compatibility:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact source commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Verify exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+      - name: Validate Staging-first company rollout policy
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-company-rollout.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-transaction.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/central-company-rollout-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/central-company-rollout-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-operator-handoff.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/central-native-operator-handoff-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/central-native-operator-handoff-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-operation-authority.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/unified-operation-authority-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/unified-operation-authority-runtime.php
+          php -l ops/central-rollout/315-mad4b-unified-authority-bridge.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/unified-authority-staging-mu-bridge-contract.py
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-release-registry.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/central-release-registry-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/central-release-registry-runtime.php
+          python3 -m py_compile ops/central-rollout/local-git-staging-canary-executor.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/central-local-git-canary-executor-contract.py
+          python3 -m py_compile ops/central-rollout/content-hub-local-git-staging-cycle.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/central-content-hub-staging-cycle-contract.py
+          python3 -m py_compile ops/central-rollout/mu-local-git-staging-canary.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/central-mu-local-git-canary-contract.py
