@@ -50,28 +50,31 @@ for item in ordered:
             conflicts = subprocess.run(["git", "diff", "--name-only", "--diff-filter=U"],
                                        capture_output=True, text=True).stdout.splitlines()
             subprocess.run(["git", "merge", "--abort"], check=True)
-            status = "conflict"
             diagnostic = (result.stderr + "\\n" + result.stdout)[-1200:]
+            status = ("unrelated_history" if "refusing to merge unrelated histories" in diagnostic
+                      else "conflict")
         else:
             subprocess.run(["git", "commit", "-m", f"integration: include open PR #{item['number']}"], check=True,
                            capture_output=True, text=True, timeout=60)
             status, conflicts = "merged", []
             diagnostic = ""
-    out.append(dict(number=item["number"], status=status, conflicts=conflicts, diagnostic=diagnostic if status == "conflict" else "",
+    out.append(dict(number=item["number"], status=status, conflicts=conflicts, diagnostic=diagnostic if status in ("conflict", "unrelated_history") else "",
                     base=item["base"], head_sha=item["head_sha"], draft=item["draft"]))
 Path("governance/integration").mkdir(parents=True, exist_ok=True)
 report = {"contract": "mad4b.open-prs-consolidation.v1", "production_mutation": False,
           "all_prs_attempted": len(prs), "merged": sum(p["status"] == "merged" for p in out),
           "already_included": sum(p["status"] == "already_included" for p in out),
           "blocked_conflicts": sum(p["status"] == "conflict" for p in out),
-          "merge_ready": not any(p["status"] == "conflict" for p in out),
+          "unrelated_histories": sum(p["status"] == "unrelated_history" for p in out),
+          "merge_ready": not any(p["status"] in ("conflict", "unrelated_history") for p in out),
           "results": out}
 Path("governance/integration/open-prs-20261031.json").write_text(json.dumps(report, indent=2) + "\n")
 subprocess.run(["git", "add", "governance/integration/open-prs-20261031.json"], check=True)
 subprocess.run(["git", "commit", "-m", "governance: record 59 open PR merge attempts and unresolved conflicts"], check=True)
 # Never publish a partial result as a fully consolidated branch.
-if report["blocked_conflicts"]:
+if not report["merge_ready"]:
     raise SystemExit("CONSOLIDATION_BLOCKED: " + str(report["blocked_conflicts"]) +
-                     " PRs have unresolved semantic conflicts; report retained as CI artifact")
+                     " merge conflicts and " + str(report["unrelated_histories"]) +
+                     " unrelated-history PRs; report retained as CI artifact")
 subprocess.run(["git", "push", "origin", "HEAD:refs/heads/integration/all-open-prs-20261031"], check=True)
 print(json.dumps({key: report[key] for key in ("all_prs_attempted","merged","already_included","blocked_conflicts","merge_ready")}))
