@@ -4,7 +4,9 @@
  *
  * Discover every installed plugin, but never infer permission or package
  * trust from a plugin header, remote URL, Actions status, or admin screen.
- * Source-approved provider contracts bind the only executable update lane.
+ * A vetted WordPress server-resolved update offer can use the native updater
+ * without a MAD4B package certificate; certified provider contracts remain
+ * available as a compatibility route. All writes require separate authority.
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
@@ -160,9 +162,11 @@ final class MAD4B_SCP_Plugin_Update_Recovery {
                 'component' => $certified ? $authority['component'] : '',
                 'certified_version' => $certified ? $authority['version'] : '',
                 'authority_state' => ! empty( $authority['conflict'] ) ? 'conflicting_provider_contracts'
-                    : ( $certified ? 'exact_repo_provider_contract' : 'requires_source_reviewed_provider_enrollment' ),
-                'update_plan_ability' => $certified ? 'mad4b/plugin-package-plan' : '',
-                'update_apply_ability' => $certified ? 'mad4b/plugin-package-apply' : '',
+                    : ( $certified ? 'exact_repo_provider_contract' : 'native_wordpress_offer_preflight_required' ),
+                'update_plan_ability' => ! empty( $authority['conflict'] ) ? '' : 'mad4b/plugin-update-recovery-plan',
+                'update_apply_ability' => ! empty( $authority['conflict'] ) ? '' : 'mad4b/plugin-remote-update-apply',
+                'provider_certificate_mandatory' => false,
+                'native_package_offer_verified' => false,
                 'ci_terminal_result_mandatory' => false,
                 'automatic_install' => false, 'arbitrary_url_allowed' => false,
             );
@@ -195,9 +199,9 @@ final class MAD4B_SCP_Plugin_Update_Recovery {
             'items' => self::inventory( is_array( $plugins ) ? $plugins : array(), $catalog,
                 ! array_key_exists( 'include_uncertified', $input ) || true === $input['include_uncertified'],
                 $limit, $filter ),
-            'ci_outage_support' => 'signed_native_evidence_or_independent_certified_provider_source',
+            'ci_outage_support' => 'verified_wordpress_update_offer_or_existing_certified_provider',
             'ci_outage_is_not_permission_to_skip_native_tests' => true,
-            'unsupported_plugins' => 'discoverable_only_until_source_certification',
+            'unsupported_plugins' => 'read_only_discovery_until_native_update_offer_passes',
             'production_allowed' => false, 'read_only' => true, 'mutation_performed' => false,
         );
     }
@@ -205,7 +209,7 @@ final class MAD4B_SCP_Plugin_Update_Recovery {
     public static function plan( $input = array() ) {
         if ( ! is_array( $input ) || array_diff( array_keys( $input ),
             array( 'plugin_file', 'reason', 'source' ) ) )
-            return new WP_Error( 'mad4b_plugin_update_plan_input_invalid', 'Only exact plugin ID, certified source and reason accepted.' );
+            return new WP_Error( 'mad4b_plugin_update_plan_input_invalid', 'Only exact installed plugin ID, native update offer or reviewed provider source, and reason accepted.' );
         $plugin = (string) ( $input['plugin_file'] ?? '' );
         if ( ! preg_match( '#^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+\\.php$#D', $plugin ) )
             return new WP_Error( 'mad4b_plugin_update_file_invalid', 'Exact registered plugin file required.' );
@@ -215,15 +219,42 @@ final class MAD4B_SCP_Plugin_Update_Recovery {
         $contracts = class_exists( 'MAD4B_SCP_Provider_Contracts' ) ? MAD4B_SCP_Provider_Contracts::all() : array();
         $catalog = self::catalog( is_array( $contracts ) ? $contracts : array() );
         $target = $catalog[ $plugin ] ?? array();
-        if ( empty( $target ) || ! empty( $target['conflict'] ) )
-            return new WP_Error( 'mad4b_plugin_update_uncertified', 'Plugin has no uniquely certified provider: discoverable but not installable.' );
-        $source = (string) ( $input['source'] ?? 'auto_certified' );
+        if ( ! empty( $target['conflict'] ) )
+            return new WP_Error( 'mad4b_plugin_update_provider_conflict', 'Conflicting provider identity requires review before update.' );
+        $source = (string) ( $input['source'] ?? 'wordpress_update_offer' );
         // CI diagnostic, when present, must come from trusted server evidence.
         // An assistant cannot self-assert a green run or a signed test bundle.
         $ci = 'unknown';
         if ( ! in_array( $source, array( 'auto_certified', 'certified_upstream_release', 'wordpress_update_offer',
             'certified_repository_archive', 'certified_local_archive' ), true ) )
             return new WP_Error( 'mad4b_plugin_update_source_invalid', 'Unknown certified source type.' );
+        // This path never treats self-declared test results as approval.
+        // The native updater must resolve, inspect and bind its own exact
+        // server-provided package offer and execute with separate authority.
+        if ( 'wordpress_update_offer' === $source ||
+            ( 'auto_certified' === $source && empty( $target ) ) ) {
+            if ( ! class_exists( 'MAD4B_SCP_Remote_Plugin_Update' ) )
+                return new WP_Error( 'mad4b_plugin_update_native_backend_missing',
+                    'Native WordPress plugin updater is unavailable.' );
+            $native = MAD4B_SCP_Remote_Plugin_Update::plan(
+                array( 'plugin_file' => $plugin, 'reason' => $reason )
+            );
+            if ( is_wp_error( $native ) ) return $native;
+            $native['certification_route'] = 'native_wordpress_update_offer';
+            $native['provider_certificate_mandatory'] = false;
+            $native['update_executor'] = 'mad4b/plugin-remote-update-apply';
+            $native['update_plan_ability'] = 'mad4b/plugin-remote-update-plan';
+            $native['generic_auto_apply_allowed'] = false;
+            $native['staging_install_verification_required'] = true;
+            $native['production_authorized_by_this_plan'] = false;
+            $native['next_step'] = 'Authorize exact native WordPress update plan and verify installed file hashes and rollback on Staging.';
+            // Preserve the native plan_sha256 unchanged: advisory fields do
+            // not form a new grant or change the executor's exact input.
+            return $native;
+        }
+        if ( empty( $target ) )
+            return new WP_Error( 'mad4b_plugin_update_certified_provider_missing',
+                'Explicit certified source requires a reviewed provider.' );
         $evidence = array(); // Never promote caller-supplied PASS flags into trust.
         $ci_policy = self::ci_policy( $ci, $evidence, true );
         // Missing independent server-side signature is a disclosure, not a grant.
