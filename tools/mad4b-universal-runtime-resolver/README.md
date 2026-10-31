@@ -65,6 +65,11 @@ not a second remote WordPress plugin or an unrestricted web endpoint.
   from root-owned local files, an exact command SHA-256, a readback program and
   expected readback SHA-256. Mutating intent also needs backup and rollback
   artifacts. Reused correlation IDs are refused; outcomes are journaled.
+- The native operator now resolves remote targets **dynamically** from its
+  root-owned `host-authority.json` scope and the original enrolled Registry
+  `TARGETS`; adding an independently enrolled company does not require
+  another hard-coded command catalog. It will not inherit an unspecified
+  company's key, unregistered target, or a revoked host scope.
 - The SSH account has the privileges of the **enrolled remote hosting user**,
   not remote VPS root. An SSH connection does not assert sandbox isolation.
 - Automatic WordPress/Broker jobs **do not** inherit arbitrary remote shell
