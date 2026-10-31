@@ -1,0 +1,17 @@
+{
+  "contract": "mad4b.integration-ci-only-review-batch.v1",
+  "authorizing": false,
+  "production_authorized": false,
+  "local_candidate_head": "222cc55a4d2c83d7dec33c4f51eae49458eb1a52",
+  "baseline": "b8f2e0a60fa45e28b49643f1eae6f73570c2fee8",
+  "previous_gaps": 211,
+  "closed_locally": 6,
+  "remaining_gaps": 205,
+  "source_paths": [
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-release-status.php",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-ai-governance.php"
+  ],
+  "regression": "wp-content/plugins/mad4b-site-control-plane/tests/company-release-core-ai-read-guards-contract.py",
+  "status": "NO_GO",
+  "notice": "Source review records and combined source remain in isolated VPS worktree; GitHub receives test and evidence only. Full CI and integrated source publish are not complete."
+}
