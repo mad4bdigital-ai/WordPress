@@ -131,10 +131,27 @@ final class MAD4B_SCP_Central_Release_Registry {
             ! in_array( $receipt['source_type'] ?? '', array( 'local_git', 'remote_git' ), true ) ||
             ! preg_match( '/^[a-f0-9]{40}$/D', (string) ( $receipt['source_commit'] ?? '' ) ) )
             return new WP_Error( 'mad4b_central_evidence_source_mismatch' );
+        $tested_at = $receipt['tested_at'] ?? null;
+        $checks = $receipt['checks'] ?? null;
+        if ( ! is_int( $tested_at ) || $tested_at > time() + 60 ||
+            $tested_at < time() - 604800 ||
+            ! is_array( $checks ) || true !== ( $checks['install'] ?? null ) ||
+            true !== ( $checks['smoke'] ?? null ) ||
+            true !== ( $checks['rollback'] ?? null ) ||
+            ! is_array( $receipt['requirements'] ?? null ) )
+            return new WP_Error( 'mad4b_central_evidence_tests_unverified' );
         $signature = base64_decode( $record['signature_b64'], true );
         if ( false === $signature || strlen( $signature ) < 128 || strlen( $signature ) > 1024 ||
             ! function_exists( 'openssl_verify' ) )
             return new WP_Error( 'mad4b_central_evidence_signature_invalid' );
+        if ( ! function_exists( 'openssl_pkey_get_public' ) ||
+            ! function_exists( 'openssl_pkey_get_details' ) ||
+            false === ( $pub = openssl_pkey_get_public( $public_key ) ) )
+            return new WP_Error( 'mad4b_central_evidence_key_untrusted' );
+        $details = openssl_pkey_get_details( $pub );
+        if ( ! is_array( $details ) || (int) ( $details['bits'] ?? 0 ) < 2048 ||
+            (int) ( $details['type'] ?? -1 ) !== OPENSSL_KEYTYPE_RSA )
+            return new WP_Error( 'mad4b_central_evidence_key_weak' );
         $canonical = self::canonicalize( $receipt );
         $encoded = json_encode( $canonical, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
         if ( ! is_string( $encoded ) || strlen( $encoded ) > self::MAX_BODY_BYTES ||
