@@ -1,5 +1,6 @@
 """Isolated regression tests: authentication transport is not an authorization grant."""
 import json
+from pathlib import Path
 import unittest
 from unittest.mock import patch
 import multi_transport_authority as m
@@ -17,13 +18,14 @@ class MultiTransportAuthorityTests(unittest.TestCase):
         self.assertEqual(out["state"],"awaiting_provider")
 
     def test_broker_transport_is_not_job_eligibility(self):
-        with patch.object(m,"execute",side_effect=[
-             {"contract":"mad4b.broker-exact-ssh-authority.v1",
-              "verifier_registered":True,"shell_executed":False},
-             {"contract":"mad4b.broker-exact-ssh-authority.v1","selftest":"PASS",
-              "signed_central_preflight_round_trip":True,
-              "unknown_job_denied":True}]):
-            result=m.broker_status()
+        with patch.object(m,"BROKER",Path(__file__)):
+            with patch.object(m,"execute",side_effect=[
+                 {"contract":"mad4b.broker-exact-ssh-authority.v1",
+                  "verifier_registered":True,"shell_executed":False},
+                 {"contract":"mad4b.broker-exact-ssh-authority.v1","selftest":"PASS",
+                  "signed_central_preflight_round_trip":True,
+                  "unknown_job_denied":True}]):
+                result=m.broker_status()
         self.assertEqual(result["state"],"verified")
         self.assertFalse(result["job_execution_eligible"])
 
