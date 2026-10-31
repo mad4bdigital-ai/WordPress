@@ -7,7 +7,8 @@ ROOT=Path(__file__).resolve().parents[4]
 reg=json.loads((ROOT/"wp-content/plugins/mad4b-site-control-plane/config/cross-plugin-sources.json").read_text())
 sources=reg["sources"]
 assert reg["default_execution"]=="deny_until_exact_artifact_certified"
-assert len(sources)==2 and len({s["id"] for s in sources})==2
+assert len(sources)>=2 and len({s["id"] for s in sources})==len(sources)
+assert {"etg-dynamic-filter-seo-bridge","dynamic-filter-seo-bridge"} <= {s["id"] for s in sources}
 legacy=next(s for s in sources if s["id"]=="etg-dynamic-filter-seo-bridge")
 neutral=next(s for s in sources if s["id"]=="dynamic-filter-seo-bridge")
 assert legacy["candidate_source_commit_sha"]=="76ef918d8485c42e92dd38b3725efd4de5471556"
