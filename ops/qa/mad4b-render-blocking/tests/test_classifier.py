@@ -62,3 +62,26 @@ base['city_lcp_preload']['href']='https://tours.dev.mad4b.com/img.webp'
 base['city_lcp_preload_head_offset']=200000
 assert any(x['code']=='perf_lcpdiscover_home' for x in m.classify([base]))
 print('PASS: HTML-first exact-image preload and priority regression contract')
+
+# Regression of the nested Tour Rate Elementor JetEngine template CSS.
+path='https://tours.dev.mad4b.com/tours-and-activities/unforgettable-egypt-budget-tour-cairo-to-luxor-nile-cruise-discovery-8-days/'
+rate={'url':path,'uael_widgets':[],'css':[],'tour_rate_css':{'shadow_present':True,'original_present':True,
+ 'card_count':2,'font_px':14.6,'radius_px':25,'bg':'rgb(251, 251, 251)'}}
+assert not any('ratecss' in x['code'] for x in m.classify([rate]))
+rate['tour_rate_css']['original_present']=False
+assert any(x['code']=='perf_ratecss_source_missing' for x in m.classify([rate]))
+rate['tour_rate_css']['shadow_present']=False
+assert any(x['code']=='perf_ratecss_product' for x in m.classify([rate]))
+rate['tour_rate_css']['shadow_present']=True
+rate['tour_rate_css']['original_present']=True
+rate['tour_rate_css']['font_px']=37.4
+rate['tour_rate_css']['radius_px']=0
+assert any(x['code']=='perf_ratecss_product' for x in m.classify([rate]))
+print('PASS: live rate-style failures, shadow fallback, and source-loss alerts')
+
+long_label={'url':'https://tours.dev.mad4b.com/tours-and-activities/example-long/',
+ 'uael_widgets':[], 'css':[], 'inline_css_bytes':1800000,
+ 'inline_css_largest':[{'id':'العناصر-'.join(['العناصر']*50),'bytes':500000}]}
+for issue in m.classify([long_label]):
+ assert len(issue['label'].encode('utf-8'))<=225,issue
+print('PASS: UTF-8 byte-safe MAD4B alert labels')

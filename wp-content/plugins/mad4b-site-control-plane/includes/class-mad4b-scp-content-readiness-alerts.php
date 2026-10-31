@@ -248,13 +248,16 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                 $expected=hash('sha256',get_current_blog_id().'|'.$type.'|'.$object_id.'|'.$code);
                 $dfsb=preg_match('/^dfsb_[a-z0-9_]+$/D',$code) &&
                     $source==='dynamic-filter-seo-bridge' && $type==='site' && $object_id===0;
-                $localization=preg_match('/^loc_(?:layout|text|missing|h1|style)_(?:ar|de|en|es|fr|it)$/D',$code) &&
+                $localization=preg_match('/^loc_(?:layout|text|missing|h1|brand|binding|style)_(?:ar|de|en|es|fr|it)$/D',$code) &&
                     $source==='mad4b-elementor-localization' &&
                     $object_id>0 && post_type_exists($type) &&
                     get_post_type($object_id)===$type && get_post_status($object_id)==='publish' &&
-                    ((string)(apply_filters('wpml_post_language_details',null,$object_id)['language_code']??'')) ===
-                        (string)apply_filters('wpml_default_language',null);
-                $performance=preg_match('/^perf_(?:(?:rbcss|lcpdelay|fontcss|inlinecss)_[a-f0-9]{12}|ttfb_site|lcpdiscover_home|probe_stale)$/D',$code) &&
+                    ( ((string)(apply_filters('wpml_post_language_details',null,$object_id)['language_code']??'')) ===
+                        (string)apply_filters('wpml_default_language',null)
+                      || (str_starts_with($code,'loc_brand_') &&
+                          ((string)(apply_filters('wpml_post_language_details',null,$object_id)['language_code']??''))===substr($code,-2) &&
+                          !apply_filters('wpml_object_id',$object_id,$type,false,(string)apply_filters('wpml_default_language',null))) );
+                $performance=preg_match('/^perf_(?:(?:rbcss|lcpdelay|fontcss|inlinecss)_[a-f0-9]{12}|ttfb_site|lcpdiscover_home|ratecss_product|ratecss_source_missing|probe_stale)$/D',$code) &&
                     $source==='mad4b-live-performance' && $type==='site' && $object_id===0;
                 $valid=is_array($row) && ($dfsb||$localization||$performance) &&
                     hash_equals($expected,$id) &&

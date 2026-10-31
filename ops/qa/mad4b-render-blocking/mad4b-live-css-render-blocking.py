@@ -11,7 +11,8 @@ PAGES=['/','/ar/','/fr/','/de/','/es/','/it/',
        '/tours-and-activities/',
        '/tours-and-activities/nile-cruise-luxor-to-aswan-5-days/',
        '/plan-a-trip/',
-       '/tours-and-activities/best-of-egypt-cairo-luxor-nile-cruise-red-sea-12-days/']
+       '/tours-and-activities/best-of-egypt-cairo-luxor-nile-cruise-red-sea-12-days/',
+       '/tours-and-activities/unforgettable-egypt-budget-tour-cairo-to-luxor-nile-cruise-discovery-8-days/']
 OUT=pathlib.Path('/opt/hostinger-migrations/hosting-3/etg-commerce-staging/qa/render-blocking-uael-20261031')
 OUTPUT=OUT/'live-css-scan.json'
 CONTRACT='mad4b.live-render-blocking.v1'
@@ -67,6 +68,7 @@ async def inspect(browser,path,sem):
                 cityLcpRequests:performance.getEntriesByType('resource')
                     .filter(x=>x.name===document.querySelector('#mad4b-city-first-slide-lcp')?.href)
                     .map(x=>({initiator:x.initiatorType,start_ms:Math.round(x.startTime)})),
+                tourRateCSS:(()=>{let shadow=document.querySelector('#mad4b-rate-css-shadow');let original=document.querySelector('#elementor-post-56197');let cards=[...document.querySelectorAll('.tk-tour-rate-label')];let label=cards[0],control=label?.closest('.jet-toggle__control');let a=label?getComputedStyle(label):null,c=control?getComputedStyle(control):null;return{shadow_present:!!shadow,original_present:!!original,sha:shadow?.getAttribute('data-css-sha256')||null,card_count:cards.length,font_px:a?parseFloat(a.fontSize):null,card_height:label?Math.round(label.getBoundingClientRect().height):null,bg:c?.backgroundColor||null,radius_px:c?parseFloat(c.borderTopLeftRadius):null}})(),
                 externalGoogleFonts:performance.getEntriesByType('resource')
                   .filter(x=>x.name.startsWith('https://fonts.googleapis.com/css'))
                   .map(x=>({url:x.name,duration_ms:Math.round(x.duration)})).slice(0,12),
@@ -94,6 +96,7 @@ async def inspect(browser,path,sem):
                 'title':live['title'],'uael_widgets':live['uael'],'css':styles,
                 'horizontal_overflow_px':live['pageOverflow'],
                 'ttfb_ms':int(live['ttfbMs']),'lcp':lcp,
+                'tour_rate_css':live['tourRateCSS'],
                 'city_lcp_preload':live['cityLcpPreload'],
                 'city_lcp_preload_head_offset':raw.find('id="mad4b-city-first-slide-lcp"'),
                 'city_lcp_request_entries':live['cityLcpRequests'],
@@ -117,6 +120,19 @@ def classify(pages):
                 'UAEL widget present — retain styles.' if seen_uael else 'No visible UAEL widget — defer CSS safely.'
             )
             issues.append({'code':code,'severity':'high','label':label[:225]})
+    for page in pages:
+        if urlsplit(page['url']).path!='/tours-and-activities/unforgettable-egypt-budget-tour-cairo-to-luxor-nile-cruise-discovery-8-days/':continue
+        rate=page.get('tour_rate_css') or {}
+        healthy=bool(rate.get('shadow_present')) and (rate.get('card_count') or 0)>=2 \
+            and isinstance(rate.get('font_px'),(int,float)) and 10<=rate['font_px']<=23 \
+            and isinstance(rate.get('radius_px'),(int,float)) and rate['radius_px']>=12 \
+            and rate.get('bg') not in (None,'rgba(0, 0, 0, 0)','transparent')
+        if not healthy:
+            issues.append({'code':'perf_ratecss_product','severity':'high',
+                'label':'Tour rates accordion lost critical Elementor #56197 style parity or fallback on 8-day product; check CSS delivery and scheduled regeneration.'})
+        elif not rate.get('original_present'):
+            issues.append({'code':'perf_ratecss_source_missing','severity':'medium',
+                'label':'Elementor #56197 CSS is missing but MAD4B verified shadow keeps the tour rate cards styled; repair original generated asset.'})
     for page in pages:
         if urlsplit(page['url']).path!='/':continue
         preload=page.get('city_lcp_preload') or {}
@@ -171,6 +187,9 @@ def classify(pages):
         if median>=2500:
             issues.append({'code':'perf_ttfb_site','severity':'high',
                 'label':f'Staging mobile median TTFB {median}ms across {len(slow)} sampled pages; server/cache diagnosis required.'})
+    for issue in issues:
+        while len(issue['label'].encode('utf-8'))>225:
+            issue['label']=issue['label'][:-1]
     return issues
 
 async def run():
