@@ -45,7 +45,7 @@ def resolve_exact_pr675_conflict(item_number, conflicts):
     left = "                $localization=preg_match('/^loc_(?:layout|text|missing|h1|brand)_(?:ar|de|en|es|fr|it)$/D',$code) &&"
     right = "                $localization=preg_match('/^loc_(?:layout|text|missing|h1|style)_(?:ar|de|en|es|fr|it)$/D',$code) &&"
     combined = "                $localization=preg_match('/^loc_(?:layout|text|missing|h1|brand|style)_(?:ar|de|en|es|fr|it)$/D',$code) &&"
-    expected = "<<<<<<< HEAD\\n" + left + "\\n=======\\n" + right + "\\n>>>>>>> refs/remotes/origin/pr/675"
+    expected = chr(10).join(["<<<<<<< HEAD", left, "=======", right, ">>>>>>> refs/remotes/origin/pr/675"])
     # Git's conflict label may use origin/pr/675 rather than the full ref.
     alternatives = [
         expected,
