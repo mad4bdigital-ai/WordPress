@@ -26,7 +26,8 @@ foreach($keys as $key){
  $sample=['samples'=>count($values),'formats'=>[],'paths'=>[]];
  foreach($values as $v){
    $parsed=$v;$format='scalar';
-   if(is_serialized($v)){$parsed=maybe_unserialize($v);$format='serialized';}
+   if(strlen($v)>1500000){$sample['formats']['oversize_skipped']=($sample['formats']['oversize_skipped']??0)+1;continue;}
+   if(is_serialized($v)){$parsed=@unserialize($v,['allowed_classes'=>false,'max_depth'=>12]);$format='serialized';}
    elseif(strlen($v)<1500000 && (str_starts_with(ltrim($v),'[')||str_starts_with(ltrim($v),'{'))){
     $j=json_decode($v,true);if(json_last_error()===JSON_ERROR_NONE){$parsed=$j;$format='json';}
    }
