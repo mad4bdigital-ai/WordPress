@@ -75,8 +75,8 @@ def preflight(args,policy):
         if statement.endswith(';'):statement=statement[:-1].strip()
         if (';' in statement or '--' in statement or '/*' in statement
           or '#' in statement or not re.match(
-            r'^(SELECT|SHOW|DESCRIBE|EXPLAIN)\\s+',statement,re.I)
-          or re.search(r'\\b(INTO|OUTFILE|DUMPFILE|FOR\\s+UPDATE|LOCK|CALL|LOAD_FILE|SLEEP|BENCHMARK)\\b',
+            r'^(SELECT|SHOW|DESCRIBE|EXPLAIN)\s+',statement,re.I)
+          or re.search(r'\b(INTO|OUTFILE|DUMPFILE|FOR\s+UPDATE|LOCK|CALL|LOAD_FILE|SLEEP|BENCHMARK)\b',
             statement,re.I)):
             abort('SQL_READ_DIAGNOSTIC_MUST_BE_SINGLE_SAFE_INSPECTION')
     command_hash=sha(command)
