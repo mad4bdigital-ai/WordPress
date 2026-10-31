@@ -231,12 +231,15 @@ final class MAD4B_Elementor_Localization_V1 {
             'issues'=>count($s['issues']),'jobs'=>count($s['jobs']),
             'outbox_total'=>count($new),'actual_mcp_execution'=>false];
     }
-    private static function is_style($key){
+    private static function is_style($key,$rtl=false){
         $key=(string)$key;
         if(in_array($key,['template_id','shortcode','__dynamic__','jedv_conditions','display_condition_list','__globals__'],true))return false;
+        // Never replace locale-bound media/URLs or Arabic typography/direction.
+        if(preg_match('/(?:image|video|media|icon|url|link|placeholder)/i',$key))return false;
+        if($rtl && preg_match('/(?:direction|align|justify|order|float|font|typography|margin|padding|transform)/i',$key))return false;
         return (bool)preg_match('/^(?:_?(?:margin|padding|width|height|align|flex|grid|gap|order|position|overflow|z_index|border|box_shadow|background|shape_divider|typography|font|color|opacity|css_classes|size|display|hide_on|sticky|animation|transform|custom_css|justify|direction|content_width|object_fit|space_between|column|row|section|container|jet_sticky))/', $key);
     }
-    private static function merge_existing($source,$target,&$updated=0){
+    private static function merge_existing($source,$target,&$updated=0,$rtl=false){
         $map=[];foreach((array)$target as $node)if(is_array($node)&&isset($node['id']))$map[$node['id']]=$node;
         $output=[];$used=[];
         foreach((array)$source as $s){
@@ -244,11 +247,11 @@ final class MAD4B_Elementor_Localization_V1 {
             if(!$id||!isset($map[$id]))continue; // Missing widget cannot expose untranslated English.
             $t=$map[$id];$used[$id]=true;
             if(($s['widgetType']??$s['elType']??'')!==($t['widgetType']??$t['elType']??'')){$output[]=$t;continue;}
-            foreach((array)($s['settings']??[]) as $k=>$v)if(self::is_style($k)) {
+            foreach((array)($s['settings']??[]) as $k=>$v)if(self::is_style($k,$rtl)) {
                 if(!isset($t['settings'][$k])||$t['settings'][$k]!==$v){$t['settings'][$k]=$v;$updated++;}
             }
             $original=$t['elements']??[];
-            $t['elements']=self::merge_existing($s['elements']??[],$original,$updated);
+            $t['elements']=self::merge_existing($s['elements']??[],$original,$updated,$rtl);
             $output[]=$t;
         }
         foreach($map as $id=>$t)if(!isset($used[$id]))$output[]=$t; // Preserve locale-specific widgets.
@@ -266,7 +269,7 @@ final class MAD4B_Elementor_Localization_V1 {
             if($lang===self::default_lang()||get_post_status($target_id)!=='publish')continue;
             $before=self::tree($target_id);
             if(!$before)continue;
-            $changes=0;$after=self::merge_existing($source,$before,$changes);
+            $changes=0;$after=self::merge_existing($source,$before,$changes,$lang==='ar');
             $delta=$after!==$before;
             $row=['lang'=>$lang,'target_id'=>$target_id,'style_or_order_changes'=>$changes,
                 'would_update'=>$delta,'updated'=>false,'missing_nodes'=>count(array_diff_key(self::flatten($source),self::flatten($before)))];
