@@ -1,0 +1,10 @@
+[Unit]
+Description=MAD4B Universal Runtime event inbox
+After=network-online.target
+
+[Path]
+PathExistsGlob=/opt/mad4b-company-transport/universal-runtime-v1/inbox/*.json
+Unit=mad4b-universal-runtime-event.service
+
+[Install]
+WantedBy=multi-user.target
