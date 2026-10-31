@@ -23,11 +23,12 @@ INBOX=HOME/"inbox"
 CONTRACT="mad4b.universal-runtime-reconciler.v1"
 EVENTS={"intake","optin","handoff","provider_change","package_registered",
         "site_identity","permission_change","workflow_failed","manual","scheduled","dispatch"}
-DOMAINS=("transport","identity","authority","admin_shell","execution_route","full_authority","agent","package","workflow")
+DOMAINS=("transport","identity","authority","admin_shell","execution_route","full_authority","agent","package","workflow","central_source","central_authority","authentication_routes","operation_admission")
 DEPENDS={"transport":(),"identity":("transport",),"authority":("transport",),
          "admin_shell":("transport","authority"),"execution_route":("admin_shell",),"full_authority":("identity",),
          "agent":("transport","identity"),"package":("authority",),
-         "workflow":("agent",)}
+         "workflow":("agent",),"central_source":(),"central_authority":("central_source",),
+         "authentication_routes":(),"operation_admission":("authentication_routes",)}
 TRANSIENT={"timeout","unavailable","connection","busy","temporary","network"}
 SITE="all-royal-egypt:staging"
 ROOT=Path("/opt/mad4b-company-transport")
@@ -246,6 +247,71 @@ def inspect_execution_route(target,scope):
                    "wordpress_queued_shell_granted":False,
                    "production_mutation":False})
 
+def inspect_central_source(target,scope):
+    if target!="tours-central:staging" or scope.get("source_adapter")!="central_wpcli_provenance_v1":
+        return result("awaiting_provider","central_control","central_source_adapter_not_enrolled")
+    file=ROOT/"universal-runtime-v1/central_control_readback.py"
+    spec=importlib.util.spec_from_file_location("mad4b_central_provenance_observer",file)
+    module=importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    state,reason,evidence=module.probe("central_source",scope)
+    return result(state,"central_source_provenance",reason,evidence)
+
+def inspect_central_authority(target,scope):
+    if target!="tours-central:staging" or scope.get("source_adapter")!="central_wpcli_provenance_v1":
+        return result("awaiting_provider","central_control","central_authority_adapter_not_enrolled")
+    file=ROOT/"universal-runtime-v1/central_control_readback.py"
+    spec=importlib.util.spec_from_file_location("mad4b_central_authority_observer",file)
+    module=importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    state,reason,evidence=module.probe("central_authority",scope)
+    return result(state,"central_native_grants",reason,evidence)
+
+def original_operation_authority():
+    file=ROOT/"universal-runtime-v1/multi_transport_authority.py"
+    spec=importlib.util.spec_from_file_location("mad4b_multi_transport_authority",file)
+    module=importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+def inspect_authentication_routes(target,scope):
+    if target not in (SITE,"tours-central:staging"):
+        return result("awaiting_provider","original_identity_sources",
+                      "native_identity_routes_not_enrolled")
+    auth=original_operation_authority()
+    routes=auth.sources(target,scope)
+    host=routes["vps_ssh_wpcli"]["state"]
+    broker=routes["broker"]["state"]
+    oauth=routes["oauth_mcp"]["state"]
+    evidence={"oauth_mcp":oauth,"vps_ssh_wpcli":host,"broker":broker,
+              "oauth_request_required":True,
+              "authentication_is_not_a_grant":True,
+              "production_mutation":False}
+    if host=="verified" or broker=="verified":
+        return result("verified","original_identity_sources",
+                      "independent_authentication_paths_observed",evidence)
+    return result("awaiting_provider","original_identity_sources",
+                  "no_authenticated_source_observed",evidence)
+
+def inspect_operation_admission(target,scope):
+    if target not in (SITE,"tours-central:staging"):
+        return result("awaiting_provider","original_operation_policy",
+                      "no_enrolled_operation_admission_target")
+    auth=original_operation_authority()
+    capability=scope.get("observed_operation_capability")
+    transport=scope.get("observed_operation_transport")
+    if not isinstance(capability,str) or not isinstance(transport,str):
+        return result("awaiting_provider","original_operation_policy",
+                      "operation_to_inspect_not_selected")
+    verdict=auth.decide(target,scope,capability,transport)
+    evidence={"capability":capability,"transport":transport,
+              "grants_created":False,"operation_executed":False,
+              "production_mutation":False}
+    if verdict["state"]=="verified":
+        evidence.update({"original_policy_admission":verdict.get("original_policy_admission"),
+            "readback_sha256":verdict.get("independent_receipt_sha256")})
+    return result(verdict["state"],"original_operation_policy",verdict["reason"],evidence)
+
 def inspect_agent(target,scope):
     # A source-specific adapter is not generalized by merely copying its name.
     if scope.get("agent_adapter")!="are_signed_v4" or target!=SITE:
@@ -317,7 +383,10 @@ def inspect_workflow(target,scope):
 
 ADAPTERS={"transport":inspect_transport,"identity":inspect_identity,
           "authority":inspect_authority,"admin_shell":inspect_admin_shell,
-          "execution_route":inspect_execution_route,"full_authority":inspect_full_authority,"agent":inspect_agent,"package":inspect_package,"workflow":inspect_workflow}
+          "execution_route":inspect_execution_route,"full_authority":inspect_full_authority,"agent":inspect_agent,"package":inspect_package,"workflow":inspect_workflow,
+          "central_source":inspect_central_source,"central_authority":inspect_central_authority,
+          "authentication_routes":inspect_authentication_routes,
+          "operation_admission":inspect_operation_admission}
 def enqueue(con,target,trigger,source,idem):
     if trigger not in EVENTS or not re.fullmatch(r"[a-z0-9_.:-]{3,100}",source):
         raise ValueError("unsupported_event")
