@@ -37,3 +37,14 @@ Archive SHA-256: `f9c2f9f6a5f820693006135dd4e1055b4b6ddd509561b2972252e503cdfec8
 - Optional WAITING_EXECUTOR: 0; Identity Review WAITING_EXECUTOR: 13.
 - Full module 284 not installed.
 - Three VPS-sourced files passed syntax checks and SHA-256 verification in isolation, not a complete runtime/integration test.
+
+## Incremental source-review update (2026-10-31)
+
+- The reviewed UI candidate has a **new source-only edit** after the original VPS snapshot: when the original Canonical Registry class is present, the Reviews tab links to the existing native **read-only** `admin.php?page=mad4b-canonical-registry` queue. This does **not** create the previously rejected `284` module, implement decision forms in Reviews, or authorize identity merges. The original UI SHA-256 above is for the *pre-edit VPS candidate*, not the current GitHub UI blob.
+- A pending-only `mad4b-content-hub` source declaration was proposed in `wp-content/plugins/mad4b-site-control-plane/config/cross-plugin-sources.json` with **only** `staging` in its environments. `review_state=needs_repository_owner_review`, `package_certification=pending`, and empty certification fields are intentional. It must remain fail-closed after any merge.
+- The native read-only `plugin-deployment-intake-plan` accepted the *shape* of this proposal and returned `NEEDS_SOURCE_REVIEW` with digest `7b87cbea28099477f50636338e3feaceb504cefd850caf564b1e02a914593bd7`. No source registration or certification occurred in live WordPress.
+- The verified authoritative Staging registry currently lacks this source; `plugin-deployment-certification-plan` and `staging-apply-plan` returned `cross_plugin_source_unreviewed`, and the original `plugin-package-plan` rejected it as `provider_uncertified`.
+- The repository `master` currently does **not** contain the complete plugin runtime entrypoint at `wp-content/plugins/mad4b-content-hub/mad4b-content-hub.php`. Do not treat the proposed registry entry as deployable before the full source is reviewed and committed.
+- Release Verdict CI on the previous candidate failed exact-HEAD owner attestation. No self-attestation, sign-off simulation, or CI-gate weakening is in this PR.
+
+Review-only acceptance criteria: code review, PHP lint for new source bytes, runtime source-parity verification, exact package certification by the authorized updater, and explicit authorization/readback of Staging deployment. Keep this PR draft until then.
