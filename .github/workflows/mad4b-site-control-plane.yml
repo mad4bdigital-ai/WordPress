@@ -93,6 +93,7 @@ jobs:
           python3 ops/company-readiness-workflow/tests/test_native_stage_adapter.py
           node --test ops/company-readiness-workflow/tests/test_central_control_plane_rollout.mjs
           node --test ops/company-readiness-workflow/tests/test_central_dual_route_policy.mjs
+          node --test ops/company-readiness-workflow/tests/test_central_governed_dispatch.mjs
           python3 -m venv /tmp/mad4b-company-native-executor-venv
           /tmp/mad4b-company-native-executor-venv/bin/pip install --quiet --disable-pip-version-check cryptography==44.0.3
           /tmp/mad4b-company-native-executor-venv/bin/python ops/company-readiness-workflow/tests/test_native_stage_executor.py
