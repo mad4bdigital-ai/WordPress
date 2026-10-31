@@ -116,6 +116,40 @@ or web-controlled arbitrary command payload is accepted.
   `full_authority=blocked_dependency` preserves native sandbox blockers.
 - Production mutation performed: false.
 
+## Central WP-CLI Host Identity Bridge (2026-10-31)
+
+`central_wpcli_host.py` provides an authenticated, read/plan-only WP-CLI
+entrypoint for `tours.dev.mad4b.com`. On the enrolled VPS it is installed
+as `/usr/local/bin/mad4b-central-wpcli`. Examples:
+
+    mad4b-central-wpcli context-check
+    mad4b-central-wpcli context-inspect
+    mad4b-central-wpcli full-authority-plan
+    mad4b-central-wpcli full-authority-lifecycle
+
+It **does not accept `--user=1`**, arbitrary WP-CLI commands, or user-supplied
+site/environment credentials. The caller must be authenticated as the original
+Root SSH operator, with an exact-scoped central Staging Host Authority record.
+The runner verifies WordPress's enrolled Site UUID, canonical origin, database
+and environment independently, then passes those facts into WP-CLI's existing
+Host Execution Context. It runs `wp --allow-root` inside the enrolled
+container in the exact context required by the existing WordPress authority
+class, without impersonating a WordPress user. Successful readbacks create
+a source-backed event in the original Dispatcher journal.
+
+Read/plan success **does not imply** that the native Full Authority plan is
+ready or that a WordPress governed write is authorized. It does not expose
+`apply`; write operations remain in their existing Native VPS Operator,
+Grants and independent readback lanes. The live acceptance confirmed
+`read_context_verified=true`, `host_site_binding_verified=true`, and no
+blockers. The Unified Full Authority plan was readable via `host_cli`
+but returned `ready_to_apply=false` with
+`native_owner_plan_not_ready`.
+
+Isolated tests in `test_central_wpcli_host.py` check exact site binding,
+untrusted target rejection, host scope and readback contract integrity,
+non-impersonation and denied Production reuse.
+
 ## Unified authentication routes and per-operation admission
 
 Live adapter: `multi_transport_authority.py`, consumed by
