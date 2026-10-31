@@ -504,6 +504,7 @@ final class MAD4B_SCP_Site_Profile {
 	public static function feature_enabled( $feature ) {
 		$profile = self::profile();
 		$feature = sanitize_key( (string) $feature );
+		if ( 'provider_isolation' === $feature ) return self::provider_isolation_enabled();
 		if ( ! self::origin_enrolled() || empty( $profile['features'] ) || ! is_array( $profile['features'] ) ) return false;
 		if ( empty( $profile['features'][ $feature ] ) ) return false;
 		if ( 'write' === $feature && 'production' === self::current_environment() && empty( $profile['features']['production_write_confirmed'] ) ) return false;
@@ -956,7 +957,8 @@ final class MAD4B_SCP_Site_Profile {
 
         $provider_isolation_explicit_opt_out = array_key_exists( 'provider_isolation_enabled', $input )
             ? false === (bool) $input['provider_isolation_enabled']
-            : ( $existing_identity_matches && true === ( $existing_normalized['provider_isolation_explicit_opt_out'] ?? false ) );
+            : ( $existing_identity_matches && true === ( $existing_normalized['provider_isolation_explicit_opt_out'] ?? false )
+                && empty( $existing_normalized['features']['provider_isolation'] ) );
         $record = array(
             'provider_isolation_explicit_opt_out' => (bool) $provider_isolation_explicit_opt_out,
             'contract' => self::CONTRACT,
