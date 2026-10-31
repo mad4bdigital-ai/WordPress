@@ -16,13 +16,18 @@ Target: `tours.dev.mad4b.com` (UUID `e5e64bca-ed62-48d2-b2b3-dff693cd702a`), onl
 - Public site and REST both HTTP 200. No Production mutation.
 - PR #670 includes the source patch `central-delegated-oauth-grant-binding-cb3faca.patch` and runtime reconcile changes.
 
-## Open blocker (do not pretend closed)
+## Candidate Binding completed via independent Host Operator
 
-Candidate binding plan is `execution_eligible=true`, no blockers, source matches installed `cb3faca`; persisted binding is still `unbound`.
+The Staging owner grant plan became clean (112/112 grants, no stale or unreviewed grants), and Candidate Binding produced an exact eligible plan with zero blockers. The former OAuth-only wrapper refused a genuine registered Host actor with `mad4b_candidate_bind_admin_required`, despite Host execution and Authority convergence being enrolled.
 
-The exact Host CLI can authenticate to the same site and execute native authority convergence, but `MAD4B_SCP_Staging_Write_Candidate_Binding::can_execute()` rejects this legitimate principal with `mad4b_candidate_bind_admin_required` (OAuth-only path). MCP Full Staging Authority handshake in this session returned an internal tool error. There is **no verified host-native candidate-binding completion receipt**.
+Implemented a separate, Staging-only, root WP-CLI `bind_host` execution lane in local source commit `202e62e9a480b5144af1c6ae1517f3d8df6a92fb`; it independently verifies non-impersonating Root Host CLI identity, exact Site UUID/Origin/database, registered Host Operator bound to the enrolled WordPress Owner and canonical Agent, mutation environment policy, original exact candidate/confirmation, clean grant snapshot, and the existing transactional binding primitive with append-only audit/rollback. OAuth path remains unchanged and does not get impersonated. Six identity tests and isolated negative Host admission tests passed; PHP lint passed before deployment.
 
-Design fix needed: first-class `bind_host` lane that validates exact Root WP-CLI Host Operator, registered Site/Agent/Owner, mutation scope, unique source/build/manifest/artifact identity, clean 112/112 grant snapshot, plan digest, operation-specific authority, append-only audit and rollback, and then calls the original `bind_candidate_identity` primitive. Preserve OAuth / step-up authorization path as a parallel original lane. Do not emulate OAuth with `--user=1`, modify WordPress options directly, invent audit evidence, or widen grants. Candidate binding and Host execution availability must remain separate state dimensions.
+- Exact installed source: `202e62e9a480b5144af1c6ae1517f3d8df6a92fb`; manifest valid, `runtime_manifest_match=true`, `stale=false`.
+- Verified predeployment backup: `/opt/staging/mad4b-managed-backups/central-staging/20261031T183650Z-840ca42b`; 908 plugin files and seven SQL tables.
+- Candidate `bind_host` execution returned `state=bound`, `effective=true`, `candidate_binding.match=true`, mutation performed; operation ID `c86a50f4-831d-43b8-ab2f-f9131c24fa82`.
+- Independent WP-CLI readback confirms `candidate_binding.identity_completeness=complete`, `Staging_Write_Authority::effective()=true`, 112/112 grants, 0 missing and 0 stale, runtime manifest exact, site HTTP 200, REST HTTP 200.
+- Original runtime Resolver event `eaed3141-408e-443e-9a4a-801a8b3060cf` returned `central_source=verified`, `central_execution=verified`, `central_authority=verified`.
+- Full source patch attached: `central-host-candidate-bind-202e62e.patch`. Production was not modified.
 
 ## Root causes identified
 
@@ -33,4 +38,4 @@ Design fix needed: first-class `bind_host` lane that validates exact Root WP-CLI
 
 ## Final status
 
-Central execution verified. Central source verified. Exact write grants complete and ready. Candidate binding still unbound; full effective governed write **not yet claimed**.
+Central Source **verified**. Central Execution **verified**. Central Authority **verified**. Write Authority **effective**. Candidate Binding **bound**. Exact Grants **112/112**. No WordPress Production mutation.
