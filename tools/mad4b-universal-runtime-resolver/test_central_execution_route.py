@@ -1,59 +1,57 @@
-"""Central Host route cannot inherit Native Owner blockers or grant writes."""
-import datetime as dt
-import hashlib
+"""Live central route cannot depend on expiring historic receipts."""
 import json
 import unittest
 from unittest.mock import patch
+
 import central_execution_route as r
 
-SITE="e5e64bca-ed62-48d2-b2b3-dff693cd702a"
-SCOPE={"site_uuid":SITE,"environment":"staging",
-       "canonical_origin":"https://tours.dev.mad4b.com",
-       "central_execution_adapter":"root_owned_host_operator_v1"}
+SCOPE={"site_uuid":r.UUID,"canonical_origin":r.ORIGIN,
+       "environment":"staging","central_execution_adapter":"root_owned_host_operator_v1"}
 
-class CentralExecutionRouteTests(unittest.TestCase):
+class LiveRouteTests(unittest.TestCase):
     def setUp(self):
-        self.command=b"printf 'READBACK\\n'\n"
         self.policy={"contract":"mad4b.native-vps-operator.v1",
-             "revoked":False,"allow_general_shell":True,
-             "scopes":{r.TARGET:{"allow_operator":True,"allow_mutation":True,
-                 "site_uuid":SITE,"canonical_origin":SCOPE["canonical_origin"],
-                 "site_environment":"staging"}}}
-        digest=hashlib.sha256(self.command).hexdigest()
-        self.receipt={"contract":"mad4b.native-vps-operator.v1",
-             "state":"VERIFIED","company":"tours-central","environment":"staging",
-             "lane":"vps_ssh","intent":"diagnostic","kind":"shell",
-             "execution_performed":True,"mutating":False,"mutation_performed":False,
-             "readback_matches_expected":True,"production_mutation_authorized":False,
-             "command_sha256":digest,"readback_command_sha256":digest,
-             "readback_sha256":digest,"expected_readback_sha256":digest,
-             "finished_at":dt.datetime.now(dt.timezone.utc).isoformat()}
-    def observe(self, scope=SCOPE):
-        def source(path):
-            if path==r.POLICY:return json.dumps(self.policy).encode()
-            if path==r.RECEIPT:return json.dumps(self.receipt).encode()
-            if path in (r.COMMAND,r.READBACK):return self.command
-            raise AssertionError("unknown evidence source")
-        with patch.object(r,"secure_data_file",side_effect=source):
-            return r.check(scope)
-    def test_original_host_authority_is_independent_of_native_owner(self):
-        state,reason,evidence=self.observe()
+          "revoked":False,"allow_general_shell":True,
+          "scopes":{r.TARGET:{"allow_operator":True,"allow_mutation":True,
+            "allow_production_mutation":False,
+            "site_uuid":r.UUID,"canonical_origin":r.ORIGIN,
+            "site_environment":"staging"}}}
+        self.site={"site_uuid":r.UUID,"origin":r.ORIGIN,"environment":"staging",
+                   "wordpress_environment":"staging","database":r.DATABASE}
+    def check(self,scope=SCOPE):
+        with patch.object(r,"secure_data_file",return_value=json.dumps(self.policy).encode()):
+            with patch.object(r,"original_operator_present",return_value=True):
+                with patch.object(r,"read_live_site",return_value=self.site):
+                    return r.check(scope)
+    def test_verified_without_historic_receipt(self):
+        state,reason,ev=self.check()
         self.assertEqual(state,"verified")
-        self.assertEqual(evidence["selected_lane"],"local_root_ssh_host_operator")
-        self.assertTrue(evidence["native_owner_plan_is_not_central_blocker"])
-        self.assertTrue(evidence["new_operation_requires_its_own_host_preflight"])
-        self.assertFalse(evidence["wordpress_grants_created"])
-    def test_host_grant_revocation_blocks_route(self):
+        self.assertTrue(ev["fresh_site_readback"])
+        self.assertFalse(ev["historic_receipt_is_authority"])
+        self.assertFalse(ev["operation_executed"])
+    def test_revocation_fails(self):
         self.policy["revoked"]=True
-        self.assertEqual(self.observe()[0],"blocked_authority")
-    def test_receipt_command_digest_conflict_requires_review(self):
-        self.receipt["command_sha256"]="a"*64
-        self.assertEqual(self.observe()[0],"review_required")
-    def test_expired_original_receipt_needs_new_readback(self):
-        self.receipt["finished_at"]=(dt.datetime.now(dt.timezone.utc)-dt.timedelta(days=2)).isoformat()
-        self.assertEqual(self.observe()[0],"awaiting_provider")
-    def test_production_scope_cannot_reuse_staging_host_receipt(self):
-        self.assertEqual(self.observe({**SCOPE,"environment":"production"})[0],"review_required")
+        self.assertEqual(self.check()[0],"blocked_authority")
+    def test_scope_mismatch_fails(self):
+        self.assertEqual(self.check({**SCOPE,"environment":"production"})[0],"review_required")
+    def test_wrong_site_fails(self):
+        self.site["site_uuid"]="another"
+        self.assertEqual(self.check()[0],"review_required")
+    def test_wrong_database_fails(self):
+        self.site["database"]="wrong"
+        self.assertEqual(self.check()[0],"review_required")
+    def test_wrong_origin_fails(self):
+        self.site["origin"]="https://wrong.example"
+        self.assertEqual(self.check()[0],"review_required")
+    def test_operator_missing_fails(self):
+        with patch.object(r,"secure_data_file",return_value=json.dumps(self.policy).encode()):
+            with patch.object(r,"original_operator_present",return_value=False):
+                self.assertEqual(r.check(SCOPE)[0],"blocked_authority")
+    def test_unavailable_live_readback_requires_retry(self):
+        with patch.object(r,"secure_data_file",return_value=json.dumps(self.policy).encode()):
+            with patch.object(r,"original_operator_present",return_value=True):
+                with patch.object(r,"read_live_site",side_effect=RuntimeError("offline")):
+                    self.assertEqual(r.check(SCOPE)[0],"retry")
 
 if __name__=="__main__":
     unittest.main()
