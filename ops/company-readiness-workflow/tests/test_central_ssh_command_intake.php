@@ -139,11 +139,13 @@ for ($i=1; $i<=2; $i++) {
     check(is_wp_error(MAD4B_Central_SSH_Command_Intake_V1::accept_command($req)),
         'duplicate correlation denied');
 }
+$GLOBALS['delegation'] = false;
 $revokeGrant = new WP_REST_Request(array('company'=>'wayfatours',
     'kind'=>'grant','object_id'=>$pData['grant_id']));
 $revokeResult = MAD4B_Central_SSH_Command_Intake_V1::revoke($revokeGrant);
 check($revokeResult instanceof WP_REST_Response
     && $revokeResult->get_data()['state'] === 'REVOKED', 'persistent grant revoked');
+$GLOBALS['delegation'] = true;
 $afterGrantRevoke = new WP_REST_Request(array('company'=>'wayfatours'),array(
     'grant_id'=>$pData['grant_id'],'command'=>'printf should-not-claim',
     'summary'=>'Attempt after grant revocation must fail',
@@ -151,10 +153,12 @@ $afterGrantRevoke = new WP_REST_Request(array('company'=>'wayfatours'),array(
     'target_scope'=>'wordpress'));
 check(is_wp_error(MAD4B_Central_SSH_Command_Intake_V1::accept_command($afterGrantRevoke)),
     'revoked persistent grant denied');
+$GLOBALS['delegation'] = false;
 $revokeTransport = new WP_REST_Request(array('company'=>'wayfatours',
     'kind'=>'transport','object_id'=>$transportRow['transport_id']));
 check(MAD4B_Central_SSH_Command_Intake_V1::revoke($revokeTransport) instanceof WP_REST_Response,
     'persistent SSH transport revocable');
+$GLOBALS['delegation'] = true;
 check(is_wp_error(MAD4B_Central_SSH_Command_Intake_V1::issue($persistent)),
     'no grant issued against revoked transport');
 check(!str_contains(json_encode($GLOBALS['store']), 'printf safe-command-'),
