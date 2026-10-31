@@ -27,7 +27,7 @@ DOMAINS=("transport","identity","authority","admin_shell","execution_route","ful
 DEPENDS={"transport":(),"identity":("transport",),"authority":("transport",),
          "admin_shell":("transport","authority"),"execution_route":("admin_shell",),"full_authority":("identity",),
          "agent":("transport","identity"),"package":("authority",),
-         "workflow":("agent",),"central_source":(),"central_authority":("central_source",),"central_execution":(),
+         "workflow":("agent",),"central_source":(),"central_authority":(),"central_execution":(),
          "authentication_routes":(),"operation_admission":("authentication_routes",)}
 TRANSIENT={"timeout","unavailable","connection","busy","temporary","network"}
 SITE="all-royal-egypt:staging"
