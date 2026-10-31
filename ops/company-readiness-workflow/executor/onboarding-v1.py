@@ -88,10 +88,14 @@ def project(source, host_policy=None):
           "native_vps_shell_authorized":host_shell,
           "native_vps_sql_authorized":host_sql,
           "native_vps_write_authorized":host_write,
-          "onboarding_state":"HOST_NATIVE_OPERATOR_AUTHORIZED_MANAGED_PENDING" if (host_shell or host_sql) else
-            "READ_ADAPTER_READY_MANAGED_PENDING" if read_adapter else
-            "PRODUCTION_HOST_AUTHORITY_ENROLLMENT_REQUIRED" if env=="production" else
-            "READ_AND_MANAGED_ENROLLMENT_REQUIRED"
+          # Stable compatibility with central dispatch-status.v1 enum.
+          # Host capability has its own exact-scope projection below.
+          "onboarding_state":"READ_ADAPTER_READY_MANAGED_PENDING" if (read_adapter or host_shell or host_sql) else
+            "READ_AND_MANAGED_ENROLLMENT_REQUIRED",
+          "native_host_authority_state":"HOST_NATIVE_OPERATOR_AUTHORIZED_MANAGED_PENDING"
+             if (host_shell or host_sql) else
+             "PRODUCTION_HOST_AUTHORITY_ENROLLMENT_REQUIRED" if env=="production"
+             else "HOST_AUTHORITY_ENROLLMENT_REQUIRED"
         }
     return out
 
