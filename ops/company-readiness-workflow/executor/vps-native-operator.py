@@ -47,13 +47,13 @@ def root_session():
                       timeout=4,check=False).stdout.strip()!=HOST:
         abort('VPS_HOST_ID_MISMATCH')
 
-def file_bytes(path):
+def file_bytes(path, max_bytes=65536):
     if not path or not pathlib.Path(path).is_absolute():abort('ABSOLUTE_ROOT_OWNED_FILE_REQUIRED')
     obj=pathlib.Path(path)
     st=obj.lstat()
     if obj.is_symlink() or not obj.is_file() or st.st_uid!=0 or st.st_mode & 0o077:
         abort('UNSAFE_COMMAND_FILE')
-    if st.st_size<1 or st.st_size>65536:abort('COMMAND_FILE_SIZE_INVALID')
+    if st.st_size<1 or st.st_size>max_bytes:abort('COMMAND_FILE_SIZE_INVALID')
     return obj.read_bytes()
 
 def authority():
@@ -96,7 +96,7 @@ def preflight(args,policy):
         if not args.rollback_file or not args.backup_file:
             abort('MUTATION_REQUIRES_BACKUP_AND_ROLLBACK')
         rollback=file_bytes(args.rollback_file)
-        snapshot=file_bytes(args.backup_file)
+        snapshot=file_bytes(args.backup_file,max_bytes=16*1024*1024)
         if not re.fullmatch('[a-f0-9]{64}',args.backup_sha256 or '')            or sha(snapshot)!=args.backup_sha256:
             abort('BACKUP_DIGEST_MISMATCH')
     return {'contract':CONTRACT,'host_id':HOST,'lane':'vps_ssh',
@@ -141,7 +141,7 @@ def apply(args,plan):
         abort('CORRELATION_ID_REQUIRED')
     if sha(file_bytes(args.file))!=plan['command_sha256'] or sha(file_bytes(args.readback_file))!=plan['readback_command_sha256']:
         abort('COMMAND_OR_READBACK_CHANGED_SINCE_PREFLIGHT')
-    if plan['mutating'] and (sha(file_bytes(args.backup_file))!=plan['backup_sha256'] or sha(file_bytes(args.rollback_file))!=plan['rollback_sha256']):
+    if plan['mutating'] and (sha(file_bytes(args.backup_file,max_bytes=16*1024*1024))!=plan['backup_sha256'] or sha(file_bytes(args.rollback_file))!=plan['rollback_sha256']):
         abort('BACKUP_OR_ROLLBACK_CHANGED_SINCE_PREFLIGHT')
     path=receipt_file(ident)
     try: fd=os.open(str(path),os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
