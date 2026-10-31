@@ -9,16 +9,15 @@
  
  ROOT=pathlib.Path('/opt/mad4b-company-transport/native-operator-v1')
  POLICY=ROOT/'host-authority.json'
-@@ -18,6 +18,8 @@
+@@ -18,6 +18,7 @@
    ('tours-central','staging'):('etg-commerce-staging-db','https://tours.dev.mad4b.com'),
    ('wayfatours','production'):('wayfatours-production-db','https://wayfatours.mad4b.com')
  }
-+REMOTE_SSH_TARGETS={('all-royal-egypt','staging'):'hosting-2:staging'}
 +REGISTRY_MODULE=pathlib.Path('/opt/mad4b-company-transport/registry-remote-v1/registry_remote.py')
  INTENTS=('read','diagnostic','repair','configuration','upgrade','deployment','rollback')
  MUTATING=('repair','configuration','upgrade','deployment','rollback')
  
-@@ -64,10 +66,13 @@
+@@ -64,10 +65,13 @@
      return data
  
  def preflight(args,policy):
@@ -27,31 +26,25 @@
          abort('UNSUPPORTED_OPERATION')
      if args.kind=='sql' and (args.company,args.environment) not in TARGETS:
          abort('DATABASE_NOT_ENROLLED')
-+    if args.kind=='ssh' and (args.company,args.environment) not in REMOTE_SSH_TARGETS:
++    if args.kind=='ssh' and (args.company+':'+args.environment) not in policy.get('scopes',{}):
 +        abort('REMOTE_SSH_TARGET_NOT_ENROLLED')
 +
      capability='allow_raw_sql' if args.kind=='sql' else 'allow_general_shell'
      if policy.get(capability) is not True:
          abort('HOST_CAPABILITY_NOT_GRANTED')
-@@ -76,6 +81,17 @@
+@@ -76,6 +80,11 @@
      permitted=policy.get('scopes',{}).get(args.company+':'+args.environment,{})
      if permitted.get('allow_operator') is not True:
          abort('EXACT_COMPANY_ENVIRONMENT_GRANT_MISSING')
 +    if args.kind=='ssh':
 +        if permitted.get('allow_remote_shell') is not True:
 +            abort('REMOTE_SHELL_SCOPE_NOT_GRANTED')
-+        registry=registered_remote_module()
-+        binding=REMOTE_SSH_TARGETS[(args.company,args.environment)]
-+        remote=registry.TARGETS.get(binding,{})
-+        if remote.get('site_uuid')!=permitted.get('site_uuid'):
-+            abort('REGISTRY_SITE_UUID_MISMATCH')
-+        if registry.guard(binding)!=permitted.get('expected_root'):
-+            abort('REGISTRY_ENROLLED_SITE_ROOT_MISMATCH')
++        binding=verified_registered_binding(args.company,args.environment,policy)
 +
      if args.kind=='sql' and permitted.get('allow_sql') is not True:
          abort('RAW_SQL_NOT_AUTHORIZED_FOR_COMPANY')
      mutation=args.intent in MUTATING
-@@ -100,19 +116,39 @@
+@@ -100,19 +109,50 @@
          snapshot=file_bytes(args.backup_file,max_bytes=16*1024*1024)
          if not re.fullmatch('[a-f0-9]{64}',args.backup_sha256 or '')            or sha(snapshot)!=args.backup_sha256:
              abort('BACKUP_DIGEST_MISMATCH')
@@ -78,12 +71,23 @@
 +    spec.loader.exec_module(module)
 +    return module
 +
++def verified_registered_binding(company,environment,policy):
++    registry=registered_remote_module()
++    permitted=policy.get('scopes',{}).get(company+':'+environment,{})
++    binding=permitted.get('registry_binding')
++    if not isinstance(binding,str) or not binding.endswith(':'+environment) or binding not in registry.TARGETS:
++        abort('REMOTE_REGISTRY_BINDING_NOT_ENROLLED')
++    registered=registry.TARGETS[binding]
++    if registered.get('site_uuid')!=permitted.get('site_uuid') or not permitted.get('canonical_origin') or not permitted.get('expected_root'):
++        abort('REMOTE_REGISTRY_SITE_IDENTITY_MISMATCH')
++    if registry.guard(binding)!=permitted['expected_root']:
++        abort('REGISTRY_ENROLLED_SITE_ROOT_MISMATCH')
++    return binding
++
 +def remote_shell_exec(cmd,timeout,company,environment):
 +    registry=registered_remote_module()
-+    binding=REMOTE_SSH_TARGETS[(company,environment)]
-+    registered=registry.TARGETS[binding]
-+    # Resolve real target before every attempt. No export or copying SSH keys.
-+    registry.guard(binding)
++    binding=verified_registered_binding(company,environment,authority())
++    # Resolve the same exact enrolled Registry target on every operation.
 +    argv,host,_,_=registry.ssh_base(binding)
 +    argv += ['-o','ClearAllForwardings=yes','-o','PermitLocalCommand=no',
 +             '-o','ProxyCommand=none',host,
@@ -93,7 +97,7 @@
  def local_exec(cmd, timeout):
      if cmd is None:abort('COMMAND_MISSING')
      p=subprocess.run(['/bin/bash','--noprofile','--norc','-e','-o','pipefail'],
-@@ -155,8 +191,15 @@
+@@ -155,8 +195,15 @@
          f.write(json.dumps(start));f.flush();os.fsync(f.fileno())
      journal(ident,'OPERATOR_EXECUTION_ATTEMPTED',{'company':args.company,'kind':args.kind,
             'environment':args.environment,'intent':args.intent,'command_sha256':plan['command_sha256']})
@@ -111,7 +115,7 @@
      # Direct host operator command supplied from a root-owned local file, never a web/queue payload.
      try:
          result=runner(file_bytes(args.file),args.timeout)
-@@ -187,7 +230,7 @@
+@@ -187,7 +234,7 @@
  def main():
      parser=argparse.ArgumentParser()
      parser.add_argument('action',choices=['status','plan','apply'])
