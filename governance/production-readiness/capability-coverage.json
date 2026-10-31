@@ -4422,6 +4422,80 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing provider-surface admission, centralized mutation controls and execution-denial checks apply; this component adds no independent remote grant. The exact source and same-PR negative tests cover the only approved functional surface.",
       "review_rationale": "The exact native write implementation has an independent Policy::can_mutate and current_user_can(manage_options) guard on direct invocation, in addition to centralized adapter mutation authorization before execution. All three native methods are limited to existing support customer/mailbox, existing accessible ticket, or provider-declared draft CPT target, with stable HMAC-scoped idempotency reservation; CPT posts stay draft. Same-PR hermetic PHP negative tests directly invoke all three methods with the site mutation gate disabled and prove no write escapes. Source blob 93d17a36a2c3f5937ea0865b529ac181190d74aa."
+    },
+    {
+      "id": "rest:mad4b/v1/admin/company-team/users/(?P<id>\\\\d+)",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-user-rest-route-security-runtime.php"
+      ],
+      "owner_role": "QA31 repository source and CI security review (not a tenant owner grant)",
+      "review_rationale": "Reviewed exact GET/PATCH route registration, per-method company-management permission denial, profile callback binding and protected-user enforcement via the real PHP service under an isolated fixture.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing WordPress capability permissions, protected account handling, REST security, security regression and owner release gates remain controlling. Tests certify only isolated source behavior."
+    },
+    {
+      "id": "rest:mad4b/v1/admin/company-team/users/(?P<id>\\\\d+)/lifecycle",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-user-rest-route-security-runtime.php"
+      ],
+      "owner_role": "QA31 repository source and CI security review (not a tenant owner grant)",
+      "review_rationale": "Reviewed POST-only lifecycle routing, bounded suspend/restore/delete action enum, permission callbacks and direct denied operations. The fixture performs no persistent mutation.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing WordPress capability permissions, protected account handling, REST security, security regression and owner release gates remain controlling. Tests certify only isolated source behavior."
+    },
+    {
+      "id": "rest:mad4b/v1/admin/company-team/users/(?P<id>\\\\d+)/preflight",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-user-rest-route-security-runtime.php"
+      ],
+      "owner_role": "QA31 repository source and CI security review (not a tenant owner grant)",
+      "review_rationale": "Reviewed GET-only preflight route, permission callback, protected-user denial and isolated no-DB behavior. No production deletion proof claimed.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing WordPress capability permissions, protected account handling, REST security, security regression and owner release gates remain controlling. Tests certify only isolated source behavior."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-user-lifecycle.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-user-rest-route-security-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-user-rest-suspension-isolation-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-plugin-sync-mu-runtime.php"
+      ],
+      "owner_role": "QA31 repository source and CI security review (not a tenant owner grant)",
+      "review_rationale": "Reviewed source behavior for company management permission checks, protected users, route registration, suspension REST isolation and exact installed MU bridge evidence; hermetic CI fixtures are read-only and do not certify live delete/restore.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing WordPress capability permissions, protected account handling, REST security, security regression and owner release gates remain controlling. Tests certify only isolated source behavior."
     }
   ],
   "lifecycle": [],
