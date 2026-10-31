@@ -13094,6 +13094,120 @@
         "SECURITY-01"
       ],
       "review_rationale": "Reviewed exact source against hermetic regression. Guarded, read-only or scoped policy paths tested; excludes live network, DB, tenant activation, publication and Production write authorization."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/cross-plugin-sources.json",
+      "source_blob_sha": "5d0717ec4e2d5bf6f420d75d4f5287f7cf1ec431",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "QA31 repository source and security reviewer, CI scope only; no site owner attestation",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-peer-pr-config-reconcile.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-bootstrap-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-stage-admission.php"
+      ],
+      "review_rationale": "Existing external Content Hub candidate remains pending source review, limited to Staging with no package certification, production promotion or remote execution inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/operation-registry.json",
+      "source_blob_sha": "853971f4312a7478f8e99df4c569c5ec882f3655",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "QA31 repository source and security reviewer, CI scope only; no site owner attestation",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-peer-pr-config-reconcile.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-bootstrap-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-stage-admission.php"
+      ],
+      "review_rationale": "Company create and repair are semantic operations requiring a registered executor; plugin sync remains queue-plan only, never generic mutation dispatch."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/provider-capability-contracts.json",
+      "source_blob_sha": "a16aabeba6aebcbc020c11ef95507451557ea3e5",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "QA31 repository source and security reviewer, CI scope only; no site owner attestation",
+      "control_ids": [
+        "PROVIDERS-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-peer-pr-config-reconcile.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-bootstrap-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-stage-admission.php"
+      ],
+      "review_rationale": "Provider artifact plugin-file references are inventory hints only; they create no new deployment, capability or production mutation authority."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-readiness-governance.php",
+      "source_blob_sha": "dc974f2acdb29ac1167ff24f88ee5939eb7524fb",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "QA31 repository source and security reviewer, CI scope only; no site owner attestation",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-peer-pr-config-reconcile.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-bootstrap-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-stage-admission.php"
+      ],
+      "review_rationale": "Company readiness GET, REST pre-dispatch and admin surface retain tenant assignment checks, operator capability guard and missing evidence denial."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-start-your-company-runtime.php",
+      "source_blob_sha": "07579934700df370a5982864d55e361370c38082",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "QA31 repository source and security reviewer, CI scope only; no site owner attestation",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-peer-pr-config-reconcile.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-bootstrap-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-stage-admission.php"
+      ],
+      "review_rationale": "Current exact source enforces company binding, stage-specific supported executor actions, freshness, rollback and readback registration; negative PHP fixtures cover those denials."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "c90523d42c6a32a42f6711b4b5a22d36a183558a",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "QA31 repository source and security reviewer, CI scope only; no site owner attestation",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-peer-pr-config-reconcile.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-bootstrap-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-stage-admission.php"
+      ],
+      "review_rationale": "Bootstrap loads company governance and runtime in ordered sequence without restricting component availability to a hard-coded site or granting cross-tenant execution."
     }
   ],
   "code_change_rules": {
