@@ -5,6 +5,7 @@ on:
       - integration/all-open-prs-20261031
     paths:
       - '.github/workflows/all-open-prs-integration.yml'
+      - 'tools/consolidate_open_prs_20261031.py'
   workflow_dispatch:
 permissions:
   contents: write
