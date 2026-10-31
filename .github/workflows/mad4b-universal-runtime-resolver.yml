@@ -23,8 +23,8 @@ jobs:
         with:
           python-version: '3.12'
       - name: Compile runtime and tests
-        run: python -m py_compile resolver.py test_resolver.py multi_transport_authority.py test_multi_transport_authority.py central_control_readback.py native_authority_status.py central_wpcli_host.py test_central_wpcli_host.py central_execution_route.py test_central_execution_route.py
+        run: python -m py_compile resolver.py test_resolver.py multi_transport_authority.py test_multi_transport_authority.py central_control_readback.py native_authority_status.py central_wpcli_host.py test_central_wpcli_host.py central_execution_route.py test_central_execution_route.py central_staging_backup.py test_central_staging_backup.py
         working-directory: tools/mad4b-universal-runtime-resolver
       - name: Isolated resolver contract tests
-        run: python -m unittest -v test_resolver test_multi_transport_authority test_central_wpcli_host test_central_execution_route
+        run: python -m unittest -v test_resolver test_multi_transport_authority test_central_wpcli_host test_central_execution_route test_central_staging_backup
         working-directory: tools/mad4b-universal-runtime-resolver
