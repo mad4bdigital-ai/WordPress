@@ -39,6 +39,8 @@ final class MAD4B_SEO_Render_Audit {
         if(!current_user_can('manage_options'))
             return new WP_Error('mad4b_render_audit_admin_required','Full render needs administrator permission');
         $html='';
+        $buffer_level=ob_get_level();
+        ob_start(); // Elementor may echo CSS while producing requested HTML.
         try{
             if($mode==='elementor' && class_exists('\\Elementor\\Plugin')){
                 $plugin=\Elementor\Plugin::$instance;
@@ -50,13 +52,21 @@ final class MAD4B_SEO_Render_Audit {
             }
         }catch(Throwable $e){
             return new WP_Error('mad4b_render_audit_renderer_failure','Content renderer could not be inspected safely');
+        }finally{
+            // Never leak style/HTML output to REST or WP-CLI, even on error.
+            while(ob_get_level()>$buffer_level)ob_end_clean();
         }
         if(!is_string($html)||$html==='')return [
             'contract'=>self::CONTRACT,'post_id'=>$id,'renderer'=>$mode,
             'render_status'=>'empty_or_unsupported','images'=>[],
             'rendered_html_checked'=>false,'template_level_coverage'=>false,
             'mutation_performed'=>false];
-        if(strlen($html)>750000)return new WP_Error('mad4b_render_audit_oversize','Rendered HTML exceeds safe audit limit');
+        if(strlen($html)>750000)return [
+            'contract'=>self::CONTRACT,'post_id'=>$id,'renderer'=>$mode,
+            'render_status'=>'oversize_needs_bounded_parser',
+            'rendered_html_bytes'=>strlen($html),'rendered_html_checked'=>false,
+            'images'=>[],'template_level_coverage'=>false,
+            'mutation_performed'=>false];
         if(!class_exists('DOMDocument'))return new WP_Error('mad4b_render_audit_dom_unavailable','DOM parser unavailable');
         $previous=libxml_use_internal_errors(true);
         $doc=new DOMDocument();
