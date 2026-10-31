@@ -153,7 +153,16 @@ def registered_surfaces(ref, path):
     rows = {identifier("rest", ns + "/" + route.lstrip("/"))
             for ns, route in REST_ROUTE.findall(src)}
     rows.update(identifier("ajax", x) for x in AJAX_ROUTE.findall(src))
-    rows.update(identifier("cron", x) for x in CRON_SCHEDULE.findall(src))
+    # WordPress recurring schedules take (timestamp, recurrence, hook).
+    # `hourly` is a recurrence interval, not an event identity. Resolve the
+    # fixed EVENT constant in this audited provider rather than inventing a
+    # cron:hourly capability. Other detectors remain unchanged.
+    cron_hits = CRON_SCHEDULE.findall(src)
+    if path == PLUGIN + "includes/class-mad4b-scp-authority-auto-reconciliation.php":
+        event = re.search(r"const\s+EVENT\s*=\s*['\"]([a-z0-9_-]+)['\"]", src)
+        if event and "wp_schedule_event(time()+120,'hourly',self::EVENT)" in src:
+            cron_hits = [event.group(1) if hit == "hourly" else hit for hit in cron_hits]
+    rows.update(identifier("cron", x) for x in cron_hits)
     return rows
 
 
