@@ -43,4 +43,22 @@ $GLOBALS['origin']=true; $GLOBALS['breakglass']=true;
 check_case(is_wp_error($cls::can_access()), 'raw-sql breakglass denied');
 $GLOBALS['breakglass']=false; $_SERVER['HTTP_AUTHORIZATION']='unexpected';
 check_case(is_wp_error($cls::can_access()), 'mixed auth channel denied');
-echo "PASS Full Staging Authority trusted WP-CLI access (8 checks)\n";
+// Separate Developer Plane: a valid host CLI identity must never become a
+// Production Developer grant or bypass the independent Breakglass step-up.
+class MAD4B_SCP_Execution_Authority {
+ public static function resolve($operation='read') {
+  return array('environment'=>$GLOBALS['env'],'transport'=>'host_cli','wp_user_id'=>$GLOBALS['uid']);
+ }
+}
+require dirname(__DIR__).'/includes/class-mad4b-scp-developer-authority.php';
+$dev='MAD4B_SCP_Developer_Authority';
+$GLOBALS['env']='staging';
+check_case($dev::can_access()===true,'enrolled host CLI can inspect Developer plan without OAuth');
+$GLOBALS['env']='production';
+$denial=$dev::can_access();
+check_case(is_wp_error($denial) && $denial->get_error_code()==='mad4b_developer_authority_non_production_only','Developer authority denies Production');
+$GLOBALS['env']='staging';
+$breakglass=$dev::breakglass_apply(array('confirmation'=>$dev::CONFIRM_BREAKGLASS));
+check_case(is_wp_error($breakglass) && $breakglass->get_error_code()==='mad4b_developer_native_breakglass_stepup_required','host CLI cannot self-approve Breakglass');
+check_case($dev::CONFIRM_PROVISION!==$dev::CONFIRM_BREAKGLASS,'normal and Breakglass confirmation distinct');
+echo "PASS Full Staging CLI and Developer deny-first nonproduction/Breakglass contract (12 checks)\n";
