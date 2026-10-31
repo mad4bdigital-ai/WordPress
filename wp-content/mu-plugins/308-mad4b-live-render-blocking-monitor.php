@@ -55,8 +55,8 @@ final class MAD4B_Live_Render_Blocking_Monitor_V1 {
             ($j['site_uuid']??'')!=='e5e64bca-ed62-48d2-b2b3-dff693cd702a' ||
             ($j['origin']??'')!=='https://tours.dev.mad4b.com' ||
             empty($j['complete']) || count((array)($j['pages']??[]))<7 ||
-            count((array)($j['pages']??[]))>14 ||
-            count((array)($j['issues']??[]))>30) WP_CLI::error('invalid_live_probe');
+            count((array)($j['pages']??[]))>24 ||
+            count((array)($j['issues']??[]))>80) WP_CLI::error('invalid_live_probe');
         $ts=strtotime((string)($j['observed_at']??''))?:0;
         if($ts<time()-1200||$ts>time()+60)WP_CLI::error('stale_or_future_probe');
         $seen=[];

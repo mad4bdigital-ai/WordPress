@@ -85,7 +85,7 @@ async def inspect(browser,path,sem):
                 }})(),
                 mobileTourTOCGap:(()=>{let x=document.querySelector('body.single-tours-and-activities .elementor-24784 .elementor-element-b29a19b');return x?parseFloat(getComputedStyle(x).marginBlockStart):null})(),
                 isTourSingle:document.body.classList.contains('single-tours-and-activities'),
-                departureDetails:(()=>{const widgets=[...document.querySelectorAll('[data-mad4b-departure-optin]')];
+                departureDetails:(()=>{const widgets=[...document.querySelectorAll('[data-mad4b-departure-source="linked-tour"]')];
                     const cardLabels=[...document.querySelectorAll('.tk-tour-rate-label')];
                     const unconfirmed=cardLabels.filter(x=>x.dataset.mad4bDepartureOptin!=='1');
                     return {widgets:widgets.length,
