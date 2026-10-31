@@ -115,7 +115,17 @@
      # Direct host operator command supplied from a root-owned local file, never a web/queue payload.
      try:
          result=runner(file_bytes(args.file),args.timeout)
-@@ -187,7 +234,7 @@
+@@ -176,7 +223,8 @@
+           mutation_possible=plan['mutating'],
+           finished_at=datetime.datetime.now(datetime.timezone.utc).isoformat())
+     tmp=path.with_suffix('.tmp')
+-    with tmp.open('w') as f:
++    fd=os.open(str(tmp),os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
++    with os.fdopen(fd,'w') as f:
+         f.write(json.dumps(final,sort_keys=True));f.flush();os.fsync(f.fileno())
+     os.replace(tmp,path)
+     journal(ident,'OPERATOR_'+final['state'],{'environment':args.environment,
+@@ -187,7 +235,7 @@
  def main():
      parser=argparse.ArgumentParser()
      parser.add_argument('action',choices=['status','plan','apply'])
