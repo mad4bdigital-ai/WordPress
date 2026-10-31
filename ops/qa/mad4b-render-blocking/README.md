@@ -18,3 +18,7 @@ The browser probe now records Navigation Timing TTFB, buffered Largest Contentfu
 
 ### Local image parity across WPML
 All six language records of Tour product #60629 now use the same local image_vertical URL; each translation had an exact old remote-image value and retained an independent backup. Their byte-identical image content is preserved and individual page caches purged. CSS mobile tuning resolves translated product slugs by WPML source ID, not by assuming translated slugs equal the English one.
+
+A third-party fonts.googleapis.com CSS request is independently flagged as perf_fontcss_<hash>, even if transfer bytes are small, to catch regressions against the already verified same-origin Cairo WOFF2 policy.
+
+The dedicated Best of Egypt 12 Days product URL has been included as an 11th browser check, alongside the other sample tour and catalog pages.

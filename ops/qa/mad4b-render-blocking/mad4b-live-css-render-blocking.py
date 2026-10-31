@@ -10,7 +10,8 @@ PAGES=['/','/ar/','/fr/','/de/','/es/','/it/',
        '/destination/africa-containent/egypt/',
        '/tours-and-activities/',
        '/tours-and-activities/nile-cruise-luxor-to-aswan-5-days/',
-       '/plan-a-trip/']
+       '/plan-a-trip/',
+       '/tours-and-activities/best-of-egypt-cairo-luxor-nile-cruise-red-sea-12-days/']
 OUT=pathlib.Path('/opt/hostinger-migrations/hosting-3/etg-commerce-staging/qa/render-blocking-uael-20261031')
 OUTPUT=OUT/'live-css-scan.json'
 CONTRACT='mad4b.live-render-blocking.v1'
@@ -51,6 +52,9 @@ async def inspect(browser,path,sem):
                 title:document.title,
                 pageOverflow:Math.max(0,document.documentElement.scrollWidth-innerWidth),
                 ttfbMs:Math.round(performance.getEntriesByType('navigation')[0]?.responseStart||0),
+                externalGoogleFonts:performance.getEntriesByType('resource')
+                  .filter(x=>x.name.startsWith('https://fonts.googleapis.com/css'))
+                  .map(x=>({url:x.name,duration_ms:Math.round(x.duration)})).slice(0,12),
                 lcp:(window.__mad4b_lcp||[]).slice(-1)[0]||null})''')
             resources={r['url']:r for r in live['resources']}
             styles=[]
@@ -74,7 +78,8 @@ async def inspect(browser,path,sem):
             return {'url':url,'http_status':response.status,'mobile_viewport':390,
                 'title':live['title'],'uael_widgets':live['uael'],'css':styles,
                 'horizontal_overflow_px':live['pageOverflow'],
-                'ttfb_ms':int(live['ttfbMs']),'lcp':lcp}
+                'ttfb_ms':int(live['ttfbMs']),'lcp':lcp,
+                'external_google_fonts':live['externalGoogleFonts']}
         finally:
             await page.close()
 def classify(pages):
@@ -92,6 +97,16 @@ def classify(pages):
                 'UAEL widget present — retain styles.' if seen_uael else 'No visible UAEL widget — defer CSS safely.'
             )
             issues.append({'code':code,'severity':'high','label':label[:225]})
+    # A small external font CSS file may still add hundreds of milliseconds
+    # through third-party connection setup, independent of its transfer size.
+    for page in pages:
+        external=page.get('external_google_fonts') or []
+        if external:
+            path=urlsplit(page['url']).path
+            code='perf_fontcss_'+hashlib.sha256(path.encode()).hexdigest()[:12]
+            total=max(int(x.get('duration_ms') or 0) for x in external)
+            issues.append({'code':code,'severity':'high',
+                'label':f'External Google Fonts CSS unexpectedly requested on mobile {path}; maximum observed request {total}ms. Local font source should be used.'})
     delayed=[]
     for page in pages:
         lcp=page.get('lcp') or {}

@@ -31,3 +31,11 @@ assert any(x['code'].startswith('perf_lcpdelay_') and '3880ms' in x['label'] for
 slow[0]['lcp']['render_delay_ms']=160
 assert not any(x['code'].startswith('perf_lcpdelay_') for x in m.classify(slow))
 print('PASS: live TTFB and LCP element render-delay regression classifications')
+
+# Detect third-party font CSS even though it is tiny (<64KiB).
+font_page={'url':'https://tours.dev.mad4b.com/ar/', 'uael_widgets':[], 'css':[],
+  'external_google_fonts':[{'url':'https://fonts.googleapis.com/css?family=Cairo','duration_ms':750}]}
+assert any(x['code'].startswith('perf_fontcss_') for x in m.classify([font_page]))
+font_page['external_google_fonts']=[]
+assert m.classify([font_page])==[]
+print('PASS: external Google Fonts regression detection and resolution')
