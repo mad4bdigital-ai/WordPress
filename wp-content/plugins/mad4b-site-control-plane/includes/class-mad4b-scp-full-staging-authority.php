@@ -204,6 +204,7 @@ final class MAD4B_SCP_Full_Staging_Authority {
 	}
 
 	public static function can_access( $input = null ) {
+		if ( self::generic_raw_sql_breakglass_gate_enabled() ) return new WP_Error( 'mad4b_full_authority_raw_sql_breakglass_denied', 'Generic raw SQL Breakglass conflicts with bounded Full Staging Authority.' );
 		if (!class_exists('MAD4B_SCP_Execution_Authority'))
 			return new WP_Error('mad4b_full_authority_actor_resolver_missing','Canonical execution authority unavailable.');
 		$actor=MAD4B_SCP_Execution_Authority::require_access('plan',array('staging'));
