@@ -132,6 +132,52 @@ def inspect_authority(target,scope):
        "global_shell_granted":False,"unrestricted_sql_granted":False,
        "p256_grants_write":False})
 
+def validate_original_owner_plan(target,scope,provider,plan,proof):
+    """Validate read-only evidence returned by an original native owner.
+
+    The readback adapter, not the caller, supplies proof. A P-256 identity
+    challenge or a connected SSH socket alone does not establish this proof.
+    """
+    enrolled=inventory().get(target,{})
+    env=enrolled.get("environment")
+    origin=scope.get("canonical_origin")
+    if not isinstance(proof,dict) or proof.get("native_source_confirmed") is not True or \
+       proof.get("readback_confirmed") is not True or \
+       proof.get("exact_target_bound") is not True or \
+       proof.get("origin")!=origin or \
+       not isinstance(proof.get("receipt_digest"),str) or \
+       not re.fullmatch(r"[a-f0-9]{64}",proof["receipt_digest"]):
+        return result("review_required","unified_full_authority",
+                      "original_native_owner_readback_not_proven")
+    if not isinstance(plan,dict) or plan.get("contract")!="mad4b.unified-full-authority.v1" or \
+       plan.get("site_uuid")!=scope.get("site_uuid") or \
+       plan.get("environment")!=env or \
+       plan.get("native_owner")!=provider.get("native_owner"):
+        return result("review_required","unified_full_authority",
+                      "native_owner_plan_binding_mismatch")
+    digest=plan.get("plan_sha256")
+    if not isinstance(digest,str) or not re.fullmatch(r"[a-f0-9]{64}",digest) or \
+       plan.get("mutation_performed") is not False or \
+       plan.get("production_mutation_performed") is not False:
+        return result("review_required","unified_full_authority",
+                      "native_owner_plan_not_readonly_or_digest_invalid")
+    evidence={"plan_sha256":digest,"receipt_digest":proof["receipt_digest"],
+              "native_owner":plan["native_owner"],"environment":env,
+              "source_commit_sha":plan.get("source_commit_sha",""),
+              "apply_executed":False}
+    if env=="production" and (plan.get("production_strict") is not True or \
+       plan.get("requires_independent_production_readback") is not True):
+        return result("review_required","unified_full_authority",
+                      "production_native_safety_conditions_unverified",evidence)
+    if plan.get("ready_to_apply") is True and plan.get("native_owner_ready") is True and \
+       not plan.get("blockers"):
+        return result("verified","unified_full_authority",
+                      "native_original_owner_plan_ready",evidence)
+    return result("blocked_authority","unified_full_authority",
+                  "native_original_owner_plan_not_ready",
+                  dict(evidence,blockers=plan.get("blockers",[])))
+
+
 def inspect_full_authority(target,scope):
     """Read status from the TARGET's native owner, never a central Hub plugin."""
     provider=scope.get("full_authority_provider")
