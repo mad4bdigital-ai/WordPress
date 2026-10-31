@@ -8,6 +8,8 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/central-company-rollout-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-operator-handoff.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/central-native-operator-handoff-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-operation-authority.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/unified-operation-authority-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-release-registry.php'
       - 'wp-content/plugins/mad4b-site-control-plane/config/central-staging-source.json'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/central-release-registry-runtime.php'
@@ -41,6 +43,9 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-operator-handoff.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/central-native-operator-handoff-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/central-native-operator-handoff-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-operation-authority.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/unified-operation-authority-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/unified-operation-authority-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-release-registry.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/central-release-registry-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/central-release-registry-runtime.php
