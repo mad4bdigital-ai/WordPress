@@ -1,6 +1,6 @@
 {
   "contract": "mad4b.central-staging-source.v1",
-  "origin": "https://tours.dev.mad4b.com",
+  "origin": "",
   "readback_route": "/wp-json/mad4b/v1/central-release/",
   "evidence_transport": "signed_server_readback",
   "signature_algorithm": "RS256",
@@ -8,5 +8,7 @@
   "company_staging_required": false,
   "package_certification_required": false,
   "production_approval": "separate_governed_native_owner_batch",
-  "source": "MAD4B Central Control Plane"
+  "source": "MAD4B Central Control Plane",
+  "host_origin_provider": "read_only_host_mount",
+  "host_origin_contract": "mad4b.central-staging-origin.v1"
 }
