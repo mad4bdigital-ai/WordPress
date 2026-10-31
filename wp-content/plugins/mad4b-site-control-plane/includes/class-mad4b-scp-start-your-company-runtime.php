@@ -84,6 +84,11 @@ final class MAD4B_SCP_Company_Provisioning_Work_Operations {
         if (!self::validate_payload($payload)) return false;
         $company=array('company_code'=>$payload['company_code'],'site_uuid'=>$payload['site_uuid']);
         $executor=self::executor_status($company);
+        // Check exact supported stage at provider admission, not readiness alone.
+        $all=get_option(self::EXECUTORS,array());
+        $registered=is_array($all)?($all[$company['company_code']]??null):null;
+        if (!is_array($registered) || !is_array($registered['supported_actions']??null)
+            || !in_array($payload['action'], $registered['supported_actions'], true)) return false;
         if (empty($executor['registered']) ||
             !hash_equals((string)$executor['executor_id'],(string)($job['executor_id']??'')) ||
             ($job['status']??'')!=='claimed' ||
