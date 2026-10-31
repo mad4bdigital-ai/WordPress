@@ -18,9 +18,14 @@ final class MAD4B_Company_Readiness_Governance {
         add_action('wp_abilities_api_init', array(__CLASS__,'abilities'), 80);
     }
     private static function central() {
-        return wp_get_environment_type() === 'staging'
-            && defined('DB_NAME') && DB_NAME === 'etg_commerce_staging'
-            && wp_parse_url(home_url(), PHP_URL_HOST) === 'tours.dev.mad4b.com';
+        // This is transport readiness, not permission to execute. Company tenancy,
+        // actor privileges and operation-specific approvals are checked separately.
+        $url = function_exists('home_url') ? home_url() : '';
+        $host = is_string($url) ? wp_parse_url($url, PHP_URL_HOST) : false;
+        $scheme = is_string($url) ? wp_parse_url($url, PHP_URL_SCHEME) : false;
+        return $scheme === 'https' && is_string($host) && $host !== ''
+            && $host !== 'localhost' && !filter_var($host, FILTER_VALIDATE_IP)
+            && filter_var($host, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME);
     }
     private static function registry() {
         $r = get_option('mad4b_tourism_company_site_registry_v1', array());
