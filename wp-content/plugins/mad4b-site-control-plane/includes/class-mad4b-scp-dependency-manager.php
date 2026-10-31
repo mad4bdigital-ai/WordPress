@@ -75,7 +75,7 @@ final class MAD4B_SCP_Dependency_Manager {
 		$runtime_provenance = self::mcp_runtime_provenance( $mcp_plugin_file );
 		$runtime_from_official_plugin = ! empty( $runtime_provenance['runtime_from_official_plugin'] );
 		$runtime_contract_ok = ! empty( $runtime_contract['runtime_contract_ok'] );
-		$runtime_certified = $runtime_contract_ok && $runtime_from_official_plugin;
+		$runtime_certified = $runtime_contract_ok && $runtime_from_official_plugin; // Structural dependency readiness, not exact-package mutation authority.
 		// Read discovery is an observational lane, not an exact release approval.
 		// An official loaded Adapter with WordPress Abilities available must not
 		// make the entire Control Plane unusable solely due to a version change.
@@ -125,8 +125,8 @@ final class MAD4B_SCP_Dependency_Manager {
 		if ( $network_control_plane || $network_mcp_adapter ) $hard_blockers[] = 'multisite_network_activation_unsupported';
 		if ( $plugin_identity_ambiguous ) $hard_blockers[] = 'mcp_adapter_plugin_identity_ambiguous';
 		elseif ( ! $installed ) $hard_blockers[] = 'mcp_adapter_missing';
-		elseif ( ! $transition_supported ) $hard_blockers[] = 'mcp_adapter_version_drift';
-		elseif ( ! $installed_integrity_ready ) $hard_blockers[] = 'mcp_adapter_integrity_mismatch';
+		// Dependency admission is capability-first for any installed Adapter version.
+		// Versioned ZIP checks remain available for explicit code update only.
 		elseif ( ! $runtime_loaded ) $hard_blockers[] = 'mcp_adapter_runtime_unavailable';
 		elseif ( ! $runtime_from_official_plugin ) $hard_blockers[] = 'mcp_adapter_runtime_provenance_mismatch';
 		elseif ( ! $runtime_contract_ok ) $hard_blockers[] = 'mcp_adapter_runtime_not_certified';
@@ -169,9 +169,9 @@ final class MAD4B_SCP_Dependency_Manager {
 			'state' => empty( $hard_blockers ) ? ( empty( $optional_blockers ) ? 'ready' : 'ready_with_optional_gaps' ) : ( $read_ready ? 'read_compatible_write_certification_required' : 'blocked' ),
 			'read_ready' => $read_ready,
 			'read_blockers' => $read_blockers,
-			'write_certification_ready' => empty( $hard_blockers ),
+			'write_certification_ready' => empty( $hard_blockers ), // Per-operation OAuth, grants and policies are checked independently.
 			'adapter_certification_blockers' => $adapter_certification_blockers,
-			'adapter_transition_policy' => 'capabilities_read_first_exact_integrity_for_write',
+			'adapter_transition_policy' => 'version_independent_dependency_exact_package_for_explicit_update',
 			'hard_blockers' => $hard_blockers,
 			'optional_blockers' => $optional_blockers,
 			'core' => $core,
@@ -197,7 +197,12 @@ final class MAD4B_SCP_Dependency_Manager {
 				'runtime_certified' => $runtime_certified,
 				'read_runtime_ready' => $read_runtime_ready,
 				'read_discovery_stays_available_during_version_drift' => $read_runtime_ready,
-				'write_mutation_requires_exact_certification' => true,
+				'write_mutation_requires_exact_certification' => false,
+				'provider_code_update_requires_exact_package_integrity' => true,
+				'provider_code_update_package_integrity_ready' => $installed_integrity_ready,
+				'write_operations_require_governed_authority' => true,
+				'dependency_version_gate_enabled' => false,
+				'dependency_compatible' => $runtime_contract_ok && $runtime_from_official_plugin,
 				'runtime_from_official_plugin' => $runtime_from_official_plugin,
 				'runtime_source' => isset( $runtime_provenance['runtime_source'] ) ? (string) $runtime_provenance['runtime_source'] : '',
 				'loading_mode' => $active ? 'active_plugin' : ( $runtime_certified ? 'certified_loaded_runtime' : 'inactive_plugin' ),

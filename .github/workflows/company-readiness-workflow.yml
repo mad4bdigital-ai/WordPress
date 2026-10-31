@@ -1,0 +1,149 @@
+name: Company readiness workflow
+on:
+  pull_request:
+    paths:
+      - 'ops/company-readiness-workflow/**'
+      - '.github/workflows/company-readiness-workflow.yml'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-start-your-company-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-readiness-governance.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/operation-registry.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php'
+      - 'governance/production-readiness/capability-coverage.json'
+  push:
+    branches: [master]
+    paths:
+      - 'ops/company-readiness-workflow/**'
+      - '.github/workflows/company-readiness-workflow.yml'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-start-your-company-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-readiness-governance.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/operation-registry.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php'
+      - 'governance/production-readiness/capability-coverage.json'
+permissions:
+  contents: read
+
+concurrency:
+  group: company-readiness-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bounded-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Python script syntax
+        run: python3 -m py_compile ops/company-readiness-workflow/orchestrate.py
+      - name: Policy self-test: deny unqualified distribution
+        run: python3 ops/company-readiness-workflow/orchestrate.py --selftest
+      - name: Install PHP CLI
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq php-cli
+      - name: MU plugin syntax
+        run: |
+          php -l ops/company-readiness-workflow/staging-mu/241-mad4b-company-brand-readiness-hub.php
+          php -l ops/company-readiness-workflow/staging-mu/242-mad4b-company-readiness-workflow.php
+          php -l ops/company-readiness-workflow/staging-mu/252-mad4b-start-your-company-runtime.php
+          php -l ops/company-readiness-workflow/staging-mu/304-mad4b-central-dual-lane-registry.php
+          php -l ops/company-readiness-workflow/staging-mu/305-mad4b-central-ssh-command-intake.php
+          php -l ops/company-readiness-workflow/staging-mu/306-mad4b-central-vps-broker.php
+          php -l ops/company-readiness-workflow/staging-mu/307-mad4b-vps-broker-operator-canary.php
+          php -l ops/company-readiness-workflow/staging-mu/308-mad4b-vps-broker-diagnostics.php
+          php -l ops/company-readiness-workflow/staging-mu/309-mad4b-vps-broker-journal.php
+          php -l ops/company-readiness-workflow/staging-mu/310-mad4b-vps-broker-diagnostic-execute.php
+          php -l ops/company-readiness-workflow/tests/test_vps_broker_diagnostic_execute.php
+          php -l ops/company-readiness-workflow/tests/test_vps_broker_diagnostics.php
+          php -l ops/company-readiness-workflow/tests/test_vps_broker_signature.php
+          python3 -m py_compile ops/company-readiness-workflow/executor/vps-broker-poller.py
+          python3 -m py_compile ops/company-readiness-workflow/executor/vps-broker-journal-sync.py
+          python3 -m py_compile ops/company-readiness-workflow/executor/vps-broker-fixed-diagnostic.py
+          php -l ops/company-readiness-workflow/tests/test_central_ssh_command_intake.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-start-your-company-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-readiness-governance.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-work-queue.php
+          php -l wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php
+          python3 - <<'PY'
+          from pathlib import Path
+          pairs = (
+              ('ops/company-readiness-workflow/staging-mu/252-mad4b-start-your-company-runtime.php',
+               'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-start-your-company-runtime.php'),
+              ('ops/company-readiness-workflow/staging-mu/242-mad4b-company-readiness-workflow.php',
+               'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-readiness-governance.php'),
+          )
+          for staging, bundled in pairs:
+              raw = Path(staging).read_text()
+              embedded = Path(bundled).read_text()
+              # Only the packaging header differs: the included class is not
+              # a second activation candidate in the WordPress plugin archive.
+              assert raw.replace('* Plugin Name:', '* Component:', 1) == embedded, bundled
+              assert '* Plugin Name:' not in embedded, bundled
+          PY
+          php -l ops/company-readiness-workflow/tests/test_start_company_runtime.php
+      - name: Company stages and partial recovery contract tests
+        run: |
+          php ops/company-readiness-workflow/tests/test_start_company_runtime.php
+          php ops/company-readiness-workflow/tests/test_central_ssh_command_intake.php
+          php ops/company-readiness-workflow/tests/test_vps_broker_signature.php
+          php ops/company-readiness-workflow/tests/test_vps_broker_diagnostics.php
+          php ops/company-readiness-workflow/tests/test_vps_broker_diagnostic_execute.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py
+          python3 ops/company-readiness-workflow/tests/test_executor_admission_contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php
+          python3 - <<'PY'
+          import json
+          d=json.load(open('wp-content/plugins/mad4b-site-control-plane/config/operation-registry.json'))
+          ids={x['id']:x for x in d['operations']}
+          assert all(n in ids for n in ('company.create','company.repair'))
+          for n in ('company.create','company.repair'):
+              assert ids[n]['planner']=='mad4b/start-your-company-plan'
+              assert ids[n]['executor']=='mad4b/start-your-company-run'
+              assert ids[n]['generic_mutation_dispatch'] is False
+          assert d['generic_shell'] is False and d['default_mutation_policy']=='deny'
+          PY
+      - name: Source-neutral activation Python syntax
+        run: |
+          python3 -m py_compile ops/company-readiness-workflow/design-activation/wayfa-wpml-resolve.py
+          python3 -m py_compile ops/company-readiness-workflow/design-activation/wayfa-design-activate.py
+      - name: Schema-first and conditional resolution contract tests
+        run: |
+          python3 ops/company-readiness-workflow/design-activation/test_config_compatibility.py
+          python3 -m py_compile ops/company-readiness-workflow/design-activation/wayfa-schema-compatibility.py
+          python3 -m py_compile ops/company-readiness-workflow/design-activation/wayfa-template-diff-resolver.py
+          python3 -m py_compile ops/company-readiness-workflow/design-activation/wayfa-jet-config-autoload.py
+          python3 -m py_compile ops/company-readiness-workflow/design-activation/wayfa-design-lifecycle.py
+      - name: Source-neutral activation PHP syntax
+        run: |
+          php -l ops/company-readiness-workflow/design-activation/wayfa-wpml-resolve.php
+          php -l ops/company-readiness-workflow/design-activation/wayfa-design-activate.php
+          php -l ops/company-readiness-workflow/design-activation/wayfa-jet-config-autoload.php
+      - name: Company Options Registry syntax and data-separation controls
+        run: |
+          python3 -m py_compile ops/company-readiness-workflow/company-options/registry.py
+          php -l ops/company-readiness-workflow/company-options/registry-store.php
+          php -l ops/company-readiness-workflow/company-options/tenant-mu/243-mad4b-company-options-registry.php
+          python3 -c "import json;d=json.load(open('ops/company-readiness-workflow/company-options/company-options-field-registry-v1.json')); assert d['page_count']==4 and d['field_count']==112 and d['rules']['all_source_option_values_excluded'] is True"
+      - name: Runtime company configuration code syntax
+        run: |
+          python3 -m py_compile ops/company-readiness-workflow/company-options/runtime-registry-v2.py
+          python3 -m py_compile ops/company-readiness-workflow/company-options/runtime-acceptance-v2.py
+          php -l ops/company-readiness-workflow/company-options/tenant-mu/245-mad4b-company-brand-fields.php
+          php -l ops/company-readiness-workflow/company-options/tenant-mu/246-mad4b-company-option-tags.php
+          php -l ops/company-readiness-workflow/company-options/tenant-mu/247-mad4b-portable-service-fields.php
+      - name: Mandatory governed company runtime acceptance
+        run: |
+          python3 -m py_compile ops/company-readiness-workflow/runtime-gates/company-governed-runtime-gates.py
+          python3 -m py_compile ops/company-readiness-workflow/runtime-gates/test_governed_runtime_gates.py
+          python3 ops/company-readiness-workflow/runtime-gates/test_governed_runtime_gates.py
+          php -l ops/company-readiness-workflow/runtime-gates/tenant-mu/248-mad4b-company-login-presentation.php
+          python3 -c "import json; p=json.load(open('ops/company-readiness-workflow/runtime-gates/company-governed-runtime-contract-v1.json')); assert p['contract']=='mad4b.company-governed-runtime-contract.v1'; assert p['allow_production_mutation'] is False"
+      - name: Require tenant isolation and exact plan gates
+        run: |
+          grep -q "wayfatours_production" ops/company-readiness-workflow/design-activation/wayfa-design-activate.php
+          grep -q "MAD4B_DESIGN_EXPECTED_PLAN" ops/company-readiness-workflow/design-activation/wayfa-design-activate.php
+          grep -q "source_trids_reused.*false" ops/company-readiness-workflow/design-activation/wayfa-wpml-resolve.php
+      - name: No automatic tenant change or credential files
+        run: |
+          ! grep -E 'auto_publish[[:space:]]*=[[:space:]]*True|checkout_enabled_by_workflow[[:space:]]*:[[:space:]]*True' ops/company-readiness-workflow/orchestrate.py

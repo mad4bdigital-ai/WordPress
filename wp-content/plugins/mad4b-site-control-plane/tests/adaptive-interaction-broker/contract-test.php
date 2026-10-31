@@ -85,4 +85,15 @@ $key='mad4b_aib_v1_'.hash('sha256',$plan['checkpoint_ref']);$GLOBALS['options'][
 chk('expired checkpoint denied',is_wp_error(MAD4B_SCP_Adaptive_Interaction_Broker::status(['checkpoint_ref'=>$plan['checkpoint_ref']])));
 $qa31_agent_source=file_get_contents(dirname(__DIR__,2).'/includes/class-mad4b-scp-agent-grant-lifecycle.php');
 chk('qa31 W1 REST grant route owner-gated',is_string($qa31_agent_source)&&strpos($qa31_agent_source,"register_rest_route('mad4b/v1'")!==false&&strpos($qa31_agent_source,"'permission_callback'=>array(__CLASS__,'owner')")!==false);
+$company_lifecycle_source=file_get_contents(dirname(__DIR__,2).'/includes/class-mad4b-scp-start-your-company-runtime.php');
+chk('company lifecycle exposes governed per-tenant status',is_string($company_lifecycle_source)
+  && strpos($company_lifecycle_source,"mad4b.start-your-company.outcome.v1")!==false
+  && strpos($company_lifecycle_source,"mad4b/start-your-company-outcome")!==false);
+chk('company lifecycle does not reuse broker for tenant writes',is_string($company_lifecycle_source)
+  && strpos($company_lifecycle_source,'MAD4B_SCP_Adaptive_Interaction_Broker::resolve')===false
+  && strpos($company_lifecycle_source,'MAD4B_SCP_Adaptive_Interaction_Broker::resume')===false
+  && strpos($company_lifecycle_source,'stage_job_authorized($payload)')!==false);
+chk('company lifecycle cannot mark Coolify draft as deployed',is_string($company_lifecycle_source)
+  && strpos($company_lifecycle_source,"'coolify_candidate_is_not_active_runtime'=>true")!==false
+  && strpos($company_lifecycle_source,"'infrastructure_ownership'=>'UNVERIFIED_BY_NATIVE_RUNTIME'")!==false);
 echo 'SUMMARY '.$count.' passed 0 failed'."\n";

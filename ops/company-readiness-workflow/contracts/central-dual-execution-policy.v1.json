@@ -1,0 +1,150 @@
+{
+  "contract": "mad4b.central-dual-execution-policy.v1",
+  "status": "SOURCE_POLICY_ONLY",
+  "orchestrator": "MAD4B Central Control Plane",
+  "primary_objective": "Use a registered semantic executor for bounded operations or separately authorized VPS SSH for general host administration; do not require predefined abilities for general SSH.",
+  "lanes": {
+    "registered_executor": {
+      "classification": "bounded_semantic",
+      "identity": "registered_executor_id_plus_site_uuid_origin",
+      "required_approval": "exact_stage_ticket_for_mutations",
+      "accepted_inputs": [
+        "registered_action",
+        "site_uuid",
+        "origin",
+        "plan_sha256",
+        "expected_revision"
+      ],
+      "never_accept": [
+        "raw_shell_from_queue_payload",
+        "arbitrary_ssh_command_in_stage_job"
+      ],
+      "journal": "per_company_stage",
+      "result_contract": "handler_receipt_plus_independent_readback"
+    },
+    "vps_ssh": {
+      "classification": "general_host_administration",
+      "independence": "separately_authorized_transport_not_executor_fallback_privilege",
+      "transport": "authenticated_ssh_session_to_enrolled_vps",
+      "command_catalog_required": false,
+      "ability_registry_required": false,
+      "operator_command_supported": true,
+      "ssh_principal": "enrolled_host_identity_with_effective_permissions",
+      "accepted_intents": [
+        "read",
+        "diagnostic",
+        "repair",
+        "configuration",
+        "upgrade",
+        "deployment",
+        "rollback"
+      ],
+      "required_fields": [
+        "host_id",
+        "environment",
+        "principal_id",
+        "intent",
+        "authorization_ref",
+        "command_summary",
+        "target_scope",
+        "correlation_id"
+      ],
+      "command_source": "direct_authenticated_operator_intent_or_trusted_central_operation_compiler",
+      "reject_sources": [
+        "untrusted_queue_payload",
+        "web_content",
+        "model_generated_command_with_no_operator_authorization",
+        "unreviewed_provider_response"
+      ],
+      "auth": {
+        "read": "authenticated SSH principal plus host-bound general-shell grant; OS account permissions remain authoritative",
+        "mutating": "ssh_authenticated_principal_plus_bound_mutation_authority",
+        "production": "Eligible with independent host-bound company:production grant and operation risk preflight, not blocked by environment alone",
+        "no_duplicate_manual_approval_if_existing_scope_covers_request": true,
+        "general_shell_scope": "grant.allow_general_shell must be true and bound to host_id and authenticated SSH principal"
+      },
+      "execution": {
+        "require_ssh_host_fingerprint": true,
+        "require_host_id_binding": true,
+        "require_command_before_after_audit": true,
+        "require_exit_code": true,
+        "default_timeout_seconds": 120,
+        "maximum_timeout_seconds": 900,
+        "write_journal_before_execution": true,
+        "require_post_operation_readback_for_mutations": true,
+        "capture_stdout_stderr_with_secret_redaction": true,
+        "rollback": "operation_specific_when_mutating",
+        "never_substitute_generic_shell_for_denied_executor_ticket": true,
+        "command_digest_binding": "Dispatcher verifies SHA-256 of exact operator-provided command bytes before execution"
+      },
+      "result_contract": "ssh_exit_receipt_plus_host_readback"
+    }
+  },
+  "routing": {
+    "explicit_lane_selection": true,
+    "automatic_selection": {
+      "registered_semantic_action": "registered_executor",
+      "general_vps_administration": "vps_ssh",
+      "executor_unavailable_with_general_operator_request": "vps_ssh_only_if_separately_authorized"
+    },
+    "mcp_outage_does_not_revoke_ssh_host_authority": true,
+    "transport_error_can_use_independently_authorized_ssh": true,
+    "permission_denial_is_not_transport_failure": true,
+    "security_denial_switch_forbidden": true,
+    "no_implicit_privilege_escalation": true,
+    "no_hidden_cross_company_mutation": true,
+    "direct_independent_shell_requires_explicit_host_scope": true
+  },
+  "scope": {
+    "site_ownership_must_be_verified_for_site_changes": true,
+    "prod_mutation_authority_not_inferred_from_staging": true,
+    "host_level_admin_can_perform_host_scoped_operations": true,
+    "general_command_is_not_global_unsupervised_automation": true,
+    "environment_capability_model": "production_inherits_staging_capabilities_with_independent_exact_scope_authority_and_risk_checks",
+    "production_reads_and_diagnostics_supported": true,
+    "production_writes_supported_when_authorized": true,
+    "production_write_preconditions": [
+      "independent_authenticated_principal",
+      "exact_company_and_environment_grant",
+      "mutation_authority",
+      "rollback_and_backup_evidence",
+      "journal",
+      "execution_receipt",
+      "independent_readback"
+    ]
+  },
+  "lifecycle": [
+    "classify",
+    "route",
+    "authorize",
+    "preflight",
+    "snapshot_if_mutating",
+    "execute",
+    "readback",
+    "journal",
+    "rollback_if_required"
+  ],
+  "invariants": [
+    "preserve_site_identity",
+    "preserve_audit_trail",
+    "never_expose_secrets",
+    "reject_untrusted_shell_payloads",
+    "never_use_ssh_to_evade_explicit_permission_denial",
+    "no_false_success_when_remote_tool_fails"
+  ],
+  "adapters": {
+    "current_vps_shell_transport": "mcp__registry_infra_mad4b__exec_root_shell",
+    "adapter_is_connected_tool_not_automatically_centralized": true,
+    "required_central_registration": "managed_ssh_transport_with_credential_reference_and_audit",
+    "deployment_state": "CENTRAL_SOURCE_UPDATED_NATIVE_VPS_ROLLOUT_SEPARATE",
+    "dispatcher_module": "ops/company-readiness-workflow/executor/central_governed_dispatch.mjs",
+    "dispatcher_status": "SOURCE_IMPLEMENTED_INTEGRATION_TESTS_PENDING"
+  },
+  "production_mutation": {
+    "capability_available": true,
+    "not_automatic_authorization": true,
+    "authorization": "production_scoped_host_mutation_authority",
+    "evidence": "operation_bound_backup_and_rollback_plus_independent_readback",
+    "production_data_mutation_performed_by_this_policy": false
+  }
+}

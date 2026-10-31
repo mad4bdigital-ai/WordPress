@@ -283,6 +283,59 @@
       "retry_semantics": "readback_before_retry",
       "owner_confirmation_required": true,
       "production_allowed": false
+    },
+    {
+      "id": "company.create",
+      "target_kind": "company",
+      "risk": "high",
+      "planner": "mad4b/start-your-company-plan",
+      "executor": "mad4b/start-your-company-run",
+      "supports": [
+        "create"
+      ],
+      "durable_resume": true,
+      "dependency_impact": true,
+      "generic_mutation_dispatch": false,
+      "required_runtime": true,
+      "pipeline_profile": "governed_mutation_v1",
+      "side_effect_class": "governed_stage_queue_request",
+      "retry_semantics": "readback_before_retry",
+      "host_runner_required": true
+    },
+    {
+      "id": "company.repair",
+      "target_kind": "company",
+      "risk": "high",
+      "planner": "mad4b/start-your-company-plan",
+      "executor": "mad4b/start-your-company-run",
+      "supports": [
+        "repair_existing"
+      ],
+      "durable_resume": true,
+      "dependency_impact": true,
+      "generic_mutation_dispatch": false,
+      "required_runtime": true,
+      "pipeline_profile": "governed_mutation_v1",
+      "side_effect_class": "governed_stage_queue_request",
+      "retry_semantics": "readback_before_retry",
+      "host_runner_required": true
+    },
+    {
+      "id": "company.plugin-sync.request",
+      "target_kind": "company",
+      "risk": "medium",
+      "planner": "mad4b/company-plugin-sync-plan",
+      "executor": "mad4b/company-plugin-sync-request",
+      "supports": [
+        "queue_plan_only"
+      ],
+      "durable_resume": true,
+      "dependency_impact": false,
+      "generic_mutation_dispatch": false,
+      "required_runtime": false,
+      "pipeline_profile": "governed_mutation_v1",
+      "side_effect_class": "central_journal_plan_only",
+      "retry_semantics": "readback_before_retry"
     }
   ],
   "aliases": {

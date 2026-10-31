@@ -104,7 +104,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 			'skills_enabled' => ! empty( $features['skills'] ),
 			'write_enabled' => ! empty( $features['write'] ),
 			'production_write_confirmed' => false,
-			'provider_isolation_enabled' => ! empty( $features['provider_isolation'] ),
+			'provider_isolation_enabled' => MAD4B_SCP_Site_Profile::provider_isolation_enabled(),
 			'managed_runtime_enabled' => ! empty( $features['managed_runtime'] ),
 			'acceptance_enabled' => ! empty( $features['acceptance'] ),
 			'expected_revision' => absint( $status['revision'] ),
@@ -240,8 +240,15 @@ final class MAD4B_SCP_Site_Profile_Admin {
 			'managed_runtime' => 'managed_runtime_enabled',
 			'acceptance' => 'acceptance_enabled',
 		) as $feature => $input_key ) {
-			if ( (bool) ! empty( $input[ $input_key ] ) !== (bool) ! empty( $features[ $feature ] ) ) return false;
-		}
+            // A missing field means use the default or an earlier recorded
+            // explicit opt-out; never reinterpret absence as an explicit OFF.
+            if ( 'provider_isolation' === $feature && ! array_key_exists( $input_key, $input ) ) {
+                $opt_out = true === ( $profile['provider_isolation_explicit_opt_out'] ?? false );
+                if ( (bool) ! empty( $features[ $feature ] ) === $opt_out ) return false;
+                continue;
+            }
+            if ( (bool) ! empty( $input[ $input_key ] ) !== (bool) ! empty( $features[ $feature ] ) ) return false;
+        }
 		$expected_production_confirmation = 'production' === $environment && ! empty( $input['write_enabled'] ) && ! empty( $input['production_write_confirmed'] );
 		if ( $expected_production_confirmation !== (bool) ! empty( $features['production_write_confirmed'] ) ) return false;
 		if ( array_key_exists( 'display_name', $input ) ) {
@@ -557,7 +564,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 					<tr><th><?php esc_html_e( 'Features', 'mad4b-site-control-plane' ); ?></th><td>
 						<?php self::checkbox( 'oauth_enabled', 'Local/remote OAuth connection', ! empty( $features['oauth'] ) ); ?>
 						<?php self::checkbox( 'skills_enabled', 'Skills authoring/export', ! empty( $features['skills'] ) ); ?>
-						<?php self::checkbox( 'provider_isolation_enabled', 'Provider MCP isolation', ! empty( $features['provider_isolation'] ) ); ?>
+						<?php self::checkbox( 'provider_isolation_enabled', 'Provider MCP isolation (default ON for all Site Profiles)', empty( $status['configured'] ) ? true : MAD4B_SCP_Site_Profile::provider_isolation_enabled() ); ?>
 						<?php self::checkbox( 'managed_runtime_enabled', 'Managed MCP runtime pinning', ! empty( $features['managed_runtime'] ) ); ?>
 						<?php self::checkbox( 'acceptance_enabled', 'External acceptance evidence', ! empty( $features['acceptance'] ) ); ?>
 						<?php self::checkbox( 'write_enabled', 'Governed write authority', ! empty( $features['write'] ) ); ?>
