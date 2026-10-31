@@ -51,7 +51,7 @@ $dto = new class {
     public function toArray() { return $this->data; }
 };
 $first = MAD4B_SCP_MCP_Catalog_Diagnostics::dto_failure( $dto );
-if ( null !== $first ) $fail( 'valid empty JSON objects were not accepted by upstream validator' );
+if ( null !== $first ) $fail( 'valid empty JSON objects were not accepted by upstream validator: ' . json_encode( $first ) );
 $validator = 'WP\MCP\Domain\Tools\McpToolValidator';
 if ( 1 !== $validator::$calls || 0 !== $validator::$dto_calls ) $fail( 'did not use full upstream data validation' );
 if ( ! is_array( $validator::$last['inputSchema']['properties'] )
