@@ -26,7 +26,15 @@
         "filename": "mad4b-are-staging-p256-v4.zip",
         "sha256": "db544322956f2b50b6560b1ebfa0a80a98bd31e147d96df691fc185582dff863"
       },
-      "workflow_operation": "signed_site_agent_install"
+      "workflow_operation": "signed_site_agent_install",
+      "full_authority_provider": {
+        "mode": "native_target_owner",
+        "target": "all-royal-egypt:staging",
+        "environment": "staging",
+        "origin": "https://staging.allroyalegypt.com",
+        "site_uuid": "49c562d1-8f2f-456f-b454-26816c6ba4cb",
+        "authority_contract": "mad4b.unified-full-authority.v1"
+      }
     }
   },
   "planned_domains": [
@@ -39,13 +47,15 @@
     "data",
     "workflow",
     "reviews",
-    "runtime"
+    "runtime",
+    "full_authority"
   ],
   "live_adapters": [
     "transport",
     "identity",
     "agent",
     "package",
-    "workflow"
+    "workflow",
+    "authority"
   ]
 }
