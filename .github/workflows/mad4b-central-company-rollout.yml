@@ -10,6 +10,8 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/central-native-operator-handoff-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-operation-authority.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/unified-operation-authority-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/unified-authority-staging-mu-bridge-contract.py'
+      - 'ops/central-rollout/315-mad4b-unified-authority-bridge.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-release-registry.php'
       - 'wp-content/plugins/mad4b-site-control-plane/config/central-staging-source.json'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/central-release-registry-runtime.php'
@@ -46,6 +48,8 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-operation-authority.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/unified-operation-authority-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/unified-operation-authority-runtime.php
+          php -l ops/central-rollout/315-mad4b-unified-authority-bridge.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/unified-authority-staging-mu-bridge-contract.py
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-release-registry.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/central-release-registry-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/central-release-registry-runtime.php
