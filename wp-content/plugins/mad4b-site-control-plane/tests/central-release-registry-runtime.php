@@ -26,12 +26,16 @@ function sorted($value){
 require dirname(__DIR__).'/includes/class-mad4b-scp-central-release-registry.php';
 $cls='MAD4B_SCP_Central_Release_Registry';
 $cfg=$cls::configuration();
+$pin=dirname(__DIR__).'/config/central-release-issuer-public.pem';
+ck(is_readable($pin) && strpos((string) file_get_contents($pin),'-----BEGIN PUBLIC KEY-----')===0,
+   'repository must carry central public trust anchor');
 ck($cfg && $cfg['contract']==='mad4b.central-staging-source.v1','trusted source config missing');
 ck($cls::central_origin()===$cfg['origin'],'central origin config mismatch');
 $priv=openssl_pkey_new(array('private_key_bits'=>2048,'private_key_type'=>OPENSSL_KEYTYPE_RSA));
 ck((bool)$priv,'RSA key fixture unavailable');
 $pub=openssl_pkey_get_details($priv)['key'];
-define('MAD4B_CENTRAL_RELEASE_PUBLIC_KEY_PEM',$pub);
+// The CI fixture key is intentionally NOT the real pinned central key.
+// Positive signature verification below uses the explicit test key only.
 $sha=str_repeat('a',64);
 $receipt=array(
   'contract'=>'mad4b.central-staging-release-readback.v1',
@@ -71,7 +75,7 @@ ck(is_wp_error($cls::verify_envelope($wrong,$sha,$cfg['origin'],$pub)),'caller c
 
 $GLOBALS['response']=array('code'=>200,'body'=>json_encode($envelope));
 $r=$cls::verified_readback($sha);
-ck($r && $r['registry_readback_verified']===true,'trusted remote readback accepted');
+ck(!$r, 'CI fixture signed with a non-pinned test key must not be trusted by live readback');
 ck($GLOBALS['last_remote_url']===$cfg['origin'].$cfg['readback_route'].$sha,'only pinned central endpoint queried');
 ck($GLOBALS['last_remote_opts']['redirection']===0 && $GLOBALS['last_remote_opts']['limit_response_size']===65536,'bounded safe fetch');
 $GLOBALS['response']=array('code'=>200,'body'=>json_encode($wrong));
