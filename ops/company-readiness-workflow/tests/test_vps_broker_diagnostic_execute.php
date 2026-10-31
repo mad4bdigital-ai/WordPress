@@ -59,4 +59,12 @@ check(is_array($receipt) && $receipt['state']==='DIAGNOSTIC_EXECUTION_READBACK_V
 check($GLOBALS['store'][$bp]['state']==='DIAGNOSTIC_EXECUTION_READBACK_VERIFIED',
  'original job transitioned only after signed receipt');
 check(is_wp_error($reflection->invoke(null,$args)),'replay receipt denied');
+require __DIR__.'/../staging-mu/308-mad4b-vps-broker-diagnostics.php';
+$proof=MAD4B_VPS_Broker_Diagnostics_V1::classify($GLOBALS['store'][$bp],$claim,$receipt);
+check($proof['status']==='VERIFIED' && $proof['completion_verified']===true,
+ 'verified status requires native signed receipt');
+$forged=$receipt;$forged['output_sha256']=str_repeat('b',64);
+$fake=MAD4B_VPS_Broker_Diagnostics_V1::classify($GLOBALS['store'][$bp],$claim,$forged);
+check($fake['status']==='INCONSISTENT' && $fake['completion_verified']===false,
+ 'forged output cannot claim success');
 echo "PASS: fresh exact claims, expired/revoked/shell substitution fail-closed, signed one-time readback receipt\n";
