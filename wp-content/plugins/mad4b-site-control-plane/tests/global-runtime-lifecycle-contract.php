@@ -52,4 +52,9 @@ check($class::classify_error('STAGING_WPCLI_BUSY')['state']==='RECOVERING','busy
 check(!$class::classify_error('commit_uncertain')['retry_write'],'no blind retry');
 check($class::evaluate(array(array('id'=>'a','depends_on'=>array('b')))) instanceof WP_Error,
  'cyclic or unknown dependency fails closed');
-echo "PASS global runtime lifecycle nonblocking contract (14 assertions)\n";
+$planner=file_get_contents(dirname(__DIR__).'/includes/class-mad4b-scp-capability-dependency-planner.php');
+check(str_contains($planner,'MAD4B_SCP_Global_Runtime_Lifecycle::evaluate('),
+ 'canonical Operation Registry projects with shared contract');
+check(str_contains($planner,"'routine_predecessor_wait_is_not_blocking'"),
+ 'canonical planner exposes ordinary waiting separately');
+echo "PASS global runtime lifecycle nonblocking contract (16 assertions)\\n";
