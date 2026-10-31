@@ -7,7 +7,26 @@ ROOT=Path(__file__).resolve().parents[4]
 reg=json.loads((ROOT/"wp-content/plugins/mad4b-site-control-plane/config/cross-plugin-sources.json").read_text())
 sources=reg["sources"]
 assert reg["default_execution"]=="deny_until_exact_artifact_certified"
-assert len(sources)==2 and len({s["id"] for s in sources})==2
+# Preserve the two original DFSB source pins, while requiring every extra
+# registration to remain a strictly pending, Staging-only review candidate.
+assert len({s["id"] for s in sources})==len(sources)
+dfsb_ids={"etg-dynamic-filter-seo-bridge","dynamic-filter-seo-bridge"}
+assert dfsb_ids.issubset({s["id"] for s in sources})
+extras=[s for s in sources if s["id"] not in dfsb_ids]
+assert len(extras)<=1
+if extras:
+ extra=extras[0]
+ assert extra["id"]=="mad4b-content-hub"
+ assert extra["repository"]=="mad4bdigital-ai/WordPress"
+ assert extra["plugin_file"]=="mad4b-content-hub/mad4b-content-hub.php"
+ assert extra["plugin_subdirectory"]=="wp-content/plugins/mad4b-content-hub"
+ assert extra["provider_id"]=="mad4b-content-hub"
+ assert extra["review_state"]=="needs_repository_owner_review"
+ assert extra["package_certification"]=="pending"
+ assert extra["candidate_state"]=="STAGING_SOURCE_REVIEW_PENDING"
+ assert extra["environments"]==["staging"]
+ assert all(extra.get(k,"")=="" for k in ("source_commit_sha","artifact_sha256","artifact_version","production_promotion_attestation","candidate_source_commit_sha","candidate_artifact_version"))
+ assert not extra.get("release")
 legacy=next(s for s in sources if s["id"]=="etg-dynamic-filter-seo-bridge")
 neutral=next(s for s in sources if s["id"]=="dynamic-filter-seo-bridge")
 assert legacy["candidate_source_commit_sha"]=="76ef918d8485c42e92dd38b3725efd4de5471556"
