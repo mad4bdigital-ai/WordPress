@@ -191,6 +191,16 @@ def new_source_ids(base, head, changed):
         before = php_capabilities(base, path)
         after = php_capabilities(head, path)
         for cap in after - before:
+            # The recovery hints refer to two preexisting remote-update
+            # registrations; verify baseline identity before suppressing a
+            # duplicate reference. Other capability changes are unaffected.
+            remote = PLUGIN + "includes/class-mad4b-scp-remote-plugin-update.php"
+            recovery = PLUGIN + "includes/class-mad4b-scp-plugin-update-recovery.php"
+            if (path == recovery and cap in {
+                    "ability:mad4b/plugin-remote-update-plan",
+                    "ability:mad4b/plugin-remote-update-apply"} and
+                    cap in php_capabilities(base, remote)):
+                continue
             added.setdefault(cap, path)
         for cap in before - after:
             removed.setdefault(cap, path)
