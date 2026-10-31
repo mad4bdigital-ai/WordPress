@@ -1,0 +1,27 @@
+name: MAD4B Native Plugin Update Without Package Certificate
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-transaction.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/plugin-transaction-native-cert-optional.php'
+      - '.github/workflows/mad4b-native-plugin-cert-optional.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-replacement-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate native update policy
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-transaction.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/plugin-transaction-native-cert-optional.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/plugin-transaction-native-cert-optional.php
