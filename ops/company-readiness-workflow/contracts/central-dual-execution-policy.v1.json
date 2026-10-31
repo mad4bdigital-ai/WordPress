@@ -59,7 +59,7 @@
       "auth": {
         "read": "authenticated SSH principal plus host-bound general-shell grant; OS account permissions remain authoritative",
         "mutating": "ssh_authenticated_principal_plus_bound_mutation_authority",
-        "production": "explicit_production_target_scope_and_authority",
+        "production": "Eligible with independent host-bound company:production grant and operation risk preflight, not blocked by environment alone",
         "no_duplicate_manual_approval_if_existing_scope_covers_request": true,
         "general_shell_scope": "grant.allow_general_shell must be true and bound to host_id and authenticated SSH principal"
       },
@@ -99,7 +99,19 @@
     "site_ownership_must_be_verified_for_site_changes": true,
     "prod_mutation_authority_not_inferred_from_staging": true,
     "host_level_admin_can_perform_host_scoped_operations": true,
-    "general_command_is_not_global_unsupervised_automation": true
+    "general_command_is_not_global_unsupervised_automation": true,
+    "environment_capability_model": "production_inherits_staging_capabilities_with_independent_exact_scope_authority_and_risk_checks",
+    "production_reads_and_diagnostics_supported": true,
+    "production_writes_supported_when_authorized": true,
+    "production_write_preconditions": [
+      "independent_authenticated_principal",
+      "exact_company_and_environment_grant",
+      "mutation_authority",
+      "rollback_and_backup_evidence",
+      "journal",
+      "execution_receipt",
+      "independent_readback"
+    ]
   },
   "lifecycle": [
     "classify",
@@ -124,9 +136,15 @@
     "current_vps_shell_transport": "mcp__registry_infra_mad4b__exec_root_shell",
     "adapter_is_connected_tool_not_automatically_centralized": true,
     "required_central_registration": "managed_ssh_transport_with_credential_reference_and_audit",
-    "deployment_state": "NOT_REGISTERED_IN_CENTRAL_CONTROL_PLANE",
+    "deployment_state": "CENTRAL_SOURCE_UPDATED_NATIVE_VPS_ROLLOUT_SEPARATE",
     "dispatcher_module": "ops/company-readiness-workflow/executor/central_governed_dispatch.mjs",
     "dispatcher_status": "SOURCE_IMPLEMENTED_INTEGRATION_TESTS_PENDING"
   },
-  "production_mutation": false
+  "production_mutation": {
+    "capability_available": true,
+    "not_automatic_authorization": true,
+    "authorization": "production_scoped_host_mutation_authority",
+    "evidence": "operation_bound_backup_and_rollback_plus_independent_readback",
+    "production_data_mutation_performed_by_this_policy": false
+  }
 }
