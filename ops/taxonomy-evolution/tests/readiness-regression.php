@@ -1,0 +1,40 @@
+<?php
+declare(strict_types=1);
+require dirname(__DIR__).'/TaxonomyEvolutionGovernance.php';
+function check(bool $condition,string $id):void {if(!$condition)throw new RuntimeException($id);}
+$site=['company_id'=>'company-01','site_uuid'=>'site-01','origin'=>'https://site.example.test','environment'=>'staging'];
+$move=['from'=>'location_jet','to'=>'destinations','version'=>1,'source_digest'=>str_repeat('a',64)];
+$base=[
+ 'company_id'=>'company-01','site_uuid'=>'site-01','origin'=>'https://site.example.test',
+ 'environment'=>'staging','complete'=>true,'provider'=>'enrolled_native_readback','inventory_revision'=>'s1',
+ 'registered_taxonomies'=>['location_jet'=>false,'destinations'=>true],
+ 'counts'=>['definitions'=>0,'terms'=>0,'translation_rows'=>0,'relationships'=>0,'unbound_wpml_terms'=>0],
+ 'references'=>[],'languages'=>['active'=>['en','ar'],'hidden'=>['ar']],
+ 'preserve_rewrite_verified'=>false,'canonical_source_observed'=>false,
+ 'verified_restore_checkpoint'=>false,'native_executor_ready'=>false,'exact_runtime_provider_certified'=>false,
+];
+$noOp=MAD4B_TaxonomyEvolutionGovernance::plan($site,$move,$base);
+check($noOp['action']==='ADOPT_CANONICAL','noop_action');
+check($noOp['status']==='NOOP_PENDING_READBACK','no_change_must_not_need_write_grant');
+check($noOp['blockers']===[],'noop_no_mutation_blockers');
+$withLegacy=$base;$withLegacy['references']=['filters'=>['count'=>1,'adapter'=>'certified']];
+$blocked=MAD4B_TaxonomyEvolutionGovernance::plan($site,$move,$withLegacy);
+check(in_array('legacy_references_remain',$blocked['blockers'],true),'noop_legacy_reference_must_block');
+$mutate=$base;$mutate['registered_taxonomies']=['location_jet'=>true,'destinations'=>false];
+$mutate['counts']=['definitions'=>1,'terms'=>12,'translation_rows'=>10,'relationships'=>100,'unbound_wpml_terms'=>2];
+$mutate['preserve_rewrite_verified']=true;
+$mutate['canonical_source_observed']=true;
+$mutate['verified_restore_checkpoint']=true;
+$mutate['native_executor_ready']=true;
+$mutate['exact_runtime_provider_certified']=true;
+$plan=MAD4B_TaxonomyEvolutionGovernance::plan($site,$move,$mutate);
+check($plan['status']==='PLAN_READY_FOR_INDEPENDENT_NATIVE_AUTHORIZATION','mutable_requires_native_admission');
+check($plan['authorizing']===false&&$plan['write_performed']===false,'ready_plan_is_not_authority');
+check(count($plan['reviews'])===1&&$plan['reviews'][0]['count']===2,'isolated_term_review');
+$incomplete=$mutate;$incomplete['verified_restore_checkpoint']=false;
+$failed=MAD4B_TaxonomyEvolutionGovernance::plan($site,$move,$incomplete);
+check(in_array('restore_checkpoint_missing',$failed['blockers'],true),'restore_required_for_mutation');
+$both=$mutate;$both['registered_taxonomies']=['location_jet'=>true,'destinations'=>true];
+$dual=MAD4B_TaxonomyEvolutionGovernance::plan($site,$move,$both);
+check($dual['status']==='BLOCKED_PENDING_EVIDENCE','dual_identity_must_block');
+echo "PASS canonical no-op, stale references, mutation restore gates, and dual identity regression",PHP_EOL;
