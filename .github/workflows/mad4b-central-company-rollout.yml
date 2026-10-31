@@ -1,0 +1,29 @@
+name: MAD4B Central Staging Company Rollout
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-company-rollout.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-transaction.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/central-company-rollout-runtime.php'
+      - '.github/workflows/mad4b-central-company-rollout.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  central-to-company-compatibility:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate Staging-first company rollout policy
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-company-rollout.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-transaction.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/central-company-rollout-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/central-company-rollout-runtime.php
