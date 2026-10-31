@@ -2,6 +2,7 @@
   "contract": "mad4b.provider-capability-contracts.v1",
   "providers": {
     "jetengine": {
+      "artifact_plugin_files": ["jet-engine/jet-engine.php"],
       "adapter_id": "jetengine",
       "capabilities": {
         "post_meta.read": {
@@ -239,6 +240,7 @@
       }
     },
     "jetsmartfilters": {
+      "artifact_plugin_files": ["jet-smart-filters/jet-smart-filters.php"],
       "adapter_id": "jetsmartfilters",
       "capabilities": {
         "filters.read": {
@@ -723,6 +725,7 @@
       }
     },
     "rank_math": {
+      "artifact_plugin_files": ["seo-by-rank-math/rank-math.php"],
       "adapter_id": "seo",
       "artifact_authority": "required_for_write_certification",
       "capabilities": {
@@ -789,6 +792,7 @@
       }
     },
     "elementor": {
+      "artifact_plugin_files": ["elementor/elementor.php"],
       "adapter_id": "elementor",
       "capabilities": {
         "document.read": {
@@ -1049,6 +1053,7 @@
       }
     },
     "litespeed": {
+      "artifact_plugin_files": ["litespeed-cache/litespeed-cache.php"],
       "adapter_id": "litespeed",
       "capabilities": {
         "cache.read": {
@@ -1140,6 +1145,7 @@
       }
     },
     "polylang": {
+      "artifact_plugin_files": ["polylang/polylang.php"],
       "adapter_id": "polylang",
       "capabilities": {
         "language.read": {
@@ -1219,6 +1225,7 @@
       }
     },
     "woocommerce": {
+      "artifact_plugin_files": ["woocommerce/woocommerce.php"],
       "adapter_id": "woocommerce",
       "capabilities": {
         "product.read": {

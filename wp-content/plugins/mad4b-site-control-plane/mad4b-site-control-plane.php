@@ -328,6 +328,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g7-read-surfaces.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g7-compensation-audit.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g7-release-acceptance-audit.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g7-workload-measurement.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-installed-artifact.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-compatibility-certification.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-auto-reconcile-scenarios.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-production-automation.php';

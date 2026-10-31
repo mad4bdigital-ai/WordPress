@@ -815,6 +815,16 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 		$integrity = isset( $runtime['runtime_integrity'] ) && is_array( $runtime['runtime_integrity'] ) ? $runtime['runtime_integrity'] : array();
 		$adapter_reported_version = is_object( $adapter ) && method_exists( $adapter, 'runtime_version' ) ? trim( (string) $adapter->runtime_version() ) : '';
 		$runtime_installed_version = isset( $runtime['installed_version'] ) ? trim( (string) $runtime['installed_version'] ) : '';
+        $catalog=self::catalog();
+        $declaration=isset($catalog['providers'][$provider]) && is_array($catalog['providers'][$provider])
+            ?$catalog['providers'][$provider]:array();
+        $installed_observation=class_exists('MAD4B_SCP_Provider_Installed_Artifact')
+            ?MAD4B_SCP_Provider_Installed_Artifact::observe($provider,$declaration,$adapter,$contract)
+            :array('bound'=>false);
+        // A repository cert profile and a local WordPress artifact observation
+        // are different authorities. Neither independently authorizes mutation.
+        if(''===$runtime_installed_version && !empty($installed_observation['bound']))
+            $runtime_installed_version=(string)$installed_observation['installed_version'];
 		// In-tree Google Drive Context has no separate plugin header or
 		// repository-certified external ZIP. Evaluate its exact build-bound
 		// first-party evidence instead of treating it as a missing vendor plugin.
@@ -823,6 +833,9 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 		$first_party = self::first_party_context_evidence( $provider, $adapter );
 		$artifact_authority_bound = ( ! empty( $contract ) && ( '' !== $runtime_installed_version || ! empty( $runtime['components'] ) ) )
 			|| ! empty( $first_party['bound'] );
+            // Local exact main-file evidence may supply a missing artifact
+            // identity. It does NOT imply exact repository certification.
+            $artifact_authority_bound=$artifact_authority_bound || !empty($installed_observation['bound']);
 		$component_artifacts = array();
 		if ( ! empty( $contract['components'] ) && is_array( $contract['components'] ) ) {
 			foreach ( $contract['components'] as $key => $component ) {
@@ -850,6 +863,7 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 			'adapter_reported_version' => $adapter_reported_version,
 			'artifact_authority_bound' => $artifact_authority_bound,
 			'first_party_context' => $first_party,
+            'installed_observation'=>$installed_observation,
 			'plugin_file' => isset( $contract['plugin_file'] ) ? (string) $contract['plugin_file'] : '',
 			'components' => $component_artifacts,
 			'certification_authority' => isset( $runtime['certification_authority'] ) ? (string) $runtime['certification_authority'] : '',
@@ -863,6 +877,10 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 			'artifact_authority_bound' => $artifact_authority_bound,
 			'artifact_authority_state' => $artifact_authority_bound ? 'bound' : 'missing',
 			'first_party_context_evidence' => $first_party,
+            'installed_artifact_observation'=>$installed_observation,
+            'runtime_identity_source'=>!empty($installed_observation['bound'])
+                ?'exact_active_wordpress_plugin':'original_certified_runtime',
+            'exact_repository_certified'=>!empty($runtime['runtime_contract_ok']),
 			'certified_versions' => array_values( (array) ( $runtime['certified_versions'] ?? array() ) ),
 			'certification_authority' => isset( $runtime['certification_authority'] ) ? (string) $runtime['certification_authority'] : 'repository_baseline',
 			'plugin_file' => isset( $contract['plugin_file'] ) ? (string) $contract['plugin_file'] : '',
