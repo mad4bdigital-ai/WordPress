@@ -6,7 +6,7 @@ import subprocess
 import urllib.request
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 os.chdir(ROOT)
 url = "https://api.github.com/repos/mad4bdigital-ai/WordPress/pulls?state=open&per_page=100"
 request = urllib.request.Request(url, headers={
