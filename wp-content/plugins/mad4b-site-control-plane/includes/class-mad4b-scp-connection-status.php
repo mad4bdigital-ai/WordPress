@@ -30,8 +30,8 @@ final class MAD4B_SCP_Connection_Status {
 			: array( 'status' => 'unavailable', 'runtime_contract_ok' => false, 'identity_contract_ok' => false );
 		$provider_ok = $lightweight ? ! empty( $provider['identity_contract_ok'] ) : ! empty( $provider['runtime_contract_ok'] );
 		$read_capabilities = isset( $provider['read_continuity'] ) && is_array( $provider['read_continuity'] ) ? $provider['read_continuity'] : array();
-		// A deployed Adapter may offer valid read discovery despite version drift.
-		// Exact provider integrity remains an independent certification blocker.
+		// A loaded MCP Adapter is checked by runtime capabilities, never by a
+		// fixed dependency version. OAuth/session and write grants remain separate.
 		$adapter_observation = ! $provider_ok && class_exists( 'MAD4B_SCP_Dependency_Manager' )
 			&& method_exists( 'MAD4B_SCP_Dependency_Manager', 'adapter_read_runtime_observation' )
 			? MAD4B_SCP_Dependency_Manager::adapter_read_runtime_observation() : array();
@@ -99,7 +99,7 @@ final class MAD4B_SCP_Connection_Status {
 		$remote_preflight_blockers = array_values( array_unique( array_map( 'sanitize_key', $remote_preflight_blockers ) ) );
 
 		$certification_blockers = $remote_preflight_blockers;
-		if ( $adapter_available && ! $provider_ok ) $certification_blockers[] = 'mcp_adapter_not_certified';
+		if ( $adapter_available && ! $provider_ok ) $certification_blockers[] = 'mcp_adapter_dependency_incompatible';
 		if ( isset( $connection_contract['certification_blockers'] ) && is_array( $connection_contract['certification_blockers'] ) ) {
 			$certification_blockers = array_merge( $certification_blockers, $connection_contract['certification_blockers'] );
 		}
@@ -144,12 +144,15 @@ final class MAD4B_SCP_Connection_Status {
 			'mcp_adapter_available' => (bool) $adapter_available,
 			'mcp_adapter_version' => $adapter_version,
 			'mcp_adapter_certification' => $provider,
-			'mcp_adapter_certified' => (bool) $provider_ok,
+			'mcp_adapter_certified' => (bool) $provider_ok, // Legacy connection field: compatible dependency, NOT mutation certification.
+			'mcp_adapter_dependency_compatible' => (bool) $provider_ok,
+			'mcp_adapter_dependency_version_gate_enabled' => false,
+			'mcp_adapter_mutation_certified' => ! empty( $provider['mutation_certified'] ),
 			'mcp_registration_lifecycle' => $mcp_registration_lifecycle,
 			'provider_read_capability_ready' => $provider_read_ok,
 			'provider_read_observation' => $adapter_observation,
 			'provider_exact_certification_ready' => $provider_ok,
-			'provider_version_drift_is_read_advisory_only' => $provider_read_ok && ! $provider_ok,
+			'provider_version_drift_is_read_advisory_only' => false, // Version is observability metadata, not a connection gate.
 			'local_transport_ready' => empty( $local_blockers ),
 			'local_transport_validation_state' => empty( $local_blockers ) ? ( $lightweight ? 'identity_ready_deep_validation_deferred' : 'ready' ) : 'blocked',
 			'local_transport_deep_validation_ready' => ! $lightweight && empty( $local_blockers ),
