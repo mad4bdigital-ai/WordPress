@@ -14153,6 +14153,23 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/isolated-contract.php"
       ],
       "review_rationale": "A reviewed read-only extension to the existing fingerprint-bound MAD4B performance issue ledger allows the empty accommodation and mobile Tour Content spacing codes only from the authorized live performance provider. An exact changed isolated PHP contract proves both codes are accepted with their severity and forged provider identities fail closed. This does not authorize production rollout or modify any supplier selection."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "source_blob_sha": "5d1875803803aa3c1ef7644909eb25fe8b31225d",
+      "owner_role": "MAD4B CI source reviewer for governed Tour Rate departure data, H2 global styles and mobile TOC presentation, CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/isolated-contract.php"
+      ],
+      "review_rationale": "Changed exact Content Readiness provider code admits four additional read-only, source-bound mobile product presentation drift alerts for a Rate continent, unconfirmed weekday/time defaults, excess TOC bottom gap, and non-global Tour H2 color. Offline isolated contract proves exact severities and rejection of forged provider records, while PHP source remains registered only to an observed live evidence provider. CI-only source review is not Production authorization."
     }
   ],
   "code_change_rules": {

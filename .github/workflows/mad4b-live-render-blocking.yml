@@ -8,6 +8,8 @@ on:
       - 'wp-content/mu-plugins/310-mad4b-city-slider-lcp-preload.php'
       - 'wp-content/mu-plugins/311-mad4b-explore-global-contrast.php'
       - 'wp-content/mu-plugins/312-mad4b-rate-css-resilience.php'
+      - 'wp-content/mu-plugins/313-mad4b-rate-departure-governance.php'
+      - 'wp-content/mu-plugins/tour-rates-dynamic-function.php'
       - 'wp-content/mu-plugins/listing-option-selection.php'
       - 'wp-content/mu-plugins/listing-option-selection-assets/**'
       - 'wp-content/mu-plugins/assets/mad4b-header-tour-ux.css'
@@ -22,6 +24,8 @@ on:
       - 'wp-content/mu-plugins/310-mad4b-city-slider-lcp-preload.php'
       - 'wp-content/mu-plugins/311-mad4b-explore-global-contrast.php'
       - 'wp-content/mu-plugins/312-mad4b-rate-css-resilience.php'
+      - 'wp-content/mu-plugins/313-mad4b-rate-departure-governance.php'
+      - 'wp-content/mu-plugins/tour-rates-dynamic-function.php'
       - 'wp-content/mu-plugins/listing-option-selection.php'
       - 'wp-content/mu-plugins/listing-option-selection-assets/**'
       - 'wp-content/mu-plugins/assets/mad4b-header-tour-ux.css'
@@ -49,6 +53,9 @@ jobs:
           php -l wp-content/mu-plugins/310-mad4b-city-slider-lcp-preload.php
           php -l wp-content/mu-plugins/311-mad4b-explore-global-contrast.php
           php -l wp-content/mu-plugins/312-mad4b-rate-css-resilience.php
+          php -l wp-content/mu-plugins/313-mad4b-rate-departure-governance.php
+          php -l wp-content/mu-plugins/tour-rates-dynamic-function.php
+          php ops/qa/mad4b-render-blocking/tests/rate-departure-governance-contract.php
           php ops/qa/mad4b-render-blocking/tests/rate-css-resilience-contract.php
           php -l wp-content/mu-plugins/listing-option-selection.php
           php ops/qa/mad4b-render-blocking/tests/rate-property-visibility-contract.php

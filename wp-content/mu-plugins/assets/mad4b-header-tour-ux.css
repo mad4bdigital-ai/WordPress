@@ -248,3 +248,16 @@
     transition: none !important;
   }
 }
+
+/* Tour editorial headings inherit Elementor Global Typography;
+   their color is the site's global secondary, not a hard-coded per-language value. */
+body.single-tours-and-activities .elementor-24784 .elementor-widget-heading h2.elementor-heading-title {
+  color: var(--e-global-color-secondary, var(--e-global-color-primary));
+}
+@media (max-width: 767px) {
+  /* Elementor generated CSS adds ~58px margin above the About heading.
+     Keep the 12px TOC top gap, then a compact 16px separation below TOC. */
+  body.single-tours-and-activities .elementor-24784 .elementor-element-c16d4db > .elementor-widget-container {
+    margin-block-start: 16px;
+  }
+}

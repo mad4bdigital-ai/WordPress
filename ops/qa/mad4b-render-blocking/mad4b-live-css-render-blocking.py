@@ -77,6 +77,19 @@ async def inspect(browser,path,sem):
                     eligible_visible:lists.filter(x=>x.dataset.bookingChoiceEligible==='1'&&getComputedStyle(x).display!=='none').length
                 }})(),
                 mobileTourTOCGap:(()=>{let x=document.querySelector('body.single-tours-and-activities .elementor-24784 .elementor-element-b29a19b');return x?parseFloat(getComputedStyle(x).marginBlockStart):null})(),
+                departureDetails:(()=>{const widgets=[...document.querySelectorAll('[data-mad4b-departure-optin]')];
+                    const cardLabels=[...document.querySelectorAll('.tk-tour-rate-label')].map(x=>x.textContent.trim());
+                    return {widgets:widgets.length,
+                     unexpected_visible:widgets.filter(x=>x.dataset.mad4bDepartureOptin==='0'&&x.textContent.trim()).length,
+                     continent_visible:widgets.filter(x=>/\bAfrica\b/i.test(x.textContent)).length,
+                     optin_count:widgets.filter(x=>x.dataset.mad4bDepartureOptin==='1').length,
+                     label_count:cardLabels.length,
+                     stale_default_label_count:cardLabels.filter(x=>/\b(Africa|Afternoon|Friday)\b/i.test(x)).length};})(),
+                mobileTOCBottomGap:(()=>{let toc=document.querySelector('.elementor-24784 .elementor-element-b29a19b');let h=document.querySelector('.elementor-24784 .elementor-element-c16d4db h2.elementor-heading-title');
+                    if(!toc||!h||getComputedStyle(toc).display==='none')return null;
+                    return Math.round(h.getBoundingClientRect().top-toc.getBoundingClientRect().bottom)})(),
+                tourH2:(()=>{let h=document.querySelector('.elementor-24784 .elementor-element-c16d4db h2.elementor-heading-title');if(!h)return null;
+                    const css=getComputedStyle(h);return {color:css.color,global_secondary:css.getPropertyValue('--e-global-color-secondary').trim(),font:css.fontFamily}})(),
                 tourRateCSS:(()=>{let shadow=document.querySelector('#mad4b-rate-css-shadow');let original=document.querySelector('#elementor-post-56197');let cards=[...document.querySelectorAll('.tk-tour-rate-label')];let label=cards[0],control=label?.closest('.jet-toggle__control');let a=label?getComputedStyle(label):null,c=control?getComputedStyle(control):null;return{shadow_present:!!shadow,original_present:!!original,sha:shadow?.getAttribute('data-css-sha256')||null,card_count:cards.length,font_px:a?parseFloat(a.fontSize):null,card_height:label?Math.round(label.getBoundingClientRect().height):null,bg:c?.backgroundColor||null,radius_px:c?parseFloat(c.borderTopLeftRadius):null}})(),
                 externalGoogleFonts:performance.getEntriesByType('resource')
                   .filter(x=>x.name.startsWith('https://fonts.googleapis.com/css'))
@@ -105,6 +118,9 @@ async def inspect(browser,path,sem):
                 'title':live['title'],'uael_widgets':live['uael'],'css':styles,
                 'horizontal_overflow_px':live['pageOverflow'],
                 'ttfb_ms':int(live['ttfbMs']),'lcp':lcp,
+                'departure_details':live['departureDetails'],
+                'mobile_toc_bottom_gap_px':live['mobileTOCBottomGap'],
+                'tour_h2':live['tourH2'],
                 'tour_rate_css':live['tourRateCSS'],
                 'accommodation_visibility':live['accommodationVisibility'],
                 'mobile_toc_gap_px':live['mobileTourTOCGap'],
@@ -134,6 +150,26 @@ def classify(pages):
     for page in pages:
         path=urlsplit(page['url']).path
         if path!='/tours-and-activities/unforgettable-egypt-budget-tour-cairo-to-luxor-nile-cruise-discovery-8-days/':continue
+        departure=page.get('departure_details') or {}
+        if int(departure.get('unexpected_visible') or 0)>0 or int(departure.get('continent_visible') or 0)>0:
+            issues.append({'code':'perf_rate_origin_ui','severity':'high',
+                'label':'Unconfirmed Rate detail is visible or continent is presented as Tour-origin; use related Tour metadata and False-by-default JetEngine glossary switch.'})
+        # The sampled page is known to have all four Rates set to False.
+        if int(departure.get('stale_default_label_count') or 0)>0:
+            issues.append({'code':'perf_rate_schedule_default','severity':'high',
+                'label':'Unconfirmed Friday/Afternoon/Africa default leaked into customer-facing Rate pricing titles.'})
+        bottom=page.get('mobile_toc_bottom_gap_px')
+        if isinstance(bottom,(int,float)) and (bottom>32 or bottom<8):
+            issues.append({'code':'perf_toc_bottom_gap','severity':'medium',
+                'label':f'Mobile Tour contents to first H2 gap {round(bottom)}px outside accepted 8–32px range.'})
+        h2=page.get('tour_h2') or {}
+        if h2 and h2.get('global_secondary'):
+            hexc=str(h2['global_secondary']).lstrip('#')
+            if len(hexc)==6 and all(c in '0123456789abcdefABCDEF' for c in hexc):
+                expected='rgb('+', '.join(str(int(hexc[i:i+2],16)) for i in (0,2,4))+')'
+                if h2.get('color')!=expected:
+                    issues.append({'code':'perf_tour_h2_global','severity':'medium',
+                        'label':'Tour editorial H2 color no longer follows Elementor Global Secondary color.'})
         accommodations=page.get('accommodation_visibility') or {}
         if int(accommodations.get('invalid_visible') or 0)>0:
             issues.append({'code':'perf_empty_accommodation_ui','severity':'high',

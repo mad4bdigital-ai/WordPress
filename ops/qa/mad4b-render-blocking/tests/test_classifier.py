@@ -98,3 +98,24 @@ base['accommodation_visibility']['invalid_visible']=0
 base['mobile_toc_gap_px']=0
 assert any(x['code']=='perf_mobile_toc_spacing' for x in m.classify([base]))
 print('PASS: empty hotel-option display and mobile TOC spacing alerts')
+# Departure display defaults to hidden. Continent cannot be a tour departure.
+rate_page={'url':'https://tours.dev.mad4b.com/tours-and-activities/unforgettable-egypt-budget-tour-cairo-to-luxor-nile-cruise-discovery-8-days/',
+ 'uael_widgets':[],'css':[],
+ 'departure_details':{'widgets':6,'unexpected_visible':0,'continent_visible':0,'optin_count':0,'label_count':2,'stale_default_label_count':0},
+ 'mobile_toc_gap_px':12,'mobile_toc_bottom_gap_px':16,
+ 'tour_h2':{'color':'rgb(32, 76, 80)','global_secondary':'#204C50','font':'Nunito, sans-serif'},
+ 'accommodation_visibility':{'count':2,'invalid_visible':0},
+ 'tour_rate_css':{'shadow_present':True,'original_present':True,'card_count':2,'font_px':14.66,'radius_px':25,'bg':'rgb(251, 251, 251)'}}
+assert not any(x['code'] in ('perf_rate_origin_ui','perf_rate_schedule_default','perf_toc_bottom_gap','perf_tour_h2_global') for x in m.classify([rate_page]))
+rate_page['departure_details']['unexpected_visible']=1
+assert any(x['code']=='perf_rate_origin_ui' for x in m.classify([rate_page]))
+rate_page['departure_details']['unexpected_visible']=0
+rate_page['departure_details']['stale_default_label_count']=1
+assert any(x['code']=='perf_rate_schedule_default' for x in m.classify([rate_page]))
+rate_page['departure_details']['stale_default_label_count']=0
+rate_page['mobile_toc_bottom_gap_px']=58
+assert any(x['code']=='perf_toc_bottom_gap' for x in m.classify([rate_page]))
+rate_page['mobile_toc_bottom_gap_px']=16
+rate_page['tour_h2']['color']='rgb(16, 45, 64)'
+assert any(x['code']=='perf_tour_h2_global' for x in m.classify([rate_page]))
+print('PASS: Tour Rate Origin, opt-in schedule, bottom gap and global H2 regression alerts')
