@@ -1,7 +1,8 @@
 <?php
 $id=67881;$post=get_post($id);
 if(!$post)throw new RuntimeException('Test post missing');
-$rev=hash('sha256',(string)$post->post_modified_gmt.'|'.$post->post_status.'|'.$post->post_title);
+$rev=hash('sha256',(string)$post->post_modified_gmt.'|'.$post->post_status.'|'.
+ $post->post_title.'|'.hash('sha256',(string)$post->post_content));
 $input=['goal'=>'seo','target_kind'=>'post','target_id'=>$id,
  'event_type'=>'post_updated','event_key'=>$rev];
 $manual=MAD4B_Lifecycle_Orchestrator::record($input);
