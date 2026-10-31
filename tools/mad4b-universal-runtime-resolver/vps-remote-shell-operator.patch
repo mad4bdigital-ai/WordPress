@@ -1,0 +1,122 @@
+--- a/vps-native-operator.py
++++ b/vps-native-operator.py
+@@ -6,7 +6,7 @@
+ the exact input bytes, journals before execution, and independently reads back.
+ Production supports the same capabilities as Staging under independent, exact-scope host authority and mutation safeguards.
+ """
+-import argparse, datetime, hashlib, json, os, pathlib, re, sqlite3, subprocess, sys, time, uuid
++import argparse, datetime, hashlib, json, os, pathlib, re, sqlite3, subprocess, sys, time, uuid, importlib.util
+ 
+ ROOT=pathlib.Path('/opt/mad4b-company-transport/native-operator-v1')
+ POLICY=ROOT/'host-authority.json'
+@@ -18,6 +18,8 @@
+   ('tours-central','staging'):('etg-commerce-staging-db','https://tours.dev.mad4b.com'),
+   ('wayfatours','production'):('wayfatours-production-db','https://wayfatours.mad4b.com')
+ }
++REMOTE_SSH_TARGETS={('all-royal-egypt','staging'):'hosting-2:staging'}
++REGISTRY_MODULE=pathlib.Path('/opt/mad4b-company-transport/registry-remote-v1/registry_remote.py')
+ INTENTS=('read','diagnostic','repair','configuration','upgrade','deployment','rollback')
+ MUTATING=('repair','configuration','upgrade','deployment','rollback')
+ 
+@@ -64,10 +66,13 @@
+     return data
+ 
+ def preflight(args,policy):
+-    if args.intent not in INTENTS or args.kind not in ('shell','sql'):
++    if args.intent not in INTENTS or args.kind not in ('shell','sql','ssh'):
+         abort('UNSUPPORTED_OPERATION')
+     if args.kind=='sql' and (args.company,args.environment) not in TARGETS:
+         abort('DATABASE_NOT_ENROLLED')
++    if args.kind=='ssh' and (args.company,args.environment) not in REMOTE_SSH_TARGETS:
++        abort('REMOTE_SSH_TARGET_NOT_ENROLLED')
++
+     capability='allow_raw_sql' if args.kind=='sql' else 'allow_general_shell'
+     if policy.get(capability) is not True:
+         abort('HOST_CAPABILITY_NOT_GRANTED')
+@@ -76,6 +81,17 @@
+     permitted=policy.get('scopes',{}).get(args.company+':'+args.environment,{})
+     if permitted.get('allow_operator') is not True:
+         abort('EXACT_COMPANY_ENVIRONMENT_GRANT_MISSING')
++    if args.kind=='ssh':
++        if permitted.get('allow_remote_shell') is not True:
++            abort('REMOTE_SHELL_SCOPE_NOT_GRANTED')
++        registry=registered_remote_module()
++        binding=REMOTE_SSH_TARGETS[(args.company,args.environment)]
++        remote=registry.TARGETS.get(binding,{})
++        if remote.get('site_uuid')!=permitted.get('site_uuid'):
++            abort('REGISTRY_SITE_UUID_MISMATCH')
++        if registry.guard(binding)!=permitted.get('expected_root'):
++            abort('REGISTRY_ENROLLED_SITE_ROOT_MISMATCH')
++
+     if args.kind=='sql' and permitted.get('allow_sql') is not True:
+         abort('RAW_SQL_NOT_AUTHORIZED_FOR_COMPANY')
+     mutation=args.intent in MUTATING
+@@ -100,19 +116,39 @@
+         snapshot=file_bytes(args.backup_file,max_bytes=16*1024*1024)
+         if not re.fullmatch('[a-f0-9]{64}',args.backup_sha256 or '')            or sha(snapshot)!=args.backup_sha256:
+             abort('BACKUP_DIGEST_MISMATCH')
+-    return {'contract':CONTRACT,'host_id':HOST,'lane':'vps_ssh',
++    return {'contract':CONTRACT,'host_id':HOST,'lane':'registered_remote_ssh' if args.kind=='ssh' else 'vps_ssh',
+       'company':args.company,'environment':args.environment,
+       'kind':args.kind,'intent':args.intent,'command_sha256':command_hash,
+       'readback_command_sha256':sha(readback),'expected_readback_sha256':args.expected_readback_sha256,
+       'mutating':mutation,
+       'risk_class':('production_write' if mutation else 'production_operator_shell' if args.kind=='shell' else 'production_read') if args.environment=='production' else ('staging_write' if mutation else 'staging_read_or_diagnostic'),
+-      'shell_effects_cannot_be_proven_read_only':args.kind=='shell',
++      'shell_effects_cannot_be_proven_read_only':args.kind in ('shell','ssh'),
+       'backup_sha256':sha(snapshot) if mutation else None,
+       'rollback_sha256':sha(rollback) if mutation else None,
+       'production_mutation_authorized':mutation and args.environment=='production' and permitted.get('allow_production_mutation') is True,
+       'command_catalog_required':False,'authorization':'independent_root_ssh_plus_host_scoped_grant',
+       'execution_performed':False}
+ 
++def registered_remote_module():
++    if not REGISTRY_MODULE.is_file():
++        abort('REGISTRY_REMOTE_SSH_PROVIDER_UNAVAILABLE')
++    spec=importlib.util.spec_from_file_location('mad4b_enrolled_ssh_operator',REGISTRY_MODULE)
++    module=importlib.util.module_from_spec(spec)
++    spec.loader.exec_module(module)
++    return module
++
++def remote_shell_exec(cmd,timeout,company,environment):
++    registry=registered_remote_module()
++    binding=REMOTE_SSH_TARGETS[(company,environment)]
++    registered=registry.TARGETS[binding]
++    # Resolve real target before every attempt. No export or copying SSH keys.
++    registry.guard(binding)
++    argv,host,_,_=registry.ssh_base(binding)
++    argv += ['-o','ClearAllForwardings=yes','-o','PermitLocalCommand=no',
++             '-o','ProxyCommand=none',host,
++             'timeout '+str(min(timeout,120))+'s /bin/bash -se']
++    return subprocess.run(argv,input=cmd,capture_output=True,timeout=timeout+8,check=False)
++
+ def local_exec(cmd, timeout):
+     if cmd is None:abort('COMMAND_MISSING')
+     p=subprocess.run(['/bin/bash','--noprofile','--norc','-e','-o','pipefail'],
+@@ -155,8 +191,15 @@
+         f.write(json.dumps(start));f.flush();os.fsync(f.fileno())
+     journal(ident,'OPERATOR_EXECUTION_ATTEMPTED',{'company':args.company,'kind':args.kind,
+            'environment':args.environment,'intent':args.intent,'command_sha256':plan['command_sha256']})
+-    runner=local_exec if args.kind=='shell' else lambda b,t:sql_exec(TARGETS[(args.company,args.environment)][0],b,t,not plan['mutating'])
+-    readback_runner=local_exec if args.kind=='shell' else lambda b,t:sql_exec(TARGETS[(args.company,args.environment)][0],b,t,True)
++    if args.kind=='ssh':
++        runner=lambda b,t:remote_shell_exec(b,t,args.company,args.environment)
++        readback_runner=runner
++    elif args.kind=='shell':
++        runner=local_exec
++        readback_runner=local_exec
++    else:
++        runner=lambda b,t:sql_exec(TARGETS[(args.company,args.environment)][0],b,t,not plan['mutating'])
++        readback_runner=lambda b,t:sql_exec(TARGETS[(args.company,args.environment)][0],b,t,True)
+     # Direct host operator command supplied from a root-owned local file, never a web/queue payload.
+     try:
+         result=runner(file_bytes(args.file),args.timeout)
+@@ -187,7 +230,7 @@
+ def main():
+     parser=argparse.ArgumentParser()
+     parser.add_argument('action',choices=['status','plan','apply'])
+-    parser.add_argument('--kind',choices=['shell','sql'],default='shell')
++    parser.add_argument('--kind',choices=['shell','sql','ssh'],default='shell')
+     parser.add_argument('--intent',choices=INTENTS,default='diagnostic')
+     parser.add_argument('--company',default='tours-central')
+     parser.add_argument('--environment',choices=['staging','production'],default='staging')
