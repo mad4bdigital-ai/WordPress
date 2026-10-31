@@ -140,6 +140,14 @@ final class MAD4B_SCP_Central_Company_Rollout {
             $blockers[] = 'release_requirements_invalid';
             $requirements = array();
         } else {
+            // The Content Hub Central Controller is deliberately Staging-only.
+            // Company Production receives a separately deployable adapter,
+            // never a copy of the central controller runtime.
+            $role = (string) ( $requirements['deployment_role'] ?? '' );
+            if ( ! in_array( $role, array( 'company_adapter', 'company_plugin' ), true ) )
+                $blockers[] = 'company_target_role_not_distributable';
+            if ( 'mad4b-content-hub/mad4b-content-hub.php' === $requirements['target_plugin_file'] )
+                $blockers[] = 'central_content_hub_controller_not_distributable';
             foreach ( array( 'php_min', 'wordpress_min' ) as $field ) {
                 $minimum = $requirements[$field] ?? '';
                 $current = (string) ( $site[ 'php_min' === $field ? 'php_version' : 'wordpress_version' ] ?? '' );
