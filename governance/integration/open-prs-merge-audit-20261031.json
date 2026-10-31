@@ -1,0 +1,192 @@
+{
+  "contract": "mad4b.open-prs-merge-audit.v1",
+  "snapshot_date": "2026-10-31",
+  "attempted": 60,
+  "merged_local_unpublished": [
+    600,
+    628,
+    629,
+    630,
+    641,
+    643,
+    644,
+    652,
+    659,
+    660,
+    662,
+    668,
+    670,
+    599,
+    601,
+    603,
+    605,
+    609,
+    610,
+    611,
+    614,
+    615,
+    616,
+    619,
+    627,
+    631,
+    634,
+    637,
+    639,
+    645,
+    647,
+    654,
+    657,
+    661,
+    663,
+    665,
+    667,
+    672,
+    673,
+    674
+  ],
+  "already_included_local_unpublished": [
+    638,
+    602,
+    642,
+    604,
+    606,
+    608,
+    612
+  ],
+  "blocked_conflicts": [
+    {
+      "pr": 632,
+      "files": [
+        "governance/production-readiness/capability-coverage.json"
+      ]
+    },
+    {
+      "pr": 598,
+      "files": [
+        ".github/workflows/mad4b-post-update-continuation-guards.yml",
+        "governance/production-readiness/capability-coverage.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-convergence.php"
+      ]
+    },
+    {
+      "pr": 607,
+      "files": [
+        "governance/production-readiness/capability-coverage.json"
+      ]
+    },
+    {
+      "pr": 655,
+      "files": []
+    },
+    {
+      "pr": 658,
+      "files": [
+        "governance/production-readiness/capability-coverage.json",
+        "specs/007-content-intelligence-workflow-platform/change-slices.json",
+        "wp-content/plugins/mad4b-site-control-plane/bootstrap/mad4b-runtime-cache-convergence-mu.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/adapter-registration-policy.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-adapter-base.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-domain-cloudflare.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-delegation-mode.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-enrollment-dispatch.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-firecrawl-provider.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-hub-jetengine-consumer-governance.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-connections-admin-ui.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-setup-coverage.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-reconnect-hardening.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-task-bridge.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-convergence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-workflow-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-skills-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/gateway-mutation-guards.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py"
+      ]
+    },
+    {
+      "pr": 669,
+      "files": [
+        "governance/production-readiness/capability-coverage.json"
+      ]
+    },
+    {
+      "pr": 653,
+      "files": [
+        ".github/workflows/mad4b-hub-pricing-contracts.yml",
+        ".github/workflows/mad4b-hub-remote-control-contract.yml"
+      ]
+    },
+    {
+      "pr": 656,
+      "files": [
+        "governance/production-readiness/capability-coverage.json"
+      ]
+    },
+    {
+      "pr": 664,
+      "files": [
+        "governance/production-readiness/capability-coverage.json"
+      ]
+    },
+    {
+      "pr": 671,
+      "files": [
+        "governance/production-readiness/capability-coverage.json",
+        "specs/007-content-intelligence-workflow-platform/change-slices.json",
+        "wp-content/plugins/mad4b-site-control-plane/bootstrap/mad4b-runtime-cache-convergence-mu.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/adapter-registration-policy.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-adapter-base.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-domain-cloudflare.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-delegation-mode.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-enrollment-dispatch.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-firecrawl-provider.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-hub-jetengine-consumer-governance.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-connections-admin-ui.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-setup-coverage.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-reconnect-hardening.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-task-bridge.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-convergence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-workflow-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/isolated-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/dfsb-rc15-signed-review-source-pin.py"
+      ]
+    },
+    {
+      "pr": 675,
+      "files": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php"
+      ]
+    },
+    {
+      "pr": 650,
+      "files": [
+        "wp-content/plugins/mad4b-jetengine-hub-addon/includes/class-mad4b-hub-company-pricing.php",
+        "wp-content/plugins/mad4b-jetengine-hub-addon/mad4b-jetengine-hub-addon.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-hub-jetengine-consumer-governance.php"
+      ]
+    },
+    {
+      "pr": 676,
+      "files": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php"
+      ]
+    }
+  ],
+  "github_publish_status": "blocked_by_workflow_permission",
+  "blocked_permission": "GitHub workflow write permission for .github/workflows/mad4b-local-oauth-standalone.yml",
+  "production_mutation": false,
+  "merge_ready": false
+}
