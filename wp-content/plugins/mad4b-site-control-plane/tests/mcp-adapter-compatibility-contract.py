@@ -154,7 +154,7 @@ for fixture in (
     "mcp-optional-operation-read-projection-runtime.php",
 ):
     result = subprocess.run(
-        ["php", "-n", str(ROOT / "tests" / fixture)],
+        ["php", str(ROOT / "tests" / fixture)] if fixture == "mcp-legacy-schema-representation-runtime.php"\n        else ["php", "-n", str(ROOT / "tests" / fixture)],
         capture_output=True, text=True, check=False,
     )
     if result.returncode:
