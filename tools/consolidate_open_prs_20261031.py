@@ -34,6 +34,30 @@ while pending:
 subprocess.run(["git", "config", "user.name", "MAD4B Integration CI"], check=True)
 subprocess.run(["git", "config", "user.email", "integration-ci@users.noreply.github.com"], check=True)
 subprocess.run(["git", "fetch", "-q", "origin", "+refs/pull/*/head:refs/remotes/origin/pr/*"], check=True)
+def resolve_exact_pr675_conflict(item_number, conflicts):
+    """Reviewed one-file union of brand/style localization codes; fail closed otherwise."""
+    if item_number != 675 or conflicts != [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php"
+    ]:
+        return False
+    path = Path(conflicts[0])
+    source = path.read_text(encoding="utf-8")
+    left = "                $localization=preg_match('/^loc_(?:layout|text|missing|h1|brand)_(?:ar|de|en|es|fr|it)$/D',$code) &&"
+    right = "                $localization=preg_match('/^loc_(?:layout|text|missing|h1|style)_(?:ar|de|en|es|fr|it)$/D',$code) &&"
+    combined = "                $localization=preg_match('/^loc_(?:layout|text|missing|h1|brand|style)_(?:ar|de|en|es|fr|it)$/D',$code) &&"
+    expected = "<<<<<<< HEAD\\n" + left + "\\n=======\\n" + right + "\\n>>>>>>> refs/remotes/origin/pr/675"
+    # Git's conflict label may use origin/pr/675 rather than the full ref.
+    alternatives = [
+        expected,
+        expected.replace("refs/remotes/origin/pr/675", "origin/pr/675"),
+    ]
+    matches = [v for v in alternatives if source.count(v) == 1]
+    if len(matches) != 1 or source.count("<<<<<<<") != 1:
+        return False
+    path.write_text(source.replace(matches[0], combined), encoding="utf-8")
+    subprocess.run(["git", "add", str(path)], check=True)
+    return True
+
 out = []
 for item in ordered:
     ref = "refs/remotes/origin/pr/" + str(item["number"])
@@ -52,10 +76,17 @@ for item in ordered:
         if result.returncode != 0:
             conflicts = subprocess.run(["git", "diff", "--name-only", "--diff-filter=U"],
                                        capture_output=True, text=True).stdout.splitlines()
-            subprocess.run(["git", "merge", "--abort"], check=True)
-            diagnostic = (result.stderr + "\\n" + result.stdout)[-1200:]
-            status = ("unrelated_history" if "refusing to merge unrelated histories" in diagnostic
-                      else "conflict")
+            if resolve_exact_pr675_conflict(item["number"], conflicts):
+                subprocess.run(["git", "diff", "--cached", "--check"], check=True)
+                subprocess.run(["git", "commit", "-m",
+                                "integration: reconcile PR675 brand/style localization alerts"],
+                               check=True, capture_output=True, text=True, timeout=60)
+                status, conflicts, diagnostic = "merged", [], ""
+            else:
+                subprocess.run(["git", "merge", "--abort"], check=True)
+                diagnostic = (result.stderr + "\\n" + result.stdout)[-1200:]
+                status = ("unrelated_history" if "refusing to merge unrelated histories" in diagnostic
+                          else "conflict")
         else:
             subprocess.run(["git", "commit", "-m", f"integration: include open PR #{item['number']}"], check=True,
                            capture_output=True, text=True, timeout=60)
