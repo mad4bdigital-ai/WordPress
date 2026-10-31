@@ -14136,6 +14136,23 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/isolated-contract.php"
       ],
       "review_rationale": "Revised Content Readiness integrates strictly fingerprint-bound site-neutral Elementor localization issues into the existing audited ledger, preserves the original DFSB filter validation, and moves the admin menu to the registered parent-order route contract. The exact edited isolated PHP regression test exercises source ownership, issue transitions, and event journal without external writes. CI approval is not live or Production release authority."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "source_blob_sha": "4762af5b6d6a7d4c1e8cbc2381b0e1a18fdaab8d",
+      "owner_role": "MAD4B CI source reviewer for site performance and accommodation presentation, CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/isolated-contract.php"
+      ],
+      "review_rationale": "A reviewed read-only extension to the existing fingerprint-bound MAD4B performance issue ledger allows the empty accommodation and mobile Tour Content spacing codes only from the authorized live performance provider. An exact changed isolated PHP contract proves both codes are accepted with their severity and forged provider identities fail closed. This does not authorize production rollout or modify any supplier selection."
     }
   ],
   "code_change_rules": {

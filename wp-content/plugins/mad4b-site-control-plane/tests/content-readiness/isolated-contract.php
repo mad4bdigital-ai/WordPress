@@ -394,4 +394,21 @@ yes($preReport['execution_mode']==='disabled' &&
     $preReport['side_effects']['outbound_messages']===0 &&
     $preReport['gates']['provider_tasks_enabled']===false,
     'preactivation report is read-only and execution-disabled');
+// New tour-accommodation and mobile TOC regression findings can only arrive
+// from the existing audited MAD4B performance provider; no status spoofing.
+foreach (['perf_empty_accommodation_ui'=>'high','perf_mobile_toc_spacing'=>'medium'] as $code=>$severity) {
+    $id=hash('sha256','6|site|0|'.$code);
+    $event=['id'=>$id,'post_type'=>'site','object_id'=>0,'code'=>$code,
+        'severity'=>$severity,'label'=>'Verified mobile presentation regression',
+        'source'=>'mad4b-live-performance'];
+    $GLOBALS['external_source']=[$event];
+    $scan=$cls::discover();
+    $rows=array_values(array_filter($scan['issues'],fn($x)=>($x['code']??'')===$code));
+    yes($scan['complete'] && count($rows)===1 && $rows[0]['severity']===$severity,
+       'canonical live performance provider accepts governed '.$code);
+    $GLOBALS['external_source']=[array_merge($event,['source'=>'unauthorized-provider'])];
+    $invalid=$cls::discover();
+    yes(!$invalid['complete'], 'forged performance source denied for '.$code);
+    unset($GLOBALS['external_source']);
+}
 echo "ALL READINESS LEDGER CONTRACTS PASSED\n";
