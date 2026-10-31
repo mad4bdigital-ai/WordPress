@@ -469,7 +469,10 @@ final class MAD4B_SCP_Provider_Contracts {
 	}
 
 	public static function runtime_status( $provider, $available = null ) {
-		if ( 'mcp_adapter' === sanitize_key( (string) $provider ) ) return self::mcp_adapter_dependency_status( $available );
+		if ( 'mcp_adapter' === sanitize_key( (string) $provider ) ) {
+			self::invalidate_installed_version_cache_for_contract( self::get( 'mcp_adapter' ) );
+			return self::mcp_adapter_dependency_status( $available );
+		}
 		$base_contract = self::get( $provider );
 		// Deep certification/mutation truth must observe version drift that occurs
 		// after an earlier request-local identity read. Keep hot identity paths
