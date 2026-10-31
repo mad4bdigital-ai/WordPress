@@ -75,6 +75,22 @@ def resolve_exact_pr669_review_registry(item_number, conflicts):
         return False
 
 
+def resolve_exact_pr677_conflict(item_number, conflicts):
+    """Preserve reviewed brand/style and add binding; only for one exact conflict."""
+    path = "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php"
+    if item_number != 677 or conflicts != [path]:
+        return False
+    source = Path(path).read_text(encoding="utf-8")
+    old = "                $localization=preg_match('/^loc_(?:layout|text|missing|h1|brand|style)_(?:ar|de|en|es|fr|it)$/D',$code) &&"
+    incoming = "                $localization=preg_match('/^loc_(?:layout|text|missing|h1|brand|binding|style)_(?:ar|de|en|es|fr|it)$/D',$code) &&"
+    conflict = chr(10).join(["<<<<<<< HEAD", old, "=======", incoming, ">>>>>>> origin/pr/677"])
+    if source.count(conflict) != 1 or source.count("<<<<<<<") != 1:
+        return False
+    Path(path).write_text(source.replace(conflict, incoming), encoding="utf-8")
+    subprocess.run(["git", "add", path], check=True)
+    return True
+
+
 def resolve_exact_pr675_conflict(item_number, conflicts):
     """Reviewed one-file union of brand/style localization codes; fail closed otherwise."""
     if item_number != 675 or conflicts != [
@@ -118,6 +134,7 @@ for item in ordered:
             conflicts = subprocess.run(["git", "diff", "--name-only", "--diff-filter=U"],
                                        capture_output=True, text=True).stdout.splitlines()
             if (resolve_exact_pr675_conflict(item["number"], conflicts)
+                    or resolve_exact_pr677_conflict(item["number"], conflicts)
                     or resolve_exact_pr669_review_registry(item["number"], conflicts)):
                 subprocess.run(["git", "diff", "--cached", "--check"], check=True)
                 subprocess.run(["git", "commit", "-m",
