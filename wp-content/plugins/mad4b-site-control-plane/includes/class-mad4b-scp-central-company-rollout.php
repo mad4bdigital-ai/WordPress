@@ -189,7 +189,8 @@ final class MAD4B_SCP_Central_Company_Rollout {
             && method_exists( 'MAD4B_SCP_Site_Profile', 'status' )
             ? MAD4B_SCP_Site_Profile::status() : array();
         if ( ! is_array( $profile ) ) $profile = array();
-        require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        if ( ! function_exists( 'get_plugins' ) )
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
         $list = function_exists( 'get_plugins' ) ? get_plugins() : array();
         $plugins = array();
         foreach ( $list as $plugin => $data ) {
