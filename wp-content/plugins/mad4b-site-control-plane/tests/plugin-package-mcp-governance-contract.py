@@ -87,6 +87,27 @@ for marker in [
 ]:
     require(marker in package, f"plugin package governance marker missing: {marker}")
 
+# Selected-HEAD is an existing read-only MCP planning pointer, not an
+# update/install action or an independent permission. Its source is classified
+# under MCP-01, and the existing authority gates remain mandatory.
+test_router = (ROOT / "includes/class-mad4b-scp-control-plane-test-router.php").read_text(encoding="utf-8")
+route_resolver = (ROOT / "includes/class-mad4b-scp-package-route-resolver.php").read_text(encoding="utf-8")
+for token in (
+    "'plan_ability' => 'mad4b/control-plane-selected-head-plan'",
+    "'requires_exact_owner_approval' => true",
+    "'independent_owner_approval_required' => true",
+    "'automatic_mutation_allowed' => false",
+    "'production_allowed' => false",
+    "'permission_reuse_allowed' => false",
+):
+    require(token in test_router, "Selected-HEAD read-only MCP authority guidance missing: " + token)
+for token in (
+    "'auto_apply_allowed' => false",
+    "'caller_supplied_package_allowed' => false",
+    "'mutation_performed' => false",
+):
+    require(token in route_resolver, "Selected-HEAD package route widened: " + token)
+
 # A control-plane self-update is categorically outside the third-party package
 # provider inventory. An explicit deny code must guide callers to the existing
 # self-update route instead of encouraging an unsafe synthetic provider record.

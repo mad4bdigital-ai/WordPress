@@ -203,8 +203,50 @@ jobs:
             fi
             test "$OBSERVED_AUTOLOAD_SHA" = "$TARGET_AUTOLOAD_SHA"
           fi
-          rm -rf "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
-          cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          # Managed Runtime requires complete, exact package provenance.
+          # A raw checkout copy has no BUILD-PROVENANCE manifest and must
+          # legitimately receive a 503 from the fail-closed OPcache guard.
+          # Exercise the existing canonical builder in disposable CI instead
+          # of disabling the guard or inventing a signed provider certificate.
+          SOURCE_SHA="$(git rev-parse HEAD)"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          CONTROL_VERSION="$(python3 - <<'PYVER'
+          import re
+          from pathlib import Path
+          main = Path("wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php").read_text()
+          match = re.search(r"(?m)^ \* Version: ([0-9A-Za-z._-]+)", main)
+          if not match:
+              raise SystemExit("Control Plane source version missing")
+          print(match.group(1))
+          PYVER
+          )"
+          ADAPTER_SHA="$(sha256sum "$ADAPTER_ARCHIVE" | cut -d' ' -f1)"
+          PACKAGE_DIR="$(mktemp -d /tmp/mad4b-oauth-source-package.XXXXXX)"
+          mkdir -p "$PACKAGE_DIR/source"
+          cp -R wp-content/plugins/mad4b-site-control-plane "$PACKAGE_DIR/source/mad4b-site-control-plane"
+          rm -rf "$PACKAGE_DIR/source/mad4b-site-control-plane/tests"
+          python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/build-deterministic-control-plane-package.py" \
+            --root "$PACKAGE_DIR/source/mad4b-site-control-plane" \
+            --output-zip "$PACKAGE_DIR/control-plane.zip" \
+            --version "$CONTROL_VERSION" --source-sha "$SOURCE_SHA" \
+            --adapter-version "$EXPECTED_ADAPTER_VERSION" --adapter-sha "$ADAPTER_SHA" \
+            --receipt-output "$PACKAGE_DIR/receipt.json"
+          SOURCE_SHA="$SOURCE_SHA" PACKAGE_DIR="$PACKAGE_DIR" python3 - <<'PYVERIFY'
+          import json, os, sys
+          from pathlib import Path
+          sys.path.insert(0, "tools")
+          from mad4b_standalone_build import verify_zip
+          folder = Path(os.environ["PACKAGE_DIR"])
+          source = os.environ["SOURCE_SHA"]
+          receipt = json.loads((folder / "receipt.json").read_text())
+          verify_zip(folder / "control-plane.zip", receipt, source)
+          assert receipt["source_commit_sha"] == source
+          print("MAD4B_LOCAL_OAUTH_SOURCE_PROVENANCE: PASS")
+          PYVERIFY
+          python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" \
+            --archive "$PACKAGE_DIR/control-plane.zip" \
+            --plugins-dir "$WP_PATH/wp-content/plugins" --slug mad4b-site-control-plane
+          test -s "$WP_PATH/wp-content/plugins/mad4b-site-control-plane/MAD4B-BUILD-PROVENANCE.json"
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
           INSTALLED_ADAPTER_VERSION="$(php /tmp/wp-cli.phar eval '
@@ -483,6 +525,35 @@ jobs:
           echo "HTTP MCP initialize status=$INIT_STATUS time=$INIT_TIME"
           cat /tmp/mad4b-http-init.headers
           cat /tmp/mad4b-http-init.body
+          if [ "$INIT_STATUS" = "503" ]; then
+            # After validating a new exact build, MU cache convergence may
+            # invalidate PHP opcodes and demand one fresh HTTP request.
+            # Only the explicit retryable=true envelope qualifies; a missing,
+            # invalid or unverified package must keep the test failed closed.
+            python3 - <<'PYRETRY'
+          import json
+          from pathlib import Path
+          payload = json.loads(Path("/tmp/mad4b-http-init.body").read_text())
+          if payload.get("code") != "mad4b_runtime_cache_convergence_pending" or payload.get("retryable") is not True:
+              raise SystemExit("MCP 503 not an authorized one-time cache convergence retry")
+          PYRETRY
+            grep -qi '^Retry-After: 1\r*$' /tmp/mad4b-http-init.headers
+            sleep 1
+            INIT_META="$(curl --silent --show-error \
+              --connect-timeout 2 --max-time 8 \
+              -D /tmp/mad4b-http-init.headers \
+              -o /tmp/mad4b-http-init.body \
+              -w '%{http_code} %{time_total}' \
+              -X POST "$MCP_URL" \
+              -H "Authorization: Bearer $CHATGPT_TOKEN" \
+              -H 'Accept: application/json, text/event-stream' \
+              -H 'Content-Type: application/json' \
+              -H 'MCP-Protocol-Version: 2025-11-25' \
+              --data '{"jsonrpc":"2.0","id":901,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"mad4b-http-refresh-ci","version":"1.0.0"}}}')"
+            INIT_STATUS="${INIT_META%% *}"
+            INIT_TIME="${INIT_META#* }"
+            echo "HTTP MCP after one manifest-verified cache convergence status=$INIT_STATUS time=$INIT_TIME"
+          fi
           test "$INIT_STATUS" = "200"
 
           SESSION_ID="$(awk 'BEGIN{IGNORECASE=1} /^Mcp-Session-Id:/ {gsub(/\r/,""); print $2}' /tmp/mad4b-http-init.headers | tail -n1)"

@@ -4,6 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 require_once __DIR__ . '/class-mad4b-scp-developer-preparation-bridge.php';
+require_once __DIR__ . '/class-mad4b-scp-schema-status-projection.php';
 
 final class MAD4B_SCP_Abilities {
 	const MAX_WRITE_DISPATCH_CONTEXT_RECEIPT_BYTES = 65536;
@@ -781,20 +782,55 @@ final class MAD4B_SCP_Abilities {
 		$ability = $this->governed_write_target( $ability_name, false );
 		if ( is_wp_error( $ability ) ) return $ability;
 		$schema = method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null;
+		$schema_sha256 = $this->ability_input_schema_sha256( $ability );
 		$meta = $ability->get_meta();
-		return array(
+		$eligible = in_array( $ability_name, MAD4B_SCP_Servers::write_tools(), true );
+		$result = array(
 			'contract' => 'mad4b.chatgpt-write-ability-info.v1',
 			'ability_name' => $ability_name,
 			'label' => method_exists( $ability, 'get_label' ) ? (string) $ability->get_label() : '',
 			'description' => method_exists( $ability, 'get_description' ) ? (string) $ability->get_description() : '',
 			'category' => method_exists( $ability, 'get_category' ) ? (string) $ability->get_category() : '',
 			'input_schema' => $schema,
-			'input_schema_sha256' => $this->ability_input_schema_sha256( $ability ),
+			'input_schema_sha256' => $schema_sha256,
 			'annotations' => isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array(),
-			'runtime_eligible' => in_array( $ability_name, MAD4B_SCP_Servers::write_tools(), true ),
+			'runtime_eligible' => $eligible,
 			'read_only' => true,
 			'mutation_performed' => false,
 		);
+		// Preparation is non-authorizing. Write-execute still enforces signed
+		// identity, target permission, one-time approval and anti-replay.
+		if ( ! $eligible ) return $result;
+		if ( ! class_exists( 'MAD4B_SCP_Capability_Descriptor_Registry' )
+			|| ! class_exists( 'MAD4B_SCP_Ability_Catalog_Transport' )
+			|| ! class_exists( 'MAD4B_SCP_Preparation_Receipt' ) ) {
+			return new WP_Error( 'mad4b_write_preparation_runtime_unavailable', 'Governed write preparation is unavailable; execution remains denied.' );
+		}
+		$row = MAD4B_SCP_Capability_Descriptor_Registry::describe( $ability_name );
+		if ( is_wp_error( $row ) ) return $row;
+		if ( empty( $row['execution_eligible'] )
+			|| ! in_array( $row['execution_lane'] ?? '', array( 'write', 'content', 'admin' ), true ) ) {
+			return new WP_Error( 'mad4b_write_preparation_target_denied', 'Target is not eligible for governed write preparation.' );
+		}
+		if ( ! isset( $row['input_schema_sha256'], $row['classification_sha256'] )
+			|| ! hash_equals( (string) $row['input_schema_sha256'], $schema_sha256 ) ) {
+			return new WP_Error( 'mad4b_write_preparation_schema_drift', 'Target schema changed during write preparation.' );
+		}
+		$receipt = MAD4B_SCP_Preparation_Receipt::issue( $row );
+		if ( is_wp_error( $receipt ) ) return $receipt;
+		if ( ! is_string( $receipt ) || '' === $receipt ) {
+			return new WP_Error( 'mad4b_write_preparation_receipt_unavailable', 'Signed preparation evidence is unavailable; execution remains denied.' );
+		}
+		$result['prepared_dispatch'] = array(
+			'expected_input_schema_sha256' => $schema_sha256,
+			'expected_execution_lane' => (string) $row['execution_lane'],
+			'expected_classification_sha256' => (string) $row['classification_sha256'],
+			'expected_authority_scope_sha256' => MAD4B_SCP_Ability_Catalog_Transport::current_authority_scope(),
+			'preparation_receipt' => $receipt,
+		);
+		$result['dispatch_tool'] = 'mad4b/write-execute';
+		$result['preparation_contract'] = MAD4B_SCP_Preparation_Receipt::CONTRACT;
+		return $result;
 	}
 
 	private function governance_envelope_hash( $value ) {
@@ -1445,71 +1481,7 @@ final class MAD4B_SCP_Abilities {
 	public function runtime_authority_status() { return MAD4B_SCP_Authorization::authority_status(); }
 
 	public function schema_status() {
-		$status = MAD4B_SCP_Schema::status( true );
-		$physical = isset( $status['physical_integrity'] ) && is_array( $status['physical_integrity'] ) ? $status['physical_integrity'] : array();
-		$migration = isset( $status['migration'] ) && is_array( $status['migration'] ) ? $status['migration'] : array();
-		$preflight = isset( $migration['preflight'] ) && is_array( $migration['preflight'] ) ? $migration['preflight'] : array();
-		$receipt = isset( $migration['receipt'] ) && is_array( $migration['receipt'] ) ? $migration['receipt'] : array();
-		$missing_tables = isset( $physical['missing_tables'] ) && is_array( $physical['missing_tables'] ) ? array_values( $physical['missing_tables'] ) : array();
-		$durable = array(
-			'content_jobs'       => ! in_array( 'content_jobs', $missing_tables, true ),
-			'content_job_events' => ! in_array( 'content_job_events', $missing_tables, true ),
-			'work_leases'        => ! in_array( 'work_leases', $missing_tables, true ),
-			'idempotency'        => ! in_array( 'idempotency', $missing_tables, true ),
-			'execution_outbox'   => ! in_array( 'outbox', $missing_tables, true ),
-			'execution_inbox'    => ! in_array( 'inbox', $missing_tables, true ),
-		);
-		return array(
-			'contract' => 'mad4b.schema-status.v1',
-			'read_only' => true,
-			'mutation_performed' => false,
-			'expected_version' => isset( $status['expected_version'] ) ? (int) $status['expected_version'] : MAD4B_SCP_Schema::VERSION,
-			'installed_version' => isset( $status['installed_version'] ) ? (int) $status['installed_version'] : 0,
-			'integrity_token_valid' => ! empty( $status['integrity_token_valid'] ),
-			'migration' => array(
-				'contract' => isset( $migration['contract'] ) && is_array( $migration['contract'] ) ? $migration['contract'] : array(),
-				'contract_sha256' => isset( $migration['contract_sha256'] ) ? (string) $migration['contract_sha256'] : '',
-				'preflight' => array(
-					'contract' => isset( $preflight['contract'] ) ? (string) $preflight['contract'] : '',
-					'migration_id' => isset( $preflight['migration_id'] ) ? (string) $preflight['migration_id'] : '',
-					'installed_version' => isset( $preflight['installed_version'] ) ? (int) $preflight['installed_version'] : 0,
-					'target_version' => isset( $preflight['target_version'] ) ? (int) $preflight['target_version'] : 0,
-					'fresh_install' => ! empty( $preflight['fresh_install'] ),
-					'repair_run' => ! empty( $preflight['repair_run'] ),
-					'contract_sha256' => isset( $preflight['contract_sha256'] ) ? (string) $preflight['contract_sha256'] : '',
-					'blockers' => isset( $preflight['blockers'] ) && is_array( $preflight['blockers'] ) ? array_values( $preflight['blockers'] ) : array(),
-					'ready' => ! empty( $preflight['ready'] ),
-					'read_only' => ! empty( $preflight['read_only'] ),
-					'mutation_performed' => ! empty( $preflight['mutation_performed'] ),
-				),
-				'receipt' => array(
-					'contract' => isset( $receipt['contract'] ) ? (string) $receipt['contract'] : '',
-					'migration_id' => isset( $receipt['migration_id'] ) ? (string) $receipt['migration_id'] : '',
-					'from_version' => isset( $receipt['from_version'] ) ? (int) $receipt['from_version'] : 0,
-					'to_version' => isset( $receipt['to_version'] ) ? (int) $receipt['to_version'] : 0,
-					'run_type' => isset( $receipt['run_type'] ) ? (string) $receipt['run_type'] : '',
-					'contract_sha256' => isset( $receipt['contract_sha256'] ) ? (string) $receipt['contract_sha256'] : '',
-					'target_integrity_token' => isset( $receipt['target_integrity_token'] ) ? (string) $receipt['target_integrity_token'] : '',
-					'physical_integrity_sha256' => isset( $receipt['physical_integrity_sha256'] ) ? (string) $receipt['physical_integrity_sha256'] : '',
-					'physical_verified' => ! empty( $receipt['physical_verified'] ),
-					'readiness_finalized' => ! empty( $receipt['readiness_finalized'] ),
-					'destructive' => ! empty( $receipt['destructive'] ),
-					'authority_widened' => ! empty( $receipt['authority_widened'] ),
-					'completed_at' => isset( $receipt['completed_at'] ) ? (string) $receipt['completed_at'] : '',
-				),
-				'receipt_valid' => ! empty( $migration['receipt_valid'] ),
-			),
-			'durable_tables' => $durable,
-			'physical_integrity' => array(
-				'contract' => isset( $physical['contract'] ) ? (string) $physical['contract'] : '',
-				'ready' => ! empty( $physical['ready'] ),
-				'missing_tables' => $missing_tables,
-				'missing_approval_columns' => isset( $physical['missing_approval_columns'] ) && is_array( $physical['missing_approval_columns'] ) ? array_values( $physical['missing_approval_columns'] ) : array(),
-				'missing_durable_columns' => isset( $physical['missing_durable_columns'] ) && is_array( $physical['missing_durable_columns'] ) ? array_values( $physical['missing_durable_columns'] ) : array(),
-				'missing_durable_indexes' => isset( $physical['missing_durable_indexes'] ) && is_array( $physical['missing_durable_indexes'] ) ? array_values( $physical['missing_durable_indexes'] ) : array(),
-			),
-			'ready' => ! empty( $status['ready'] ) && ! empty( $physical['ready'] ),
-		);
+		return MAD4B_SCP_Schema_Status_Projection::status();
 	}
 
 	public function diagnostics_health() {

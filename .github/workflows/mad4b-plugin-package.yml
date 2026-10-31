@@ -40,6 +40,9 @@ jobs:
           php "$root/tests/dependency-mcp-adapter-integrity-runtime.php"
           python3 "$root/tests/dependency-certified-runtime-contract.py"
 
+      - name: Validate WooCommerce exact-package registration and non-authorizing Lab evidence
+        run: python3 wp-content/plugins/mad4b-site-control-plane/tests/woocommerce-exact-package-onboarding-contract.py
+
       - name: Verify optional security operational providers
         shell: bash
         run: |

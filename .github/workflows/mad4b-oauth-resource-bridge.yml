@@ -59,6 +59,8 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-oauth-outbound-budget-guard.php"
           php -l "$root/includes/class-mad4b-scp-oauth-subject-gate.php"
           php -l "$root/includes/class-mad4b-scp-oauth-challenge-alignment.php"
+          php -l "$root/tests/oauth-mcp-challenge-minimum-scope-runtime.php"
+          php "$root/tests/oauth-mcp-challenge-minimum-scope-runtime.php"
           php -l "$root/includes/class-mad4b-scp-governed-ability-overrides.php"
           php -l "$root/includes/class-mad4b-scp-mcp-client-compatibility.php"
           php -l "$root/includes/class-mad4b-scp-plugin.php"
