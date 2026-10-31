@@ -46,4 +46,29 @@ foreach(array(
     $src=file_get_contents($root.$file);
     check_native(str_contains($src,$needle),'native owner wired '.$file);
 }
-echo "PASS global runtime 21 native lane cases and 5 owner integration anchors\n";
+// Simulated owner-state transitions: no model-synthesized provider receipt.
+$states=array();
+foreach(array('queued','leased','completed','reconciliation_required') as $status) {
+    $states[$status]=$cls::observe_native_lane('scheduler_backlog',array('effective_status'=>$status))['state'];
+}
+check_native($states['queued']==='QUEUED','queued is routine');
+check_native($states['leased']==='RUNNING','native claim progresses without manual classification');
+check_native($states['completed']==='WAITING_VERIFICATION','queue terminal does not imply provider verification');
+check_native($states['reconciliation_required']==='NEEDS_RECONCILIATION','expired lease freezes blind replay');
+$graph=array(
+ array('id'=>'queue','kind'=>'read','depends_on'=>array(),'ability_registered'=>true),
+ array('id'=>'native_execute','kind'=>'write','depends_on'=>array('queue'),'ability_registered'=>true),
+ array('id'=>'readback','kind'=>'verify','depends_on'=>array('native_execute'),'ability_registered'=>true),
+);
+$base=array('status'=>'verified','native_source_confirmed'=>true,'readback_confirmed'=>true,
+ 'exact_target_bound'=>true,'receipt_digest'=>str_repeat('b',64));
+$unconfirmed=$cls::evaluate($graph,array('queue'=>$base,
+ 'native_execute'=>array('status'=>'queued','native_source_confirmed'=>true)));
+check_native($unconfirmed['steps'][1]['state']==='QUEUED' && $unconfirmed['steps'][2]['state']==='WAITING_DEPENDENCY',
+ 'provider queue observation cannot falsely complete dependent verification');
+$unconfirmed=$cls::evaluate($graph,array('queue'=>$base,'native_execute'=>$base));
+check_native($unconfirmed['steps'][2]['state']==='READY' && $unconfirmed['state']!=='VERIFIED',
+ 'native mutation receipt advances verifier but does not complete workflow');
+$confirmed=$cls::evaluate($graph,array('queue'=>$base,'native_execute'=>$base,'readback'=>$base));
+check_native($confirmed['state']==='VERIFIED','only independently source-bound readback finishes workflow');
+echo "PASS global runtime 21 native lane cases, 5 owner anchors, 7 progression checks\n";
