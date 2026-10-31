@@ -13208,6 +13208,24 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-stage-admission.php"
       ],
       "review_rationale": "Bootstrap loads company governance and runtime in ordered sequence without restricting component availability to a hard-coded site or granting cross-tenant execution."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "88929bade65fbacb4916336ca66a4ba607e53f53",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "QA31 repository source/security reviewer — CI only; no WordPress Production or site-owner authorization",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-early-boundary-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/rc104-merged-release-regression.py"
+      ],
+      "review_rationale": "Restore private Tour Orders and Bookings boundary before passive WP-CLI and REST fastpaths. Source contract verifies exact early inclusion and privacy guard invariants; the rc104 successor runs preserved approval/permission denial and matching version assertions. Does not authorize deployment or mutation."
     }
   ],
   "code_change_rules": {
