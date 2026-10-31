@@ -20,7 +20,9 @@ for($i=1;$i<=4;$i++){
  yes($p['state']===[1=>'LEGACY_ONLY',2=>'CANONICAL_ONLY',3=>'DUAL_REGISTRATION',4=>'NONE_REGISTERED'][$i],'exact_state_for_site_'.$i);
  yes($p['authorizing']===false && $p['write_performed']===false,'non-authorizing');
  yes($p['wpml_hidden_languages_preserved']===['ar'],'hidden');
- yes(in_array('unresolved_provider_dependencies',$p['blockers'],true),'adapter_block');
+ if($i===1||$i===4)yes(in_array('unresolved_provider_dependencies',$p['blockers'],true),'adapter_block_mutating');
+ if($i===2)yes(in_array('legacy_references_remain',$p['blockers'],true),'noop_references_must_be_closed');
+ if($i===3)yes(in_array('dual_taxonomy_identity_conflict',$p['blockers'],true),'dual_registration_must_review');
  yes($p['unsupported_reference_counts']['templates']===31,'references');
  $receipt=['plan_sha256'=>$p['plan_sha256'],'company_id'=>$site['company_id'],'site_uuid'=>$site['site_uuid'],'origin'=>$site['origin'],'inventory_revision'=>'snapshot-r1','database_mode'=>'connection_local_temporary_tables','forward_counts_verified'=>true,'rollback_hashes_verified'=>true,'persistent_writes'=>false];
  MAD4B_TaxonomyEvolutionGovernance::verifyShadow($p,$receipt);
