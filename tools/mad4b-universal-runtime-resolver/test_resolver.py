@@ -11,7 +11,13 @@ import resolver as r
 SITE=r.SITE
 SCOPE={"site_uuid":"49c562d1-8f2f-456f-b454-26816c6ba4cb",
        "canonical_origin":"https://staging.allroyalegypt.com",
-       "operations":["remote_exec:site_root","remote_file_transfer:verified_zip"]}
+       "operations":["remote_exec:site_root","remote_file_transfer:verified_zip"],
+       "transport_binding":"hosting-2:staging",
+       "identity_adapter":"central_scoped_v4",
+       "agent_adapter":"are_signed_v4",
+       "package":{"filename":"mad4b-are-staging-p256-v4.zip",
+                  "sha256":"db544322956f2b50b6560b1ebfa0a80a98bd31e147d96df691fc185582dff863"},
+       "workflow_operation":"signed_site_agent_install"}
 PROD="all-royal-egypt:production"
 INVENTORY={
     SITE:{"environment":"staging","site_uuid":SCOPE["site_uuid"],
