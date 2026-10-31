@@ -19,7 +19,7 @@ const context={
   ssh_authenticated:true,ssh_host_fingerprint_verified:true,
   host_id:'mad4b-vps',audit_journal_ready:true,rollback_planned:true,
   grant:{principal_id:'central-admin',authorization_ref:'scoped-grant-1',
-    environment:'staging',allow_mutations:true,allow_production_mutations:false,
+    environment:'staging',allow_mutations:true,allow_general_shell:true,allow_production_mutations:false,
     host_id:'mad4b-vps',site_uuid:uuid,origin}
 };
 const get=(r=request,c=context)=>routeDual(policy,r,c);
