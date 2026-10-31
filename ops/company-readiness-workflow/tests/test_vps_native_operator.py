@@ -63,4 +63,9 @@ plan=admission(b'UPDATE canary SET state=1',b'SELECT state FROM canary',
 assert plan['mutating'] is True and plan['environment']=='staging'
 assert plan['backup_sha256']==op.sha(b'database-backup-evidence')
 assert plan['rollback_sha256']==op.sha(b'UPDATE canary SET state=0')
-print('PASS 12: native general SSH, SQL inspection, no unsafe read bypass, staging backup/rollback and production deny')
+large_backup=b'MAD4B_STAGING_SCHEMA_BACKUP\\n'*12000
+big=admission(b'UPDATE canary SET state=1',b'SELECT state FROM canary',
+    kind='sql',intent='repair',backup=large_backup,
+    rollback=b'UPDATE canary SET state=0')
+assert big['backup_sha256']==op.sha(large_backup)
+print('PASS 13: native general SSH, SQL inspection, no unsafe read bypass, staging backup/rollback and production deny')
