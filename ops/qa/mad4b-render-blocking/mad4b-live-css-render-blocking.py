@@ -9,6 +9,9 @@ SITE_ID='e5e64bca-ed62-48d2-b2b3-dff693cd702a'
 PAGES=['/','/ar/','/fr/','/de/','/es/','/it/',
        '/destination/africa-containent/egypt/',
        '/tours-and-activities/',
+       '/ar/tours-and-activities/','/fr/tours-and-activities/',
+       '/de/tours-and-activities/','/es/tours-and-activities/',
+       '/it/tours-and-activities/',
        '/tours-and-activities/nile-cruise-luxor-to-aswan-5-days/',
        '/plan-a-trip/',
        '/tours-and-activities/best-of-egypt-cairo-luxor-nile-cruise-red-sea-12-days/',
@@ -281,7 +284,7 @@ def classify(pages,audit=None):
     for page in pages:
         path=urlsplit(page['url']).path
         cat=page.get('catalog_initial') or {}
-        if path in ('/tours-and-activities/','/ar/tours-and-activities/'):
+        if re.fullmatch(r'/(?:ar/|fr/|de/|es/|it/)?tours-and-activities/',path):
             if not cat.get('style_present') or not cat.get('present') or cat.get('layout_direction')!='row':
                 issues.append({'code':'perf_catalog_initial_layout','severity':'high',
                     'label':'Initial Tour catalog List View lacks native Elementor CSS/Flex direction; preserve original template dimensions without user layout toggles.'})
