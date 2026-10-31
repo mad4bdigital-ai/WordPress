@@ -33,7 +33,9 @@
         "environment": "staging",
         "origin": "https://staging.allroyalegypt.com",
         "site_uuid": "49c562d1-8f2f-456f-b454-26816c6ba4cb",
-        "authority_contract": "mad4b.unified-full-authority.v1"
+        "authority_contract": "mad4b.unified-full-authority.v1",
+        "reader": "enrolled_site_wpcli_status_v1",
+        "native_owner": "MAD4B_SCP_Full_Staging_Authority"
       }
     }
   },
@@ -47,15 +49,16 @@
     "data",
     "workflow",
     "reviews",
-    "runtime",
-    "full_authority"
+    "runtime"
   ],
   "live_adapters": [
-    "transport",
-    "identity",
+    "admin_shell",
     "agent",
+    "authority",
+    "full_authority_status",
+    "identity",
     "package",
-    "workflow",
-    "authority"
+    "transport",
+    "workflow"
   ]
 }
