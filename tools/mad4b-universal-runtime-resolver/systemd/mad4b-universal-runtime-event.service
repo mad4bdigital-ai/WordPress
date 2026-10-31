@@ -1,0 +1,17 @@
+[Unit]
+Description=MAD4B Universal Runtime Resolver queued event convergence
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+WorkingDirectory=/opt/mad4b-company-transport/universal-runtime-v1
+ExecStart=/usr/bin/python3 /opt/mad4b-company-transport/universal-runtime-v1/resolver.py consume
+TimeoutStartSec=180
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/mad4b-company-transport
+PrivateTmp=true
