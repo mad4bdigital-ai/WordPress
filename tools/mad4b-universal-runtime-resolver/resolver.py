@@ -23,8 +23,9 @@ INBOX=HOME/"inbox"
 CONTRACT="mad4b.universal-runtime-reconciler.v1"
 EVENTS={"intake","optin","handoff","provider_change","package_registered",
         "site_identity","permission_change","workflow_failed","manual","scheduled","dispatch"}
-DOMAINS=("transport","identity","authority","agent","package","workflow")
+DOMAINS=("transport","identity","authority","full_authority","agent","package","workflow")
 DEPENDS={"transport":(),"identity":("transport",),"authority":("transport",),
+         "full_authority":("identity",),
          "agent":("transport","identity"),"package":("authority",),
          "workflow":("agent",)}
 TRANSIENT={"timeout","unavailable","connection","busy","temporary","network"}
@@ -131,6 +132,57 @@ def inspect_authority(target,scope):
        "global_shell_granted":False,"unrestricted_sql_granted":False,
        "p256_grants_write":False})
 
+def inspect_full_authority(target,scope):
+    """Read the original Unified Full Authority native plan, never grant/apply.
+
+    The GitHub feature is not an enrolled live provider until its matching
+    WordPress installation and environment owner have been verified.
+    """
+    provider=scope.get("full_authority_provider")
+    if not isinstance(provider,dict) or provider.get("mode")!="native_wpcli":
+        return result("awaiting_provider","unified_full_authority",
+                      "native_full_authority_provider_not_enrolled")
+    if target!=SITE or provider.get("environment")!="staging" or \
+       provider.get("origin")!=scope.get("canonical_origin"):
+        return result("awaiting_provider","unified_full_authority",
+                      "native_environment_owner_binding_missing")
+    # A provider-backed read; never interpret a P-256 or SSH proof as Full
+    # Authority, and never use --user to impersonate its canonical principal.
+    rc,_,_=command(["docker","exec","-u","www-data","etg-commerce-staging-php",
+          "wp","plugin","is-active","mad4b-unified-full-authority",
+          "--path=/var/www/html","--skip-themes"],timeout=20)
+    if rc!=0:
+        return result("awaiting_provider","unified_full_authority",
+                      "unified_full_authority_plugin_not_installed_or_active")
+    rc,out,_=command(["docker","exec","-u","www-data","etg-commerce-staging-php",
+          "wp","mad4b","full-authority-unified",
+          "--path=/var/www/html","--skip-themes"],timeout=40)
+    if rc!=0:
+        return result("blocked_authority","unified_full_authority",
+                      "native_plan_or_actor_unavailable",{"native_plan_exit":rc})
+    try: data=json.loads(out)
+    except ValueError:
+        return result("review_required","unified_full_authority",
+                      "invalid_native_plan_readback")
+    if data.get("contract")!="mad4b.unified-full-authority.v1" or \
+        data.get("site_uuid")!=scope["site_uuid"] or \
+        data.get("environment")!="staging":
+        return result("review_required","unified_full_authority",
+                      "native_full_authority_scope_mismatch")
+    if data.get("ready_to_apply") is True and \
+       data.get("mutation_performed") is False:
+        return result("verified","unified_full_authority",
+                      "native_full_authority_planned_ready",
+                      {"plan_sha256":data.get("plan_sha256"),
+                       "native_owner":data.get("native_owner"),
+                       "environment":data["environment"],
+                       "apply_executed":False})
+    return result("blocked_authority","unified_full_authority",
+                  "native_full_authority_not_ready",
+                  {"native_owner":data.get("native_owner"),
+                   "blockers":data.get("blockers",[]),
+                   "apply_executed":False})
+
 def inspect_agent(target,scope):
     # A source-specific adapter is not generalized by merely copying its name.
     if scope.get("agent_adapter")!="are_signed_v4" or target!=SITE:
@@ -201,7 +253,7 @@ def inspect_workflow(target,scope):
                   {"pending_authority_count":d.get("pending_authority_count")})
 
 ADAPTERS={"transport":inspect_transport,"identity":inspect_identity,
-          "authority":inspect_authority,
+          "authority":inspect_authority,"full_authority":inspect_full_authority,
           "agent":inspect_agent,"package":inspect_package,"workflow":inspect_workflow}
 def enqueue(con,target,trigger,source,idem):
     if trigger not in EVENTS or not re.fullmatch(r"[a-z0-9_.:-]{3,100}",source):
@@ -241,7 +293,7 @@ def reconcile(con,event_id,p):
     target=event["target"]
     inv=inventory()[target]
     assigned=p.get("scopes",{}).get(target)
-    if inv["environment"]=="production" or not isinstance(assigned,dict):
+    if not isinstance(assigned,dict):
         out={d:result("awaiting_provider","resolver","target_scope_not_configured") for d in DOMAINS}
         scope={}
     else:
