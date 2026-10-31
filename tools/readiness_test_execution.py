@@ -25,10 +25,30 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/remote-execution/chatgpt-optional-catalog-smoke.php",
     "tests/remote-execution/developer-preparation-bridge-smoke.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/mcp-catalog-adaptive-budget.php",
+    # These exact source-reviewed QA31 fixtures passed isolated, no-network,
+    # read-only filesystem PHP 8.3/8.5 execution. Their assertions must
+    # return zero and a genuine PASS marker; arbitrary PHP remains denied.
+    "wp-content/plugins/mad4b-site-control-plane/tests/brand-append-retry-budget-qa18.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/event-automation-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/isolated-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/preactivation-team-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-route-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/enrollment-dispatch-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/historical-owner-attestation-transport-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/historical-staging-mcp-read-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-rest-routing-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w2a-readonly-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-live-write-diagnostic-runtime.php",
     # QA31 exact hermetic PHP fixtures; arbitrary PHP execution remains blocked.
     "wp-content/plugins/mad4b-site-control-plane/tests/live-write-provider-snapshot-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/native-plugin-management-menu-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php",
+    # QA31 executable standalone negative admission fixture, already run by peer CI.
+    "wp-content/plugins/mad4b-site-control-plane/tests/qa31-company-stage-admission.php",
     # Exact, hermetic PHP scripts; never promote arbitrary runtime PHP to CLI.
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-domain-executors-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-native-owner-receipts-runtime.php",
@@ -38,6 +58,14 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-worker-guard-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-crossenv-scope-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-credential-expiry-hermetic.php",
+    # Exact GitHub CI-reviewed standalone policy contracts, each with explicit
+    # failure assertions and a positive PASS marker; no WordPress bootstrap.
+    "wp-content/plugins/mad4b-site-control-plane/tests/authority-auto-reconciliation-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/authority-reviews-bridge-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/unified-execution-authority-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/global-runtime-lifecycle-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/provider-auto-qualification-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/provider-installed-artifact-contract.php",
     # Exact signed-market and source-bootstrap fixtures execute without WordPress.
     # Review-bound paths only; unlisted PHP still requires PHPUnit.
     "tests/switchers/test-market-compatibility.php",
@@ -75,6 +103,14 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-source-repair-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/unified-approval-ai-first/local-rest-fastpath-contract.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/public-holiday-hermetic-runtime.php",
+    # New exact hermetic delegated-WordPress and independent-NHI policy fixtures.
+    # No database, secrets, network or live WordPress; checks fail explicitly.
+    # Separate reviewed staged-only user-owned content actor regression.
+    "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegated-content-actor-hermetic.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegated-oauth-map-hermetic.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/native-delegated-content-draft-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegation-mode-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegation-connection-policy-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/application-password-agent-bridge-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-media-evidence-runtime.php",
@@ -105,6 +141,10 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-isolated-php-contract.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/self-update-selected-head-release-trust-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/staging-source-selector-runtime.php",
+    # Company-specific remote queue fixture is hermetic: it uses a FakeDB,
+    # exits nonzero on any failed checkpoint/readback assertion, and emits PASS.
+    # This exact file is reviewed for CLI regression only, not tenant execution.
+    "wp-content/plugins/mad4b-site-control-plane/tests/remote-work-queue-cancellation-runtime.php",
     "tests/remote-execution/unified-operator-session-policy-smoke.php",
 ))
 
@@ -221,6 +261,17 @@ def self_test():
         "wp-content/plugins/mad4b-site-control-plane/tests/self-update-selected-head-release-trust-runtime.php",
     ):
         assert command_for(path) == ["php", str((ROOT / path).resolve())]
+    # Explicitly reviewed 2026-10-31 CI contracts, no blanket PHP admission.
+    for case in (
+        "authority-auto-reconciliation-contract.php",
+        "authority-reviews-bridge-contract.php",
+        "unified-execution-authority-contract.php",
+        "global-runtime-lifecycle-contract.php",
+        "provider-auto-qualification-contract.php",
+        "provider-installed-artifact-contract.php",
+    ):
+        exact = "wp-content/plugins/mad4b-site-control-plane/tests/" + case
+        assert command_for(exact) == ["php", str((ROOT / exact).resolve())]
     # No wildcard admission: unknown PHP still requires a trusted PHPUnit runner.
     try:
         command_for("wp-content/plugins/mad4b-site-control-plane/tests/private-operations-foreign-smoke.php")
