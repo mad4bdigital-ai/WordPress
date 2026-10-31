@@ -6,10 +6,14 @@ The issuer is the central Staging server recorded in `config/central-staging-sou
 
 ## Central issuer
 
-The central Staging VPS must have a release-journal directory **outside** WordPress webroots. Provision these host-owned WordPress config constants through a trusted host deployment process:
+The central Staging VPS uses the existing protected, **read-only** container mount:
 
-- `MAD4B_CENTRAL_RELEASE_READBACK_DIR` — absolute read-only path to server-produced signed release JSON files, with `<artifact-sha256>.json` names.
-- `MAD4B_CENTRAL_RELEASE_PUBLIC_KEY_PEM` — **public** PEM of the central release-journal signing key. Keep the corresponding private key outside WordPress and accessible only to the host executor.
+- WordPress reader: `/run/mad4b-native-abilities/central-release-readbacks`
+- Host-owned journal directory: `/opt/hostinger-migrations/hosting-3/etg-commerce-staging/runtime/native-ability-authority/central-release-readbacks`
+- Private signing key: `/opt/hostinger-migrations/hosting-3/etg-commerce-staging/runtime/credentials/central-release-issuer-private.pem` (root-owned 0600, outside WordPress)
+- Pinned public verification key delivered to every company from `config/central-release-issuer-public.pem`
+
+The host directory and signing key have been provisioned and cryptographically self-tested on Staging; **the journal is empty** until authentic release-install/smoke/rollback receipts are available. No site-local `wp-config.php` constants are required for this current architecture.
 
 The WordPress GET route `/wp-json/mad4b/v1/central-release/<sha256>` runs **only** on the site whose actual URL matches the config origin, whose real WordPress environment is Staging, and whose Site Profile origin is enrolled. It only **reads** the protected journal. It cannot create a test record or sign an assertion.
 
@@ -57,7 +61,7 @@ The numeric timestamp above is a *schema illustration*, not a valid release or t
 
 ## Company verification
 
-Companies must provision only the **public** issuer key, not the private key. The trusted fetcher:
+Companies receive only the **public** issuer key inside the reviewed site-neutral plugin build, never the private key. The trusted fetcher:
 - accepts only the release SHA-256 from the caller; its URL comes from the repository configuration;
 - uses WordPress safe HTTPS with redirects disabled and bounded responses;
 - verifies the central origin, exact artifact hash, source commit, fresh test timestamp, successful test flags and RSA-SHA256 signature;
