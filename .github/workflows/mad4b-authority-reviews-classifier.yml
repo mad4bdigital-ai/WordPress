@@ -1,0 +1,24 @@
+name: MAD4B Authority Reviews Classifier
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-authority-reviews-classifier/**'
+      - '.github/workflows/mad4b-authority-reviews-classifier.yml'
+  push:
+    paths:
+      - 'wp-content/plugins/mad4b-authority-reviews-classifier/**'
+      - '.github/workflows/mad4b-authority-reviews-classifier.yml'
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: Lint and read-only policy classification checks
+        run: |
+          ROOT=wp-content/plugins/mad4b-authority-reviews-classifier
+          php -l "$ROOT/mad4b-authority-reviews-classifier.php"
+          php -l "$ROOT/tests/classifier-contract.php"
+          php "$ROOT/tests/classifier-contract.php"
