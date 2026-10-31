@@ -29,8 +29,10 @@ jobs:
           php -l ops/taxonomy-evolution/wpcli-native-census.php
           php -l ops/taxonomy-evolution/wpcli-reference-shapes.php
           php -l ops/taxonomy-evolution/TaxonomyEvolutionGovernance.php
+          php -l ops/taxonomy-evolution/TaxonomyEvolutionNativeEvidence.php
           php ops/taxonomy-evolution/tests/classifier-test.php
           php ops/taxonomy-evolution/tests/readiness-regression.php
+          php ops/taxonomy-evolution/tests/native-evidence-denial.php
       - name: Validate site-neutral governance and fail-closed shadow contract
         run: |
           python3 - <<'PY'
