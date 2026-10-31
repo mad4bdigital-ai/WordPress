@@ -1559,6 +1559,16 @@ final class MAD4B_SCP_Site_Profile {
 			'foreign_profile_detected' => $foreign_profile_detected,
 			'profile_authority_quarantined' => ! $authority_ready,
 			'reenrollment_required' => $reenrollment_required,
+            'provider_isolation_policy' => 'default_on_explicit_opt_out_only',
+            'provider_isolation_explicit_opt_out' => $configured
+                && true === ( $profile['provider_isolation_explicit_opt_out'] ?? false )
+                && empty( $profile['features']['provider_isolation'] ),
+            'provider_isolation_effective' => $authority_ready
+                && ! ( true === ( $profile['provider_isolation_explicit_opt_out'] ?? false )
+                    && empty( $profile['features']['provider_isolation'] ) ),
+            'provider_isolation_legacy_default_pending_persist' => $configured
+                && empty( $profile['features']['provider_isolation'] )
+                && true !== ( $profile['provider_isolation_explicit_opt_out'] ?? false ),
 			'write_enabled' => $authority_ready && self::record_feature_enabled( $profile, 'write', $environment ),
 			'oauth_enabled' => $authority_ready && self::record_feature_enabled( $profile, 'oauth', $environment ),
 			'skills_enabled' => $authority_ready && self::record_feature_enabled( $profile, 'skills', $environment ),
