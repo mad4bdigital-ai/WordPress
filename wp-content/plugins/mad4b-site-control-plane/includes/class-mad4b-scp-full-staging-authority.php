@@ -189,18 +189,34 @@ final class MAD4B_SCP_Full_Staging_Authority {
 		);
 	}
 
+	/**
+	 * On-host WP-CLI is a separate native operator transport, not a forged
+	 * OAuth bearer. Its actual WordPress user still must be an enrolled
+	 * administrator on the exact Staging profile, and all apply gates remain.
+	 */
+	private static function trusted_local_wp_cli() {
+		return defined( 'WP_CLI' ) && true === WP_CLI && 'cli' === PHP_SAPI
+			&& ! isset( $_SERVER['REQUEST_METHOD'] ) && ! isset( $_SERVER['HTTP_AUTHORIZATION'] )
+			&& current_user_can( 'manage_options' ) && current_user_can( 'activate_plugins' )
+			&& class_exists( 'MAD4B_SCP_Site_Profile' )
+			&& MAD4B_SCP_Site_Profile::configured()
+			&& MAD4B_SCP_Site_Profile::user_is_enrolled( get_current_user_id() );
+	}
+
 	public static function can_access( $input = null ) {
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_full_authority_admin_required', 'Administrator capability is required.' );
-		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return new WP_Error( 'mad4b_full_authority_bearer_required', 'Verified OAuth bearer identity is required.' );
+		if ( ! self::trusted_local_wp_cli() && ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) ) return new WP_Error( 'mad4b_full_authority_bearer_required', 'Verified OAuth bearer or enrolled trusted local WP-CLI administrator is required.' );
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured() ) return new WP_Error( 'mad4b_full_authority_profile_required', 'An enrolled Site Profile is required.' );
 		if ( 'staging' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ) ) return new WP_Error( 'mad4b_full_authority_staging_only', 'Full authority convergence is Staging-only.' );
 		if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return new WP_Error( 'mad4b_full_authority_profile_not_exact', 'Current origin and URLs must exactly match the enrolled Staging Site Profile.' );
 		$user_id = get_current_user_id();
 		if ( $user_id < 1 || ! MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id ) ) return new WP_Error( 'mad4b_full_authority_subject_not_enrolled', 'The authenticated administrator is not enrolled in this Site Profile.' );
+		if ( ! self::trusted_local_wp_cli() ) {
 		$identity = class_exists( 'MAD4B_SCP_Identity_Context' ) ? MAD4B_SCP_Identity_Context::current() : new WP_Error( 'mad4b_full_authority_identity_unavailable', 'Governance identity is unavailable.' );
 		if ( is_wp_error( $identity ) ) return $identity;
 		if ( empty( $identity['authenticated'] ) || 'oauth' !== ( isset( $identity['subject_type'] ) ? (string) $identity['subject_type'] : '' ) || 'oauth2_bearer' !== ( isset( $identity['auth_method'] ) ? (string) $identity['auth_method'] : '' ) ) {
 			return new WP_Error( 'mad4b_full_authority_normal_oauth_required', 'Full authority convergence must originate from the enrolled normal OAuth identity.' );
+		}
 		}
 		if ( self::generic_raw_sql_breakglass_gate_enabled() || ( class_exists( 'MAD4B_SCP_Policy' ) && MAD4B_SCP_Policy::can_breakglass() ) ) {
 			return new WP_Error( 'mad4b_full_authority_raw_sql_breakglass_denied', 'Generic raw-SQL Breakglass must remain disabled during Full Staging Authority convergence.' );
@@ -211,6 +227,8 @@ final class MAD4B_SCP_Full_Staging_Authority {
 	public static function can_apply( $input = null ) {
 		$access = self::can_access( $input );
 		if ( is_wp_error( $access ) || ! $access ) return $access;
+		// Exact plan, confirmation, current grants and audit are still enforced by apply().
+		if ( self::trusted_local_wp_cli() ) return true;
 		if ( ! defined( 'MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE' )
 			|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE ) ) {
 			return new WP_Error(
