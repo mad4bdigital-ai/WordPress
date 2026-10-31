@@ -63,13 +63,23 @@ $plan=$cls::plan($input);
 check(is_array($plan) && $plan['operation']==='install' && $plan['resolved_sha']===$sha,
     'new plugin install planning missing');
 check(!$plan['eligible'] && empty($plan['native_executor'])
-    && in_array('exact_zip_artifact_not_certified',$plan['blockers'],true)
-    && in_array('source_review_promotion_required',$plan['blockers'],true),
-    'uncertified or unreviewed source offered as executable package');
-check(in_array('native_package_planner_unavailable', $plan['blockers'], true),
-    'Missing native Staging package planner must be a hard blocker' );
+    && $plan['package_certification_required']===false
+    && $plan['source_trust_mode']==='owner_registered_immutable_git_commit'
+    && !in_array('exact_zip_artifact_not_certified',$plan['blockers'],true)
+    && !in_array('source_review_promotion_required',$plan['blockers'],true),
+    'Owner-registered private Git source must not require a package certificate');
+check(in_array('managed_private_source_installer_not_registered', $plan['blockers'], true),
+    'Missing private-source native installer must remain an explicit blocker');
 check(!$plan['mutation_performed'] && !$plan['wpcron_auto_execute'],
     'read-only planning claimed execution');
+$branch_input=$input;
+$branch_input['ref_type']='branch';
+$branch_input['reference']='main';
+$GLOBALS['remote_result']=array('commit'=>array('sha'=>$sha));
+$branch_plan=$cls::plan($branch_input);
+check(!$branch_plan['eligible'] && in_array('immutable_private_source_commit_required',$branch_plan['blockers'],true),
+    'mutable branch must not qualify as an owner-managed private deployment source');
+$GLOBALS['remote_result']=array('sha'=>$sha);
 $neutral=array('source_id'=>'dynamic-filter-seo-bridge',
     'ref_type'=>'commit','reference'=>$sha);
 $neutral_plan=$cls::plan($neutral);
@@ -77,10 +87,10 @@ check(is_array($neutral_plan) && $neutral_plan['operation']==='install'
     && $neutral_plan['plugin_file']==='dynamic-filter-seo-bridge/dynamic-filter-seo-bridge.php',
     'neutral source should be independently selectable');
 check(!$neutral_plan['eligible'] && empty($neutral_plan['native_executor'])
-    && in_array('source_review_promotion_required',$neutral_plan['blockers'],true)
-    && in_array('exact_source_commit_not_certified',$neutral_plan['blockers'],true)
-    && in_array('exact_zip_artifact_not_certified',$neutral_plan['blockers'],true),
-    'neutral source bypassed exact artifact/reviewer gate');
+    && $neutral_plan['package_certification_required']===false
+    && in_array('managed_private_source_installer_not_registered',$neutral_plan['blockers'],true)
+    && !in_array('exact_zip_artifact_not_certified',$neutral_plan['blockers'],true),
+    'registered MAD4B private source must use native installer rather than certificate');
 check(!$neutral_plan['mutation_performed'] && !$neutral_plan['wpcron_auto_execute'],
     'neutral plan requested automatic mutation');
 // Exact commit planning intentionally verifies the pinned commit via safe GitHub read.
@@ -92,7 +102,7 @@ check(!$env_mismatch['eligible'] && empty($env_mismatch['native_executor'])
     'MCP planning trusted a Staging profile while WordPress reported Production');
 $GLOBALS['environment']='production';
 $prod=$cls::plan($input);
-check(!$prod['eligible'] && in_array('production_package_executor_not_yet_certified',$prod['blockers'],true)
+check(!$prod['eligible'] && in_array('production_private_source_executor_not_registered',$prod['blockers'],true)
     && in_array('independent_production_promotion_attestation_required',$prod['blockers'],true),
     'Production applied Staging permissions');
 $GLOBALS['environment']='staging';
