@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Lifecycle Orchestrator
  * Description: Central staging-only event and manual runtime coordination; never grants provider write permissions.
- * Version: 0.2.1-staging
+ * Version: 0.3.0-unified-policy-staging
  * Author: MAD4B
  */
 defined('ABSPATH') || exit;
@@ -12,9 +12,15 @@ final class MAD4B_Lifecycle_Orchestrator {
     const CRON='mad4b_lifecycle_reconcile_event_v1';
     const PREFIX='mad4b_lifecycle_event_v1_';
     const GOALS=['seo','media','content','company'];
-    const STATES=['READY','RECOVERING','PARTIAL','BLOCKED_AUTHORITY','VERIFIED'];
+    const STATES=['READY','RUNNING','RECOVERING','PARTIAL','BLOCKED_AUTHORITY','BLOCKED_DEPENDENCY','NEEDS_RECONCILIATION','VERIFIED'];
     const MAX_EVENT_BYTES=6500;
 
+    public static function policy($input=[]) {
+        if(!self::can_read())return self::err('read_denied');
+        $resolved=self::resolve($input);
+        if(is_wp_error($resolved))return $resolved;
+        return MAD4B_Unified_Governed_Lifecycle_Policy::plan($resolved);
+    }
     public static function scoped() {
         return wp_get_environment_type()==='staging'
             && untrailingslashit(home_url('/'))==='https://tours.dev.mad4b.com'
@@ -201,6 +207,15 @@ final class MAD4B_Lifecycle_Orchestrator {
             $context['recovery_route']='read_only_governed_provider_recertification';
         }
         $context['resolution_sha256']=self::hash($context);
+        $graph=MAD4B_Unified_Governed_Lifecycle_Policy::plan($context);
+        if(!is_wp_error($graph)){
+            $context['workflow_state']=$graph['state'];
+            $context['independent_ready_steps']=$graph['ready_independent_steps'];
+            $context['pending_steps']=$graph['pending_steps'];
+            $context['dependency_graph']=$graph;
+            // Preserve the legacy state for old clients while independent
+            // read tasks proceed under an isolated write-authority blocker.
+        }
         return $context;
     }
     public static function record($input=[],$internal=false,$source_receipt=null) {
@@ -318,13 +333,18 @@ final class MAD4B_Lifecycle_Orchestrator {
         $resolved=self::resolve($row['event'],true);
         if(is_wp_error($resolved)){
             $code=$resolved->get_error_code();
-            $authority=(bool)preg_match('/(authority|permission|scope|brand|denied|certif)/i',$code);
-            $row['state']=$authority?'BLOCKED_AUTHORITY':'RECOVERING';
+            $classification=MAD4B_Unified_Governed_Lifecycle_Policy::classify_error($resolved);
+            $row['state']=$classification['state'];
             $row['last_error']=$code;
-            // Delay is bounded; no mutation is replayed.
-            $row['retry_after']=time()+min(3600,30*(2**min(5,$row['attempts'])));
+            $row['recovery_action']=$classification['action'];
+            $row['retry_after']=in_array($row['state'],['RECOVERING','BLOCKED_DEPENDENCY'],true)
+                ?time()+min(3600,30*(2**min(5,$row['attempts']))):0;
         }else{
-            $row['resolution']=$resolved;
+            // Persist only bounded status and hashes. The full dependency graph
+            // is computed on demand, never duplicated into each event journal.
+            $compact=$resolved;
+            unset($compact['dependency_graph']);
+            $row['resolution']=$compact;
             $row['state']=$resolved['state'];
             $row['last_error']='';
             $row['retry_after']=0;
@@ -367,7 +387,12 @@ final class MAD4B_Lifecycle_Orchestrator {
             'representation_mode'=>$row['event']['representation_mode']??'',
             'administrator_actor_user_id'=>$row['event']['actor_user_id']??0,
             'attempts'=>$row['attempts'],'retry_after'=>$row['retry_after'],
-            'last_error'=>$row['last_error'],'resolution'=>$row['resolution'],
+            'last_error'=>$row['last_error'],
+            'recovery_action'=>$row['recovery_action']??'',
+            'workflow_state'=>$row['resolution']['workflow_state']??$row['state'],
+            'independent_ready_steps'=>$row['resolution']['independent_ready_steps']??[],
+            'pending_steps'=>$row['resolution']['pending_steps']??[],
+            'resolution'=>$row['resolution'],
             'verification_scope'=>$row['verification_scope']??'',
             'verification'=>$row['verification']??null,
             'provider_mutation_performed'=>false,
@@ -505,7 +530,8 @@ final class MAD4B_Lifecycle_Orchestrator {
     public static function routes() {
         $base='mad4b/lifecycle/v1';
         foreach(['resolve'=>['resolve','GET'],'record'=>['record','POST'],
-            'status'=>['status','GET'],'reconcile'=>['manual_reconcile','POST']] as $route=>$def){
+            'status'=>['status','GET'],'reconcile'=>['manual_reconcile','POST'],
+            'policy'=>['policy','GET']] as $route=>$def){
             register_rest_route($base,'/'.$route,[
                 'methods'=>$def[1],
                 'permission_callback'=>[__CLASS__,in_array($route,['record','reconcile'],true)?'can_write':'can_read'],
@@ -520,7 +546,8 @@ final class MAD4B_Lifecycle_Orchestrator {
         foreach(['mad4b/lifecycle-resolve'=>['resolve',true],
             'mad4b/lifecycle-record'=>['record',false],
             'mad4b/lifecycle-status'=>['status',true],
-            'mad4b/lifecycle-reconcile'=>['manual_reconcile',false]] as $name=>$def){
+            'mad4b/lifecycle-reconcile'=>['manual_reconcile',false],
+            'mad4b/lifecycle-policy-plan'=>['policy',true]] as $name=>$def){
             if(function_exists('wp_has_ability')&&wp_has_ability($name))continue;
             wp_register_ability($name,[
                 'label'=>$name,'description'=>'Central non-authorizing Staging runtime orchestration.',
@@ -545,6 +572,8 @@ final class MAD4B_Lifecycle_Orchestrator {
         if(!self::scoped())return;
         add_action('wp_abilities_api_init',[__CLASS__,'abilities'],98);
         add_action('rest_api_init',[__CLASS__,'routes'],98);
+        add_action('admin_menu',
+            ['MAD4B_Unified_Governed_Lifecycle_Policy','admin_menu'],98);
         add_action(self::CRON,[__CLASS__,'cron'],10,1);
         add_action('save_post',[__CLASS__,'trigger_post'],35,3);
         add_action('edited_term',[__CLASS__,'trigger_term'],35,3);
@@ -560,4 +589,5 @@ final class MAD4B_Lifecycle_Orchestrator {
             [__CLASS__,'provider_readiness_changed'],35,1);
     }
 }
+require_once __DIR__ . '/class-mad4b-unified-governed-lifecycle-policy.php';
 add_action('plugins_loaded',['MAD4B_Lifecycle_Orchestrator','boot'],120);
