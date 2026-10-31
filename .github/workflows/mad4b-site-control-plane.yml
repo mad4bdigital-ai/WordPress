@@ -210,6 +210,13 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/tests/company-policy-denial-qa31-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/company-policy-denial-qa31-runtime.php
 
+      - name: Verify QA31 open PR inventory deny-first contract
+        if: github.event_name == 'pull_request' && github.event.pull_request.number == 658
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/test_qa31_open_pr_coverage.py
+
       - name: Inventory open pull requests and test overlap for QA31
         if: github.event_name == 'pull_request' && github.event.pull_request.number == 658
         shell: bash
