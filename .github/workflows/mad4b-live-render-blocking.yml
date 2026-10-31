@@ -74,7 +74,7 @@ jobs:
           node --check wp-content/mu-plugins/listing-option-selection-assets/options.js
           node --check wp-content/mu-plugins/assets/accessibility-swiper.js
           node --check wp-content/mu-plugins/assets/accessibility-listing.js
-          node -e "const fs=require('fs');const s=fs.readFileSync('wp-content/mu-plugins/assets/accessibility-swiper.js','utf8');if(!s.includes('IntersectionObserver')||!s.includes("slide.classList.contains('swiper-slide-active')")||/getBoundingClientRect|offsetWidth|offsetHeight/.test(s))process.exit(1);"
+          node ops/qa/mad4b-render-blocking/tests/test_swiper_source.js
       - name: Offline classification contracts
         run: |
           python3 -m py_compile ops/qa/mad4b-render-blocking/mad4b-live-css-render-blocking.py
