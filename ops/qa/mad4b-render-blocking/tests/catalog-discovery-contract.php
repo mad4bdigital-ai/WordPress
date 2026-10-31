@@ -35,6 +35,10 @@ $assert(str_contains($source,'HTTP_COOKIE') && str_contains($source,'HTTP_AUTHOR
     str_contains($source,'woocommerce_currency') && str_contains($source,'woocommerce_default_customer_address') &&
     str_contains($source,'HTTP_CF_IPCOUNTRY') && str_contains($source,'X-MAD4B-Cache-Eligibility'),
     'anonymous microcache stays conditional on session, currency and geo safeguards');
+$assert(str_contains($source,"apply_filters('wpml_object_id'") &&
+    str_contains($source,"'elementor-element-82a8340'") &&
+    str_contains($source,"'elementor-element-7d5f640'"),
+    'CSS uses the WPML translated template and its real Elementor marker, not English-only source');
 $assert(str_contains($source,'get_post_modified_time') && str_contains($source,'->update()') &&
     str_contains($source,'mad4b_catalog_css_repair_'),
     'native Elementor CSS invalidation can self-heal without front-end layout click');

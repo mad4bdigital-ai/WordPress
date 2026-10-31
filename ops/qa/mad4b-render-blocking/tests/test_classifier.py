@@ -168,3 +168,39 @@ assert 'perf_ard_manifest' in codes and 'perf_chosen_crawlability' in codes
 home['ard_manifest_valid']=True;home['chosen_without_href']=0
 assert not any(i['code'] in ('perf_ard_manifest','perf_chosen_crawlability') for i in m.classify([home]))
 print('PASS: initial CSS, ARD endpoint and Chosen href are discoverable regressions')
+
+# Older translated Elementor topology is a distinct non-blocking alert; do not
+# report CSS missing if the actual locale-specific native style is present.
+fr=dict(catalog,url='https://tours.dev.mad4b.com/fr/tours-and-activities/',
+    catalog_initial={'present':True,'style_present':True,'layout_direction':'row',
+        'wpml_locale':'fr','template_id':35070,'structural_drift':True})
+issues={i['code'] for i in m.classify([fr])}
+assert 'perf_catalog_template_drift' in issues and 'perf_catalog_initial_layout' not in issues
+fr['catalog_initial']['structural_drift']=False
+assert 'perf_catalog_template_drift' not in {i['code'] for i in m.classify([fr])}
+print('PASS: genuine WPML structural drift is separated from first-render CSS availability')
+
+# The List and Grid intentionally use different authored layouts. Only first-paint
+# SVG and price-tag computed styles may regress. Price values are never rewritten.
+valid={'post_id':'60629','card':{'width':883,'height':527},
+       'arrow':{'width':18,'height':18},'clock':{'width':18,'height':18},
+       'favorite':{'width':23,'height':23},
+       'price':{'width':159,'height':20,'font_px':14},
+       'amount':{'font_px':14},'unit':{'font_px':10.5},
+       'widget':{'height':20},'price_source':'rate'}
+archive={'url':'https://tours.dev.mad4b.com/tours-and-activities/', 'css':[],
+         'uael_widgets':[], 'catalog_ui_cards':{'present':True,'samples':[valid]},
+         'catalog_initial':{'present':True,'style_present':True,'layout_direction':'row'}}
+assert 'perf_catalog_svg_price_first_paint' not in {i['code'] for i in m.classify([archive])}
+import copy
+broken=copy.deepcopy(archive)
+broken['catalog_ui_cards']['samples'][0]['arrow']['width']=128
+assert 'perf_catalog_svg_price_first_paint' in {i['code'] for i in m.classify([broken])}
+broken=copy.deepcopy(archive)
+broken['catalog_ui_cards']['samples'][0]['price']['font_px']=32
+broken['catalog_ui_cards']['samples'][0]['widget']['height']=160
+assert 'perf_catalog_svg_price_first_paint' in {i['code'] for i in m.classify([broken])}
+no_rate=copy.deepcopy(archive)
+no_rate['catalog_ui_cards']['samples'][0].pop('price')
+assert 'perf_catalog_svg_price_first_paint' not in {i['code'] for i in m.classify([no_rate])}
+print('PASS: first-paint SVG and rate-derived price size guards, legitimate no-rate state')

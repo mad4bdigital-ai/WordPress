@@ -18,12 +18,19 @@ final class MAD4B_Public_Catalog_First_Render_V1 {
         // Elementor's saved native, scoped CSS was missing on initial server HTML.
         // JetEngine adds it after switching layout, causing large shifts on first paint.
         $css='';
-        foreach([25102,33747] as $id){
+        $locale=defined('ICL_SITEPRESS_VERSION') ? (string)apply_filters('wpml_current_language',null) : 'en';
+        if(!in_array($locale,['en','ar','fr','de','es','it'],true))return;
+        foreach([25102,33747] as $base){
+            $id=defined('ICL_SITEPRESS_VERSION')?(int)apply_filters('wpml_object_id',$base,'jet-engine',false,$locale):$base;
+            if($id<1)return;
             $meta=get_post_meta($id,'_elementor_css',true);
             // A stale Elementor CSS snapshot can omit nested layout controls.
             // Regenerate only when a required control is missing, with a
             // 5-minute failure throttle. The update is source-derived.
-            $required=$id===25102?'elementor-element-82a8340':'elementor-element-7d5f640';
+            // Every translated List/Grid template now uses the source design's
+            // native Elementor element topology. Localized text/dynamic tags
+            // remain owned by their locale-specific post metadata.
+            $required=$base===25102?'elementor-element-82a8340':'elementor-element-7d5f640';
             $modified=(int)get_post_modified_time('U',true,$id);
             $snapshot=is_array($meta)?(int)($meta['time']??0):0;
             if(!is_array($meta)||!str_contains((string)($meta['css']??''),$required)||$modified>$snapshot){
@@ -49,7 +56,7 @@ final class MAD4B_Public_Catalog_First_Render_V1 {
         }
         if(strlen($css)<2000)return;
         // A fixed source is used, not JS-applied widths or layout-change events.
-        wp_register_style('mad4b-catalog-listing-native-first-paint',false,[], '20261101-1');
+        wp_register_style('mad4b-catalog-listing-native-first-paint',false,[], '20261101-2');
         wp_enqueue_style('mad4b-catalog-listing-native-first-paint');
         wp_add_inline_style('mad4b-catalog-listing-native-first-paint',$css);
     }

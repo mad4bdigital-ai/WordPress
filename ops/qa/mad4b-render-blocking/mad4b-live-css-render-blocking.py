@@ -99,12 +99,44 @@ async def inspect(browser,path,sem):
                 forcedLayout:(()=>{const items=window.__mad4b_loaf||[];return {
                     supported:PerformanceObserver.supportedEntryTypes.includes('long-animation-frame'),
                     frames:items.length,forced_ms:Math.round(items.reduce((a,x)=>a+x.total,0))};})(),
-                catalogInitial:(()=>{const items=[...document.querySelectorAll('.jet-listing-grid__items')];
+                catalogInitial:(()=>{const locale=(document.documentElement.lang||'en').slice(0,2).toLowerCase();
+                    const ids={en:25102,ar:40683,fr:35070,de:35076,es:35084,it:39902};
+                    const targetId=ids[locale]||null;
+                    const items=[...document.querySelectorAll('.jet-listing-grid__items')];
                     const list=items.find(x=>x.className.includes('jet-listing-grid--25102')&&x.getBoundingClientRect().width>300);
                     const first=list?.querySelector('.jet-listing-grid__item');
-                    const layout=first?.querySelector('[data-id="82a8340"]');
-                    return {present:!!list,style_present:!!document.getElementById('mad4b-catalog-listing-native-first-paint-inline-css'),
-                        layout_direction:layout?getComputedStyle(layout).flexDirection:null};})(),
+                    const elementId='82a8340';
+                    const layout=first?.querySelector('[data-id="'+elementId+'"]');
+                    const sheet=document.getElementById('mad4b-catalog-listing-native-first-paint-inline-css');
+                    const hasLocalCSS=!!targetId && !!sheet && sheet.textContent.includes('.elementor-'+targetId+' ');
+                    const hasOlderStructure=locale==='fr'||locale==='de';
+                    return {present:!!list,style_present:hasLocalCSS,
+                        layout_direction:layout?getComputedStyle(layout).flexDirection:null,
+                        wpml_locale:locale,template_id:targetId,
+                        structural_drift:hasOlderStructure && !!first &&
+                          !first.querySelector('[data-id="82a8340"]')};})(),
+                catalogUICards:(()=>{
+                    const list=[...document.querySelectorAll('.jet-listing-grid__items')]
+                        .find(x=>x.className.includes('jet-listing-grid--25102')&&x.getBoundingClientRect().width>180);
+                    if(!list)return {present:false,samples:[]};
+                    const cards=[...list.querySelectorAll(':scope > .jet-listing-grid__item')].slice(0,3);
+                    const box=e=>{if(!e)return null;const r=e.getBoundingClientRect(),cs=getComputedStyle(e);
+                        return {width:Math.round(r.width),height:Math.round(r.height),font_px:Math.round(parseFloat(cs.fontSize)*10)/10,
+                            flex_direction:cs.flexDirection,flex_wrap:cs.flexWrap};};
+                    return {present:true,samples:cards.map(card=>{
+                        const price=card.querySelector('.tour-component-price');
+                        const amount=price?.querySelector('.woocommerce-Price-amount,.price-current');
+                        const unit=price?.querySelector('.price-unit');
+                        const widget=price?.closest('.elementor-widget-heading');
+                        const arrow=card.querySelector('.elementor-widget-icon .elementor-icon svg');
+                        const clock=card.querySelector('.jet-listing-dynamic-terms__icon svg');
+                        const favorite=card.querySelector('svg.e-far-heart');
+                        return {post_id:card.getAttribute('data-post-id'),card:box(card),
+                            arrow:box(arrow),clock:box(clock),favorite:box(favorite),
+                            price:box(price),amount:box(amount),unit:box(unit),widget:box(widget),
+                            price_source:price?.getAttribute('data-price-source')||null};
+                    })};
+                })(),
                 chosenWithoutHref:[...document.querySelectorAll('a.chosen-single')]
                     .filter(x=>!x.getAttribute('href') || x.getAttribute('href')==='#').length,
                 ardHref:document.querySelector('link[rel="ard"]')?.href||null,
@@ -175,6 +207,7 @@ async def inspect(browser,path,sem):
                 'horizontal_overflow_px':live['pageOverflow'],
                 'ttfb_ms':int(live['ttfbMs']),'lcp':lcp,
                 'catalog_initial':live['catalogInitial'],
+                'catalog_ui_cards':live['catalogUICards'],
                 'chosen_without_href':live['chosenWithoutHref'],
                 'ard_href':live['ardHref'],
                 'ard_manifest_valid':ard_valid,
@@ -288,6 +321,38 @@ def classify(pages,audit=None):
             if not cat.get('style_present') or not cat.get('present') or cat.get('layout_direction')!='row':
                 issues.append({'code':'perf_catalog_initial_layout','severity':'high',
                     'label':'Initial Tour catalog List View lacks native Elementor CSS/Flex direction; preserve original template dimensions without user layout toggles.'})
+        if re.fullmatch(r'/(?:ar/|fr/|de/|es/|it/)?tours-and-activities/',path):
+            ui=page.get('catalog_ui_cards') or {}
+            faults=[]
+            for card in (ui.get('samples') or []):
+                for name,limit in [('arrow',27),('clock',27),('favorite',34)]:
+                    m=card.get(name)
+                    if m and (m.get('width',0)<8 or m.get('width',0)>limit or
+                        m.get('height',0)<8 or m.get('height',0)>limit):
+                        faults.append(name+' '+str(m.get('width'))+'x'+str(m.get('height')))
+                price=card.get('price')
+                if price:
+                    amount=card.get('amount') or {}
+                    unit=card.get('unit') or {}
+                    widget=card.get('widget') or {}
+                    card_box=card.get('card') or {}
+                    if (price.get('font_px',0)<10 or price.get('font_px',0)>22 or
+                        price.get('width',0)>card_box.get('width',0) or
+                        price.get('height',0)>110 or
+                        amount.get('font_px',0)>24 or
+                        unit.get('font_px',0)>18 or
+                        widget.get('height',0)>115):
+                        faults.append('rate-derived Elementor price style '+str(price))
+                elif card.get('widget'):
+                    # Price absent is an eligible empty-state, not synthetic pricing.
+                    pass
+            if faults:
+                issues.append({'code':'perf_catalog_svg_price_first_paint','severity':'high',
+                    'label':('Initial Catalog List card SVG or governed rate-derived global price typography is oversized on '
+                             +path+': '+', '.join(faults[:3]))[:225]})
+        if path in ('/fr/tours-and-activities/','/de/tours-and-activities/') and cat.get('structural_drift'):
+            issues.append({'code':'perf_catalog_template_drift','severity':'medium',
+                'label':'French/German JetEngine List template has older Elementor element topology (0904328 instead of 82a8340); review governed WPML design sync without replacing translated content.'})
         if int(page.get('chosen_without_href') or 0)>0:
             issues.append({'code':'perf_chosen_crawlability','severity':'medium',
                 'label':'JetSearch Chosen Tour Type control has an anchor without a valid public archive href on '+path})

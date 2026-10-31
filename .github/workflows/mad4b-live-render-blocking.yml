@@ -89,3 +89,4 @@ jobs:
           python3 -m py_compile ops/qa/mad4b-render-blocking/mad4b-live-css-render-blocking.py
           python3 ops/qa/mad4b-render-blocking/tests/test_classifier.py
           python3 ops/qa/mad4b-render-blocking/tests/test_ard_chosen_cache.py
+          python3 ops/qa/mad4b-render-blocking/tests/test_safe_html_cache.py

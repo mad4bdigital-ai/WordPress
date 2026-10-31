@@ -14221,6 +14221,40 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/isolated-contract.php"
       ],
       "review_rationale": "Exact provider fingerprint-bound readonly alerts for public catalog first-paint Elementor CSS parity, ARD v0.91 manifest availability and Chosen Tour Type href crawlability. Tests assert supported approved provider, expected severity, and rejection of forged sources. Staging-only no production mutation or authority widening."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "source_blob_sha": "b4c3b25848bc19c6df8feac8761d8da4ecace050",
+      "owner_role": "MAD4B staging WPML catalog structure and first-paint monitoring reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/isolated-contract.php"
+      ],
+      "review_rationale": "Verified provenance-bound medium severity perf_catalog_template_drift separates structurally older translated Elementor FR/DE listing topology from present and valid per-locale CSS. The verified provider is read-only and cannot overwrite translated content; source tests accept trusted and reject forged alert records. No Production authorization."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "source_blob_sha": "62481cfc5df19e37828e38de52495cdd140fccb8",
+      "owner_role": "MAD4B staging catalog first-paint visual size and rate style reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/isolated-contract.php"
+      ],
+      "review_rationale": "Exact site UUID and provider-bound read-only High alert for measured List View SVG icon dimensions and Elementor Heading tour-component-price Dynamic Tag Global Typography first paint. Missing rates or locale-specific absent icons are accepted; no listing design flattening, currency mutation, authoring or production permission. CI tests accept approved provider, reject spoofing and compare measured good vs oversized controls."
     }
   ],
   "code_change_rules": {
