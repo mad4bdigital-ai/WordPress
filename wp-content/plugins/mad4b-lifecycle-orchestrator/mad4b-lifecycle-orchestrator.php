@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Lifecycle Orchestrator
  * Description: Central staging-only event and manual runtime coordination; never grants provider write permissions.
- * Version: 0.3.0-unified-policy-staging
+ * Version: 0.3.1-native-receipt-staging
  * Author: MAD4B
  */
 defined('ABSPATH') || exit;
@@ -594,4 +594,6 @@ final class MAD4B_Lifecycle_Orchestrator {
     }
 }
 require_once __DIR__ . '/class-mad4b-unified-governed-lifecycle-policy.php';
+require_once __DIR__ . '/class-mad4b-lifecycle-native-receipt.php';
+add_action('plugins_loaded',['MAD4B_Lifecycle_Native_Receipt','boot'],121);
 add_action('plugins_loaded',['MAD4B_Lifecycle_Orchestrator','boot'],120);
