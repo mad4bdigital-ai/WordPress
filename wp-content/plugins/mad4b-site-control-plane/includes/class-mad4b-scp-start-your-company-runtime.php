@@ -158,8 +158,14 @@ final class MAD4B_Start_Company_Runtime {
         add_action('updated_option',array(__CLASS__,'option_event'),10,3);
     }
     private static function central(){
-        return defined('DB_NAME') && DB_NAME==='etg_commerce_staging'
-           && wp_parse_url(home_url(),PHP_URL_HOST)==='tours.dev.mad4b.com';
+        // Site URL is not an execution grant. Guard() delegates to the
+        // company-scoped governance and actor permission checks.
+        $url=function_exists('home_url')?home_url():'';
+        $host=is_string($url)?wp_parse_url($url,PHP_URL_HOST):false;
+        return is_string($url) && wp_parse_url($url,PHP_URL_SCHEME)==='https'
+           && is_string($host) && $host!=='' && $host!=='localhost'
+           && !filter_var($host,FILTER_VALIDATE_IP)
+           && filter_var($host,FILTER_VALIDATE_DOMAIN,FILTER_FLAG_HOSTNAME);
     }
     public static function guard($r){
         if (!self::central() || !class_exists('MAD4B_Company_Readiness_Governance'))
