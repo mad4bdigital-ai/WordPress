@@ -1,0 +1,13 @@
+{
+  "contract": "mad4b.firecrawl-ci-only-source-review.v1",
+  "authorizing": false,
+  "production_authorized": false,
+  "local_candidate": "a7eb760ff64a13f159c75f8d6b2409bc7c15590f",
+  "previous_gaps": 186,
+  "closed_locally": 3,
+  "remaining_gaps": 183,
+  "test": "wp-content/plugins/mad4b-site-control-plane/tests/firecrawl-discovery-preflight-read-contract.py",
+  "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-firecrawl-discovery-preflight.php",
+  "release": "NO_GO",
+  "note": "Published test and audit only; complete local source reconciliations and review registry have not been published, nor passed full CI."
+}
