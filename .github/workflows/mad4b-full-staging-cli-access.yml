@@ -1,0 +1,26 @@
+name: MAD4B Full Staging CLI Access
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-full-staging-authority.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/full-staging-cli-access-contract.php'
+      - '.github/workflows/mad4b-full-staging-cli-access.yml'
+  push:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-full-staging-authority.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/full-staging-cli-access-contract.php'
+      - '.github/workflows/mad4b-full-staging-cli-access.yml'
+jobs:
+  cli-authority:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: Native CLI authorization contract
+        run: |
+          ROOT=wp-content/plugins/mad4b-site-control-plane
+          php -l "$ROOT/includes/class-mad4b-scp-full-staging-authority.php"
+          php -l "$ROOT/tests/full-staging-cli-access-contract.php"
+          php "$ROOT/tests/full-staging-cli-access-contract.php"
