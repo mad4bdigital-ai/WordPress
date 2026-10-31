@@ -68,6 +68,15 @@ async def inspect(browser,path,sem):
                 cityLcpRequests:performance.getEntriesByType('resource')
                     .filter(x=>x.name===document.querySelector('#mad4b-city-first-slide-lcp')?.href)
                     .map(x=>({initiator:x.initiatorType,start_ms:Math.round(x.startTime)})),
+                accommodationVisibility:(()=>{let lists=[...document.querySelectorAll('.booking-choice-list')];return {
+                    count:lists.length,
+                    invalid_visible:lists.filter(x=>{
+                        const p=x.parentElement,visible=getComputedStyle(x).display!=='none' && (!p||getComputedStyle(p).display!=='none');
+                        return visible && (x.dataset.bookingChoiceEligible==='0'||x.textContent?.includes('No eligible hotel options'));
+                    }).length,
+                    eligible_visible:lists.filter(x=>x.dataset.bookingChoiceEligible==='1'&&getComputedStyle(x).display!=='none').length
+                }})(),
+                mobileTourTOCGap:(()=>{let x=document.querySelector('body.single-tours-and-activities .elementor-24784 .elementor-element-b29a19b');return x?parseFloat(getComputedStyle(x).marginBlockStart):null})(),
                 tourRateCSS:(()=>{let shadow=document.querySelector('#mad4b-rate-css-shadow');let original=document.querySelector('#elementor-post-56197');let cards=[...document.querySelectorAll('.tk-tour-rate-label')];let label=cards[0],control=label?.closest('.jet-toggle__control');let a=label?getComputedStyle(label):null,c=control?getComputedStyle(control):null;return{shadow_present:!!shadow,original_present:!!original,sha:shadow?.getAttribute('data-css-sha256')||null,card_count:cards.length,font_px:a?parseFloat(a.fontSize):null,card_height:label?Math.round(label.getBoundingClientRect().height):null,bg:c?.backgroundColor||null,radius_px:c?parseFloat(c.borderTopLeftRadius):null}})(),
                 externalGoogleFonts:performance.getEntriesByType('resource')
                   .filter(x=>x.name.startsWith('https://fonts.googleapis.com/css'))
@@ -97,6 +106,8 @@ async def inspect(browser,path,sem):
                 'horizontal_overflow_px':live['pageOverflow'],
                 'ttfb_ms':int(live['ttfbMs']),'lcp':lcp,
                 'tour_rate_css':live['tourRateCSS'],
+                'accommodation_visibility':live['accommodationVisibility'],
+                'mobile_toc_gap_px':live['mobileTourTOCGap'],
                 'city_lcp_preload':live['cityLcpPreload'],
                 'city_lcp_preload_head_offset':raw.find('id="mad4b-city-first-slide-lcp"'),
                 'city_lcp_request_entries':live['cityLcpRequests'],
@@ -120,6 +131,17 @@ def classify(pages):
                 'UAEL widget present — retain styles.' if seen_uael else 'No visible UAEL widget — defer CSS safely.'
             )
             issues.append({'code':code,'severity':'high','label':label[:225]})
+    for page in pages:
+        path=urlsplit(page['url']).path
+        if path!='/tours-and-activities/unforgettable-egypt-budget-tour-cairo-to-luxor-nile-cruise-discovery-8-days/':continue
+        accommodations=page.get('accommodation_visibility') or {}
+        if int(accommodations.get('invalid_visible') or 0)>0:
+            issues.append({'code':'perf_empty_accommodation_ui','severity':'high',
+                'label':'Tour rate selector is exposing empty/ineligible hotel alternatives. Hide optional accommodation until Rate has valid published Properties.'})
+        gap=page.get('mobile_toc_gap_px')
+        if isinstance(gap,(int,float)) and gap<8:
+            issues.append({'code':'perf_mobile_toc_spacing','severity':'medium',
+                'label':'Mobile Tour Contents lacks minimum spacing below the preceding section; preserve Elementor navigation and desktop layout.'})
     for page in pages:
         if urlsplit(page['url']).path!='/tours-and-activities/unforgettable-egypt-budget-tour-cairo-to-luxor-nile-cruise-discovery-8-days/':continue
         rate=page.get('tour_rate_css') or {}

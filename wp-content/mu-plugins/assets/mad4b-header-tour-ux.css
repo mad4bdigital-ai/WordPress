@@ -91,6 +91,8 @@
 /* The original full Elementor TOC stays intact and accessible on desktop. */
 @media (max-width: 767px) {
   body.single-tours-and-activities .elementor-24784 .elementor-element-b29a19b {
+    /* Physical gap below the previous mobile content block; scoped to TOC only. */
+    margin-block-start: 12px;
     width: 100%;
     max-width: none;
     min-width: 0;

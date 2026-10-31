@@ -8,6 +8,9 @@ on:
       - 'wp-content/mu-plugins/310-mad4b-city-slider-lcp-preload.php'
       - 'wp-content/mu-plugins/311-mad4b-explore-global-contrast.php'
       - 'wp-content/mu-plugins/312-mad4b-rate-css-resilience.php'
+      - 'wp-content/mu-plugins/listing-option-selection.php'
+      - 'wp-content/mu-plugins/listing-option-selection-assets/**'
+      - 'wp-content/mu-plugins/assets/mad4b-header-tour-ux.css'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php'
       - 'ops/qa/mad4b-render-blocking/**'
       - '.github/workflows/mad4b-live-render-blocking.yml'
@@ -19,6 +22,9 @@ on:
       - 'wp-content/mu-plugins/310-mad4b-city-slider-lcp-preload.php'
       - 'wp-content/mu-plugins/311-mad4b-explore-global-contrast.php'
       - 'wp-content/mu-plugins/312-mad4b-rate-css-resilience.php'
+      - 'wp-content/mu-plugins/listing-option-selection.php'
+      - 'wp-content/mu-plugins/listing-option-selection-assets/**'
+      - 'wp-content/mu-plugins/assets/mad4b-header-tour-ux.css'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php'
       - 'ops/qa/mad4b-render-blocking/**'
       - '.github/workflows/mad4b-live-render-blocking.yml'
@@ -44,9 +50,14 @@ jobs:
           php -l wp-content/mu-plugins/311-mad4b-explore-global-contrast.php
           php -l wp-content/mu-plugins/312-mad4b-rate-css-resilience.php
           php ops/qa/mad4b-render-blocking/tests/rate-css-resilience-contract.php
+          php -l wp-content/mu-plugins/listing-option-selection.php
+          php ops/qa/mad4b-render-blocking/tests/rate-property-visibility-contract.php
           php ops/qa/mad4b-render-blocking/tests/home-lcp-preload-contract.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php
           php ops/qa/mad4b-render-blocking/tests/source_contract.php
+      - name: Hotel choice JavaScript contract
+        run: |
+          node --check wp-content/mu-plugins/listing-option-selection-assets/options.js
       - name: Offline classification contracts
         run: |
           python3 -m py_compile ops/qa/mad4b-render-blocking/mad4b-live-css-render-blocking.py

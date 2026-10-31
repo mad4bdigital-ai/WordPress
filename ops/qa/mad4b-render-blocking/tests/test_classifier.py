@@ -85,3 +85,16 @@ long_label={'url':'https://tours.dev.mad4b.com/tours-and-activities/example-long
 for issue in m.classify([long_label]):
  assert len(issue['label'].encode('utf-8'))<=225,issue
 print('PASS: UTF-8 byte-safe MAD4B alert labels')
+
+# Shared rate/property display and mobile Tour Content spacing.
+base={'url':'https://tours.dev.mad4b.com/tours-and-activities/unforgettable-egypt-budget-tour-cairo-to-luxor-nile-cruise-discovery-8-days/',
+ 'uael_widgets':[],'css':[], 'accommodation_visibility':{'count':2,'invalid_visible':0,'eligible_visible':0},
+ 'mobile_toc_gap_px':12,'tour_rate_css':{'shadow_present':True,'original_present':True,'card_count':2,
+ 'font_px':14.66,'radius_px':25,'bg':'rgb(251, 251, 251)'}}
+assert not any(x['code'] in ('perf_empty_accommodation_ui','perf_mobile_toc_spacing') for x in m.classify([base]))
+base['accommodation_visibility']['invalid_visible']=1
+assert any(x['code']=='perf_empty_accommodation_ui' for x in m.classify([base]))
+base['accommodation_visibility']['invalid_visible']=0
+base['mobile_toc_gap_px']=0
+assert any(x['code']=='perf_mobile_toc_spacing' for x in m.classify([base]))
+print('PASS: empty hotel-option display and mobile TOC spacing alerts')
