@@ -55,6 +55,7 @@ check($plan['execution_contract'] === 'exact_executor_only', 'no generic mutatio
 check($plan['generic_mutation_dispatch'] === false && $plan['mutation_performed'] === false, 'planner stays read-only');
 check(MockNativeRemotePlan::$lastInput['plugin_file'] === 'example/example.php', 'exact plugin identity passed');
 check($plan['production_promotion_rule'] === 'independent_staging_pass_and_exact_native_production_batch', 'no automatic production deployment');
+check($plan['production_promotion_verified_by_this_plan'] === false && $plan['production_mutation_authorized_by_this_plan'] === false, 'separate Production evidence and authorization remain required');
 
 MockNativeRemotePlan::$blockers = array('wordpress_update_package_url_unsafe');
 $denied = MAD4B_SCP_Plugin_Transaction::plan($input);
