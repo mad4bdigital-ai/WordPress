@@ -4516,6 +4516,82 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing environment, owner identity, exact plan, idempotent execution journal, security and operator approval controls apply to this source-only request operation."
+    },
+    {
+      "id": "ability:mad4b/catalog-intent-plan",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/catalog-intent-plan-qa31-runtime.php"
+      ],
+      "owner_role": "QA31 source reviewer for CI evidence only; independent tenant owner approval outstanding",
+      "review_rationale": "Catalog planner is registered read-only with bounded input. The hermetic source fixture directly denies absent read permission, HTTP/IP/credential URLs, extraneous keys, and excess links; accepted planning must report no network, task creation, publication or WordPress mutation.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Inherited source governance, read and company-management capability gates, no direct external publication or execution authority."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-intent-policy.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/catalog-intent-plan-qa31-runtime.php"
+      ],
+      "owner_role": "QA31 source reviewer for CI evidence only; independent tenant owner approval outstanding",
+      "review_rationale": "Exact source class reviewed for deterministic canonical URL and plan behavior with explicit negative cases; no content rights, external source access, execution or production readiness certified.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Inherited source governance, read and company-management capability gates, no direct external publication or execution authority."
+    },
+    {
+      "id": "rest:mad4b/v1/admin/company-policies",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-policy-denial-qa31-runtime.php"
+      ],
+      "owner_role": "QA31 source reviewer for CI evidence only; independent tenant owner approval outstanding",
+      "review_rationale": "Exact GET/PATCH registration and company-management permission denial directly asserted in hermetic PHP; no WordPress DB/live patch covered.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Inherited source governance, read and company-management capability gates, no direct external publication or execution authority."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-operations-policy.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-policy-denial-qa31-runtime.php"
+      ],
+      "owner_role": "QA31 source reviewer for CI evidence only; independent tenant owner approval outstanding",
+      "review_rationale": "Exact company policy implementation reviewed with prohibited keys/values, default hard-delete denial, guarded master price metadata, and pending-only review publication tests. Persistent locking/readback remains live-evidence-required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Inherited source governance, read and company-management capability gates, no direct external publication or execution authority."
     }
   ],
   "lifecycle": [],
@@ -12697,6 +12773,42 @@
         "EXECUTION-01"
       ],
       "review_rationale": "The exact native write implementation has an independent Policy::can_mutate and current_user_can(manage_options) guard on direct invocation, in addition to centralized adapter mutation authorization before execution. All three native methods are limited to existing support customer/mailbox, existing accessible ticket, or provider-declared draft CPT target, with stable HMAC-scoped idempotency reservation; CPT posts stay draft. Same-PR hermetic PHP negative tests directly invoke all three methods with the site mutation gate disabled and prove no write escapes."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-intent-policy.php",
+      "source_blob_sha": "5dd85c058236b580efe0e990467655e877a3585a",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "QA31 source-specific CI reviewer; no tenant production delegation",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/catalog-intent-plan-qa31-runtime.php"
+      ],
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "review_rationale": "Reviewed exact source against hermetic regression. Guarded, read-only or scoped policy paths tested; excludes live network, DB, tenant activation, publication and Production write authorization."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-operations-policy.php",
+      "source_blob_sha": "73a9a2d3950c56c77b0790d6a18b343d32863ec3",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "QA31 source-specific CI reviewer; no tenant production delegation",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-policy-denial-qa31-runtime.php"
+      ],
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "review_rationale": "Reviewed exact source against hermetic regression. Guarded, read-only or scoped policy paths tested; excludes live network, DB, tenant activation, publication and Production write authorization."
     }
   ],
   "code_change_rules": {
