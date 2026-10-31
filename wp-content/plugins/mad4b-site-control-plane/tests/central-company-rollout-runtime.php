@@ -1,6 +1,16 @@
 <?php
 /** Hermetic central-Staging company compatibility matrix. No site writes. */
 declare(strict_types=1);
+$centralSourceFixture = sys_get_temp_dir().'/mad4b-central-origin-fixture-'.getmypid().'.json';
+file_put_contents($centralSourceFixture,json_encode(array(
+    'contract'=>'mad4b.central-staging-origin.v1',
+    'origin'=>'https://tours.dev.mad4b.com'
+)));
+define('MAD4B_CENTRAL_STAGING_SOURCE_FILE',$centralSourceFixture);
+register_shutdown_function(static function() use ($centralSourceFixture) {
+    @unlink($centralSourceFixture);
+});
+
 if ( ! defined('ABSPATH') ) define('ABSPATH', __DIR__ . '/');
 class WP_Error {
     private $error;
