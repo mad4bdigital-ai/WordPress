@@ -103,4 +103,60 @@ check(is_wp_error(MAD4B_Central_SSH_Command_Intake_V1::issue($valid)), 'revoked 
 $GLOBALS['delegation'] = true;
 $GLOBALS['actor'] = false;
 check(is_wp_error(MAD4B_Central_SSH_Command_Intake_V1::issue($valid)), 'guest denied');
-echo "PASS: exact grant, one-time command, hash, no shell persistence, no invented SSH privilege, tenant/auth/revocation guards\n";
+$GLOBALS['actor'] = true;
+$transport = new WP_REST_Request(array('company'=>'wayfatours'),array(
+    'host_id'=>'srv2030908','host_principal'=>'root',
+    'host_key_fingerprint'=>'SHA256:'.str_repeat('A',43),
+    'credential_ref'=>'vault:mad4b/wayfatours-ssh',
+    'reason'=>'Enroll centrally managed persistent SSH connection'));
+$registered = MAD4B_Central_SSH_Command_Intake_V1::register_transport($transport);
+check($registered instanceof WP_REST_Response, 'persistent SSH transport registered');
+$transportRow = $registered->get_data();
+check($transportRow['state'] === 'PENDING_INDEPENDENT_SSH_VERIFICATION', 'transport pending verification');
+check($transportRow['ssh_session_active'] === false && $transportRow['host_authority_verified'] === false,
+    'registration never claims live host SSH privilege');
+check($transportRow['ssh_secret_stored_in_wordpress'] === false, 'secret not stored');
+$persistent = new WP_REST_Request(array('company'=>'wayfatours'),array(
+    'operation'=>'maintenance.shell','host_id'=>'srv2030908','host_principal'=>'root',
+    'grant_mode'=>'persistent','transport_id'=>$transportRow['transport_id'],
+    'reason'=>'Long-lived scoped WordPress company maintenance authority'));
+$p = MAD4B_Central_SSH_Command_Intake_V1::issue($persistent);
+check($p instanceof WP_REST_Response, 'persistent grant accepted');
+$pData = $p->get_data();
+check($pData['grant_mode'] === 'persistent' && $pData['expires_epoch'] === null,
+    'persistent grant has no TTL');
+for ($i=1; $i<=2; $i++) {
+    $req = new WP_REST_Request(array('company'=>'wayfatours'),array(
+        'grant_id'=>$pData['grant_id'],'command'=>'printf safe-command-'.$i,
+        'summary'=>'Host diagnostic command intake number '.$i,
+        'correlation_id'=>'mad4b-persistent-correlation-'.$i,
+        'target_scope'=>'wordpress'));
+    $ok = MAD4B_Central_SSH_Command_Intake_V1::accept_command($req);
+    check($ok instanceof WP_REST_Response, 'persistent grant reused for distinct correlation '.$i);
+    $info = $ok->get_data();
+    check($info['grant_mode'] === 'persistent' && $info['execution_performed'] === false,
+        'persistent command not executed by registry');
+    check(is_wp_error(MAD4B_Central_SSH_Command_Intake_V1::accept_command($req)),
+        'duplicate correlation denied');
+}
+$revokeGrant = new WP_REST_Request(array('company'=>'wayfatours',
+    'kind'=>'grant','object_id'=>$pData['grant_id']));
+$revokeResult = MAD4B_Central_SSH_Command_Intake_V1::revoke($revokeGrant);
+check($revokeResult instanceof WP_REST_Response
+    && $revokeResult->get_data()['state'] === 'REVOKED', 'persistent grant revoked');
+$afterGrantRevoke = new WP_REST_Request(array('company'=>'wayfatours'),array(
+    'grant_id'=>$pData['grant_id'],'command'=>'printf should-not-claim',
+    'summary'=>'Attempt after grant revocation must fail',
+    'correlation_id'=>'mad4b-correlation-revoked-1',
+    'target_scope'=>'wordpress'));
+check(is_wp_error(MAD4B_Central_SSH_Command_Intake_V1::accept_command($afterGrantRevoke)),
+    'revoked persistent grant denied');
+$revokeTransport = new WP_REST_Request(array('company'=>'wayfatours',
+    'kind'=>'transport','object_id'=>$transportRow['transport_id']));
+check(MAD4B_Central_SSH_Command_Intake_V1::revoke($revokeTransport) instanceof WP_REST_Response,
+    'persistent SSH transport revocable');
+check(is_wp_error(MAD4B_Central_SSH_Command_Intake_V1::issue($persistent)),
+    'no grant issued against revoked transport');
+check(!str_contains(json_encode($GLOBALS['store']), 'printf safe-command-'),
+    'persistent commands never stored as raw bytes');
+echo "PASS: one-time + persistent grants, SSH configuration, reuse across correlations, revocation, tenant/auth/binding guards; no host privilege invented\n";
