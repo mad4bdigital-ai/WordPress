@@ -1,0 +1,140 @@
+From 02ad44fd5cbda478274a2a5f39f3cd9e494a5325 Mon Sep 17 00:00:00 2001
+From: MAD4B Local Release Reconciliation <release-reconcile@localhost>
+Date: Sat, 31 Oct 2026 17:21:52 +0000
+Subject: [PATCH] Preserve live grant preflight, recognize delegated OAuth
+ identity, and enroll reviewed content pairs
+
+---
+ ...lass-mad4b-scp-staging-write-authority.php | 65 ++++++++++++++++++-
+ ...scp-staging-write-grant-reconciliation.php | 21 ++++++
+ 2 files changed, 84 insertions(+), 2 deletions(-)
+
+diff --git a/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php b/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php
+index 8b686a9..9b64889 100644
+--- a/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php
++++ b/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php
+@@ -1530,7 +1530,11 @@ final class MAD4B_SCP_Staging_Write_Authority {
+ 				if ( ! is_array( $binding ) ) continue;
+ 				$expected_agent_id = is_array( $agent ) && ! empty( $agent['id'] ) ? (int) $agent['id'] : 0;
+ 				if ( $expected_agent_id < 1 || (int) $binding['agent_id'] !== $expected_agent_id ) {
+-					$subject_preflight_blockers[] = 'oauth_subject_bound_to_other_agent';
++					$other = MAD4B_SCP_Agent_Registry::get_agent_by_id( (int) $binding['agent_id'] );
++					if ( 'enabled' !== (string) ( $binding['status'] ?? '' )
++						|| ! self::is_exact_delegated_oauth_agent( $other, $user_id ) ) {
++						$subject_preflight_blockers[] = 'oauth_subject_bound_to_other_agent';
++					}
+ 				}
+ 			}
+ 		}
+@@ -1865,6 +1869,42 @@ final class MAD4B_SCP_Staging_Write_Authority {
+ 			return self::finish_blocked( $status, 'unreviewed_stale_write_authority' );
+ 		}
+ 
++		// Admission must finish BEFORE create/update of any Agent, subject or grant.
++		// An OAuth subject already bound to a delegated user is not free to move
++		// to the governed-write Agent. Preserve that binding and fail closed.
++		if ( ! empty( $preflight_plan['subject_preflight_blockers'] ) ) {
++			$status['subject_preflight_blockers'] = $preflight_plan['subject_preflight_blockers'];
++			$status['mutation_performed'] = false;
++			return self::finish_blocked( $status, 'write_identity_preflight_blocked' );
++		}
++
++		// Mounted ability != approved privilege. Every missing grant must
++		// match the exact, source-reviewed provider policy BEFORE any of the
++		// requested grants is issued or any stale grant is revoked.
++		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' ) ) {
++			return self::finish_blocked( $status, 'reviewed_grant_policy_unavailable' );
++		}
++		$reviewed_provider_policy = MAD4B_SCP_Staging_Write_Grant_Reconciliation::allowed_ability_providers();
++		if ( ! is_array( $reviewed_provider_policy ) ) {
++			return self::finish_blocked( $status, 'reviewed_grant_policy_unavailable' );
++		}
++		$unapproved_missing = array();
++		foreach ( (array) ( $preflight_plan['exact_grants_missing'] ?? array() ) as $grant_row ) {
++			$ability = (string) ( $grant_row['ability'] ?? '' );
++			$provider = sanitize_key( (string) ( $grant_row['provider'] ?? '' ) );
++			if ( 'missing_exact_grant' !== (string) ( $grant_row['reason'] ?? '' )
++				|| '' === $ability || '' === $provider
++				|| ! isset( $reviewed_provider_policy[ $ability ] )
++				|| sanitize_key( (string) $reviewed_provider_policy[ $ability ] ) !== $provider ) {
++				$unapproved_missing[] = $ability;
++			}
++		}
++		if ( ! empty( $unapproved_missing ) ) {
++			$status['source_policy_unapproved_missing_count'] = count( $unapproved_missing );
++			$status['mutation_performed'] = false;
++			return self::finish_blocked( $status, 'write_grant_source_policy_preflight_blocked' );
++		}
++
+ 		$environment = self::current_environment();
+ 		$agent_slug = self::agent_slug();
+ 		$agent = self::agent_by_slug( $agent_slug );
+@@ -1913,7 +1953,11 @@ final class MAD4B_SCP_Staging_Write_Authority {
+ 				$binding = MAD4B_SCP_Agent_Registry::bind_subject( $agent['public_id'], 'oauth', $fingerprint, 'Local OAuth user:' . $user_id );
+ 				if ( is_wp_error( $binding ) ) $subject_blockers[] = $binding->get_error_code() . ':user:' . $user_id;
+ 			} elseif ( (int) $bound['id'] !== (int) $agent['id'] ) {
+-				$subject_blockers[] = 'oauth_subject_bound_to_other_agent:user:' . $user_id;
++				// Keep the delegated user's OAuth subject with its original Agent.
++				// Never bind/transfer it to governed-write merely to pass readiness.
++				if ( ! self::is_exact_delegated_oauth_agent( $bound, $user_id ) ) {
++					$subject_blockers[] = 'oauth_subject_bound_to_other_agent:user:' . $user_id;
++				}
+ 			}
+ 		}
+ 
+@@ -2278,6 +2322,23 @@ final class MAD4B_SCP_Staging_Write_Authority {
+ 		return class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) ? rtrim( (string) MAD4B_SCP_Local_OAuth_Server::issuer(), '/' ) : '';
+ 	}
+ 
++	/**
++	 * An enrolled OAuth user may legitimately authenticate through the
++	 * existing delegated-user Agent instead of the governed-write Agent.
++	 * This recognizes the identity owner; it DOES NOT grant any write ability.
++	 * Exact write authorization remains operation/provider/target scoped.
++	 */
++	private static function is_exact_delegated_oauth_agent( $other, $user_id ) {
++		$user_id = absint( $user_id );
++		return $user_id > 0 && is_array( $other )
++			&& 'mad4b-delegated-user-' . $user_id === (string) ( $other['slug'] ?? '' )
++			&& 'enabled' === (string) ( $other['status'] ?? '' )
++			&& (int) ( $other['wp_user_id'] ?? 0 ) === $user_id
++			&& self::current_environment() === (string) ( $other['environment'] ?? '' )
++			&& class_exists( 'MAD4B_SCP_Policy' )
++			&& MAD4B_SCP_Policy::can_connect_user( $user_id );
++	}
++
+ 	private static function subject_fingerprint( $issuer, $user_id ) {
+ 		return hash( 'sha256', 'oauth' . "\0" . (string) $issuer . "\0" . 'user:' . absint( $user_id ) );
+ 	}
+diff --git a/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation.php b/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation.php
+index bcb273c..a593f63 100644
+--- a/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation.php
++++ b/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation.php
+@@ -133,6 +133,27 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
+ 				// Staging grant. Other provider adapters are discovery-only until
+ 				// separately certified and explicitly allowlisted.
+ 				'mad4b/provider-connection-refresh' => 'core',
++				// Exact reviewed first-party WordPress content operations already
++				// present in the canonical Staging governed-write inventory.
++				// This enumerates eligibility only; it never creates a grant.
++				// The original owner plan, step-up, exact grant admission and
++				// independently audited execution continue to apply.
++				'mad4b/page-r1-create-apply' => 'core',
++				'mad4b/page-r1-publish-apply' => 'core',
++				'mad4b/page-r1-update-apply' => 'core',
++				'mad4b/post-r1-create-apply' => 'core',
++				'mad4b/post-r1-publish-apply' => 'core',
++				'mad4b/post-r1-update-apply' => 'core',
++				'mad4b/properties-r1-create-apply' => 'core',
++				'mad4b/properties-r1-publish-apply' => 'core',
++				'mad4b/properties-r1-update-apply' => 'core',
++				'mad4b/tours-and-activities-r1-create-apply' => 'core',
++				'mad4b/tours-and-activities-r1-publish-apply' => 'core',
++				'mad4b/tours-and-activities-r1-update-apply' => 'core',
++				'mad4b/transportations-r1-create-apply' => 'core',
++				'mad4b/transportations-r1-publish-apply' => 'core',
++				'mad4b/transportations-r1-update-apply' => 'core',
++
+ 				'context/brand-profile-save' => 'google_drive_context',
+ 				'context/governed-source-upsert' => 'google_drive_context',
+ 				'context/remote-owner-review-apply' => 'google_drive_context',

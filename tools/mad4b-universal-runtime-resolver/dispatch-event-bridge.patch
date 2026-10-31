@@ -1,0 +1,32 @@
+--- a/dispatch-v1.py
++++ b/dispatch-v1.py
+@@ -62,6 +62,29 @@
+ def record(c,job,event,detail=""):
+     c.execute("INSERT INTO events(job_id,at,event,detail) VALUES(?,?,?,?)",
+               (job,now(),event,str(detail)[:300]))
++    if event not in ("INTAKE","parked_authority","blocked","review_required","succeeded"):
++        return
++    # Signal the central resolver without blocking dispatch execution. The
++    # durable queue remains authoritative; events only trigger re-observation.
++    try:
++        row=c.execute("SELECT target FROM jobs WHERE job_id=?",(job,)).fetchone()
++        if row is None:return
++        directory=BASE/"universal-runtime-v1/inbox"
++        if not directory.is_dir():return
++        nonce=uuid.uuid4().hex
++        payload={"contract":"mad4b.universal-runtime-event.v1",
++                 "target":row["target"],"trigger":"dispatch","source":"dispatcher",
++                 "idempotency_key":"dispatch:"+job+":"+event+":"+nonce}
++        tmp=directory/("."+nonce+".tmp")
++        final=directory/(nonce+".json")
++        fd=os.open(tmp,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
++        with os.fdopen(fd,"w") as file:
++            json.dump(payload,file,sort_keys=True)
++            file.flush();os.fsync(file.fileno())
++        os.replace(tmp,final)
++    except (OSError,ValueError,sqlite3.Error):
++        # An optional event bridge must never disrupt the original dispatcher.
++        pass
+ 
+ def call_gateway(verb,target,mode,operation):
+     cmd=[GATEWAY,verb,target,mode,operation]

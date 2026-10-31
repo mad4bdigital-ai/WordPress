@@ -1,0 +1,30 @@
+name: MAD4B Universal Runtime Resolver
+on:
+  pull_request:
+    paths:
+      - 'tools/mad4b-universal-runtime-resolver/**'
+      - '.github/workflows/mad4b-universal-runtime-resolver.yml'
+  push:
+    paths:
+      - 'tools/mad4b-universal-runtime-resolver/**'
+      - '.github/workflows/mad4b-universal-runtime-resolver.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  resolver-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile runtime and tests
+        run: python -m py_compile resolver.py test_resolver.py multi_transport_authority.py test_multi_transport_authority.py central_control_readback.py native_authority_status.py central_wpcli_host.py test_central_wpcli_host.py central_execution_route.py test_central_execution_route.py central_staging_backup.py test_central_staging_backup.py source_drift_guard.py test_source_drift_guard.py control_plane_release_preflight.py test_control_plane_release_preflight.py guarded_native_release.py test_guarded_native_release.py
+        working-directory: tools/mad4b-universal-runtime-resolver
+      - name: Isolated resolver contract tests
+        run: python -m unittest -v test_resolver test_multi_transport_authority test_central_wpcli_host test_central_execution_route test_central_staging_backup test_source_drift_guard test_control_plane_release_preflight test_guarded_native_release
+        working-directory: tools/mad4b-universal-runtime-resolver
