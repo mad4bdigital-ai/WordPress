@@ -1,44 +1,21 @@
 {
-  "contract": "mad4b.universal-runtime-reconciler.v1",
-  "enabled": true,
-  "version": 1,
-  "default_production_mutation": false,
   "authority_model": "identity_proof_plus_capability_specific_provider_authority",
+  "contract": "mad4b.universal-runtime-reconciler.v1",
+  "default_production_mutation": false,
+  "enabled": true,
+  "live_adapters": [
+    "admin_shell",
+    "agent",
+    "authentication_routes",
+    "authority",
+    "full_authority_status",
+    "identity",
+    "operation_admission",
+    "package",
+    "transport",
+    "workflow"
+  ],
   "mode": "converge_existing_authorized_capabilities",
-  "scopes": {
-    "all-royal-egypt:staging": {
-      "environment": "staging",
-      "canonical_origin": "https://staging.allroyalegypt.com",
-      "site_uuid": "49c562d1-8f2f-456f-b454-26816c6ba4cb",
-      "expected_root": "/home/u948953904/domains/allroyalegypt.com/public_html/staging",
-      "operations": [
-        "remote_exec:site_root",
-        "remote_exec:file_sha256",
-        "remote_file_transfer:verified_zip"
-      ],
-      "auto_register_missing_provider": false,
-      "independent_readback_required": true,
-      "legacy_company_trust_unchanged": true,
-      "transport_binding": "hosting-2:staging",
-      "identity_adapter": "central_scoped_v4",
-      "agent_adapter": "are_signed_v4",
-      "package": {
-        "filename": "mad4b-are-staging-p256-v4.zip",
-        "sha256": "db544322956f2b50b6560b1ebfa0a80a98bd31e147d96df691fc185582dff863"
-      },
-      "workflow_operation": "signed_site_agent_install",
-      "full_authority_provider": {
-        "mode": "native_target_owner",
-        "target": "all-royal-egypt:staging",
-        "environment": "staging",
-        "origin": "https://staging.allroyalegypt.com",
-        "site_uuid": "49c562d1-8f2f-456f-b454-26816c6ba4cb",
-        "authority_contract": "mad4b.unified-full-authority.v1",
-        "reader": "enrolled_site_wpcli_status_v1",
-        "native_owner": "MAD4B_SCP_Full_Staging_Authority"
-      }
-    }
-  },
   "planned_domains": [
     "identity_and_trust",
     "authority",
@@ -51,14 +28,50 @@
     "reviews",
     "runtime"
   ],
-  "live_adapters": [
-    "admin_shell",
-    "agent",
-    "authority",
-    "full_authority_status",
-    "identity",
-    "package",
-    "transport",
-    "workflow"
-  ]
+  "scopes": {
+    "all-royal-egypt:staging": {
+      "agent_adapter": "are_signed_v4",
+      "auto_register_missing_provider": false,
+      "canonical_origin": "https://staging.allroyalegypt.com",
+      "environment": "staging",
+      "expected_root": "/home/u948953904/domains/allroyalegypt.com/public_html/staging",
+      "full_authority_provider": {
+        "authority_contract": "mad4b.unified-full-authority.v1",
+        "environment": "staging",
+        "mode": "native_target_owner",
+        "native_owner": "MAD4B_SCP_Full_Staging_Authority",
+        "origin": "https://staging.allroyalegypt.com",
+        "reader": "enrolled_site_wpcli_status_v1",
+        "site_uuid": "49c562d1-8f2f-456f-b454-26816c6ba4cb",
+        "target": "all-royal-egypt:staging"
+      },
+      "identity_adapter": "central_scoped_v4",
+      "independent_readback_required": true,
+      "legacy_company_trust_unchanged": true,
+      "operations": [
+        "remote_exec:site_root",
+        "remote_exec:file_sha256",
+        "remote_file_transfer:verified_zip"
+      ],
+      "package": {
+        "filename": "mad4b-are-staging-p256-v4.zip",
+        "sha256": "db544322956f2b50b6560b1ebfa0a80a98bd31e147d96df691fc185582dff863"
+      },
+      "site_uuid": "49c562d1-8f2f-456f-b454-26816c6ba4cb",
+      "transport_binding": "hosting-2:staging",
+      "workflow_operation": "signed_site_agent_install",
+      "observed_operation_capability": "maintenance.shell",
+      "observed_operation_transport": "vps_ssh_wpcli"
+    },
+    "tours-central:staging": {
+      "canonical_origin": "https://tours.dev.mad4b.com",
+      "environment": "staging",
+      "expected_source_commit_sha": "73c6852f3a22148cf4e79c73643cbbdeffca7f8a",
+      "independent_readback_required": true,
+      "operations": [],
+      "site_uuid": "e5e64bca-ed62-48d2-b2b3-dff693cd702a",
+      "source_adapter": "central_wpcli_provenance_v1"
+    }
+  },
+  "version": 1
 }
