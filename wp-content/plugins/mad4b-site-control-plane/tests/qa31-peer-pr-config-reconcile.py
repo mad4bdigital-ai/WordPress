@@ -17,7 +17,8 @@ for key in ("company.create","company.repair"):
     assert op["executor"]=="mad4b/start-your-company-run"
     assert op["generic_mutation_dispatch"] is False
     assert op["host_runner_required"] is True
-assert byid["company.plugin-sync.request"]["side_effect_class"]=="central_journal_plan_only"
+assert byid["company.plugin-sync.request"]["supports"]==["queue_plan_only"]
+assert byid["company.plugin-sync.request"]["generic_mutation_dispatch"] is False
 assert byid["company.plugin-sync.request"]["executor"]=="mad4b/company-plugin-sync-request"
 sources=load("cross-plugin-sources.json")["sources"]
 assert len({x["id"] for x in sources})==len(sources), "duplicate source"
