@@ -15,13 +15,15 @@ host={"allow_general_shell":True,"allow_raw_sql":True,"scopes":{
 "allow_mutation":True,"allow_production_mutation":True}}}
 one=inv.project(source,host)
 assert one["wayfatours:production"]["native_vps_write_authorized"] is True
-assert one["wayfatours:production"]["onboarding_state"]=="HOST_NATIVE_OPERATOR_AUTHORIZED_MANAGED_PENDING"
+assert one["wayfatours:production"]["native_host_authority_state"]=="HOST_NATIVE_OPERATOR_AUTHORIZED_MANAGED_PENDING"
+assert one["wayfatours:production"]["onboarding_state"]=="READ_ADAPTER_READY_MANAGED_PENDING"
 assert one["all-royal-egypt:production"]["native_vps_write_authorized"] is False
-assert one["all-royal-egypt:production"]["onboarding_state"]=="PRODUCTION_HOST_AUTHORITY_ENROLLMENT_REQUIRED"
+assert one["all-royal-egypt:production"]["native_host_authority_state"]=="PRODUCTION_HOST_AUTHORITY_ENROLLMENT_REQUIRED"
+assert one["all-royal-egypt:production"]["onboarding_state"]=="READ_AND_MANAGED_ENROLLMENT_REQUIRED"
 assert one["all-royal-egypt:production"]["native_vps_operator_capability_available"] is True
 assert all(not x["managed_execution_authorized"] for x in one.values())
 assert all(not x["production_mutation"] for x in one.values())
 assert inv.project(source,{})["wayfatours:production"]["native_vps_write_authorized"] is False
 host["scopes"]["wayfatours:production"]["allow_production_mutation"]=False
 assert inv.project(source,host)["wayfatours:production"]["native_vps_write_authorized"] is False
-print("PASS 8: inventory parity, exact grant, revoked mutation, no synthetic managed authorization")
+print("PASS 10: inventory parity, backwards-compatible v1 states, exact grant and no synthetic managed authorization")
