@@ -2,6 +2,22 @@
 /** Hermetic central-Staging company compatibility matrix. No site writes. */
 declare(strict_types=1);
 if ( ! defined('ABSPATH') ) define('ABSPATH', __DIR__ . '/');
+class WP_Error {
+    private $error;
+    public function __construct($error, $message='') { $this->error=$error; }
+    public function get_error_code() { return $this->error; }
+}
+function is_wp_error($value) { return $value instanceof WP_Error; }
+function get_plugins() { return array('woocommerce/woocommerce.php'=>array('Version'=>'10.1.0')); }
+function is_plugin_active($plugin) { return $plugin==='woocommerce/woocommerce.php'; }
+function wp_get_environment_type() { return 'production'; }
+function get_bloginfo($key) { return $key==='version' ? '6.9.0' : ''; }
+function home_url() { return 'https://company.example'; }
+class MAD4B_SCP_Site_Profile {
+    public static function status() { return array('site_uuid'=>'11111111-2222-4333-8444-555555555555'); }
+    public static function origin_enrolled() { return true; }
+    public static function current_environment() { return 'production'; }
+}
 require dirname(__DIR__) . '/includes/class-mad4b-scp-central-company-rollout.php';
 function ck($ok, $msg) {
     if (!$ok) { fwrite(STDERR, 'FAIL: '.$msg.PHP_EOL); exit(1); }
@@ -90,4 +106,14 @@ ck(in_array('company_plugin_requirements_invalid',$c::assess($release,$wrong,$si
 
 $wrong=$receipt; $wrong['requirements']['target_plugin_file']='../hack.php';
 ck(in_array('release_requirements_invalid',$c::assess($release,$wrong,$site,true)['blockers'],true),'release root escape rejected');
+$fromApi=$c::plan(array('release_sha256'=>$release));
+ck(!$fromApi['ready_for_separate_owner_authorization'] &&
+    in_array('trusted_central_release_readback_unavailable',$fromApi['blockers'],true),
+    'server cannot treat client release hash as a central PASS when the verified provider is absent');
+ck($fromApi['read_only']===true && $fromApi['production_mutation_authorized']===false,
+    'read-only endpoint cannot grant Production authority');
+$forged=$c::plan(array('release_sha256'=>$release,'staging_pass'=>true));
+ck(is_wp_error($forged) && $forged->get_error_code()==='mad4b_central_rollout_input_invalid',
+    'user-provided PASS is rejected at API boundary');
+
 echo "CENTRAL_STAGING_COMPANY_ROLLOUT: PASS".PHP_EOL;
