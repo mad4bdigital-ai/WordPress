@@ -3607,6 +3607,50 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing MCP admission, platform identity, security, owner-scoped administrative rights and execution-denial controls cover these staging-only authorization surfaces, without granting Production execution or public access.",
       "review_rationale": "New surface ability:mad4b/staging-write-grant-reconcile-staging is source-pinned in the W1 authority integration and assessed with hermetic owner-browser, agent REST route, Site Profile, OAuth, replay, write grant, exact mapping and negative permission fixtures. This is only CI source review, not evidence that the route is registered, usable, or authorized in Production."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-read-ability-service.php",
+      "owner_role": "AI-assisted source-bound CI reviewer; no owner or Production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/gateway-mutation-guards.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/gateway-regression-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/architecture-maintainability-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP surface admission, provider policy and governed execution controls cover this internal delegated read service. It exposes no new endpoint or independent grant, and retained read and WHERE restrictions are covered by the named hermetic contracts.",
+      "review_rationale": "Exact Git blob reviewed as a mechanical extraction of bounded read-only filesystem and structured SQL helpers. The existing Ability facade still owns registration, permission and dispatch gates; the extracted implementation calls Policy::resolve_path, sensitivity guards, validated identifiers and prepared WHERE values. Hermetic gateway mutation and architecture tests check dependency loading and unchanged negative-path behavior. This source review grants no execution or Production authority."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-recovery-projection.php",
+      "owner_role": "AI-assisted source-bound CI reviewer; no owner or Production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/developer-runtime-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/architecture-maintainability-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing runtime convergence, cross-provider boundary, audit recovery, rollout and execution-denial controls cover the internal non-authorizing projection. The original Authorization entrypoints keep admission, claim and terminal evidence mutation; these are not delegated to an untrusted service.",
+      "review_rationale": "Exact Git blob reviewed for narrowly delegated non-authorizing execution-attempt readback and server classification. It retains audit-chain consistency and fail-closed reconciliation, preserves the remote approval-planner denial for mad4b-chatgpt and mad4b-write, and exposes no new write callback. Developer and staging authority contracts assert the forwarded methods and exact denial list; separate live acceptance remains mandatory."
     }
   ],
   "lifecycle": [],
@@ -11647,6 +11691,46 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Core governed Write inventory still requires registered and eligible WP Abilities and independent approval/Write gates. Provider mapping reuses existing certified core-first adapter precedence with request-local snapshot, no new grant or arbitrary executor.",
       "review_rationale": "Reviewed exact 33-addition/23-removal successor source: two named core Write candidates for Hub source sync and provider refresh require pre-existing Abilities and ordinary SCP governed authorization before mounting. The moved live_write_provider_snapshot method now reads one currently mounted write_tools inventory and overlays core-before-certified-adapter provenance without caching across requests. Hermetic executed snapshot regression proves unmounted/unreviewed exclusion, provider precedence, current-candidate migration, and fresh per-request observation. Static negative mutation tests and existing staging write owner-parity contract PASS. Source review alone cannot certify live Staging or Production execution. Same-PR impact evidence references only regression sources changed by this PR; independently run older parity suites remain intact and do not count as newly committed source evidence."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-read-ability-service.php",
+      "source_blob_sha": "f2cbb7e07a5e088c36acfb91d5daee2ccd9b848b",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/gateway-mutation-guards.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/gateway-regression-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/architecture-maintainability-contract.py"
+      ],
+      "owner_role": "AI-assisted exact-source CI reviewer; real owner release approval remains separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact Git blob reviewed as a mechanical extraction of bounded read-only filesystem and structured SQL helpers. The existing Ability facade still owns registration, permission and dispatch gates; the extracted implementation calls Policy::resolve_path, sensitivity guards, validated identifiers and prepared WHERE values. Hermetic gateway mutation and architecture tests check dependency loading and unchanged negative-path behavior. This source review grants no execution or Production authority."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-recovery-projection.php",
+      "source_blob_sha": "9fcf78d9de87bff787803c58d85e346ad95f3d43",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/developer-runtime-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/architecture-maintainability-contract.py"
+      ],
+      "owner_role": "AI-assisted exact-source CI reviewer; real owner release approval remains separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact Git blob reviewed for narrowly delegated non-authorizing execution-attempt readback and server classification. It retains audit-chain consistency and fail-closed reconciliation, preserves the remote approval-planner denial for mad4b-chatgpt and mad4b-write, and exposes no new write callback. Developer and staging authority contracts assert the forwarded methods and exact denial list; separate live acceptance remains mandatory."
     }
   ],
   "code_change_rules": {
