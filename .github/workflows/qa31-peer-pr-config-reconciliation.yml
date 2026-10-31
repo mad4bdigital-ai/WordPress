@@ -6,6 +6,8 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/config/cross-plugin-sources.json'
       - 'wp-content/plugins/mad4b-site-control-plane/config/provider-capability-contracts.json'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/qa31-peer-pr-config-reconcile.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-start-your-company-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-readiness-governance.php'
       - '.github/workflows/qa31-peer-pr-config-reconciliation.yml'
   workflow_dispatch:
 permissions:
@@ -22,3 +24,5 @@ jobs:
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/qa31-peer-pr-config-reconcile.py
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-start-your-company-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-readiness-governance.php
