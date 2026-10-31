@@ -63,17 +63,28 @@ for item in ordered:
             diagnostic = ""
     out.append(dict(number=item["number"], status=status, conflicts=conflicts, diagnostic=diagnostic if status in ("conflict", "unrelated_history") else "",
                     base=item["base"], head_sha=item["head_sha"], draft=item["draft"]))
+# Reconcile transient first-pass conflicts against the final merged HEAD.
+# A later dependency merge may include an earlier conflicting PR verbatim.
+for row in out:
+    if row["status"] not in ("conflict", "unrelated_history"):
+        continue
+    ref = "refs/remotes/origin/pr/" + str(row["number"])
+    if subprocess.run(["git", "merge-base", "--is-ancestor", ref, "HEAD"],
+                      capture_output=True).returncode == 0:
+        row["status"] = "included_by_later_merge"
+        row["conflicts"] = []
+        row["diagnostic"] = "Exact PR commit is now an ancestor of final integration HEAD"
 Path("governance/integration").mkdir(parents=True, exist_ok=True)
 report = {"contract": "mad4b.open-prs-consolidation.v1", "production_mutation": False,
           "all_prs_attempted": len(prs), "merged": sum(p["status"] == "merged" for p in out),
-          "already_included": sum(p["status"] == "already_included" for p in out),
+          "already_included": sum(p["status"] in ("already_included", "included_by_later_merge") for p in out),
           "blocked_conflicts": sum(p["status"] == "conflict" for p in out),
           "unrelated_histories": sum(p["status"] == "unrelated_history" for p in out),
           "merge_ready": not any(p["status"] in ("conflict", "unrelated_history") for p in out),
           "results": out}
 Path("governance/integration/open-prs-20261031.json").write_text(json.dumps(report, indent=2) + "\n")
 subprocess.run(["git", "add", "governance/integration/open-prs-20261031.json"], check=True)
-subprocess.run(["git", "commit", "-m", "governance: record 59 open PR merge attempts and unresolved conflicts"], check=True)
+subprocess.run(["git", "commit", "-m", "governance: record exact open PR merge attempts and unresolved conflicts"], check=True)
 # Never publish a partial result as a fully consolidated branch.
 if not report["merge_ready"]:
     raise SystemExit("CONSOLIDATION_BLOCKED: " + str(report["blocked_conflicts"]) +
