@@ -224,6 +224,70 @@ to fail.
   used to issue grants: any installation requires a new rebuilt release
   manifest, live provenance, and original operation-owner admission.
 
+## Central Staging authority state and source drift policy (2026-10-31)
+
+Latest independent WordPress readback on `tours.dev.mad4b.com`:
+source `202e62e9a480b5144af1c6ae1517f3d8df6a92fb`;
+`central_source=verified`, `central_execution=verified`,
+`central_authority=verified`; exact Grants `112/112`, missing `0`,
+stale `0`, candidate `bound` and effective. This closes the **central
+write authority**, not the complete Full Authority execution/verification
+workflow or any company's deployment.
+
+### Required default release behavior
+
+`source_drift_guard.py` is a read-only, fail-closed preflight that compares
+all installed plugin files against the **pinned** release's per-file digests
+and archive manifest. An intended upgrade additionally requires the candidate
+ZIP's pinned SHA-256 and an exact reviewed delta containing old/new hashes for
+every changed, added or removed file, including the provenance file.
+
+```bash
+python3 source_drift_guard.py \
+  --plugin-dir /path/to/wp-content/plugins/mad4b-site-control-plane \
+  --expected-source <installed-exact-40-character-commit>
+```
+
+For an upgrade, add `--candidate-zip`, `--candidate-source`,
+`--candidate-sha256` and `--reviewed-changes`. The changes document uses
+`mad4b.staging-artifact-delta.v1`, source/target commits and an exact
+`changes` array with `path`, `previous_sha256`, `target_sha256`.
+A missing entry, an extra live file, a symlink, or a drifted byte blocks the
+operation. Do not auto-accept the current installed content as the desired
+release: first review it as a source change.
+
+The Native VPS release executor **MUST** hold a root-owned, per-site
+exclusive lock from this preflight through the approved update and independent
+post-install readback. Otherwise a concurrent Elementor/Content Readiness edit
+can race between the two checks. Do not create a second unsecured uploader
+or silently rewrite the expected commit to match uncontrolled live changes.
+On drift, raise an auditable Review, preserve unchanged site state and enqueue
+a new canonical release build. The guard never creates grants or authorizes
+mutations.
+
+**Integration status:** the guard and syntax check are committed to PR #670,
+and isolated positive/negative tests passed in a local test runtime; the guard
+is **not yet wired into the active VPS release executor**, nor is it an
+independently verified deployment lock. Do not claim the race eliminated until
+that integration and a live concurrent-writer test succeed.
+
+### Full Authority and company rollout
+
+The `mad4b-central-wpcli full-authority-lifecycle` readback reports
+`resolve/source/reconcile=ready` and
+`execute/resume/verify=not_executed`. Those stages require an actual
+approved operation plus independently verified result; a read-only plan
+or `central_authority=verified` cannot mark them done.
+
+Company Production rollout remains a separate operation and must verify each
+target's release artifact, provider compatibility, exact target authority,
+rollback and post-install evidence. No target Production mutation is
+implicitly authorized by Staging readiness.
+
+The current PR release-verdict job requires a fresh authorized
+`OWNER_ATTEST_SINGLE_OWNER` matching the exact HEAD. Resolver tests passing
+do not replace the repository's release gate or constitute company rollout.
+
 ## Extension contract
 
 Each adapter returns a structured observation with state, provider, reason and evidence. States include verified, blocked_dependency, retry, review_required and awaiting_provider.
