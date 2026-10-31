@@ -254,7 +254,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                     get_post_type($object_id)===$type && get_post_status($object_id)==='publish' &&
                     ((string)(apply_filters('wpml_post_language_details',null,$object_id)['language_code']??'')) ===
                         (string)apply_filters('wpml_default_language',null);
-                $performance=preg_match('/^perf_(?:(?:rbcss|lcpdelay|fontcss|inlinecss)_[a-f0-9]{12}|ttfb_site|probe_stale)$/D',$code) &&
+                $performance=preg_match('/^perf_(?:(?:rbcss|lcpdelay|fontcss|inlinecss)_[a-f0-9]{12}|ttfb_site|lcpdiscover_home|probe_stale)$/D',$code) &&
                     $source==='mad4b-live-performance' && $type==='site' && $object_id===0;
                 $valid=is_array($row) && ($dfsb||$localization||$performance) &&
                     hash_equals($expected,$id) &&

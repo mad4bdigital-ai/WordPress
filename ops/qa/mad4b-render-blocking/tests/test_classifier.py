@@ -48,3 +48,17 @@ assert any(x['code'].startswith('perf_inlinecss_') for x in m.classify([inline])
 inline['inline_css_bytes']=30000
 assert m.classify([inline])==[]
 print('PASS: large inline CSS regression and safe non-destructive detection')
+
+# A late, unprioritized or wrong city LCP preload must raise a governed alert.
+base={'url':'https://tours.dev.mad4b.com/','uael_widgets':[], 'css':[],
+      'inline_css_bytes':0,'external_google_fonts':[],
+      'lcp':{'element_id':'95d1c9c','resource':'https://tours.dev.mad4b.com/img.webp'},
+      'city_lcp_preload':{'href':'https://tours.dev.mad4b.com/img.webp','priority':'high','as':'image'},
+      'city_lcp_preload_head_offset':350,'city_lcp_request_entries':[{'initiator':'link'}]}
+assert not any(x['code']=='perf_lcpdiscover_home' for x in m.classify([base]))
+base['city_lcp_preload']['href']='https://tours.dev.mad4b.com/img.jpg'
+assert any(x['code']=='perf_lcpdiscover_home' for x in m.classify([base]))
+base['city_lcp_preload']['href']='https://tours.dev.mad4b.com/img.webp'
+base['city_lcp_preload_head_offset']=200000
+assert any(x['code']=='perf_lcpdiscover_home' for x in m.classify([base]))
+print('PASS: HTML-first exact-image preload and priority regression contract')

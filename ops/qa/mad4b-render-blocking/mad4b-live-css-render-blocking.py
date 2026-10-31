@@ -43,7 +43,7 @@ async def inspect(browser,path,sem):
                 new PerformanceObserver(list=>{for(const e of list.getEntries()){
                     window.__mad4b_lcp.push({ms:Math.round(e.startTime),
                       tag:e.element?.tagName||'', element_id:e.element?.getAttribute('data-id')||'',
-                      text:(e.element?.innerText||'').slice(0,75),resource:e.url||''});
+                      text:(e.element?.innerText||'').slice(0,75),resource:e.url||'',loading:e.element?.getAttribute('loading')||''});
                 }}).observe({type:'largest-contentful-paint',buffered:true});""")
             response=await page.goto(url,wait_until='domcontentloaded',timeout=25000)
             if not response or response.status!=200:raise RuntimeError('http_status_'+str(response.status if response else None))
@@ -61,6 +61,12 @@ async def inspect(browser,path,sem):
                 title:document.title,
                 pageOverflow:Math.max(0,document.documentElement.scrollWidth-innerWidth),
                 ttfbMs:Math.round(performance.getEntriesByType('navigation')[0]?.responseStart||0),
+                cityLcpPreload:(()=>{let e=document.querySelector('#mad4b-city-first-slide-lcp');return e?{
+                    href:e.href,priority:e.getAttribute('fetchpriority'),media:e.media,
+                    as:e.as,type:e.type}:null})(),
+                cityLcpRequests:performance.getEntriesByType('resource')
+                    .filter(x=>x.name===document.querySelector('#mad4b-city-first-slide-lcp')?.href)
+                    .map(x=>({initiator:x.initiatorType,start_ms:Math.round(x.startTime)})),
                 externalGoogleFonts:performance.getEntriesByType('resource')
                   .filter(x=>x.name.startsWith('https://fonts.googleapis.com/css'))
                   .map(x=>({url:x.name,duration_ms:Math.round(x.duration)})).slice(0,12),
@@ -88,6 +94,9 @@ async def inspect(browser,path,sem):
                 'title':live['title'],'uael_widgets':live['uael'],'css':styles,
                 'horizontal_overflow_px':live['pageOverflow'],
                 'ttfb_ms':int(live['ttfbMs']),'lcp':lcp,
+                'city_lcp_preload':live['cityLcpPreload'],
+                'city_lcp_preload_head_offset':raw.find('id="mad4b-city-first-slide-lcp"'),
+                'city_lcp_request_entries':live['cityLcpRequests'],
                 'inline_css_bytes':sum(x['bytes'] for x in parser.inline_styles),
                 'inline_css_largest':sorted(parser.inline_styles,key=lambda x:x['bytes'],reverse=True)[:5],
                 'external_google_fonts':live['externalGoogleFonts']}
@@ -108,6 +117,24 @@ def classify(pages):
                 'UAEL widget present — retain styles.' if seen_uael else 'No visible UAEL widget — defer CSS safely.'
             )
             issues.append({'code':code,'severity':'high','label':label[:225]})
+    for page in pages:
+        if urlsplit(page['url']).path!='/':continue
+        preload=page.get('city_lcp_preload') or {}
+        lcp=page.get('lcp') or {}
+        reason=''
+        if not preload or preload.get('priority')!='high' or preload.get('as')!='image' \
+            or int(page.get('city_lcp_preload_head_offset',-1))>8192 \
+            or int(page.get('city_lcp_preload_head_offset',-1))<0:
+            reason='Missing, late, or non-high-priority city LCP image preload'
+        elif lcp.get('element_id')=='95d1c9c' and lcp.get('resource')!=preload.get('href'):
+            reason='Preloaded image URL no longer matches the live visible city LCP image'
+        elif lcp.get('element_id')=='95d1c9c' and lcp.get('loading')=='lazy':
+            reason='Visible city LCP unexpectedly became lazy-loaded'
+        elif len(page.get('city_lcp_request_entries') or [])>1:
+            reason='First city-card image was fetched more than once'
+        if reason:
+            issues.append({'code':'perf_lcpdiscover_home','severity':'high',
+                'label':reason+'; preserve JetEngine City Slider and global fonts.'})
     for page in pages:
         total=int(page.get('inline_css_bytes') or 0)
         if total>=256*1024:
