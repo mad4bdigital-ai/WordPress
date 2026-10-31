@@ -71,5 +71,9 @@ $checks['actual visual accuracy not claimed']=str_contains($render,"'visual_accu
 $checks['template coverage not overclaimed']=str_contains($render,"'template_level_coverage'=>false");
 $checks['Rank Math native facts only']=str_contains($engine,'requires_editor_client_scoring');
 $checks['Rank Math extraction no fake score']=str_contains($engine,"'rank_math_score_recomputed'=>false");
+$checks['full-render explicitly requested']=str_contains($render,"$full=isset($input['render_mode'])");
+$checks['full-render requires admin permission']=str_contains($render,"current_user_can('manage_options')");
+$checks['default audit does not render']=str_contains($render,'full_render_not_requested');
+$checks['full render mode schema']=str_contains($render,"'render_mode'=>['type'=>'string'");
 foreach($checks as $name=>$ok)if(!$ok){fwrite(STDERR,"FAIL SEO Lifecycle: $name\n");exit(1);}
 echo 'PASS MAD4B SEO Content Lifecycle source-only contract: '.count($checks).' checks'.PHP_EOL;
