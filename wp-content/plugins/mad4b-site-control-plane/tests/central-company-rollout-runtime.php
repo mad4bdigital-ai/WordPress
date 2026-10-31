@@ -59,6 +59,7 @@ $receipt=array(
     'requirements'=>array(
         'target_plugin_file'=>'mad4b-company/entry.php',
         'target_version'=>'1.1.0',
+        'deployment_role'=>'company_adapter',
         'php_min'=>'8.1.0',
         'wordpress_min'=>'6.5.0',
         'required_plugins'=>array(
@@ -77,6 +78,17 @@ ck($good['company_site_uuid']===$site['site_uuid'] && $good['company_environment
 $untrusted=$c::assess($release,$receipt,$site,false);
 ck(!$untrusted['ready_for_separate_owner_authorization'] && in_array('trusted_central_release_readback_unavailable',$untrusted['blockers'],true),'caller-supplied pass is not trusted');
 
+$central=$receipt;
+$central['requirements']['target_plugin_file']='mad4b-content-hub/mad4b-content-hub.php';
+$central['requirements']['deployment_role']='central_controller';
+$blocked=$c::assess($release,$central,$site,true);
+ck(in_array('central_content_hub_controller_not_distributable',$blocked['blockers'],true)
+ && in_array('company_target_role_not_distributable',$blocked['blockers'],true)
+ && !$blocked['ready_for_separate_owner_authorization'],
+ 'central-only Content Hub controller must not be distributed to any company');
+$unclassified=$receipt;unset($unclassified['requirements']['deployment_role']);
+ck(in_array('company_target_role_not_distributable',$c::assess($release,$unclassified,$site,true)['blockers'],true),
+ 'unclassified private plugin cannot become a Production company rollout');
 $canary=$receipt; $canary['rollout_scope']='staging_canary_only';
 ck(in_array('central_release_promotion_scope_not_granted',$c::assess($release,$canary,$site,true)['blockers'],true), 'Staging canary cannot authorize a company Production promotion');
 $legacy=$receipt;unset($legacy['rollout_scope']);
