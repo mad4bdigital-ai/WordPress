@@ -103,7 +103,7 @@ def preflight(args,policy):
       'company':args.company,'environment':args.environment,
       'kind':args.kind,'intent':args.intent,'command_sha256':command_hash,
       'readback_command_sha256':sha(readback),'expected_readback_sha256':args.expected_readback_sha256,
-      'mutating':mutation,'backup_sha256':sha(snapshot) if mutation else None,
+      'mutating':mutation,'shell_effects_cannot_be_proven_read_only':args.kind=='shell', 'backup_sha256:sha(snapshot) if mutation else None,
       'rollback_sha256':sha(rollback) if mutation else None,
       'production_mutation_authorized':mutation and args.environment=='production',
       'command_catalog_required':False,'authorization':'independent_root_ssh_plus_host_scoped_grant',
@@ -160,7 +160,7 @@ def apply(args,plan):
         good=(result.returncode==0 and readback.returncode==0
             and sha(readback.stdout)==args.expected_readback_sha256)
         state='VERIFIED' if good else 'FAILED_EXECUTION_OR_READBACK'
-        final=dict(start,state=state,exit_code=result.returncode,
+        final=dict(start,state=state,execution_performed=True,exit_code=result.returncode,
           readback_exit_code=readback.returncode,
           output_sha256=sha(result.stdout),readback_sha256=sha(readback.stdout),
           readback_matches_expected=good,stderr_present=bool(result.stderr or readback.stderr),
@@ -168,7 +168,7 @@ def apply(args,plan):
           mutation_possible=plan['mutating'],mutation_performed=plan['mutating'] and result.returncode==0)
         # Rollback is a separate explicit host operation, not a blind replay on uncertain outcome.
     except (OSError,subprocess.TimeoutExpired):
-        final=dict(start,state='UNKNOWN_REQUIRES_RECONCILIATION',verified=False,
+        final=dict(start,state='UNKNOWN_REQUIRES_RECONCILIATION',execution_performed=None,verified=False,
           mutation_possible=plan['mutating'],
           finished_at=datetime.datetime.now(datetime.timezone.utc).isoformat())
     tmp=path.with_suffix('.tmp')
