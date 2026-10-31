@@ -50,6 +50,8 @@ jobs:
           php -l ops/company-readiness-workflow/staging-mu/304-mad4b-central-dual-lane-registry.php
           php -l ops/company-readiness-workflow/staging-mu/305-mad4b-central-ssh-command-intake.php
           php -l ops/company-readiness-workflow/staging-mu/306-mad4b-central-vps-broker.php
+          php -l ops/company-readiness-workflow/tests/test_vps_broker_signature.php
+          python3 -m py_compile ops/company-readiness-workflow/executor/vps-broker-poller.py
           php -l ops/company-readiness-workflow/tests/test_central_ssh_command_intake.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-start-your-company-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-readiness-governance.php
@@ -76,6 +78,7 @@ jobs:
         run: |
           php ops/company-readiness-workflow/tests/test_start_company_runtime.php
           php ops/company-readiness-workflow/tests/test_central_ssh_command_intake.php
+          php ops/company-readiness-workflow/tests/test_vps_broker_signature.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py
           python3 ops/company-readiness-workflow/tests/test_executor_admission_contract.py
           php wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php
