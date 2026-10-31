@@ -11851,6 +11851,91 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/provider-capability-contracts.json",
+      "source_blob_sha": "4f08b96daaafe194959d486b1f31e80c32a50f2b",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-auto-qualification-contract.php"
+      ],
+      "owner_role": "MAD4B runtime exact-source CI security reviewer; live owner authorization separate",
+      "review_rationale": "The modified provider catalog is exercised as JSON: every provider retains a stable adapter identity, bounded risk classification, evidence probes and runtime traits; high-risk capabilities must retain explicit native probes/abilities. The provider certification test additionally denies direct high-risk activation. This is CI source assessment only.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-operation-router.php",
+      "source_blob_sha": "5ac0f579a2da8fad6bde78f3c063410dd05516b2",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/global-runtime-native-lanes-contract.php"
+      ],
+      "owner_role": "MAD4B runtime exact-source CI security reviewer; live owner authorization separate",
+      "review_rationale": "The real route normalizer is exercised for valid bounded input, ambiguous targets, caller-supplied executable fields and out-of-range candidates. Runtime native lane tests enforce readback-first reconciliation after uncertain execution. Choosing an alternate route cannot issue a grant or execute a queued command.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-authority.php",
+      "source_blob_sha": "369748fbde2da326a2ae9d29dfe66c08171a1373",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/full-staging-cli-access-contract.php"
+      ],
+      "owner_role": "MAD4B runtime exact-source CI security reviewer; live owner authorization separate",
+      "review_rationale": "The isolated PHP test invokes the real Developer can_access and breakglass_apply boundaries using simulated host CLI: nonproduction is accepted only for inspection, Production is rejected, and host CLI cannot self-approve Developer Breakglass. No credentials or grants are created in the test.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-compatibility-certification.php",
+      "source_blob_sha": "abb85acfe7e5f9f3afbb8356db13c3f6f9822ceb",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-auto-qualification-contract.php"
+      ],
+      "owner_role": "MAD4B runtime exact-source CI security reviewer; live owner authorization separate",
+      "review_rationale": "Real provider certification activation-stage and level functions are invoked: unverified writes remain shadow, high-risk evidence advances only to canary, and unbound artifacts cannot become certified mutations. A match to source packages alone is not authority to execute.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php",
+      "source_blob_sha": "6bc8a4d0cb4440cc13c1590b0f2f8b30c652e335",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/grant-reconcile-identity-before-grant-contract.py"
+      ],
+      "owner_role": "MAD4B runtime exact-source CI security reviewer; live owner authorization separate",
+      "review_rationale": "The changed source is directly checked by its committed identity-before-grant contract for canonical Agent identity, reviewed provider policy and guarded mutation ordering. It does not grant Staging writes, bypass owner approval or unlock Production.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {
