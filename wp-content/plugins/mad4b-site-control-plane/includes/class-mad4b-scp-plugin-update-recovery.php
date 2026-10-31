@@ -211,7 +211,8 @@ final class MAD4B_SCP_Plugin_Update_Recovery {
             array( 'plugin_file', 'reason', 'source' ) ) )
             return new WP_Error( 'mad4b_plugin_update_plan_input_invalid', 'Only exact installed plugin ID, native update offer or reviewed provider source, and reason accepted.' );
         $plugin = (string) ( $input['plugin_file'] ?? '' );
-        if ( ! preg_match( '#^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+\\.php$#D', $plugin ) )
+        if ( ! preg_match( '#^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+\\.php$#D', $plugin )
+            || preg_match( '#(?:^|/)\\.{1,2}(?:/|$)#D', $plugin ) )
             return new WP_Error( 'mad4b_plugin_update_file_invalid', 'Exact registered plugin file required.' );
         $reason = isset( $input['reason'] ) ? trim( (string) $input['reason'] ) : '';
         if ( strlen( $reason ) < 3 || strlen( $reason ) > 500 )
