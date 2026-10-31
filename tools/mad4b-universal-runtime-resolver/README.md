@@ -2,7 +2,7 @@
 
 A persistent convergence kernel for the MAD4B central VPS. It observes enrolled site state, resolves scoped capabilities from trusted inventory and policy, and persists receipts, dependencies, events and reviews in SQLite.
 
-Current live adapters: transport, identity, authority, signed agent, package and workflow.
+Current live adapters on All Royal Egypt Staging: transport, identity, scoped authority, registered administrative SSH shell, execution route, source-native Full Staging Authority status, signed agent, package and workflow.
 
 ## Runtime
 
@@ -48,6 +48,68 @@ Create the event in a root-owned temporary file, then rename atomically to inbox
 - Production is observed but not mutated in this rollout.
 - Uncertain writes are not automatically replayed.
 - Adapter effects require independent verification and must be authorized by policy.
+
+## Original authority and registered SSH administrative fallback
+
+The main site `tours.dev.mad4b.com` uses its existing root-owned host operator,
+not a second remote WordPress plugin or an unrestricted web endpoint.
+
+- An enrolled Registry SSH key is referenced on the VPS and the target's
+  host key is pinned. The key is not copied to WordPress, Content Hub or CI.
+- The original `mad4b.native-vps-operator.v1` root-owned policy has a distinct
+  `all-royal-egypt:staging` scope with `allow_remote_shell` and the exact
+  site UUID, canonical origin, enrolled transport and site root.
+- `vps-remote-shell-operator.patch` extends that original native operator with
+  `--kind ssh` for direct root-authorized host administration. It accepts
+  arbitrary shell *program bytes*, not a fixed operation catalog, but only
+  from root-owned local files, an exact command SHA-256, a readback program and
+  expected readback SHA-256. Mutating intent also needs backup and rollback
+  artifacts. Reused correlation IDs are refused; outcomes are journaled.
+- The SSH account has the privileges of the **enrolled remote hosting user**,
+  not remote VPS root. An SSH connection does not assert sandbox isolation.
+- Automatic WordPress/Broker jobs **do not** inherit arbitrary remote shell
+  execution from this administrative scope. Those jobs still require the
+  original per-operation admission and readback.
+- `native_authority_status.py` retrieves
+  `MAD4B_SCP_Full_Staging_Authority::status()` from the target over enrolled
+  SSH/WP-CLI. Its original `operational_ready=false` remains unmodified.
+  The runtime independently reports `admin_shell=verified` and
+  `execution_route=verified`, selecting `registered_remote_ssh` for
+  directly-authorized administrative operations even if PHP `proc_open`
+  is unavailable.
+- Remote SSH compensates for missing PHP process execution for the admitted
+  admin tasks. It is **not** equivalent to a network-isolated Developer sandbox,
+  nor does it certify the Unified Full Authority native approval plan.
+
+### Operator usage
+
+The direct host operator executes from an authenticated VPS root SSH session
+(available through the enrolled Registry admin connection). Supply root-owned,
+mode 0600 command and readback files. Use `sha256sum` for the exact input
+and expected stdout bytes. Example:
+
+    python3 /opt/mad4b-company-transport/vps-native-operator.py plan \
+       --kind ssh --company all-royal-egypt --environment staging \
+       --intent diagnostic --file /root/admin-command.sh \
+       --sha256 <exact-command-sha256> \
+       --readback-file /root/admin-readback.sh \
+       --expected-readback-sha256 <expected-stdout-sha256>
+
+Run the same arguments with `apply`, adding a fresh `--correlation-id`;
+do not blindly retry a failed or uncertain mutation. No `--user` override
+or web-controlled arbitrary command payload is accepted.
+
+### Live acceptance 2026-10-31
+
+- Signed host scope and exact site root: PASS.
+- Direct remote general shell command via Registry SSH: exit 0.
+- Independent remote readback: matching SHA-256, state VERIFIED.
+- Negative tests: unregistered Production target rejected; mutation without
+  backup/rollback rejected.
+- Resolver contracts: 20/20 PASS; original Dispatcher contracts: 10/10 PASS.
+- `admin_shell=verified`, `execution_route=verified`;
+  `full_authority=blocked_dependency` preserves native sandbox blockers.
+- Production mutation performed: false.
 
 ## Extension contract
 
