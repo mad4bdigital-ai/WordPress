@@ -100,7 +100,7 @@ check($c::assess_trusted_boundary($p,$o,$g)['eligible'],'Staging and Production 
 $p=$principal;$p['auth_channel']='wp_cli';$p['verified_by']='host_verified_ssh_wpcli_identity';
 check(!$c::assess_trusted_boundary($p,$operation,$grant)['eligible'],'user supplied WP CLI claim is not proof');
 
-$r=$c::current_mcp_identity_plan($operation);
+$r=$c::current_registered_identity_plan($operation);
 check(is_wp_error($r) && $r->get_error_code()==='mad4b_unified_authority_backend_missing','missing server identity backend rejected');
 
 echo 'MAD4B_UNIFIED_OPERATION_AUTHORITY: PASS'.PHP_EOL;
