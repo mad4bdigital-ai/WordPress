@@ -72,11 +72,43 @@ final class MAD4B_SCP_Capability_Dependency_Planner {
         $identity = hash( 'sha256', wp_json_encode( array(
             'operation_id' => (string) ( $row['id'] ?? '' ),
             'profile_id' => $profile_id, 'nodes' => $nodes, 'edges' => $edges ) ) );
+        // Cross-domain non-blocking runtime projection on the canonical
+        // Operation Registry stages. Advisory only: the original registry,
+        // grants, execution fence and native providers retain all authority.
+        $global_lifecycle = null;
+        if ( class_exists( 'MAD4B_SCP_Global_Runtime_Lifecycle' ) ) {
+            $runtime_stages = array(); $predecessor = null;
+            foreach ( $nodes as $stage ) {
+                $runtime_id = 'stage_' . (int) $stage['position'];
+                $stage_type = (string) $stage['stage_type'];
+                $runtime_kind = in_array( $stage_type, array('authorization','executor','execution','mutation','write'), true )
+                    ? 'write' : ( 'verification' === $stage_type ? 'verify' : 'read' );
+                $runtime_stages[] = array(
+                    'id' => $runtime_id,
+                    'label' => (string) $stage['stage_id'],
+                    'kind' => $runtime_kind,
+                    'depends_on' => null === $predecessor ? array() : array( $predecessor ),
+                    'required' => ! empty( $stage['required'] ),
+                    'condition' => (string) ( $stage['condition'] ?? '' ),
+                    'condition_evaluated' => ! empty( $stage['condition_evaluated'] ),
+                    'ability_registered' => $stage['ability_registration_observed'],
+                    'requires_source_owner' => in_array( (string) $stage['binding_type'],
+                        array( 'plan_bound_executor','executor_owned_verification','policy_boundary' ), true ),
+                );
+                $predecessor = $runtime_id;
+            }
+            $global_lifecycle = MAD4B_SCP_Global_Runtime_Lifecycle::evaluate( $runtime_stages );
+            if ( is_wp_error( $global_lifecycle ) ) $global_lifecycle = null;
+        }
         return array(
             'contract' => self::CONTRACT, 'source' => MAD4B_SCP_Operation_Registry::CONTRACT,
             'operation_id' => (string) ( $row['id'] ?? '' ),
             'pipeline_profile' => $profile_id,
             'graph_sha256' => $identity, 'nodes' => $nodes, 'edges' => $edges,
+            'global_runtime_contract' => is_array( $global_lifecycle ) ? $global_lifecycle['contract'] : '',
+            'global_lifecycle_state' => is_array( $global_lifecycle ) ? $global_lifecycle['state'] : '',
+            'global_lifecycle_projection' => $global_lifecycle,
+            'routine_predecessor_wait_is_not_blocking' => is_array( $global_lifecycle ),
             'missing_registered_abilities' => $missing,
             'unresolved_dependencies' => $unresolved,
             'state' => $missing ? 'REGISTERED_DEPENDENCIES_MISSING' : 'GRAPH_PLANNED_NEEDS_LIVE_ADMISSION',

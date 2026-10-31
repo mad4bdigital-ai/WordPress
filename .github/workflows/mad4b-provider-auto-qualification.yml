@@ -1,0 +1,26 @@
+name: MAD4B Provider Auto Qualification
+on:
+  push:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-auto-qualification.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-auto-qualification-contract.php'
+      - '.github/workflows/mad4b-provider-auto-qualification.yml'
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-auto-qualification.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-auto-qualification-contract.php'
+      - '.github/workflows/mad4b-provider-auto-qualification.yml'
+jobs:
+  provider-auto-qualification:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: Validate pure global provider qualification contract
+        run: |
+          ROOT=wp-content/plugins/mad4b-site-control-plane
+          php -l "$ROOT/includes/class-mad4b-scp-provider-auto-qualification.php"
+          php -l "$ROOT/tests/provider-auto-qualification-contract.php"
+          php "$ROOT/tests/provider-auto-qualification-contract.php"
