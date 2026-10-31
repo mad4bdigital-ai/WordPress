@@ -22,7 +22,7 @@ function mock({exit_code=0,verified=true,throws=false}={}) {
  const adapters={
   journal:{async start(x){journal.push(x);return {claimed:true}},async finish(x){journal.push(x);return true}},
   transports:{vps_ssh:{async execute(x){executions.push(x);if(throws)throw Error('transport unavailable');return {exit_code}}}},
-  async readback(){return {verified}};
+  async readback(){return {verified}}
  };
  return {journal,executions,adapters};
 }
