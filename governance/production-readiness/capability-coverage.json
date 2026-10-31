@@ -4384,6 +4384,44 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing MCP provider-adapter admission, original centralized mutation-gate and server registration controls apply. This is a bundled optional adapter, not an independent execution gateway, with availability and disappearance explicitly tested.",
       "review_rationale": "Exact ChatbotX optional-provider adapter reviewed against the same-PR hermetic registration, write-preflight and direct governed-write tests. Availability is tied to the plugin's active_plugins entry plus loaded provider classes: absent/inactive provider registers and advertises no MCP tool, including after withdrawal. Exactly eleven read names use Policy::can_read and three mutation names use Policy::can_admin with write surface, non-readonly annotations, required idempotency keys and closed object schemas. Shared Adapter_Base central authorization and ChatbotX_Governed_Writes::guard retain independent mutation checks, denied-write tests and bounded provider-native targets. This review is source-level only; it does not certify connected provider credentials or grant Production/remote mutation authority."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-write-preflight.php",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer, not an owner release signature",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing provider-surface admission, centralized mutation controls and execution-denial checks apply; this component adds no independent remote grant. The exact source and same-PR negative tests cover the only approved functional surface.",
+      "review_rationale": "The exact provider write-preflight source is a read-only planner. It assesses the enrolled site profile, central mutation gate, provider contract and certification, append-only audit readiness, native support/CPT prerequisites, and never claims authorization: approved_for_execution=false and no_mutation_performed=true. The same-PR isolated PHP test verifies each of the three write identifiers fails closed on disabled profile/write/certification/origin, rejects an unknown ability, and invokes no mutator. Source blob 7cbeb2cb9b3ff3f1b6b6b77f7c2fdb9891f5a2d9."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-governed-writes.php",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer, not an owner release signature",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing provider-surface admission, centralized mutation controls and execution-denial checks apply; this component adds no independent remote grant. The exact source and same-PR negative tests cover the only approved functional surface.",
+      "review_rationale": "The exact native write implementation has an independent Policy::can_mutate and current_user_can(manage_options) guard on direct invocation, in addition to centralized adapter mutation authorization before execution. All three native methods are limited to existing support customer/mailbox, existing accessible ticket, or provider-declared draft CPT target, with stable HMAC-scoped idempotency reservation; CPT posts stay draft. Same-PR hermetic PHP negative tests directly invoke all three methods with the site mutation gate disabled and prove no write escapes. Source blob 93d17a36a2c3f5937ea0865b529ac181190d74aa."
     }
   ],
   "lifecycle": [],
@@ -12531,6 +12569,40 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Exact ChatbotX optional-provider adapter reviewed against the same-PR hermetic registration, write-preflight and direct governed-write tests. Availability is tied to the plugin's active_plugins entry plus loaded provider classes: absent/inactive provider registers and advertises no MCP tool, including after withdrawal. Exactly eleven read names use Policy::can_read and three mutation names use Policy::can_admin with write surface, non-readonly annotations, required idempotency keys and closed object schemas. Shared Adapter_Base central authorization and ChatbotX_Governed_Writes::guard retain independent mutation checks, denied-write tests and bounded provider-native targets. This review is source-level only; it does not certify connected provider credentials or grant Production/remote mutation authority."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-write-preflight.php",
+      "source_blob_sha": "7cbeb2cb9b3ff3f1b6b6b77f7c2fdb9891f5a2d9",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer, not an owner release signature",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "review_rationale": "The exact provider write-preflight source is a read-only planner. It assesses the enrolled site profile, central mutation gate, provider contract and certification, append-only audit readiness, native support/CPT prerequisites, and never claims authorization: approved_for_execution=false and no_mutation_performed=true. The same-PR isolated PHP test verifies each of the three write identifiers fails closed on disabled profile/write/certification/origin, rejects an unknown ability, and invokes no mutator."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-governed-writes.php",
+      "source_blob_sha": "93d17a36a2c3f5937ea0865b529ac181190d74aa",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer, not an owner release signature",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "review_rationale": "The exact native write implementation has an independent Policy::can_mutate and current_user_can(manage_options) guard on direct invocation, in addition to centralized adapter mutation authorization before execution. All three native methods are limited to existing support customer/mailbox, existing accessible ticket, or provider-declared draft CPT target, with stable HMAC-scoped idempotency reservation; CPT posts stay draft. Same-PR hermetic PHP negative tests directly invoke all three methods with the site mutation gate disabled and prove no write escapes."
     }
   ],
   "code_change_rules": {
