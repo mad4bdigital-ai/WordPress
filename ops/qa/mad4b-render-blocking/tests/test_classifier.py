@@ -88,7 +88,7 @@ print('PASS: UTF-8 byte-safe MAD4B alert labels')
 
 # Shared rate/property display and mobile Tour Content spacing.
 base={'url':'https://tours.dev.mad4b.com/tours-and-activities/unforgettable-egypt-budget-tour-cairo-to-luxor-nile-cruise-discovery-8-days/',
- 'uael_widgets':[],'css':[], 'accommodation_visibility':{'count':2,'invalid_visible':0,'eligible_visible':0},
+ 'uael_widgets':[],'css':[], 'is_tour_single':True, 'accommodation_visibility':{'count':2,'invalid_visible':0,'eligible_visible':0},
  'mobile_toc_gap_px':12,'tour_rate_css':{'shadow_present':True,'original_present':True,'card_count':2,
  'font_px':14.66,'radius_px':25,'bg':'rgb(251, 251, 251)'}}
 assert not any(x['code'] in ('perf_empty_accommodation_ui','perf_mobile_toc_spacing') for x in m.classify([base]))
@@ -100,7 +100,7 @@ assert any(x['code']=='perf_mobile_toc_spacing' for x in m.classify([base]))
 print('PASS: empty hotel-option display and mobile TOC spacing alerts')
 # Departure display defaults to hidden. Continent cannot be a tour departure.
 rate_page={'url':'https://tours.dev.mad4b.com/tours-and-activities/unforgettable-egypt-budget-tour-cairo-to-luxor-nile-cruise-discovery-8-days/',
- 'uael_widgets':[],'css':[],
+ 'uael_widgets':[],'css':[], 'is_tour_single':True,
  'departure_details':{'widgets':6,'unexpected_visible':0,'continent_visible':0,'optin_count':0,'label_count':2,'stale_default_label_count':0},
  'mobile_toc_gap_px':12,'mobile_toc_bottom_gap_px':16,
  'tour_h2':{'color':'rgb(32, 76, 80)','global_secondary':'#204C50','font':'Nunito, sans-serif'},
@@ -119,3 +119,17 @@ rate_page['mobile_toc_bottom_gap_px']=16
 rate_page['tour_h2']['color']='rgb(16, 45, 64)'
 assert any(x['code']=='perf_tour_h2_global' for x in m.classify([rate_page]))
 print('PASS: Tour Rate Origin, opt-in schedule, bottom gap and global H2 regression alerts')
+
+# Full Rate census: only opted-in invalid sources trigger errors, not hidden legacy data.
+census={'site_uuid':'e5e64bca-ed62-48d2-b2b3-dff693cd702a','scanned':200,'publish':180,'draft':20,'opted_in':0,'hidden_legacy_rates':33,'schema_valid':True,'defaults_hidden':True,'opted_in_invalid_origin':[],'orphan_published_rate':[]}
+assert not any(x['code'] in ('perf_rate_schema_drift','perf_rate_origin_config','perf_rate_orphan') for x in m.classify([rate_page],census))
+census['schema_valid']=False
+assert any(x['code']=='perf_rate_schema_drift' for x in m.classify([rate_page],census))
+census['schema_valid']=True
+census['opted_in_invalid_origin']=[8001]
+assert any(x['code']=='perf_rate_origin_config' for x in m.classify([rate_page],census))
+census['opted_in_invalid_origin']=[]
+census['orphan_published_rate']=[8003]
+assert any(x['code']=='perf_rate_orphan' for x in m.classify([rate_page],census))
+assert any(x['code']=='perf_rate_locale_parity' for x in m.classify([dict(rate_page,departure_details=dict(rate_page['departure_details'],label_count=2)), dict(rate_page,url='https://tours.dev.mad4b.com/ar/tours-and-activities/unforgettable-egypt-budget-tour-cairo-to-luxor-nile-cruise-discovery-8-days/',departure_details=dict(rate_page['departure_details'],label_count=0))]))
+print('PASS: whole-site census, neutral hidden legacy data and translated product parity')

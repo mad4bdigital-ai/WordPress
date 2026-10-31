@@ -58,27 +58,51 @@ final class MAD4B_Rate_Departure_Details_V1 {
   $term=$id?get_term($id,$taxonomy):null;
   return $term && !is_wp_error($term) && $term->taxonomy===$taxonomy?(string)$term->name:'';
  }
+ /** Resolve rate details by the JetEngine meta key, not a template widget ID.
+  * This also covers WPML Elementor clones and future Listing templates. */
+ static function widget_type($widget){
+  if(!is_object($widget)||!method_exists($widget,'get_id'))return null;
+  $name=method_exists($widget,'get_name')?(string)$widget->get_name():'';
+  if($name==='jet-listing-dynamic-field' || $name==='jet-listing-dynamic-field.default'){
+   $field='';
+   if(method_exists($widget,'get_settings_for_display'))$field=(string)$widget->get_settings_for_display('dynamic_field_post_meta_custom');
+   if($field==='' && method_exists($widget,'get_settings'))$field=(string)$widget->get_settings('dynamic_field_post_meta_custom');
+   $map=['related_day_of_week_term_id'=>'day','related_origin_destination_term_id'=>'origin','related_day_time_term_id'=>'time'];
+   if(isset($map[$field]))return $map[$field];
+  }
+  // Backwards compatibility for older JetEngine widgets that do not expose
+  // their custom field in the get_settings() API.
+  $id=(string)$widget->get_id();return self::WIDGETS[$id]??null;
+ }
+ static function widget_format($widget,$type){
+  if(method_exists($widget,'get_settings_for_display')){
+   $format=(string)$widget->get_settings_for_display('dynamic_field_format');
+   if($format!=='' && substr_count($format,'%s')===1 && strlen($format)<=100 && strpos($format,'%n')===false)
+    return wp_strip_all_tags($format);
+  }
+  $id=(string)$widget->get_id();
+  return $type==='origin'&&$id==='213c9bf'?'from %s':($type==='time'&&$id==='fb0a8c1'?'at %s':'%s');
+ }
  static function mark_widget($widget){
   if(!self::bound()||is_admin()||!is_object($widget)||!method_exists($widget,'get_id')||!method_exists($widget,'add_render_attribute'))return;
-  $id=(string)$widget->get_id();if(!isset(self::WIDGETS[$id]))return;
+  if(self::widget_type($widget)===null)return;
   $rate=self::current_rate();
   $widget->add_render_attribute('_wrapper','data-mad4b-departure-optin',self::is_enabled($rate)?'1':'0');
   $widget->add_render_attribute('_wrapper','data-mad4b-departure-source','linked-tour');
  }
  static function widget_content($content,$widget){
   if(!self::bound()||is_admin()||!is_object($widget)||!method_exists($widget,'get_id'))return $content;
-  $id=(string)$widget->get_id();
-  if(!isset(self::WIDGETS[$id]))return $content;
+  $type=self::widget_type($widget);
+  if($type===null)return $content;
   $rate=self::current_rate();
   // No verified rate context means no potentially false schedule or continent text.
   if(!$rate || !self::is_enabled($rate))return '';
-  $type=self::WIDGETS[$id];
   $value=$type==='origin'?self::origin($rate):self::actual_day_time($rate,$type);
   if($value==='')return '';
   // Preserve the JetEngine/Elementor wrapper and CSS while replacing stale rendered data.
   // Replace the text node of the dynamic-field output, not a full HTML fragment.
   if(preg_match('~(<div\b[^>]*class=["\'][^"\']*jet-listing-dynamic-field__content[^"\']*["\'][^>]*>)(.*?)(</div>)~is',$content)){
-   $format=$type==='origin'&&$id==='213c9bf'?'from %s':($type==='time'&&$id==='fb0a8c1'?'at %s':'%s');
+   $format=self::widget_format($widget,$type);
    return preg_replace_callback('~(<div\b[^>]*class=["\'][^"\']*jet-listing-dynamic-field__content[^"\']*["\'][^>]*>)(.*?)(</div>)~is',
     static function($m)use($format,$value){return $m[1].esc_html(sprintf($format,$value)).$m[3];},$content,1);
   }
@@ -123,8 +147,49 @@ final class MAD4B_Rate_Departure_Details_V1 {
   if(!is_array($decoded)||!in_array(self::FIELD,array_column($decoded,'name'),true))return new WP_Error('schema_readback_failed');
   return ['ok'=>true,'schema_sha256'=>hash('sha256',$read),'source_backup_option'=>$backup,'toggle_default'=>'0','glossary_id'=>321];
  }
+ /** Read-only whole-site integrity: counts include every published/draft Rate.
+  * Preserve old optional values; only opted-in invalid data is actionable. */
+ static function audit(){
+  if(!self::bound())return new WP_Error('wrong_site');
+  global $wpdb;
+  $rows=$wpdb->get_results($wpdb->prepare("SELECT ID,post_status FROM {$wpdb->posts} WHERE post_type=%s AND post_status IN ('publish','draft') ORDER BY ID ASC",'tour-rates'),ARRAY_A);
+  $result=['site_uuid'=>self::UUID,'scanned'=>0,'publish'=>0,'draft'=>0,'opted_in'=>0,
+   'hidden_legacy_rates'=>0,'opted_in_invalid_origin'=>[],'orphan_published_rate'=>[],
+   'schema_valid'=>false,'glossary_id'=>321,'defaults_hidden'=>true];
+  foreach((array)$rows as $row){
+   $id=(int)$row['ID'];++$result['scanned'];++$result[$row['post_status']];
+   $tour=(int)get_post_meta($id,'related_tour_id',true);
+   if($row['post_status']==='publish' && (!$tour||get_post_type($tour)!=='tours-and-activities')){
+    if(count($result['orphan_published_rate'])<20)$result['orphan_published_rate'][]=$id;
+   }
+   $enabled=self::is_enabled($id);
+   if($enabled){
+    ++$result['opted_in'];
+    if(self::origin($id)==='' && count($result['opted_in_invalid_origin'])<20)$result['opted_in_invalid_origin'][]=$id;
+   }elseif((int)get_post_meta($id,'related_day_of_week_term_id',true)>0
+    ||(int)get_post_meta($id,'related_day_time_term_id',true)>0
+    ||(int)get_post_meta($id,'related_origin_destination_term_id',true)>0){
+    ++$result['hidden_legacy_rates'];
+   }
+  }
+  // JetEngine schema may be independently edited; detect changed defaults.
+  $schema=$wpdb->get_var($wpdb->prepare("SELECT meta_fields FROM {$wpdb->prefix}jet_post_types WHERE id=%d AND slug=%s",self::RATE_CPT_ID,'tour-rates'));
+  $fields=maybe_unserialize($schema);$byKey=[];
+  foreach((array)$fields as $f){if(is_array($f)&&isset($f['name']))$byKey[$f['name']]=$f;}
+  $toggle=$byKey[self::FIELD]??[];
+  $result['schema_valid']=($toggle['type']??'')==='radio' && ($toggle['options_source']??'')==='glossary'
+   && (int)($toggle['glossary_id']??0)===321 && (string)($toggle['default_val']??'')==='0';
+  foreach(['related_day_of_week_term_id','related_day_time_term_id','related_origin_destination_term_id'] as $key){
+   if(!isset($byKey[$key]) || (string)($byKey[$key]['default_val']??'')!=='' || !empty($byKey[$key]['is_required']))$result['defaults_hidden']=false;
+  }
+  return $result;
+ }
  static function cli($args,$opts){
   $command=$args[0]??'status';
+  if($command==='audit'){
+   $result=self::audit();if(is_wp_error($result))WP_CLI::error($result->get_error_code());
+   WP_CLI::line(wp_json_encode($result,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE));return;
+  }
   if($command==='status'){
    WP_CLI::line(wp_json_encode(['site_bound'=>self::bound(),'example_rate_60840_enabled'=>self::is_enabled(60840),'example_origin'=>self::origin(60840),'schema_backup'=>!!get_option('mad4b_rate_departure_schema_backup_20261031_v1')],JSON_PRETTY_PRINT));return;
   }

@@ -298,6 +298,8 @@ function tk_tour_rates_dynamic_function_cb( $func_data ) {
 		return '';
 	}
 
-	return '<span class="tk-tour-rate-label">' . esc_html( $label ) . '</span>';
+	$optin = $trusted ? '1' : '0';
+	// Visible contract for monitoring across unrelated Tour Rates and WPML URLs.
+	return '<span class="tk-tour-rate-label" data-mad4b-departure-optin="' . esc_attr( $optin ) . '">' . esc_html( $label ) . '</span>';
 }
 }

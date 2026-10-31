@@ -251,7 +251,7 @@
 
 /* Tour editorial headings inherit Elementor Global Typography;
    their color is the site's global secondary, not a hard-coded per-language value. */
-body.single-tours-and-activities .elementor-24784 .elementor-widget-heading h2.elementor-heading-title {
+body.single-tours-and-activities .elementor-widget-heading h2.elementor-heading-title {
   color: var(--e-global-color-secondary, var(--e-global-color-primary));
 }
 @media (max-width: 767px) {

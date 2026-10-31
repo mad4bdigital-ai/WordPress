@@ -23,6 +23,7 @@ function is_wp_error($o){return false;}
 function is_admin(){return false;}
 function apply_filters($name,$value,...$rest){if($name==='wpml_current_language')return 'en';if($name==='wpml_object_id')return $value;return $value;}
 function esc_html($v){return htmlspecialchars($v,ENT_QUOTES,'UTF-8');}
+function wp_strip_all_tags($s){return strip_tags($s);}
 class FakeRate {public $ID=701;}
 class FakeListData {function get_current_object(){return new FakeRate();}}
 function jet_engine(){return (object)['listings'=>(object)['data'=>new FakeListData()]];}
@@ -37,10 +38,22 @@ assert_ok(!MAD4B_Rate_Departure_Details_V1::is_enabled(701),'toggle defaults to 
 foreach(array_keys(MAD4B_Rate_Departure_Details_V1::WIDGETS) as $id){
  assert_ok(MAD4B_Rate_Departure_Details_V1::widget_content($source,new FakeWidget($id))==='','unconfirmed departure widget suppressed '.$id);
 }
+class FakeTranslatedField extends FakeWidget {
+ function get_name(){return 'jet-listing-dynamic-field';}
+ function get_settings_for_display($field){
+  return ['dynamic_field_post_meta_custom'=>'related_origin_destination_term_id',
+          'dynamic_field_format'=>'via %s'][$field]??'';
+ }
+}
+assert_ok(MAD4B_Rate_Departure_Details_V1::widget_type(new FakeTranslatedField('wpml-new-id'))==='origin',
+ 'new WPML Elementor widget ID inherits canonical meta-field rule');
+assert_ok(MAD4B_Rate_Departure_Details_V1::widget_content($source,new FakeTranslatedField('wpml-new-id'))==='',
+ 'unconfirmed translated cloned widget is hidden too');
 $rate['show_rate_departure_details']='1';
 assert_ok(MAD4B_Rate_Departure_Details_V1::is_enabled(701),'True allows explicitly confirmed rate display');
 $origin=MAD4B_Rate_Departure_Details_V1::widget_content($source,new FakeWidget('08da455'));
 assert_ok(str_contains($origin,'Cairo')&&!str_contains($origin,'Africa'),'widget replaces legacy Africa with Tour Cairo');
+assert_ok(str_contains(MAD4B_Rate_Departure_Details_V1::widget_content($source,new FakeTranslatedField('wpml-new-id')),'via Cairo'),'translated widget preserves its own localized formatting');
 assert_ok(str_contains(MAD4B_Rate_Departure_Details_V1::widget_content($source,new FakeWidget('2c7a06c')),'Friday'),'explicit weekday appears only after opt-in');
 assert_ok(str_contains(MAD4B_Rate_Departure_Details_V1::widget_content($source,new FakeWidget('fb0a8c1')),'at Afternoon'),'confirmed time uses existing formatting');
 $tour['tour_origin_location_term']=2306;

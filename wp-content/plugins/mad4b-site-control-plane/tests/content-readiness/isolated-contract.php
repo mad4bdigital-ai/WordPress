@@ -396,7 +396,7 @@ yes($preReport['execution_mode']==='disabled' &&
     'preactivation report is read-only and execution-disabled');
 // New tour-accommodation and mobile TOC regression findings can only arrive
 // from the existing audited MAD4B performance provider; no status spoofing.
-foreach (['perf_empty_accommodation_ui'=>'high','perf_mobile_toc_spacing'=>'medium','perf_rate_origin_ui'=>'high','perf_rate_schedule_default'=>'high','perf_toc_bottom_gap'=>'medium','perf_tour_h2_global'=>'medium'] as $code=>$severity) {
+foreach (['perf_empty_accommodation_ui'=>'high','perf_mobile_toc_spacing'=>'medium','perf_rate_origin_ui'=>'high','perf_rate_schedule_default'=>'high','perf_toc_bottom_gap'=>'medium','perf_tour_h2_global'=>'medium','perf_rate_locale_parity'=>'high','perf_rate_schema_drift'=>'high','perf_rate_origin_config'=>'high','perf_rate_orphan'=>'high'] as $code=>$severity) {
     $id=hash('sha256','6|site|0|'.$code);
     $event=['id'=>$id,'post_type'=>'site','object_id'=>0,'code'=>$code,
         'severity'=>$severity,'label'=>'Verified mobile presentation regression',

@@ -12,7 +12,14 @@ PAGES=['/','/ar/','/fr/','/de/','/es/','/it/',
        '/tours-and-activities/nile-cruise-luxor-to-aswan-5-days/',
        '/plan-a-trip/',
        '/tours-and-activities/best-of-egypt-cairo-luxor-nile-cruise-red-sea-12-days/',
-       '/tours-and-activities/unforgettable-egypt-budget-tour-cairo-to-luxor-nile-cruise-discovery-8-days/']
+       '/tours-and-activities/unforgettable-egypt-budget-tour-cairo-to-luxor-nile-cruise-discovery-8-days/',
+       '/ar/tours-and-activities/unforgettable-egypt-budget-tour-cairo-to-luxor-nile-cruise-discovery-8-days/',
+       '/fr/tours-and-activities/unforgettable-egypt-budget-tour-cairo-to-luxor-nile-cruise-discovery-8-days/',
+       '/de/tours-and-activities/unforgettable-egypt-budget-tour-cairo-to-luxor-nile-cruise-discovery-8-days/',
+       '/es/tours-and-activities/unforgettable-egypt-budget-tour-cairo-to-luxor-nile-cruise-discovery-8-days/',
+       '/it/tours-and-activities/unforgettable-egypt-budget-tour-cairo-to-luxor-nile-cruise-discovery-8-days/',
+       '/tours-and-activities/amazing-5-days-cairo-and-luxor-discovery-tour/',
+       '/ar/tours-and-activities/amazing-5-days-cairo-and-luxor-discovery-tour/']
 OUT=pathlib.Path('/opt/hostinger-migrations/hosting-3/etg-commerce-staging/qa/render-blocking-uael-20261031')
 OUTPUT=OUT/'live-css-scan.json'
 CONTRACT='mad4b.live-render-blocking.v1'
@@ -77,18 +84,25 @@ async def inspect(browser,path,sem):
                     eligible_visible:lists.filter(x=>x.dataset.bookingChoiceEligible==='1'&&getComputedStyle(x).display!=='none').length
                 }})(),
                 mobileTourTOCGap:(()=>{let x=document.querySelector('body.single-tours-and-activities .elementor-24784 .elementor-element-b29a19b');return x?parseFloat(getComputedStyle(x).marginBlockStart):null})(),
+                isTourSingle:document.body.classList.contains('single-tours-and-activities'),
                 departureDetails:(()=>{const widgets=[...document.querySelectorAll('[data-mad4b-departure-optin]')];
-                    const cardLabels=[...document.querySelectorAll('.tk-tour-rate-label')].map(x=>x.textContent.trim());
+                    const cardLabels=[...document.querySelectorAll('.tk-tour-rate-label')];
+                    const unconfirmed=cardLabels.filter(x=>x.dataset.mad4bDepartureOptin!=='1');
                     return {widgets:widgets.length,
                      unexpected_visible:widgets.filter(x=>x.dataset.mad4bDepartureOptin==='0'&&x.textContent.trim()).length,
                      continent_visible:widgets.filter(x=>/\bAfrica\b/i.test(x.textContent)).length,
                      optin_count:widgets.filter(x=>x.dataset.mad4bDepartureOptin==='1').length,
                      label_count:cardLabels.length,
-                     stale_default_label_count:cardLabels.filter(x=>/\b(Africa|Afternoon|Friday)\b/i.test(x)).length};})(),
-                mobileTOCBottomGap:(()=>{let toc=document.querySelector('.elementor-24784 .elementor-element-b29a19b');let h=document.querySelector('.elementor-24784 .elementor-element-c16d4db h2.elementor-heading-title');
-                    if(!toc||!h||getComputedStyle(toc).display==='none')return null;
-                    return Math.round(h.getBoundingClientRect().top-toc.getBoundingClientRect().bottom)})(),
-                tourH2:(()=>{let h=document.querySelector('.elementor-24784 .elementor-element-c16d4db h2.elementor-heading-title');if(!h)return null;
+                     stale_default_label_count:unconfirmed.filter(x=>/\b(Africa|Afternoon|Friday|Monday|Tuesday|Wednesday|Thursday|Saturday|Sunday|Morning|Evening)\b/i.test(x.textContent)).length,
+                     unmarked_label_count:cardLabels.filter(x=>!x.hasAttribute('data-mad4b-departure-optin')).length};})(),
+                mobileTOCBottomGap:(()=>{let toc=document.querySelector('.elementor-24784 .elementor-element-b29a19b');
+                    if(!toc||getComputedStyle(toc).display==='none')return null;
+                    let after=[...document.querySelectorAll('body.single-tours-and-activities .elementor-widget-heading h2.elementor-heading-title')]
+                     .filter(x=>x.getBoundingClientRect().height>0 && x.getBoundingClientRect().top>toc.getBoundingClientRect().bottom)
+                     .sort((a,b)=>a.getBoundingClientRect().top-b.getBoundingClientRect().top)[0];
+                    return after?Math.round(after.getBoundingClientRect().top-toc.getBoundingClientRect().bottom):null})(),
+                tourH2:(()=>{let h=[...document.querySelectorAll('body.single-tours-and-activities .elementor-widget-heading h2.elementor-heading-title')]
+                    .find(x=>x.getBoundingClientRect().height>0);if(!h)return null;
                     const css=getComputedStyle(h);return {color:css.color,global_secondary:css.getPropertyValue('--e-global-color-secondary').trim(),font:css.fontFamily}})(),
                 tourRateCSS:(()=>{let shadow=document.querySelector('#mad4b-rate-css-shadow');let original=document.querySelector('#elementor-post-56197');let cards=[...document.querySelectorAll('.tk-tour-rate-label')];let label=cards[0],control=label?.closest('.jet-toggle__control');let a=label?getComputedStyle(label):null,c=control?getComputedStyle(control):null;return{shadow_present:!!shadow,original_present:!!original,sha:shadow?.getAttribute('data-css-sha256')||null,card_count:cards.length,font_px:a?parseFloat(a.fontSize):null,card_height:label?Math.round(label.getBoundingClientRect().height):null,bg:c?.backgroundColor||null,radius_px:c?parseFloat(c.borderTopLeftRadius):null}})(),
                 externalGoogleFonts:performance.getEntriesByType('resource')
@@ -118,6 +132,7 @@ async def inspect(browser,path,sem):
                 'title':live['title'],'uael_widgets':live['uael'],'css':styles,
                 'horizontal_overflow_px':live['pageOverflow'],
                 'ttfb_ms':int(live['ttfbMs']),'lcp':lcp,
+                'is_tour_single':live['isTourSingle'],
                 'departure_details':live['departureDetails'],
                 'mobile_toc_bottom_gap_px':live['mobileTOCBottomGap'],
                 'tour_h2':live['tourH2'],
@@ -132,7 +147,7 @@ async def inspect(browser,path,sem):
                 'external_google_fonts':live['externalGoogleFonts']}
         finally:
             await page.close()
-def classify(pages):
+def classify(pages,audit=None):
     """Produce stable, per-URL CSS alerts only for measured mobile blocking assets."""
     issues=[]
     for page in pages:
@@ -147,20 +162,21 @@ def classify(pages):
                 'UAEL widget present — retain styles.' if seen_uael else 'No visible UAEL widget — defer CSS safely.'
             )
             issues.append({'code':code,'severity':'high','label':label[:225]})
-    for page in pages:
+    tour_pages=[page for page in pages if page.get('is_tour_single')]
+    presentation_issues={}
+    for page in tour_pages:
         path=urlsplit(page['url']).path
-        if path!='/tours-and-activities/unforgettable-egypt-budget-tour-cairo-to-luxor-nile-cruise-discovery-8-days/':continue
         departure=page.get('departure_details') or {}
         if int(departure.get('unexpected_visible') or 0)>0 or int(departure.get('continent_visible') or 0)>0:
-            issues.append({'code':'perf_rate_origin_ui','severity':'high',
+            presentation_issues.setdefault(path,[]).append({'code':'perf_rate_origin_ui','severity':'high',
                 'label':'Unconfirmed Rate detail is visible or continent is presented as Tour-origin; use related Tour metadata and False-by-default JetEngine glossary switch.'})
-        # The sampled page is known to have all four Rates set to False.
+        # Only unconfirmed pricing labels are checked; opt-in Rate labels can show a real day.
         if int(departure.get('stale_default_label_count') or 0)>0:
-            issues.append({'code':'perf_rate_schedule_default','severity':'high',
+            presentation_issues.setdefault(path,[]).append({'code':'perf_rate_schedule_default','severity':'high',
                 'label':'Unconfirmed Friday/Afternoon/Africa default leaked into customer-facing Rate pricing titles.'})
         bottom=page.get('mobile_toc_bottom_gap_px')
         if isinstance(bottom,(int,float)) and (bottom>32 or bottom<8):
-            issues.append({'code':'perf_toc_bottom_gap','severity':'medium',
+            presentation_issues.setdefault(path,[]).append({'code':'perf_toc_bottom_gap','severity':'medium',
                 'label':f'Mobile Tour contents to first H2 gap {round(bottom)}px outside accepted 8–32px range.'})
         h2=page.get('tour_h2') or {}
         if h2 and h2.get('global_secondary'):
@@ -168,16 +184,40 @@ def classify(pages):
             if len(hexc)==6 and all(c in '0123456789abcdefABCDEF' for c in hexc):
                 expected='rgb('+', '.join(str(int(hexc[i:i+2],16)) for i in (0,2,4))+')'
                 if h2.get('color')!=expected:
-                    issues.append({'code':'perf_tour_h2_global','severity':'medium',
+                    presentation_issues.setdefault(path,[]).append({'code':'perf_tour_h2_global','severity':'medium',
                         'label':'Tour editorial H2 color no longer follows Elementor Global Secondary color.'})
         accommodations=page.get('accommodation_visibility') or {}
         if int(accommodations.get('invalid_visible') or 0)>0:
-            issues.append({'code':'perf_empty_accommodation_ui','severity':'high',
+            presentation_issues.setdefault(path,[]).append({'code':'perf_empty_accommodation_ui','severity':'high',
                 'label':'Tour rate selector is exposing empty/ineligible hotel alternatives. Hide optional accommodation until Rate has valid published Properties.'})
         gap=page.get('mobile_toc_gap_px')
         if isinstance(gap,(int,float)) and gap<8:
-            issues.append({'code':'perf_mobile_toc_spacing','severity':'medium',
+            presentation_issues.setdefault(path,[]).append({'code':'perf_mobile_toc_spacing','severity':'medium',
                 'label':'Mobile Tour Contents lacks minimum spacing below the preceding section; preserve Elementor navigation and desktop layout.'})
+    unique={}
+    for path,events in presentation_issues.items():
+        for issue in events:
+            code=issue['code']
+            if code not in unique:
+                issue['label']=issue['label']+' Sample: '+path
+                unique[code]=issue
+    issues.extend(unique.values())
+    # The same published tour should not lose all rate cards in a translated locale.
+    def canonical(path):
+        return re.sub(r'^/(ar|fr|de|es|it)(?=/)', '', path)
+    grouped={}
+    for page in tour_pages:
+        path=urlsplit(page['url']).path
+        group=grouped.setdefault(canonical(path),{})
+        locale=re.match(r'^/(ar|fr|de|es|it)/',path)
+        group[locale.group(1) if locale else 'en']=int((page.get('departure_details') or {}).get('label_count') or 0)
+    missing=[]
+    for source,langs in grouped.items():
+        if langs.get('en',0)>0:
+            missing.extend([source+' ['+l+']' for l,n in langs.items() if l!='en' and n==0])
+    if missing:
+        issues.append({'code':'perf_rate_locale_parity','severity':'high',
+            'label':'Translated Tour Rate lists missing where English has prices: '+', '.join(missing[:3])})
     for page in pages:
         if urlsplit(page['url']).path!='/tours-and-activities/unforgettable-egypt-budget-tour-cairo-to-luxor-nile-cruise-discovery-8-days/':continue
         rate=page.get('tour_rate_css') or {}
@@ -238,6 +278,17 @@ def classify(pages):
                 f'Mobile LCP element render delay {round(delay)}ms on {path}; '+
                 f'element {lcp.get("tag","")}/{lcp.get("element_id","")}. Diagnose widget/layout scheduling; do not delete the element.'})
     issues.extend(delayed)
+    # Read-only full Rate CPT integrity census: not limited to browser sample.
+    if audit is not None:
+        if not audit.get('schema_valid') or not audit.get('defaults_hidden'):
+            issues.append({'code':'perf_rate_schema_drift','severity':'high',
+                'label':'Tour Rate optional field default/glossary deviated from False and neutral; restore governed JetEngine CPT schema.'})
+        if audit.get('opted_in_invalid_origin'):
+            issues.append({'code':'perf_rate_origin_config','severity':'high',
+                'label':'Opted-in Rate(s) lack a validated Tour origin: '+str(audit['opted_in_invalid_origin'][:8])})
+        if audit.get('orphan_published_rate'):
+            issues.append({'code':'perf_rate_orphan','severity':'high',
+                'label':'Published Rate points to missing/wrong linked Tour: '+str(audit['orphan_published_rate'][:8])})
     # Require several sampled routes before treating the server latency as a site-level issue.
     slow=[p.get('ttfb_ms') for p in pages if isinstance(p.get('ttfb_ms'),(int,float))]
     if len(slow)>=7:
@@ -259,10 +310,15 @@ async def run():
             semaphore=asyncio.Semaphore(3)
             pages=await asyncio.gather(*[inspect(browser,x,semaphore) for x in PAGES])
         finally:await browser.close()
-    issues=classify(pages)
+    audit_command=['/usr/bin/docker','exec','-u','www-data','etg-commerce-staging-php','wp','mad4b','rate-departure','audit']
+    audit_result=subprocess.run(audit_command,capture_output=True,text=True,timeout=35)
+    if audit_result.returncode:raise RuntimeError('rate_integrity_audit_unavailable:'+audit_result.stderr[:160])
+    audit=json.loads(audit_result.stdout)
+    if audit.get('site_uuid')!=SITE_ID or audit.get('scanned',0)<1:raise RuntimeError('rate_integrity_audit_identity_invalid')
+    issues=classify(pages,audit)
     now=datetime.datetime.now(datetime.timezone.utc).isoformat()
     payload={'contract':CONTRACT,'complete':True,'site_uuid':SITE_ID,'origin':ORIGIN,
-        'observed_at':now,'pages':pages,'issues':issues}
+        'observed_at':now,'pages':pages,'rate_audit':audit,'issues':issues}
     OUTPUT.write_text(json.dumps(payload,ensure_ascii=False,indent=2),encoding='utf-8')
     # Pre-authorized WPCLI exact site identity; no login impersonation.
     bind=[
