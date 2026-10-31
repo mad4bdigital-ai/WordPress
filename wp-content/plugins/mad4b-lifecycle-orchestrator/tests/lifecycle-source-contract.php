@@ -25,6 +25,7 @@ $checks=[
  'automatic term events'=>str_contains($plugin,"add_action('edited_term'"),
  'automatic image events'=>str_contains($plugin,"add_action('add_attachment'"),
  'automatic image ALT events'=>str_contains($plugin,"add_action('updated_post_meta'"),
+ 'automatic Rank Math SEO Meta events'=>str_contains($plugin,"'rank_math_title','rank_math_description','rank_math_focus_keyword'"),
  'manual semantic event bridge'=>str_contains($plugin,"add_action('mad4b_lifecycle_event'"),
  'native WP Cron bounded reconcile'=>str_contains($plugin,'wp_schedule_single_event('),
  'cron only performs resolution'=>str_contains($plugin,'$resolved=self::resolve('),
