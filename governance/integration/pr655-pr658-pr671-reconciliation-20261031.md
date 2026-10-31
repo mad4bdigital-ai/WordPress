@@ -1,0 +1,28 @@
+# PR #655 / #658 / #671 source reconciliation (31 October 2026)
+
+## Immutable relationships
+
+- PR #658 HEAD is an exact Git ancestor of PR #671 HEAD (`git merge-base --is-ancestor` succeeds). Treat #671 as containing #658's lineage; do not independently reapply the same history.
+- PR #671 and the isolated all-open-PR integration HEAD share master ancestry. Direct merge produces **33 content/add-add conflicts** in the current snapshot, including adapters, startup/CLI, runtime, OAuth/MCP CI, and source-review registry. Unreviewed ours/theirs resolution is not authorized.
+- PR #655 has no shared Git ancestor with the integration HEAD. A history-only merge would misrepresent provenance and could discard content.
+
+## PR #655 source intake — tested locally, not published
+
+- PR #655 compared against `master`: 96 changed file paths; 5 byte-identical to local integration, 91 different or missing.
+- Rebased the **master-to-PR655 file delta**, not the unrelated Git history, onto an isolated integration worktree using `git apply --3way`. Two semantic conflicts were reviewed: the capability-coverage registry and `304-mad4b-central-dual-lane-registry.php`.
+- Registry union retained MCP-01, added the distinct lifecycle regression test, and preserved distinct source/review records; final registry contains 507 reviewed changes and 263 reviewed capabilities, with unique keys.
+- The dual-lane configuration retained the stricter explicit Production identity/scope/backup/readback requirements.
+- 20 trailing EOF blank-line diffs corrected without changing program text.
+- Local **candidate commit**: `9f5dfe6c008702694969bf16b418ca0577340174` at `/opt/mad4b-qa31-fix/pr655-source-intake-20261031`.
+- Local checks: `git diff --cached --check` PASS before commit, PHP lint **38/38**, Python AST **27/27**, company lifecycle outcome PASS, dependency-certified runtime PASS, universal WordPress operations PASS, VPS executor admission PASS, native stage adapter **6/6**, native stage executor **12/12** (using Docker PHP wrapper on VPS without host PHP), VPS native operator policy PASS.
+
+These are isolated source tests, not Production approval or a full WordPress runtime regression suite.
+
+## Remaining guarded requirements
+
+1. Reconcile PR #671's 33 conflicts by source-aware review and run the affected MCP/OAuth/QA31/Feature007 regression suite.
+2. Verify that the #655 candidate does not regress other integrated plugins, release manifests, or migration surfaces.
+3. Publish only using a GitHub identity authorized for workflow-file writes; **no privilege bypass, no forced updates**.
+4. Recompute current open PR HEAD coverage after publishing and perform the branch's full CI gate. Do not label the branch merge-ready until all are proven.
+
+No writes to `master`, Production, or live WordPress instances occurred in this isolated reconciliation.
