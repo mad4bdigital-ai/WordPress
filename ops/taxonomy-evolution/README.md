@@ -23,3 +23,41 @@ The adjacent `wpcli-native-shadow.php` uses only connection-local MySQL TEMPORAR
 5. Four site-specific readbacks and independent release decisions; Production remains separately authorized rather than forbidden.
 
 Do not assume four legacy sites share the same migration need. Per-object WPML identity gaps (four terms plus thirty independent tours on ETG) belong to Reviews and must never be auto-connected by matching title or numeric ID.
+
+
+## Source hardening and remaining original-runtime integration (2026-11-01)
+
+- The plan now checks **company_id + site_uuid + origin + environment** and an exact inventory revision. Cross-company/stale-snapshot input is rejected.
+- Classification tests assert **each** of the four possible site states and test mutations of plan hashes, changes of company, hidden-language invariants, and stale inventory.
+- **Canonical-only/no-op** never needs write/restore approval just for discovery. It still requires absence of legacy rows and references before a no-op readback can be accepted.
+- Added `wpcli-native-census.php`: exact-bound, read-only, metadata-only Staging inventory; it explicitly returns `signed_original_executor_receipt=false` and `inventory_complete=false`. Do not pass it as an attested inventory.
+- Added `wpcli-reference-shapes.php`: scoped structure-only inspection for known provider fields; PHP object materialization is disabled during serialized-value probing. Its ETG remote replay was blocked, so **no live nested-field certification** was established.
+- Added `TaxonomyEvolutionNativeEvidence.php`: non-mutating evidence checker that requires the **original** `MAD4B_SCP_Execution_Receipt::verify`, exact site/plan fingerprint, resource-set binding, and readback-stage presence. Not wired as a registered executor or authorization grant. Receipt validation alone is not full backend/frontend or restore certification.
+- Fixed GitHub workflow to use exact PR head checkout, PR-scoped concurrency, and stale-run cancellation per repository requirements.
+
+### New live read-only ETG census
+
+On `https://staging.egypttourgates.com`, the canonical `destinations` taxonomy remains unregistered, whereas `location_jet` remains registered with archive rewrite slug `destination`. Exact read-only metadata counts:
+
+| Source | Rows |
+|---|---:|
+| Legacy JetEngine taxonomy definitions | 1 |
+| Legacy terms | 438 |
+| WPML taxonomy translation rows | 434 |
+| Term relationships | 2568 |
+| Legacy terms without matching WPML rows | 4 |
+| Post-meta references | 171 |
+| Options containing legacy text | 13 |
+
+The 171 post-meta references include 12 direct filter-taxonomy fields, 46 menu fields, 6 listing fields, 84 Elementor data fields, 19 source-map fields and 4 query-variable fields. These are **reference counts, not certified write targets**. WPML hidden languages are `ar`, `de`, `fr`; hidden languages must not be published/indexed solely because the translation exists.
+
+### Native apply acceptance still outstanding
+
+1. Obtain approved `destinations` versioned schema and the original trusted company/site inventory/identity receipt.
+2. Certify native provider-specific transformations for serialized, JSON and option/config references and preserve the existing `destination` rewrite contract.
+3. Register a reviewed real ability and original dispatcher/executor pair. Do not add a placeholder runnable mutation operation to `config/operation-registry.json`.
+4. Independently test a restore point, safe apply, post-state readback, frontend/SEO/WPML/WooCommerce/filters acceptance, and rollback on an isolated Staging clone.
+5. Resolve or isolate legacy identity Reviews (30 ETG tours and 4 terms), then execute four **independent** site plans when the two remaining targets are identified.
+6. Re-run repository release verdict after exact-head owner approval. No user authorization token or comment should be invented in source code.
+
+**Gate: NOT RELEASE-CERTIFIED.** Passing the shadow and source/CI tests is not proof of permanent site mutation safety.
