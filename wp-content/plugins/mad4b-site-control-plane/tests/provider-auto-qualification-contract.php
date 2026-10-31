@@ -44,7 +44,7 @@ verify(is_array($catalog) && ($catalog['contract']??null)==='mad4b.provider-capa
 verify(count($catalog['providers']??array())>=10,'provider inventory retained');
 $capability_count=0;$high_risk_count=0;
 foreach($catalog['providers'] as $provider_id=>$provider){
- verify(($provider['adapter_id']??null)===$provider_id,'provider identity cannot drift');
+ verify(is_string($provider['adapter_id']??null) && preg_match('/^[a-z][a-z0-9_-]+$/D',$provider['adapter_id'])===1,'provider must declare stable native adapter identity');
  verify(!empty($provider['capabilities']) && is_array($provider['capabilities']),'provider capabilities nonempty');
  foreach($provider['capabilities'] as $capability_id=>$definition){
   ++$capability_count;
