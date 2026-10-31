@@ -116,6 +116,53 @@ or web-controlled arbitrary command payload is accepted.
   `full_authority=blocked_dependency` preserves native sandbox blockers.
 - Production mutation performed: false.
 
+## Unified authentication routes and per-operation admission
+
+Live adapter: `multi_transport_authority.py`, consumed by
+`resolver.py` domains `authentication_routes` and `operation_admission`.
+
+**Authentication is not an operation grant.** Three original identities
+are accepted, independently:
+
+- OAuth/MCP: authorization occurs inside the original active Bearer request,
+  via WordPress Execution Authority and existing Agent/Grant/Approval policy.
+  CLI inspection does not impersonate a bearer; it reports
+  `request_context_required`.
+- VPS SSH/WP-CLI: authentication and exact site/enrollment come from the
+  existing root-owned VPS Operator and Registry. A direct maintenance shell
+  command is admitted only by the original Native Operator's plan and
+  independently verified receipt. A scheduled service may **observe** that
+  recent original receipt without impersonating an active root SSH session.
+- Broker: a signed round trip to the original Central verifier is required;
+  its `claimed` list is checked per exact job SHA, target, and signed
+  grant/claim. A functioning heartbeat does not permit shell execution.
+  Host-side authority and execution readback remain separate requirements.
+
+The common operation evaluator matches the exact company, Site UUID,
+environment, canonical origin, operation class, original source permission,
+approval and independently auditable readback. A WordPress governed-write
+Grant cannot be manufactured from a healthy SSH socket or Agent signature.
+A pending OAuth Subject conflict is surfaced by `central_authority` as
+a review, without forcing an unrelated authorized Host maintenance operation
+to fail.
+
+### Central Source/Grant Drift, 2026-10-31
+
+- Live central source: `73c6852f3a22148cf4e79c73643cbbdeffca7f8a`,
+  runtime manifest matched and stale=false.
+- Original readback: 112 write abilities, 92 exact current-environment
+  Grants and 20 missing; 15 missing are outside the source's
+  Staging approved pair list; 9 reviewed obsolete Grants remain.
+- Current OAuth subject issue: `oauth_subject_bound_to_other_agent`.
+  It is not automatically reassigned and does not revoke legitimate
+  independent host authority.
+- A source-only patch for the 15 exact first-party core content pairs
+  is retained in `staging-grant-policy-15-source-only.patch`; original
+  local source commit `4e81da221c6d5fee045fa20233399bc5763575e8`.
+  This patch **has not** been installed into the live WordPress plugin or
+  used to issue grants: any installation requires a new rebuilt release
+  manifest, live provenance, and original operation-owner admission.
+
 ## Extension contract
 
 Each adapter returns a structured observation with state, provider, reason and evidence. States include verified, blocked_dependency, retry, review_required and awaiting_provider.
