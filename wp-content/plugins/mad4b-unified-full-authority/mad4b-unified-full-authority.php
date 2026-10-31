@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Unified Full Authority
  * Description: Environment-neutral Full Authority discovery, planning, and native owner handoff for Staging and Production.
- * Version: 0.1.0
+ * Version: 0.1.1
  * Author: MAD4B
  * Text Domain: mad4b-unified-full-authority
  */
@@ -26,6 +26,14 @@ final class MAD4B_Unified_Full_Authority {
     }
 
     public static function plan() {
+        // The canonical environment policy is shipped with Control Plane
+        // but is not always loaded by its optional bootstrap. Load only
+        // that exact, trusted local class file; never synthesize a policy.
+        if (!class_exists('MAD4B_SCP_Environment_Convergence_Policy')
+            && defined('WP_PLUGIN_DIR')) {
+            $policy_file = WP_PLUGIN_DIR . '/mad4b-site-control-plane/includes/class-mad4b-scp-environment-convergence-policy.php';
+            if (is_file($policy_file)) require_once $policy_file;
+        }
         if(!class_exists('MAD4B_SCP_Execution_Authority')
             ||!class_exists('MAD4B_SCP_Environment_Convergence_Policy'))
             return new WP_Error('mad4b_full_authority_dependency_unavailable','Canonical identity and environment policy required.');
