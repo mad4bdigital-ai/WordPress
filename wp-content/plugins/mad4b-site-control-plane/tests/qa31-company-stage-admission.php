@@ -65,4 +65,24 @@ $job=array('operation_id'=>MAD4B_SCP_Company_Provisioning_Work_Operations::JOB,
     'lease_expires_at_epoch'=>time()+60);
 check(!MAD4B_SCP_Company_Provisioning_Work_Operations::provider_entry_allowed($job),
     'subset executor cannot accept an unregistered stage action');
+// Executor discovery must not imply mutation eligibility from a ready heartbeat.
+foreach (array(
+    'untrusted provider'=>array('provider'=>'untrusted'),
+    'wrong tenant site'=>array('site_uuid'=>'22222222-2222-4222-8222-222222222222'),
+    'missing rollback'=>array('rollback_handler'=>'missing'),
+    'unverified readback'=>array('readback_handler'=>'pending'),
+    'no restoration proof'=>array('restoration_ready'=>false),
+    'invalid probe'=>array('probe_evidence_sha256'=>'invalid'),
+    'duplicate actions'=>array('supported_actions'=>array('company.identity.verify','company.identity.verify')),
+    'unknown action'=>array('supported_actions'=>array('system.shell.run')),
+    'stale heartbeat'=>array('verified_at'=>gmdate('c',time()-3600)),
+    'future heartbeat'=>array('verified_at'=>gmdate('c',time()+3600)),
+) as $name=>$changes) {
+    $GLOBALS['qa31_options'][MAD4B_SCP_Company_Provisioning_Work_Operations::EXECUTORS][$code]=array_replace($executor,$changes);
+    check(!MAD4B_SCP_Company_Provisioning_Work_Operations::executor_status($identity)['registered'],
+        'executor ' . $name . ' denied');
+}
+$GLOBALS['qa31_options'][MAD4B_SCP_Company_Provisioning_Work_Operations::EXECUTORS][$code]=$executor;
+check(MAD4B_SCP_Company_Provisioning_Work_Operations::executor_status($identity)['registered'],
+    'known healthy executor remains eligible after denial fixtures');
 echo "QA31_COMPANY_STAGE_ADMISSION: PASS\n";
