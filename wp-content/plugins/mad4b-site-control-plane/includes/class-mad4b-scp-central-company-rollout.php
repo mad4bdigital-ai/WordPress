@@ -12,10 +12,11 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Central_Company_Rollout {
     const CONTRACT = 'mad4b.central-company-rollout-plan.v1';
     const ABILITY = 'mad4b/central-company-rollout-plan';
-    const CENTRAL_ORIGIN = 'https://tours.dev.mad4b.com';
     const MAX_RECEIPT_AGE = 604800; // Seven days, re-evaluate after expiry.
 
     public static function boot() {
+        require_once __DIR__ . '/class-mad4b-scp-central-release-registry.php';
+        MAD4B_SCP_Central_Release_Registry::boot();
         add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 39 );
     }
 
@@ -50,6 +51,8 @@ final class MAD4B_SCP_Central_Company_Rollout {
             return new WP_Error( 'mad4b_central_rollout_input_invalid',
                 'Provide only an exact 64-character release SHA-256; no caller-supplied readiness.' );
 
+        if ( ! class_exists( 'MAD4B_SCP_Central_Release_Registry', false ) )
+            require_once __DIR__ . '/class-mad4b-scp-central-release-registry.php';
         $hash = strtolower( (string) $input['release_sha256'] );
         // Runtime snapshot is sampled on the COMPANY target, not on central Staging.
         $site = self::company_snapshot();
@@ -81,8 +84,11 @@ final class MAD4B_SCP_Central_Company_Rollout {
         if ( ! self::hash_ok( $hash ) ) $blockers[] = 'release_identity_invalid';
         if ( true !== $provider_readback_verified )
             $blockers[] = 'trusted_central_release_readback_unavailable';
-        if ( (string) ( $receipt['contract'] ?? '' ) !== 'mad4b.central-staging-release-readback.v1' ||
-            (string) ( $receipt['staging_origin'] ?? '' ) !== self::CENTRAL_ORIGIN ||
+        $central_origin = class_exists( 'MAD4B_SCP_Central_Release_Registry' )
+            ? MAD4B_SCP_Central_Release_Registry::central_origin() : '';
+        if ( '' === $central_origin ||
+            (string) ( $receipt['contract'] ?? '' ) !== 'mad4b.central-staging-release-readback.v1' ||
+            (string) ( $receipt['staging_origin'] ?? '' ) !== $central_origin ||
             (string) ( $receipt['environment'] ?? '' ) !== 'staging' ||
             true !== ( $receipt['registry_readback_verified'] ?? null ) )
             $blockers[] = 'central_staging_identity_unverified';
@@ -164,7 +170,7 @@ final class MAD4B_SCP_Central_Company_Rollout {
         sort( $blockers, SORT_STRING );
         return array(
             'contract' => self::CONTRACT,
-            'central_staging_origin' => self::CENTRAL_ORIGIN,
+            'central_staging_origin' => $central_origin,
             'central_release_sha256' => (string) $hash,
             'company_site_uuid' => (string) ( $site['site_uuid'] ?? '' ),
             'company_origin' => (string) ( $site['origin'] ?? '' ),
