@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Central VPS Broker Dispatch and Claim
  * Description: Central authenticated dispatch; independent Ed25519-attested host broker claim. Neither grants SSH privilege nor executes shell commands.
- * Version: 0.1.0
+ * Version: 0.2.0
  */
 defined('ABSPATH') || exit;
 
@@ -11,6 +11,9 @@ final class MAD4B_Central_VPS_Broker_V1 {
     const JOB = 'mad4b_central_broker_job_v1_';
     const CLAIM = 'mad4b_central_broker_claim_v1_';
     const PUBKEY = 'mad4b_central_broker_signing_public_v1';
+    const HOST_ID = 'mad4b_central_broker_host_id_v1';
+    const HEARTBEAT = 'mad4b_central_broker_heartbeat_v1';
+    const HEARTBEAT_NONCE = 'mad4b_central_broker_heartbeat_nonce_v1_';
 
     private static function deny(string $why, int $http=403) {
         return new WP_Error('mad4b_broker_'.$why,
@@ -153,6 +156,47 @@ final class MAD4B_Central_VPS_Broker_V1 {
         return sodium_crypto_sign_verify_detached($sig,implode("\n",$fields),$pub);
     }
 
+
+    private static function verify_heartbeat(array $assoc):bool {
+        if (!function_exists('sodium_crypto_sign_verify_detached')) return false;
+        $host=(string)($assoc['host']??'');
+        $configured=(string)get_option(self::HOST_ID,'');
+        $nonce=(string)($assoc['nonce']??'');
+        $iat=(int)($assoc['issued']??0);
+        $exp=(int)($assoc['expires']??0);
+        $pub=base64_decode((string)get_option(self::PUBKEY,''),true);
+        $sig=base64_decode((string)($assoc['signature']??''),true);
+        if ($host==='' || $host!==$configured
+            || !preg_match('/^[a-f0-9]{32}$/D',$nonce)
+            || $iat<time()-60 || $iat>time()+10
+            || $exp<$iat || $exp>$iat+60 || $exp<time()
+            || !is_string($pub) || strlen($pub)!==SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES
+            || !is_string($sig) || strlen($sig)!==SODIUM_CRYPTO_SIGN_BYTES)
+            return false;
+        $msg=implode("\\n",array(self::CONTRACT,'heartbeat',$host,
+            $nonce,(string)$iat,(string)$exp));
+        return sodium_crypto_sign_verify_detached($sig,$msg,$pub);
+    }
+
+    public static function status(WP_REST_Request $r) {
+        if (!MAD4B_Central_SSH_Command_Intake_V1::permitted($r))
+            return self::deny('authenticated_owner_required');
+        $heartbeat=get_option(self::HEARTBEAT,array());
+        if (!is_array($heartbeat)) $heartbeat=array();
+        return rest_ensure_response(array(
+            'contract'=>self::CONTRACT,
+            'host_id'=>(string)get_option(self::HOST_ID,''),
+            'last_signed_heartbeat_epoch'=>(int)($heartbeat['at']??0),
+            'heartbeat_fresh'=>(int)($heartbeat['at']??0)>time()-600,
+            'host_authenticated_by_pinned_public_key'=>!empty($heartbeat['verified']),
+            'dispatch_route_active'=>true,
+            'claim_route_available'=>true,
+            'host_command_execution_authorized_by_heartbeat'=>false,
+            'ssh_transport_session_verified_by_heartbeat'=>false,
+            'production_mutation'=>false
+        ));
+    }
+
     public static function cli($args,array $assoc):void {
         if (!defined('WP_CLI')||!WP_CLI || !class_exists('WP_CLI'))
             return;
@@ -161,12 +205,26 @@ final class MAD4B_Central_VPS_Broker_V1 {
             || !MAD4B_Central_Dual_Lane_Registry_V1::central())
             WP_CLI::error('Central WP-CLI host principal required');
         $action=(string)($args[0]??'');
+        if ($action==='heartbeat') {
+            if (!self::verify_heartbeat($assoc))
+                WP_CLI::error('signed_host_heartbeat_rejected');
+            $nonce=(string)$assoc['nonce'];
+            if (!add_option(self::HEARTBEAT_NONCE.$nonce,time(),'',false))
+                WP_CLI::error('signed_host_heartbeat_replay');
+            $row=array('contract'=>self::CONTRACT,'host_id'=>(string)$assoc['host'],
+                'at'=>time(),'verified'=>true,'claim_capable'=>true,
+                'execution_authority_granted'=>false);
+            if (!update_option(self::HEARTBEAT,$row,false))
+                WP_CLI::error('heartbeat_storage_failed');
+            WP_CLI::line(wp_json_encode($row,JSON_UNESCAPED_SLASHES));
+            return;
+        }
         if ($action==='pending') {
             WP_CLI::line(wp_json_encode(array('contract'=>self::CONTRACT,
                 'pending'=>self::pending((int)($assoc['limit']??10)))));
             return;
         }
-        if ($action!=='claim')WP_CLI::error('Supported broker commands: pending, claim');
+        if ($action!=='claim')WP_CLI::error('Supported broker commands: pending, claim, heartbeat');
         $id=(string)($assoc['job']??'');
         if (!preg_match('/^[a-f0-9]{32}$/D',$id))WP_CLI::error('invalid_job_id');
         $job=get_option(self::JOB.$id,null);
@@ -194,6 +252,10 @@ final class MAD4B_Central_VPS_Broker_V1 {
         if (!class_exists('MAD4B_Central_Dual_Lane_Registry_V1',false)
             || !MAD4B_Central_Dual_Lane_Registry_V1::central())return;
         $base='/central-execution-lanes/(?P<company>[a-z][a-z0-9-]{2,47})';
+        register_rest_route('mad4b/v1',$base.'/broker-status',array(
+            'methods'=>'GET',
+            'permission_callback'=>array('MAD4B_Central_SSH_Command_Intake_V1','permitted'),
+            'callback'=>array(__CLASS__,'status')));
         register_rest_route('mad4b/v1',$base.'/broker-dispatch',array(
             'methods'=>'POST','permission_callback'=>array('MAD4B_Central_SSH_Command_Intake_V1','permitted'),
             'callback'=>array(__CLASS__,'dispatch')));
