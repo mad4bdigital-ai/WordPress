@@ -1,0 +1,21 @@
+{
+  "contract": "mad4b.integration-source-review-delta.v1",
+  "authorizing": false,
+  "production_authorized": false,
+  "local_candidate_head": "43253101d4c83c2256e2e8a2a4cdf2242eee04df",
+  "baseline": "b8f2e0a60fa45e28b49643f1eae6f73570c2fee8",
+  "original_gaps": 237,
+  "remaining_local_gaps": 231,
+  "closed_in_local_candidate": 6,
+  "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-master-admin.php",
+  "tested_regression": "wp-content/plugins/mad4b-site-control-plane/tests/company-team-review-boundary-contract.py",
+  "covered_ids": [
+    "rest:mad4b/v1/admin/company-team",
+    "rest:mad4b/v1/admin/company-team/assign-task",
+    "rest:mad4b/v1/admin/company-team/create",
+    "rest:mad4b/v1/admin/company-team/translation-manager",
+    "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-master-admin.php",
+    "behavior:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-master-admin.php"
+  ],
+  "note": "CI-only candidate review records are committed in local isolated candidate, not yet applied to GitHub source registry. Recheck exact current blob, merged source and full CI before applying. All remaining reviews are pending; no release authorization."
+}
