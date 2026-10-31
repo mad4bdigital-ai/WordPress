@@ -1,0 +1,13 @@
+{
+  "contract": "mad4b.ci-only-task-handoff-review.v1",
+  "authorizing": false,
+  "production_authorized": false,
+  "candidate_head": "d5c872b5f50268640139dea316281493667f7be0",
+  "previous_gaps": 197,
+  "locally_reviewed": 5,
+  "remaining_gaps": 192,
+  "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-task-handoff.php",
+  "test": "wp-content/plugins/mad4b-site-control-plane/tests/company-task-handoff-boundary-contract.py",
+  "readiness": "NO_GO",
+  "publication": "Test and audit uploaded; full reconciled source and coverage registry remain in VPS isolated worktree"
+}
