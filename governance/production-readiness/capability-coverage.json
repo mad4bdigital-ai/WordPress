@@ -4496,6 +4496,26 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing WordPress capability permissions, protected account handling, REST security, security regression and owner release gates remain controlling. Tests certify only isolated source behavior."
+    },
+    {
+      "id": "operation:company.plugin-sync.request",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "AUTOMATION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-plugin-sync-mu-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-plugin-sync-mu-source-contract.py"
+      ],
+      "owner_role": "QA31 source and isolated CI reviewer; not a Production deploy approver",
+      "review_rationale": "Reviewed exact MU operation source with real request_job handler and CI-executed isolated fixtures. Denies non-Staging and wrong-host requests, missing company owner email, stale plan hash and duplicate journal creation; authorized request creates PLANNED_NOT_EXECUTED scoped journal only and readback explicitly reports production_mutation_authorized=false. This review is not evidence of executing a tenant plugin sync or granting external write authority.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing environment, owner identity, exact plan, idempotent execution journal, security and operator approval controls apply to this source-only request operation."
     }
   ],
   "lifecycle": [],
