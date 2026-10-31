@@ -13225,6 +13225,23 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/rc104-merged-release-regression.py"
       ],
       "review_rationale": "Restore private Tour Orders and Bookings boundary before passive WP-CLI and REST fastpaths. Source contract verifies exact early inclusion and privacy guard invariants; the rc104 successor runs preserved approval/permission denial and matching version assertions. Does not authorize deployment or mutation. Private operations static contract was also run independently on VPS, but the new same-PR rc104 regression is the mapped executable evidence."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-convergence.php",
+      "source_blob_sha": "da81f3033e8458a838f0d978d98ca02c0e8a487d",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "QA31 runtime source reviewer for CI only; tenant-owner live approval still outstanding",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/post-update-bottleneck-hardening-contract.py"
+      ],
+      "review_rationale": "Exact runtime convergence successor reviewed against existing post-update hardening regression. The test passed on isolated VPS; legacy G8 evidence is unchanged and independent live staging acceptance remains required."
     }
   ],
   "code_change_rules": {
