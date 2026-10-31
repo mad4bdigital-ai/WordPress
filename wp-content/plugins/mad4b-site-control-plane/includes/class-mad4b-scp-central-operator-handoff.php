@@ -13,6 +13,9 @@ final class MAD4B_SCP_Central_Operator_Handoff {
     const ABILITY  = 'mad4b/central-native-operator-handoff-plan';
 
     public static function boot() {
+        // One policy grammar for OAuth/MCP, host-attested SSH/WP-CLI and
+        // Broker 312. This is not a shortcut around the transport verifier.
+        require_once __DIR__ . '/class-mad4b-scp-unified-operation-authority.php';
         add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 40 );
     }
 
@@ -106,6 +109,10 @@ final class MAD4B_SCP_Central_Operator_Handoff {
             'transport' => 'native_ssh_via_registered_broker',
             'broker_authority_contract' => 'central_authority_verifier_312',
             'remote_readback_contract' => 'remote_readback_313',
+            'operation_policy_contract' => 'mad4b.unified-operation-authority-decision.v1',
+            'accepted_verified_identity_channels' => array( 'oauth_mcp', 'vps_ssh_wpcli', 'signed_broker' ),
+            'transport_authentication_is_authorization' => false,
+            'operation_policy_decision_verified' => false,
             'broker_target_separation_required' => true,
             'broker_target_separation_verified' => false,
             'source' => array(
