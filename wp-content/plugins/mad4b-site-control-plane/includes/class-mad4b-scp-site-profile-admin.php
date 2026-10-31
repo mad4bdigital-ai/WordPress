@@ -557,7 +557,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 					<tr><th><?php esc_html_e( 'Features', 'mad4b-site-control-plane' ); ?></th><td>
 						<?php self::checkbox( 'oauth_enabled', 'Local/remote OAuth connection', ! empty( $features['oauth'] ) ); ?>
 						<?php self::checkbox( 'skills_enabled', 'Skills authoring/export', ! empty( $features['skills'] ) ); ?>
-						<?php self::checkbox( 'provider_isolation_enabled', 'Provider MCP isolation', ! empty( $features['provider_isolation'] ) ); ?>
+						<?php self::checkbox( 'provider_isolation_enabled', 'Provider MCP isolation (default ON for new Site Profiles)', empty( $status['configured'] ) ? true : ! empty( $features['provider_isolation'] ) ); ?>
 						<?php self::checkbox( 'managed_runtime_enabled', 'Managed MCP runtime pinning', ! empty( $features['managed_runtime'] ) ); ?>
 						<?php self::checkbox( 'acceptance_enabled', 'External acceptance evidence', ! empty( $features['acceptance'] ) ); ?>
 						<?php self::checkbox( 'write_enabled', 'Governed write authority', ! empty( $features['write'] ) ); ?>
