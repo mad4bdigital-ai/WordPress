@@ -133,6 +133,8 @@ final class MAD4B_SCP_Plugin_Transaction {
 			'native_plan' => $native_plan,
 			'package_certification_policy' => 'mad4b/plugin-remote-update-apply' === $executor ? 'optional_native_wordpress_offer' : 'existing_certified_provider_route',
 			'production_promotion_rule' => 'independent_staging_pass_and_exact_native_production_batch',
+			'production_promotion_verified_by_this_plan' => false,
+			'production_mutation_authorized_by_this_plan' => false,
 			'execution_contract' => 'exact_executor_only',
 			'generic_mutation_dispatch' => false,
 			'resume_policy' => 'idempotency_and_reconciliation_before_retry',
