@@ -5,6 +5,13 @@
  * provider-specific POSTs or the approved MCP mutation boundary.
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once __DIR__ . '/class-mad4b-scp-firecrawl-provider.php';
+require_once __DIR__ . '/class-mad4b-scp-research-groups.php';
+require_once __DIR__ . '/class-mad4b-scp-research-task-bridge.php';
+require_once __DIR__ . '/class-mad4b-scp-tour-workflow-runtime.php';
+if ( is_readable( __DIR__ . '/class-mad4b-scp-firecrawl-discovery-preflight.php' ) ) {
+    require_once __DIR__ . '/class-mad4b-scp-firecrawl-discovery-preflight.php';
+}
 final class MAD4B_SCP_Provider_Connections_Admin_UI {
     const PAGE_SLUG = 'mad4b-provider-connections';
     private static $booted = false;
@@ -26,13 +33,16 @@ final class MAD4B_SCP_Provider_Connections_Admin_UI {
         }
         $result = MAD4B_SCP_Provider_Connection_Center::discover();
         echo '<div class="wrap"><h1>' . esc_html__( 'Provider Connections', 'mad4b-site-control-plane' ) . '</h1>';
+        MAD4B_SCP_Firecrawl_Provider::render();
         echo '<p>' . esc_html__( 'Live connection health and recommended recovery. Discovery is read-only; owner OAuth consent, exact one-time approval and post-operation verification are separate.', 'mad4b-site-control-plane' ) . '</p>';
         $peer_link = MAD4B_SCP_Admin_Workspace::link( 'mad4b-adapter-coverage', array( 'tab' => 'native-peers' ) );
         if ( '' !== $peer_link ) echo '<p><a href="' . esc_url( $peer_link ) . '">' . esc_html__( 'Inspect Native MCP peer health (no network probe)', 'mad4b-site-control-plane' ) . '</a></p>';
         if ( is_wp_error( $result ) || empty( $result['providers'] ) ) {
             echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'No verified provider adapters are available to inspect.', 'mad4b-site-control-plane' ) . '</p></div>';
-            if ( class_exists('MAD4B_SCP_Provider_Setup_Coverage') )
+            if ( class_exists( 'MAD4B_SCP_Provider_Setup_Coverage' ) ) {
                 MAD4B_SCP_Provider_Setup_Coverage::render();
+                MAD4B_SCP_Provider_Setup_Coverage::render_custom_registration();
+            }
             echo '</div>';return;
         }
         echo '<table class="widefat striped"><thead><tr><th>' . esc_html__( 'Provider', 'mad4b-site-control-plane' ) . '</th><th>' . esc_html__( 'Live state', 'mad4b-site-control-plane' ) . '</th><th>' . esc_html__( 'Recommended action', 'mad4b-site-control-plane' ) . '</th><th>' . esc_html__( 'Owner handoff', 'mad4b-site-control-plane' ) . '</th></tr></thead><tbody>';
@@ -52,8 +62,10 @@ final class MAD4B_SCP_Provider_Connections_Admin_UI {
         }
         echo '</tbody></table>';
         echo '<p class="description">' . esc_html__( 'Adding a new provider requires an adapter with a read-only status contract, reviewed owner handoff and separately certified refresh executor. No wildcard provider mutation authority is created.', 'mad4b-site-control-plane' ) . '</p>';
-        if ( class_exists('MAD4B_SCP_Provider_Setup_Coverage') )
+        if ( class_exists( 'MAD4B_SCP_Provider_Setup_Coverage' ) ) {
             MAD4B_SCP_Provider_Setup_Coverage::render();
+            MAD4B_SCP_Provider_Setup_Coverage::render_custom_registration();
+        }
         echo '</div>';
     }
 }

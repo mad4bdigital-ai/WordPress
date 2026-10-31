@@ -902,6 +902,7 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 		}
 		$expected_files = array(
 			'includes/adapters/class-mad4b-scp-context-adapter.php',
+			'includes/adapters/class-mad4b-scp-context-asset-read-model.php',
 			'includes/class-mad4b-scp-brand-context-builder.php',
 			'includes/class-mad4b-scp-context-authority.php',
 			'includes/class-mad4b-scp-context-preflight.php',

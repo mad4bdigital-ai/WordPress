@@ -94,6 +94,53 @@ jobs:
             unzip -tqq "$plugins/$archive"
           done
 
+      - name: Restore and verify pinned official WooCommerce CI archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive='wp-content/plugins/woocommerce.zip'
+          expected_sha='5317434cb381b5fdc7c1dd6ee258324f08c390976aaf8d1199f2a0e9a3ab8586'
+          expected_bytes='18060641'
+          # This governance-only PR must remain valid on the original master,
+          # where WooCommerce is not yet a configured provider. Enforce exact
+          # official artifact verification as soon as the separately reviewed
+          # provider baseline + evidence land. One-sided configuration fails.
+          if python3 - <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          base = Path('wp-content/plugins/mad4b-site-control-plane/config')
+          providers = json.loads((base / 'certified-providers.json').read_text())['providers']
+          provider = providers.get('woocommerce')
+          evidence_path = base / 'evidence/woocommerce-11.2.1-lab-package.json'
+          if provider is None and not evidence_path.exists():
+              print('WOOCOMMERCE_CI_BASELINE_NOT_YET_ENROLLED: deferred until reviewed provider-source merge')
+              sys.exit(42)
+          if not isinstance(provider, dict) or not evidence_path.is_file():
+              raise SystemExit('WOOCOMMERCE_CI_BASELINE_INCOMPLETE: exact provider and evidence must both exist')
+          evidence = json.loads(evidence_path.read_text())
+          for row in (provider, evidence):
+              assert row['version'] == '11.2.1', 'WooCommerce exact version changed'
+              assert row['archive_sha256'] == '5317434cb381b5fdc7c1dd6ee258324f08c390976aaf8d1199f2a0e9a3ab8586', 'WooCommerce pinned SHA drift'
+              assert row['archive_bytes'] == 18060641, 'WooCommerce pinned byte count drift'
+          assert provider['archive'] == evidence['archive'] == 'woocommerce.zip'
+          print('WOOCOMMERCE_CI_BASELINE_PINNED: PASS')
+          PY
+          then
+            if [[ ! -s "$archive" ]]; then
+              curl --fail --location --silent --show-error --retry 3 \
+                --connect-timeout 10 --max-time 120 \
+                'https://downloads.wordpress.org/plugin/woocommerce.11.2.1.zip' \
+                --output "$archive"
+            fi
+            test "$(stat -c '%s' "$archive")" = "$expected_bytes"
+            printf '%s  %s\n' "$expected_sha" "$archive" | sha256sum --check --strict
+            unzip -tqq "$archive"
+          else
+            exit_code="$?"
+            test "$exit_code" -eq 42
+          fi
+
       - name: Inspect and certify exact packaged provider contracts
         shell: bash
         run: |
@@ -126,6 +173,34 @@ jobs:
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/staging-certification-contract.py
+
+      - name: Verify optional ChatbotX provider registration and denied writes
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=wp-content/plugins/mad4b-site-control-plane/tests
+          for test in chatbotx-optional-mcp-registration-runtime.php chatbotx-governed-writes.php chatbotx-write-preflight.php; do
+            php -l "$root/$test"
+            php "$root/$test"
+          done
+
+      - name: Verify company lifecycle isolated security regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=wp-content/plugins/mad4b-site-control-plane/tests
+          python3 "$root/company-plugin-sync-mu-source-contract.py"
+          for test in company-plugin-sync-mu-runtime.php company-user-rest-suspension-isolation-runtime.php; do
+            php -l "$root/$test"
+            php "$root/$test"
+          done
+
+      - name: Verify Guided Continuation denies unsafe follow-up execution
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/guided-continuation-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/guided-continuation-runtime.php
 
       - name: Verify admin settings persistence contract
         shell: bash
@@ -227,9 +302,27 @@ jobs:
           grep -Fq "CREATE\\s+(?:USER|ROLE)" "$abilities"
           grep -Fq "expected_modified_gmt" "$abilities"
           grep -Fq "max_affected" "$abilities"
-          grep -Fq "can_structured_database_read" "$abilities"
+          # ABI-preserving read-domain extraction is allowed only when the
+          # facade still owns the registered Ability callbacks and the new
+          # domain service retains the original WordPress/SQL policy checks.
+          read_owner="$abilities"
+          read_service="$root/includes/class-mad4b-scp-read-ability-service.php"
+          if grep -Fq "MAD4B_SCP_Read_Ability_Service::database_select" "$abilities"; then
+            test -f "$read_service"
+            grep -Fq "class-mad4b-scp-read-ability-service.php" "$abilities"
+            for callback in filesystem_list filesystem_read database_list_tables database_describe_table database_select; do
+              grep -Fq "MAD4B_SCP_Read_Ability_Service::${callback}" "$abilities"
+              grep -Fq "function ${callback}(" "$read_service"
+            done
+            grep -Fq "function where_sql(" "$read_service"
+            grep -Fq "MAD4B_SCP_Policy::resolve_path" "$read_service"
+            grep -Fq "MAD4B_SCP_Policy::can_structured_database_read" "$read_service"
+            grep -Fq "MAD4B_SCP_Policy::is_sensitive_database_column" "$read_service"
+            read_owner="$read_service"
+          fi
+          grep -Fq "can_structured_database_read" "$read_owner"
           grep -Fq "can_structured_database_write" "$abilities"
-          grep -Fq "is_sensitive_database_column" "$abilities"
+          grep -Fq "is_sensitive_database_column" "$read_owner"
           grep -Fq "START TRANSACTION" "$abilities"
           grep -Fq "FOR UPDATE" "$abilities"
           # Require both extracted mutators together; partial extraction fails closed.

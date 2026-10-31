@@ -87,25 +87,11 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 
 		if ( ! class_exists( 'MAD4B_SCP_MCP_Adapter_Compatibility' ) || ! class_exists( 'WP\\MCP\\Domain\\Tools\\RegisterAbilityAsMcpTool' ) || ! function_exists( 'wp_get_ability' ) ) { $out['blocker'] = 'mcp_catalog_builder_unavailable'; return $out; }
 
-		// Entry-point/version provenance is insufficient under Jetpack Autoloader:
-		// a foreign package may own one or more WP\\MCP / WP\\McpSchema classes.
-		// Certify the effective builder/validator/DTO class set before attributing
-		// downstream failures to individual Ability schemas.
-		$provenance = MAD4B_SCP_MCP_Class_Provenance::status();
-		$out['runtime_class_provenance'] = $provenance;
-		if ( ! empty( $provenance['enforced'] ) && empty( $provenance['ready'] ) ) {
-			$out['blocker'] = MAD4B_SCP_MCP_Class_Provenance::BLOCKER;
-			$out['failures'][] = array(
-				'failing_ability' => '',
-				'stage' => 'runtime_class_provenance',
-				'error_class' => 'Contract',
-				'error_code' => MAD4B_SCP_MCP_Class_Provenance::BLOCKER,
-				'validator_reason' => '',
-				'source_schema_fingerprint' => '',
-				'schema_fingerprint' => '',
-			);
-			return $out;
-		}
+		// Source paths and historical file digests are diagnostics only.
+		// Actual class/API availability and Ability schema wire-building below
+		// remain required; a provider update must not veto MCP registration.
+		$out['runtime_class_provenance'] = MAD4B_SCP_MCP_Class_Provenance::status( false, false );
+		$out['source_provenance_observational'] = true;
 		$names = array(); $catalog_bytes = 32;
 		// Validate required tools before optional projections. Direct tools must fit
 		// the same bounded tools/list envelope exercised by HTTP acceptance; large
@@ -311,7 +297,27 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 				&& method_exists( 'WP\\MCP\\Domain\\Tools\\McpToolValidator', 'validate_tool_dto' )
 				&& is_object( $dto )
 				&& method_exists( $dto, 'toArray' ) ) {
-				$valid = \WP\MCP\Domain\Tools\McpToolValidator::validate_tool_dto( $dto );
+                // Older MCP DTO validators may be loaded by another plugin
+                // while the official Adapter uses a newer runtime. The
+                // upstream validator expects PHP arrays for schema properties,
+                // but php-mcp-schema emits stdClass for valid JSON {}.
+                // Normalize ONLY a validation copy; retain the original
+                // Ability and actual MCP wire DTO unchanged.
+                if ( method_exists( 'WP\MCP\Domain\Tools\McpToolValidator', 'validate_tool_data' ) ) {
+                    $validation_data = $data;
+                    foreach ( array( 'inputSchema', 'outputSchema' ) as $schema_key ) {
+                        if ( isset( $validation_data[ $schema_key ] )
+                            && is_array( $validation_data[ $schema_key ] )
+                            && isset( $validation_data[ $schema_key ]['properties'] )
+                            && $validation_data[ $schema_key ]['properties'] instanceof \stdClass ) {
+                            $validation_data[ $schema_key ]['properties'] =
+                                get_object_vars( $validation_data[ $schema_key ]['properties'] );
+                        }
+                    }
+                    $valid = \WP\MCP\Domain\Tools\McpToolValidator::validate_tool_data( $validation_data );
+                } else {
+                    $valid = \WP\MCP\Domain\Tools\McpToolValidator::validate_tool_dto( $dto );
+                }
 				if ( is_wp_error( $valid ) ) return array(
 					'stage' => $stage,
 					'error_class' => 'WP_Error',

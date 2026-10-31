@@ -1,0 +1,388 @@
+<?php
+define('ABSPATH','/isolated/');
+define('ICL_SITEPRESS_VERSION','mock');
+class WP_Term {public $name='Africa';public $description='';}
+class WP_Error {
+    private $code;
+    public function __construct($code) {$this->code=$code;}
+    public function get_error_code(){return $this->code;}
+}
+function is_wp_error($r){return $r instanceof WP_Error;}
+function add_action($a,$b,$c=10){}
+function do_action($name,...$args){$GLOBALS['readiness_emitted_events'][$name][]=$args;}
+function current_user_can($cap){return !empty($GLOBALS['admin']);}
+function get_current_user_id(){return 5;}
+function get_current_blog_id(){return 6;}
+function sanitize_text_field($v){return trim(strip_tags((string)$v));}
+function sanitize_key($str){return preg_replace('/[^a-z0-9_-]/','',strtolower((string)$str));}
+function absint($v){return abs((int)$v);}
+function get_option($key,$default=[]){return $GLOBALS['options'][$key]??$default;}
+function get_users($args=[]){return [];}
+function update_option($key,$v,$autoload=false){$GLOBALS['options'][$key]=$v;return true;}
+function add_option($key,$v,$deprecated='', $autoload='yes') {if(isset($GLOBALS['options'][$key]))return false;$GLOBALS['options'][$key]=$v;return true;}
+function get_post_types($args,$format){return ['tours-and-activities'=>'tours-and-activities'];}
+function post_type_exists($type){return $type==='tours-and-activities';}
+function get_posts($args){return [111,112];}
+function get_post_meta($id,$key,$one=true){return $GLOBALS['post_meta'][$id][$key]??'';}
+function has_post_thumbnail($id){return false;}
+function has_filter($key){return $key==='mad4b/content_readiness/external_issues' && array_key_exists('external_source', $GLOBALS);}
+function get_post($id){return (object)['ID'=>$id,'post_title'=>$GLOBALS['titles'][$id]??'Real Test Page'];}
+function get_post_type($id){return 'tours-and-activities';}
+function get_post_field($key,$id){return $GLOBALS['content_fields'][$id][$key]??'';}
+function get_the_title($id){return $GLOBALS['titles'][$id]??'Real Test Page';}
+function wp_strip_all_tags($v){return strip_tags((string)$v);}
+function get_locale(){return 'en_US';}
+function get_term($id,$tax){return isset($GLOBALS['term_exists']) && !$GLOBALS['term_exists'] ? null : new WP_Term();}
+function get_term_meta($id,$key,$single=true){return $key==='destination_type'?'continent':'';}
+function taxonomy_exists($key){return $key==='location_jet';}
+function wp_get_object_terms($id,$tax,$args){return $id===111?[]:[10];}
+function apply_filters($key,$v,...$args){
+ if($key==='mad4b/content_readiness/external_issues') return $GLOBALS['external_source']??$v;
+ if($key==='wpml_post_language_details') return ['language_code'=>$GLOBALS['languages'][$args[0]]??''];
+ return $v;
+}
+function wp_json_encode($v){return json_encode($v);}
+function rest_ensure_response($data){return $data;}
+class Readiness_Test_Request {
+    private $values;
+    public function __construct(array $values=[]) {$this->values=$values;}
+    public function get_param($key){return $this->values[$key]??null;}
+}
+$module=dirname(__DIR__).'/includes/class-mad4b-scp-content-readiness-alerts.php';
+if (!is_file($module)) $module=dirname(__DIR__,2).'/includes/class-mad4b-scp-content-readiness-alerts.php';
+require $module;
+$cls='MAD4B_SCP_Content_Readiness_Alerts';
+function yes($condition,$label){if(!$condition){fwrite(STDERR,"FAIL $label\n");exit(3);}echo "PASS $label\n";}
+$GLOBALS['admin']=true;
+$GLOBALS['languages']=[111=>'en',112=>''];
+$GLOBALS['post_meta']=[111=>['tour_origin_address'=>''],112=>['tour_origin_address'=>'12']];
+$GLOBALS['options']=[
+ 'mad4b_content_readiness_rules_v1'=>[
+  'post_types'=>['tours-and-activities'],
+  'origin_fields'=>['tours-and-activities'=>'tour_origin_address'],
+  'location_taxonomies'=>['tours-and-activities'=>'location_jet'],
+  'check_wpml'=>true,'check_cron'=>false
+ ],
+];
+$a=$cls::discover();yes($a['complete']&&count($a['issues'])===3,'source-backed read-only discovery');
+yes(!get_option($cls::STORE,[]),'discover produces no persistent issues');
+$first=$cls::reconcile($a);yes($first['open']===3,'admin scan creates three issues');
+$second=$cls::reconcile($cls::discover());yes($second['open']===3,'same source does not duplicate');
+$store=get_option($cls::STORE,[]);
+$seen=array_unique(array_column($store,'id'));
+yes(count($store)===count($seen),'issue fingerprints are unique');
+$GLOBALS['post_meta'][111]['tour_origin_address']='12';
+$GLOBALS['languages'][112]='en';
+$third=$cls::reconcile($cls::discover());
+yes($third['open']===1&&$third['resolved']===2,'resolved sources close issues');
+$GLOBALS['post_meta'][111]['tour_origin_address']='';
+$fourth=$cls::reconcile($cls::discover());
+$source_key=hash('sha256','6|tours-and-activities|111|origin_missing');
+yes($fourth['open']===2 && get_option($cls::STORE)[$source_key]['reopens']===1,'regression reopens original issue exactly once');
+yes(array_key_exists('resolved_at',get_option($cls::STORE)[$source_key]) &&
+ get_option($cls::STORE)[$source_key]['resolved_at']===null,
+ 'reopened source issue clears its obsolete resolved timestamp');
+$GLOBALS['admin']=false;
+$before=serialize(get_option($cls::STORE));
+$internalDenied=$cls::reconcile($cls::discover(),true);
+yes(is_wp_error($internalDenied) && serialize(get_option($cls::STORE))===$before,
+ 'a non-scheduler caller cannot bypass admin write policy');
+$scheduledDisabled=$cls::run_scheduled();
+yes(is_wp_error($scheduledDisabled),'untrusted scheduler invocation fails closed');
+$denied=$cls::reconcile($cls::discover());
+yes(is_wp_error($denied)&&serialize(get_option($cls::STORE))===$before,'unprivileged caller cannot save');
+$board=$cls::sync_board($source_key);
+yes(is_wp_error($board),'unprivileged Fluent Boards write denied');
+$GLOBALS['admin']=true;
+$GLOBALS['post_meta'][111]['gallery']=[['id'=>77],['id'=>78]];
+$GLOBALS['post_meta'][112]['gallery']=[['id'=>77],['id'=>78]];
+$GLOBALS['post_meta'][111]['tour_origin_location_term']='66';
+$cfg=$GLOBALS['options']['mad4b_content_readiness_rules_v1'];
+$cfg['media_fields']=['tours-and-activities'=>'gallery'];
+$cfg['media_reuse_threshold']=2;
+$cfg['origin_source_fields']=['tours-and-activities'=>'tour_origin_location_term'];
+$cfg['origin_source_taxonomies']=['tours-and-activities'=>'location_jet'];
+$cfg['invalid_origin_levels']=['continent'];
+$GLOBALS['options']['mad4b_content_readiness_rules_v1']=$cfg;
+$additional=$cls::discover();
+$extra=array_count_values(array_column($additional['issues'],'code'));
+yes(($extra['media_source_shared_across_records']??0)===2,
+ 'reused source galleries flagged without changing media');
+yes(($extra['origin_source_too_broad']??0)===1,
+ 'continent-level origin detected by configured taxonomy/meta source');
+yes(($extra['origin_missing']??0)===0,
+ 'broad origin and empty address are one root-cause alert, not duplicate tasks');
+$evidence=array_values(array_filter($additional['issues'],
+ function($x){return ($x['code']??'')==='origin_source_too_broad';}));
+yes(($evidence[0]['source_evidence']['term_id']??null)===66 &&
+ ($evidence[0]['source_evidence']['level']??null)==='continent',
+ 'origin issue carries source term and hierarchy level for editor');
+$GLOBALS['post_meta'][111]['tour_origin_location_term']='777';
+$GLOBALS['term_exists']=false;
+$invalid=$cls::discover();
+$codes=array_count_values(array_column($invalid['issues'],'code'));
+yes(($codes['origin_source_invalid_reference']??0)===1,
+ 'missing source term produces an explicit referential-integrity issue');
+$GLOBALS['post_meta'][111]['tour_origin_location_term']='66';
+
+$cfg['end_date_fields']=['tours-and-activities'=>'rate_end_date'];
+$GLOBALS['options']['mad4b_content_readiness_rules_v1']=$cfg;
+$missingDateScan=$cls::discover();
+$missingDateStats=array_count_values(array_column($missingDateScan['issues'],'code'));
+yes(($missingDateStats['rate_end_date_missing']??0)===2,
+ 'configured missing rate dates remain visible for commercial review');
+$GLOBALS['admin']=false;
+yes(!$cls::rest_permission(), 'REST rejects unprivileged visitors');
+$GLOBALS['admin']=true;
+yes($cls::rest_permission(), 'REST allows editorial review');
+$snapshot=serialize(get_option($cls::STORE));
+$summary=$cls::rest_summary(new Readiness_Test_Request());
+yes(($summary['read_only']??false) && ($summary['counts']['open']??0)===2,
+ 'REST summary exposes current counts without write authority');
+$page=$cls::rest_issues(new Readiness_Test_Request(['status'=>'all','per_page'=>1,'page'=>1]));
+yes(($page['per_page']??0)===1 && count($page['items'])===1 &&
+ ($page['total']??0)>=3, 'REST filters and paginates bounded issue results');
+$filtered=$cls::rest_issues(new Readiness_Test_Request(['code'=>'origin_missing','status'=>'open']));
+yes(($filtered['total']??0)===1 && ($filtered['items'][0]['code']??'')==='origin_missing',
+ 'REST filters source issues by code and state');
+yes(serialize(get_option($cls::STORE))===$snapshot, 'REST reads do not mutate issues');
+// External providers must supply complete, unforgeable, read-only issue
+// evidence; malformed or unavailable sources never close saved issues.
+$externalCode='dfsb_archive_meta_missing';
+$externalId=hash('sha256','6|site|0|'.$externalCode);
+$validExternal=[
+  'id'=>$externalId,'post_type'=>'site','object_id'=>0,
+  'code'=>$externalCode,'severity'=>'medium',
+  'label'=>'Archive description source is missing',
+  'source'=>'dynamic-filter-seo-bridge'
+];
+$GLOBALS['external_source']=[$validExternal];
+$providerScan=$cls::discover();
+$providerRows=array_values(array_filter($providerScan['issues'],
+ fn($row)=>($row['source']??'')==='dynamic-filter-seo-bridge'));
+yes($providerScan['complete'] && count($providerRows)===1,
+ 'registered DFSB source contributes a single valid gap');
+$persist=$cls::reconcile($providerScan);
+yes(!is_wp_error($persist) && (get_option($cls::STORE)[$externalId]['status']??'')==='open',
+ 'reconcile persists validated external source issue');
+$ledgerBefore=serialize(get_option($cls::STORE));
+$GLOBALS['external_source']=[array_merge($validExternal,['status'=>'resolved','board_task_id'=>123])];
+$invalid=$cls::discover();
+yes(!$invalid['complete'] && is_wp_error($cls::reconcile($invalid)) &&
+ serialize(get_option($cls::STORE))===$ledgerBefore,
+ 'provider cannot spoof resolved status or external task receipt');
+$GLOBALS['external_source']=new WP_Error('dfsb_source_scan_failed');
+$failed=$cls::discover();
+yes(!$failed['complete'] && is_wp_error($cls::reconcile($failed)) &&
+ (get_option($cls::STORE)[$externalId]['status']??'')==='open',
+ 'failed external source cannot close a saved issue');
+unset($GLOBALS['external_source']);
+$detached=$cls::reconcile($cls::discover());
+yes(!is_wp_error($detached) &&
+ (get_option($cls::STORE)[$externalId]['status']??'')==='open',
+ 'disconnected external source preserves unresolved issue');
+$GLOBALS['external_source']=[];
+$resolved=$cls::reconcile($cls::discover());
+yes(!is_wp_error($resolved) &&
+ (get_option($cls::STORE)[$externalId]['status']??'')==='resolved',
+ 'complete source scan can resolve an absent external issue');
+$GLOBALS['external_source']=[$validExternal];
+$reopened=$cls::reconcile($cls::discover());
+yes(!is_wp_error($reopened) &&
+ (get_option($cls::STORE)[$externalId]['reopens']??0)===1,
+ 'new external regression reopens original issue once');
+unset($GLOBALS['external_source']);
+// The authorized CLI executor may reconcile only under an enabled tenant policy.
+$GLOBALS['admin']=false;
+$GLOBALS['options'][$cls::POLICY]['scheduled_scan_enabled']=true;
+$GLOBALS['options'][$cls::POLICY]['scheduled_scan_interval_minutes']=60;
+$GLOBALS['options'][$cls::AUDIT]=[];
+define('MAD4B_READINESS_SCHEDULED_RUN',true);
+$scheduleResult=$cls::run_scheduled();
+yes(is_array($scheduleResult) && array_key_exists('open',$scheduleResult),
+ 'authorized CLI scheduler reconciles source issues with tenant opt-in');
+$notDue=$cls::run_scheduled();
+yes(($notDue['status']??'')==='not_due',
+ 'scheduled scans are throttled by the configured interval');
+yes(MAD4B_SCP_Readiness_Workflow_Options::group_for_issue(['code'=>'media_source_unverified'])==='media', 'media routed by source issue code');
+yes(MAD4B_SCP_Readiness_Workflow_Options::group_for_issue(['code'=>'origin_missing'])==='origin', 'origin routed by source issue code');
+yes(MAD4B_SCP_Readiness_Workflow_Options::group_for_issue(['code'=>'wpml_language_unregistered'])==='wpml', 'WPML routed by source issue code');
+yes(MAD4B_SCP_Readiness_Workflow_Options::group_for_issue(['code'=>'expired_rate_renewal_required'])==='pricing', 'expired rate routed to pricing');
+yes(MAD4B_SCP_Readiness_Workflow_Options::settings()['board_tasks']===false, 'board writes default to disabled');
+$GLOBALS['admin']=false;
+$deniedBatch=$cls::batch_sync();
+yes(is_wp_error($deniedBatch),'non-admin cannot batch-create tasks');
+$GLOBALS['admin']=true;
+$closedBatch=$cls::batch_sync();
+yes(is_wp_error($closedBatch)&&$closedBatch->get_error_code()==='mad4b_readiness_write_gate_closed',
+ 'batch follows existing central write gate and never bypasses it');
+yes($cls::rest_local_client_write_permission()===false,
+ 'REST task write refuses callers without a real verified local-client identity');
+// Configurable completeness is an independent source scanner. It may not
+// resolve saved issues unless its own rule was evaluated in a complete scan.
+$completeness='MAD4B_SCP_Content_Completeness';
+$rules=[
+ ['id'=>'required_summary','target'=>'post','post_type'=>'tours-and-activities',
+  'field'=>'post_excerpt','min_chars'=>3,'severity'=>'high','language'=>'*']
+];
+$invalidRules=$completeness::normalize(['enabled'=>true,'exclude_qa'=>false,'rules'=>[
+ ['id'=>'invalid_field','target'=>'post','post_type'=>'tours-and-activities','field'=>'execute_php']
+]]);
+yes(is_wp_error($invalidRules),'untrusted field expressions cannot become completeness rules');
+$settings=['enabled'=>true,'exclude_qa'=>false,'rules'=>$rules];
+$GLOBALS['options'][$completeness::OPTION]=$settings;
+$GLOBALS['languages']=[111=>'en',112=>'fr'];
+$GLOBALS['content_fields']=[111=>['post_excerpt'=>''],112=>['post_excerpt'=>'']];
+$ccScan=$completeness::discover();
+yes($ccScan['complete']&&$ccScan['evaluated']===2&&count($ccScan['issues'])===2,
+ 'source completeness detects one missing field per WPML language');
+yes($ccScan['issues'][0]['id']!==$ccScan['issues'][1]['id'],
+ 'language-specific fingerprint prevents translation family collisions');
+$ccPersist=$cls::reconcile($cls::discover());
+$ccId=$ccScan['issues'][0]['id'];
+yes(!is_wp_error($ccPersist)&&get_option($cls::STORE)[$ccId]['status']==='open',
+ 'registered completeness issues persist through existing issue ledger');
+$GLOBALS['content_fields'][111]['post_excerpt']='Verified summary source';
+$ccResolved=$cls::reconcile($cls::discover());
+yes(!is_wp_error($ccResolved)&&get_option($cls::STORE)[$ccId]['status']==='resolved',
+ 'correcting source resolves only corresponding language');
+$GLOBALS['options'][$completeness::OPTION]['enabled']=false;
+$ccDisabled=$cls::reconcile($cls::discover());
+$frId=$ccScan['issues'][1]['id'];
+yes(!is_wp_error($ccDisabled)&&get_option($cls::STORE)[$frId]['status']==='open',
+ 'disabling source scanner never silently resolves remaining issues');
+$GLOBALS['options'][$completeness::OPTION]['enabled']=true;
+$GLOBALS['options'][$completeness::OPTION]['rules']=[];
+$ccRemoved=$cls::reconcile($cls::discover());
+yes(!is_wp_error($ccRemoved)&&get_option($cls::STORE)[$frId]['status']==='open',
+ 'removing an active rule preserves unresolved issue history');
+$GLOBALS['options'][$completeness::OPTION]=$settings;
+yes($completeness::rest_rules()['settings']['enabled']===true,
+ 'administrative GET reports persisted independent rules');
+// Native operational notification bridge is append-only and gated; it never
+// emits an external Bit Flows hook during a scanner reconciliation.
+$bridge='MAD4B_SCP_Readiness_Integrations';
+$initial=get_option($bridge::STORE,[]);
+yes(is_array($initial) && isset($initial['events']),
+ 'a new integration journal is seeded without historical notification spam');
+$sampleId=hash('sha256','readiness-test-new');
+$sample=['id'=>$sampleId,'post_type'=>'tours-and-activities','object_id'=>111,
+  'code'=>'ccr_required_summary','severity'=>'high','status'=>'open',
+  'source'=>'content-completeness','source_evidence'=>['field'=>'meta_text']];
+$beforeEvents=count(get_option($bridge::STORE)['events']);
+$added=$bridge::record_changes([],[$sampleId=>$sample]);
+yes($added['recorded']===1 && $added['emitted']===0 &&
+ count(get_option($bridge::STORE)['events'])===$beforeEvents+1,
+ 'new confirmed source issue creates an internal event without Bit Flows dispatch');
+$duplicate=$bridge::record_changes([],[$sampleId=>$sample]);
+yes($duplicate['recorded']===0,
+ 'event replay does not duplicate the notification receipt');
+$resolvedSample=$sample;$resolvedSample['status']='resolved';
+$close=$bridge::record_changes([$sampleId=>$sample],[$sampleId=>$resolvedSample]);
+yes($close['recorded']===1 && $close['emitted']===0,
+ 'resolution records a separate internal event with outbound disabled');
+$openAgain=$sample;$openAgain['reopens']=1;
+$reopen=$bridge::record_changes([$sampleId=>$resolvedSample],[$sampleId=>$openAgain]);
+yes($reopen['recorded']===1 && $reopen['emitted']===0,
+ 'reopened issue produces a distinct cycle event');
+$GLOBALS['admin']=false;
+yes(!$bridge::can_manage() && !$bridge::can_view(),
+ 'unprivileged WordPress user cannot read company notification inbox');
+$GLOBALS['admin']=true;
+yes($bridge::can_manage() && $bridge::can_view(),
+ 'administrator can inspect company integration status');
+// WPML-style scoped work queue: a large media gap backlog must never become
+// hundreds of separate task notifications or one unbounded owner task.
+$scopeClass='MAD4B_SCP_Readiness_Scopes';
+$large=[];
+for($i=0;$i<120;$i++) {
+    $id=hash('sha256','media-work-packet-'.$i);
+    $large[$id]=['id'=>$id,'post_type'=>'properties','object_id'=>111,
+        'code'=>'media_missing','severity'=>'medium','status'=>'open',
+        'source_evidence'=>['language'=>'en']];
+}
+$stateBefore=serialize(get_option($scopeClass::STORE,[]));
+$packets=$scopeClass::build($large);
+$maxPacket=max(array_column($packets,'total'));
+$batch=$scopeClass::batches($packets);
+yes(count($packets)>1 && $maxPacket<=$scopeClass::MAX_ITEMS_PER_WORK_PACKET,
+ 'large content group splits into bounded work packets');
+yes(count($batch)===1 && array_sum(array_column($packets,'total'))===120 &&
+ current($batch)['issue_count']===120,
+ 'many bounded tasks belong to exactly one parent digest batch');
+yes(serialize(get_option($scopeClass::STORE,[]))===$stateBefore,
+ 'work scopes and batch previews never write or dispatch');
+// Pre-Activation Console: option-only draft, invariant-disabled provider actions.
+$pre='MAD4B_SCP_Readiness_PreActivation';
+$draft=$pre::defaults();
+yes($draft['tasks']['require_human_approval']===true &&
+    $draft['digest']['first_cycle']==='quarantine' &&
+    $draft['providers']['bitflows']==='blueprint_only',
+    'preactivation defaults prohibit provider execution');
+yes($pre::normalize($draft)===$draft,
+    'preactivation safe defaults pass exact schema validation');
+yes($pre::execution_locked(), 'preactivation hard-lock is always enabled');
+yes(is_wp_error($scopeClass::rest_sync(null)) &&
+    $scopeClass::rest_sync(null)->get_error_code()==='readiness_preactivation_lock',
+    'preactivation blocks scoped Fluent Boards execution');
+yes(is_wp_error($scopeClass::rest_notify_digest(null)) &&
+    $scopeClass::rest_notify_digest(null)->get_error_code()==='readiness_preactivation_lock',
+    'preactivation blocks external Bit Flows digest execution');
+$invalid=$draft;$invalid['providers']['bitflows']='enabled';
+yes(is_wp_error($pre::normalize($invalid)),
+    'preactivation rejects activation of Bit Flows');
+$invalid=$draft;$invalid['tasks']['require_human_approval']=false;
+yes(is_wp_error($pre::normalize($invalid)),
+    'preactivation rejects removing human approval');
+$invalid=$draft;$invalid['digest']['max_per_cycle']=100;
+yes(is_wp_error($pre::normalize($invalid)),
+    'preactivation forbids mass digest delivery');
+$invalid=$draft;$invalid['tasks']['template_title']='bad {secret_field}';
+yes(is_wp_error($pre::normalize($invalid)),
+    'preactivation rejects unknown template expressions');
+$invalid=$draft;$invalid['scope']['max_items_per_packet']=100;
+yes(is_wp_error($pre::normalize($invalid)),
+    'preactivation bounds future task packet size');
+$one=reset($packets);
+$taskPreview=$pre::mock_task($one);
+$oneBatch=current($batch);
+$digestPreview=$pre::mock_digest($oneBatch);
+yes($taskPreview['preview_only']===true &&
+    $taskPreview['would_create']===false &&
+    $digestPreview['would_invoke_hook']===false &&
+    $digestPreview['would_send_message']===false,
+    'task and Bit Flows previews have no provider side effects');
+yes(str_contains($taskPreview['title'],'media') &&
+    str_contains($digestPreview['body'],'120 gaps'),
+    'source-scoped templates render recognized variables');
+class PreActivation_Test_Request {
+    private $json;
+    public function __construct(array $json) {$this->json=$json;}
+    public function get_json_params(){return $this->json;}
+}
+$saved=$pre::rest_patch(new PreActivation_Test_Request([
+    'if_match'=>$pre::revision(),'settings'=>$draft
+]));
+yes(!is_wp_error($saved) &&
+    $saved['execution_mode']==='disabled' &&
+    $saved['settings']===$draft,'safe preactivation draft persists with readback');
+$stale=$pre::rest_patch(new PreActivation_Test_Request([
+    'if_match'=>str_repeat('a',64),'settings'=>$draft
+]));
+yes(is_wp_error($stale)&&$stale->get_error_code()==='preactivation_revision_conflict',
+    'stale preactivation update is rejected');
+$cfg=get_option($pre::OPTION);
+yes($cfg['providers']['fluent_boards']==='preview_only' &&
+    $cfg['providers']['fluent_smtp']==='inspection_only',
+    'saved policy never changes provider runtime settings');
+$GLOBALS['admin']=false;
+yes(!$pre::can_manage(),'unprivileged user cannot access the draft console');
+$GLOBALS['admin']=true;
+yes($pre::can_manage(),'company administrator can edit a preactivation draft');
+$preReport=$pre::report();
+yes($preReport['execution_mode']==='disabled' &&
+    $preReport['scopes']['work_packets']>0 &&
+    $preReport['side_effects']['outbound_messages']===0 &&
+    $preReport['gates']['provider_tasks_enabled']===false,
+    'preactivation report is read-only and execution-disabled');
+echo "ALL READINESS LEDGER CONTRACTS PASSED\n";

@@ -17,11 +17,14 @@ class RuntimeParityTests(unittest.TestCase):
         self.assertFalse(result["exact_source_file_match"])
         self.assertFalse(result["runtime_adapter_migration_authorized"])
 
-    def test_last_observed_staging_release_does_not_match_source(self):
-        # Observation is informational and not signed runtime provenance.
+    def test_last_observed_staging_release_is_not_source_attestation(self):
+        # Matching version labels alone are never evidence that installed bytes,
+        # package provenance and authenticated site identity match this source.
         result = assess(self.actual, observed_version="0.4.0-rc.118")
-        self.assertNotEqual(result["source_version"], result["observed_runtime_version"])
+        self.assertEqual(result["observed_runtime_version"], "0.4.0-rc.118")
         self.assertFalse(result["exact_source_file_match"])
+        self.assertFalse(result["verified_deployment_authority"])
+        self.assertFalse(result["runtime_adapter_migration_authorized"])
 
     def test_version_match_without_digest_is_not_parity(self):
         result = assess(self.actual, observed_version=self.version, site_uuid="tenant-001")

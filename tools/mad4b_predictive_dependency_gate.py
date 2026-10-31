@@ -620,6 +620,15 @@ def main() -> int:
         plan["regression_results"] = test_plan(ROOT, plan)
     failed = [x["name"] for x in plan.get("regression_results", []) if not x["passed"]]
     plan["failed_regressions"] = failed
+    # Emit bounded failing regression diagnostics into the CI log. The
+    # full machine-readable evidence is still persisted by write_report;
+    # a name-only failure hides the actual compatibility regression.
+    for result in plan.get("regression_results", []):
+        if not result["passed"]:
+            detail = str(result.get("error_tail") or "no error output")
+            detail = re.sub(r"(?i)(authorization:\s*|bearer\s+|token[=:]\s*|password[=:]\s*)\S+", r"\1[redacted]", detail)
+            detail = detail.replace("\r", " ").replace("\x00", "")
+            print("PREDICTIVE_REGRESSION_FAILURE: " + result["name"] + ": " + detail[-500:], file=sys.stderr)
     plan["ci_regression_coverage_ready"] = not plan["missing_regressions"] and not failed
     if args.output:
         write_report(args.output, plan)

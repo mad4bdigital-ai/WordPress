@@ -61,6 +61,7 @@ function dbDelta( $statement ) {
 final class MAD4B_Test_Schema_WPDB {
 	public $prefix = 'wp_';
 	public $missing_table = '';
+	public $agent_id_nullable = false;
 
 	public function get_charset_collate() { return 'DEFAULT CHARACTER SET utf8mb4'; }
 	public function prepare( $query, ...$args ) {
@@ -74,8 +75,16 @@ final class MAD4B_Test_Schema_WPDB {
 		}
 		return null;
 	}
+	public function get_row( $query, $output = null ) {
+		if ( 0 === strpos( (string) $query, 'SHOW COLUMNS FROM ' ) &&
+			false !== strpos( (string) $query, 'agent_id' ) ) {
+			return array( 'Field' => 'agent_id', 'Null' => $this->agent_id_nullable ? 'YES' : 'NO' );
+		}
+		return null;
+	}
 	public function get_col( $query, $column = 0 ) {
 		return array(
+			'mutation_id', 'principal_type', 'agent_id', 'wp_user_id', 'subject_fingerprint',
 			'candidate_binding_contract', 'candidate_sha', 'build_fingerprint', 'binding_environment',
 			'binding_host', 'site_uuid', 'site_profile_revision', 'site_profile_digest', 'bound_at',
 			'job_id', 'state', 'stage', 'current_artifact_id', 'job_revision', 'updated_at',
@@ -114,6 +123,7 @@ final class MAD4B_Test_Schema_WPDB {
 	public function get_results( $query, $output = null ) {
 		$rows = array();
 		foreach ( array(
+			'mutation_id', 'principal_created',
 			'job_id', 'event_id', 'job_sequence', 'work_id', 'scope_idempotency',
 			'outbox_id', 'provider_idempotency', 'provider_event',
 			'artifact_id', 'job_type_version', 'edge_id', 'artifact_relation',
@@ -127,7 +137,12 @@ final class MAD4B_Test_Schema_WPDB {
 		}
 		return $rows;
 	}
-	public function query( $query ) { return true; }
+	public function query( $query ) {
+		if ( false !== strpos( (string) $query, 'MODIFY COLUMN agent_id bigint(20) unsigned NULL' ) ) {
+			$this->agent_id_nullable = true;
+		}
+		return true;
+	}
 }
 $GLOBALS['wpdb'] = new MAD4B_Test_Schema_WPDB();
 
@@ -136,6 +151,7 @@ require dirname( __DIR__ ) . '/includes/class-mad4b-scp-schema.php';
 function mad4b_schema_assert( $condition, $message, $context = null ) {
 	if ( $condition ) return;
 	fwrite( STDERR, "FAIL schema-migration-runtime: {$message}\n" );
+	if ( $context instanceof WP_Error ) fwrite( STDERR, 'WP_Error code=' . $context->get_error_code() . ' message=' . $context->get_error_message() . PHP_EOL );
 	if ( null !== $context ) fwrite( STDERR, json_encode( $context, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . "\n" );
 	exit( 1 );
 }
@@ -152,6 +168,7 @@ function mad4b_schema_reset_fixture( $version ) {
 	$GLOBALS['mad4b_schema_fail_option'] = '';
 	$GLOBALS['mad4b_schema_fail_final_receipt'] = false;
 	$GLOBALS['wpdb']->missing_table = '';
+	$GLOBALS['wpdb']->agent_id_nullable = false;
 	mad4b_schema_reset_cache();
 }
 function mad4b_schema_receipt() {

@@ -8,7 +8,15 @@ $guard = MAD4B_SCP_MCP_Runtime_Conflict_Guard::status();
 $provenance = MAD4B_SCP_MCP_Class_Provenance::status( true );
 $mu = isset( $GLOBALS['mad4b_scp_mcp_mu_bootstrap'] ) && is_array( $GLOBALS['mad4b_scp_mcp_mu_bootstrap'] ) ? $GLOBALS['mad4b_scp_mcp_mu_bootstrap'] : array();
 
-if ( 'canonical_runtime' !== ( $guard['state'] ?? '' ) ) mad4b_mixed_class_recovered_fail( 'Recovered request is not canonical.', $guard );
+// Since runtime provenance is observational, the guard reports the actual
+// source rather than a synthetic "canonical_runtime" authority state.
+if ( 'runtime_source_observed' !== ( $guard['state'] ?? '' )
+    || empty( $guard['source_provenance_observational'] )
+    || empty( $guard['runtime_class_provenance_complete'] )
+    || 'certified_class_set' !== ( $guard['runtime_class_provenance_state'] ?? '' )
+    || ! empty( $guard['collision_risk_detected'] ) ) {
+    mad4b_mixed_class_recovered_fail( 'Recovered runtime class facts are not canonical.', $guard );
+}
 if ( empty( $guard['runtime_from_official_plugin'] ) || ! empty( $guard['runtime_provenance_mismatch'] ) ) mad4b_mixed_class_recovered_fail( 'Recovered runtime ownership mismatch remains.', $guard );
 if ( empty( $guard['runtime_class_provenance_enforced'] ) || empty( $guard['runtime_class_provenance_ready'] ) || 0 !== (int) ( $guard['runtime_class_provenance_failure_count'] ?? -1 ) ) mad4b_mixed_class_recovered_fail( 'Recovered class set is not certified.', $guard );
 if ( empty( $provenance['ready'] ) || 'certified_class_set' !== ( $provenance['state'] ?? '' ) || 0 !== (int) ( $provenance['failure_count'] ?? -1 ) ) mad4b_mixed_class_recovered_fail( 'Direct class provenance did not converge.', $provenance );

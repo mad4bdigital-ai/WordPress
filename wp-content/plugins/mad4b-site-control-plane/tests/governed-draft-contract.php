@@ -177,11 +177,28 @@ $check(is_wp_error($bad_qa) && 'mad4b_draft_qa_authority_invalid'===$bad_qa->get
 
 $source=file_get_contents(dirname(__DIR__) . '/includes/class-mad4b-scp-governed-draft.php');
 $servers=file_get_contents(dirname(__DIR__) . '/includes/class-mad4b-scp-servers.php');
-$check(false!==strpos($servers,"'mad4b/draft-plan'"),'draft plan is not mounted on content/read plane');
-$check(false!==strpos($servers,"'mad4b/draft-verify'"),'draft verify is not mounted on content/read plane');
+$core_catalog=file_get_contents(dirname(__DIR__) . '/includes/class-mad4b-scp-server-core-catalog.php');
+$check(1===substr_count($servers,"require_once __DIR__ . '/class-mad4b-scp-server-core-catalog.php';") &&
+       1===substr_count($servers,'use MAD4B_SCP_Server_Core_Catalog;'),
+       'canonical Core Catalog is not loaded by MCP server');
+$content_start=strpos($core_catalog,"'mad4b-content' => array(");
+$content_end=strpos($core_catalog,"'mad4b-admin' => array(",$content_start);
+$check(false!==$content_start&&false!==$content_end&&$content_end>$content_start,
+       'content/read server partition missing');
+$content_catalog=substr($core_catalog,$content_start,$content_end-$content_start);
+foreach(array('mad4b/draft-plan','mad4b/draft-verify') as $read_ability){
+    $check(1===substr_count($content_catalog,"'".$read_ability."'"),
+           'draft read Ability not mounted exactly once on content/read plane: '.$read_ability);
+    $check(false===strpos($servers,"'".$read_ability."'"),
+           'obsolete inline draft mount must not duplicate Core Catalog: '.$read_ability);
+}
 $write_catalog=file_get_contents(dirname(__DIR__) . '/includes/class-mad4b-scp-server-write-catalog.php');
-$check(false!==strpos($servers,'use MAD4B_SCP_Server_Write_Catalog;') && false!==strpos($write_catalog,"'mad4b/draft-apply'"),'draft apply is not mounted as governed write candidate');
-$check(false===strpos($servers,"'mad4b/draft-publish'"),'public draft publish capability unexpectedly exists');
+$check(false!==strpos($servers,'use MAD4B_SCP_Server_Write_Catalog;') &&
+       1===substr_count($write_catalog,"'mad4b/draft-apply'"),
+       'draft apply is not mounted exactly once as governed write candidate');
+$check(false===strpos($servers,"'mad4b/draft-publish'") &&
+       false===strpos($core_catalog,"'mad4b/draft-publish'"),
+       'public draft publish capability unexpectedly exists');
 foreach(array('wp_publish_post(','post_status\' => \'publish','post_status" => "publish','transition_post_status') as $forbidden){
 	$check(false===strpos($source,$forbidden),'public publish primitive present: '.$forbidden);
 }

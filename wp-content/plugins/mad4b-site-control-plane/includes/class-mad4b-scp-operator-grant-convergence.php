@@ -53,7 +53,15 @@ final class MAD4B_SCP_Operator_Grant_Convergence {
             'permission_callback' => array( __CLASS__, 'can_access' ),
             'input_schema' => array( 'type' => 'object', 'properties' => $properties,
                 'required' => array( 'action' ), 'additionalProperties' => false ),
-            'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+            'output_schema' => array(
+                'type' => 'object',
+                // The 0.6.x/0.7.x MCP validators require a JSON object-shaped
+                // properties map, not an absent field or PHP [] list.
+                // The contract discriminator is optional; all governed status
+                // and readback fields stay available via additionalProperties.
+                'properties' => array( 'contract' => array( 'type' => 'string' ) ),
+                'additionalProperties' => true,
+            ),
             'meta' => array(
                 'public' => false, 'show_in_rest' => false,
                 'mcp' => array(

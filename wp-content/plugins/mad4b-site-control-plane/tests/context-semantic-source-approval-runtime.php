@@ -96,7 +96,12 @@ $text_ops = array(
 foreach ( $text_ops as $name => $input ) {
     $r = $c::classify( $name, $input );
     assert_semantic( ! empty( $r['field_contract_known'] ) && ! empty( $r['required'] ) && ! empty( $r['mutation_classification_ready'] ), $name . ' must retain explicit brand text classification' );
-    assert_semantic( empty( $r['review_required'] ) && 'google_drive_context' === $r['provider_id'], $name . ' must use its exact provider contract' );
+    // Local Brand Draft operations are owned by the central core provider;
+    // Drive asset mutation remains exclusively owned by google_drive_context.
+    // A prior fixture incorrectly conflated these boundaries.
+    $expected_provider = in_array( $name, array( 'context/brand-draft-create', 'context/brand-draft-append' ), true )
+        ? 'core' : 'google_drive_context';
+    assert_semantic( empty( $r['review_required'] ) && $expected_provider === $r['provider_id'], $name . ' must use its exact provider contract' );
     assert_semantic( ! empty( $r['matched_fields'] ) && empty( $r['fallback_evidence_authorizing'] ), $name . ' unexpectedly authorized fallback brand text' );
 }
 foreach ( array( 'context/materialize-brand-draft', 'context/reconcile-brand-materialization' ) as $name ) {

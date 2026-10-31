@@ -184,6 +184,24 @@ final class MAD4B_SCP_Runtime_Obstacle_Resolution {
             return new WP_Error( 'mad4b_runtime_resolver_read_denied', 'Governed read required.' );
         $planned = self::reduce( $input );
         if ( is_wp_error( $planned ) ) return $planned;
+        // Follow the first registered, certified read hint in the SAME
+        // request. A write hint is never dispatched by this read planner.
+        // Keep the full original resolution plan and approval boundaries.
+        if ( class_exists( 'MAD4B_SCP_Guided_Continuation' ) ) {
+            foreach ( (array) ( $planned['resolution_routes'] ?? array() ) as $route ) {
+                if ( empty( $route['read_available'] ) || empty( $route['next_read_ability'] ) ) continue;
+                $identity = hash( 'sha256', wp_json_encode( array(
+                    'blockers' => $planned['observed_blockers'] ?? array(),
+                    'target_post_type' => $planned['target_post_type'] ?? '',
+                ) ) );
+                $planned['automatic_read_continuation'] = MAD4B_SCP_Guided_Continuation::run( array(
+                    'next_ability' => (string) $route['next_read_ability'],
+                    'original_operation_sha256' => $identity,
+                    'max_steps' => 2,
+                ) );
+                break;
+            }
+        }
         if ( ! empty( $input['perform_safe_probes'] ) ) {
             foreach ( $planned['resolution_routes'] as $route ) {
                 if ( 'source_onboarding' === $route['category']

@@ -1349,8 +1349,6 @@
         "local_context.bounded-write": {
           "risk": "bounded_write",
           "abilities": [
-            "context/brand-draft-append",
-            "context/brand-draft-create",
             "context/source-scan-apply"
           ],
           "reversible": false,
@@ -1380,7 +1378,7 @@
             "callback_model": "none",
             "concurrency_model": "mad4b_precondition_guarded",
             "compensation_support": false,
-            "evidence_strength": "bounded_behavioral_readback_required"
+            "evidence_strength": "complete_source_inventory_and_revision_cas_required"
           }
         },
         "drive_asset.create.high-risk-write": {

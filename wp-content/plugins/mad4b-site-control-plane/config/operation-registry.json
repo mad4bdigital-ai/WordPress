@@ -283,6 +283,21 @@
       "retry_semantics": "readback_before_retry",
       "owner_confirmation_required": true,
       "production_allowed": false
+    },
+    {
+      "id": "company.plugin-sync.request",
+      "target_kind": "company",
+      "risk": "medium",
+      "planner": "mad4b/company-plugin-sync-plan",
+      "executor": "mad4b/company-plugin-sync-request",
+      "supports": [
+        "queue_plan_only"
+      ],
+      "durable_resume": true,
+      "dependency_impact": false,
+      "generic_mutation_dispatch": false,
+      "required_runtime": true,
+      "pipeline_profile": "governed_mutation_v1"
     }
   ],
   "aliases": {
@@ -329,7 +344,10 @@
       "mad4b/manual-workflow-plan",
       "mad4b/optional-governance-status",
       "mad4b/optional-governance-plan",
-      "mad4b/optional-governance-verify"
+      "mad4b/optional-governance-verify",
+      "mad4b/company-plugin-sync-plan",
+      "mad4b/company-plugin-sync-job",
+      "mad4b/company-bootstrap-status"
     ]
   },
   "pipeline_profiles": {

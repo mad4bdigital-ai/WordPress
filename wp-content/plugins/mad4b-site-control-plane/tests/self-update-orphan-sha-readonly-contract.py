@@ -31,6 +31,16 @@ def main() -> int:
         if token not in source:
             print(f'ORPHAN_SHA_READONLY=FAIL: missing source guard {token}', file=sys.stderr)
             return 1
+    # Candidate file uploads cannot inherit the independent signed master
+    # release verdict or pose as a verified ancestor. The previous optional
+    # adoption branch was deliberately removed from the live source.
+    for forbidden in ('trusted_master_release_candidate', 'if ( $staging_candidate && \'wordpress_native_candidate_upload\' === $plan[\'channel\'] )'):
+        if forbidden in source:
+            print('ORPHAN_SHA_READONLY=FAIL: candidate upload reimported root release trust', file=sys.stderr)
+            return 1
+    if "'governed_staging_candidate_upload'" not in source or 'self::apply_verified_archive( $tmp, $apply_target' not in source:
+        print('ORPHAN_SHA_READONLY=FAIL: verified archive apply boundary missing', file=sys.stderr)
+        return 1
     for f in (RUNTIME, SCRIPT):
         p = subprocess.run([php, '-l', str(f)], capture_output=True, text=True, timeout=20, check=False)
         if p.returncode != 0:

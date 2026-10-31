@@ -1,6 +1,7 @@
 <?php
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+if ( ! class_exists( 'MAD4B_SCP_Content_Workflow_Modes' ) ) require_once __DIR__ . '/class-mad4b-scp-content-workflow-modes.php';
 if ( ! class_exists( 'MAD4B_SCP_Identifiers' ) ) require_once __DIR__ . '/class-mad4b-scp-identifiers.php';
 if ( ! class_exists( 'MAD4B_SCP_Operational_Integrity' ) ) require_once __DIR__ . '/class-mad4b-scp-operational-integrity.php';
 
@@ -104,6 +105,10 @@ final class MAD4B_SCP_Content_Jobs {
 			true
 		);
 		self::register(
+            'mad4b/content-workflow-modes', 'Read Content Workflow Review Modes',
+            'workflow_modes', array( 'job_id' => array( 'type' => 'string', 'maxLength' => 36, 'default' => '' ) ), array(), true
+        );
+		self::register(
 			'mad4b/content-job-create',
 			'Create Content Job',
 			'create_job',
@@ -117,7 +122,7 @@ final class MAD4B_SCP_Content_Jobs {
 				'writer_profile_id' => array( 'type' => 'string', 'pattern' => '^(|[a-f0-9]{64})$', 'default' => '' ),
 				'writer_profile_version' => array( 'type' => 'string', 'pattern' => '^(|[a-f0-9]{64})$', 'default' => '' ),
 				'research_depth' => array( 'type' => 'string', 'maxLength' => 32, 'default' => 'standard' ),
-				'automation_level' => array( 'type' => 'string', 'maxLength' => 32, 'default' => 'review_gated' ),
+				'automation_level' => array( 'type' => 'string', 'enum' => MAD4B_SCP_Content_Workflow_Modes::choices(), 'default' => 'autonomous' ),
 				'target_post_type' => array( 'type' => 'string', 'maxLength' => 64, 'default' => '' ),
 				'desired_publish_at' => array( 'type' => 'string', 'maxLength' => 32, 'default' => '' ),
 				'reason' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 500 ),
@@ -323,6 +328,32 @@ final class MAD4B_SCP_Content_Jobs {
 				'content_complete'=>!empty($job['current_artifact_id']),
 			),array('review_mode'=>(string)(MAD4B_SCP_Context_Authority::review_policy()['mode']??'human_only')));
 		}
+		if ( is_array( $plan ) && empty( $plan['resume_ready'] ) && ! empty( $plan['next_ability'] ) && class_exists( 'MAD4B_SCP_Guided_Continuation' ) ) {
+			$automatic = MAD4B_SCP_Guided_Continuation::run( array(
+				'next_ability' => (string) $plan['next_ability'],
+				'original_operation_sha256' => hash( 'sha256', (string) $job_id ),
+				'max_steps' => 2,
+			) );
+			$plan['automatic_read_continuation'] = $automatic;
+			if ( is_array( $automatic ) && ! empty( $automatic['resume_original_request'] ) ) {
+				// Same durable job and optimistic revision: never create a
+				// duplicate or silently change its stage. Refresh both authority
+				// reads and require exact revision + manifest agreement again.
+				$fresh_coverage = MAD4B_SCP_Context_Authority::brand_core_coverage();
+				$fresh_route = MAD4B_SCP_Brand_Core_Control_Loop::status();
+				if ( is_array( $fresh_coverage ) && is_array( $fresh_route )
+					&& ! empty( $fresh_coverage['context_fingerprint'] )
+					&& hash_equals( (string) ( $fresh_coverage['authority_manifest_fingerprint'] ?? '' ), (string) ( $fresh_route['authority_manifest_fingerprint'] ?? '' ) )
+					&& (int) ( $fresh_coverage['registry_revision'] ?? -1 ) === (int) ( $fresh_route['registry_revision'] ?? -2 ) ) {
+					$fresh_plan = self::dependency_reduce( $job, $fresh_coverage, $fresh_route );
+					if ( is_array( $fresh_plan ) && ! empty( $fresh_plan['resume_ready'] ) ) {
+						$fresh_plan['automatic_read_continuation'] = $automatic;
+						$fresh_plan['original_job_rechecked'] = true;
+						$plan = $fresh_plan;
+					}
+				}
+			}
+		}
 		return $plan;
 	}
 
@@ -423,6 +454,10 @@ final class MAD4B_SCP_Content_Jobs {
 		);
 	}
 
+    public static function workflow_modes( $input ) {
+        return MAD4B_SCP_Content_Workflow_Modes::catalog( $input );
+    }
+
 	public static function create_job( $input ) {
 		global $wpdb;
 		if ( ! self::schema_ready() ) return new WP_Error( 'mad4b_content_job_schema_unavailable', 'ContentJob schema is not ready.' );
@@ -452,6 +487,10 @@ final class MAD4B_SCP_Content_Jobs {
 				|| 1 !== preg_match( '/^[a-f0-9]{64}$/', $writer_profile_version ) ) ) {
 			return new WP_Error( 'mad4b_writer_profile_identity_invalid', 'WriterProfile identity and version must be exact SHA-256 identities.' );
 		}
+        $automation_level = MAD4B_SCP_Content_Workflow_Modes::requested(
+            $input['automation_level'] ?? MAD4B_SCP_Content_Workflow_Modes::DEFAULT_MODE
+        );
+        if ( is_wp_error( $automation_level ) ) return $automation_level;
 		$publish_at = self::normalize_datetime( isset( $input['desired_publish_at'] ) ? $input['desired_publish_at'] : '' );
 		if ( is_wp_error( $publish_at ) ) return $publish_at;
 
@@ -472,7 +511,7 @@ final class MAD4B_SCP_Content_Jobs {
 			'writer_profile_id' => $writer_profile_id,
 			'writer_profile_version' => $writer_profile_version,
 			'research_depth' => sanitize_key( isset( $input['research_depth'] ) ? (string) $input['research_depth'] : 'standard' ),
-			'automation_level' => sanitize_key( isset( $input['automation_level'] ) ? (string) $input['automation_level'] : 'review_gated' ),
+			'automation_level' => $automation_level,
 			'state' => 'NEW',
 			'stage' => 'INTAKE',
 			'target_post_type' => sanitize_key( isset( $input['target_post_type'] ) ? (string) $input['target_post_type'] : '' ),
@@ -518,7 +557,18 @@ final class MAD4B_SCP_Content_Jobs {
 			// Do not return raw SQL or PHP exception details over REST / MCP.
 			return new WP_Error( 'mad4b_content_job_create_failed', 'Unable to create ContentJob.', array( 'blind_retry_allowed' => false, 'rollback_confirmed' => true ) );
 		}
-		return self::get_job( array( 'job_id' => $job_id ) );
+		// Post-commit event only; listeners must not alter the committed transaction.
+        do_action( 'mad4b_scp_content_job_created', array(
+            'job_id' => $job_id, 'job_revision' => 1,
+            'state' => 'NEW', 'stage' => 'INTAKE' ) );
+		$result = self::get_job( array( 'job_id' => $job_id ) );
+        if ( ! is_wp_error( $result ) ) {
+            do_action( 'mad4b_content_job_committed', array(
+                'job_id' => $job_id, 'job_revision' => 1,
+                'stage' => 'INTAKE', 'state' => 'NEW', 'event_type' => 'created'
+            ) );
+        }
+        return $result;
 	}
 
 	public static function transition_job( $input ) {
@@ -639,7 +689,20 @@ final class MAD4B_SCP_Content_Jobs {
 			if ( 'content_job_noop_transition' === $code ) return new WP_Error( 'mad4b_content_job_noop_transition', 'State and stage are unchanged.' );
 			return new WP_Error( 'mad4b_content_job_transition_failed', 'Unable to transition ContentJob.', array( 'blind_retry_allowed' => false, 'rollback_confirmed' => true ) );
 		}
-		return self::get_job( array( 'job_id' => $job_id ) );
+        // Only a committed state change may emit the authoritative lifecycle event.
+        do_action( 'mad4b_scp_content_job_transitioned', array(
+            'job_id' => $job_id, 'job_revision' => $revision,
+            'state' => $new_state, 'stage' => $new_stage ) );
+		$updated_job = self::get_job( array( 'job_id' => $job_id ) );
+        if ( ! is_wp_error( $updated_job ) ) {
+            do_action('mad4b_content_job_committed',array(
+                'job_id'=>$job_id, 'job_revision'=>(int)$updated_job['job']['job_revision'],
+                'state'=>(string)$updated_job['job']['state'],
+                'stage'=>(string)$updated_job['job']['stage'],
+                'event_type'=>'transitioned'
+            ));
+        }
+        return $updated_job;
 	}
 
 	private static function load_job( $job_id, $for_update ) {

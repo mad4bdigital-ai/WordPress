@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -688,3 +689,6 @@ require(status_method, "MAD4B_SCP_External_Handshake_Evidence::persisted_identit
 require(status_method, "MAD4B_SCP_External_Handshake_Evidence::status()", 'connection-live-handshake-deep-path')
 require(status_method, "'live_handshake_revalidation'", 'connection-deferred-live-handshake-marker')
 require(status_method, "'provider_runtime_integrity'", 'connection-deferred-provider-integrity-marker')
+
+# Suspended company accounts remain blocked without intercepting global REST authentication.
+subprocess.run(['php', '-n', str(ROOT / 'tests/company-user-rest-suspension-isolation-runtime.php')], check=True)

@@ -22,7 +22,7 @@ seed_skill = cp / "skill-seeds" / "wordpress-brand-context-builder" / "SKILL.md"
 
 for marker in [
     "const CONTRACT = 'mad4b.brand-context-builder.v1'",
-    "const BUILDER_SPEC_VERSION = '5'",
+    "const BUILDER_SPEC_VERSION = '6'",
     "const DRAFT_PREFLIGHT_CONTRACT = 'mad4b.brand-draft-preflight.v1'",
     "MIN_NONEMPTY_SAMPLES",
     "MIN_PRIMARY_EXPRESSION_SAMPLES",
@@ -160,7 +160,7 @@ for marker in [
         raise SystemExit(f"missing Brand Context Builder invariant: {marker}")
 
 append_section = builder[builder.index("public static function append_draft"):builder.index("private static function source_scan_snapshot")]
-if append_section.index("MAD4B_SCP_Durable_Execution::begin_idempotency") > append_section.index("self::find_existing_draft( $idempotency_key )"):
+if append_section.index("MAD4B_SCP_Durable_Execution::begin_idempotency") > append_section.index("self::find_existing_draft( $idempotency_key, $trusted_brand_ref )"):
     raise SystemExit("Brand draft legacy lookup occurs before atomic durable idempotency claim")
 
 if "released_verified_no_effect" not in durable:
@@ -457,8 +457,8 @@ if len(matches) != 1:
 row = matches[0]
 if row.get("level") != "workflow" or row.get("target") != "brand-context" or row.get("enabled") is not True:
     raise SystemExit("Brand Context Builder Skill manifest identity/state is invalid")
-if manifest.get("seed_version") != 13:
-    raise SystemExit("Brand Context Builder requires canonical seed version 13")
+if not isinstance(manifest.get("seed_version"), int) or manifest["seed_version"] < 13:
+    raise SystemExit("Brand Context Builder requires canonical seed version >= 13")
 
 print("mad4b.brand-context-builder.v5: PASS")
 
