@@ -1,0 +1,50 @@
+{
+  "contract": "mad4b.canonical.staging-source-intake-request.v1",
+  "request_state": "NEEDS_SOURCE_REVIEW_NOT_CERTIFIED",
+  "intent": "Register an exact, reviewable MAD4B Content Hub source for Staging Canonical v0.2 only",
+  "target_site": "https://tours.dev.mad4b.com",
+  "environment": "staging",
+  "native_intake_plan": {
+    "source_id": "mad4b-content-hub",
+    "repository": "mad4bdigital-ai/WordPress",
+    "plugin_subdirectory": "wp-content/plugins/mad4b-content-hub",
+    "plugin_file": "mad4b-content-hub/mad4b-content-hub.php",
+    "provider_id": "mad4b-content-hub",
+    "candidate_digest": "7b87cbea28099477f50636338e3feaceb504cefd850caf564b1e02a914593bd7",
+    "state": "NEEDS_SOURCE_REVIEW",
+    "mutation_performed": false
+  },
+  "native_certification_plan": {
+    "state": "BLOCKED",
+    "code": "cross_plugin_source_unreviewed"
+  },
+  "native_staging_apply_plan": {
+    "state": "BLOCKED",
+    "code": "cross_plugin_source_unreviewed"
+  },
+  "original_package_preflight": {
+    "state": "BLOCKED",
+    "code": "mad4b_plugin_package_provider_uncertified"
+  },
+  "reviewed_source_files": [
+    "260-mad4b-hub-source-import-v02-reviewed.php",
+    "282-mad4b-hub-canonical-gaps-v02-reviewed.php",
+    "class-mad4b-hub-review-ui-v02-reviewed.php"
+  ],
+  "missing": {
+    "module_284": "Earlier transfer failed a security review; no substitute module or alternate transfer attempted",
+    "repository_plugin_runtime_path": "The exact main mad4b-content-hub.php is not on master at the expected path",
+    "provider_certificate": "No exact certified full package, do not self-certify",
+    "production_promotion": "Not authorized"
+  },
+  "reviewer_actions": [
+    "Review and establish complete repository source lineage before registering in production-used registry",
+    "Obtain independent security admission for the missing Identity Reviews module or redesign its scope through ordinary source review",
+    "Verify complete licensed staging plugin ZIP and immutable digest via native provider certification",
+    "Use native plugin-package-plan and explicit approved Apply only after eligibility readback",
+    "Only then run Canonical Sync and verify 1414 optional diagnostics / 711 actionable if upstream unchanged"
+  ],
+  "site_mutation_performed": false,
+  "wordpress_mutation_performed": false,
+  "git_release_merged": false
+}
