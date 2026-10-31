@@ -65,8 +65,9 @@ final class MAD4B_SCP_Central_Release_Registry {
         if ( ! self::hash_ok( $hash ) )
             return new WP_Error( 'mad4b_central_release_hash_invalid', 'Invalid release identity.', array( 'status' => 400 ) );
 
-        $dir = defined( 'MAD4B_CENTRAL_RELEASE_READBACK_DIR' ) ?
-            realpath( (string) MAD4B_CENTRAL_RELEASE_READBACK_DIR ) : false;
+        // The central VPS provides this protected host-owned folder through
+        // an existing read-only container mount, outside WordPress webroot.
+        $dir = realpath( '/run/mad4b-native-abilities/central-release-readbacks' );
         $wp = realpath( ABSPATH );
         if ( ! is_string( $dir ) || '' === $dir || ! is_dir( $dir ) ||
             ( is_string( $wp ) && ( $dir === $wp || 0 === strpos( $dir, rtrim( $wp, '/' ) . '/' ) ) ) )
@@ -107,11 +108,15 @@ final class MAD4B_SCP_Central_Release_Registry {
     }
 
     private static function pinned_public_key() {
-        if ( ! defined( 'MAD4B_CENTRAL_RELEASE_PUBLIC_KEY_PEM' ) ||
-            ! is_string( MAD4B_CENTRAL_RELEASE_PUBLIC_KEY_PEM ) ||
-            strlen( MAD4B_CENTRAL_RELEASE_PUBLIC_KEY_PEM ) > 8192 )
+        // Public trust material is pinned by the deployed plugin source,
+        // not a caller-provided field or a mutable WordPress option.
+        $file = dirname( __DIR__ ) . '/config/central-release-issuer-public.pem';
+        if ( ! is_file( $file ) || is_link( $file ) || ! is_readable( $file ) ||
+            filesize( $file ) < 100 || filesize( $file ) > 8192 )
             return '';
-        return MAD4B_CENTRAL_RELEASE_PUBLIC_KEY_PEM;
+        $pem = file_get_contents( $file );
+        return is_string( $pem ) && false !== strpos( $pem, '-----BEGIN PUBLIC KEY-----' )
+            ? $pem : '';
     }
 
     public static function verify_envelope( $record, $hash, $central_origin, $public_key ) {
