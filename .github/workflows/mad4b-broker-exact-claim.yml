@@ -30,5 +30,5 @@ jobs:
           done
           # Source-only check. Actual host enrollment and real signed receipts are separate gates.
           grep -Fq "one_time_transport_reference_invalid" ops/mad4b-broker/central-mu/305-mad4b-central-ssh-command-intake.php
-          grep -Fq "'transport_id'=>$source['transport_id']??null" ops/mad4b-broker/central-mu/306-mad4b-central-vps-broker.php
+          grep -Fq "'transport_id'=>\$source['transport_id']??null" ops/mad4b-broker/central-mu/306-mad4b-central-vps-broker.php
           grep -Fq "ORIGINAL_GRANT_CLAIM_MISSING_OR_CHANGED" ops/mad4b-broker/central-mu/312-mad4b-broker-exact-ssh-authority.php
