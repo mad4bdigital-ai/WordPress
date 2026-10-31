@@ -48,6 +48,26 @@
         "production"
       ],
       "production_promotion_attestation": ""
+    },
+    {
+      "id": "mad4b-content-hub",
+      "label": "MAD4B Content Hub — Staging Canonical Source Review",
+      "repository": "mad4bdigital-ai/WordPress",
+      "plugin_subdirectory": "wp-content/plugins/mad4b-content-hub",
+      "plugin_file": "mad4b-content-hub/mad4b-content-hub.php",
+      "provider_id": "mad4b-content-hub",
+      "review_state": "needs_repository_owner_review",
+      "candidate_source_commit_sha": "",
+      "candidate_artifact_version": "",
+      "candidate_state": "STAGING_SOURCE_REVIEW_PENDING",
+      "source_commit_sha": "",
+      "artifact_sha256": "",
+      "artifact_version": "",
+      "package_certification": "pending",
+      "environments": [
+        "staging"
+      ],
+      "production_promotion_attestation": ""
     }
   ]
 }
