@@ -62,9 +62,19 @@ final class MAD4B_Elementor_Localization_V1 {
     private static function english_text($text){
         return strlen($text)>=9 && preg_match('/[A-Za-z]{3,}/',$text);
     }
+    private static function source_digest($id,$tree){
+        if($tree)return hash('sha256',wp_json_encode($tree));
+        return hash('sha256',wp_json_encode([
+            'post_id'=>(int)$id,'title'=>(string)get_post_field('post_title',$id),
+            'content'=>(string)get_post_field('post_content',$id),
+            'excerpt'=>(string)get_post_field('post_excerpt',$id),
+            'modified_gmt'=>(string)get_post_field('post_modified_gmt',$id)]));
+    }
     private static function alerts_for($src_id,$type,$tr,$langs,$default){
         $source=self::tree($src_id);
-        if(!$source)return [[],[]];
+        // Public tours and products normally use shared Single templates and do
+        // not contain _elementor_data. WPML record coverage still applies.
+        if(!$source && $type==='elementor_library')return [[],[]];
         $base=self::flatten($source);$issues=[];$jobs=[];
         $render=get_option(self::RENDER,[]);
         $render=is_array($render)?$render:[];
@@ -102,7 +112,17 @@ final class MAD4B_Elementor_Localization_V1 {
                     }
                 }
                 if($equal) $codes['text']='Elementor text remains identical to English in '.$lang.' ('.count($equal).' fields)';
-
+                // Shared Single template does not make the underlying public
+                // tour's language-specific title/content optional.
+                if(!$source && in_array($type,['tours-and-activities','product','page'],true)){
+                    $same=[];
+                    foreach(['post_title','post_excerpt','post_content'] as $field){
+                        $a=self::text(get_post_field($field,$src_id));
+                        $b=self::text(get_post_field($field,$dst));
+                        if(self::english_text($a) && $b===$a)$same[]=$field;
+                    }
+                    if($same)$codes['text']='Published '.$lang.' content still matches English fields: '.implode(',',$same);
+                }
             }
             $rendered=0;
             foreach((array)($render['leaks']??[]) as $leak){
@@ -127,7 +147,7 @@ final class MAD4B_Elementor_Localization_V1 {
                     $jobs[]=['key'=>hash('sha256',home_url().'|'.$src_id.'|'.$lang.'|'.$code),
                         'source_post_id'=>$src_id,'target_post_id'=>$dst,'post_type'=>$type,
                         'target_language'=>$lang,'gap_code'=>$full,'issue_id'=>$row['id'],
-                        'source_sha256'=>hash('sha256',wp_json_encode($source)),
+                        'source_sha256'=>self::source_digest($src_id,$source),
                         'scope'=>'company-published-visible-content',
                         'stage'=>'WPML_TRANSLATION','executor'=>'mcp_client',
                         'operation'=>$code==='layout'?'align_elementor_layout_and_translate':'translate_missing_elementor_strings',
@@ -282,6 +302,16 @@ final class MAD4B_Elementor_Localization_V1 {
                 try{$ok=update_post_meta($target_id,'_elementor_data',wp_slash(wp_json_encode($after)));}
                 finally{self::$busy=false;}
                 if(!$ok||self::tree($target_id)!==$after)return new WP_Error('mad4b_localization_sync_readback_failed');
+                // Invalidate only the affected translated Elementor CSS asset;
+                // the next normal render regenerates it from the synced tree.
+                $row['elementor_css_invalidated']=false;
+                if(class_exists('Elementor\Core\Files\CSS\Post')){
+                    try{
+                        $css=new \Elementor\Core\Files\CSS\Post($target_id);
+                        $css->delete();
+                        $row['elementor_css_invalidated']=true;
+                    }catch(\Throwable $e){error_log('[MAD4B Localization] CSS invalidate failed for post '.$target_id);}
+                }
                 $row['updated']=true;$row['rollback_option']=$backup;
             }
             $results[]=$row;
@@ -336,7 +366,7 @@ final class MAD4B_Elementor_Localization_V1 {
             $jobs=self::outbox();$j=$jobs[$key]??null;
             if(!$j||$j['status']!=='queued'||!hash_equals($j['source_sha256'],$expected))
                 return new WP_Error('mad4b_localization_stale_or_not_queued');
-            $current=hash('sha256',wp_json_encode(self::tree($j['source_post_id'])));
+            $current=self::source_digest($j['source_post_id'],self::tree($j['source_post_id']));
             if(!hash_equals($expected,$current))return new WP_Error('mad4b_localization_source_moved');
             if((int)($j['attempts']??0)>=5)return new WP_Error('mad4b_localization_retry_limit');
             $j['status']='leased';$j['attempts']=(int)($j['attempts']??0)+1;
@@ -365,7 +395,7 @@ final class MAD4B_Elementor_Localization_V1 {
             if((int)($j['claimed_by_user']??0)!==get_current_user_id())
                 return new WP_Error('mad4b_localization_claimed_by_other');
             $post=get_post($j['source_post_id']);if(!$post)return new WP_Error('mad4b_localization_source_gone');
-            $current=hash('sha256',wp_json_encode(self::tree($j['source_post_id'])));
+            $current=self::source_digest($j['source_post_id'],self::tree($j['source_post_id']));
             if(!hash_equals($expected,$current))return new WP_Error('mad4b_localization_source_changed');
             [$issues]=self::alerts_for((int)$post->ID,$post->post_type,self::translations($post->ID,$post->post_type),
                 self::languages(),self::default_lang());
