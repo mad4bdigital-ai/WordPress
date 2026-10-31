@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Unified Full Authority
  * Description: Environment-neutral Full Authority discovery, planning, and native owner handoff for Staging and Production.
- * Version: 0.1.1
+ * Version: 0.1.2
  * Author: MAD4B
  * Text Domain: mad4b-unified-full-authority
  */
@@ -23,6 +23,7 @@ final class MAD4B_Unified_Full_Authority {
         add_action('admin_init',array(__CLASS__,'register'),20);
         if(defined('WP_CLI') && WP_CLI && class_exists('WP_CLI'))
             WP_CLI::add_command('mad4b full-authority-unified',array(__CLASS__,'cli_status'));
+            WP_CLI::add_command('mad4b full-authority-lifecycle',array(__CLASS__,'cli_lifecycle'));
     }
 
     public static function plan() {
@@ -131,6 +132,67 @@ final class MAD4B_Unified_Full_Authority {
         // execution state transitions, audit, rollback and postconditions.
         return $owner::apply($input['native_approved_input']);
     }
+    /** A read-only projection of the existing authority lifecycle. */
+    public static function lifecycle_status() {
+        $plan=self::plan();
+        if(is_wp_error($plan))return $plan;
+        $env=$plan['environment'];
+        $source=class_exists('MAD4B_SCP_Live_Acceptance_Observer')
+            ? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status() : array();
+        $source_ok=is_array($source)&&!empty($source['manifest_valid'])
+            &&!empty($source['runtime_manifest_match'])&&empty($source['stale']);
+        $write=array();
+        if('staging'===$env && class_exists('MAD4B_SCP_Staging_Write_Authority')) {
+            $write=MAD4B_SCP_Staging_Write_Authority::reconciliation_plan();
+            if(is_wp_error($write))$write=array();
+        }
+        $missing=(int)($write['exact_grants_missing_count']??0);
+        $stale=(int)($write['stale_allow_grants_count']??0)
+            +(int)($write['unreviewed_stale_allow_grants_count']??0);
+        $subjects=(array)($write['subject_preflight_blockers']??array());
+        $candidate=!empty($write['candidate_binding']['match']);
+        $reconciled='staging'===$env && $source_ok && !$missing && !$stale
+            && !$subjects && $candidate && !empty($write['effective_ready']);
+        $phases=array(
+            'resolve'=>'ready',
+            'source'=>$source_ok?'ready':'blocked',
+            'reconcile'=>!$source_ok?'waiting_source':($reconciled?'ready':'blocked'),
+            'authorize'=>!$reconciled?'waiting_reconciliation':(
+                !empty($plan['ready_to_apply'])?'ready':'blocked'),
+            'execute'=>'not_executed',
+            'verify'=>'not_executed',
+            'resume'=>'not_executed',
+        );
+        if('production'===$env) {
+            $phases['reconcile']=$source_ok?'awaiting_production_policy':'waiting_source';
+            $phases['authorize']='awaiting_native_production_authorization';
+        }
+        return array(
+            'contract'=>'mad4b.unified-authority-lifecycle-status.v1',
+            'environment'=>$env,'site_uuid'=>$plan['site_uuid'],
+            'source_sha'=>$plan['source_commit_sha'],
+            'plan_sha256'=>$plan['plan_sha256'],
+            'phases'=>$phases,
+            'source_mismatch'=>array_slice((array)($source['provenance_mismatch']??array()),0,12),
+            'missing_exact_grants'=>$env==='staging'?$missing:null,
+            'stale_write_grants'=>$env==='staging'?$stale:null,
+            'subject_conflicts'=>$env==='staging'?$subjects:array(),
+            'candidate_binding_match'=>$env==='staging'?$candidate:null,
+            'native_backend_available'=>!empty($plan['native_owner_ready']),
+            'ready_to_apply'=>!empty($plan['ready_to_apply']),
+            'next_phase'=>!$source_ok?'source':(!$reconciled?'reconcile':'authorize'),
+            'mutation_performed'=>false,
+            'production_mutation_performed'=>false,
+        );
+    }
+
+    public static function cli_lifecycle($args,$flags) {
+        if($args||$flags)WP_CLI::error('No caller-selected site or actor.');
+        $p=self::lifecycle_status();
+        if(is_wp_error($p))WP_CLI::error($p->get_error_code());
+        WP_CLI::line(wp_json_encode($p,JSON_UNESCAPED_SLASHES));
+    }
+
     public static function cli_status($args,$flags) {
         if($args||$flags)WP_CLI::error('No site or principal overrides are accepted.');
         $p=self::plan();
