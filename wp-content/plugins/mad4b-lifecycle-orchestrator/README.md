@@ -51,3 +51,10 @@ Manual event input: `goal`, `target_kind`, `target_id`, `event_type`, `event_key
 
 ## Unified Governed Lifecycle Policy v1 (0.3.0-staging)
 See UNIFIED-GOVERNED-LIFECYCLE-POLICY.md. Dynamic goal-scoped dependency graph, protected admin plan, read-only Ability, safe error classification. The original Provider retains all native write authority.
+
+## Original provider journal receipt readback (0.3.1 Staging)
+- Read-only Ability: mad4b/lifecycle-native-receipt; admin-only GET: /wp-json/mad4b/lifecycle/v1/native-receipt?mutation_id=<exact UUID>.
+- Requires native Journal status verified, rollback payload integrity, exact source adapter binding, and current provider after_sha256 readback. Does not replay a write or mint verification.
+- Historical verified Journal with a deleted fixture is explicitly not current VERIFIED; reports BLOCKED_DEPENDENCY and historical_journal_verified.
+- The native WP administrator mapping for media/update-metadata and seo/update-meta was fixed on the Staging Control Plane and preserved as a source patch under the SEO PR. Rank Math remains blocked by external artifact authority and bounded-write certification.
+- Media ALT metadata write and exact initial readback passed on a disposable image with the original WordPress principal and reversible Journal. Full undo was not accepted for live execution by the execution channel, so do not claim a passing rollback test.
