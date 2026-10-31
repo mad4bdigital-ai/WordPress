@@ -10,11 +10,21 @@ on:
       - 'packages/mad4b-fx-resilience/**'
       - 'packages/etg-woo-lab-portable-mu/**'
       - '.github/workflows/mad4b-fx-resilience.yml'
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-fx-resilience-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   fx-contracts:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - name: Verify PHP source syntax
         run: |
           php -l packages/mad4b-fx-resilience/mu-plugins/pricing-header-switcher.php
