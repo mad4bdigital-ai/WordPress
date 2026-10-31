@@ -14119,6 +14119,23 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
       ],
       "review_rationale": "Exact integrated source search/class-mad4b-scp-search-provider-connections.php retains verified guard anchors 'credential_encryption_unavailable' and 'aes-256-gcm'. The linked CI regression executes seven isolated PHP behavior/denial fixtures and validates every source independently. This is not live acceptance, release certification, or permission to deploy."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "source_blob_sha": "dbd7946f08e7d655e7860c1ab77abd7274517dc4",
+      "owner_role": "MAD4B CI source reviewer, non-authorizing integration test owner; no Production publish authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/isolated-contract.php"
+      ],
+      "review_rationale": "Revised Content Readiness integrates strictly fingerprint-bound site-neutral Elementor localization issues into the existing audited ledger, preserves the original DFSB filter validation, and moves the admin menu to the registered parent-order route contract. The exact edited isolated PHP regression test exercises source ownership, issue transitions, and event journal without external writes. CI approval is not live or Production release authority."
     }
   ],
   "code_change_rules": {
