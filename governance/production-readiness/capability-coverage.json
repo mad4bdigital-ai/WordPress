@@ -13222,10 +13222,9 @@
         "SECURITY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-early-boundary-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/rc104-merged-release-regression.py"
       ],
-      "review_rationale": "Restore private Tour Orders and Bookings boundary before passive WP-CLI and REST fastpaths. Source contract verifies exact early inclusion and privacy guard invariants; the rc104 successor runs preserved approval/permission denial and matching version assertions. Does not authorize deployment or mutation."
+      "review_rationale": "Restore private Tour Orders and Bookings boundary before passive WP-CLI and REST fastpaths. Source contract verifies exact early inclusion and privacy guard invariants; the rc104 successor runs preserved approval/permission denial and matching version assertions. Does not authorize deployment or mutation. Private operations static contract was also run independently on VPS, but the new same-PR rc104 regression is the mapped executable evidence."
     }
   ],
   "code_change_rules": {
