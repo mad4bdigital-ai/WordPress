@@ -31,7 +31,11 @@ def run(args):
 
 def main():
     source = PLUGIN.read_text()
-    match = re.search(r'(?m)^\s*\* Version: (0\.4\.0-rc\.(\d+))\s*
+    match = re.search(r'(?m)^\s*\* Version: (0\.4\.0-rc\.(\d+))\s*$', source)
+    require(match is not None and int(match.group(2)) >= MIN_RC,
+            'Plugin version regressed below rc.104')
+    require("define( 'MAD4B_SCP_VERSION', '" + match.group(1) + "' );" in source,
+            'Plugin runtime version is inconsistent')
     require(source.count('0.4.0-rc.103') == 0, 'Old plugin version retained')
     router = (INCLUDES/'class-mad4b-scp-adaptive-operation-router.php').read_text()
     guard = (INCLUDES/'class-mad4b-scp-staging-write-planning-guard.php').read_text()
