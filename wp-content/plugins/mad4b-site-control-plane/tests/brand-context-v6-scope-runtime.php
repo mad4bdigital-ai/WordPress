@@ -26,6 +26,7 @@ require __DIR__ . '/../includes/class-mad4b-scp-brand-context-builder.php';
 $builder = 'MAD4B_SCP_Brand_Context_Builder';
 $call = static function ( $method, $args ) use ( $builder ) {
     $reflection = new ReflectionMethod( $builder, $method );
+    $reflection->setAccessible( true ); // Required for PHP 7.4; safe on PHP 8.x.
     return $reflection->invokeArgs( null, $args );
 };
 $must = static function ( $ok, $label ) {
