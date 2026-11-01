@@ -64,6 +64,24 @@ export function createGovernedExecutionRoutes({core,typed={},generalShell}){
     if(admission.granted_operation!=='maintenance.shell'||
        admission.shell_fallback_allowed!==true)
       return fail('DENIED','INDEPENDENT_GENERAL_SHELL_GRANT_REQUIRED',operation);
+    // Reuse the ALREADY INSTALLED central_dual_route_policy.mjs (vps_ssh).
+    // No parallel shell entitlement or duplicate authorization model.
+    if(typeof core.authorizeOriginalDualRouteShell!=='function')
+      return fail('PARKED_PROVIDER_REVIEW_REQUIRED',
+        'ORIGINAL_DUAL_ROUTE_SHELL_POLICY_UNAVAILABLE',operation);
+    let shellDecision;
+    try{
+      shellDecision=await core.authorizeOriginalDualRouteShell({job_id,operation});
+    }catch{
+      return fail('PARKED_PROVIDER_REVIEW_REQUIRED',
+        'ORIGINAL_DUAL_ROUTE_SHELL_POLICY_UNAVAILABLE',operation);
+    }
+    if(shellDecision?.contract!=='mad4b.central-execution-route-decision.v1'||
+       shellDecision.status!=='AUTHORIZED_FOR_DISPATCH'||
+       shellDecision.lane!=='vps_ssh'||
+       shellDecision.execution_performed!==false||
+       shellDecision.host_id!==job.target_host_id)
+      return fail('DENIED','ORIGINAL_DUAL_ROUTE_SHELL_NOT_AUTHORIZED',operation);
    }else if(admission.granted_operation!=='company.remote.wpcli.full'||
       admission.native_scope_valid!==true){
     return fail('DENIED','ORIGINAL_FULL_WPCLI_GRANT_REQUIRED',operation);
