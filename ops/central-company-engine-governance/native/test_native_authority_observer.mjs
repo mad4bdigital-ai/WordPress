@@ -13,7 +13,11 @@ const observed={
  contract:'mad4b.central-original-core-scope.v2',
  db_name:'etg_commerce_staging',home:scope.canonical_origin,
  runtime_environment:'staging',scope,
- principal_enrolled:true,ledger_verified:true};
+ principal_enrolled:true,ledger_verified:true,
+ demo:{enrolled:true,site_uuid:scope.site_uuid,
+  canonical_origin:scope.canonical_origin,role:'self_hosted_demo_target',
+  identity_channel:'original_native_host_identity',
+  identity_read_allowed:true,company_write_authorized:false}};
 const policy={contract:'mad4b.native-vps-operator.v1',
  revoked:false,host_id:'srv2030908',
  scopes:{
@@ -32,7 +36,7 @@ test('original Central Staging binding works without company production readines
  assert.equal(x.company_write_authorized,false);
  assert.equal(x.native_executor_certified,false);
  assert.equal(x.execution_authorized,false);
- assert.equal(x.readiness.company_targets,'NOT_EVALUATED');
+ assert.equal(x.readiness.company_targets,'DEMO_IDENTITY_VERIFIED');
  assert.equal(x.next_action,'RECONCILE_NATIVE_EXECUTOR_FROM_INDEPENDENT_HOST_PROOF');
 });
 test('dynamic workload and staging hostname are derived from signed host binding',()=>{
@@ -92,7 +96,8 @@ for(const [name,x] of [
 test('WordPress observation is read-only and never queries a company target',()=>{
  assert.equal(centralIdentityExpression.includes('wayfatours'),false);
  assert.equal(centralIdentityExpression.includes('content.write'),false);
- assert.equal(centralIdentityExpression.includes('Company_Execution_Resolver'),false);
+ assert.equal(centralIdentityExpression.includes('Company_Execution_Resolver_V1::plan'),true);
+ assert.equal(centralIdentityExpression.includes("'identity.read'"),true);
  assert.equal(centralIdentityExpression.includes('option update'),false);
  assert.equal(centralIdentityExpression.includes('wp_insert'),false);
  assert.ok(centralIdentityExpression.includes('MAD4B_Native_VPS_Principal_V1::ledger'));
@@ -101,5 +106,19 @@ test('one company production status cannot become a proxy for Central host readi
  const p={...policy,scopes:{...policy.scopes,'wayfatours:production':{
   allow_operator:false,allow_mutation:false,revoked:true}}};
  assert.equal(verify(observed,p).central_host_original_principal_verified,true);
- assert.equal(verify(observed,p).readiness.company_targets,'NOT_EVALUATED');
+ assert.equal(verify(observed,p).readiness.company_targets,'DEMO_IDENTITY_VERIFIED');
+});
+
+for(const [caseName,change] of [
+ ['missing demo',null],
+ ['spoofed demo UUID',{...observed.demo,site_uuid:'49c562d1-8f2f-456f-b454-26816c6ba4cb'}],
+ ['spoofed demo origin',{...observed.demo,canonical_origin:'https://wayfatours.mad4b.com'}],
+ ['demo write incorrectly authorized',{...observed.demo,company_write_authorized:true}],
+ ['demo identity unverified',{...observed.demo,identity_read_allowed:false}]
+])test('demo target cannot inherit host authority: '+caseName,()=>{
+ const out=verify({...observed,demo:change});
+ assert.equal(out.central_host_original_principal_verified,true);
+ assert.equal(out.readiness.company_targets,'DEMO_IDENTITY_NOT_YET_VERIFIED');
+ assert.equal(out.execution_authorized,false);
+ assert.equal(out.demo_target.write_authorized,false);
 });
