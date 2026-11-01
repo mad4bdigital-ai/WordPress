@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: MAD4B Staging Self-Governing CSS Runtime
- * Version: 0.1.5
+ * Version: 0.2.1
  * Description: Manifest-driven, page-specific deferred styles with safe native fallbacks; local QA alone certifies a route.
  */
 defined('ABSPATH') || exit;
@@ -17,7 +17,13 @@ final class MAD4B_Autonomous_CSS_V1 {
   return class_exists('MAD4B_Page_CSS_Frame_Priority_V1')
    && MAD4B_Page_CSS_Frame_Priority_V1::safe_cookie_header($raw,$locale);
  }
+ public static function classify_device(string $ua): string {
+  // Exact same configured categories as the Staging Nginx FastCGI device partition.
+  return preg_match('~Mobile|Android|Silk|Kindle|BlackBerry|Opera.Mini|Opera.Mobi~i',$ua) ? 'mobile' : 'desktop';
+ }
  private static function guard(): bool {
+  if(class_exists('MAD4B_LiteSpeed_Local_Bridge',false) && !MAD4B_LiteSpeed_Local_Bridge::local_css_compatible())return false;
+  if(!class_exists('MAD4B_LSC_Local_Provider_V1') || !MAD4B_LSC_Local_Provider_V1::local_css_eligible())return false;
   if(PHP_SAPI==='cli'||wp_get_environment_type()!=='staging'||is_admin()||wp_doing_ajax()
     ||is_user_logged_in()||is_preview()||!did_action('wp')
     ||($_SERVER['REQUEST_METHOD']??'')!=='GET'||($_SERVER['HTTP_HOST']??'')!==self::HOST
@@ -60,8 +66,13 @@ final class MAD4B_Autonomous_CSS_V1 {
   $path=(string)wp_parse_url($_SERVER['REQUEST_URI']??'',PHP_URL_PATH);
   $locale=(string)apply_filters('wpml_current_language',null);
   $key=hash('sha256',$locale.'|'.$path);
-  $item=$manifest['routes'][$key]??null;
-  if(!is_array($item)||($item['path']??'')!==$path||($item['locale']??'')!==$locale)return;
+  $parent=$manifest['routes'][$key]??null;
+  $ua=(string)($_SERVER['HTTP_USER_AGENT']??'');
+  if($ua===''||strlen($ua)>1024||!is_array($parent)||($parent['path']??'')!==$path||($parent['locale']??'')!==$locale)return;
+  $device=self::classify_device($ua);
+  $item=$parent['devices'][$device]??null;
+  // No fallback to legacy route-wide optimization: each device needs its own evidence.
+  if(!is_array($item)||($item['device']??'')!==$device)return;
   if(($item['status']??'')!=='certified' && !($mode==='canary-v1' && ($item['status']??'')==='candidate'))return;
   if($mode===''&&($item['status']??'')!=='certified')return;
   if(($item['expires']??0)<time()||($item['expires']??0)>time()+86400*14)return;
