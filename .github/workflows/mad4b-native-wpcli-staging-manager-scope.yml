@@ -1,0 +1,30 @@
+name: MAD4B Native WPCLI Staging Manager Scope
+
+on:
+  pull_request:
+    paths:
+      - "ops/mad4b-native-wpcli-staging-scope-v1/**"
+      - ".github/workflows/mad4b-native-wpcli-staging-manager-scope.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-native-wpcli-enrollment-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  original-enrollment-scope:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Python and embedded original WordPress scope PHP
+        run: |
+          python3 -m unittest discover \
+            -s ops/mad4b-native-wpcli-staging-scope-v1/tests \
+            -p 'test_*.py' -v
