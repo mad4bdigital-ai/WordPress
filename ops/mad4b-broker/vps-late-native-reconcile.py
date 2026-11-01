@@ -89,8 +89,11 @@ def journal_attests(correlation,job,claim,started,finished):
         raise RuntimeError("HOST_JOURNAL_NATIVE_TIME_MISMATCH")
 
 def read_evidence(job_id):
-    if os.geteuid()!=0 or not os.environ.get("SSH_CONNECTION"):
-        raise RuntimeError("AUTHENTICATED_ROOT_SSH_REQUIRED")
+    root_ssh=bool(os.environ.get("SSH_CONNECTION"))
+    bounded_service=(bool(os.environ.get("INVOCATION_ID"))
+        and os.environ.get("MAD4B_LATE_RECONCILE_TIMER")=="1")
+    if os.geteuid()!=0 or not (root_ssh or bounded_service):
+        raise RuntimeError("ROOT_SSH_OR_ENROLLED_SYSTEMD_RECONCILER_REQUIRED")
     host=subprocess.run(["/usr/bin/hostname","-s"],capture_output=True,text=True,check=True,timeout=8).stdout.strip()
     if host!=HOST:raise RuntimeError("HOST_ID_MISMATCH")
     job,claim=load_job(job_id)
