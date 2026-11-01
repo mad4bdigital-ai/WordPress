@@ -17,11 +17,20 @@ on:
       - 'ops/company-readiness-workflow/executor/**'
       - 'ops/company-readiness-workflow/tests/test_vps_inventory_parity.py'
       - '.github/workflows/production-capability-parity.yml'
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-production-capability-parity-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
 jobs:
   production-parity:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Python syntax
         run: |
           python3 -m py_compile ops/company-readiness-workflow/executor/vps-native-operator.py
