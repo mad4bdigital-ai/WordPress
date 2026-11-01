@@ -222,11 +222,83 @@ final class MAD4B_SCP_Provider_Setup_Coverage {
         }
         return $out;
     }
+    public static function firecrawl_rows() {
+        if ( ! class_exists( 'MAD4B_SCP_Firecrawl_Provider' ) ) return array();
+        $config = MAD4B_SCP_Firecrawl_Provider::config();
+        $mode = ( $config['mode'] ?? '' ) === 'self_hosted' ? 'self_hosted' : 'cloud';
+        $profiles = method_exists( 'MAD4B_SCP_Firecrawl_Provider', 'profiles' ) ? MAD4B_SCP_Firecrawl_Provider::profiles() : array();
+        $active = is_array( $profiles[$mode] ?? null ) ? $profiles[$mode] : array();
+        $credential = !empty( $active['secret_cipher'] ) ? 'encrypted_saved' : 'not_configured';
+        $setup = admin_url( 'admin.php?page=mad4b-provider-connections#mad4b-firecrawl-provider' );
+        $last = MAD4B_SCP_Firecrawl_Provider::test_status();
+        $tested = ! empty( $last['tested'] );
+        $result = (string) ( $last['state'] ?? 'network_test_pending' );
+        $fields = $mode === 'self_hosted'
+            ? array( 'firecrawl_endpoint', 'firecrawl_username', 'firecrawl_gateway_password' )
+            : array( 'firecrawl_cloud_secret' );
+        return array( self::row( 'research', 'firecrawl', 'Firecrawl ('.( $mode === 'cloud' ? 'Cloud' : 'Self-hosted' ).')',
+            'native_firecrawl_encrypted_site_option', $fields, $credential, $result,
+            $tested && $result === 'reachable' ? 'connection_test_only_not_scrape_certified' : 'scrape_not_certified',
+            $credential === 'not_configured' ? 'configure_firecrawl_credentials' : 'test_firecrawl_connection', $setup ) );
+    }
+    const CUSTOM_OPTION = 'mad4b_custom_provider_registry_v1';
+    public static function custom_rows() {
+        $saved = get_option( self::CUSTOM_OPTION, array() );
+        if ( ! is_array( $saved ) ) return array();
+        $rows = array();
+        foreach ( $saved as $id => $item ) {
+            if ( ! is_array( $item ) || !preg_match( '/^[a-z][a-z0-9_-]{2,47}$/', (string)$id ) ) continue;
+            $rows[] = self::row( 'custom', (string)$id,
+                (string)( $item['label'] ?? $id ), 'owner_registered_descriptor_only',
+                array( 'endpoint', 'authentication_method' ), 'credentials_not_enrolled',
+                'adapter_not_installed', 'execution_not_authorized',
+                'implement_and_certify_provider_specific_adapter',
+                admin_url( 'admin.php?page=mad4b-provider-connections#mad4b-custom-provider' ) );
+        }
+        return $rows;
+    }
+    public static function save_custom() {
+        if ( !current_user_can( 'manage_options' ) ) wp_die( 'Forbidden', 403 );
+        check_admin_referer( 'mad4b_custom_provider_register' );
+        $id = sanitize_key( wp_unslash( $_POST['provider_id'] ?? '' ) );
+        $label = sanitize_text_field( wp_unslash( $_POST['provider_label'] ?? '' ) );
+        $auth = sanitize_key( wp_unslash( $_POST['provider_auth'] ?? '' ) );
+        if ( !preg_match( '/^[a-z][a-z0-9_-]{2,47}$/', $id ) || strlen( $label ) < 3 || strlen( $label ) > 100
+            || !in_array( $auth, array( 'none','api_key','bearer','basic','oauth2' ), true ) ) wp_die( 'Invalid provider descriptor', 400 );
+        $url = esc_url_raw( wp_unslash( $_POST['provider_endpoint'] ?? '' ) );
+        // Metadata only. Never issue requests to owner-supplied URLs.
+        if ( !preg_match( '~^https://~', $url ) || !wp_http_validate_url( $url ) ) wp_die( 'Public HTTPS endpoint required', 400 );
+        $saved = get_option( self::CUSTOM_OPTION, array() );
+        if ( !is_array( $saved ) ) $saved = array();
+        if ( isset( $saved[$id] ) ) wp_die( 'Provider ID already registered', 409 );
+        if ( count( $saved ) >= 64 ) wp_die( 'Custom provider registry limit reached', 400 );
+        $saved[$id] = array( 'label'=>$label, 'endpoint'=>$url, 'authentication_method'=>$auth,
+            'registered_by'=>get_current_user_id(), 'registered_at'=>gmdate( 'c' ), 'state'=>'descriptor_only' );
+        update_option( self::CUSTOM_OPTION, $saved, false );
+        wp_safe_redirect( admin_url( 'admin.php?page=mad4b-provider-connections&custom_registered=1#mad4b-custom-provider' ) );
+        exit;
+    }
+    public static function render_custom_registration() {
+        if ( !current_user_can( 'manage_options' ) ) return;
+        echo '<section id="mad4b-custom-provider"><h2>Register Custom Provider</h2>';
+        echo '<p>Registers a discoverable descriptor only. No credentials, outbound requests, adapter execution or wildcard permissions are created.</p>';
+        if ( isset( $_GET['custom_registered'] ) ) echo '<div class="notice notice-success inline"><p>Custom provider descriptor registered.</p></div>';
+        echo '<form method="post" action="'.esc_url( admin_url( 'admin-post.php' ) ).'">';
+        wp_nonce_field( 'mad4b_custom_provider_register' );
+        echo '<input type="hidden" name="action" value="mad4b_custom_provider_register"><table class="form-table">';
+        echo '<tr><th>Provider ID</th><td><input required name="provider_id" pattern="[a-z][a-z0-9_-]{2,47}" placeholder="my_provider"></td></tr>';
+        echo '<tr><th>Name</th><td><input required name="provider_label" maxlength="100" placeholder="My Provider"></td></tr>';
+        echo '<tr><th>Public HTTPS API URL</th><td><input required type="url" name="provider_endpoint" class="regular-text" placeholder="https://api.example.com"></td></tr>';
+        echo '<tr><th>Authentication type</th><td><select name="provider_auth"><option value="api_key">API Key</option><option value="bearer">Bearer</option><option value="basic">Basic</option><option value="oauth2">OAuth 2</option><option value="none">None</option></select></td></tr>';
+        echo '</table>';
+        submit_button( 'Register Custom Provider', 'secondary' );
+        echo '</form></section>';
+    }
     public static function inventory() {
         if ( ! current_user_can( 'manage_options' ) )
             return new WP_Error( 'mad4b_provider_setup_admin_required', 'Administrator required.' );
         $rows = array_merge( self::browser_rows(), self::core_ai_rows(),
-            self::search_rows(), self::oauth_rows(), self::auxiliary_rows() );
+            self::search_rows(), self::oauth_rows(), self::auxiliary_rows(), self::firecrawl_rows(), self::custom_rows() );
         return array( 'contract' => self::CONTRACT, 'read_only' => true,
             'authorizing' => false, 'mutation_performed' => false,
             'provider_count' => count( $rows ), 'providers' => $rows,
@@ -235,11 +307,56 @@ final class MAD4B_SCP_Provider_Setup_Coverage {
             'live_connection_tests_performed' => false,
             'unverified_not_equivalent_to_ready' => true );
     }
+    /**
+     * Only source-owned local POST test handlers are offered here. A setup URL
+     * must never be labelled a connection test, and discovery must stay read-only.
+     */
+    private static function render_test_control( $row ) {
+        $family = (string) ( $row['family'] ?? '' );
+        $id = (string) ( $row['provider_id'] ?? '' );
+        if ( $family === 'research' && $id === 'firecrawl'
+            && class_exists( 'MAD4B_SCP_Firecrawl_Provider' ) ) {
+            if ( ( $row['credential_state'] ?? '' ) !== 'encrypted_saved' ) {
+                echo '<span>Save Firecrawl credentials before testing.</span>';
+                return;
+            }
+            echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+            echo '<input type="hidden" name="action" value="mad4b_firecrawl_test">';
+            wp_nonce_field( 'mad4b_firecrawl_test' );
+            echo '<button type="submit" class="button button-secondary">Test Firecrawl connection</button></form>';
+            echo '<p class="description">Authenticated gateway check (self-hosted) or credit-usage check (Cloud); no scrape is performed.</p>';
+            return;
+        }
+        if ( $family === 'search' && class_exists( 'MAD4B_SCP_Search_Provider_Connections' )
+            && class_exists( 'MAD4B_SCP_Search_Runtime' )
+            && MAD4B_SCP_Search_Runtime::can_configure() ) {
+            $state = MAD4B_SCP_Search_Provider_Connections::status( $id );
+            if ( is_wp_error( $state ) || ! is_array( $state ) || empty( $state['configured'] ) ) {
+                echo '<span>Save the account credentials before testing.</span>';
+                return;
+            }
+            echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+            echo '<input type="hidden" name="action" value="mad4b_search_provider_connection">';
+            echo '<input type="hidden" name="provider_id" value="' . esc_attr( $id ) . '">';
+            echo '<input type="hidden" name="expected_revision" value="' . esc_attr( (string) $state['revision'] ) . '">';
+            echo '<input type="hidden" name="operation" value="test">';
+            echo '<input type="hidden" name="return_to_provider_connections" value="1">';
+            wp_nonce_field( 'mad4b_search_provider_connection:' . $id );
+            echo '<button type="submit" class="button button-secondary">Test saved connection</button></form>';
+            echo '<p class="description">Uses the registered SERP adapter account check. It does not certify search capture.</p>';
+            return;
+        }
+        echo '<span>Live test unavailable through this adapter.</span>';
+        $url = (string) ( $row['setup_url'] ?? '' );
+        if ( $url !== '' && wp_validate_redirect( $url, '' ) !== '' )
+            echo '<p><a href="' . esc_url( $url ) . '">Open provider controls / diagnostics</a></p>';
+        echo '<p class="description">No network test has been performed. A provider-owned test adapter is required.</p>';
+    }
     public static function render() {
         $data = self::inventory();
         if ( is_wp_error( $data ) ) return;
-        echo '<hr/><h2>Provider setup coverage</h2><p>Fields below are read-only names from their owning adapters. "Credential present" does not establish a live connection, signed browser evidence, paid API authorization or production readiness.</p>';
-        echo '<table class="widefat striped"><thead><tr><th>Provider</th><th>Required fields / credential owner</th><th>Credential state</th><th>Connection / execution evidence</th><th>Setup</th></tr></thead><tbody>';
+        echo '<hr/><h2 id="mad4b-provider-setup-coverage">Provider setup coverage</h2><p>The Test buttons below submit an explicit administrator-authorized POST to each supported adapter. Credential presence alone does not establish a live connection, signed browser evidence, paid API authorization or production readiness.</p>';
+        echo '<table class="widefat striped"><thead><tr><th>Provider</th><th>Required fields / credential owner</th><th>Credential state</th><th>Connection / execution evidence</th><th>Setup</th><th>Test / diagnostics</th></tr></thead><tbody>';
         foreach ( $data['providers'] as $row ) {
             echo '<tr><td><strong>'.esc_html( $row['label'] ).'</strong><br/><code>'.esc_html( $row['family'].'/'.$row['provider_id'] ).'</code></td>';
             echo '<td>'.esc_html( $row['credential_custody'] ).'<ul>';
@@ -249,8 +366,14 @@ final class MAD4B_SCP_Provider_Setup_Coverage {
             echo '<td><code>'.esc_html( $row['next_step'] ).'</code>';
             if ( $row['setup_url'] !== '' && wp_validate_redirect( $row['setup_url'], '' ) !== '' )
                 echo '<p><a href="'.esc_url( $row['setup_url'] ).'">Open original setup</a></p>';
+            echo '</td><td>';
+            self::render_test_control( $row );
             echo '</td></tr>';
         }
         echo '</tbody></table><p>Browserbase, Browserless, Steel and Cloudflare browser credentials live in the independently operated external runner. WordPress has no authority to test or save those runner keys. The Browser Acceptance page describes their exact secret names and signed-evidence requirements; do not paste those secrets into an unrelated WordPress setting.</p>';
     }
+}
+
+if ( function_exists( 'add_action' ) ) {
+    add_action( 'admin_post_mad4b_custom_provider_register', array( 'MAD4B_SCP_Provider_Setup_Coverage', 'save_custom' ) );
 }
