@@ -189,6 +189,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-switcher-sources.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-market-context.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-market-preferences.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-season-calendar.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-readiness-integrations.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-content-readiness-alerts.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-source-hub.php';
 // Source-to-JetEngine REST contract: read-only preflight and fail-closed runtime admission.
@@ -739,6 +740,7 @@ MAD4B_SCP_Market_Context::boot();
 MAD4B_SCP_Market_Preferences::boot();
 MAD4B_SCP_Season_Calendar::boot();
 	MAD4B_SCP_Content_Readiness_Alerts::boot();
+MAD4B_SCP_Readiness_Integrations::boot();
 MAD4B_SCP_Public_Holidays::boot();
 MAD4B_SCP_Source_Hub::boot();
 MAD4B_SCP_Staging_Autopilot::boot();
