@@ -22,6 +22,21 @@ must = [
  "$wrap.find('.jet-smart-listing').children().length",
  "$wrap.addClass('jet-processing')", "Promise.resolve().then",
  "$wrap.removeClass('jet-processing')",
+ # Italian empty-post optimization remains content-aware, not a permanent disable.
+ "$locale==='it'",
+ "'post_type'=>'post'",
+ "'post_status'=>'publish'",
+ "'posts_per_page'=>1",
+ "'suppress_filters'=>false",
+ "$skip_empty_italian=empty($posts->posts)",
+ "wp_reset_postdata()",
+ "mad4bJetBlogEmptyItalianPostGuard",
+ "opts.post_type",
+ "t.length!==1",
+ "opts.use_custom_query",
+ "opts.custom_query",
+ "data-mad4b-empty-italian-posts",
+ "hasRenderedPosts",
 ]
 for token in must:
  assert token in s, token

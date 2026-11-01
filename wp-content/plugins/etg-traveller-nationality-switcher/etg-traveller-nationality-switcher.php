@@ -60,7 +60,7 @@ final class Travel_Booking_Traveller_Nationality_Switcher {
   }
   $v='';
   foreach(array_unique($keys) as $key){if(isset($_COOKIE[$key])&&is_string($_COOKIE[$key])){$v=$_COOKIE[$key];break;}}
-  if(strlen($v)>1400||!str_contains($v,'.'))return '';
+  if(strlen($v)>1400||strpos($v,'.')===false)return '';
   [$payload,$mac]=explode('.',$v,2);
   if(!hash_equals(hash_hmac('sha256',$payload,wp_salt('auth')),$mac))return '';
   $plain=base64_decode(strtr($payload,'-_','+/'),true);
@@ -281,8 +281,8 @@ final class Travel_Booking_Traveller_Nationality_Switcher {
    $name=(string)$label;
    $needle=function_exists('mb_strtolower')?mb_strtolower($term,'UTF-8'):strtolower($term);
    $haystack=function_exists('mb_strtolower')?mb_strtolower($name,'UTF-8'):strtolower($name);
-   if($term!=='' && !str_contains($haystack,$needle) &&
-      !str_contains(strtolower((string)$code),$needle))continue;
+   if($term!=='' && strpos($haystack,$needle)===false &&
+      strpos(strtolower((string)$code),$needle)===false)continue;
    $matches[]=['id'=>(string)$code,'text'=>$name];
   }
   $count=count($matches);

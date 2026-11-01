@@ -33,6 +33,18 @@ add_action('elementor/frontend/after_enqueue_scripts', static function(){
  if(hash('sha256',(string)get_post_meta($id,'_elementor_data',true))!==$hash)return;
  $profile=get_option('mad4b_scp_brand_context_profile_v1',[]);
  if(!is_array($profile)||($profile['site_uuid']??'')!=='e5e64bca-ed62-48d2-b2b3-dff693cd702a')return;
+ // Italian homepage currently has no published Italian blog posts.
+ // Preserve the native route automatically as soon as one gets published.
+ $skip_empty_italian=false;
+ if($locale==='it'){
+  $posts=new WP_Query([
+   'post_type'=>'post','post_status'=>'publish','posts_per_page'=>1,
+   'fields'=>'ids','no_found_rows'=>true,'suppress_filters'=>false,
+   'ignore_sticky_posts'=>true
+  ]);
+  $skip_empty_italian=empty($posts->posts);
+  wp_reset_postdata();
+ }
  $script=<<<'JS'
 (function($){
 "use strict";
@@ -48,12 +60,20 @@ $(document).on('jet-blog-smart-list/init.mad4b-first-paint',function(event,$scop
   var k=breakpoints[i];
   if(Number(opts['posts_columns_'+k])>0||Number(opts['posts_rows_'+k])>0)return;
  }
- if(!$wrap.find('.jet-smart-listing').children().length)return;
+ var hasRenderedPosts=$wrap.find('.jet-smart-listing').children().length>0;
+ if(!hasRenderedPosts){
+  if(!window.mad4bJetBlogEmptyItalianPostGuard)return;
+  var t=opts.post_type;
+  if(!Array.isArray(t)||t.length!==1||t[0]!=='post'
+     ||opts.use_custom_query||opts.custom_query||opts.is_archive_template==='yes')return;
+ }
  $wrap.addClass('jet-processing');
- $wrap.attr('data-mad4b-server-first-paint','1');
+ $wrap.attr(hasRenderedPosts?'data-mad4b-server-first-paint':'data-mad4b-empty-italian-posts','1');
  Promise.resolve().then(function(){$wrap.removeClass('jet-processing');});
 });
 })(jQuery);
 JS;
+ wp_add_inline_script('jet-blog',
+  'window.mad4bJetBlogEmptyItalianPostGuard='.($skip_empty_italian?'true':'false').';','before');
  wp_add_inline_script('jet-blog',$script,'before');
 },999);
