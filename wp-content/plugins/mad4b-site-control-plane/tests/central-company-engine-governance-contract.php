@@ -106,4 +106,27 @@ $invalid_scope = $class::native_preflight( array( 'engine_id' => 'company.schema
 if ( ! is_wp_error( $invalid_scope ) ) {
     throw new RuntimeException( 'client_authority_injection_not_refused_by_preflight' );
 }
+// Review the three existing runtime surfaces changed by pending SSH/WP-CLI
+// discovery. Discovery remains non-executable until 305/312/313 and the
+// site-bound Native Executor have independently certified real authority.
+$pending_catalog = require MAD4B_SCP_DIR . 'config/remote-operation-catalog.php';
+$pending = $pending_catalog['company_remote_wpcli_full_enrollment'] ?? null;
+if ( ! is_array( $pending ) ||
+     ( $pending['authority_surface'] ?? '' ) !== 'mad4b-enrollment' ||
+     ( $pending['executor'] ?? '' ) !== 'original_core_broker_305_312_313' ||
+     ( $pending['chatgpt_direct_step_up'] ?? null ) !== false ||
+     ( $pending['human_decision_required'] ?? null ) !== true ) {
+    throw new RuntimeException( 'full_wpcli_owner_channel_catalog_changed' );
+}
+$pending_dispatch = file_get_contents( MAD4B_SCP_DIR . 'includes/class-mad4b-scp-enrollment-dispatch.php' );
+$pending_parity = file_get_contents( MAD4B_SCP_DIR . 'includes/class-mad4b-scp-remote-operation-parity.php' );
+if ( ! is_string( $pending_dispatch ) || ! is_string( $pending_parity ) ||
+     ! str_contains( $pending_dispatch, "['dispatchable'] = false" ) ||
+     ! str_contains( $pending_dispatch, "['capability_activated'] = false" ) ||
+     ! str_contains( $pending_dispatch, "'pending_original_core_broker_enrollment'" ) ||
+     ! str_contains( $pending_parity, "['execution_eligible'] = false" ) ||
+     ! str_contains( $pending_parity, "['remote_parity_ready'] = false" ) ||
+     ! str_contains( $pending_parity, "['capability_activated'] = false" ) ) {
+    throw new RuntimeException( 'pending_full_wpcli_enrollment_discovery_promoted_to_execution' );
+}
 echo "PASS central company native read abilities, 9 engines / 3 core mappings, owner/cycle/scope guards, no execution\n";
