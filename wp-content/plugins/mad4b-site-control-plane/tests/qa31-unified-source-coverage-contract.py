@@ -115,7 +115,10 @@ def main():
         'tests/tourism-company-launch/test-site-profile-manifest.php',
         'wp-content/plugins/mad4b-site-control-plane/tests/native-ability-manifest-trust-contract.php',
         'wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php',
-        'wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegation-mode-runtime.php',
+        # The legacy Delegation_Mode class is absent from the actual baseline;
+        # test the current policy and two-principal implementation instead.
+        'wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegation-connection-policy-runtime.php',
+        'wp-content/plugins/mad4b-site-control-plane/tests/dual-principal-runtime.php',
         'wp-content/plugins/mad4b-site-control-plane/tests/runtime-superseded-owner-gate-readonly-runtime.php',
     )
     for name in scripts:
@@ -127,7 +130,7 @@ def main():
         if result.returncode:
             raise SystemExit('Isolated denial/behavior regression failed: ' + name
                              + '\n' + result.stdout[-600:] + result.stderr[-600:])
-    print('QA31_UNIFIED_SOURCE_COVERAGE: PASS 29 reviewed sources, 58 guard anchors, original company comparator/registry policy, 7 PHP regressions; CI only')
+    print('QA31_UNIFIED_SOURCE_COVERAGE: PASS 29 reviewed sources, 58 guard anchors, original company comparator/registry policy, 8 PHP regressions; CI only')
 
 if __name__ == '__main__':
     main()
