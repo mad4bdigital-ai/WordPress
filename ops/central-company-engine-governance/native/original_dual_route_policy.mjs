@@ -42,7 +42,11 @@ export {routeDual};
  * The return value never authorizes an execution. It requires a new Core job
  * and an independent current-authority check for the selected provider.
  */
+// Preserve legacy preference while permitting newly enrolled providers only
+// when their *original* Core provider Registry entry is independently verified.
 const RECOVERY_PROVIDERS=Object.freeze(['container_exec','coolify_service','vps_ssh']);
+const PROVIDER_ID=/^[a-z][a-z0-9_.-]{1,79}$/;
+const knownPriority=p=>RECOVERY_PROVIDERS.indexOf(p);
 const TRANSIENT_FAILURES=new Set([
  'TRANSPORT_UNREACHABLE','PROVIDER_UNAVAILABLE','CONNECTION_NOT_ESTABLISHED'
 ]);
@@ -87,13 +91,24 @@ export function planOriginalCoreTransportRecovery({request,previous,core,candida
  if(mutates&&request.environment==='production'&&
     core.allow_production_mutations!==true)
    return recoveryStop('BLOCKED','PRODUCTION_MUTATION_NOT_AUTHORIZED');
- for(const provider of RECOVERY_PROVIDERS){
-  const p=candidates.find(x=>x?.provider===provider&&x.provider!==previous.provider);
-  if(!p||p.available!==true||p.independently_admitted!==true||
+ const registered=[...candidates].filter(p=>p&&
+  typeof p.provider==='string'&&PROVIDER_ID.test(p.provider) &&
+  p.provider!==previous.provider &&
+  (RECOVERY_PROVIDERS.includes(p.provider) ||
+   (p.original_core_provider_registered===true &&
+    p.provider_registry_signed_verified===true))
+ ).sort((a,b)=>{
+  const av=knownPriority(a.provider),bv=knownPriority(b.provider);
+  const ar=av<0?100:av,br=bv<0?100:bv;
+  return ar-br||a.provider.localeCompare(b.provider);
+ });
+ for(const p of registered){
+  if(p.available!==true||p.independently_admitted!==true||
      p.original_core_binding_verified!==true||p.provider_policy_verified!==true||
      p.host_identity_pinned!==true||p.operation_digest_verified!==true||
      p.original_job_claim_state!=='NOT_CLAIMED'||
      !recoveryScopeEqual(request,p))continue;
+  const provider=p.provider;
   return Object.freeze({
    contract:'mad4b.central-transport-recovery.v1',
    state:'CANDIDATE_REQUIRES_NEW_CORE_ADMISSION',provider,
