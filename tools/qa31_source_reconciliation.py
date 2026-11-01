@@ -34,6 +34,7 @@ def act(status,cat):
 def main():
     a=argparse.ArgumentParser()
     for k in ('staging_root','github_root','expected_head','out'):a.add_argument('--'+k.replace('_','-'),required=True)
+    a.add_argument('--read-only-drift-report',action='store_true',help='Write non-authorizing mismatch evidence for a stale Staging package, and still exit nonzero.')
     x=a.parse_args()
     stage=Path(x.staging_root).resolve();github=Path(x.github_root).resolve()
     if not stage.is_dir() or not github.is_dir():raise ValueError('Missing root')
@@ -45,7 +46,8 @@ def main():
     si=inventory(stage);gi=inventory(github)
     corrupt=[e['path'] for e in prov['package_files'] if e['path'] not in si or
              si[e['path']]['sha256']!=e['sha256'] or si[e['path']]['bytes']!=e['bytes']]
-    if corrupt:raise ValueError('Staging package manifest drift: '+str(corrupt[:7]))
+    if corrupt and not x.read_only_drift_report:
+        raise ValueError('Staging package manifest drift: '+str(corrupt[:7]))
     allpaths=sorted(set(si)|set(gi))
     records=[];summary=Counter();actions=Counter()
     for path in allpaths:
@@ -64,22 +66,37 @@ def main():
       'contract':'mad4b.qa31.source-reconciliation-inventory.v1',
       'authorizing':False,'production_authorized':False,'contains_source_bodies':False,
       'github':{'head_sha':current,'version':re.search(r'(?m)^\s*\* Version:\s*(\S+)',(github/'mad4b-site-control-plane.php').read_text()).group(1),'files':len(gi)},
-      'staging':{'package_version':prov['control_plane_version'],'build_source_sha':prov['source_commit_sha'],'manifest_verified_count':len(prov['package_files']),'files':len(si)},
+      'staging':{'package_version':prov['control_plane_version'],'build_source_sha':prov['source_commit_sha'],
+                 'manifest_verified_count':len(prov['package_files'])-len(corrupt),
+                 'manifest_declared_count':len(prov['package_files']),
+                 'manifest_mismatch_count':len(corrupt),
+                 'manifest_mismatch_paths':corrupt,
+                 'manifest_valid_for_release':not corrupt,
+                 'files':len(si)},
       'matched_files':len(set(si)&set(gi))-summary['DIVERGENT'],
       'diff_count_by_state':dict(summary),'diff_count_by_action':dict(actions),
       'protected_source_divergence_count':len(sensitive),
-      'release_gate':'BLOCKED_SOURCE_DIVERGENCE' if sensitive or summary['DIVERGENT'] else 'REVIEW_REQUIRED',
+      'release_gate':'BLOCKED_RUNTIME_MANIFEST_DRIFT' if corrupt else ('BLOCKED_SOURCE_DIVERGENCE' if sensitive or summary['DIVERGENT'] else 'REVIEW_REQUIRED'),
+      'drift_report_only':bool(x.read_only_drift_report),
+      'manifest_verified':not bool(corrupt),
       'decisions':records}
-    out=Path(x.out);out.parent.mkdir(parents=True,exist_ok=True)
+    out=Path(x.out)
+    # This comparator must never write the report into either source tree.
+    # Resolve parent symlinks as well to stop redirecting writes into Staging.
+    output_target=out.resolve()
+    if out.is_symlink() or any(output_target==root or root in output_target.parents for root in (stage,github)):
+        raise ValueError('Read-only report destination must be outside both plugin source trees')
+    out.parent.mkdir(parents=True,exist_ok=True)
     out.write_text(json.dumps(report,sort_keys=True,indent=2)+'\n')
-    print(json.dumps({'result':report['release_gate'],'github_version':report['github']['version'],
+    print(json.dumps({'result':report['release_gate'],'manifest_mismatch_count':len(corrupt),'github_version':report['github']['version'],
       'staging_version':report['staging']['package_version'],
       'matched_files':report['matched_files'],
       'diff_by_state':report['diff_count_by_state'],
       'decisions':report['diff_count_by_action'],
       'protected_source_divergence':len(sensitive),
-      'manifest_verified':len(prov['package_files']),
+      'manifest_verified':len(prov['package_files'])-len(corrupt),
       'report_sha256':sha(out)},indent=2))
+    if corrupt:sys.exit(3) # Non-authorizing drift evidence was saved, but release preflight remains failed.
 if __name__=='__main__':
   try:main()
   except Exception as exc:print('QA31 FAIL CLOSED: '+str(exc),file=sys.stderr);sys.exit(2)

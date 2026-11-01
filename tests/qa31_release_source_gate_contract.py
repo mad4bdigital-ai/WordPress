@@ -75,10 +75,14 @@ with TemporaryDirectory() as foreign:
         (plugin/'config/cross-plugin-sources.json').read_bytes()),
         'foreign_ci_successor_root_denied')
 checked=evaluate(ledger,plugin)
+# Current source has additional unreviewed divergent paths; accepting a
+# reviewed exact Git successor must never erase those blockers or imply parity.
 chk(set(checked['reviewed_github_successor_paths'])==reviewed_paths
-    and checked['unexpected_count']==0 and checked['pending_count']>0
+    and checked['unexpected_count']>0
+    and 'includes/class-mad4b-scp-brand-context-builder.php' in checked['unexpected_paths']
+    and checked['pending_count']>0
     and checked['decision']=='BLOCKED_SOURCE_RECONCILIATION',
-    'reviewed_successor_remains_pending_without_version_parity')
+    'reviewed_successor_does_not_erase_unreviewed_live_divergence')
 chk(not reviewed_bootstrap_successor(plugin,'mad4b-site-control-plane.php',current+b'\nmodified'),
     'tampered_bootstrap_bytes_denied')
 chk(not reviewed_bootstrap_successor(plugin,'includes/unapproved.php',current),

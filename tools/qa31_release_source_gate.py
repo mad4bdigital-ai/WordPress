@@ -7,7 +7,7 @@ SHA=re.compile(r'^[a-f0-9]{64}$')
 SHA40=re.compile(r'^[a-f0-9]{40}$')
 def digest(p:Path)->str:return hashlib.sha256(p.read_bytes()).hexdigest()
 _REVIEWED_CI_ONLY_SOURCE_TESTS = {
-    'mad4b-site-control-plane.php': 'wp-content/plugins/mad4b-site-control-plane/tests/qa30-native-general-settings-rest-lifecycle.py',
+    'mad4b-site-control-plane.php': 'wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py',
     'config/cross-plugin-sources.json': 'wp-content/plugins/mad4b-site-control-plane/tests/dfsb-rc15-signed-review-source-pin.py',
     'includes/class-mad4b-scp-server-write-catalog.php': 'wp-content/plugins/mad4b-site-control-plane/tests/live-write-provider-snapshot-runtime.php',
 }
