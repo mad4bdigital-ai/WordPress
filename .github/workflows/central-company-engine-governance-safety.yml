@@ -42,6 +42,8 @@ jobs:
           node --test ops/central-company-engine-governance/native/test_core_native_binding.mjs
           node --check ops/central-company-engine-governance/native/enrollment_lifecycle.mjs
           node --test ops/central-company-engine-governance/native/test_enrollment_lifecycle.mjs
+          python3 -m py_compile ops/central-company-engine-governance/native/broker-native-ssh-reconcile.py
+          python3 ops/central-company-engine-governance/native/test_broker_reconcile_arity.py
           node --check ops/central-company-engine-governance/native/host_proof_transition.mjs
           node --check ops/central-company-engine-governance/native/issue_host_proof.mjs
           node --test ops/central-company-engine-governance/native/test_host_proof_transition.mjs
