@@ -1,7 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createOriginalCoreWpcliExecutor,payloadHash} from './full_wpcli_execute.mjs';
+import {generateKeyPairSync,sign} from 'node:crypto';
+import {CONTRACT,signatureBytes} from './signed_argv_envelope.mjs';
 const ID='a'.repeat(32);
+const {publicKey,privateKey}=generateKeyPairSync('ed25519');
 const scope={company_id:'c1',site_uuid:'site1',canonical_origin:'https://staging.example',
   environment:'staging',ssh_target_id:'hosting-3',ssh_account:'siteuser',
   ssh_host_key_fingerprint:'SHA256:pin',wordpress_root:'/srv/site',
@@ -25,7 +28,20 @@ function fixture(overrides={}){
   command_sha256:job.command_sha256,site_uuid:job.site_uuid,
   company_id:job.company_id,exit_code:0,...overrides.receipt};
  let claimed=false,runs=0;
+ const now=Math.floor(Date.now()/1000);
+ const p={job_id:job.job_id,company_id:job.company_id,site_uuid:job.site_uuid,
+  canonical_origin:job.canonical_origin,environment:job.environment,
+  ssh_target_id:job.ssh_target_id,ssh_account:job.ssh_account,
+  ssh_host_key_fingerprint:job.ssh_host_key_fingerprint,
+  wordpress_root:job.wordpress_root,wordpress_principal:job.wordpress_principal,
+  enrollment_revision:job.enrollment_revision,actor_id:job.actor_id,
+  channel_id:job.channel_id,grant_id:job.grant_id,
+  command_sha256:job.command_sha256,nonce:'b'.repeat(32),
+  issued_epoch:now,expires_epoch:now+40,argv:job.argv};
+ const envelope={contract:CONTRACT,payload:p,signature:sign(null,signatureBytes(p),privateKey).toString('base64')};
  const core={fetchBoundJob:async()=>job,fetchEnrolledChannel:async()=>channel,
+  fetchSignedArgvEnvelope:async()=>overrides.envelope??envelope,
+  getPinnedSignerPublicKey:async()=>publicKey,
   claimJobOnce:async()=>{if(claimed)return false;claimed=true;return true},
   audit:async()=>{}};
  const broker={verify312:async()=>admission,verify313:async()=>{
@@ -48,8 +64,8 @@ for(const [name,patch,reason] of [
  ['no approved channel',{channel:{authorization_source:'ssh_probe'}},'EXACT_CHANNEL_NOT_ENROLLED'],
  ['inactive channel',{channel:{full_wpcli_active:false}},'EXACT_CHANNEL_NOT_ENROLLED'],
  ['different origin',{channel:{canonical_origin:'https://elsewhere.test'}},'EXACT_CHANNEL_NOT_ENROLLED'],
- ['no payload',{job:{argv:null}},'WPCLI_PAYLOAD_NOT_AVAILABLE'],
- ['tampered payload',{job:{argv:['plugin','list']}},'COMMAND_DIGEST_MISMATCH'],
+ ['no payload',{job:{argv:null}},'COMMAND_PAYLOAD_INVALID'],
+ ['tampered payload',{job:{argv:['plugin','list']}},'COMMAND_PAYLOAD_INVALID'],
  ['wrong 312 company',{admission:{company:'other'}},'BROKER_312_AUTHORITY_DENIED'],
  ['wrong 312 transport',{admission:{transport_id:'other'}},'BROKER_312_AUTHORITY_DENIED'],
  ['wrong 312 fingerprint',{admission:{host_key_fingerprint:'CHANGED'}},'BROKER_312_AUTHORITY_DENIED'],
