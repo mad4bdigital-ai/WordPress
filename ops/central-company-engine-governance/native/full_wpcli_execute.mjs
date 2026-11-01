@@ -62,8 +62,12 @@ export function createOriginalCoreWpcliExecutor({core,broker,transport}){
          admission.owner_enrolled_wpcli!==true||
          admission.operation!=='company.remote.wpcli.full'||
          admission.job_id!==jobId||admission.command_sha256!==job.command_sha256||
-         admission.site_uuid!==job.site_uuid||admission.company_id!==job.company_id||
-         admission.ssh_target_id!==job.ssh_target_id)
+         admission.site_uuid!==job.site_uuid||admission.company!==job.company_id||
+         admission.target_id!==job.ssh_target_id||
+         admission.origin!==job.canonical_origin||admission.environment!==job.environment||
+         admission.host_principal!==job.ssh_account||
+         admission.host_key_fingerprint!==job.ssh_host_key_fingerprint||
+         admission.transport_id!==job.channel_id||admission.grant_id!==job.grant_id)
         return stop('BROKER_312_AUTHORITY_DENIED');
       // This must be an original atomic durable claim. An uncertain execution
       // is never blindly replayed (even when the caller receives an error).
