@@ -1,3 +1,113 @@
+/* Single indexing authority for the UAEL #25031 share rail, regardless
+ * of the Elementor widget ID in archives or individual tour templates.
+ * Ancestor stack elevation is handled only while opened by the controller. */
+body:is(.post-type-archive-tours-and-activities,.single-tours-and-activities) .elementor-widget-jet-dropbar:has(.elementor-25031) {
+ --mad4b-share-rail-layer:2147483000;
+}
+body:is(.post-type-archive-tours-and-activities,.single-tours-and-activities) .elementor-widget-jet-dropbar:has(.elementor-25031) .jet-dropbar-open > .jet-dropbar__inner > .jet-dropbar__content-wrapper {
+ z-index:var(--mad4b-share-rail-layer)!important;
+}
+/* One right-hand sticky share rail, owned by the native Jet Dropbar.
+ * UAEL is Inline in the actual Elementor source (#25031), with one column.
+ * Hidden by Jet Dropbar until its CLICK action sets jet-dropbar-open.
+ * Crucially no floating UAEL social grid is allowed outside this panel. */
+body:is(.post-type-archive-tours-and-activities,.single-tours-and-activities) .elementor-widget-jet-dropbar:has(.elementor-25031) .jet-dropbar__content-wrapper {
+ position:fixed!important;
+ top:50dvh!important;
+ right:max(12px,env(safe-area-inset-right,0px))!important;
+ bottom:auto!important;
+ left:auto!important;
+ width:64px!important;
+ max-width:64px!important;
+ max-height:min(68dvh,400px);
+ overflow-y:auto;
+ overflow-x:hidden;
+ overscroll-behavior:contain;
+ transform:translateY(-50%)!important;
+ z-index:2147483000!important;
+ border:1px solid var(--e-global-color-accent,#b48a46);
+ border-radius:14px;
+ background:var(--e-global-color-bnav001,#f6f2e9);
+ box-shadow:0 9px 26px rgba(16,45,64,.25);
+}
+body:is(.post-type-archive-tours-and-activities,.single-tours-and-activities) .elementor-widget-jet-dropbar:has(.elementor-25031) .jet-dropbar__content {
+ width:100%;
+ padding:7px 5px;
+ border-radius:inherit;
+ background:transparent;
+}
+body:is(.post-type-archive-tours-and-activities,.single-tours-and-activities) .elementor-widget-jet-dropbar:has(.elementor-25031) .elementor-25031,
+body:is(.post-type-archive-tours-and-activities,.single-tours-and-activities) .elementor-widget-jet-dropbar:has(.elementor-25031) .elementor-25031 .e-con,
+body:is(.post-type-archive-tours-and-activities,.single-tours-and-activities) .elementor-widget-jet-dropbar:has(.elementor-25031) .elementor-25031 .e-con-inner {
+ width:100%!important;
+ min-width:0!important;
+ max-width:100%!important;
+ padding:0!important;
+ margin:0!important;
+ box-sizing:border-box!important;
+}
+body:is(.post-type-archive-tours-and-activities,.single-tours-and-activities) .elementor-widget-jet-dropbar:has(.elementor-25031) .uael-style-inline .elementor-grid {
+ position:static!important;
+ display:flex!important;
+ flex-direction:column!important;
+ align-items:center!important;
+ gap:5px!important;
+ width:100%!important;
+ padding:0!important;
+ margin:0!important;
+}
+body:is(.post-type-archive-tours-and-activities,.single-tours-and-activities) .elementor-widget-jet-dropbar:has(.elementor-25031) .uael-style-inline .elementor-grid-item {
+ display:flex;
+ justify-content:center;
+ align-items:center;
+ width:100%;
+ min-width:0;
+ margin:0!important;
+}
+body:is(.post-type-archive-tours-and-activities,.single-tours-and-activities) .elementor-widget-jet-dropbar:has(.elementor-25031) .mad4b-share-rail-close {
+ display:block;
+ width:31px;
+ height:29px;
+ margin:0 0 4px auto;
+ padding:0;
+ border:1px solid rgba(16,45,64,.18);
+ border-radius:8px;
+ background:transparent;
+ color:var(--e-global-color-primary,#102d40);
+ font:600 23px/1 system-ui,sans-serif;
+ cursor:pointer;
+}
+body:is(.post-type-archive-tours-and-activities,.single-tours-and-activities) .elementor-widget-jet-dropbar:has(.elementor-25031) .mad4b-share-rail-close:is(:hover,:focus-visible) {
+ color:var(--e-global-color-accent,#b48a46);
+ border-color:currentColor;
+ outline-offset:2px;
+}
+body:is(.post-type-archive-tours-and-activities,.single-tours-and-activities) .elementor-widget-jet-dropbar:has(.elementor-25031) .uael-style-inline .uael-share-btn__icon {
+ display:flex;
+ justify-content:center;
+ align-items:center;
+ width:42px;
+ height:42px;
+ border-radius:9px;
+}
+@media (max-width:767px) {
+ body:is(.post-type-archive-tours-and-activities,.single-tours-and-activities) .elementor-widget-jet-dropbar:has(.elementor-25031) .jet-dropbar__content-wrapper {
+  top:45dvh!important;
+  max-height:min(63dvh,375px);
+  width:58px!important;
+  max-width:58px!important;
+ }
+ body:is(.post-type-archive-tours-and-activities,.single-tours-and-activities) .elementor-widget-jet-dropbar:has(.elementor-25031) .uael-style-inline .uael-share-btn__icon {
+  width:39px;
+  height:39px;
+ }
+}
+@media(prefers-reduced-motion:reduce) {
+ body:is(.post-type-archive-tours-and-activities,.single-tours-and-activities) .elementor-widget-jet-dropbar:has(.elementor-25031) .jet-dropbar__content-wrapper {
+  transition:none!important;
+  animation:none!important;
+ }
+}
 /* The one archive mobile action dock. Its nested Elementor sections must not
  * create independent sticky/fixed surfaces or 125px of reserved space. */
 @media (max-width:767px) {
@@ -83,15 +193,7 @@
   border-radius:10px!important;
   z-index:95!important;
  }
- /* Do not push a share menu behind the tiny cinema hero or into the sticky
-    bar. Its content remains a real JetElements click popover. */
- body.post-type-archive-tours-and-activities .elementor-element-44b808e .jet-dropbar__content-wrapper {
-  max-width:calc(100vw - 24px);
-  max-height:min(62dvh,440px);
-  overflow-y:auto;
-  overscroll-behavior:contain;
- }
- body.post-type-archive-tours-and-activities .elementor-element-44b808e .jet-dropbar__button {
+ body:is(.post-type-archive-tours-and-activities,.single-tours-and-activities) .elementor-widget-jet-dropbar:has(.elementor-25031) .jet-dropbar__button {
   touch-action:manipulation;
  }
  /* Full-screen mobile navigation has priority over floating page actions. */
@@ -107,7 +209,7 @@
  .elementor-location-header .product-native-navigation .navigation-editor-card:hover,
  .elementor-location-header .product-native-navigation .mad4b-tour-tree-row:hover,
  .elementor-location-header .product-native-navigation .mad4b-tour-facet-tab:hover,
- body.post-type-archive-tours-and-activities .elementor-element-44b808e .jet-dropbar__button:hover {
+ body:is(.post-type-archive-tours-and-activities,.single-tours-and-activities) .elementor-widget-jet-dropbar:has(.elementor-25031) .jet-dropbar__button:hover {
   background:transparent!important;
   border-color:transparent!important;
  }
