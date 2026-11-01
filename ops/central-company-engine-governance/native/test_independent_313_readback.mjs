@@ -27,11 +27,14 @@ function fixture(){
   canonical_origin:base.origin,environment:base.environment,
   host_id:base.host_id,transport_id,grant_id,registration_state:'ENROLLED',
   execute_registered:true,independent_readback_observer_enrolled:true,
-  observer_signer_is_execution_signer:false,observer_key_pinned:true};
+  observer_signer_is_execution_signer:false,observer_key_pinned:true,
+  observer_key_id:'observer-key-001'};
  const readback={contract:CONTRACT,...base,
   observed_wordpress_home:base.origin,issued_epoch:now-4,
   expires_epoch:now+45,nonce:'9'.repeat(32)};
- return {originalJob,pending313,registeredNative,readback,now,pinnedObserverKey:publicKey};
+ return {originalJob,pending313,registeredNative,readback,now,
+  pinnedObserverKey:publicKey,pinnedObserverKeyId:'observer-key-001',
+  pinnedObserverKeySource:'original_core_pinned_registry'};
 }
 function run(f,signer=privateKey){
  const signature=sign(null,native313Bytes(f.readback),signer).toString('base64');
@@ -62,6 +65,14 @@ for(const [name,part,key,value,reason] of [
 ])test(name,()=>{
  const f=fixture();f[part][key]=value;
  assert.equal(run(f).reason,reason);
+});
+test('a self-supplied/unregistered observer key cannot establish trust',()=>{
+ const f=fixture();f.pinnedObserverKeySource='request_payload';
+ assert.equal(run(f).reason,'PINNED_INDEPENDENT_NATIVE_OBSERVER_REQUIRED');
+});
+test('observer key rotation mismatch must deny',()=>{
+ const f=fixture();f.pinnedObserverKeyId='different-pinned-observer';
+ assert.equal(run(f).reason,'PINNED_INDEPENDENT_NATIVE_OBSERVER_REQUIRED');
 });
 test('wrong pinned public key rejected',()=>{
  const f=fixture(),other=generateKeyPairSync('ed25519');
