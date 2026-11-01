@@ -32,6 +32,8 @@ jobs:
           python3 -m py_compile ops/mad4b-broker/vps-late-native-sweeper.py
           php -l ops/mad4b-broker/central-mu/324-mad4b-broker-late-native-reconciliation.php
           php -l ops/mad4b-broker/container/central-job-readiness.php
+          php -l ops/mad4b-broker/container/write-reviewed-parity-proposal.php
+          bash -n ops/mad4b-broker/container/run-private-parity-review.sh
       - name: Hermetic signed-principal and identity tests
         shell: bash
         run: |
