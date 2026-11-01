@@ -1,0 +1,115 @@
+{
+  "contract": "mad4b.content-hub.source-reuse-admission-acceptance.v1",
+  "inspected_on": "2026-10-29",
+  "environment": "tours.dev.mad4b.com / Staging",
+  "scope": "company-owned Tourism Nile content in an isolated central Content Hub",
+  "source_owner": "tourism-almallahgroup",
+  "source_term_taxonomy": "tour-types_jet",
+  "destination_canonical_taxonomy": "tour-types",
+  "validation_policy": {
+    "source_authenticated_and_signed_snapshot": true,
+    "must_match_company": true,
+    "category_source_slug_exact": true,
+    "source_and_target_parent_hierarchy_validated": true,
+    "target_taxonomy_exact": true,
+    "source_wpml_language_validated": true,
+    "target_wpml_language_validated": true,
+    "translation_group_one_to_one": true,
+    "source_numeric_id_alone_not_authority": true,
+    "cross_taxonomy_fallback_forbidden": true,
+    "source_tour_slug_without_owner_not_sufficient_for_merge": true,
+    "fail_closed_on_missing_or_ambiguous_match": true
+  },
+  "verified_existing_native_categories": {
+    "incoming_source_category_records": 18,
+    "target_existing_term_links": 18,
+    "wpml_bilingual_groups": 9,
+    "distinct_native_terms_created": 0,
+    "categories_overwritten_or_merged": 0,
+    "property_types_with_matching_slugs_ignored": true
+  },
+  "native_tour_collisions": {
+    "reviewed_source_tours": 35,
+    "exact_slug_collisions": 4,
+    "provenance_verified": 0,
+    "candidates": [
+      {
+        "source_id": 15081,
+        "native_candidate_id": 60433,
+        "state": "native_slug_collision_requires_owner_review"
+      },
+      {
+        "source_id": 15941,
+        "native_candidate_id": 60435,
+        "state": "native_slug_collision_requires_owner_review"
+      },
+      {
+        "source_id": 24900,
+        "native_candidate_id": 60617,
+        "state": "native_slug_collision_requires_owner_review"
+      },
+      {
+        "source_id": 41909,
+        "native_candidate_id": 60745,
+        "state": "native_slug_collision_requires_owner_review"
+      }
+    ],
+    "native_tours_overwritten": 0,
+    "automatic_merges": 0,
+    "encoded_arabic_wordpress_slug_supported": true
+  },
+  "hub_publication_reconciliation": {
+    "hub_cpt": "mad4b_hub_nile",
+    "post_status": "publish",
+    "existing_posts_reconciled": 417,
+    "new_posts_created": 0,
+    "updated_native_terms": 0,
+    "updated_native_tours": 0,
+    "post_groups": {
+      "nile_category": 18,
+      "nile_tour": 35,
+      "historical_rate": 364
+    },
+    "policy_meta_attached": 417,
+    "canonical_term_reference_meta_attached": 18,
+    "native_tour_collision_review_meta_attached": 4,
+    "historical_rate_without_commerce_approval": 364,
+    "rerun_result": {
+      "created": 0,
+      "updated": 0,
+      "unchanged": 417
+    },
+    "public_queryable": false,
+    "woo_product_import": false,
+    "booking_checkout_enabled": false
+  },
+  "negative_tests": {
+    "valid_reference_snapshot": "PASS",
+    "foreign_owner": "REJECTED",
+    "wrong_source_taxonomy": "REJECTED",
+    "wrong_source_wpml_language": "REJECTED",
+    "broken_parent_hierarchy": "REJECTED",
+    "duplicate_category_id": "REJECTED",
+    "unsafe_tour_slug": "REJECTED",
+    "missing_tour": "REJECTED"
+  },
+  "deployed_file_sha256": {
+    "remote_signed_source": "72c2c930790fa14505a678d81ed3e1b2d3e493859ec6bf1ad104270e27397a55",
+    "central_reuse_gate": "399e583e246a09143c3e81d8d9524e434da525cfd6040d2a5ad391120215d234",
+    "central_publisher": "57058d71333733437322f081394632a9a5fc5306d10d34675f54741155edd044"
+  },
+  "version_control": {
+    "repository": "mad4bdigital-ai/WordPress",
+    "pull_request": 631,
+    "source_branch": "feature/central-company-rest-pairing-20261029",
+    "merged": false,
+    "ci_verdict": "not_yet_final_in_this_receipt"
+  },
+  "owner_review_pending": [
+    "Four native tour slug matches have no explicit source-company + source-post-id provenance; do not merge automatically",
+    "Separate business approval required before source historical rates become current selling prices",
+    "Independent PR CI and owner exact-head release certification before Production promotion"
+  ],
+  "status": "STAGING_POLICY_HARD_GATE_APPLIED_AND_TESTED",
+  "scope_limit": "Normative contract for new ingestion flows; code enforcement validated on Tourism Nile publisher only"
+}
