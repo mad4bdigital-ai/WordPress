@@ -1,0 +1,152 @@
+/* Native Elementor market/passport controls. Header placement comes from the
+   published Elementor template, never a client-side DOM relocation. */
+.elementor-location-header .header-context-controls{
+ position:relative;display:flex;align-items:center;justify-content:center;
+ flex:0 0 auto;min-width:0;width:auto;overflow:visible;z-index:500;
+}
+.elementor-location-header .header-context-toggle{
+ display:inline-flex;justify-content:center;align-items:center;gap:5px;
+ appearance:none;cursor:pointer;min-height:34px;padding:4px 10px;
+ border:1px solid #dce2eb;border-radius:8px;background:#fff;color:#20374b;
+ font:inherit;font-size:12px;line-height:1.2;white-space:nowrap;
+}
+.elementor-location-header .header-context-toggle:focus-visible{
+ outline:2px solid #6989a2;outline-offset:2px;
+}
+.elementor-location-header .header-context-controls .header-context-panel{
+ display:none!important;position:absolute;top:calc(100% + 8px);right:0;
+ width:min(340px,calc(100vw - 20px));max-width:340px;max-height:min(75vh,530px);
+ box-sizing:border-box;padding:14px!important;margin:0;
+ flex-direction:column;gap:10px;overflow-x:hidden;overflow-y:auto;
+ border:1px solid #dce2eb;border-radius:12px;background:#fff;
+ box-shadow:0 12px 30px rgba(24,42,56,.15);z-index:200010;
+}
+.elementor-location-header .header-context-controls.is-open .header-context-panel{display:flex!important;}
+.elementor-location-header .header-context-panel > .elementor-widget-shortcode{
+ flex:0 0 auto;width:100%!important;min-width:0;
+}
+.elementor-location-header .header-context-panel :is(.elementor-widget-container,form,input,select){
+ max-width:100%;box-sizing:border-box;
+}
+/* Keep desktop separate and preserve the original desktop controls. */
+@media(min-width:1025px){
+ .elementor-location-header .header-context-controls-mobile{display:none!important;}
+}
+@media(max-width:1024px){
+ .elementor-location-header .header-context-controls-desktop{display:none!important;}
+}
+@media(min-width:961px) and (max-width:1024px){
+ .elementor-location-header .elementor-element-6072b3f{display:block!important;width:auto!important;height:auto!important;flex:0 0 auto!important;}
+ .elementor-location-header .elementor-element-6072b3f nav.elementor-nav-menu--main{display:flex!important;width:auto!important;max-width:100%;}
+ .elementor-location-header .elementor-element-6072b3f .elementor-menu-toggle{display:none!important;}
+}
+@media(max-width:767px){
+ .elementor-location-header .elementor-element-e9d5787{position:relative!important;z-index:501!important;overflow:visible!important;}
+ .elementor-location-header .elementor-element-e9d5787 > .e-con-inner,
+ .elementor-location-header .elementor-element-45218e3{width:100%!important;max-width:100%!important;min-width:0!important;}
+ .elementor-location-header .elementor-element-45218e3{padding-inline:8px!important;}
+ .elementor-location-header .elementor-element-f975dad{
+  display:flex!important;flex-flow:row nowrap!important;align-items:center!important;
+  justify-content:center!important;gap:7px!important;direction:ltr!important;
+  width:100%!important;max-width:100%!important;min-width:0!important;
+ }
+ html[dir='rtl'] .elementor-location-header .elementor-element-f975dad{direction:rtl!important;}
+ .elementor-location-header .elementor-element-f975dad > .elementor-element-e04f82e{
+  order:0!important;flex:0 0 48px!important;width:48px!important;min-width:0!important;margin:0!important;height:32px!important;
+ }
+ .elementor-location-header .elementor-element-e04f82e :is(.elementor-widget-container,.elementor-icon-list-items){
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  width:100%!important;height:32px!important;
+ }
+ .elementor-location-header .elementor-element-e04f82e .elementor-icon-list-items{
+  flex-flow:row nowrap!important;gap:7px!important;margin:0!important;padding:0!important;
+ }
+ .elementor-location-header .elementor-element-e04f82e .elementor-icon-list-item,
+ .elementor-location-header .elementor-element-e04f82e .elementor-icon-list-item a,
+ .elementor-location-header .elementor-element-e04f82e .elementor-icon-list-icon{
+  display:flex!important;flex:0 0 20px!important;align-items:center!important;justify-content:center!important;
+  width:20px!important;height:32px!important;margin:0!important;padding:0!important;
+ }
+ .elementor-location-header .elementor-element-e04f82e .elementor-icon-list-icon svg{width:19px!important;height:19px!important;display:block!important;}
+ .elementor-location-header .elementor-element-f975dad > .elementor-element-9779089{
+  order:1!important;flex:0 0 62px!important;width:62px!important;min-width:0!important;margin:0!important;
+ }
+ .elementor-location-header .elementor-element-9779089 .pricing-currency-switcher{
+  position:relative;width:62px!important;
+ }
+ .elementor-location-header .elementor-element-9779089 .pricing-currency-switcher::after{
+  content:'⌄';position:absolute;right:6px;top:50%;transform:translateY(-58%);
+  pointer-events:none;color:#fff;font-size:12px;
+ }
+ .elementor-location-header .elementor-element-f975dad > .header-context-controls-mobile{
+  order:2!important;display:flex!important;flex:0 0 84px!important;
+  align-items:center!important;justify-content:center!important;
+  width:84px!important;min-width:0!important;height:32px!important;
+  min-height:32px!important;padding:0!important;margin:0!important;align-self:center!important;
+ }
+ .elementor-location-header .elementor-element-f975dad > .elementor-element-798db22{
+  order:3!important;flex:0 1 96px!important;width:96px!important;max-width:96px!important;min-width:0!important;margin:0!important;
+ }
+ .elementor-location-header .elementor-element-9779089 .pricing-currency-select,
+ .elementor-location-header .elementor-element-f975dad .header-context-toggle,
+ .elementor-location-header .elementor-element-798db22 .wpml-ls-item-toggle{
+  display:flex!important;align-items:center!important;box-sizing:border-box!important;
+  height:32px!important;min-height:32px!important;
+  padding:4px 7px!important;border:1px solid rgba(255,255,255,.65)!important;
+  border-radius:6px!important;box-shadow:none!important;
+  background:transparent!important;color:#fff!important;
+  font-size:11px!important;line-height:1.25!important;
+ }
+ .elementor-location-header .elementor-element-9779089 .pricing-currency-select{
+  display:block!important;width:62px!important;max-width:62px!important;
+  appearance:none;-webkit-appearance:none;padding-right:16px!important;
+ }
+ .elementor-location-header .elementor-element-9779089 .pricing-currency-select option{background:#fff;color:#20374b;}
+ .elementor-location-header .elementor-element-f975dad .header-context-toggle{
+  display:inline-flex!important;position:relative!important;inset:auto!important;
+  width:100%!important;gap:3px!important;padding-inline:5px!important;margin:0!important;
+ }
+ .elementor-location-header .header-context-toggle [data-header-context-label]{
+  overflow:hidden;text-overflow:ellipsis;max-width:49px;min-width:0;
+ }
+ .elementor-location-header .elementor-element-798db22 :is(.wpml-ls,.wpml-elementor-ls){
+  width:100%!important;max-width:100%!important;min-width:0!important;
+ }
+ .elementor-location-header .elementor-element-798db22 .wpml-ls-item-toggle{
+  display:flex!important;align-items:center!important;gap:4px!important;width:100%!important;
+ }
+ .elementor-location-header .elementor-element-798db22 .wpml-ls-native{
+  font-size:10px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+ }
+ .elementor-location-header .elementor-element-798db22 .wpml-ls-flag{width:17px!important;height:auto!important;flex-shrink:0;}
+ .elementor-location-header .elementor-element-798db22 .wpml-ls-sub-menu{min-width:115px;right:0;left:auto;margin-top:5px;}
+ .elementor-location-header .elementor-element-f975dad :is(.header-context-toggle,.pricing-currency-select,.wpml-ls-item-toggle):hover{
+  background:rgba(255,255,255,.12)!important;border-color:#fff!important;
+ }
+ .elementor-location-header .header-context-controls-mobile .header-context-panel{
+  position:fixed!important;top:var(--header-context-panel-top,40px)!important;
+  left:var(--header-context-panel-left,10px)!important;right:auto!important;transform:none!important;
+  width:min(340px,calc(100vw - 20px))!important;
+  max-height:var(--header-context-panel-max-height,calc(100dvh - 50px))!important;
+ }
+ html[dir='rtl'] .elementor-location-header .header-context-controls-mobile .header-context-panel{
+  left:var(--header-context-panel-left,10px)!important;right:auto!important;direction:rtl;
+ }
+ .elementor-location-header .elementor-element-b4f3f26{padding-block:8px!important;min-height:64px!important;}
+}
+@media(max-width:299px){
+ .elementor-location-header .elementor-element-f975dad > .elementor-element-e04f82e{display:none!important;}
+ .elementor-location-header .elementor-element-f975dad{gap:3px!important;padding-inline:0!important;}
+ .elementor-location-header .elementor-element-f975dad > .elementor-element-9779089,
+ .elementor-location-header .elementor-element-9779089 .pricing-currency-switcher,
+ .elementor-location-header .elementor-element-9779089 .pricing-currency-select{
+  flex:0 0 52px!important;width:52px!important;max-width:52px!important;
+ }
+ .elementor-location-header .elementor-element-f975dad > .header-context-controls-mobile{
+  flex:0 0 68px!important;width:68px!important;
+ }
+ .elementor-location-header .elementor-element-f975dad > .elementor-element-798db22{
+  flex:1 1 78px!important;width:auto!important;min-width:74px!important;max-width:none!important;
+ }
+ .elementor-location-header .header-context-toggle [data-header-context-label]{max-width:32px;}
+}
