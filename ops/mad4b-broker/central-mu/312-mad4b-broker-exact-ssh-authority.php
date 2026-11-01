@@ -9,7 +9,14 @@ final class MAD4B_Broker_Exact_SSH_Authority_V1 {
  const CONTRACT='mad4b.broker-exact-ssh-authority.v1';
  const NONCE='mad4b_broker_exact_ssh_preflight_nonce_v1_';
  const HOST='srv2030908';
- const TARGETS=['hosting-1','hosting-3'];
+ // Local target remains a central scope, not a root/host authorization.
+ const TARGETS=['hosting-1','hosting-3','srv2030908'];
+ private static function transport_credential_valid(array $transport,string $target):bool {
+  $credential=(string)($transport['credential_ref']??'');
+  if ($target===self::HOST) return $credential==='vault:registry/local-srv2030908'
+    && ($transport['host_principal']??'')==='root';
+  return preg_match('/^vault:registry\\/(hosting-1|hosting-3)$/D',$credential)===1;
+ }
  private static function deny(string $code):array {return ['contract'=>self::CONTRACT,'verified'=>false,'eligible'=>false,'reason'=>$code,'shell_executed'=>false];}
  public static function evaluate(string $job_id,string $target,string $digest):array {
   if (!class_exists('MAD4B_Central_Dual_Lane_Registry_V1',false)
@@ -72,7 +79,7 @@ final class MAD4B_Broker_Exact_SSH_Authority_V1 {
    || ($grant['target_host_id']??null)!==$target
    || ($grant['target_ssh_principal']??null)!==($transport['host_principal']??null)
    || ($job['target_ssh_principal']??null)!==($transport['host_principal']??null)
-   || !preg_match('/^vault:registry\/(hosting-1|hosting-3)$/D',(string)($transport['credential_ref']??'')))
+   || !self::transport_credential_valid($transport,$target))
      return self::deny('TRANSPORT_OR_HOST_BINDING_INVALID');
   // Match the original 305 one-time consumption key to this exact job.
   // A grant alone can never authorize a second command/job.
