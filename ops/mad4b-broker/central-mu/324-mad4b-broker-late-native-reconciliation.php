@@ -140,8 +140,27 @@ final class MAD4B_Broker_Late_Native_Reconciliation_V1 {
      return self::deny('NONCE_REPLAY_OR_CONFLICT');
    // Recover only an interrupted state update; never accept replay after completion.
    if (($job['executed']??null)!==false)return self::deny('ALREADY_COMPLETED');
+  } else if (is_array(get_option($receipt_key,false))) {
+   // Crash recovery: an earlier *verified* signed evidence record was stored
+   // before the original Job state was updated. A new signed proof may
+   // complete the SAME historical Job only if every immutable field matches.
+   $saved=get_option($receipt_key,false);
+   if (($saved['contract']??null)!==self::CONTRACT
+    || ($saved['job_id']??null)!==$id
+    || ($saved['grant_id']??null)!==$p['grant_id']
+    || ($saved['transport_id']??null)!==$p['transport_id']
+    || ($saved['correlation_id']??null)!==$p['correlation_id']
+    || ($saved['command_sha256']??null)!==$p['command_sha256']
+    || ($saved['readback_sha256']??null)!==$p['readback_sha256']
+    || ($saved['native_receipt_sha256']??null)!==$p['native_receipt_sha256']
+    || ($saved['native_started_epoch']??null)!==$p['started_epoch']
+    || ($saved['native_finished_epoch']??null)!==$p['finished_epoch']
+    || ($saved['original_host_signature_verified']??false)!==true
+    || !is_string($saved['nonce']??null)
+    || get_option(self::NONCE.$saved['nonce'],false)!==$id)
+     return self::deny('STORED_EVIDENCE_RECOVERY_SCOPE_MISMATCH');
+   // No additional receipt or nonce is written for a recovery-only update.
   } else {
-   if (get_option($receipt_key,false)!==false)return self::deny('RECEIPT_ALREADY_EXISTS');
    if (!add_option($nonce_key,$id,'',false))return self::deny('NONCE_REPLAY');
    $record=['contract'=>self::CONTRACT,'state'=>'HISTORICAL_NATIVE_VERIFIED',
     'job_id'=>$id,'grant_id'=>$job['grant_id'],
