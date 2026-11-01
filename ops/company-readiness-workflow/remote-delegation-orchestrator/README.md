@@ -43,3 +43,35 @@ The Broker adapter is fixed to the installed Staging path for PR #725. It **does
 - Keep separate explicit Production approval.
 
 No root-level CONSTRAINTS.md was modified; existing repo quality gates and site-boundary checks remain mandatory.
+
+## Root-only live Staging service (tested on VPS 2026-11-01)
+
+The VPS Staging operator can host `remote_service.py` using
+`mad4b-company-remote-delegation.service`. It binds **only** the Unix socket
+`/run/mad4b-company-remote-delegation/service.sock`, owned root:root 0600 under
+a root-owned 0700 runtime directory. There is no public HTTP listener.
+
+- Exact `status` requests query cached root-protected *site discovery* plus fresh
+  original WordPress assignment/305 readbacks. Cached site discovery is not a grant.
+- `reconcile305` requires an already authenticated original WordPress owner
+  session delivered to the root-only socket in memory. The original owner REST
+  issuer still validates it. This service never fabricates membership, a
+  WordPress user, or an SSH owner credential.
+- All write paths recompute the live Original Core site binding and signed
+  Broker admission. Original 305 independently enforces site/host/assignment.
+- Unsupported commands and Production requests are denied. Untrusted local
+  peers cannot enter a root-owned 0700 directory. There is a four-client bound;
+  dropped connections do not crash the daemon.
+
+The service file is a deployment candidate; use the site's governed release
+path to reproduce it elsewhere, with backup/restart/rollback. Source being on
+GitHub is not proof of production activation.
+
+Actual central VPS acceptance on 2026-11-01: `systemctl is-active` returned
+`active`; `status` through the live Unix socket for ARE Staging returned
+`READ_ONLY_STATUS` in 7.4 seconds, `assignment_state=missing`, Original 305
+`NOT_ENROLLED`, and no Grants. Negative non-authorized and malformed inputs
+were rejected in isolated checks. 36 existing hermetic orchestration and
+signed Broker tests passed. **No positive live issue-305 canary or 312/313
+receipt has yet been verified**.
+
