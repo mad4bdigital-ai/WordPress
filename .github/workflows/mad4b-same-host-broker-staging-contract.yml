@@ -1,0 +1,42 @@
+name: MAD4B Same-Host Broker Staging Contract
+
+on:
+  pull_request:
+    paths:
+      - "ops/mad4b-same-host-broker-staging-v1/**"
+      - ".github/workflows/mad4b-same-host-broker-staging-contract.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  same-host-php-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: PHP syntax and exact signed Job contract
+        run: |
+          set -euo pipefail
+          d=ops/mad4b-same-host-broker-staging-v1
+          php -l "$d/306-mad4b-central-vps-broker.php"
+          php -l "$d/312-mad4b-broker-exact-ssh-authority.php"
+          php "$d/tests/same_host_306_hermetic.php"
+          php "$d/tests/same_host_312_hermetic.php"
+      - name: Confirm Staging-only Same-Host and no broad grant
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          d=Path('ops/mad4b-same-host-broker-staging-v1')
+          x=(d/'312-mad4b-broker-exact-ssh-authority.php').read_text()
+          y=(d/'306-mad4b-central-vps-broker.php').read_text()
+          assert "($job['environment']??'')==='staging'" in x
+          assert "'ORIGINAL_PER_JOB_CLAIM_MISSING'" in x
+          assert "'signed_vps_wpcli'" in x and "'signed_vps_wpcli'" in y
+          assert "full_wpcli_pending_native_enrollment" in x
+          assert "LOCAL_TARGET_SHELL_ONLY" in x
+          print('SAME_HOST_STAGING_ONLY_POLICY_PASS')
+          PY
