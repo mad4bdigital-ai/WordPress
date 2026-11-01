@@ -90,7 +90,12 @@ export function createOriginalCoreWpcliExecutor({core,broker,transport}){
         await core.audit(jobId,'EXECUTION_UNCERTAIN_NO_RETRY');
         return Object.freeze({state:'EXECUTION_UNCERTAIN_NO_RETRY',executed:null});
       }
-      const proof=await broker.verify313({job,channel,execution:result});
+      let proof;
+      try {proof=await broker.verify313({job,channel,execution:result})}
+      catch {
+        await core.audit(jobId,'READBACK_UNCERTAIN_NO_RETRY');
+        return Object.freeze({state:'READBACK_UNCERTAIN_NO_RETRY',executed:true});
+      }
       if(!proof||proof.contract!=='mad4b.broker-remote-wpcli-receipt.v1'||
          proof.verified!==true||proof.independent_host_readback_verified!==true||
          proof.job_id!==jobId||proof.command_sha256!==job.command_sha256||
