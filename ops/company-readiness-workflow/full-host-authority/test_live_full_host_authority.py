@@ -62,9 +62,21 @@ class LiveAuthorityTests(unittest.TestCase):
                                            "native_execution_granted_by_legacy":False}
         self.assertFalse(reconcile(self.core,self.policies)["targets"][0]["original_305_active_pair_observed"])
     def test_wrong_site_host_scope_fails_closed(self):
-        self.policies["host-a"]["scopes"]["alpha:staging"]["site_uuid"]=self.sites[1]["site_uuid"]
+        self.policies["host-a"]["scopes"]["alpha:staging"]["site_uuid"]="cccccccc-cccc-cccc-cccc-cccccccccccc"
         with self.assertRaisesRegex(InvalidAuthoritySource,"HOST_SCOPE_IDENTITY_CONFLICT"):
             reconcile(self.core,self.policies)
+    def test_legacy_unbound_scope_is_pending_not_global_denial(self):
+        self.policies["host-a"]["scopes"]["alpha:staging"].pop("site_uuid")
+        self.policies["host-a"]["scopes"]["alpha:staging"].pop("canonical_origin")
+        r=reconcile(self.core,self.policies)
+        self.assertEqual(r["target_count"],2)
+        self.assertIsNone(r["targets"][0]["verified_host_scope_id"])
+        self.assertIn("EXACT_HOST_SCOPE_AND_BINDING_PENDING",r["targets"][0]["blockers"])
+        self.assertFalse(r["grants_created"])
+    def test_partial_host_scope_never_marks_full(self):
+        self.policies["host-a"]["scopes"]["alpha:staging"].pop("site_uuid")
+        x=reconcile(self.core,self.policies)["targets"][0]
+        self.assertFalse(x["full_host_scope_observed"])
     def test_host_scope_without_full_sql_fails_ready(self):
         self.policies["host-a"]["scopes"]["alpha:staging"]["allow_sql"]=False
         self.assertFalse(reconcile(self.core,self.policies)["targets"][0]["full_host_scope_observed"])
