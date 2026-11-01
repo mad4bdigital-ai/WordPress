@@ -80,8 +80,15 @@ def reconcile(core: dict, policies: dict) -> dict:
                 continue
             if not isinstance(scope, dict):
                 raise InvalidAuthoritySource("HOST_SCOPE_INVALID")
-            if not _exact_uuid(uuid) or scope.get("site_uuid") != uuid or scope.get("canonical_origin") != origin:
+            # A historical unbound scope (missing UUID/origin) must NOT
+            # certify host authority, but must not block other companies.
+            # A nonempty *different* identity is a real conflict.
+            observed_uuid, observed_origin = scope.get("site_uuid"), scope.get("canonical_origin")
+            if (observed_uuid not in (None, "", uuid)
+                or observed_origin not in (None, "", origin)):
                 raise InvalidAuthoritySource("HOST_SCOPE_IDENTITY_CONFLICT")
+            if not _exact_uuid(uuid) or observed_uuid != uuid or observed_origin != origin:
+                continue
             hosts.append((host, policy, scope))
         if len(hosts) > 1:
             raise InvalidAuthoritySource("MULTIPLE_HOSTS_CLAIM_SAME_SITE")
