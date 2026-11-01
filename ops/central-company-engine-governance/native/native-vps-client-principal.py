@@ -88,6 +88,34 @@ def check_original_wordpress_signer(key):
     if not secrets.compare_digest(pinned,local):
         raise RuntimeError("BROKER_SIGNER_NOT_PINNED_BY_WORDPRESS")
 
+def verify_original_policy_readback(expected_policy, expected_fingerprint):
+    """Read only the original Staging slot. Never issue grants or invoke Shell."""
+    wp=[
+        "docker","exec","-u","www-data","etg-commerce-staging-php","wp",
+        "--path=/var/www/html","--skip-themes","eval",
+        """$c='MAD4B_Native_VPS_Principal_V1';
+$slot=$c::existing();$scope=$c::scope();
+$grant=is_array($slot)?get_option(MAD4B_Central_SSH_Command_Intake_V1::PREFIX.$slot['grant_id'],false):false;
+$transport=is_array($slot)?get_option(MAD4B_Central_SSH_Command_Intake_V1::TRANSPORT_PREFIX.$slot['transport_id'],false):false;
+echo wp_json_encode([
+ 'ledger_valid'=>is_array($slot)&&$c::ledger($slot,$scope),
+ 'policy_sha256'=>$slot['policy_sha256']??'',
+ 'fingerprint'=>$slot['host_key_fingerprint']??'',
+ 'grant_active'=>is_array($grant)&&($grant['state']??'')==='CENTRAL_OPERATION_SCOPE_GRANTED',
+ 'transport_active'=>is_array($transport)&&($transport['state']??'')==='PENDING_INDEPENDENT_SSH_VERIFICATION'
+]).PHP_EOL;"""
+    ]
+    try:
+        result=subprocess.run(wp,text=True,capture_output=True,check=True,timeout=25)
+        row=json.loads(result.stdout.strip().splitlines()[-1])
+        return (row.get("ledger_valid") is True
+            and row.get("grant_active") is True
+            and row.get("transport_active") is True
+            and secrets.compare_digest(str(row.get("policy_sha256","")),expected_policy)
+            and secrets.compare_digest(str(row.get("fingerprint","")),expected_fingerprint))
+    except (OSError,ValueError,IndexError,subprocess.SubprocessError):
+        return False
+
 def signed_proof(action, policy_sha, fingerprint, digest, correlation, key):
     now=int(time.time())
     fields={
@@ -149,6 +177,17 @@ def run(action,correlation,command_path):
         code=str(body.get("code",""))[:120]
         if exc.code==409 and code=="mad4b_native_vps_signed_policy_rotation_required":
             raise RuntimeError("SIGNED_POLICY_ROTATION_REQUIRED_NO_REPLAY") from None
+        if (action=="rotate" and exc.code==409
+            and code=="mad4b_native_vps_policy_already_current"):
+            if verify_original_policy_readback(policy_sha,fingerprint):
+                print(json.dumps({
+                    "state":"ORIGINAL_SIGNED_POLICY_ALREADY_CURRENT_VERIFIED",
+                    "principal_id":"vps-native:srv2030908",
+                    "grant_changed":False,"shell_executed":False,
+                    "independent_readback_verified":True
+                },sort_keys=True))
+                return
+            raise RuntimeError("SIGNED_POLICY_ALREADY_CURRENT_READBACK_UNCERTAIN") from None
         raise RuntimeError("NATIVE_HTTP_"+str(exc.code)+":"+code) from None
     if response.get("contract") not in (CONTRACT,"mad4b.central-vps-broker.v1"):
         raise RuntimeError("UNEXPECTED_CENTRAL_RESPONSE_CONTRACT")
