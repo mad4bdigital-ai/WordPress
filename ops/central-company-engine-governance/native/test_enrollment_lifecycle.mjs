@@ -128,3 +128,64 @@ test('uncertain transition is never blindly reissued',async()=>{
   runOriginalTypedTransition:async()=>({status:'UNCERTAIN'}),audit:async()=>{}});
  const r=await runner.reconcileOnce(scope);assert.equal(r.state,'PARKED_UNCERTAIN_NO_REPLAY');
 });
+
+test('rejected original executor policy never retries or routes around',async()=>{
+ const invoked=[];const audits=[];
+ const runner=createOriginalEnrollmentLifecycle({
+  readOriginalSnapshot:async()=>active(fixture()),
+  runOriginalTypedTransition:async req=>{
+   invoked.push(req);
+   return {status:'REJECTED',reason_code:'TOOL_POLICY_REJECTED',
+    failure:{code:'TOOL_POLICY_REJECTED'}};},
+  audit:async(...args)=>audits.push(args)
+ });
+ const r=await runner.reconcileOnce(scope);
+ assert.equal(r.state,'BLOCKED_PROVIDER_AUTHORITY');
+ assert.equal(r.retryable,false);
+ assert.equal(invoked.length,1);
+ assert.equal(invoked[0].operation,'ISSUE_ORIGINAL_CORE_FIXED_WPCLI_READ_CANARY');
+ assert.equal(audits.length,1);
+});
+test('a malformed invocation stops with exact contract-repair reason',async()=>{
+ let invoked=0;
+ const runner=createOriginalEnrollmentLifecycle({
+  readOriginalSnapshot:async()=>registry(fixture()),
+  runOriginalTypedTransition:async()=>{invoked++;return {
+   status:'FAILED',reason_code:'ARGUMENT_CONTRACT_MISMATCH',
+   failure:{code:'ARGUMENT_CONTRACT_MISMATCH',
+    provider_received:false,before_dispatch_verified:true,
+    effects_possible:false,documented_input_schema_verified:true}}},
+  audit:async()=>{}
+ });
+ const r=await runner.reconcileOnce(scope);
+ assert.equal(r.state,'BLOCKED_INVOCATION_CONTRACT');
+ assert.equal(r.reason,'USE_DECLARED_TOOL_SCHEMA_AND_EXACT_AUTHORIZED_KEY');
+ assert.equal(r.retryable,false);
+ assert.equal(invoked,1);
+});
+test('unconfirmed transport failure stays parked without a second transition',async()=>{
+ let invoked=0;
+ const runner=createOriginalEnrollmentLifecycle({
+  readOriginalSnapshot:async()=>registry(fixture()),
+  runOriginalTypedTransition:async()=>{invoked++;return {
+   status:'FAILED',failure:{code:'TRANSPORT_UNREACHABLE',
+    verified_source:'original_core_execution_journal',
+    before_dispatch_verified:true,dispatch_started:false,
+    claim_committed:false,effects_possible:false}}},
+  audit:async()=>{}
+ });
+ const r=await runner.reconcileOnce(scope);
+ assert.equal(r.state,'PARKED_UNCERTAIN_NO_REPLAY');
+ assert.equal(r.retryable,false);
+ assert.equal(invoked,1);
+});
+test('unknown failure does not enter generic retryable wait state',async()=>{
+ const runner=createOriginalEnrollmentLifecycle({
+  readOriginalSnapshot:async()=>registry(fixture()),
+  runOriginalTypedTransition:async()=>({status:'FAILED',reason_code:'UNKNOWN_TOOL_EXCEPTION'}),
+  audit:async()=>{}
+ });
+ const r=await runner.reconcileOnce(scope);
+ assert.equal(r.state,'PARKED_UNCERTAIN_NO_REPLAY');
+ assert.equal(r.retryable,false);
+});
