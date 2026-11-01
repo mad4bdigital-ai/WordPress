@@ -1,0 +1,161 @@
+// MAD4B original-Core execution routes. Typed operations and original general
+// shell are first-class peer routes. The general shell is preserved as a
+// fallback CAPABILITY, never a fallback for a denied typed invocation.
+// This module creates no identities, credentials, grants or signed evidence.
+const HEX32=/^[a-f0-9]{32}$/;
+const TYPED=Object.freeze([
+ 'verify_host_binding','register_native_executor',
+ 'reconcile_313_receipt','wpcli.execute'
+]);
+const TYPED_SET=new Set(TYPED);
+const fail=(state,reason,operation=null)=>Object.freeze({
+ contract:'mad4b.original-core-execution-result.v1',
+ state,reason_code:reason,operation,
+ verified:false,executed:false
+});
+const exact=(a,b,fields)=>fields.every(k=>
+ typeof a?.[k]==='string'&&a[k].length>0&&a[k]===b?.[k]);
+const BIND=['company','site_uuid','canonical_origin','environment',
+ 'transport_id','grant_id','target_host_id'];
+const modeFor=op=>op==='maintenance.shell'?'general_shell_fallback':
+ TYPED_SET.has(op)?'typed_original_core':null;
+
+export const availableGovernedRoutes=()=>Object.freeze({
+ typed:[...TYPED],general_shell_fallback:'maintenance.shell',
+ fallback_condition:'A separately admitted original maintenance.shell job is mandatory',
+ cross_route_replay:false,raw_shell_from_typed_request:false
+});
+
+export function createGovernedExecutionRoutes({core,typed={},generalShell}){
+ if(!core||typeof core.readOriginalJob!=='function'||
+    typeof core.verifyOriginalAdmission!=='function'||
+    typeof core.claimOriginalJobOnce!=='function'||
+    typeof core.verifyIndependentReadback!=='function'||
+    typeof core.audit!=='function')
+  throw Error('ORIGINAL_CORE_AUTHORITY_ADAPTERS_REQUIRED');
+ return Object.freeze({
+  routes:availableGovernedRoutes(),
+  async execute({job_id,operation}){
+   if(!HEX32.test(job_id)||!modeFor(operation))
+    return fail('DENIED','OPERATION_OR_JOB_ID_INVALID',operation);
+   // The request contains no argv, credentials, host, site or shell command.
+   // All target/command fields are fetched from the original Core.
+   let job,admission;
+   try{
+    job=await core.readOriginalJob(job_id);
+    if(!job||job.job_id!==job_id||job.operation!==operation||
+       job.environment!=='staging'||!HEX32.test(job.transport_id||'')||
+       !HEX32.test(job.grant_id||'')||
+       !exact(job,job,BIND))
+     return fail('DENIED','ORIGINAL_JOB_OR_STAGING_SCOPE_INVALID',operation);
+    admission=await core.verifyOriginalAdmission({job_id,operation});
+   }catch{
+    return fail('PARKED_PROVIDER_REVIEW_REQUIRED','ORIGINAL_CORE_READ_UNAVAILABLE',operation);
+   }
+   if(!admission||admission.verified!==true||
+      admission.eligible!==true||
+      admission.original_core_source_verified!==true||
+      admission.grant_state!=='CENTRAL_OPERATION_SCOPE_GRANTED'||
+      admission.transport_revoked!==false||
+      admission.delegate_revoked!==false||
+      !exact(job,admission,BIND))
+    return fail('DENIED','ORIGINAL_AUTHORITY_OR_EXACT_SITE_MISMATCH',operation);
+   if(operation==='maintenance.shell'){
+    if(admission.granted_operation!=='maintenance.shell'||
+       admission.shell_fallback_allowed!==true)
+      return fail('DENIED','INDEPENDENT_GENERAL_SHELL_GRANT_REQUIRED',operation);
+   }else if(admission.granted_operation!=='company.remote.wpcli.full'||
+      admission.native_scope_valid!==true){
+    return fail('DENIED','ORIGINAL_FULL_WPCLI_GRANT_REQUIRED',operation);
+   }
+   const adapter=operation==='maintenance.shell'?
+      generalShell?.executeOriginalShellJob:typed?.[operation];
+   if(typeof adapter!=='function')
+    return fail('PARKED_PROVIDER_REVIEW_REQUIRED',
+      operation==='maintenance.shell'?'ORIGINAL_SHELL_PROVIDER_NOT_REGISTERED':
+      'TYPED_PROVIDER_NOT_REGISTERED',operation);
+   // A tool/security refusal never permits routing the same intent via Shell.
+   // Atomic original claim is required before any remote effect.
+   let claimed;
+   try {claimed=await core.claimOriginalJobOnce(job_id,job.command_sha256)}
+   catch {return fail('PARKED_UNCERTAIN_NO_REPLAY','ORIGINAL_CLAIM_UNCERTAIN',operation)}
+   if(claimed!==true)
+    return fail('DENIED','ORIGINAL_JOB_ALREADY_CLAIMED',operation);
+   try{await core.audit({job_id,operation,state:'CLAIMED'})}
+   catch{return fail('PARKED_UNCERTAIN_NO_REPLAY','AUDIT_AFTER_CLAIM_UNCERTAIN',operation)}
+   let result;
+   try{
+    result=await adapter({job_id,operation,original_job:job,
+     original_admission:admission});
+   }catch{
+    try{await core.audit({job_id,operation,state:'EXECUTION_UNCERTAIN_NO_REPLAY'})}catch{}
+    return fail('PARKED_UNCERTAIN_NO_REPLAY','PROVIDER_OUTCOME_UNKNOWN',operation);
+   }
+   if(result?.state==='TOOL_POLICY_REJECTED'||
+      result?.state==='PROVIDER_POLICY_REJECTED'){
+    try{await core.audit({job_id,operation,state:'EXTERNAL_POLICY_REJECTED'})}catch{}
+    return fail('PARKED_PROVIDER_REVIEW_REQUIRED','TOOL_OR_PROVIDER_POLICY_REJECTED',operation);
+   }
+   if(result?.state!=='EXECUTED' && result?.state!=='READ_VERIFIED'){
+    try{await core.audit({job_id,operation,state:'OUTCOME_UNCERTAIN_NO_REPLAY'})}catch{}
+    return fail('PARKED_UNCERTAIN_NO_REPLAY','PROVIDER_OUTCOME_UNCERTAIN',operation);
+   }
+   let receipt;
+   try{
+    receipt=await core.verifyIndependentReadback({job_id,operation,
+      original_job:job,execution:result});
+   }catch{
+    return fail('PARKED_UNCERTAIN_NO_REPLAY','INDEPENDENT_READBACK_UNAVAILABLE',operation);
+   }
+   if(!receipt||receipt.original_313_verified!==true||
+      receipt.independent_host_readback_verified!==true||
+      receipt.job_id!==job_id||
+      receipt.command_sha256!==job.command_sha256||
+      !exact(job,receipt,BIND))
+    return fail('PARKED_UNVERIFIED_READBACK','INDEPENDENT_313_SCOPE_OR_SIGNATURE_MISMATCH',operation);
+   try{await core.audit({job_id,operation,state:'EXECUTION_AND_313_VERIFIED'})}
+   catch{return fail('PARKED_UNCERTAIN_NO_REPLAY','FINAL_AUDIT_UNCERTAIN',operation)}
+   return Object.freeze({
+    contract:'mad4b.original-core-execution-result.v1',
+    state:'VERIFIED',reason_code:'ORIGINAL_CORE_313_VERIFIED',
+    operation,job_id,route:modeFor(operation),
+    verified:true,executed:result.state==='EXECUTED'
+   });
+  }
+ });
+}
+
+// Full WP-CLI is certified ONLY from independent durable enrollment AND
+// an original, exact-scope read canary/313 receipt. Never by code deploy or CI.
+export function evaluateFullWpcliLiveCertification({site,channel,native,canary,receipt}={}){
+ const no=reason=>Object.freeze({approved:false,reason_code:reason});
+ if(!site||site.environment!=='staging'||!channel||!native||
+   !exact(site,channel,['company','site_uuid','canonical_origin','environment'])||
+   channel.state!=='ENROLLED'||channel.full_wpcli_active!==true||
+   channel.host_authority_verified!==true)
+  return no('SITE_OR_CHANNEL_NOT_ENROLLED');
+ if(native.registration_state!=='ENROLLED'||native.execute_registered!==true||
+   native.original_core_312_bound!==true||native.grant_verifier_bound!==true||
+   native.durable_enrollment_receipt_verified!==true||
+   native.host_id!==channel.host_id||native.transport_id!==channel.transport_id||
+   native.site_uuid!==site.site_uuid)
+  return no('ORIGINAL_NATIVE_REGISTRATION_NOT_CERTIFIED');
+ if(!canary||canary.original_core_claim_verified!==true||
+   canary.argv_digest_verified!==true||canary.command_kind!=='wp.option.get.home'||
+   canary.state!=='EXECUTED'||canary.company!==site.company||
+   canary.site_uuid!==site.site_uuid||canary.transport_id!==channel.transport_id||
+   canary.grant_id!==channel.full_wpcli_grant_id)
+  return no('ORIGINAL_READ_CANARY_NOT_VERIFIED');
+ if(!receipt||receipt.original_313_verified!==true||
+   receipt.independent_host_readback_verified!==true||
+   receipt.native_executor_certified!==true||
+   receipt.job_id!==canary.job_id||
+   receipt.command_sha256!==canary.command_sha256||
+   receipt.company!==site.company||receipt.site_uuid!==site.site_uuid||
+   receipt.transport_id!==channel.transport_id||
+   receipt.grant_id!==canary.grant_id||
+   receipt.readback_origin!==site.canonical_origin)
+  return no('INDEPENDENT_313_READBACK_REQUIRED');
+ return Object.freeze({approved:true,reason_code:'ORIGINAL_FULL_WPCLI_LIVE_CERTIFIED',
+   site_uuid:site.site_uuid,company:site.company,environment:'staging'});
+}
