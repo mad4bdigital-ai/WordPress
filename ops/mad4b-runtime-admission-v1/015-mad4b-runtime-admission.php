@@ -62,13 +62,19 @@ final class MAD4B_Runtime_Admission {
         $uuid=$profileLoaded ? (string)MAD4B_SCP_Site_Profile::site_uuid() : '';
         $storedOrigin=self::persisted_origin();
         $originMatch=$siteOrigin!=='' && $storedOrigin!=='' && hash_equals($siteOrigin,$storedOrigin);
-        $verified=in_array($raw,array('local','development','staging'),true)
-            && $host===$raw && $effective===$raw && $profile_ok
-            && $uuid!=='' && $originMatch;
+        $environmentValid=in_array($raw,array('local','development','staging'),true);
+        $verified=$environmentValid && $host===$raw && $effective===$raw
+            && $profile_ok && $uuid!=='' && $originMatch;
+        $reason=!$environmentValid ? 'non_test_environment'
+            : ($host!==$raw ? 'host_environment_mismatch'
+            : ($effective!==$raw ? 'effective_environment_mismatch'
+            : (!$profile_ok ? 'site_profile_not_authoritative'
+            : ($uuid==='' ? 'site_uuid_missing'
+            : (!$originMatch ? 'persisted_home_origin_mismatch' : 'none')))));
         return array('contract'=>'mad4b.runtime-environment.v1',
             'native'=>$raw,'host'=>$host,'effective'=>$effective,
             'profile_authoritative'=>$profile_ok,'stored_origin_matches_profile'=>$originMatch,
-            'verified'=>$verified);
+            'reason'=>$reason,'verified'=>$verified);
     }
 
     /** Provider records are data, not authority: a separate certificate is mandatory. */
@@ -121,7 +127,7 @@ final class MAD4B_Runtime_Admission {
         if(!preg_match('#^/(?:mad4b(?:[/-]|$)|mcp/mad4b(?:[/-]|$))#',$route))return $result;
         $status=self::environment_status();
         if($status['verified'] && self::request_host_verified())return $result;
-        $reason=!$status['verified'] ? 'runtime_profile_or_environment_mismatch'
+        $reason=!$status['verified'] ? (string)($status['reason']??'environment_unverified')
             : 'request_host_mismatch';
         return new WP_Error('mad4b_runtime_rest_environment_unverified',
             'MAD4B write requires exact Staging Site Profile and host binding.',
