@@ -184,10 +184,17 @@ final class MAD4B_Environment_Manager_Assignment_V1 {
         $wpdb=$GLOBALS['wpdb'];
         $lock='mad4b:environment-manager:'.substr(hash('sha256',$key),0,30);
         $acquired=$wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s,3)',$lock));
+        $acquireError=(string)$wpdb->last_error;
+        if((string)$acquired==='0' && $acquireError==='') {
+            // One bounded recovery for a confirmed transient lock conflict only.
+            // CAS below still rejects concurrent state/revision changes.
+            usleep(150000);
+            $acquired=$wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s,2)',$lock));
+            $acquireError=(string)$wpdb->last_error;
+        }
         if((string)$acquired!=='1') {
             // Distinguish contention from a failed/unsupported lock backend. Never
             // authorize an owner write when DB locking cannot be confirmed.
-            $acquireError=(string)$wpdb->last_error;
             $holder=$wpdb->get_var($wpdb->prepare('SELECT IS_USED_LOCK(%s)',$lock));
             $inspectionError=(string)$wpdb->last_error;
             if($acquireError!=='' || $inspectionError!==''
