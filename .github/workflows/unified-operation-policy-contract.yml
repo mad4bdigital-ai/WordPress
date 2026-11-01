@@ -10,12 +10,19 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: unified-operation-policy-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}-${{ github.event.pull_request.head.sha || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   verify-source-only:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -26,5 +33,4 @@ jobs:
         run: |
           python ops/company-readiness-workflow/unified-operation-policy/source_contract_test.py
 
-# This workflow does NOT provision owner grants, attest remote jobs,
-# deploy plugins, register P-256 keys or alter tenant/production sites.
+# Source-only contract. No grants, credentials, remote execution or deployment.
