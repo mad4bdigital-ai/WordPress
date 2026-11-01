@@ -484,6 +484,33 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 			$items[ $operation_id ] = $row;
 			if ( count( $items ) >= $limit ) break;
 		}
+		// Publish exact pending owner enrollment during explicit SSH/WP-CLI discovery.
+		// It is NOT dispatched until the original 305/312/313 provider and
+		// first-party enrollment Ability are certified. This read-only visibility
+		// must never turn an authenticated SSH session into an unapproved grant.
+		if ( '' !== $query && count( $items ) < $limit ) {
+			$pending_id = 'company_remote_wpcli_full_enrollment';
+			$catalog = MAD4B_SCP_Remote_Operation_Parity::catalog();
+			if ( isset( $catalog[ $pending_id ] ) && is_array( $catalog[ $pending_id ] ) ) {
+				$row = $catalog[ $pending_id ];
+				$haystack = strtolower( implode( ' ', array(
+					$pending_id, (string) ( $row['feature_id'] ?? '' ),
+					(string) ( $row['remote_ability'] ?? '' ),
+					implode( ' ', (array) ( $row['capability_tags'] ?? array() ) ),
+					(string) ( $row['remote_mode'] ?? '' ),
+				) ) );
+				if ( self::query_matches( $query, $haystack ) && empty( $row['remote_parity_ready'] ) ) {
+					$row['execution_eligible'] = false;
+					$row['remote_parity_ready'] = false;
+					$row['operational_state'] = 'pending_original_core_broker_enrollment';
+					$row['blockers'] = array( 'original_305_owner_enrollment_not_certified', 'original_312_313_full_wpcli_not_certified' );
+					$row['next_action'] = 'certify_original_core_broker_and_owner_enrollment_ability';
+					$row['dispatchable'] = false;
+					$row['capability_activated'] = false;
+					$items[ $pending_id ] = $row;
+				}
+			}
+		}
 		return array(
 			'contract' => self::CONTRACT,
 			'query' => $query,
