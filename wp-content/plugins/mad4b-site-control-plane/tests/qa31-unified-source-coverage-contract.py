@@ -22,6 +22,11 @@ GUARDS = {'adapters/class-mad4b-scp-adapter-base.php': ('mad4b_provider_canary_e
  'class-mad4b-scp-catalog-intent-policy.php': ('mad4b_catalog_intent_', "'mutation_performed'"),
  'class-mad4b-scp-cli.php': ("'mutation_performed'", "'authorizing'"),
  'class-mad4b-scp-company-domain-cloudflare.php': ('wp_verify_nonce', 'mad4b_domain_browser_approval'),
+ 'class-mad4b-scp-company-code-reconciliation.php': ('MAD4B_SCP_Execution_Receipt::verify',
+                                                    'cryptographic_signature_verified'),
+ 'class-mad4b-scp-content-completeness.php': ("current_user_can('edit_others_posts')", 'admin_permission'),
+ 'class-mad4b-scp-content-readiness-alerts.php': ('rest_local_client_write_permission',
+                                                   "current_user_can('manage_options')"),
  'class-mad4b-scp-external-media-ingest.php': ('mad4b_media_upload_denied', 'MAD4B_SCP_Site_Profile::user_is_enrolled'),
  'class-mad4b-scp-firecrawl-discovery-preflight.php': ('mad4b_firecrawl_scope_denied',
                                                        'wp_get_environment_type'),
@@ -61,13 +66,29 @@ def test_source_guard(path, markers):
 
 
 def main():
-    assert len(GUARDS) == 25, 'Review perimeter drift'
+    assert len(GUARDS) == 28, 'Review perimeter drift'
     for path, markers in sorted(GUARDS.items()):
         test_source_guard(path, markers)
         # Negative regression: replacing even one guard must fail this check.
         p = PLUGIN / 'includes' / path
         original = p.read_text(encoding='utf-8')
         assert markers[0] in original and markers[1] in original
+    # The aggregate read-only company comparator cannot grant deployment
+    # authority, and must be booted exactly once from the original plugin.
+    import json
+    main_src = (PLUGIN / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
+    assert main_src.count("MAD4B_SCP_Company_Code_Reconciliation::boot();") == 1
+    assert main_src.count("require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-company-code-reconciliation.php';") == 1
+    catalog = json.loads((PLUGIN / 'config/operation-registry.json').read_text(encoding='utf-8'))
+    assert catalog['default_mutation_policy'] == 'deny' and catalog['generic_shell'] is False
+    company = [x for x in catalog['operations'] if x.get('id') == 'company.code-reconciliation.plan']
+    assert len(company) == 1
+    assert company[0]['effect'] == 'read_only'
+    assert company[0]['generic_mutation_dispatch'] is False
+    assert company[0]['signed_core_evidence_required'] is True
+    assert company[0]['production_policy'] == 'observe_propose_only'
+    for candidate in ('company.create', 'company.repair', 'company.plugin-sync.request'):
+        assert sum(x.get('id') == candidate for x in catalog['operations']) == 1
     php = shutil.which('php')
     if php is None:
         raise SystemExit('Required isolated PHP runtime unavailable')
@@ -89,7 +110,7 @@ def main():
         if result.returncode:
             raise SystemExit('Isolated denial/behavior regression failed: ' + name
                              + '\n' + result.stdout[-600:] + result.stderr[-600:])
-    print('QA31_UNIFIED_SOURCE_COVERAGE: PASS 25 reviewed sources, 50 guard anchors, 7 executed PHP regressions; CI only')
+    print('QA31_UNIFIED_SOURCE_COVERAGE: PASS 28 reviewed sources, 56 guard anchors, original company comparator/registry policy, 7 PHP regressions; CI only')
 
 if __name__ == '__main__':
     main()
