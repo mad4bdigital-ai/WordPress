@@ -52,3 +52,19 @@ The `fluentform/form_element_start` hook emits one accessible age collector per 
 The request-form receipt is **not** an approved unit-specific accommodation quote: actual rate/occupancy validation is rerun by the booking quote engine. For tours with accommodation stages, `tour_stay_overlay_quote()` now forwards `child_ages` from stage choices to the native stay quote provider. When two or more rooms are selected, each `room_occupancy[]` must also contain matching `child_ages` for that room; age submissions alone do not guess room placement.
 
 Run isolated tests with `tests/fluent-form-runtime.php`, `tests/age-occupancy-runtime.php` and `tests/admin-policy-runtime.php`. A real browser/AJAX submission and stored entry readback must be certified before Staging/Production rollout.
+
+## Global price patterns (WooCommerce + JetEngine UI)
+
+**One policy, one store.** The canonical editor is **WooCommerce → Age & Occupancy**, using the existing global and product-type WordPress options. The editor now prioritizes Global, Accommodation, Tour, Activity, Cruise Tour, and Transportation tabs rather than per-Rate entry. Existing supplier/product/unit/rate records may still take precedence at runtime for compatibility; no saved policy is migrated or overwritten by this UI change.
+
+Each age band has a supported pricing pattern:
+- **Free**: factor 0.
+- **Adult price**: factor 1.
+- **Percent of adult**: 0–200% converted server-side to factor 0–2.
+- **Advanced multiplier**: factor 0–2 (existing legacy format).
+
+These are **per-person factor** presets, not currency-denominated fixed fees, arbitrary PHP/JS expressions, or a replacement pricing engine. The server normalizes submitted presets into the existing validated `price_factor` schema. Invalid modes, negative values, non-finite values, and percentages above 200 are rejected; no free-form code is evaluated.
+
+When a **registered JetEngine Options Page** for price/financial calculations is opened, an admin-only notice links to the same WooCommerce canonical editor and summarizes whether a global policy is configured. Matching uses JetEngine's live options-page registry (page slug/title or recognized financial policy fields), not hardcoded page IDs. JetEngine's mode, payment and offer settings remain separately owned. There is no second JetEngine copy of the age policy.
+
+**Release limits:** Global policy settings remain untouched until a WooCommerce manager saves the form. Age factors presently affect certified accommodation per-person pricing previews only. Tour/transport calculations, fixed-currency child fees, real browser verification of JetEngine page detection, Checkout/HPOS/order persistence and Staging integration need separate acceptance. A globally saved band is not proof of commercial authorization for Tours or Transportation.
