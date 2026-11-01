@@ -34,7 +34,7 @@ class MAD4B_Central_VPS_Broker_V1{
  const CLAIM='test-claim-';
 }
 class MAD4B_Central_SSH_Command_Intake_V1 {
- const TRANSPORT_PREFIX='test-transport-';
+ const CLAIM_PREFIX='test-claim-'; const TRANSPORT_PREFIX='test-transport-';
  const PREFIX='test-grant-';
 }
 class FakeDB {
@@ -124,6 +124,27 @@ must(denied(MAD4B_Native_VPS_Principal_V1::rotate($wrong),'signed_original_vps_c
  'tampered policy denied');
 must($GLOBALS['opts'][MAD4B_Native_VPS_Principal_V1::SLOT]===$slot,
  'rejected proof never changes slot');
+// Exact signed submit with a changed policy must be classified as
+// rotation-required, not as an SSH transport failure or a replayable job.
+$diagnostic='printf signed-policy-precheck';
+$submitProof=$proof;
+$submitProof['action']='submit';
+$submitProof['correlation_id']='fresh-native-diagnostic';
+$submitProof['command_sha256']=hash('sha256',$diagnostic);
+$submitProof['nonce']=str_repeat('1',32);
+$submitMessage=implode("\n",array_map(fn($field)=>strval($submitProof[$field]),
+ MAD4B_Native_VPS_Principal_V1::FIELDS));
+$submitProof['signature']=base64_encode(sodium_crypto_sign_detached($submitMessage,$secret));
+$denial=MAD4B_Native_VPS_Principal_V1::submit($submitProof,$diagnostic);
+must($denial instanceof WP_Error &&
+ $denial->get_error_code()==='mad4b_native_vps_signed_policy_rotation_required' &&
+ ($denial->data['status']??null)===409 &&
+ ($denial->data['transport_fallback_permitted']??true)===false &&
+ ($denial->data['replay_permitted']??true)===false,
+ 'signed policy drift must be 409, not an SSH fallback trigger');
+must(!isset($GLOBALS['opts'][MAD4B_Central_SSH_Command_Intake_V1::CLAIM_PREFIX.$gid.'_'.hash('sha256','fresh-native-diagnostic')]),
+ 'policy drift never creates claim');
+
 $read=MAD4B_Native_VPS_Principal_V1::rotate($proof);
 must(is_array($read)&&($read['state']??'')==='SIGNED_STANDING_POLICY_ROTATED',
  'signed original policy rotation committed');
