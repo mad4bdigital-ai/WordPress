@@ -34,14 +34,26 @@ export function planOriginalEnrollmentLifecycle(snapshot){
     x.signedRegistry.host_key_fingerprint!==transport.host_key_fingerprint ||
     x.signedRegistry.expires_epoch<=x.now)
    return action('WAITING_FOR_REGISTRY_PROOF','REFRESH_PINNED_HOST_REGISTRY_STATUS');
+ const pending=transport.state==='PENDING_INDEPENDENT_SSH_VERIFICATION'&&
+    transport.full_wpcli_active===false;
+ const active=transport.state==='ENROLLED'&&
+    transport.full_wpcli_active===true&&transport.host_authority_verified===true;
+ if(!pending&&!active)return blocked('BLOCKED_TRANSPORT','ORIGINAL_CHANNEL_STATE_INVALID');
  const p=x.hostProof;
- if(!p||p.verified!==true||p.contract!=='mad4b.native-site-host-proof.v1'||
+ if(pending && (!p||p.verified!==true||
+    p.contract!=='mad4b.native-site-host-proof.v1'||
     !eq(p,site,scopeFields)||p.transport_id!==transport.transport_id||
     p.grant_id!==grant.grant_id||p.host_id!==transport.host_id||
-    p.expires_epoch<=x.now)
+    p.expires_epoch<=x.now))
    return action('WAITING_FOR_SITE_HOST_PROOF','ISSUE_AND_VERIFY_SITE_HOST_PROOF');
- // HostProof is a time-limited enrollment evidence, never a grant itself.
+ // HostProof is short-lived initial enrollment evidence. Once activated,
+ // revalidate the durable signed Native enrollment receipt; do not attempt
+ // to issue a PENDING-only proof against an already active transport.
  const native=x.native;
+ if(active&&(native?.enrollment_receipt_verified!==true||
+    native?.enrollment_grant_id!==grant.grant_id||
+    native?.enrollment_transport_id!==transport.transport_id))
+   return blocked('BLOCKED_NATIVE_PROOF','SIGNED_NATIVE_ENROLLMENT_RECEIPT_REQUIRED');
  if(!native||native.registration_state!=='ENROLLED'||
     native.execute_registered!==true||native.grant_verifier_bound!==true||
     native.site_binding_verified!==true||native.host_key_verified!==true||
