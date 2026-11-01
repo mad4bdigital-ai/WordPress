@@ -19,10 +19,17 @@ final class MAD4B_Hub_Bulk_VPS_Runner {
         return $is_allowed || ($executor===self::EXECUTOR && self::permitted());
     }
     private static function permitted(){
-        return defined('WP_CLI')&&WP_CLI&&PHP_SAPI==='cli'
-          &&wp_get_environment_type()==='staging'
+        // VPS transport authority and the explicit WordPress application actor
+        // are separate facts. Reuse the native WP-CLI verification rather than
+        // trusting merely a --user flag or a site-environment label.
+        if(!defined('WP_CLI')||!WP_CLI||PHP_SAPI!=='cli'
+          ||!class_exists('MAD4B_Hub_CLI_Fallback'))return false;
+        $identity=MAD4B_Hub_CLI_Fallback::preflight('queue-list');
+        return is_array($identity)
+          &&($identity['authenticated_via']??'')==='verified_wordpress_wpcli'
+          &&(int)($identity['actor_user_id']??0)===get_current_user_id()
           &&MAD4B_Hub_Bulk_Jobs_Queue::writable()
-          &&current_user_can('manage_options')&&current_user_can('activate_plugins');
+          &&current_user_can('activate_plugins');
     }
     private static function fail($code){
         return new WP_Error('mad4b_hub_bulk_runner_'.$code,$code);
@@ -120,7 +127,7 @@ final class MAD4B_Hub_Bulk_VPS_Runner {
         return $result;
     }
     public static function tick($max=2,$batch_id='',$executor='vps_runner',$recover=true){
-        if(!self::permitted())return self::fail('wpcli_staging_authority_required');
+        if(!self::permitted())return self::fail('verified_wpcli_queue_authority_required');
         if(!in_array($executor,array('vps_runner','action_scheduler'),true))
             return self::fail('executor_not_allowed');
         $max=max(1,min(4,(int)$max));
@@ -187,7 +194,7 @@ final class MAD4B_Hub_Bulk_VPS_Runner {
             'elapsed_seconds'=>round(microtime(true)-$start,3));
     }
     public static function cli_run($args,$assoc){
-        if(!self::permitted())WP_CLI::error('staging_wpcli_authority_required');
+        if(!self::permitted())WP_CLI::error('verified_wpcli_queue_authority_required');
         if($args)WP_CLI::error('No positional arguments allowed');
         $limit=isset($assoc['limit'])?(int)$assoc['limit']:2;
         $batch=isset($assoc['batch-id'])?(string)$assoc['batch-id']:'';
@@ -204,7 +211,14 @@ final class MAD4B_Hub_Bulk_VPS_Runner {
         unset($batch);
         WP_CLI::line(wp_json_encode(array('contract'=>self::CONTRACT,
           'installed'=>true,'stages'=>MAD4B_Hub_Bulk_Jobs_Queue::stages(),
-          'registered_executor'=>'vps_runner','enabled_execution_modes'=>array(
+          'registered_executor'=>'vps_runner',
+          'wordpress_queue_execution_allowed'=>self::permitted(),
+          'queue_authorization_source'=>'verified_wpcli_actor_and_native_queue_policy',
+          'site_environment'=>wp_get_environment_type(),
+          'claim_scope'=>'vps_runner_assigned_tasks_only',
+          'mcp_client_task_claim_allowed'=>false,
+          'queue_authorization_does_not_override_assignment'=>true,
+          'enabled_execution_modes'=>array(
             'site_health','workflow_inspect','content_job_read','source_sync_verify','runtime_resolve','verified_stage_adapter'),
           'queue'=>$result),JSON_UNESCAPED_SLASHES));
     }
