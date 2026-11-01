@@ -699,6 +699,27 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 
 	public static function info( $input ) {
 		$operation_id = isset( $input['operation_id'] ) ? (string) $input['operation_id'] : '';
+		// Explicit non-executable plan for the company owner SSH enrollment.
+		// Never return a dispatch digest or grant until original Core provider is
+		// registered and approved. The normal execute path remains fail-closed.
+		if ( 'company_remote_wpcli_full_enrollment' === $operation_id ) {
+			$catalog = MAD4B_SCP_Remote_Operation_Parity::catalog();
+			if ( isset( $catalog[ $operation_id ] ) && empty( $catalog[ $operation_id ]['remote_parity_ready'] ) ) {
+				$row = $catalog[ $operation_id ];
+				$row['dispatchable'] = false;
+				$row['execution_eligible'] = false;
+				$row['capability_activated'] = false;
+				$row['operational_state'] = 'pending_original_core_broker_enrollment';
+				return array(
+					'contract' => self::CONTRACT,
+					'operation_id' => $operation_id,
+					'operation' => $row,
+					'next_action' => 'certify_original_core_broker_and_owner_enrollment_ability',
+					'read_only' => true,
+					'mutation_performed' => false,
+				);
+			}
+		}
 		$current = self::operation( $operation_id );
 		if ( is_wp_error( $current ) ) return $current;
 		$row = $current['row'];
