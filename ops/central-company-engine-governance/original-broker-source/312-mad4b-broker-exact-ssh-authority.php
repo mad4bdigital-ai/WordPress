@@ -49,6 +49,9 @@ final class MAD4B_Broker_Exact_SSH_Authority_V1 {
    || !in_array(($grant['operation']??null),['maintenance.shell','company.remote.wpcli.full'],true)
    || ($job['operation']??null)!==($grant['operation']??null)
    || ($req['operation']??null)!==($grant['operation']??null)
+   || (($grant['operation']??null)==='company.remote.wpcli.full'
+       && (($job['command_format']??null)!=='wpcli.argv.json.v1'
+           || ($req['command_format']??null)!=='wpcli.argv.json.v1'))
    || (($grant['operation']==='maintenance.shell') !== (($req['target_scope']??null)==='host'))
    || ($grant['company']??null)!==($job['company']??null)
    || ($grant['site_uuid']??null)!==($job['site_uuid']??null)
