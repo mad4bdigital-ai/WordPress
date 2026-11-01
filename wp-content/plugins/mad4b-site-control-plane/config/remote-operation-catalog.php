@@ -3,6 +3,24 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 return array(
+            // Owner-enrolled SSH connection grants a site-scoped full WP-CLI
+            // capability only after original Core 305/312/313 enrollment.
+            // This metadata row is intentionally NOT executable by itself.
+            'company_remote_wpcli_full_enrollment' => array(
+                'feature_id' => 'company-ssh-wpcli',
+                'capability_tags' => array( 'company', 'ssh', 'wp-cli', 'full-admin', 'owner-enrollment', 'original-broker' ),
+                'provider' => 'core',
+                'status_ability' => 'mad4b/central-company-engine-governance-status',
+                'local_surface' => 'MAD4B/Company/SSH Connections',
+                'remote_ability' => 'mad4b/company-remote-wpcli-enroll',
+                'authority_surface' => 'mad4b-enrollment',
+                'executor' => 'original_core_broker_305_312_313',
+                'remote_mode' => 'owner_enrolled_connection_handshake_full_wpcli',
+                'remote_caller_role' => 'owner',
+                'production_policy' => 'deny',
+                'human_decision_required' => true,
+                'chatgpt_direct_step_up' => false,
+            ),
             'optional_governance_preference_update' => array(
                 'feature_id' => 'optional-governance-options-control',
                 'capability_tags' => array( 'options', 'advisory', 'governance', 'profile', 'readback', 'policy' ),
