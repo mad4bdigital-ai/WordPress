@@ -19,7 +19,13 @@ function fixture(operation='verify_host_binding',change={}){
    original_enrollment_scope_valid:true,independent_host_proof_verified:true,
    original_job_claim_verified:true,original_312_verified:true,
    native_enrollment_receipt_verified:true,...change.admission};
+ const evidenceKind=operation==='verify_host_binding'?'HOST_PROOF':
+   operation==='register_native_executor'?'NATIVE_ENROLLMENT':
+   operation==='maintenance.shell'?'ORIGINAL_SHELL_JOURNAL':'WPCLI_313';
  const readback={...binding,job_id:jobId,command_sha256,
+   evidence_kind:evidenceKind,original_core_signature_verified:true,
+   independent_host_proof_verified:true,durable_native_enrollment_verified:true,
+   original_shell_journal_verified:true,
    original_313_verified:true,independent_host_readback_verified:true,
    ...change.readback};
  const calls={typed:0,shell:0,claim:0,readback:0,audit:[]};
@@ -32,7 +38,7 @@ function fixture(operation='verify_host_binding',change={}){
     lane:'vps_ssh',host_id:job.target_host_id,execution_performed:false
   }),
   claimOriginalJobOnce:async()=>{calls.claim++;return change.claim??true},
-  verifyIndependentReadback:async()=>{calls.readback++;return readback},
+  verifyOriginalOperationEvidence:async()=>{calls.readback++;return readback},
   audit:async p=>{calls.audit.push(p)}
  };
  const typed={};
@@ -47,11 +53,38 @@ test('typed host proof stays on Core route and checks independent 313 readback',
  assert.equal(r.state,'VERIFIED');assert.equal(r.route,'typed_original_core');
  assert.equal(f.calls.typed,1);assert.equal(f.calls.shell,0);assert.equal(f.calls.readback,1);
 });
+test('Host Proof can verify before Native and without a 313 receipt',async()=>{
+ const f=fixture('verify_host_binding',{readback:{original_313_verified:false}});
+ const r=await createGovernedExecutionRoutes(f).execute({
+   operation:'verify_host_binding',job_id:jobId});
+ assert.equal(r.state,'VERIFIED');assert.equal(f.calls.typed,1);
+});
+test('initial Native enrollment uses signed registration, not a 313 receipt',async()=>{
+ const f=fixture('register_native_executor',{readback:{
+   original_313_verified:false,independent_host_readback_verified:false}});
+ const r=await createGovernedExecutionRoutes(f).execute({
+   operation:'register_native_executor',job_id:jobId});
+ assert.equal(r.state,'VERIFIED');
+});
 test('general shell fallback is maintained for its separate original maintenance.shell grant',async()=>{
  const f=fixture('maintenance.shell');
  const r=await createGovernedExecutionRoutes(f).execute({operation:'maintenance.shell',job_id:jobId});
  assert.equal(r.state,'VERIFIED');assert.equal(r.route,'general_shell_fallback');
  assert.equal(f.calls.shell,1);assert.equal(f.calls.typed,0);
+});
+test('diagnostic general shell uses original journal, no forced WPCLI 313',async()=>{
+ const f=fixture('maintenance.shell',{readback:{
+   original_313_verified:false,independent_host_readback_verified:false}});
+ const r=await createGovernedExecutionRoutes(f).execute({
+   operation:'maintenance.shell',job_id:jobId});
+ assert.equal(r.state,'VERIFIED');assert.equal(f.calls.shell,1);
+});
+test('mutating general shell still needs independent host readback',async()=>{
+ const f=fixture('maintenance.shell',{admission:{shell_mutates:true},
+   readback:{independent_host_readback_verified:false}});
+ const r=await createGovernedExecutionRoutes(f).execute({
+   operation:'maintenance.shell',job_id:jobId});
+ assert.equal(r.state,'PARKED_UNVERIFIED_READBACK');
 });
 test('typed provider missing parks, cannot fall back to shell',async()=>{
  const f=fixture('register_native_executor');delete f.typed.register_native_executor;
