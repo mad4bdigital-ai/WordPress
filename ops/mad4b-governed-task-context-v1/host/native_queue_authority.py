@@ -58,7 +58,7 @@ def probe(policy, company='tours-central', environment='staging', runner=subproc
         identity.get('site_origin') != target['origin'] or
         identity.get('site_environment') != environment or
         identity.get('actor_wp_user_id') != target['wp_actor'] or
-        identity.get('ability') != 'mad4b/hub-bulk-list_queue'):
+        identity.get('ability') != 'mad4b/hub-bulk-list-queue'):
         result['state'] = 'WORDPRESS_PRINCIPAL_OR_ORIGIN_MISMATCH'
         return result
     if (queue.get('contract') != 'mad4b.hub.bulk-vps-runner.v1' or
