@@ -1,0 +1,128 @@
+/* Tours archive Query #5 taxonomy navigation, housed in the authored Elementor mega panel. */
+.product-native-navigation .mad4b-tour-query-mega {
+ --tour-ink:#f4f4f0;
+ --tour-ink-flyout:#193448;
+ --tour-accent:#e6bb70;
+ color:var(--tour-ink);width:100%;min-width:0;max-width:100%;font-family:inherit;
+}
+.product-native-navigation .mad4b-tour-query-mega *,
+.product-native-navigation .mad4b-tour-query-mega *::before {box-sizing:border-box}
+.product-native-navigation .mad4b-tour-query-mega-title {
+ font-weight:700;font-size:1rem;line-height:1.4;color:var(--tour-ink);
+ padding:0 0 .6rem;margin:0 0 .85rem;border-bottom:1px solid rgba(255,255,255,.18);
+}
+.product-native-navigation .mad4b-tour-tree-level {
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem 1rem;
+ list-style:none;padding:0;margin:0;align-items:start;
+}
+.product-native-navigation .mad4b-tour-tree-item {min-width:0;position:relative;list-style:none;margin:0}
+.product-native-navigation .mad4b-tour-tree-row {
+ display:flex;align-items:center;justify-content:space-between;gap:.35rem;
+ background:transparent;border:1px solid transparent;border-radius:7px;
+}
+.product-native-navigation .mad4b-tour-tree-row:hover,
+.product-native-navigation .mad4b-tour-tree-item:focus-within>.mad4b-tour-tree-row {
+ background:rgba(255,255,255,.13);border-color:rgba(255,255,255,.18);
+}
+.product-native-navigation .mad4b-tour-tree-row>.mad4b-tour-tree-link,
+.product-native-navigation .mad4b-tour-tree-row>.mad4b-tour-tree-label {
+ flex:1;min-width:0;color:var(--tour-ink);background:transparent;font-size:.88rem;font-weight:600;
+ line-height:1.4;text-decoration:none;padding:.67rem .3rem .67rem .55rem;
+ white-space:normal;overflow-wrap:anywhere;
+}
+.product-native-navigation .mad4b-tour-tree-row>.mad4b-tour-tree-link:focus-visible,
+.product-native-navigation .mad4b-tour-tree-toggle:focus-visible {
+ outline:2px solid var(--tour-accent);outline-offset:2px;
+}
+.product-native-navigation .mad4b-tour-tree-empty>.mad4b-tour-tree-row>.mad4b-tour-tree-label {color:#c2c8cd;font-weight:500}
+.product-native-navigation .mad4b-tour-tree-toggle {
+ display:flex;align-items:center;justify-content:center;flex:0 0 34px;height:34px;
+ border:0;background:transparent;color:var(--tour-ink);font:inherit;font-size:1.15rem;
+ cursor:pointer;border-radius:5px;padding:0;
+}
+.product-native-navigation .mad4b-tour-tree-toggle[aria-expanded=true] {color:var(--tour-accent);background:rgba(71,114,158,.07)}
+.product-native-navigation .mad4b-tour-tree-toggle[aria-expanded=true] span {transform:rotate(180deg)}
+.product-native-navigation .mad4b-tour-tree-children {
+ display:none;position:absolute;z-index:200;top:100%;left:0;min-width:260px;
+ width:min(315px,calc(100vw - 38px));max-height:60vh;overflow:visible;
+ padding:.65rem;background:#fff;border:1px solid rgba(26,52,74,.14);color:var(--tour-ink-flyout);
+ border-radius:10px;box-shadow:0 10px 32px rgba(9,24,36,.16);
+}
+.product-native-navigation .mad4b-tour-tree-children .mad4b-tour-tree-level {
+ display:flex;flex-direction:column;gap:.15rem;
+}
+.product-native-navigation .mad4b-tour-tree-children .mad4b-tour-tree-item {width:100%}
+.product-native-navigation .mad4b-tour-tree-children .mad4b-tour-tree-row>.mad4b-tour-tree-link,
+.product-native-navigation .mad4b-tour-tree-children .mad4b-tour-tree-row>.mad4b-tour-tree-label {
+ color:var(--tour-ink-flyout);background:transparent;font-size:.84rem;font-weight:500;padding:.52rem .35rem;
+}
+.product-native-navigation .mad4b-tour-tree-children .mad4b-tour-tree-children {
+ left:calc(100% - 1px);top:0;
+}
+@media(min-width:992px) {
+ .product-native-navigation .mad4b-tour-tree-parent:hover>.mad4b-tour-tree-children,
+ .product-native-navigation .mad4b-tour-tree-parent:focus-within>.mad4b-tour-tree-children,
+ .product-native-navigation .mad4b-tour-tree-parent[data-open=true]>.mad4b-tour-tree-children {display:block}
+ /* Keep nested branches inside the available desktop menu width when possible. */
+ .product-native-navigation .mad4b-tour-tree-item:nth-child(even)>.mad4b-tour-tree-children {left:auto;right:0}
+}
+.product-native-navigation .mad4b-tour-query-all {
+ display:inline-flex;align-items:center;gap:.45rem;margin-top:1rem;
+ border-radius:6px;padding:.65rem .8rem;font-weight:600;font-size:.85rem;
+ color:var(--tour-ink);background:transparent;border:1px solid rgba(255,255,255,.28);text-decoration:none;
+}
+.product-native-navigation .mad4b-tour-query-all:hover {color:var(--tour-ink-flyout);background:var(--tour-ink)}
+@media(max-width:991px) {
+ .product-native-navigation .mad4b-tour-query-mega {
+  padding:.25rem;color:var(--tour-ink);max-height:min(68vh,600px);overflow-y:auto;
+ }
+ .product-native-navigation .mad4b-tour-tree-level {display:flex;flex-direction:column;gap:.2rem}
+ .product-native-navigation .mad4b-tour-tree-item {width:100%}
+ .product-native-navigation .mad4b-tour-tree-row {border-bottom:1px solid rgba(255,255,255,.12);border-radius:0}
+ .product-native-navigation .mad4b-tour-tree-children,
+ .product-native-navigation .mad4b-tour-tree-children .mad4b-tour-tree-children {
+  position:static;left:auto;right:auto;width:100%;min-width:0;max-height:none;
+  border:0;border-left:2px solid rgba(183,139,67,.33);
+  border-radius:0;padding:.15rem 0 .15rem .75rem;
+  box-shadow:none;background:transparent;overflow:visible;
+ }
+ .product-native-navigation .mad4b-tour-tree-item[data-open=true]>.mad4b-tour-tree-children {display:block}
+ .product-native-navigation .mad4b-tour-tree-children .mad4b-tour-tree-row>.mad4b-tour-tree-link,
+ .product-native-navigation .mad4b-tour-tree-children .mad4b-tour-tree-row>.mad4b-tour-tree-label {font-size:.86rem}
+}
+[dir=rtl] .product-native-navigation .mad4b-tour-tree-children {left:auto;right:0}
+@media(min-width:992px) {
+ [dir=rtl] .product-native-navigation .mad4b-tour-tree-children .mad4b-tour-tree-children {right:calc(100% - 1px);left:auto}
+}
+@media(max-width:991px) {
+ [dir=rtl] .product-native-navigation .mad4b-tour-tree-children {
+  right:auto;border-left:0;border-right:2px solid rgba(183,139,67,.33);padding-left:0;padding-right:.75rem
+ }
+}
+
+/* Explicit contrast: the Elementor mega panel is navy, while desktop flyouts are white. */
+.product-native-navigation .mad4b-tour-query-mega-title,
+.product-native-navigation .mad4b-tour-query-mega>.mad4b-tour-tree-level>.mad4b-tour-tree-item>.mad4b-tour-tree-row>.mad4b-tour-tree-link,
+.product-native-navigation .mad4b-tour-query-mega>.mad4b-tour-tree-level>.mad4b-tour-tree-item>.mad4b-tour-tree-row>.mad4b-tour-tree-label,
+.product-native-navigation .mad4b-tour-query-all,
+.product-native-navigation .mad4b-tour-tree-toggle {color:var(--tour-ink) !important;}
+.product-native-navigation .mad4b-tour-query-mega a,
+.product-native-navigation .mad4b-tour-query-mega .mad4b-tour-tree-label,
+.product-native-navigation .mad4b-tour-query-mega-title {background-color:transparent !important;box-shadow:none;text-shadow:none;}
+.product-native-navigation .mad4b-tour-tree-children .mad4b-tour-tree-link,
+.product-native-navigation .mad4b-tour-tree-children .mad4b-tour-tree-label,
+.product-native-navigation .mad4b-tour-tree-children .mad4b-tour-tree-toggle {color:var(--tour-ink-flyout) !important;}
+.product-native-navigation .mad4b-tour-tree-children .mad4b-tour-tree-empty .mad4b-tour-tree-label {color:#697780 !important;}
+.product-native-navigation .mad4b-tour-query-all:hover {color:var(--tour-ink-flyout) !important;background-color:var(--tour-ink) !important;}
+@media(max-width:991px){
+ .product-native-navigation .mad4b-tour-query-mega {color:var(--tour-ink);}
+ .product-native-navigation .mad4b-tour-tree-children,
+ .product-native-navigation .mad4b-tour-tree-children .mad4b-tour-tree-children {background-color:rgba(255,255,255,.08);border-color:rgba(255,255,255,.22);}
+ .product-native-navigation .mad4b-tour-tree-children .mad4b-tour-tree-link,
+ .product-native-navigation .mad4b-tour-tree-children .mad4b-tour-tree-label,
+ .product-native-navigation .mad4b-tour-tree-children .mad4b-tour-tree-toggle {color:var(--tour-ink) !important;}
+}
+/* Disabled nested facets remain readable on the navy mobile accordion. */
+@media(max-width:991px){
+ .product-native-navigation .mad4b-tour-query-mega .mad4b-tour-tree-children .mad4b-tour-tree-empty .mad4b-tour-tree-label{color:#cbd4d9!important;opacity:1!important;}
+}
