@@ -84,6 +84,29 @@ for path in (root / 'includes').rglob('*.php'):
             if marker not in manifest:
                 raise SystemExit('FAIL native manifest guard missing: ' + marker)
         continue
+    # The delegated Company Task Handoffs screen is a separate top-level WP
+    # capability surface, not an administrator-only MAD4B submenu. Check its
+    # exact WP capability AND its independent per-user access and nonce gates,
+    # rather than demanding manage_options (which would break staff access).
+    if path.name == 'class-mad4b-scp-company-task-handoff.php':
+        required = (
+            "add_menu_page('My Task Handoffs','Task Handoffs','mad4b_work_company_tasks',",
+            "'mad4b-task-handoffs',[__CLASS__,'screen'",
+            "return current_user_can('mad4b_work_company_tasks') &&",
+            "(self::master() || self::allowed(get_current_user_id()))",
+            "if(!self::accessible())wp_die('Not an approved internal team member.');",
+            "if(!self::accessible())wp_die('Company staff access required.',403);",
+            "check_admin_referer('mad4b_company_task_handoff');",
+            "add_action('admin_menu',[__CLASS__,'adminMenu'],12);",
+            "add_action('admin_post_mad4b_company_task_handoff',[__CLASS__,'adminPost']);",
+        )
+        for marker in required:
+            if marker not in source:
+                raise SystemExit(f'FAIL delegated company task screen access/nonce guard: {marker}')
+        if source.count("add_menu_page(") != 1 or "add_submenu_page(" in source:
+            raise SystemExit('FAIL delegated company task menu scope expanded')
+        checked += 1
+        continue
     if 'add_submenu_page(' in source and (
         'MAD4B_SCP_Admin_Route_Registry::schedule_submenu(' not in source
         or re.search(r"add_action\(\s*['\"]admin_menu['\"]", source)
