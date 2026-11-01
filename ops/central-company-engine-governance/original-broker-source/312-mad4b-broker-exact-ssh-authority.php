@@ -129,9 +129,21 @@ final class MAD4B_Broker_Exact_SSH_Authority_V1 {
  public static function cli($args,$assoc):void {
   if (!defined('WP_CLI') || !WP_CLI || !class_exists('WP_CLI')
    || !class_exists('MAD4B_Central_Dual_Lane_Registry_V1',false)
-   || !MAD4B_Central_Dual_Lane_Registry_V1::central()
-   || get_current_user_id()<1 || !current_user_can('manage_options'))WP_CLI::error('CENTRAL_HOST_AUTHORITY_REQUIRED');
+   || !MAD4B_Central_Dual_Lane_Registry_V1::central())
+    WP_CLI::error('CENTRAL_HOST_CONTEXT_REQUIRED');
   $action=(string)($args[0]??'');
+  // Read-only local status does not assert a WordPress administrator.
+  // Claimed-job inventory and signed verification retain the original
+  // privileged WordPress context and independent broker signature gates.
+  if ($action==='status') {
+   WP_CLI::line(wp_json_encode(['contract'=>self::CONTRACT,'verifier_registered'=>true,
+     'central_scope_source'=>'original_wordpress_grants_claims_and_delegations',
+     'remote_execution_authority_automatically_granted'=>false,
+     'production_supported'=>true,'shell_executed'=>false]));
+   return;
+  }
+  if (get_current_user_id()<1 || !current_user_can('manage_options'))
+    WP_CLI::error('CENTRAL_HOST_AUTHORITY_REQUIRED');
   if ($action==='claimed') {
    global $wpdb;
    $prefix=MAD4B_Central_VPS_Broker_V1::JOB;
@@ -152,13 +164,6 @@ final class MAD4B_Broker_Exact_SSH_Authority_V1 {
     if (count($items)>=max(1,min(10,(int)($assoc['limit']??10))))break;
    }
    WP_CLI::line(wp_json_encode(['contract'=>self::CONTRACT,'claimed'=>$items],JSON_UNESCAPED_SLASHES));
-   return;
-  }
-  if ($action==='status') {
-   WP_CLI::line(wp_json_encode(['contract'=>self::CONTRACT,'verifier_registered'=>true,
-     'central_scope_source'=>'original_wordpress_grants_claims_and_delegations',
-     'remote_execution_authority_automatically_granted'=>false,
-     'production_supported'=>true,'shell_executed'=>false]));
    return;
   }
   if ($action!=='verify')WP_CLI::error('status_claimed_or_verify_required');
