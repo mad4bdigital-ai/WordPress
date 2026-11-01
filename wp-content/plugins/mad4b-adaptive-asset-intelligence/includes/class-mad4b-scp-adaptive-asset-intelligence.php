@@ -140,6 +140,7 @@ final class MAD4B_SCP_Adaptive_Asset_Intelligence {
    'site_uuid'=>self::UUID,'pending_jobs'=>count(self::queue()),'unread_notifications'=>count(array_filter($feed,static fn($e)=>empty($e['ack']))),
    'routes'=>$routes,'states'=>$statuses,'notifications'=>array_slice($feed,0,30),
    'js_policies'=>class_exists('MAD4B_Device_JS_Combine_V1',false)?MAD4B_Device_JS_Combine_V1::overview():[],
+   'js_cpu'=>class_exists('MAD4B_JS_CPU_Intelligence',false)?MAD4B_JS_CPU_Intelligence::summary():['rows'=>[],'pending_routes'=>0],
    'worker'=>'vps_local_chromium','litespeed_provider'=>class_exists('MAD4B_LSC_Local_Provider_V1')?MAD4B_LSC_Local_Provider_V1::capabilities():['scope'=>'missing'],'external_delivery'=>false];
  }
  public static function rest(): void {
@@ -189,6 +190,11 @@ final class MAD4B_SCP_Adaptive_Asset_Intelligence {
   echo '<h2>JavaScript device policies</h2><p>LiteSpeed JS Combine only. Global defer/delay remains off; full inline combination requires independent acceptance.</p>';
   echo '<table class="widefat striped"><thead><tr><th>Route</th><th>Locale</th><th>Device</th><th>State</th><th>JS mode</th><th>Past trials</th></tr></thead><tbody>';
   foreach($s['js_policies'] as $j)echo '<tr><td>'.esc_html($j['path']).'</td><td>'.esc_html($j['locale']).'</td><td>'.esc_html($j['device']).'</td><td>'.esc_html($j['status']).'</td><td>'.esc_html($j['mode']).'</td><td>'.(int)$j['trials'].'</td></tr>';
+  echo '</tbody></table>';
+  echo '<h2>JavaScript CPU Intelligence</h2><p>Per-device CPU attribution. Native LiteSpeed remains active until A/B and interaction verification.</p>';
+  echo '<p><strong>Queued CPU rechecks:</strong> '.(int)($s['js_cpu']['pending_routes']??0).'</p>';
+  echo '<table class="widefat striped"><thead><tr><th>Route</th><th>Device</th><th>Profiles</th><th>State</th><th>Next experiment</th><th>Measured UTC</th></tr></thead><tbody>';
+  foreach(($s['js_cpu']['rows']??[]) as $j)echo '<tr><td>'.esc_html($j['path']).'</td><td>'.esc_html($j['device']).'</td><td>'.(int)$j['samples'].'</td><td>'.esc_html($j['state']).'</td><td>'.esc_html($j['recommendation']).'</td><td>'.esc_html($j['measured_at']?gmdate('Y-m-d H:i',(int)$j['measured_at']):'-').'</td></tr>';
   echo '</tbody></table>';
   echo '<h2>Page policy states</h2><table class="widefat striped"><thead><tr><th>Route</th><th>Language</th><th>Device</th><th>Status</th><th>CSS assets</th><th>Expiry UTC</th></tr></thead><tbody>';
   foreach($s['routes'] as $r)echo '<tr><td>'.esc_html($r['path']).'</td><td>'.esc_html($r['locale']).'</td><td>'.esc_html($r['device']).'</td><td>'.esc_html($r['state']).'</td><td>'.(int)$r['count'].'</td><td>'.esc_html($r['expires']?gmdate('Y-m-d H:i',(int)$r['expires']):'-').'</td></tr>';
