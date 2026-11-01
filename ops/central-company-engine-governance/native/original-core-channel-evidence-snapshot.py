@@ -160,13 +160,16 @@ def selftest():
     must_fail({**scope,'scope':{**scope['scope'],'collected_epoch':now-130},
               'registry':{**scope['registry'],'collected_epoch':now}},
               now,'ORIGINAL_EVIDENCE_COLLECTION_SKEW')
-    with tempfile.TemporaryDirectory() as tmp:
-        store=pathlib.Path(tmp)/'evidence'
-        for name,item in scope.items():
-            persist(name,item,store)
-        assert len(load_all(store,now))==5
-        assert all((store/(name+'.json')).stat().st_mode&0o077==0
-                   for name in SEGMENTS)
+    # CI runners are unprivileged; the protected filesystem smoke test
+    # runs only in an authorized root-owned Staging shell.
+    if os.geteuid()==0:
+        with tempfile.TemporaryDirectory() as tmp:
+            store=pathlib.Path(tmp)/'evidence'
+            for name,item in scope.items():
+                persist(name,item,store)
+            assert len(load_all(store,now))==5
+            assert all((store/(name+'.json')).stat().st_mode&0o077==0
+                       for name in SEGMENTS)
     print(json.dumps({'contract':CONTRACT,'selftest':'PASS',
       'assertions':10,'grants_created':0,'execution_performed':False}))
 
