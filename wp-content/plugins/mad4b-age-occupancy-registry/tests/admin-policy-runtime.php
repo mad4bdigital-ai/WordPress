@@ -13,6 +13,30 @@ $checks['negative_price_factor_rejected']=is_wp_error($out)&&$out->get_error_cod
 $checks['admin_menu_registered']=has_action('admin_menu',[MAD4B_Age_Occupancy_Admin::class,'menu'])!==false;
 $checks['admin_save_endpoint_registered']=has_action('admin_post_mad4b_age_policy_save',[MAD4B_Age_Occupancy_Admin::class,'save'])!==false;
 $checks['form_mapping_save_endpoint_registered']=has_action('admin_post_mad4b_age_forms_save',[MAD4B_Age_Occupancy_Admin::class,'save_forms'])!==false;
+// Global UI presets normalize to the original factor schema; no stored executable formulas.
+$percentage=$good;
+$percentage['bands'][1]['price_mode']='percentage';
+$percentage['bands'][1]['price_percent']='37.5';
+$percentResult=MAD4B_Age_Occupancy_Admin::validate($percentage);
+$checks['percentage_pattern_normalized']=!is_wp_error($percentResult)&&abs($percentResult['bands'][1]['price_factor']-0.375)<.000001;
+$free=$good;$free['bands'][1]['price_mode']='free';
+$freeResult=MAD4B_Age_Occupancy_Admin::validate($free);
+$checks['free_pattern_normalized']=!is_wp_error($freeResult)&&$freeResult['bands'][1]['price_factor']===0.0;
+$adult=$good;$adult['bands'][1]['price_mode']='adult';
+$adultResult=MAD4B_Age_Occupancy_Admin::validate($adult);
+$checks['adult_pattern_normalized']=!is_wp_error($adultResult)&&$adultResult['bands'][1]['price_factor']===1.0;
+$badPercent=$percentage;$badPercent['bands'][1]['price_percent']='201';
+$badPercentResult=MAD4B_Age_Occupancy_Admin::validate($badPercent);
+$checks['percentage_overflow_rejected']=is_wp_error($badPercentResult)&&$badPercentResult->get_error_code()==='age_policy_percentage_invalid';
+$badMode=$good;$badMode['bands'][1]['price_mode']='eval';
+$badModeResult=MAD4B_Age_Occupancy_Admin::validate($badMode);
+$checks['arbitrary_formula_rejected']=is_wp_error($badModeResult)&&$badModeResult->get_error_code()==='age_policy_price_mode_invalid';
+$checks['jetengine_pricing_page_detected']=class_exists('MAD4B_Age_Occupancy_JetEngine_Bridge')
+ && MAD4B_Age_Occupancy_JetEngine_Bridge::is_pricing_page(['slug'=>'price-calculation','name'=>'Price Calculation']);
+$checks['jetengine_other_page_ignored']=class_exists('MAD4B_Age_Occupancy_JetEngine_Bridge')
+ && !MAD4B_Age_Occupancy_JetEngine_Bridge::is_pricing_page(['slug'=>'destinations','name'=>'Destinations']);
+$checks['jetengine_financial_fields_detected']=class_exists('MAD4B_Age_Occupancy_JetEngine_Bridge')
+ && MAD4B_Age_Occupancy_JetEngine_Bridge::is_pricing_page(['slug'=>'custom-settings','meta_fields'=>[['name'=>'shared_mode_policy_rows']]]);
 foreach($checks as $name=>$ok)echo $name.'='.($ok?'PASS':'FAIL').PHP_EOL;
 echo 'SUMMARY='.count(array_filter($checks)).'/'.count($checks).PHP_EOL;
 exit(in_array(false,$checks,true)?1:0);
