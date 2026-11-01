@@ -85,7 +85,11 @@ foreach ( $core_abilities as $ability_name ) {
 
 $servers = MAD4B_SCP_Servers::registration_status();
 foreach ( MAD4B_SCP_Servers::expected_server_ids() as $server_id ) {
-	$check( ! empty( $servers[ $server_id ]['registered'] ), 'Custom MCP server failed to register: ' . $server_id );
+	$registration = isset( $servers[ $server_id ] ) && is_array( $servers[ $server_id ] ) ? $servers[ $server_id ] : array();
+	$descriptor = isset( $registration['capability_descriptor_evidence'] ) && is_array( $registration['capability_descriptor_evidence'] ) ? $registration['capability_descriptor_evidence'] : array();
+	$descriptor_blockers = isset( $descriptor['blockers'] ) && is_array( $descriptor['blockers'] ) ? array_slice( $descriptor['blockers'], 0, 12 ) : array();
+	$registration_error = isset( $registration['error'] ) ? sanitize_key( (string) $registration['error'] ) : '';
+	$check( ! empty( $registration['registered'] ), 'Custom MCP server failed to register: ' . $server_id . ' error=' . $registration_error . ' descriptor_blockers=' . wp_json_encode( $descriptor_blockers ) );
 }
 
 // Action refresh/tools-list can resolve the same write projection through
