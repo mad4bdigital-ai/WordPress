@@ -1,3 +1,4 @@
+import {diagnoseInvocationFailure} from './authorized_channel_recovery.mjs';
 // Original-Core enrollment lifecycle. A coordinator, not an authority.
 // All changing actions are typed and delegated to existing enrolled providers.
 // This module cannot issue a grant, sign Host Proof, or run raw shell by itself.
@@ -133,6 +134,30 @@ export function createOriginalEnrollmentLifecycle({readOriginalSnapshot,runOrigi
    if(ticket?.status==='UNCERTAIN'){
     await audit(scope,'ORIGINAL_LIFECYCLE_UNCERTAIN_NO_REPLAY');
     return blocked('PARKED_UNCERTAIN_NO_REPLAY','ORIGINAL_TRANSITION_JOURNAL_REQUIRED');
+   }
+   // All rejected/failed typed transitions share the same channel diagnosis.
+   // No adapter retry or fallback happens within this reconciliation tick.
+   if(ticket?.failure || ['DENIED','REJECTED','FAILED',
+        'TOOL_POLICY_REJECTED','PROVIDER_POLICY_REJECTED'].includes(ticket?.status)){
+    const failure={...(ticket.failure||{}),
+     code:ticket.failure?.code||ticket.reason_code||ticket.status,
+     security_denial:ticket.security_denial===true||
+       ticket.failure?.security_denial===true,
+     permission_denial:ticket.permission_denial===true||
+       ticket.failure?.permission_denial===true};
+    const decision=diagnoseInvocationFailure(failure);
+    if(decision.category==='policy'||decision.category==='credentials'){
+     await audit(scope,'ORIGINAL_LIFECYCLE_PROVIDER_AUTHORITY_DENIED');
+     return blocked('BLOCKED_PROVIDER_AUTHORITY',
+       decision.reason_code);
+    }
+    if(decision.category==='schema'){
+     await audit(scope,'ORIGINAL_LIFECYCLE_INVOCATION_SCHEMA_INVALID');
+     return blocked('BLOCKED_INVOCATION_CONTRACT',
+       decision.reason_code);
+    }
+    await audit(scope,'ORIGINAL_LIFECYCLE_PROVIDER_OUTCOME_UNCERTAIN');
+    return blocked('PARKED_UNCERTAIN_NO_REPLAY',decision.reason_code);
    }
    if(ticket?.status!=='ACCEPTED'||ticket.independent_readback_verified!==true){
     await audit(scope,'ORIGINAL_LIFECYCLE_AWAITING_READBACK');
