@@ -38,6 +38,7 @@ jobs:
           php -l ops/central-company-engine-governance/original-broker-source/312-mad4b-broker-exact-ssh-authority.php
           php -l ops/central-company-engine-governance/original-broker-source/313-mad4b-broker-remote-ssh-diagnostic.php
           php ops/central-company-engine-governance/test_original_broker_306_312.php
+          php ops/central-company-engine-governance/test_312_channel_identity_boundaries.php
           php ops/central-company-engine-governance/test_original_core_recovery.php
           php ops/central-company-engine-governance/test_original_sealed_rebind.php
           php ops/central-company-engine-governance/test_original_recovery_full_handoff.php
