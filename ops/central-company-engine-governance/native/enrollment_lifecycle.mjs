@@ -98,13 +98,16 @@ export function createOriginalEnrollmentLifecycle({readOriginalSnapshot,runOrigi
    if(!scope||scope.environment!=='staging'||!scope.site_uuid||!scope.company)
     return blocked('BLOCKED_SCOPE','EXACT_STAGING_SCOPE_REQUIRED');
    const snapshot=await readOriginalSnapshot(scope);
+   // Caller scope never substitutes for the authoritative Site Profile.
+   if(!eq(snapshot?.site,scope,scopeFields))
+    return blocked('BLOCKED_SCOPE','CALLER_AND_ORIGINAL_SITE_PROFILE_MISMATCH');
    const state=planOriginalEnrollmentLifecycle(snapshot);
    if(!state.action)return state;
    if(!operations.has(state.action))return blocked('BLOCKED_UNKNOWN_TRANSITION','UNREGISTERED_TRANSITION');
    // No caller-supplied argv, shell, owner credentials, grant IDs, or tickets.
    const ticket=await runOriginalTypedTransition({
     operation:state.action,company:scope.company,site_uuid:scope.site_uuid,
-    canonical_origin:scope.canonical_origin,environment:'staging',
+    canonical_origin:snapshot.site.canonical_origin,environment:'staging',
     argv:state.action==='ISSUE_ORIGINAL_CORE_FIXED_WPCLI_READ_CANARY'
       ? originalReadCanaryArgv():undefined
    });
