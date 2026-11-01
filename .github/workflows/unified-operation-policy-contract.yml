@@ -1,0 +1,30 @@
+name: MAD4B unified operation policy source contract
+
+on:
+  pull_request:
+    paths:
+      - 'ops/company-readiness-workflow/unified-operation-policy/**'
+      - '.github/workflows/unified-operation-policy-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile source without network or tenant access
+        run: |
+          python -m compileall -q ops/company-readiness-workflow/unified-operation-policy
+      - name: Contract-only isolated tests
+        run: |
+          python ops/company-readiness-workflow/unified-operation-policy/source_contract_test.py
+
+# This workflow does NOT provision owner grants, attest remote jobs,
+# deploy plugins, register P-256 keys or alter tenant/production sites.
