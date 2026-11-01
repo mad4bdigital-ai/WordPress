@@ -11656,7 +11656,10 @@
         "ADMIN-01",
         "BROWSER-01",
         "SECURITY-02",
-        "AUTOMATION-01"
+        "AUTOMATION-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py"
