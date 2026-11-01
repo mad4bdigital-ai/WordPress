@@ -9,7 +9,14 @@ final class MAD4B_Broker_Exact_SSH_Authority_V1 {
  const CONTRACT='mad4b.broker-exact-ssh-authority.v1';
  const NONCE='mad4b_broker_exact_ssh_preflight_nonce_v1_';
  const HOST='srv2030908';
- const TARGETS=['hosting-1','hosting-2','hosting-3'];
+ // Distinct locally enrolled host, without delegated root privilege.
+ const TARGETS=['hosting-1','hosting-2','hosting-3','srv2030908'];
+ private static function transport_credential_valid(array $transport,string $target):bool {
+  $credential=(string)($transport['credential_ref']??'');
+  if ($target===self::HOST) return $credential==='vault:registry/local-srv2030908'
+    && ($transport['host_principal']??'')==='root';
+  return preg_match('/^vault:registry\\/(hosting-1|hosting-2|hosting-3)$/D',$credential)===1;
+ }
  private static function deny(string $code):array {return ['contract'=>self::CONTRACT,'verified'=>false,'eligible'=>false,'reason'=>$code,'shell_executed'=>false];}
  public static function evaluate(string $job_id,string $target,string $digest):array {
   if (!class_exists('MAD4B_Central_Dual_Lane_Registry_V1',false)
@@ -74,8 +81,32 @@ final class MAD4B_Broker_Exact_SSH_Authority_V1 {
    || ($grant['target_host_id']??null)!==$target
    || ($grant['target_ssh_principal']??null)!==($transport['host_principal']??null)
    || ($job['target_ssh_principal']??null)!==($transport['host_principal']??null)
-   || !preg_match('/^vault:registry\/(hosting-1|hosting-2|hosting-3)$/D',(string)($transport['credential_ref']??'')))
+   || !self::transport_credential_valid($transport,$target))
      return self::deny('TRANSPORT_OR_HOST_BINDING_INVALID');
+  // Same physical VPS may host an enrolled customer WordPress site.
+  // Treat host identity and COMPANY target identity as different scopes:
+  // the exact 305 owner-enrolled wpcli.full transport, original 306 Job,
+  // registered company target and signed host proof remain mandatory.
+  if ($target===self::HOST && ($grant['operation']??'')!=='maintenance.shell') {
+    $same_host_company_wpcli=
+      ($job['company']??'')!=='tours-central'
+      && ($job['environment']??'')==='staging'
+      && ($grant['operation']??'')==='company.remote.wpcli.full'
+      && ($req['target_scope']??'')==='wordpress'
+      && ($job['target_scope']??'')==='wordpress'
+      && ($job['job_type']??'')==='signed_vps_wpcli'
+      && ($job['command_format']??'')==='wpcli.argv.json.v1'
+      && ($req['command_format']??'')==='wpcli.argv.json.v1'
+      && ($transport['full_wpcli_grant_id']??null)===($job['grant_id']??null)
+      && ($transport['full_wpcli_pending_native_enrollment']??null)===true
+      && ($transport['capabilities']??null)===['wpcli.full'];
+    if (!$same_host_company_wpcli)
+      return self::deny('LOCAL_TARGET_SHELL_ONLY');
+  }
+  // The signed Job type must agree with its original 305 operation.
+  if (($grant['operation']??'')==='company.remote.wpcli.full'
+    && ($job['job_type']??'')!=='signed_vps_wpcli')
+      return self::deny('SIGNED_WPCLI_JOB_TYPE_REQUIRED');
   if (($grant['operation']??'')==='company.remote.wpcli.full') {
    // Only accept a grant minted during an owner-authenticated 305 enrollment.
    // 312 verifies central scope; the registered native worker proves host-side privilege.
@@ -85,6 +116,45 @@ final class MAD4B_Broker_Exact_SSH_Authority_V1 {
     || ($grant['transport_id']??null)!==$transport_id)
       return self::deny('OWNER_ENROLLED_WPCLI_TRANSPORT_REQUIRED');
   }
+  // A Job may use a persistent standing grant, but every correlation
+  // consumes its own original 305 claim. No cross-company replays.
+  $original_claim_key=MAD4B_Central_SSH_Command_Intake_V1::CLAIM_PREFIX
+    .(string)$job['grant_id'].'_'.hash('sha256',(string)($job['correlation_id']??''));
+  if (get_option($original_claim_key,false)!==$job_id)
+    return self::deny('ORIGINAL_PER_JOB_CLAIM_MISSING');
+  if (($job['company']??'')==='tours-central') {
+   // Native client identity must be proved in the ORIGINAL standing
+   // 305 grant, 306 Job, transport and exact 305 request together.
+   // A WordPress user ID of 0 is NOT a user impersonation or owner grant.
+   if (($job['principal_type']??'')==='vps_native') {
+     if (!class_exists('MAD4B_Native_VPS_Principal_V1',false)
+       || !MAD4B_Native_VPS_Principal_V1::valid_job_chain($job,$grant,$transport,$req)
+       || ($job['central_principal_id']??null)!==0)
+       return self::deny('NATIVE_PRINCIPAL_CHAIN_NOT_VERIFIED');
+   } else {
+   // Local native host is not a company execution target.
+   if ($target!==self::HOST || ($req['target_scope']??'')!=='host'
+     || ($grant['operation']??'')!=='maintenance.shell'
+     || !class_exists('MAD4B_Central_Host_Scope_V1',false)
+     || !MAD4B_Central_Host_Scope_V1::matches('tours-central',
+       (string)($job['site_uuid']??''),(string)($job['canonical_origin']??''),
+       (string)($job['environment']??''),(int)($job['central_principal_id']??0)))
+     return self::deny('CENTRAL_HOST_IDENTITY_OR_OWNER_MISMATCH');
+   // Match the original 305 consumed claim; a grant cannot authorize
+   // another command or an unrelated correlation identifier.
+   $claim_key=MAD4B_Central_SSH_Command_Intake_V1::CLAIM_PREFIX.(string)$job['grant_id'];
+   if (($grant['grant_mode']??'')==='persistent')
+     $claim_key.='_'.hash('sha256',(string)($job['correlation_id']??''));
+   if (get_option($claim_key,false)!==$job_id)
+     return self::deny('ORIGINAL_LOCAL_GRANT_CLAIM_MISSING');
+   }
+   // Both the native and original owner lane must consume the original
+   // per-correlation 305 claim. A persistent grant is not a wildcard job.
+   $native_claim_key=MAD4B_Central_SSH_Command_Intake_V1::CLAIM_PREFIX.(string)$job['grant_id']
+     .'_'.hash('sha256',(string)($job['correlation_id']??''));
+   if (get_option($native_claim_key,false)!==$job_id)
+     return self::deny('ORIGINAL_LOCAL_GRANT_CLAIM_MISSING');
+  } else {
   $target_scope=MAD4B_Manager_Auto_Write_V1::company_target((string)$job['company']);
   if (($target_scope['state']??null)!=='REGISTERED'
    || ($target_scope['site_uuid']??null)!==($job['site_uuid']??null)
@@ -95,10 +165,13 @@ final class MAD4B_Broker_Exact_SSH_Authority_V1 {
   if (!$manager || !MAD4B_Company_Portfolio_Manager_V1::has_delegation(
       $manager,(string)$job['company'],'operations_manage',(int)$job['central_principal_id']))
      return self::deny('COMPANY_DELEGATION_REVOKED');
+  }
   return ['contract'=>self::CONTRACT,'verified'=>true,'eligible'=>true,
    'reason'=>'CENTRAL_SCOPE_VERIFIED_HOST_PROOF_REQUIRED',
    'job_id'=>$job_id,'target_id'=>$target,
-   'principal_id'=>(string)$job['central_principal_id'],
+   'principal_id'=>($job['principal_type']??'')==='vps_native'
+      ?(string)$job['principal_id']:(string)$job['central_principal_id'],
+   'principal_type'=>($job['principal_type']??'wordpress_owner'),
    'correlation_id'=>(string)$job['correlation_id'],
    'host_principal'=>$transport['host_principal'],
    'host_key_fingerprint'=>$transport['host_key_fingerprint'],
@@ -129,23 +202,14 @@ final class MAD4B_Broker_Exact_SSH_Authority_V1 {
  public static function cli($args,$assoc):void {
   if (!defined('WP_CLI') || !WP_CLI || !class_exists('WP_CLI')
    || !class_exists('MAD4B_Central_Dual_Lane_Registry_V1',false)
-   || !MAD4B_Central_Dual_Lane_Registry_V1::central())
-    WP_CLI::error('CENTRAL_HOST_CONTEXT_REQUIRED');
+   || !MAD4B_Central_Dual_Lane_Registry_V1::central()
+   )WP_CLI::error('CENTRAL_HOST_AUTHORITY_REQUIRED');
   $action=(string)($args[0]??'');
-  // Channel-specific identity, without forcing an unrelated WP user:
-  // status = non-authorizing local inventory; claimed = WP administrator;
-  // verify = Ed25519 signed host proof with nonce + exact 305/306/312 scope.
-  // A signed preflight never executes a job or grants host authority.
-  if ($action==='status') {
-   WP_CLI::line(wp_json_encode(['contract'=>self::CONTRACT,'verifier_registered'=>true,
-     'central_scope_source'=>'original_wordpress_grants_claims_and_delegations',
-     'remote_execution_authority_automatically_granted'=>false,
-     'production_supported'=>true,'shell_executed'=>false]));
-   return;
-  }
+  // Signed host preflight can only verify existing exact WordPress grants.
+  // Other commands still need an authenticated administrative WordPress principal.
+  if ($action==='claimed' && (get_current_user_id()<1 || !current_user_can('manage_options')))
+    WP_CLI::error('CENTRAL_HOST_AUTHORITY_REQUIRED');
   if ($action==='claimed') {
-   if (get_current_user_id()<1 || !current_user_can('manage_options'))
-     WP_CLI::error('CENTRAL_HOST_AUTHORITY_REQUIRED');
    global $wpdb;
    $prefix=MAD4B_Central_VPS_Broker_V1::JOB;
    $keys=$wpdb->get_col($wpdb->prepare(
@@ -165,6 +229,13 @@ final class MAD4B_Broker_Exact_SSH_Authority_V1 {
     if (count($items)>=max(1,min(10,(int)($assoc['limit']??10))))break;
    }
    WP_CLI::line(wp_json_encode(['contract'=>self::CONTRACT,'claimed'=>$items],JSON_UNESCAPED_SLASHES));
+   return;
+  }
+  if ($action==='status') {
+   WP_CLI::line(wp_json_encode(['contract'=>self::CONTRACT,'verifier_registered'=>true,
+     'central_scope_source'=>'original_wordpress_grants_claims_and_delegations',
+     'remote_execution_authority_automatically_granted'=>false,
+     'production_supported'=>true,'shell_executed'=>false]));
    return;
   }
   if ($action!=='verify')WP_CLI::error('status_claimed_or_verify_required');
