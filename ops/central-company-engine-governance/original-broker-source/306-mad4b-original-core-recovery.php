@@ -226,6 +226,30 @@ final class MAD4B_Original_Core_Recovery_V1 {
             'executed'=>false));
     }
 
+    // The original operator sends a fresh host-signed, digest-matching
+    // sealed command only once. The bytes are handled in memory by 305;
+    // no endpoint accepts caller-supplied grants, target changes or raw shell.
+    public static function create(WP_REST_Request $request) {
+        if (!MAD4B_Central_SSH_Command_Intake_V1::permitted($request))
+            return self::reject('original_operator_required',403);
+        $id=(string)$request['job_id'];
+        $body=$request->get_json_params();
+        if (!is_array($body)||array_keys($body)!==array('sealed_payload')
+            ||!is_array($body['sealed_payload']))
+            return self::reject('signed_rebind_shape_invalid',422);
+        $record=self::readOriginalRecoveryEvidence($id);
+        if (is_wp_error($record))return $record;
+        if (($record['original_job']['company']??'')!==(string)$request['company']
+            ||(int)($record['original_job']['central_principal_id']??0)!==get_current_user_id())
+            return self::reject('original_operator_or_site_mismatch',403);
+        $out=self::createOriginalRecoveryJobOnce(array(
+            'original_job_id'=>$id,
+            'authenticated_request'=>$request,
+            'sealed_payload'=>$body['sealed_payload']
+        ));
+        return is_wp_error($out)?$out:rest_ensure_response($out);
+    }
+
     public static function routes():void {
         if (!class_exists('MAD4B_Central_Dual_Lane_Registry_V1',false)
             || !MAD4B_Central_Dual_Lane_Registry_V1::central())return;
@@ -235,6 +259,10 @@ final class MAD4B_Original_Core_Recovery_V1 {
             'methods'=>'POST',
             'permission_callback'=>array('MAD4B_Central_SSH_Command_Intake_V1','permitted'),
             'callback'=>array(__CLASS__,'record')));
+        register_rest_route('mad4b/v1',$base.'/broker-jobs/(?P<job_id>[a-f0-9]{32})/recovery-job',array(
+            'methods'=>'POST',
+            'permission_callback'=>array('MAD4B_Central_SSH_Command_Intake_V1','permitted'),
+            'callback'=>array(__CLASS__,'create')));
         register_rest_route('mad4b/v1',$endpoint,array(
             'methods'=>'GET',
             'permission_callback'=>array('MAD4B_Central_SSH_Command_Intake_V1','permitted'),
