@@ -241,16 +241,39 @@ final class MAD4B_SCP_Operation_Registry {
 				if ( ! isset( $type_positions[ $type ] ) ) $type_positions[ $type ] = array();
 				$type_positions[ $type ][] = (int) $position;
 			}
-			foreach ( array( 'planner', 'authorization', 'executor', 'verification' ) as $required_type ) {
+			$read_only = 'governed_read_only_v1' === (string) $profile_id;
+			if ( $read_only ) {
+				$expected_stages = array(
+					array( 'id'=>'discover', 'type'=>'read_check', 'required'=>true ),
+					array( 'id'=>'native_plan', 'type'=>'planner', 'required'=>true ),
+					array( 'id'=>'exact_execute', 'type'=>'executor', 'required'=>true ),
+					array( 'id'=>'readback', 'type'=>'verification', 'required'=>true ),
+				);
+				if ( array_values( $stages ) !== $expected_stages ) {
+					self::$catalog = new WP_Error( 'mad4b_operation_read_only_stage_contract_invalid', 'Bounded read-only stages must remain fully required and exactly ordered.' );
+					return self::$catalog;
+				}
+			}
+			$required_types = $read_only
+				? array( 'planner', 'executor', 'verification' )
+				: array( 'planner', 'authorization', 'executor', 'verification' );
+			foreach ( $required_types as $required_type ) {
 				if ( empty( $type_positions[ $required_type ] ) ) {
 					self::$catalog = new WP_Error( 'mad4b_operation_registry_pipeline_required_stage_missing', 'Pipeline profile is missing a required governed mutation stage.' );
 					return self::$catalog;
 				}
 			}
 			$planner_pos = min( $type_positions['planner'] );
-			$auth_pos = min( $type_positions['authorization'] );
 			$executor_pos = min( $type_positions['executor'] );
 			$verification_pos = min( $type_positions['verification'] );
+			if ( $read_only ) {
+				if ( ! empty( $type_positions['authorization'] ) || $planner_pos >= $executor_pos || $executor_pos >= $verification_pos ) {
+					self::$catalog = new WP_Error( 'mad4b_operation_read_only_profile_unsafe', 'Read-only pipeline cannot contain mutation authorization or reorder its native read stages.' );
+					return self::$catalog;
+				}
+				continue;
+			}
+			$auth_pos = min( $type_positions['authorization'] );
 			if ( ! ( $planner_pos < $auth_pos && $auth_pos < $executor_pos && $executor_pos < $verification_pos ) ) {
 				self::$catalog = new WP_Error( 'mad4b_operation_registry_pipeline_order_invalid', 'Pipeline profile violates planner/authorization/executor/verification ordering.' );
 				return self::$catalog;
@@ -258,6 +281,38 @@ final class MAD4B_SCP_Operation_Registry {
 		}
 		foreach ( $data['operations'] as $row ) {
 			$profile_id = isset( $row['pipeline_profile'] ) ? sanitize_key( (string) $row['pipeline_profile'] ) : '';
+			// This v1 bounded profile is deliberately specific, not a general
+			// unguarded way to invoke an executor with the authorization step removed.
+			if ( 'governed_read_only_v1' === $profile_id &&
+				( ( $row['id'] ?? null ) !== 'company.code-reconciliation.plan' ||
+				  ( $row['target_kind'] ?? null ) !== 'company_site' ||
+				  ( $row['planner'] ?? null ) !== 'mad4b/company-code-reconciliation-plan' ||
+				  ( $row['executor'] ?? null ) !== 'mad4b/company-code-reconciliation-compare' ||
+				  ( $row['risk'] ?? null ) !== 'medium' ||
+				  ( $row['company_and_site_bound'] ?? null ) !== true ) ) {
+				self::$catalog = new WP_Error( 'mad4b_operation_read_only_executor_not_allowlisted', 'Read-only operation must bind the exact reviewed company comparator.' );
+				return self::$catalog;
+			}
+			if ( 'governed_read_only_v1' === $profile_id &&
+				( ( $stage_bindings['native_plan']['binding_type'] ?? null ) !== 'operation_planner' ||
+				  ( $stage_bindings['exact_execute']['binding_type'] ?? null ) !== 'operation_executor' ||
+				  ( $stage_bindings['readback']['binding_type'] ?? null ) !== 'executor_owned_verification' ||
+				  ( $stage_bindings['discover']['ability'] ?? null ) !== 'mad4b/wordpress-operation-discover' ) ) {
+				self::$catalog = new WP_Error( 'mad4b_operation_read_only_stage_binding_unsafe', 'Read-only comparator stages must inherit exact original Core bindings.' );
+				return self::$catalog;
+			}
+			if ( 'governed_read_only_v1' === $profile_id &&
+				( ( $row['effect'] ?? null ) !== 'read_only' || ( $row['side_effect_class'] ?? null ) !== 'none' ||
+				  ( $row['generic_mutation_dispatch'] ?? null ) !== false ||
+				  ( $row['signed_core_evidence_required'] ?? null ) !== true ||
+				  ( $row['production_policy'] ?? null ) !== 'observe_propose_only' ) ) {
+				self::$catalog = new WP_Error( 'mad4b_operation_read_only_effect_invalid', 'Read-only operation cannot be promoted to an arbitrary or mutating executor.' );
+				return self::$catalog;
+			}
+			if ( 'governed_read_only_v1' !== $profile_id && ( $row['effect'] ?? null ) === 'read_only' ) {
+				self::$catalog = new WP_Error( 'mad4b_operation_read_only_profile_mismatch', 'Read-only operation is bound to a mutation profile.' );
+				return self::$catalog;
+			}
 			if ( '' === $profile_id || ! isset( $profiles[ $profile_id ] ) ) {
 				self::$catalog = new WP_Error( 'mad4b_operation_registry_pipeline_binding_invalid', 'Operation is not bound to a valid pipeline profile.' );
 				return self::$catalog;
