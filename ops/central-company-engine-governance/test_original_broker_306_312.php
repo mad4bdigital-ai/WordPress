@@ -83,15 +83,14 @@ $job=$dispatch->data;
 must($job['transport_id']===$transport_id,'306 lost transport id');
 must($job['target_scope']==='wordpress','306 lost target scope');
 must($job['grant_id']===$grant_id,'306 lost grant binding');
+must(($job['job_type']??null)==='signed_vps_wpcli','306 must record signed WP-CLI job type');
 $repeated=MAD4B_Central_VPS_Broker_V1::dispatch(new WP_REST_Request(
  ['company'=>'wayfatours'],['request_id'=>$id]));
 must($repeated instanceof WP_REST_Response&&$repeated->status===200,'306 repeat unsafe');
 // Only the test fixture upgrades the central job to a signed-claim-shape;
 // real Broker 306 must verify a real signature before doing so.
 $job['state']='BROKER_CLAIMED_PENDING_INDEPENDENT_HOST_AUTHORITY';
-// Exact live 306 contract records typed jobs; the hermetic fixture below
-// models the original 305 per-correlation consumed claim, not an owner grant.
-$job['job_type']='signed_vps_wpcli';
+// The fixture models the consumed 305 per-correlation claim; no claim is minted by 312.
 $opts[MAD4B_Central_VPS_Broker_V1::JOB.$id]=$job;
 $opts[MAD4B_Central_SSH_Command_Intake_V1::CLAIM_PREFIX.$grant_id.'_'.hash('sha256',$job['correlation_id'])]=$id;
 $opts[MAD4B_Central_VPS_Broker_V1::CLAIM.$id]=[
