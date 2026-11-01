@@ -2829,7 +2829,8 @@
       ],
       "status": "reviewed_for_ci_only",
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py"
       ],
       "owner_role": "Source/security CI technical review; not Repository/Site Owner attestation",
       "review_rationale": "Reviewed original bounded checkpoint broker source (actor/site/revision, expiry, no secret storage, typed CSO01 validation and no write replay), 34 original-class positive/negative PHP assertions on both PHP 7.4/8.3, including missing-provider protection and closed Staging/Production pilot. No live certification or credential exchange.",
@@ -3605,6 +3606,310 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing MCP admission, platform identity, security, owner-scoped administrative rights and execution-denial controls cover these staging-only authorization surfaces, without granting Production execution or public access.",
       "review_rationale": "New surface ability:mad4b/staging-write-grant-reconcile-staging is source-pinned in the W1 authority integration and assessed with hermetic owner-browser, agent REST route, Site Profile, OAuth, replay, write grant, exact mapping and negative permission fixtures. This is only CI source review, not evidence that the route is registered, usable, or authorized in Production."
+    },
+    {
+      "id": "ability:mad4b/company-readiness-workflow",
+      "owner_role": "MAD4B repository source/CI reviewer (non-authorizing; live acceptance and owner release approvals remain independent)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php"
+      ],
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP identity, user admission, tenant binding, queue lease, operator audit and verification controls already cover this company-scoped semantic interface. No new Production grant follows from this review.",
+      "review_rationale": "Reviewed source-level Start Your Company operation, event/ability or read-only readiness route in PR #655. The amended existing broker security test and new outcome source contract cover scoped identity, exact run, no arbitrary execution and no success from Coolify drafts or unverified receipts. Review is only CI evidence; it does not certify live executor, deploy, or Production mutation."
+    },
+    {
+      "id": "ability:mad4b/company/content_selection_changed",
+      "owner_role": "MAD4B repository source/CI reviewer (non-authorizing; live acceptance and owner release approvals remain independent)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php"
+      ],
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP identity, user admission, tenant binding, queue lease, operator audit and verification controls already cover this company-scoped semantic interface. No new Production grant follows from this review.",
+      "review_rationale": "Reviewed source-level Start Your Company operation, event/ability or read-only readiness route in PR #655. The amended existing broker security test and new outcome source contract cover scoped identity, exact run, no arbitrary execution and no success from Coolify drafts or unverified receipts. Review is only CI evidence; it does not certify live executor, deploy, or Production mutation."
+    },
+    {
+      "id": "ability:mad4b/company/created",
+      "owner_role": "MAD4B repository source/CI reviewer (non-authorizing; live acceptance and owner release approvals remain independent)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php"
+      ],
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP identity, user admission, tenant binding, queue lease, operator audit and verification controls already cover this company-scoped semantic interface. No new Production grant follows from this review.",
+      "review_rationale": "Reviewed source-level Start Your Company operation, event/ability or read-only readiness route in PR #655. The amended existing broker security test and new outcome source contract cover scoped identity, exact run, no arbitrary execution and no success from Coolify drafts or unverified receipts. Review is only CI evidence; it does not certify live executor, deploy, or Production mutation."
+    },
+    {
+      "id": "ability:mad4b/company/provider_changed",
+      "owner_role": "MAD4B repository source/CI reviewer (non-authorizing; live acceptance and owner release approvals remain independent)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php"
+      ],
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP identity, user admission, tenant binding, queue lease, operator audit and verification controls already cover this company-scoped semantic interface. No new Production grant follows from this review.",
+      "review_rationale": "Reviewed source-level Start Your Company operation, event/ability or read-only readiness route in PR #655. The amended existing broker security test and new outcome source contract cover scoped identity, exact run, no arbitrary execution and no success from Coolify drafts or unverified receipts. Review is only CI evidence; it does not certify live executor, deploy, or Production mutation."
+    },
+    {
+      "id": "ability:mad4b/company/recheck_observed",
+      "owner_role": "MAD4B repository source/CI reviewer (non-authorizing; live acceptance and owner release approvals remain independent)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php"
+      ],
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP identity, user admission, tenant binding, queue lease, operator audit and verification controls already cover this company-scoped semantic interface. No new Production grant follows from this review.",
+      "review_rationale": "Reviewed source-level Start Your Company operation, event/ability or read-only readiness route in PR #655. The amended existing broker security test and new outcome source contract cover scoped identity, exact run, no arbitrary execution and no success from Coolify drafts or unverified receipts. Review is only CI evidence; it does not certify live executor, deploy, or Production mutation."
+    },
+    {
+      "id": "ability:mad4b/company/stage_blocked",
+      "owner_role": "MAD4B repository source/CI reviewer (non-authorizing; live acceptance and owner release approvals remain independent)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php"
+      ],
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP identity, user admission, tenant binding, queue lease, operator audit and verification controls already cover this company-scoped semantic interface. No new Production grant follows from this review.",
+      "review_rationale": "Reviewed source-level Start Your Company operation, event/ability or read-only readiness route in PR #655. The amended existing broker security test and new outcome source contract cover scoped identity, exact run, no arbitrary execution and no success from Coolify drafts or unverified receipts. Review is only CI evidence; it does not certify live executor, deploy, or Production mutation."
+    },
+    {
+      "id": "ability:mad4b/start-your-company-outcome",
+      "owner_role": "MAD4B repository source/CI reviewer (non-authorizing; live acceptance and owner release approvals remain independent)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php"
+      ],
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP identity, user admission, tenant binding, queue lease, operator audit and verification controls already cover this company-scoped semantic interface. No new Production grant follows from this review.",
+      "review_rationale": "Reviewed source-level Start Your Company operation, event/ability or read-only readiness route in PR #655. The amended existing broker security test and new outcome source contract cover scoped identity, exact run, no arbitrary execution and no success from Coolify drafts or unverified receipts. Review is only CI evidence; it does not certify live executor, deploy, or Production mutation."
+    },
+    {
+      "id": "ability:mad4b/start-your-company-plan",
+      "owner_role": "MAD4B repository source/CI reviewer (non-authorizing; live acceptance and owner release approvals remain independent)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php"
+      ],
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP identity, user admission, tenant binding, queue lease, operator audit and verification controls already cover this company-scoped semantic interface. No new Production grant follows from this review.",
+      "review_rationale": "Reviewed source-level Start Your Company operation, event/ability or read-only readiness route in PR #655. The amended existing broker security test and new outcome source contract cover scoped identity, exact run, no arbitrary execution and no success from Coolify drafts or unverified receipts. Review is only CI evidence; it does not certify live executor, deploy, or Production mutation."
+    },
+    {
+      "id": "ability:mad4b/start-your-company-resume",
+      "owner_role": "MAD4B repository source/CI reviewer (non-authorizing; live acceptance and owner release approvals remain independent)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php"
+      ],
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP identity, user admission, tenant binding, queue lease, operator audit and verification controls already cover this company-scoped semantic interface. No new Production grant follows from this review.",
+      "review_rationale": "Reviewed source-level Start Your Company operation, event/ability or read-only readiness route in PR #655. The amended existing broker security test and new outcome source contract cover scoped identity, exact run, no arbitrary execution and no success from Coolify drafts or unverified receipts. Review is only CI evidence; it does not certify live executor, deploy, or Production mutation."
+    },
+    {
+      "id": "ability:mad4b/start-your-company-run",
+      "owner_role": "MAD4B repository source/CI reviewer (non-authorizing; live acceptance and owner release approvals remain independent)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php"
+      ],
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP identity, user admission, tenant binding, queue lease, operator audit and verification controls already cover this company-scoped semantic interface. No new Production grant follows from this review.",
+      "review_rationale": "Reviewed source-level Start Your Company operation, event/ability or read-only readiness route in PR #655. The amended existing broker security test and new outcome source contract cover scoped identity, exact run, no arbitrary execution and no success from Coolify drafts or unverified receipts. Review is only CI evidence; it does not certify live executor, deploy, or Production mutation."
+    },
+    {
+      "id": "operation:company.create",
+      "owner_role": "MAD4B repository source/CI reviewer (non-authorizing; live acceptance and owner release approvals remain independent)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php"
+      ],
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP identity, user admission, tenant binding, queue lease, operator audit and verification controls already cover this company-scoped semantic interface. No new Production grant follows from this review.",
+      "review_rationale": "Reviewed source-level Start Your Company operation, event/ability or read-only readiness route in PR #655. The amended existing broker security test and new outcome source contract cover scoped identity, exact run, no arbitrary execution and no success from Coolify drafts or unverified receipts. Review is only CI evidence; it does not certify live executor, deploy, or Production mutation."
+    },
+    {
+      "id": "operation:company.plugin-sync.request",
+      "owner_role": "MAD4B repository source/CI reviewer (non-authorizing; live acceptance and owner release approvals remain independent)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php"
+      ],
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP identity, user admission, tenant binding, queue lease, operator audit and verification controls already cover this company-scoped semantic interface. No new Production grant follows from this review.",
+      "review_rationale": "Reviewed source-level Start Your Company operation, event/ability or read-only readiness route in PR #655. The amended existing broker security test and new outcome source contract cover scoped identity, exact run, no arbitrary execution and no success from Coolify drafts or unverified receipts. Review is only CI evidence; it does not certify live executor, deploy, or Production mutation."
+    },
+    {
+      "id": "operation:company.repair",
+      "owner_role": "MAD4B repository source/CI reviewer (non-authorizing; live acceptance and owner release approvals remain independent)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php"
+      ],
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP identity, user admission, tenant binding, queue lease, operator audit and verification controls already cover this company-scoped semantic interface. No new Production grant follows from this review.",
+      "review_rationale": "Reviewed source-level Start Your Company operation, event/ability or read-only readiness route in PR #655. The amended existing broker security test and new outcome source contract cover scoped identity, exact run, no arbitrary execution and no success from Coolify drafts or unverified receipts. Review is only CI evidence; it does not certify live executor, deploy, or Production mutation."
+    },
+    {
+      "id": "rest:mad4b/v1/company-brand-readiness/companies/(?P<company>[a-z][a-z0-9-]{2,47})/workflow",
+      "owner_role": "MAD4B repository source/CI reviewer (non-authorizing; live acceptance and owner release approvals remain independent)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php"
+      ],
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP identity, user admission, tenant binding, queue lease, operator audit and verification controls already cover this company-scoped semantic interface. No new Production grant follows from this review.",
+      "review_rationale": "Reviewed source-level Start Your Company operation, event/ability or read-only readiness route in PR #655. The amended existing broker security test and new outcome source contract cover scoped identity, exact run, no arbitrary execution and no success from Coolify drafts or unverified receipts. Review is only CI evidence; it does not certify live executor, deploy, or Production mutation."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-readiness-governance.php",
+      "owner_role": "MAD4B repository source/CI reviewer (non-authorizing; live acceptance and owner release approvals remain independent)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php"
+      ],
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP identity, user admission, tenant binding, queue lease, operator audit and verification controls already cover this company-scoped semantic interface. No new Production grant follows from this review.",
+      "review_rationale": "Reviewed source-level Start Your Company operation, event/ability or read-only readiness route in PR #655. The amended existing broker security test and new outcome source contract cover scoped identity, exact run, no arbitrary execution and no success from Coolify drafts or unverified receipts. Review is only CI evidence; it does not certify live executor, deploy, or Production mutation."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-start-your-company-runtime.php",
+      "owner_role": "MAD4B repository source/CI reviewer (non-authorizing; live acceptance and owner release approvals remain independent)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php"
+      ],
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP identity, user admission, tenant binding, queue lease, operator audit and verification controls already cover this company-scoped semantic interface. No new Production grant follows from this review.",
+      "review_rationale": "Reviewed source-level Start Your Company operation, event/ability or read-only readiness route in PR #655. The amended existing broker security test and new outcome source contract cover scoped identity, exact run, no arbitrary execution and no success from Coolify drafts or unverified receipts. Review is only CI evidence; it does not certify live executor, deploy, or Production mutation."
     }
   ],
   "lifecycle": [],
@@ -11496,6 +11801,139 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing pinned source validation, exact SHA identity, bounded GitHub HTTPS and protected candidate deploy controls cover the compact Git Data lookup.",
       "review_rationale": "The GitHub /commits/{sha} REST response may exceed the existing 262144-byte budget for multi-parent integration changes. Only the exact immutable commit lookup changes to /git/commits/{sha} (small Git object metadata). Do not raise limits, change other source selectors or treat any redirect/invalid/mismatched response as verified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/operation-registry.json",
+      "source_blob_sha": "4ed83fa12e0c9fea31267a4a73116c8756974b1f",
+      "owner_role": "MAD4B source security/CI reviewer; not Site or Repository Owner deployment authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php"
+      ],
+      "review_rationale": "Company create/repair semantic registry is scoped to exact plan/run authorization, and optional plugin sync remains plan-only; no generic shell execution or Production grant. Source was matched by exact Git blob SHA. CI test evidence only; staging rollout, tenant isolation certification, user consent and release gates remain mandatory."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-readiness-governance.php",
+      "source_blob_sha": "a194e69503e3b66fc535e10d14166e6f657d4b1b",
+      "owner_role": "MAD4B source security/CI reviewer; not Site or Repository Owner deployment authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php"
+      ],
+      "review_rationale": "Company readiness REST and operator guards enforce company assignment and separate observation from mutation. Source was matched by exact Git blob SHA. CI test evidence only; staging rollout, tenant isolation certification, user consent and release gates remain mandatory."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-work-queue.php",
+      "source_blob_sha": "6ef7c410fb5c9e83bf5caff239062d0784169d53",
+      "owner_role": "MAD4B source security/CI reviewer; not Site or Repository Owner deployment authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/remote-work-queue-cancellation-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py"
+      ],
+      "review_rationale": "Company stage completion requires exact run and tenant identity plus provider-return checkpoint and independent readback; cancellation reconciliation remains intact. Source was matched by exact Git blob SHA. CI test evidence only; staging rollout, tenant isolation certification, user consent and release gates remain mandatory."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-start-your-company-runtime.php",
+      "source_blob_sha": "93c3b201b9c7efb5cc121d749a24197db94d7a74",
+      "owner_role": "MAD4B source security/CI reviewer; not Site or Repository Owner deployment authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/remote-work-queue-cancellation-runtime.php"
+      ],
+      "review_rationale": "Unified outcome, durable run identity, stage dependencies, task readback and explicit executor admission are reviewed as a fail-closed staging candidate. Source was matched by exact Git blob SHA. CI test evidence only; staging rollout, tenant isolation certification, user consent and release gates remain mandatory."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "037bb3a0f5b6120fee2b327cea80d56f6ae34f26",
+      "owner_role": "MAD4B source security/CI reviewer; not Site or Repository Owner deployment authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php"
+      ],
+      "review_rationale": "Control Plane source inclusion is checked for exactly one bundled runtime and prevents accidental independent WordPress plugin registration. Source was matched by exact Git blob SHA. CI test evidence only; staging rollout, tenant isolation certification, user consent and release gates remain mandatory."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/operation-registry.json",
+      "source_blob_sha": "d7d124f72ec101559607a3f2523fdcf6cc036901",
+      "owner_role": "MAD4B code reviewer for company executor admission; no tenant or release mutation authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-vps-executor-admission-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py"
+      ],
+      "review_rationale": "Exact current Git blob reviewed for company.create and company.repair requiring a registered VPS host runner while generic mutation dispatch remains disabled. Executable CI source contracts are committed in the same pull request. Owner approval and live provider evidence remain separate."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-start-your-company-runtime.php",
+      "source_blob_sha": "9b1f9688964557dd0315f2c48259c6c5e3b5ae47",
+      "owner_role": "MAD4B code reviewer for company executor admission; no tenant or release mutation authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-vps-executor-admission-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py"
+      ],
+      "review_rationale": "Exact current Git blob reviewed for company-scoped executor admission requiring explicit staged apply, rollback and independent readback handlers, scoped supported actions and a fresh probe. This is only CI source evidence and does not certify or install a VPS executor."
     }
   ],
   "code_change_rules": {

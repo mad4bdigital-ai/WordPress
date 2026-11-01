@@ -1,0 +1,657 @@
+{
+  "contract": "mad4b.company-options-field-registry.v1",
+  "authority": "MAD4B Control Plane",
+  "definition_origin": "tours.dev.mad4b.com JetEngine page definitions",
+  "value_authority": "per_company_own_jetengine_options_page",
+  "company": "wayfatours",
+  "page_count": 4,
+  "field_count": 112,
+  "pages": {
+    "contact-and-help-info": {
+      "scope": "brand_and_contact",
+      "label": "Contact and Help Info",
+      "fields": [
+        {
+          "key": "support_group_url_aria_label",
+          "type": "text",
+          "label": "Support Group url (aria-label)"
+        },
+        {
+          "key": "support_group_url",
+          "type": "text",
+          "label": "Support Group url"
+        },
+        {
+          "key": "support_chat_url",
+          "type": "text",
+          "label": "Support chat_url"
+        },
+        {
+          "key": "card-as-action1",
+          "type": "text",
+          "label": "card-as-action1"
+        },
+        {
+          "key": "trip_advisor_review_shortcode",
+          "type": "text",
+          "label": "Trip Advisor Review Shortcode"
+        },
+        {
+          "key": "site_icon_512x512",
+          "type": "media",
+          "label": "Site Icon 512x512"
+        },
+        {
+          "key": "site_icon_280x100_site_header",
+          "type": "media",
+          "label": "Site Icon 280x100 (Site Header)"
+        },
+        {
+          "key": "site_whatsapp_num",
+          "type": "text",
+          "label": "Site Whatsapp Num"
+        },
+        {
+          "key": "site_wa_tel_link",
+          "type": "text",
+          "label": "site Wa/tel Link"
+        },
+        {
+          "key": "site_email",
+          "type": "text",
+          "label": "Site Email"
+        },
+        {
+          "key": "site_email_link",
+          "type": "text",
+          "label": "Site Email Link"
+        },
+        {
+          "key": "site_location_address",
+          "type": "text",
+          "label": "Site Location Address"
+        },
+        {
+          "key": "site_location_address_link",
+          "type": "text",
+          "label": "Site Location Address (Link)"
+        },
+        {
+          "key": "social_links",
+          "type": "text",
+          "label": "Social Links"
+        },
+        {
+          "key": "site_facebook_page_link",
+          "type": "text",
+          "label": "site Facebook Page Link"
+        },
+        {
+          "key": "site_instagram_page_link",
+          "type": "text",
+          "label": "site Instagram Page Link"
+        }
+      ],
+      "value_storage": {
+        "system": "WordPress JetEngine Options Pages",
+        "site": "tenant",
+        "option_name": "contact-and-help-info"
+      },
+      "editor": {
+        "wp_admin_page": "contact-and-help-info"
+      },
+      "onboarding": {
+        "copy_source_values": false,
+        "empty_if_unconfigured": true,
+        "accept_owner_entry_after_workflow": true
+      }
+    },
+    "look-and-feel": {
+      "scope": "brand_media_and_presentation",
+      "label": "Look and Feel",
+      "fields": [
+        {
+          "key": "presentation_home_media_tab",
+          "type": "text",
+          "label": "Home & Search"
+        },
+        {
+          "key": "presentation_home_media_tab_section_intro",
+          "type": "html",
+          "label": "Home and search imagery"
+        },
+        {
+          "key": "home_page_header_image",
+          "type": "media",
+          "label": "Home Page Header Image"
+        },
+        {
+          "key": "tour_search_header_image",
+          "type": "media",
+          "label": "Tour Search Header Image"
+        },
+        {
+          "key": "presentation_destinations_tab",
+          "type": "text",
+          "label": "Destination Headers"
+        },
+        {
+          "key": "presentation_destinations_tab_section_intro",
+          "type": "html",
+          "label": "Destination archive images"
+        },
+        {
+          "key": "destination_activity_card_primary",
+          "type": "select",
+          "label": "Explore Activities — Card Template (Grid & List)"
+        },
+        {
+          "key": "continents_archive_header_image",
+          "type": "media",
+          "label": "Continents Archive Header Image"
+        },
+        {
+          "key": "countries_archive_header_image",
+          "type": "media",
+          "label": "Countries Archive Header Image"
+        },
+        {
+          "key": "cities_archive_header_image",
+          "type": "media",
+          "label": "Cities Archive Header Image"
+        },
+        {
+          "key": "location_archive_header_image",
+          "type": "media",
+          "label": "Location Archive Header Image"
+        },
+        {
+          "key": "attraction_archive_header_image",
+          "type": "media",
+          "label": "Attraction Archive Header Image"
+        },
+        {
+          "key": "presentation_product_archives_tab",
+          "type": "text",
+          "label": "Service Archives"
+        },
+        {
+          "key": "presentation_product_archives_tab_section_intro",
+          "type": "html",
+          "label": "Product and service archive images"
+        },
+        {
+          "key": "tours_archive_header_image",
+          "type": "media",
+          "label": "Tours Archive Header Image"
+        },
+        {
+          "key": "properties_archive_header_image",
+          "type": "media",
+          "label": "Properties Archive Header Image"
+        },
+        {
+          "key": "units_archive_header_image",
+          "type": "media",
+          "label": "Units Archive Header Image"
+        },
+        {
+          "key": "transportations_archive_header_image",
+          "type": "media",
+          "label": "Transportations Archive Header Image"
+        },
+        {
+          "key": "transportations_companies_archive_header_image",
+          "type": "media",
+          "label": "Transportations Companies Archive Header Image"
+        },
+        {
+          "key": "dmcs_archive_header_image",
+          "type": "media",
+          "label": "DMCs Archive Header Image"
+        },
+        {
+          "key": "drivers_archive_header_image",
+          "type": "media",
+          "label": "Drivers Archive Header Image"
+        },
+        {
+          "key": "jops_archive_header_image",
+          "type": "media",
+          "label": "Jops Archive Header Image"
+        },
+        {
+          "key": "guides_archive_header_image",
+          "type": "media",
+          "label": "Guides Archive Header Image"
+        },
+        {
+          "key": "busness_reviews_section",
+          "type": "text",
+          "label": "Company & Reviews"
+        },
+        {
+          "key": "busness_reviews_section_section_intro",
+          "type": "html",
+          "label": "Company and traveler testimonials"
+        },
+        {
+          "key": "company_about_customization",
+          "type": "media",
+          "label": "Company About Customization"
+        },
+        {
+          "key": "review_hero_image",
+          "type": "media",
+          "label": "Review Hero Image"
+        },
+        {
+          "key": "review_gellery_slider",
+          "type": "gallery",
+          "label": "Gellery Slider"
+        },
+        {
+          "key": "presentation_tours_copy_tab",
+          "type": "text",
+          "label": "Next Trip & Tours"
+        },
+        {
+          "key": "presentation_tours_copy_tab_section_intro",
+          "type": "html",
+          "label": "Tour recommendations"
+        },
+        {
+          "key": "destination_next_trip_heading",
+          "type": "text",
+          "label": "Next Trip — Section Heading"
+        },
+        {
+          "key": "destination_next_trip_subheading",
+          "type": "textarea",
+          "label": "Next Trip — Short Introduction"
+        },
+        {
+          "key": "destination_tours_heading",
+          "type": "text",
+          "label": "Destination — Tours Heading"
+        },
+        {
+          "key": "presentation_stays_copy_tab",
+          "type": "text",
+          "label": "Accommodation"
+        },
+        {
+          "key": "presentation_stays_copy_tab_section_intro",
+          "type": "html",
+          "label": "Stay recommendations"
+        },
+        {
+          "key": "destination_stays_heading",
+          "type": "text",
+          "label": "Destination — Accommodation Heading"
+        },
+        {
+          "key": "presentation_transport_copy_tab",
+          "type": "text",
+          "label": "Transport"
+        },
+        {
+          "key": "presentation_transport_copy_tab_section_intro",
+          "type": "html",
+          "label": "Road, rail and air services"
+        },
+        {
+          "key": "destination_transport_heading",
+          "type": "text",
+          "label": "Destination — Transport Heading"
+        },
+        {
+          "key": "destination_road_heading",
+          "type": "text",
+          "label": "Road transfers and private vehicles"
+        },
+        {
+          "key": "destination_rail_heading",
+          "type": "text",
+          "label": "Rail journeys and train services"
+        },
+        {
+          "key": "destination_air_heading",
+          "type": "text",
+          "label": "Flights and air transfers"
+        },
+        {
+          "key": "presentation_messages_copy_tab",
+          "type": "text",
+          "label": "Calls to Action"
+        },
+        {
+          "key": "presentation_messages_copy_tab_section_intro",
+          "type": "html",
+          "label": "Calls to action and empty states"
+        },
+        {
+          "key": "destination_quote_cta_label",
+          "type": "text",
+          "label": "Destination — Quote CTA"
+        },
+        {
+          "key": "destination_services_note",
+          "type": "textarea",
+          "label": "Destination — One Section Note"
+        },
+        {
+          "key": "destination_no_results_label",
+          "type": "text",
+          "label": "Destination — Empty Results Label"
+        },
+        {
+          "key": "company_pattern_backgrounds_tab",
+          "type": "text",
+          "label": "Brand Patterns & Shapes"
+        },
+        {
+          "key": "company_pattern_backgrounds_tab_intro",
+          "type": "html",
+          "label": "Brand Pattern Library"
+        },
+        {
+          "key": "company_pattern_preset",
+          "type": "select",
+          "label": "Default company surface pattern"
+        },
+        {
+          "key": "company_pattern_accent",
+          "type": "colorpicker",
+          "label": "Pattern accent color"
+        },
+        {
+          "key": "company_pattern_strength",
+          "type": "select",
+          "label": "Pattern contrast"
+        },
+        {
+          "key": "company_pattern_media",
+          "type": "media",
+          "label": "Company pattern artwork"
+        },
+        {
+          "key": "company_pattern_mobile",
+          "type": "select",
+          "label": "Mobile pattern behavior"
+        }
+      ],
+      "value_storage": {
+        "system": "WordPress JetEngine Options Pages",
+        "site": "tenant",
+        "option_name": "look-and-feel"
+      },
+      "editor": {
+        "wp_admin_page": "look-and-feel"
+      },
+      "onboarding": {
+        "copy_source_values": false,
+        "empty_if_unconfigured": true,
+        "accept_owner_entry_after_workflow": true
+      }
+    },
+    "company-communication-operations": {
+      "scope": "company_communications",
+      "label": "Company Communication & Operations",
+      "fields": [
+        {
+          "key": "company_identity_section",
+          "type": "html",
+          "label": "Company identity and reply routing"
+        },
+        {
+          "key": "company_display_name",
+          "type": "text",
+          "label": "Company sender display name"
+        },
+        {
+          "key": "transactional_from_email",
+          "type": "text",
+          "label": "Transactional From address"
+        },
+        {
+          "key": "traveler_reply_to",
+          "type": "text",
+          "label": "Traveler Reply-To email"
+        },
+        {
+          "key": "bookings_inbox",
+          "type": "text",
+          "label": "Reservations team inbox"
+        },
+        {
+          "key": "sales_inbox",
+          "type": "text",
+          "label": "Sales team inbox"
+        },
+        {
+          "key": "support_inbox",
+          "type": "text",
+          "label": "Traveler support inbox"
+        },
+        {
+          "key": "operations_internal_inbox",
+          "type": "text",
+          "label": "Internal operations group inbox"
+        },
+        {
+          "key": "operations_external_inbox",
+          "type": "text",
+          "label": "External operations partner inbox"
+        },
+        {
+          "key": "operational_team_section",
+          "type": "html",
+          "label": "Operations team membership"
+        },
+        {
+          "key": "operations_internal_team",
+          "type": "repeater",
+          "label": "Internal operations members"
+        },
+        {
+          "key": "operations_external_team",
+          "type": "repeater",
+          "label": "External operations / supplier contacts"
+        },
+        {
+          "key": "governance_section",
+          "type": "html",
+          "label": "Communication routing and controls"
+        },
+        {
+          "key": "outbound_email_policy",
+          "type": "select",
+          "label": "Outbound transactional messages"
+        },
+        {
+          "key": "woo_routing_policy",
+          "type": "select",
+          "label": "WooCommerce transactional sender/recipient inheritance"
+        },
+        {
+          "key": "fluent_forms_routing_policy",
+          "type": "select",
+          "label": "Fluent Forms #6 recipient inheritance"
+        },
+        {
+          "key": "notify_internal_operations",
+          "type": "select",
+          "label": "Internal team order notifications"
+        },
+        {
+          "key": "notify_external_operations",
+          "type": "select",
+          "label": "External partner order notifications"
+        },
+        {
+          "key": "notify_traveler",
+          "type": "select",
+          "label": "Traveler transactional confirmation"
+        },
+        {
+          "key": "email_transport",
+          "type": "select",
+          "label": "Transport preference"
+        },
+        {
+          "key": "smtp_connection_label",
+          "type": "text",
+          "label": "SMTP connection label"
+        },
+        {
+          "key": "delivery_policy_section",
+          "type": "html",
+          "label": "Diagnostics and lifecycle"
+        },
+        {
+          "key": "operations_escalation_email",
+          "type": "text",
+          "label": "Escalation mailbox"
+        },
+        {
+          "key": "operations_escalation_note",
+          "type": "textarea",
+          "label": "Internal escalation policy"
+        }
+      ],
+      "value_storage": {
+        "system": "WordPress JetEngine Options Pages",
+        "site": "tenant",
+        "option_name": "company-communication-operations"
+      },
+      "editor": {
+        "wp_admin_page": "company-communication-operations"
+      },
+      "onboarding": {
+        "copy_source_values": false,
+        "empty_if_unconfigured": true,
+        "accept_owner_entry_after_workflow": true
+      }
+    },
+    "global-offers": {
+      "scope": "company_marketing",
+      "label": "Offers & Promotions",
+      "fields": [
+        {
+          "key": "offers_enabled",
+          "type": "switcher",
+          "label": "Enable Global Offer"
+        },
+        {
+          "key": "active_offer_id",
+          "type": "number",
+          "label": "Active Offer Post ID"
+        },
+        {
+          "key": "headline",
+          "type": "text",
+          "label": "Fallback Headline"
+        },
+        {
+          "key": "cta_label",
+          "type": "text",
+          "label": "CTA Label"
+        },
+        {
+          "key": "cta_url",
+          "type": "text",
+          "label": "CTA URL"
+        },
+        {
+          "key": "display_home",
+          "type": "switcher",
+          "label": "Show on Homepage"
+        },
+        {
+          "key": "display_archive",
+          "type": "switcher",
+          "label": "Show on Archives"
+        },
+        {
+          "key": "display_single",
+          "type": "switcher",
+          "label": "Show on Single Pages"
+        },
+        {
+          "key": "desktop_enabled",
+          "type": "switcher",
+          "label": "Desktop"
+        },
+        {
+          "key": "tablet_enabled",
+          "type": "switcher",
+          "label": "Tablet"
+        },
+        {
+          "key": "mobile_enabled",
+          "type": "switcher",
+          "label": "Mobile"
+        },
+        {
+          "key": "dismissible",
+          "type": "switcher",
+          "label": "Allow Dismiss"
+        },
+        {
+          "key": "background_color",
+          "type": "colorpicker",
+          "label": "Background Color"
+        },
+        {
+          "key": "text_color",
+          "type": "colorpicker",
+          "label": "Text Color"
+        },
+        {
+          "key": "accent_color",
+          "type": "colorpicker",
+          "label": "Button Background"
+        },
+        {
+          "key": "button_text_color",
+          "type": "colorpicker",
+          "label": "Button Text Color"
+        },
+        {
+          "key": "bar_padding",
+          "type": "number",
+          "label": "Vertical Padding (px)"
+        },
+        {
+          "key": "campaign_label",
+          "type": "text",
+          "label": "Eyebrow Label"
+        }
+      ],
+      "value_storage": {
+        "system": "WordPress JetEngine Options Pages",
+        "site": "tenant",
+        "option_name": "global-offers"
+      },
+      "editor": {
+        "wp_admin_page": "global-offers"
+      },
+      "onboarding": {
+        "copy_source_values": false,
+        "empty_if_unconfigured": true,
+        "accept_owner_entry_after_workflow": true
+      }
+    }
+  },
+  "rules": {
+    "all_source_option_values_excluded": true,
+    "only_schema_definitions_mirrored": true,
+    "brand_media_links_are_blank_until_entered": true,
+    "preserve_dynamic_option_field_binders": true,
+    "owner_edits_using_jetengine_options_pages": true,
+    "empty_values_must_not_be_exported_to_other_companies": true,
+    "price_booking_policies_are_not_reset_by_brand_customization": true
+  },
+  "fingerprint": "2d27aea21b7e3852db9dc07ff1e1d4e5a8c69c2aa0e66f7231158d9a16387311"
+}

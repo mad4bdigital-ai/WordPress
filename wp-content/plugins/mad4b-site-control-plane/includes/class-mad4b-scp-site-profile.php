@@ -504,6 +504,7 @@ final class MAD4B_SCP_Site_Profile {
 	public static function feature_enabled( $feature ) {
 		$profile = self::profile();
 		$feature = sanitize_key( (string) $feature );
+		if ( 'provider_isolation' === $feature ) return self::provider_isolation_enabled();
 		if ( ! self::origin_enrolled() || empty( $profile['features'] ) || ! is_array( $profile['features'] ) ) return false;
 		if ( empty( $profile['features'][ $feature ] ) ) return false;
 		if ( 'write' === $feature && 'production' === self::current_environment() && empty( $profile['features']['production_write_confirmed'] ) ) return false;
@@ -514,7 +515,19 @@ final class MAD4B_SCP_Site_Profile {
 	public static function skills_enabled() { return self::feature_enabled( 'skills' ); }
 	public static function write_enabled() { return self::feature_enabled( 'write' ); }
 	public static function acceptance_enabled() { return self::feature_enabled( 'acceptance' ); }
-	public static function provider_isolation_enabled() { return self::feature_enabled( 'provider_isolation' ); }
+	public static function provider_isolation_enabled() {
+        // Missing provenance on pre-policy records is legacy default, not
+        // evidence of an administrator's deliberate opt-out. Do not rewrite
+        // the stored Site Profile or its digest on a read.
+        if ( ! self::origin_enrolled() ) return false;
+        return ! self::provider_isolation_explicit_opt_out();
+    }
+
+    public static function provider_isolation_explicit_opt_out() {
+        $profile = self::profile();
+        return true === ( $profile['provider_isolation_explicit_opt_out'] ?? false )
+            && empty( $profile['features']['provider_isolation'] );
+    }
 	public static function managed_runtime_enabled() { return self::feature_enabled( 'managed_runtime' ); }
 
 	public static function display_name() {
@@ -942,8 +955,13 @@ final class MAD4B_SCP_Site_Profile {
 				? substr( sanitize_text_field( (string) $existing_normalized['display_name'] ), 0, 191 )
 				: substr( sanitize_text_field( $current_display_name ), 0, 191 ) );
 
-		$record = array(
-			'contract' => self::CONTRACT,
+        $provider_isolation_explicit_opt_out = array_key_exists( 'provider_isolation_enabled', $input )
+            ? false === (bool) $input['provider_isolation_enabled']
+            : ( $existing_identity_matches && true === ( $existing_normalized['provider_isolation_explicit_opt_out'] ?? false )
+                && empty( $existing_normalized['features']['provider_isolation'] ) );
+        $record = array(
+            'provider_isolation_explicit_opt_out' => (bool) $provider_isolation_explicit_opt_out,
+            'contract' => self::CONTRACT,
 			'version' => self::VERSION,
 			'site_uuid' => $site_uuid,
 			'revision' => $revision,
@@ -961,7 +979,10 @@ final class MAD4B_SCP_Site_Profile {
 				'skills' => ! empty( $input['skills_enabled'] ),
 				'write' => $write,
 				'production_write_confirmed' => $production_confirmed,
-				'provider_isolation' => ! empty( $input['provider_isolation_enabled'] ),
+                // Default ON for new and legacy Site Profiles. Only a
+                // recorded explicit administrator opt-out remains OFF.
+                // Neither option changes the separate Production gate.
+                'provider_isolation' => ! $provider_isolation_explicit_opt_out,
 				'managed_runtime' => ! empty( $input['managed_runtime_enabled'] ),
 				'acceptance' => ! empty( $input['acceptance_enabled'] ),
 			),
@@ -1445,7 +1466,7 @@ final class MAD4B_SCP_Site_Profile {
 			'chatgpt_app_id' => '',
 			'oauth_user_ids' => array(),
 			'related_origins' => isset( $legacy['related_origins'] ) && is_array( $legacy['related_origins'] ) ? $legacy['related_origins'] : array(),
-			'features' => array( 'oauth' => false, 'skills' => false, 'write' => false, 'production_write_confirmed' => false, 'provider_isolation' => false, 'managed_runtime' => false, 'acceptance' => false ),
+			'features' => array( 'oauth' => false, 'skills' => false, 'write' => false, 'production_write_confirmed' => false, 'provider_isolation' => true, 'managed_runtime' => false, 'acceptance' => false ),
 			'legacy_agent_slug' => '',
 			'legacy_zero_touch' => false,
 			'migrated_from_contract' => self::LEGACY_CONTRACT,
@@ -1538,6 +1559,16 @@ final class MAD4B_SCP_Site_Profile {
 			'foreign_profile_detected' => $foreign_profile_detected,
 			'profile_authority_quarantined' => ! $authority_ready,
 			'reenrollment_required' => $reenrollment_required,
+            'provider_isolation_policy' => 'default_on_explicit_opt_out_only',
+            'provider_isolation_explicit_opt_out' => $configured
+                && true === ( $profile['provider_isolation_explicit_opt_out'] ?? false )
+                && empty( $profile['features']['provider_isolation'] ),
+            'provider_isolation_effective' => $authority_ready
+                && ! ( true === ( $profile['provider_isolation_explicit_opt_out'] ?? false )
+                    && empty( $profile['features']['provider_isolation'] ) ),
+            'provider_isolation_legacy_default_pending_persist' => $configured
+                && empty( $profile['features']['provider_isolation'] )
+                && true !== ( $profile['provider_isolation_explicit_opt_out'] ?? false ),
 			'write_enabled' => $authority_ready && self::record_feature_enabled( $profile, 'write', $environment ),
 			'oauth_enabled' => $authority_ready && self::record_feature_enabled( $profile, 'oauth', $environment ),
 			'skills_enabled' => $authority_ready && self::record_feature_enabled( $profile, 'skills', $environment ),
@@ -1646,7 +1677,7 @@ final class MAD4B_SCP_Site_Profile {
 			if ( isset( $record['mutation_reconcile_claim'] ) && ( ! is_string( $record['mutation_reconcile_claim'] ) || 1 !== preg_match( '/^(?:[a-f0-9]{32}|[a-f0-9-]{36})$/i', $record['mutation_reconcile_claim'] ) ) ) return false;
 			if ( isset( $record['mutation_reconcile_started_at'] ) && ! is_string( $record['mutation_reconcile_started_at'] ) ) return false;
 		}
-		foreach ( array( 'legacy_zero_touch', 'implicit_production_override_confirmed', 'migration_requires_reenrollment' ) as $field ) {
+		foreach ( array( 'legacy_zero_touch', 'implicit_production_override_confirmed', 'migration_requires_reenrollment', 'provider_isolation_explicit_opt_out' ) as $field ) {
 			if ( isset( $record[ $field ] ) && ! is_bool( $record[ $field ] ) ) return false;
 		}
 		if ( isset( $record['deployment_binding_digest'] ) ) {

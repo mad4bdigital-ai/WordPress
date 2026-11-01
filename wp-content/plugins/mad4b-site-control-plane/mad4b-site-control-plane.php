@@ -545,6 +545,15 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-exporter.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-runtime-certification.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-abilities.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-remote-work-queue.php';
+ // Single central runtime, packaged with the plugin: no one-off shell or MU install.
+ // Existing MU deployments retain precedence; no duplicate class definitions.
+ if ( defined('DB_NAME') && DB_NAME === 'etg_commerce_staging'
+      && wp_parse_url(home_url(), PHP_URL_HOST) === 'tours.dev.mad4b.com' ) {
+     if ( ! class_exists('MAD4B_Company_Readiness_Governance', false) )
+         require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-company-readiness-governance.php';
+     if ( ! class_exists('MAD4B_Start_Company_Runtime', false) )
+         require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-start-your-company-runtime.php';
+ }
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-remote-operation-parity.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-convergence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-enrollment-dispatch.php';

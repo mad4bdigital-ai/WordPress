@@ -33,8 +33,11 @@ final class MAD4B_SCP_Remote_Work_Queue {
 		$registered = class_exists( 'MAD4B_SCP_Search_Work_Operations' ) ? MAD4B_SCP_Search_Work_Operations::definitions( $base ) : $base;
 		$registered = class_exists( 'MAD4B_SCP_Assistant_Read_Work_Operations', false )
 			? MAD4B_SCP_Assistant_Read_Work_Operations::definitions( $registered ) : $registered;
-		return class_exists( 'MAD4B_SCP_Standalone_Build_Control', false )
+		$registered = class_exists( 'MAD4B_SCP_Standalone_Build_Control', false )
 			? MAD4B_SCP_Standalone_Build_Control::work_definitions( $registered ) : $registered;
+		// Registered semantic company stages only; never raw shell, SQL or arbitrary commands.
+		return class_exists( 'MAD4B_SCP_Company_Provisioning_Work_Operations', false )
+			? MAD4B_SCP_Company_Provisioning_Work_Operations::definitions( $registered ) : $registered;
 	}
 
 	private static function now() { return time(); }
@@ -460,6 +463,15 @@ final class MAD4B_SCP_Remote_Work_Queue {
 				if ( ! in_array( $current, array( 'not_entered', 'provider_entered' ), true ) ) return new WP_Error( 'mad4b_remote_work_provider_checkpoint_regression', 'Provider checkpoint cannot move backward.' );
 				if ( 0 === strpos( (string) ( $job['operation_id'] ?? '' ), 'assistant_' )
 					&& ! self::assistant_job_binding_matches( $job ) ) return self::assistant_binding_error();
+				// Source-level execution fence: an enqueued company plan is not
+				// authorization to mutate a tenant. Uncertified stages cannot enter.
+				if ( 'company.stage.execute' === (string) ( $job['operation_id'] ?? '' )
+					&& ( ! class_exists( 'MAD4B_SCP_Company_Provisioning_Work_Operations', false )
+						|| ! MAD4B_SCP_Company_Provisioning_Work_Operations::provider_entry_allowed( $job ) ) ) {
+					return new WP_Error( 'mad4b_company_provider_entry_denied',
+						'Exact company executor and stage authorization are missing.',
+						array( 'provider_entry_allowed'=>false, 'blind_retry_allowed'=>false ) );
+				}
 				$job['provider_checkpoint'] = 'provider_entered';
 				$job['provider_entry_at'] = '' !== (string) $job['provider_entry_at'] ? (string) $job['provider_entry_at'] : gmdate( 'c' );
 				$job['provider_side_effect_possible'] = true;
@@ -567,6 +579,39 @@ final class MAD4B_SCP_Remote_Work_Queue {
 					&& 'no_effect' === ( $verified_result['provider_effect_state'] ?? null )
 					&& self::reconciliation_completion_valid( $verified_result, $job );
 				if ( ! $verified_no_effect ) return self::assistant_binding_error();
+			}
+			// A company stage cannot become completed from a merely claimed
+			// lease or a caller-provided success string. Require independently
+			// read-back, exactly scoped provider evidence after provider_returned.
+			// Reconciliation may still terminate as verified no-effect.
+			if ( 'company.stage.execute' === (string) ( $job['operation_id'] ?? '' ) ) {
+				$payload = is_array( $job['payload'] ?? null ) ? $job['payload'] : array();
+				$site_bound = ( $verified_result['company_code'] ?? null ) === ( $payload['company_code'] ?? null )
+					&& ( $verified_result['site_uuid'] ?? null ) === ( $payload['site_uuid'] ?? null )
+					&& ( $verified_result['origin'] ?? null ) === ( $payload['origin'] ?? null )
+					&& ( $verified_result['mode'] ?? null ) === ( $payload['mode'] ?? null )
+					&& ( $verified_result['stage'] ?? null ) === ( $payload['stage'] ?? null )
+					&& ( $verified_result['action'] ?? null ) === ( $payload['action'] ?? null )
+					&& ( $verified_result['run_id'] ?? null ) === ( $payload['run_id'] ?? null )
+					&& ( $verified_result['stage_revision'] ?? null ) === ( $payload['stage_revision'] ?? null );
+				$verified = true === ( $verified_result['independent_readback'] ?? false )
+					&& true === ( $verified_result['postcondition_verified'] ?? false )
+					&& 1 === preg_match( '/^[a-f0-9]{64}$/D', (string) ( $verified_result['evidence_sha256'] ?? '' ) )
+					&& is_string( $verified_result['provider_execution_ref'] ?? null )
+					&& '' !== trim( $verified_result['provider_execution_ref'] )
+					&& strlen( $verified_result['provider_execution_ref'] ) <= 191;
+				$checkpoint_ok = 'provider_returned' === (string) ( $job['provider_checkpoint'] ?? '' )
+					&& ! empty( $job['provider_side_effect_possible'] );
+				$reconciled_no_effect = $reconciling
+					&& 'no_effect' === ( $verified_result['provider_effect_state'] ?? null )
+					&& self::reconciliation_completion_valid( $verified_result, $job );
+				if ( ! $site_bound || ! $verified
+					|| ( ! $reconciled_no_effect && ( ! $checkpoint_ok
+						|| 'claimed' !== $status
+						|| ! in_array( (string) ( $verified_result['provider_effect_state'] ?? '' ), array( 'applied', 'no_effect' ), true ) ) ) ) {
+					return new WP_Error( 'mad4b_company_completion_evidence_invalid',
+						'Independent stage readback with exact company, run, action and provider checkpoints is required.' );
+				}
 			}
 			$resolved_no_effect = $reconciling && 'no_effect' === sanitize_key( isset( $verified_result['provider_effect_state'] ) ? (string) $verified_result['provider_effect_state'] : '' );
 			$job['status'] = $resolved_no_effect ? 'cancelled_no_effect' : 'completed';

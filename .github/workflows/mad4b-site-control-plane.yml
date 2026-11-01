@@ -76,6 +76,39 @@ jobs:
           php wp-content/plugins/mad4b-site-control-plane/tests/qa27-candidate-upload-plan-rc118-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/staging-source-selector-runtime.php
 
+      - name: Governed Start Your Company lifecycle (PHP 8.3)
+        if: matrix.php == '8.3'
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l ops/company-readiness-workflow/staging-mu/252-mad4b-start-your-company-runtime.php
+          php -l ops/company-readiness-workflow/tests/test_start_company_runtime.php
+          php ops/company-readiness-workflow/tests/test_start_company_runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/mcp-adapter-version-independent-dependency.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/mcp-adapter-missing-capability-denied.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/mcp-dependency-isolation-source-contract.py
+          python3 ops/company-readiness-workflow/tests/test_executor_admission_contract.py
+          python3 -m py_compile ops/company-readiness-workflow/executor/company_stage_executor.py
+          python3 -m py_compile ops/company-readiness-workflow/executor/company_stage_adapter.py
+          python3 ops/company-readiness-workflow/tests/test_native_stage_adapter.py
+          node --test ops/company-readiness-workflow/tests/test_central_control_plane_rollout.mjs
+          node --test ops/company-readiness-workflow/tests/test_central_dual_route_policy.mjs
+          node --test ops/company-readiness-workflow/tests/test_central_governed_dispatch.mjs
+          python3 -m venv /tmp/mad4b-company-native-executor-venv
+          /tmp/mad4b-company-native-executor-venv/bin/pip install --quiet --disable-pip-version-check cryptography==44.0.3
+          /tmp/mad4b-company-native-executor-venv/bin/python ops/company-readiness-workflow/tests/test_native_stage_executor.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/remote-work-queue-cancellation-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/company-lifecycle-outcome-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php
+          python3 - <<'PY'
+          from pathlib import Path
+          src = Path('ops/company-readiness-workflow/staging-mu/252-mad4b-start-your-company-runtime.php').read_text()
+          included = Path('wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-start-your-company-runtime.php').read_text()
+          assert src.replace('* Plugin Name:', '* Component:', 1) == included
+          assert '* Plugin Name:' not in included
+          print('COMPANY_LIFECYCLE_PACKAGED_PARITY: PASS')
+          PY
+
   packaged-provider-contracts:
     name: Packaged provider contract scan
     runs-on: ubuntu-latest
