@@ -34,4 +34,5 @@ jobs:
           python3 -m py_compile ops/qa/css-priority-auto-v1/discover-routes.py
           python3 -m py_compile ops/qa/css-priority-auto-v1/pending-queue.py
           python3 -m py_compile ops/qa/css-priority-auto-v1/notification-bridge.py
-          python3 ops/qa/css-priority-auto-v1/test-policy-engine.py
+          python3 ops/qa/css-priority-auto-v1/test-device-policy.py
+          python3 -m py_compile ops/qa/css-priority-auto-v1/device-turn.py
