@@ -209,7 +209,8 @@ assert set(optional_projection).issubset(set(catalog_projection))
 assert not set(optional_projection).intersection(direct_projection)
 assert "mad4b_operation_registry_optional_projection_invalid" in registry
 assert "wp_has_ability( $ability )" in registry
-assert "! in_array( $ability, $optional, true ) || wp_has_ability( $ability )" in registry
+assert "! in_array( $ability, $optional, true )" in registry
+assert "function_exists( 'wp_has_ability' ) && wp_has_ability( $ability )" in registry
 # Preserve the fixed original read-only foundation while allowing the
 # source-registered Operation Registry to extend MCP read projection.
 # The previous exact-list equality prevented new bounded planners/verification.
