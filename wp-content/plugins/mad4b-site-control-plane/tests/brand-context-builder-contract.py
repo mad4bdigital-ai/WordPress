@@ -491,7 +491,7 @@ if (not isinstance(seed_version, int) or seed_version < 13
         or seeder_match is None or int(seeder_match.group(1)) != seed_version):
     raise SystemExit("Brand Context Builder requires current canonical seed manifest/seeder parity")
 
-print("mad4b.brand-context-builder.v5: PASS")
+print("mad4b.brand-context-builder.v6: PASS")
 
 
 # OAuth health must reflect access-token expiry and the last refresh outcome.
@@ -514,3 +514,4 @@ if "'token_healthy' => $connected && ( ! empty( $token['access_token'] ) || ! em
 # Exercise original convergence code without provider/generation services.
 import subprocess
 subprocess.run(["php", str(cp / "tests/brand-existing-assets-runtime.php")], check=True)
+subprocess.run(["php", str(cp / "tests/brand-context-v6-scope-runtime.php")], check=True)
