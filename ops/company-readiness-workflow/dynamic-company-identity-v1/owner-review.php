@@ -129,7 +129,13 @@ final class MAD4B_Central_Owner_Manager_Review_V1 {
             if(!res.ok || !data || data.code) {
               const message=data?.message||data?.code||'Original REST rejected';
               if(res.status===423) {
-                const error=new Error('قفل قاعدة البيانات مشغول (423). لم يُحفظ اعتماد. حاول مجددًا بعد انتهاء العملية الأخرى. '+message);
+                const code=String(data?.code||'');
+                const cause=code==='mad4b_environment_manager_assignment_locked'
+                  ?'قفل تعيين المدير مشغول مؤقتًا.'
+                  :code==='mad4b_runtime_rest_environment_unverified'
+                  ?'بوابة MAD4B لم تتحقق من ربط بيئة الموقع. ليست مشكلة قفل SQL.'
+                  :'تم رفض الطلب بواسطة بوابة MAD4B.';
+                const error=new Error(cause+' (HTTP 423): '+message);
                 error.status=423;
                 throw error;
               }
