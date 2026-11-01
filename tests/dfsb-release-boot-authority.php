@@ -1,5 +1,5 @@
 <?php
-/** Synthetic authority fixtures: unit behavior only; NEVER a real release certificate. */
+/** Synthetic authority fixtures: unit behavior only; never a real release certificate. */
 namespace DynamicFilterSEOBridge\Diagnostics {
     final class BuildIdentity {
         public static function collect(): array { return $GLOBALS['identity']; }
@@ -43,30 +43,49 @@ namespace {
         'review_state'=>'source_reviewed_artifact_certified',
         'package_certification'=>'certified',
     ]];
-    $guard='DynamicFilterSEOBridge\\Runtime\\BootGuard';
-    // A legacy environment override may not bypass a missing certificate.
+    $guard='DynamicFilterSEOBridge\Runtime\BootGuard';
+    // A legitimate local build with a valid installed manifest may boot
+    // without a detached release receipt or an independent provider certificate.
     define('DFSB_FORCE_FULL_BOOT', true);
-    check($guard::shouldHold(), 'unsafe forced boot was permitted without receipt');
-    $executed = false;
-    check(!$guard::run(static function () use (&$executed) { $executed = true; }) && !$executed,
-        'uncertified release executed boot callback');
     $r=$guard::releaseReadiness();
-    check(!$r['ready'] && $r['reason']==='certified_release_receipt_required',
-        'missing receipt must deny even with synthetic matching provider');
+    check($r['ready'] && !$r['certification_required'] && !$r['authorizing'],
+        'optional certification incorrectly blocked a valid installed tree');
+    check(!$guard::shouldHold(), 'valid development build was held despite runtime override');
+    $executed=false;
+    check($guard::run(static function () use (&$executed) { $executed=true; }) && $executed,
+        'valid installed tree could not boot');
+    // Tampering or identity inconsistency must still prevent a forced boot.
+    $GLOBALS['identity']['installed_content_valid']=false;
+    check(!$guard::releaseReadiness()['ready'] && $guard::shouldHold(),
+        'invalid installed content was allowed');
+    $executed=false;
+    check(!$guard::run(static function () use (&$executed) { $executed=true; }) && !$executed,
+        'invalid installed content executed bootstrap');
+    $GLOBALS['identity']['installed_content_valid']=true;
+    $GLOBALS['identity']['valid']=false;
+    check(!$guard::releaseReadiness()['ready'], 'invalid embedded identity was allowed');
+    $GLOBALS['identity']['valid']=true;
+    $GLOBALS['identity']['provenance_complete']=false;
+    check(!$guard::releaseReadiness()['ready'], 'invalid explicit receipt was allowed');
+    $GLOBALS['identity']['provenance_complete']=true;
+    // Opt-in strict certification preserves all historic provider/receipt gates.
+    define('DFSB_REQUIRE_RELEASE_CERTIFICATION', true);
+    $r=$guard::releaseReadiness();
+    check(!$r['ready'] && $r['certification_required'] &&
+        $r['reason']==='certified_release_receipt_required',
+        'strict mode permitted missing detached release receipt');
     $GLOBALS['identity']['package_provenance_valid']=true;
-    $r=$guard::releaseReadiness();
-    check($r['ready'] && !$r['authorizing'], 'matching in-memory mock fixture must be eligible for read-only result');
-    check(!$guard::shouldHold(), 'synthetic matching certificate could not pass guarded override');
+    check($guard::releaseReadiness()['ready'], 'matching strict certificate was denied');
     $GLOBALS['provider']['archive_sha256']=str_repeat('c',64);
-    check(!$guard::releaseReadiness()['ready'], 'provider SHA mismatch allowed');
+    check(!$guard::releaseReadiness()['ready'], 'strict mode ignored provider digest mismatch');
     $GLOBALS['provider']['archive_sha256']=$digest;
     $GLOBALS['sources']['dynamic-filter-seo-bridge']['source_commit_sha']=str_repeat('c',40);
-    check(!$guard::releaseReadiness()['ready'], 'source SHA mismatch allowed');
+    check(!$guard::releaseReadiness()['ready'], 'strict mode ignored source mismatch');
     $GLOBALS['sources']['dynamic-filter-seo-bridge']['source_commit_sha']=$git;
     $GLOBALS['sources']['dynamic-filter-seo-bridge']['package_certification']='pending';
-    check(!$guard::releaseReadiness()['ready'], 'unapproved source was allowed');
+    check(!$guard::releaseReadiness()['ready'], 'strict mode ignored provider certification');
     $GLOBALS['sources']['dynamic-filter-seo-bridge']['package_certification']='certified';
     $GLOBALS['identity']['plugin_version']='0.4.0-alpha.14-local.1';
-    check(!$guard::releaseReadiness()['ready'], 'version mismatch was allowed');
-    echo "DFSB_RELEASE_AUTHORITY_MOCK_GATES: PASS\n";
+    check(!$guard::releaseReadiness()['ready'], 'strict mode ignored version mismatch');
+    echo "DFSB_OPTIONAL_CERTIFICATION_AND_STRICT_OPT_IN: PASS\n";
 }
