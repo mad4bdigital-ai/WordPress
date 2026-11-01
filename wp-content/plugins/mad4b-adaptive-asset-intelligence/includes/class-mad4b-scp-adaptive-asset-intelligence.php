@@ -53,8 +53,10 @@ final class MAD4B_SCP_Adaptive_Asset_Intelligence {
   $feed=self::notification_feed();
   // One event per identical state, route and source digest for a bounded hour, not per WP request.
   $fingerprint=hash('sha256',self::UUID.'|'.$type.'|'.$path.'|'.(string)($context['digest']??''));
-  if ($feed && ($feed[0]['fingerprint']??'')===$fingerprint && time()-(int)($feed[0]['timestamp']??0)<3600)
-   return ['stored'=>false,'deduplicated'=>true];
+  foreach ($feed as $existing) {
+   if (($existing['fingerprint']??'')===$fingerprint && time()-(int)($existing['timestamp']??0)<3600)
+    return ['stored'=>false,'deduplicated'=>true];
+  }
   $evt=['id'=>hash('sha256',$fingerprint.'|'.time()),'fingerprint'=>$fingerprint,'type'=>$type,
    'severity'=>$severity,'path'=>$path,'message'=>sanitize_text_field(substr($message,0,200)),
    'timestamp'=>time(),'ack'=>false,'site_uuid'=>self::UUID];
