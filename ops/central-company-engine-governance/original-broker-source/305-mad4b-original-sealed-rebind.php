@@ -61,7 +61,18 @@ final class MAD4B_Original_Sealed_Command_Rebind_V1 {
         return sodium_crypto_sign_verify_detached($sig,$message,$pub);
     }
     public static function execute(string $originalId,array $input,array $originalProof) {
-        $original=$originalProof['original_job']??null;
+        $liveEvidence=class_exists('MAD4B_Original_Core_Recovery_V1',false)
+            ? MAD4B_Original_Core_Recovery_V1::readOriginalRecoveryEvidence($originalId)
+            : null;
+        if (!is_array($liveEvidence)
+            ||!is_array($liveEvidence['original_job']??null)
+            ||($liveEvidence['original_job']['job_id']??'')!==$originalId
+            ||($liveEvidence['original_job']['command_sha256']??'')!==
+                ($originalProof['original_job']['command_sha256']??'')
+            ||($liveEvidence['original_job']['site_uuid']??'')!==
+                ($originalProof['original_job']['site_uuid']??''))
+            return self::reject('original_signed_pre_dispatch_journal_required');
+        $original=$liveEvidence['original_job'];
         $rest=$input['authenticated_request']??null;
         $sealed=$input['sealed_payload']??null;
         if (!($rest instanceof WP_REST_Request)||
@@ -76,6 +87,8 @@ final class MAD4B_Original_Sealed_Command_Rebind_V1 {
         if (!is_string($digest)||$digest!==($original['command_sha256']??'')||
             !self::verify($original,$sealed,$digest))return self::reject('signed_payload_or_digest_invalid');
         $provider=(string)$sealed['provider'];
+        if (($liveEvidence['signed_failure']['provider']??'')===$provider)
+            return self::reject('same_failed_provider_cannot_be_replayed');
         // The only installed original provider registration at present is
         // an explicitly scoped, owner-enrolled VPS SSH transport. Other
         // providers require their own original-Core registry adapter first.
@@ -149,9 +162,10 @@ final class MAD4B_Original_Sealed_Command_Rebind_V1 {
             ($new['state']??'')!=='QUEUED_FOR_VPS_BROKER_CLAIM'||
             ($new['executed']??true)!==false)
             return self::reject('original_broker_new_job_readback_uncertain',503);
-        update_option(self::FENCE.$originalId,array(
+        if (!update_option(self::FENCE.$originalId,array(
             'original_job_id'=>$originalId,'state'=>'ORIGINAL_CORE_RECOVERY_JOB_COMMITTED',
-            'new_job_id'=>$requestId,'command_sha256'=>$digest,'issued_epoch'=>time()),false);
+            'new_job_id'=>$requestId,'command_sha256'=>$digest,'issued_epoch'=>time()),false))
+            return self::reject('original_recovery_commit_audit_uncertain',503);
         return array(
             'state'=>'ORIGINAL_CORE_RECOVERY_JOB_COMMITTED',
             'original_job_id'=>$originalId,'new_job_id'=>$requestId,
