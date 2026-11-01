@@ -1,0 +1,12 @@
+{
+  "contract": "mad4b.full-host-authority-pr-ready-source.v1",
+  "source_only": true,
+  "production_mutated": false,
+  "test_count": 19,
+  "files": {
+    ".github/workflows/full-host-authority-source-contract.yml": "a0a6205c80e4640fc5939a03f0517628194bec8ecea2f7953086ee41056aa530",
+    "ops/company-readiness-workflow/full-host-authority/README.md": "1ebcd6d9308816f86e2463110ac64e17ff03dc3e7eacd6e89bff55b84147cf37",
+    "ops/company-readiness-workflow/full-host-authority/full_host_authority.py": "6d335e0935e725e2ff216077b71d93469a35e7dbda1de8987d67816b73f488c2",
+    "ops/company-readiness-workflow/full-host-authority/test_full_host_authority.py": "98672ef4407847abf3413106baefa6b3b6e1db33103b951bacc1ef2173d2814c"
+  }
+}
