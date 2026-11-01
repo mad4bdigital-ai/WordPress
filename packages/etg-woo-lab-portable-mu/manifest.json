@@ -1,0 +1,205 @@
+{
+  "schema": "mad4b.etg-woo-lab-portable-mu.v1",
+  "version": "0.1.1-rc.20261031",
+  "deployment_scope": "explicit Woo Lab target only",
+  "source_status": "review-candidate",
+  "auto_deploy_enabled": false,
+  "target_subpath": "wp-content/mu-plugins",
+  "file_count": 32,
+  "files": [
+    {
+      "path": "000-shared-presentation-media-v1.php",
+      "sha256": "6b75c7a2e3a66ce80ea9b21ba6e6d01c51d52b8840ce087f617733e328f042f3",
+      "bytes": 516,
+      "prior_sha256": "71af64ad87d6938bc926bf779c494937eb342cf9ecc21be6c141a5e078667822"
+    },
+    {
+      "path": "094-jetsearch-legacy-geo-post-suppression.php",
+      "sha256": "2888a08548fe5cd14d3c7c3ecbf3a0dbe3d6f98f506f8b4f7e6a058080d659b7",
+      "bytes": 779,
+      "prior_sha256": "a1bc7c5dea21c812cb2e5c86010c4a76c6b3196f569b466a28bb312ecf763b74"
+    },
+    {
+      "path": "096-verified-tour-render-context.php",
+      "sha256": "75d79a584f5f8fc9290a86e7201f6d7600e52f0b5d87e720b2273a9b3b78fd6d",
+      "bytes": 3194,
+      "prior_sha256": "623696cff68262e77a95b57df829c5369842624d4b565433aa111c60113fa62d"
+    },
+    {
+      "path": "097-service-channel-policy.php",
+      "sha256": "344864ea3924cfd45446ac7649e159e72bca9e79a6f53d75e9bb780285b0aa16",
+      "bytes": 3046,
+      "prior_sha256": "5868435f3e0deeb561922905378f6ead61c09bf3aab34e841517af22c4ad0287"
+    },
+    {
+      "path": "099-global-offer-product-eligibility.php",
+      "sha256": "f42316473cfb62e538933f9fd1476bcb4a8af75b8f5e10079c9cdb6aaad1364d",
+      "bytes": 1416,
+      "prior_sha256": "c0aabc263880d49bce4308486dcb9f5a7ea8fd3c727951259e221e977011a620"
+    },
+    {
+      "path": "103-global-offer-product-badge.php",
+      "sha256": "c302f05f1a68999c0c6fb7250b993ae468d5f7203dcbf57b0314e9f1576f22c8",
+      "bytes": 1164,
+      "prior_sha256": "592e4a1fe91bf005b1059940dab8f47f0b1ec0037986097c8bcc80ddfcdc7c78"
+    },
+    {
+      "path": "107-mad4b-seasonal-market-registry.php",
+      "sha256": "79030d3cf6b808a180225bafe6930d83d9840ec99e9c13a8ab5dc9c29ffbb5d4",
+      "bytes": 2569,
+      "prior_sha256": "1a216da4280ac285b74895339ec433bfadbc31fb655ec0081bafc4c100e83fe4"
+    },
+    {
+      "path": "108-season-calendar-intake.php",
+      "sha256": "4107c6f1aa8da1b52db6e986180571a8d5ee7ace2c6b5ead17bfb6525ca7d6b0",
+      "bytes": 813,
+      "prior_sha256": "1a99575079f132bf47aec7955b0130efdde2883b67efcb8d1b3d5bb01174c207"
+    },
+    {
+      "path": "109-seasonal-topbar-content.php",
+      "sha256": "f1995b63112c117f166959ff297b5bdf30656feeb5a640b6146ea87318308f35",
+      "bytes": 1691,
+      "prior_sha256": "4ce3f1a6426fe9149aeb4b27df2af11150cb1c88685bc4278cd188a7a107d2cd"
+    },
+    {
+      "path": "110-seasonal-dynamic-topbar.php",
+      "sha256": "cda678f3259398bf1b5f155a69747bd46d5ac95c088f22451ee662dd623b33aa",
+      "bytes": 11906,
+      "prior_sha256": "48a7e4a7729ed943b481ebf6415681f946adea92b74ae2dd338f18f6db08e74d"
+    },
+    {
+      "path": "112-seasonal-tour-product-source.php",
+      "sha256": "e3ddda70c8e1d7f4259344bf1e1c3929c8146bcd525729f0494538ea9a93803d",
+      "bytes": 4017,
+      "prior_sha256": "5bf2bf7eedb96a57b7c7f18d306392f32ce486d4be5c5b7d582d4a53c64c75d0"
+    },
+    {
+      "path": "113-seasonal-nested-listing-sources.php",
+      "sha256": "f82834750cba4fa9e0969a8a47e8920929178a772cfa224d571606b50ef3a43f",
+      "bytes": 4991,
+      "prior_sha256": "d54d0d8a82edfd09248dd9551a633e4fb605470101b5b5147928f26484274c09"
+    },
+    {
+      "path": "114-market-context-woocommerce-bridge.php",
+      "sha256": "2f7b16f199285416a227c34194f8301dd7bb89c06dc6556f3c1374d947a29820",
+      "bytes": 1685,
+      "prior_sha256": "9a0bb757880252a0f739157f655d788dda3fad38ebb192f4bab887d0d87204a6"
+    },
+    {
+      "path": "company-accessibility-contract.php",
+      "sha256": "68680c2cbb4391806353c12067cffe1158d6515e5c47018be2589527aaa3e4d9",
+      "bytes": 2420,
+      "prior_sha256": "d0ed629c8cd03bd4423731d6ea8b19227e6dd1785fe3d44eec764a4ed73e6214"
+    },
+    {
+      "path": "company-elementor-structure-contract.php",
+      "sha256": "f9bc1f4a00fc7d1e636090a32255cffae5933aa239805bff1025381fbaef6f95",
+      "bytes": 997,
+      "prior_sha256": "23cf00957378d600bf61af328467571bdcb6ca1514e0bcdf3da9b6d02c190ca3"
+    },
+    {
+      "path": "company-jetsearch-legacy-taxonomy-source.php",
+      "sha256": "8561fed895f7a4e2ad3c27a5a3e3d67e26bd22f80c68c2beb4b5e8705588d972",
+      "bytes": 763,
+      "prior_sha256": "0917211b9adacae829a91620a957c6744b409205c41ef53e234b6760a74c974b"
+    },
+    {
+      "path": "company-uael-social-share-context.php",
+      "sha256": "349089ca1fcb38aa3f14a47b3641ad3fe00ae93aa8ddddfe11d63ac2ff9d4bd2",
+      "bytes": 2390,
+      "prior_sha256": "460f1082599b346eb0660a75f230276e906a5efcb03d6303a5655cd009ddcf3c"
+    },
+    {
+      "path": "first-view-image-priority.php",
+      "sha256": "1dbae3d1a23203ff1b0071c371be663988948f3ca17900c19c18780506680af9",
+      "bytes": 1174,
+      "prior_sha256": "6a6e48c1acd793634e4de83bbc01f4fe127c32ac6c6a06051613147f970d36d4"
+    },
+    {
+      "path": "local-tour-rate-filter-provider-router.php",
+      "sha256": "0b2c823c9ffc8e92cbe79a1b4eea4f8816eb08b6e897d30e12860bcb6e23817c",
+      "bytes": 918,
+      "prior_sha256": "e2646d1859088bf056c6cd687fc17761133bf863a79ea058ac25f069032b3371"
+    },
+    {
+      "path": "portable-term-featured-media.php",
+      "sha256": "f4531201b718470215828f92ef01e2295b31c0839c501738e046312725b43349",
+      "bytes": 1822,
+      "prior_sha256": "0fe3bd81262bd95c13aa8ce12e7f3a95e014b3685b86ed722ca6b0c43adbbcce"
+    },
+    {
+      "path": "pricing-header-switcher.php",
+      "sha256": "2a8ff0041db0e1d8fb850662cad7314bb217f4620ff29be63c038c4d49f0fac2",
+      "bytes": 4163,
+      "prior_sha256": "c838d9a6a5a346d07332228cdf5680227f94e312d292e731eed55f7a1fa77121"
+    },
+    {
+      "path": "rate-dates-ui.php",
+      "sha256": "031d8dad1c4dd4d3f38aa49bb9e1403b25edba50df80f1bf7c855e59d14ecd15",
+      "bytes": 649,
+      "prior_sha256": "7b2f5c8fd01ee3b2d03623b6e49e435d5b0fbcf917535968c706383e6d19d4cb"
+    },
+    {
+      "path": "registry-destination-activity.php",
+      "sha256": "1538bbb102c0e8895167bd96a2a5bf7aa60c83cf281199eb05360237563b8496",
+      "bytes": 6799,
+      "prior_sha256": "69047afe57cc6a9bc1616ff9516b5148fc6aa5da3a21869f22d8abc477d41418"
+    },
+    {
+      "path": "registry-destination-facets.php",
+      "sha256": "bec51f4c9e1f267d35e10a5647036497a75ebb3d586a62b8446d8be2fcc7b436",
+      "bytes": 6174,
+      "prior_sha256": "b7abc9578569ffcd939d957a4055302509c923a72c5c6eb31009746ddd83a087"
+    },
+    {
+      "path": "registry-destination-presentation-ui.php",
+      "sha256": "6214570496ee30cf2a45ff5e8df42bb5405cd0d62ba9bf4fd3d3307574193a31",
+      "bytes": 12628,
+      "prior_sha256": "f670e0aaa1f7b503f95ebbbb47a8ff8cb0cd7cee8359d53f14d6621c89491235"
+    },
+    {
+      "path": "registry-presentation-empty-card-lists.php",
+      "sha256": "a901409bec1200fdbd13fbabd4fa287e34165b2e5e33516395410b9eaddf9e87",
+      "bytes": 960,
+      "prior_sha256": "0a3e6b64c007b532458fe191e6667c8257262a1e1243595128100c1b02830a7e"
+    },
+    {
+      "path": "registry-presentation-tour-destination-counts.php",
+      "sha256": "ab22203d85a0fac6327d9828ad9607bd8d59da3415b287e5bf02a540ddffc122",
+      "bytes": 1945,
+      "prior_sha256": "66ef8d14ea5b4ee597e5643b64f7db46420c3f42cb8ae2ce3cca1cefc3ea2ced"
+    },
+    {
+      "path": "registry-presentation-uael-preinit-overflow.php",
+      "sha256": "6be6a3d0dedd014ebf6aac8e37b25b87efaa168abdc3cc5c12b713fbc765c220",
+      "bytes": 442,
+      "prior_sha256": "ad33dcbb3be1f4ea93e34e3db1d416102ed734d55601e0054bd233e7cc18efaa"
+    },
+    {
+      "path": "shared-extra-display-mode.php",
+      "sha256": "3aa00faabb2e1015c739c524396ba85806dc0fb60480ff59ce146e19a7c060c9",
+      "bytes": 4074,
+      "prior_sha256": "32c56dea3be933d1f9562823cebbf2fca9b07fd928e9015c4b14b7be3b3c6a90"
+    },
+    {
+      "path": "shared-listing-empty-ajax-guard.php",
+      "sha256": "173a5294559568c019f2eb1b63dda0617ce4cc37689755ec494121b5b7bd72c1",
+      "bytes": 1916,
+      "prior_sha256": "7895d454f88fccccae76dd83d0dbc90e6d4d40ffc431a0b17dc57d162fab4312"
+    },
+    {
+      "path": "shared-product-core-rest.php",
+      "sha256": "e39fcfc3978ab6f9435c7b8b7c41e4aaaefcf0df07645e3854ef6c20b5ac97c3",
+      "bytes": 798,
+      "prior_sha256": "78d9b388c56a0b13fe5afa5f9b653e1169b92defe67db9886ce43c03cdf2c491"
+    },
+    {
+      "path": "shared-product-legacy-dmc-bridge.php",
+      "sha256": "e7300e4dac25bc5940ce33145b68d13c56ab7b11db0294f719562cfa66393c35",
+      "bytes": 1811,
+      "prior_sha256": "3d128300c96f5c65973c44dd0d1c42c187c320d9f8e7843adcf31471b68472c6"
+    }
+  ],
+  "requires_certified_target": true,
+  "external_comm_email_enrolled": false
+}
