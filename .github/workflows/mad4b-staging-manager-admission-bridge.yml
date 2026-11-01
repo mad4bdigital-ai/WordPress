@@ -39,6 +39,9 @@ jobs:
           d=ops/mad4b-staging-manager-bridge-v1/dynamic-wpcli-actor-v1
           python3 -m py_compile "$d/wpcli_dynamic_actor.py" "$d/tests/test_dynamic_actor.py"
           python3 "$d/tests/test_dynamic_actor.py" -v
+      - name: Original owner lock error and browser validation regression
+        run: |
+          node ops/mad4b-staging-manager-bridge-v1/tests/owner_lock_ui_contract.test.cjs
       - name: Confirm original broker verification and no alternate grants
         run: |
           python3 - <<'PY'
