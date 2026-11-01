@@ -96,7 +96,8 @@ export function createGovernedExecutionRoutes({core,typed={},generalShell}){
        admission.independent_host_proof_verified!==true)
       return fail('DENIED','INDEPENDENT_HOST_PROOF_REQUIRED',operation);
     if(operation==='reconcile_313_receipt'&&
-       admission.original_job_claim_verified!==true)
+       (admission.original_job_claim_verified!==true||
+        admission.original_312_verified!==true))
       return fail('DENIED','ORIGINAL_312_JOB_CLAIM_REQUIRED',operation);
     if(operation==='wpcli.execute'&&
        (admission.native_scope_valid!==true||
@@ -111,14 +112,21 @@ export function createGovernedExecutionRoutes({core,typed={},generalShell}){
       operation==='maintenance.shell'?'ORIGINAL_SHELL_PROVIDER_NOT_REGISTERED':
       'TYPED_PROVIDER_NOT_REGISTERED',operation);
    // A tool/security refusal never permits routing the same intent via Shell.
-   // Atomic original claim is required before any remote effect.
-   let claimed;
-   try {claimed=await core.claimOriginalJobOnce(job_id,job.command_sha256)}
-   catch {return fail('PARKED_UNCERTAIN_NO_REPLAY','ORIGINAL_CLAIM_UNCERTAIN',operation)}
-   if(claimed!==true)
-    return fail('DENIED','ORIGINAL_JOB_ALREADY_CLAIMED',operation);
-   try{await core.audit({job_id,operation,state:'CLAIMED'})}
-   catch{return fail('PARKED_UNCERTAIN_NO_REPLAY','AUDIT_AFTER_CLAIM_UNCERTAIN',operation)}
+   // Dispatch uses the original atomic claim. 313 reconciliation does NOT
+   // claim the already-executed job again: it reads the original claim and
+   // its independent receipt, without resending argv or a Shell command.
+   if(operation==='reconcile_313_receipt'){
+    try{await core.audit({job_id,operation,state:'RECONCILE_EXISTING_CLAIM_READ_ONLY'})}
+    catch{return fail('PARKED_UNCERTAIN_NO_REPLAY','RECONCILIATION_AUDIT_UNAVAILABLE',operation)}
+   }else{
+    let claimed;
+    try {claimed=await core.claimOriginalJobOnce(job_id,job.command_sha256)}
+    catch {return fail('PARKED_UNCERTAIN_NO_REPLAY','ORIGINAL_CLAIM_UNCERTAIN',operation)}
+    if(claimed!==true)
+     return fail('DENIED','ORIGINAL_JOB_ALREADY_CLAIMED',operation);
+    try{await core.audit({job_id,operation,state:'CLAIMED'})}
+    catch{return fail('PARKED_UNCERTAIN_NO_REPLAY','AUDIT_AFTER_CLAIM_UNCERTAIN',operation)}
+   }
    let result;
    try{
     result=await adapter({job_id,operation,original_job:job,
