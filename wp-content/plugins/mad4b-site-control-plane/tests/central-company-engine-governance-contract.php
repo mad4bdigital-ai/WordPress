@@ -126,7 +126,7 @@ if ( ! is_string( $pending_dispatch ) || ! is_string( $pending_parity ) ||
      ! str_contains( $pending_dispatch, "'pending_original_core_broker_enrollment'" ) ||
      ! str_contains( $pending_parity, "['execution_eligible'] = false" ) ||
      ! str_contains( $pending_parity, "['remote_parity_ready'] = false" ) ||
-     ! str_contains( $pending_parity, "['capability_activated'] = false" ) ) {
+     ! str_contains( $pending_parity, "['operational_state'] = 'pending_original_core_broker_enrollment'" ) ) {
     throw new RuntimeException( 'pending_full_wpcli_enrollment_discovery_promoted_to_execution' );
 }
 echo "PASS central company native read abilities, 9 engines / 3 core mappings, owner/cycle/scope guards, no execution\n";
