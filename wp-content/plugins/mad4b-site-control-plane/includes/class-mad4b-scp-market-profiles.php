@@ -29,8 +29,11 @@ final class MAD4B_SCP_Market_Profiles {
    $code=sanitize_key((string)$code);if(preg_match('/^[a-z]{2,8}$/D',$code))$hidden[$code]=true;
   }
   $public=[];
-  if($wpml&&has_filter('wpml_active_languages')){
-   $result=apply_filters('wpml_active_languages',null,['skip_missing'=>0]);
+  // Consume language metadata, not language-switcher URLs. The latter calls
+  // wp_reset_query() and can replace a nested listing's current product context.
+  // Keep unsupported WPML providers fail-closed below.
+  if($wpml&&is_callable([$GLOBALS['sitepress'],'get_active_languages'])){
+   $result=$GLOBALS['sitepress']->get_active_languages();
    if(is_array($result))foreach($result as $entry){
     if(!is_array($entry))continue;
     $code=sanitize_key((string)($entry['language_code']??$entry['code']??''));

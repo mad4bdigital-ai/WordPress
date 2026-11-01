@@ -499,3 +499,11 @@ if entry.get('policy', {}).get('authentication') != 'ON_INSTALL':
     raise SystemExit('MAD4B WordPress marketplace entry must authenticate on install')
 
 print('mad4b.dynamic-skills.v8: PASS')
+
+# Canonical commerce-lifecycle pack and provider-guidance regression.
+subprocess.run(['python3', str(wp / 'tests' / 'commerce-lifecycle-skill-contract.py')], check=True)
+
+subprocess.run(['php', '-n', str(wp / 'tests/company-user-rest-suspension-isolation-runtime.php')], check=True)
+
+# Site-neutral WP Users/Roles/Capabilities policy is instructional, not write authority.
+subprocess.run(['python3', str(wp / 'tests' / 'wordpress-user-role-governance-contract.py')], check=True)

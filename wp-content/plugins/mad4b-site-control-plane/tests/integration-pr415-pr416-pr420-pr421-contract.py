@@ -2,6 +2,7 @@
 """Fail-closed source and evidence contract for four-PR integrated candidate."""
 import hashlib
 import json
+import subprocess
 from pathlib import Path
 
 ROOT = Path("wp-content/plugins/mad4b-site-control-plane")
@@ -64,6 +65,31 @@ require(ROOT / "tests/admin-pages-wordpress.php",
 require(".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
         "dynamic-mcp-hybrid-runtime.php", "version_compare(PHP_VERSION, \"8.5.11\", \"<\")",
         "php: ['7.4', '8.3', '8.4', '8.5']")
+
+# Executable companion to the current, non-authorizing main bootstrap
+# review. Reject staging module activation drift even when a hash is reviewed.
+subprocess.run(
+    ["python3", str(ROOT / "tests/main-bootstrap-staging-boundary-contract.py")],
+    check=True, timeout=20,
+)
+
+# Certify source-only native Ability discovery and existing exact staging grant
+# alias independently of release attestation and the historical manifest hashes.
+subprocess.run(
+    ["python3", str(ROOT / "tests/native-adapter-remote-grant-source-contract.py")],
+    check=True, timeout=20,
+)
+
+# Exact source-reviewed Write catalog may only resolve providers for already
+# mounted eligible Abilities; snapshot results must never create grants.
+subprocess.run(
+    ["python3", str(ROOT / "tests/write-catalog-source-review-contract.py")],
+    check=True, timeout=20,
+)
+subprocess.run(
+    ["php", "-n", str(ROOT / "tests/write-provider-snapshot-runtime.php")],
+    check=True, timeout=20,
+)
 
 registry = json.loads((ROOT / "config/cross-plugin-sources.json").read_text(encoding="utf-8"))
 etg = next((x for x in registry.get("sources", []) if x.get("id") == "etg-dynamic-filter-seo-bridge"), None)
@@ -156,9 +182,39 @@ def reviewed_source_supersedes_snapshot(path):
         source_blob = hashlib.sha1(b"blob " + str(len(source)).encode("ascii") + b"\0" + source).hexdigest()
         # Reviewed successor adds the three Admin Route Registry smoke pages.
         # Pin exact current Git blob; keep historic Feature 007 snapshots immutable.
-        return (blob_sha == "0c0c2052254a5c893a79d45aa9d985b57d8361fd"
-                and (direct_profile, source_blob) in reviewed_exact_blobs
-                and b"'mad4b-direct-access-profile' => array( 'MAD4B_SCP_Direct_Profile', 'render_page'" in data)
+        # The originally reviewed Direct Profile fixture remains pinned. A
+        # second exact reviewed successor adds three Content Readiness pages
+        # to real disposable WordPress smoke, rather than excluding them.
+        original_reviewed = "0c0c2052254a5c893a79d45aa9d985b57d8361fd"
+        readiness_reviewed = "73f702209fff557737fd0aab8d30619f5a22d53f"
+        # Reviewed third exact admin fixture: both Staging Brand Trial and
+        # MCP Principal Mode are now actually rendered by the disposable WP
+        # regression, with nonce, action and read-only GET verification.
+        # Historical manifests stay immutable; no live/Production authority.
+        principal_brand_reviewed = "134faf1d30a2027420f441a4bd5458add64053ea"
+        current_git_blob = subprocess.check_output(
+            ["git", "rev-parse", "HEAD:" + path], stderr=subprocess.DEVNULL,
+            timeout=8,
+        ).decode().strip()
+        required_new_pages = (
+            b"'mad4b-content-readiness-alerts' => array( 'MAD4B_SCP_Content_Readiness_Alerts', 'render'",
+            b"'mad4b-content-readiness-workflow' => array( 'MAD4B_SCP_Readiness_Workflow_Options', 'render'",
+            b"'mad4b-content-completeness' => array( 'MAD4B_SCP_Content_Completeness', 'render'",
+        )
+        return (
+            blob_sha == current_git_blob
+            and (direct_profile, source_blob) in reviewed_exact_blobs
+            and b"'mad4b-direct-access-profile' => array( 'MAD4B_SCP_Direct_Profile', 'render_page'" in data
+            and (blob_sha == original_reviewed
+                 or (blob_sha == readiness_reviewed
+                     and all(marker in data for marker in required_new_pages))
+                 or (blob_sha == principal_brand_reviewed
+                     and all(marker in data for marker in required_new_pages)
+                     and all(marker in data for marker in (
+                         b"'mad4b-staging-brand-trial' => array( 'MAD4B_SCP_Staging_Brand_Trial', 'page'",
+                         b"'mad4b-mcp-principal-mode' => array( 'MAD4B_SCP_Delegation_Mode', 'page'",
+                     ))))
+        )
     return (path, blob_sha) in reviewed_exact_blobs
 
 

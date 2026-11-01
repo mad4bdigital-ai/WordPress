@@ -71,7 +71,21 @@ if ( '0.6.1' !== ( isset( $after['adapter_runtime_version'] ) ? (string) $after[
 
 $registrations = MAD4B_SCP_Servers::registration_status();
 foreach ( MAD4B_SCP_Servers::expected_server_ids() as $server_id ) {
-	if ( empty( $registrations[ $server_id ]['registered'] ) ) $fail( $server_id . ' not registered after web rest_api_init' );
+	if ( empty( $registrations[ $server_id ]['registered'] ) ) {
+        // Report only exact bounded non-secret catalog diagnostics; never
+        // expose raw MCP tool payloads, OAuth credentials or host paths.
+        $row = isset( $registrations[ $server_id ] ) && is_array( $registrations[ $server_id ] ) ? $registrations[ $server_id ] : array();
+        $descriptor = isset( $row['capability_descriptor_evidence'] ) && is_array( $row['capability_descriptor_evidence'] ) ? $row['capability_descriptor_evidence'] : array();
+        $fail( $server_id . ' not registered after web rest_api_init: '
+            . wp_json_encode( array(
+                'reason_code' => isset( $row['error'] ) ? sanitize_key( (string) $row['error'] ) : 'missing_registration',
+                'materialized' => ! empty( $row['materialized'] ),
+                'requested_tool_count' => isset( $row['requested_tool_count'] ) ? (int) $row['requested_tool_count'] : 0,
+                'descriptor_ready' => ! empty( $descriptor['ready'] ),
+                'descriptor_blocker_count' => isset( $descriptor['blockers'] ) && is_array( $descriptor['blockers'] ) ? count( $descriptor['blockers'] ) : 0,
+                'registration_failure_reason' => isset( $row['registration_failure']['reason'] ) ? sanitize_key( (string) $row['registration_failure']['reason'] ) : '',
+            ) ) );
+    }
 	if ( ! empty( $registrations[ $server_id ]['error'] ) ) $fail( $server_id . ' registration error: ' . $registrations[ $server_id ]['error'] );
 }
 

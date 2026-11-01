@@ -10,7 +10,7 @@ adapter=(root/"includes/adapters/class-mad4b-scp-dynamic-content-adapter.php").r
 def req(text, marker):
     if marker not in text: raise SystemExit("missing: "+marker)
 
-for marker in ["const VERSION = 13","operation_events","operation_heads","operation_sequence","event_sha256","catalog_objects","catalog_generations","catalog_heads","mad4b-schema-v13"]:
+for marker in ["const VERSION = 14","operation_events","operation_heads","operation_sequence","event_sha256","catalog_objects","catalog_generations","catalog_heads","mad4b-schema-v14"]:
     req(schema, marker)
 for marker in ["class-mad4b-scp-canonicalization.php","class-mad4b-scp-operation-context.php","class-mad4b-scp-operation-journal.php"]:
     req(plugin, marker)

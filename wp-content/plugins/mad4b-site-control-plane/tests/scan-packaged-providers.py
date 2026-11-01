@@ -22,6 +22,19 @@ import zipfile
 from pathlib import Path
 
 PROVIDERS = {
+    # Official WordPress.org package is restored to the CI workspace with
+    # exact SHA-256 and byte-count checks before this static inspection.
+    # Include it in the report; otherwise a baseline-listed core provider
+    # looks missing even though the verified archive is present.
+    "woocommerce": {
+        "archive": "woocommerce.zip",
+        "patterns": {
+            "woocommerce_core": r"class\s+WooCommerce\b",
+            "woocommerce_product": r"class\s+WC_Product\b",
+        },
+        "required": ["woocommerce_core", "woocommerce_product"],
+        "require_plugin_version": True,
+    },
     "mcp_adapter": {
         "archive": "mcp-adapter.zip",
         "patterns": {

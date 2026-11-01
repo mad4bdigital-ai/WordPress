@@ -60,7 +60,11 @@ final class MAD4B_SCP_AI_Only_Early_Auth_Guard {
         }
     }
     public static function boot() {
-        add_action( 'wp_authenticate_application_password_errors', array( __CLASS__, 'authenticate' ), 1, 3 );
+        // The native plugin list can load before a hermetic fixture has WP hooks.
+        // Full WordPress always provides add_action; keep this guard active there.
+        if ( function_exists( 'add_action' ) ) {
+            add_action( 'wp_authenticate_application_password_errors', array( __CLASS__, 'authenticate' ), 1, 3 );
+        }
     }
 }
 MAD4B_SCP_AI_Only_Early_Auth_Guard::boot();

@@ -90,8 +90,35 @@ foreach ( $reviewed_step_up_abilities as $ability_name ) {
             $fail( 'Non-selected direct step-up is not a genuine bounded optional exclusion.', $ability_name );
         continue;
     }
-    if ( empty( $reviewed_step_up_by_ability[ $ability_name ] ) )
-        $fail( 'Budget-retained reviewed direct step-up ability has no bound MCP tool.', $ability_name );
+    if ( empty( $reviewed_step_up_by_ability[ $ability_name ] ) ) {
+        // Diagnostic-only: no OAuth tokens, keys, user identities, paths or
+        // caller-provided data. Expose bounded source of catalog degradation.
+        $reg = MAD4B_SCP_Servers::registration_status();
+        $state = isset( $reg['mad4b-chatgpt'] ) && is_array( $reg['mad4b-chatgpt'] )
+            ? $reg['mad4b-chatgpt'] : array();
+        $preflight = isset( $state['preflight'] ) && is_array( $state['preflight'] )
+            ? $state['preflight'] : array();
+        $descriptor = isset( $state['capability_descriptor_evidence'] ) && is_array( $state['capability_descriptor_evidence'] )
+            ? $state['capability_descriptor_evidence'] : array();
+        $fails = array();
+        foreach ( array_slice( is_array( $preflight['failures'] ?? null ) ? $preflight['failures'] : array(), 0, 12 ) as $row ) {
+            $fails[] = array(
+                'ability' => (string) ( $row['failing_ability'] ?? '' ),
+                'code' => (string) ( $row['error_code'] ?? '' ),
+                'stage' => (string) ( $row['stage'] ?? '' ),
+            );
+        }
+        $fail( 'Budget-retained reviewed direct step-up ability has no bound MCP tool.', array(
+            'ability' => $ability_name,
+            'registered' => ! empty( $state['registered'] ),
+            'requested_count' => (int) ( $state['requested_tool_count'] ?? 0 ),
+            'materialized_count' => (int) ( $state['tool_count'] ?? 0 ),
+            'preflight_ready' => ! empty( $preflight['ready'] ),
+            'preflight_blocker' => (string) ( $preflight['blocker'] ?? '' ),
+            'descriptor_blockers' => array_slice( (array) ( $descriptor['blockers'] ?? array() ), 0, 12 ),
+            'preflight_failures' => $fails,
+        ) );
+    }
 }
 $reviewed_step_up_names = array_values( array_unique( $reviewed_step_up_names ) );
 sort( $reviewed_step_up_names );

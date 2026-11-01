@@ -150,7 +150,15 @@ $_GET['page'] = 'mad4b-control-plane-connection';
 $admin_shallow = MAD4B_SCP_Connection_Status::status();
 $check( is_array( $admin_shallow ) && 'admin_shallow' === ( isset( $admin_shallow['status_mode'] ) ? $admin_shallow['status_mode'] : '' ), 'Connection admin status did not select admin_shallow mode.' );
 $check( ! empty( $admin_shallow['transport_deep_validation_deferred'] ), 'Connection admin status unexpectedly performed deep transport validation.' );
-$check( isset( $admin_shallow['local_transport_validation_state'] ) && in_array( $admin_shallow['local_transport_validation_state'], array( 'identity_ready_deep_validation_deferred', 'ready' ), true ), 'Connection admin shallow transport did not expose a truthful tri-state validation state.' );
+$check( isset( $admin_shallow['local_transport_validation_state'] ) && in_array( $admin_shallow['local_transport_validation_state'], array( 'identity_ready_deep_validation_deferred', 'ready' ), true ),
+    'Connection admin shallow transport did not expose a truthful tri-state validation state: '
+    . wp_json_encode( array(
+        'state' => isset( $admin_shallow['local_transport_validation_state'] ) ? sanitize_key( (string) $admin_shallow['local_transport_validation_state'] ) : 'missing',
+        'adapter_available' => ! empty( $admin_shallow['mcp_adapter_available'] ),
+        'provider_identity_ready' => ! empty( $admin_shallow['mcp_adapter_certification']['identity_contract_ok'] ),
+        'provider_read_capability_ready' => ! empty( $admin_shallow['provider_read_capability_ready'] ),
+        'local_blocker_codes' => array_values( array_map( 'sanitize_key', (array) ( $admin_shallow['local_blockers'] ?? array() ) ) ),
+    ) ) );
 $check( ! in_array( 'mad4b_transport_registration_incomplete', (array) $admin_shallow['local_blockers'], true ), 'Connection admin shallow status converted deferred MCP registration into a false transport blocker.' );
 $check( isset( $admin_shallow['connection_certification_state'] ) && false !== strpos( (string) $admin_shallow['connection_certification_state'], 'deferred' ), 'Connection admin shallow certification must be explicitly deferred rather than falsely certified/not-certified.' );
 $check( in_array( 'provider_runtime_integrity', isset( $admin_shallow['deferred_checks'] ) ? (array) $admin_shallow['deferred_checks'] : array(), true ), 'Connection admin status did not defer provider runtime integrity.' );

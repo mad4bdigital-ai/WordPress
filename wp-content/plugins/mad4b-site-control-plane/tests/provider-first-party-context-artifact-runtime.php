@@ -9,6 +9,7 @@ if ( ! mkdir( $root . 'includes/adapters', 0700, true ) ) throw new RuntimeExcep
 define( 'MAD4B_SCP_DIR', $root );
 $files = array(
     'includes/adapters/class-mad4b-scp-context-adapter.php',
+    'includes/adapters/class-mad4b-scp-context-asset-read-model.php',
     'includes/class-mad4b-scp-brand-context-builder.php',
     'includes/class-mad4b-scp-context-authority.php',
     'includes/class-mad4b-scp-context-preflight.php',
@@ -55,7 +56,7 @@ $assert = static function ( $pass, $reason ) {
 };
 try {
     $ok = $read();
-    $assert( ! empty( $ok['bound'] ) && $ok['verified_critical_file_count'] === 6
+    $assert( ! empty( $ok['bound'] ) && $ok['verified_critical_file_count'] === 7
         && ! $ok['mutation_authorized'] && ! $ok['behavioral_certification_granted']
         && ! $ok['rollback_certification_granted'], 'identity only, no write promotion' );
     $adapter->status['control_plane_build_fingerprint'] = str_repeat( 'c', 64 );

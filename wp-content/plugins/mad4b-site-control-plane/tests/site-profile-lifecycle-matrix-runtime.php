@@ -108,6 +108,13 @@ foreach ( $homes as $home ) foreach ( $environments as $wordpress ) foreach ( $e
  journey_check( $effective===MAD4B_SCP_Site_Profile::current_environment() && $enrolled===MAD4B_SCP_Site_Profile::origin_enrolled(), 'effective environment mismatch' );
  $eligible=$enrolled && 'production'!==$selected;
  journey_check( $eligible===MAD4B_SCP_Site_Profile::early_managed_runtime_binding()['eligible'] && $eligible===isset($scheduled[MAD4B_SCP_MCP_Runtime_Recovery::HOOK]), 'regular/MU/scheduled eligibility diverged' );
+ $cache_policy=MAD4B_SCP_Site_Profile::early_cache_runtime_binding();
+ $cache_expected=$enrolled && ( 'production' !== $selected || $explicit );
+ journey_check( $cache_expected===!empty($cache_policy['eligible'])
+  && false===($cache_policy['write_authorized']??null),
+  'environment-neutral cache convergence crossed enrollment or write authority' );
+ journey_check( 'production' !== $selected || $explicit || !$cache_policy['eligible'],
+  'implicit Production enrolled cache convergence without explicit host environment' );
  $uuid=MAD4B_SCP_Site_Profile::site_uuid(); $before=get_option(MAD4B_SCP_Site_Profile::OPTION); $hook_count=$saved_hooks;
  $invalid_mode_input=$input; $invalid_mode_input['expected_revision']=1; $invalid_mode_input['environment_sync_mode']='unexpected';
  $invalid_mode=MAD4B_SCP_Site_Profile::save_current_site($invalid_mode_input);
@@ -135,6 +142,8 @@ foreach ( $homes as $home ) foreach ( $environments as $wordpress ) foreach ( $e
  // A database copy to a different origin quarantines every feature immediately.
  $original_home=$home; $GLOBALS['home']='https://clone.invalid'; MAD4B_SCP_Site_Profile::reset_cache();
  journey_check(!MAD4B_SCP_Site_Profile::oauth_enabled() && !MAD4B_SCP_Site_Profile::write_enabled() && !MAD4B_SCP_Site_Profile::skills_enabled() && !MAD4B_SCP_Site_Profile::early_managed_runtime_binding()['eligible'], 'copied profile inherited authority');
+ journey_check( ! MAD4B_SCP_Site_Profile::early_cache_runtime_binding()['eligible'],
+  'copied Site Profile inherited runtime cache maintenance' );
  $GLOBALS['home']=$original_home; MAD4B_SCP_Site_Profile::reset_cache();
  // Audit failure must restore the exact former profile and never emit save hook.
  $audit_fail=true; $input['expected_revision']=2; $hook_count=$saved_hooks;

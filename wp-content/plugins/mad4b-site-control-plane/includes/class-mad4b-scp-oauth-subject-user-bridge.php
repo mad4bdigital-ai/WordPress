@@ -7,9 +7,11 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  *
  * The OAuth resource bridge remains the cryptographic authority: this class runs
  * only after its rest_pre_dispatch verifier has accepted the bearer. It never
- * validates an untrusted JWT by itself and never creates grants. Its only role is
- * to stop a multi-user connection from collapsing every verified subject onto a
- * single compatibility/default WordPress administrator.
+ * validates an untrusted JWT by itself and never creates grants. Its main role is
+ * to stop a multi-user connection from collapsing verified subjects onto a
+ * compatibility administrator. The optional, strictly staged ChatGPT user
+ * onboarding below creates only an exact user-owned draft audit principal;
+ * it does not approve or execute a mutation.
  */
 final class MAD4B_SCP_OAuth_Subject_User_Bridge {
 	const CONTRACT = 'mad4b.oauth-subject-user-bridge.v1';
@@ -100,6 +102,29 @@ final class MAD4B_SCP_OAuth_Subject_User_Bridge {
 			'site_profile_revision' => $profile_ready ? MAD4B_SCP_Site_Profile::revision() : 0,
 			'site_profile_digest' => $profile_ready ? MAD4B_SCP_Site_Profile::profile_digest() : MAD4B_SCP_Portable_Readonly_Connection::connection_digest(),
 		);
+		// A verified enrolled WordPress-user connection may establish its
+		// own draft-only governed execution identity once. This is an audit
+		// principal, never a ticket or publication grant. Portable read-only
+		// connections and any Production environment remain excluded.
+		if ( '/mcp/mad4b-chatgpt' === $route
+			&& $profile_ready
+			&& class_exists( 'MAD4B_SCP_Delegation_Mode' )
+			&& MAD4B_SCP_Delegation_Mode::DELEGATED === MAD4B_SCP_Delegation_Mode::selected_mode()
+			&& class_exists( 'MAD4B_SCP_Identity_Context' )
+			&& method_exists( 'MAD4B_SCP_Identity_Context', 'current' )
+			&& user_can( $user, 'edit_posts' ) ) {
+			$identity = MAD4B_SCP_Identity_Context::current();
+			if ( is_array( $identity ) ) {
+				$enrollment = MAD4B_SCP_Delegation_Mode::ensure_content_actor( $identity, true );
+				if ( is_wp_error( $enrollment ) ) {
+					// Failed onboarding must never destroy a legitimate read session
+					// or become implicit write permission. Only a bounded code is
+					// exposed to existing operator diagnostics; no token is logged.
+					do_action( 'mad4b_scp_delegation_onboarding_denied',
+						$enrollment->get_error_code(), $user_id );
+				}
+			}
+		}
 		return $result;
 	}
 

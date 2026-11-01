@@ -2096,7 +2096,8 @@
         "RECOVERY-01",
         "ROLLOUT-01",
         "GOVERNANCE-01",
-        "SECURITY-01"
+        "SECURITY-01",
+        "MCP-01"
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py"
@@ -2106,7 +2107,7 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "needs_new_control": false,
-      "coverage_reuse_rationale": "Existing update-coordinator, cross-plugin isolation, recovery, rollout, governance and security controls apply. The introduced source only mentions the established Ability as non-authorizing routing guidance; this review does not register, grant, invoke, install or certify it.",
+      "coverage_reuse_rationale": "Existing update-coordinator, cross-plugin isolation, recovery, rollout, governance and security controls apply. The introduced source only mentions the established Ability as non-authorizing routing guidance; this review does not register, grant, invoke, install or certify it. The static capability detector also maps this literal routing reference to the MCP domain via the class-mad4b-scp-control-plane-test-router.php source; MCP-01 supplies that required domain control without changing execution authority.",
       "review_rationale": "Static source scanner identifies the literal mad4b/control-plane-selected-head-plan in the new package route guidance. It is a pointer to an independent already-governed Control Plane planning surface, NOT a newly registered Ability or an executable provider-package action. Same-PR hermetic PHP test validates fail-closed MAD4B provider rejection, read-only guidance and no auto-apply/Production permission. Runtime discovery remains unverified. The same-PR Python regression contract executes both fixed PHP CLI fixtures with bounded timeout, checks nonzero exit codes and requires positive PASS markers; neither fixture is counted as a trusted standalone PHPUnit test."
     },
     {
@@ -3367,12 +3368,13 @@
         "EXECUTION-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-w1-authority-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/local-ollama-ability-runtime.php"
       ],
       "needs_new_control": false,
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing MCP admission, platform identity, security, owner-scoped administrative rights and execution-denial controls cover these staging-only authorization surfaces, without granting Production execution or public access.",
-      "review_rationale": "New surface ability:mad4b/ollama-inference is source-pinned in the W1 authority integration and assessed with hermetic owner-browser, agent REST route, Site Profile, OAuth, replay, write grant, exact mapping and negative permission fixtures. This is only CI source review, not evidence that the route is registered, usable, or authorized in Production."
+      "review_rationale": "New surface ability:mad4b/ollama-inference is source-pinned in the W1 authority integration and assessed with hermetic owner-browser, agent REST route, Site Profile, OAuth, replay, write grant, exact mapping and negative permission fixtures. This is only CI source review, not evidence that the route is registered, usable, or authorized in Production. Added same-PR hermetic PHP runtime proof of Local-only registration/permission, nonexistent Staging admission, bounded task list, strict router model binding, nonpublic MCP metadata, duplicate-registration safety and non-authorizing response. The W1 Python runner executes and checks the PASS marker."
     },
     {
       "id": "ability:mad4b/agent-grant-applied",
@@ -3605,6 +3607,991 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing MCP admission, platform identity, security, owner-scoped administrative rights and execution-denial controls cover these staging-only authorization surfaces, without granting Production execution or public access.",
       "review_rationale": "New surface ability:mad4b/staging-write-grant-reconcile-staging is source-pinned in the W1 authority integration and assessed with hermetic owner-browser, agent REST route, Site Profile, OAuth, replay, write grant, exact mapping and negative permission fixtures. This is only CI source review, not evidence that the route is registered, usable, or authorized in Production."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-read-ability-service.php",
+      "owner_role": "AI-assisted source-bound CI reviewer; no owner or Production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/gateway-mutation-guards.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP surface admission, provider policy and governed execution controls cover this internal delegated read service. It exposes no new endpoint or independent grant, and retained read and WHERE restrictions are covered by the named hermetic contracts.",
+      "review_rationale": "Exact Git blob reviewed as a mechanical extraction of bounded read-only filesystem and structured SQL helpers. The existing Ability facade still owns registration, permission and dispatch gates; the extracted implementation calls Policy::resolve_path, sensitivity guards, validated identifiers and prepared WHERE values. Hermetic gateway mutation and architecture tests check dependency loading and unchanged negative-path behavior. This source review grants no execution or Production authority."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-recovery-projection.php",
+      "owner_role": "AI-assisted source-bound CI reviewer; no owner or Production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/developer-runtime-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing runtime convergence, cross-provider boundary, audit recovery, rollout and execution-denial controls cover the internal non-authorizing projection. The original Authorization entrypoints keep admission, claim and terminal evidence mutation; these are not delegated to an untrusted service.",
+      "review_rationale": "Exact Git blob reviewed for narrowly delegated non-authorizing execution-attempt readback and server classification. It retains audit-chain consistency and fail-closed reconciliation, preserves the remote approval-planner denial for mad4b-chatgpt and mad4b-write, and exposes no new write callback. Developer and staging authority contracts assert the forwarded methods and exact denial list; separate live acceptance remains mandatory."
+    },
+    {
+      "id": "ability:mad4b/build-provenance-status",
+      "owner_role": "AI-assisted exact-source CI reviewer (non-authorizing; independent owner release approval still mandatory)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-route-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution policy controls apply to this exact source reference. This router does not create a remote execution grant; the same-PR hermetic test demonstrates the read-only provider-plan gate, signed source identity, and denied Production or caller-supplied plans.",
+      "review_rationale": "Source-bound audit of the Staging-only Control Plane test router. Only its control-plane-test-route ability is registered, private and read-only with manage_options and governed Policy::can_read checks. All other ability identifiers in this file are displayed as next-step/readback references and not registered or executed here. Native and selected plans are read from local provider methods, signed source identity is required, altered plan SHA or Production environment is rejected, and the result explicitly forbids automatic mutation, promotion or certification. The same-PR hermetic PHP fixture tests eligibility, owner approval boundaries, signed identity, fallback, unauthorized input, authorization denial and Production refusal. Specific identifier: build-provenance-status; this identifier is a readback/plan/apply name shown for separately governed next steps, not called or registered by this router."
+    },
+    {
+      "id": "ability:mad4b/control-plane-native-apply",
+      "owner_role": "AI-assisted exact-source CI reviewer (non-authorizing; independent owner release approval still mandatory)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-route-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution policy controls apply to this exact source reference. This router does not create a remote execution grant; the same-PR hermetic test demonstrates the read-only provider-plan gate, signed source identity, and denied Production or caller-supplied plans.",
+      "review_rationale": "Source-bound audit of the Staging-only Control Plane test router. Only its control-plane-test-route ability is registered, private and read-only with manage_options and governed Policy::can_read checks. All other ability identifiers in this file are displayed as next-step/readback references and not registered or executed here. Native and selected plans are read from local provider methods, signed source identity is required, altered plan SHA or Production environment is rejected, and the result explicitly forbids automatic mutation, promotion or certification. The same-PR hermetic PHP fixture tests eligibility, owner approval boundaries, signed identity, fallback, unauthorized input, authorization denial and Production refusal. Specific identifier: control-plane-native-apply; this identifier is a readback/plan/apply name shown for separately governed next steps, not called or registered by this router."
+    },
+    {
+      "id": "ability:mad4b/control-plane-native-plan",
+      "owner_role": "AI-assisted exact-source CI reviewer (non-authorizing; independent owner release approval still mandatory)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-route-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution policy controls apply to this exact source reference. This router does not create a remote execution grant; the same-PR hermetic test demonstrates the read-only provider-plan gate, signed source identity, and denied Production or caller-supplied plans.",
+      "review_rationale": "Source-bound audit of the Staging-only Control Plane test router. Only its control-plane-test-route ability is registered, private and read-only with manage_options and governed Policy::can_read checks. All other ability identifiers in this file are displayed as next-step/readback references and not registered or executed here. Native and selected plans are read from local provider methods, signed source identity is required, altered plan SHA or Production environment is rejected, and the result explicitly forbids automatic mutation, promotion or certification. The same-PR hermetic PHP fixture tests eligibility, owner approval boundaries, signed identity, fallback, unauthorized input, authorization denial and Production refusal. Specific identifier: control-plane-native-plan; this identifier is a readback/plan/apply name shown for separately governed next steps, not called or registered by this router."
+    },
+    {
+      "id": "ability:mad4b/control-plane-selected-head-apply",
+      "owner_role": "AI-assisted exact-source CI reviewer (non-authorizing; independent owner release approval still mandatory)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-route-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution policy controls apply to this exact source reference. This router does not create a remote execution grant; the same-PR hermetic test demonstrates the read-only provider-plan gate, signed source identity, and denied Production or caller-supplied plans.",
+      "review_rationale": "Source-bound audit of the Staging-only Control Plane test router. Only its control-plane-test-route ability is registered, private and read-only with manage_options and governed Policy::can_read checks. All other ability identifiers in this file are displayed as next-step/readback references and not registered or executed here. Native and selected plans are read from local provider methods, signed source identity is required, altered plan SHA or Production environment is rejected, and the result explicitly forbids automatic mutation, promotion or certification. The same-PR hermetic PHP fixture tests eligibility, owner approval boundaries, signed identity, fallback, unauthorized input, authorization denial and Production refusal. Specific identifier: control-plane-selected-head-apply; this identifier is a readback/plan/apply name shown for separately governed next steps, not called or registered by this router."
+    },
+    {
+      "id": "ability:mad4b/control-plane-test-route",
+      "owner_role": "AI-assisted exact-source CI reviewer (non-authorizing; independent owner release approval still mandatory)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-route-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution policy controls apply to this exact source reference. This router does not create a remote execution grant; the same-PR hermetic test demonstrates the read-only provider-plan gate, signed source identity, and denied Production or caller-supplied plans.",
+      "review_rationale": "Source-bound audit of the Staging-only Control Plane test router. Only its control-plane-test-route ability is registered, private and read-only with manage_options and governed Policy::can_read checks. All other ability identifiers in this file are displayed as next-step/readback references and not registered or executed here. Native and selected plans are read from local provider methods, signed source identity is required, altered plan SHA or Production environment is rejected, and the result explicitly forbids automatic mutation, promotion or certification. The same-PR hermetic PHP fixture tests eligibility, owner approval boundaries, signed identity, fallback, unauthorized input, authorization denial and Production refusal. Specific identifier: control-plane-test-route; this identifier is the router's sole registered ability."
+    },
+    {
+      "id": "ability:mad4b/control-plane-update-status",
+      "owner_role": "AI-assisted exact-source CI reviewer (non-authorizing; independent owner release approval still mandatory)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-route-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "coverage_reuse_rationale": "Existing update/recovery/rollout policy controls apply to this exact source reference. This router does not create a remote execution grant; the same-PR hermetic test demonstrates the read-only provider-plan gate, signed source identity, and denied Production or caller-supplied plans.",
+      "review_rationale": "Source-bound audit of the Staging-only Control Plane test router. Only its control-plane-test-route ability is registered, private and read-only with manage_options and governed Policy::can_read checks. All other ability identifiers in this file are displayed as next-step/readback references and not registered or executed here. Native and selected plans are read from local provider methods, signed source identity is required, altered plan SHA or Production environment is rejected, and the result explicitly forbids automatic mutation, promotion or certification. The same-PR hermetic PHP fixture tests eligibility, owner approval boundaries, signed identity, fallback, unauthorized input, authorization denial and Production refusal. Specific identifier: control-plane-update-status; this identifier is a readback/plan/apply name shown for separately governed next steps, not called or registered by this router."
+    },
+    {
+      "id": "ability:mad4b/recovery-route-matrix",
+      "owner_role": "AI-assisted exact-source CI reviewer (non-authorizing; independent owner release approval still mandatory)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-route-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "coverage_reuse_rationale": "Existing update/recovery/rollout policy controls apply to this exact source reference. This router does not create a remote execution grant; the same-PR hermetic test demonstrates the read-only provider-plan gate, signed source identity, and denied Production or caller-supplied plans.",
+      "review_rationale": "Source-bound audit of the Staging-only Control Plane test router. Only its control-plane-test-route ability is registered, private and read-only with manage_options and governed Policy::can_read checks. All other ability identifiers in this file are displayed as next-step/readback references and not registered or executed here. Native and selected plans are read from local provider methods, signed source identity is required, altered plan SHA or Production environment is rejected, and the result explicitly forbids automatic mutation, promotion or certification. The same-PR hermetic PHP fixture tests eligibility, owner approval boundaries, signed identity, fallback, unauthorized input, authorization denial and Production refusal. Specific identifier: recovery-route-matrix; this identifier is a readback/plan/apply name shown for separately governed next steps, not called or registered by this router."
+    },
+    {
+      "id": "ability:mad4b/session-safe-diagnostics",
+      "owner_role": "AI-assisted exact-source CI reviewer (non-authorizing; independent owner release approval still mandatory)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-route-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution policy controls apply to this exact source reference. This router does not create a remote execution grant; the same-PR hermetic test demonstrates the read-only provider-plan gate, signed source identity, and denied Production or caller-supplied plans.",
+      "review_rationale": "Source-bound audit of the Staging-only Control Plane test router. Only its control-plane-test-route ability is registered, private and read-only with manage_options and governed Policy::can_read checks. All other ability identifiers in this file are displayed as next-step/readback references and not registered or executed here. Native and selected plans are read from local provider methods, signed source identity is required, altered plan SHA or Production environment is rejected, and the result explicitly forbids automatic mutation, promotion or certification. The same-PR hermetic PHP fixture tests eligibility, owner approval boundaries, signed identity, fallback, unauthorized input, authorization denial and Production refusal. Specific identifier: session-safe-diagnostics; this identifier is a readback/plan/apply name shown for separately governed next steps, not called or registered by this router."
+    },
+    {
+      "id": "ability:mad4b/site-profile-status",
+      "owner_role": "AI-assisted exact-source CI reviewer (non-authorizing; independent owner release approval still mandatory)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-route-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution policy controls apply to this exact source reference. This router does not create a remote execution grant; the same-PR hermetic test demonstrates the read-only provider-plan gate, signed source identity, and denied Production or caller-supplied plans.",
+      "review_rationale": "Source-bound audit of the Staging-only Control Plane test router. Only its control-plane-test-route ability is registered, private and read-only with manage_options and governed Policy::can_read checks. All other ability identifiers in this file are displayed as next-step/readback references and not registered or executed here. Native and selected plans are read from local provider methods, signed source identity is required, altered plan SHA or Production environment is rejected, and the result explicitly forbids automatic mutation, promotion or certification. The same-PR hermetic PHP fixture tests eligibility, owner approval boundaries, signed identity, fallback, unauthorized input, authorization denial and Production refusal. Specific identifier: site-profile-status; this identifier is a readback/plan/apply name shown for separately governed next steps, not called or registered by this router."
+    },
+    {
+      "id": "ability:mad4b/skill-runtime-certification",
+      "owner_role": "AI-assisted exact-source CI reviewer (non-authorizing; independent owner release approval still mandatory)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-route-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution policy controls apply to this exact source reference. This router does not create a remote execution grant; the same-PR hermetic test demonstrates the read-only provider-plan gate, signed source identity, and denied Production or caller-supplied plans.",
+      "review_rationale": "Source-bound audit of the Staging-only Control Plane test router. Only its control-plane-test-route ability is registered, private and read-only with manage_options and governed Policy::can_read checks. All other ability identifiers in this file are displayed as next-step/readback references and not registered or executed here. Native and selected plans are read from local provider methods, signed source identity is required, altered plan SHA or Production environment is rejected, and the result explicitly forbids automatic mutation, promotion or certification. The same-PR hermetic PHP fixture tests eligibility, owner approval boundaries, signed identity, fallback, unauthorized input, authorization denial and Production refusal. Specific identifier: skill-runtime-certification; this identifier is a readback/plan/apply name shown for separately governed next steps, not called or registered by this router."
+    },
+    {
+      "id": "ability:mad4b/staging-certification-status",
+      "owner_role": "AI-assisted exact-source CI reviewer (non-authorizing; independent owner release approval still mandatory)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-route-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution policy controls apply to this exact source reference. This router does not create a remote execution grant; the same-PR hermetic test demonstrates the read-only provider-plan gate, signed source identity, and denied Production or caller-supplied plans.",
+      "review_rationale": "Source-bound audit of the Staging-only Control Plane test router. Only its control-plane-test-route ability is registered, private and read-only with manage_options and governed Policy::can_read checks. All other ability identifiers in this file are displayed as next-step/readback references and not registered or executed here. Native and selected plans are read from local provider methods, signed source identity is required, altered plan SHA or Production environment is rejected, and the result explicitly forbids automatic mutation, promotion or certification. The same-PR hermetic PHP fixture tests eligibility, owner approval boundaries, signed identity, fallback, unauthorized input, authorization denial and Production refusal. Specific identifier: staging-certification-status; this identifier is a readback/plan/apply name shown for separately governed next steps, not called or registered by this router."
+    },
+    {
+      "id": "ability:mad4b/wordpress-native-candidate-opt-in-plan",
+      "owner_role": "AI-assisted exact-source CI reviewer (non-authorizing; independent owner release approval still mandatory)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-route-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution policy controls apply to this exact source reference. This router does not create a remote execution grant; the same-PR hermetic test demonstrates the read-only provider-plan gate, signed source identity, and denied Production or caller-supplied plans.",
+      "review_rationale": "Source-bound audit of the Staging-only Control Plane test router. Only its control-plane-test-route ability is registered, private and read-only with manage_options and governed Policy::can_read checks. All other ability identifiers in this file are displayed as next-step/readback references and not registered or executed here. Native and selected plans are read from local provider methods, signed source identity is required, altered plan SHA or Production environment is rejected, and the result explicitly forbids automatic mutation, promotion or certification. The same-PR hermetic PHP fixture tests eligibility, owner approval boundaries, signed identity, fallback, unauthorized input, authorization denial and Production refusal. Specific identifier: wordpress-native-candidate-opt-in-plan; this identifier is a readback/plan/apply name shown for separately governed next steps, not called or registered by this router."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-control-plane-test-router.php",
+      "owner_role": "AI-assisted exact-source CI reviewer (non-authorizing; independent owner release approval still mandatory)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-route-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "coverage_reuse_rationale": "Existing governance/platform/security controls apply because this source adds a non-authorizing read-only local preflight router with denied user-controlled plans, immutable signed package gates, admin policy enforcement and an explicit Production boundary.",
+      "review_rationale": "Source-bound audit of the Staging-only Control Plane test router. Only its control-plane-test-route ability is registered, private and read-only with manage_options and governed Policy::can_read checks. All other ability identifiers in this file are displayed as next-step/readback references and not registered or executed here. Native and selected plans are read from local provider methods, signed source identity is required, altered plan SHA or Production environment is rejected, and the result explicitly forbids automatic mutation, promotion or certification. The same-PR hermetic PHP fixture tests eligibility, owner approval boundaries, signed identity, fallback, unauthorized input, authorization denial and Production refusal."
+    },
+    {
+      "id": "rest:mad4b/v1/provider-connections",
+      "owner_role": "AI-assisted exact source CI reviewer; independent owner and live provider acceptance still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP request admission, provider isolation and execution-denial controls already require the admin read-only discovery/plan path to use its original bound WordPress authority; this source adds a REST adapter but no independent authorization grant or new trusted provider.",
+      "review_rationale": "Exact source and same-PR hermetic regression review of four provider connection REST routes. The GET endpoints call admin-guarded discovery and plans. The POST refresh endpoint requires exact plan and approval-ticket fields, enrolled Staging authority, a verified ChatGPT OAuth client, central Authorization::authorize_mutation and claim_mutation, with invocation through the governed WP Ability rather than a direct provider callback. POST reconnect enforces an authenticated owner session and wp_rest nonce, exact bound reconnect plan and no scope expansion; actual OAuth consent remains browser-side. Invalid routes/roles/payloads and Production refresh are denied, and the regression tests verify no token mutation or authorization-url creation on denied requests. This is source-level CI assurance, not a live grant or Production release. Reviewed exact REST route: rest:mad4b/v1/provider-connections"
+    },
+    {
+      "id": "rest:mad4b/v1/provider-connections/(?P<provider>[a-z][a-z0-9_-]{0,63})/plan",
+      "owner_role": "AI-assisted exact source CI reviewer; independent owner and live provider acceptance still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP request admission, provider isolation and execution-denial controls already require the admin read-only discovery/plan path to use its original bound WordPress authority; this source adds a REST adapter but no independent authorization grant or new trusted provider.",
+      "review_rationale": "Exact source and same-PR hermetic regression review of four provider connection REST routes. The GET endpoints call admin-guarded discovery and plans. The POST refresh endpoint requires exact plan and approval-ticket fields, enrolled Staging authority, a verified ChatGPT OAuth client, central Authorization::authorize_mutation and claim_mutation, with invocation through the governed WP Ability rather than a direct provider callback. POST reconnect enforces an authenticated owner session and wp_rest nonce, exact bound reconnect plan and no scope expansion; actual OAuth consent remains browser-side. Invalid routes/roles/payloads and Production refresh are denied, and the regression tests verify no token mutation or authorization-url creation on denied requests. This is source-level CI assurance, not a live grant or Production release. Reviewed exact REST route: rest:mad4b/v1/provider-connections/(?P<provider>[a-z][a-z0-9_-]{0,63})/plan"
+    },
+    {
+      "id": "rest:mad4b/v1/provider-connections/(?P<provider>[a-z][a-z0-9_-]{0,63})/reconnect",
+      "owner_role": "AI-assisted exact source CI reviewer; independent owner and live provider acceptance still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP request admission, provider isolation and execution-denial controls already require the browser nonce OAuth reconsent path to use its original bound WordPress authority; this source adds a REST adapter but no independent authorization grant or new trusted provider.",
+      "review_rationale": "Exact source and same-PR hermetic regression review of four provider connection REST routes. The GET endpoints call admin-guarded discovery and plans. The POST refresh endpoint requires exact plan and approval-ticket fields, enrolled Staging authority, a verified ChatGPT OAuth client, central Authorization::authorize_mutation and claim_mutation, with invocation through the governed WP Ability rather than a direct provider callback. POST reconnect enforces an authenticated owner session and wp_rest nonce, exact bound reconnect plan and no scope expansion; actual OAuth consent remains browser-side. Invalid routes/roles/payloads and Production refresh are denied, and the regression tests verify no token mutation or authorization-url creation on denied requests. This is source-level CI assurance, not a live grant or Production release. Reviewed exact REST route: rest:mad4b/v1/provider-connections/(?P<provider>[a-z][a-z0-9_-]{0,63})/reconnect"
+    },
+    {
+      "id": "rest:mad4b/v1/provider-connections/(?P<provider>[a-z][a-z0-9_-]{0,63})/refresh",
+      "owner_role": "AI-assisted exact source CI reviewer; independent owner and live provider acceptance still required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP request admission, provider isolation and execution-denial controls already require the owner-ticket token refresh path to use its original bound WordPress authority; this source adds a REST adapter but no independent authorization grant or new trusted provider.",
+      "review_rationale": "Exact source and same-PR hermetic regression review of four provider connection REST routes. The GET endpoints call admin-guarded discovery and plans. The POST refresh endpoint requires exact plan and approval-ticket fields, enrolled Staging authority, a verified ChatGPT OAuth client, central Authorization::authorize_mutation and claim_mutation, with invocation through the governed WP Ability rather than a direct provider callback. POST reconnect enforces an authenticated owner session and wp_rest nonce, exact bound reconnect plan and no scope expansion; actual OAuth consent remains browser-side. Invalid routes/roles/payloads and Production refresh are denied, and the regression tests verify no token mutation or authorization-url creation on denied requests. This is source-level CI assurance, not a live grant or Production release. Reviewed exact REST route: rest:mad4b/v1/provider-connections/(?P<provider>[a-z][a-z0-9_-]{0,63})/refresh"
+    },
+    {
+      "id": "ability:mad4b/guided-continuation-run",
+      "owner_role": "AI-assisted exact-source CI reviewer, independent owner approval remains mandatory",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/guided-continuation-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "coverage_reuse_rationale": "Original MCP policy, provider-safe read classification and execution-denial controls remain authoritative. This source registers only the guided-continuation-run tool; guided-continuation-run is that read-only tool with no independent credentials, permissions or dispatch authority.",
+      "review_rationale": "Exact-source CI-only review of a read-only next-ability follower that cannot create an approval ticket, execute mutations, replay original writes, or initiate external OAuth. It accepts only a fixed, audited SAFE_READS list, requires the original managed read policy and WordPress Ability read-only annotation, a supported read category, and a zero-required-input schema. It executes a maximum of three steps, terminates on cycles and unsafe/write identifiers, and returns only bounded state/next-ability/error-code values. Same-PR hermetic PHP test is executed in Site Control Plane CI and verifies real registration, correct two-step read chain, no mutation flags, attempted write as a nonexecuting handoff, cycle and budget enforcement, denied policy, unsafe category/annotation/required inputs, malformed original hash, forbidden extra input, and redacted error output. Exact static ability identifier: mad4b/guided-continuation-run"
+    },
+    {
+      "id": "ability:mad4b/runtime-convergence-status",
+      "owner_role": "AI-assisted exact-source CI reviewer, independent owner approval remains mandatory",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/guided-continuation-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "coverage_reuse_rationale": "Original MCP policy, provider-safe read classification and execution-denial controls remain authoritative. This source registers only the guided-continuation-run tool; runtime-convergence-status is a literal certified read-follow-up reference with no independent credentials, permissions or dispatch authority.",
+      "review_rationale": "Exact-source CI-only review of a read-only next-ability follower that cannot create an approval ticket, execute mutations, replay original writes, or initiate external OAuth. It accepts only a fixed, audited SAFE_READS list, requires the original managed read policy and WordPress Ability read-only annotation, a supported read category, and a zero-required-input schema. It executes a maximum of three steps, terminates on cycles and unsafe/write identifiers, and returns only bounded state/next-ability/error-code values. Same-PR hermetic PHP test is executed in Site Control Plane CI and verifies real registration, correct two-step read chain, no mutation flags, attempted write as a nonexecuting handoff, cycle and budget enforcement, denied policy, unsafe category/annotation/required inputs, malformed original hash, forbidden extra input, and redacted error output. Exact static ability identifier: mad4b/runtime-convergence-status"
+    },
+    {
+      "id": "ability:mad4b/skills-runtime-certification",
+      "owner_role": "AI-assisted exact-source CI reviewer, independent owner approval remains mandatory",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/guided-continuation-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "coverage_reuse_rationale": "Original MCP policy, provider-safe read classification and execution-denial controls remain authoritative. This source registers only the guided-continuation-run tool; skills-runtime-certification is a literal certified read-follow-up reference with no independent credentials, permissions or dispatch authority.",
+      "review_rationale": "Exact-source CI-only review of a read-only next-ability follower that cannot create an approval ticket, execute mutations, replay original writes, or initiate external OAuth. It accepts only a fixed, audited SAFE_READS list, requires the original managed read policy and WordPress Ability read-only annotation, a supported read category, and a zero-required-input schema. It executes a maximum of three steps, terminates on cycles and unsafe/write identifiers, and returns only bounded state/next-ability/error-code values. Same-PR hermetic PHP test is executed in Site Control Plane CI and verifies real registration, correct two-step read chain, no mutation flags, attempted write as a nonexecuting handoff, cycle and budget enforcement, denied policy, unsafe category/annotation/required inputs, malformed original hash, forbidden extra input, and redacted error output. Exact static ability identifier: mad4b/skills-runtime-certification"
+    },
+    {
+      "id": "ability:mad4b/write-runtime-certification",
+      "owner_role": "AI-assisted exact-source CI reviewer, independent owner approval remains mandatory",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/guided-continuation-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "coverage_reuse_rationale": "Original MCP policy, provider-safe read classification and execution-denial controls remain authoritative. This source registers only the guided-continuation-run tool; write-runtime-certification is a literal certified read-follow-up reference with no independent credentials, permissions or dispatch authority.",
+      "review_rationale": "Exact-source CI-only review of a read-only next-ability follower that cannot create an approval ticket, execute mutations, replay original writes, or initiate external OAuth. It accepts only a fixed, audited SAFE_READS list, requires the original managed read policy and WordPress Ability read-only annotation, a supported read category, and a zero-required-input schema. It executes a maximum of three steps, terminates on cycles and unsafe/write identifiers, and returns only bounded state/next-ability/error-code values. Same-PR hermetic PHP test is executed in Site Control Plane CI and verifies real registration, correct two-step read chain, no mutation flags, attempted write as a nonexecuting handoff, cycle and budget enforcement, denied policy, unsafe category/annotation/required inputs, malformed original hash, forbidden extra input, and redacted error output. Exact static ability identifier: mad4b/write-runtime-certification"
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-guided-continuation.php",
+      "owner_role": "AI-assisted exact-source CI reviewer, independent owner approval remains mandatory",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/guided-continuation-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "coverage_reuse_rationale": "Existing administrator read permission, browser safety and security-output controls restrict the independent internal service; the new same-PR hermetic test proves no self-granted permission and no mutation path.",
+      "review_rationale": "Exact-source CI-only review of a read-only next-ability follower that cannot create an approval ticket, execute mutations, replay original writes, or initiate external OAuth. It accepts only a fixed, audited SAFE_READS list, requires the original managed read policy and WordPress Ability read-only annotation, a supported read category, and a zero-required-input schema. It executes a maximum of three steps, terminates on cycles and unsafe/write identifiers, and returns only bounded state/next-ability/error-code values. Same-PR hermetic PHP test is executed in Site Control Plane CI and verifies real registration, correct two-step read chain, no mutation flags, attempted write as a nonexecuting handoff, cycle and budget enforcement, denied policy, unsafe category/annotation/required inputs, malformed original hash, forbidden extra input, and redacted error output."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-provider-snapshot",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer; separate owner authorization required",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution controls cover this bounded optional-provider read or read-only preflight requiring original Policy::can_read. Exact same-PR negative tests verify no implicit authority, absent provider does not register, and direct mutator calls fail closed.",
+      "review_rationale": "Exact ChatbotX optional-provider adapter reviewed against the same-PR hermetic registration, write-preflight and direct governed-write tests. Availability is tied to the plugin's active_plugins entry plus loaded provider classes: absent/inactive provider registers and advertises no MCP tool, including after withdrawal. Exactly eleven read names use Policy::can_read and three mutation names use Policy::can_admin with write surface, non-readonly annotations, required idempotency keys and closed object schemas. Shared Adapter_Base central authorization and ChatbotX_Governed_Writes::guard retain independent mutation checks, denied-write tests and bounded provider-native targets. This review is source-level only; it does not certify connected provider credentials or grant Production/remote mutation authority. Specific documented surface: mad4b/chatbotx-provider-snapshot."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-channels-read",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer; separate owner authorization required",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution controls cover this bounded optional-provider read or read-only preflight requiring original Policy::can_read. Exact same-PR negative tests verify no implicit authority, absent provider does not register, and direct mutator calls fail closed.",
+      "review_rationale": "Exact ChatbotX optional-provider adapter reviewed against the same-PR hermetic registration, write-preflight and direct governed-write tests. Availability is tied to the plugin's active_plugins entry plus loaded provider classes: absent/inactive provider registers and advertises no MCP tool, including after withdrawal. Exactly eleven read names use Policy::can_read and three mutation names use Policy::can_admin with write surface, non-readonly annotations, required idempotency keys and closed object schemas. Shared Adapter_Base central authorization and ChatbotX_Governed_Writes::guard retain independent mutation checks, denied-write tests and bounded provider-native targets. This review is source-level only; it does not certify connected provider credentials or grant Production/remote mutation authority. Specific documented surface: mad4b/chatbotx-channels-read."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-remote-health",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer; separate owner authorization required",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution controls cover this bounded optional-provider read or read-only preflight requiring original Policy::can_read. Exact same-PR negative tests verify no implicit authority, absent provider does not register, and direct mutator calls fail closed.",
+      "review_rationale": "Exact ChatbotX optional-provider adapter reviewed against the same-PR hermetic registration, write-preflight and direct governed-write tests. Availability is tied to the plugin's active_plugins entry plus loaded provider classes: absent/inactive provider registers and advertises no MCP tool, including after withdrawal. Exactly eleven read names use Policy::can_read and three mutation names use Policy::can_admin with write surface, non-readonly annotations, required idempotency keys and closed object schemas. Shared Adapter_Base central authorization and ChatbotX_Governed_Writes::guard retain independent mutation checks, denied-write tests and bounded provider-native targets. This review is source-level only; it does not certify connected provider credentials or grant Production/remote mutation authority. Specific documented surface: mad4b/chatbotx-remote-health."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-business-context",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer; separate owner authorization required",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution controls cover this bounded optional-provider read or read-only preflight requiring original Policy::can_read. Exact same-PR negative tests verify no implicit authority, absent provider does not register, and direct mutator calls fail closed.",
+      "review_rationale": "Exact ChatbotX optional-provider adapter reviewed against the same-PR hermetic registration, write-preflight and direct governed-write tests. Availability is tied to the plugin's active_plugins entry plus loaded provider classes: absent/inactive provider registers and advertises no MCP tool, including after withdrawal. Exactly eleven read names use Policy::can_read and three mutation names use Policy::can_admin with write surface, non-readonly annotations, required idempotency keys and closed object schemas. Shared Adapter_Base central authorization and ChatbotX_Governed_Writes::guard retain independent mutation checks, denied-write tests and bounded provider-native targets. This review is source-level only; it does not certify connected provider credentials or grant Production/remote mutation authority. Specific documented surface: mad4b/chatbotx-business-context."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-cpt-product-source",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer; separate owner authorization required",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution controls cover this bounded optional-provider read or read-only preflight requiring original Policy::can_read. Exact same-PR negative tests verify no implicit authority, absent provider does not register, and direct mutator calls fail closed.",
+      "review_rationale": "Exact ChatbotX optional-provider adapter reviewed against the same-PR hermetic registration, write-preflight and direct governed-write tests. Availability is tied to the plugin's active_plugins entry plus loaded provider classes: absent/inactive provider registers and advertises no MCP tool, including after withdrawal. Exactly eleven read names use Policy::can_read and three mutation names use Policy::can_admin with write surface, non-readonly annotations, required idempotency keys and closed object schemas. Shared Adapter_Base central authorization and ChatbotX_Governed_Writes::guard retain independent mutation checks, denied-write tests and bounded provider-native targets. This review is source-level only; it does not certify connected provider credentials or grant Production/remote mutation authority. Specific documented surface: mad4b/chatbotx-cpt-product-source."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-write-preflight",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer; separate owner authorization required",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution controls cover this bounded optional-provider read or read-only preflight requiring original Policy::can_read. Exact same-PR negative tests verify no implicit authority, absent provider does not register, and direct mutator calls fail closed.",
+      "review_rationale": "Exact ChatbotX optional-provider adapter reviewed against the same-PR hermetic registration, write-preflight and direct governed-write tests. Availability is tied to the plugin's active_plugins entry plus loaded provider classes: absent/inactive provider registers and advertises no MCP tool, including after withdrawal. Exactly eleven read names use Policy::can_read and three mutation names use Policy::can_admin with write surface, non-readonly annotations, required idempotency keys and closed object schemas. Shared Adapter_Base central authorization and ChatbotX_Governed_Writes::guard retain independent mutation checks, denied-write tests and bounded provider-native targets. This review is source-level only; it does not certify connected provider credentials or grant Production/remote mutation authority. Specific documented surface: mad4b/chatbotx-write-preflight."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-integration-inventory",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer; separate owner authorization required",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution controls cover this bounded optional-provider read or read-only preflight requiring original Policy::can_read. Exact same-PR negative tests verify no implicit authority, absent provider does not register, and direct mutator calls fail closed.",
+      "review_rationale": "Exact ChatbotX optional-provider adapter reviewed against the same-PR hermetic registration, write-preflight and direct governed-write tests. Availability is tied to the plugin's active_plugins entry plus loaded provider classes: absent/inactive provider registers and advertises no MCP tool, including after withdrawal. Exactly eleven read names use Policy::can_read and three mutation names use Policy::can_admin with write surface, non-readonly annotations, required idempotency keys and closed object schemas. Shared Adapter_Base central authorization and ChatbotX_Governed_Writes::guard retain independent mutation checks, denied-write tests and bounded provider-native targets. This review is source-level only; it does not certify connected provider credentials or grant Production/remote mutation authority. Specific documented surface: mad4b/chatbotx-integration-inventory."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-commerce-route-plan",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer; separate owner authorization required",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution controls cover this bounded optional-provider read or read-only preflight requiring original Policy::can_read. Exact same-PR negative tests verify no implicit authority, absent provider does not register, and direct mutator calls fail closed.",
+      "review_rationale": "Exact ChatbotX optional-provider adapter reviewed against the same-PR hermetic registration, write-preflight and direct governed-write tests. Availability is tied to the plugin's active_plugins entry plus loaded provider classes: absent/inactive provider registers and advertises no MCP tool, including after withdrawal. Exactly eleven read names use Policy::can_read and three mutation names use Policy::can_admin with write surface, non-readonly annotations, required idempotency keys and closed object schemas. Shared Adapter_Base central authorization and ChatbotX_Governed_Writes::guard retain independent mutation checks, denied-write tests and bounded provider-native targets. This review is source-level only; it does not certify connected provider credentials or grant Production/remote mutation authority. Specific documented surface: mad4b/chatbotx-commerce-route-plan."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-pricing-preview",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer; separate owner authorization required",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution controls cover this bounded optional-provider read or read-only preflight requiring original Policy::can_read. Exact same-PR negative tests verify no implicit authority, absent provider does not register, and direct mutator calls fail closed.",
+      "review_rationale": "Exact ChatbotX optional-provider adapter reviewed against the same-PR hermetic registration, write-preflight and direct governed-write tests. Availability is tied to the plugin's active_plugins entry plus loaded provider classes: absent/inactive provider registers and advertises no MCP tool, including after withdrawal. Exactly eleven read names use Policy::can_read and three mutation names use Policy::can_admin with write surface, non-readonly annotations, required idempotency keys and closed object schemas. Shared Adapter_Base central authorization and ChatbotX_Governed_Writes::guard retain independent mutation checks, denied-write tests and bounded provider-native targets. This review is source-level only; it does not certify connected provider credentials or grant Production/remote mutation authority. Specific documented surface: mad4b/chatbotx-pricing-preview."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-booking-readiness",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer; separate owner authorization required",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution controls cover this bounded optional-provider read or read-only preflight requiring original Policy::can_read. Exact same-PR negative tests verify no implicit authority, absent provider does not register, and direct mutator calls fail closed.",
+      "review_rationale": "Exact ChatbotX optional-provider adapter reviewed against the same-PR hermetic registration, write-preflight and direct governed-write tests. Availability is tied to the plugin's active_plugins entry plus loaded provider classes: absent/inactive provider registers and advertises no MCP tool, including after withdrawal. Exactly eleven read names use Policy::can_read and three mutation names use Policy::can_admin with write surface, non-readonly annotations, required idempotency keys and closed object schemas. Shared Adapter_Base central authorization and ChatbotX_Governed_Writes::guard retain independent mutation checks, denied-write tests and bounded provider-native targets. This review is source-level only; it does not certify connected provider credentials or grant Production/remote mutation authority. Specific documented surface: mad4b/chatbotx-booking-readiness."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-presentation-context",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer; separate owner authorization required",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution controls cover this bounded optional-provider read or read-only preflight requiring original Policy::can_read. Exact same-PR negative tests verify no implicit authority, absent provider does not register, and direct mutator calls fail closed.",
+      "review_rationale": "Exact ChatbotX optional-provider adapter reviewed against the same-PR hermetic registration, write-preflight and direct governed-write tests. Availability is tied to the plugin's active_plugins entry plus loaded provider classes: absent/inactive provider registers and advertises no MCP tool, including after withdrawal. Exactly eleven read names use Policy::can_read and three mutation names use Policy::can_admin with write surface, non-readonly annotations, required idempotency keys and closed object schemas. Shared Adapter_Base central authorization and ChatbotX_Governed_Writes::guard retain independent mutation checks, denied-write tests and bounded provider-native targets. This review is source-level only; it does not certify connected provider credentials or grant Production/remote mutation authority. Specific documented surface: mad4b/chatbotx-presentation-context."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-support-create-ticket",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer; separate owner authorization required",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing ticket/OAuth/central-security controls cover this bounded optional-provider write requiring admin and original Site Profile/mutation grant. Exact same-PR negative tests verify no implicit authority, absent provider does not register, and direct mutator calls fail closed.",
+      "review_rationale": "Exact ChatbotX optional-provider adapter reviewed against the same-PR hermetic registration, write-preflight and direct governed-write tests. Availability is tied to the plugin's active_plugins entry plus loaded provider classes: absent/inactive provider registers and advertises no MCP tool, including after withdrawal. Exactly eleven read names use Policy::can_read and three mutation names use Policy::can_admin with write surface, non-readonly annotations, required idempotency keys and closed object schemas. Shared Adapter_Base central authorization and ChatbotX_Governed_Writes::guard retain independent mutation checks, denied-write tests and bounded provider-native targets. This review is source-level only; it does not certify connected provider credentials or grant Production/remote mutation authority. Specific documented surface: mad4b/chatbotx-support-create-ticket."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-support-add-note",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer; separate owner authorization required",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution controls cover this bounded optional-provider write requiring admin and original Site Profile/mutation grant. Exact same-PR negative tests verify no implicit authority, absent provider does not register, and direct mutator calls fail closed.",
+      "review_rationale": "Exact ChatbotX optional-provider adapter reviewed against the same-PR hermetic registration, write-preflight and direct governed-write tests. Availability is tied to the plugin's active_plugins entry plus loaded provider classes: absent/inactive provider registers and advertises no MCP tool, including after withdrawal. Exactly eleven read names use Policy::can_read and three mutation names use Policy::can_admin with write surface, non-readonly annotations, required idempotency keys and closed object schemas. Shared Adapter_Base central authorization and ChatbotX_Governed_Writes::guard retain independent mutation checks, denied-write tests and bounded provider-native targets. This review is source-level only; it does not certify connected provider credentials or grant Production/remote mutation authority. Specific documented surface: mad4b/chatbotx-support-add-note."
+    },
+    {
+      "id": "ability:mad4b/chatbotx-cpt-create-draft",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer; separate owner authorization required",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP/provider/execution controls cover this bounded optional-provider write requiring admin and original Site Profile/mutation grant. Exact same-PR negative tests verify no implicit authority, absent provider does not register, and direct mutator calls fail closed.",
+      "review_rationale": "Exact ChatbotX optional-provider adapter reviewed against the same-PR hermetic registration, write-preflight and direct governed-write tests. Availability is tied to the plugin's active_plugins entry plus loaded provider classes: absent/inactive provider registers and advertises no MCP tool, including after withdrawal. Exactly eleven read names use Policy::can_read and three mutation names use Policy::can_admin with write surface, non-readonly annotations, required idempotency keys and closed object schemas. Shared Adapter_Base central authorization and ChatbotX_Governed_Writes::guard retain independent mutation checks, denied-write tests and bounded provider-native targets. This review is source-level only; it does not certify connected provider credentials or grant Production/remote mutation authority. Specific documented surface: mad4b/chatbotx-cpt-create-draft."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-provider-adapter.php",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer; separate owner authorization required",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP provider-adapter admission, original centralized mutation-gate and server registration controls apply. This is a bundled optional adapter, not an independent execution gateway, with availability and disappearance explicitly tested.",
+      "review_rationale": "Exact ChatbotX optional-provider adapter reviewed against the same-PR hermetic registration, write-preflight and direct governed-write tests. Availability is tied to the plugin's active_plugins entry plus loaded provider classes: absent/inactive provider registers and advertises no MCP tool, including after withdrawal. Exactly eleven read names use Policy::can_read and three mutation names use Policy::can_admin with write surface, non-readonly annotations, required idempotency keys and closed object schemas. Shared Adapter_Base central authorization and ChatbotX_Governed_Writes::guard retain independent mutation checks, denied-write tests and bounded provider-native targets. This review is source-level only; it does not certify connected provider credentials or grant Production/remote mutation authority."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-write-preflight.php",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer, not an owner release signature",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing provider-surface admission, centralized mutation controls and execution-denial checks apply; this component adds no independent remote grant. The exact source and same-PR negative tests cover the only approved functional surface.",
+      "review_rationale": "The exact provider write-preflight source is a read-only planner. It assesses the enrolled site profile, central mutation gate, provider contract and certification, append-only audit readiness, native support/CPT prerequisites, and never claims authorization: approved_for_execution=false and no_mutation_performed=true. The same-PR isolated PHP test verifies each of the three write identifiers fails closed on disabled profile/write/certification/origin, rejects an unknown ability, and invokes no mutator. Source blob 7cbeb2cb9b3ff3f1b6b6b77f7c2fdb9891f5a2d9."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-governed-writes.php",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer, not an owner release signature",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing provider-surface admission, centralized mutation controls and execution-denial checks apply; this component adds no independent remote grant. The exact source and same-PR negative tests cover the only approved functional surface.",
+      "review_rationale": "The exact native write implementation has an independent Policy::can_mutate and current_user_can(manage_options) guard on direct invocation, in addition to centralized adapter mutation authorization before execution. All three native methods are limited to existing support customer/mailbox, existing accessible ticket, or provider-declared draft CPT target, with stable HMAC-scoped idempotency reservation; CPT posts stay draft. Same-PR hermetic PHP negative tests directly invoke all three methods with the site mutation gate disabled and prove no write escapes. Source blob 93d17a36a2c3f5937ea0865b529ac181190d74aa."
+    },
+    {
+      "id": "rest:mad4b/v1/admin/company-team/users/(?P<id>\\\\d+)",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-user-rest-route-security-runtime.php"
+      ],
+      "owner_role": "QA31 repository source and CI security review (not a tenant owner grant)",
+      "review_rationale": "Reviewed exact GET/PATCH route registration, per-method company-management permission denial, profile callback binding and protected-user enforcement via the real PHP service under an isolated fixture.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing WordPress capability permissions, protected account handling, REST security, security regression and owner release gates remain controlling. Tests certify only isolated source behavior."
+    },
+    {
+      "id": "rest:mad4b/v1/admin/company-team/users/(?P<id>\\\\d+)/lifecycle",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-user-rest-route-security-runtime.php"
+      ],
+      "owner_role": "QA31 repository source and CI security review (not a tenant owner grant)",
+      "review_rationale": "Reviewed POST-only lifecycle routing, bounded suspend/restore/delete action enum, permission callbacks and direct denied operations. The fixture performs no persistent mutation.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing WordPress capability permissions, protected account handling, REST security, security regression and owner release gates remain controlling. Tests certify only isolated source behavior."
+    },
+    {
+      "id": "rest:mad4b/v1/admin/company-team/users/(?P<id>\\\\d+)/preflight",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-user-rest-route-security-runtime.php"
+      ],
+      "owner_role": "QA31 repository source and CI security review (not a tenant owner grant)",
+      "review_rationale": "Reviewed GET-only preflight route, permission callback, protected-user denial and isolated no-DB behavior. No production deletion proof claimed.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing WordPress capability permissions, protected account handling, REST security, security regression and owner release gates remain controlling. Tests certify only isolated source behavior."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-user-lifecycle.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-user-rest-route-security-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-user-rest-suspension-isolation-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-plugin-sync-mu-runtime.php"
+      ],
+      "owner_role": "QA31 repository source and CI security review (not a tenant owner grant)",
+      "review_rationale": "Reviewed source behavior for company management permission checks, protected users, route registration, suspension REST isolation and exact installed MU bridge evidence; hermetic CI fixtures are read-only and do not certify live delete/restore.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing WordPress capability permissions, protected account handling, REST security, security regression and owner release gates remain controlling. Tests certify only isolated source behavior."
+    },
+    {
+      "id": "operation:company.plugin-sync.request",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "AUTOMATION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-plugin-sync-mu-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-plugin-sync-mu-source-contract.py"
+      ],
+      "owner_role": "QA31 source and isolated CI reviewer; not a Production deploy approver",
+      "review_rationale": "Reviewed exact MU operation source with real request_job handler and CI-executed isolated fixtures. Denies non-Staging and wrong-host requests, missing company owner email, stale plan hash and duplicate journal creation; authorized request creates PLANNED_NOT_EXECUTED scoped journal only and readback explicitly reports production_mutation_authorized=false. This review is not evidence of executing a tenant plugin sync or granting external write authority.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing environment, owner identity, exact plan, idempotent execution journal, security and operator approval controls apply to this source-only request operation."
+    },
+    {
+      "id": "ability:mad4b/catalog-intent-plan",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/catalog-intent-plan-qa31-runtime.php"
+      ],
+      "owner_role": "QA31 source reviewer for CI evidence only; independent tenant owner approval outstanding",
+      "review_rationale": "Catalog planner is registered read-only with bounded input. The hermetic source fixture directly denies absent read permission, HTTP/IP/credential URLs, extraneous keys, and excess links; accepted planning must report no network, task creation, publication or WordPress mutation.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Inherited source governance, read and company-management capability gates, no direct external publication or execution authority."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-intent-policy.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/catalog-intent-plan-qa31-runtime.php"
+      ],
+      "owner_role": "QA31 source reviewer for CI evidence only; independent tenant owner approval outstanding",
+      "review_rationale": "Exact source class reviewed for deterministic canonical URL and plan behavior with explicit negative cases; no content rights, external source access, execution or production readiness certified.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Inherited source governance, read and company-management capability gates, no direct external publication or execution authority."
+    },
+    {
+      "id": "rest:mad4b/v1/admin/company-policies",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-policy-denial-qa31-runtime.php"
+      ],
+      "owner_role": "QA31 source reviewer for CI evidence only; independent tenant owner approval outstanding",
+      "review_rationale": "Exact GET/PATCH registration and company-management permission denial directly asserted in hermetic PHP; no WordPress DB/live patch covered.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Inherited source governance, read and company-management capability gates, no direct external publication or execution authority."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-operations-policy.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-policy-denial-qa31-runtime.php"
+      ],
+      "owner_role": "QA31 source reviewer for CI evidence only; independent tenant owner approval outstanding",
+      "review_rationale": "Exact company policy implementation reviewed with prohibited keys/values, default hard-delete denial, guarded master price metadata, and pending-only review publication tests. Persistent locking/readback remains live-evidence-required.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Inherited source governance, read and company-management capability gates, no direct external publication or execution authority."
     }
   ],
   "lifecycle": [],
@@ -11496,6 +12483,332 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing pinned source validation, exact SHA identity, bounded GitHub HTTPS and protected candidate deploy controls cover the compact Git Data lookup.",
       "review_rationale": "The GitHub /commits/{sha} REST response may exceed the existing 262144-byte budget for multi-parent integration changes. Only the exact immutable commit lookup changes to /git/commits/{sha} (small Git object metadata). Do not raise limits, change other source selectors or treat any redirect/invalid/mismatched response as verified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-core-catalog.php",
+      "source_blob_sha": "4a92ca86bbb926de6f18ceafe29bb521cd96370c",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-optional-operation-read-projection-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-adapter-compatibility-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Staging or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP catalog, WordPress Ability registration, source discovery and fail-closed capability descriptor controls cover optional read projection; mandatory core read tools remain unfiltered.",
+      "review_rationale": "Exact-source runtime review: three company operation planners remained advertised as catalog entries before WordPress Abilities existed, causing capability_descriptor_binding_unavailable and preventing the entire mad4b-read web server. Only operation registry optional read projections are filtered by wp_has_ability at the MCP mount boundary; operation discovery retains them, no execution, authorization, write grant or source certificate is inferred. Disposable official Adapter 0.6.1 web lifecycle, Hostinger collision and hermetic dynamic registration pass."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "3dad6b38ce078b1a1239c9e6bd36aa7bcae5832c",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-optional-operation-read-projection-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-adapter-compatibility-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only, not Production authorizer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse source-integrity, MCP/REST permission, WordPress security, and fail-closed controls, without expanding tools or granting mutations.",
+      "review_rationale": "Exact nonauthorizing review of current MCP server facade: category and tool-catalog selection remain guarded by existing required Ability and capability-descriptor checks. The checked source includes the previous bounded direct Step-up and read-discovery behavior; the newly added dynamic registered-operation fixture and compatibility contract cover present/absent/late optional service dependencies. No new authority, persisted grant or production recovery is implied; independent browser and release evidence remain required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-user-lifecycle.php",
+      "source_blob_sha": "41327ef75e41e9892d981eaaacd1652eacfab9b6",
+      "control_ids": [
+        "SECURITY-01",
+        "OAUTH-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-user-rest-suspension-isolation-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/connection-readiness-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only, not Production authorizer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse source-integrity, MCP/REST permission, WordPress security, and fail-closed controls, without expanding tools or granting mutations.",
+      "review_rationale": "Exact-source review: Company User Lifecycle still denies suspended users via login and application password guards. The previous universal rest_authentication_errors callback conflicted with Control Plane REST route isolation and WPML. The request-local rest_pre_dispatch guard checks current suspension before any endpoint callback and preserves previous errors; hermetic positive, negative and restored-user cases execute in CI. No suspension removal, privilege grant, or Production authorization is inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "29dbd111d2a0957ed61d9aadc3efcb81d19ff390",
+      "control_ids": [
+        "PLATFORM-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "MCP-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/main-bootstrap-staging-boundary-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py"
+      ],
+      "owner_role": "Repository exact-source reviewer — CI evidence only; independent production release authority not conferred",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Current bootstrap adds conditional company, sender, readiness, AI, MCP and Site Lifecycle modules under preexisting access/zero-touch rules; reuse existing Platform, Security, MCP, Admin and source-integrity controls with executable Staging boundary and zero-touch regressions.",
+      "review_rationale": "Reviewed the exact current Git blob against baseline changes: 68 added and 7 removed lines in central plugin bootstrap, version rc.118. A hermetic source-bound test checks exactly fourteen Staging Company includes, three conditional Readiness includes and boots, two conditional Sender includes, passive WP-CLI early return, and unchanged read-only JetEngine and Adaptive UI bootstrap; negative mutations of these gates are rejected. Existing request-serving zero-touch contract passes. This review does not attest provider execution, Production isolation via live browser, consent, deployment readiness, Release Verdict, or external OAuth. The existing passive Zero-Touch contract continues to run independently but is not counted as a newly modified same-PR regression in the Production Readiness evaluator."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php",
+      "source_blob_sha": "1f077eb90420f689ad895682bd21265099e89d4a",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-adapter-remote-grant-source-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py"
+      ],
+      "owner_role": "Independent CI-only exact-source reviewer; no owner release consent or Production mutation authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP read admission, exact staging grant, immutable source scope and provider-bound authorization controls apply; no new executor class or privilege is introduced.",
+      "review_rationale": "Review exact 8-addition/1-removal successor: a single read-only native-capability-registry Ability delegates to Native Ability Trust catalog. Shared registration keeps can_read, non-public, REST-hidden and readonly metadata; source reports owner-pinned discovery without executing or minting authority. The hermetic test mutates the read surface, delegate and Ability identity to ensure fail-closed detection. Same-PR impact evidence references only regression sources changed by this PR; independently run older parity suites remain intact and do not count as newly committed source evidence."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/remote-operation-catalog.php",
+      "source_blob_sha": "0e1bd3f67f5eac3bbb369eff5d45782fc882f9ae",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-adapter-remote-grant-source-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py"
+      ],
+      "owner_role": "Independent CI-only exact-source reviewer; no owner release consent or Production mutation authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP read admission, exact staging grant, immutable source scope and provider-bound authorization controls apply; no new executor class or privilege is introduced.",
+      "review_rationale": "Review exact 16-addition successor: staging_write_grant_reconciliation maps the documented plan to the existing staging-specific reconciliation alias through the mad4b-enrollment surface, with production_policy deny. The existing grant reconciler preserves exact plan digest, staging/Production separation and Production auto-approval denial. Static negative mutations of production policy and executor alias fail; independent remote-operation parity contract PASS. Same-PR impact evidence references only regression sources changed by this PR; independently run older parity suites remain intact and do not count as newly committed source evidence."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php",
+      "source_blob_sha": "3cfc7707ade401f055fc1d794b68994aff0b91b4",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/write-provider-snapshot-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/write-catalog-source-review-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py"
+      ],
+      "owner_role": "Repository CI-only exact-source reviewer, not an owner-issued Production authorization or grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Core governed Write inventory still requires registered and eligible WP Abilities and independent approval/Write gates. Provider mapping reuses existing certified core-first adapter precedence with request-local snapshot, no new grant or arbitrary executor.",
+      "review_rationale": "Reviewed exact 33-addition/23-removal successor source: two named core Write candidates for Hub source sync and provider refresh require pre-existing Abilities and ordinary SCP governed authorization before mounting. The moved live_write_provider_snapshot method now reads one currently mounted write_tools inventory and overlays core-before-certified-adapter provenance without caching across requests. Hermetic executed snapshot regression proves unmounted/unreviewed exclusion, provider precedence, current-candidate migration, and fresh per-request observation. Static negative mutation tests and existing staging write owner-parity contract PASS. Source review alone cannot certify live Staging or Production execution. Same-PR impact evidence references only regression sources changed by this PR; independently run older parity suites remain intact and do not count as newly committed source evidence."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-read-ability-service.php",
+      "source_blob_sha": "f2cbb7e07a5e088c36acfb91d5daee2ccd9b848b",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/gateway-mutation-guards.py"
+      ],
+      "owner_role": "AI-assisted exact-source CI reviewer; real owner release approval remains separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact Git blob reviewed as a mechanical extraction of bounded read-only filesystem and structured SQL helpers. The existing Ability facade still owns registration, permission and dispatch gates; the extracted implementation calls Policy::resolve_path, sensitivity guards, validated identifiers and prepared WHERE values. Hermetic gateway mutation and architecture tests check dependency loading and unchanged negative-path behavior. This source review grants no execution or Production authority."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-recovery-projection.php",
+      "source_blob_sha": "9fcf78d9de87bff787803c58d85e346ad95f3d43",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/developer-runtime-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py"
+      ],
+      "owner_role": "AI-assisted exact-source CI reviewer; real owner release approval remains separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact Git blob reviewed for narrowly delegated non-authorizing execution-attempt readback and server classification. It retains audit-chain consistency and fail-closed reconciliation, preserves the remote approval-planner denial for mad4b-chatgpt and mad4b-write, and exposes no new write callback. Developer and staging authority contracts assert the forwarded methods and exact denial list; separate live acceptance remains mandatory."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-control-plane-test-router.php",
+      "source_blob_sha": "a9f34d8f1c075d04dac4ff449d403e3cdf0a99dc",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-route-runtime.php"
+      ],
+      "owner_role": "AI-assisted exact-source CI reviewer (non-authorizing; independent owner release approval still mandatory)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Source-bound audit of the Staging-only Control Plane test router. Only its control-plane-test-route ability is registered, private and read-only with manage_options and governed Policy::can_read checks. All other ability identifiers in this file are displayed as next-step/readback references and not registered or executed here. Native and selected plans are read from local provider methods, signed source identity is required, altered plan SHA or Production environment is rejected, and the result explicitly forbids automatic mutation, promotion or certification. The same-PR hermetic PHP fixture tests eligibility, owner approval boundaries, signed identity, fallback, unauthorized input, authorization denial and Production refusal."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-connection-center.php",
+      "source_blob_sha": "fcd021f7e3d7d0fc9fc9684977f339f58a236ae3",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php"
+      ],
+      "owner_role": "AI-assisted exact-source reviewer, CI-only and nonauthorizing",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact source and same-PR hermetic regression review of four provider connection REST routes. The GET endpoints call admin-guarded discovery and plans. The POST refresh endpoint requires exact plan and approval-ticket fields, enrolled Staging authority, a verified ChatGPT OAuth client, central Authorization::authorize_mutation and claim_mutation, with invocation through the governed WP Ability rather than a direct provider callback. POST reconnect enforces an authenticated owner session and wp_rest nonce, exact bound reconnect plan and no scope expansion; actual OAuth consent remains browser-side. Invalid routes/roles/payloads and Production refresh are denied, and the regression tests verify no token mutation or authorization-url creation on denied requests. This is source-level CI assurance, not a live grant or Production release."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-guided-continuation.php",
+      "source_blob_sha": "b09d5b79f69e8c0d7b4479669332c5f8a4661348",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/guided-continuation-runtime.php"
+      ],
+      "owner_role": "AI-assisted exact-source reviewer, CI only; not an owner attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact-source CI-only review of a read-only next-ability follower that cannot create an approval ticket, execute mutations, replay original writes, or initiate external OAuth. It accepts only a fixed, audited SAFE_READS list, requires the original managed read policy and WordPress Ability read-only annotation, a supported read category, and a zero-required-input schema. It executes a maximum of three steps, terminates on cycles and unsafe/write identifiers, and returns only bounded state/next-ability/error-code values. Same-PR hermetic PHP test is executed in Site Control Plane CI and verifies real registration, correct two-step read chain, no mutation flags, attempted write as a nonexecuting handoff, cycle and budget enforcement, denied policy, unsafe category/annotation/required inputs, malformed original hash, forbidden extra input, and redacted error output."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-provider-adapter.php",
+      "source_blob_sha": "8d2613302b60415114e4f94cefb4adcd7678e3b8",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-optional-mcp-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "owner_role": "AI-assisted exact-source CI reviewer; separate owner authorization required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact ChatbotX optional-provider adapter reviewed against the same-PR hermetic registration, write-preflight and direct governed-write tests. Availability is tied to the plugin's active_plugins entry plus loaded provider classes: absent/inactive provider registers and advertises no MCP tool, including after withdrawal. Exactly eleven read names use Policy::can_read and three mutation names use Policy::can_admin with write surface, non-readonly annotations, required idempotency keys and closed object schemas. Shared Adapter_Base central authorization and ChatbotX_Governed_Writes::guard retain independent mutation checks, denied-write tests and bounded provider-native targets. This review is source-level only; it does not certify connected provider credentials or grant Production/remote mutation authority."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-write-preflight.php",
+      "source_blob_sha": "7cbeb2cb9b3ff3f1b6b6b77f7c2fdb9891f5a2d9",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer, not an owner release signature",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-write-preflight.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "review_rationale": "The exact provider write-preflight source is a read-only planner. It assesses the enrolled site profile, central mutation gate, provider contract and certification, append-only audit readiness, native support/CPT prerequisites, and never claims authorization: approved_for_execution=false and no_mutation_performed=true. The same-PR isolated PHP test verifies each of the three write identifiers fails closed on disabled profile/write/certification/origin, rejects an unknown ability, and invokes no mutator."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-governed-writes.php",
+      "source_blob_sha": "93d17a36a2c3f5937ea0865b529ac181190d74aa",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "AI-assisted exact-source CI reviewer, not an owner release signature",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatbotx-governed-writes.php"
+      ],
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "review_rationale": "The exact native write implementation has an independent Policy::can_mutate and current_user_can(manage_options) guard on direct invocation, in addition to centralized adapter mutation authorization before execution. All three native methods are limited to existing support customer/mailbox, existing accessible ticket, or provider-declared draft CPT target, with stable HMAC-scoped idempotency reservation; CPT posts stay draft. Same-PR hermetic PHP negative tests directly invoke all three methods with the site mutation gate disabled and prove no write escapes."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-catalog-intent-policy.php",
+      "source_blob_sha": "5dd85c058236b580efe0e990467655e877a3585a",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "QA31 source-specific CI reviewer; no tenant production delegation",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/catalog-intent-plan-qa31-runtime.php"
+      ],
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "review_rationale": "Reviewed exact source against hermetic regression. Guarded, read-only or scoped policy paths tested; excludes live network, DB, tenant activation, publication and Production write authorization."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-operations-policy.php",
+      "source_blob_sha": "73a9a2d3950c56c77b0790d6a18b343d32863ec3",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "QA31 source-specific CI reviewer; no tenant production delegation",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-policy-denial-qa31-runtime.php"
+      ],
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "review_rationale": "Reviewed exact source against hermetic regression. Guarded, read-only or scoped policy paths tested; excludes live network, DB, tenant activation, publication and Production write authorization."
     }
   ],
   "code_change_rules": {

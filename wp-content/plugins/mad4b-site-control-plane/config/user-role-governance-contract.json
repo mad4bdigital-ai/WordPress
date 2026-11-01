@@ -1,0 +1,168 @@
+{
+  "contract": "mad4b.wordpress-user-role-governance-blueprint.v1",
+  "site_neutral": true,
+  "mode": "plan_only",
+  "runtime_enforcer": false,
+  "does_not_register_wp_roles": true,
+  "does_not_register_wp_capabilities": true,
+  "does_not_register_mutation_abilities": true,
+  "identity_scopes": [
+    "enrolled_site_profile",
+    "wp_blog_id",
+    "wp_network_id_if_multisite",
+    "wp_user_identity",
+    "oauth_verified_subject",
+    "nhi_grant_and_one_time_approval"
+  ],
+  "source_of_truth": {
+    "role_definitions": "wordpress_site_local_wp_roles",
+    "effective_capabilities": "wordpress_contextual_user_can_and_meta_cap_with_plugin_filters",
+    "user_membership": "wordpress_site_local_membership_authorized_read_only",
+    "workflow_assignment": "domain_owned_request_task_provider_certified_read_only",
+    "commercial_state": "domain_owned_quote_and_booking_contracts"
+  },
+  "personas": [
+    {
+      "id": "traveler",
+      "responsibilities": [
+        "submit_inquiry",
+        "accept_explicit_quote"
+      ],
+      "never_inherit": [
+        "edit_posts",
+        "manage_options",
+        "edit_users",
+        "manage_woocommerce",
+        "supplier_booking_write"
+      ]
+    },
+    {
+      "id": "reviewer",
+      "responsibilities": [
+        "read_assigned_inbox",
+        "qualify_source",
+        "prepare_nonbinding_quote_draft"
+      ],
+      "never_inherit": [
+        "manage_options",
+        "approve_commercial_quote",
+        "create_paid_order",
+        "confirm_supplier_booking"
+      ]
+    },
+    {
+      "id": "commercial_manager",
+      "responsibilities": [
+        "review_commercial_terms",
+        "approve_exact_final_quote"
+      ],
+      "never_inherit": [
+        "wp_administration",
+        "traveler_acceptance",
+        "payment_capture",
+        "supplier_confirmation"
+      ]
+    },
+    {
+      "id": "booking_operator",
+      "responsibilities": [
+        "inspect_approved_order",
+        "request_supplier_confirmation",
+        "manage_fulfillment"
+      ],
+      "never_inherit": [
+        "approve_quote_on_behalf_of_manager",
+        "traveler_acceptance",
+        "wp_administration"
+      ]
+    },
+    {
+      "id": "site_administrator",
+      "responsibilities": [
+        "manage_wordpress_site_policy",
+        "authorize_bounded_role_change_after_independent_governance"
+      ],
+      "never_inherit": [
+        "customer_acceptance",
+        "supplier_confirmation"
+      ]
+    },
+    {
+      "id": "developer_support",
+      "responsibilities": [
+        "diagnose_provider_state",
+        "stage_reversible_changes"
+      ],
+      "never_inherit": [
+        "live_commercial_approval",
+        "production_financial_authority",
+        "customer_acceptance"
+      ]
+    }
+  ],
+  "workflow_gates": [
+    {
+      "id": "inquiry_received",
+      "owner": "domain_submission_provider",
+      "requires": "certified_source_verification"
+    },
+    {
+      "id": "qualification",
+      "owner": "domain_request_registry",
+      "requires": "scoped_reviewer_capability_and_provider_write_authority"
+    },
+    {
+      "id": "quote_draft",
+      "owner": "domain_pricing_provider",
+      "requires": "verified_source_and_read_only_quote_contract"
+    },
+    {
+      "id": "final_quote_approval",
+      "owner": "commercial_quote_authority",
+      "requires": "manager_explicit_approval_on_exact_quote_digest"
+    },
+    {
+      "id": "traveler_acceptance",
+      "owner": "first_party_acceptance_provider",
+      "requires": "independent_customer_evidence_on_same_quote_digest"
+    },
+    {
+      "id": "woo_order",
+      "owner": "woocommerce_order_provider",
+      "requires": "certified_write_with_final_quote_approval_and_traveler_acceptance"
+    },
+    {
+      "id": "supplier_booking",
+      "owner": "supplier_contract_provider",
+      "requires": "independent_supplier_confirmation_and_exact_booking_authority"
+    },
+    {
+      "id": "fulfillment",
+      "owner": "site_operations_provider",
+      "requires": "confirmed_provider_booking_and_auditable_completion"
+    }
+  ],
+  "default_unavailable_behavior": "deny_and_return_plan_only",
+  "restricted_operations": [
+    "user_create",
+    "user_delete",
+    "user_edit",
+    "role_create",
+    "role_delete",
+    "capability_grant",
+    "capability_revoke",
+    "task_assign",
+    "task_reassign"
+  ],
+  "acceptance": {
+    "role_inventory": "certified_read_only_provenance",
+    "effective_capability_matrix": "site_and_context_specific",
+    "negative_access_tests": true,
+    "cross_tenant_isolation": true,
+    "oauth_and_nhi_separation": true,
+    "reversible_change_plan": true,
+    "independent_approval": true,
+    "provider_readback": true,
+    "non_mutating_skill": true
+  }
+}

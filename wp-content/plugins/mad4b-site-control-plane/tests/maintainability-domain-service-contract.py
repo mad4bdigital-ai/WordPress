@@ -31,6 +31,28 @@ for path,limit in limits.items():
  if int(facades.get(path,10**9))>limit:
   raise SystemExit("MAINTAINABILITY_RATCHET_NOT_TIGHTENED:"+path)
 
+# Schema status is a pure, read-only projection; the legacy Abilities ABI
+# remains stable, and the full migration/readiness envelope must stay in
+# the dedicated domain projection rather than bloating this facade again.
+facade_source=(root/"includes/class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
+schema_source_file=root/"includes/class-mad4b-scp-schema-status-projection.php"
+if not schema_source_file.is_file():
+ raise SystemExit("SCHEMA_STATUS_PROJECTION_SERVICE_MISSING")
+schema_source=schema_source_file.read_text(encoding="utf-8")
+if ("MAD4B_SCP_Schema_Status_Projection::status()" not in facade_source
+ or "class-mad4b-scp-schema-status-projection.php" not in facade_source
+ or "MAD4B_SCP_Schema::status( true )" in facade_source):
+ raise SystemExit("SCHEMA_STATUS_FACADE_DELEGATION_MISSING")
+for guard in ("final class MAD4B_SCP_Schema_Status_Projection",
+              "MAD4B_SCP_Schema::status( true )",
+              "'contract' => 'mad4b.schema-status.v1'",
+              "'read_only' => true",
+              "'mutation_performed' => false",
+              "'missing_tables' => $missing_tables",
+              "'ready' => ! empty( $status['ready'] ) && ! empty( $physical['ready'] )"):
+ if guard not in schema_source:
+  raise SystemExit("SCHEMA_STATUS_READONLY_PROJECTION_INCOMPLETE:" + guard)
+
 # Plugin activation/deactivation must remain a narrow governed facade;
 # mutation policy, optimistic state and readback live in the domain executor.
 abilities=(root/"includes/class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
