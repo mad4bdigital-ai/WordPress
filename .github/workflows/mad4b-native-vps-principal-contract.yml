@@ -28,9 +28,12 @@ jobs:
           for f in ops/mad4b-broker/central-mu/{305,306,312,319,320,323}-*.php; do php -l "$f"; done
           php -l ops/mad4b-broker/tests/test_native_vps_principal.php
           python3 -m py_compile ops/mad4b-broker/native-vps-client-principal.py
+          python3 -m py_compile ops/mad4b-broker/vps-late-native-reconcile.py
+          php -l ops/mad4b-broker/central-mu/324-mad4b-broker-late-native-reconciliation.php
       - name: Hermetic signed-principal and identity tests
         shell: bash
         run: |
           set -euo pipefail
           python3 ops/mad4b-broker/tests/test_central_host_scope_separation.py
           php ops/mad4b-broker/tests/test_native_vps_principal.php
+          php ops/mad4b-broker/tests/test_late_native_receipt.php
