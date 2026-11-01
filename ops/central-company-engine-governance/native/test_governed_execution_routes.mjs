@@ -66,6 +66,34 @@ test('initial Native enrollment uses signed registration, not a 313 receipt',asy
    operation:'register_native_executor',job_id:jobId});
  assert.equal(r.state,'VERIFIED');
 });
+test('313 reconciles the existing original claim without attempting another claim',async()=>{
+ const f=fixture('reconcile_313_receipt',{claim:false});
+ const result=await createGovernedExecutionRoutes(f).execute({
+   operation:'reconcile_313_receipt',job_id:jobId});
+ assert.equal(result.state,'VERIFIED');
+ assert.equal(result.executed,false);
+ assert.equal(f.calls.claim,0);
+ assert.equal(f.calls.typed,1);
+ assert.equal(f.calls.shell,0);
+ assert.equal(f.calls.readback,1);
+});
+test('313 rejects a claim without original 312 verification',async()=>{
+ const f=fixture('reconcile_313_receipt',{admission:{original_312_verified:false}});
+ const result=await createGovernedExecutionRoutes(f).execute({
+   operation:'reconcile_313_receipt',job_id:jobId});
+ assert.equal(result.reason_code,'ORIGINAL_312_JOB_CLAIM_REQUIRED');
+ assert.equal(f.calls.typed,0);
+ assert.equal(f.calls.claim,0);
+});
+test('313 with invalid independent receipt is parked, without replay',async()=>{
+ const f=fixture('reconcile_313_receipt',{readback:{
+   independent_host_readback_verified:false}});
+ const result=await createGovernedExecutionRoutes(f).execute({
+   operation:'reconcile_313_receipt',job_id:jobId});
+ assert.equal(result.state,'PARKED_UNVERIFIED_READBACK');
+ assert.equal(f.calls.claim,0);
+ assert.equal(f.calls.shell,0);
+});
 test('general shell fallback is maintained for its separate original maintenance.shell grant',async()=>{
  const f=fixture('maintenance.shell');
  const r=await createGovernedExecutionRoutes(f).execute({operation:'maintenance.shell',job_id:jobId});
