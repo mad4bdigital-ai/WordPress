@@ -336,6 +336,27 @@
       "side_effect_class": "governed_stage_queue_request",
       "retry_semantics": "readback_before_retry",
       "host_runner_required": true
+    },
+    {
+      "id": "company.code-reconciliation.plan",
+      "target_kind": "company_site",
+      "risk": "medium",
+      "planner": "mad4b/company-code-reconciliation-plan",
+      "executor": "mad4b/company-code-reconciliation-compare",
+      "supports": [
+        "compare-signed-inventory-pages"
+      ],
+      "durable_resume": false,
+      "dependency_impact": false,
+      "generic_mutation_dispatch": false,
+      "required_runtime": true,
+      "effect": "read_only",
+      "side_effect_class": "none",
+      "production_policy": "observe_propose_only",
+      "pipeline_profile": "governed_read_only_v1",
+      "company_and_site_bound": true,
+      "signed_core_evidence_required": true,
+      "complete_inventory_coverage_required_for_promotion": true
     }
   ],
   "aliases": {
@@ -432,6 +453,28 @@
         "type": "reconcile",
         "required": false,
         "when": "operation.durable_resume:true"
+      }
+    ],
+    "governed_read_only_v1": [
+      {
+        "id": "discover",
+        "type": "read_check",
+        "required": true
+      },
+      {
+        "id": "native_plan",
+        "type": "planner",
+        "required": true
+      },
+      {
+        "id": "exact_execute",
+        "type": "executor",
+        "required": true
+      },
+      {
+        "id": "readback",
+        "type": "verification",
+        "required": true
       }
     ]
   },
