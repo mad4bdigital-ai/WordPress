@@ -14,6 +14,9 @@ on:
       - 'wp-content/mu-plugins/325-mad4b-jetblog-mobile-server-first-paint.php'
       - 'wp-content/mu-plugins/326-mad4b-nationality-server-first-paint.php'
       - 'wp-content/mu-plugins/327-mad4b-fluent-passport-locale.php'
+      - 'wp-content/mu-plugins/328-mad4b-destination-terms-request-memo.php'
+      - 'wp-content/mu-plugins/329-mad4b-home-wpml-flag-preload-trim.php'
+      - 'wp-content/mu-plugins/330-mad4b-staging-leaf-script-defer.php'
       - 'wp-content/plugins/etg-traveller-nationality-switcher/etg-traveller-nationality-switcher.php'
       - 'ops/qa/mad4b-render-blocking/tests/test_fluent_passport_locale_contract.py'
       - 'ops/qa/mad4b-render-blocking/fluent_passport_wpml_country_labels_acceptance.md'
@@ -50,6 +53,9 @@ on:
       - 'wp-content/mu-plugins/325-mad4b-jetblog-mobile-server-first-paint.php'
       - 'wp-content/mu-plugins/326-mad4b-nationality-server-first-paint.php'
       - 'wp-content/mu-plugins/327-mad4b-fluent-passport-locale.php'
+      - 'wp-content/mu-plugins/328-mad4b-destination-terms-request-memo.php'
+      - 'wp-content/mu-plugins/329-mad4b-home-wpml-flag-preload-trim.php'
+      - 'wp-content/mu-plugins/330-mad4b-staging-leaf-script-defer.php'
       - 'wp-content/plugins/etg-traveller-nationality-switcher/etg-traveller-nationality-switcher.php'
       - 'ops/qa/mad4b-render-blocking/tests/test_fluent_passport_locale_contract.py'
       - 'ops/qa/mad4b-render-blocking/fluent_passport_wpml_country_labels_acceptance.md'
@@ -99,6 +105,12 @@ jobs:
           php ops/qa/mad4b-render-blocking/tests/nav_term_fragment_cache_contract.php
           php -l wp-content/mu-plugins/324-mad4b-priceless-dynamic-css-cache.php
           php ops/qa/mad4b-render-blocking/tests/priceless_dynamic_css_cache_contract.php
+          php -l wp-content/mu-plugins/328-mad4b-destination-terms-request-memo.php
+          php ops/qa/mad4b-render-blocking/tests/destination_request_memo_contract.php
+          php -l wp-content/mu-plugins/329-mad4b-home-wpml-flag-preload-trim.php
+          php ops/qa/mad4b-render-blocking/tests/home_flag_preload_trim_contract.php
+          php -l wp-content/mu-plugins/330-mad4b-staging-leaf-script-defer.php
+          php ops/qa/mad4b-render-blocking/tests/leaf_script_defer_contract.php
           php -l wp-content/mu-plugins/325-mad4b-jetblog-mobile-server-first-paint.php
           python3 ops/qa/mad4b-render-blocking/tests/test_jetblog_mobile_first_paint_contract.py
           php -l wp-content/mu-plugins/326-mad4b-nationality-server-first-paint.php
