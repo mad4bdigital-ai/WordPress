@@ -41,3 +41,28 @@ Do not cancel historical tasks or mint an executor grant as a shortcut.
 
 **NO-GO** for full `enforce` or live release without exact authorized
 source, backup, independent operator acceptance and exact-head approval.
+
+## Exact-source dedicated Content Hub release component
+
+The original Content Hub is NOT a Site Control Plane ZIP. Its independent
+runtime release source is governed by:
+- `tools/mad4b_content_hub_package.py` — deterministic, source-verified ZIP
+  and original per-file SHA256 receipt for exact Git HEAD.
+- `.github/workflows/mad4b-content-hub-package.yml` — PHP contracts,
+  package integrity tests, GitHub artifact immutability, and artifact attestation.
+- `.github/workflows/mad4b-release-verdict.yml` — automatic Content Hub
+  runtime scope discovery, exact-head package job requirement, immutable
+  artifact download and independent source/hash comparison. Fails closed if
+  any Content Hub artifact, source file, or requirement is absent.
+- `tools/test_mad4b_content_hub_release_gate.py` — independent CI gate
+  assertions against source path classification and artifact requirements.
+
+This component may accompany an existing General Distribution release;
+it is NOT substituted for a Site Control Plane package. If a single
+commit changes both components, both artifacts must pass their original
+checks. A GitHub release verdict is not native site mutation authority,
+and a PR artifact is not a master-published deployment channel.
+
+Operational cutover remains gated by current exact-HEAD owner review,
+valid Staging backup, Native Operator admission, and original independent
+WordPress/SQL readbacks. A new commit invalidates previous attestation.
