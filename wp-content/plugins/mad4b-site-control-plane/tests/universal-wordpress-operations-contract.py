@@ -87,7 +87,22 @@ assert len(ids) == len(set(ids))
 assert "wordpress.plugin.transaction" in ids
 assert "wordpress.provider.recertify" in ids
 optional_ids = {row["id"] for row in operation["operations"] if row.get("required_runtime") is False}
-assert optional_ids == {"wordpress.content.import", "wordpress.content.export", "search.serp.capture"}
+assert optional_ids == {
+    "wordpress.content.import",
+    "wordpress.content.export",
+    "search.serp.capture",
+    "company.plugin-sync.request",
+}
+plugin_sync = next(row for row in operation["operations"] if row["id"] == "company.plugin-sync.request")
+assert plugin_sync["target_kind"] == "company"
+assert plugin_sync["planner"] == "mad4b/company-plugin-sync-plan"
+assert plugin_sync["executor"] == "mad4b/company-plugin-sync-request"
+assert plugin_sync["required_runtime"] is False
+assert plugin_sync["supports"] == ["queue_plan_only"]
+assert plugin_sync["generic_mutation_dispatch"] is False
+assert plugin_sync["side_effect_class"] == "central_journal_plan_only"
+assert plugin_sync["retry_semantics"] == "readback_before_retry"
+assert plugin_sync["dependency_impact"] is False
 serp_capture = next(row for row in operation["operations"] if row["id"] == "search.serp.capture")
 assert serp_capture["target_kind"] == "search_target"
 assert serp_capture["generic_mutation_dispatch"] is False
