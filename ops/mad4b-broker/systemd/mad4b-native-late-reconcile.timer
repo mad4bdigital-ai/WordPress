@@ -1,0 +1,13 @@
+[Unit]
+Description=MAD4B Staging Native Late Receipt Evidence Sweep
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+RandomizedDelaySec=30s
+Persistent=true
+AccuracySec=1min
+Unit=mad4b-native-late-reconcile.service
+
+[Install]
+WantedBy=timers.target
