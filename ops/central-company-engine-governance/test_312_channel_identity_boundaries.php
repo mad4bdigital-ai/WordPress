@@ -23,6 +23,9 @@ class MAD4B_Central_VPS_Broker_V1 {
  const JOB='test_job_';
  const CLAIM='test_claim_';
 }
+class MAD4B_Manager_Auto_Write_V1 {}
+class MAD4B_Company_Operation_Admission_V1 {}
+class MAD4B_Company_Portfolio_Manager_V1 {}
 function get_current_user_id():int{return 0;}
 function current_user_can($cap):bool{return false;}
 function wp_json_encode($x,$flags=0){return json_encode($x,$flags);}
