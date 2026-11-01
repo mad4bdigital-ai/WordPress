@@ -75,3 +75,35 @@ were rejected in isolated checks. 36 existing hermetic orchestration and
 signed Broker tests passed. **No positive live issue-305 canary or 312/313
 receipt has yet been verified**.
 
+
+## Periodic read-only Host Scope freshness
+
+A separate `mad4b-company-host-scope-refresh.service` and systemd timer
+(`OnUnitActiveSec=10min`) call the original, merged PR #723 `live_once()`
+projector. The refresh uses a root-owned flock, checks original Core freshness
+and rejects all rows claiming a mutation, then updates the root-only snapshot
+atomically with fsync. On any failure, the previous snapshot remains intact,
+and `remote_service.py` marks its Host Scope stale after 15 minutes rather
+than claiming an old grant. Status uses this read-only cache, while every
+`reconcile305` write still performs fresh Original Core and WordPress checks.
+
+This scheduled refresh does not mint grants, change host-policy files, authorize
+manager assignments, write to Production WordPress, or execute a remote job.
+
+
+## Fresh-scope runtime acceptance (2026-11-01)
+
+The original PR #723 projector verifies upstream Core observation freshness
+but intentionally omits `observed_utc` in its returned projection. The
+root-owned refresh service stamps its **verified projection completion time**
+after the upstream validation succeeds; it never treats an unverified timestamp
+or a site-discovery record as an authority grant.
+
+On the central Staging VPS the initial refresh returned:
+`Result=success`, 7 targets, `grants_created=false`,
+`production_mutated=false`, atomic report mode 0600. The original root-only
+Unix service then returned `READ_ONLY_STATUS` for Tours Central with
+`host_scope_ready=true`, `host_scope_snapshot_stale=false`, snapshot age
+10 seconds and `grant_registered=false`. Both the service and refresh timer
+were enabled/active with no service restarts after testing.
+

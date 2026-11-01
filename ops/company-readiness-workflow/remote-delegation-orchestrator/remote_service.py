@@ -13,6 +13,7 @@ import struct
 import subprocess
 import signal
 import threading
+import time
 import sys
 from typing import Any
 
@@ -30,6 +31,7 @@ MAX_BYTES = 16384
 ALLOWED = {"status", "reconcile305"}
 REPORT=Path("/opt/mad4b-company-provisioning/reports/company-full-host-authority-live-current.json")
 MAX_CONCURRENT=4
+MAX_SCOPE_SNAPSHOT_AGE=900
 
 def _native_status(company):
     # Fixed WP-CLI readback; no --user, password, dynamic executable or eval.
@@ -71,15 +73,22 @@ def cached_readonly_source():
     st=REPORT.lstat()
     if REPORT.is_symlink() or st.st_uid!=0 or stat.S_IMODE(st.st_mode)!=0o600 or st.st_size>262144:
         raise Refused("READONLY_SNAPSHOT_UNTRUSTED")
-    return json.loads(REPORT.read_text())
+    source=json.loads(REPORT.read_text())
+    source["_snapshot_age_seconds"]=max(0,int(time.time()-st.st_mtime))
+    return source
 
 def status(request, source):
     target=from_source(source,request["company"])
     scope=[x for x in source["targets"] if x.get("target")==target.company+":staging"][0]
-    host_scope=(scope.get("verified_host_scope_id")=="srv2030908" and scope.get("full_host_scope_observed") is True)
+    snapshot_age=source.get("_snapshot_age_seconds")
+    snapshot_fresh=(type(snapshot_age) is int and snapshot_age<=MAX_SCOPE_SNAPSHOT_AGE)
+    host_scope=(snapshot_fresh and scope.get("verified_host_scope_id")=="srv2030908"
+                and scope.get("full_host_scope_observed") is True)
     return {"contract":CONTRACT,"state":"READ_ONLY_STATUS","target":target.company+":staging",
             "site_uuid":target.site_uuid,"canonical_origin":target.canonical_origin,
-            "host_scope_ready":host_scope,"owner_assignment":_manager_plan(target.company),
+            "host_scope_ready":host_scope,"host_scope_snapshot_stale":not snapshot_fresh,
+            "host_scope_snapshot_age_seconds":snapshot_age,
+            "owner_assignment":_manager_plan(target.company),
             "native305":_native_status(target.company),
             "grant_issued":False,"production_mutated":False}
 
