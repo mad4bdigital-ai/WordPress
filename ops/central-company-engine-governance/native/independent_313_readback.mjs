@@ -18,6 +18,7 @@ const same=(...v)=>v.every(x=>typeof x==='string'&&x.length>0&&x===v[0]);
 
 export function verifyIndependent313Readback({
  originalJob,pending313,registeredNative,readback,signature,pinnedObserverKey,
+ pinnedObserverKeyId,pinnedObserverKeySource,
  now=Math.floor(Date.now()/1000)
 }={}){
  if(!originalJob||!pending313||!registeredNative||!readback||
@@ -36,7 +37,11 @@ export function verifyIndependent313Readback({
     registeredNative.execute_registered!==true||
     registeredNative.independent_readback_observer_enrolled!==true||
     registeredNative.observer_signer_is_execution_signer!==false||
-    registeredNative.observer_key_pinned!==true)
+    registeredNative.observer_key_pinned!==true||
+    typeof registeredNative.observer_key_id!=='string'||
+    registeredNative.observer_key_id.length<8||
+    pinnedObserverKeyId!==registeredNative.observer_key_id||
+    pinnedObserverKeySource!=='original_core_pinned_registry')
   return NO('PINNED_INDEPENDENT_NATIVE_OBSERVER_REQUIRED');
  if(!HEX32.test(readback.job_id)||!HEX32.test(readback.nonce)||
     !HEX64.test(readback.command_sha256)||
