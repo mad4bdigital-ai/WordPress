@@ -1,0 +1,146 @@
+{
+  "contract": "mad4b.company-design-activation-policy.v2",
+  "default_action": "DENY_UNTIL_QUALIFIED",
+  "source_publication_state": "original_source_post_status_is_observation_not_tenant_authority",
+  "tenant_identity_resolver": "native_company_site_profile_and_kit",
+  "schema_version": 2,
+  "lifecycle": [
+    "IMPORTED_QUARANTINED",
+    "BRAND_RESOLVED",
+    "DEPENDENCIES_VERIFIED",
+    "DESIGN_PUBLISHED",
+    "RENDER_READBACK_VERIFIED"
+  ],
+  "template_kinds": {
+    "section": {
+      "activation": "conditional_publish",
+      "automatic_display": false
+    },
+    "container": {
+      "activation": "conditional_publish",
+      "automatic_display": false
+    },
+    "popup": {
+      "activation": "require_popup_trigger_qualification",
+      "automatic_display": true
+    },
+    "header": {
+      "activation": "require_brand_header_and_theme_condition",
+      "automatic_display": true
+    },
+    "footer": {
+      "activation": "require_brand_footer_and_theme_condition",
+      "automatic_display": true
+    },
+    "archive": {
+      "activation": "require_company_provider_query_filter_qualification",
+      "automatic_display": true
+    },
+    "single-page": {
+      "activation": "require_company_cpt_and_meta_qualification",
+      "automatic_display": true
+    },
+    "single-post": {
+      "activation": "require_company_post_data_and_meta_qualification",
+      "automatic_display": true
+    },
+    "page": {
+      "activation": "require_explicit_tenant_page_mapping",
+      "automatic_display": false
+    },
+    "kit": {
+      "activation": "keep_tenant_active_kit_only",
+      "automatic_display": true
+    },
+    "jet-listing-items": {
+      "activation": "require_tenant_jetengine_listing_provider",
+      "automatic_display": false
+    }
+  },
+  "fields": {
+    "company_brand_text": "replace_explicit_brand_strings_in_presentational_fields_only",
+    "company_colors": "resolve_from_company_active_elementor_kit",
+    "logo_and_icons": "licensed_tenant_attachment_required",
+    "source_uploaded_media": "deny_without_media_provenance_and_tenant_asset_mapping",
+    "internal_links": "canonical_company_page_mapping_and_wpml_target_readback",
+    "dynamic_company_options": "tenant_owned_option_registry_only",
+    "query_id_and_listing_id": "tenant_native_provider_and_dependency_graph",
+    "fluent_forms_and_shortcodes": "tenant_provider_existence_and_binding",
+    "commerce_rate_pricing": "canonical_content_hub_and_company_pricing_approval",
+    "wpml_translations": "new_target_trid_with_original_language_members",
+    "popup_triggers": "explicit_tenant_authorization",
+    "theme_display_conditions": "company_resolved_query_context_and_conflict_detection"
+  },
+  "activation": {
+    "allow_auto_activation_when_qualified": [
+      "section",
+      "container"
+    ],
+    "deny_bulk_publish": true,
+    "rewrite_source_media_domains": false,
+    "inherit_source_users": false,
+    "inherit_source_secrets": false,
+    "inherit_source_commerce_authority": false,
+    "inherited_global_theme_conditions": false,
+    "requires_root_only_backup": true,
+    "requires_exact_plan_digest": true,
+    "requires_post_apply_readback": true,
+    "tenant_source_independence_required": true
+  },
+  "control_plane": {
+    "source_of_truth": "MAD4B_Control_Plane",
+    "workflow_stage": "Company_And_Brand_Readiness",
+    "central_content_authority": "canonical_Content_Hub_database",
+    "publication_gate_separate_from_design": true,
+    "per_tenant_isolation_required": true
+  },
+  "compatibility_modes": {
+    "strict": {
+      "allowed_types": [
+        "section",
+        "container"
+      ],
+      "requires_schema_parity": false
+    },
+    "schema-auto": {
+      "allowed_types": [
+        "section",
+        "container",
+        "popup",
+        "archive",
+        "single-page",
+        "single-post",
+        "page",
+        "jet-listing-items",
+        "header"
+      ],
+      "requires_schema_parity": true,
+      "requires_registered_providers": true,
+      "query_and_dynamic_fields_are_structural_dependencies": true,
+      "do_not_block_on_query_id_alone": true,
+      "do_not_block_on_dynamic_field_alone": true,
+      "requires_tenant_wpml_mapping": true,
+      "deny_unresolved_media_source_brand_or_links": true,
+      "theme_conditions_need_scoped_resolver": true,
+      "commercial_publication_is_separate": true
+    },
+    "resolve-diff": {
+      "run_only_when_differences_found": true,
+      "resolution_engines": [
+        "schema-provider-reconcile",
+        "wpml-group-rebind",
+        "company-field-context",
+        "identity-url-map",
+        "media-provenance",
+        "theme-conditions-deduplicate"
+      ],
+      "automatic_repairs": [
+        "verified_tenant_wpml_rebind",
+        "verified_tenant_page_url_map"
+      ],
+      "schema_writes_require_independent_verified_source": true,
+      "preserve_tenant_kit": true,
+      "safe_rollback_required": true
+    }
+  }
+}
