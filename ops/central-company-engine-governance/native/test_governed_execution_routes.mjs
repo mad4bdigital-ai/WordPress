@@ -14,7 +14,9 @@ function fixture(operation='verify_host_binding',change={}){
    transport_revoked:false,delegate_revoked:false,
    granted_operation:operation==='maintenance.shell'?'maintenance.shell':'company.remote.wpcli.full',
    shell_fallback_allowed:operation==='maintenance.shell',native_scope_valid:true,
-   ...change.admission};
+   original_enrollment_scope_valid:true,independent_host_proof_verified:true,
+   original_job_claim_verified:true,original_312_verified:true,
+   native_enrollment_receipt_verified:true,...change.admission};
  const readback={...binding,job_id:jobId,command_sha256,
    original_313_verified:true,independent_host_readback_verified:true,
    ...change.readback};
@@ -82,6 +84,29 @@ test('missing legacy dual-route policy parks Shell rather than opening new autho
    operation:'maintenance.shell',job_id:jobId});
  assert.equal(result.reason_code,'ORIGINAL_DUAL_ROUTE_SHELL_POLICY_UNAVAILABLE');
  assert.equal(f.calls.shell,0);
+});
+test('initial host verification can run before Native enrollment',async()=>{
+ const f=fixture('verify_host_binding',{admission:{
+   native_scope_valid:false,native_enrollment_receipt_verified:false}});
+ const r=await createGovernedExecutionRoutes(f).execute({
+   operation:'verify_host_binding',job_id:jobId});
+ assert.equal(r.state,'VERIFIED');
+});
+test('native registration requires independent host proof',async()=>{
+ const f=fixture('register_native_executor',{admission:{
+   independent_host_proof_verified:false}});
+ const r=await createGovernedExecutionRoutes(f).execute({
+   operation:'register_native_executor',job_id:jobId});
+ assert.equal(r.reason_code,'INDEPENDENT_HOST_PROOF_REQUIRED');
+ assert.equal(f.calls.typed,0);
+});
+test('real WPCLI execution requires Native enrollment receipt and original 312',async()=>{
+ const f=fixture('wpcli.execute',{admission:{
+   native_enrollment_receipt_verified:false}});
+ const r=await createGovernedExecutionRoutes(f).execute({
+   operation:'wpcli.execute',job_id:jobId});
+ assert.equal(r.reason_code,'CERTIFIED_NATIVE_AND_312_REQUIRED');
+ assert.equal(f.calls.typed,0);
 });
 test('typed full wpcli grant is never inferred from shell grant',async()=>{
  const f=fixture('wpcli.execute',{admission:{granted_operation:'maintenance.shell'}});
