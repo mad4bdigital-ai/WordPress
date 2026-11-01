@@ -643,10 +643,10 @@ def reconcile(con,event_id,p):
                     (target,domain,state,r["provider"],r["reason"],digest,evidence,attempts,utc()))
         con.execute("INSERT INTO receipts VALUES(?,?,?,?,?,?,?,?,0)",
                     (str(uuid.uuid4()),event_id,target,domain,previous,state,digest,utc()))
-        # A denied ETG release apply needs an actionable central Review,
-        # not a silent status. The Review cannot authorize the operation.
+        # Any enrolled read-only observer whose operation admission is denied
+        # receives an actionable Review. A review cannot authorize a job.
         needs_review=(state=="review_required" or
-            (target=="egypt-tour-gates:staging" and
+            (bool(scope.get("release_observer")) and
              domain=="operation_admission" and state=="blocked_authority"))
         if needs_review:
             con.execute("INSERT OR IGNORE INTO reviews VALUES(?,?,?,?,?)",
