@@ -37,24 +37,39 @@ print(route)
 PY
 )
 fi
-printf '%s START route=%s mode=%s\n' "$(date -Is)" "$route" "$mode"
-if ! timeout -k 5s 80s docker run --rm --network host --cpus=1.5 --memory=1536m -u 0:0 -v "$Q:/out" --entrypoint node mad4b-firecrawl-production-playwright-service:latest /out/css-scout.js "$route";then
- echo 'HOLD: scout failed, no promotion';exit 12
+device=$(python3 "$Q/device-turn.py" choose "$route" "$mode")
+if [ "$device" = ack ];then
+ python3 "$Q/device-turn.py" ack "$route" event
+ echo "EVENT_COMPLETED route=$route";exit 0
 fi
-if python3 "$Q/policy-engine.py" stage "$route";then :;else
- echo 'NATIVE: no safe CSS candidates found for route';
- if [ -n "$pending" ];then python3 "$Q/notification-bridge.py" "$route" native 'No safe CSS candidates';fi
- exit 0
+if [ "$device" != desktop ] && [ "$device" != mobile ];then echo 'FAIL CLOSED: no device';exit 12;fi
+printf '%s START route=%s device=%s mode=%s\n' "$(date -Is)" "$route" "$device" "$mode"
+finish_device(){
+ local result="$1"
+ python3 "$Q/device-turn.py" complete "$route" "$mode" "$device" "$result" > "$Q/last-device-result.json"
+ if [ "$mode" = event ] && grep -q '"done": true' "$Q/last-device-result.json";then
+  python3 "$Q/device-turn.py" ack "$route" event
+ fi
+}
+if ! timeout -k 5s 80s docker run --rm --network host --cpus=1.5 --memory=1536m -u 0:0 -v "$Q:/out" --entrypoint node mad4b-firecrawl-production-playwright-service:latest /out/css-scout.js "$route" "$device";then
+ echo 'HOLD: device-specific scout failed';finish_device failed;exit 12
 fi
-[ "$mode" = smoke ] && { echo 'SMOKE: browser discovery and policy stage succeeded, no automatic certification';exit 0; }
-if ! timeout -k 5s 360s docker run --rm --network host --cpus=1.5 --memory=1536m -u 0:0 -v "$Q:/out" --entrypoint node mad4b-firecrawl-production-playwright-service:latest /out/css-benchmark.js "$route" 5;then
- echo 'HOLD: web vitals run failed, route remains canary-only';exit 13
+if python3 "$Q/policy-engine.py" stage "$route" "$device";then :;else
+ code=$?
+ if [ "$code" -ne 2 ];then echo "HOLD: policy stage failed $code";finish_device failed;exit 13;fi
+ echo "NATIVE: no new proven candidate for $device; prior verdict retained"
+ finish_device native;exit 0
 fi
-if python3 "$Q/policy-engine.py" verify "$route";then
- echo "$(date -Is) CERTIFIED $route" >> "$Q/cycle-events.log"
- python3 "$Q/notification-bridge.py" "$route" certified 'Three paired desktop-mobile A-B tests PASS'
+[ "$mode" = smoke ] && { echo 'SMOKE: scoped stage complete, not certified';exit 0; }
+if ! timeout -k 5s 360s docker run --rm --network host --cpus=1.5 --memory=1536m -u 0:0 -v "$Q:/out" --entrypoint node mad4b-firecrawl-production-playwright-service:latest /out/css-benchmark.js "$route" 5 "$device";then
+ echo "HOLD: $device A/B incomplete; no promotion"
+ finish_device failed;exit 13
+fi
+if python3 "$Q/policy-engine.py" verify "$route" "$device";then
+ echo "$(date -Is) CERTIFIED $route $device" >> "$Q/cycle-events.log"
+ finish_device certified
 else
- echo "$(date -Is) HOLD $route" >> "$Q/cycle-events.log"
- python3 "$Q/notification-bridge.py" "$route" hold 'Performance or visual gate failed'
+ echo "$(date -Is) HOLD $route $device" >> "$Q/cycle-events.log"
+ finish_device hold
 fi
-printf '%s END route=%s\n' "$(date -Is)" "$route"
+printf '%s END route=%s device=%s\n' "$(date -Is)" "$route" "$device"
