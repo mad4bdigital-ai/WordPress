@@ -1,0 +1,34 @@
+name: MAD4B JS CPU Intelligence Contract
+on:
+  pull_request:
+    paths:
+      - 'wp-content/mu-plugins/338-mad4b-js-cpu-intelligence.php'
+      - 'wp-content/plugins/mad4b-adaptive-asset-intelligence/**'
+      - 'ops/qa/js-asset-policy-v1/js-cpu-*.py'
+      - 'ops/qa/js-asset-policy-v1/js-cpu-cycle.sh'
+      - 'ops/qa/js-asset-policy-v1/jquery-cpu-profile.js'
+      - '.github/workflows/mad4b-js-cpu-intelligence.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint PHP and worker code
+        run: |
+          php -l wp-content/mu-plugins/338-mad4b-js-cpu-intelligence.php
+          php -l wp-content/plugins/mad4b-adaptive-asset-intelligence/includes/class-mad4b-scp-adaptive-asset-intelligence.php
+          python3 -m py_compile ops/qa/js-asset-policy-v1/js-cpu-policy.py
+          bash -n ops/qa/js-asset-policy-v1/js-cpu-cycle.sh
+          node --check ops/qa/js-asset-policy-v1/jquery-cpu-profile.js
+      - name: Test independent CPU decisions and deny Production/sensitive pages
+        run: |
+          python3 ops/qa/js-asset-policy-v1/test-js-cpu-policy.py
+      - name: Assert native JS remains unchanged without five-pair approval
+        run: |
+          grep -Fq "'auto_apply':False" ops/qa/js-asset-policy-v1/js-cpu-policy.py
+          grep -Fq "'runtime_mode':'native'" ops/qa/js-asset-policy-v1/js-cpu-policy.py
+          grep -Fq "no global defer" ops/qa/js-asset-policy-v1/js-cpu-policy.py
