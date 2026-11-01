@@ -12074,8 +12074,7 @@
         "SECURITY-02"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-v6-scope-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-contract.py"
       ],
       "owner_role": "MAD4B exact-source technical CI reviewer; site owner and release remain separate",
       "status": "reviewed_for_ci_only",
