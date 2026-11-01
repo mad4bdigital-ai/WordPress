@@ -1,0 +1,74 @@
+{
+  "contract": "mad4b.jetengine-option-pages.observed-key-union.v1",
+  "scope": "company current Production source databases, read-only observation on 2026-10-29",
+  "not_authoritative_schema_export": true,
+  "source_definition_registration_unverified": true,
+  "pages": [
+    {
+      "label": "Look & Feel",
+      "value_storage_option": "look-and-feel",
+      "shared_observed_keys": [
+        "home_page_header_image",
+        "tour_search_header_image",
+        "continents_archive_header_image",
+        "countries_archive_header_image",
+        "cities_archive_header_image",
+        "location_archive_header_image",
+        "attraction_archive_header_image",
+        "tours_archive_header_image",
+        "properties_archive_header_image",
+        "units_archive_header_image",
+        "transportations_archive_header_image",
+        "transportations_companies_archive_header_image",
+        "dmcs_archive_header_image",
+        "drivers_archive_header_image",
+        "jops_archive_header_image",
+        "guides_archive_header_image"
+      ],
+      "additional_keys_observed_on_egypt_tour_gates": [
+        "busness_reviews_section_tab",
+        "busness_reviews_section",
+        "review_hero_image",
+        "company_about_customization",
+        "review_gellery_slider"
+      ],
+      "current_values_count_by_company": {
+        "allroyalegypt.com": 16,
+        "egypttourgates.com": 21
+      },
+      "merge_policy": "add missing FIELD DEFINITIONS to shared schema, never import another tenant's field values",
+      "values_source": "current_company_database_only",
+      "verified_gallery_source": "look-and-feel::review_gellery_slider",
+      "gallery_value_observation": {
+        "egypttourgates.com": {
+          "entries": 19,
+          "all_references_belong_to_company": true
+        },
+        "allroyalegypt.com": {
+          "field_present_in_saved_values": false
+        }
+      }
+    },
+    {
+      "label": "Brand",
+      "value_storage_option": "unverified",
+      "option_key_named_brand_seen": {
+        "allroyalegypt.com": false,
+        "egypttourgates.com": false
+      },
+      "schema_location": "needs_discovery_of_JetEngine_options_page_registration",
+      "merge_policy": "schema_shared_values_tenant_owned"
+    }
+  ],
+  "sensitive_values_in_report": false,
+  "cross_company_values_exported": false,
+  "production_mutation": false,
+  "company_hosting_candidates_mutation": false,
+  "future_gates": [
+    "Discover official JetEngine Options Page definition sources and compare field types/defaults",
+    "No donor value/default applied to target database",
+    "Verify per-company content and media URLs",
+    "Preserve Elementor active Kit and Brand values on each company",
+    "Owner release certification"
+  ]
+}
