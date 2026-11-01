@@ -1,0 +1,52 @@
+name: MAD4B Native Staging Source Parity
+on:
+  pull_request:
+    paths:
+      - 'ops/company-readiness-workflow/executor/vps-native-operator.py'
+      - 'ops/mad4b-broker/**'
+      - 'docs/PR-687-NATIVE-STAGING-PARITY-REVIEW.md'
+      - '.github/workflows/mad4b-native-staging-source-parity.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mad4b-native-source-parity-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  source-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify all five reviewed staging source artifacts are present and byte-identical
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          import sys
+
+          # Read-only baseline from the exact tested Staging files.
+          # Any changed source requires fresh audited baseline and review.
+          baseline = {
+              "ops/company-readiness-workflow/executor/vps-native-operator.py": "1bd0f161708a5400e504f7532662b85084158385ffabc40369f2e0c7b98dd299",
+              "ops/mad4b-broker/vps-native-central-auto-dispatch.py": "34466f2c253ddbc421010394a39c37a08efbb9bbcb4d50ef972c0151d5609baa",
+              "ops/mad4b-broker/vps-native-central-dispatch-worker.py": "57b51219ee384b756744794e000cbd696e400d46870f4f02cdd4ac2d3df8f1e4",
+              "ops/mad4b-broker/systemd/mad4b-native-central-dispatch.service": "228070be9d345c51e29804b34e96968e72383adb0d15fac31ac63c686756912f",
+              "ops/mad4b-broker/systemd/mad4b-native-central-dispatch.timer": "617c31282afe4f33c406330de436fe99e185a3da5f54415edeec46e481fcba46",
+          }
+          mismatches=[]
+          for name, expected in baseline.items():
+              path=Path(name)
+              actual=hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
+              status="PASS" if actual == expected else "MISSING" if actual is None else "DRIFT"
+              print(f"{status}: {name}")
+              if actual != expected:
+                  mismatches.append(name)
+          if mismatches:
+              print(f"BLOCKED_SOURCE_PARITY: {len(mismatches)} files need authorized source review and upload",file=sys.stderr)
+              sys.exit(1)
+          print("ALL_STAGING_SOURCE_PARITY_CHECKS_PASS")
+          PY

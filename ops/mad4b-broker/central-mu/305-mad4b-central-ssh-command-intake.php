@@ -23,10 +23,15 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
         // A WP-CLI user override is not an authenticated owner confirmation.
         if (defined('WP_CLI') && WP_CLI) return false;
         $nonce = (string) $request->get_header('X-WP-Nonce');
-        if ($nonce !== '' && wp_verify_nonce($nonce, 'wp_rest')) {
-            return get_current_user_id() > 0;
+        if ($nonce !== '') {
+            // A supplied invalid REST nonce must fail closed. Only the
+            // absence of a nonce permits the original separately verified
+            // Unified Administrator identity route.
+            return (bool) wp_verify_nonce($nonce, 'wp_rest')
+                && get_current_user_id() > 0;
         }
-        // Only the enrolled OAuth bearer with step-up, never a synthetic user.
+        // No REST-session proof: original Unified Administrator is an
+        // alternative identity, not a fallback after failed verification.
         return class_exists('MAD4B_Company_Manager_Unified_Administrator_Principal', false)
             && MAD4B_Company_Manager_Unified_Administrator_Principal::verified();
     }
@@ -49,9 +54,26 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
     }
 
     private static function scope(string $company, string $operation) {
+        // The Central VPS is a workload, never a customer company target.
+        // The original enrolled WP owner admits only this local host scope;
+        // the independent VPS operator must still prove its own authority.
+        if ($company === 'tours-central') {
+            if ($operation !== 'maintenance.shell' ||
+                !class_exists('MAD4B_Central_Host_Scope_V1', false) ||
+                !MAD4B_Central_Host_Scope_V1::current_owner())
+                return self::error('central_host_owner_or_operation_required');
+            $host=MAD4B_Central_Host_Scope_V1::inspect();
+            if (($host['state']??'')!=='CENTRAL_HOST_IDENTITY_VERIFIED')
+                return self::error('central_host_site_identity_required');
+            return array('site_uuid'=>$host['site_uuid'],
+                'canonical_origin'=>$host['canonical_origin'],
+                'environment'=>$host['environment'],
+                'assignment_revision'=>0);
+        }
         if (!class_exists('MAD4B_Company_Operation_Admission_V1', false)
             || !class_exists('MAD4B_Manager_Auto_Write_V1', false)
-            || !in_array($operation, MAD4B_Central_Dual_Lane_Registry_V1::HOST_MAINTENANCE, true))
+            || (!in_array($operation, MAD4B_Central_Dual_Lane_Registry_V1::HOST_MAINTENANCE, true)
+                && $operation !== 'company.remote.wpcli.full'))
             return self::error('operation_not_registered', 422);
         $admitted = MAD4B_Company_Operation_Admission_V1::assess($company, 'operations.write');
         if (is_wp_error($admitted) || empty($admitted['policy_delegation_admitted']))
@@ -82,7 +104,7 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
         $company = (string) $request['company'];
         $input = $request->get_json_params();
         if (!is_array($input) || array_diff(array_keys($input),
-                array('host_id','host_principal','host_key_fingerprint','credential_ref','reason')))
+                array('host_id','host_principal','host_key_fingerprint','credential_ref','reason','capabilities')))
             return self::error('invalid_transport_shape', 422);
         $host = (string) ($input['host_id'] ?? '');
         $principal = (string) ($input['host_principal'] ?? '');
@@ -95,6 +117,23 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
             || !preg_match('/^vault:[a-z0-9][a-z0-9_\\/-]{5,150}$/D', $reference)
             || strlen($reason) < 10 || strlen($reason) > 240)
             return self::error('invalid_ssh_transport_fields', 422);
+        // Full WP-CLI must be explicitly enrolled by the original authenticated
+        // company owner; a shell probe, WP-CLI user override or SSH handshake
+        // alone cannot create a capability.
+        $requested_capabilities = $input['capabilities'] ?? array();
+        if (!is_array($requested_capabilities) || array_values($requested_capabilities) !== $requested_capabilities)
+            return self::error('invalid_transport_capabilities', 422);
+        $full_wpcli = $requested_capabilities === array('wpcli.full');
+        if ($requested_capabilities !== array() && !$full_wpcli)
+            return self::error('unknown_transport_capability', 422);
+        if ($full_wpcli && (!class_exists('MAD4B_Company_Manager_Unified_Administrator_Principal', false)
+            || !MAD4B_Company_Manager_Unified_Administrator_Principal::verified()))
+            return self::error('verified_owner_enrollment_required');
+        if ($company==='tours-central' &&
+            ($host!=='srv2030908' || $principal!=='root'
+             || $reference!=='vault:registry/local-srv2030908'
+             || $requested_capabilities!==array()))
+            return self::error('central_host_exact_local_transport_required', 422);
         $scope = self::scope($company, 'maintenance.shell');
         if (is_wp_error($scope)) return $scope;
         $id = bin2hex(random_bytes(16));
@@ -112,13 +151,50 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
             'credential_ref' => $reference,
             'created_epoch' => time(),
             'state' => 'PENDING_INDEPENDENT_SSH_VERIFICATION',
+            // Persist intent in the ORIGINAL transport. Activation still
+            // requires signed native 312/313 admission and exact host binding.
+            'capabilities' => $requested_capabilities,
+            'full_wpcli_pending_native_enrollment' => $full_wpcli,
+            'full_wpcli_active' => false,
             'ssh_session_active' => false,
             'host_authority_verified' => false,
             'ssh_secret_stored_in_wordpress' => false,
             'reason' => sanitize_text_field($reason)
         );
+        // Owner approves FULL WP-CLI at SSH-transport enrollment once.
+        // Persist the original reusable grant, not a parallel grant ledger.
+        // This is central enrollment ONLY: independent 312/313 and the
+        // registered Native Executor must still prove execution authority.
+        $grant_id = $full_wpcli ? bin2hex(random_bytes(16)) : null;
+        if ($full_wpcli) $record['full_wpcli_grant_id'] = $grant_id;
         if (!add_option(self::TRANSPORT_PREFIX . $id, $record, '', false))
             return self::error('transport_persistence_failed', 503);
+        if ($full_wpcli) {
+            $grant = array(
+                'contract' => self::CONTRACT, 'grant_id' => $grant_id,
+                'company' => $company, 'operation' => 'company.remote.wpcli.full',
+                'site_uuid' => $scope['site_uuid'],
+                'canonical_origin' => $scope['canonical_origin'],
+                'environment' => $scope['environment'],
+                'assignment_revision' => $scope['assignment_revision'],
+                'central_principal_id' => get_current_user_id(),
+                'target_host_id' => $host, 'target_ssh_principal' => $principal,
+                'issued_epoch' => time(), 'expires_epoch' => null,
+                'grant_mode' => 'persistent', 'transport_id' => $id,
+                'requires_fresh_host_auth_for_each_command' => true,
+                'state' => 'CENTRAL_OPERATION_SCOPE_GRANTED',
+                'host_ssh_authority_verified' => false,
+                'execution_authorized' => false, 'executed' => false,
+                'reason' => sanitize_text_field($reason),
+            );
+            if (!add_option(self::PREFIX . $grant_id, $grant, '', false)) {
+                delete_option(self::TRANSPORT_PREFIX . $id);
+                return self::error('persistent_wpcli_grant_persistence_failed', 503);
+            }
+            // Do not set full_wpcli_active until the verified native host path
+            // is certified; a credential probe cannot upgrade privileges.
+            self::audit('full_wpcli_owner_enrolled', $company, $grant_id, 'CENTRAL_OPERATION_SCOPE_GRANTED');
+        }
         self::audit('transport_registered', $company, $id, $record['state']);
         return new WP_REST_Response($record, 201);
     }
@@ -138,8 +214,14 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
             return self::error('invalid_revoke_scope', 422);
         $prefix = $kind === 'grant' ? self::PREFIX : self::TRANSPORT_PREFIX;
         $record = get_option($prefix . $id, null);
+        $native_owner_revoke=is_array($record)
+            && ($record['principal_type']??'')==='vps_native'
+            && $company==='tours-central'
+            && class_exists('MAD4B_Central_Host_Scope_V1',false)
+            && MAD4B_Central_Host_Scope_V1::current_owner();
         if (!is_array($record) || ($record['company'] ?? '') !== $company
-            || ($record['central_principal_id'] ?? null) !== get_current_user_id())
+            || (!$native_owner_revoke
+                && ($record['central_principal_id'] ?? null) !== get_current_user_id()))
             return self::error('record_not_found', 404);
         if (($record['state'] ?? '') === 'REVOKED')
             return rest_ensure_response(array('state'=>'REVOKED','object_id'=>$id));
@@ -164,6 +246,11 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
                 array('operation','host_id','host_principal','ttl_seconds','reason','grant_mode','transport_id')))
             return self::error('invalid_grant_shape', 422);
         $operation = (string) ($input['operation'] ?? '');
+        // A reusable Full WP-CLI grant can ONLY originate at one owner-verified
+        // connection enrollment, never via the ordinary generic grant endpoint.
+        if ($operation === 'company.remote.wpcli.full')
+            return self::error('use_owner_verified_wpcli_transport_enrollment', 403);
+
         $host = (string) ($input['host_id'] ?? '');
         $host_principal = (string) ($input['host_principal'] ?? '');
         $reason = (string) ($input['reason'] ?? '');
@@ -182,23 +269,27 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
                 || ($transport['state'] ?? '') !== 'PENDING_INDEPENDENT_SSH_VERIFICATION')
                 return self::error('persistent_transport_missing_or_revoked');
         } else {
-            // One-time grants may bind an existing registered transport for remote jobs.
-            // Omitted transport preserves legacy local one-time admission only.
-            if ($transport_id !== '' && !preg_match('/^[a-f0-9]{32}$/D', $transport_id))
-                return self::error('one_time_transport_reference_invalid', 422);
-            $transport = $transport_id !== '' ? get_option(self::TRANSPORT_PREFIX . $transport_id, null) : null;
-            if ($transport_id !== '' && (!is_array($transport)
-                || ($transport['state'] ?? '') !== 'PENDING_INDEPENDENT_SSH_VERIFICATION'))
-                return self::error('one_time_transport_missing_or_revoked');
+            $transport = null;
+            if ($transport_id !== '') return self::error('one_time_transport_reference_unsupported', 422);
         }
         if (!preg_match('/^[a-zA-Z0-9][a-zA-Z0-9_.-]{2,79}$/D', $host)
             || !preg_match('/^[a-z_][a-z0-9_-]{0,31}$/D', $host_principal)
             || ($mode === 'one_time' && ($ttl < 30 || $ttl > self::TTL_MAX))
             || strlen($reason) < 10 || strlen($reason) > 240)
             return self::error('grant_fields_invalid', 422);
+        if ($company==='tours-central' &&
+            ($operation!=='maintenance.shell' || $mode!=='persistent'
+             || $host!=='srv2030908' || $host_principal!=='root'
+             || $transport_id===''))
+            return self::error('central_host_persistent_local_grant_required', 422);
+        // The native-principal standing grant can only be created through
+        // a valid Ed25519 VPS Client attestation. The owner-facing 305 API
+        // may revoke it but may not mint a second grant on its transport.
+        if ($mode==='persistent' && ($transport['principal_type']??'')==='vps_native')
+            return self::error('native_grant_requires_signed_client',403);
         $scope = self::scope($company, $operation);
         if (is_wp_error($scope)) return $scope;
-        if ($transport_id !== '' && (
+        if ($mode === 'persistent' && (
             ($transport['company'] ?? '') !== $company
             || ($transport['host_id'] ?? '') !== $host
             || ($transport['host_principal'] ?? '') !== $host_principal
@@ -207,7 +298,7 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
             || ($transport['canonical_origin'] ?? null) !== $scope['canonical_origin']
             || ($transport['environment'] ?? null) !== $scope['environment']
             || ($transport['assignment_revision'] ?? null) !== $scope['assignment_revision']))
-            return self::error('registered_transport_scope_mismatch');
+            return self::error('persistent_transport_scope_mismatch');
         // This is a central policy scope; host-level privilege is NOT minted.
         // The SSH transport must independently verify host principal/grants.
         $grant_id = bin2hex(random_bytes(16));
@@ -221,7 +312,7 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
             'central_principal_id' => get_current_user_id(),
             'target_host_id' => $host, 'target_ssh_principal' => $host_principal,
             'issued_epoch' => time(), 'expires_epoch' => $mode === 'persistent' ? null : time() + $ttl,
-            'grant_mode' => $mode, 'transport_id' => $transport_id !== '' ? $transport_id : null,
+            'grant_mode' => $mode, 'transport_id' => $mode === 'persistent' ? $transport_id : null,
             'requires_fresh_host_auth_for_each_command' => true,
             'state' => 'CENTRAL_OPERATION_SCOPE_GRANTED',
             'host_ssh_authority_verified' => false,
@@ -239,22 +330,22 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
         $company = (string) $request['company'];
         $input = $request->get_json_params();
         if (!is_array($input) || array_diff(array_keys($input),
-                array('grant_id','command','summary','correlation_id','target_scope')))
+                array('grant_id','command','argv','summary','correlation_id','target_scope')))
             return self::error('invalid_request_shape', 422);
         $id = (string) ($input['grant_id'] ?? '');
         $command = $input['command'] ?? null;
+        $argv = $input['argv'] ?? null;
         $summary = (string) ($input['summary'] ?? '');
         $correlation = (string) ($input['correlation_id'] ?? '');
         $target_scope = (string) ($input['target_scope'] ?? 'wordpress');
         if (!preg_match('/^[a-f0-9]{32}$/D', $id)
-            || !is_string($command) || trim($command) === ''
-            || strlen($command) > self::COMMAND_MAX_BYTES
-            || strpos($command, "\0") !== false
             || strlen($summary) < 10 || strlen($summary) > 240
             || !preg_match('/^[a-zA-Z0-9_.-]{8,100}$/D', $correlation)
             || !in_array($target_scope, array('wordpress','host'), true))
             return self::error('command_fields_invalid', 422);
         $grant = get_option(self::PREFIX . $id, null);
+        if (is_array($grant) && ($grant['principal_type']??'')==='vps_native')
+            return self::error('native_command_requires_signed_client',403);
         if (!is_array($grant) || ($grant['contract'] ?? '') !== self::CONTRACT
             || ($grant['company'] ?? '') !== $company
             || ($grant['central_principal_id'] ?? 0) !== get_current_user_id()
@@ -262,6 +353,40 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
             || (($grant['grant_mode'] ?? 'one_time') !== 'persistent'
                 && (int) ($grant['expires_epoch'] ?? 0) <= time()))
             return self::error('grant_expired_or_mismatched');
+        // WP-CLI uses the same canonical digest as the signed native argv
+        // envelope; maintenance.shell preserves its legacy text digest.
+        $wpcli = ($grant['operation'] ?? '') === 'company.remote.wpcli.full';
+        if ($wpcli) {
+            if ($command !== null || $target_scope !== 'wordpress'
+                || !is_array($argv) || array_values($argv) !== $argv
+                || count($argv) < 1 || count($argv) > 256)
+                return self::error('wpcli_argv_shape_invalid', 422);
+            foreach ($argv as $part) {
+                if (!is_string($part) || strlen($part) > 8192
+                    || preg_match('/[\x00\x0a\x0d]/', $part)
+                    || preg_match('/^--(?:path|url|ssh|http|user)(?:=|$)/i', $part))
+                    return self::error('wpcli_argv_target_override_or_invalid', 422);
+            }
+            $canonical = wp_json_encode($argv, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            if (!is_string($canonical) || strlen($canonical) > self::COMMAND_MAX_BYTES)
+                return self::error('wpcli_argv_bytes_invalid', 422);
+            $command_digest = hash('sha256', $canonical);
+            $command_byte_length = strlen($canonical);
+            $command_format = 'wpcli.argv.json.v1';
+        } else {
+            if ($argv !== null || !is_string($command) || trim($command) === ''
+                || strlen($command) > self::COMMAND_MAX_BYTES
+                || strpos($command, "\0") !== false)
+                return self::error('command_text_invalid', 422);
+            $command_digest = hash('sha256', $command);
+            $command_byte_length = strlen($command);
+            $command_format = 'maintenance.shell.text.v1';
+        }
+        if ($company==='tours-central' &&
+            ($target_scope!=='host' ||
+             ($grant['target_host_id']??'')!=='srv2030908' ||
+             ($grant['target_ssh_principal']??'')!=='root'))
+            return self::error('central_host_command_target_scope_invalid', 422);
         $scope = self::scope($company, (string) $grant['operation']);
         if (is_wp_error($scope)) return $scope;
         foreach (array('site_uuid','environment','canonical_origin','assignment_revision') as $field) {
@@ -270,7 +395,7 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
         }
         $mode = (string) ($grant['grant_mode'] ?? 'one_time');
         $transport_id = (string) ($grant['transport_id'] ?? '');
-        if ($mode === 'persistent' || $transport_id !== '') {
+        if ($mode === 'persistent') {
             $transport = get_option(self::TRANSPORT_PREFIX . $transport_id, null);
             if (!is_array($transport)
                 || ($transport['state'] ?? '') !== 'PENDING_INDEPENDENT_SSH_VERIFICATION'
@@ -302,10 +427,11 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
             'target_ssh_principal' => $grant['target_ssh_principal'],
             'target_scope' => $target_scope, 'summary' => sanitize_text_field($summary),
             'correlation_id' => $correlation,
-            'command_sha256' => hash('sha256', $command),
-            'command_byte_length' => strlen($command),
+            'command_sha256' => $command_digest,
+            'command_format' => $command_format,
+            'command_byte_length' => $command_byte_length,
             'grant_mode' => $mode,
-            'transport_id' => $transport_id !== '' ? $transport_id : null,
+            'transport_id' => $mode === 'persistent' ? $transport_id : null,
             // Exact command bytes must come from the authenticated operator
             // session at dispatch. Never store arbitrary shell text in WP options.
             'command_bytes_persisted' => false,

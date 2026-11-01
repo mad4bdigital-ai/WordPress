@@ -34,25 +34,42 @@ final class MAD4B_Central_VPS_Broker_V1 {
             || ($grant['company']??'')!==$company
             || ($grant['central_principal_id']??0)!==($request['central_principal_id']??-1)
             || ($grant['operation']??'')!==($request['operation']??'')
-            || ($grant['grant_mode']??null)!==($request['grant_mode']??null)
-            || ($grant['transport_id']??null)!==($request['transport_id']??null)
-            || ($grant['target_host_id']??null)!==($request['target_host_id']??null)
-            || ($grant['target_ssh_principal']??null)!==($request['target_ssh_principal']??null)
             || (isset($grant['expires_epoch']) && (int)$grant['expires_epoch']<=time()))
             return self::deny('grant_not_active',409);
-        if (($request['grant_mode']??'one_time')==='persistent' || !empty($request['transport_id'])) {
+        if (($request['grant_mode']??'one_time')==='persistent') {
             $transport=get_option(MAD4B_Central_SSH_Command_Intake_V1::TRANSPORT_PREFIX.
                 (string)($request['transport_id']??''),false);
             if (!is_array($transport)
                 || ($transport['state']??'')!=='PENDING_INDEPENDENT_SSH_VERIFICATION'
                 || ($transport['company']??'')!==$company
                 || ($transport['host_id']??'')!==($request['target_host_id']??'')
-                || ($transport['host_principal']??'')!==($request['target_ssh_principal']??'')
-                || ($transport['site_uuid']??'')!==($request['site_uuid']??'')
-                || ($transport['canonical_origin']??'')!==($request['canonical_origin']??'')
-                || ($transport['environment']??'')!==($request['environment']??'')
-                || (int)($transport['central_principal_id']??0)!==(int)($request['central_principal_id']??-1))
+                || ($transport['site_uuid']??'')!==($request['site_uuid']??''))
                 return self::deny('transport_revoked_or_invalid',409);
+        }
+        // This is the central host workload, not a customer in Company Manager.
+        // Its admission is the original enrolled owner + exact Site Profile;
+        // the host executor separately verifies OS privileges before execution.
+        if ($company==='tours-central') {
+            if (($request['principal_type']??'')==='vps_native') {
+                if (($request['operation']??'')!=='maintenance.shell'
+                    || ($request['target_scope']??'')!=='host'
+                    || ($request['target_host_id']??'')!=='srv2030908'
+                    || !class_exists('MAD4B_Native_VPS_Principal_V1',false)
+                    || !MAD4B_Native_VPS_Principal_V1::scope())
+                    return self::deny('native_principal_scope_invalid',403);
+                return $request;
+            }
+            if (($request['operation']??'')!=='maintenance.shell'
+                || ($request['target_scope']??'')!=='host'
+                || ($request['target_host_id']??'')!=='srv2030908'
+                || !class_exists('MAD4B_Central_Host_Scope_V1',false)
+                || !MAD4B_Central_Host_Scope_V1::matches($company,
+                    (string)($request['site_uuid']??''),
+                    (string)($request['canonical_origin']??''),
+                    (string)($request['environment']??''),
+                    (int)($request['central_principal_id']??0)))
+                return self::deny('central_host_binding_changed',409);
+            return $request;
         }
         if (!class_exists('MAD4B_Company_Operation_Admission_V1',false)
             || !class_exists('MAD4B_Manager_Auto_Write_V1',false))
@@ -90,7 +107,7 @@ final class MAD4B_Central_VPS_Broker_V1 {
         if ($broker_host!=='srv2030908')return self::deny('broker_host_not_enrolled',503);
         if (($source['target_host_id']??'')!==$broker_host) {
             if (!in_array($source['target_host_id']??'',array('hosting-1','hosting-3'),true)
-              || !in_array($source['grant_mode']??'',array('persistent','one_time'),true)
+              || ($source['grant_mode']??'')!=='persistent'
               || !preg_match('/^[a-f0-9]{32}$/D',(string)($source['transport_id']??'')))
                 return self::deny('remote_registry_transport_required',403);
             $transport=get_option(MAD4B_Central_SSH_Command_Intake_V1::TRANSPORT_PREFIX.
@@ -117,10 +134,12 @@ final class MAD4B_Central_VPS_Broker_V1 {
             'target_ssh_principal'=>$source['target_ssh_principal'],
             'grant_id'=>$source['grant_id'],
             'grant_mode'=>$source['grant_mode'],
-            'transport_id'=>$source['transport_id']??null,
+            'transport_id'=>($source['transport_id']??null),
             'central_principal_id'=>$source['central_principal_id'],
             'correlation_id'=>$source['correlation_id'],
             'command_sha256'=>$source['command_sha256'],
+            'target_scope'=>$source['target_scope'],
+            'command_format'=>($source['command_format']??'maintenance.shell.text.v1'),
             'created_epoch'=>time(), 'expires_epoch'=>$source['expires_epoch'],
             'state'=>'QUEUED_FOR_VPS_BROKER_CLAIM',
             'executed'=>false,
@@ -129,6 +148,60 @@ final class MAD4B_Central_VPS_Broker_V1 {
         if (!add_option(self::JOB.$id,$job,'',false)) {
             $found=get_option(self::JOB.$id,false);
             return is_array($found)?rest_ensure_response($found):self::deny('dispatch_conflict',409);
+        }
+        return new WP_REST_Response($job,202);
+    }
+
+    /**
+     * Called only after the signed native client has persisted an exact 305
+     * request. Never accepts a command string or caller-provided grant.
+     */
+    public static function dispatch_native(string $id) {
+        if (!preg_match('/^[a-f0-9]{32}$/D',$id))
+            return self::deny('native_id_invalid',422);
+        $source=self::fields('tours-central',$id);
+        if (is_wp_error($source))return $source;
+        if (($source['principal_type']??'')!=='vps_native'
+            || ($source['principal_id']??'')!=='vps-native:srv2030908'
+            || ($source['operation']??'')!=='maintenance.shell'
+            || ($source['target_host_id']??'')!=='srv2030908'
+            || ($source['target_scope']??'')!=='host'
+            || ($source['central_principal_id']??null)!==0)
+            return self::deny('native_principal_request_invalid',403);
+        $broker=(string)get_option(self::HOST_ID,'');
+        if ($broker!=='srv2030908')return self::deny('broker_host_not_enrolled',503);
+        $old=get_option(self::JOB.$id,false);
+        if (is_array($old)) {
+            if (($old['principal_type']??'')!=='vps_native'
+                || ($old['principal_id']??'')!==$source['principal_id']
+                || ($old['command_sha256']??'')!==$source['command_sha256']
+                || ($old['grant_id']??'')!==$source['grant_id'])
+                return self::deny('native_existing_job_mismatch',409);
+            return rest_ensure_response($old);
+        }
+        $job=[
+            'contract'=>self::CONTRACT,'job_id'=>$id,'company'=>'tours-central',
+            'operation'=>'maintenance.shell','site_uuid'=>$source['site_uuid'],
+            'canonical_origin'=>$source['canonical_origin'],
+            'environment'=>'staging','broker_host_id'=>$broker,
+            'target_host_id'=>'srv2030908','target_ssh_principal'=>'root',
+            'grant_id'=>$source['grant_id'],'grant_mode'=>'persistent',
+            'transport_id'=>$source['transport_id'],
+            'central_principal_id'=>0,'principal_type'=>'vps_native',
+            'principal_id'=>$source['principal_id'],
+            'host_policy_sha256'=>$source['host_policy_sha256'],
+            'correlation_id'=>$source['correlation_id'],
+            'command_sha256'=>$source['command_sha256'],
+            'target_scope'=>'host','command_format'=>'maintenance.shell.text.v1',
+            'created_epoch'=>time(),'expires_epoch'=>$source['expires_epoch'],
+            'state'=>'QUEUED_FOR_VPS_BROKER_CLAIM','executed'=>false,
+            'independent_host_permission_verified'=>false,
+            'native_command_bytes_delivered'=>false
+        ];
+        if (!add_option(self::JOB.$id,$job,'',false)) {
+            $current=get_option(self::JOB.$id,false);
+            return is_array($current) ? rest_ensure_response($current)
+                : self::deny('native_dispatch_conflict',409);
         }
         return new WP_REST_Response($job,202);
     }
@@ -231,11 +304,15 @@ final class MAD4B_Central_VPS_Broker_V1 {
     public static function cli($args,array $assoc):void {
         if (!defined('WP_CLI')||!WP_CLI || !class_exists('WP_CLI'))
             return;
-        if (get_current_user_id()<1 || !current_user_can('manage_options')
-            || !class_exists('MAD4B_Central_Dual_Lane_Registry_V1',false)
+        if (!class_exists('MAD4B_Central_Dual_Lane_Registry_V1',false)
             || !MAD4B_Central_Dual_Lane_Registry_V1::central())
-            WP_CLI::error('Central WP-CLI host principal required');
+            WP_CLI::error('Central host runtime unavailable');
         $action=(string)($args[0]??'');
+        // Claim has independent signed Broker Ed25519 authentication.
+        // Inventory/management still needs a real enrolled WP administrator.
+        if ($action!=='claim' && (get_current_user_id()<1
+            || !current_user_can('manage_options')))
+            WP_CLI::error('Central WP-CLI host principal required');
         if ($action==='heartbeat') {
             if (!self::verify_heartbeat($assoc))
                 WP_CLI::error('signed_host_heartbeat_rejected');

@@ -1,0 +1,45 @@
+name: MAD4B Native VPS Principal Contract
+on:
+  pull_request:
+    paths:
+      - 'ops/mad4b-broker/**'
+      - '.github/workflows/mad4b-native-vps-principal-contract.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mad4b-native-principal-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  native-principal:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: sodium
+      - name: Lint exact native and legacy Broker contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in ops/mad4b-broker/central-mu/{305,306,312,319,320,323}-*.php; do php -l "$f"; done
+          php -l ops/mad4b-broker/tests/test_native_vps_principal.php
+          python3 -m py_compile ops/mad4b-broker/native-vps-client-principal.py
+          python3 -m py_compile ops/mad4b-broker/vps-late-native-reconcile.py
+          python3 -m py_compile ops/mad4b-broker/vps-late-native-sweeper.py
+          php -l ops/mad4b-broker/central-mu/324-mad4b-broker-late-native-reconciliation.php
+          php -l ops/mad4b-broker/container/central-job-readiness.php
+          php -l ops/mad4b-broker/container/write-reviewed-parity-proposal.php
+          bash -n ops/mad4b-broker/container/run-private-parity-review.sh
+      - name: Hermetic signed-principal and identity tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ops/mad4b-broker/tests/test_central_host_scope_separation.py
+          php ops/mad4b-broker/tests/test_native_vps_principal.php
+          php ops/mad4b-broker/tests/test_late_native_receipt.php
+          python3 ops/mad4b-broker/tests/test_expired_native_job_reconciliation.py
+          python3 ops/mad4b-broker/tests/test_native_dispatch_contract.py
