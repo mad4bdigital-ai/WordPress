@@ -43,6 +43,8 @@ jobs:
           php -l ops/central-company-engine-governance/original-broker-source/298-mad4b-company-execution-resolver.php
           php ops/central-company-engine-governance/test_central_demo_dual_role.php
           php -l ops/central-company-engine-governance/original-broker-source/mad4b-company-portfolio-manager.php
+          php -l ops/central-company-engine-governance/original-broker-source/class-mad4b-manager-ssh-principal.php
+          python3 -m py_compile ops/central-company-engine-governance/native/ssh_manager_sign.py
           php ops/central-company-engine-governance/test_native_demo_portfolio_binding.php
           node --check ops/central-company-engine-governance/native/native-authority-observer.mjs
           node --test ops/central-company-engine-governance/native/test_native_authority_observer.mjs
