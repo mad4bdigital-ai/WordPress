@@ -1,0 +1,77 @@
+{
+  "contract": "mad4b.tenant-media-origin.loopback-preview.v1",
+  "date": "2026-10-29",
+  "scope": "internal local-only origin proof on VPS; no company DNS or public routing",
+  "source_commit": "f828902b71e0211e5b31d30970e3c912bd862972",
+  "origin_host": "srv2030908",
+  "container": "mad4b-tenant-media-origin-preview",
+  "policy": {
+    "rootfs_readonly": true,
+    "source_bind_readonly": true,
+    "config_bind_readonly": true,
+    "user": "33:33",
+    "listener": "127.0.0.1:8097",
+    "public_exposure": false
+  },
+  "tests": [
+    {
+      "uri": "/__health",
+      "expected": 200,
+      "actual": 200
+    },
+    {
+      "uri": "/2026/10/placeholder-3-100x100.png",
+      "expected": 200,
+      "actual": 200
+    },
+    {
+      "uri": "/2026/10/etg-brand-tone_of_voice-review-20261012.txt",
+      "expected": 404,
+      "actual": 404
+    },
+    {
+      "uri": "/.htaccess",
+      "expected": 404,
+      "actual": 404
+    },
+    {
+      "uri": "/wp-config.php",
+      "expected": 404,
+      "actual": 404
+    },
+    {
+      "uri": "/2026/10/no-file.png",
+      "expected": 404,
+      "actual": 404
+    },
+    {
+      "uri": "/%2e%2e/wp-config.php",
+      "expected": "deny 4xx",
+      "actual": 400
+    }
+  ],
+  "asset": {
+    "response_sha256": "b4033b0784ef3c1c2beab3f489b8c945b9a0ce010ffd14a8a5be39d89ccebb63",
+    "source_sha256": "b4033b0784ef3c1c2beab3f489b8c945b9a0ce010ffd14a8a5be39d89ccebb63",
+    "media_copied": false
+  },
+  "deployed_source_checksums": {
+    "nginx.conf": "1099a945c5a8576e5b84f9373c0549137335bb8d83e149571fe9371b75d47f27",
+    "compose.yml": "3228de64c9245e28ad944a5bb8fa1366878b1ead6c655b01bd7e0811dd0a2ce4"
+  },
+  "operational": {
+    "dns_changed": false,
+    "wordpress_changed": false,
+    "production_changed": false,
+    "media_gateway_public": false,
+    "tenant_isolation_certified": false
+  },
+  "next_gates": [
+    "independent persistent media storage lifecycle",
+    "per-tenant catalog and public-asset authorization",
+    "strict company-domain to tenant binding",
+    "DNS ownership and HTTPS certificate",
+    "WordPress attachment URL mapping and regression",
+    "owner operational attestation"
+  ]
+}
