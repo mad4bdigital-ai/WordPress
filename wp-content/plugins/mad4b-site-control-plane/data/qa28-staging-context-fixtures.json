@@ -1,0 +1,14 @@
+{
+  "contract": "mad4b.staging-brand-fixture-catalog.v1",
+  "purpose": "test-only isolated non-authoritative source and asset examples",
+  "sources": [
+    {"key":"trial-editorial","label":"TEST — Brand editorial source","provider":"in_memory_test_fixture","mode":"sandbox_only","write_policy":"none"},
+    {"key":"trial-operations","label":"TEST — Travel operations source","provider":"in_memory_test_fixture","mode":"sandbox_only","write_policy":"none"}
+  ],
+  "assets": [
+    {"key":"brand-voice","source_key":"trial-editorial","category":"tone_of_voice","title":"TEST — Brand tone guidance","body":"Experimental brand voice only. Do not publish as verified company claims.","language":"en"},
+    {"key":"destination-copy","source_key":"trial-editorial","category":"destination_knowledge","title":"TEST — Destination copy draft","body":"Synthetic destination description for layout and translation previews only. No real itinerary is asserted.","language":"en"},
+    {"key":"booking-review","source_key":"trial-operations","category":"operational_policy","title":"TEST — Booking requires review","body":"A synthetic booking remains draft and requires staff review; no inventory, supplier or payments are reserved.","language":"en"},
+    {"key":"mail-routing","source_key":"trial-operations","category":"operational_policy","title":"TEST — Notification preview only","body":"Simulated traveler and operations notification: do not send or claim acceptance by SMTP provider.","language":"en"}
+  ]
+}
