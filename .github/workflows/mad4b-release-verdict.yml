@@ -906,6 +906,18 @@ jobs:
               path in release_evidence_paths
               for path in changed
           )
+          content_hub_source_paths = (
+              'ops/mad4b-governed-task-context-v1/',
+              'tools/mad4b_content_hub_package.py',
+              'tools/test_mad4b_content_hub_package.py',
+              'tools/test_mad4b_content_hub_release_gate.py',
+              '.github/workflows/mad4b-content-hub-package.yml',
+          )
+          content_hub_required = any(
+              path.startswith(content_hub_source_paths[0]) or
+              path in content_hub_source_paths[1:]
+              for path in changed
+          )
           critical_workflow_changes = sorted(
               path for path in changed
               if path in critical_workflow_guard_jobs
@@ -970,6 +982,10 @@ jobs:
                   'Context Authority (7.4)',
                   'Context Authority (8.3)',
               ]
+          if content_hub_required:
+              required = list(required) + ['Content Hub exact-head package']
+              if mode == 'repository_non_runtime':
+                  mode = 'content_hub_runtime_release'
           required = list(dict.fromkeys(required))
 
           Path('/tmp/mad4b-critical-checks.txt').write_text('\n'.join(required) + '\n', encoding='utf-8')
@@ -978,6 +994,7 @@ jobs:
                   'contract': 'mad4b.release-verdict-scope.v2',
                   'mode': mode,
                   'artifact_required': artifact_required,
+                  'content_hub_artifact_required': content_hub_required,
                   'changed_files': changed,
                   'required_checks': required,
                   'bootstrap_exception': bootstrap_exception,
@@ -1080,6 +1097,7 @@ jobs:
           required=[x.strip() for x in open(sys.argv[1],encoding='utf-8') if x.strip()]
           scope=json.load(open(sys.argv[2],encoding='utf-8'))
           artifact_required=bool(scope.get('artifact_required'))
+          content_hub_artifact_required=bool(scope.get('content_hub_artifact_required'))
 
           governance_apply_repair_bootstrap=bool(scope.get('governance_apply_repair_bootstrap'))
           governance_apply_repair_status={}
@@ -1340,6 +1358,67 @@ jobs:
                       'verification_error':artifact_verification_error,
                   }
 
+          # Dedicated immutable Content Hub artifact: independently download
+          # and rehash every original source file. The Control Plane kit is a
+          # separate component, not interchangeable release evidence.
+          hub_artifact=None
+          hub_artifact_error=None
+          hub_artifact_ready=not content_hub_artifact_required
+          if content_hub_artifact_required:
+              try:
+                  exact_name='mad4b-content-hub-exact-head-'+os.environ['SOURCE_SHA']
+                  api=json.loads(subprocess.check_output([
+                      'gh','api',
+                      'repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/artifacts?name='+exact_name+'&per_page=100'
+                  ],text=True))
+                  items=[
+                      a for a in api.get('artifacts',[])
+                      if a.get('name')==exact_name
+                      and a.get('expired') is False
+                      and (a.get('workflow_run') or {}).get('head_sha')==os.environ['SOURCE_SHA']
+                  ]
+                  items.sort(key=lambda a:int(a.get('id') or 0),reverse=True)
+                  if not items:
+                      raise RuntimeError('exact_head_content_hub_artifact_missing')
+                  chosen=items[0]
+                  runid=int((chosen.get('workflow_run') or {}).get('id') or 0)
+                  if runid < 1:
+                      raise RuntimeError('content_hub_artifact_run_missing')
+                  root=Path('/tmp/mad4b-content-hub-verdict-artifact')
+                  shutil.rmtree(root,ignore_errors=True)
+                  root.mkdir(parents=True,exist_ok=True)
+                  subprocess.run([
+                      'gh','run','download',str(runid),'-n',exact_name,'-D',str(root)
+                  ],check=True)
+                  receipt=root/'CONTENT-HUB-CANONICAL-RECEIPT.json'
+                  archive=root/('mad4b-content-hub-'+os.environ['SOURCE_SHA']+'.zip')
+                  if not receipt.is_file() or not archive.is_file():
+                      raise RuntimeError('content_hub_artifact_missing_required_member')
+                  result=subprocess.run([
+                      'python3','tools/mad4b_content_hub_package.py','verify',
+                      '--repo','.','--source-sha',os.environ['SOURCE_SHA'],
+                      '--archive',str(archive),'--receipt',str(receipt)
+                  ],check=True,capture_output=True,text=True)
+                  check=json.loads(result.stdout)
+                  digest=str(chosen.get('digest','')).removeprefix('sha256:')
+                  if (len(digest)!=64 or
+                      any(c not in '0123456789abcdef' for c in digest)):
+                      raise RuntimeError('content_hub_github_artifact_digest_invalid')
+                  hub_artifact={
+                      'verified':True,'id':chosen['id'],
+                      'workflow_run_id':runid,'github_artifact_sha256':digest,
+                      'archive_sha256':check['archive_sha256'],
+                      'source_manifest_digest':check['source_manifest_digest'],
+                      'file_count':check['file_count'],
+                      'source_commit_sha':os.environ['SOURCE_SHA'],
+                      'component':'mad4b-content-hub',
+                      'authorizes_site_deployment':False,
+                  }
+                  hub_artifact_ready=True
+              except Exception as exc:
+                  hub_artifact_error=str(exc)
+                  hub_artifact={'verified':False,'reason':hub_artifact_error}
+
           verdict={
               'contract':'mad4b.repository-release-verdict.v1',
               'scope_contract':scope.get('contract'),
@@ -1348,6 +1427,10 @@ jobs:
               'critical_check_count':len(critical),
               'critical_check_mode':scope.get('mode','full_runtime_release'),
               'artifact_required':artifact_required,
+              'content_hub_artifact_required':content_hub_artifact_required,
+              'content_hub_artifact':hub_artifact,
+              'content_hub_artifact_error':hub_artifact_error,
+              'content_hub_artifact_verified':hub_artifact_ready,
               'changed_files':scope.get('changed_files',[]),
               'bootstrap_exception':bool(scope.get('bootstrap_exception')),
               'bootstrap_root_branch':scope.get('bootstrap_root_branch',''),
@@ -1359,9 +1442,10 @@ jobs:
               'repository_release_ready':bool(
                   merge_gate_ready
                   and governance_ready
-                  and artifact_required
-                  and canonical_package
-                  and canonical_package.get('verified')
+                  and hub_artifact_ready
+                  and ((artifact_required and canonical_package
+                        and canonical_package.get('verified'))
+                       or (content_hub_artifact_required and not artifact_required))
               ),
               'repository_governance_ready':governance_ready,
               'repository_governance_status':governance_status,
@@ -1422,7 +1506,7 @@ jobs:
           verdict=json.load(open('MAD4B-RELEASE-VERDICT.json',encoding='utf-8'))
           if verdict.get('repository_merge_gate_ready') is not True:
               raise SystemExit('repository merge gate is not ready')
-          if verdict.get('artifact_required') and verdict.get('repository_release_ready') is not True:
+          if (verdict.get('artifact_required') or verdict.get('content_hub_artifact_required')) and verdict.get('repository_release_ready') is not True:
               raise SystemExit('repository release artifact identity or repository governance is not ready')
           print('repository release verdict enforcement: PASS')
           PY
