@@ -455,6 +455,18 @@ matches = [r for r in rows if isinstance(r, dict) and r.get("name") == "wordpres
 if len(matches) != 1:
     raise SystemExit("canonical seed manifest must contain exactly one Brand Context Builder Skill")
 row = matches[0]
+# Newly cataloged Skills must remain disabled until an independent company
+# provisioning workflow enables them with the original authority checks.
+disabled = {
+    "wordpress-commerce-inquiry-qualification": "commerce-inquiry-qualification",
+    "wordpress-commerce-quote-booking-gates": "commerce-quote-booking-gates",
+    "wordpress-user-role-governance": "user-role-governance",
+}
+for skill_name, target in disabled.items():
+    entries = [item for item in rows if isinstance(item, dict) and item.get("name") == skill_name]
+    if (len(entries) != 1 or entries[0].get("target") != target
+            or entries[0].get("level") != "workflow" or entries[0].get("enabled") is not False):
+        raise SystemExit("Optional commerce/role Skill must be uniquely cataloged and disabled: " + skill_name)
 if row.get("level") != "workflow" or row.get("target") != "brand-context" or row.get("enabled") is not True:
     raise SystemExit("Brand Context Builder Skill manifest identity/state is invalid")
 # The Builder requires the canonical Seed inventory, not a historical
