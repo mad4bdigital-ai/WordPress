@@ -1,0 +1,131 @@
+name: MAD4B Content Hub Exact-HEAD Package
+
+on:
+  pull_request:
+    paths:
+      - 'ops/mad4b-governed-task-context-v1/**'
+      - 'tools/mad4b_content_hub_package.py'
+      - 'tools/test_mad4b_content_hub_package.py'
+      - 'tools/test_mad4b_content_hub_release_gate.py'
+      - '.github/workflows/mad4b-content-hub-package.yml'
+      - '.github/workflows/mad4b-release-verdict.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'ops/mad4b-governed-task-context-v1/**'
+      - 'tools/mad4b_content_hub_package.py'
+      - 'tools/test_mad4b_content_hub_package.py'
+      - 'tools/test_mad4b_content_hub_release_gate.py'
+      - '.github/workflows/mad4b-content-hub-package.yml'
+      - '.github/workflows/mad4b-release-verdict.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: mad4b-content-hub-package-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  package:
+    name: Content Hub exact-head package
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact Git source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          fetch-depth: 0
+
+      - name: Verify SHA binding and run build-tool regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          python3 -m unittest -v tools/test_mad4b_content_hub_package.py
+          python3 -m unittest -v tools/test_mad4b_content_hub_release_gate.py
+          PYTHONPATH=ops/mad4b-governed-task-context-v1 python3 -m unittest discover -s ops/mad4b-governed-task-context-v1 -p test_policy.py -v
+
+      - name: PHP lint and original Hub contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          src='ops/mad4b-governed-task-context-v1'
+          while IFS= read -r -d '' f; do php -l "$f" >/dev/null; done < <(find "$src/plugin" -type f -name '*.php' -print0)
+          php "$src/test_original_context_contract.php"
+          php "$src/test_legacy_atomic.php"
+          root="$(mktemp -d)"
+          trap 'rm -rf "$root"' EXIT
+          cp "$src"/test_singleflight.php "$src"/test_unlinked.php "$src"/test_unlinked_reservation.php "$src"/test_legacy_cutover.php "$root"/
+          cp "$src/plugin/includes/class-mad4b-hub-governed-single-flight.php" "$root"/
+          cp "$src/plugin/includes/class-mad4b-hub-unlinked-task-context.php" "$root"/
+          cp "$src/plugin/includes/class-mad4b-hub-semantic-legacy-cutover.php" "$root/mad4b-hub-semantic-legacy-cutover.php"
+          php "$root/test_singleflight.php"
+          php "$root/test_unlinked.php"
+          php "$root/test_unlinked_reservation.php"
+          php "$root/test_legacy_cutover.php"
+
+      - name: Build deterministic original Content Hub artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/mad4b_content_hub_package.py build --repo . --source-sha "$SOURCE_SHA"
+          python3 tools/mad4b_content_hub_package.py verify --repo . --source-sha "$SOURCE_SHA" \
+            --archive "dist/mad4b-content-hub/mad4b-content-hub-${SOURCE_SHA}.zip" \
+            --receipt dist/mad4b-content-hub/CONTENT-HUB-CANONICAL-RECEIPT.json
+          test "$(find dist/mad4b-content-hub -maxdepth 1 -type f | wc -l)" -eq 2
+
+      - name: Attest exact Content Hub ZIP and canonical manifest
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            dist/mad4b-content-hub/mad4b-content-hub-*.zip
+            dist/mad4b-content-hub/CONTENT-HUB-CANONICAL-RECEIPT.json
+
+      - name: Publish immutable exact-head package
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-content-hub-exact-head-${{ env.SOURCE_SHA }}
+          path: |
+            dist/mad4b-content-hub/mad4b-content-hub-*.zip
+            dist/mad4b-content-hub/CONTENT-HUB-CANONICAL-RECEIPT.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Verify immutable GitHub artifact identity
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+          ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$ARTIFACT_ID"
+          test -n "$ARTIFACT_DIGEST"
+          for attempt in 1 2 3 4 5; do
+            if gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID" > /tmp/hub-artifact.json; then break; fi
+            sleep "$attempt"
+          done
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          a=json.loads(Path('/tmp/hub-artifact.json').read_text())
+          head=os.environ['SOURCE_SHA']
+          expected='mad4b-content-hub-exact-head-'+head
+          d=os.environ['ARTIFACT_DIGEST'].removeprefix('sha256:')
+          assert a['name']==expected
+          assert a['workflow_run']['head_sha']==head
+          assert a['expired'] is False
+          assert str(a['digest']).removeprefix('sha256:')==d
+          assert int(a['id'])==int(os.environ['ARTIFACT_ID'])
+          print('CONTENT_HUB_EXACT_HEAD_GITHUB_ARTIFACT: PASS')
+          PY
