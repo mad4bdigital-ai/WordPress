@@ -28,6 +28,13 @@ export function planOriginalEnrollmentLifecycle(snapshot){
    return blocked('REVOKED','ORIGINAL_CHANNEL_REVOKED');
  if(grant.state!=='CENTRAL_OPERATION_SCOPE_GRANTED')
    return blocked('WAITING_FOR_INITIAL_OWNER_ENROLLMENT','ORIGINAL_GRANT_NOT_ACTIVE',true);
+ // A fresh Registry heartbeat for other SSH hosts cannot enroll this host.
+ // Local target pinning is a separate, source-backed original Registry step.
+ if(!x.localHostTarget||x.localHostTarget.registered!==true||
+    x.localHostTarget.pinned_identity_verified!==true||
+    x.localHostTarget.host_id!==transport.host_id||
+    x.localHostTarget.authority_source!=='original_registered_ssh')
+   return action('WAITING_FOR_LOCAL_HOST_TARGET','BIND_ORIGINAL_PINNED_HOST_TARGET');
  if(!x.signedRegistry?.verified||!eq(x.signedRegistry,site,scopeFields)||
     x.signedRegistry.transport_id!==transport.transport_id ||
     x.signedRegistry.host_id!==transport.host_id||
@@ -92,7 +99,7 @@ export function planOriginalEnrollmentLifecycle(snapshot){
 }
 
 const operations=new Set([
- 'REFRESH_PINNED_HOST_REGISTRY_STATUS','ISSUE_AND_VERIFY_SITE_HOST_PROOF',
+ 'BIND_ORIGINAL_PINNED_HOST_TARGET','REFRESH_PINNED_HOST_REGISTRY_STATUS','ISSUE_AND_VERIFY_SITE_HOST_PROOF',
  'REGISTER_NATIVE_FROM_SIGNED_HOST_PROOF','BIND_ORIGINAL_DISPATCHER_TO_NATIVE',
  'COMMIT_ORIGINAL_305_CHANNEL_WITH_NATIVE_READBACK',
  'ISSUE_ORIGINAL_CORE_FIXED_WPCLI_READ_CANARY',
