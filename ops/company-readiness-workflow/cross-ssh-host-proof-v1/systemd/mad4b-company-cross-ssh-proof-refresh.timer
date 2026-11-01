@@ -1,0 +1,13 @@
+[Unit]
+Description=MAD4B original Staging Cross-SSH host proof freshness timer
+
+[Timer]
+OnBootSec=8min
+OnUnitActiveSec=15min
+AccuracySec=30s
+RandomizedDelaySec=30s
+Persistent=true
+Unit=mad4b-company-cross-ssh-proof-refresh.service
+
+[Install]
+WantedBy=timers.target
