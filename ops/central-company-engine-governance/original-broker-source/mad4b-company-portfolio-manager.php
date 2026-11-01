@@ -436,3 +436,4 @@ final class MAD4B_Company_Portfolio_Manager_V1 {
 MAD4B_Company_Portfolio_Manager_V1::boot();
 require_once __DIR__ . '/class-mad4b-unified-administrator-principal.php';
 require_once __DIR__ . '/class-mad4b-central-admin-proxy.php';
+require_once __DIR__ . '/class-mad4b-manager-ssh-principal.php';
