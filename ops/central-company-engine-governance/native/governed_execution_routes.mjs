@@ -82,9 +82,23 @@ export function createGovernedExecutionRoutes({core,typed={},generalShell}){
        shellDecision.execution_performed!==false||
        shellDecision.host_id!==job.target_host_id)
       return fail('DENIED','ORIGINAL_DUAL_ROUTE_SHELL_NOT_AUTHORIZED',operation);
-   }else if(admission.granted_operation!=='company.remote.wpcli.full'||
-      admission.native_scope_valid!==true){
-    return fail('DENIED','ORIGINAL_FULL_WPCLI_GRANT_REQUIRED',operation);
+   }else{
+    // Bootstrap operations use the original 305 site-bound enrollment; only
+    // actual WP-CLI execution requires an already certified Native.
+    if(admission.granted_operation!=='company.remote.wpcli.full'||
+       admission.original_enrollment_scope_valid!==true)
+      return fail('DENIED','ORIGINAL_FULL_WPCLI_GRANT_REQUIRED',operation);
+    if(operation==='register_native_executor'&&
+       admission.independent_host_proof_verified!==true)
+      return fail('DENIED','INDEPENDENT_HOST_PROOF_REQUIRED',operation);
+    if(operation==='reconcile_313_receipt'&&
+       admission.original_job_claim_verified!==true)
+      return fail('DENIED','ORIGINAL_312_JOB_CLAIM_REQUIRED',operation);
+    if(operation==='wpcli.execute'&&
+       (admission.native_scope_valid!==true||
+        admission.original_312_verified!==true||
+        admission.native_enrollment_receipt_verified!==true))
+      return fail('DENIED','CERTIFIED_NATIVE_AND_312_REQUIRED',operation);
    }
    const adapter=operation==='maintenance.shell'?
       generalShell?.executeOriginalShellJob:typed?.[operation];
