@@ -66,6 +66,7 @@ jobs:
           php "$src/plugin/tests/vps-wpcli-fallback-contract.php"
           php "$src/plugin/tests/vps-wpcli-queue-authority-contract.php"
           php "$src/plugin/tests/bulk-ability-registration-contract.php"
+          php "$src/plugin/tests/site-health-ingress-contract.php"
           python3 -m py_compile "$src/host/native_queue_authority.py"
           python3 "$src/host/test_native_queue_authority.py"
           root="$(mktemp -d)"
