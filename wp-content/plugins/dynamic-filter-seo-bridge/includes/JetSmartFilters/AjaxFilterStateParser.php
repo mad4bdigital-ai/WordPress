@@ -42,6 +42,9 @@ final class AjaxFilterStateParser {
         if ( $taxQuery ) { $this->inspectTaxQueryLogic( $taxQuery, $malformed ); }
         $safeTaxQuery = $this->extractTaxQuery( $taxQuery, $values, $unknown, $malformed );
         $nativeTaxQuery = $this->extractNativeJetSmartFiltersTaxQuery( $query, $values, $unknown, $malformed );
+        if ( $this->limitReasons ) {
+            $unsupported = array_values( array_unique( array_merge( $unsupported, $this->limitReasons ) ) );
+        }
 
         foreach ( $this->allowedTaxonomies as $taxonomy ) {
             if ( isset( $query[ $taxonomy ] ) && ! isset( $values[ $taxonomy ] ) ) {
@@ -132,6 +135,7 @@ final class AjaxFilterStateParser {
                 continue;
             }
             $operator = 'IN';
+            $explicitOperator = false;
             $termItems = array();
             foreach ( (array) $items as $item ) {
                 if ( is_array( $item ) || is_object( $item ) ) { $malformed[] = 'native_tax_value_malformed:' . $taxonomy; continue 2; }
@@ -140,6 +144,7 @@ final class AjaxFilterStateParser {
                     $candidate = strtoupper( str_replace( '_', ' ', substr( $text, strlen( 'operator_' ) ) ) );
                     $candidate = preg_replace( '/\s+/', ' ', $candidate );
                     $operator = is_string( $candidate ) ? trim( $candidate ) : '';
+                    $explicitOperator = true;
                     continue;
                 }
                 if ( '' !== $text ) { $termItems[] = $text; }
@@ -149,6 +154,11 @@ final class AjaxFilterStateParser {
                 continue;
             }
             $terms = $this->normalizeTerms( $taxonomy, 'term_id_or_slug', $termItems, $malformed );
+            // Preserve editorial descriptions, but deny count authority until
+            // JSF supplies its explicit multi-term AND/IN operator.
+            if ( count( $terms ) > 1 && ! $explicitOperator ) {
+                $this->limitReasons[] = 'native_multiterm_operator_unobserved:' . $taxonomy;
+            }
             if ( ! $terms ) { continue; }
             $values[ $taxonomy ] = array_values( array_unique( array_merge( (array) ( $values[ $taxonomy ] ?? array() ), $terms ) ) );
             $safe[] = array(
