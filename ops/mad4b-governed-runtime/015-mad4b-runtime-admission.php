@@ -15,8 +15,14 @@ final class MAD4B_Runtime_Admission {
     public static function environment_status() {
         $raw = wp_get_environment_type();
         $host = defined('WP_ENVIRONMENT_TYPE') ? (string) WP_ENVIRONMENT_TYPE : '';
+        // On web REST requests the optional Environment facade may not yet be
+        // loaded. Resolve from the same original exact Site Profile instead;
+        // keep native/host/effective, signed profile and origin checks below.
         $effective = class_exists('MAD4B_SCP_Environment', false)
-            ? (string) MAD4B_SCP_Environment::effective() : '';
+            ? (string) MAD4B_SCP_Environment::effective()
+            : (class_exists('MAD4B_SCP_Site_Profile', false)
+                && method_exists('MAD4B_SCP_Site_Profile', 'current_environment')
+                ? (string) MAD4B_SCP_Site_Profile::current_environment() : '');
         $resolution = class_exists('MAD4B_SCP_Site_Profile', false)
             ? MAD4B_SCP_Site_Profile::environment_resolution() : array();
         $profile_ok = is_array($resolution)
