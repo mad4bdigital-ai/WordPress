@@ -8,6 +8,12 @@ The original WP-CLI read-only shadow invocation kept the persistent `certified_o
 
 Active classifications: 16 require original-provider source identity reconciliation (`review_canonical_identity` 13, `stage_work` 3); 3 `stage_work` need server-verified origin; 1 `ai_guard_stage` needs live original ContentJob stage readback. Do not rewrite any old payload/origin to make a test green, and do not replay WAITING_EXTERNAL/NEEDS_RECONCILIATION work without independent effect verification.
 
+## Next certified read-only lane candidate: runtime_resolve
+
+The original `MAD4B_Hub_Dynamic_Runtime_Resolver::resolve` has been read on Staging: its actual readback has a source-derived resolution digest, `provider_calls_performed=false`, `mutation_performed=false`, and capability discovery explicitly does not grant execute authority. The new exact-source certificate re-reads the original ContentJob revision/stage and the resolver plan on each claim; it incorporates the resolver digest into the capability certificate. A changed resolver plan, stage, job revision, forbidden direct provider effect, or mutation causes rejection. Existing `workflow_inspect` / `content_job_read` certificate calculations are unchanged.
+
+**This is a source-level candidate only until new exact-HEAD CI, owner attestation, governed Staging package update and original two-process queue canary succeed.** Do not treat the code review as a Staging deployment or full mode permission. No additional provider or publishing lane gains authority from this operation.
+
 ## How lanes become independently certified
 
 1. **Source / identity / canonical / inventory / rates**: the original Canonical Registry supplies exact source entity/term/company/gap and authority, the rate/inventory authority supplies current revision and outcome readback, the original provider supplies command/effect receipt, rollback/compensation is scoped, and no stale order/rate can be re-run as a new iteration. The original human review queue remains authoritative for unresolved identity collisions.

@@ -2,6 +2,10 @@
 from pathlib import Path
 import unittest
 
+# Existing Content Hub CI workflow executes this test module by name.
+# Import the shadow gate cases so they are part of the exact-HEAD package gate.
+from tools.test_mad4b_full_enforcement_shadow_gate import ShadowGateTests  # noqa: F401
+
 ROOT = Path(__file__).resolve().parents[1]
 
 

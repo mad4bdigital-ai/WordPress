@@ -13,6 +13,20 @@ class MAD4B_SCP_Policy {public static bool $grant=true;public static function ca
 class MAD4B_Hub_Workflow_Origin {public static function executor_guard($task,$executor){return true;}}
 class MAD4B_Hub_Bulk_Jobs_Queue {public static function finish($input){return ['acknowledged'=>true];}}
 class MAD4B_Hub_Workflow_Operations {public static function inspect($input){return ['job_revision'=>3];}}
+class MAD4B_Hub_Dynamic_Runtime_Resolver {
+ const CONTRACT='mad4b.hub.dynamic-runtime.v1';
+ public static bool $unsafe=false;
+ public static bool $wrongRevision=false;
+ public static bool $performedProviderCall=false;
+ public static string $digestMarker='b';
+ public static function resolve($input){
+  return ['contract'=>self::CONTRACT,'provider_calls_performed'=>self::$performedProviderCall,
+    'mutation_performed'=>self::$unsafe,'capability_discovery_is_not_execute_authority'=>true,
+    'job_id'=>$input['job_id'],'job_current_stage'=>$input['stage'],
+    'job_revision'=>self::$wrongRevision?900:3,
+    'resolution_sha256'=>str_repeat(self::$digestMarker,64)];
+ }
+}
 class MAD4B_SCP_Content_Jobs {
  public static array $job=[
   'job_id'=>'11111111-1111-4111-8111-111111111111','site_uuid'=>'22222222-2222-4222-8222-222222222222',
@@ -58,9 +72,26 @@ check(is_wp_error(MAD4B_Hub_Original_Context_Evidence::bind_batch(['items'=>[$u]
 $u=task('content_job_read');
 $cert=MAD4B_Hub_Original_Context_Evidence::bind_batch(['items'=>[$u]]);
 check(!is_wp_error($cert)&&MAD4B_Hub_Original_Context_Evidence::verify($cert['items'][0])===true,'original content_job_read supported');
+$u=task('runtime_resolve');
+$certResolve=MAD4B_Hub_Original_Context_Evidence::bind_batch(['items'=>[$u]]);
+check(!is_wp_error($certResolve)&&MAD4B_Hub_Original_Context_Evidence::verify($certResolve['items'][0])===true,'original runtime resolver read-only certified');
+MAD4B_Hub_Dynamic_Runtime_Resolver::$unsafe=true;
+check(is_wp_error(MAD4B_Hub_Original_Context_Evidence::verify($certResolve['items'][0])),'runtime resolver mutation or provider effect denied');
+MAD4B_Hub_Dynamic_Runtime_Resolver::$unsafe=false;
+MAD4B_Hub_Dynamic_Runtime_Resolver::$performedProviderCall=true;
+check(is_wp_error(MAD4B_Hub_Original_Context_Evidence::verify($certResolve['items'][0])),'runtime resolver direct provider invocation denied');
+MAD4B_Hub_Dynamic_Runtime_Resolver::$performedProviderCall=false;
+MAD4B_Hub_Dynamic_Runtime_Resolver::$wrongRevision=true;
+check(is_wp_error(MAD4B_Hub_Original_Context_Evidence::verify($certResolve['items'][0])),'runtime resolver stage revision mismatch denied');
+MAD4B_Hub_Dynamic_Runtime_Resolver::$wrongRevision=false;
+MAD4B_Hub_Dynamic_Runtime_Resolver::$digestMarker='c';
+check(is_wp_error(MAD4B_Hub_Original_Context_Evidence::verify($certResolve['items'][0])),'runtime resolver drift invalidates original capability certificate');
+MAD4B_Hub_Dynamic_Runtime_Resolver::$digestMarker='b';
+$badResolve=$certResolve['items'][0];$badResolve['payload']['effect_type']='mutation';
+check(is_wp_error(MAD4B_Hub_Original_Context_Evidence::verify($badResolve)),'runtime resolver effect escalation denied');
 MAD4B_SCP_Policy::$grant=false;
 check(is_wp_error(MAD4B_Hub_Original_Context_Evidence::verify($cert['items'][0])),'policy authorization withdrawal denies claim');
 MAD4B_SCP_Policy::$grant=true;
 MAD4B_Content_Hub::$grant=false;
 check(is_wp_error(MAD4B_Hub_Original_Context_Evidence::verify($cert['items'][0])),'content hub authority withdrawal denies claim');
-echo 'PASS 15 original source context contract assertions'.PHP_EOL;
+echo 'PASS 21 original source context contract assertions'.PHP_EOL;

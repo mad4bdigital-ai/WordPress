@@ -11,6 +11,7 @@ final class MAD4B_Hub_Original_Context_Evidence {
     const OPERATIONS=[
         'workflow_inspect'=>['MAD4B_Hub_Workflow_Operations','inspect'],
         'content_job_read'=>['MAD4B_SCP_Content_Jobs','get_job'],
+        'runtime_resolve'=>['MAD4B_Hub_Dynamic_Runtime_Resolver','resolve'],
     ];
     private static function err($name){
         return new WP_Error('mad4b_hub_evidence_'.$name,$name,['status'=>409,'contract'=>self::CONTRACT]);
@@ -53,6 +54,32 @@ final class MAD4B_Hub_Original_Context_Evidence {
         if(!class_exists('MAD4B_Content_Hub')||!MAD4B_Content_Hub::permission()
             ||!class_exists('MAD4B_SCP_Policy')||!MAD4B_SCP_Policy::can_mutate())
             return self::err('original_policy_not_authorized');
+        $originalResolverPlanHash=null;
+        // Native resolver produces only a plan, never a provider call or mutation.
+        // Re-read it from the original provider before certifying a new lane.
+        if($op==='runtime_resolve'){
+            if(!class_exists('MAD4B_Hub_Dynamic_Runtime_Resolver'))
+                return self::err('original_resolver_missing');
+            $resolved=MAD4B_Hub_Dynamic_Runtime_Resolver::resolve([
+                'stage'=>$item['stage'],'job_id'=>$jobId,
+                'target_ref'=>$item['target_ref']??'',
+                'provider'=>$p['provider']??'',
+                'capability_query'=>$p['capability_query']??'',
+                'stage_input'=>$p['stage_input']??[],
+                'stage_ability'=>$p['stage_ability']??'',
+            ]);
+            if(is_wp_error($resolved)||!is_array($resolved)
+                ||($resolved['contract']??'')!==MAD4B_Hub_Dynamic_Runtime_Resolver::CONTRACT
+                ||($resolved['provider_calls_performed']??null)!==false
+                ||($resolved['mutation_performed']??null)!==false
+                ||($resolved['capability_discovery_is_not_execute_authority']??null)!==true
+                ||($resolved['job_id']??'')!==$jobId
+                ||($resolved['job_current_stage']??'')!==$read['stage']
+                ||(int)($resolved['job_revision']??-1)!==(int)$read['job_revision']
+                ||!preg_match('/^[a-f0-9]{64}$/D',(string)($resolved['resolution_sha256']??'')))
+                return self::err('original_resolver_readback_not_proven');
+            $originalResolverPlanHash=$resolved['resolution_sha256'];
+        }
         $sourceFields=[
             'job_id','site_uuid','tenant_id','brand_id','job_revision','stage',
             'language','country','content_type','writer_profile_id','writer_profile_version',
@@ -79,12 +106,15 @@ final class MAD4B_Hub_Original_Context_Evidence {
         $sourceProviderHash=self::file_digest('MAD4B_SCP_Content_Jobs','get_job');
         if($providerHash===null||$sourceProviderHash===null)
             return self::err('capability_source_unavailable');
-        $capHash=self::digest(['contract'=>self::CONTRACT,'operation'=>$op,
+        $capSource=['contract'=>self::CONTRACT,'operation'=>$op,
             'executor'=>$p['assigned_executor']??'mcp_client',
             'original_readback'=>$capClass.'::'.$capMethod,
             'implementation_sha256'=>$providerHash,
             'job_provider_sha256'=>$sourceProviderHash,
-            'output_contract'=>self::CONTRACT]);
+            'output_contract'=>self::CONTRACT];
+        if($originalResolverPlanHash!==null)
+            $capSource['original_resolver_plan_sha256']=$originalResolverPlanHash;
+        $capHash=self::digest($capSource);
         return ['source_snapshot_sha256'=>$sourceHash,
             'policy_snapshot_sha256'=>$policyHash,
             'capability_snapshot_sha256'=>$capHash,
