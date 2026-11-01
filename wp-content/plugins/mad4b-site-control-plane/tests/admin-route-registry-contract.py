@@ -133,6 +133,32 @@ for path in (root / 'includes').rglob('*.php'):
             raise SystemExit('FAIL migration decision submenu bypasses parent scheduling')
         checked += 1
         continue
+    # Readiness Scopes uses the existing Company Operations staff capability,
+    # not manage_options. Both WordPress menu and registry must agree exactly.
+    if path.name == 'class-mad4b-scp-readiness-scopes.php':
+        integration = (root / 'includes/class-mad4b-scp-readiness-integrations.php').read_text(encoding='utf-8')
+        required = (
+            "const PAGE = 'mad4b-readiness-scopes';",
+            "MAD4B_SCP_Admin_Route_Registry::register(self::PAGE,MAD4B_SCP_Readiness_Integrations::CAP)",
+            "MAD4B_SCP_Admin_Route_Registry::schedule_submenu(array(__CLASS__,'menu'),35)",
+            "add_submenu_page('mad4b-company','Content Work Scopes','Content Work Scopes',",
+            "MAD4B_SCP_Readiness_Integrations::CAP,self::PAGE,array(__CLASS__,'screen')",
+            "if(!self::can_manage())wp_die('Forbidden',403);",
+            "return MAD4B_SCP_Readiness_Integrations::can_manage();",
+        )
+        for marker in required:
+            if marker not in source:
+                raise SystemExit('FAIL readiness scopes capability/parent route mismatch: ' + marker)
+        for marker in (
+            "const CAP='mad4b_manage_company_operations';",
+            "return current_user_can('manage_options') || current_user_can(self::CAP);",
+        ):
+            if marker not in integration:
+                raise SystemExit('FAIL readiness scopes delegated permission drift: ' + marker)
+        if source.count("add_submenu_page(") != 1 or re.search(r"add_action\(\s*['\"]admin_menu['\"]", source):
+            raise SystemExit('FAIL readiness scopes expanded or bypassed original menu authority')
+        checked += 1
+        continue
     if 'add_submenu_page(' in source and (
         'MAD4B_SCP_Admin_Route_Registry::schedule_submenu(' not in source
         or re.search(r"add_action\(\s*['\"]admin_menu['\"]", source)
