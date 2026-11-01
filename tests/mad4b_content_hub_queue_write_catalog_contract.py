@@ -12,7 +12,9 @@ host = HOST.read_text()
 
 assert "MAD4B_Hub_Queue_Site_Health_Enqueue::ABILITY" in catalog
 assert "wp_has_ability( MAD4B_Hub_Queue_Site_Health_Enqueue::ABILITY )" in catalog
-assert "MAD4B_Hub_Queue_Site_Health_Enqueue::site_ready()" in catalog
+assert "MAD4B_Hub_Queue_Site_Health_Enqueue::site_enrolled()" in catalog
+assert "MAD4B_Hub_Queue_Site_Health_Enqueue::site_ready()" not in catalog
+assert "if (!self::site_enrolled() || !function_exists('wp_register_ability'))" in ingress
 assert "'mad4b/hub-bulk-enqueue'" not in catalog, "General Queue enqueue must stay unmounted"
 assert "'mad4b/hub-queue-site-health-enqueue'" in ingress
 assert "'category' => 'mad4b-write'" in ingress
