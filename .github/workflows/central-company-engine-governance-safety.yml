@@ -39,6 +39,11 @@ jobs:
           php -l ops/central-company-engine-governance/original-broker-source/313-mad4b-broker-remote-ssh-diagnostic.php
           php ops/central-company-engine-governance/test_original_broker_306_312.php
           php ops/central-company-engine-governance/test_312_channel_identity_boundaries.php
+          php -l ops/central-company-engine-governance/original-broker-source/297-mad4b-company-environment-registry-v2.php
+          php -l ops/central-company-engine-governance/original-broker-source/298-mad4b-company-execution-resolver.php
+          php ops/central-company-engine-governance/test_central_demo_dual_role.php
+          node --check ops/central-company-engine-governance/native/native-authority-observer.mjs
+          node --test ops/central-company-engine-governance/native/test_native_authority_observer.mjs
           php ops/central-company-engine-governance/test_original_core_recovery.php
           php ops/central-company-engine-governance/test_original_sealed_rebind.php
           php ops/central-company-engine-governance/test_original_recovery_full_handoff.php
