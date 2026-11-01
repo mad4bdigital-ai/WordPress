@@ -156,11 +156,35 @@ def full_host_provisioning_preview(site,original_305,catalog):
     company,env=site['company'],site['environment']
     uuid,origin=site.get('site_uuid'),site.get('canonical_origin')
     enrolled=original_305.get('site_identity_registered') is True
+    counts=('original_persistent_full_wpcli_grants',
+            'original_matched_active_transport_grant_pairs',
+            'original_matched_pending_transport_grant_pairs')
+    if any(not isinstance(original_305.get(k,0),int)
+           or isinstance(original_305.get(k,0),bool)
+           or original_305.get(k,0)<0 for k in counts):
+        raise RuntimeError('ORIGINAL_305_GRANT_COUNTER_INVALID')
+    permanent=original_305.get('original_persistent_full_wpcli_grants',0)
+    active=original_305.get('original_matched_active_transport_grant_pairs',0)
+    pending=original_305.get('original_matched_pending_transport_grant_pairs',0)
     identity_ok=(isinstance(company,str) and CODE.fullmatch(company) is not None
         and env in ('staging','production')
         and isinstance(uuid,str) and UUID.fullmatch(uuid) is not None
         and isinstance(origin,str) and origin.startswith('https://')
         and '/' not in origin[8:])
+    if not identity_ok or not enrolled:
+        state='PENDING_EXACT_SITE_ENROLLMENT'
+        transition='RECONCILE_ORIGINAL_COMPANY_SITE_IDENTITY'
+    elif permanent<1:
+        state='PENDING_ORIGINAL_305_OWNER_VERIFIED_STANDING_GRANT'
+        transition='ENROLL_OWNER_VERIFIED_ORIGINAL_305_PERSISTENT_WPCLI_FULL'
+    elif active<1:
+        state=('PENDING_EXACT_HOST_PROOF_AND_NATIVE_TRANSPORT' if pending
+               else 'PENDING_ORIGINAL_305_TRANSPORT_GRANT_BINDING')
+        transition=('VERIFY_ORIGINAL_HOST_PROOF_AND_ACTIVATE_ENROLLED_NATIVE_TRANSPORT'
+                    if pending else 'REPAIR_ORIGINAL_305_TRANSPORT_GRANT_PAIR_BINDING')
+    else:
+        state='PENDING_INDEPENDENT_NATIVE_EXECUTOR_AND_313_READBACK'
+        transition='VERIFY_ORIGINAL_NATIVE_OPERATION_312_313'
     return {
       'contract':'mad4b.company.full-host-provisioning-preview.v1',
       'company':company,'environment':env,'site_uuid':uuid,'canonical_origin':origin,
@@ -170,8 +194,12 @@ def full_host_provisioning_preview(site,original_305,catalog):
       'provisioning_trigger':catalog['provisioning_trigger'],
       'evidence_source':'ORIGINAL_CORE_SITE_REGISTRY_AND_305',
       'site_identity_registered_by_original_core':enrolled,
-      'scope_state':('PENDING_EXACT_SITE_ENROLLMENT' if not identity_ok or not enrolled
-          else 'PENDING_TARGET_HOST_PROOF_AND_ORIGINAL_OPERATION_GRANTS'),
+      'scope_state':state,
+      'next_original_typed_transition':transition,
+      'original_305_persistent_wpcli_grant_count':permanent,
+      'original_305_active_host_grant_pair_count':active,
+      'original_305_pending_host_grant_pair_count':pending,
+      'host_execution_proof_verified_by_preview':False,
       'exact_company_site_host_binding_required':True,
       'cross_company_wildcard_allowed':False,
       'grant_reconciliation_requires_original_core':True,
@@ -236,6 +264,34 @@ def project(plans,grants,legacy):
       'target_count':len(out),'targets':sorted(out,key=lambda x:x['target']),
       'grants_created':False,'operations_executed':False,'production_mutated':False,
       'observed_utc':datetime.datetime.now(datetime.timezone.utc).isoformat()}
+def project_enrollment_event(plans,grants,legacy,event):
+    """Re-evaluate a claimed enrollment against *fresh* Original Core inventory.
+    It cannot authorize any mutation, grant, host transport or operation.
+    """
+    if not isinstance(event,dict) or set(event)!={'company','environment','site_uuid','canonical_origin'}:
+        raise RuntimeError('COMPANY_ENROLLMENT_EVENT_INVALID')
+    company,env=event['company'],event['environment']
+    if (not isinstance(company,str) or not CODE.fullmatch(company)
+        or env not in ('staging','production')
+        or not isinstance(event['site_uuid'],str) or not UUID.fullmatch(event['site_uuid'])
+        or not isinstance(event['canonical_origin'],str)):
+        raise RuntimeError('COMPANY_ENROLLMENT_EVENT_IDENTITY_INVALID')
+    report=project(plans,grants,legacy)
+    matches=[site for site in report['targets'] if site['target']==company+':'+env]
+    if len(matches)!=1:raise RuntimeError('COMPANY_ENROLLMENT_NOT_IN_ORIGINAL_REGISTRY')
+    current=matches[0]
+    if (event['site_uuid']!=current['site_uuid']
+        or event['canonical_origin']!=current['canonical_origin']):
+        raise RuntimeError('COMPANY_ENROLLMENT_SCOPE_CHANGED_OR_UNVERIFIED')
+    return {
+        'contract':'mad4b.company.full-host-enrollment-event-projection.v1',
+        'target':current['target'],
+        'full_host_authority':current['full_host_authority'],
+        'original_core_registration_rechecked':True,
+        'grant_issued':False,'host_credential_created':False,
+        'native_operation_executed':False,'production_mutated':False,
+    }
+
 def selftest():
     site={'site_uuid':'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
       'canonical_origin':'https://staging.example.org'}
@@ -284,9 +340,17 @@ def selftest():
     n+=1
     return {'state':'SELFTEST_PASS','tests':n,'original_grants_created':False}
 def main():
-    ap=argparse.ArgumentParser();ap.add_argument('action',choices=['selftest','once'])
+    ap=argparse.ArgumentParser();ap.add_argument('action',choices=['selftest','once','event'])
+    ap.add_argument('--company');ap.add_argument('--environment')
+    ap.add_argument('--site-uuid');ap.add_argument('--canonical-origin')
     args=ap.parse_args()
     if args.action=='selftest':print(json.dumps(selftest()));return
+    if args.action=='event':
+        expected={'company':args.company,'environment':args.environment,
+                  'site_uuid':args.site_uuid,'canonical_origin':args.canonical_origin}
+        result=project_enrollment_event(original_rows(),original_305(),load_json(LEGACY),expected)
+        print(json.dumps(result,sort_keys=True))
+        return
     with open('/run/lock/mad4b-unified-operation-policy.lock','a+') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX)
         obj=project(original_rows(),original_305(),load_json(LEGACY))
