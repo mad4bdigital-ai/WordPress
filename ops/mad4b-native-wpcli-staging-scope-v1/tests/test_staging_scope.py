@@ -6,6 +6,7 @@ embedded PHP syntax, preserving signer and original 305 contract.
 import ast
 from pathlib import Path
 import subprocess
+import shutil
 import tempfile
 import unittest
 
@@ -30,6 +31,7 @@ class NativeScope(unittest.TestCase):
         src,_=script_and_scope()
         compile(src,str(SOURCE),"exec")
 
+    @unittest.skipUnless(shutil.which('php'), 'Host PHP unavailable; run PHP syntax inside pinned container')
     def test_embedded_php_syntax(self):
         _,scope=script_and_scope()
         with tempfile.TemporaryDirectory() as d:
