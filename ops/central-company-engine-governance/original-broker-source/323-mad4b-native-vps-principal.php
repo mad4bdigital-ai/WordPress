@@ -300,10 +300,19 @@ final class MAD4B_Native_VPS_Principal_V1 {
    || !hash_equals($p['command_sha256'],hash('sha256',$command)))
    return self::deny('command_bytes_or_digest_invalid',422);
   $slot=self::existing();
-  if (!$slot || !self::ledger($slot,$scope)
-   || $slot['policy_sha256']!==$p['policy_sha256']
-   || $slot['host_key_fingerprint']!==$p['host_key_fingerprint'])
+  if (!$slot || !self::ledger($slot,$scope))
    return self::deny('active_original_native_grant_required',403);
+  if ($slot['host_key_fingerprint']!==$p['host_key_fingerprint'])
+   return self::deny('host_key_change_requires_independent_review',409);
+  if ($slot['policy_sha256']!==$p['policy_sha256'])
+   return new WP_Error('mad4b_native_vps_signed_policy_rotation_required',
+    'signed_policy_rotation_required',[
+     'status'=>409,'contract'=>self::CONTRACT,
+     'failure_kind'=>'AUTHORIZATION_STATE_DRIFT',
+     'required_action'=>'native-vps-client/rotate',
+     'transport_fallback_permitted'=>false,
+     'replay_permitted'=>false,'execution_performed'=>false
+    ]);
   if (!self::take_nonce($p))return self::deny('signed_nonce_replay',409);
   $c='MAD4B_Central_SSH_Command_Intake_V1';
   $claim=$c::CLAIM_PREFIX.$slot['grant_id'].'_'.hash('sha256',$p['correlation_id']);
