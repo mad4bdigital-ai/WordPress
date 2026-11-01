@@ -60,4 +60,17 @@ assert "'GENERAL_SHELL_REQUIRES_RECONCILIATION'" in native
 assert "command_bytes_persisted" not in native
 for forbidden in ("shell_exec(", "system(", "exec(", "add_option(", "update_option(", "delete_option("):
     assert forbidden not in native, f"auto-intake host mutation forbidden: {forbidden}"
-print("PASS central host/company separation, exact local enrollment, authenticated auto-dispatch, original grants and remote compatibility")
+assert "if ($nonce !== '') {" in intake
+assert "return (bool) wp_verify_nonce($nonce, 'wp_rest')" in intake
+principal=(ROOT / "central-mu" / "323-mad4b-native-vps-principal.php").read_text()
+assert "const PRINCIPAL='vps-native:srv2030908'" in principal
+assert "sodium_crypto_sign_verify_detached" in principal
+assert "if (!self::take_nonce($p))" in principal
+assert "'principal_type'=>'vps_native'" in principal
+assert "dispatch_native($id)" in principal
+assert "valid_job_chain(" in principal
+assert "native_grant_requires_signed_client" in intake
+assert "native_command_requires_signed_client" in intake
+assert "dispatch_native(string $id)" in broker
+assert "NATIVE_PRINCIPAL_CHAIN_NOT_VERIFIED" in preflight
+print("PASS central host/company separation, fail-closed nonce, signed native principal and original grant source contracts")
