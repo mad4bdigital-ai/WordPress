@@ -43,6 +43,9 @@ final class MAD4B_SCP_External_Media_Ingest {
     }
     public static function apply( $input = array() ) {
         if ( ! current_user_can( 'upload_files' ) ) return self::fail( 'mad4b_media_upload_denied', 'WordPress upload permission is required.' );
+        // The same enrolled-operator boundary applies to staging and production.
+        if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::user_is_enrolled( get_current_user_id() ) )
+            return self::fail( 'mad4b_media_operator_scope_denied', 'Enrolled site operator required.' );
         $plan = self::plan( $input );
         if ( is_wp_error( $plan ) ) return $plan;
         $expected = isset( $input['expected_scope_sha256'] ) ? (string) $input['expected_scope_sha256'] : '';
