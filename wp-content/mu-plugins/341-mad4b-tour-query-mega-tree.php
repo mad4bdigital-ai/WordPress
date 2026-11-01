@@ -15,6 +15,30 @@ final class MAD4B_Tour_Query_Mega_Tree {
  const TAX='tour-types';
  const ARCHIVE_ID='tours_query_archive';
  private static $in_render=false;
+ private static $memo=[];
+ public static function facet_specs():array {
+  return [
+   ['key'=>'tour-type','label'=>'Tour Type','taxonomy'=>'tour-types','filter_id'=>15035],
+   ['key'=>'tour-season','label'=>'Tour Season','taxonomy'=>'season','filter_id'=>66031],
+   ['key'=>'good-for','label'=>'Good for','taxonomy'=>'good-for','filter_id'=>15902],
+   ['key'=>'tour-style','label'=>'Tour Style','taxonomy'=>'tour-styles','filter_id'=>15032],
+   ['key'=>'day-of-week','label'=>'Day of Week','taxonomy'=>'schudle-days-of-weak','filter_id'=>15903],
+   ['key'=>'day-time','label'=>'Day Time','taxonomy'=>'day-times','filter_id'=>15904],
+  ];
+ }
+ public static function active_facets():array {
+  $result=[];
+  foreach(apply_filters('mad4b_tour_menu_facet_specs',self::facet_specs()) as $f){
+   if(!is_array($f)||!isset($f['filter_id'],$f['taxonomy'],$f['key'],$f['label']))continue;
+   $id=absint($f['filter_id']);$tax=(string)$f['taxonomy'];
+   if(!$id||get_post_status($id)!=='publish'||get_post_type($id)!=='jet-smart-filters'
+    ||!taxonomy_exists($tax)||get_post_meta($id,'_source_taxonomy',true)!==$tax
+    ||get_post_meta($id,'_data_source',true)!=='taxonomies')continue;
+   $result[]=$f;
+  }
+  return $result;
+ }
+
  public static function scope():bool {
   if(wp_get_environment_type()!=='staging'||strtolower((string)wp_parse_url(home_url('/'),PHP_URL_HOST))!==self::HOST)return false;
   $profile=get_option('mad4b_scp_brand_context_profile_v1',[]);
@@ -38,9 +62,13 @@ final class MAD4B_Tour_Query_Mega_Tree {
   $language=(string)(apply_filters('wpml_current_language',null) ?: apply_filters('wpml_default_language',null) ?: 'en');
   return preg_match('/^[a-z]{2}(?:-[A-Z]{2})?$/D',$language)?$language:'en';
  }
- public static function provider_binding():array {
+ public static function provider_binding(string $taxonomy=self::TAX):array {
   $source=function_exists('product_navigation_source')?(array)product_navigation_source(self::KEY):[];
-  $filter_id=absint(apply_filters('mad4b_tour_menu_filter_id',self::FILTER));
+  $filter_id=0;
+  foreach(self::active_facets() as $facet)
+   if($facet['taxonomy']===$taxonomy){$filter_id=absint($facet['filter_id']);break;}
+  if(!$filter_id)return [];
+
   return [
    'query_builder_id'=>absint($source['query_id']??0),
    'filter_id'=>$filter_id,
@@ -50,7 +78,7 @@ final class MAD4B_Tour_Query_Mega_Tree {
   ];
  }
  public static function route(WP_Term $term,string $language):string {
-  $b=self::provider_binding();
+  $b=self::provider_binding($term->taxonomy);
   $qid=(string)($b['provider_query']??'');
   $taxonomy=(string)($b['taxonomy']??'');
   if(empty($b['query_builder_id'])||!preg_match('/^[a-z0-9_-]{1,80}$/D',$qid)
@@ -100,10 +128,10 @@ final class MAD4B_Tour_Query_Mega_Tree {
  }
  /** Tree shape and availability are separate: new roots appear immediately,
      but cannot navigate to an empty archive until Query #5 supplies a tour. */
- public static function prepare_tree(array $terms,array $eligible_ids):array {
+ public static function prepare_tree(array $terms,array $eligible_ids,string $taxonomy=self::TAX):array {
   $terms_by_id=[];
   foreach($terms as $term)if($term instanceof WP_Term
-    &&$term->taxonomy===self::TAX
+    &&$term->taxonomy===$taxonomy
     &&$term->term_id>0)$terms_by_id[(int)$term->term_id]=$term;
   if(count($terms_by_id)>180)return []; // bounded menu footprint
   $active=array_fill_keys(array_map('intval',$eligible_ids),true);
@@ -137,26 +165,34 @@ final class MAD4B_Tour_Query_Mega_Tree {
  }
  public static function data():array {
   if(!self::source_valid())return [];
-  $language=self::language();
-  // Uses the *same* product policy-bound Query Builder #5 that powers the
-  // archive grid + JetSmartFilters. No independently reconstructed post query.
-  $eligible=product_navigation_eligible_post_ids(self::KEY,$language);
+  $lang=self::language();
+  if(isset(self::$memo[$lang]))return self::$memo[$lang];
+  // ONE shared eligible-post set from the existing Query Builder #5 authority.
+  $eligible=product_navigation_eligible_post_ids(self::KEY,$lang);
   if(!is_array($eligible))return [];
-  $terms=get_terms(['taxonomy'=>self::TAX,'hide_empty'=>false,'number'=>0,
-    'orderby'=>'name','order'=>'ASC','lang'=>$language,'suppress_filter'=>false]);
-  if(is_wp_error($terms)||!is_array($terms))return [];
-  if(!$terms)return [];
-  $ids=[];
-  if($eligible){
-   $filtered=get_terms(['taxonomy'=>self::TAX,'hide_empty'=>false,
-     'number'=>0,'fields'=>'ids','object_ids'=>array_map('intval',$eligible),
-     'lang'=>$language]);
-   if(!is_wp_error($filtered))$ids=array_map('intval',$filtered);
+  $ids=array_values(array_unique(array_map('intval',$eligible)));
+  $facets=[];
+  foreach(self::active_facets() as $facet){
+   $tax=$facet['taxonomy'];
+   $terms=get_terms(['taxonomy'=>$tax,'hide_empty'=>false,'number'=>0,'lang'=>$lang]);
+   if(is_wp_error($terms)||!is_array($terms))continue;
+   $assigned=[];
+   if($ids){
+    $found=get_terms(['taxonomy'=>$tax,'hide_empty'=>false,'number'=>0,
+     'fields'=>'ids','object_ids'=>$ids,'lang'=>$lang]);
+    if(!is_wp_error($found))$assigned=array_map('intval',$found);
+   }
+   $facet['nodes']=self::prepare_tree($terms,$assigned,$tax);
+   $facets[]=$facet;
   }
-  return ['language'=>$language,'query'=>self::provider_binding()['query_builder_id'],'filter'=>self::provider_binding()['filter_id'],
-    'eligible_posts'=>count($eligible),'nodes'=>self::prepare_tree($terms,$ids)];
+  return self::$memo[$lang]=[
+   'language'=>$lang,
+   'query'=>self::provider_binding()['query_builder_id']??0,
+   'eligible_posts'=>count($ids),
+   'facets'=>$facets,
+  ];
  }
- private static function child_html(array $nodes,int $depth,string $language):string {
+ private static function child_html(array $nodes,int $depth,string $language,string $taxonomy):string {
   if($depth>8||!$nodes)return '';
   $html='<ul class="mad4b-tour-tree-level" role="list">';
   foreach($nodes as $node){
@@ -176,12 +212,12 @@ final class MAD4B_Tour_Query_Mega_Tree {
     $html.='<span class="mad4b-tour-tree-label" aria-disabled="true" title="'.esc_attr__('No tours available yet','mad4b').'">'.esc_html($term->name).'</span>';
    }
    if($children){
-    $html.='<button class="mad4b-tour-tree-toggle" type="button" aria-expanded="false" aria-label="'.esc_attr(sprintf(__('Expand %s','mad4b'),$term->name)).'" aria-controls="mad4b-tour-children-'.$id.'"><span aria-hidden="true">⌄</span></button>';
+    $html.='<button class="mad4b-tour-tree-toggle" type="button" aria-expanded="false" aria-label="'.esc_attr(sprintf(__('Expand %s','mad4b'),$term->name)).'" aria-controls="mad4b-tour-children-'.esc_attr($taxonomy).'-'.$id.'"><span aria-hidden="true">⌄</span></button>';
    }
    $html.='</div>';
    if($children){
-    $html.='<div id="mad4b-tour-children-'.$id.'" class="mad4b-tour-tree-children">';
-    $html.=self::child_html($sub,$depth+1,$language);
+    $html.='<div id="mad4b-tour-children-'.esc_attr($taxonomy).'-'.$id.'" class="mad4b-tour-tree-children">';
+    $html.=self::child_html($sub,$depth+1,$language,$taxonomy);
     $html.='</div>';
    }
    $html.='</li>';
@@ -189,15 +225,39 @@ final class MAD4B_Tour_Query_Mega_Tree {
   return $html.'</ul>';
  }
  public static function markup(array $data):string {
-  if(empty($data['nodes'])||!isset($data['language']))return '';
+  if(empty($data['facets'])||!isset($data['language']))return '';
+  $language=$data['language'];
+  $all=(string)apply_filters('wpml_translate_single_string','Explore all tours','Product navigation','tours-all',$language);
+  $html='<nav class="mad4b-tour-query-mega mad4b-tour-facet-nav" aria-label="'
+   .esc_attr__('Explore tours by category','mad4b').'" data-source-query="'.absint($data['query'])
+   .'" data-archive-provider="'.esc_attr(self::provider_binding()['provider_query']??'').'">';
+  $html.='<div class="mad4b-tour-facet-tabs" role="tablist" aria-label="'.esc_attr__('Tour filters','mad4b').'">';
+  foreach($data['facets'] as $index=>$facet){
+   $key=$facet['key'];$selected=$index===0;
+   $label=(string)apply_filters('wpml_translate_single_string',$facet['label'],'Product navigation','tour-facet-'.$key,$language);
+   $html.='<button type="button" role="tab" class="mad4b-tour-facet-tab"'
+    .' id="mad4b-tour-tab-'.esc_attr($key).'"'
+    .' aria-controls="mad4b-tour-panel-'.esc_attr($key).'"'
+    .' aria-selected="'.($selected?'true':'false').'"'
+    .' tabindex="'.($selected?'0':'-1').'"'
+    .' data-taxonomy="'.esc_attr($facet['taxonomy']).'"'
+    .' data-filter-id="'.absint($facet['filter_id']).'">'.esc_html($label).'</button>';
+  }
+  $html.='</div><div class="mad4b-tour-facet-panels">';
+  foreach($data['facets'] as $index=>$facet){
+   $key=$facet['key'];$selected=$index===0;
+   $html.='<section role="tabpanel" id="mad4b-tour-panel-'.esc_attr($key).'"'
+    .' aria-labelledby="mad4b-tour-tab-'.esc_attr($key).'"'
+    .' tabindex="0" data-facet-taxonomy="'.esc_attr($facet['taxonomy']).'"'
+    .' data-source-filter="'.absint($facet['filter_id']).'"'
+    .' class="mad4b-tour-facet-panel"'.($selected?'':' hidden').'>';
+   $html.=self::child_html($facet['nodes'],0,$language,$facet['taxonomy']);
+   $html.='</section>';
+  }
+  $html.='</div>';
   $archive=get_post_type_archive_link('tours-and-activities');
-  $label=(string)apply_filters('wpml_translate_single_string','Tour types','Product navigation','tour-types', $data['language']);
-  $all=(string)apply_filters('wpml_translate_single_string','Explore all tours','Product navigation','tours-all',$data['language']);
-  $body='<nav class="mad4b-tour-query-mega" aria-label="'.esc_attr($label).'" data-source-query="'.absint($data['query']??0).'" data-source-filter="'.absint($data['filter']??0).'" data-archive-provider="'.esc_attr(self::provider_binding()['provider_query']).'">';
-  $body.='<div class="mad4b-tour-query-mega-title">'.esc_html($label).'</div>';
-  $body.=self::child_html($data['nodes'],0,$data['language']);
-  if($archive)$body.='<a class="mad4b-tour-query-all" href="'.esc_url(apply_filters('wpml_permalink',$archive,$data['language'],true)).'">'.esc_html($all).' <span aria-hidden="true">↗</span></a>';
-  return $body.'</nav>';
+  if($archive)$html.='<a class="mad4b-tour-query-all" href="'.esc_url(apply_filters('wpml_permalink',$archive,$language,true)).'">'.esc_html($all).' <span aria-hidden="true">↗</span></a>';
+  return $html.'</nav>';
  }
  public static function project($nodes,$document_id){
   if(!self::scope()||self::$in_render||!is_array($nodes)||is_admin())return $nodes;
@@ -249,10 +309,11 @@ final class MAD4B_Tour_Query_Mega_Tree {
    if(str_contains((string)($raw['settings']['_css_classes']??''),'mad4b-tour-tree-native-elementor'))return true;
    return $dynamic;
   },45,2);
-  foreach(['created_'.self::TAX,'edited_'.self::TAX,'delete_'.self::TAX] as $action)
-   add_action($action,[__CLASS__,'flush_on_term'],30);
+  foreach(self::active_facets() as $facet)
+   foreach(['created_','edited_','delete_'] as $event)
+    add_action($event.$facet['taxonomy'],[__CLASS__,'flush_on_term'],30);
   add_action('set_object_terms',static function($object_id,$terms,$tt_ids,$taxonomy){
-   if(in_array($taxonomy,[MAD4B_Tour_Query_Mega_Tree::TAX,'tour_categories','tour-styles','destinations'],true))MAD4B_Tour_Query_Mega_Tree::flush_on_term();
+   if(in_array($taxonomy,array_column(MAD4B_Tour_Query_Mega_Tree::active_facets(),'taxonomy'),true))MAD4B_Tour_Query_Mega_Tree::flush_on_term();
   },30,4);
  }
 }
