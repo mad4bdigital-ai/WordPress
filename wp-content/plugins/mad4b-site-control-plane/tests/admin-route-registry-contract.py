@@ -237,6 +237,30 @@ for path in (root / 'includes').rglob('*.php'):
             raise SystemExit('FAIL readiness scopes expanded or bypassed original menu authority')
         checked += 1
         continue
+    # Synthetic Staging fixtures are read-only and only available for a
+    # bound TEST Brand on the current Staging site. The Company submenu uses
+    # the existing staff capability and must never register before its parent.
+    if path.name == 'class-mad4b-scp-staging-context-fixtures.php':
+        required = (
+            "const MENU='mad4b-staging-context-fixtures';",
+            "if(wp_get_environment_type()!=='staging')return;",
+            "MAD4B_SCP_Admin_Route_Registry::register(self::MENU,'mad4b_manage_company_operations');",
+            "MAD4B_SCP_Admin_Route_Registry::schedule_submenu(static function()",
+            "add_submenu_page('mad4b-company','Staging Context Fixtures',",
+            "'mad4b_manage_company_operations',self::MENU,[__CLASS__,'page']",
+            "return wp_get_environment_type()==='staging' &&",
+            "current_user_can('mad4b_manage_company_operations')",
+            "mad4b_test_fixtures_scope_invalid",
+            "'permission_callback'=>[__CLASS__,'canRead']",
+        )
+        for marker in required:
+            if marker not in source:
+                raise SystemExit('FAIL virtual fixture read-only scope/menu/permission: ' + marker)
+        if (source.count("add_submenu_page(") != 1
+                or re.search(r"add_action\(\s*['\"]admin_menu['\"]", source)):
+            raise SystemExit('FAIL virtual fixture submenu bypass')
+        checked += 1
+        continue
     # The Staging Brand Trial registers a self::MENU slug rather than a
     # literal slug. Its original REST and page authority must remain strictly
     # staging-only and administrator-only, in addition to ordered menus.
