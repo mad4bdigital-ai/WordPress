@@ -47,7 +47,7 @@ if python3 "$Q/policy-engine.py" stage "$route";then :;else
  exit 0
 fi
 [ "$mode" = smoke ] && { echo 'SMOKE: browser discovery and policy stage succeeded, no automatic certification';exit 0; }
-if ! timeout -k 5s 195s docker run --rm --network host --cpus=1.5 --memory=1536m -u 0:0 -v "$Q:/out" --entrypoint node mad4b-firecrawl-production-playwright-service:latest /out/css-benchmark.js "$route" 3;then
+if ! timeout -k 5s 360s docker run --rm --network host --cpus=1.5 --memory=1536m -u 0:0 -v "$Q:/out" --entrypoint node mad4b-firecrawl-production-playwright-service:latest /out/css-benchmark.js "$route" 5;then
  echo 'HOLD: web vitals run failed, route remains canary-only';exit 13
 fi
 if python3 "$Q/policy-engine.py" verify "$route";then
