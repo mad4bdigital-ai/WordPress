@@ -1,0 +1,59 @@
+name: MAD4B Staging Manager Admission Bridge
+
+on:
+  pull_request:
+    paths:
+      - "ops/mad4b-staging-manager-bridge-v1/**"
+      - ".github/workflows/mad4b-staging-manager-admission-bridge.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: staging-manager-admission-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  staging-admission:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: PHP syntax for original governed source
+        run: |
+          set -euo pipefail
+          d=ops/mad4b-staging-manager-bridge-v1
+          for f in "$d"/*.php "$d"/tests/*.php; do
+            php -l "$f"
+          done
+      - name: Synthetic exact environment admission lifecycle
+        run: |
+          php ops/mad4b-staging-manager-bridge-v1/tests/staging_admission_hermetic.php
+      - name: Confirm original broker verification and no alternate grants
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          d=Path('ops/mad4b-staging-manager-bridge-v1')
+          p300=(d/'300-mad4b-manager-auto-write.php').read_text()
+          p301=(d/'301-mad4b-company-operation-admission.php').read_text()
+          p312=(d/'312-mad4b-broker-exact-ssh-authority.php').read_text()
+          p318=(d/'318-mad4b-staging-manager-admission-bridge.php').read_text()
+          assert "Staging_Manager_Admission_Bridge_V1::entitlement" in p300
+          assert "Staging_Manager_Admission_Bridge_V1::binding" in p301
+          assert "Staging_Manager_Admission_Bridge_V1::has_delegation" in p301
+          assert "Staging_Manager_Admission_Bridge_V1::has_delegation" in p312
+          assert "COMPANY_DELEGATION_REVOKED" in p312
+          assert "ORIGINAL_PER_JOB_CLAIM_MISSING" in p312
+          assert "ACTIVE_PERSISTENT_GRANT_REQUIRED" in p312
+          assert "TRANSPORT_OR_HOST_BINDING_INVALID" in p312
+          assert "signed_identity_verified" in p318
+          assert "original_native_executor_not_ready" in p318
+          assert "'state']??'')!=='active'" in p318
+          assert "approval_sha256" in p318
+          assert "identity.read" in p318
+          print("MAD4B_STAGING_BRIDGE_BROKER_GUARD_PASS")
+          PY
