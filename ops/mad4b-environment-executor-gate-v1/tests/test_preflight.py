@@ -80,6 +80,11 @@ class TestPreflight(unittest.TestCase):
         row["native_executor"]["receipt_313_verifier_certified"] = False
         self.assertIn("NATIVE_EXECUTOR_OR_313_NOT_CERTIFIED", assess(row)["blockers"])
 
+    def test_invalid_transport_type(self):
+        row = example()
+        row["transport"]["kind"] = []
+        self.assertIn("TRANSPORT_KIND_UNSUPPORTED", assess(row)["blockers"])
+
     def test_missing_evidence(self):
         row = example()
         del row["transport"]
