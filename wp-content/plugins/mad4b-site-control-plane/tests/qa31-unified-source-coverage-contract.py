@@ -22,7 +22,7 @@ GUARDS = {'adapters/class-mad4b-scp-adapter-base.php': ('mad4b_provider_canary_e
  'class-mad4b-scp-catalog-intent-policy.php': ('mad4b_catalog_intent_', "'mutation_performed'"),
  'class-mad4b-scp-cli.php': ("'mutation_performed'", "'authorizing'"),
  'class-mad4b-scp-company-domain-cloudflare.php': ('wp_verify_nonce', 'mad4b_domain_browser_approval'),
- 'class-mad4b-scp-external-media-ingest.php': ('mad4b_media_upload_denied', 'wp_get_environment_type'),
+ 'class-mad4b-scp-external-media-ingest.php': ('mad4b_media_upload_denied', 'MAD4B_SCP_Site_Profile::user_is_enrolled'),
  'class-mad4b-scp-firecrawl-discovery-preflight.php': ('mad4b_firecrawl_scope_denied',
                                                        'wp_get_environment_type'),
  'class-mad4b-scp-firecrawl-provider.php': ('mad4b_firecrawl_save', 'check_admin_referer'),
@@ -56,6 +56,8 @@ def test_source_guard(path, markers):
     for marker in markers:
         if marker not in source:
             raise AssertionError('Security/behavior guard missing: ' + path + ' / ' + marker)
+    if path == 'class-mad4b-scp-external-media-ingest.php':
+        assert "wp_get_environment_type() !== 'staging'" not in source, 'Production capability must not be blocked by environment alone'
 
 
 def main():
