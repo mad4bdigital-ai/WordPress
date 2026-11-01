@@ -43,7 +43,10 @@ export function createGovernedExecutionRoutes({core,typed={},generalShell}){
    let job,admission;
    try{
     job=await core.readOriginalJob(job_id);
-    if(!job||job.job_id!==job_id||job.operation!==operation||
+    const originalCoreOperation=operation==='maintenance.shell'?
+      'maintenance.shell':'company.remote.wpcli.full';
+    if(!job||job.job_id!==job_id||
+       job.operation!==originalCoreOperation||
        job.environment!=='staging'||!HEX32.test(job.transport_id||'')||
        !HEX32.test(job.grant_id||'')||
        !exact(job,job,BIND))
@@ -55,6 +58,7 @@ export function createGovernedExecutionRoutes({core,typed={},generalShell}){
    if(!admission||admission.verified!==true||
       admission.eligible!==true||
       admission.original_core_source_verified!==true||
+      admission.verified_action!==operation||
       admission.grant_state!=='CENTRAL_OPERATION_SCOPE_GRANTED'||
       admission.transport_revoked!==false||
       admission.delegate_revoked!==false||
