@@ -106,6 +106,14 @@ def main():
         "'writes_to_sites' => false",
     ):
         assert guard in comparator, 'Signed company comparator guard missing: ' + guard
+    # Exact-head reconciliation may produce non-authorizing evidence for a stale
+    # live manifest, but the release gate must still exit nonzero and never
+    # expose source bodies. Run the negative fixture without external services.
+    drift_fixture = REPO / 'tools/qa31_source_reconciliation_drift_test.py'
+    if drift_fixture.is_symlink() or not drift_fixture.is_file():
+        raise SystemExit('QA31 manifest drift negative regression missing')
+    subprocess.run([sys.executable, str(drift_fixture)], cwd=REPO,
+                   check=True, timeout=35)
     php = shutil.which('php')
     if php is None:
         raise SystemExit('Required isolated PHP runtime unavailable')
