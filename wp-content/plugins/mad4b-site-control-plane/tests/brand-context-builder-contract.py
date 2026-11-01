@@ -457,8 +457,15 @@ if len(matches) != 1:
 row = matches[0]
 if row.get("level") != "workflow" or row.get("target") != "brand-context" or row.get("enabled") is not True:
     raise SystemExit("Brand Context Builder Skill manifest identity/state is invalid")
-if manifest.get("seed_version") != 13:
-    raise SystemExit("Brand Context Builder requires canonical seed version 13")
+# The Builder requires the canonical Seed inventory, not a historical
+# fixed version. The manifest and runtime seeder must agree exactly.
+import re
+seeder_source = (cp / "includes" / "class-mad4b-scp-skill-seeder.php").read_text(encoding="utf-8")
+seeder_match = re.search(r"const SEED_VERSION = ([0-9]+);", seeder_source)
+seed_version = manifest.get("seed_version")
+if (not isinstance(seed_version, int) or seed_version < 13
+        or seeder_match is None or int(seeder_match.group(1)) != seed_version):
+    raise SystemExit("Brand Context Builder requires current canonical seed manifest/seeder parity")
 
 print("mad4b.brand-context-builder.v5: PASS")
 
