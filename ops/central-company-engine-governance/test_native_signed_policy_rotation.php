@@ -140,4 +140,23 @@ must(($read['execution_performed']??true)===false,
  'no shell execution performed');
 must(denied(MAD4B_Native_VPS_Principal_V1::rotate($proof),'policy_already_current'),
  'reused signed rotation cannot create second grant');
+// Force an InnoDB write failure after signature verification and row locks.
+// No new grant may survive an aborted atomic policy rotation.
+$rollbackProof=$proof;
+$rollbackProof['policy_sha256']=str_repeat('c',64);
+$rollbackProof['nonce']=str_repeat('f',32);
+$rollbackProof['issued']=time();
+$rollbackProof['expires']=time()+40;
+$rotationMessage=implode("\\n",array_map(
+ fn($field)=>strval($rollbackProof[$field]),MAD4B_Native_VPS_Principal_V1::FIELDS));
+$rollbackProof['signature']=base64_encode(sodium_crypto_sign_detached($rotationMessage,$secret));
+$wpdb->failWrites=true;
+$failed=MAD4B_Native_VPS_Principal_V1::rotate($rollbackProof);
+must(denied($failed,'signed_policy_rotation_uncertain_or_rejected'),
+ 'injected transaction failure should deny');
+must(MAD4B_Native_VPS_Principal_V1::existing()===$newSlot,
+ 'failed transaction must preserve prior slot');
+must(MAD4B_Native_VPS_Principal_V1::ledger($newSlot,$scope),
+ 'failed transaction must preserve current grant and transport');
+$wpdb->failWrites=false;
 echo "PASS signed policy rotation, original host key, InnoDB atomic grant replacement, stale grant revocation, no execution\n";
