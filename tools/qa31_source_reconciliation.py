@@ -80,7 +80,13 @@ def main():
       'drift_report_only':bool(x.read_only_drift_report),
       'manifest_verified':not bool(corrupt),
       'decisions':records}
-    out=Path(x.out);out.parent.mkdir(parents=True,exist_ok=True)
+    out=Path(x.out)
+    # This comparator must never write the report into either source tree.
+    # Resolve parent symlinks as well to stop redirecting writes into Staging.
+    output_target=out.resolve()
+    if out.is_symlink() or any(output_target==root or root in output_target.parents for root in (stage,github)):
+        raise ValueError('Read-only report destination must be outside both plugin source trees')
+    out.parent.mkdir(parents=True,exist_ok=True)
     out.write_text(json.dumps(report,sort_keys=True,indent=2)+'\n')
     print(json.dumps({'result':report['release_gate'],'manifest_mismatch_count':len(corrupt),'github_version':report['github']['version'],
       'staging_version':report['staging']['package_version'],
