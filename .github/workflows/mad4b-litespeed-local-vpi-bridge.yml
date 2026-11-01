@@ -1,0 +1,30 @@
+name: MAD4B LiteSpeed Local VPI Bridge Contract
+on:
+  pull_request:
+    paths:
+      - "wp-content/plugins/mad4b-litespeed-local-bridge/**"
+      - "wp-content/mu-plugins/334-mad4b-page-css-frame-priority.php"
+      - "wp-content/mu-plugins/335-mad4b-self-governing-css.php"
+      - "wp-content/mu-plugins/336-mad4b-litespeed-local-provider.php"
+      - ".github/workflows/mad4b-litespeed-local-vpi-bridge.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  provider-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check PHP syntax and provider contract
+        run: |
+          php -l wp-content/plugins/mad4b-litespeed-local-bridge/mad4b-litespeed-local-bridge.php
+          php wp-content/plugins/mad4b-litespeed-local-bridge/tests/contract.php
+          php -l wp-content/mu-plugins/334-mad4b-page-css-frame-priority.php
+          php -l wp-content/mu-plugins/335-mad4b-self-governing-css.php
+          php -l wp-content/mu-plugins/336-mad4b-litespeed-local-provider.php
+      - name: Verify one CSS owner
+        run: |
+          grep -Fq 'MAD4B_LSC_Local_Provider_V1::local_css_eligible()' wp-content/mu-plugins/335-mad4b-self-governing-css.php
+          if grep -Fq 'MAD4B_LiteSpeed_Local_Bridge' wp-content/mu-plugins/335-mad4b-self-governing-css.php; then exit 1; fi
+          if grep -Fq 'MAD4B_LiteSpeed_Local_Bridge' wp-content/mu-plugins/334-mad4b-page-css-frame-priority.php; then exit 1; fi

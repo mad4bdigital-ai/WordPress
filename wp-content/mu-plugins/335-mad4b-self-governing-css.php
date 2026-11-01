@@ -22,7 +22,6 @@ final class MAD4B_Autonomous_CSS_V1 {
   return preg_match('~Mobile|Android|Silk|Kindle|BlackBerry|Opera.Mini|Opera.Mobi~i',$ua) ? 'mobile' : 'desktop';
  }
  private static function guard(): bool {
-  if(class_exists('MAD4B_LiteSpeed_Local_Bridge',false) && !MAD4B_LiteSpeed_Local_Bridge::local_css_compatible())return false;
   if(!class_exists('MAD4B_LSC_Local_Provider_V1') || !MAD4B_LSC_Local_Provider_V1::local_css_eligible())return false;
   if(PHP_SAPI==='cli'||wp_get_environment_type()!=='staging'||is_admin()||wp_doing_ajax()
     ||is_user_logged_in()||is_preview()||!did_action('wp')
