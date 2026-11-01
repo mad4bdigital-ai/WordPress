@@ -28,18 +28,19 @@ final class MAD4B_SCP_Company_Local_WPCLI {
         $before=MAD4B_SCP_Operational_Integrity::capture();
         if (is_wp_error($before)) return $before;
         $scope=$before['scope']??array();
-        // Dynamic exact-site fence from the original trusted Core resolver.
-        // No site UUID, domain, or WordPress user may be hardcoded in source.
+        // This adapter belongs only to the official central Staging control
+        // plane, not to temporary company Staging sites. The central binding
+        // is deliberately exact, even when company sites have valid profiles.
         if (($scope['environment']??'')!=='staging' ||
+            ($scope['site_uuid']??'')!=='e5e64bca-ed62-48d2-b2b3-dff693cd702a' ||
             ($scope['deployment_mode']??'')!=='wordpress_dedicated' ||
-            !is_string($scope['site_uuid']??null) ||
-            !preg_match('/^[a-f0-9-]{36}$/D',$scope['site_uuid']) ||
+            home_url()!=='https://tours.dev.mad4b.com' ||
             !class_exists('MAD4B_SCP_Site_Profile') ||
             !MAD4B_SCP_Site_Profile::configured() ||
             !MAD4B_SCP_Site_Profile::origin_enrolled() ||
             !function_exists('wp_get_environment_type') ||
             wp_get_environment_type()!=='staging')
-            return self::error('trusted_staging_scope_mismatch');
+            return self::error('central_staging_scope_mismatch');
         // WP-CLI --user must resolve to the actor sealed in the Core
         // capture. wp_set_current_user() alone is not authentication.
         $selected=(string) WP_CLI::get_config('user');
