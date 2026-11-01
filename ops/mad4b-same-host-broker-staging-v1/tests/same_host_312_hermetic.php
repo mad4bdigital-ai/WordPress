@@ -9,7 +9,7 @@ class MAD4B_Central_VPS_Broker_V1 {
  const JOB='job:';const CLAIM='broker_claim:';const PUBKEY='public';
 }
 class MAD4B_Manager_Auto_Write_V1 {
- public static function company_target($company) {return ['state'=>'REGISTERED','site_uuid'=>'customer-staging-uuid','canonical_origin'=>'https://customer-staging.example','environment'=>'staging'];}
+ public static function company_target($company) {return ['state'=>'REGISTERED','site_uuid'=>'customer-staging-uuid','canonical_origin'=>'https://customer-staging.example','environment'=>($GLOBALS['target_environment']??'staging')];}
 }
 class MAD4B_Company_Operation_Admission_V1 {public static function manager_id(){return 'central-manager';}}
 class MAD4B_Company_Portfolio_Manager_V1 {public static function has_delegation($manager,$company,$operation,$actor){return $manager==='central-manager' && $company==='customer-staging' && $operation==='operations_manage' && $actor===26;}}
@@ -73,4 +73,16 @@ check('wrong host owner ID',static function()use($id,$grant_id,$transport_id){
  $GLOBALS['options']['grant:'.$grant_id]['central_principal_id']=0;
  $GLOBALS['options']['transport:'.$transport_id]['central_principal_id']=0;
 });
+// Even a fully matching company + delegation may not use Same-Host
+// WordPress execution against Production through this Staging-only lane.
+$before=$GLOBALS['options'];
+foreach (['job:'.$id, 'grant:'.$grant_id, 'transport:'.$transport_id] as $key) {
+    $GLOBALS['options'][$key]['environment']='production';
+}
+$GLOBALS['target_environment']='production';
+$prod=MAD4B_Broker_Exact_SSH_Authority_V1::evaluate($id,'srv2030908',$digest);
+must(($prod['eligible']??null)===false,'Production Same-Host is denied');
+must(($prod['reason']??'')==='LOCAL_TARGET_SHELL_ONLY','Production refusal is scope policy');
+unset($GLOBALS['target_environment']);
+$GLOBALS['options']=$before;
 echo "SAME_HOST_312_EXACT_JOB_CONTRACT_PASS\n";
