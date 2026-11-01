@@ -111,7 +111,7 @@ final class MAD4B_SCP_Adaptive_Asset_Intelligence {
   self::mark_dirty('source_package_updated','/');
  }
  public static function option_changed($option,$old,$new): void {
-  if (!in_array($option,['elementor_css_print_method','litespeed.conf.optm-css_comb','litespeed.conf.optm-css_comb_ext_inl','icl_sitepress_settings'],true) || $old===$new)return;
+  if (!in_array($option,['elementor_css_print_method','litespeed.conf.optm-css_comb','litespeed.conf.optm-css_comb_ext_inl','litespeed.conf.guest','litespeed.conf.guest_optm','icl_sitepress_settings'],true) || $old===$new)return;
   self::mark_dirty('asset_settings_changed','/');
  }
  public static function menu_changed(): void {self::mark_dirty('navigation_updated','/');}
