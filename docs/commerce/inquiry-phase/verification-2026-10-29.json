@@ -1,0 +1,52 @@
+{
+  "suite": "Inquiry-first Fluent Forms Intake and Native Spam Protection",
+  "date": "2026-10-29",
+  "environment": "ETG WooCommerce Lab (local, isolated)",
+  "site_configuration": {
+    "form_ids": [
+      6
+    ],
+    "request_only": true,
+    "crm_first": true,
+    "auto_intake_eligible_for_saved_source": true,
+    "honey_pot_globally_enabled": true,
+    "token_based_spam_protection_globally_enabled": true,
+    "google_recaptcha_v3_configured": false,
+    "smtp_connection_count": 0,
+    "crm_native_feed_count": 0,
+    "form_estimate_at_submission_persisted": false
+  },
+  "checks": {
+    "native_honeypot_and_token_preflight": {
+      "passed": 27,
+      "total": 27
+    },
+    "native_honeypot_and_token_independent": {
+      "passed": 24,
+      "total": 24
+    },
+    "server_side_negative_rejections": 4,
+    "inquiry_regression": {
+      "passed": 24,
+      "total": 24,
+      "sql_rolled_back": true
+    }
+  },
+  "state": {
+    "woo_orders_unchanged": true,
+    "request_batches_unchanged": true,
+    "fluent_forms_submissions_unchanged": true,
+    "crm_contacts_unchanged": true,
+    "boards_tasks_unchanged": true,
+    "customer_email_sent": false,
+    "production_mutation": false
+  },
+  "evidence_vps": "/opt/commerce-components/evidence/etg-inquiry-phase-20261029/",
+  "limitations": [
+    "Google reCAPTCHA v3 key(s) absent and not recovered",
+    "No live SMTP outbound connection",
+    "No native FluentCRM feed for form 6",
+    "Front-end estimate and snapshot not certified",
+    "Live end-to-end task creation not yet certified"
+  ]
+}
