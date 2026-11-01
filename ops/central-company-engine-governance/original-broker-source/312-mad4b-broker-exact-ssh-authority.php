@@ -132,9 +132,10 @@ final class MAD4B_Broker_Exact_SSH_Authority_V1 {
    || !MAD4B_Central_Dual_Lane_Registry_V1::central())
     WP_CLI::error('CENTRAL_HOST_CONTEXT_REQUIRED');
   $action=(string)($args[0]??'');
-  // Read-only local status does not assert a WordPress administrator.
-  // Claimed-job inventory and signed verification retain the original
-  // privileged WordPress context and independent broker signature gates.
+  // Channel-specific identity, without forcing an unrelated WP user:
+  // status = non-authorizing local inventory; claimed = WP administrator;
+  // verify = Ed25519 signed host proof with nonce + exact 305/306/312 scope.
+  // A signed preflight never executes a job or grants host authority.
   if ($action==='status') {
    WP_CLI::line(wp_json_encode(['contract'=>self::CONTRACT,'verifier_registered'=>true,
      'central_scope_source'=>'original_wordpress_grants_claims_and_delegations',
@@ -142,9 +143,9 @@ final class MAD4B_Broker_Exact_SSH_Authority_V1 {
      'production_supported'=>true,'shell_executed'=>false]));
    return;
   }
-  if (get_current_user_id()<1 || !current_user_can('manage_options'))
-    WP_CLI::error('CENTRAL_HOST_AUTHORITY_REQUIRED');
   if ($action==='claimed') {
+   if (get_current_user_id()<1 || !current_user_can('manage_options'))
+     WP_CLI::error('CENTRAL_HOST_AUTHORITY_REQUIRED');
    global $wpdb;
    $prefix=MAD4B_Central_VPS_Broker_V1::JOB;
    $keys=$wpdb->get_col($wpdb->prepare(
