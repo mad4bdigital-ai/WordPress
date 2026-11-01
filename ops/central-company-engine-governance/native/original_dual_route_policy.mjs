@@ -70,10 +70,6 @@ export function planOriginalCoreTransportRecovery({request,previous,core,candida
     previous.claim_committed!==false||
     previous.effects_possible!==false)
    return recoveryStop('PARKED_NO_REPLAY','OUTCOME_NOT_PROVEN_SAFE_FOR_FAILOVER');
- if(typeof denial.denial_ref!=='string'||!denial.denial_ref||
-    !/^[a-f0-9]{32}$/.test(denial.original_job_id||'')||
-    !/^[a-f0-9]{64}$/.test(denial.command_sha256||''))
-   return stop('BLOCKED','ORIGINAL_SIGNED_DENIAL_REFERENCE_REQUIRED');
  if(!request||request.kind!=='general_vps_administration'||
     !['authenticated_operator','trusted_central_compiler'].includes(request.source)||
     !/^[a-f0-9]{64}$/.test(request.command_sha256||'')||
@@ -135,6 +131,10 @@ export function planIndependentSshRemediation({denial,request,policy,context}={}
  if(denial.original_claim_state!=='NOT_CLAIMED'||
     denial.dispatch_started!==false||denial.effects_possible!==false)
    return stop('PARKED_NO_REPLAY','ORIGINAL_JOB_OUTCOME_UNCERTAIN');
+ if(typeof denial.denial_ref!=='string'||!denial.denial_ref||
+    !/^[a-f0-9]{32}$/.test(denial.original_job_id||'')||
+    !/^[a-f0-9]{64}$/.test(denial.command_sha256||''))
+   return stop('BLOCKED','ORIGINAL_SIGNED_DENIAL_REFERENCE_REQUIRED');
  if(!request||request.kind!=='general_vps_administration'||
     request.lane!=='vps_ssh'||
     request.source!=='authenticated_operator'||
