@@ -84,6 +84,30 @@ for path in (root / 'includes').rglob('*.php'):
             if marker not in manifest:
                 raise SystemExit('FAIL native manifest guard missing: ' + marker)
         continue
+    # This is the original Company Workspace *parent*, not an early child.
+    # Its own submenu has exactly the same delegated company capability.
+    # Keep the native parent order at priority 12; all other children use
+    # the registry's deferred registration. Do not grant WP administrator.
+    if path.name == 'class-mad4b-scp-company-master-admin.php':
+        required = (
+            "const CAP='mad4b_manage_company_operations';",
+            "add_menu_page('Company Operations','Company',self::CAP,'mad4b-company',",
+            "add_submenu_page('mad4b-company','Team & Translation','Team & Translation',self::CAP,'mad4b-company',",
+            "add_action('admin_menu',array(__CLASS__,'menus'),12);",
+            "public static function can():bool {return current_user_can(self::CAP);}",
+            "'permission_callback'=>array(__CLASS__,'can')",
+            "'manage_options','activate_plugins','install_plugins','update_plugins'",
+            "if(!in_array(wp_get_environment_type(),['local','staging'],true))",
+            "MAD4B_SCP_Company_Owner_Activation::browserOwnerAuthorized()",
+        )
+        for marker in required:
+            if marker not in source:
+                raise SystemExit('FAIL company parent menu/role boundary: ' + marker)
+        if (source.count("add_menu_page(") != 1 or source.count("add_submenu_page(") != 1
+                or source.count("add_action('admin_menu'") != 1):
+            raise SystemExit('FAIL company parent menu scope expanded')
+        checked += 1
+        continue
     # The delegated Company Task Handoffs screen is a separate top-level WP
     # capability surface, not an administrator-only MAD4B submenu. Check its
     # exact WP capability AND its independent per-user access and nonce gates,
