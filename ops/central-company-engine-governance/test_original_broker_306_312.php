@@ -29,6 +29,7 @@ class MAD4B_Central_SSH_Command_Intake_V1 {
  const PREFIX='fixture_grant_';
  const TRANSPORT_PREFIX='fixture_transport_';
  const REQUEST_PREFIX='fixture_request_';
+ const CLAIM_PREFIX='fixture_claim_';
  public static function permitted($r){return true;} // Hermetic fixture ONLY.
 }
 class MAD4B_Central_Dual_Lane_Registry_V1{public static function central(){return true;}}
@@ -88,7 +89,11 @@ must($repeated instanceof WP_REST_Response&&$repeated->status===200,'306 repeat 
 // Only the test fixture upgrades the central job to a signed-claim-shape;
 // real Broker 306 must verify a real signature before doing so.
 $job['state']='BROKER_CLAIMED_PENDING_INDEPENDENT_HOST_AUTHORITY';
+// Exact live 306 contract records typed jobs; the hermetic fixture below
+// models the original 305 per-correlation consumed claim, not an owner grant.
+$job['job_type']='signed_vps_wpcli';
 $opts[MAD4B_Central_VPS_Broker_V1::JOB.$id]=$job;
+$opts[MAD4B_Central_SSH_Command_Intake_V1::CLAIM_PREFIX.$grant_id.'_'.hash('sha256',$job['correlation_id'])]=$id;
 $opts[MAD4B_Central_VPS_Broker_V1::CLAIM.$id]=[
  'job_id'=>$id,'state'=>'BROKER_CLAIMED_PENDING_INDEPENDENT_HOST_AUTHORITY',
  'host_id'=>'srv2030908','claimed_epoch'=>time()];
