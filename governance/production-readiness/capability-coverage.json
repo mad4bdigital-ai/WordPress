@@ -11648,6 +11648,26 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing source controls and specific same-PR regression cover this unchanged authorization category. No new authority or independently certified release is introduced.",
       "review_rationale": "Bump canonical Seeder constant from version 13 to 14 to match the appended three disabled skill manifest entries. The test requires exact manifest/runtime constant equality and preserves previously enabled Brand Context Builder workflow and original seed/reconciliation authority."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-scopes.php",
+      "source_blob_sha": "a516ae183aa75aa1c33699463224b20758967c9a",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02",
+        "AUTOMATION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py"
+      ],
+      "owner_role": "GitHub technical reviewer of exact company-staff menu capability binding, CI-only; live owner signoff separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Admin, delegated staff, task workflow and WordPress permission controls govern the exact Content Work Scopes screen; no added ability, workflow execution, role grants or site authority.",
+      "review_rationale": "Repair a verified Admin Route Registry mismatch by declaring the existing Content Work Scopes submenu with original MAD4B_SCP_Readiness_Integrations::CAP. The same-PR negative guard checks the exact staff capability, route and submenu matching, no direct admin_menu registration, and the screen's can_manage denial. No REST/write endpoint or Production behavior is authorized."
     }
   ],
   "code_change_rules": {
