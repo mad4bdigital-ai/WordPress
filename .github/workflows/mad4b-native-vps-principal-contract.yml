@@ -29,6 +29,7 @@ jobs:
           php -l ops/mad4b-broker/tests/test_native_vps_principal.php
           python3 -m py_compile ops/mad4b-broker/native-vps-client-principal.py
           python3 -m py_compile ops/mad4b-broker/vps-late-native-reconcile.py
+          python3 -m py_compile ops/mad4b-broker/vps-late-native-sweeper.py
           php -l ops/mad4b-broker/central-mu/324-mad4b-broker-late-native-reconciliation.php
       - name: Hermetic signed-principal and identity tests
         shell: bash
@@ -37,3 +38,4 @@ jobs:
           python3 ops/mad4b-broker/tests/test_central_host_scope_separation.py
           php ops/mad4b-broker/tests/test_native_vps_principal.php
           php ops/mad4b-broker/tests/test_late_native_receipt.php
+          python3 ops/mad4b-broker/tests/test_expired_native_job_reconciliation.py
