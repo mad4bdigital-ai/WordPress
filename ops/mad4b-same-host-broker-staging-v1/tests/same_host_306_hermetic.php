@@ -35,7 +35,12 @@ class MAD4B_Company_Portfolio_Manager_V1{
 }
 class MAD4B_Native_VPS_Principal_V1 {}
 function must($x,$tag){if(!$x){fwrite(STDERR,"FAILED: $tag\n");exit(1);}}
-require dirname(__DIR__).'/candidate/306-mad4b-central-vps-broker.php';
+// Evaluate the exact Broker class while stubbing its unrelated Recovery
+// dependency. The live package still retains its original require_once.
+$source=file_get_contents(dirname(__DIR__).'/306-mad4b-central-vps-broker.php');
+$dependency="require_once __DIR__.'/306-mad4b-original-core-recovery.php';";
+must(substr_count($source,$dependency)===1,'original Recovery dependency present');
+eval('?>'.str_replace($dependency,'',$source));
 $id=str_repeat('a',32);$g=str_repeat('b',32);$t=str_repeat('c',32);
 $grant=['state'=>'CENTRAL_OPERATION_SCOPE_GRANTED','company'=>'staging-customer',
  'central_principal_id'=>26,'operation'=>'company.remote.wpcli.full','expires_epoch'=>null];
