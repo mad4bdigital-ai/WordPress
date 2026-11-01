@@ -1,15 +1,17 @@
 'use strict';
 const { chromium }=require('/usr/src/app/node_modules/playwright');const fs=require('fs');
 const path=process.argv[2]||'/',repeats=Math.min(5,Math.max(1,Number(process.argv[3]||5)));
+const device=process.argv[4]||'desktop';
+if(!['desktop','mobile'].includes(device))process.exit(13);
 if(!/^\/[a-z0-9\/._~-]*$/.test(path)||path.includes('//')||path.includes('..'))process.exit(11);
 const base='https://tours.dev.mad4b.com';
 (async()=>{let browser=await chromium.launch({headless:true,args:['--no-sandbox']});let out=[];
 if(process.env.MAD4B_CSS_RESUME==='1'){
  const state=JSON.parse(fs.readFileSync('/out/benchmark-result.json','utf8'));
- if(state.path!==path||state.complete===true||state.planned!==repeats*4||!Array.isArray(state.observations))throw Error('Resume mismatch');
+ if(state.path!==path||state.device!==device||state.complete===true||state.planned!==repeats*2||!Array.isArray(state.observations))throw Error('Resume mismatch');
  out=state.observations;
 }
-for(let round=0;round<repeats;round++)for(let mobile of [false,true])for(let mode of (round%2?['canary-v1','native-v1']:['native-v1','canary-v1'])){
+for(let round=0;round<repeats;round++)for(let mobile of [device==='mobile'])for(let mode of (round%2?['canary-v1','native-v1']:['native-v1','canary-v1'])){
  if(out.some(x=>x.round===round&&x.mobile===mobile&&x.mode===mode))continue;
  const ctx=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:900},userAgent:mobile?'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1':undefined,ignoreHTTPSErrors:true});const p=await ctx.newPage();let failures=[],pageErrors=[],navigations=0,guestVary=0;
  p.on('framenavigated',f=>{if(f===p.mainFrame())navigations++;});
@@ -23,7 +25,7 @@ for(let round=0;round<repeats;round++)for(let mobile of [false,true])for(let mod
  await p.evaluate(()=>window.scrollTo(0,Math.floor(document.body.scrollHeight/2)));await p.waitForTimeout(200);sample.mid=await p.evaluate(()=>{let e=document.querySelector('.elementor-sticky--active,[data-settings*="sticky"]');return e?getComputedStyle(e).position:null;});
  }catch(e){sample.error=String(e).slice(0,200);}out.push({round,mobile,mode,status,failures,pageErrors:pageErrors.length,navigations,guestVary,...sample});
  // A crash or time budget must not leave a stale full report. A partial report is never certifiable.
- fs.writeFileSync('/out/benchmark-result.json',JSON.stringify({path,complete:false,planned:repeats*4,observations:out},null,2));
+ fs.writeFileSync('/out/benchmark-result.json',JSON.stringify({path,device,complete:false,planned:repeats*2,observations:out},null,2));
  await ctx.close();}
- await browser.close();fs.writeFileSync('/out/benchmark-result.json',JSON.stringify({path,complete:true,planned:repeats*4,observations:out},null,2));console.log(JSON.stringify({path,n:out.length,rows:out.map(x=>({round:x.round,mobile:x.mobile,mode:x.mode,http:x.status,lcp:x.lcp,cls:x.cls,tags:x.tags,err:x.error}))}));
+ await browser.close();fs.writeFileSync('/out/benchmark-result.json',JSON.stringify({path,device,complete:true,planned:repeats*2,observations:out},null,2));console.log(JSON.stringify({path,device,n:out.length,rows:out.map(x=>({round:x.round,mobile:x.mobile,mode:x.mode,http:x.status,lcp:x.lcp,cls:x.cls,tags:x.tags,err:x.error}))}));
 })().catch(e=>{console.error(e.stack);process.exit(2)});
