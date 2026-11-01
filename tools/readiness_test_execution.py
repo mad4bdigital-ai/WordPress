@@ -108,6 +108,8 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # Company Management: exact hermetic Core registration and denial tests.
     # No WordPress bootstrap/network/DB; unknown PHP remains PHPUnit-only.
     "wp-content/plugins/mad4b-site-control-plane/tests/central-company-engine-governance-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/company-code-reconciliation-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/company-code-core-native-contract.php",
     "tests/remote-execution/unified-operator-session-policy-smoke.php",
 ))
 
@@ -224,6 +226,11 @@ def self_test():
         "wp-content/plugins/mad4b-site-control-plane/tests/self-update-selected-head-release-trust-runtime.php",
     ):
         assert command_for(path) == ["php", str((ROOT / path).resolve())]
+    for company_additional in (
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-code-reconciliation-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-code-core-native-contract.php",
+    ):
+        assert command_for(company_additional) == ["php", str((ROOT / company_additional).resolve())]
     company_test = "wp-content/plugins/mad4b-site-control-plane/tests/central-company-engine-governance-contract.php"
     assert command_for(company_test) == ["php", str((ROOT / company_test).resolve())]
     company_plan = {

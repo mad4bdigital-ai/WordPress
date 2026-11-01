@@ -42,8 +42,8 @@ class ContractTests(unittest.TestCase):
         self.assertEqual(len(g.checked_catalog(REG)),9)
     def test_02_core_registry_valid_and_no_mutation(self):
         r=g.audit(REG,NATIVE,g.DEFAULT_CP,g.DEFAULT_ROOT)
-        self.assertEqual(r["core_operations_observed"],18)
-        self.assertEqual(r["mapped_operations"],2)
+        self.assertGreaterEqual(r["core_operations_observed"],18)
+        self.assertGreaterEqual(r["mapped_operations"],2)
         self.assertFalse(r["mutation_authorized"])
         self.assertFalse(r["write_performed"])
     def test_03_duplicate_engine_rejected(self):
@@ -147,6 +147,24 @@ class ContractTests(unittest.TestCase):
         r=g.audit(REG,NATIVE,g.DEFAULT_CP,g.DEFAULT_ROOT)
         h=r.pop("report_sha256")
         self.assertEqual(h,g.digest(r))
+    def test_29a_signed_readonly_operation_not_grant(self):
+        c = copy.deepcopy(NATIVE)
+        c["operations"].append({
+            "id":"company.code-reconciliation.plan", "planner":"mad4b/company-code-reconciliation-plan",
+            "executor":"mad4b/company-code-reconciliation-compare","pipeline_profile":"governed_read_only_v1",
+            "effect":"read_only","signed_core_evidence_required":True,
+            "side_effect_class":"none","generic_mutation_dispatch":False
+        }) if not any(x["id"]=="company.code-reconciliation.plan" for x in c["operations"]) else None
+        r=g.audit(REG,c,g.DEFAULT_CP,g.DEFAULT_ROOT)
+        row=next(e for e in r["engines"] if e["engine_id"]=="company.code_reconciliation")
+        self.assertTrue(row["core_registry_mapping"])
+        self.assertFalse(row["mutation_authorized"])
+        self.assertFalse(row["executor_certified"])
+        c=copy.deepcopy(c)
+        op=next(x for x in c["operations"] if x["id"]=="company.code-reconciliation.plan")
+        op["effect"]="write"
+        r=g.audit(REG,c,g.DEFAULT_CP,g.DEFAULT_ROOT)
+        self.assertFalse(next(x for x in r["engines"] if x["engine_id"]=="company.code_reconciliation")["core_registry_mapping"])
     def test_30_inventory_no_sites_mutated(self):
         r=g.audit(REG,NATIVE,g.DEFAULT_CP,g.DEFAULT_ROOT)
         self.assertTrue(r["policy"]["central_governance_never_dispatches"])

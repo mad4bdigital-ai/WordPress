@@ -196,7 +196,12 @@ final class MAD4B_SCP_Central_Company_Engine_Governance {
                 $found = MAD4B_SCP_Operation_Registry::operation( $operation );
                 $native_mapped = is_array( $found ) &&
                     ! empty( $found['planner'] ) && ! empty( $found['executor'] ) &&
-                    ( $found['pipeline_profile'] ?? null ) === 'governed_mutation_v1' &&
+                    ( ( $found['pipeline_profile'] ?? null ) === 'governed_mutation_v1' ||
+                      ( 'company.code_reconciliation' === $engine['id'] &&
+                        ( $found['pipeline_profile'] ?? null ) === 'governed_read_only_v1' &&
+                        ( $found['effect'] ?? null ) === 'read_only' &&
+                        ( $found['signed_core_evidence_required'] ?? null ) === true &&
+                        ( $found['side_effect_class'] ?? null ) === 'none' ) ) &&
                     empty( $found['generic_mutation_dispatch'] );
             }
             if ( $native_mapped ) $mapped++;

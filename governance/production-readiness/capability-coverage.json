@@ -3666,6 +3666,119 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing platform, governance, MCP discovery, capability and fail-closed execution controls cover this read-only company management source.",
       "review_rationale": "New centrally owned company engine read/preflight is never a native executor or a grant. The exact source and the isolated WordPress registration, spoofed authority, ownership and dependency-cycle negative tests are reviewed for CI coverage only. Site-specific provider certification, restore and authorization are mandatory separately."
+    },
+    {
+      "id": "ability:mad4b/company-code-inventory-page",
+      "owner_role": "Central Company Management source maintainers; CI evidence review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-code-reconciliation-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-code-core-native-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/central-company-engine-governance-contract.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "The original MAD4B Core Registry, read-only Abilities, capability descriptors and cryptographic receipt verification remain authoritative; no second dispatcher or grants.",
+      "review_rationale": "Referenced future Core-signed inventory receipt issuer only, not registered or certified; comparator must fail closed until real provider receipts exist."
+    },
+    {
+      "id": "ability:mad4b/company-code-reconciliation-compare",
+      "owner_role": "Central Company Management source maintainers; CI evidence review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-code-reconciliation-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-code-core-native-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/central-company-engine-governance-contract.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "The original MAD4B Core Registry, read-only Abilities, capability descriptors and cryptographic receipt verification remain authoritative; no second dispatcher or grants.",
+      "review_rationale": "Source-tested only. Read-only scoped SHA diff and exact allowlisted Core pipeline refuse write executor substitution, cross-company/site binding, untrusted receipts and production mutation. No full live target diff, issuer, rollback, native Apply or operator approval is claimed."
+    },
+    {
+      "id": "ability:mad4b/company-code-reconciliation-plan",
+      "owner_role": "Central Company Management source maintainers; CI evidence review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-code-reconciliation-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-code-core-native-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/central-company-engine-governance-contract.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "The original MAD4B Core Registry, read-only Abilities, capability descriptors and cryptographic receipt verification remain authoritative; no second dispatcher or grants.",
+      "review_rationale": "Source-tested only. Read-only scoped SHA diff and exact allowlisted Core pipeline refuse write executor substitution, cross-company/site binding, untrusted receipts and production mutation. No full live target diff, issuer, rollback, native Apply or operator approval is claimed."
+    },
+    {
+      "id": "operation:company.code-reconciliation.plan",
+      "owner_role": "Central Company Management source maintainers; CI evidence review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-code-reconciliation-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-code-core-native-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/central-company-engine-governance-contract.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "The original MAD4B Core Registry, read-only Abilities, capability descriptors and cryptographic receipt verification remain authoritative; no second dispatcher or grants.",
+      "review_rationale": "Source-tested only. Read-only scoped SHA diff and exact allowlisted Core pipeline refuse write executor substitution, cross-company/site binding, untrusted receipts and production mutation. No full live target diff, issuer, rollback, native Apply or operator approval is claimed."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-code-reconciliation.php",
+      "owner_role": "Central Company Management source maintainers; CI evidence review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-code-reconciliation-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-code-core-native-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/central-company-engine-governance-contract.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "The original MAD4B Core Registry, read-only Abilities, capability descriptors and cryptographic receipt verification remain authoritative; no second dispatcher or grants.",
+      "review_rationale": "Source-tested only. Read-only scoped SHA diff and exact allowlisted Core pipeline refuse write executor substitution, cross-company/site binding, untrusted receipts and production mutation. No full live target diff, issuer, rollback, native Apply or operator approval is claimed."
     }
   ],
   "lifecycle": [],
@@ -11617,6 +11730,138 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Reuses immutable source review, WordPress Core permission and fail-closed execution controls; no new authorization mechanism.",
       "review_rationale": "Exact updated company management read-only source, manifest and bootstrap registration reviewed with isolated native Abilities tests. Only owner-scoped inventory and registry mappings are exposed. No new mutation executor or grants are registered, no company data are copied, and Production promotion requires separate release acceptance."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/central-company-engine-registry.json",
+      "source_blob_sha": "5bc62e903a74e5802b64dd3825d9772d7c513419",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-code-reconciliation-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-code-core-native-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/central-company-engine-governance-contract.php"
+      ],
+      "owner_role": "Central Company Management source maintainers; exact CI-only source review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuses immutable source checksum review, inherited original Core operation policy, hermetic comparison and native pipeline negative regression tests.",
+      "review_rationale": "Exact SHA source reviewed for read-only signed-evidence comparison only. Does not authorize site writes, file copying, signed receipt issuing, Staging deployment, or Production promotion."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/operation-registry.json",
+      "source_blob_sha": "c2b2968fee03b9247d9d82744c2e781f5c852d98",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-code-reconciliation-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-code-core-native-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/central-company-engine-governance-contract.php"
+      ],
+      "owner_role": "Central Company Management source maintainers; exact CI-only source review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuses immutable source checksum review, inherited original Core operation policy, hermetic comparison and native pipeline negative regression tests.",
+      "review_rationale": "Exact SHA source reviewed for read-only signed-evidence comparison only. Does not authorize site writes, file copying, signed receipt issuing, Staging deployment, or Production promotion."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-company-engine-governance.php",
+      "source_blob_sha": "34f0fbaafd015cee3265afdd51e35f6f9d944c41",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-code-reconciliation-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-code-core-native-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/central-company-engine-governance-contract.php"
+      ],
+      "owner_role": "Central Company Management source maintainers; exact CI-only source review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuses immutable source checksum review, inherited original Core operation policy, hermetic comparison and native pipeline negative regression tests.",
+      "review_rationale": "Exact SHA source reviewed for read-only signed-evidence comparison only. Does not authorize site writes, file copying, signed receipt issuing, Staging deployment, or Production promotion."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-code-reconciliation.php",
+      "source_blob_sha": "a334e992dfc44aa30691a814a93684a541af8d07",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-code-reconciliation-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-code-core-native-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/central-company-engine-governance-contract.php"
+      ],
+      "owner_role": "Central Company Management source maintainers; exact CI-only source review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuses immutable source checksum review, inherited original Core operation policy, hermetic comparison and native pipeline negative regression tests.",
+      "review_rationale": "Exact SHA source reviewed for read-only signed-evidence comparison only. Does not authorize site writes, file copying, signed receipt issuing, Staging deployment, or Production promotion."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-registry.php",
+      "source_blob_sha": "f32b488623f5c0838617dd7eb2881899d88e6536",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-code-reconciliation-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-code-core-native-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/central-company-engine-governance-contract.php"
+      ],
+      "owner_role": "Central Company Management source maintainers; exact CI-only source review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuses immutable source checksum review, inherited original Core operation policy, hermetic comparison and native pipeline negative regression tests.",
+      "review_rationale": "Exact SHA source reviewed for read-only signed-evidence comparison only. Does not authorize site writes, file copying, signed receipt issuing, Staging deployment, or Production promotion."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "6ceebb5b3b903e2a64f24d505fc892a1a0bf6150",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-code-reconciliation-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-code-core-native-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/central-company-engine-governance-contract.php"
+      ],
+      "owner_role": "Central Company Management source maintainers; exact CI-only source review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuses immutable source checksum review, inherited original Core operation policy, hermetic comparison and native pipeline negative regression tests.",
+      "review_rationale": "Exact SHA source reviewed for read-only signed-evidence comparison only. Does not authorize site writes, file copying, signed receipt issuing, Staging deployment, or Production promotion."
     }
   ],
   "code_change_rules": {

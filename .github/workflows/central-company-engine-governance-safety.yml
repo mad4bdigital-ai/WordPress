@@ -31,6 +31,9 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-company-engine-governance.php
           php ops/central-company-engine-governance/test_native_read_surface.php
           php wp-content/plugins/mad4b-site-control-plane/tests/central-company-engine-governance-contract.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/company-code-reconciliation-contract.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/company-code-core-native-contract.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/universal-wordpress-operations-contract.py
           cmp ops/central-company-engine-governance/engine-registry.json wp-content/plugins/mad4b-site-control-plane/config/central-company-engine-registry.json
           python3 - <<'PY'
           import json

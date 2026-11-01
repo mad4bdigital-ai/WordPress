@@ -115,7 +115,16 @@ def audit(registry, operation_registry, cp_root, vps_root):
         bound = op is not None and op in native
         pair = native.get(op, {}) if bound else {}
         pair_ok = bool(bound and isinstance(pair.get("planner"), str) and isinstance(pair.get("executor"), str)
-                       and pair.get("pipeline_profile") == "governed_mutation_v1"
+                       and (
+                           pair.get("pipeline_profile") == "governed_mutation_v1"
+                           or (
+                               e["id"] == "company.code_reconciliation"
+                               and pair.get("pipeline_profile") == "governed_read_only_v1"
+                               and pair.get("effect") == "read_only"
+                               and pair.get("signed_core_evidence_required") is True
+                               and pair.get("side_effect_class") == "none"
+                           )
+                       )
                        and not pair.get("generic_mutation_dispatch", False))
         blockers = []
         if missing:

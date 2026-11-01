@@ -44,3 +44,22 @@ two known Core operation mappings, duplicate-operation and dependency-cycle
 refusal and caller-injected authority refusal. VPS Shadow ran assess_manifest()
 in actual central WordPress CLI; isolated runtime bootstrap promotion and
 full native deployment certification remain outstanding.
+
+## Core-native bounded signed-evidence comparison (source candidate)
+
+The original Operation Registry now registers a real typed **read-only** operation:
+company.code-reconciliation.plan (Core planner
+mad4b/company-code-reconciliation-plan; Core comparator
+mad4b/company-code-reconciliation-compare). Both are registered as read
+Abilities, using the existing Core dispatcher and Capability Descriptor Registry.
+A purpose-specific governed_read_only_v1 profile has strict executor allowlisting,
+signed-inventory evidence checks, original-Core receipt verification, exact
+company/site fingerprint binding, scoped page limits (max 200 entries per
+manifest), owner-preserving SHA diff decisions, and no file transfer/Apply.
+
+**Important:** The new comparator's functional tests use hermetic receipt
+verifier mocks and fixture inventories. This source addition is NOT a live
+provider-issued signed inventory receipt, a full site diff, or a Staging release.
+A separate exact native inventory-page issuer must be certified, pages must
+be covered end-to-end, and live target readback/restore must be proven before
+reconciliation can be marked completed or expanded into any write operation.

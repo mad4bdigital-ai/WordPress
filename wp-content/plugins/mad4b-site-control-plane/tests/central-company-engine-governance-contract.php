@@ -26,6 +26,12 @@ class MAD4B_SCP_Site_Profile {
 function home_url() { return 'https://fixture.example.test'; }
 class MAD4B_SCP_Operation_Registry {
     public static function operation( $id ) {
+        if ( $id === 'company.code-reconciliation.plan' ) return array(
+            'planner'=>'mad4b/company-code-reconciliation-plan',
+            'executor'=>'mad4b/company-code-reconciliation-compare',
+            'pipeline_profile'=>'governed_read_only_v1',
+            'effect'=>'read_only','signed_core_evidence_required'=>true,
+            'side_effect_class'=>'none','generic_mutation_dispatch'=>false );
         if ( ! in_array( $id, array( 'company.plugin-sync.request', 'wordpress.runtime.converge' ), true ) ) {
             return new WP_Error( 'mad4b_operation_not_registered', '' );
         }
@@ -54,7 +60,7 @@ if ( ! is_array( $ability ) ||
 $data = json_decode( file_get_contents( MAD4B_SCP_DIR . 'config/central-company-engine-registry.json' ), true );
 $got = $class::assess_manifest( $data );
 if ( is_wp_error( $got ) || ( $got['engine_count'] ?? null ) !== 9 ||
-     ( $got['core_operations_mapped'] ?? null ) !== 2 ||
+     ( $got['core_operations_mapped'] ?? null ) !== 3 ||
      ( $got['mutation_authorized'] ?? null ) !== false ||
      ( $got['dispatcher_created'] ?? null ) !== false ) {
     throw new RuntimeException( 'native_core_projection_invalid' );
@@ -85,7 +91,7 @@ foreach ( array( $schema_preflight, $code_preflight ) as $preflight ) {
         ( $preflight['company_scope_authority_verified'] ?? null ) !== false ||
         ( $preflight['can_apply'] ?? null ) !== false ||
         ( $preflight['production_mutation'] ?? null ) !== false ||
-        ( $preflight['core_registry_mapping'] ?? null ) !== false ) {
+        ( $preflight['core_registry_mapping'] ?? null ) !== ( $preflight['engine_id'] === 'company.code_reconciliation' ) ) {
         throw new RuntimeException( 'unregistered_engine_preflight_not_fail_closed' );
     }
 }
@@ -100,4 +106,4 @@ $invalid_scope = $class::native_preflight( array( 'engine_id' => 'company.schema
 if ( ! is_wp_error( $invalid_scope ) ) {
     throw new RuntimeException( 'client_authority_injection_not_refused_by_preflight' );
 }
-echo "PASS central company native read abilities, 9 engines / 2 core mappings, owner/cycle/scope guards, no execution\n";
+echo "PASS central company native read abilities, 9 engines / 3 core mappings, owner/cycle/scope guards, no execution\n";
