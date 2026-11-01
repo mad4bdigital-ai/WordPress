@@ -40,6 +40,16 @@ $pages = array(
     'mad4b-market-profiles' => array( 'MAD4B_SCP_Market_Profiles', 'admin_page', array( '' ) ),
     'mad4b-season-calendar' => array( 'MAD4B_SCP_Season_Calendar', 'admin_page', array( '' ) ),
     'mad4b-source-hub' => array( 'MAD4B_SCP_Source_Hub', 'admin_page', array( '' ) ),
+    // Both administrator-only and delegated Company menus must have real
+    // disposable render and denied-user probes. No page is silently omitted.
+    'mad4b-company-migration-decisions' => array( 'MAD4B_SCP_Company_Migration_Decisions', 'page', array( '' ) ),
+    'mad4b-staging-brand-trial' => array( 'MAD4B_SCP_Staging_Brand_Trial', 'page', array( '' ) ),
+    'mad4b-staging-context-fixtures' => array( 'MAD4B_SCP_Staging_Context_Fixtures', 'page', array( '' ) ),
+    'mad4b-content-readiness-alerts' => array( 'MAD4B_SCP_Content_Readiness_Alerts', 'render', array( '' ) ),
+    'mad4b-content-readiness-workflow' => array( 'MAD4B_SCP_Readiness_Workflow_Options', 'render', array( '' ) ),
+    'mad4b-content-completeness' => array( 'MAD4B_SCP_Content_Completeness', 'render', array( '' ) ),
+    'mad4b-readiness-scopes' => array( 'MAD4B_SCP_Readiness_Scopes', 'screen', array( '' ) ),
+    'mad4b-readiness-preactivation' => array( 'MAD4B_SCP_Readiness_PreActivation', 'screen', array( '' ) ),
 );
 $routes = MAD4B_SCP_Admin_Route_Registry::routes();
 $check( ! array_diff( array_keys( $routes ), array_keys( $pages ) ) && ! array_diff( array_keys( $pages ), array_keys( $routes ) ), 'Every declared page must have a smoke case. Missing: ' . implode( ', ', array_diff( array_keys( $routes ), array_keys( $pages ) ) ) . '; stale: ' . implode( ', ', array_diff( array_keys( $pages ), array_keys( $routes ) ) ) );
