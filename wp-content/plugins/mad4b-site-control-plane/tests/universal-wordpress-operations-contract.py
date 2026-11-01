@@ -185,6 +185,19 @@ assert operation["aliases"]["reconcile-provider"] == "wordpress.provider.recerti
 direct_projection = operation["read_projection"]["direct"]
 catalog_projection = operation["read_projection"]["catalog"]
 assert set(direct_projection).issubset(set(catalog_projection))
+# Fixed optional reads must be listed in the catalog but cannot bypass the
+# original WordPress Ability registry or become required/mutating tools.
+optional_projection = operation["read_projection"]["optional"]
+assert optional_projection == [
+    "mad4b/company-plugin-sync-plan",
+    "mad4b/company-plugin-sync-job",
+    "mad4b/company-bootstrap-status",
+]
+assert set(optional_projection).issubset(set(catalog_projection))
+assert not set(optional_projection).intersection(direct_projection)
+assert "mad4b_operation_registry_optional_projection_invalid" in registry
+assert "wp_has_ability( $ability )" in registry
+assert "! in_array( $ability, $optional, true ) || wp_has_ability( $ability )" in registry
 # Preserve the fixed original read-only foundation while allowing the
 # source-registered Operation Registry to extend MCP read projection.
 # The previous exact-list equality prevented new bounded planners/verification.
