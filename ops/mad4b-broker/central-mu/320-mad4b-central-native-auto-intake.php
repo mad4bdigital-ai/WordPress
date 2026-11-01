@@ -15,7 +15,7 @@ final class MAD4B_Central_Native_Auto_Intake_V1 {
   return new WP_Error('mad4b_central_native_auto_'.$code,$code,
     ['status'=>$http,'contract'=>self::CONTRACT]);
  }
- private static function original_auth(WP_REST_Request $request):bool {
+ public static function original_auth(WP_REST_Request $request):bool {
   return class_exists('MAD4B_Central_SSH_Command_Intake_V1',false)
    && MAD4B_Central_SSH_Command_Intake_V1::permitted($request)
    && class_exists('MAD4B_Central_Host_Scope_V1',false)
@@ -34,7 +34,8 @@ final class MAD4B_Central_Native_Auto_Intake_V1 {
    if (!is_array($g) || ($g['contract']??'')!==MAD4B_Central_SSH_Command_Intake_V1::CONTRACT
     || ($g['state']??'')!=='CENTRAL_OPERATION_SCOPE_GRANTED'
     || ($g['grant_mode']??'')!=='persistent'
-    || ($g['expires_epoch']??false)!==null
+    || !array_key_exists('expires_epoch',$g)
+    || $g['expires_epoch']!==null
     || ($g['company']??'')!==self::COMPANY
     || ($g['operation']??'')!=='maintenance.shell'
     || ($g['target_host_id']??'')!==self::HOST
