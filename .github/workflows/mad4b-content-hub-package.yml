@@ -65,6 +65,7 @@ jobs:
           # Exercise both native WP-CLI identity and Queue authority regressions.
           php "$src/plugin/tests/vps-wpcli-fallback-contract.php"
           php "$src/plugin/tests/vps-wpcli-queue-authority-contract.php"
+          python3 -m py_compile "$src/host/native_queue_authority.py"
           root="$(mktemp -d)"
           trap 'rm -rf "$root"' EXIT
           cp "$src"/test_singleflight.php "$src"/test_unlinked.php "$src"/test_unlinked_reservation.php "$src"/test_legacy_cutover.php "$root"/
