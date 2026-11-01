@@ -28,7 +28,9 @@ final class MAD4B_Tour_Query_Mega_Tree {
  }
  public static function active_facets():array {
   $result=[];
-  foreach(apply_filters('mad4b_tour_menu_facet_specs',self::facet_specs()) as $f){
+  $specs=apply_filters('mad4b_tour_menu_facet_specs',self::facet_specs());
+  if(!is_array($specs))return [];
+  foreach($specs as $f){
    if(!is_array($f)||!isset($f['filter_id'],$f['taxonomy'],$f['key'],$f['label']))continue;
    $id=absint($f['filter_id']);$tax=(string)$f['taxonomy'];
    if(!$id||get_post_status($id)!=='publish'||get_post_type($id)!=='jet-smart-filters'
@@ -313,7 +315,7 @@ final class MAD4B_Tour_Query_Mega_Tree {
    foreach(['created_','edited_','delete_'] as $event)
     add_action($event.$facet['taxonomy'],[__CLASS__,'flush_on_term'],30);
   add_action('set_object_terms',static function($object_id,$terms,$tt_ids,$taxonomy){
-   if(in_array($taxonomy,array_column(MAD4B_Tour_Query_Mega_Tree::active_facets(),'taxonomy'),true))MAD4B_Tour_Query_Mega_Tree::flush_on_term();
+   if(in_array($taxonomy,array_merge(array_column(MAD4B_Tour_Query_Mega_Tree::active_facets(),'taxonomy'),['tour_categories','destinations']),true))MAD4B_Tour_Query_Mega_Tree::flush_on_term();
   },30,4);
  }
 }
