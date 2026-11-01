@@ -124,3 +124,16 @@ One-shot, permission-scoped PHP diagnostics were immediately removed from active
 - To compare with native behavior while the module is enabled, send `X-MAD4B-DCSS-Control: native-v1` to the uncached Staging archive. To rollback globally, remove only MU file `322-mad4b-empty-jet-css-fastpath.php` from Staging; WordPress and third-party plugins stay unchanged.
 - `empty_jet_css_fastpath_contract.php` verifies that only template `67125` without nested templates can skip CSS, while Tours price listing `25102`, Featured listing `14962`, and nested templates use the native callback.
 - No full HTML or pricing fragments are cached by this feature. Do not extend the whitelist without proving the new template emits zero Dynamic CSS across locales and pricing/visitor contexts.
+
+
+### Staging-only navigation term fragment cache (2026-11-01)
+
+- Source: `wp-content/mu-plugins/323-mad4b-nav-term-fragment-cache.php`. Runs only on the anonymous, unfiltered six-locale Tours archive at `tours.dev.mad4b.com`; Production never activates.
+- Background: the term navigation listing #67125 executes 45 times in the English page but represents 44 distinct terms; request-local memoization is not sufficient. Its dynamic CSS was independently proven to emit zero bytes in six locales and is already handled by MU #322.
+- Uses native JetEngine/Elementor HTML on every fragment miss. Reuses only original HTML for the same term ID, complete term metadata and taxonomy attributes, WPML locale, mobile/desktop classification and immutable Elementor listing JSON hash. 45-second WordPress object-cache TTL. A term edit or template edit forces a miss or fail-closed native rendering, respectively.
+- On hits re-enqueues the original Elementor template CSS file. No prices, featured tours, WooCommerce content, booking forms, customer sessions, global HTML responses or dynamic per-product markup enter this cache.
+- Hard bypass for cookies, authenticated users, AJAX, non-GET requests, query strings (filters), custom currency headers, geo headers, previews, alternate hosts and any other WP environment. To compare without changing settings send `X-MAD4B-NAV-Cache-Control: native-v1` on the public Staging archive.
+- Before enabling by default, a token-free but header-gated staging A/B trial compared 6 locales, initial and warm fragments, with exact per-term HTML SHA-256 hashes and full CSS/JS enqueued handle hashes: all parity checks passed. Live bypass tests for cookie, FX, filtered URL and explicit native control also passed.
+- First cache-filling request is not materially faster than native; subsequent warm anonymous Nginx-bypass requests saved up to several hundred milliseconds in the observed English, Spanish and Italian samples. Some language samples did not improve, and 3s+ backend PHP render persists. This is not a claim of total Cold TTFB closure. A/B runs are sequential and exploratory, not statistically stable p95 benchmarks.
+- Run `php ops/qa/mad4b-render-blocking/tests/nav_term_fragment_cache_contract.php` to assert term/locale/device isolation, short TTL, invalidation and that prices do not enter cache.
+- Rollback immediately by removing only MU #323 from Staging (the original JetEngine renderer remains installed); optional `X-MAD4B-NAV-Cache-Control: native-v1` suppresses this module for individual test requests.
