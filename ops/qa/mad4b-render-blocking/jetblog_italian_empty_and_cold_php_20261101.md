@@ -36,3 +36,21 @@ Earlier captured Staging EN archive request:
 - An independent 3641ms request had SQL time only 235.43ms. Optimizing database statements alone cannot eliminate the multi-second PHP rendering overhead.
 
 OPcache is already enabled (512MiB and 20k slots). PHP-FPM has four workers, four vCPU allocated, and no FPM pool configuration was changed. Recent no-page-cache sample TTFB remains about 3.5 to 4.2 seconds. No prices, inventory, sessions, FX, or filtered tour HTML were cached; the cold PHP render bottleneck remains open and requires further source-level safe optimization. No PR merge and no Production mutation.
+
+## Six-locale fresh profiler verification (2026-11-01)
+
+A temporary Staging-only read-only Elementor render profiler, activated by a private request header, measured fresh anonymous Tours archives with page cache bypass. All pages returned HTTP 200. It was removed immediately after collecting the six results; no production profiler or FPM configuration change remains.
+
+| WPML language | Request duration | Query count | Tour List 7739f090 self time | Featured 29f3807b self time | Nested List 30e3360 self time |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| EN | 3832ms | 980 | 572ms | 409ms | 132ms |
+| FR | 3222ms | 867 | 547ms | 208ms | 100ms |
+| DE | 3390ms | 900 | 572ms | 352ms | 155ms |
+| AR | 3033ms | 856 | 549ms | 324ms | 93ms |
+| ES | 3319ms | 902 | 542ms | 367ms | 125ms |
+| IT | 3260ms | 908 | 500ms | 428ms | 101ms |
+
+The six samples are isolated first-party staging observations, not statistically robust real-user p75/p95 metrics. Tour List #25102 (JetEngine Query #5) and Featured #14962 (Query #22) remain the dominant individually measured widgets across all six languages. The fresh evidence lives at:
+ /opt/hostinger-migrations/hosting-3/etg-commerce-staging/runtime/oauth-signing/perf-fresh-widget-20261101.jsonl
+
+Future render optimization must preserve native per-tour dynamic price, inventory, WPML query context, JetSmartFilters and distinct List/Grid layout; current test does not authorize caching those user-sensitive results. The PHP cold-render objective is explicitly open.
