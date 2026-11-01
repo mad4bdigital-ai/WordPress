@@ -124,6 +124,11 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
         if ($full_wpcli && (!class_exists('MAD4B_Company_Manager_Unified_Administrator_Principal', false)
             || !MAD4B_Company_Manager_Unified_Administrator_Principal::verified()))
             return self::error('verified_owner_enrollment_required');
+        if ($company==='tours-central' &&
+            ($host!=='srv2030908' || $principal!=='root'
+             || $reference!=='vault:registry/local-srv2030908'
+             || $requested_capabilities!==array()))
+            return self::error('central_host_exact_local_transport_required', 422);
         $scope = self::scope($company, 'maintenance.shell');
         if (is_wp_error($scope)) return $scope;
         $id = bin2hex(random_bytes(16));
@@ -261,6 +266,11 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
             || ($mode === 'one_time' && ($ttl < 30 || $ttl > self::TTL_MAX))
             || strlen($reason) < 10 || strlen($reason) > 240)
             return self::error('grant_fields_invalid', 422);
+        if ($company==='tours-central' &&
+            ($operation!=='maintenance.shell' || $mode!=='persistent'
+             || $host!=='srv2030908' || $host_principal!=='root'
+             || $transport_id===''))
+            return self::error('central_host_persistent_local_grant_required', 422);
         $scope = self::scope($company, $operation);
         if (is_wp_error($scope)) return $scope;
         if ($mode === 'persistent' && (
@@ -354,6 +364,11 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
             $command_byte_length = strlen($command);
             $command_format = 'maintenance.shell.text.v1';
         }
+        if ($company==='tours-central' &&
+            ($target_scope!=='host' ||
+             ($grant['target_host_id']??'')!=='srv2030908' ||
+             ($grant['target_ssh_principal']??'')!=='root'))
+            return self::error('central_host_command_target_scope_invalid', 422);
         $scope = self::scope($company, (string) $grant['operation']);
         if (is_wp_error($scope)) return $scope;
         foreach (array('site_uuid','environment','canonical_origin','assignment_revision') as $field) {
