@@ -87,6 +87,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          # The Feature 007 successor verifier reads exact immutable Git
+          # ancestors (rc.104). A depth-one checkout cannot prove lineage.
+          fetch-depth: 0
 
       - name: Setup PHP 8.3
         uses: shivammathur/setup-php@v2

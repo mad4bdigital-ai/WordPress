@@ -1,0 +1,20 @@
+[Unit]
+Description=MAD4B Staging Native Broker Historical Receipt Reconciliation
+Documentation=https://github.com/mad4bdigital-ai/WordPress/pull/687
+After=docker.service
+Requires=docker.service
+ConditionPathExists=/opt/mad4b-company-transport/broker-v1/vps-late-native-sweeper.py
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+Environment=MAD4B_LATE_RECONCILE_TIMER=1
+WorkingDirectory=/opt/mad4b-company-transport/broker-v1
+ExecStart=/usr/bin/python3 /opt/mad4b-company-transport/broker-v1/vps-late-native-sweeper.py --apply
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+TimeoutStartSec=180s

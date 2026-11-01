@@ -26,6 +26,7 @@ $new = array(
 );
 $checkpoint = array(
     'source' => 'self_update', 'state' => 'pending_manual_resume',
+    'resume_blocker' => 'mad4b_automation_automation_kill_switch',
     'target_identity' => $old,
 );
 $graph = array(
@@ -46,7 +47,14 @@ $graph = array(
         'authority_binding' => array( 'required' => true, 'state' => 'owner_gate' ),
     ),
 );
-$method = new ReflectionMethod( 'MAD4B_SCP_Runtime_Convergence', 'superseded_checkpoint_graph_safe' );
+// Read-only exception must never lift the general write/restart convergence gate.
+$general = new ReflectionMethod( 'MAD4B_SCP_Runtime_Convergence', 'superseded_checkpoint_graph_safe' );
+$general->setAccessible( true );
+if ( $general->invoke( null, $checkpoint, $new, time() - 5, $graph ) !== false ) {
+    fwrite( STDERR, 'FAIL owner write gate was incorrectly released' . PHP_EOL );
+    exit( 1 );
+}
+$method = new ReflectionMethod( 'MAD4B_SCP_Runtime_Convergence', 'superseded_checkpoint_mcp_read_safe' );
 $method->setAccessible( true ); // PHP 7.4 compatibility for private method regression checks.
 $check = static function ( $expected, $checkpoint, $current, $graph, $description ) use ( $method ) {
     $result = $method->invoke( null, $checkpoint, $current, time() - 5, $graph );

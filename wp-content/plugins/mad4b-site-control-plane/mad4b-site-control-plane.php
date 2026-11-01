@@ -551,6 +551,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-transport-regist
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-hybrid.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dependency-impact-graph.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operation-registry.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-company-code-reconciliation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-semantic-intent-router.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operation-pipeline.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin-transaction.php';
@@ -861,6 +862,7 @@ if ( ! $mad4b_passive_admin_read || '' !== $mad4b_diagnostic_catalog_target ) {
 	MAD4B_SCP_MCP_Hybrid::boot();
 	MAD4B_SCP_Dependency_Impact_Graph::boot();
 	MAD4B_SCP_Operation_Registry::boot();
+	MAD4B_SCP_Company_Code_Reconciliation::boot();
 	MAD4B_SCP_Operation_Pipeline::boot();
 	MAD4B_SCP_Provider_Autopilot::boot();
 	MAD4B_SCP_Plugin_Transaction::boot();

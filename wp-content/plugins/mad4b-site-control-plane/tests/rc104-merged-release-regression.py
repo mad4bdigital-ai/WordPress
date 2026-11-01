@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PLUGIN = ROOT / 'mad4b-site-control-plane.php'
 INCLUDES = ROOT / 'includes'
 RUNTIME_FIXTURE = ROOT / 'tests/approval-plan-route-preflight-runtime.php'
-TARGET = '0.4.0-rc.104'
+MINIMUM_RC = 104
 
 
 def require(ok, message):
@@ -31,11 +31,21 @@ def run(args):
 
 def main():
     source = PLUGIN.read_text()
-    require(re.search(r'(?m)^\s*\* Version: 0\.4\.0-rc\.104\s*$', source),
-            'WordPress plugin header did not advance')
-    require("define( 'MAD4B_SCP_VERSION', '" + TARGET + "' );" in source,
-            'Plugin runtime version is inconsistent')
-    require(source.count('0.4.0-rc.103') == 0, 'Old plugin version retained')
+    # rc.104 is the minimum reconciled source; later release candidates are
+    # valid only when the runtime header, constant and build file agree.
+    header_line = next((line.strip() for line in source.splitlines()
+                        if line.strip().startswith("* Version: ")), "")
+    header = re.fullmatch(r"\* Version: (0\.4\.0-rc\.([0-9]+))", header_line)
+    require(header is not None and int(header.group(2)) >= MINIMUM_RC,
+            "WordPress plugin header is older than the reconciled rc.104 contract")
+    release = header.group(1)
+    require("define( 'MAD4B_SCP_VERSION', '" + release + "' );" in source,
+            "Plugin runtime version is inconsistent")
+    build = (ROOT / "MAD4B-RUNTIME-BUILD.txt").read_text(encoding="utf-8")
+    require("release=" + release in build.splitlines(),
+            "Source release does not match the pinned runtime build evidence")
+    require(re.search(r"0\.4\.0-rc\.103(?![0-9])", source) is None,
+            "Superseded exact rc.103 release remains in bootstrap")
     router = (INCLUDES/'class-mad4b-scp-adaptive-operation-router.php').read_text()
     guard = (INCLUDES/'class-mad4b-scp-staging-write-planning-guard.php').read_text()
     require('approval_plan_execution_preflight' in router, 'Merged live preflight missing')

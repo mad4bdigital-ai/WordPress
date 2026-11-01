@@ -16,6 +16,9 @@ final class MAD4B_SCP_Readiness_Scopes {
 
     public static function boot() {
         add_action('rest_api_init',array(__CLASS__,'routes'));
+        // The Company Workspace menu is delegated to its existing staff CAP,
+        // not to manage_options. Register its exact slug and capability.
+        MAD4B_SCP_Admin_Route_Registry::register(self::PAGE,MAD4B_SCP_Readiness_Integrations::CAP);
         MAD4B_SCP_Admin_Route_Registry::schedule_submenu(array(__CLASS__,'menu'),35);
     }
     public static function can_manage() {

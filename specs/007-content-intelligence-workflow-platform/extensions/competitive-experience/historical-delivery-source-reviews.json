@@ -23,7 +23,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/historical_source_successor.py",
-      "source_blob_sha": "2a8c51aee3f5338882799cc29ad463c149d340e3",
+      "source_blob_sha": "883fc32def312f71a675e30f35e36d1c88bfeeb5",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
@@ -35,7 +35,39 @@
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/historical-delivery-successor-contract.py"
       ],
-      "review_rationale": "Reviewed exact current historical delivery verifier for two narrowly scoped QA31 successors (G2 Write catalog and G8 Pre-Staging CI). Archives and historical hashes remain immutable. Original verifier blob 046bb44a3856617fd1a849a0b98ae78329af2310 remains traceable in Git history; current SHA bound to negative contract tests and CI-only source, not live or owner authority."
+      "review_rationale": "Original G6/G8/G9 immutable source transitions remain checked against their exact Git ancestors. In addition to previously reviewed runtime/test paths, the closed UI ledger now admits only rc.104 README and MAD4B-RUNTIME-BUILD non-executable successor evidence at exact Git HEAD, with six positive/negative checks per path. No historical SHA is re-signed and no permission, deployment or release authority is created."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt",
+      "source_blob_sha": "feadf7cdef7dcd926e7acc6a2b74a4ded3dc4183",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/historical-delivery-successor-contract.py"
+      ],
+      "review_rationale": "Runtime build evidence currently labels rc.118 but the immutable UI archive is anchored to the exact rc.104 contents at reviewed ancestor 68ce3a12. The same regression checks the historical SHA, exact current Git blob, current-build/runtime parity elsewhere, and rejects altered history, bytes, size, path and synthetic repositories. This is source review only; not a new release approval."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/README.md",
+      "source_blob_sha": "f36d9785e66e2f5ede7ea7db7eb4bf53158487fb",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/historical-delivery-successor-contract.py"
+      ],
+      "review_rationale": "README is documentation, not executable authority. Immutable UI evidence is anchored to exact original README contents at Git commit 68ce3a12, and the later exact HEAD README blob is reviewed with historical negative tests. This creates no runtime, WordPress, site or release approval."
     }
   ]
 }

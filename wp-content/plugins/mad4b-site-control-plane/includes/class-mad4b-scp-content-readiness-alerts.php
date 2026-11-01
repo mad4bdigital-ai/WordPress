@@ -244,16 +244,30 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         else {
             $externalIds=array();
             foreach ($external as $row) {
-                // The known DFSB provider owns these records. It cannot
+                // Only exact reviewed external providers own these records. No provider may
                 // impersonate another issue, set task IDs, or pre-resolve
                 // the issue through untrusted filter output.
                 $code=is_array($row)?(string)($row['code']??''):'';
                 $id=is_array($row)?(string)($row['id']??''):'';
-                $expected=hash('sha256',get_current_blog_id().'|site|0|'.$code);
-                $valid=is_array($row) && preg_match('/^dfsb_[a-z0-9_]+$/D',$code) &&
+                $type=is_array($row)?(string)($row['post_type']??''):'';
+                $object_id=is_array($row)?absint($row['object_id']??0):0;
+                $source=is_array($row)?(string)($row['source']??''):'';
+                $expected=hash('sha256',get_current_blog_id().'|'.$type.'|'.$object_id.'|'.$code);
+                $dfsb=preg_match('/^dfsb_[a-z0-9_]+$/D',$code) &&
+                    $source==='dynamic-filter-seo-bridge' && $type==='site' && $object_id===0;
+                $localization=preg_match('/^loc_(?:layout|text|missing|h1|brand|binding|style)_(?:ar|de|en|es|fr|it)$/D',$code) &&
+                    $source==='mad4b-elementor-localization' &&
+                    $object_id>0 && post_type_exists($type) &&
+                    get_post_type($object_id)===$type && get_post_status($object_id)==='publish' &&
+                    ( ((string)(apply_filters('wpml_post_language_details',null,$object_id)['language_code']??'')) ===
+                        (string)apply_filters('wpml_default_language',null)
+                      || (str_starts_with($code,'loc_brand_') &&
+                          ((string)(apply_filters('wpml_post_language_details',null,$object_id)['language_code']??''))===substr($code,-2) &&
+                          !apply_filters('wpml_object_id',$object_id,$type,false,(string)apply_filters('wpml_default_language',null))) );
+                $performance=preg_match('/^perf_(?:(?:rbcss|lcpdelay|fontcss|inlinecss)_[a-f0-9]{12}|ttfb_site|lcpdiscover_home|ratecss_product|ratecss_source_missing|empty_accommodation_ui|mobile_toc_spacing|rate_origin_ui|rate_schedule_default|toc_bottom_gap|tour_h2_global|rate_locale_parity|rate_schema_drift|rate_origin_config|rate_orphan|catalog_initial_layout|catalog_svg_price_first_paint|catalog_template_drift|chosen_crawlability|ard_manifest|header_escape_text|forced_reflow_home|lcp_request_wait|swiper_focus_[a-f0-9]{12}|probe_stale)$/D',$code) &&
+                    $source==='mad4b-live-performance' && $type==='site' && $object_id===0;
+                $valid=is_array($row) && ($dfsb||$localization||$performance) &&
                     hash_equals($expected,$id) &&
-                    ($row['source']??'')==='dynamic-filter-seo-bridge' &&
-                    ($row['post_type']??'')==='site' && (int)($row['object_id']??-1)===0 &&
                     in_array($row['severity']??'',array('critical','high','medium','low'),true) &&
                     is_string($row['label']??null) &&
                     trim($row['label'])!=='' && strlen($row['label'])<=240 &&
@@ -262,9 +276,9 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                 if (!$valid) {$complete=false;break;}
                 $externalIds[$id]=true;
                 $issues[]=array(
-                    'id'=>$id,'post_type'=>'site','object_id'=>0,'code'=>$code,
+                    'id'=>$id,'post_type'=>$type,'object_id'=>$object_id,'code'=>$code,
                     'severity'=>$row['severity'],'label'=>sanitize_text_field($row['label']),
-                    'source'=>'dynamic-filter-seo-bridge'
+                    'source'=>$source
                 );
             }
         }
@@ -331,6 +345,12 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
     }
     private static function rule_enabled_for($issue,$cfg) {
         $type=$issue['post_type']??'';$code=$issue['code']??'';
+        if(str_starts_with($code,'loc_') && ($issue['source']??'')==='mad4b-elementor-localization')
+            return has_filter('mad4b/content_readiness/external_issues')!==false;
+        if($type==='site' && str_starts_with($code,'perf_') &&
+           ($issue['source']??'')==='mad4b-live-performance')
+            return class_exists('MAD4B_Live_Render_Blocking_Monitor_V1') &&
+                MAD4B_Live_Render_Blocking_Monitor_V1::report()['fresh'];
         if($type==='site' && str_starts_with($code,'dfsb_')){
             // Never resolve a source issue when its scanner is disconnected.
             return has_filter('mad4b/content_readiness/external_issues')!==false;

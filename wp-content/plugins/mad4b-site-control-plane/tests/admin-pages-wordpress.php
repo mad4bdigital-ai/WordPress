@@ -40,6 +40,16 @@ $pages = array(
     'mad4b-market-profiles' => array( 'MAD4B_SCP_Market_Profiles', 'admin_page', array( '' ) ),
     'mad4b-season-calendar' => array( 'MAD4B_SCP_Season_Calendar', 'admin_page', array( '' ) ),
     'mad4b-source-hub' => array( 'MAD4B_SCP_Source_Hub', 'admin_page', array( '' ) ),
+    // Both administrator-only and delegated Company menus must have real
+    // disposable render and denied-user probes. No page is silently omitted.
+    'mad4b-company-migration-decisions' => array( 'MAD4B_SCP_Company_Migration_Decisions', 'page', array( '' ) ),
+    'mad4b-staging-brand-trial' => array( 'MAD4B_SCP_Staging_Brand_Trial', 'page', array( '' ) ),
+    'mad4b-staging-context-fixtures' => array( 'MAD4B_SCP_Staging_Context_Fixtures', 'page', array( '' ) ),
+    'mad4b-content-readiness-alerts' => array( 'MAD4B_SCP_Content_Readiness_Alerts', 'render', array( '' ) ),
+    'mad4b-content-readiness-workflow' => array( 'MAD4B_SCP_Readiness_Workflow_Options', 'render', array( '' ) ),
+    'mad4b-content-completeness' => array( 'MAD4B_SCP_Content_Completeness', 'render', array( '' ) ),
+    'mad4b-readiness-scopes' => array( 'MAD4B_SCP_Readiness_Scopes', 'screen', array( '' ) ),
+    'mad4b-readiness-preactivation' => array( 'MAD4B_SCP_Readiness_PreActivation', 'screen', array( '' ) ),
 );
 $routes = MAD4B_SCP_Admin_Route_Registry::routes();
 $check( ! array_diff( array_keys( $routes ), array_keys( $pages ) ) && ! array_diff( array_keys( $pages ), array_keys( $routes ) ), 'Every declared page must have a smoke case. Missing: ' . implode( ', ', array_diff( array_keys( $routes ), array_keys( $pages ) ) ) . '; stale: ' . implode( ', ', array_diff( array_keys( $pages ), array_keys( $routes ) ) ) );
@@ -49,7 +59,23 @@ $adapter_manifest_tabs = $nav_definitions['mad4b-adapter-coverage'][4] ?? array(
 $check( $adapter_manifest_tabs === $pages['mad4b-adapter-coverage'][2],
     'Provider Coverage tab manifest and disposable WordPress render cases must match exactly.' );
 $workspaces = MAD4B_SCP_Admin_Workspace::inventory();
-$check( ! array_diff( array_keys( $routes ), array_keys( $workspaces ) ) && ! array_diff( array_keys( $workspaces ), array_keys( $routes ) ), 'Every registered page is discoverable in the workspace directory.' );
+// The registry inventories ALL declared pages, including Company staff and
+// Staging-only screens. The visible directory must include EXACTLY the routes
+// permitted to the current actor, never leak a restricted page or make an
+// undelegated WordPress administrator inherit Company staff privileges.
+$visible_routes = array();
+foreach ( $routes as $slug => $route ) {
+    if ( current_user_can( $route['required_capability'] ) ) $visible_routes[ $slug ] = $route;
+}
+$check( ! array_diff( array_keys( $visible_routes ), array_keys( $workspaces ) )
+    && ! array_diff( array_keys( $workspaces ), array_keys( $visible_routes ) ),
+    'Workspace visibility must exactly match registered WordPress capabilities.' );
+foreach ( $routes as $slug => $route ) {
+    if ( isset( $visible_routes[ $slug ] ) ) continue;
+    $_GET = array( 'page' => $slug );
+    $check( '' === MAD4B_SCP_Admin_Workspace::current_page(),
+        'Unauthorized registered page must not resolve: ' . $slug );
+}
 foreach ( $workspaces as $slug => $workspace ) {
 	$_GET = array( 'page' => $slug );
 	$check( $slug === MAD4B_SCP_Admin_Workspace::current_page(), 'Workspace exact route and capability: ' . $slug );

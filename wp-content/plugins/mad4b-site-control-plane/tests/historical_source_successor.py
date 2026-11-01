@@ -261,6 +261,13 @@ DELIVERY_REVIEWED_ANCESTORS = {
         "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
     "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php":
         "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
+    # These two non-executable UI records were archived at rc.104. Preserve
+    # their exact SHA-256 while reviewing later Git HEAD documentation/build
+    # evidence under the independent, non-authorizing source review registry.
+    "wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt":
+        "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
+    "wp-content/plugins/mad4b-site-control-plane/README.md":
+        "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
 }
 
 
@@ -296,6 +303,10 @@ def is_exact_historical_delivery_successor(root, path, contents, historic_sha, h
             "specs/007-content-intelligence-workflow-platform/extensions/"
             "competitive-experience/historical-delivery-source-reviews.json"
             if path.endswith("/competitive-experience/validate.py")
+                or path in (
+                    "wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt",
+                    "wp-content/plugins/mad4b-site-control-plane/README.md",
+                )
             else "governance/production-readiness/capability-coverage.json"
         )
         registry = json.loads((root / reviews_path).read_text(encoding="utf-8"))
