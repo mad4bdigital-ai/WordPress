@@ -1,0 +1,123 @@
+/* The one archive mobile action dock. Its nested Elementor sections must not
+ * create independent sticky/fixed surfaces or 125px of reserved space. */
+@media (max-width:767px) {
+ body.post-type-archive-tours-and-activities {
+  --mad4b-mobile-dock-height:72px;
+  --mad4b-mobile-dock-clearance:calc(var(--mad4b-mobile-dock-height) + 13px + env(safe-area-inset-bottom,0px));
+  scroll-padding-bottom:var(--mad4b-mobile-dock-clearance);
+ }
+ body.post-type-archive-tours-and-activities .site-content {
+  padding-bottom:calc(var(--mad4b-mobile-dock-clearance) + 14px);
+ }
+ body.post-type-archive-tours-and-activities .elementor-element-650c69.elementor-sticky--active {
+  position:fixed!important;
+  inset:auto 12px env(safe-area-inset-bottom,0px) 12px!important;
+  width:auto!important;
+  max-width:none!important;
+  min-height:0!important;
+  max-height:none!important;
+  margin:0!important;
+  padding:0!important;
+  transform:none!important;
+  z-index:90!important;
+ }
+ body.post-type-archive-tours-and-activities .elementor-element-650c69 .elementor-widget-container,
+ body.post-type-archive-tours-and-activities .elementor-element-650c69 .elementor-shortcode,
+ body.post-type-archive-tours-and-activities .elementor-element-650c69 .elementor-34607 {
+  margin:0!important;
+  padding:0!important;
+  min-height:0!important;
+ }
+ body.post-type-archive-tours-and-activities .elementor-element-650c69 .elementor-element-5194c112,
+ body.post-type-archive-tours-and-activities .elementor-element-650c69 .elementor-element-5f71a5d5 {
+  position:relative!important;
+  top:auto!important;
+  right:auto!important;
+  bottom:auto!important;
+  left:auto!important;
+  width:100%!important;
+  min-height:0!important;
+  max-height:none!important;
+  margin:0!important;
+  transform:none!important;
+ }
+ body.post-type-archive-tours-and-activities .elementor-element-650c69 .elementor-element-5194c112 {
+  padding:0!important;
+ }
+ body.post-type-archive-tours-and-activities .elementor-element-650c69 .elementor-element-5f71a5d5 {
+  padding:5px 8px calc(5px + env(safe-area-inset-bottom,0px))!important;
+  gap:3px!important;
+  border-radius:14px!important;
+ }
+ body.post-type-archive-tours-and-activities .elementor-element-650c69 .elementor-element-f271149 {
+  margin:0!important;
+  padding:0!important;
+  gap:6px!important;
+ }
+ body.post-type-archive-tours-and-activities .elementor-element-650c69 .elementor-element-7b9f120c,
+ body.post-type-archive-tours-and-activities .elementor-element-650c69 .elementor-element-7b9f120c .elementor-widget-container {
+  margin:0!important;
+  padding:0!important;
+ }
+ body.post-type-archive-tours-and-activities .elementor-element-650c69 .elementor-element-7b9f120c .elementor-button {
+  min-height:32px!important;
+  padding:6px 10px!important;
+  line-height:1.2!important;
+  touch-action:manipulation;
+ }
+ /* Right: ChatbotX, left: Astra scroll-to-top. Both clear the actual dock
+    height, including iOS visual viewport and bottom safe area. */
+ body.post-type-archive-tours-and-activities .ahc-btn {
+  --ahc-btn-bottom:var(--mad4b-mobile-dock-clearance);
+  --ahc-btn-right:14px;
+  touch-action:manipulation;
+ }
+ body.post-type-archive-tours-and-activities #ast-scroll-top {
+  position:fixed!important;
+  top:auto!important;
+  right:auto!important;
+  left:14px!important;
+  bottom:var(--mad4b-mobile-dock-clearance)!important;
+  width:38px;
+  height:38px;
+  border-radius:10px!important;
+  z-index:95!important;
+ }
+ /* Do not push a share menu behind the tiny cinema hero or into the sticky
+    bar. Its content remains a real JetElements click popover. */
+ body.post-type-archive-tours-and-activities .elementor-element-44b808e .jet-dropbar__content-wrapper {
+  max-width:calc(100vw - 24px);
+  max-height:min(62dvh,440px);
+  overflow-y:auto;
+  overscroll-behavior:contain;
+ }
+ body.post-type-archive-tours-and-activities .elementor-element-44b808e .jet-dropbar__button {
+  touch-action:manipulation;
+ }
+ /* Full-screen mobile navigation has priority over floating page actions. */
+ body.post-type-archive-tours-and-activities:has(#menu-toggle-101[aria-expanded="true"]) .elementor-element-650c69,
+ body.post-type-archive-tours-and-activities:has(#menu-toggle-101[aria-expanded="true"]) #ast-scroll-top,
+ body.post-type-archive-tours-and-activities:has(#menu-toggle-101[aria-expanded="true"]) .ahc-btn {
+  visibility:hidden!important;
+  pointer-events:none!important;
+ }
+}
+@media (hover:none), (pointer:coarse) {
+ /* A tap must not leave a hover selection behind after scrolling. */
+ .elementor-location-header .product-native-navigation .navigation-editor-card:hover,
+ .elementor-location-header .product-native-navigation .mad4b-tour-tree-row:hover,
+ .elementor-location-header .product-native-navigation .mad4b-tour-facet-tab:hover,
+ body.post-type-archive-tours-and-activities .elementor-element-44b808e .jet-dropbar__button:hover {
+  background:transparent!important;
+  border-color:transparent!important;
+ }
+ .elementor-location-header .product-native-navigation .mad4b-tour-facet-tab[aria-selected=true],
+ .elementor-location-header .product-native-navigation .mad4b-tour-facet-tab:focus-visible {
+  background:var(--mad4b-nav-surface-hover,#204c50)!important;
+  border-color:var(--mad4b-nav-accent,#c39852)!important;
+ }
+ .elementor-location-header .product-native-navigation .mad4b-tour-tree-item[data-open=true]>.mad4b-tour-tree-row,
+ .elementor-location-header .product-native-navigation .mad4b-tour-tree-item:focus-within>.mad4b-tour-tree-row {
+  background:var(--mad4b-nav-surface-hover,#204c50)!important;
+ }
+}
