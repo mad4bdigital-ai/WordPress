@@ -33,9 +33,11 @@ jobs:
           php ops/central-company-engine-governance/test_full_wpcli_enrollment_registration.php
           php ops/central-company-engine-governance/test_305_channel_once.php
           php -l ops/central-company-engine-governance/original-broker-source/306-mad4b-central-vps-broker.php
+          php -l ops/central-company-engine-governance/original-broker-source/306-mad4b-original-core-recovery.php
           php -l ops/central-company-engine-governance/original-broker-source/312-mad4b-broker-exact-ssh-authority.php
           php -l ops/central-company-engine-governance/original-broker-source/313-mad4b-broker-remote-ssh-diagnostic.php
           php ops/central-company-engine-governance/test_original_broker_306_312.php
+          php ops/central-company-engine-governance/test_original_core_recovery.php
           php ops/central-company-engine-governance/test_original_broker_313.php
           node --check ops/central-company-engine-governance/native/signed_argv_envelope.mjs
           node --check ops/central-company-engine-governance/native/full_wpcli_execute.mjs
