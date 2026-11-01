@@ -16,7 +16,7 @@ class MAD4B_Company_Portfolio_Manager_V1 {public static function has_delegation(
 class MAD4B_Native_VPS_Principal_V1 {public static function valid_job_chain(){return false;}}
 function get_option($k,$fallback=false){return $GLOBALS['options'][$k]??$fallback;}
 function must($yes,$tag){if(!$yes){fwrite(STDERR,"FAILED: $tag\n");exit(1);}}
-require dirname(__DIR__).'/candidate/312-mad4b-broker-exact-ssh-authority.php';
+require dirname(__DIR__).'/312-mad4b-broker-exact-ssh-authority.php';
 $id=str_repeat('a',32);$grant_id=str_repeat('b',32);$transport_id=str_repeat('c',32);
 $digest=str_repeat('d',64);$origin='https://customer-staging.example';$t=time()+260;
 $job=[
