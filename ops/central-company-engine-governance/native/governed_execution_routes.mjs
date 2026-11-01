@@ -1,4 +1,4 @@
-import {planOriginalCoreTransportRecovery} from './original_dual_route_policy.mjs';
+import {planOriginalCoreTransportRecovery,planIndependentSshRemediation} from './original_dual_route_policy.mjs';
 // MAD4B original-Core execution routes. Typed operations and original general
 // shell are first-class peer routes. The general shell is preserved as a
 // fallback CAPABILITY, never a fallback for a denied typed invocation.
@@ -36,6 +36,81 @@ export function createGovernedExecutionRoutes({core,typed={},generalShell}){
   throw Error('ORIGINAL_CORE_AUTHORITY_ADAPTERS_REQUIRED');
  return Object.freeze({
   routes:availableGovernedRoutes(),
+  // A refused Native provider may lead to a NEW, independently authorized
+  // SSH operation, never a replay or authority transfer from the denied job.
+  async prepareIndependentSshRemediation({denial_ref,ssh_request_ref}={}){
+   if(typeof denial_ref!=='string'||!denial_ref||
+      typeof ssh_request_ref!=='string'||!ssh_request_ref)
+    return fail('DENIED','ORIGINAL_SSH_REMEDIATION_REFERENCES_REQUIRED','maintenance.shell');
+   if(typeof core.readOriginalIndependentSshRemediation!=='function'||
+      typeof core.admitIndependentSshRemediationOnce!=='function')
+    return fail('PARKED_PROVIDER_REVIEW_REQUIRED',
+      'ORIGINAL_INDEPENDENT_SSH_ADMISSION_ADAPTER_NOT_REGISTERED','maintenance.shell');
+   let evidence;
+   try {
+    evidence=await core.readOriginalIndependentSshRemediation({
+      denial_ref,ssh_request_ref
+    });
+   }catch {
+    return fail('PARKED_UNCERTAIN_NO_REPLAY',
+      'INDEPENDENT_SSH_AUTHORITY_READ_UNAVAILABLE','maintenance.shell');
+   }
+   if(!evidence||evidence.denial?.denial_ref!==denial_ref||
+      evidence.request?.prior_denial_ref!==denial_ref||
+      evidence.request_ref!==ssh_request_ref)
+    return fail('DENIED','ORIGINAL_INDEPENDENT_SSH_EVIDENCE_MISMATCH','maintenance.shell');
+   const plan=planIndependentSshRemediation(evidence);
+   if(plan.state!=='NEW_ORIGINAL_CORE_ADMISSION_REQUIRED')
+    return fail(plan.state,plan.reason,'maintenance.shell');
+   let result;
+   try {
+    result=await core.admitIndependentSshRemediationOnce({
+      denial_ref,ssh_request_ref,provider:'vps_ssh',
+      requested_operation:'maintenance.shell',
+      original_company:evidence.request.company,
+      original_site_uuid:evidence.request.site_uuid,
+      command_sha256:evidence.request.command_sha256,
+      independent_authorization_ref:evidence.request.authorization_ref
+    });
+   }catch {
+    return fail('PARKED_UNCERTAIN_NO_REPLAY',
+      'INDEPENDENT_ORIGINAL_SSH_ADMISSION_UNCERTAIN','maintenance.shell');
+   }
+   if(result?.state!=='NEW_ORIGINAL_SSH_JOB_COMMITTED_NOT_DISPATCHED'||
+      !HEX32.test(result.new_job_id||'')||
+      result.new_job_id===evidence.denial.original_job_id||
+      result.denial_ref!==denial_ref||
+      result.request_ref!==ssh_request_ref||
+      result.provider!=='vps_ssh'||result.operation!=='maintenance.shell'||
+      result.company!==evidence.request.company||
+      result.site_uuid!==evidence.request.site_uuid||
+      result.canonical_origin!==evidence.request.origin||
+      result.environment!==evidence.request.environment||
+      result.target_host_id!==evidence.request.host_id||
+      result.command_sha256!==evidence.request.command_sha256||
+      result.independent_authorization_ref!==evidence.request.authorization_ref||
+      result.executed!==false||result.dispatch_started!==false)
+    return fail('PARKED_UNCERTAIN_NO_REPLAY',
+      'INDEPENDENT_ORIGINAL_SSH_COMMIT_UNVERIFIED','maintenance.shell');
+   try{
+    await core.audit({
+      operation:'maintenance.shell',job_id:result.new_job_id,
+      state:'INDEPENDENT_SSH_REMEDIATION_JOB_ADMITTED_NOT_DISPATCHED',
+      denial_ref,ssh_request_ref
+    });
+   }catch{
+    return fail('PARKED_UNCERTAIN_NO_REPLAY',
+      'INDEPENDENT_SSH_AUDIT_UNCERTAIN','maintenance.shell');
+   }
+   return Object.freeze({
+    contract:'mad4b.original-core-execution-result.v1',
+    state:'NEW_INDEPENDENT_SSH_JOB_READY',operation:'maintenance.shell',
+    provider:'vps_ssh',new_job_id:result.new_job_id,
+    prior_denial_ref:denial_ref,
+    requires_original_dispatcher:true,replay_permitted:false,
+    verified:false,executed:false
+   });
+  },
   // No alternate dispatcher. Only the original Core can create the next job.
   // This bridge does not execute either the previous job or the replacement.
   async recoverPreDispatch({job_id}={}){
