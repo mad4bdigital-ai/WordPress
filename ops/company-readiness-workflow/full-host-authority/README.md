@@ -33,3 +33,21 @@ python3 -m unittest discover -s . -p 'test_*.py' -v
 ### Integration work still required
 
 Connect the source to the **live authenticated** Original Core company catalog, **independently verified** owner/manager/provenance evidence, signed host policy ledger, scoped native executor, and reconciled Original 305 pair. Add staging acceptance with rollback and independent 313 receipts before production rollout. Do not treat a fabricated evidence JSON as permission to execute.
+
+### Connected live readback (source integration slice)
+
+`live_full_host_authority.py once` runs the **existing** `company-unified-operation-policy.py once` through a fixed local command on the authorized central VPS and reads its fresh Original Core report and root-protected signed host policy. It computes a source-backed capability census without issuing a Grant, making any remote call, or changing tenant site files.
+
+- Requires a registered root execution context, exact root-owned policy/readback files, and a fresh report (maximum 300 seconds).
+- Each registered company/environment appears in the output, including sites that have no original Site UUID or no exact Host Scope; missing bindings are reported, never inferred.
+- A scope on another host or for another UUID is rejected. Any duplicate host claim fails closed.
+- Source status remains `PENDING_SITE_SPECIFIC_AUTHORITY` even with an Original 305 active pair; the operator and independent `312/313` receipts must be verified before an operation.
+- Production entries are discoveries only; their activation requires a separate owner authorization and rollback evidence.
+
+On the central staging host, **after installing this reviewed source into the authorized tooling directory**:
+
+```sh
+python3 live_full_host_authority.py once
+```
+
+Source-only CI exercises the reconciler with deterministic fixtures. Successful tests do not certify live execution or signed owner/manager issuance.
