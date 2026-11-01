@@ -223,4 +223,6 @@ final class MAD4B_Environment_Manager_Assignment_V1 {
         }
     }
 }
-MAD4B_Environment_Manager_Assignment_V1::boot();
+// Register only after all MU and standard plugins have defined their providers.
+// Immediate MU bootstrap can silently omit REST and WP-CLI routes.
+add_action('plugins_loaded',[MAD4B_Environment_Manager_Assignment_V1::class,'boot'],90);
