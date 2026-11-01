@@ -139,7 +139,7 @@ const nativeDenial={
  state:'DENIED',denial_scope:'native_provider_only',
  evidence_source:'original_core_signed_journal',verified:true,
  reason_code:'SIGNED_POLICY_ROTATION_REQUIRED',
- denial_ref:'original-denial-01',
+ denial_ref:'original-denial-01',original_job_id:'d'.repeat(32),
  command_sha256:'b'.repeat(64),authorization_ref:'old-native-grant',
  correlation_id:'old-denied-request',
  company:'etg',site_uuid:request.site_uuid,origin:request.origin,
@@ -158,7 +158,7 @@ const newSshRequest={
 const independentContext={
  ...context,independent_core_ssh_grant_verified:true,
  original_core_journal_ready:true,
- grant:{...context.grant,authorization_ref:newSshRequest.authorization_ref}
+ grant:{...context.grant,company:newSshRequest.company,authorization_ref:newSshRequest.authorization_ref}
 };
 const sshRemediation=(overrides={})=>planIndependentSshRemediation({
  denial:nativeDenial,request:newSshRequest,
