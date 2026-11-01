@@ -105,17 +105,38 @@ export function createOriginalCoreWpcliExecutor({core,broker,transport}){
         await core.audit(jobId,'READBACK_UNCERTAIN_NO_RETRY');
         return Object.freeze({state:'READBACK_UNCERTAIN_NO_RETRY',executed:true});
       }
-      if(!proof||proof.contract!=='mad4b.broker-remote-wpcli-receipt.v1'||
-         proof.verified!==true||proof.independent_host_readback_verified!==true||
-         proof.job_id!==jobId||proof.command_sha256!==job.command_sha256||
-         proof.site_uuid!==job.site_uuid||proof.company_id!==job.company_id||
-         proof.exit_code!==result?.exit_code){
-        await core.audit(jobId,'READBACK_UNVERIFIED_NO_RETRY');
-        return Object.freeze({state:'READBACK_UNVERIFIED_NO_RETRY',executed:true});
+      // Original 313 is two-stage: its broker-signed host result is first
+      // stored PENDING. Never mistake that pending receipt for a failed
+      // command, a replayable command, or a certified Native executor.
+      const exact=proof?.contract==='mad4b.broker-remote-wpcli-receipt.v1'&&
+        proof.job_id===jobId&&proof.command_sha256===job.command_sha256&&
+        proof.site_uuid===job.site_uuid&&
+        (proof.company===job.company_id||proof.company_id===job.company_id)&&
+        proof.grant_id===job.grant_id&&proof.transport_id===job.channel_id&&
+        proof.target_id===job.ssh_target_id&&
+        proof.origin===job.canonical_origin&&proof.environment===job.environment&&
+        proof.exit_code===result?.exit_code;
+      if(exact&&proof.state==='PENDING_INDEPENDENT_NATIVE_READBACK'&&
+         proof.verified===false&&proof.host_signed_attestation_received===true&&
+         proof.native_executor_certified===false&&
+         proof.independent_host_readback_verified===false){
+        await core.audit(jobId,'ORIGINAL_313_PENDING_INDEPENDENT_READBACK_NO_REPLAY');
+        return Object.freeze({state:'PENDING_INDEPENDENT_NATIVE_READBACK',
+          certified:false,executed:true,job_id:jobId,exit_code:result.exit_code});
       }
-      await core.audit(jobId,'NATIVE_EXECUTION_AND_READBACK_VERIFIED');
-      return Object.freeze({state:'VERIFIED',executed:true,
-        job_id:jobId,exit_code:result.exit_code});
+      // Final success requires the separate original-Core atomic journal,
+      // not merely a signed 313 message or caller-supplied verified flag.
+      if(!exact||proof.state!=='CORE_313_FINALIZED'||
+         proof.verified!==true||proof.native_executor_certified!==true||
+         proof.independent_host_readback_verified!==true||
+         !hex64.test(proof.journal_sha256||'')){
+        await core.audit(jobId,'READBACK_UNVERIFIED_NO_RETRY');
+        return Object.freeze({state:'READBACK_UNVERIFIED_NO_RETRY',certified:false,executed:true});
+      }
+      await core.audit(jobId,'NATIVE_EXECUTION_AND_ORIGINAL_CORE_313_VERIFIED');
+      return Object.freeze({state:'VERIFIED',certified:true,executed:true,
+        job_id:jobId,exit_code:result.exit_code,
+        journal_sha256:proof.journal_sha256});
     }
   });
 }
