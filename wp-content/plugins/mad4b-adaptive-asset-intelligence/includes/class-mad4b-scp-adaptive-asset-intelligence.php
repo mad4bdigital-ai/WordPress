@@ -111,7 +111,7 @@ final class MAD4B_SCP_Adaptive_Asset_Intelligence {
   self::mark_dirty('source_package_updated','/');
  }
  public static function option_changed($option,$old,$new): void {
-  if (!in_array($option,['elementor_css_print_method','litespeed.conf.optm-css_comb','litespeed.conf.optm-css_comb_ext_inl','litespeed.conf.guest','litespeed.conf.guest_optm','icl_sitepress_settings'],true) || $old===$new)return;
+  if (!in_array($option,['elementor_css_print_method','litespeed.conf.optm-css_comb','litespeed.conf.optm-css_comb_ext_inl','litespeed.conf.guest','litespeed.conf.guest_optm','litespeed.conf.cache-mobile','litespeed.conf.cache-mobile_rules','icl_sitepress_settings'],true) || $old===$new)return;
   self::mark_dirty('asset_settings_changed','/');
  }
  public static function menu_changed(): void {self::mark_dirty('navigation_updated','/');}
@@ -119,8 +119,19 @@ final class MAD4B_SCP_Adaptive_Asset_Intelligence {
   if (!self::scope() || !is_readable(self::MANIFEST))return [];
   $content=@file_get_contents(self::MANIFEST);if(!is_string($content)||strlen($content)>110000)return [];
   $v=json_decode($content,true);if(!is_array($v)||($v['site_uuid']??'')!==self::UUID||($v['site_host']??'')!==self::HOST)return [];
-  return array_values(array_map(static fn($x)=>['path'=>$x['path']??'','locale'=>$x['locale']??'',
-    'state'=>$x['status']??'native','expires'=>$x['expires']??0,'count'=>count($x['assets']??[])],array_filter($v['routes']??[],'is_array')));
+  $rows=[];
+  foreach ($v['routes']??[] as $route) {
+   if (!is_array($route))continue;
+   foreach (['desktop','mobile'] as $device) {
+    $policy=$route['devices'][$device]??null;
+    if (!is_array($policy))continue;
+    $rows[]=['path'=>$route['path']??'','locale'=>$route['locale']??'',
+     'device'=>$device,'state'=>$policy['status']??'native','expires'=>$policy['expires']??0,
+     'count'=>is_array($policy['assets']??null)?count($policy['assets']):0,
+     'reason'=>implode(', ',array_slice(is_array($policy['issues']??null)?$policy['issues']:[],0,3))];
+   }
+  }
+  return $rows;
  }
  public static function summary(): array {
   $feed=self::notification_feed();$routes=self::manifest();$statuses=[];
@@ -128,7 +139,7 @@ final class MAD4B_SCP_Adaptive_Asset_Intelligence {
   return ['contract'=>'mad4b.adaptive-asset-intelligence.v1','environment'=>'staging',
    'site_uuid'=>self::UUID,'pending_jobs'=>count(self::queue()),'unread_notifications'=>count(array_filter($feed,static fn($e)=>empty($e['ack']))),
    'routes'=>$routes,'states'=>$statuses,'notifications'=>array_slice($feed,0,30),
-   'worker'=>'vps_local_chromium','external_delivery'=>false];
+   'worker'=>'vps_local_chromium','litespeed_provider'=>class_exists('MAD4B_LSC_Local_Provider_V1')?MAD4B_LSC_Local_Provider_V1::capabilities():['scope'=>'missing'],'external_delivery'=>false];
  }
  public static function rest(): void {
   register_rest_route('mad4b/v1','/adaptive-assets',['methods'=>'GET',
@@ -167,9 +178,15 @@ final class MAD4B_SCP_Adaptive_Asset_Intelligence {
   $s=self::summary();
   echo '<div class="wrap"><h1>MAD4B Adaptive Asset Intelligence</h1>';
   echo '<p>Staging only. Browser analysis and release decisions run on the local VPS Worker. No email or WhatsApp dispatch.</p>';
+  $provider=$s['litespeed_provider'];
+  echo '<p><strong>LiteSpeed compatibility:</strong> '.esc_html($provider['mode']??'unavailable').
+    ' | CSS combining: '.esc_html($provider['css_combine_owner']??'native').
+    ' | Local CSS: '.esc_html($provider['runtime_css_overlay']??'disabled').'</p>';
+  echo '<p><small>QUIC.cloud CDN, image optimization, and VPI remain managed by LiteSpeed until verified local replacements exist.</small></p>';
+
   echo '<p><strong>Pending:</strong> '.(int)$s['pending_jobs'].' &nbsp; <strong>Unread alerts:</strong> '.(int)$s['unread_notifications'].' &nbsp; <strong>Policy routes:</strong> '.count($s['routes']).'</p>';
-  echo '<h2>Page policy states</h2><table class="widefat striped"><thead><tr><th>Route</th><th>Language</th><th>Status</th><th>CSS assets</th><th>Expiry UTC</th></tr></thead><tbody>';
-  foreach($s['routes'] as $r)echo '<tr><td>'.esc_html($r['path']).'</td><td>'.esc_html($r['locale']).'</td><td>'.esc_html($r['state']).'</td><td>'.(int)$r['count'].'</td><td>'.esc_html($r['expires']?gmdate('Y-m-d H:i',(int)$r['expires']):'-').'</td></tr>';
+  echo '<h2>Page policy states</h2><table class="widefat striped"><thead><tr><th>Route</th><th>Language</th><th>Device</th><th>Status</th><th>CSS assets</th><th>Expiry UTC</th></tr></thead><tbody>';
+  foreach($s['routes'] as $r)echo '<tr><td>'.esc_html($r['path']).'</td><td>'.esc_html($r['locale']).'</td><td>'.esc_html($r['device']).'</td><td>'.esc_html($r['state']).'</td><td>'.(int)$r['count'].'</td><td>'.esc_html($r['expires']?gmdate('Y-m-d H:i',(int)$r['expires']):'-').'</td></tr>';
   echo '</tbody></table><h2>Notifications</h2><table class="widefat striped"><thead><tr><th>Date (UTC)</th><th>Severity</th><th>Route</th><th>Event</th><th>Action</th></tr></thead><tbody>';
   foreach($s['notifications'] as $e){echo '<tr><td>'.esc_html(gmdate('Y-m-d H:i',(int)$e['timestamp'])).'</td><td>'.esc_html($e['severity']).'</td><td>'.esc_html($e['path']).'</td><td>'.esc_html($e['message']).'</td><td>';
    if(empty($e['ack'])){echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="mad4b_adaptive_assets_ack" /><input type="hidden" name="event_id" value="'.esc_attr($e['id']).'" />';wp_nonce_field('mad4b_adaptive_css_ack');submit_button('Mark read','small','submit',false);echo '</form>';}else echo 'Read';echo '</td></tr>';
