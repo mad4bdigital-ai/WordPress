@@ -59,7 +59,23 @@ $adapter_manifest_tabs = $nav_definitions['mad4b-adapter-coverage'][4] ?? array(
 $check( $adapter_manifest_tabs === $pages['mad4b-adapter-coverage'][2],
     'Provider Coverage tab manifest and disposable WordPress render cases must match exactly.' );
 $workspaces = MAD4B_SCP_Admin_Workspace::inventory();
-$check( ! array_diff( array_keys( $routes ), array_keys( $workspaces ) ) && ! array_diff( array_keys( $workspaces ), array_keys( $routes ) ), 'Every registered page is discoverable in the workspace directory.' );
+// The registry inventories ALL declared pages, including Company staff and
+// Staging-only screens. The visible directory must include EXACTLY the routes
+// permitted to the current actor, never leak a restricted page or make an
+// undelegated WordPress administrator inherit Company staff privileges.
+$visible_routes = array();
+foreach ( $routes as $slug => $route ) {
+    if ( current_user_can( $route['required_capability'] ) ) $visible_routes[ $slug ] = $route;
+}
+$check( ! array_diff( array_keys( $visible_routes ), array_keys( $workspaces ) )
+    && ! array_diff( array_keys( $workspaces ), array_keys( $visible_routes ) ),
+    'Workspace visibility must exactly match registered WordPress capabilities.' );
+foreach ( $routes as $slug => $route ) {
+    if ( isset( $visible_routes[ $slug ] ) ) continue;
+    $_GET = array( 'page' => $slug );
+    $check( '' === MAD4B_SCP_Admin_Workspace::current_page(),
+        'Unauthorized registered page must not resolve: ' . $slug );
+}
 foreach ( $workspaces as $slug => $workspace ) {
 	$_GET = array( 'page' => $slug );
 	$check( $slug === MAD4B_SCP_Admin_Workspace::current_page(), 'Workspace exact route and capability: ' . $slug );
