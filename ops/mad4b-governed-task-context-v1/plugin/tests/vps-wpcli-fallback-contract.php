@@ -50,11 +50,13 @@ function expect($value,$name){if(!$value)throw new RuntimeException($name);}
 $read=MAD4B_Hub_CLI_Fallback::execute('status',array());
 expect(!is_wp_error($read) && $read['transport']==='vps_wpcli_fallback','status');
 expect($read['chatgpt_oauth_verified']===false,'honest_oauth');
+expect($read['site_origin']==='https://tours.dev.mad4b.com' && $read['site_environment']==='staging','read_origin_is_current_site');
 expect(count(MAD4B_SCP_Audit::$events)===0,'read_no_audit_mutation');
 $queue=MAD4B_Hub_CLI_Fallback::execute('queue-list',array());
 expect(!is_wp_error($queue) && $queue['ability']==='mad4b/hub-bulk-list-queue','original_queue_read');
 expect(count(MAD4B_SCP_Audit::$events)===0,'queue_read_without_write_audit');
 expect($queue['authenticated_via']==='verified_wordpress_wpcli' && !$queue['chatgpt_oauth_verified'],'identity_not_spoofed');
+expect($queue['site_origin']==='https://tours.dev.mad4b.com' && $queue['site_environment']==='staging','queue_read_origin_bound');
 $write=MAD4B_Hub_CLI_Fallback::execute('submit-keywords',array('job_id'=>'test'));
 expect(!is_wp_error($write) && $write['result']['saved'],'write');
 expect(MAD4B_SCP_Audit::$events===array('requested','ok'),'audit_success');
