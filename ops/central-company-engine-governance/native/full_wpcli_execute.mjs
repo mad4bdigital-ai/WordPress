@@ -1,3 +1,4 @@
+import {verifyOriginalCoreArgvEnvelope} from './signed_argv_envelope.mjs';
 import {createHash} from 'node:crypto';
 
 // Original-Core native execution binding: adapter interfaces MUST be implemented
@@ -33,6 +34,8 @@ export function createOriginalCoreWpcliExecutor({core,broker,transport}){
      typeof core.fetchEnrolledChannel!=='function'||
      typeof core.claimJobOnce!=='function'||
      typeof core.audit!=='function'||
+     typeof core.fetchSignedArgvEnvelope!=='function'||
+     typeof core.getPinnedSignerPublicKey!=='function'||
      typeof broker.verify312!=='function'||
      typeof broker.verify313!=='function'||
      typeof transport.runBoundWpcli!=='function')throw Error('ORIGINAL_NATIVE_ADAPTERS_REQUIRED');
@@ -54,9 +57,15 @@ export function createOriginalCoreWpcliExecutor({core,broker,transport}){
          !same(job,channel,exactFields)||
          channel.full_wpcli_active!==true)
         return stop('EXACT_CHANNEL_NOT_ENROLLED');
-      if(!Array.isArray(job.argv))return stop('WPCLI_PAYLOAD_NOT_AVAILABLE');
-      try {checkedArgs(job.argv)} catch(e){return stop(e.message)}
-      if(payloadHash(job.argv)!==job.command_sha256)return stop('COMMAND_DIGEST_MISMATCH');
+      let verifiedArgs;
+      try {
+        const envelope=await core.fetchSignedArgvEnvelope(jobId);
+        const trustedPublicKey=await core.getPinnedSignerPublicKey(channel);
+        verifiedArgs=verifyOriginalCoreArgvEnvelope({envelope,trustedPublicKey,expected:job});
+      }catch{return stop('SIGNED_ARGV_TRANSPORT_UNAVAILABLE')}
+      if(verifiedArgs.ok!==true)return stop(verifiedArgs.reason);
+      const argv=verifiedArgs.argv;
+      if(verifiedArgs.command_sha256!==job.command_sha256)return stop('COMMAND_DIGEST_MISMATCH');
       const admission=await broker.verify312({job,channel});
       if(!admission||admission.eligible!==true||admission.verified!==true||
          admission.owner_enrolled_wpcli!==true||
@@ -79,7 +88,7 @@ export function createOriginalCoreWpcliExecutor({core,broker,transport}){
         result=await transport.runBoundWpcli({
           job_id:jobId,channel_id:job.channel_id,site_uuid:job.site_uuid,
           command_sha256:job.command_sha256,
-          executable:'wp',argv:[...job.argv],
+          executable:'wp',argv:[...argv],
           wordpress_root:channel.wordpress_root,
           wordpress_principal:channel.wordpress_principal,
           ssh_target_id:channel.ssh_target_id,
