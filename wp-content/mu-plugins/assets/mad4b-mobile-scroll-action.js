@@ -1,9 +1,48 @@
 (function(){
  'use strict';
- if(!document.body||!document.body.classList.contains('post-type-archive-tours-and-activities'))return;
+ if(!document.body||!(
+  document.body.classList.contains('post-type-archive-tours-and-activities')||
+  document.body.classList.contains('single-tours-and-activities')
+ ))return;
  var dock='.elementor-element-650c69';
- var share='.elementor-element-44b808e .jet-dropbar';
- var lastTouchY=null,buttonBefore=new WeakMap(),lastScrollY=scrollY,raf=false;
+ var share='.elementor-widget-jet-dropbar:has(.elementor-25031) .jet-dropbar';
+ var buttonBefore=new WeakMap(),raf=false;
+ var lifted=[];
+ function restoreShareLayers(){
+  lifted.forEach(function(entry){
+   entry.saved.forEach(function(v){
+    if(v.value)entry.node.style.setProperty(v.name,v.value,v.priority);
+    else entry.node.style.removeProperty(v.name);
+   });
+  });
+  lifted=[];
+ }
+ function promoteShareLayers(){
+  restoreShareLayers();
+  var open=document.querySelector(share+'.jet-dropbar-open');
+  if(!open)return;
+  // Open share rail outranks Elementor containers/cards, the sticky inquiry
+  // dock, mobile header and any overflow-clipped hero ancestors.
+  var node=open,seen=new Set();
+  while(node&&node!==document.body&&node.nodeType===1){
+   if(!seen.has(node)){
+    seen.add(node);
+    var computed=getComputedStyle(node),values=[];
+    function set(name,value){
+     values.push({name:name,value:node.style.getPropertyValue(name),
+       priority:node.style.getPropertyPriority(name)});
+     node.style.setProperty(name,value,'important');
+    }
+    if(computed.position==='static')set('position','relative');
+    set('z-index','2147483000');
+    if(/hidden|clip/.test(computed.overflowX+' '+computed.overflowY))
+      set('overflow','visible');
+    lifted.push({node:node,saved:values});
+   }
+   node=node.parentElement;
+  }
+ }
+
  var services={
   facebook:function(u){return 'https://www.facebook.com/sharer.php?'+new URLSearchParams({u:u})},
   twitter:function(u){return 'https://twitter.com/intent/tweet?'+new URLSearchParams({url:u})},
@@ -31,21 +70,25 @@
    var btn=d.querySelector('.jet-dropbar__button');
    if(btn)btn.setAttribute('aria-expanded','false');
   });
+  restoreShareLayers();
  }
  function openState(d){
+  var opened=d.classList.contains('jet-dropbar-open');
   var b=d.querySelector('.jet-dropbar__button');
-  if(b)b.setAttribute('aria-expanded',d.classList.contains('jet-dropbar-open')?'true':'false');
+  if(b)b.setAttribute('aria-expanded',opened?'true':'false');
+  if(opened)promoteShareLayers();
+  else restoreShareLayers();
  }
  // Capture the original state before vendor JetElements click handlers run.
  // Only intervene when the native "mode: click" handler failed to change it.
  document.addEventListener('click',function(ev){
-  var btn=ev.target.closest('.elementor-element-44b808e .jet-dropbar__button');
+  var btn=ev.target.closest('.elementor-widget-jet-dropbar:has(.elementor-25031) .jet-dropbar__button');
   if(!btn)return;
   var d=btn.closest('.jet-dropbar');
   if(d)buttonBefore.set(btn,d.classList.contains('jet-dropbar-open'));
  },true);
  document.addEventListener('click',function(ev){
-  var btn=ev.target.closest('.elementor-element-44b808e .jet-dropbar__button');
+  var btn=ev.target.closest('.elementor-widget-jet-dropbar:has(.elementor-25031) .jet-dropbar__button');
   if(btn){
    var d=btn.closest('.jet-dropbar');if(!d)return;
    var was=buttonBefore.get(btn);
@@ -56,12 +99,12 @@
    openState(d);
    return;
   }
-  if(!ev.target.closest('.elementor-element-44b808e .jet-dropbar__content'))closeShare();
+  if(!ev.target.closest('.elementor-widget-jet-dropbar:has(.elementor-25031) .jet-dropbar__content'))closeShare();
  },false);
  // UAEL social anchors have no href and normally only work once its jQuery
  // Elementor handler initializes. Provide the same destinations directly.
  document.addEventListener('click',function(ev){
-  var a=ev.target.closest('.elementor-element-44b808e .uael-share-btn-facebook, .elementor-element-44b808e .uael-share-btn-twitter, .elementor-element-44b808e .uael-share-btn-linkedin, .elementor-element-44b808e .uael-share-btn-whatsapp, .elementor-element-44b808e .uael-share-btn-telegram, .elementor-element-44b808e .uael-share-btn-threads, .elementor-element-44b808e .uael-share-btn-email');
+  var a=ev.target.closest('.elementor-widget-jet-dropbar:has(.elementor-25031) .uael-share-btn-facebook, .elementor-widget-jet-dropbar:has(.elementor-25031) .uael-share-btn-twitter, .elementor-widget-jet-dropbar:has(.elementor-25031) .uael-share-btn-linkedin, .elementor-widget-jet-dropbar:has(.elementor-25031) .uael-share-btn-whatsapp, .elementor-widget-jet-dropbar:has(.elementor-25031) .uael-share-btn-telegram, .elementor-widget-jet-dropbar:has(.elementor-25031) .uael-share-btn-threads, .elementor-widget-jet-dropbar:has(.elementor-25031) .uael-share-btn-email');
   if(!a)return;
   var kind=Object.keys(services).find(function(k){return a.classList.contains('uael-share-btn-'+k)});
   if(!kind)return;
@@ -81,24 +124,31 @@
    if(pop){try{pop.opener=null}catch(e){}ev.preventDefault();}
   }
  },true);
- document.addEventListener('touchstart',function(ev){
-  if(ev.touches.length===1)lastTouchY=ev.touches[0].clientY;
- },{passive:true});
- document.addEventListener('touchmove',function(ev){
-  if(lastTouchY!==null && ev.touches.length===1
-    &&Math.abs(lastTouchY-ev.touches[0].clientY)>12)closeShare();
- },{passive:true});
- window.addEventListener('scroll',function(){
-  if(Math.abs(window.scrollY-lastScrollY)>14)closeShare();
-  lastScrollY=window.scrollY;schedule();
- },{passive:true});
+ // Side rail remains sticky while scrolling. Explicit close only: close
+ // button, toggle, click outside, or Escape. Scrolling must never scatter
+ // or dismiss the menu independently of the user's decision.
+ window.addEventListener('scroll',schedule,{passive:true});
+ document.addEventListener('keydown',function(ev){
+  if(ev.key==='Escape')closeShare();
+ });
  window.addEventListener('resize',schedule,{passive:true});
  if(window.visualViewport)window.visualViewport.addEventListener('resize',schedule,{passive:true});
  function watch(){
   var el=document.querySelector(dock);
   if(el&&'ResizeObserver' in window){new ResizeObserver(schedule).observe(el)}
   schedule();
-  document.querySelectorAll(share).forEach(openState);
+  document.querySelectorAll(share).forEach(function(d){
+   openState(d);
+   var panel=d.querySelector('.jet-dropbar__content');
+   if(!panel||panel.querySelector('.mad4b-share-rail-close'))return;
+   var x=document.createElement('button');
+   x.type='button';
+   x.className='mad4b-share-rail-close';
+   x.setAttribute('aria-label','Close share menu');
+   x.textContent='×';
+   x.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();closeShare();d.querySelector('.jet-dropbar__button')?.focus()});
+   panel.prepend(x);
+  });
  }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',watch,{once:true});
  else watch();
