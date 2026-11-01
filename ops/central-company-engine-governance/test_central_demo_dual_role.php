@@ -11,6 +11,8 @@ $GLOBALS['host_scope']=[
  'workload'=>'tours-central','host_id'=>'srv2030908',
  'site_uuid'=>'e5e64bca-ed62-48d2-b2b3-dff693cd702a',
  'canonical_origin'=>'https://tours.dev.mad4b.com'];
+function add_action(...$args){}
+function add_filter(...$args){}
 function wp_get_environment_type(){return 'staging';}
 function home_url($p=''){return 'https://tours.dev.mad4b.com'.($p?'/':'');}
 function untrailingslashit($s){return rtrim($s,'/');}
