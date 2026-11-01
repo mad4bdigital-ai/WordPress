@@ -825,7 +825,7 @@ KEY content_job_stage (content_job_id,stage)
         if(!function_exists('wp_register_ability'))return;
         foreach(array('list_queue'=>false,'enqueue'=>true,'claim'=>true,'finish'=>true,'batch_control'=>true,'heartbeat'=>true,'park'=>true,
             'reconcile'=>true,'acknowledge_cancellation'=>true) as $method=>$write) {
-            $name='mad4b/hub-bulk-'.$method;
+            $name='mad4b/hub-bulk-'.str_replace('_','-',$method);
             if(function_exists('wp_has_ability')&&wp_has_ability($name))continue;
             wp_register_ability($name,array(
                 'label'=>'MAD4B Hub Bulk Queue '.str_replace('_',' ',$method),
