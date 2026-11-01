@@ -4,7 +4,7 @@
 
 ## Architectural decision: REUSE, not parallel governance
 
-The previous standalone WP-CLI policy compiler is a **non-integrated local prototype**. Do not wire it into the project, create a second grant ledger, review queue, job journal, transport authority or shell dispatcher. Reuse the existing Core services that Content Job already depends on, with a small transport/provider adapter for typed WP-CLI operations.
+The previous standalone WP-CLI policy compiler is a **non-integrated local prototype**. Do not wire it into the project, create a second grant ledger, review queue, job journal, transport authority or shell dispatcher. Reuse the existing Core services that Content Job already depends on, with a transport/provider adapter for owner-authorized **full WP-CLI sessions**, alongside typed automation operations.
 
 The `MAD4B_SCP_Content_Jobs` aggregate owns content-job states, optimistic revision checking, append-only transitions and original source review. **Do not** repurpose content-job rows or its editorial approval as cross-company SSH execution grants. The reusable unit is its **Core gate composition**, not the content domain's authority.
 
@@ -22,20 +22,25 @@ The `MAD4B_SCP_Content_Jobs` aggregate owns content-job states, optimistic revis
 | Confirm original owner result | `MAD4B_SCP_AI_Native_Owner_Review` owner-receipt pattern | Company provider must issue its own verified readback; do not accept editorial QA receipts |
 | Signed evidence and trust | `MAD4B_SCP_Crypto_Profile` and the owner-audited signer enrollment pattern from `MAD4B_SCP_Test_Attestation` | Use a company-specific purpose and enrollment record; never trust a public key supplied only by the incoming evidence |
 
-## Typed adapter over existing transport
+## Owner-enrolled full WP-CLI session over the original transport
 
-The **only new responsibility** is a narrow, source-reviewed provider adapter mapping a reviewed Core operation to a supported remote WP-CLI read and verifying the returned result. It is not an authorization engine.
+The authorized company owner may enroll the registered SSH connection as a **full WP-CLI administration capability** for an exact company and WordPress site. The connection enrollment is the durable permission for that site and permitted OS/WordPress principal; **no separate owner approval is required for each individual WP-CLI command**. The original Core and Native Broker remain the sole execution and auditing mechanisms. A remote connection merely discovered by an SSH handshake does not register another company's administrator.
 
-1. Resolve enrolled SSH target through the **existing infrastructure registry** (immutable target ID, fingerprinted SSH host key, account, company/site UUID, canonical origin, WordPress root, environment, enrollment revision).
-2. Before execution, obtain the existing Core operation's descriptor, verified identity/scope checkpoint, current provider pin and fresh allowed read decision. Do not promote previous connector probes into authority.
-3. Compile only the exact operation-defined typed arguments. No caller-originated shell strings, raw SQL, `wp eval`, `wp eval-file`, `--ssh`, `--allow-root`, arbitrary WP-CLI flags, or WordPress path selection.
-4. Call a **registered, source-pinned** existing native transport provider only after verified enrollment; match actual remote Site Profile to the target binding. A caller-controlled hostname is never a target ID.
-5. Run bounded read, then independently recheck Core identity/revision, provider source pin, data schema, page/manifest coverage, and original signer enrollment. Persist evidence in the existing Core audit/journal. Return read-only result without new privilege.
-6. A mutation requires a **different** Core operation plus the original approval ticket, reserve/claim, execution fence, site provider adapter, readback and restore. Production uses the same operations with risk-based additional authorization.
+1. During enrollment, the owner selects the company, site UUID, canonical origin, environment, SSH target/host fingerprint, exact WordPress root, SSH account and WordPress principal and enables `full_wpcli` (optionally `full_shell` as a distinct capability). Record the persistent capability in the **original Core authority/connection registry**, with revocation and revision tracking. Do not use a separate grant database.
+2. On each invocation, Core checks the registered connection is active, the actor holds its full-WP-CLI access, the exact company/site/profile has not drifted, the SSH host key remains pinned, and the request has a unique job and digest. Existing native 312/313 verification, reservation, signed receipt and append-only audit remain in force, **without an extra per-command manual approval**.
+3. **WP-CLI commands are free-form:** `wp eval`, `wp eval-file`, `wp db query`, plugin/theme operations, custom plugin commands and arbitrary WP-CLI flags may be used by the enrolled full administrator, including on Production. No command-name or WP-CLI-subcommand allowlist or artificial ban on raw SQL. The caller cannot silently choose a different server, company, WP root, SSH principal or target via a command flag; changing the connection requires re-enrollment. The native worker passes the command as an argument vector directly to the trusted WP-CLI executable, **never via shell interpolation**.
+4. Optional full remote Shell is a separately owner-enabled capability bound to the same SSH connection. It is not silently inferred from WP-CLI privileges. Commands execute with the enrolled OS account's actual permissions; Root is not conferred simply by connection enrollment.
+5. The original Native Broker signs the complete command digest, actor, company, site UUID, target, transport revision and execution receipt, then performs independent readback. For write-capable WP-CLI the result includes affected site and original Core audit evidence; unresolved execution does not automatically retry.
+6. Original Site Profile, `Operational_Integrity`, deployment origin binding, account permissions and cross-company isolation are checked on every run. Staging and Production have feature parity; higher-risk operations may use existing risk logging/review rules, but routine command execution under an enrolled full-admin session never requires an independent one-time approval ticket.
+7. The existing `company.code-reconciliation.plan` remains a read-only *automation operation* and has no implicit write authority. Free-form administration is its own original-Core capability, **not** a way to mislabel `maintenance.shell` requests or undermine the fixed diagnostic canary.
+
+### Implementation boundary
+
+The currently installed 312 authorizer is hardcoded to `maintenance.shell`, and 313 verifies one literal diagnostic. They must gain a **new reviewed original-Core administration capability** with source-pinned enrollment, command digest and signed readback; retaining the old fixed diagnostic unchanged. Do not substitute `maintenance.shell` to bypass a denied WP-CLI operation, nor treat a test-only handshake as live authorization. The VPS live extension remains pending until the actual original Core/Broker source is accessible through its authorized update channel.
 
 ## Do not confuse these boundaries
 
-- SSH authentication != operation authorization.
+- Successful authentication of a **previously owner-enrolled full WP-CLI connection** conveys reusable WP-CLI administration authority for that enrolled company/site and principal; an SSH handshake for an unenrolled connection alone does not.
 - Content Job review approval != code file deployment approval.
 - AI Review Lifecycle `automatic_review_eligible` applies only to its declared content domains.
 - The current `company.code-reconciliation.plan` is **read-only**; it cannot be reused as Apply.
@@ -46,6 +51,6 @@ The **only new responsibility** is a narrow, source-reviewed provider adapter ma
 
 Positive: current enrolled SSH target, exact company/site binding, read-only Core operation, original source-pinned adapter, cryptographically verified signer and full-page readback succeed.
 
-Negative: wrong tenant/site/brand/origin/environment, changed profile revision, unknown host key/transport, unregistered operation, arbitrary command/flag, wrong signer purpose, missing/duplicate page, expired/replayed evidence and unsafe callback are denied. Native write admission and restore must be independently proven before any Apply.
+Negative: wrong company/site/brand/origin/environment, changed profile revision, unregistered SSH account or host key, missing full-WP-CLI enrollment, wrong actual OS principal, injected shell transport or substituted WP root, stale/replayed job, forged readback or signature are denied. **Do not deny a command merely because it is free-form, mutating, includes SQL/PHP or is unknown to a fixed command allowlist.**
 
 **Execution state:** This document corrects the architecture only. It does not register SSH targets, deploy an executor, sign complete source/target inventories or modify Production.
