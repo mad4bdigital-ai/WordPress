@@ -10,6 +10,7 @@ on:
       - 'wp-content/mu-plugins/321-mad4b-public-catalog-first-render.php'
       - 'wp-content/mu-plugins/322-mad4b-empty-jet-css-fastpath.php'
       - 'wp-content/mu-plugins/323-mad4b-nav-term-fragment-cache.php'
+      - 'wp-content/mu-plugins/324-mad4b-priceless-dynamic-css-cache.php'
       - '.well-known/ard.json'
       - 'wp-content/mu-plugins/company-accessibility-contract.php'
       - 'wp-content/mu-plugins/assets/accessibility-swiper.js'
@@ -34,6 +35,7 @@ on:
       - 'wp-content/mu-plugins/321-mad4b-public-catalog-first-render.php'
       - 'wp-content/mu-plugins/322-mad4b-empty-jet-css-fastpath.php'
       - 'wp-content/mu-plugins/323-mad4b-nav-term-fragment-cache.php'
+      - 'wp-content/mu-plugins/324-mad4b-priceless-dynamic-css-cache.php'
       - '.well-known/ard.json'
       - 'wp-content/mu-plugins/company-accessibility-contract.php'
       - 'wp-content/mu-plugins/assets/accessibility-swiper.js'
@@ -73,6 +75,8 @@ jobs:
           php ops/qa/mad4b-render-blocking/tests/empty_jet_css_fastpath_contract.php
           php -l wp-content/mu-plugins/323-mad4b-nav-term-fragment-cache.php
           php ops/qa/mad4b-render-blocking/tests/nav_term_fragment_cache_contract.php
+          php -l wp-content/mu-plugins/324-mad4b-priceless-dynamic-css-cache.php
+          php ops/qa/mad4b-render-blocking/tests/priceless_dynamic_css_cache_contract.php
           php ops/qa/mad4b-render-blocking/tests/catalog-discovery-contract.php
           php -l wp-content/mu-plugins/311-mad4b-explore-global-contrast.php
           php -l wp-content/mu-plugins/312-mad4b-rate-css-resilience.php
