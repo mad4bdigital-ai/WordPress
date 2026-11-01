@@ -90,6 +90,22 @@ def main():
     assert company[0]['production_policy'] == 'observe_propose_only'
     for candidate in ('company.create', 'company.repair', 'company.plugin-sync.request'):
         assert sum(x.get('id') == candidate for x in catalog['operations']) == 1
+    # Guard current reviewed Feature 007 operator workspace without
+    # rewriting immutable historical manifests or claiming runtime authority.
+    workspace = (PLUGIN / 'includes/class-mad4b-scp-operator-workspace.php').read_text(encoding='utf-8')
+    assert "'authorizing' => false" in workspace
+    assert "'mutation_performed' => false" in workspace
+    assert "'automation_percentage' => null" in workspace
+    assert "'auto_repaired_count' => null" in workspace
+    # A read-only comparison may not silently become a deployment inventory.
+    comparator = (PLUGIN / 'includes/class-mad4b-scp-company-code-reconciliation.php').read_text(encoding='utf-8')
+    for guard in (
+        'MAD4B_SCP_Execution_Receipt::verify',
+        'cryptographic_signature_verified',
+        'company_and_site_authority_verified',
+        "'writes_to_sites' => false",
+    ):
+        assert guard in comparator, 'Signed company comparator guard missing: ' + guard
     php = shutil.which('php')
     if php is None:
         raise SystemExit('Required isolated PHP runtime unavailable')
