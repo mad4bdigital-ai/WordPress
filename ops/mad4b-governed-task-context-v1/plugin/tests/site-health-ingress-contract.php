@@ -37,9 +37,20 @@ function reset_test() {
     $GLOBALS['enqueue_calls'] = 0;
 }
 reset_test();
+// No WordPress request actor during catalog initialization: discovery must
+// still register the capability, but executing it must be denied.
+$GLOBALS['permitted'] = false;
+must(MAD4B_Hub_Queue_Site_Health_Enqueue::site_enrolled(), 'site enrollment is request-user neutral');
+must(!MAD4B_Hub_Queue_Site_Health_Enqueue::site_ready(), 'execution requires an authorized actor');
 MAD4B_Hub_Queue_Site_Health_Enqueue::boot();
 must($GLOBALS['hook'][0] === 'wp_abilities_api_init' && $GLOBALS['hook'][2] === 48, 'canonical registration hook');
 MAD4B_Hub_Queue_Site_Health_Enqueue::register();
+must(isset($GLOBALS['registered']), 'ability registered with no request actor');
+must(is_wp_error(MAD4B_Hub_Queue_Site_Health_Enqueue::execute(
+    array('batch_key' => 'qa.site-health.vps.20261101-denial-check01')
+)), 'unauthorized execution fails closed');
+must($GLOBALS['enqueue_calls'] === 0, 'denied request did not enqueue');
+reset_test();
 list($ability, $args) = $GLOBALS['registered'];
 must($ability === 'mad4b/hub-queue-site-health-enqueue', 'specific ability');
 must($args['category'] === 'mad4b-write', 'write category');
