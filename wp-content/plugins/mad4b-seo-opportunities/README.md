@@ -12,8 +12,8 @@ Site-wide SEO opportunity discovery for public, published WordPress posts, pages
 - CLI: wp mad4b-seo-opportunities scan is dry-run; add --apply for explicit reconciliation.
 
 ## Evidence priority
-1. Rank Math locally cached GSC rows, only when latest data is within 90 days and exact same-origin URLs match.
-2. MAD4B G5 certified Google Search Console retained evidence when the native adapter and owner-configured server-side observation refs are present. The server-only hook is mad4b/seo_opportunities/certified_g5_refs. G5 verifies consent, tenant, property, adapter provenance, retention and cost. Do not assume Google Drive's OAuth has Search Console scopes.
+1. Rank Math locally cached GSC rows, only when latest data is within 90 days and exact same-origin URLs match. Rank Math CTR is represented as 0-100 percentage points (low CTR threshold 2.0%).
+2. MAD4B G5 certified Google Search Console retained evidence when the native adapter and owner-configured server-side observation refs are present. The server-only hook is mad4b/seo_opportunities/certified_g5_refs. G5 verifies consent, tenant, property, adapter provenance, retention and cost. G5 CTR must declare percent/percentage or ratio/fraction units; unknown units are rejected. Do not assume Google Drive's OAuth has Search Console scopes.
 3. Rank Math global post-type metadata templates and recent SEO score observations. Missing description sources are candidates for review only, not assertions of absent rendered meta.
 
 If provider observations are stale or missing, performance opportunities are withheld. No Google network calls or credentials are used.

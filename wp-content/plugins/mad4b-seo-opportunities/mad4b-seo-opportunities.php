@@ -134,8 +134,16 @@ final class MAD4B_SEO_Opportunities {
             foreach((array)($observed['metrics']??array())as $metric){
                 $semantic=(string)($metric['semantic_id']??'');
                 $value=$metric['value']??null;
-                if(in_array($semantic,array('clicks','impressions','ctr','position'),true) &&
-                    is_numeric($value)&&is_finite((float)$value))$metrics[$semantic]=(float)$value;
+                if(!in_array($semantic,array('clicks','impressions','ctr','position'),true) ||
+                    !is_numeric($value)||!is_finite((float)$value))continue;
+                // Rank Math uses percentage points (0..100). G5 metric
+                // semantics must state their unit; never assume a 0..1 CTR.
+                if($semantic==='ctr'){
+                    $unit=(string)($metric['unit']??'');
+                    if(in_array($unit,array('ratio','fraction'),true))$value=(float)$value*100.0;
+                    elseif(!in_array($unit,array('percent','percentage'),true))continue;
+                }
+                $metrics[$semantic]=(float)$value;
             }
             if(count($metrics)!==4 || $metrics['impressions']<20)continue;
             $out[$key]=array('source'=>'mad4b_g5_certified','clicks'=>(int)$metrics['clicks'],
@@ -231,7 +239,8 @@ final class MAD4B_SEO_Opportunities {
             }
             $g=$analytics[$target['key']]??null;
             if($g){
-                if($g['impressions']>=100 && $g['ctr']<=0.02 && $g['position']>=3 && $g['position']<=20){
+                if($g['impressions']>=100 && $g['ctr']<=2.0 && $g['ctr']>=0 &&
+                    $g['position']>=3 && $g['position']<=20){
                     $r=self::opportunity($id,'high_impressions_low_ctr',80,$target['url'],
                         'Search listing has high impressions and low CTR: review title, snippet and intent.',$g);
                     $rows[$r['id']]=$r;
