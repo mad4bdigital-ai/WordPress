@@ -40,9 +40,22 @@ def safe_sql_read(data):
 
 def emit(obj): print(json.dumps(obj,sort_keys=True,separators=(',',':')))
 def abort(reason): raise RuntimeError(reason)
+def native_dispatch_service_identity():
+    # Independently authenticated root systemd unit, not a forged SSH shell.
+    invocation=os.environ.get('INVOCATION_ID','')
+    if not re.fullmatch('[a-f0-9]{32}',invocation):
+        return False
+    if os.environ.get('MAD4B_NATIVE_CENTRAL_DISPATCH')!='1':
+        return False
+    try:
+        cgroup=pathlib.Path('/proc/self/cgroup').read_text()
+    except OSError:
+        return False
+    return '/system.slice/mad4b-native-central-dispatch.service' in cgroup
+
 def root_session():
-    if os.geteuid()!=0 or not os.environ.get('SSH_CONNECTION'):
-        abort('INDEPENDENT_AUTHENTICATED_ROOT_SSH_SESSION_REQUIRED')
+    if os.geteuid()!=0 or not (os.environ.get('SSH_CONNECTION') or native_dispatch_service_identity()):
+        abort('AUTHENTICATED_ROOT_SSH_OR_ENROLLED_SYSTEMD_UNIT_REQUIRED')
     if subprocess.run(['/usr/bin/hostname','-s'],capture_output=True,text=True,
                       timeout=4,check=False).stdout.strip()!=HOST:
         abort('VPS_HOST_ID_MISMATCH')
