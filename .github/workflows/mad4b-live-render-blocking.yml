@@ -128,6 +128,7 @@ jobs:
           node --check wp-content/plugins/etg-traveller-nationality-switcher/assets/nationality.js
           python3 ops/qa/mad4b-render-blocking/tests/test_asset_audit.py
           bash -n ops/qa/mad4b-render-blocking/staging_external_css_combine.sh
+          bash ops/qa/mad4b-render-blocking/tests/test_staging_bounded_source_scan.sh
           python3 ops/qa/mad4b-render-blocking/tests/test_staging_css_combine_contract.py
           php ops/qa/mad4b-render-blocking/tests/catalog-discovery-contract.php
           php -l wp-content/mu-plugins/311-mad4b-explore-global-contrast.php
