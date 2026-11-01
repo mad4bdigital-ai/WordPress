@@ -54,6 +54,9 @@ assert "'operation']??'')!=='maintenance.shell'" in native
 assert "vault:registry/local-srv2030908" in native
 assert "'target_scope'=>'host'" in native
 assert "correlation_conflict" in native
+assert "'native_command_bytes_delivered'=>false" in native
+assert "'native_delivery_requires_independent_authenticated_transport'=>true" in native
+assert "'GENERAL_SHELL_REQUIRES_RECONCILIATION'" in native
 assert "command_bytes_persisted" not in native
 for forbidden in ("shell_exec(", "system(", "exec(", "add_option(", "update_option(", "delete_option("):
     assert forbidden not in native, f"auto-intake host mutation forbidden: {forbidden}"
