@@ -62,6 +62,16 @@ foreach ([
 }
 $cls='MAD4B_SCP_Content_Readiness_Alerts';
 function yes($condition,$label){if(!$condition){fwrite(STDERR,"FAIL $label\n");exit(3);}echo "PASS $label\n";}
+// Verify the actual plugin loader, not just isolated class imports.
+$entry=file_get_contents(dirname(__DIR__,2).'/mad4b-site-control-plane.php');
+$integration_line="require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-readiness-integrations.php';";
+$alert_line="require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-content-readiness-alerts.php';";
+yes(is_string($entry) && strpos($entry,$integration_line)!==false
+ && strpos($entry,$alert_line)!==false
+ && strpos($entry,$integration_line)<strpos($entry,$alert_line)
+ && substr_count($entry,'MAD4B_SCP_Readiness_Integrations::boot();')===1,
+ 'runtime readiness integration registered once before admin render');
+
 $GLOBALS['admin']=true;
 $GLOBALS['languages']=[111=>'en',112=>''];
 $GLOBALS['post_meta']=[111=>['tour_origin_address'=>''],112=>['tour_origin_address'=>'12']];
