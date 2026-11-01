@@ -11496,6 +11496,101 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing pinned source validation, exact SHA identity, bounded GitHub HTTPS and protected candidate deploy controls cover the compact Git Data lookup.",
       "review_rationale": "The GitHub /commits/{sha} REST response may exceed the existing 262144-byte budget for multi-parent integration changes. Only the exact immutable commit lookup changes to /git/commits/{sha} (small Git object metadata). Do not raise limits, change other source selectors or treat any redirect/invalid/mismatched response as verified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/operation-registry.json",
+      "source_blob_sha": "a8af6b37210d20dee41f9820f29685ec41b7df3e",
+      "control_ids": [
+        "MCP-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/universal-wordpress-operations-contract.py"
+      ],
+      "owner_role": "GitHub source technical reviewer (CI-only, not owner or live release certification)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source controls and specific same-PR regression cover this unchanged authorization category. No new authority or independently certified release is introduced.",
+      "review_rationale": "Exact optional read projection for three previously catalogued Company Provisioning handlers, none in direct projection. The checked-in PHP registry admits exactly these names, and defers MCP advertisement until a matching original WordPress Ability is registered. The default mutation denial and core descriptor fail-closed behavior are unchanged."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/skill-seed-manifest.json",
+      "source_blob_sha": "1fc2ab46d4d0e1326a9265ee2a7cf8c16f61b7fe",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-contract.py"
+      ],
+      "owner_role": "GitHub source technical reviewer (CI-only, not owner or live release certification)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source controls and specific same-PR regression cover this unchanged authorization category. No new authority or independently certified release is introduced.",
+      "review_rationale": "Register three already shipped commerce/role workflow Skills as disabled only, with seed revision 14. Exact Builder contract now checks canonical manifest/seeder version parity and asserts all three seeds remain unique and disabled; no activated workflow, grant or business-site mutation occurs."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-migration-decisions.php",
+      "source_blob_sha": "ac15766fdddec7af21d6c119b71477807c4526ee",
+      "control_ids": [
+        "DATABASE-01",
+        "ADMIN-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py"
+      ],
+      "owner_role": "GitHub source technical reviewer (CI-only, not owner or live release certification)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source controls and specific same-PR regression cover this unchanged authorization category. No new authority or independently certified release is introduced.",
+      "review_rationale": "Move the existing Company Migration Decisions staff submenu and administrator Tools link onto the original deferred Admin Route Registry schedule. Both preexisting WP capabilities and REST/page authorization checks remain intact, with a precise regression that rejects extra menus, premature hooks and delegated permission widening."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-registry.php",
+      "source_blob_sha": "34f463a3d6ba671840f9a71569e788bb86972113",
+      "control_ids": [
+        "MCP-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/universal-wordpress-operations-contract.py"
+      ],
+      "owner_role": "GitHub source technical reviewer (CI-only, not owner or live release certification)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source controls and specific same-PR regression cover this unchanged authorization category. No new authority or independently certified release is introduced.",
+      "review_rationale": "Strictly validate the three-element optional read allowlist and exclude an optional tool if the matching WordPress Ability is not registered or the Abilities API is absent. Required read tools retain their original fail-closed descriptor verification; operations and mutation authorization remain unchanged."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-seeder.php",
+      "source_blob_sha": "e5567769c9e77ec9c37f44411e530d36b7336809",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-contract.py"
+      ],
+      "owner_role": "GitHub source technical reviewer (CI-only, not owner or live release certification)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source controls and specific same-PR regression cover this unchanged authorization category. No new authority or independently certified release is introduced.",
+      "review_rationale": "Bump canonical Seeder constant from version 13 to 14 to match the appended three disabled skill manifest entries. The test requires exact manifest/runtime constant equality and preserves previously enabled Brand Context Builder workflow and original seed/reconciliation authority."
     }
   ],
   "code_change_rules": {
