@@ -7,10 +7,12 @@ const site={company:'all-royal-egypt',site_uuid:'49c562d1-8f2f-456f-b454-26816c6
 const binding={...site,transport_id:'b'.repeat(32),grant_id:'c'.repeat(32),target_host_id:'hosting-2'};
 const jobId='a'.repeat(32),command_sha256='d'.repeat(64);
 function fixture(operation='verify_host_binding',change={}){
- const job={...binding,job_id:jobId,operation,command_sha256,
-   ...change.job};
+ const job={...binding,job_id:jobId,
+   operation:operation==='maintenance.shell'?'maintenance.shell':'company.remote.wpcli.full',
+   command_sha256,...change.job};
  const admission={...binding,verified:true,eligible:true,
-   original_core_source_verified:true,grant_state:'CENTRAL_OPERATION_SCOPE_GRANTED',
+   original_core_source_verified:true,verified_action:operation,
+   grant_state:'CENTRAL_OPERATION_SCOPE_GRANTED',
    transport_revoked:false,delegate_revoked:false,
    granted_operation:operation==='maintenance.shell'?'maintenance.shell':'company.remote.wpcli.full',
    shell_fallback_allowed:operation==='maintenance.shell',native_scope_valid:true,
