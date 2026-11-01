@@ -12064,6 +12064,26 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing admin routing, permission, evidence display and immutable release policy remain applicable to this read-only operator workspace; no new authority or release capability added.",
       "review_rationale": "Feature 007 watches the operator workspace as a historical evidence fingerprint. Its current Git blob was not recorded in the non-authorizing reviewed source registry. The same-PR QA31 regression now inspects the real current file and verifies non-authorizing/no-mutation model markers without modifying immutable Feature 007 snapshots."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-builder.php",
+      "source_blob_sha": "18fca238f3f94a6d879262804d0adaef812c5187",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-v6-scope-runtime.php"
+      ],
+      "owner_role": "MAD4B exact-source technical CI reviewer; site owner and release remain separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing admin gates, browser-hostile input handling, and security controls already govern Brand Context draft generation; v6 tightens rather than widens scope.",
+      "review_rationale": "Reviewed live-source byte-identical v6 update binds durable idempotency to trusted brand_ref as well as site UUID, document category and source evidence. Replay and artifact readback check original job/artifact IDs, active state, site and brand ownership; cross-brand and cross-site denial verified with dedicated isolated PHP negative assertions. No provider mutation or owner approval is conferred."
     }
   ],
   "code_change_rules": {
