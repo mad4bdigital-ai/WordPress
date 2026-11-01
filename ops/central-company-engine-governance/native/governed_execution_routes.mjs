@@ -30,7 +30,7 @@ export function createGovernedExecutionRoutes({core,typed={},generalShell}){
  if(!core||typeof core.readOriginalJob!=='function'||
     typeof core.verifyOriginalAdmission!=='function'||
     typeof core.claimOriginalJobOnce!=='function'||
-    typeof core.verifyIndependentReadback!=='function'||
+    typeof core.verifyOriginalOperationEvidence!=='function'||
     typeof core.audit!=='function')
   throw Error('ORIGINAL_CORE_AUTHORITY_ADAPTERS_REQUIRED');
  return Object.freeze({
@@ -136,24 +136,42 @@ export function createGovernedExecutionRoutes({core,typed={},generalShell}){
     try{await core.audit({job_id,operation,state:'OUTCOME_UNCERTAIN_NO_REPLAY'})}catch{}
     return fail('PARKED_UNCERTAIN_NO_REPLAY','PROVIDER_OUTCOME_UNCERTAIN',operation);
    }
-   let receipt;
+   // Evidence is stage-specific. Requiring 313 for initial Host Proof
+   // would deadlock enrollment; accepting Host Proof as a 313 receipt
+   // would falsely certify WP-CLI. Keep the original Shell journal too.
+   const evidenceKind=operation==='verify_host_binding'?'HOST_PROOF':
+     operation==='register_native_executor'?'NATIVE_ENROLLMENT':
+     operation==='maintenance.shell'?'ORIGINAL_SHELL_JOURNAL':'WPCLI_313';
+   let proof;
    try{
-    receipt=await core.verifyIndependentReadback({job_id,operation,
-      original_job:job,execution:result});
+    proof=await core.verifyOriginalOperationEvidence({job_id,operation,
+      evidence_kind:evidenceKind,original_job:job,execution:result});
    }catch{
-    return fail('PARKED_UNCERTAIN_NO_REPLAY','INDEPENDENT_READBACK_UNAVAILABLE',operation);
+    return fail('PARKED_UNCERTAIN_NO_REPLAY',
+      'INDEPENDENT_OPERATION_EVIDENCE_UNAVAILABLE',operation);
    }
-   if(!receipt||receipt.original_313_verified!==true||
-      receipt.independent_host_readback_verified!==true||
-      receipt.job_id!==job_id||
-      receipt.command_sha256!==job.command_sha256||
-      !exact(job,receipt,BIND))
-    return fail('PARKED_UNVERIFIED_READBACK','INDEPENDENT_313_SCOPE_OR_SIGNATURE_MISMATCH',operation);
-   try{await core.audit({job_id,operation,state:'EXECUTION_AND_313_VERIFIED'})}
+   const evidenceValid=proof?.original_core_signature_verified===true&&
+     proof?.evidence_kind===evidenceKind&&
+     proof?.job_id===job_id&&
+     proof?.command_sha256===job.command_sha256&&
+     exact(job,proof,BIND)&&(
+       (evidenceKind==='HOST_PROOF'&&proof.independent_host_proof_verified===true)||
+       (evidenceKind==='NATIVE_ENROLLMENT'&&proof.durable_native_enrollment_verified===true)||
+       (evidenceKind==='WPCLI_313'&&proof.original_313_verified===true&&
+          proof.independent_host_readback_verified===true)||
+       (evidenceKind==='ORIGINAL_SHELL_JOURNAL'&&
+          proof.original_shell_journal_verified===true&&
+          (admission.shell_mutates!==true||
+             proof.independent_host_readback_verified===true))
+     );
+   if(!evidenceValid)
+    return fail('PARKED_UNVERIFIED_READBACK',
+      'ORIGINAL_OPERATION_EVIDENCE_OR_SCOPE_NOT_VERIFIED',operation);
+   try{await core.audit({job_id,operation,state:'EXECUTION_AND_ORIGINAL_EVIDENCE_VERIFIED'})}
    catch{return fail('PARKED_UNCERTAIN_NO_REPLAY','FINAL_AUDIT_UNCERTAIN',operation)}
    return Object.freeze({
     contract:'mad4b.original-core-execution-result.v1',
-    state:'VERIFIED',reason_code:'ORIGINAL_CORE_313_VERIFIED',
+    state:'VERIFIED',reason_code:'ORIGINAL_OPERATION_EVIDENCE_VERIFIED',
     operation,job_id,route:modeFor(operation),
     verified:true,executed:result.state==='EXECUTED'
    });
