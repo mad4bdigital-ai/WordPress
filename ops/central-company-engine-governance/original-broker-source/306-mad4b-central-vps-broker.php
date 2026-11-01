@@ -10,6 +10,7 @@ final class MAD4B_Central_VPS_Broker_V1 {
     const CONTRACT = 'mad4b.central-vps-broker.v1';
     const JOB = 'mad4b_central_broker_job_v1_';
     const CLAIM = 'mad4b_central_broker_claim_v1_';
+    const ROUTE_GATE = 'mad4b_central_broker_route_gate_v1_';
     const PUBKEY = 'mad4b_central_broker_signing_public_v1';
     const HOST_ID = 'mad4b_central_broker_host_id_v1';
     const HEARTBEAT = 'mad4b_central_broker_heartbeat_v1';
@@ -259,6 +260,11 @@ final class MAD4B_Central_VPS_Broker_V1 {
         if (is_wp_error($source))WP_CLI::error($source->get_error_code());
         if (!self::verify_host_claim($job,$assoc))
             WP_CLI::error('broker_signature_invalid');
+        // Claim and signed pre-dispatch recovery compete for the SAME durable
+        // exclusive reservation. Once one wins, the other can never dispatch.
+        if (!add_option(self::ROUTE_GATE.$id,
+            array('decision'=>'CLAIM','at'=>time()),'',false))
+            WP_CLI::error('job_route_reserved_or_recovery_started');
         $claim=array('contract'=>self::CONTRACT,'job_id'=>$id,
             'host_id'=>$job['broker_host_id']??$job['target_host_id'],
             'nonce'=>$assoc['nonce'],'claimed_epoch'=>time(),
@@ -295,3 +301,4 @@ final class MAD4B_Central_VPS_Broker_V1 {
     }
 }
 MAD4B_Central_VPS_Broker_V1::boot();
+require_once __DIR__.'/306-mad4b-original-core-recovery.php';
