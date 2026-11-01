@@ -157,6 +157,29 @@ for path in (root / 'includes').rglob('*.php'):
             raise SystemExit('FAIL migration decision submenu bypasses parent scheduling')
         checked += 1
         continue
+    # Pre-Activation is a non-executing Company Workspace submenu with its
+    # existing delegated CAP, not a WordPress-administrator-only screen.
+    if path.name == 'class-mad4b-scp-readiness-preactivation.php':
+        required = (
+            "const PAGE='mad4b-readiness-preactivation';",
+            "const CAP='mad4b_manage_company_operations';",
+            "MAD4B_SCP_Admin_Route_Registry::register(self::PAGE,self::CAP);",
+            "MAD4B_SCP_Admin_Route_Registry::schedule_submenu(array(__CLASS__,'menu'),36);",
+            "add_submenu_page('mad4b-company','Pre-Activation Console','Pre-Activation',",
+            "self::CAP,self::PAGE,array(__CLASS__,'screen')",
+            "return current_user_can('manage_options')||current_user_can(self::CAP);",
+            "if(!self::can_manage())wp_die('Forbidden',403);",
+            "public static function execution_locked() {return true;}",
+            "'permission_callback'=>array(__CLASS__,'can_manage')",
+        )
+        for marker in required:
+            if marker not in source:
+                raise SystemExit('FAIL Pre-Activation role/lock/route mismatch: ' + marker)
+        if (source.count("add_submenu_page(") != 1
+                or re.search(r"add_action\(\s*['\"]admin_menu['\"]", source)):
+            raise SystemExit('FAIL Pre-Activation direct menu bypass')
+        checked += 1
+        continue
     # Readiness Scopes uses the existing Company Operations staff capability,
     # not manage_options. Both WordPress menu and registry must agree exactly.
     if path.name == 'class-mad4b-scp-readiness-scopes.php':
