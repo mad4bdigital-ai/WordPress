@@ -3799,6 +3799,101 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing MCP/WordPress permission controls, source identity and platform safety checks address the reviewed planning or bounded read-only surface; additional runtime and site authority are separate.",
       "review_rationale": "New tourism company launch service retains owner capability and nonce checks, bounded REST permissions, and its existing explicit company launch approval/error flow. No live activation or release authority is certified."
+    },
+    {
+      "id": "rest:mad4b/v1/provider-connections",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-connection-center.php",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php"
+      ],
+      "owner_role": "MAD4B exact-source technical CI reviewer; site-owner and release approval remain separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP access, provider access, and governed execution controls cover these Staging-scoped REST routes; no production promotion or new trust grants.",
+      "review_rationale": "Restore documented Provider Connections plan/discovery and strict owner-bound reconnect/refresh pathways from the enrolled Staging implementation. Anonymous GET and mutation POSTs return 403 in isolated WordPress; positive owner consent and external provider state still require live acceptance."
+    },
+    {
+      "id": "rest:mad4b/v1/provider-connections/(?P<provider>[a-z][a-z0-9_-]{0,63})/plan",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-connection-center.php",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php"
+      ],
+      "owner_role": "MAD4B exact-source technical CI reviewer; site-owner and release approval remain separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP access, provider access, and governed execution controls cover these Staging-scoped REST routes; no production promotion or new trust grants.",
+      "review_rationale": "Restore documented Provider Connections plan/discovery and strict owner-bound reconnect/refresh pathways from the enrolled Staging implementation. Anonymous GET and mutation POSTs return 403 in isolated WordPress; positive owner consent and external provider state still require live acceptance."
+    },
+    {
+      "id": "rest:mad4b/v1/provider-connections/(?P<provider>[a-z][a-z0-9_-]{0,63})/reconnect",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-connection-center.php",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php"
+      ],
+      "owner_role": "MAD4B exact-source technical CI reviewer; site-owner and release approval remain separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP access, provider access, and governed execution controls cover these Staging-scoped REST routes; no production promotion or new trust grants.",
+      "review_rationale": "Restore documented Provider Connections plan/discovery and strict owner-bound reconnect/refresh pathways from the enrolled Staging implementation. Anonymous GET and mutation POSTs return 403 in isolated WordPress; positive owner consent and external provider state still require live acceptance."
+    },
+    {
+      "id": "rest:mad4b/v1/provider-connections/(?P<provider>[a-z][a-z0-9_-]{0,63})/reconnect/complete",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-connection-center.php",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php"
+      ],
+      "owner_role": "MAD4B exact-source technical CI reviewer; site-owner and release approval remain separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP access, provider access, and governed execution controls cover these Staging-scoped REST routes; no production promotion or new trust grants.",
+      "review_rationale": "Restore documented Provider Connections plan/discovery and strict owner-bound reconnect/refresh pathways from the enrolled Staging implementation. Anonymous GET and mutation POSTs return 403 in isolated WordPress; positive owner consent and external provider state still require live acceptance."
+    },
+    {
+      "id": "rest:mad4b/v1/provider-connections/(?P<provider>[a-z][a-z0-9_-]{0,63})/refresh",
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-connection-center.php",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php"
+      ],
+      "owner_role": "MAD4B exact-source technical CI reviewer; site-owner and release approval remain separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP access, provider access, and governed execution controls cover these Staging-scoped REST routes; no production promotion or new trust grants.",
+      "review_rationale": "Restore documented Provider Connections plan/discovery and strict owner-bound reconnect/refresh pathways from the enrolled Staging implementation. Anonymous GET and mutation POSTs return 403 in isolated WordPress; positive owner consent and external provider state still require live acceptance."
     }
   ],
   "lifecycle": [],
@@ -12064,6 +12159,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing admin routing, permission, evidence display and immutable release policy remain applicable to this read-only operator workspace; no new authority or release capability added.",
       "review_rationale": "Feature 007 watches the operator workspace as a historical evidence fingerprint. Its current Git blob was not recorded in the non-authorizing reviewed source registry. The same-PR QA31 regression now inspects the real current file and verifies non-authorizing/no-mutation model markers without modifying immutable Feature 007 snapshots."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-connection-center.php",
+      "source_blob_sha": "c209dcdfb4ca9fc942695c6cb2a8e4c5846c0848",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php"
+      ],
+      "owner_role": "MAD4B exact-source technical CI reviewer; site-owner and release approval remain separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP access, provider access, and governed execution controls cover the restored routes without altering owner/nonce/approval enforcement.",
+      "review_rationale": "Reviewed exact Git blob of Provider Connection Center from Staging with five restored REST routes, OAuth refresh/reconnect permission preflights and strict immutable plan inputs. The exact companion PHP runtime fixture checks denial and planned access. Live approval and production promotion remain explicitly ungranted."
     }
   ],
   "code_change_rules": {

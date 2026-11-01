@@ -35,6 +35,7 @@ final class MAD4B_SCP_Google_Drive_Context {
     public static $refresh_calls = 0;
     public static function public_connection_status() { return self::$status; }
     public static function encrypted_grant_identity_sha256() { return str_repeat( 'c', 64 ); }
+    public static function authorization_session_ttl_seconds() { return 900; }
     public static function refresh_existing_connection( $expected ) {
         self::$refresh_calls++;
         return array( 'state' => 'refreshed' );

@@ -13,10 +13,299 @@ final class MAD4B_SCP_Provider_Connection_Center {
     const PLAN = 'mad4b/provider-connection-plan';
     const REFRESH = 'mad4b/provider-connection-refresh';
     const CONFIRM = 'REFRESH EXISTING STAGING PROVIDER GRANT';
+    const RECONNECT_CONFIRM = 'RECONNECT EXISTING STAGING PROVIDER GRANT';
     const PROVIDER_GOOGLE = 'google_drive';
 
     public static function boot() {
         add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 39 );
+        add_action( 'rest_api_init', array( __CLASS__, 'register_rest_routes' ), 39 );
+        if ( defined( 'WP_CLI' ) && WP_CLI && class_exists( 'WP_CLI' ) ) {
+            WP_CLI::add_command( 'mad4b provider reconnect-plan', array( __CLASS__, 'cli_reconnect_plan' ) );
+            WP_CLI::add_command( 'mad4b provider reconnect-start', array( __CLASS__, 'cli_reconnect_start' ) );
+        }
+    }
+
+    /** REST is an adapter to the same governed Abilities API, not new authority. */
+    public static function register_rest_routes() {
+        register_rest_route( 'mad4b/v1', '/provider-connections', array(
+            'methods' => 'GET',
+            'callback' => array( __CLASS__, 'rest_discover' ),
+            'permission_callback' => array( __CLASS__, 'rest_read_permission' ),
+        ) );
+        register_rest_route( 'mad4b/v1', '/provider-connections/(?P<provider>[a-z][a-z0-9_-]{0,63})/plan', array(
+            'methods' => 'GET',
+            'callback' => array( __CLASS__, 'rest_plan' ),
+            'permission_callback' => array( __CLASS__, 'rest_read_permission' ),
+        ) );
+        register_rest_route( 'mad4b/v1', '/provider-connections/(?P<provider>[a-z][a-z0-9_-]{0,63})/refresh', array(
+            'methods' => 'POST',
+            'callback' => array( __CLASS__, 'rest_refresh' ),
+            'permission_callback' => array( __CLASS__, 'rest_refresh_permission' ),
+        ) );
+        register_rest_route( 'mad4b/v1', '/provider-connections/(?P<provider>[a-z][a-z0-9_-]{0,63})/reconnect', array(
+            'methods' => 'POST',
+            'callback' => array( __CLASS__, 'rest_reconnect' ),
+            'permission_callback' => array( __CLASS__, 'rest_reconnect_permission' ),
+        ) );
+        register_rest_route( 'mad4b/v1', '/provider-connections/(?P<provider>[a-z][a-z0-9_-]{0,63})/reconnect/complete', array(
+            'methods' => 'POST',
+            'callback' => array( __CLASS__, 'rest_reconnect_complete' ),
+            'permission_callback' => array( __CLASS__, 'rest_reconnect_complete_permission' ),
+        ) );
+    }
+
+    public static function rest_read_permission( $request = null ) {
+        return self::can_read() ? true : new WP_Error( 'mad4b_provider_rest_read_denied',
+            'Enrolled administrator read access is required.', array( 'status' => 403 ) );
+    }
+
+    private static function rest_refresh_input( $request ) {
+        if ( ! is_object( $request ) || ! method_exists( $request, 'get_json_params' )
+            || ! method_exists( $request, 'get_param' ) )
+            return new WP_Error( 'mad4b_provider_rest_request_invalid', 'An exact JSON REST request is required.', array( 'status' => 400 ) );
+        $input = $request->get_json_params();
+        if ( ! is_array( $input ) || array_keys( $input ) === range( 0, count( $input ) - 1 ) )
+            return new WP_Error( 'mad4b_provider_rest_json_object_required', 'JSON object required.', array( 'status' => 400 ) );
+        $provider = $request->get_param( 'provider' );
+        if ( ! is_string( $provider ) || ! preg_match( '/^[a-z][a-z0-9_-]{0,63}$/D', $provider )
+            || array_key_exists( 'provider', $input ) )
+            return new WP_Error( 'mad4b_provider_rest_provider_invalid', 'Provider must be specified only in the REST route.', array( 'status' => 400 ) );
+        $expected = array( 'expected_plan_sha256', 'expected_site_uuid',
+            'expected_profile_revision', 'expected_profile_digest', 'confirmation', '_mad4b_approval_ticket_id' );
+        if ( array_diff( array_keys( $input ), $expected ) || array_diff( $expected, array_keys( $input ) ) )
+            return new WP_Error( 'mad4b_provider_rest_exact_payload_required', 'Exact governed plan and approval ticket fields required.', array( 'status' => 400 ) );
+        $input['provider'] = $provider;
+        return $input;
+    }
+
+    public static function rest_refresh_permission( $request ) {
+        if ( ! self::can_read() ) return new WP_Error( 'mad4b_provider_rest_owner_denied', 'Administrator required.', array( 'status' => 403 ) );
+        $input = self::rest_refresh_input( $request );
+        if ( is_wp_error( $input ) ) return $input;
+        // Never convert WordPress cookie/API-key auth into an OAuth owner step-up.
+        // This checks verified ChatGPT bearer plus exact current mutation policy.
+        return self::can_refresh( $input );
+    }
+
+    /** Browser-owner only: reissue OAuth authorization, never a token from REST. */
+    private static function reconnect_input( $request ) {
+        if ( ! is_object( $request ) || ! method_exists( $request, 'get_json_params' )
+            || ! method_exists( $request, 'get_param' ) )
+            return new WP_Error( 'mad4b_provider_reconnect_request_invalid', 'Exact JSON REST request required.', array( 'status' => 400 ) );
+        $input = $request->get_json_params();
+        $provider = $request->get_param( 'provider' );
+        $keys = array( 'expected_plan_sha256', 'expected_site_uuid',
+            'expected_profile_revision', 'expected_profile_digest', 'confirmation' );
+        if ( ! is_array( $input ) || count( $input ) !== count( $keys )
+            || array_diff( array_keys( $input ), $keys ) || array_diff( $keys, array_keys( $input ) )
+            || ! is_string( $provider ) || self::PROVIDER_GOOGLE !== $provider
+            || ! is_string( $input['expected_plan_sha256'] )
+            || ! preg_match( '/^[a-f0-9]{64}$/D', $input['expected_plan_sha256'] )
+            || ! is_string( $input['expected_site_uuid'] )
+            || ! preg_match( '/^[a-f0-9-]{36}$/D', $input['expected_site_uuid'] )
+            || ! is_int( $input['expected_profile_revision'] )
+            || ! is_string( $input['expected_profile_digest'] )
+            || ! preg_match( '/^[a-f0-9]{64}$/D', $input['expected_profile_digest'] )
+            || self::RECONNECT_CONFIRM !== ( $input['confirmation'] ?? '' ) )
+            return new WP_Error( 'mad4b_provider_reconnect_exact_plan_required', 'Exact current reconnect plan and explicit consent confirmation required.', array( 'status' => 400 ) );
+        $input['provider'] = $provider;
+        return $input;
+    }
+
+    public static function rest_reconnect_permission( $request ) {
+        if ( ! self::verified_remote_owner( $request ) )
+            return new WP_Error( 'mad4b_provider_reconnect_verified_owner_required',
+                'Verified enrolled administrator via WP REST nonce or WordPress Application Password required.',
+                array( 'status' => 403 ) );
+        $input = self::reconnect_input( $request );
+        return is_wp_error( $input ) ? $input : self::reconnect_admission( $input );
+    }
+
+    /** WordPress verifies Application Passwords; do not trust supplied auth headers. */
+    private static function verified_remote_owner( $request ) {
+        if ( ! self::can_read() || ! function_exists( 'get_current_user_id' ) || get_current_user_id() < 1 )
+            return false;
+        $nonce = is_object( $request ) && method_exists( $request, 'get_header' )
+            ? $request->get_header( 'X-WP-Nonce' ) : null;
+        if ( is_string( $nonce ) && '' !== $nonce && function_exists( 'wp_verify_nonce' )
+            && wp_verify_nonce( $nonce, 'wp_rest' ) ) return true;
+        if ( ! class_exists( 'MAD4B_SCP_Application_Password_Agent_Bridge' ) ) return false;
+        $context = MAD4B_SCP_Application_Password_Agent_Bridge::context( array() );
+        return is_array( $context ) && ! empty( $context['authenticated'] )
+            && ( $context['auth_method'] ?? '' ) === 'wp_application_password'
+            && (int) ( $context['wp_user_id'] ?? 0 ) === (int) get_current_user_id();
+    }
+
+    private static function reconnect_admission( array $input ) {
+        $site = self::scope( true );
+        if ( is_wp_error( $site ) ) return $site;
+        $plan = self::plan( array( 'provider' => $input['provider'] ) );
+        if ( is_wp_error( $plan ) ) return $plan;
+        if ( empty( $plan['reconnect_rest_available'] )
+            || 'oauth_handoff' !== ( $plan['action'] ?? '' )
+            || ! empty( $plan['eligible_remote_refresh'] ) )
+            return new WP_Error( 'mad4b_provider_reconnect_not_required', 'Current grant does not require reconnect.', array( 'status' => 409 ) );
+        foreach ( array( 'expected_plan_sha256' => 'plan_sha256', 'expected_site_uuid' => 'expected_site_uuid',
+            'expected_profile_digest' => 'expected_profile_digest' ) as $key => $value ) {
+            if ( ! hash_equals( (string) $plan[$value], (string) $input[$key] ) )
+                return new WP_Error( 'mad4b_provider_reconnect_plan_stale', 'Site, grant or reconnect plan changed.', array( 'status' => 409 ) );
+        }
+        if ( (int) $plan['expected_profile_revision'] !== $input['expected_profile_revision'] )
+            return new WP_Error( 'mad4b_provider_reconnect_plan_stale', 'Profile revision changed.', array( 'status' => 409 ) );
+        $status = MAD4B_SCP_Google_Drive_Context::connection_status();
+        if ( empty( $status['connected'] ) || empty( $status['reconnect_required'] )
+            || ! empty( $status['revocation_pending'] ) || ! empty( $status['token_unreadable'] ) )
+            return new WP_Error( 'mad4b_provider_existing_grant_not_reconnectable', 'Retained usable grant with rejected refresh token is required.', array( 'status' => 409 ) );
+        $grants = MAD4B_SCP_Google_Drive_Context::workspace_grants_status();
+        $requested = isset( $grants['scopes'] ) && is_array( $grants['scopes'] ) ? $grants['scopes'] : array();
+        $granted = preg_split( '/\s+/', trim( (string) ( $status['scope'] ?? '' ) ) );
+        $granted = array_values( array_unique( array_filter( is_array( $granted ) ? $granted : array() ) ) );
+        // Preserve old scopes: reconnect never quietly accepts a broader
+        // current Workspace grant selection than the original Google grant.
+        if ( empty( $requested ) || empty( $granted ) || array_diff( $requested, $granted )
+            || ! empty( $grants['managed_profile_reconsent_required'] ) )
+            return new WP_Error( 'mad4b_provider_reconnect_scope_expansion_denied', 'Current Workspace selection exceeds the old Google grant; owner review required.', array( 'status' => 409 ) );
+        return true;
+    }
+
+    /** Begin Google OAuth remotely; the third-party consent remains mandatory. */
+    public static function cli_reconnect_plan( $args, $assoc ) {
+        if ( ! self::can_read() ) WP_CLI::error( 'Enrolled administrator required.' );
+        $p = self::plan( array( 'provider' => self::PROVIDER_GOOGLE ) );
+        if ( is_wp_error( $p ) ) WP_CLI::error( $p->get_error_code() );
+        WP_CLI::line( wp_json_encode( $p, JSON_PRETTY_PRINT ) );
+    }
+
+    public static function cli_reconnect_start( $args, $assoc ) {
+        if ( ! self::can_read() ) WP_CLI::error( 'Enrolled administrator required.' );
+        $plan = self::plan( array( 'provider' => self::PROVIDER_GOOGLE ) );
+        if ( is_wp_error( $plan ) ) WP_CLI::error( $plan->get_error_code() );
+        $sha = isset( $assoc['expected-plan-sha256'] ) ? (string) $assoc['expected-plan-sha256'] : '';
+        if ( ! hash_equals( (string) $plan['plan_sha256'], $sha ) )
+            WP_CLI::error( 'Exact latest --expected-plan-sha256 is required.' );
+        $i = array( 'provider' => self::PROVIDER_GOOGLE,
+            'expected_plan_sha256' => $sha,
+            'expected_site_uuid' => $plan['expected_site_uuid'],
+            'expected_profile_revision' => $plan['expected_profile_revision'],
+            'expected_profile_digest' => $plan['expected_profile_digest'],
+            'confirmation' => self::RECONNECT_CONFIRM );
+        $r = self::begin_reconnect( $i );
+        if ( is_wp_error( $r ) ) WP_CLI::error( $r->get_error_code() );
+        WP_CLI::line( wp_json_encode( $r, JSON_PRETTY_PRINT ) );
+    }
+
+    /** All transports share identical site, grant, scope and PKCE preconditions. */
+    private static function begin_reconnect( array $input ) {
+        $allowed = self::reconnect_admission( $input );
+        if ( is_wp_error( $allowed ) || true !== $allowed ) return $allowed;
+        $mode = MAD4B_SCP_Google_Drive_Context::auth_mode();
+        $grants = MAD4B_SCP_Google_Drive_Context::workspace_grants_status();
+        $selection = isset( $grants['selection'] ) && is_array( $grants['selection'] ) ? $grants['selection'] : array();
+        $access_mode = ( $selection['drive'] ?? '' ) === 'full' ? 'read_write' : 'read_only';
+        $url = MAD4B_SCP_Google_Drive_Context::AUTH_MODE_MANAGED === $mode
+            ? MAD4B_SCP_Google_Drive_Context::managed_authorization_url( $access_mode )
+            : MAD4B_SCP_Google_Drive_Context::authorization_url( $access_mode );
+        if ( is_wp_error( $url ) ) return $url;
+        if ( ! is_string( $url ) || 0 !== strpos( $url, 'https://' ) )
+            return new WP_Error( 'mad4b_provider_reconnect_authorization_invalid',
+                'Provider returned an invalid consent URL.', array( 'status' => 502 ) );
+        return array( 'contract' => self::CONTRACT . '.reconnect.v2',
+            'provider' => $input['provider'], 'state' => 'owner_consent_pending',
+            'authorization_url' => $url,
+            'consent_expires_in_seconds' => MAD4B_SCP_Google_Drive_Context::authorization_session_ttl_seconds(),
+            'reconnect_request_expires_at' => null,
+            'reconnect_request_renewable' => true,
+            'new_authorization_session_required_after_expiry' => true,
+            'credential_replaced' => false, 'oauth_consent_performed' => false,
+            'scopes_expanded' => false, 'callback' => 'existing_native_google_oauth_callback',
+            'production_mutation' => false );
+    }
+
+    public static function rest_reconnect( $request ) {
+        $allowed = self::rest_reconnect_permission( $request );
+        if ( is_wp_error( $allowed ) || true !== $allowed ) return $allowed;
+        $input = self::reconnect_input( $request );
+        if ( is_wp_error( $input ) ) return $input;
+        return self::rest_response( self::begin_reconnect( $input ) );
+    }
+
+    /** Remote code redemption with per-user PKCE session and site binding. */
+    public static function rest_reconnect_complete_permission( $request ) {
+        if ( ! self::verified_remote_owner( $request ) )
+            return new WP_Error( 'mad4b_provider_completion_owner_required',
+                'Authenticated enrolled administrator required.', array( 'status' => 403 ) );
+        return self::scope( true );
+    }
+
+    public static function rest_reconnect_complete( $request ) {
+        $admitted = self::rest_reconnect_complete_permission( $request );
+        if ( is_wp_error( $admitted ) ) return $admitted;
+        $in = is_object( $request ) && method_exists( $request, 'get_json_params' )
+            ? $request->get_json_params() : null;
+        if ( ! is_array( $in ) || count( $in ) !== 3
+            || array_diff( array_keys( $in ), array( 'code', 'state', 'expected_site_uuid' ) )
+            || array_diff( array( 'code', 'state', 'expected_site_uuid' ), array_keys( $in ) )
+            || ( ! method_exists( $request, 'get_param' ) || $request->get_param( 'provider' ) !== self::PROVIDER_GOOGLE )
+            || ! is_string( $in['code'] ) || '' === $in['code'] || strlen( $in['code'] ) > 4096
+            || ! is_string( $in['state'] ) || ! preg_match( '/^[A-Za-z0-9._~-]{24,256}$/D', $in['state'] )
+            || ! is_string( $in['expected_site_uuid'] )
+            || ! hash_equals( (string) $admitted['site_uuid'], $in['expected_site_uuid'] ) )
+            return new WP_Error( 'mad4b_provider_completion_exact_callback_required',
+                'Exact Google code/state/site binding required.', array( 'status' => 400 ) );
+        $result = MAD4B_SCP_Google_Drive_Context::AUTH_MODE_MANAGED === MAD4B_SCP_Google_Drive_Context::auth_mode()
+            ? MAD4B_SCP_Google_Drive_Context::complete_managed_oauth( $in['code'], $in['state'] )
+            : MAD4B_SCP_Google_Drive_Context::complete_oauth( $in['code'], $in['state'] );
+        if ( is_wp_error( $result ) ) return $result;
+        $status = MAD4B_SCP_Google_Drive_Context::connection_status();
+        return self::rest_response( array(
+            'contract' => self::CONTRACT . '.reconnect-complete.v1',
+            'state' => ! empty( $status['credential_fresh'] ) && empty( $status['reconnect_required'] )
+                ? 'connected_verified' : 'not_verified',
+            'credential_fresh' => ! empty( $status['credential_fresh'] ),
+            'read_available' => ! empty( $status['read_available'] ),
+            'write_available' => ! empty( $status['write_available'] ),
+            'reconnect_required' => ! empty( $status['reconnect_required'] ),
+            'production_mutation' => false ) );
+    }
+
+    private static function rest_response( $value ) {
+        if ( is_wp_error( $value ) ) return $value;
+        $response = rest_ensure_response( $value );
+        if ( is_object( $response ) && method_exists( $response, 'header' ) ) {
+            $response->header( 'Cache-Control', 'private, no-store' );
+            $response->header( 'Vary', 'Authorization, Cookie' );
+            $response->header( 'X-Content-Type-Options', 'nosniff' );
+        }
+        return $response;
+    }
+
+    public static function rest_discover( $request ) {
+        $provider = is_object( $request ) && method_exists( $request, 'get_param' ) ? $request->get_param( 'provider' ) : null;
+        if ( null !== $provider && ( ! is_string( $provider )
+            || ! preg_match( '/^[a-z][a-z0-9_-]{0,63}$/D', $provider ) ) )
+            return new WP_Error( 'mad4b_provider_rest_filter_invalid', 'Invalid provider filter.', array( 'status' => 400 ) );
+        return self::rest_response( self::discover( $provider ? array( 'provider' => $provider ) : array() ) );
+    }
+
+    public static function rest_plan( $request ) {
+        $provider = is_object( $request ) && method_exists( $request, 'get_param' ) ? $request->get_param( 'provider' ) : null;
+        if ( ! is_string( $provider ) || ! preg_match( '/^[a-z][a-z0-9_-]{0,63}$/D', $provider ) )
+            return new WP_Error( 'mad4b_provider_rest_provider_invalid', 'Invalid provider.', array( 'status' => 400 ) );
+        return self::rest_response( self::plan( array( 'provider' => $provider ) ) );
+    }
+
+    public static function rest_refresh( $request ) {
+        $input = self::rest_refresh_input( $request );
+        if ( is_wp_error( $input ) ) return $input;
+        // Execution must travel through the existing Abilities registration
+        // (central policy, exact approval and claim), never call the provider
+        // refresh callback directly from REST.
+        if ( ! function_exists( 'wp_get_ability' ) )
+            return new WP_Error( 'mad4b_provider_rest_ability_unavailable', 'Governed refresh ability unavailable.', array( 'status' => 503 ) );
+        $ability = wp_get_ability( self::REFRESH );
+        if ( ! is_object( $ability ) || ! method_exists( $ability, 'execute' ) )
+            return new WP_Error( 'mad4b_provider_rest_ability_unmounted', 'Governed refresh ability not mounted.', array( 'status' => 503 ) );
+        return self::rest_response( $ability->execute( $input ) );
     }
 
     private static function catalogue() {
@@ -81,7 +370,7 @@ final class MAD4B_SCP_Provider_Connection_Center {
             wp_register_ability( $row[0], array(
                 'label' => 'MAD4B Provider Connection ' . ucfirst( $row[1] ),
                 'description' => 'Discover exact provider connection state, plan owner OAuth handoff, or separately approve a saved-credential refresh. No remote OAuth consent or automatic grant expansion.',
-                'category' => $row[3] ? 'mad4b-read' : 'mad4b-admin',
+                'category' => $row[3] ? 'mad4b-read' : 'mad4b-write',
                 'execute_callback' => array( __CLASS__, $row[1] ),
                 'permission_callback' => $row[3] ? array( __CLASS__, 'can_read' ) : array( __CLASS__, 'can_refresh' ),
                 'input_schema' => $row[2],
@@ -181,7 +470,8 @@ final class MAD4B_SCP_Provider_Connection_Center {
             : ( $refresh ? 'refresh' : ( ! empty( $status['reconnect_required'] ) || empty( $status['connected'] )
                 ? 'oauth_handoff' : 'no_action' ) );
         $grant_identity = '';
-        if ( $refresh && isset( $row['identity_callback'] ) && is_callable( $row['identity_callback'] ) ) {
+        if ( ( $refresh || ( ! empty( $status['reconnect_required'] ) && ! empty( $status['connected'] ) ) )
+            && isset( $row['identity_callback'] ) && is_callable( $row['identity_callback'] ) ) {
             $grant_identity = call_user_func( $row['identity_callback'] );
             if ( is_wp_error( $grant_identity ) || ! is_string( $grant_identity ) ) $grant_identity = '';
         }
@@ -201,9 +491,16 @@ final class MAD4B_SCP_Provider_Connection_Center {
             'expected_site_uuid' => (string) $site['site_uuid'],
             'expected_profile_revision' => (int) $site['revision'],
             'expected_profile_digest' => (string) $site['profile_digest'],
-            'confirmation' => self::CONFIRM,
+            'confirmation' => $action === 'oauth_handoff' && ! empty( $status['reconnect_required'] )
+                ? self::RECONNECT_CONFIRM : self::CONFIRM,
+            'reconnect_rest_available' => $action === 'oauth_handoff' && ! empty( $status['reconnect_required'] )
+                && ! empty( $status['connected'] ) && '' !== $grant_identity
+                && 'staging' === (string) ( $site['configured_environment'] ?? '' ),
             'owner_handoff_url' => self::handoff( $provider, $row ),
             'consent_requires_browser' => in_array( $action, array( 'oauth_handoff', 'resolve_pending_revocation' ), true ),
+            'reconnect_request_expires_at' => null,
+            'reconnect_request_renewable' => true,
+            'oauth_authorization_session_ttl_seconds' => MAD4B_SCP_Google_Drive_Context::authorization_session_ttl_seconds(),
             'one_time_approval_required_for_remote_refresh' => true,
             'next_ability' => $refresh ? self::REFRESH : '',
             'read_only' => true, 'mutation_performed' => false,
