@@ -122,6 +122,9 @@ final class MAD4B_Native_VPS_Principal_V1 {
  public static function enroll(array $p) {
   $scope=self::attest($p,'enroll');
   if (is_wp_error($scope))return $scope;
+  // Consume each signed nonce once, even for an already enrolled host.
+  // A persisted standing grant remains reusable; an attestation is not.
+  if (!self::take_nonce($p))return self::deny('signed_nonce_replay',409);
   $existing=self::existing();
   if ($existing) {
    if (!self::ledger($existing,$scope))return self::deny('enrollment_revoked_or_changed',409);
@@ -132,7 +135,6 @@ final class MAD4B_Native_VPS_Principal_V1 {
     'transport_id'=>$existing['transport_id'],'grant_id'=>$existing['grant_id'],
     'principal_id'=>self::PRINCIPAL,'grant_issued'=>false,'execution_performed'=>false];
   }
-  if (!self::take_nonce($p))return self::deny('signed_nonce_replay',409);
   $tid=bin2hex(random_bytes(16));$gid=bin2hex(random_bytes(16));
   $base=['contract'=>'mad4b.central-ssh-command-intake.v1',
    'company'=>self::COMPANY,'site_uuid'=>$scope['site_uuid'],
