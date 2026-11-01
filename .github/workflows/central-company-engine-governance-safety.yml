@@ -40,6 +40,7 @@ jobs:
           php ops/central-company-engine-governance/test_original_broker_306_312.php
           php ops/central-company-engine-governance/test_original_core_recovery.php
           php ops/central-company-engine-governance/test_original_sealed_rebind.php
+          php ops/central-company-engine-governance/test_original_recovery_full_handoff.php
           php ops/central-company-engine-governance/test_original_broker_313.php
           node --check ops/central-company-engine-governance/native/signed_argv_envelope.mjs
           node --check ops/central-company-engine-governance/native/full_wpcli_execute.mjs
