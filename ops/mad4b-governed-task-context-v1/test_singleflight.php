@@ -75,6 +75,11 @@ class StubDb {
  function insert($table,$data){if(!str_ends_with($table,'semantic_triggers'))throw new Exception('unexpected insert');$this->triggers[$data['work_hash'].':'.$data['trigger_hash']]=1;return 1;}
 }
 $GLOBALS['wpdb']=new StubDb;
+// This isolated test validates slot/revision/receipt mechanics; source-backed
+// evidence is independently tested by test_original_context_contract.php.
+class MAD4B_Hub_Original_Context_Evidence {
+ static function verify($item,$job=null){return true;}
+}
 require __DIR__.'/class-mad4b-hub-governed-single-flight.php';
 function check($yes,$label){if(!$yes){fwrite(STDERR,"FAIL $label\n");exit(1);}echo "PASS $label\n";}
 function fixture($trigger='event',$event='a'){

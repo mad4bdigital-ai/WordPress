@@ -6,10 +6,22 @@ defined('ABSPATH') || exit;
  */
 final class MAD4B_Hub_Governed_Single_Flight {
  const CONTRACT='mad4b.hub.semantic-single-flight.v1';
+ static function certified_only(){
+  return getenv('MAD4B_HUB_SEMANTIC_FLIGHT_MODE')==='certified_only';
+ }
  static function enabled(){
-  return getenv('MAD4B_HUB_SEMANTIC_FLIGHT_MODE')==='enforce'
+  return in_array(getenv('MAD4B_HUB_SEMANTIC_FLIGHT_MODE'),
+       ['enforce','certified_only'],true)
     && wp_get_environment_type()==='staging'
     && rtrim(home_url(),'/')==='https://tours.dev.mad4b.com';
+ }
+ /** Scoped first rollout never changes admission or claim for unproven lanes. */
+ static function applies_to(array $item){
+  if(!self::certified_only())return true;
+  $job=(string)($item['job_id']??$item['content_job_id']??'');
+  $op=(string)($item['operation']??'');
+  return $job!==''&&class_exists('MAD4B_Hub_Original_Context_Evidence')
+    &&isset(MAD4B_Hub_Original_Context_Evidence::OPERATIONS[$op]);
  }
  static function tables(){
   global $wpdb;
@@ -148,6 +160,12 @@ final class MAD4B_Hub_Governed_Single_Flight {
    if(!is_string($p[$key]??null)||$p[$key]===''
       ||strlen($p[$key])>128)return self::error('context_'.$key.'_missing',409);
   }
+  // A structurally valid SHA supplied by an intake client is not source proof.
+  if(!class_exists('MAD4B_Hub_Original_Context_Evidence'))
+   return self::error('original_evidence_provider_missing',503);
+  $cert=MAD4B_Hub_Original_Context_Evidence::verify($item,$job);
+  if(is_wp_error($cert)||$cert!==true)
+   return is_wp_error($cert)?$cert:self::error('original_evidence_invalid',409);
   if(in_array((string)($item['stage']??''),['PRICING','PUBLISHING','MEDIA_RIGHTS',
        'CANONICAL_RELEASE','COMPANY_DISTRIBUTION','WPML_TRANSLATION'],true)
      ||!in_array((string)$p['effect_type'],['read_only','research_artifact'],true))
@@ -204,6 +222,7 @@ final class MAD4B_Hub_Governed_Single_Flight {
   * The DB PRIMARY KEY protects concurrent batches without TOCTOU.
   */
  static function reserve(array $item,$taskid,$batchid){
+  if(!self::applies_to($item))return ['decision'=>'ORIGINAL_UNCERTIFIED_ROUTE_UNCHANGED'];
   global $wpdb;[$flights,$triggers]=self::tables();
   $plan=self::plan($item);
   if(is_wp_error($plan))return $plan;
@@ -266,7 +285,7 @@ final class MAD4B_Hub_Governed_Single_Flight {
 
  /** Fail closed: only the original exact leader reserved by admission may claim. */
  static function claim_eligible(array $row){
-  if(!self::enabled())return true;
+  if(!self::enabled()||!self::applies_to($row))return true;
   if(!self::ready())return false;
   $payload=json_decode((string)($row['payload_json']??''),true);
   if(!is_array($payload))return false;

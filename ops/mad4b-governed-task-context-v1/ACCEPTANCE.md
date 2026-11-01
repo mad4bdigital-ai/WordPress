@@ -57,3 +57,55 @@ post-commit cache invalidation. The new `test_legacy_atomic.php` exercises
 failure+ROLLBACK, successful insert+COMMIT, immutable claim readback,
 tamper denial, repeated apply denial and an existing disabled option.
 Source-only PASS does not change the operational NO-GO or create authority.
+
+## First-party original readback certification and isolated WordPress acceptance
+
+A subsequent source candidate includes `MAD4B_Hub_Original_Context_Evidence`.
+It independently re-reads the original ContentJob and binds its immutable
+scope/revision/stage/source-artifact fields to the original provider implementation,
+the original SCP policy, original Queue receipt verifier and exact readback
+capability implementation. A client-supplied source, policy or capability hash
+is not accepted as evidence. Certificates are re-evaluated at admission and
+claim; policy revocation, source drift and executor changes fail closed.
+
+**Certified at this stage:** `workflow_inspect` and `content_job_read` with
+`read_only` effect, using their **original independent result readbacks**.
+Other ContentJob operations continue to require their own trusted source,
+policy, capability and effect evidence. Generic staged commercial operations
+are NOT certified by a read-only certificate.
+
+On the SAME VPS, a separate, isolated `mad4b_semflight_qa_20261101`
+MariaDB clone of Central Staging was created and paired with a QA-only
+WordPress/plugin code mirror; no live Hub files, original Queue/Grants,
+Production DB, or original update channel were modified.
+
+- Three original-compatible InnoDB tables installed on the QA DB.
+- Frozen 20-row legacy snapshot was applied ATOMICALLY to the QA DB and
+  independently re-read at original exact digest
+  `fc05a51b899fe53b1d0409b0fb41a0eeea4bbdae893cd7ab74e7537c31accdc9`.
+- Real original `enqueue → duplicate follower → claim → independently verified
+  finish → replay denial` passed with self-certified original job context.
+- Original finish rejected an incorrect job revision, then acknowledged a
+  verified readback, and refused a second use of the lease receipt.
+- Two real, competing WP-CLI processes admitted ONE original Queue leader and
+  ONE follower receipt for the same source Work Slot. Readback: 1 executable
+  task and 2 trigger receipts, no duplicate leader.
+- Stale-lease completion denied; original Claim moved uncertain effects into
+  `NEEDS_RECONCILIATION` (no blind replay).
+- 15 isolated original-context proof assertions passed, including provenance
+  forgery, effect escalation, missing policy and changed source denial.
+- `certified_only` staged mode was verified on QA: the two certified
+  read-only operations receive strict Single Flight, and other unproven
+  original operations retain their unchanged Queue admission/claim semantics.
+  This is intentionally NOT full cross-operation enforcement.
+
+**Important:** Some Staging WordPress plugin settings report QA-only
+decryption notices when the isolated mirror loads; these were not ignored as
+authorization evidence. The certified fixture uses original authorized
+WordPress and SCP readbacks, not the QA notices.
+
+The original live Hub remains unchanged until its exact-source Staging
+release, original backup, current snapshot readback, PHP-FPM parity, rollback
+and formal authorization gates pass. Full `enforce` mode is still NO-GO
+for uncertified AI, publishing, pricing, integration, unlinked and provider
+effects. This QA result is proof of the read-only candidate only.

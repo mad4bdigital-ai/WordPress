@@ -202,6 +202,12 @@ KEY content_job_stage (content_job_id,stage)
             && MAD4B_Hub_Governed_Single_Flight::enabled();
         if($semanticFlight && !MAD4B_Hub_Governed_Single_Flight::ready())
             return self::fail('semantic_flight_storage_unavailable',503);
+        if($semanticFlight){
+            if(!class_exists('MAD4B_Hub_Original_Context_Evidence'))
+                return self::fail('original_evidence_provider_missing',503);
+            $n=MAD4B_Hub_Original_Context_Evidence::bind_batch($n);
+            if(is_wp_error($n))return $n;
+        }
         $hash=hash('sha256',wp_json_encode($n));
         $now=gmdate('Y-m-d H:i:s');
         $batch=wp_generate_uuid4();
@@ -227,7 +233,7 @@ KEY content_job_stage (content_job_id,stage)
                 (string)$it['payload']['assigned_executor']);
             if(is_wp_error($route)){$wpdb->query('ROLLBACK');return $route;}
             $taskId=wp_generate_uuid4();
-            if($semanticFlight){
+            if($semanticFlight && MAD4B_Hub_Governed_Single_Flight::applies_to($it)){
                 // Verified normalized batch identity is receipt-only, not semantic.
                 $it['_batch_key']=$n['batch_key'];
                 $admit=MAD4B_Hub_Governed_Single_Flight::reserve($it,$taskId,$batch);

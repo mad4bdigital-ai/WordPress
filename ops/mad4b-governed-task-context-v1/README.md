@@ -88,3 +88,26 @@ provenance and effects are independently verified; see
 
 Rollback: leave the source versioned, disable the feature flag, retain
 the evidence tables for audit. Do **not** drop durable receipts.
+
+## Trusted original read-only context and staged rollout
+
+`MAD4B_Hub_Original_Context_Evidence` supplies first-party source,
+policy and capability context for original ContentJob `workflow_inspect`
+and `content_job_read` operations. It rejects caller-supplied SHA256
+claims and recertifies persisted task evidence at claim time, using
+original ContentJob state/revision, source file hashes and original
+per-operation result verifier. It does NOT certify Stage Work, model output,
+unlinked provider effects, publishing, distribution, pricing or media.
+
+`MAD4B_HUB_SEMANTIC_FLIGHT_MODE` options (Staging host only):
+- `disabled` (default): original queue behavior; no new gates or writes.
+- `certified_only`: enforce Single Flight ONLY for certified ContentJob
+  readback operations; preserve original behavior for all other lanes.
+- `enforce`: strict full admission; unsupported tasks are rejected until
+  their original provider evidence is certified. **Not ready for global use.**
+
+Both enabled modes require the frozen legacy allowlist and three InnoDB
+tables and preserve the original Queue/Executor/verified-result authority.
+An isolated same-VPS WordPress QA clone, never the live Queue, passed true
+enqueue/claim/verified-receipt/follower and concurrent client tests.
+See `ACCEPTANCE.md` and `STAGING_ROLLOUT.md`.

@@ -31,3 +31,16 @@ insert/update rolls the entire allowlist back; no partial unlocked snapshot
 can be mistaken for an approved cutover. This change is exercised by
 `test_legacy_atomic.php` using a transaction-aware isolated DB mock.
 It is **not** yet an installed-site acceptance test.
+
+## Original WordPress integration on an isolated same-VPS QA clone
+
+A cloned Staging WordPress runtime against the separate
+`mad4b_semflight_qa_20261101` database installed all three tables,
+verified 20 original nonterminal identities and atomically wrote the
+allowlist + locked option in ONE real MariaDB transaction. The exact
+original snapshot fingerprint remained unchanged at cutover time.
+Original enqueue/claim/finish/follower and failure modes were exercised
+only inside that clone, never against the original 322-row Queue.
+
+This supplements the scratch-table contention proof. It is not permission
+to overwrite the live Hub plugin or unlock new Commercial Executor grants.
