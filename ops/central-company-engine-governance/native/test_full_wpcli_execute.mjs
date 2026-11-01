@@ -23,10 +23,14 @@ function fixture(overrides={}){
   origin:job.canonical_origin,environment:job.environment,
   host_principal:job.ssh_account,host_key_fingerprint:job.ssh_host_key_fingerprint,
   transport_id:job.channel_id,grant_id:job.grant_id,...overrides.admission};
- const receipt={contract:'mad4b.broker-remote-wpcli-receipt.v1',verified:true,
-  independent_host_readback_verified:true,job_id:ID,
+ const receipt={contract:'mad4b.broker-remote-wpcli-receipt.v1',
+  verified:false,state:'PENDING_INDEPENDENT_NATIVE_READBACK',
+  host_signed_attestation_received:true,native_executor_certified:false,
+  independent_host_readback_verified:false,job_id:ID,
   command_sha256:job.command_sha256,site_uuid:job.site_uuid,
-  company_id:job.company_id,exit_code:0,...overrides.receipt};
+  company:job.company_id,origin:job.canonical_origin,environment:job.environment,
+  grant_id:job.grant_id,transport_id:job.channel_id,target_id:job.ssh_target_id,
+  exit_code:0,...overrides.receipt};
  let claimed=false,runs=0;
  const now=Math.floor(Date.now()/1000);
  const p={job_id:job.job_id,company_id:job.company_id,site_uuid:job.site_uuid,
@@ -50,9 +54,33 @@ function fixture(overrides={}){
   return {exit_code:0}}};
  return {executor:createOriginalCoreWpcliExecutor({core,broker,transport}),runs:()=>runs};
 }
-test('enrolled exact-site channel runs once with no command approval',async()=>{
- const x=fixture();assert.equal((await x.executor.execute(ID)).state,'VERIFIED');
+test('enrolled channel executes once; broker 313 stays pending independent readback',async()=>{
+ const x=fixture();const result=await x.executor.execute(ID);
+ assert.equal(result.state,'PENDING_INDEPENDENT_NATIVE_READBACK');
+ assert.equal(result.certified,false);
  assert.equal((await x.executor.execute(ID)).reason,'JOB_ALREADY_CLAIMED');
+ assert.equal(x.runs(),1);
+});
+test('only original Core atomic 313 journal can yield verified result',async()=>{
+ const x=fixture({receipt:{state:'CORE_313_FINALIZED',verified:true,
+  independent_host_readback_verified:true,native_executor_certified:true,
+  journal_sha256:'e'.repeat(64)}});
+ const result=await x.executor.execute(ID);
+ assert.equal(result.state,'VERIFIED');assert.equal(result.certified,true);
+ assert.equal(result.journal_sha256,'e'.repeat(64));
+ assert.equal(x.runs(),1);
+});
+test('first-stage verified flag without atomic Core journal cannot certify',async()=>{
+ const x=fixture({receipt:{verified:true}});
+ const result=await x.executor.execute(ID);
+ assert.equal(result.state,'READBACK_UNVERIFIED_NO_RETRY');
+ assert.equal(result.certified,false);assert.equal(x.runs(),1);
+});
+test('no fake journal accepted as original Core evidence',async()=>{
+ const x=fixture({receipt:{state:'CORE_313_FINALIZED',verified:true,
+  independent_host_readback_verified:true,native_executor_certified:true,
+  journal_sha256:'not-a-sha'}});
+ assert.equal((await x.executor.execute(ID)).state,'READBACK_UNVERIFIED_NO_RETRY');
  assert.equal(x.runs(),1);
 });
 for(const [name,patch,reason] of [
@@ -70,7 +98,7 @@ for(const [name,patch,reason] of [
  ['wrong 312 transport',{admission:{transport_id:'other'}},'BROKER_312_AUTHORITY_DENIED'],
  ['wrong 312 fingerprint',{admission:{host_key_fingerprint:'CHANGED'}},'BROKER_312_AUTHORITY_DENIED'],
  ['denied 312',{admission:{eligible:false}},'BROKER_312_AUTHORITY_DENIED'],
- ['wrong 313',{receipt:{independent_host_readback_verified:false}},'READBACK_UNVERIFIED_NO_RETRY']
+ ['wrong 313',{receipt:{grant_id:'other'}},'READBACK_UNVERIFIED_NO_RETRY']
  ])test(name,async()=>{
  const x=fixture(patch);const result=await x.executor.execute(ID);
  assert.equal(result.reason??result.state,reason);
