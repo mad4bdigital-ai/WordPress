@@ -107,6 +107,32 @@ for path in (root / 'includes').rglob('*.php'):
             raise SystemExit('FAIL delegated company task menu scope expanded')
         checked += 1
         continue
+    # Migration Decisions has two intentionally different WordPress menus:
+    # admin-only Tools plus a delegated Company Workspace staff submenu.
+    # Check each exact capability, parent-order scheduling, route declaration,
+    # and the page/REST permission instead of weakening generic menu policy.
+    if path.name == 'class-mad4b-scp-company-migration-decisions.php':
+        required = (
+            "MAD4B_SCP_Admin_Route_Registry::register(self::MENU,'mad4b_manage_company_operations')",
+            "MAD4B_SCP_Admin_Route_Registry::schedule_submenu([__CLASS__,'admin_menu'])",
+            "add_management_page('Company Migration Decisions','Company Migration Decisions',",
+            "'manage_options',self::MENU,[__CLASS__,'page']",
+            "add_submenu_page('mad4b-company-workspace','Migration Decisions','Migration Decisions',",
+            "'mad4b_manage_company_operations',self::MENU,[__CLASS__,'page']",
+            "if(!self::can_propose())wp_die('Company migration planning access denied',403);",
+            "return (current_user_can('mad4b_manage_company_operations') ||",
+            "(current_user_can('manage_options') && current_user_can('activate_plugins'))",
+            "'permission_callback'=>[__CLASS__,'permission']",
+        )
+        for marker in required:
+            if marker not in source:
+                raise SystemExit(f'FAIL migration decision staff/admin permission or parent scheduling: {marker}')
+        if source.count("add_submenu_page(") != 1 or source.count("add_management_page(") != 1:
+            raise SystemExit('FAIL migration decision extra menu scope')
+        if re.search(r"add_action\\(\\s*['\\\"]admin_menu['\\\"]", source):
+            raise SystemExit('FAIL migration decision submenu bypasses parent scheduling')
+        checked += 1
+        continue
     if 'add_submenu_page(' in source and (
         'MAD4B_SCP_Admin_Route_Registry::schedule_submenu(' not in source
         or re.search(r"add_action\(\s*['\"]admin_menu['\"]", source)
