@@ -11,6 +11,7 @@ on:
       - 'wp-content/mu-plugins/322-mad4b-empty-jet-css-fastpath.php'
       - 'wp-content/mu-plugins/323-mad4b-nav-term-fragment-cache.php'
       - 'wp-content/mu-plugins/324-mad4b-priceless-dynamic-css-cache.php'
+      - 'wp-content/mu-plugins/325-mad4b-jetblog-mobile-server-first-paint.php'
       - 'ops/qa/mad4b-render-blocking/staging_external_css_combine.sh'
       - 'ops/qa/mad4b-render-blocking/audit_frontend_assets.py'
       - 'ops/qa/mad4b-render-blocking/tests/test_asset_audit.py'
@@ -40,6 +41,7 @@ on:
       - 'wp-content/mu-plugins/322-mad4b-empty-jet-css-fastpath.php'
       - 'wp-content/mu-plugins/323-mad4b-nav-term-fragment-cache.php'
       - 'wp-content/mu-plugins/324-mad4b-priceless-dynamic-css-cache.php'
+      - 'wp-content/mu-plugins/325-mad4b-jetblog-mobile-server-first-paint.php'
       - 'ops/qa/mad4b-render-blocking/staging_external_css_combine.sh'
       - 'ops/qa/mad4b-render-blocking/audit_frontend_assets.py'
       - 'ops/qa/mad4b-render-blocking/tests/test_asset_audit.py'
@@ -85,6 +87,8 @@ jobs:
           php ops/qa/mad4b-render-blocking/tests/nav_term_fragment_cache_contract.php
           php -l wp-content/mu-plugins/324-mad4b-priceless-dynamic-css-cache.php
           php ops/qa/mad4b-render-blocking/tests/priceless_dynamic_css_cache_contract.php
+          php -l wp-content/mu-plugins/325-mad4b-jetblog-mobile-server-first-paint.php
+          python3 ops/qa/mad4b-render-blocking/tests/test_jetblog_mobile_first_paint_contract.py
           python3 ops/qa/mad4b-render-blocking/tests/test_asset_audit.py
           bash -n ops/qa/mad4b-render-blocking/staging_external_css_combine.sh
           python3 ops/qa/mad4b-render-blocking/tests/test_staging_css_combine_contract.py
