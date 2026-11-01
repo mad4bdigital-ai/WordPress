@@ -49,7 +49,7 @@ trait MAD4B_SCP_Server_Write_Catalog {
 		if ( class_exists( 'MAD4B_Hub_Queue_Site_Health_Enqueue' )
 			&& function_exists( 'wp_has_ability' )
 			&& wp_has_ability( MAD4B_Hub_Queue_Site_Health_Enqueue::ABILITY )
-			&& MAD4B_Hub_Queue_Site_Health_Enqueue::site_ready() ) {
+			&& MAD4B_Hub_Queue_Site_Health_Enqueue::site_enrolled() ) {
 			$candidates[] = MAD4B_Hub_Queue_Site_Health_Enqueue::ABILITY;
 		}
 		return array_values( array_unique( $candidates ) );
