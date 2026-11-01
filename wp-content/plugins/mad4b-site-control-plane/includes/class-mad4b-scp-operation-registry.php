@@ -367,11 +367,10 @@ final class MAD4B_SCP_Operation_Registry {
 			: array();
 		$optional = isset( $catalog['read_projection']['optional'] ) && is_array( $catalog['read_projection']['optional'] )
 			? $catalog['read_projection']['optional'] : array();
-		if ( function_exists( 'wp_has_ability' ) ) {
-			$projection = array_values( array_filter( $projection, static function ( $ability ) use ( $optional ) {
-				return ! in_array( $ability, $optional, true ) || wp_has_ability( $ability );
-			} ) );
-		}
+		$projection = array_values( array_filter( $projection, static function ( $ability ) use ( $optional ) {
+			return ! in_array( $ability, $optional, true )
+				|| ( function_exists( 'wp_has_ability' ) && wp_has_ability( $ability ) );
+		} ) );
 		return array_values( array_unique( array_map( 'strval', $projection ) ) );
 	}
 
