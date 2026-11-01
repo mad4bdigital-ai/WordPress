@@ -26,11 +26,18 @@ const denied=(reason)=>Object.freeze({
 export const centralIdentityExpression=[
  "if(!defined('DB_NAME')||!class_exists('MAD4B_Native_VPS_Principal_V1',false))WP_CLI::error('CENTRAL_CORE_NOT_AVAILABLE');",
  "$s=MAD4B_Native_VPS_Principal_V1::scope();$p=MAD4B_Native_VPS_Principal_V1::existing();",
+ "$d=class_exists('MAD4B_Company_Environment_Registry_V2',false)?MAD4B_Company_Environment_Registry_V2::target((string)($s['workload']??''),(string)($s['environment']??'')):null;",
+ "$q=class_exists('MAD4B_Company_Execution_Resolver_V1',false)?MAD4B_Company_Execution_Resolver_V1::plan((string)($s['workload']??''),(string)($s['environment']??''),'identity.read'):null;",
  "echo wp_json_encode(['contract'=>'mad4b.central-original-core-scope.v2',",
  "'db_name'=>DB_NAME,'home'=>untrailingslashit(home_url()),",
  "'runtime_environment'=>wp_get_environment_type(),'scope'=>$s,",
  "'principal_enrolled'=>is_array($p),",
- "'ledger_verified'=>is_array($p)&&MAD4B_Native_VPS_Principal_V1::ledger($p,$s)]);"
+ "'ledger_verified'=>is_array($p)&&MAD4B_Native_VPS_Principal_V1::ledger($p,$s),",
+ "'demo'=>['enrolled'=>is_array($d),'site_uuid'=>$d['site_uuid']??null,",
+ "'canonical_origin'=>$d['canonical_origin']??null,'role'=>$d['role']??null,",
+ "'identity_channel'=>$q['selected_channel']??null,",
+ "'identity_read_allowed'=>$q['execution_allowed']??false,",
+ "'company_write_authorized'=>$d['write_authorized']??false]]);"
 ].join('');
 
 export function readEnrolledHostPolicy(path=POLICY){
@@ -70,6 +77,14 @@ export function classifyCoreObservation(observation,policy){
    return denied('CENTRAL_HOST_POLICY_BINDING_MISMATCH');
  const identity=(s.state==='CENTRAL_HOST_IDENTITY_VERIFIED'&&
     x.principal_enrolled===true&&x.ledger_verified===true);
+ // The demo target is an independent Company Registry projection of the
+ // original host's signed ledger; it never inherits host execution rights.
+ const demo=x.demo;
+ const demoIdentityVerified=identity && demo?.enrolled===true &&
+    demo.role==='self_hosted_demo_target' &&
+    demo.site_uuid===s.site_uuid && demo.canonical_origin===s.canonical_origin &&
+    demo.identity_channel==='original_native_host_identity' &&
+    demo.identity_read_allowed===true && demo.company_write_authorized===false;
  return Object.freeze({
   contract:'mad4b.central-native-host-observation.v3',
   state:identity?'CENTRAL_STAGING_HOST_VERIFIED_EXECUTOR_PENDING':
@@ -82,9 +97,12 @@ export function classifyCoreObservation(observation,policy){
   production_mutated:false,
   central_scope:{workload:s.workload,environment:s.environment,
    site_uuid:s.site_uuid,canonical_origin:s.canonical_origin,host_id:s.host_id},
+  demo_target:{company_id:s.workload,environment:s.environment,
+   identity_verified:demoIdentityVerified,write_authorized:false,
+   identity_channel:demoIdentityVerified?'original_native_host_identity':null},
   readiness:{central_host:identity?'VERIFIED':'UNVERIFIED',
     native_executor:'INDEPENDENT_ENROLLMENT_REQUIRED',
-    company_targets:'NOT_EVALUATED'},
+    company_targets:demoIdentityVerified?'DEMO_IDENTITY_VERIFIED':'DEMO_IDENTITY_NOT_YET_VERIFIED'},
   next_action:identity?'RECONCILE_NATIVE_EXECUTOR_FROM_INDEPENDENT_HOST_PROOF':
                        'VERIFY_ORIGINAL_HOST_PRINCIPAL_LEDGER',
   blockers:identity?['NATIVE_EXECUTOR_INDEPENDENT_CERTIFICATION_PENDING']:
