@@ -79,3 +79,31 @@ systemd, deploys a native executor, or mutates Staging/Production.
 The source selftest retains its prior 10/10 cases. The source-contract test
 adds targeted catalog, Staging/Production parity, site isolation and denied
 self-authorization cases. Both must pass in PR CI before integration.
+
+### Enrollment-event fast path (increment 2)
+
+The same original Core snapshot can be re-evaluated on an enrollment/binding
+change by invoking the **read-only** `event` action on a registered central
+operator worker with an exact `--company`, `--environment`,
+`--site-uuid`, and `--canonical-origin`. The event values are only lookup
+hints; the script independently re-fetches the original Core company registry,
+operation plans and original 305 channel readback and rejects a mismatched
+company, environment, site UUID or origin. This is not a caller-asserted grant.
+
+Example (illustrative placeholders, not a privileged operator action):
+
+```text
+company-unified-operation-policy.py event --company=company-code --environment=staging --site-uuid=exact-registered-uuid --canonical-origin=https://enrolled.example.test
+```
+
+For each target, the report now identifies the original-Core next transition:
+site enrollment, owner-verified original 305 standing grant, exact host proof,
+paired transport, or independent 312/313 native execution readback. It reports
+**no** host proof verification or execution permission of its own, even when
+original 305 reports a persistent grant and active transport pair.
+
+**Deployment/wiring status:** this implements the source event command and
+hermetic negative tests; the live Company Provisioning event dispatcher has
+not yet been wired to invoke it. Existing periodic `once` readback remains
+in place. Do not interpret an enrollment event as authority to provision SSH
+keys, mint standing grants or execute a Production command.
