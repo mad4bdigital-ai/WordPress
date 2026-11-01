@@ -54,6 +54,7 @@ function shared_presentation_catalog_url_context_v1($referrer): ?array {
     // display-context inputs. Keep the original JetSmartFilters provider.
     if (!preg_match('~^/(?:((?:ar|de|it|es|fr))/)?tours-and-activities(?:/jsf/jet-engine:tours_query_archive((?:/(?:tax|meta)/[^/?#]+){0,2}))?(?:/pagenum/([1-9][0-9]{0,3}))?/$~D',$path,$m)) return null;
     $facets = [];
+    $facetOperators = [];
     $priceRange = null;
     $contract = shared_presentation_catalog_contract_v1();
     $parts = (string)($m[2] ?? '');
@@ -75,8 +76,14 @@ function shared_presentation_catalog_url_context_v1($referrer): ?array {
         $taxTokens=explode(';',$value);
         if (count($taxTokens)>count($contract['taxonomies'])) return null;
         foreach ($taxTokens as $token) {
-            if (!preg_match('/^([a-z-]+):([a-z0-9_-]{1,80}(?:,[a-z0-9_-]{1,80}){0,9})$/D',$token,$part)) return null;
+            if (!preg_match('/^([a-z-]+):([a-z0-9_-]{1,80}(?:,[a-z0-9_-]{1,80}){0,9})(?:,(operator_(?:AND|IN)))?$/D',$token,$part)) return null;
             $taxonomy=$part[1];$slugs=explode(',',$part[2]);
+            // Explicit operators are native JetSmartFilters grammar, not term
+            // slugs. Reject incompatible single-term operators and any unknown
+            // suffix rather than silently changing the selected facet.
+            $operator=(string)($part[3]??'');
+            if ($operator!=='' && count($slugs)<2) return null;
+            if ($operator!=='') $facetOperators[$taxonomy]=substr($operator,strlen('operator_'));
             if (!in_array($taxonomy,$contract['taxonomies'],true) || isset($facets[$taxonomy])) return null;
             foreach($slugs as $slug) {
                 if (!get_term_by('slug',$slug,$taxonomy)) return null;
@@ -89,6 +96,7 @@ function shared_presentation_catalog_url_context_v1($referrer): ?array {
     }
     return ['path'=>$path,'currency'=>$currency,
         'language'=>($m[1]??'') ?: 'en','facets'=>$facets,
+        'facet_operators'=>$facetOperators,
         'price_range'=>$priceRange,
         'page'=>isset($m[3]) && $m[3]!=='' ? (int)$m[3] : 1];
 }
@@ -113,14 +121,24 @@ function shared_presentation_catalog_jsf_request_v1(): ?array {
         if (!is_string($key) || !str_starts_with($key,'_tax_query_')) continue;
         $taxonomy=substr($key,strlen('_tax_query_'));
         if (!in_array($taxonomy,$contract['taxonomies'],true) || ++$n > count($contract['taxonomies'])) return null;
-        $values = is_array($val) ? $val : (is_scalar($val) ? explode(',',(string)$val) : []);
-        if (!$values || count($values)>10) return null;
-        foreach ($values as $v) {
+        $values = is_array($val) ? array_values($val) : (is_scalar($val) ? explode(',',(string)$val) : []);
+        if (!$values || count($values)>11) return null;
+        $operatorCount=0;
+        $terms=0;
+        foreach ($values as $position=>$v) {
             if (!is_scalar($v) || strlen((string)$v)>80) return null;
-            if ((string)$v === '') continue; // Native filter reset clears this facet.
-            $term=ctype_digit((string)$v)?get_term((int)$v,$taxonomy):get_term_by('slug',(string)$v,$taxonomy);
+            $text=trim((string)$v);
+            if ($text==='') continue; // Native filter reset clears this facet.
+            if (str_starts_with($text,'operator_')) {
+                if (!in_array($text,['operator_AND','operator_IN'],true)
+                    || $position!==count($values)-1 || ++$operatorCount!==1) return null;
+                continue;
+            }
+            $term=ctype_digit($text)?get_term((int)$text,$taxonomy):get_term_by('slug',$text,$taxonomy);
             if (!$term instanceof WP_Term) return null;
+            $terms++;
         }
+        if ($operatorCount && $terms<2) return null;
     }
     return $context;
 }
@@ -173,6 +191,37 @@ add_filter('wcml_client_currency',static function($selected){
     return $currency;
 }, 1000);
 
+// The real archive provider Query Builder items cache does not encode all
+// authored layout variants, JSF state and commercial/visibility policy in its
+// cache key. A stale empty result was shared between List and Grid AJAX.
+ // Disable only this registered and contract-bound Tours query's *items* cache.
+ // Redis object caching and other JetEngine query caches stay untouched.
+add_action('jet-engine/query-builder/after-queries-setup',static function():void {
+    $contract=shared_presentation_catalog_contract_v1();
+    $id=absint($contract['query_id']??0);
+    $provider=(string)($contract['provider']??'');
+    if (!$id || !str_starts_with($provider,'jet-engine/')) return;
+    $expectedCustomId=substr($provider,strlen('jet-engine/'));
+    $query=\Jet_Engine\Query_Builder\Manager::instance()->get_query_by_id($id);
+    if (!is_object($query) || (int)($query->id??0)!==$id
+        || (string)($query->query_id??'')!==$expectedCustomId
+        || !property_exists($query,'cache_query')) return;
+    $query->cache_query=false;
+},5);
+
+// A signed, live JetSmartFilters request has dynamic provider/visibility
+// context that cannot be represented by JetEngine's perpetual query hash.
+// Do not reuse a stale *items* cache for this exact native Tours provider.
+// This is not a capability grant and does not disable Redis site-wide.
+add_action('jet-engine/query-builder/filters/before-set-props',static function($query):void {
+    if (!is_object($query) || !property_exists($query,'cache_query')) return;
+    $contract=shared_presentation_catalog_contract_v1();
+    if ((int)($query->id??0)!==(int)($contract['query_id']??0)
+        || (string)($query->query_id??'')!==substr((string)($contract['provider']??''),strlen('jet-engine/'))
+        || !is_array(shared_presentation_catalog_jsf_request_v1())) return;
+    $query->cache_query=false;
+},15,1);
+
 // Direct-load pagination must apply consistently to EVERY instance of the
 // native catalog Query #5 (desktop, mobile and counting providers). JSF
 // already sets some instances to the right page; fill in those it misses.
@@ -199,7 +248,9 @@ add_filter('jet-engine/query-builder/types/posts-query/args', static function ($
                 $valid=$translated?get_term((int)$translated,$taxonomy):null;
                 $ids[]=$valid instanceof WP_Term?(int)$valid->term_id:0;
             }
-            $args['tax_query'][]=['taxonomy'=>$taxonomy,'field'=>'term_id','terms'=>array_values(array_unique($ids)),'operator'=>'IN'];
+            $operator=(string)($context['facet_operators'][$taxonomy]??'IN');
+            if (!in_array($operator,['AND','IN'],true)) return $args;
+            $args['tax_query'][]=['taxonomy'=>$taxonomy,'field'=>'term_id','terms'=>array_values(array_unique($ids)),'operator'=>$operator];
         }
         $args['tax_query']['relation']='AND';
         $args['tax_query_relation']='and';

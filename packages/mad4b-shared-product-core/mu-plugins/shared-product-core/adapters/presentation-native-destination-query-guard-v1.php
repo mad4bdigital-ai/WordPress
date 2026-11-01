@@ -57,12 +57,20 @@ function shared_presentation_native_destination_denied_v1(
         $raw = $q['_tax_query_destinations'];
         if (!is_scalar($raw) && !is_array($raw)) return true;
         $tokens = is_array($raw) ? $raw : explode(',',(string)$raw);
-        if (count($tokens) > 10) return true;
-        foreach ($tokens as $token) {
+        if (count($tokens) > 11) return true;
+        $terms=0;$operators=0;
+        foreach ($tokens as $i=>$token) {
             if (!is_scalar($token)) return true;
             $value = trim((string)$token);
+            if (str_starts_with($value,'operator_')) {
+                if (!in_array($value,['operator_AND','operator_IN'],true)
+                    || $i!==count($tokens)-1 || ++$operators!==1) return true;
+                continue;
+            }
             if ($value !== '' && !shared_presentation_native_destination_sale_authorized_v1($value)) return true;
+            if ($value !== '') $terms++;
         }
+        if ($operators && $terms<2) return true;
         return false;
     }
     $path = wp_parse_url($requestUri,PHP_URL_PATH);
@@ -75,10 +83,18 @@ function shared_presentation_native_destination_denied_v1(
         if (!str_starts_with($part,'destinations:')) continue;
         $list = substr($part,strlen('destinations:'));
         $tokens = explode(',',$list);
-        if (!$list || count($tokens) > 10) return true;
-        foreach($tokens as $token) {
+        if (!$list || count($tokens) > 11) return true;
+        $terms=0;$operators=0;
+        foreach($tokens as $i=>$token) {
+            if (str_starts_with($token,'operator_')) {
+                if (!in_array($token,['operator_AND','operator_IN'],true)
+                    || $i!==count($tokens)-1 || ++$operators!==1) return true;
+                continue;
+            }
             if (!shared_presentation_native_destination_sale_authorized_v1($token)) return true;
+            $terms++;
         }
+        if ($operators && $terms<2) return true;
     }
     return false;
 }
