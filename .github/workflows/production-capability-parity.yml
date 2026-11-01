@@ -1,0 +1,47 @@
+name: MAD4B Production Capability Parity
+
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - 'ops/company-readiness-workflow/executor/**'
+      - 'ops/company-readiness-workflow/tests/test_vps_native_operator.py'
+      - 'ops/company-readiness-workflow/tests/test_central_dual_route_policy.mjs'
+      - 'ops/company-readiness-workflow/tests/test_vps_inventory_parity.py'
+      - 'ops/company-readiness-workflow/contracts/central-dual-execution-policy.v1.json'
+      - 'ops/company-readiness-workflow/staging-mu/304-mad4b-central-dual-lane-registry.php'
+      - '.github/workflows/production-capability-parity.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'ops/company-readiness-workflow/executor/**'
+      - 'ops/company-readiness-workflow/tests/test_vps_inventory_parity.py'
+      - '.github/workflows/production-capability-parity.yml'
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-production-capability-parity-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  production-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Python syntax
+        run: |
+          python3 -m py_compile ops/company-readiness-workflow/executor/vps-native-operator.py
+          python3 -m py_compile ops/company-readiness-workflow/executor/onboarding-v1.py
+      - name: Native operator authorization tests (root-owned file fixtures)
+        run: sudo python3 ops/company-readiness-workflow/tests/test_vps_native_operator.py
+      - name: Company inventory tests
+        run: python3 ops/company-readiness-workflow/tests/test_vps_inventory_parity.py
+      - name: Central routing tests
+        run: node --test ops/company-readiness-workflow/tests/test_central_dual_route_policy.mjs
+      - name: Central PHP syntax
+        run: php -l ops/company-readiness-workflow/staging-mu/304-mad4b-central-dual-lane-registry.php
+      - name: Contract schema validity
+        run: python3 -m json.tool ops/company-readiness-workflow/contracts/central-dual-execution-policy.v1.json > /dev/null
