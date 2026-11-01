@@ -5,7 +5,11 @@ $GLOBALS['opts']=[];
 class WP_CLI {public static function add_command($k,$v){}}
 function get_option($k,$v=false){return array_key_exists($k,$GLOBALS['opts'])?$GLOBALS['opts'][$k]:$v;}
 function add_option($k,$v,$x='',$y=false){if(array_key_exists($k,$GLOBALS['opts']))return false;$GLOBALS['opts'][$k]=$v;return true;}
-function update_option($k,$v,$a=false){if(!array_key_exists($k,$GLOBALS['opts']))return false;$GLOBALS['opts'][$k]=$v;return true;}
+function update_option($k,$v,$a=false){if(!array_key_exists($k,$GLOBALS['opts']))return false;
+ if (($GLOBALS['fail_job_update_once']??false) && str_starts_with($k,'job:')) {
+  $GLOBALS['fail_job_update_once']=false;return false;
+ }
+ $GLOBALS['opts'][$k]=$v;return true;}
 function wp_json_encode($v,$flags=0){return json_encode($v,$flags);}
 class MAD4B_Central_Dual_Lane_Registry_V1 {public static function central(){return true;}}
 class MAD4B_Central_VPS_Broker_V1 {
@@ -97,8 +101,18 @@ must(MAD4B_Broker_Late_Native_Reconciliation_V1::reconcile(signed($bad,$secret))
 $changed=$GLOBALS['opts']['grant:'.$grantid];$GLOBALS['opts']['grant:'.$grantid]['state']='REVOKED';
 must(MAD4B_Broker_Late_Native_Reconciliation_V1::reconcile($p)['verified']===false,'revoked grant denied');
 $GLOBALS['opts']['grant:'.$grantid]=$changed;
-$ok=MAD4B_Broker_Late_Native_Reconciliation_V1::reconcile($p);
-must($ok['verified']===true && $ok['central_completion_recorded']===true,'signed late receipt accepted');
+$GLOBALS['fail_job_update_once']=true;
+$crash=MAD4B_Broker_Late_Native_Reconciliation_V1::reconcile($p);
+must($crash['verified']===false && $crash['reason']==='JOB_WRITE_UNCERTAIN','interrupted original job update detected');
+must(isset($GLOBALS['opts']['receipt:'.$id]),'signed evidence durably saved before job update');
+must($GLOBALS['opts']['job:'.$id]['executed']===false,'job still pending after interrupted update');
+$conflict=$proof;$conflict['nonce']=bin2hex(random_bytes(16));
+$conflict['native_receipt_sha256']=hash('sha256','wrong receipt bytes');
+$denied=MAD4B_Broker_Late_Native_Reconciliation_V1::reconcile(signed($conflict,$secret));
+must($denied['verified']===false && $denied['reason']==='STORED_EVIDENCE_RECOVERY_SCOPE_MISMATCH','conflicting recovery evidence denied');
+$second=$proof;$second['nonce']=bin2hex(random_bytes(16));
+$ok=MAD4B_Broker_Late_Native_Reconciliation_V1::reconcile(signed($second,$secret));
+must($ok['verified']===true && $ok['central_completion_recorded']===true,'same original evidence completed after write failure');
 must($GLOBALS['opts']['job:'.$id]['state']==='GENERAL_SHELL_HISTORICAL_EXECUTION_RECONCILED','job historical state');
 must($GLOBALS['opts']['job:'.$id]['historical_reconciliation']===true,'historical marker');
 must($GLOBALS['opts']['job:'.$id]['automatic_execution_claimed']===false,'not falsely automatic');
