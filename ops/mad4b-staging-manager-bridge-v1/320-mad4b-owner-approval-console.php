@@ -55,7 +55,7 @@ final class MAD4B_Staging_Owner_Approval_Console_V1 {
                 <input type="hidden" name="page" value="<?php echo esc_attr(self::PAGE); ?>">
                 <label for="mad4b-staging-company">Company code</label>
                 <input id="mad4b-staging-company" name="company" type="text"
-                    pattern="[a-z][a-z0-9-]{2,47}"
+                    pattern="[a-z][a-z0-9\-]{2,47}"
                     value="<?php echo esc_attr($company); ?>" required>
                 <button class="button">Inspect target</button>
             </form>
@@ -220,9 +220,14 @@ final class MAD4B_Staging_Owner_Approval_Console_V1 {
         } catch (e) {
             const http = e && e.data && e.data.status ? 'HTTP ' + e.data.status + ' ' : '';
             const code = e && e.code ? e.code + ': ' : '';
+            const guidance = e && e.code === 'mad4b_environment_manager_assignment_locked'
+                ? ' The server is busy with another assignment request. Refresh and confirm again after the lock is released.'
+                : e && e.code === 'mad4b_environment_manager_assignment_lock_backend_unavailable'
+                    ? ' Database locking is unavailable; no assignment was changed. Ask the operator to inspect the database connection.'
+                    : '';
             outcome('Owner ' + action + ' failed or could not be verified: '
                 + http + code + (e.message || String(e))
-                + '. Check the readback below; if the session expired, sign in and reload.', true);
+                + guidance + ' Check the readback below; if the session expired, sign in and reload.', true);
             await read(false);
         } finally {
             busy = false;
