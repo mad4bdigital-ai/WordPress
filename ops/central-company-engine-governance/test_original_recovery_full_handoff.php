@@ -84,7 +84,7 @@ $request=$job;
 $request['request_id']=$id;
 $request['status']='ADMITTED_PENDING_INDEPENDENT_HOST_AUTHORITY';
 $request['execution_performed']=false;
-$grant=['company'=>'egypt-tour-gates','operation'=>'maintenance.shell',
+$grant=['contract'=>MAD4B_Central_SSH_Command_Intake_V1::CONTRACT,'company'=>'egypt-tour-gates','operation'=>'maintenance.shell',
  'site_uuid'=>'staging-site','canonical_origin'=>'https://tours.dev.mad4b.com',
  'environment'=>'staging','assignment_revision'=>5,'central_principal_id'=>7,
  'target_host_id'=>'srv2030908','target_ssh_principal'=>'www-data',
