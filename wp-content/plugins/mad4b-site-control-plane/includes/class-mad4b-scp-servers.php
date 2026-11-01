@@ -52,6 +52,14 @@ final class MAD4B_SCP_Servers {
 
 	public static function core_tools( $server_id ) {
 		$tools = self::declared_core_tools( $server_id );
+		// Capability traits are registered as non-authorizing read Abilities.
+		// Include only the exact runtime-registered names; never auto-mount
+		// missing schemas or treat semantic traits as execution authority.
+		if ( 'mad4b-read' === $server_id && class_exists( 'MAD4B_SCP_Capability_Traits', false ) ) {
+			foreach ( array( 'mad4b/capability-trait-profile', 'mad4b/capability-trait-resolve' ) as $trait_ability ) {
+				if ( function_exists( 'wp_has_ability' ) && wp_has_ability( $trait_ability ) ) $tools[] = $trait_ability;
+			}
+		}
 		// Feature 007 operator diagnostics are registered as read-only Abilities,
 		// and must be mounted on the Read plane, not on a mutation surface.
 		if ( 'mad4b-read' === $server_id && class_exists( 'MAD4B_SCP_Operator_Doctor' ) ) {

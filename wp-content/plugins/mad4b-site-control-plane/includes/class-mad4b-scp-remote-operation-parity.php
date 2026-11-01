@@ -436,6 +436,19 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				$row['blockers'][] = 'operation_not_execution_eligible';
 				$row['next_action'] = 'review_registration_trust_and_certification';
 			}
+			// Full WP-CLI is privileged first-party enrollment, not an add-on.
+			// A matching Ability name alone must never promote this operation
+			// until 305 owner enrollment and Broker 312/313 are integrated.
+			if ( 'company_remote_wpcli_full_enrollment' === $key ) {
+				$row['execution_eligible'] = false;
+				$row['remote_parity_ready'] = false;
+				$row['operational_state'] = 'pending_original_core_broker_enrollment';
+				$row['blockers'] = array(
+					'original_305_owner_enrollment_not_certified',
+					'original_312_313_full_wpcli_not_certified',
+				);
+				$row['next_action'] = 'certify_original_core_broker_and_owner_enrollment_ability';
+			}
 			$normalized[ $key ] = $row;
 		}
 		ksort( $normalized, SORT_STRING );

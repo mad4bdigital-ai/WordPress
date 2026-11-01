@@ -105,6 +105,11 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-isolated-php-contract.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/self-update-selected-head-release-trust-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/staging-source-selector-runtime.php",
+    # Company Management: exact hermetic Core registration and denial tests.
+    # No WordPress bootstrap/network/DB; unknown PHP remains PHPUnit-only.
+    "wp-content/plugins/mad4b-site-control-plane/tests/central-company-engine-governance-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/company-code-reconciliation-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/company-code-core-native-contract.php",
     "tests/remote-execution/unified-operator-session-policy-smoke.php",
 ))
 
@@ -221,6 +226,24 @@ def self_test():
         "wp-content/plugins/mad4b-site-control-plane/tests/self-update-selected-head-release-trust-runtime.php",
     ):
         assert command_for(path) == ["php", str((ROOT / path).resolve())]
+    for company_additional in (
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-code-reconciliation-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-code-core-native-contract.php",
+    ):
+        assert command_for(company_additional) == ["php", str((ROOT / company_additional).resolve())]
+    company_test = "wp-content/plugins/mad4b-site-control-plane/tests/central-company-engine-governance-contract.php"
+    assert command_for(company_test) == ["php", str((ROOT / company_test).resolve())]
+    company_plan = {
+        "contract": "mad4b.dynamic-readiness-capability-impact.v1",
+        "exact_head_sha": "a" * 40, "authorizing": False,
+        "production_authorized": False,
+        "required_regression_tests": [company_test],
+    }
+    company_result = run_tests(company_plan, "a" * 40, 20)
+    assert company_result["status"] == "PASS_ALL_MAPPED_TESTS"
+    assert company_result["passed_count"] == 1
+    assert company_result["authorizing"] is False
+    assert not has_assertion_pass("PHP lint is clean\n")
     # No wildcard admission: unknown PHP still requires a trusted PHPUnit runner.
     try:
         command_for("wp-content/plugins/mad4b-site-control-plane/tests/private-operations-foreign-smoke.php")

@@ -1,0 +1,246 @@
+{
+  "contract": "mad4b.central-company-engine-registry.v1",
+  "version": 1,
+  "domain_owner": "central_company_management",
+  "core_authority": "MAD4B_SCP_Operation_Registry",
+  "core_dispatch": "original_governed_operation_pipeline",
+  "core_executor": "original_native_executor_or_registered_broker",
+  "default_write_policy": "deny_without_native_operation_and_fresh_site_bound_authority",
+  "site_data_replication": "never_implicit",
+  "provider_code_mutation": "vendor_lifecycle_only",
+  "production": "same_capabilities_higher_risk_fresh_authority",
+  "engines": [
+    {
+      "id": "company.provisioning",
+      "owner": "central_company_management",
+      "source": "wordpress",
+      "native_operation": null,
+      "modules": [
+        "class-mad4b-scp-company-tenant-migration.php",
+        "class-mad4b-scp-company-operations-policy.php",
+        "class-mad4b-scp-central-company-rollout.php"
+      ],
+      "depends_on": [],
+      "risk": "high",
+      "assets": [
+        "company_profile",
+        "site_enrollment",
+        "provider_requirements"
+      ],
+      "scope": "company_and_site",
+      "protected": [
+        "company_identity",
+        "tenancy",
+        "membership",
+        "grants"
+      ]
+    },
+    {
+      "id": "company.plugin_sync",
+      "owner": "central_company_management",
+      "source": "wordpress",
+      "native_operation": "company.plugin-sync.request",
+      "modules": [
+        "class-mad4b-scp-central-company-rollout.php"
+      ],
+      "depends_on": [
+        "company.provisioning"
+      ],
+      "risk": "high",
+      "assets": [
+        "plugin_packages",
+        "activation_intent",
+        "provider_versions"
+      ],
+      "scope": "company_and_site",
+      "protected": [
+        "company_identity",
+        "grants",
+        "host_dropins"
+      ]
+    },
+    {
+      "id": "company.code_reconciliation",
+      "owner": "central_company_management",
+      "source": "vps",
+      "native_operation": "company.code-reconciliation.plan",
+      "modules": [
+        "code-reconciliation-v1/reconcile.py"
+      ],
+      "depends_on": [
+        "company.plugin_sync"
+      ],
+      "risk": "high",
+      "assets": [
+        "plugins",
+        "mu_plugins",
+        "themes",
+        "code_snippets"
+      ],
+      "scope": "company_and_site",
+      "protected": [
+        "company_identity",
+        "operation_registry",
+        "tenant_secrets",
+        "host_dropins"
+      ]
+    },
+    {
+      "id": "company.schema_evolution",
+      "owner": "central_company_management",
+      "source": "vps",
+      "native_operation": null,
+      "modules": [
+        "taxonomy-evolution-canary/class-mad4b-scp-taxonomy-evolution.php"
+      ],
+      "depends_on": [
+        "company.code_reconciliation"
+      ],
+      "risk": "high",
+      "assets": [
+        "post_types",
+        "taxonomies",
+        "term_mappings",
+        "wpml_translations",
+        "meta_schema"
+      ],
+      "scope": "company_and_site",
+      "protected": [
+        "company_identity",
+        "term_ids",
+        "translation_cluster_ids",
+        "grants"
+      ]
+    },
+    {
+      "id": "company.configuration_reconciliation",
+      "owner": "central_company_management",
+      "source": "wordpress",
+      "native_operation": null,
+      "modules": [
+        "class-mad4b-scp-provider-contracts.php",
+        "class-mad4b-scp-company-operations-policy.php"
+      ],
+      "depends_on": [
+        "company.schema_evolution"
+      ],
+      "risk": "high",
+      "assets": [
+        "provider_settings",
+        "filters",
+        "queries",
+        "listings",
+        "seo_settings"
+      ],
+      "scope": "company_and_site",
+      "protected": [
+        "credentials",
+        "tenant_local_options",
+        "private_company_settings"
+      ]
+    },
+    {
+      "id": "company.product_activation",
+      "owner": "central_company_management",
+      "source": "wordpress",
+      "native_operation": null,
+      "modules": [
+        "class-mad4b-scp-company-owner-activation.php"
+      ],
+      "depends_on": [
+        "company.provisioning",
+        "company.configuration_reconciliation"
+      ],
+      "risk": "medium",
+      "assets": [
+        "product_capabilities",
+        "activation_rules",
+        "selected_assets"
+      ],
+      "scope": "company_and_site",
+      "protected": [
+        "company_identity",
+        "local_prices",
+        "orders",
+        "customers"
+      ]
+    },
+    {
+      "id": "company.site_convergence",
+      "owner": "central_company_management",
+      "source": "wordpress",
+      "native_operation": "wordpress.runtime.converge",
+      "modules": [
+        "class-mad4b-scp-adaptive-runtime-convergence.php",
+        "class-mad4b-scp-environment-convergence-policy.php"
+      ],
+      "depends_on": [
+        "company.product_activation"
+      ],
+      "risk": "high",
+      "assets": [
+        "provider_capabilities",
+        "site_runtime",
+        "dependency_diff"
+      ],
+      "scope": "company_and_site",
+      "protected": [
+        "company_identity",
+        "host_runtime",
+        "grants"
+      ]
+    },
+    {
+      "id": "company.migration_recovery",
+      "owner": "central_company_management",
+      "source": "wordpress",
+      "native_operation": null,
+      "modules": [
+        "class-mad4b-scp-g8-restore-convergence.php",
+        "class-mad4b-scp-company-migration-decisions.php"
+      ],
+      "depends_on": [
+        "company.site_convergence"
+      ],
+      "risk": "high",
+      "assets": [
+        "snapshot",
+        "restore_receipts",
+        "site_readback",
+        "reviews"
+      ],
+      "scope": "company_and_site",
+      "protected": [
+        "other_sites",
+        "other_companies",
+        "production_without_grant"
+      ]
+    },
+    {
+      "id": "company.drift_recovery",
+      "owner": "central_company_management",
+      "source": "wordpress",
+      "native_operation": null,
+      "modules": [
+        "class-mad4b-scp-adaptive-runtime-convergence.php",
+        "class-mad4b-scp-ownership-reconciliation.php"
+      ],
+      "depends_on": [
+        "company.migration_recovery"
+      ],
+      "risk": "medium",
+      "assets": [
+        "configuration_drift",
+        "plugin_drift",
+        "schema_drift",
+        "recovery_jobs"
+      ],
+      "scope": "company_and_site",
+      "protected": [
+        "company_identity",
+        "authority",
+        "local_site_data"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+name: Central Company Engine Governance Safety
+on:
+  pull_request:
+    paths:
+      - 'ops/central-company-engine-governance/**'
+      - '.github/workflows/central-company-engine-governance-safety.yml'
+  push:
+    branches: ['feat/central-company-engine-governance-20261101']
+    paths:
+      - 'ops/central-company-engine-governance/**'
+      - '.github/workflows/central-company-engine-governance-safety.yml'
+permissions:
+  contents: read
+concurrency:
+  group: mad4b-central-company-engine-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+jobs:
+  read_only_engine_contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Validate immutable company engine contracts and original Core-only execution binding
+        env:
+          MAD4B_GOVERNANCE_USE_FIXTURE: '1'
+        run: |
+          python3 -m py_compile ops/central-company-engine-governance/governance.py ops/central-company-engine-governance/runtime_probe.py
+          python3 ops/central-company-engine-governance/test_governance.py
+          php -l wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php
+          php -l wp-content/plugins/mad4b-site-control-plane/config/remote-operation-catalog.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-enrollment-dispatch.php
+          php ops/central-company-engine-governance/test_full_wpcli_enrollment_registration.php
+          php ops/central-company-engine-governance/test_305_channel_once.php
+          php -l ops/central-company-engine-governance/original-broker-source/305-mad4b-original-sealed-rebind.php
+          php -l ops/central-company-engine-governance/original-broker-source/306-mad4b-central-vps-broker.php
+          php -l ops/central-company-engine-governance/original-broker-source/306-mad4b-original-core-recovery.php
+          php -l ops/central-company-engine-governance/original-broker-source/312-mad4b-broker-exact-ssh-authority.php
+          php -l ops/central-company-engine-governance/original-broker-source/313-mad4b-broker-remote-ssh-diagnostic.php
+          php ops/central-company-engine-governance/test_original_broker_306_312.php
+          php ops/central-company-engine-governance/test_original_core_recovery.php
+          php ops/central-company-engine-governance/test_original_sealed_rebind.php
+          php ops/central-company-engine-governance/test_original_recovery_full_handoff.php
+          php -l ops/central-company-engine-governance/original-broker-source/323-mad4b-native-vps-principal.php
+          php ops/central-company-engine-governance/test_native_signed_policy_rotation.php
+          php ops/central-company-engine-governance/test_original_broker_313.php
+          node --check ops/central-company-engine-governance/native/signed_argv_envelope.mjs
+          node --check ops/central-company-engine-governance/native/full_wpcli_execute.mjs
+          node --check ops/central-company-engine-governance/native/core_native_binding.mjs
+          node --test ops/central-company-engine-governance/native/test_core_native_binding.mjs
+          node --check ops/central-company-engine-governance/native/enrollment_lifecycle.mjs
+          node --test ops/central-company-engine-governance/native/test_enrollment_lifecycle.mjs
+          node --check ops/central-company-engine-governance/native/governed_execution_routes.mjs
+          node --test ops/central-company-engine-governance/native/test_governed_execution_routes.mjs
+          node --check ops/central-company-engine-governance/native/independent_313_readback.mjs
+          node --test ops/central-company-engine-governance/native/test_independent_313_readback.mjs
+          node --check ops/central-company-engine-governance/native/original_core_313_finalize.mjs
+          node --test ops/central-company-engine-governance/native/test_original_core_313_finalize.mjs
+          node --test ops/central-company-engine-governance/native/test_original_dual_route_policy.mjs
+          python3 -m py_compile ops/central-company-engine-governance/native/broker-native-ssh-reconcile.py
+          python3 ops/central-company-engine-governance/native/test_broker_reconcile_arity.py
+          node --check ops/central-company-engine-governance/native/host_proof_transition.mjs
+          node --check ops/central-company-engine-governance/native/issue_host_proof.mjs
+          node --test ops/central-company-engine-governance/native/test_host_proof_transition.mjs
+          node --test ops/central-company-engine-governance/native/test_signed_argv_envelope.mjs ops/central-company-engine-governance/native/test_full_wpcli_execute.mjs
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-company-engine-governance.php
+          php ops/central-company-engine-governance/test_native_read_surface.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/central-company-engine-governance-contract.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/company-code-reconciliation-contract.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/company-code-core-native-contract.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/universal-wordpress-operations-contract.py
+          cmp ops/central-company-engine-governance/engine-registry.json wp-content/plugins/mad4b-site-control-plane/config/central-company-engine-registry.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('ops/central-company-engine-governance')
+          e=json.loads((p/'engine-registry.json').read_text())
+          assert e['domain_owner']=='central_company_management'
+          assert e['core_authority']=='MAD4B_SCP_Operation_Registry'
+          assert e['core_dispatch']=='original_governed_operation_pipeline'
+          assert e['default_write_policy']=='deny_without_native_operation_and_fresh_site_bound_authority'
+          assert e['site_data_replication']=='never_implicit'
+          print('PASS central-company ownership, native core inheritance, no automatic replication')
+          PY

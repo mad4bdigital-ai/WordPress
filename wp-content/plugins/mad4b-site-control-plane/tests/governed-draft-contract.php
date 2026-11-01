@@ -177,8 +177,19 @@ $check(is_wp_error($bad_qa) && 'mad4b_draft_qa_authority_invalid'===$bad_qa->get
 
 $source=file_get_contents(dirname(__DIR__) . '/includes/class-mad4b-scp-governed-draft.php');
 $servers=file_get_contents(dirname(__DIR__) . '/includes/class-mad4b-scp-servers.php');
-$check(false!==strpos($servers,"'mad4b/draft-plan'"),'draft plan is not mounted on content/read plane');
-$check(false!==strpos($servers,"'mad4b/draft-verify'"),'draft verify is not mounted on content/read plane');
+// The server facade delegates its static Content catalog to the original
+// Core-Catalog trait. Assert both the ownership bridge and actual entries,
+// rather than requiring duplicated literal lists inside the thin facade.
+$core_catalog=file_get_contents(dirname(__DIR__) . '/includes/class-mad4b-scp-server-core-catalog.php');
+$check(is_string($core_catalog)
+    && false!==strpos($servers, 'use MAD4B_SCP_Server_Core_Catalog;')
+    && false!==strpos($servers, 'self::declared_core_tools( $server_id )')
+    && false!==strpos($core_catalog, "'mad4b-content' => array(")
+    && false!==strpos($core_catalog,"'mad4b/draft-plan'"),
+    'draft plan is not mounted on delegated Content plane');
+$check(is_string($core_catalog)
+    && false!==strpos($core_catalog,"'mad4b/draft-verify'"),
+    'draft verify is not mounted on delegated Content plane');
 $write_catalog=file_get_contents(dirname(__DIR__) . '/includes/class-mad4b-scp-server-write-catalog.php');
 $check(false!==strpos($servers,'use MAD4B_SCP_Server_Write_Catalog;') && false!==strpos($write_catalog,"'mad4b/draft-apply'"),'draft apply is not mounted as governed write candidate');
 $check(false===strpos($servers,"'mad4b/draft-publish'"),'public draft publish capability unexpectedly exists');
