@@ -1,0 +1,136 @@
+{
+  "contract": "mad4b.central-control-plane-release.v1",
+  "operation_id": "control-plane.plugin-policy.rollout",
+  "trigger_types": [
+    "manual.owner",
+    "site-profile.enrolled",
+    "site-profile.updated",
+    "plugin.version_observed"
+  ],
+  "orchestrator": "MAD4B Company Lifecycle / Central Control Plane",
+  "target_plugin": "mad4b-site-control-plane/mad4b-site-control-plane.php",
+  "expected_live_base_version": "0.4.0-rc.118",
+  "next_version_intent": "0.4.0-rc.119",
+  "version_intent_is_not_built_or_authorized": true,
+  "target_policy": "provider_isolation_default_on_new_and_legacy_unless_explicit_admin_opt_out",
+  "source_policy_sha": "fe949f5b40ab1ab42343d13055f8bcc4183efc60",
+  "release_artifact": {
+    "state": "NOT_BUILT",
+    "sha256": null,
+    "artifact_location": null,
+    "critical_file_sha256": null
+  },
+  "artifact_rule": "candidate built against exact live rc.118, not older rc.104; require verified critical file hashes",
+  "site_selection": {
+    "source": "centrally_registered_site_profiles",
+    "static_site_list_forbidden": true,
+    "required_fields": [
+      "site_uuid",
+      "origin",
+      "environment",
+      "plugin_version",
+      "plugin_inventory_sha256",
+      "provider_isolation_effective",
+      "enrollment_state"
+    ],
+    "canary_site": "https://tours.dev.mad4b.com",
+    "production_policy": "NO_MUTATION_BY_DEFAULT"
+  },
+  "lifecycle": [
+    "discover",
+    "plan",
+    "artifact-verify",
+    "staging-canary",
+    "staging-independent-readback",
+    "rollout-other-staging",
+    "production-owner-controlled",
+    "post-release-monitor",
+    "rollback"
+  ],
+  "stages": {
+    "discover": {
+      "read_only": true
+    },
+    "plan": {
+      "read_only": true,
+      "require_origin_site_uuid_binding": true
+    },
+    "artifact-verify": {
+      "require_source_integrity": true,
+      "require_php_lint": true,
+      "require_dependency_compatibility": true,
+      "require_backup_restore_point": true
+    },
+    "staging-canary": {
+      "require_authenticated_owner": true,
+      "require_registered_executor": true,
+      "require_exact_plan_binding": true,
+      "require_staging_identity": true
+    },
+    "staging-independent-readback": {
+      "require_reported_plugin_version": true,
+      "require_plugin_sha256": true,
+      "require_provider_isolation_effective": true,
+      "require_mcp_routes_not_regressed": true,
+      "require_oauth_no_write_grants": true
+    },
+    "rollout-other-staging": {
+      "require_canary_verified": true,
+      "per_site_plan": true
+    },
+    "production-owner-controlled": {
+      "disabled_by_default": true,
+      "require_separate_authenticated_owner_action": true,
+      "require_site_backup_and_rollback": true,
+      "require_production_scope_confirmation": true
+    },
+    "post-release-monitor": {
+      "require_mcp_read_handshake_evidence": true,
+      "require_diagnostics": true
+    },
+    "rollback": {
+      "require_preimage_digest": true,
+      "require_owner_or_recovery_authority": true,
+      "require_exact_site_binding": true
+    }
+  },
+  "invariants": [
+    "preserve_site_uuid",
+    "preserve_oauth_users_and_tokens",
+    "preserve_customer_orders_media_and_secrets",
+    "never_create_write_grants_from_isolation",
+    "mcp_adapter_dependency_version_independent",
+    "never_force_disable_explicit_isolation_opt_out",
+    "never_modify_unenrolled_site",
+    "never_silently_deploy_to_production",
+    "never_downgrade_runtime_source"
+  ],
+  "idempotency": [
+    "release_sha256",
+    "site_uuid",
+    "origin",
+    "stage",
+    "plan_sha256"
+  ],
+  "journal": {
+    "append_only": true,
+    "per_site_readback": true,
+    "incident_on_mismatch": true
+  },
+  "current_status": "SOURCE_POLICY_TESTED_ON_ISOLATED_RC118_LIVE_ARTIFACT_AND_EXECUTOR_UNAVAILABLE",
+  "live_staging_mutation": false,
+  "production_mutation": false,
+  "execution_policy_ref": "ops/company-readiness-workflow/contracts/central-dual-execution-policy.v1.json",
+  "execution_lanes": [
+    "registered_executor",
+    "vps_ssh"
+  ],
+  "general_ssh_administration": {
+    "supported_by_policy": true,
+    "requires_registered_authenticated_ssh_transport": true,
+    "command_catalog_required": false,
+    "independent_from_company_stage_executor": true,
+    "default_execution_when_mcp_down": "only_with_separately_valid_ssh_scope",
+    "never_bypass_permission_denial": true
+  }
+}
