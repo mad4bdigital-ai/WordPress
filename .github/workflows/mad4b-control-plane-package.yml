@@ -202,11 +202,24 @@ jobs:
           from pathlib import Path
           data=json.loads(Path('dist/mad4b-prepackage-dependency-gate.json').read_text())
           assert data['ci_regression_coverage_ready'] is True
+          assert data['impact_scope'] == 'complete_exact_dependencies'
+          assert data['reverse_dependency_evidence']['complete'] is True
           assert data['release_ready'] is False
           assert data['staging_write_authorized'] is False
           assert data['production_mutation_allowed'] is False
-          assert data['required_live_evidence']
-          print('Predictive package gate: regression coverage PASS, live authorization remains withheld')
+          if data['transitive_domains']:
+              # A real Control Plane impact must still require live evidence.
+              assert data['required_live_evidence']
+              print('Predictive package gate: regression coverage PASS, live authorization remains withheld')
+          else:
+              # A source change outside all Control Plane domains has no
+              # dependent regressions or live evidence to fabricate.
+              assert not data['direct_domains']
+              assert not data['mandatory_regressions']
+              assert not data['missing_regressions']
+              assert not data['failed_regressions']
+              assert not data['required_live_evidence']
+              print('Predictive package gate: no Control Plane impact; deployment remains unauthorized')
           PY_INVARIANT
 
       # Replay fault combinations sourced from sanitized ETG/ARE live
