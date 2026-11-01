@@ -53,7 +53,7 @@ $req=[
  'grant_mode'=>'persistent','transport_id'=>$transport_id,
  'target_host_id'=>'hosting-3','target_ssh_principal'=>'siteuser',
  'site_uuid'=>'test-site','canonical_origin'=>'https://staging.example.test',
- 'environment'=>'staging','target_scope'=>'wordpress','correlation_id'=>'test-123456',
+ 'environment'=>'staging','target_scope'=>'wordpress','command_format'=>'wpcli.argv.json.v1','correlation_id'=>'test-123456',
  'command_sha256'=>$digest];
 $grant=[
  'state'=>'CENTRAL_OPERATION_SCOPE_GRANTED','company'=>'wayfatours',
@@ -110,5 +110,6 @@ reject_change($opts,MAD4B_Central_SSH_Command_Intake_V1::TRANSPORT_PREFIX.$trans
 reject_change($opts,MAD4B_Central_SSH_Command_Intake_V1::TRANSPORT_PREFIX.$transport_id,'full_wpcli_grant_id','different',$eval,$neg);
 reject_change($opts,MAD4B_Central_SSH_Command_Intake_V1::PREFIX.$grant_id,'state','REVOKED',$eval,$neg);
 reject_change($opts,MAD4B_Central_SSH_Command_Intake_V1::REQUEST_PREFIX.$id,'target_scope','host',$eval,$neg);
+reject_change($opts,MAD4B_Central_SSH_Command_Intake_V1::REQUEST_PREFIX.$id,'command_format','maintenance.shell.text.v1',$eval,$neg);
 echo json_encode(['suite'=>'original-306-312-job-handoff','status'=>'PASS',
  'assertions'=>6+$neg,'real_wordpress_mutated'=>false]).PHP_EOL;
