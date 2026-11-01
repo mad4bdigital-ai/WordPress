@@ -126,13 +126,14 @@ final class MAD4B_Staging_Manager_Admission_Bridge_V1 {
         $base['execution_target_origin']=$binding['canonical_origin'];
         $base['execution_target_site_uuid']=$binding['company_site_uuid'];
         // Independent native provider is mandatory AFTER the original 305 grant.
-        $nativeIntent=$intent==='content.write'?'content.write':'content.write';
+        $nativeIntent=$intent;
         $plan=MAD4B_Company_Execution_Resolver_V1::plan($company,'staging',$nativeIntent);
         $base['native_plan_state']=$plan['state']??'UNKNOWN';
         $base['native_plan_blockers']=$plan['blockers']??[];
         $base['remote_write_ready']=($plan['execution_allowed']??false)===true
             && ($plan['remote_write_permitted']??false)===true
             && !empty($plan['selected_channel'])
+            && ($plan['intent']??'')===$intent
             && ($plan['environment']??'')==='staging'
             && ($plan['canonical_origin']??'')===$binding['canonical_origin']
             && ($plan['site_uuid']??'')===$binding['company_site_uuid'];
