@@ -91,6 +91,8 @@
 /* The original full Elementor TOC stays intact and accessible on desktop. */
 @media (max-width: 767px) {
   body.single-tours-and-activities .elementor-24784 .elementor-element-b29a19b {
+    /* Physical gap below the previous mobile content block; scoped to TOC only. */
+    margin-block-start: 12px;
     width: 100%;
     max-width: none;
     min-width: 0;
@@ -244,5 +246,18 @@
   .mad4b-tour-toc__chevron,
   .header-context-toggle {
     transition: none !important;
+  }
+}
+
+/* Tour editorial headings inherit Elementor Global Typography;
+   their color is the site's global secondary, not a hard-coded per-language value. */
+body.single-tours-and-activities .elementor-widget-heading h2.elementor-heading-title {
+  color: var(--e-global-color-secondary, var(--e-global-color-primary));
+}
+@media (max-width: 767px) {
+  /* Elementor generated CSS adds ~58px margin above the About heading.
+     Keep the 12px TOC top gap, then a compact 16px separation below TOC. */
+  body.single-tours-and-activities .elementor-24784 .elementor-element-c16d4db > .elementor-widget-container {
+    margin-block-start: 16px;
   }
 }

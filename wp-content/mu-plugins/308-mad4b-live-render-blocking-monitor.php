@@ -38,7 +38,7 @@ final class MAD4B_Live_Render_Blocking_Monitor_V1 {
         }
         foreach($r['issues'] as $row){
             $code=(string)($row['code']??'');
-            if(!preg_match('/^perf_(?:rbcss|lcpdelay|fontcss|inlinecss)_[a-f0-9]{12}$|^perf_(?:ttfb_site|lcpdiscover_home)$/D',$code))continue;
+            if(!preg_match('/^perf_(?:rbcss|lcpdelay|fontcss|inlinecss)_[a-f0-9]{12}$|^perf_(?:ttfb_site|lcpdiscover_home|ratecss_product|ratecss_source_missing|empty_accommodation_ui|mobile_toc_spacing|rate_origin_ui|rate_schedule_default|toc_bottom_gap|tour_h2_global|rate_locale_parity|rate_schema_drift|rate_origin_config|rate_orphan|catalog_initial_layout|catalog_svg_price_first_paint|catalog_template_drift|chosen_crawlability|ard_manifest|header_escape_text|forced_reflow_home|lcp_request_wait|swiper_focus_[a-f0-9]{12})$/D',$code))continue;
             $input[]=self::issue($code,(string)($row['severity']??'high'),(string)($row['label']??'Render-blocking CSS detected.'));
         }
         return $input;
@@ -55,8 +55,8 @@ final class MAD4B_Live_Render_Blocking_Monitor_V1 {
             ($j['site_uuid']??'')!=='e5e64bca-ed62-48d2-b2b3-dff693cd702a' ||
             ($j['origin']??'')!=='https://tours.dev.mad4b.com' ||
             empty($j['complete']) || count((array)($j['pages']??[]))<7 ||
-            count((array)($j['pages']??[]))>14 ||
-            count((array)($j['issues']??[]))>30) WP_CLI::error('invalid_live_probe');
+            count((array)($j['pages']??[]))>24 ||
+            count((array)($j['issues']??[]))>80) WP_CLI::error('invalid_live_probe');
         $ts=strtotime((string)($j['observed_at']??''))?:0;
         if($ts<time()-1200||$ts>time()+60)WP_CLI::error('stale_or_future_probe');
         $seen=[];
@@ -66,7 +66,7 @@ final class MAD4B_Live_Render_Blocking_Monitor_V1 {
         }
         foreach($j['issues'] as $issue){
             $code=(string)($issue['code']??'');
-            if(!preg_match('/^perf_(?:rbcss|lcpdelay|fontcss|inlinecss)_[a-f0-9]{12}$|^perf_(?:ttfb_site|lcpdiscover_home)$/D',$code) ||
+            if(!preg_match('/^perf_(?:rbcss|lcpdelay|fontcss|inlinecss)_[a-f0-9]{12}$|^perf_(?:ttfb_site|lcpdiscover_home|ratecss_product|ratecss_source_missing|empty_accommodation_ui|mobile_toc_spacing|rate_origin_ui|rate_schedule_default|toc_bottom_gap|tour_h2_global|rate_locale_parity|rate_schema_drift|rate_origin_config|rate_orphan|catalog_initial_layout|catalog_svg_price_first_paint|catalog_template_drift|chosen_crawlability|ard_manifest|header_escape_text|forced_reflow_home|lcp_request_wait|swiper_focus_[a-f0-9]{12})$/D',$code) ||
                 isset($seen[$code]) || !in_array($issue['severity']??'', ['critical','high','medium'],true) ||
                 strlen((string)($issue['label']??''))>225)WP_CLI::error('invalid_css_issue');
             $seen[$code]=true;

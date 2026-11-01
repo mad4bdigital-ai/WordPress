@@ -62,6 +62,16 @@ foreach ([
 }
 $cls='MAD4B_SCP_Content_Readiness_Alerts';
 function yes($condition,$label){if(!$condition){fwrite(STDERR,"FAIL $label\n");exit(3);}echo "PASS $label\n";}
+// Verify the actual plugin loader, not just isolated class imports.
+$entry=file_get_contents(dirname(__DIR__,2).'/mad4b-site-control-plane.php');
+$integration_line="require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-readiness-integrations.php';";
+$alert_line="require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-content-readiness-alerts.php';";
+yes(is_string($entry) && strpos($entry,$integration_line)!==false
+ && strpos($entry,$alert_line)!==false
+ && strpos($entry,$integration_line)<strpos($entry,$alert_line)
+ && substr_count($entry,'MAD4B_SCP_Readiness_Integrations::boot();')===1,
+ 'runtime readiness integration registered once before admin render');
+
 $GLOBALS['admin']=true;
 $GLOBALS['languages']=[111=>'en',112=>''];
 $GLOBALS['post_meta']=[111=>['tour_origin_address'=>''],112=>['tour_origin_address'=>'12']];
@@ -394,4 +404,21 @@ yes($preReport['execution_mode']==='disabled' &&
     $preReport['side_effects']['outbound_messages']===0 &&
     $preReport['gates']['provider_tasks_enabled']===false,
     'preactivation report is read-only and execution-disabled');
+// New tour-accommodation and mobile TOC regression findings can only arrive
+// from the existing audited MAD4B performance provider; no status spoofing.
+foreach (['perf_empty_accommodation_ui'=>'high','perf_mobile_toc_spacing'=>'medium','perf_rate_origin_ui'=>'high','perf_rate_schedule_default'=>'high','perf_toc_bottom_gap'=>'medium','perf_tour_h2_global'=>'medium','perf_rate_locale_parity'=>'high','perf_rate_schema_drift'=>'high','perf_rate_origin_config'=>'high','perf_rate_orphan'=>'high','perf_header_escape_text'=>'high','perf_forced_reflow_home'=>'high','perf_lcp_request_wait'=>'high','perf_swiper_focus_a1b2c3d4e5f6'=>'high','perf_catalog_initial_layout'=>'high','perf_catalog_svg_price_first_paint'=>'high','perf_catalog_template_drift'=>'medium','perf_chosen_crawlability'=>'medium','perf_ard_manifest'=>'high'] as $code=>$severity) {
+    $id=hash('sha256','6|site|0|'.$code);
+    $event=['id'=>$id,'post_type'=>'site','object_id'=>0,'code'=>$code,
+        'severity'=>$severity,'label'=>'Verified mobile presentation regression',
+        'source'=>'mad4b-live-performance'];
+    $GLOBALS['external_source']=[$event];
+    $scan=$cls::discover();
+    $rows=array_values(array_filter($scan['issues'],fn($x)=>($x['code']??'')===$code));
+    yes($scan['complete'] && count($rows)===1 && $rows[0]['severity']===$severity,
+       'canonical live performance provider accepts governed '.$code);
+    $GLOBALS['external_source']=[array_merge($event,['source'=>'unauthorized-provider'])];
+    $invalid=$cls::discover();
+    yes(!$invalid['complete'], 'forged performance source denied for '.$code);
+    unset($GLOBALS['external_source']);
+}
 echo "ALL READINESS LEDGER CONTRACTS PASSED\n";

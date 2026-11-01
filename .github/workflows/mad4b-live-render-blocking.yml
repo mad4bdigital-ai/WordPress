@@ -6,7 +6,37 @@ on:
       - 'wp-content/mu-plugins/308-mad4b-live-render-blocking-monitor.php'
       - 'wp-content/mu-plugins/309-mad4b-astra-local-cairo.php'
       - 'wp-content/mu-plugins/310-mad4b-city-slider-lcp-preload.php'
+      - 'wp-content/mu-plugins/assets/mad4b-chosen-crawlable.js'
+      - 'wp-content/mu-plugins/321-mad4b-public-catalog-first-render.php'
+      - 'wp-content/mu-plugins/322-mad4b-empty-jet-css-fastpath.php'
+      - 'wp-content/mu-plugins/323-mad4b-nav-term-fragment-cache.php'
+      - 'wp-content/mu-plugins/324-mad4b-priceless-dynamic-css-cache.php'
+      - 'wp-content/mu-plugins/325-mad4b-jetblog-mobile-server-first-paint.php'
+      - 'wp-content/mu-plugins/326-mad4b-nationality-server-first-paint.php'
+      - 'wp-content/mu-plugins/327-mad4b-fluent-passport-locale.php'
+      - 'wp-content/mu-plugins/328-mad4b-destination-terms-request-memo.php'
+      - 'wp-content/mu-plugins/329-mad4b-home-wpml-flag-preload-trim.php'
+      - 'wp-content/mu-plugins/330-mad4b-staging-leaf-script-defer.php'
+      - 'wp-content/mu-plugins/331-mad4b-elementor-request-json-memo.php'
+      - 'wp-content/plugins/etg-traveller-nationality-switcher/etg-traveller-nationality-switcher.php'
+      - 'ops/qa/mad4b-render-blocking/tests/test_fluent_passport_locale_contract.py'
+      - 'ops/qa/mad4b-render-blocking/fluent_passport_wpml_country_labels_acceptance.md'
+      - 'wp-content/plugins/etg-traveller-nationality-switcher/assets/nationality.js'
+      - 'ops/qa/mad4b-render-blocking/staging_external_css_combine.sh'
+      - 'ops/qa/mad4b-render-blocking/audit_frontend_assets.py'
+      - 'ops/qa/mad4b-render-blocking/tests/test_asset_audit.py'
+      - 'ops/qa/mad4b-render-blocking/tests/test_staging_css_combine_contract.py'
+      - '.well-known/ard.json'
+      - 'wp-content/mu-plugins/company-accessibility-contract.php'
+      - 'wp-content/mu-plugins/assets/accessibility-swiper.js'
+      - 'wp-content/mu-plugins/assets/accessibility-listing.js'
       - 'wp-content/mu-plugins/311-mad4b-explore-global-contrast.php'
+      - 'wp-content/mu-plugins/312-mad4b-rate-css-resilience.php'
+      - 'wp-content/mu-plugins/313-mad4b-rate-departure-governance.php'
+      - 'wp-content/mu-plugins/tour-rates-dynamic-function.php'
+      - 'wp-content/mu-plugins/listing-option-selection.php'
+      - 'wp-content/mu-plugins/listing-option-selection-assets/**'
+      - 'wp-content/mu-plugins/assets/mad4b-header-tour-ux.css'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php'
       - 'ops/qa/mad4b-render-blocking/**'
       - '.github/workflows/mad4b-live-render-blocking.yml'
@@ -16,7 +46,37 @@ on:
       - 'wp-content/mu-plugins/308-mad4b-live-render-blocking-monitor.php'
       - 'wp-content/mu-plugins/309-mad4b-astra-local-cairo.php'
       - 'wp-content/mu-plugins/310-mad4b-city-slider-lcp-preload.php'
+      - 'wp-content/mu-plugins/assets/mad4b-chosen-crawlable.js'
+      - 'wp-content/mu-plugins/321-mad4b-public-catalog-first-render.php'
+      - 'wp-content/mu-plugins/322-mad4b-empty-jet-css-fastpath.php'
+      - 'wp-content/mu-plugins/323-mad4b-nav-term-fragment-cache.php'
+      - 'wp-content/mu-plugins/324-mad4b-priceless-dynamic-css-cache.php'
+      - 'wp-content/mu-plugins/325-mad4b-jetblog-mobile-server-first-paint.php'
+      - 'wp-content/mu-plugins/326-mad4b-nationality-server-first-paint.php'
+      - 'wp-content/mu-plugins/327-mad4b-fluent-passport-locale.php'
+      - 'wp-content/mu-plugins/328-mad4b-destination-terms-request-memo.php'
+      - 'wp-content/mu-plugins/329-mad4b-home-wpml-flag-preload-trim.php'
+      - 'wp-content/mu-plugins/330-mad4b-staging-leaf-script-defer.php'
+      - 'wp-content/mu-plugins/331-mad4b-elementor-request-json-memo.php'
+      - 'wp-content/plugins/etg-traveller-nationality-switcher/etg-traveller-nationality-switcher.php'
+      - 'ops/qa/mad4b-render-blocking/tests/test_fluent_passport_locale_contract.py'
+      - 'ops/qa/mad4b-render-blocking/fluent_passport_wpml_country_labels_acceptance.md'
+      - 'wp-content/plugins/etg-traveller-nationality-switcher/assets/nationality.js'
+      - 'ops/qa/mad4b-render-blocking/staging_external_css_combine.sh'
+      - 'ops/qa/mad4b-render-blocking/audit_frontend_assets.py'
+      - 'ops/qa/mad4b-render-blocking/tests/test_asset_audit.py'
+      - 'ops/qa/mad4b-render-blocking/tests/test_staging_css_combine_contract.py'
+      - '.well-known/ard.json'
+      - 'wp-content/mu-plugins/company-accessibility-contract.php'
+      - 'wp-content/mu-plugins/assets/accessibility-swiper.js'
+      - 'wp-content/mu-plugins/assets/accessibility-listing.js'
       - 'wp-content/mu-plugins/311-mad4b-explore-global-contrast.php'
+      - 'wp-content/mu-plugins/312-mad4b-rate-css-resilience.php'
+      - 'wp-content/mu-plugins/313-mad4b-rate-departure-governance.php'
+      - 'wp-content/mu-plugins/tour-rates-dynamic-function.php'
+      - 'wp-content/mu-plugins/listing-option-selection.php'
+      - 'wp-content/mu-plugins/listing-option-selection-assets/**'
+      - 'wp-content/mu-plugins/assets/mad4b-header-tour-ux.css'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php'
       - 'ops/qa/mad4b-render-blocking/**'
       - '.github/workflows/mad4b-live-render-blocking.yml'
@@ -39,11 +99,62 @@ jobs:
           php -l wp-content/mu-plugins/308-mad4b-live-render-blocking-monitor.php
           php -l wp-content/mu-plugins/309-mad4b-astra-local-cairo.php
           php -l wp-content/mu-plugins/310-mad4b-city-slider-lcp-preload.php
+          php -l wp-content/mu-plugins/company-accessibility-contract.php
+          php -l wp-content/mu-plugins/321-mad4b-public-catalog-first-render.php
+          php -l wp-content/mu-plugins/322-mad4b-empty-jet-css-fastpath.php
+          php ops/qa/mad4b-render-blocking/tests/empty_jet_css_fastpath_contract.php
+          php -l wp-content/mu-plugins/323-mad4b-nav-term-fragment-cache.php
+          php ops/qa/mad4b-render-blocking/tests/nav_term_fragment_cache_contract.php
+          php ops/qa/mad4b-render-blocking/tests/nav_private_disk_snapshot_contract.php
+          php -l wp-content/mu-plugins/324-mad4b-priceless-dynamic-css-cache.php
+          php ops/qa/mad4b-render-blocking/tests/priceless_dynamic_css_cache_contract.php
+          php ops/qa/mad4b-render-blocking/tests/priceless_css_disk_snapshot_contract.php
+          php ops/qa/mad4b-render-blocking/tests/selective_litespeed_inline_css_contract.php
+          php -l wp-content/mu-plugins/334-mad4b-page-css-frame-priority.php
+          php ops/qa/mad4b-render-blocking/tests/css_page_frame_priority_contract.php
+          php -l wp-content/mu-plugins/328-mad4b-destination-terms-request-memo.php
+          php ops/qa/mad4b-render-blocking/tests/destination_request_memo_contract.php
+          php -l wp-content/mu-plugins/329-mad4b-home-wpml-flag-preload-trim.php
+          php ops/qa/mad4b-render-blocking/tests/home_flag_preload_trim_contract.php
+          php -l wp-content/mu-plugins/330-mad4b-staging-leaf-script-defer.php
+          php ops/qa/mad4b-render-blocking/tests/leaf_script_defer_contract.php
+          php -l wp-content/mu-plugins/331-mad4b-elementor-request-json-memo.php
+          php ops/qa/mad4b-render-blocking/tests/elementor_json_request_memo_contract.php
+          php -l wp-content/mu-plugins/325-mad4b-jetblog-mobile-server-first-paint.php
+          python3 ops/qa/mad4b-render-blocking/tests/test_jetblog_mobile_first_paint_contract.py
+          php -l wp-content/mu-plugins/326-mad4b-nationality-server-first-paint.php
+          python3 ops/qa/mad4b-render-blocking/tests/test_nationality_server_first_paint_contract.py
+          php -l wp-content/mu-plugins/327-mad4b-fluent-passport-locale.php
+          php -l wp-content/plugins/etg-traveller-nationality-switcher/etg-traveller-nationality-switcher.php
+          node --check wp-content/plugins/etg-traveller-nationality-switcher/assets/nationality.js
+          python3 ops/qa/mad4b-render-blocking/tests/test_fluent_passport_locale_contract.py
+          node --check wp-content/plugins/etg-traveller-nationality-switcher/assets/nationality.js
+          python3 ops/qa/mad4b-render-blocking/tests/test_asset_audit.py
+          bash -n ops/qa/mad4b-render-blocking/staging_external_css_combine.sh
+          bash ops/qa/mad4b-render-blocking/tests/test_staging_bounded_source_scan.sh
+          python3 ops/qa/mad4b-render-blocking/tests/test_staging_css_combine_contract.py
+          php ops/qa/mad4b-render-blocking/tests/catalog-discovery-contract.php
           php -l wp-content/mu-plugins/311-mad4b-explore-global-contrast.php
+          php -l wp-content/mu-plugins/312-mad4b-rate-css-resilience.php
+          php -l wp-content/mu-plugins/313-mad4b-rate-departure-governance.php
+          php -l wp-content/mu-plugins/tour-rates-dynamic-function.php
+          php ops/qa/mad4b-render-blocking/tests/rate-departure-governance-contract.php
+          php ops/qa/mad4b-render-blocking/tests/rate-css-resilience-contract.php
+          php -l wp-content/mu-plugins/listing-option-selection.php
+          php ops/qa/mad4b-render-blocking/tests/rate-property-visibility-contract.php
           php ops/qa/mad4b-render-blocking/tests/home-lcp-preload-contract.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php
           php ops/qa/mad4b-render-blocking/tests/source_contract.php
+      - name: Hotel choice JavaScript contract
+        run: |
+          node --check wp-content/mu-plugins/listing-option-selection-assets/options.js
+          node --check wp-content/mu-plugins/assets/accessibility-swiper.js
+          node --check wp-content/mu-plugins/assets/accessibility-listing.js
+          node ops/qa/mad4b-render-blocking/tests/test_swiper_source.js
+          node --check wp-content/mu-plugins/assets/mad4b-chosen-crawlable.js
       - name: Offline classification contracts
         run: |
           python3 -m py_compile ops/qa/mad4b-render-blocking/mad4b-live-css-render-blocking.py
           python3 ops/qa/mad4b-render-blocking/tests/test_classifier.py
+          python3 ops/qa/mad4b-render-blocking/tests/test_ard_chosen_cache.py
+          python3 ops/qa/mad4b-render-blocking/tests/test_safe_html_cache.py

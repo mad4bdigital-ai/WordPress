@@ -75,3 +75,9 @@ $opts['mad4b_live_render_blocking_v1']['observed_at']=gmdate('c');
 $opts['mad4b_live_render_blocking_v1']['issues']=[['code'=>'perf_ttfb_site','severity'=>'high','label'=>'Slow median server']];
 $ttfb=MAD4B_Live_Render_Blocking_Monitor_V1::external([],[]);
 $assert(count($ttfb)===1&&$ttfb[0]['code']==='perf_ttfb_site','TTFB high alert uses live-performance native provider');
+
+$monitorSource=file_get_contents(dirname(__DIR__,4).'/wp-content/mu-plugins/308-mad4b-live-render-blocking-monitor.php');
+$assert(str_contains($monitorSource,'>24') && str_contains($monitorSource,'>80'),
+    'expanded browser probe keeps bounded 24-page and 80-issue limits');
+$assert(str_contains($monitorSource,'isset($seen[$code])') && str_contains($monitorSource,'e5e64bca-ed62-48d2-b2b3-dff693cd702a'),
+    'expanded evidence import retains unique codes and site UUID binding');

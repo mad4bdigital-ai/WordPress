@@ -14136,6 +14136,125 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/isolated-contract.php"
       ],
       "review_rationale": "Revised Content Readiness integrates strictly fingerprint-bound site-neutral Elementor localization issues into the existing audited ledger, preserves the original DFSB filter validation, and moves the admin menu to the registered parent-order route contract. The exact edited isolated PHP regression test exercises source ownership, issue transitions, and event journal without external writes. CI approval is not live or Production release authority."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "source_blob_sha": "4762af5b6d6a7d4c1e8cbc2381b0e1a18fdaab8d",
+      "owner_role": "MAD4B CI source reviewer for site performance and accommodation presentation, CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/isolated-contract.php"
+      ],
+      "review_rationale": "A reviewed read-only extension to the existing fingerprint-bound MAD4B performance issue ledger allows the empty accommodation and mobile Tour Content spacing codes only from the authorized live performance provider. An exact changed isolated PHP contract proves both codes are accepted with their severity and forged provider identities fail closed. This does not authorize production rollout or modify any supplier selection."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "source_blob_sha": "5d1875803803aa3c1ef7644909eb25fe8b31225d",
+      "owner_role": "MAD4B CI source reviewer for governed Tour Rate departure data, H2 global styles and mobile TOC presentation, CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/isolated-contract.php"
+      ],
+      "review_rationale": "Changed exact Content Readiness provider code admits four additional read-only, source-bound mobile product presentation drift alerts for a Rate continent, unconfirmed weekday/time defaults, excess TOC bottom gap, and non-global Tour H2 color. Offline isolated contract proves exact severities and rejection of forged provider records, while PHP source remains registered only to an observed live evidence provider. CI-only source review is not Production authorization."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "source_blob_sha": "560ffe32bfea193d8302a31e3c59975687e743a4",
+      "owner_role": "MAD4B CI source reviewer for Tour Rate-wide optional departure and WPML frontend parity regressions; CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/isolated-contract.php"
+      ],
+      "review_rationale": "Exact verified source adds only provider fingerprint-bound READ alerts for translated missing rate cards, false-by-default JetEngine schema drift, opted-in invalid Tour origin and orphan published Rates. Tests reject forged event providers, preserve optional legacy metadata, and verify new locale+site census classifications. Approval is CI-only; no Production activation, content migration or supplier updates."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "source_blob_sha": "f52c59abc49c9dfc7caec2fd9dd403e43d0653c1",
+      "owner_role": "MAD4B CI reviewer for staging header/JetEngine LCP and Swiper performance alerts",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/isolated-contract.php"
+      ],
+      "review_rationale": "This change is an exact-source read-only extension of provider-bound MAD4B performance issues. New statuses monitor visible raw newline text, LOAF high forced layout, delayed image preload despite early HTML, and active Swiper focus regression. Isolated tests verify allowed event codes with correct severity and rejection of forged providers. No authorization to mutate Production or third-party vendor scripts."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "source_blob_sha": "a18bb308751c035f519fcaaf1dcf4b0ad75ff45c",
+      "owner_role": "MAD4B Staging UI performance and discovery readiness reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/isolated-contract.php"
+      ],
+      "review_rationale": "Exact provider fingerprint-bound readonly alerts for public catalog first-paint Elementor CSS parity, ARD v0.91 manifest availability and Chosen Tour Type href crawlability. Tests assert supported approved provider, expected severity, and rejection of forged sources. Staging-only no production mutation or authority widening."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "source_blob_sha": "b4c3b25848bc19c6df8feac8761d8da4ecace050",
+      "owner_role": "MAD4B staging WPML catalog structure and first-paint monitoring reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/isolated-contract.php"
+      ],
+      "review_rationale": "Verified provenance-bound medium severity perf_catalog_template_drift separates structurally older translated Elementor FR/DE listing topology from present and valid per-locale CSS. The verified provider is read-only and cannot overwrite translated content; source tests accept trusted and reject forged alert records. No Production authorization."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "source_blob_sha": "62481cfc5df19e37828e38de52495cdd140fccb8",
+      "owner_role": "MAD4B staging catalog first-paint visual size and rate style reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/isolated-contract.php"
+      ],
+      "review_rationale": "Exact site UUID and provider-bound read-only High alert for measured List View SVG icon dimensions and Elementor Heading tour-component-price Dynamic Tag Global Typography first paint. Missing rates or locale-specific absent icons are accepted; no listing design flattening, currency mutation, authoring or production permission. CI tests accept approved provider, reject spoofing and compare measured good vs oversized controls."
     }
   ],
   "code_change_rules": {
