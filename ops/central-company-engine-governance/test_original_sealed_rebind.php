@@ -39,10 +39,15 @@ class MAD4B_Central_VPS_Broker_V1 {
   $id=$body['request_id']??'';
   if(!preg_match('/^[a-f0-9]{32}$/D',$id))return new WP_Error('invalid','invalid');
   $GLOBALS['dispatched']++;
-  $r=$GLOBALS['opts']['new-request'];
+  $r=$GLOBALS['opts']['new-request'];$old=$GLOBALS['original'];
   return new WP_REST_Response([
    'job_id'=>$id,'company'=>$r['company'],'command_sha256'=>$r['command_sha256'],
-   'site_uuid'=>'staging-site','environment'=>'staging',
+   'site_uuid'=>$old['site_uuid'],'canonical_origin'=>$old['canonical_origin'],
+   'environment'=>'staging','operation'=>$old['operation'],
+   'grant_id'=>$old['grant_id'],'transport_id'=>$old['transport_id'],
+   'target_host_id'=>$old['target_host_id'],
+   'target_ssh_principal'=>$old['target_ssh_principal'],
+   'central_principal_id'=>$old['central_principal_id'],
    'state'=>'QUEUED_FOR_VPS_BROKER_CLAIM','executed'=>false
   ],202);
  }
@@ -84,6 +89,7 @@ $original=['job_id'=>$id,'company'=>'egypt-tour-gates','site_uuid'=>'staging-sit
  'central_principal_id'=>7,'operation'=>'maintenance.shell',
  'target_scope'=>'wordpress','command_format'=>'maintenance.shell.text.v1',
  'command_sha256'=>hash('sha256',$command)];
+$GLOBALS['original']=$original;
 $pair=sodium_crypto_sign_keypair();
 $secret=sodium_crypto_sign_secretkey($pair);
 $GLOBALS['opts'][MAD4B_Central_VPS_Broker_V1::PUBKEY]=base64_encode(
