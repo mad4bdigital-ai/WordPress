@@ -81,7 +81,7 @@ final class MAD4B_Central_VPS_Broker_V1 {
         $broker_host=(string)get_option(self::HOST_ID,'');
         if ($broker_host!=='srv2030908')return self::deny('broker_host_not_enrolled',503);
         if (($source['target_host_id']??'')!==$broker_host) {
-            if (!in_array($source['target_host_id']??'',array('hosting-1','hosting-3'),true)
+            if (!in_array($source['target_host_id']??'',array('hosting-1','hosting-2','hosting-3'),true)
               || ($source['grant_mode']??'')!=='persistent'
               || !preg_match('/^[a-f0-9]{32}$/D',(string)($source['transport_id']??'')))
                 return self::deny('remote_registry_transport_required',403);
