@@ -2,12 +2,14 @@
 const { chromium }=require('/usr/src/app/node_modules/playwright');
 const fs=require('fs');
 const path=process.argv[2]||'/';
+const device=process.argv[3]||'desktop';
+if(!['desktop','mobile'].includes(device))process.exit(13);
 const origin='https://tours.dev.mad4b.com';
 if(!/^\/(?:[a-z0-9._~!$&'()*+,;=:@%/-]*)$/.test(path)||path.length>250||path.includes('//')||path.includes('..'))process.exit(12);
 const SKIP=/(?:first-paint|navigation|carousel|listing|pattern|container|switcher|nationality|currency|wcml|woo|astra|jet-|font|icon|swiper|slider|header|sticky|jquery|age|filter|widget-mega|elementor|menu|calendar|modal|popup|price|checkout|cart|base|forms-public|form-default|accessibility)/i;
 (async()=>{
  const browser=await chromium.launch({headless:true,args:['--no-sandbox']});let samples=[];
- for(const mobile of [false,true]){
+ for(const mobile of [device==='mobile']){
   const context=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:900},userAgent:mobile?'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1':undefined,ignoreHTTPSErrors:true});
   const page=await context.newPage();await page.setExtraHTTPHeaders({'X-MAD4B-BYPASS-CACHE':'1'});
   let response=await page.goto(origin+path+(path.includes('?')?'&':'?')+'LSCWP_CTRL=before_optm',{waitUntil:'domcontentloaded',timeout:35000});await page.waitForTimeout(2100);await page.waitForLoadState('load',{timeout:13000}).catch(()=>{});
@@ -31,7 +33,7 @@ const SKIP=/(?:first-paint|navigation|carousel|listing|pattern|container|switche
  await browser.close();
  const bykey=new Map();for(const sample of samples){for(const item of sample.css){const key=item.id+'|'+item.rel;let x=bykey.get(key)||[];x.push(item);bykey.set(key,x);}}
  const assets={};const why=[];
- for(const [key,items] of bykey){const a=items[0];if(items.length!==2)continue;
+ for(const [key,items] of bykey){const a=items[0];if(items.length!==1)continue;
   if(!a.id.endsWith('-css')||!/^[a-z0-9_-]+-css$/.test(a.id))continue;
   if(!/^\/wp-content\/(plugins|themes|mu-plugins)\/[a-zA-Z0-9/_-]+\.css$/.test(a.rel))continue;
   if(SKIP.test(a.rel) && !/(?:fluent-forms-elementor-widget|woo-products)\.css$/.test(a.rel))continue;
@@ -39,6 +41,6 @@ const SKIP=/(?:first-paint|navigation|carousel|listing|pattern|container|switche
   let handle=a.id.slice(0,-4);let tier=items.some(x=>x.matched>0)?'below-fold':'idle';
   assets[handle]={relpath:a.rel,tier};why.push({handle,path:a.rel,firstFrameHits:items.map(x=>x.above),documentHits:items.map(x=>x.matched),tier});
  }
- const out={contract:'mad4b.local-css-scout.v1',path,samples,eligible:assets,candidates:why,success:samples.every(s=>s.status===200&&s.route===path)};
- fs.writeFileSync('/out/scout-result.json',JSON.stringify(out,null,2));console.log(JSON.stringify({path,valid:out.success,cssCounts:samples.map(x=>x.css.length),candidates:why}));
+ const out={contract:'mad4b.local-css-scout.v2',path,device,samples,eligible:assets,candidates:why,success:samples.length===1&&samples.every(s=>s.status===200&&s.route===path&&s.mobile===(device==='mobile'))};
+ fs.writeFileSync('/out/scout-result.json',JSON.stringify(out,null,2));console.log(JSON.stringify({path,device,valid:out.success,cssCounts:samples.map(x=>x.css.length),candidates:why}));
 })().catch(e=>{console.error(e.stack);process.exit(2)});
