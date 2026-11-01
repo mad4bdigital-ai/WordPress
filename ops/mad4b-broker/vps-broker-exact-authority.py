@@ -46,7 +46,7 @@ def verify(job,target,sha):
            and row.get('central_scope_only') is True
            and row.get('shell_executed') is False
            and isinstance(row.get('expires_epoch'),int)
-           and row['expires_epoch']>time()):
+           and row['expires_epoch']>time.time()):
             raise RuntimeError('CENTRAL_SCOPE_RECEIPT_MISMATCH')
     return row
 def selftest():
