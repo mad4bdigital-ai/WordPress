@@ -99,9 +99,19 @@ def sign_claim(job,signer):
         or got.get("job_id")!=job["job_id"]):
         reject("SIGNED_BROKER_CLAIM_MISMATCH")
 
+def enrolled_service_identity():
+    if not re.fullmatch(r"[a-f0-9]{32}",os.environ.get("INVOCATION_ID","")):
+        return False
+    if os.environ.get("MAD4B_NATIVE_CENTRAL_DISPATCH")!="1":
+        return False
+    try:cgroup=Path("/proc/self/cgroup").read_text()
+    except OSError:return False
+    return "/system.slice/mad4b-native-central-dispatch.service" in cgroup
+
 def submit_and_execute(manifest):
     if os.geteuid()!=0:reject("ROOT_OPERATOR_REQUIRED")
-    if not os.environ.get("SSH_CONNECTION"):reject("INDEPENDENT_ROOT_SSH_REQUIRED")
+    if not (os.environ.get("SSH_CONNECTION") or enrolled_service_identity()):
+        reject("ROOT_SSH_OR_ENROLLED_SYSTEMD_UNIT_REQUIRED")
     config,files=validate_manifest(manifest)
     command_file,command=files["command_file"]
     readback_file,_=files["readback_file"]
