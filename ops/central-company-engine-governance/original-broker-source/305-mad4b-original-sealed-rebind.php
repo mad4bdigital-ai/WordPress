@@ -158,7 +158,14 @@ final class MAD4B_Original_Sealed_Command_Rebind_V1 {
             ($new['command_sha256']??'')!==$digest||
             ($new['company']??'')!==$original['company']||
             ($new['site_uuid']??'')!==$original['site_uuid']||
+            ($new['canonical_origin']??'')!==$original['canonical_origin']||
             ($new['environment']??'')!=='staging'||
+            ($new['operation']??'')!==$original['operation']||
+            ($new['grant_id']??'')!==$original['grant_id']||
+            ($new['transport_id']??'')!==$original['transport_id']||
+            ($new['target_host_id']??'')!==$original['target_host_id']||
+            ($new['target_ssh_principal']??'')!==$original['target_ssh_principal']||
+            (int)($new['central_principal_id']??0)!==$original['central_principal_id']||
             ($new['state']??'')!=='QUEUED_FOR_VPS_BROKER_CLAIM'||
             ($new['executed']??true)!==false)
             return self::reject('original_broker_new_job_readback_uncertain',503);
