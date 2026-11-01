@@ -9,6 +9,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: mad4b-native-source-parity-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   source-parity:
     runs-on: ubuntu-latest
