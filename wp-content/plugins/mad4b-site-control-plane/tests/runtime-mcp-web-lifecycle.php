@@ -71,7 +71,12 @@ if ( '0.6.1' !== ( isset( $after['adapter_runtime_version'] ) ? (string) $after[
 
 $registrations = MAD4B_SCP_Servers::registration_status();
 foreach ( MAD4B_SCP_Servers::expected_server_ids() as $server_id ) {
-	if ( empty( $registrations[ $server_id ]['registered'] ) ) $fail( $server_id . ' not registered after web rest_api_init' );
+	if ( empty( $registrations[ $server_id ]['registered'] ) ) {
+		$registration = isset( $registrations[ $server_id ] ) && is_array( $registrations[ $server_id ] ) ? $registrations[ $server_id ] : array();
+		$descriptor = isset( $registration['capability_descriptor_evidence'] ) && is_array( $registration['capability_descriptor_evidence'] ) ? $registration['capability_descriptor_evidence'] : array();
+		$blockers = isset( $descriptor['blockers'] ) && is_array( $descriptor['blockers'] ) ? array_slice( $descriptor['blockers'], 0, 12 ) : array();
+		$fail( $server_id . ' not registered after web rest_api_init error=' . ( isset( $registration['error'] ) ? sanitize_key( (string) $registration['error'] ) : '' ) . ' descriptor_blockers=' . wp_json_encode( $blockers ) );
+	}
 	if ( ! empty( $registrations[ $server_id ]['error'] ) ) $fail( $server_id . ' registration error: ' . $registrations[ $server_id ]['error'] );
 }
 
