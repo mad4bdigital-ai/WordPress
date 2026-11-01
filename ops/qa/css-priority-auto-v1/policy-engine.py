@@ -35,6 +35,14 @@ def epoch():
  if val<1:raise RuntimeError('Bad policy epoch')
  return val
 
+def guest_mode():
+ cmd=['docker','exec','-u','www-data','-w','/var/www/html','etg-commerce-staging-php',
+      'wp','eval','echo (string)get_option("litespeed.conf.guest","0");','--quiet']
+ r=subprocess.run(cmd,capture_output=True,text=True,timeout=20,check=True)
+ mode=r.stdout.strip()
+ if mode not in ('0','1'):raise RuntimeError('Guest mode unavailable')
+ return mode
+
 def manifest():
  doc=read(POLICY)
  if any(doc.get(k)!=v for k,v in EXPECTED.items()):raise RuntimeError('Manifest identity mismatch')
@@ -91,7 +99,7 @@ def stage(path):
   doc['routes'][key]=prev;save_atomic(POLICY,doc)
   print(json.dumps({'path':path,'result':'native-only','reason':'all_candidate_subsets_failed'}));return 2
  chosen={name:safe[name] for name in selected}
- doc['routes'][key]={'path':path,'locale':language(path),'status':'candidate','source_version':'4.3.5/7.9.2','assets':chosen,'expires':now+86400,'created':now,'epoch':epoch(),'source_digest':digest,'trials':trials}
+ doc['routes'][key]={'path':path,'locale':language(path),'status':'candidate','source_version':'4.3.5/7.9.2','assets':chosen,'expires':now+86400,'created':now,'epoch':epoch(),'guest_mode':guest_mode(),'source_digest':digest,'trials':trials}
  if len(doc['routes'])>120:raise RuntimeError('Manifest full; cannot expand')
  save_atomic(POLICY,doc)
  print(json.dumps({'path':path,'status':'candidate','assets':list(chosen),'tested_subsets':len(trials)}));return 0
@@ -105,18 +113,46 @@ def verify(path):
  data=read(QA/'benchmark-result.json')
  if data.get('path')!=path:raise RuntimeError('A/B path mismatch')
  rows=data.get('observations',[]);issues=[]
+ if data.get('complete') is not True or len(rows)!=20 or data.get('planned')!=20:
+  issues.append('incomplete_or_insufficient_five_round_evidence')
+ measured=[]
  for mobile in [False,True]:
   a=sorted([x for x in rows if x.get('mobile')==mobile and x.get('mode')=='native-v1'],key=lambda x:x.get('round',0))
   b=sorted([x for x in rows if x.get('mobile')==mobile and x.get('mode')=='canary-v1'],key=lambda x:x.get('round',0))
-  if len(a)<3 or len(b)<3:issues.append('insufficient_repeats_'+str(mobile));continue
+  if len(a)!=5 or len(b)!=5:issues.append('insufficient_repeats_'+str(mobile));continue
   for x in a+b:
    if x.get('status')!=200 or x.get('path')!=path or x.get('error') or x.get('failures') or not x.get('allReady',False):issues.append('failed_http_or_styles_'+str(mobile))
   if any((x.get('tags') or 0)<1 for x in b):issues.append('missing_candidate_css_'+str(mobile))
   if any((x.get('tags') or 0)>0 for x in a):issues.append('baseline_contaminated_'+str(mobile))
+  for na,nb in zip(a,b):
+   if any('navigations' not in x or 'guestVary' not in x for x in (na,nb)):
+    issues.append('missing_first_visit_navigation_evidence_'+str(mobile))
+   if any(int(x.get('navigations',0))!=1 for x in (na,nb)):
+    issues.append('multi_navigation_guest_reload_'+str(mobile))
+   if any(int(x.get('guestVary',0))>0 for x in (na,nb)):
+    issues.append('guest_mode_vary_before_measurement_'+str(mobile))
+   if int(nb.get('pageErrors',0))>int(na.get('pageErrors',0)):
+    issues.append('new_page_js_errors_'+str(mobile))
+  if any(not isinstance(x.get('ttfb'),(int,float)) or x['ttfb']<1 for x in a+b):
+   issues.append('missing_network_timing_'+str(mobile));continue
+  ta=statistics.median(x['ttfb'] for x in a);tb=statistics.median(x['ttfb'] for x in b)
+  if abs(tb-ta)>max(300,0.08*ta):issues.append('server_ttfb_unbalanced_'+str(mobile))
+  adjusted_benefits=[]
   for k in ('lcp','fcp'):
    if any(not x.get(k) for x in a+b):issues.append('missing_'+k);continue
-   delta=statistics.median(x[k] for x in b)-statistics.median(x[k] for x in a)
-   if delta>max(250,0.10*statistics.median(x[k] for x in a)):issues.append('regression_'+k+'_'+str(mobile))
+   base=statistics.median(x[k] for x in a)
+   candidate=statistics.median(x[k] for x in b)
+   delta=candidate-base
+   # Guest/WordPress/PHP noise must not become a false CSS win.
+   if delta>max(250,0.05*base):issues.append('raw_regression_'+k+'_'+str(mobile))
+   pa=statistics.median(x[k]-x['ttfb'] for x in a)
+   pb=statistics.median(x[k]-x['ttfb'] for x in b)
+   adjusted=pb-pa
+   if adjusted>max(120,0.08*pa):issues.append('post_ttfb_regression_'+k+'_'+str(mobile))
+   adjusted_benefits.append(-adjusted)
+   measured.append({'mobile':mobile,'metric':k,'baseline_ms':base,'candidate_ms':candidate,
+    'baseline_post_ttfb_ms':pa,'candidate_post_ttfb_ms':pb,'delta_raw_ms':delta,'delta_post_ttfb_ms':adjusted})
+  if max(adjusted_benefits)<50:issues.append('no_material_render_benefit_'+str(mobile))
   clsA=[x.get('cls',1.0) for x in a];clsB=[x.get('cls',1.0) for x in b]
   if p75(clsB)>0.12 or p75(clsB)>p75(clsA)+0.015:issues.append('cls_gate_'+str(mobile))
   # Stable first-frame geometry and styles, without relying on variable card IDs.
@@ -126,18 +162,19 @@ def verify(path):
     if g1 is None or g2 is None:continue
     if g1[2:]!=g2[2:] or abs(g1[0]-g2[0])>3 or abs(g1[1]-g2[1])>3:
      issues.append('geometry_'+str(mobile));break
- unique=sorted(set(issues));out={'timestamp':int(time.time()),'path':path,'observations':len(rows),'result':'HOLD' if unique else 'PASS','issues':unique,'css_assets':list(entry['assets'])}
+ unique=sorted(set(issues));out={'timestamp':int(time.time()),'path':path,'observations':len(rows),'result':'HOLD' if unique else 'PASS','issues':unique,'css_assets':list(entry['assets']),'metrics':measured}
  (QA/'last-verdict.json').write_text(json.dumps(out,indent=2)+'\n')
  # Drift check: don't certify a source that changed during browser run.
  fresh=manifest();existing=fresh['routes'].get(key)
  if existing!=entry:raise RuntimeError('Concurrent policy change; stop')
  if int(existing.get('epoch',0))!=epoch():raise RuntimeError('WordPress content changed during A/B; no certification')
+ if str(existing.get('guest_mode','__unbound__'))!=guest_mode():raise RuntimeError('Guest Mode changed during A/B; no certification')
  existing['trials']=(existing.get('trials',[])+[{'handles':sorted(existing['assets']),'result':'HOLD' if unique else 'PASS','issues':unique,'measured':int(time.time())}])[-32:]
  if unique:
   # A previously certified route loses trust and safely returns to native.
   existing['status']='hold';existing['expires']=int(time.time())-1;existing['issues']=unique[:12]
  else:
-  existing['status']='certified';existing['expires']=int(time.time())+3*86400;existing['evidence']='three_paired_repeats_both_viewports';existing.pop('issues',None)
+  existing['status']='certified';existing['expires']=int(time.time())+3*86400;existing['evidence']='five_paired_repeats_ttfb_normalized_both_viewports';existing.pop('issues',None)
  save_atomic(POLICY,fresh)
  print(json.dumps(out));return 0 if not unique else 5
 
