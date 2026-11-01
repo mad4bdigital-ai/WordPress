@@ -22,6 +22,11 @@ function fixture(operation='verify_host_binding',change={}){
  const core={
   readOriginalJob:async()=>job,
   verifyOriginalAdmission:async()=>admission,
+  authorizeOriginalDualRouteShell:async()=>({
+    contract:'mad4b.central-execution-route-decision.v1',
+    status:change.shell_policy_denied?'DENIED':'AUTHORIZED_FOR_DISPATCH',
+    lane:'vps_ssh',host_id:job.target_host_id,execution_performed:false
+  }),
   claimOriginalJobOnce:async()=>{calls.claim++;return change.claim??true},
   verifyIndependentReadback:async()=>{calls.readback++;return readback},
   audit:async p=>{calls.audit.push(p)}
@@ -62,6 +67,20 @@ test('original shell grant is never inferred from full wpcli grant',async()=>{
  const f=fixture('maintenance.shell',{admission:{granted_operation:'company.remote.wpcli.full'}});
  const r=await createGovernedExecutionRoutes(f).execute({operation:'maintenance.shell',job_id:jobId});
  assert.equal(r.reason_code,'INDEPENDENT_GENERAL_SHELL_GRANT_REQUIRED');
+ assert.equal(f.calls.shell,0);
+});
+test('legacy vps_ssh policy denial never falls through to general Shell',async()=>{
+ const f=fixture('maintenance.shell',{shell_policy_denied:true});
+ const result=await createGovernedExecutionRoutes(f).execute({
+   operation:'maintenance.shell',job_id:jobId});
+ assert.equal(result.reason_code,'ORIGINAL_DUAL_ROUTE_SHELL_NOT_AUTHORIZED');
+ assert.equal(f.calls.shell,0);assert.equal(f.calls.claim,0);
+});
+test('missing legacy dual-route policy parks Shell rather than opening new authority',async()=>{
+ const f=fixture('maintenance.shell');delete f.core.authorizeOriginalDualRouteShell;
+ const result=await createGovernedExecutionRoutes(f).execute({
+   operation:'maintenance.shell',job_id:jobId});
+ assert.equal(result.reason_code,'ORIGINAL_DUAL_ROUTE_SHELL_POLICY_UNAVAILABLE');
  assert.equal(f.calls.shell,0);
 });
 test('typed full wpcli grant is never inferred from shell grant',async()=>{
