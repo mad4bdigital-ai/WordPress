@@ -138,6 +138,6 @@ must($newSlot['grant_id']!==$gid&&$newSlot['transport_id']!==$tid,
  'rotated new grant and transport identifiers');
 must(($read['execution_performed']??true)===false,
  'no shell execution performed');
-must(denied(MAD4B_Native_VPS_Principal_V1::rotate($proof),'original_native_enrollment_required'),
+must(denied(MAD4B_Native_VPS_Principal_V1::rotate($proof),'policy_already_current'),
  'reused signed rotation cannot create second grant');
 echo "PASS signed policy rotation, original host key, InnoDB atomic grant replacement, stale grant revocation, no execution\n";
