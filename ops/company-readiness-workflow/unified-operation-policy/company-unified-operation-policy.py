@@ -13,6 +13,7 @@ CMD_CORE=ROOT/'bin/company-original-core-channel-readback.py'
 CODE=re.compile(r'^[a-z][a-z0-9-]{2,47}$')
 UUID=re.compile(r'^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$',re.I)
 OPERATIONS=('plugin.install','content.write')
+CAPABILITY_CATALOG=pathlib.Path(__file__).with_name('full-host-capability-catalog.json')
 WP=r'''
 if(DB_NAME!=='etg_commerce_staging'||wp_get_environment_type()!=='staging'
  ||untrailingslashit(home_url('/'))!=='https://tours.dev.mad4b.com')
@@ -123,7 +124,62 @@ def operation_decision(op,site,plan):
       'eligible_for_native_wordpress_operation':core_ready,
       'independent_operation_apply_verified':False,
       'blockers':plan.get('blockers',[]) if isinstance(plan.get('blockers'),list) else ['original_plan_blockers_invalid']}
+def full_host_catalog():
+    """Read the default capability *menu*, never treat it as an issued grant."""
+    catalog=load_json(CAPABILITY_CATALOG)
+    if (catalog.get('contract')!='mad4b.company.full-host-capability-template.v1'
+        or catalog.get('status')!='NON_AUTHORIZING_PROVISIONING_CATALOG'
+        or catalog.get('applies_to')!=['staging','production']
+        or catalog.get('capability_grants_created_by_catalog') is not False
+        or catalog.get('execution_enabled_by_catalog') is not False
+        or catalog.get('issuance_authority')!='original_mad4b_core_registry_and_native_dispatcher'):
+        raise RuntimeError('FULL_HOST_CAPABILITY_CATALOG_AUTHORITY_DRIFT')
+    required={'company','environment','site_uuid','canonical_origin','host_id',
+              'agent_public_id','server_id','provider','ability_name','command_sha256'}
+    if set(catalog.get('binding_required',[]))!=required:
+        raise RuntimeError('FULL_HOST_CAPABILITY_BINDING_INCOMPLETE')
+    entries=catalog.get('capabilities',[])
+    required_families={'host','wordpress','database','native_executor','transport'}
+    if (not isinstance(entries,list) or len(entries)!=13
+        or {e.get('family') for e in entries if isinstance(e,dict)}!=required_families
+        or any(not isinstance(e,dict) or e.get('default_state')!='DISCOVERABLE_NOT_GRANTED'
+               or not isinstance(e.get('id'),str)
+               or not re.fullmatch(r'[a-z]+(?:[._][a-z]+)+',e['id']) for e in entries)
+        or len({e['id'] for e in entries})!=len(entries)):
+        raise RuntimeError('FULL_HOST_CAPABILITY_SET_INVALID')
+    if catalog.get('supported_channels')!=['oauth_mcp','vps_ssh_wpcli','signed_broker','ssh_fallback']:
+        raise RuntimeError('FULL_HOST_TRANSPORT_SET_INVALID')
+    return catalog
+
+def full_host_provisioning_preview(site,original_305,catalog):
+    """Company-wide default applies to every exact target, without issuing grants."""
+    company,env=site['company'],site['environment']
+    uuid,origin=site.get('site_uuid'),site.get('canonical_origin')
+    enrolled=original_305.get('site_identity_registered') is True
+    identity_ok=(isinstance(company,str) and CODE.fullmatch(company) is not None
+        and env in ('staging','production')
+        and isinstance(uuid,str) and UUID.fullmatch(uuid) is not None
+        and isinstance(origin,str) and origin.startswith('https://')
+        and '/' not in origin[8:])
+    return {
+      'contract':'mad4b.company.full-host-provisioning-preview.v1',
+      'company':company,'environment':env,'site_uuid':uuid,'canonical_origin':origin,
+      'capability_policy':'DEFAULT_DISCOVERABLE_ON_ENROLLED_SITE',
+      'capabilities':sorted(e['id'] for e in catalog['capabilities']),
+      'capability_count':len(catalog['capabilities']),
+      'provisioning_trigger':catalog['provisioning_trigger'],
+      'evidence_source':'ORIGINAL_CORE_SITE_REGISTRY_AND_305',
+      'site_identity_registered_by_original_core':enrolled,
+      'scope_state':('PENDING_EXACT_SITE_ENROLLMENT' if not identity_ok or not enrolled
+          else 'PENDING_TARGET_HOST_PROOF_AND_ORIGINAL_OPERATION_GRANTS'),
+      'exact_company_site_host_binding_required':True,
+      'cross_company_wildcard_allowed':False,
+      'grant_reconciliation_requires_original_core':True,
+      'grant_issued_by_preview':False,'execution_authorized_by_preview':False,
+      'production_mutated':False,
+    }
 def project(plans,grants,legacy):
+    catalog=full_host_catalog()
     if plans.get('target_count')!=len(plans.get('targets',[])) or grants.get('target_count')!=len(grants.get('targets',[])):
         raise RuntimeError('TARGET_COUNT_INVALID')
     if legacy.get('contract')!='mad4b.universal-runtime-reconciler.v1':
@@ -162,6 +218,7 @@ def project(plans,grants,legacy):
           'original_305_native_ssh_active_pair_present':pair_count>0,
           'original_305_native_ssh_pending_pair_count':g.get('original_matched_pending_transport_grant_pairs',0),
           'operations':{op:operation_decision(op,site,ops[op]) for op in OPERATIONS},
+          'full_host_authority':full_host_provisioning_preview(site,g,catalog),
           'legacy_operations_are_not_native_write_grants':True,
           'grant_or_job_issued_by_projection':False,
           'original_312_job_verified_by_projection':False,
@@ -173,6 +230,8 @@ def project(plans,grants,legacy):
       'original_authority':'live_mad4b_company_execution_resolver',
       'native_ssh_grant_authority':'original_core_305_transport_grant',
       'legacy_transport_authority':'transport_capabilities_only',
+      'full_host_capability_catalog_contract':catalog['contract'],
+      'full_host_template_is_not_grant':True,
       'company_count':len({x['target'].split(':')[0] for x in out}),
       'target_count':len(out),'targets':sorted(out,key=lambda x:x['target']),
       'grants_created':False,'operations_executed':False,'production_mutated':False,
