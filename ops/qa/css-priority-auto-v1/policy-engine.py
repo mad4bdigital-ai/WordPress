@@ -16,7 +16,9 @@ def save_atomic(path,obj):
  fd,name=tempfile.mkstemp(prefix='.css-policy-',dir=path.parent)
  try:
   with os.fdopen(fd,'w') as f:f.write(data);f.flush();os.fsync(f.fileno())
-  os.chmod(name,0o640);os.chown(name,0,33);os.replace(name,path)
+  os.chmod(name,0o640)
+  if os.geteuid()==0:os.chown(name,0,33)
+  os.replace(name,path)
  finally:
   if os.path.exists(name):os.unlink(name)
 
