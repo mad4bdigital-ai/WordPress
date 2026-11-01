@@ -43,8 +43,8 @@ final class MAD4B_Company_Manager_SSH_Principal_V1 {
             !preg_match('/^[a-z][a-z0-9-]{2,47}$/D',$p['company_code']) ||
             !wp_is_uuid((string)($p['manager_id']??'')) ||
             !wp_is_uuid((string)($p['site_uuid']??'')) ||
-            !preg_match('/^[a-f0-9]{64}$/D',(string)($p['company_binding_sha256']??'') ||
-            !preg_match('/^[a-f0-9]{32}$/D',(string)($p['nonce']??'') ||
+            !preg_match('/^[a-f0-9]{64}$/D',(string)($p['company_binding_sha256']??'')) ||
+            !preg_match('/^[a-f0-9]{32}$/D',(string)($p['nonce']??'')) ||
             !is_int($p['actor_user_id']??null) || $p['actor_user_id']<1 ||
             !is_int($p['expected_revision']??null) || $p['expected_revision']<0 ||
             !is_int($p['issued_epoch']??null) || !is_int($p['expires_epoch']??null))
