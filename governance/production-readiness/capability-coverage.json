@@ -11517,6 +11517,27 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing site-bound Write catalog, authenticated agent, exact grants, scoped approval, transaction checkpoint, audit and release tests govern this narrowly scoped diagnostic.",
       "review_rationale": "Exact source review of the catalog's single-site diagnostic Ability; only enrolled Staging origin may mount it and ordinary broad enqueue remains excluded. No runtime identity or Production authorization is created."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation.php",
+      "source_blob_sha": "483623086242a89d433094ebebdad3b22874ebc9",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "MCP-01",
+        "EXECUTION-01",
+        "PROVIDERS-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-hub-site-health-write-catalog-contract.py"
+      ],
+      "owner_role": "Repository security/release source reviewer, CI-only; Staging site operator must independently authorize exact grant",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The existing original Agent Registry exact grant, Staging-only provider review, site profile, mutation gate, owner approval, checkpoint, readback and audit safeguards govern this single diagnostic, without wildcard rights.",
+      "review_rationale": "Exact source review allows a core grant to be considered only for mad4b/hub-queue-site-health-enqueue when the Ability is registered on the correct central Staging site. No grant is issued merely because this provider pair appears; broad hub-bulk-enqueue remains outside the reviewed policy and Production is not enabled."
     }
   ],
   "code_change_rules": {
