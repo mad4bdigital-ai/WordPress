@@ -110,6 +110,8 @@ jobs:
           php ops/qa/mad4b-render-blocking/tests/priceless_dynamic_css_cache_contract.php
           php ops/qa/mad4b-render-blocking/tests/priceless_css_disk_snapshot_contract.php
           php ops/qa/mad4b-render-blocking/tests/selective_litespeed_inline_css_contract.php
+          php -l wp-content/mu-plugins/334-mad4b-page-css-frame-priority.php
+          php ops/qa/mad4b-render-blocking/tests/css_page_frame_priority_contract.php
           php -l wp-content/mu-plugins/328-mad4b-destination-terms-request-memo.php
           php ops/qa/mad4b-render-blocking/tests/destination_request_memo_contract.php
           php -l wp-content/mu-plugins/329-mad4b-home-wpml-flag-preload-trim.php
