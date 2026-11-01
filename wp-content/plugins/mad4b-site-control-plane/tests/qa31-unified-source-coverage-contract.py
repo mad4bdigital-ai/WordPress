@@ -115,9 +115,10 @@ def main():
         'tests/tourism-company-launch/test-site-profile-manifest.php',
         'wp-content/plugins/mad4b-site-control-plane/tests/native-ability-manifest-trust-contract.php',
         'wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php',
-        # The legacy Delegation_Mode class is absent from the actual baseline;
-        # test the current policy and two-principal implementation instead.
-        'wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegation-connection-policy-runtime.php',
+        # Test the currently shipped OAuth subject mapping and mutation
+        # principal boundaries. The historical Delegation_Mode runtime class
+        # is absent, so do not invoke an orphaned fixture that requires it.
+        'wp-content/plugins/mad4b-site-control-plane/tests/mcp-delegated-oauth-map-hermetic.php',
         'wp-content/plugins/mad4b-site-control-plane/tests/dual-principal-runtime.php',
         'wp-content/plugins/mad4b-site-control-plane/tests/runtime-superseded-owner-gate-readonly-runtime.php',
     )
