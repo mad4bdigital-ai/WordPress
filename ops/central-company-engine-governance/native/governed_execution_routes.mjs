@@ -43,8 +43,43 @@ export function createGovernedExecutionRoutes({core,typed={},generalShell}){
    return diagnoseInvocationFailure(failure);
   },
   planChannelRecovery({request,failure,original_core_authority,candidates=[]}={}){
+   // Preview only; a caller-provided provider list is never an admission.
    return planAuthorizedChannelAlternatives({
     request,failure,core:original_core_authority,candidates
+   });
+  },
+  // Production integrators supply only original Core reference IDs.
+  // Enrolled channels, current grants and failure evidence must be retrieved
+  // together from the original Core signed journal and provider registry.
+  async planRegisteredChannelRecovery({request_ref,failure_ref}={}){
+   if(typeof request_ref!=='string'||!request_ref||
+      typeof failure_ref!=='string'||!failure_ref)
+    return fail('DENIED','ORIGINAL_CHANNEL_RECOVERY_REFERENCES_REQUIRED','channel.recovery');
+   if(typeof core.readOriginalChannelRecoveryEvidence!=='function')
+    return fail('PARKED_PROVIDER_REVIEW_REQUIRED',
+      'ORIGINAL_CHANNEL_RECOVERY_EVIDENCE_READER_NOT_REGISTERED',
+      'channel.recovery');
+   let evidence;
+   try{
+    evidence=await core.readOriginalChannelRecoveryEvidence({
+      request_ref,failure_ref
+    });
+   }catch{
+    return fail('PARKED_UNCERTAIN_NO_REPLAY',
+      'ORIGINAL_CHANNEL_RECOVERY_JOURNAL_UNAVAILABLE','channel.recovery');
+   }
+   if(evidence?.request_ref!==request_ref||
+      evidence?.failure_ref!==failure_ref||
+      evidence?.verified_source!=='original_core_execution_journal'||
+      evidence?.registry_source!=='original_core_registered_provider_registry'||
+      evidence?.signed_evidence_verified!==true||
+      evidence?.provider_registry_verified!==true||
+      !Array.isArray(evidence?.candidates))
+    return fail('DENIED','ORIGINAL_CHANNEL_RECOVERY_EVIDENCE_UNVERIFIED','channel.recovery');
+   return planAuthorizedChannelAlternatives({
+    request:evidence.request,failure:evidence.failure,
+    core:evidence.original_core_authority,
+    candidates:evidence.candidates
    });
   },
   // A refused Native provider may lead to a NEW, independently authorized
