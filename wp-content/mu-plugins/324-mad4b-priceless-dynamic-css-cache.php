@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Staging Priced-Card Dynamic CSS Cache
  * Description: Short-lived CSS-only acceleration with fresh per-request prices and Elementor output.
- * Version: 1.0.0
+ * Version: 1.1.0
  */
 defined('ABSPATH')||exit;
 final class MAD4B_Priceless_CSS_Cache_V1 {
@@ -35,6 +35,19 @@ final class MAD4B_Priceless_CSS_Cache_V1 {
   $path=(string)wp_parse_url($_SERVER['REQUEST_URI']??'',PHP_URL_PATH);
   $locale=apply_filters('wpml_current_language',null);
   if(!isset($paths[$path])||$paths[$path]!==$locale)return;
+  // A longer stylesheet-only lifetime needs deterministic invalidation for the
+  // Elementor design system as well as each listing and current tour meta.
+  $kit_id=absint(get_option('elementor_active_kit'));
+  if(!$kit_id||!get_post($kit_id))return;
+  $kit_meta=[
+   get_post_meta($kit_id,'_elementor_page_settings',true),
+   get_post_meta($kit_id,'_elementor_data',true),
+   get_post_modified_time('U',true,$kit_id),
+   get_option('elementor_css_print_method'),
+   defined('ELEMENTOR_VERSION')?ELEMENTOR_VERSION:'',
+   (string)wp_get_theme()->get('Version'),
+  ];
+  $kit_hash=hash('sha256',wp_json_encode($kit_meta));
   $p=get_option('mad4b_scp_brand_context_profile_v1',[]);
   if(!is_array($p)||($p['site_uuid']??'')!=='e5e64bca-ed62-48d2-b2b3-dff693cd702a')return;
   $all_pins=[
@@ -63,17 +76,26 @@ final class MAD4B_Priceless_CSS_Cache_V1 {
   if(!$prev)return;
   remove_filter('jet-engine/elementor-views/frontend/listing-content',$prev,10);
   add_filter('jet-engine/elementor-views/frontend/listing-content',
-   static function($content,$listing_id,$inner)use($prev,$pins,$locale){
+   static function($content,$listing_id,$inner)use($prev,$pins,$locale,$kit_hash){
     $id=(int)$listing_id;
     if(!isset($pins[$id])||!empty($inner)||!is_string($content)||$content==='')return $prev($content,$listing_id,$inner);
     $post=jet_engine()->listings->data->get_current_object();
     if(!($post instanceof WP_Post)||$post->post_type!=='tours-and-activities'||$post->post_status!=='publish')return $prev($content,$listing_id,$inner);
     $uid=jet_engine()->listings->data->get_current_object_unique_id($post);
     if(!is_string($uid)||!preg_match('/^\d{12,20}$/D',$uid))return $prev($content,$listing_id,$inner);
-    $meta=get_post_meta($post->ID);
-    $token=hash('sha256',wp_json_encode([$pins[$id],$id,$post->ID,$post->post_modified_gmt,$meta,$locale,(bool)wp_is_mobile()]));
+    // Same tour may appear in both List and Featured on one request:
+    // reuse only its source META DIGEST, never price HTML or a cached product.
+    static $source_meta_hashes=[];
+    $post_id=(int)$post->ID;
+    if(!isset($source_meta_hashes[$post_id])){
+     $source_meta_hashes[$post_id]=hash('sha256',wp_json_encode(get_post_meta($post_id)));
+    }
+    $token=hash('sha256',wp_json_encode([
+     $pins[$id],$id,$post_id,$post->post_modified_gmt,
+     $source_meta_hashes[$post_id],$locale,(bool)wp_is_mobile(),$kit_hash
+    ]));
     $key='css-only-'.$token;
-    $cached=wp_cache_get($key,'mad4b_priceless_css_v1');
+    $cached=wp_cache_get($key,'mad4b_priceless_css_v2');
     if(is_string($cached)&&strpos($cached,self::MARKER)!==false){
      return self::serve_cached_css($cached,$uid,$content);
     }
@@ -82,7 +104,7 @@ final class MAD4B_Priceless_CSS_Cache_V1 {
     $prefix=substr($result,0,-strlen($content));
     $canonical=self::prepare_css_cache($prefix,$uid);
     if($canonical===false)return $result;
-    wp_cache_set($key,$canonical,'mad4b_priceless_css_v1',35);
+    wp_cache_set($key,$canonical,'mad4b_priceless_css_v2',180);
     return $result;
    },10,3);
 

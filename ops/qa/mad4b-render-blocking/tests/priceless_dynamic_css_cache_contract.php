@@ -24,9 +24,15 @@ $s=file_get_contents($source);
 foreach(['wp_get_environment_type()', 'is_post_type_archive(', 'HTTP_COOKIE','HTTP_AUTHORIZATION',
  'HTTP_X_MAD4B_CURRENCY','HTTP_X_GEO_COUNTRY','HTTP_CF_IPCOUNTRY','HTTP_X_FORWARDED_GEO_COUNTRY',
  'wp_doing_ajax()','is_user_logged_in()','is_preview()','HTTP_X_MAD4B_PRICELESS_CSS_CONTROL',
- 'wp_is_mobile()','post_modified_gmt','get_post_meta($post->ID)', "get_woocommerce_currency()!=='USD'",
+ 'wp_is_mobile()','post_modified_gmt','get_post_meta($post_id)', "get_woocommerce_currency()!=='USD'",
  '322-mad4b-empty-jet-css-fastpath.php'] as $guard){
  must(str_contains($s,$guard),'source guard '.$guard);
 }
 must(substr_count($s,"=>[")===6,'six exact locale source pin groups');
-must(str_contains($s,"'mad4b_priceless_css_v1',35"),'cache has 35-second TTL');
+must(str_contains($s,"'mad4b_priceless_css_v2',180"),'bounded 180-second CSS-only cache and isolated version');
+must(str_contains($s,"get_option('elementor_active_kit')"),'active Elementor kit is included in cache invalidation');
+must(str_contains($s,"_elementor_page_settings"),'Elementor kit settings are fingerprinted');
+must(str_contains($s,"get_post_modified_time("),'kit modifications invalidate CSS');
+must(str_contains($s,'$source_meta_hashes[$post_id]'),'source meta hashes are request-local');
+must(str_contains($s,'$kit_hash'),'style context hash is part of cache key');
+must(!str_contains($s,'wp_cache_set($key,$content'),'never stores HTML or prices');
