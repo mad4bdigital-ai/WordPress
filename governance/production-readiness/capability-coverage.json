@@ -11714,6 +11714,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing Site Profile origin binding, TEST Brand status, WordPress company-staff authorization and admin parent ordering cover the Staging-only synthetic fixture view.",
       "review_rationale": "Replace early direct admin_menu registration with the native Admin Route Registry and exact delegated company capability. The unchanged source remains Staging-only read-only synthetic TEST Brand context with REST canRead and site/brand UUID checks. Same-PR test verifies parent order, staff permission, staging guard, and denial of direct menu bypass."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "caeb4ab402c58f3ec092a33fc061f108e354f510",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "owner_role": "MAD4B technical exact-source reviewer, CI-only; no Staging or Production promotion approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source-control and permission domains govern this reviewed behavior; exact SHA and same-PR QA31 fail-closed regression are required, with live acceptance pending.",
+      "review_rationale": "Plugin bootstrap wires the signed read-only company comparator exactly once while maintaining existing authorization and lifecycle boot ordering."
     }
   ],
   "code_change_rules": {
