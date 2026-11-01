@@ -80,7 +80,11 @@ final class MAD4B_Central_Native_Auto_Intake_V1 {
   if (!is_array($job) || ($job['job_id']??null)!==$request_id
    || ($job['company']??'')!==self::COMPANY
    || ($job['target_host_id']??'')!==self::HOST
-   || ($job['state']??'')!=='QUEUED_FOR_VPS_BROKER_CLAIM')
+   || !in_array(($job['state']??''),[
+       'QUEUED_FOR_VPS_BROKER_CLAIM',
+       'BROKER_CLAIMED_PENDING_INDEPENDENT_HOST_AUTHORITY',
+       'GENERAL_SHELL_EXECUTION_READBACK_VERIFIED',
+       'GENERAL_SHELL_REQUIRES_RECONCILIATION'],true))
     return self::deny('broker_job_readback_mismatch',409);
   return new WP_REST_Response([
    'contract'=>self::CONTRACT,'state'=>$job['state'],
@@ -88,7 +92,10 @@ final class MAD4B_Central_Native_Auto_Intake_V1 {
    'command_sha256'=>$job['command_sha256'],
    'company'=>self::COMPANY,'target_host_id'=>self::HOST,
    'independent_host_auth_required'=>true,
-   'execution_performed'=>false,'grant_issued'=>false],$response->get_status());
+   'native_command_bytes_delivered'=>false,
+   'native_delivery_requires_independent_authenticated_transport'=>true,
+   'execution_performed'=>($job['executed']??false)===true,
+   'grant_issued'=>false],$response->get_status());
  }
  public static function intake(WP_REST_Request $request) {
   if (!self::original_auth($request))return self::deny('enrolled_owner_required');
