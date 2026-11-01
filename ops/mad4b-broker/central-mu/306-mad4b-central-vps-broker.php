@@ -34,25 +34,33 @@ final class MAD4B_Central_VPS_Broker_V1 {
             || ($grant['company']??'')!==$company
             || ($grant['central_principal_id']??0)!==($request['central_principal_id']??-1)
             || ($grant['operation']??'')!==($request['operation']??'')
-            || ($grant['grant_mode']??null)!==($request['grant_mode']??null)
-            || ($grant['transport_id']??null)!==($request['transport_id']??null)
-            || ($grant['target_host_id']??null)!==($request['target_host_id']??null)
-            || ($grant['target_ssh_principal']??null)!==($request['target_ssh_principal']??null)
             || (isset($grant['expires_epoch']) && (int)$grant['expires_epoch']<=time()))
             return self::deny('grant_not_active',409);
-        if (($request['grant_mode']??'one_time')==='persistent' || !empty($request['transport_id'])) {
+        if (($request['grant_mode']??'one_time')==='persistent') {
             $transport=get_option(MAD4B_Central_SSH_Command_Intake_V1::TRANSPORT_PREFIX.
                 (string)($request['transport_id']??''),false);
             if (!is_array($transport)
                 || ($transport['state']??'')!=='PENDING_INDEPENDENT_SSH_VERIFICATION'
                 || ($transport['company']??'')!==$company
                 || ($transport['host_id']??'')!==($request['target_host_id']??'')
-                || ($transport['host_principal']??'')!==($request['target_ssh_principal']??'')
-                || ($transport['site_uuid']??'')!==($request['site_uuid']??'')
-                || ($transport['canonical_origin']??'')!==($request['canonical_origin']??'')
-                || ($transport['environment']??'')!==($request['environment']??'')
-                || (int)($transport['central_principal_id']??0)!==(int)($request['central_principal_id']??-1))
+                || ($transport['site_uuid']??'')!==($request['site_uuid']??''))
                 return self::deny('transport_revoked_or_invalid',409);
+        }
+        // This is the central host workload, not a customer in Company Manager.
+        // Its admission is the original enrolled owner + exact Site Profile;
+        // the host executor separately verifies OS privileges before execution.
+        if ($company==='tours-central') {
+            if (($request['operation']??'')!=='maintenance.shell'
+                || ($request['target_scope']??'')!=='host'
+                || ($request['target_host_id']??'')!=='srv2030908'
+                || !class_exists('MAD4B_Central_Host_Scope_V1',false)
+                || !MAD4B_Central_Host_Scope_V1::matches($company,
+                    (string)($request['site_uuid']??''),
+                    (string)($request['canonical_origin']??''),
+                    (string)($request['environment']??''),
+                    (int)($request['central_principal_id']??0)))
+                return self::deny('central_host_binding_changed',409);
+            return $request;
         }
         if (!class_exists('MAD4B_Company_Operation_Admission_V1',false)
             || !class_exists('MAD4B_Manager_Auto_Write_V1',false))
@@ -90,7 +98,7 @@ final class MAD4B_Central_VPS_Broker_V1 {
         if ($broker_host!=='srv2030908')return self::deny('broker_host_not_enrolled',503);
         if (($source['target_host_id']??'')!==$broker_host) {
             if (!in_array($source['target_host_id']??'',array('hosting-1','hosting-3'),true)
-              || !in_array($source['grant_mode']??'',array('persistent','one_time'),true)
+              || ($source['grant_mode']??'')!=='persistent'
               || !preg_match('/^[a-f0-9]{32}$/D',(string)($source['transport_id']??'')))
                 return self::deny('remote_registry_transport_required',403);
             $transport=get_option(MAD4B_Central_SSH_Command_Intake_V1::TRANSPORT_PREFIX.
@@ -117,10 +125,12 @@ final class MAD4B_Central_VPS_Broker_V1 {
             'target_ssh_principal'=>$source['target_ssh_principal'],
             'grant_id'=>$source['grant_id'],
             'grant_mode'=>$source['grant_mode'],
-            'transport_id'=>$source['transport_id']??null,
+            'transport_id'=>($source['transport_id']??null),
             'central_principal_id'=>$source['central_principal_id'],
             'correlation_id'=>$source['correlation_id'],
             'command_sha256'=>$source['command_sha256'],
+            'target_scope'=>$source['target_scope'],
+            'command_format'=>($source['command_format']??'maintenance.shell.text.v1'),
             'created_epoch'=>time(), 'expires_epoch'=>$source['expires_epoch'],
             'state'=>'QUEUED_FOR_VPS_BROKER_CLAIM',
             'executed'=>false,
