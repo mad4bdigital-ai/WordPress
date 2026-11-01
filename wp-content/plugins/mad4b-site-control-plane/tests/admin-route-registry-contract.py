@@ -157,6 +157,37 @@ for path in (root / 'includes').rglob('*.php'):
             raise SystemExit('FAIL migration decision submenu bypasses parent scheduling')
         checked += 1
         continue
+    # Three existing content admin screens deliberately have *two* WordPress
+    # menu parents: manage_options under Control Plane, and the delegated
+    # Company staff capability under Company Operations. Verify exact source
+    # declarations and the original per-screen owner gates before allowing it.
+    if path.name == 'class-mad4b-scp-readiness-integrations.php':
+        sources = (
+            ('class-mad4b-scp-content-readiness-alerts.php', 'MAD4B_SCP_Content_Readiness_Alerts'),
+            ('class-mad4b-scp-readiness-workflow-options.php', 'MAD4B_SCP_Readiness_Workflow_Options'),
+            ('class-mad4b-scp-content-completeness.php', 'MAD4B_SCP_Content_Completeness'),
+        )
+        for filename, owner in sources:
+            target = (root / 'includes' / filename).read_text(encoding='utf-8')
+            if "MAD4B_SCP_Admin_Route_Registry::register(self::PAGE,'manage_options')" not in target:
+                raise SystemExit('FAIL original administrator-only route changed: ' + filename)
+            if "MAD4B_SCP_Admin_Route_Registry::schedule_submenu(" not in target:
+                raise SystemExit('FAIL original administrator route not deferred: ' + filename)
+            if owner + '::PAGE' not in source:
+                raise SystemExit('FAIL delegated Company screen lost exact slug: ' + filename)
+        for marker in (
+            "const CAP='mad4b_manage_company_operations';",
+            "MAD4B_SCP_Admin_Route_Registry::schedule_submenu(array(__CLASS__,'company_menu'),34);",
+            "public static function can_manage()",
+            "return current_user_can('manage_options') || current_user_can(self::CAP);",
+        ):
+            if marker not in source:
+                raise SystemExit('FAIL delegated Company content authority changed: ' + marker)
+        if (source.count("add_submenu_page(") != 3
+                or re.search(r"add_action\(\s*['\"]admin_menu['\"]", source)):
+            raise SystemExit('FAIL delegated Company content menu scope expanded')
+        checked += 1
+        continue
     # Pre-Activation is a non-executing Company Workspace submenu with its
     # existing delegated CAP, not a WordPress-administrator-only screen.
     if path.name == 'class-mad4b-scp-readiness-preactivation.php':
