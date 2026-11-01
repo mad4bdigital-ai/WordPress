@@ -127,11 +127,15 @@ final class MAD4B_Broker_Exact_SSH_Authority_V1 {
   return sodium_crypto_sign_verify_detached($sig,$msg,$pub);
  }
  public static function cli($args,$assoc):void {
+  // A signed, replay-protected host preflight is an independent service
+  // identity, never a synthetic WordPress user. It only reads an existing
+  // exact job/grant and cannot create or mutate a grant/target.
   if (!defined('WP_CLI') || !WP_CLI || !class_exists('WP_CLI')
    || !class_exists('MAD4B_Central_Dual_Lane_Registry_V1',false)
-   || !MAD4B_Central_Dual_Lane_Registry_V1::central()
-   || get_current_user_id()<1 || !current_user_can('manage_options'))WP_CLI::error('CENTRAL_HOST_AUTHORITY_REQUIRED');
+   || !MAD4B_Central_Dual_Lane_Registry_V1::central())WP_CLI::error('CENTRAL_HOST_AUTHORITY_REQUIRED');
   $action=(string)($args[0]??'');
+  if ($action!=='verify' && (get_current_user_id()<1 || !current_user_can('manage_options')))
+    WP_CLI::error('CENTRAL_HOST_AUTHORITY_REQUIRED');
   if ($action==='claimed') {
    global $wpdb;
    $prefix=MAD4B_Central_VPS_Broker_V1::JOB;
