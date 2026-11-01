@@ -1,38 +1,39 @@
-# Permanent Content Hub Staging transport contract
+# MAD4B Content Hub — execution transport diagnostics (non-blocking)
 
-## Verified diagnostic evidence (2026-11-01)
+## Decision: do not add parallel permission gates
 
-- A root-shell tool request was blocked **before Bash ran**, even for a read-only command ("date"). The reported refusal was "This tool call was blocked by OpenAI's safety checks". This provides no Bash exit status or stderr. It must not be interpreted as a Bash quoting or syntax error.
-- The registered infrastructure inventory filtered to environment=staging returned **zero targets**; the unfiltered inventory listed **four production-tagged hosts** including the primary shared VPS. A mounted key named shell_access is present, but its presence does not establish authorization or Staging identity binding.
-- Those observations do NOT prove why the external safety filter rejected a request. Only the platform that enforced the block can confirm its exact reason.
+This file and tools/mad4b_staging_transport_contract.py are **diagnostic only**. Neither is a new execution proxy, security/approval layer, allowlist, or an independent reason to reject a permitted MAD4B operation. All actual permission checks remain with the original target connector, MAD4B authorization service, Native Operator, and destination site.
 
-## Mandatory process
+### Evidence and limits (2026-11-01)
 
-1. Use original typed infrastructure inventory and fixed read-only probes before requesting remote work. Confirm a Staging-scoped enrolled service/target, correct site and DB, and independent authorization. A shared Production-labeled VPS is NOT a substitute.
-2. Enroll a distinct authorized Staging identity using the platform's original administrative process if none exists. No key substitution, self-grant, alternate endpoint or tunnel to evade an explicit refusal.
-3. Use typed, narrowly scoped original Staging readback operations instead of embedding Bash, docker, wp eval, curl, SQL or heredocs into arbitrary remote-shell requests.
-4. For changes use the original Native Operator plan and apply sequence, with exact source SHA, backup digest, authority receipt, rollback reference, unique correlation ID and independent signed readback. Preflight admission is never execution authority.
-5. Classify a safety-check refusal as TOOL_ACCESS_DENIED_PRE_EXECUTION and stop. Do not change quotes, base64, spacing or connectors to make the same blocked action pass. Bash syntax failure requires an actual shell exit code and stderr. Record only safe metadata without credentials.
-6. Preserve certified_only, existing Queue history and all identity/review holds. Never edit Production or invent provider/ChatGPT MCP receipts.
+- A remote root-shell call, including \`date\`, was blocked before Bash executed. Its tool-level safety refusal does not prove a command-syntax error; the cause of the platform refusal remains unconfirmed. Do not retry the **same rejected action** with alternate encoding, another connector, or quotation tricks to evade that refusal.
+- The infrastructure inventory returned zero *separately Staging-tagged hosts* and four Production-tagged hosts. This is **not evidence that Staging is unenrolled or unauthorized**: the Staging WordPress container can reside on a Production-tagged VPS. Check the actual site, database, role/grant and operation, not a host label alone.
+- The existence of a shell_access key does not itself prove that any particular command is authorized or forbidden.
 
-## Reusable preflight
+## Correct existing-operation lifecycle
 
-Run locally: python3 tools/mad4b_staging_transport_contract.py --request request.json
+1. Identify which existing original MAD4B tool is appropriate and inspect its actual operation-specific contract. Read operations may use a valid authorized shell or WP-CLI route, without backup, rollback or custom Staging target prerequisites imposed by this diagnostic.
+2. Distinguish **host inventory environment** from the **destination application environment**. Both Staging and Production may be operable under the original grant/policy; this runbook adds no environment ban and never treats a Production host label as a site denial. For this Content Hub backlog work the current intended destination remains tours.dev.mad4b.com / etg_commerce_staging. Do not silently switch sites.
+3. For mutating operations follow the *existing Native Operator or service-specific* plan, authorization, backup, effect-readback and rollback requirements as applicable to that operation and its risk. Do not demand these from harmless reads, or assume a provided string/boolean conveys an actual grant.
+4. Preserve real outcomes: source identity reviews require source evidence, and AI jobs require original authenticated MCP client/provider results. Do not mark a task successful solely to reduce pending counts.
+5. If the **platform itself** rejects a tool call before execution, record TOOL_ACCESS_DENIED_PRE_EXECUTION, stop the rejected action, and request original-channel diagnostics or legitimate permission correction. A Bash failure requires a real shell exit status and stderr. Other authorized workflows are not disabled globally because one route failed.
 
-Example JSON request with unverified enrollment (correctly denied):
+## Optional standalone diagnostic
 
+Run: python3 tools/mad4b_staging_transport_contract.py --request request.json
+
+Example JSON request:
+
+~~~json
 {
-  "contract": "mad4b.content-hub.staging-typed-transport.v1",
   "operation": "queue_status",
-  "environment": "staging",
+  "site_environment": "staging",
+  "host_inventory_environment": "production",
   "site": "https://tours.dev.mad4b.com",
-  "database": "etg_commerce_staging",
-  "mode": "certified_only",
-  "target_id": null,
-  "staging_binding_verified": false,
-  "transport_authorized": false
+  "database": "etg_commerce_staging"
 }
+~~~
 
-The Python preflight performs NO remote execution and cannot grant rights. The tests are imported by tools/test_mad4b_content_hub_release_gate.py and run under the existing exact-HEAD Content Hub package CI.
+The output is an *observation*, not an admit/deny result. It never accesses the VPS, authorizes a user, runs a command, or changes a Queue record. Its regression tests run in the original Content Hub exact-HEAD CI gate to prevent someone from accidentally reintroducing Staging-only host labels, required backup on reads, or blanket Production/enforce denials.
 
-Last verified Queue: 325 records, 14 nonterminal. This is historical until a new authorized Staging readback succeeds.
+Last confirmed Content Hub Queue count: 325 records / 14 nonterminal. It must be rechecked via an authorized original source before reporting it as live.

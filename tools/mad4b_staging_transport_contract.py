@@ -1,67 +1,84 @@
-"""Non-executing, fail-closed typed preflight for Content Hub Staging."""
+"""Non-authoritative diagnostics for MAD4B execution routes.
+
+Never used as a runtime permission gate. The original connector/Native Operator
+owns authorization, environment scope, backup policy, and execution.
+"""
 import argparse
 import json
-import re
 from pathlib import Path
 
-CONTRACT = "mad4b.content-hub.staging-typed-transport.v1"
-ROUTES = {"inventory": "registered_target_inventory",
-          "queue_status": "original_staging_read",
-          "source_readback": "original_staging_read",
-          "native_plan": "original_native_operator.plan",
-          "native_apply": "original_native_operator.apply"}
-FIELDS = {"contract", "operation", "environment", "site", "database", "mode",
-          "target_id", "staging_binding_verified", "transport_authorized",
-          "authority_receipt", "plan_sha256", "backup_sha256",
-          "readback_sha256", "rollback_ref", "correlation_id"}
-REF = re.compile(r"[a-z][a-z0-9_.-]{2,95}\Z")
-SHA = re.compile(r"[a-f0-9]{64}\Z")
+CONTRACT = "mad4b.content-hub.transport-diagnostics.v2"
 
 
-def validate(value):
-    if not isinstance(value, dict):
-        return {"admitted": False, "reasons": ["INVALID_REQUEST"], "executed": False}
-    errors = []
-    if set(value) - FIELDS:
-        errors.append("RAW_COMMAND_OR_UNKNOWN_FIELD")
-    if value.get("contract") != CONTRACT:
-        errors.append("INVALID_CONTRACT")
-    if value.get("environment") != "staging":
-        errors.append("PRODUCTION_NOT_AUTHORIZED")
-    if value.get("site") != "https://tours.dev.mad4b.com" or value.get("database") != "etg_commerce_staging":
-        errors.append("SCOPE_MISMATCH")
-    if value.get("mode") != "certified_only":
-        errors.append("MODE_NOT_CERTIFIED_ONLY")
-    op = value.get("operation")
-    if not isinstance(op, str) or op not in ROUTES:
-        errors.append("UNSUPPORTED_OPERATION")
-        op = None
-    if op not in (None, "inventory"):
-        if not isinstance(value.get("target_id"), str) or not REF.fullmatch(value["target_id"]):
-            errors.append("STAGING_TARGET_NOT_ENROLLED")
-        if value.get("staging_binding_verified") is not True:
-            errors.append("STAGING_BINDING_NOT_VERIFIED")
-        if value.get("transport_authorized") is not True:
-            errors.append("TRANSPORT_NOT_AUTHORIZED")
-    if op == "native_apply":
-        for key in ("authority_receipt", "rollback_ref", "correlation_id"):
-            if not isinstance(value.get(key), str) or not REF.fullmatch(value[key]):
-                errors.append(key.upper() + "_REQUIRED")
-        for key in ("plan_sha256", "backup_sha256", "readback_sha256"):
-            if not isinstance(value.get(key), str) or not SHA.fullmatch(value[key]):
-                errors.append(key.upper() + "_REQUIRED")
-    return {"contract": CONTRACT, "admitted": not errors,
-            "reasons": sorted(set(errors)), "route": ROUTES.get(op),
-            "executed": False, "execution_authority_granted": False,
-            "next_step": ("Use the original tool and its independent authorization."
-                          if not errors else
-                          "Fix original enrollment/authority. Do not rephrase or retry blocked root-shell commands.")}
+def diagnose(request):
+    """Classify a request without granting or denying the original operation."""
+    if not isinstance(request, dict):
+        return {"contract": CONTRACT, "diagnostic": "INVALID_INPUT",
+                "executed": False, "permission_decision": "ORIGINAL_AUTHORITY_ONLY"}
+
+    operation = request.get("operation")
+    op = operation.lower() if isinstance(operation, str) else "unspecified"
+    error = request.get("observed_error")
+    error = error.lower() if isinstance(error, str) else ""
+    if "blocked by openai's safety checks" in error or error == "tool_access_denied_pre_execution":
+        failure_layer = "TOOL_ACCESS_DENIED_PRE_EXECUTION"
+    elif request.get("observed_shell_exit_code") is not None:
+        failure_layer = "REMOTE_SHELL_EXIT_OBSERVED"
+    elif error:
+        failure_layer = "UNCLASSIFIED_TOOL_ERROR"
+    else:
+        failure_layer = "NO_ERROR_OBSERVED"
+
+    reads = {"inventory", "queue_status", "source_readback", "read", "status", "probe"}
+    writes = {"native_apply", "apply", "write", "publish", "deploy", "rollback", "shell"}
+    if op in reads:
+        risk_class = "read_only_candidate"
+    elif op in writes:
+        risk_class = "may_mutate"
+    else:
+        risk_class = "refer_to_original_capability_metadata"
+
+    # Host inventory classification and application environment are independent:
+    # Staging commonly lives as a container on a production-tagged VPS.
+    notes = []
+    host_env = request.get("host_inventory_environment")
+    site_env = request.get("site_environment") or request.get("environment")
+    if host_env and site_env and host_env != site_env:
+        notes.append("HOST_AND_SITE_ENVIRONMENT_MAY_DIFFER_NOT_AN_AUTOMATIC_DENIAL")
+    if not request.get("observed_site_identity") and op != "inventory":
+        notes.append("SITE_IDENTITY_READBACK_NOT_YET_RECORDED")
+    if op in writes:
+        notes.append("USE_ORIGINAL_OPERATION_SPECIFIC_AUTHORITY_AND_EFFECT_POLICY")
+    if failure_layer == "TOOL_ACCESS_DENIED_PRE_EXECUTION":
+        notes.append("DO_NOT_RETRY_THE_REJECTED_ACTION_TO_EVADE_SAFETY_CHECKS")
+    return {
+        "contract": CONTRACT,
+        "diagnostic": "OBSERVATION_ONLY",
+        "operation": operation,
+        "risk_class": risk_class,
+        "failure_layer": failure_layer,
+        "notes": notes,
+        "permission_decision": "ORIGINAL_AUTHORITY_ONLY",
+        "local_permission_gate_added": False,
+        "staging_only_target_required": False,
+        "backup_required_for_read": False,
+        "arbitrary_runtime_mode_ban": False,
+        "executed": False,
+        "next_step": (
+            "Inspect the original platform refusal and use its authorized recovery process."
+            if failure_layer == "TOOL_ACCESS_DENIED_PRE_EXECUTION" else
+            "Use the original connector or Native Operator and its existing operation-specific policy."
+        ),
+    }
+
+
+# Backwards-compatible name: previous PR called this function validate().
+def validate(request):
+    return diagnose(request)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--request", required=True, type=Path)
     args = parser.parse_args()
-    result = validate(json.loads(args.request.read_text(encoding="utf-8")))
-    print(json.dumps(result, sort_keys=True))
-    raise SystemExit(0 if result["admitted"] else 2)
+    print(json.dumps(diagnose(json.loads(args.request.read_text(encoding="utf-8"))), sort_keys=True))
