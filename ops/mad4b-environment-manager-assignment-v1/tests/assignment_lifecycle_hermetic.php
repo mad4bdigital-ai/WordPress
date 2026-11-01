@@ -38,7 +38,8 @@ function wp_is_uuid($s){return is_string($s)&&preg_match('/^[a-f0-9]{8}-(?:[a-f0
 function is_wp_error($x){return $x instanceof WP_Error;}
 function wp_json_encode($x,$flags=0){return json_encode($x,$flags);}
 function rest_ensure_response($v){return $v;}
-function add_action($name,$fn){return null;}
+$GLOBALS['actions']=[];
+function add_action($name,$fn){$GLOBALS['actions'][]=$name;return null;}
 function must($x,$label){if(!$x)throw new RuntimeException($label);}
 final class MAD4B_Company_Environment_Portfolio_Evidence_V1 {
     const ASSIGNMENTS='mad4b_company_environment_manager_assignments_v1';
@@ -66,6 +67,7 @@ $GLOBALS['opts']['members']=[$manager.'|1'=>[
     'user_id'=>1,'state'=>'active']];
 require dirname(__DIR__).'/317-mad4b-environment-manager-assignment.php';
 $cls=MAD4B_Environment_Manager_Assignment_V1::class;
+must(in_array('plugins_loaded',$GLOBALS['actions'],true),'deferred bootstrap is registered');
 $company='example-company';$first=$cls::plan($company);
 must($first['eligible']===true,'manager and signed site ready');
 must($first['assignment_state']==='missing','no assignment implies missing');
