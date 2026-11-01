@@ -109,13 +109,16 @@ if ( ! is_wp_error( $invalid_scope ) ) {
 // Review the three existing runtime surfaces changed by pending SSH/WP-CLI
 // discovery. Discovery remains non-executable until 305/312/313 and the
 // site-bound Native Executor have independently certified real authority.
-$pending_catalog = require MAD4B_SCP_DIR . 'config/remote-operation-catalog.php';
-$pending = $pending_catalog['company_remote_wpcli_full_enrollment'] ?? null;
-if ( ! is_array( $pending ) ||
-     ( $pending['authority_surface'] ?? '' ) !== 'mad4b-enrollment' ||
-     ( $pending['executor'] ?? '' ) !== 'original_core_broker_305_312_313' ||
-     ( $pending['chatgpt_direct_step_up'] ?? null ) !== false ||
-     ( $pending['human_decision_required'] ?? null ) !== true ) {
+// The dynamic catalog uses self:: constants and can only be required inside
+// its defining class; its executable loading is already tested by the
+// dedicated test_full_wpcli_enrollment_registration.php fixture.
+$pending_catalog_source = file_get_contents( MAD4B_SCP_DIR . 'config/remote-operation-catalog.php' );
+if ( ! is_string( $pending_catalog_source ) ||
+     ! str_contains( $pending_catalog_source, "'company_remote_wpcli_full_enrollment'" ) ||
+     ! str_contains( $pending_catalog_source, "'authority_surface' => 'mad4b-enrollment'" ) ||
+     ! str_contains( $pending_catalog_source, "'executor' => 'original_core_broker_305_312_313'" ) ||
+     ! str_contains( $pending_catalog_source, "'human_decision_required' => true" ) ||
+     ! str_contains( $pending_catalog_source, "'chatgpt_direct_step_up' => false" ) ) {
     throw new RuntimeException( 'full_wpcli_owner_channel_catalog_changed' );
 }
 $pending_dispatch = file_get_contents( MAD4B_SCP_DIR . 'includes/class-mad4b-scp-enrollment-dispatch.php' );
