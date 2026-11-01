@@ -28,6 +28,9 @@ with tempfile.TemporaryDirectory() as tmp:
               "source_commit_sha":"a"*40,
               "package_files":[{"path":"includes/a.php","bytes":len(blob),
                                 "sha256":hashlib.sha256(blob).hexdigest()}]}
+    row=manifest["package_files"][0]
+    canonical=row["path"] + chr(0) + str(row["bytes"]) + chr(0) + row["sha256"] + chr(10)
+    manifest["package_manifest_digest"]=hashlib.sha256(canonical.encode()).hexdigest()
     (live/"MAD4B-BUILD-PROVENANCE.json").write_text(json.dumps(manifest))
     initial=m.status(live,source,"b"*40)
     assert initial["release_ready"] and initial["observed"]["active_gaps"]==0
@@ -42,6 +45,7 @@ with tempfile.TemporaryDirectory() as tmp:
     drift=m.status(live,source,"b"*40)
     assert drift["manifest"]["mismatches"]==["includes/a.php"]
     assert not drift["release_ready"]
+    assert drift["manifest"]["manifest_digest_valid"]
     manifest["package_files"][0]["path"]="../bad"
     (live/"MAD4B-BUILD-PROVENANCE.json").write_text(json.dumps(manifest))
     try:
