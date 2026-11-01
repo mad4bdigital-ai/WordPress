@@ -67,7 +67,8 @@ final class MAD4B_Company_Portfolio_Manager_V1 {
             // Exact signed Staging identity is usable for owner-scoped company
             // Portfolio only after the original Environment Manager approval.
             // No Production registration, host privilege or 305 is inferred.
-            if(!self::staging()
+            if(array_key_exists($code,self::data(self::REGISTRY))
+                || !self::staging()
                 || !class_exists('MAD4B_Company_Environment_Portfolio_Evidence_V1',false)
                 || !class_exists('MAD4B_Company_Environment_Registry_V2',false))
                 return self::error('company_unverified','Verified Company Registry site binding required',409);
