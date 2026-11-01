@@ -6,7 +6,7 @@ $GLOBALS['fixture_options']=[];
 $GLOBALS['fixture_auth_ok']=true;
 $GLOBALS['fixture_assignment_ok']=true;
 $GLOBALS['fixture_nonce']='fixture-nonce';
-$GLOBALS['fixture_unified_verified']=false;
+$GLOBALS['fixture_unified_verified']=true;
 $GLOBALS['fixture_unified_calls']=0;
 function add_action(...$args) {}
 function wp_verify_nonce($nonce,$action){return $GLOBALS['fixture_auth_ok'] && $nonce==='fixture-nonce' && $action==='wp_rest';}
@@ -69,7 +69,7 @@ $gid=$transport['full_wpcli_grant_id'];
 $grant=get_option(MAD4B_Central_SSH_Command_Intake_V1::PREFIX.$gid);
 assert_ok(is_array($grant)&&$grant['grant_mode']==='persistent'&&$grant['transport_id']===$transport['transport_id'],'grant scoped to same channel');
 assert_ok($grant['company']==='all-royal-egypt'&&$grant['environment']==='staging','company/site not exact');
-assert_ok($GLOBALS['fixture_unified_calls']===0,'valid REST session must not require Unified approval');
+assert_ok($GLOBALS['fixture_unified_calls']>0,'channel enrollment must verify original owner identity');
 $GLOBALS['fixture_assignment_ok']=false;
 assert_ok($call('all-royal-egypt') instanceof WP_Error,'revoked delegated rights must block enrollment');
 $GLOBALS['fixture_assignment_ok']=true;$GLOBALS['fixture_auth_ok']=false;
