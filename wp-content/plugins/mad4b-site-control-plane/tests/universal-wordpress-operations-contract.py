@@ -87,7 +87,22 @@ assert len(ids) == len(set(ids))
 assert "wordpress.plugin.transaction" in ids
 assert "wordpress.provider.recertify" in ids
 optional_ids = {row["id"] for row in operation["operations"] if row.get("required_runtime") is False}
-assert optional_ids == {"wordpress.content.import", "wordpress.content.export", "search.serp.capture"}
+assert optional_ids == {
+    "wordpress.content.import",
+    "wordpress.content.export",
+    "search.serp.capture",
+    "company.plugin-sync.request",
+}
+plugin_sync = next(row for row in operation["operations"] if row["id"] == "company.plugin-sync.request")
+assert plugin_sync["target_kind"] == "company"
+assert plugin_sync["planner"] == "mad4b/company-plugin-sync-plan"
+assert plugin_sync["executor"] == "mad4b/company-plugin-sync-request"
+assert plugin_sync["required_runtime"] is False
+assert plugin_sync["supports"] == ["queue_plan_only"]
+assert plugin_sync["generic_mutation_dispatch"] is False
+assert plugin_sync["side_effect_class"] == "central_journal_plan_only"
+assert plugin_sync["retry_semantics"] == "readback_before_retry"
+assert plugin_sync["dependency_impact"] is False
 serp_capture = next(row for row in operation["operations"] if row["id"] == "search.serp.capture")
 assert serp_capture["target_kind"] == "search_target"
 assert serp_capture["generic_mutation_dispatch"] is False
@@ -98,6 +113,18 @@ assert serp_capture["production_policy"] == "deny"
 for row in operation["operations"]:
     assert row["planner"]
     assert row["executor"]
+    # The only optional, queue-plan-only Company Plugin Sync operation has no
+    # active runtime adapter yet. Verify its exact non-authorizing contract,
+    # never advertise its absent planner/executor as a registered Ability.
+    if row["id"] == "company.plugin-sync.request":
+        assert row["required_runtime"] is False
+        assert row["supports"] == ["queue_plan_only"]
+        assert row["generic_mutation_dispatch"] is False
+        assert row["side_effect_class"] == "central_journal_plan_only"
+        assert row["retry_semantics"] == "readback_before_retry"
+        assert row["planner"] == "mad4b/company-plugin-sync-plan"
+        assert row["executor"] == "mad4b/company-plugin-sync-request"
+        continue
     assert runtime_represents_ability(row["planner"]), f"planner not represented in runtime source: {row['planner']}"
     if row["executor"] == "exact_executor_from_plan":
         assert row["id"] == "wordpress.plugin.transaction"
@@ -170,6 +197,20 @@ assert operation["aliases"]["reconcile-provider"] == "wordpress.provider.recerti
 direct_projection = operation["read_projection"]["direct"]
 catalog_projection = operation["read_projection"]["catalog"]
 assert set(direct_projection).issubset(set(catalog_projection))
+# Fixed optional reads must be listed in the catalog but cannot bypass the
+# original WordPress Ability registry or become required/mutating tools.
+optional_projection = operation["read_projection"]["optional"]
+assert optional_projection == [
+    "mad4b/company-plugin-sync-plan",
+    "mad4b/company-plugin-sync-job",
+    "mad4b/company-bootstrap-status",
+]
+assert set(optional_projection).issubset(set(catalog_projection))
+assert not set(optional_projection).intersection(direct_projection)
+assert "mad4b_operation_registry_optional_projection_invalid" in registry
+assert "wp_has_ability( $ability )" in registry
+assert "! in_array( $ability, $optional, true )" in registry
+assert "function_exists( 'wp_has_ability' ) && wp_has_ability( $ability )" in registry
 # Preserve the fixed original read-only foundation while allowing the
 # source-registered Operation Registry to extend MCP read projection.
 # The previous exact-list equality prevented new bounded planners/verification.

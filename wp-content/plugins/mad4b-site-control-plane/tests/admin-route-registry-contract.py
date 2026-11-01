@@ -84,6 +84,208 @@ for path in (root / 'includes').rglob('*.php'):
             if marker not in manifest:
                 raise SystemExit('FAIL native manifest guard missing: ' + marker)
         continue
+    # This is the original Company Workspace *parent*, not an early child.
+    # Its own submenu has exactly the same delegated company capability.
+    # Keep the native parent order at priority 12; all other children use
+    # the registry's deferred registration. Do not grant WP administrator.
+    if path.name == 'class-mad4b-scp-company-master-admin.php':
+        required = (
+            "const CAP='mad4b_manage_company_operations';",
+            "add_menu_page('Company Operations','Company',self::CAP,'mad4b-company',",
+            "add_submenu_page('mad4b-company','Team & Translation','Team & Translation',self::CAP,'mad4b-company',",
+            "add_action('admin_menu',array(__CLASS__,'menus'),12);",
+            "public static function can():bool {return current_user_can(self::CAP);}",
+            "'permission_callback'=>array(__CLASS__,'can')",
+            "'manage_options','activate_plugins','install_plugins','update_plugins'",
+            "if(!in_array(wp_get_environment_type(),['local','staging'],true))",
+            "MAD4B_SCP_Company_Owner_Activation::browserOwnerAuthorized()",
+        )
+        for marker in required:
+            if marker not in source:
+                raise SystemExit('FAIL company parent menu/role boundary: ' + marker)
+        if (source.count("add_menu_page(") != 1 or source.count("add_submenu_page(") != 1
+                or source.count("add_action('admin_menu'") != 1):
+            raise SystemExit('FAIL company parent menu scope expanded')
+        checked += 1
+        continue
+    # The delegated Company Task Handoffs screen is a separate top-level WP
+    # capability surface, not an administrator-only MAD4B submenu. Check its
+    # exact WP capability AND its independent per-user access and nonce gates,
+    # rather than demanding manage_options (which would break staff access).
+    if path.name == 'class-mad4b-scp-company-task-handoff.php':
+        required = (
+            "add_menu_page('My Task Handoffs','Task Handoffs','mad4b_work_company_tasks',",
+            "'mad4b-task-handoffs',[__CLASS__,'screen'",
+            "return current_user_can('mad4b_work_company_tasks') &&",
+            "(self::master() || self::allowed(get_current_user_id()))",
+            "if(!self::accessible())wp_die('Not an approved internal team member.');",
+            "if(!self::accessible())wp_die('Company staff access required.',403);",
+            "check_admin_referer('mad4b_company_task_handoff');",
+            "add_action('admin_menu',[__CLASS__,'adminMenu'],12);",
+            "add_action('admin_post_mad4b_company_task_handoff',[__CLASS__,'adminPost']);",
+        )
+        for marker in required:
+            if marker not in source:
+                raise SystemExit(f'FAIL delegated company task screen access/nonce guard: {marker}')
+        if source.count("add_menu_page(") != 1 or "add_submenu_page(" in source:
+            raise SystemExit('FAIL delegated company task menu scope expanded')
+        checked += 1
+        continue
+    # Migration Decisions has two intentionally different WordPress menus:
+    # admin-only Tools plus a delegated Company Workspace staff submenu.
+    # Check each exact capability, parent-order scheduling, route declaration,
+    # and the page/REST permission instead of weakening generic menu policy.
+    if path.name == 'class-mad4b-scp-company-migration-decisions.php':
+        required = (
+            "MAD4B_SCP_Admin_Route_Registry::register(self::MENU,'mad4b_manage_company_operations')",
+            "MAD4B_SCP_Admin_Route_Registry::schedule_submenu([__CLASS__,'admin_menu'])",
+            "add_management_page('Company Migration Decisions','Company Migration Decisions',",
+            "'manage_options',self::MENU,[__CLASS__,'page']",
+            "add_submenu_page('mad4b-company-workspace','Migration Decisions','Migration Decisions',",
+            "'mad4b_manage_company_operations',self::MENU,[__CLASS__,'page']",
+            "if(!self::can_propose())wp_die('Company migration planning access denied',403);",
+            "return (current_user_can('mad4b_manage_company_operations') ||",
+            "(current_user_can('manage_options') && current_user_can('activate_plugins'))",
+            "'permission_callback'=>[__CLASS__,'permission']",
+        )
+        for marker in required:
+            if marker not in source:
+                raise SystemExit(f'FAIL migration decision staff/admin permission or parent scheduling: {marker}')
+        if source.count("add_submenu_page(") != 1 or source.count("add_management_page(") != 1:
+            raise SystemExit('FAIL migration decision extra menu scope')
+        if re.search(r"add_action\(\s*['\"]admin_menu['\"]", source):
+            raise SystemExit('FAIL migration decision submenu bypasses parent scheduling')
+        checked += 1
+        continue
+    # Three existing content admin screens deliberately have *two* WordPress
+    # menu parents: manage_options under Control Plane, and the delegated
+    # Company staff capability under Company Operations. Verify exact source
+    # declarations and the original per-screen owner gates before allowing it.
+    if path.name == 'class-mad4b-scp-readiness-integrations.php':
+        sources = (
+            ('class-mad4b-scp-content-readiness-alerts.php', 'MAD4B_SCP_Content_Readiness_Alerts'),
+            ('class-mad4b-scp-readiness-workflow-options.php', 'MAD4B_SCP_Readiness_Workflow_Options'),
+            ('class-mad4b-scp-content-completeness.php', 'MAD4B_SCP_Content_Completeness'),
+        )
+        for filename, owner in sources:
+            target = (root / 'includes' / filename).read_text(encoding='utf-8')
+            if "MAD4B_SCP_Admin_Route_Registry::register(self::PAGE,'manage_options')" not in target:
+                raise SystemExit('FAIL original administrator-only route changed: ' + filename)
+            if "MAD4B_SCP_Admin_Route_Registry::schedule_submenu(" not in target:
+                raise SystemExit('FAIL original administrator route not deferred: ' + filename)
+            if owner + '::PAGE' not in source:
+                raise SystemExit('FAIL delegated Company screen lost exact slug: ' + filename)
+        for marker in (
+            "const CAP='mad4b_manage_company_operations';",
+            "MAD4B_SCP_Admin_Route_Registry::schedule_submenu(array(__CLASS__,'company_menu'),34);",
+            "public static function can_manage()",
+            "return current_user_can('manage_options') || current_user_can(self::CAP);",
+        ):
+            if marker not in source:
+                raise SystemExit('FAIL delegated Company content authority changed: ' + marker)
+        if (source.count("add_submenu_page(") != 3
+                or re.search(r"add_action\(\s*['\"]admin_menu['\"]", source)):
+            raise SystemExit('FAIL delegated Company content menu scope expanded')
+        checked += 1
+        continue
+    # Pre-Activation is a non-executing Company Workspace submenu with its
+    # existing delegated CAP, not a WordPress-administrator-only screen.
+    if path.name == 'class-mad4b-scp-readiness-preactivation.php':
+        required = (
+            "const PAGE='mad4b-readiness-preactivation';",
+            "const CAP='mad4b_manage_company_operations';",
+            "MAD4B_SCP_Admin_Route_Registry::register(self::PAGE,self::CAP);",
+            "MAD4B_SCP_Admin_Route_Registry::schedule_submenu(array(__CLASS__,'menu'),36);",
+            "add_submenu_page('mad4b-company','Pre-Activation Console','Pre-Activation',",
+            "self::CAP,self::PAGE,array(__CLASS__,'screen')",
+            "return current_user_can('manage_options')||current_user_can(self::CAP);",
+            "if(!self::can_manage())wp_die('Forbidden',403);",
+            "public static function execution_locked() {return true;}",
+            "'permission_callback'=>array(__CLASS__,'can_manage')",
+        )
+        for marker in required:
+            if marker not in source:
+                raise SystemExit('FAIL Pre-Activation role/lock/route mismatch: ' + marker)
+        if (source.count("add_submenu_page(") != 1
+                or re.search(r"add_action\(\s*['\"]admin_menu['\"]", source)):
+            raise SystemExit('FAIL Pre-Activation direct menu bypass')
+        checked += 1
+        continue
+    # Readiness Scopes uses the existing Company Operations staff capability,
+    # not manage_options. Both WordPress menu and registry must agree exactly.
+    if path.name == 'class-mad4b-scp-readiness-scopes.php':
+        integration = (root / 'includes/class-mad4b-scp-readiness-integrations.php').read_text(encoding='utf-8')
+        required = (
+            "const PAGE = 'mad4b-readiness-scopes';",
+            "MAD4B_SCP_Admin_Route_Registry::register(self::PAGE,MAD4B_SCP_Readiness_Integrations::CAP)",
+            "MAD4B_SCP_Admin_Route_Registry::schedule_submenu(array(__CLASS__,'menu'),35)",
+            "add_submenu_page('mad4b-company','Content Work Scopes','Content Work Scopes',",
+            "MAD4B_SCP_Readiness_Integrations::CAP,self::PAGE,array(__CLASS__,'screen')",
+            "if(!self::can_manage())wp_die('Forbidden',403);",
+            "return MAD4B_SCP_Readiness_Integrations::can_manage();",
+        )
+        for marker in required:
+            if marker not in source:
+                raise SystemExit('FAIL readiness scopes capability/parent route mismatch: ' + marker)
+        for marker in (
+            "const CAP='mad4b_manage_company_operations';",
+            "return current_user_can('manage_options') || current_user_can(self::CAP);",
+        ):
+            if marker not in integration:
+                raise SystemExit('FAIL readiness scopes delegated permission drift: ' + marker)
+        if source.count("add_submenu_page(") != 1 or re.search(r"add_action\(\s*['\"]admin_menu['\"]", source):
+            raise SystemExit('FAIL readiness scopes expanded or bypassed original menu authority')
+        checked += 1
+        continue
+    # Synthetic Staging fixtures are read-only and only available for a
+    # bound TEST Brand on the current Staging site. The Company submenu uses
+    # the existing staff capability and must never register before its parent.
+    if path.name == 'class-mad4b-scp-staging-context-fixtures.php':
+        required = (
+            "const MENU='mad4b-staging-context-fixtures';",
+            "if(wp_get_environment_type()!=='staging')return;",
+            "MAD4B_SCP_Admin_Route_Registry::register(self::MENU,'mad4b_manage_company_operations');",
+            "MAD4B_SCP_Admin_Route_Registry::schedule_submenu(static function()",
+            "add_submenu_page('mad4b-company','Staging Context Fixtures',",
+            "'mad4b_manage_company_operations',self::MENU,[__CLASS__,'page']",
+            "return wp_get_environment_type()==='staging' &&",
+            "current_user_can('mad4b_manage_company_operations')",
+            "mad4b_test_fixtures_scope_invalid",
+            "'permission_callback'=>[__CLASS__,'canRead']",
+        )
+        for marker in required:
+            if marker not in source:
+                raise SystemExit('FAIL virtual fixture read-only scope/menu/permission: ' + marker)
+        if (source.count("add_submenu_page(") != 1
+                or re.search(r"add_action\(\s*['\"]admin_menu['\"]", source)):
+            raise SystemExit('FAIL virtual fixture submenu bypass')
+        checked += 1
+        continue
+    # The Staging Brand Trial registers a self::MENU slug rather than a
+    # literal slug. Its original REST and page authority must remain strictly
+    # staging-only and administrator-only, in addition to ordered menus.
+    if path.name == 'class-mad4b-scp-staging-brand-trial.php':
+        required = (
+            "const MENU='mad4b-staging-brand-trial';",
+            "if(wp_get_environment_type()!=='staging')return;",
+            "MAD4B_SCP_Admin_Route_Registry::register(self::MENU,'manage_options')",
+            "MAD4B_SCP_Admin_Route_Registry::schedule_submenu(static function()",
+            "add_submenu_page('mad4b-control-plane','Staging Test Brand','Staging Test Brand',",
+            "'manage_options',self::MENU,[__CLASS__,'page']",
+            "return wp_get_environment_type()==='staging'",
+            "current_user_can('manage_options') && current_user_can('activate_plugins')",
+            "if(!self::canReview())wp_die('WordPress Administrator on Staging required.');",
+            "'permission_callback'=>[__CLASS__,'canReview']",
+        )
+        for marker in required:
+            if marker not in source:
+                raise SystemExit('FAIL staging brand trial parent/permission/REST guard: ' + marker)
+        if (source.count("add_submenu_page(") != 1
+                or source.count("MAD4B_SCP_Admin_Route_Registry::register(") != 1
+                or re.search(r"add_action\(\s*['\"]admin_menu['\"]", source)):
+            raise SystemExit('FAIL staging brand trial menu scope expanded')
+        checked += 1
+        continue
     if 'add_submenu_page(' in source and (
         'MAD4B_SCP_Admin_Route_Registry::schedule_submenu(' not in source
         or re.search(r"add_action\(\s*['\"]admin_menu['\"]", source)

@@ -3607,6 +3607,63 @@
       "review_rationale": "New surface ability:mad4b/staging-write-grant-reconcile-staging is source-pinned in the W1 authority integration and assessed with hermetic owner-browser, agent REST route, Site Profile, OAuth, replay, write grant, exact mapping and negative permission fixtures. This is only CI source review, not evidence that the route is registered, usable, or authorized in Production."
     },
     {
+      "id": "ability:mad4b/company-bootstrap-status",
+      "owner_role": "GitHub technical source review for CI-only static candidate inventory; not site or repository release approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/universal-wordpress-operations-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP server descriptor, registration binding, execution-fence and WordPress Ability identity controls already govern an optional read projection. No new active Ability, grant, permission or release authority is created.",
+      "review_rationale": "The conservative PHP scanner sees the literal mad4b/company-bootstrap-status in an exact three-item optional allowlist. This is NOT a new wp_register_ability declaration and is not advertised unless wp_has_ability returns true. Same-PR regression binds the exact optional names, absent registration behavior, read-only catalog subset and disabled generic mutation. Review is source-only; runtime registration and Production authorization are unproven."
+    },
+    {
+      "id": "ability:mad4b/company-plugin-sync-job",
+      "owner_role": "GitHub technical source review for CI-only static candidate inventory; not site or repository release approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/universal-wordpress-operations-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP server descriptor, registration binding, execution-fence and WordPress Ability identity controls already govern an optional read projection. No new active Ability, grant, permission or release authority is created.",
+      "review_rationale": "The conservative PHP scanner sees the literal mad4b/company-plugin-sync-job in an exact three-item optional allowlist. This is NOT a new wp_register_ability declaration and is not advertised unless wp_has_ability returns true. Same-PR regression binds the exact optional names, absent registration behavior, read-only catalog subset and disabled generic mutation. Review is source-only; runtime registration and Production authorization are unproven."
+    },
+    {
+      "id": "ability:mad4b/company-plugin-sync-plan",
+      "owner_role": "GitHub technical source review for CI-only static candidate inventory; not site or repository release approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/universal-wordpress-operations-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP server descriptor, registration binding, execution-fence and WordPress Ability identity controls already govern an optional read projection. No new active Ability, grant, permission or release authority is created.",
+      "review_rationale": "The conservative PHP scanner sees the literal mad4b/company-plugin-sync-plan in an exact three-item optional allowlist. This is NOT a new wp_register_ability declaration and is not advertised unless wp_has_ability returns true. Same-PR regression binds the exact optional names, absent registration behavior, read-only catalog subset and disabled generic mutation. Review is source-only; runtime registration and Production authorization are unproven."
+    },
+    {
       "id": "ability:mad4b/company-code-inventory-page",
       "owner_role": "MAD4B repository technical source reviewer for CI-only coverage; not site owner acceptance",
       "status": "reviewed_for_ci_only",
@@ -11633,6 +11690,167 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing pinned source validation, exact SHA identity, bounded GitHub HTTPS and protected candidate deploy controls cover the compact Git Data lookup.",
       "review_rationale": "The GitHub /commits/{sha} REST response may exceed the existing 262144-byte budget for multi-parent integration changes. Only the exact immutable commit lookup changes to /git/commits/{sha} (small Git object metadata). Do not raise limits, change other source selectors or treat any redirect/invalid/mismatched response as verified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/operation-registry.json",
+      "source_blob_sha": "a8af6b37210d20dee41f9820f29685ec41b7df3e",
+      "control_ids": [
+        "MCP-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/universal-wordpress-operations-contract.py"
+      ],
+      "owner_role": "GitHub source technical reviewer (CI-only, not owner or live release certification)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source controls and specific same-PR regression cover this unchanged authorization category. No new authority or independently certified release is introduced.",
+      "review_rationale": "Exact optional read projection for three previously catalogued Company Provisioning handlers, none in direct projection. The checked-in PHP registry admits exactly these names, and defers MCP advertisement until a matching original WordPress Ability is registered. The default mutation denial and core descriptor fail-closed behavior are unchanged."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/skill-seed-manifest.json",
+      "source_blob_sha": "1fc2ab46d4d0e1326a9265ee2a7cf8c16f61b7fe",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-contract.py"
+      ],
+      "owner_role": "GitHub source technical reviewer (CI-only, not owner or live release certification)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source controls and specific same-PR regression cover this unchanged authorization category. No new authority or independently certified release is introduced.",
+      "review_rationale": "Register three already shipped commerce/role workflow Skills as disabled only, with seed revision 14. Exact Builder contract now checks canonical manifest/seeder version parity and asserts all three seeds remain unique and disabled; no activated workflow, grant or business-site mutation occurs."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-migration-decisions.php",
+      "source_blob_sha": "ac15766fdddec7af21d6c119b71477807c4526ee",
+      "control_ids": [
+        "DATABASE-01",
+        "ADMIN-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py"
+      ],
+      "owner_role": "GitHub source technical reviewer (CI-only, not owner or live release certification)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source controls and specific same-PR regression cover this unchanged authorization category. No new authority or independently certified release is introduced.",
+      "review_rationale": "Move the existing Company Migration Decisions staff submenu and administrator Tools link onto the original deferred Admin Route Registry schedule. Both preexisting WP capabilities and REST/page authorization checks remain intact, with a precise regression that rejects extra menus, premature hooks and delegated permission widening."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-registry.php",
+      "source_blob_sha": "34f463a3d6ba671840f9a71569e788bb86972113",
+      "control_ids": [
+        "MCP-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/universal-wordpress-operations-contract.py"
+      ],
+      "owner_role": "GitHub source technical reviewer (CI-only, not owner or live release certification)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source controls and specific same-PR regression cover this unchanged authorization category. No new authority or independently certified release is introduced.",
+      "review_rationale": "Strictly validate the three-element optional read allowlist and exclude an optional tool if the matching WordPress Ability is not registered or the Abilities API is absent. Required read tools retain their original fail-closed descriptor verification; operations and mutation authorization remain unchanged."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-seeder.php",
+      "source_blob_sha": "e5567769c9e77ec9c37f44411e530d36b7336809",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-contract.py"
+      ],
+      "owner_role": "GitHub source technical reviewer (CI-only, not owner or live release certification)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source controls and specific same-PR regression cover this unchanged authorization category. No new authority or independently certified release is introduced.",
+      "review_rationale": "Bump canonical Seeder constant from version 13 to 14 to match the appended three disabled skill manifest entries. The test requires exact manifest/runtime constant equality and preserves previously enabled Brand Context Builder workflow and original seed/reconciliation authority."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-scopes.php",
+      "source_blob_sha": "a516ae183aa75aa1c33699463224b20758967c9a",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02",
+        "AUTOMATION-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py"
+      ],
+      "owner_role": "GitHub technical reviewer of exact company-staff menu capability binding, CI-only; live owner signoff separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Admin, delegated staff, task workflow and WordPress permission controls govern the exact Content Work Scopes screen; no added ability, workflow execution, role grants or site authority.",
+      "review_rationale": "Repair a verified Admin Route Registry mismatch by declaring the existing Content Work Scopes submenu with original MAD4B_SCP_Readiness_Integrations::CAP. The same-PR negative guard checks the exact staff capability, route and submenu matching, no direct admin_menu registration, and the screen's can_manage denial. No REST/write endpoint or Production behavior is authorized."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-preactivation.php",
+      "source_blob_sha": "afa4bb84e21bf23442f381d8002f6cc0948081b1",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "AUTOMATION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py"
+      ],
+      "owner_role": "MAD4B CI-only technical exact-source review; not owner approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing WordPress user capability, admin routing, read-only readiness and workflow-lock controls govern this unactivated setup screen; no grant or release authority added.",
+      "review_rationale": "The Pre-Activation screen was already delegated to mad4b_manage_company_operations with a hard execution lock. Added the exact route declaration before scheduled submenu, preserving original staff role, screen denial and REST authorization. Same-PR test pins the lock, parent-order registration and rejects additional menu paths."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-context-fixtures.php",
+      "source_blob_sha": "f00c4cd4e42cbd95a130ecf80b30078c473a8647",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "ADMIN-01",
+        "BROWSER-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py"
+      ],
+      "owner_role": "GitHub CI-only technical exact-source review; not release owner approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing Site Profile origin binding, TEST Brand status, WordPress company-staff authorization and admin parent ordering cover the Staging-only synthetic fixture view.",
+      "review_rationale": "Replace early direct admin_menu registration with the native Admin Route Registry and exact delegated company capability. The unchanged source remains Staging-only read-only synthetic TEST Brand context with REST canRead and site/brand UUID checks. Same-PR test verifies parent order, staff permission, staging guard, and denial of direct menu bypass."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/config/operation-registry.json",

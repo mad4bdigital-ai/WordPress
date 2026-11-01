@@ -459,14 +459,20 @@ final class MAD4B_SCP_Company_Migration_Decisions {
             .'decision:btn.dataset.decision||"",confirmation:needed});});});'
             .'})();</script></div>';
     }
+    public static function admin_menu(): void {
+        add_management_page('Company Migration Decisions','Company Migration Decisions',
+            'manage_options',self::MENU,[__CLASS__,'page']);
+        if(class_exists('MAD4B_Tenant_Operations_Workspace'))
+            add_submenu_page('mad4b-company-workspace','Migration Decisions','Migration Decisions',
+                'mad4b_manage_company_operations',self::MENU,[__CLASS__,'page']);
+    }
     public static function boot(): void {
-        add_action('admin_menu',static function(){
-            add_management_page('Company Migration Decisions','Company Migration Decisions',
-                'manage_options',self::MENU,[__CLASS__,'page']);
-            if(class_exists('MAD4B_Tenant_Operations_Workspace'))
-                add_submenu_page('mad4b-company-workspace','Migration Decisions','Migration Decisions',
-                    'mad4b_manage_company_operations',self::MENU,[__CLASS__,'page']);
-        });
+        // Defer both menu registrations until the native parent exists.
+        // The delegated Company Workspace submenu retains its staff capability.
+        if(class_exists('MAD4B_SCP_Admin_Route_Registry')) {
+            MAD4B_SCP_Admin_Route_Registry::register(self::MENU,'mad4b_manage_company_operations');
+            MAD4B_SCP_Admin_Route_Registry::schedule_submenu([__CLASS__,'admin_menu']);
+        }
         add_action('rest_api_init',static function(){
             register_rest_route('mad4b/v1','/company-migration-decisions/plan',[
                 'methods'=>'GET','permission_callback'=>[__CLASS__,'permission'],

@@ -339,6 +339,20 @@ final class MAD4B_SCP_Operation_Registry {
 			self::$catalog = new WP_Error( 'mad4b_operation_registry_projection_invalid', 'Direct WordPress operation tools must be a subset of the full read catalog.' );
 			return self::$catalog;
 		}
+		// Only these optional, non-authorizing Company Provisioning reads may
+		// be advertised conditionally. Required core tools remain fail-closed.
+		$optional = isset( $projection['optional'] ) ? $projection['optional'] : null;
+		$expected_optional = array(
+			'mad4b/company-plugin-sync-plan',
+			'mad4b/company-plugin-sync-job',
+			'mad4b/company-bootstrap-status',
+		);
+		if ( ! is_array( $optional ) || $optional !== $expected_optional
+			|| array_diff( $optional, $projection['catalog'] )
+			|| array_intersect( $optional, $projection['direct'] ) ) {
+			self::$catalog = new WP_Error( 'mad4b_operation_registry_optional_projection_invalid', 'Optional read projections must match the explicit Company Provisioning allowlist.' );
+			return self::$catalog;
+		}
 		self::$catalog = $data;
 		return self::$catalog;
 	}
@@ -351,6 +365,12 @@ final class MAD4B_SCP_Operation_Registry {
 		$projection = isset( $catalog['read_projection'][ $surface ] ) && is_array( $catalog['read_projection'][ $surface ] )
 			? $catalog['read_projection'][ $surface ]
 			: array();
+		$optional = isset( $catalog['read_projection']['optional'] ) && is_array( $catalog['read_projection']['optional'] )
+			? $catalog['read_projection']['optional'] : array();
+		$projection = array_values( array_filter( $projection, static function ( $ability ) use ( $optional ) {
+			return ! in_array( $ability, $optional, true )
+				|| ( function_exists( 'wp_has_ability' ) && wp_has_ability( $ability ) );
+		} ) );
 		return array_values( array_unique( array_map( 'strval', $projection ) ) );
 	}
 

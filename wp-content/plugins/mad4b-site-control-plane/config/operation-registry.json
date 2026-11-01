@@ -407,6 +407,11 @@
       "mad4b/company-plugin-sync-plan",
       "mad4b/company-plugin-sync-job",
       "mad4b/company-bootstrap-status"
+    ],
+    "optional": [
+      "mad4b/company-plugin-sync-plan",
+      "mad4b/company-plugin-sync-job",
+      "mad4b/company-bootstrap-status"
     ]
   },
   "pipeline_profiles": {
