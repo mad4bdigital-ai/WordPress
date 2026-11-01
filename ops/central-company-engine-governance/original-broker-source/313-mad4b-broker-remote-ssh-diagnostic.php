@@ -109,10 +109,22 @@ final class MAD4B_Broker_Remote_SSH_Receipt_V1 {
   );
   if (!add_option(self::WPCLI_PREFIX.$id,$row,'',false))
     return self::deny('WPCLI_RECEIPT_ALREADY_EXISTS');
+  // Return the exact non-secret bound receipt fields to the original-Core
+  // Native adapter. The persisted immutable row remains the authority; this
+  // pending response is not an execution certificate or replay permission.
   return array('contract'=>self::WPCLI_CONTRACT,'verified'=>false,
     'state'=>'PENDING_INDEPENDENT_NATIVE_READBACK',
     'job_id'=>$id,'target_id'=>$target,
-    'native_executor_certified'=>false,'production_mutation'=>false);
+    'company'=>$row['company'],'site_uuid'=>$row['site_uuid'],
+    'origin'=>$row['origin'],'environment'=>$row['environment'],
+    'grant_id'=>$row['grant_id'],'transport_id'=>$row['transport_id'],
+    'command_sha256'=>$row['command_sha256'],
+    'output_sha256'=>$row['output_sha256'],
+    'readback_sha256'=>$row['readback_sha256'],'exit_code'=>$row['exit_code'],
+    'host_signed_attestation_received'=>true,
+    'native_executor_certified'=>false,
+    'independent_host_readback_verified'=>false,
+    'production_mutation'=>false);
  }
 
  public static function cli($args,$assoc):void {
