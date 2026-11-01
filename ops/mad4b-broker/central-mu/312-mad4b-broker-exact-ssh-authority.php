@@ -94,6 +94,23 @@ final class MAD4B_Broker_Exact_SSH_Authority_V1 {
     || ($grant['transport_id']??null)!==$transport_id)
       return self::deny('OWNER_ENROLLED_WPCLI_TRANSPORT_REQUIRED');
   }
+  if (($job['company']??'')==='tours-central') {
+   // Local native host is not a company execution target.
+   if ($target!==self::HOST || ($req['target_scope']??'')!=='host'
+     || ($grant['operation']??'')!=='maintenance.shell'
+     || !class_exists('MAD4B_Central_Host_Scope_V1',false)
+     || !MAD4B_Central_Host_Scope_V1::matches('tours-central',
+       (string)($job['site_uuid']??''),(string)($job['canonical_origin']??''),
+       (string)($job['environment']??''),(int)($job['central_principal_id']??0)))
+     return self::deny('CENTRAL_HOST_IDENTITY_OR_OWNER_MISMATCH');
+   // Match the original 305 consumed claim; a grant cannot authorize
+   // another command or an unrelated correlation identifier.
+   $claim_key=MAD4B_Central_SSH_Command_Intake_V1::CLAIM_PREFIX.(string)$job['grant_id'];
+   if (($grant['grant_mode']??'')==='persistent')
+     $claim_key.='_'.hash('sha256',(string)($job['correlation_id']??''));
+   if (get_option($claim_key,false)!==$job_id)
+     return self::deny('ORIGINAL_LOCAL_GRANT_CLAIM_MISSING');
+  } else {
   $target_scope=MAD4B_Manager_Auto_Write_V1::company_target((string)$job['company']);
   if (($target_scope['state']??null)!=='REGISTERED'
    || ($target_scope['site_uuid']??null)!==($job['site_uuid']??null)
@@ -104,6 +121,7 @@ final class MAD4B_Broker_Exact_SSH_Authority_V1 {
   if (!$manager || !MAD4B_Company_Portfolio_Manager_V1::has_delegation(
       $manager,(string)$job['company'],'operations_manage',(int)$job['central_principal_id']))
      return self::deny('COMPANY_DELEGATION_REVOKED');
+  }
   return ['contract'=>self::CONTRACT,'verified'=>true,'eligible'=>true,
    'reason'=>'CENTRAL_SCOPE_VERIFIED_HOST_PROOF_REQUIRED',
    'job_id'=>$job_id,'target_id'=>$target,
