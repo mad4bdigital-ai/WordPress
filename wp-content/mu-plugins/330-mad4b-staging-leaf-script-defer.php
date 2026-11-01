@@ -15,6 +15,8 @@ final class MAD4B_Independent_Leaf_JS_Defer_V1 {
   'wpml-language-switcher-block-keyboard-navigation',
  ];
  public static function eligible():bool {
+  // LiteSpeed owns JS combining; do not independently defer the same scoped scripts.
+  if(class_exists('MAD4B_Device_JS_Combine_V1',false) && MAD4B_Device_JS_Combine_V1::combining())return false;
   if(PHP_SAPI==='cli'||wp_get_environment_type()!=='staging'
    ||is_admin()||is_user_logged_in()||wp_doing_ajax()||is_preview()
    ||($_SERVER['REQUEST_METHOD']??'')!=='GET'||!empty($_SERVER['QUERY_STRING'])

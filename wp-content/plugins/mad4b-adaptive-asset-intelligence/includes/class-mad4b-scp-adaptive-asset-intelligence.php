@@ -111,7 +111,7 @@ final class MAD4B_SCP_Adaptive_Asset_Intelligence {
   self::mark_dirty('source_package_updated','/');
  }
  public static function option_changed($option,$old,$new): void {
-  if (!in_array($option,['elementor_css_print_method','litespeed.conf.optm-css_comb','litespeed.conf.optm-css_comb_ext_inl','litespeed.conf.guest','litespeed.conf.guest_optm','litespeed.conf.cache-mobile','litespeed.conf.cache-mobile_rules','litespeed.conf.optm-ucss','litespeed.conf.optm-css_async','litespeed.conf.media-vpi','litespeed.conf.img_optm-auto','litespeed.conf.cdn-quic','icl_sitepress_settings'],true) || $old===$new)return;
+  if (!in_array($option,['elementor_css_print_method','litespeed.conf.optm-css_comb','litespeed.conf.optm-css_comb_ext_inl','litespeed.conf.guest','litespeed.conf.guest_optm','litespeed.conf.cache-mobile','litespeed.conf.cache-mobile_rules','litespeed.conf.optm-ucss','litespeed.conf.optm-css_async','litespeed.conf.optm-js_comb','litespeed.conf.optm-js_comb_ext_inl','litespeed.conf.optm-js_defer','litespeed.conf.optm-js_min','litespeed.conf.optm-js_exc','litespeed.conf.optm-js_defer_exc','litespeed.conf.media-vpi','litespeed.conf.img_optm-auto','litespeed.conf.cdn-quic','icl_sitepress_settings'],true) || $old===$new)return;
   self::mark_dirty('asset_settings_changed','/');
  }
  public static function menu_changed(): void {self::mark_dirty('navigation_updated','/');}
@@ -139,6 +139,7 @@ final class MAD4B_SCP_Adaptive_Asset_Intelligence {
   return ['contract'=>'mad4b.adaptive-asset-intelligence.v1','environment'=>'staging',
    'site_uuid'=>self::UUID,'pending_jobs'=>count(self::queue()),'unread_notifications'=>count(array_filter($feed,static fn($e)=>empty($e['ack']))),
    'routes'=>$routes,'states'=>$statuses,'notifications'=>array_slice($feed,0,30),
+   'js_policies'=>class_exists('MAD4B_Device_JS_Combine_V1',false)?MAD4B_Device_JS_Combine_V1::overview():[],
    'worker'=>'vps_local_chromium','litespeed_provider'=>class_exists('MAD4B_LSC_Local_Provider_V1')?MAD4B_LSC_Local_Provider_V1::capabilities():['scope'=>'missing'],'external_delivery'=>false];
  }
  public static function rest(): void {
@@ -185,6 +186,10 @@ final class MAD4B_SCP_Adaptive_Asset_Intelligence {
   echo '<p><small>QUIC.cloud CDN, image optimization, and VPI remain managed by LiteSpeed until verified local replacements exist.</small></p>';
 
   echo '<p><strong>Pending:</strong> '.(int)$s['pending_jobs'].' &nbsp; <strong>Unread alerts:</strong> '.(int)$s['unread_notifications'].' &nbsp; <strong>Policy routes:</strong> '.count($s['routes']).'</p>';
+  echo '<h2>JavaScript device policies</h2><p>LiteSpeed JS Combine only. Global defer/delay remains off; full inline combination requires independent acceptance.</p>';
+  echo '<table class="widefat striped"><thead><tr><th>Route</th><th>Locale</th><th>Device</th><th>State</th><th>JS mode</th><th>Past trials</th></tr></thead><tbody>';
+  foreach($s['js_policies'] as $j)echo '<tr><td>'.esc_html($j['path']).'</td><td>'.esc_html($j['locale']).'</td><td>'.esc_html($j['device']).'</td><td>'.esc_html($j['status']).'</td><td>'.esc_html($j['mode']).'</td><td>'.(int)$j['trials'].'</td></tr>';
+  echo '</tbody></table>';
   echo '<h2>Page policy states</h2><table class="widefat striped"><thead><tr><th>Route</th><th>Language</th><th>Device</th><th>Status</th><th>CSS assets</th><th>Expiry UTC</th></tr></thead><tbody>';
   foreach($s['routes'] as $r)echo '<tr><td>'.esc_html($r['path']).'</td><td>'.esc_html($r['locale']).'</td><td>'.esc_html($r['device']).'</td><td>'.esc_html($r['state']).'</td><td>'.(int)$r['count'].'</td><td>'.esc_html($r['expires']?gmdate('Y-m-d H:i',(int)$r['expires']):'-').'</td></tr>';
   echo '</tbody></table><h2>Notifications</h2><table class="widefat striped"><thead><tr><th>Date (UTC)</th><th>Severity</th><th>Route</th><th>Event</th><th>Action</th></tr></thead><tbody>';

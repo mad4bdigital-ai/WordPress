@@ -1,0 +1,37 @@
+name: MAD4B Dynamic JS Combine Policy Contract
+on:
+  pull_request:
+    paths:
+      - "wp-content/mu-plugins/337-mad4b-device-js-combine-policy.php"
+      - "wp-content/mu-plugins/330-mad4b-staging-leaf-script-defer.php"
+      - "wp-content/plugins/mad4b-adaptive-asset-intelligence/**"
+      - "ops/qa/js-asset-policy-v1/**"
+      - ".github/workflows/mad4b-js-asset-policy.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  js-policy-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint WordPress JS policy and consumer
+        run: |
+          php -l wp-content/mu-plugins/337-mad4b-device-js-combine-policy.php
+          php -l wp-content/mu-plugins/330-mad4b-staging-leaf-script-defer.php
+          php -l wp-content/plugins/mad4b-adaptive-asset-intelligence/includes/class-mad4b-scp-adaptive-asset-intelligence.php
+      - name: Verify host-scoped native LiteSpeed JS hooks
+        env:
+          MAD4B_JS_POLICY_SOURCE: ${{ github.workspace }}/wp-content/mu-plugins/337-mad4b-device-js-combine-policy.php
+        run: |
+          php ops/qa/js-asset-policy-v1/test-js-policy.php
+          python3 ops/qa/js-asset-policy-v1/test-js-policy-engine.py
+          python3 -m py_compile ops/qa/js-asset-policy-v1/js-policy-engine.py
+          node --check ops/qa/js-asset-policy-v1/js-combine-eval.js
+          node --check ops/qa/js-asset-policy-v1/js-benchmark.js
+      - name: Reject duplicate JS optimizer or global delay introduced by this PR
+        run: |
+          grep -Fq "litespeed_conf_load_option_optm-js_comb" wp-content/mu-plugins/337-mad4b-device-js-combine-policy.php
+          grep -Fq "MAD4B_Device_JS_Combine_V1::combining()" wp-content/mu-plugins/330-mad4b-staging-leaf-script-defer.php
+          grep -Fq "certified" wp-content/mu-plugins/337-mad4b-device-js-combine-policy.php
