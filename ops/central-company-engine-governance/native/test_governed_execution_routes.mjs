@@ -360,3 +360,122 @@ test('wrong original scope parks before creating a replacement',async()=>{
  assert.equal(r.state,'DENIED');
  assert.equal(s.created,0);
 });
+
+function independentSshFixture(overrides={}){
+ const f=fixture('maintenance.shell');
+ const denial_ref='denied-native-provider-policy-01';
+ const ssh_request_ref='new-ssh-operator-request-02';
+ const independent_authorization_ref='new-independent-ssh-grant';
+ const denial={
+  state:'DENIED',denial_scope:'native_provider_only',
+  evidence_source:'original_core_signed_journal',verified:true,
+  reason_code:'SIGNED_POLICY_ROTATION_REQUIRED',denial_ref,
+  original_job_id:jobId,authorization_ref:'old-native-grant',
+  command_sha256:'a'.repeat(64),correlation_id:'old-correlation',
+  company:site.company,site_uuid:site.site_uuid,
+  origin:site.canonical_origin,environment:site.environment,
+  host_id:binding.target_host_id,original_claim_state:'NOT_CLAIMED',
+  dispatch_started:false,effects_possible:false
+ };
+ const request={
+  lane:'vps_ssh',kind:'general_vps_administration',
+  source:'authenticated_operator',principal_id:'7',
+  authorization_ref:independent_authorization_ref,
+  correlation_id:'new-operator-correlation',company:site.company,
+  site_uuid:site.site_uuid,origin:site.canonical_origin,
+  environment:site.environment,host_id:binding.target_host_id,
+  intent:'diagnostic',target_scope:'wordpress',
+  transport_session_id:'independent-original-ssh-transport',
+  command_summary:'new approved read diagnostic',
+  command_sha256,
+  independent_operator_intent_verified:true,
+  fresh_core_admission_required:true,prior_denial_ref:denial_ref
+ };
+ const policy={contract:'mad4b.central-dual-execution-policy.v1'};
+ const context={
+  host_id:request.host_id,ssh_authenticated:true,
+  ssh_host_fingerprint_verified:true,
+  independent_core_ssh_grant_verified:true,
+  original_core_journal_ready:true,
+  security_denial:false,permission_denial:false,
+  grant:{principal_id:request.principal_id,
+   authorization_ref:request.authorization_ref,
+   environment:request.environment,host_id:request.host_id,
+   site_uuid:request.site_uuid,origin:request.origin,
+   revoked:false,allow_general_shell:true,allow_mutations:false}
+ };
+ const record={denial,request,policy,context,
+  request_ref:ssh_request_ref,...overrides};
+ let admits=0;let lastInput=null;
+ const new_job_id='e'.repeat(32);
+ f.core.readOriginalIndependentSshRemediation=async()=>record;
+ f.core.admitIndependentSshRemediationOnce=async input=>{
+  admits++;lastInput=input;
+  return {state:'NEW_ORIGINAL_SSH_JOB_COMMITTED_NOT_DISPATCHED',
+   new_job_id,denial_ref,request_ref:ssh_request_ref,
+   provider:'vps_ssh',operation:'maintenance.shell',
+   company:request.company,site_uuid:request.site_uuid,
+   canonical_origin:request.origin,environment:request.environment,
+   target_host_id:request.host_id,
+   command_sha256:request.command_sha256,
+   independent_authorization_ref:request.authorization_ref,
+   executed:false,dispatch_started:false};
+ };
+ return {f,record,denial_ref,ssh_request_ref,
+   get admits(){return admits},get lastInput(){return lastInput}};
+}
+test('dispatcher prepares a new independent original SSH job after Native provider drift',async()=>{
+ const s=independentSshFixture();
+ const result=await createGovernedExecutionRoutes(s.f).prepareIndependentSshRemediation({
+  denial_ref:s.denial_ref,ssh_request_ref:s.ssh_request_ref
+ });
+ assert.equal(result.state,'NEW_INDEPENDENT_SSH_JOB_READY');
+ assert.equal(result.provider,'vps_ssh');
+ assert.equal(result.executed,false);
+ assert.equal(result.replay_permitted,false);
+ assert.equal(s.admits,1);
+ assert.equal(s.f.calls.shell,0);
+ assert.equal(s.f.calls.claim,0);
+ assert.equal(s.lastInput.independent_authorization_ref,
+  s.record.request.authorization_ref);
+});
+test('dispatcher refuses missing original Core SSH remediation adapter',async()=>{
+ const s=independentSshFixture();
+ delete s.f.core.admitIndependentSshRemediationOnce;
+ const result=await createGovernedExecutionRoutes(s.f).prepareIndependentSshRemediation({
+  denial_ref:s.denial_ref,ssh_request_ref:s.ssh_request_ref
+ });
+ assert.equal(result.reason_code,'ORIGINAL_INDEPENDENT_SSH_ADMISSION_ADAPTER_NOT_REGISTERED');
+ assert.equal(s.f.calls.shell,0);
+});
+test('dispatcher cannot reuse denied Native command as SSH',async()=>{
+ const s=independentSshFixture();
+ s.record.request.command_sha256=s.record.denial.command_sha256;
+ const result=await createGovernedExecutionRoutes(s.f).prepareIndependentSshRemediation({
+  denial_ref:s.denial_ref,ssh_request_ref:s.ssh_request_ref
+ });
+ assert.equal(result.state,'BLOCKED');
+ assert.equal(s.admits,0);
+ assert.equal(s.f.calls.shell,0);
+});
+test('dispatcher rejects global authorization denial before new Core admission',async()=>{
+ const s=independentSshFixture();
+ s.record.denial.denial_scope='global_security';
+ const result=await createGovernedExecutionRoutes(s.f).prepareIndependentSshRemediation({
+  denial_ref:s.denial_ref,ssh_request_ref:s.ssh_request_ref
+ });
+ assert.equal(result.state,'BLOCKED');
+ assert.equal(s.admits,0);
+});
+test('dispatcher parks uncertain new Core commit without executing Shell',async()=>{
+ const s=independentSshFixture();
+ s.f.core.admitIndependentSshRemediationOnce=async()=>({
+  state:'NEW_ORIGINAL_SSH_JOB_COMMITTED_NOT_DISPATCHED',
+  new_job_id:'e'.repeat(32),executed:false
+ });
+ const result=await createGovernedExecutionRoutes(s.f).prepareIndependentSshRemediation({
+  denial_ref:s.denial_ref,ssh_request_ref:s.ssh_request_ref
+ });
+ assert.equal(result.state,'PARKED_UNCERTAIN_NO_REPLAY');
+ assert.equal(s.f.calls.shell,0);
+});
