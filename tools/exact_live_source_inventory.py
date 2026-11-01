@@ -42,14 +42,24 @@ def status(root_a, root_b, head):
     if not isinstance(expected, list):
         raise ValueError("missing_manifest_entries")
     mismatches = []
+    canonical = []
+    seen = set()
     for entry in expected:
+        if not isinstance(entry, dict):
+            raise ValueError("invalid_manifest_entry")
         name = entry.get("path")
-        if (not isinstance(name, str) or name.startswith("/") or "\\" in name or
-                any(p in ("", ".", "..") for p in name.split("/"))):
+        size, sha = entry.get("bytes"), entry.get("sha256")
+        if (not isinstance(name, str) or name.startswith("/") or chr(92) in name or
+                any(part in ("", ".", "..") for part in name.split("/")) or name in seen):
             raise ValueError("unsafe_manifest_path")
-        actual = a.get(name)
-        if actual != (entry.get("bytes"), entry.get("sha256")):
+        if (not isinstance(size, int) or size < 0 or not isinstance(sha, str) or
+                len(sha) != 64 or any(c not in "0123456789abcdef" for c in sha)):
+            raise ValueError("invalid_manifest_value")
+        seen.add(name)
+        if a.get(name) != (size, sha):
             mismatches.append(name)
+        canonical.append(name + chr(0) + str(size) + chr(0) + sha + chr(10))
+    digest_valid = hashlib.sha256("".join(sorted(canonical)).encode()).hexdigest() == manifest.get("package_manifest_digest")
     return {
         "contract": "mad4b.exact-live-source-drift-inventory.v1",
         "source_head": head, "live_root": str(root_a), "source_root": str(root_b),
@@ -60,9 +70,10 @@ def status(root_a, root_b, head):
                      "active_gaps": sum(r["class"]=="active" for r in records)},
         "manifest": {"version": manifest.get("control_plane_version"),
                      "source_sha": manifest.get("source_commit_sha"),
-                     "listed_files": len(expected), "mismatches": sorted(mismatches)},
+                     "listed_files": len(expected), "mismatches": sorted(mismatches),
+                     "manifest_digest_valid": digest_valid},
         "records": records, "source_authoritative": False,
-        "release_ready": not records and not mismatches,
+        "release_ready": not records and not mismatches and digest_valid,
         "mutation_performed": False
     }
 
