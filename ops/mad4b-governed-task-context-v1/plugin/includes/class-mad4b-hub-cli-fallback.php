@@ -112,6 +112,7 @@ final class MAD4B_Hub_CLI_Fallback {
             'transport'=>'vps_wpcli_fallback',
             'authenticated_via'=>$authority['authenticated_via'],
             'site_environment'=>$authority['site_environment'],
+            'site_origin'=>$authority['site_origin'],
             'chatgpt_oauth_verified'=>false,
             'result_received_from_ability'=>true,
             'independent_readback_verified_by_transport'=>false,
