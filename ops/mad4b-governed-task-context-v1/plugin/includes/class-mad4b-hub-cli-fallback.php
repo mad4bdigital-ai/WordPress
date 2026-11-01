@@ -2,13 +2,15 @@
 defined('ABSPATH') || exit;
 
 /**
- * Local, bounded VPS WP-CLI fallback for a connected ChatGPT client.
- * It is a transport, NOT a grant or proof of ChatGPT OAuth.
+ * Local, bounded VPS MCP/WP-CLI transport for an already verified WordPress
+ * principal. OAuth remains an independent browser/MCP authentication route.
+ * This code neither grants access nor claims the operator is ChatGPT.
  */
 final class MAD4B_Hub_CLI_Fallback {
     const CONTRACT='mad4b.hub.vps-wpcli-fallback.v1';
     const COMMANDS=array(
         'status'=>'mad4b/hub-executor-status',
+        'queue-list'=>'mad4b/hub-bulk-list-queue',
         'handoff'=>'mad4b/hub-executor-handoff',
         'resume'=>'mad4b/control-workflow-resume',
         'baseline'=>'mad4b/control-workflow-baseline',
@@ -44,20 +46,18 @@ final class MAD4B_Hub_CLI_Fallback {
         if(!$actor || (int)$actor->ID!==get_current_user_id()
             ||!user_can($actor,'manage_options'))
             return self::denied('explicit_wpcli_user_required');
-        $write=!in_array($operation,array('status','handoff','release-assess',
+        $write=!in_array($operation,array('status','queue-list','handoff','release-assess',
             'chatgpt-pending','chatgpt-prepare'),true);
         if($write&&(!class_exists('MAD4B_SCP_Policy')
             ||!MAD4B_SCP_Policy::can_mutate()))
             return self::denied('site_write_gate_denied');
-        // Production fallback writes require a separate rollout and are not
-        // silently inherited from Staging.
-        if($write&&wp_get_environment_type()==='production')
-            return self::denied('production_write_not_enabled');
         if(!function_exists('wp_get_ability')
             ||!wp_get_ability(self::COMMANDS[$operation]))
             return self::denied('ability_not_registered');
         return array('actor_user_id'=>(int)$actor->ID,
             'ability'=>self::COMMANDS[$operation],'write'=>$write,
+            'authenticated_via'=>'verified_wordpress_wpcli',
+            'site_environment'=>wp_get_environment_type(),
             'site_origin'=>rtrim(home_url(),'/'));
     }
     public static function execute($operation,$input){
@@ -73,7 +73,10 @@ final class MAD4B_Hub_CLI_Fallback {
             'ability'=>$authority['ability'],
             'actor_wp_user_id'=>$authority['actor_user_id'],
             'payload_sha256'=>$digest,'job_id'=>(string)($input['job_id']??''),
-            'operation'=>$operation,'chatgpt_oauth_attributed'=>false);
+            'operation'=>$operation,'chatgpt_oauth_attributed'=>false,
+            'principal_authentication'=>'verified_wordpress_wpcli',
+            'site_origin'=>$authority['site_origin'],
+            'site_environment'=>$authority['site_environment']);
         if($authority['write']){
             if(!class_exists('MAD4B_SCP_Audit'))
                 return self::denied('audit_unavailable');
@@ -87,6 +90,12 @@ final class MAD4B_Hub_CLI_Fallback {
             ? MAD4B_Hub_ChatGPT_Work::submit($input)
             : $ability->execute($input);
         if($authority['write']){
+            // Audit the actual response digest. An Ability returning without WP_Error
+            // is NOT itself a proof of task completion or independent readback.
+            $summary['result_sha256']=hash('sha256',wp_json_encode(
+                is_wp_error($result)
+                    ? array('error_code'=>$result->get_error_code()) : $result));
+            $summary['readback_evidence']='not_established_by_transport';
             $status=is_wp_error($result)?'failed':'ok';
             $receipt=MAD4B_SCP_Audit::record('mad4b/hub-cli-fallback',$summary,$status);
             if(is_wp_error($receipt)) {
@@ -101,7 +110,11 @@ final class MAD4B_Hub_CLI_Fallback {
         if(is_wp_error($result))return $result;
         return array('contract'=>self::CONTRACT,
             'transport'=>'vps_wpcli_fallback',
+            'authenticated_via'=>$authority['authenticated_via'],
+            'site_environment'=>$authority['site_environment'],
             'chatgpt_oauth_verified'=>false,
+            'result_received_from_ability'=>true,
+            'independent_readback_verified_by_transport'=>false,
             'actor_wp_user_id'=>$authority['actor_user_id'],
             'ability'=>$authority['ability'],
             'input_sha256'=>$digest,'result'=>$result);

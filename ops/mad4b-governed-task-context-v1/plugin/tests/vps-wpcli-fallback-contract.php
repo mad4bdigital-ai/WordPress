@@ -25,11 +25,16 @@ class MAD4B_SCP_Delegation_Mode {
         return WP_CLI::$user==='2'?(object)array('ID'=>2):null;
     }
 }
-class MAD4B_SCP_Policy {public static function can_mutate(){return true;}}
+class MAD4B_SCP_Policy {
+    public static $may_write=true;
+    public static function can_mutate(){return self::$may_write;}
+}
 class MAD4B_SCP_Audit {
     public static $events=array();
+    public static $summaries=array();
     public static function record($name,$summary,$status='ok'){
         self::$events[]=$status;
+        self::$summaries[]=$summary;
         return array('status'=>$status);
     }
 }
@@ -46,9 +51,16 @@ $read=MAD4B_Hub_CLI_Fallback::execute('status',array());
 expect(!is_wp_error($read) && $read['transport']==='vps_wpcli_fallback','status');
 expect($read['chatgpt_oauth_verified']===false,'honest_oauth');
 expect(count(MAD4B_SCP_Audit::$events)===0,'read_no_audit_mutation');
+$queue=MAD4B_Hub_CLI_Fallback::execute('queue-list',array());
+expect(!is_wp_error($queue) && $queue['ability']==='mad4b/hub-bulk-list-queue','original_queue_read');
+expect(count(MAD4B_SCP_Audit::$events)===0,'queue_read_without_write_audit');
+expect($queue['authenticated_via']==='verified_wordpress_wpcli' && !$queue['chatgpt_oauth_verified'],'identity_not_spoofed');
 $write=MAD4B_Hub_CLI_Fallback::execute('submit-keywords',array('job_id'=>'test'));
 expect(!is_wp_error($write) && $write['result']['saved'],'write');
 expect(MAD4B_SCP_Audit::$events===array('requested','ok'),'audit_success');
+expect($write['result_received_from_ability']===true && $write['independent_readback_verified_by_transport']===false,'result_not_a_receipt');
+expect(strlen(MAD4B_SCP_Audit::$summaries[1]['result_sha256'])===64,'audit_result_digest');
+expect(MAD4B_SCP_Audit::$summaries[1]['principal_authentication']==='verified_wordpress_wpcli','audit_auth_provenance');
 $fail=MAD4B_Hub_CLI_Fallback::execute('submit-keywords',array('reject'=>true));
 expect(is_wp_error($fail)&&$fail->get_error_code()==='fixture_write_rejected','failed_write');
 expect(array_slice(MAD4B_SCP_Audit::$events,-2)===array('requested','failed'),'audit_failure');
@@ -60,5 +72,8 @@ expect(is_wp_error($no_user),'missing_wp_user');
 WP_CLI::$user='2';
 $GLOBALS['env']='production';
 $prod=MAD4B_Hub_CLI_Fallback::preflight('submit-keywords');
-expect(is_wp_error($prod)&&$prod->get_error_code()==='mad4b_hub_cli_fallback_production_write_not_enabled','prod_closed');
+expect(is_array($prod) && $prod['site_environment']==='production','production_original_policy_governs');
+MAD4B_SCP_Policy::$may_write=false;
+$denied=MAD4B_Hub_CLI_Fallback::preflight('submit-keywords');
+expect(is_wp_error($denied)&&$denied->get_error_code()==='mad4b_hub_cli_fallback_site_write_gate_denied','original_write_policy_controls');
 echo "VPS_WPCLI_FALLBACK_CONTRACT=PASS\n";

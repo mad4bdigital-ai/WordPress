@@ -67,9 +67,12 @@ final class MAD4B_Hub_Executor_Selection {
             return array(true,'bounded_short_readback');
         }
         if($executor==='vps_runner'){
-            if(wp_get_environment_type()!=='staging'
-               ||!class_exists('MAD4B_Hub_Bulk_VPS_Runner'))
-                return array(false,'vps_runner_unavailable');
+            // Environment labels are not authorization. Native mutation
+            // policy and an exact verified WP-CLI principal are checked again
+            // by the runner at claim-time; this method only plans a lane.
+            if(!class_exists('MAD4B_Hub_Bulk_VPS_Runner')
+               ||!MAD4B_Hub_Bulk_Jobs_Queue::writable())
+                return array(false,'vps_runner_native_policy_unavailable');
             $built_in=in_array($operation,array_merge(self::SHORT,
                array('source_sync_run_queued','canonical_gap_scan')),true);
             $adapter=$operation==='stage_work' && !empty($payload['stage_adapter_id'])
