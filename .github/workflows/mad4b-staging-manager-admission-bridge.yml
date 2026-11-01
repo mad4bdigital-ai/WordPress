@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "ops/mad4b-staging-manager-bridge-v1/**"
+      - "ops/mad4b-runtime-admission-v1/**"
       - ".github/workflows/mad4b-staging-manager-admission-bridge.yml"
   workflow_dispatch:
 
@@ -39,6 +40,11 @@ jobs:
           d=ops/mad4b-staging-manager-bridge-v1/dynamic-wpcli-actor-v1
           python3 -m py_compile "$d/wpcli_dynamic_actor.py" "$d/tests/test_dynamic_actor.py"
           python3 "$d/tests/test_dynamic_actor.py" -v
+      - name: Hermetic localized REST runtime Site Profile admission
+        run: |
+          set -euo pipefail
+          php -l ops/mad4b-runtime-admission-v1/015-mad4b-runtime-admission.php
+          php ops/mad4b-runtime-admission-v1/tests/staging_rest_origin_hermetic.php
       - name: Original owner lock error and browser validation regression
         run: |
           node ops/mad4b-staging-manager-bridge-v1/tests/owner_lock_ui_contract.test.cjs
