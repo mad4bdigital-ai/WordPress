@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: MAD4B Staging Self-Governing CSS Runtime
- * Version: 0.1.4
+ * Version: 0.1.5
  * Description: Manifest-driven, page-specific deferred styles with safe native fallbacks; local QA alone certifies a route.
  */
 defined('ABSPATH') || exit;
@@ -66,6 +66,7 @@ final class MAD4B_Autonomous_CSS_V1 {
   if($mode===''&&($item['status']??'')!=='certified')return;
   if(($item['expires']??0)<time()||($item['expires']??0)>time()+86400*14)return;
   if(($item['source_version']??'')!=='4.3.5/7.9.2')return;
+  if((string)($item['guest_mode']??'__unbound__')!==(string)get_option('litespeed.conf.guest','0'))return;
   // Any WordPress/Elementor/source revision invalidates previously certified CSS immediately.
   if((int)($item['epoch']??0)!==(int)get_option('mad4b_css_ai_epoch_v1',1))return;
   $proof=(int)get_option('mad4b_css_ai_cache_proof_v1',0);
