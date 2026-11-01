@@ -51,14 +51,17 @@ def verify(job,target,sha):
     return row
 def selftest():
     # Every invalid test must fail before reaching WordPress.
-    for job,target,sha in [('!','hosting-1','0'*64),('0'*32,'hosting-2','0'*64),('0'*32,'hosting-1','g'*64)]:
+    for job,target,sha in [('!','hosting-1','0'*64),('0'*32,'unregistered-host','0'*64),('0'*32,'hosting-1','g'*64)]:
         try:verify(job,target,sha)
         except ValueError:pass
         else:raise AssertionError('INVALID_SCOPE_ACCEPTED')
     response=verify('0'*32,'hosting-1',hashlib.sha256(b'printf MAD4B_BROKER_DIAGNOSTIC').hexdigest())
     assert response['eligible'] is False and response['verified'] is False
     assert response['shell_executed'] is False
-    print(json.dumps({'contract':CONTRACT,'selftest':'PASS','assertions':6,
+    local=verify('0'*32,'srv2030908',hashlib.sha256(b'MAD4B_UNKNOWN_LOCAL_JOB').hexdigest())
+    assert local['eligible'] is False and local['verified'] is False
+    assert local['shell_executed'] is False
+    print(json.dumps({'contract':CONTRACT,'selftest':'PASS','assertions':7,
          'signed_central_preflight_round_trip':True,
          'unknown_job_denied':True,'production_mutation':False}))
 def main():
