@@ -398,7 +398,7 @@ function independentSshFixture(overrides={}){
   independent_core_ssh_grant_verified:true,
   original_core_journal_ready:true,
   security_denial:false,permission_denial:false,
-  grant:{principal_id:request.principal_id,
+  grant:{company:request.company,principal_id:request.principal_id,
    authorization_ref:request.authorization_ref,
    environment:request.environment,host_id:request.host_id,
    site_uuid:request.site_uuid,origin:request.origin,
