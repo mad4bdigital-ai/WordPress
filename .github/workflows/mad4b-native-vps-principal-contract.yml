@@ -39,3 +39,4 @@ jobs:
           php ops/mad4b-broker/tests/test_native_vps_principal.php
           php ops/mad4b-broker/tests/test_late_native_receipt.php
           python3 ops/mad4b-broker/tests/test_expired_native_job_reconciliation.py
+          python3 ops/mad4b-broker/tests/test_native_dispatch_contract.py
