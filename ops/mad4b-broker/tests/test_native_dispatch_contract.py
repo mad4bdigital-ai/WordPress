@@ -4,6 +4,7 @@ import importlib.util
 import json
 from pathlib import Path
 import tempfile
+from unittest.mock import patch
 
 module_path=Path(__file__).resolve().parents[1]/"vps-native-central-auto-dispatch.py"
 spec=importlib.util.spec_from_file_location("central_native_dispatch",module_path)
@@ -74,8 +75,43 @@ for contract in (
   "command_file",
   "readback_file",
   "expected_output_file",
-  "INDEPENDENT_ROOT_SSH_REQUIRED",
+  "ROOT_SSH_OR_ENROLLED_SYSTEMD_UNIT_REQUIRED",
   "LATE_EXECUTION_REQUIRES_HISTORICAL_RECONCILIATION"):
     assert contract in text, contract
+# Exact service identity is accepted only from the enrolled systemd unit.
+assert m.enrolled_service_identity() is False
+with patch.dict(m.os.environ, {
+    "INVOCATION_ID": "a" * 32,
+    "MAD4B_NATIVE_CENTRAL_DISPATCH": "1",
+}, clear=True):
+    with patch.object(m.Path, "read_text", return_value="0::/system.slice/mad4b-native-central-dispatch.service\\n"):
+        assert m.enrolled_service_identity() is True
+    with patch.object(m.Path, "read_text", return_value="0::/system.slice/unrelated.service\\n"):
+        assert m.enrolled_service_identity() is False
+with patch.dict(m.os.environ, {
+    "INVOCATION_ID": "not-a-uuid",
+    "MAD4B_NATIVE_CENTRAL_DISPATCH": "1",
+}, clear=True):
+    assert m.enrolled_service_identity() is False
+with patch.dict(m.os.environ, {
+    "INVOCATION_ID": "a" * 32,
+}, clear=True):
+    assert m.enrolled_service_identity() is False
+
+operator = (module_path.parents[1] / "company-readiness-workflow" / "executor" /
+            "vps-native-operator.py").read_text()
+worker = (module_path.parent / "vps-native-central-dispatch-worker.py").read_text()
+service = (module_path.parent / "systemd" / "mad4b-native-central-dispatch.service").read_text()
+timer = (module_path.parent / "systemd" / "mad4b-native-central-dispatch.timer").read_text()
+assert "native_dispatch_service_identity" in operator
+assert "AUTHENTICATED_ROOT_SSH_OR_ENROLLED_SYSTEMD_UNIT_REQUIRED" in operator
+assert "/system.slice/mad4b-native-central-dispatch.service" in operator
+assert "SSH_CONNECTION" in operator and "SSH_CONNECTION" in text
+assert "BOUND_SYSTEMD_INVOCATION_REQUIRED" in worker
+assert "ROOT/(\"completed\" if valid else \"held\")" in worker
+assert "[:3]" in worker
+assert "MAD4B_NATIVE_CENTRAL_DISPATCH=1" in service
+assert "ExecStart=/usr/bin/python3 /opt/mad4b-company-transport/broker-v1/vps-native-central-dispatch-worker.py" in service
+assert "Unit=mad4b-native-central-dispatch.service" in timer
 assert "production" not in m.CONTRACT
-print("PASS: exact Staging manifest, signed 306/312/314 pipeline contract, root-owned files and no replay")
+print("PASS: exact Staging manifest, signed original 306/312/314, SSH fallback, systemd identity, no replay")
