@@ -164,6 +164,29 @@ const sshRemediation=(overrides={})=>planIndependentSshRemediation({
  denial:nativeDenial,request:newSshRequest,
  policy,context:independentContext,...overrides
 });
+test('Native refusal before original job creation requires separate 305 admission',()=>{
+ const out=sshRemediation({denial:{
+  ...nativeDenial,submission_stage:'PRE_JOB_ADMISSION',
+  original_job_id:null,original_claim_state:'NO_JOB_CREATED'
+ }});
+ assert.equal(out.state,'BLOCKED');
+ assert.equal(out.reason,'FRESH_INDEPENDENT_305_REQUEST_REQUIRED');
+ assert.equal(out.execution_performed,false);
+ assert.equal(out.new_core_job_required,false);
+});
+test('pre-job evidence with ambiguous old claim remains parked with no replay',()=>{
+ const out=sshRemediation({denial:{
+  ...nativeDenial,submission_stage:'PRE_JOB_ADMISSION',
+  original_job_id:null,original_claim_state:'UNKNOWN'
+ }});
+ assert.equal(out.state,'PARKED_NO_REPLAY');
+ assert.equal(out.new_core_job_required,false);
+});
+test('ordinary original Core admission still requires an unclaimed original job',()=>{
+ const out=sshRemediation();
+ assert.equal(out.state,'NEW_ORIGINAL_CORE_ADMISSION_REQUIRED');
+ assert.equal(out.execution_performed,false);
+});
 test('provider-scoped Native refusal may recommend independently admitted SSH diagnostic',()=>{
  const out=sshRemediation();
  assert.equal(out.state,'NEW_ORIGINAL_CORE_ADMISSION_REQUIRED');
