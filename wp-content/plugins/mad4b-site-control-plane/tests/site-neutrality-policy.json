@@ -224,6 +224,30 @@
         "api.github.com"
       ],
       "rationale": "Immutable public GitHub REST source-reader authority only, not a tenant or site default. This exact hostname pin rejects config drift to unreviewed providers; HTTPS, TLS, DNS and redirect checks remain governed by Egress Policy."
+    },
+    "includes/class-mad4b-scp-company-domain-cloudflare.php": {
+      "hosts": [
+        "api.cloudflare.com"
+      ],
+      "rationale": "Reviewed Cloudflare REST API v4 service endpoint for opt-in, owner-scoped DNS onboarding. It is a fixed third-party API endpoint, not a customer domain default. Does not change authority, credential handling, or mutating operation gates."
+    },
+    "includes/class-mad4b-scp-firecrawl-provider.php": {
+      "hosts": [
+        "api.firecrawl.dev"
+      ],
+      "rationale": "Reviewed Firecrawl cloud API provider endpoint and explicit admin configuration UI; service endpoint is not a tenant origin. Preserves configured self-hosted HTTPS validation and provider authorization."
+    },
+    "includes/class-mad4b-scp-provider-setup-coverage.php": {
+      "hosts": [
+        "api.example.com"
+      ],
+      "rationale": "Reserved example.com documentation placeholder in admin HTML form only, not a request destination or saved provider default."
+    },
+    "config/evidence/woocommerce-11.2.1-lab-package.json": {
+      "hosts": [
+        "downloads.wordpress.org"
+      ],
+      "rationale": "Pinned official WordPress.org WooCommerce ZIP source URL in immutable lab package evidence; no tenant origin or runtime fallback endpoint."
     }
   },
   "optional_named_tag_integrations": [
