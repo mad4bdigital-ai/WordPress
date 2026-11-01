@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {routeDual,planOriginalCoreTransportRecovery} from './original_dual_route_policy.mjs';
+import {routeDual,planOriginalCoreTransportRecovery,planIndependentSshRemediation} from './original_dual_route_policy.mjs';
 const policy={contract:'mad4b.central-dual-execution-policy.v1'};
 const request={
  lane:'vps_ssh',kind:'general_vps_administration',source:'authenticated_operator',
@@ -133,4 +133,87 @@ test('production mutation requires its own verified scope',()=>{
 test('already-claimed alternate provider cannot be selected',()=>{
  assert.equal(recover({candidates:[{...recoveryProvider,
   original_job_claim_state:'CLAIMED'}]}).state,'BLOCKED');
+});
+
+const nativeDenial={
+ state:'DENIED',denial_scope:'native_provider_only',
+ evidence_source:'original_core_signed_journal',verified:true,
+ reason_code:'SIGNED_POLICY_ROTATION_REQUIRED',
+ denial_ref:'original-denial-01',
+ command_sha256:'b'.repeat(64),authorization_ref:'old-native-grant',
+ correlation_id:'old-denied-request',
+ company:'etg',site_uuid:request.site_uuid,origin:request.origin,
+ environment:request.environment,host_id:request.host_id,
+ original_claim_state:'NOT_CLAIMED',dispatch_started:false,
+ effects_possible:false
+};
+const newSshRequest={
+ ...request,source:'authenticated_operator',authorization_ref:'independent-shell-grant',
+ correlation_id:'fresh-operator-diagnostic',company:'etg',
+ command_sha256:'c'.repeat(64),command_summary:'fresh, explicitly authorized diagnostic',
+ prior_denial_ref:nativeDenial.denial_ref,
+ independent_operator_intent_verified:true,
+ fresh_core_admission_required:true
+};
+const independentContext={
+ ...context,independent_core_ssh_grant_verified:true,
+ original_core_journal_ready:true,
+ grant:{...context.grant,authorization_ref:newSshRequest.authorization_ref}
+};
+const sshRemediation=(overrides={})=>planIndependentSshRemediation({
+ denial:nativeDenial,request:newSshRequest,
+ policy,context:independentContext,...overrides
+});
+test('provider-scoped Native refusal may recommend independently admitted SSH diagnostic',()=>{
+ const out=sshRemediation();
+ assert.equal(out.state,'NEW_ORIGINAL_CORE_ADMISSION_REQUIRED');
+ assert.equal(out.provider,'vps_ssh');
+ assert.equal(out.execution_performed,false);
+ assert.equal(out.original_job_replayed,false);
+ assert.equal(out.requires_original_305_intake,true);
+ assert.equal(out.prior_rejection_still_effective,true);
+});
+test('generic security denial cannot be relabeled as a provider-only incident',()=>{
+ assert.equal(sshRemediation({denial:{...nativeDenial,
+   denial_scope:'global_security'}}).state,'BLOCKED');
+});
+test('unsigned Native refusal is insufficient for SSH recovery',()=>{
+ assert.equal(sshRemediation({denial:{...nativeDenial,
+   verified:false}}).state,'BLOCKED');
+});
+test('rejected Native job can never be reused or replayed',()=>{
+ assert.equal(sshRemediation({request:{...newSshRequest,
+  command_sha256:nativeDenial.command_sha256}}).state,'BLOCKED');
+});
+test('SSH remediation requires fresh operator authorization',()=>{
+ assert.equal(sshRemediation({request:{...newSshRequest,
+   authorization_ref:nativeDenial.authorization_ref}}).state,'BLOCKED');
+});
+test('SSH remediation requires a new correlation identifier',()=>{
+ assert.equal(sshRemediation({request:{...newSshRequest,
+   correlation_id:nativeDenial.correlation_id}}).state,'BLOCKED');
+});
+test('SSH remediation cannot change target site or company',()=>{
+ assert.equal(sshRemediation({request:{...newSshRequest,
+   site_uuid:'wrong-site'}}).state,'BLOCKED');
+});
+test('SSH remedy requires independent host key verification',()=>{
+ assert.equal(sshRemediation({context:{...independentContext,
+   ssh_host_fingerprint_verified:false}}).state,'BLOCKED');
+});
+test('revoked independent Shell grant cannot authorize the remedy',()=>{
+ assert.equal(sshRemediation({context:{...independentContext,
+   grant:{...independentContext.grant,revoked:true}}}).state,'BLOCKED');
+});
+test('SSH remediation is prohibited if previous execution may have started',()=>{
+ assert.equal(sshRemediation({denial:{...nativeDenial,
+   effects_possible:true}}).state,'PARKED_NO_REPLAY');
+});
+test('SSH remediation does not authorize production using staging scope',()=>{
+ assert.equal(sshRemediation({request:{...newSshRequest,
+   environment:'production'}}).state,'BLOCKED');
+});
+test('SSH remediation for mutation still needs independent mutation grant and rollback',()=>{
+ assert.equal(sshRemediation({request:{...newSshRequest,
+   intent:'repair'}}).state,'BLOCKED');
 });
