@@ -10,7 +10,7 @@ final class MAD4B_Hub_CLI_Fallback {
     const CONTRACT='mad4b.hub.vps-wpcli-fallback.v1';
     const COMMANDS=array(
         'status'=>'mad4b/hub-executor-status',
-        'queue-list'=>'mad4b/hub-bulk-list_queue',
+        'queue-list'=>'mad4b/hub-bulk-list-queue',
         'handoff'=>'mad4b/hub-executor-handoff',
         'resume'=>'mad4b/control-workflow-resume',
         'baseline'=>'mad4b/control-workflow-baseline',
