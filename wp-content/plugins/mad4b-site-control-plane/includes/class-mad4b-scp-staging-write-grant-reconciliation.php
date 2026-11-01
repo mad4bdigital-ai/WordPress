@@ -172,6 +172,14 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				'media/import-external' => 'media',
 				'media/remote-import-apply' => 'media',
 			);
+			// Only a registered, exact central Staging diagnostic may receive a
+			// separately approved core grant. General Hub enqueue remains forbidden.
+			if ( class_exists( 'MAD4B_Hub_Queue_Site_Health_Enqueue' )
+				&& function_exists( 'wp_has_ability' )
+				&& wp_has_ability( MAD4B_Hub_Queue_Site_Health_Enqueue::ABILITY )
+				&& MAD4B_Hub_Queue_Site_Health_Enqueue::site_enrolled() ) {
+				$staging_reviewed[ MAD4B_Hub_Queue_Site_Health_Enqueue::ABILITY ] = 'core';
+			}
 			foreach ( $staging_reviewed as $ability => $provider ) {
 				$allowed[ $ability ] = $provider;
 			}
