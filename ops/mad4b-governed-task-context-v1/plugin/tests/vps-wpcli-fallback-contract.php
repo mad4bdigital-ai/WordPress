@@ -52,7 +52,7 @@ expect(!is_wp_error($read) && $read['transport']==='vps_wpcli_fallback','status'
 expect($read['chatgpt_oauth_verified']===false,'honest_oauth');
 expect(count(MAD4B_SCP_Audit::$events)===0,'read_no_audit_mutation');
 $queue=MAD4B_Hub_CLI_Fallback::execute('queue-list',array());
-expect(!is_wp_error($queue) && $queue['ability']==='mad4b/hub-bulk-list_queue','original_queue_read');
+expect(!is_wp_error($queue) && $queue['ability']==='mad4b/hub-bulk-list-queue','original_queue_read');
 expect(count(MAD4B_SCP_Audit::$events)===0,'queue_read_without_write_audit');
 expect($queue['authenticated_via']==='verified_wordpress_wpcli' && !$queue['chatgpt_oauth_verified'],'identity_not_spoofed');
 $write=MAD4B_Hub_CLI_Fallback::execute('submit-keywords',array('job_id'=>'test'));
