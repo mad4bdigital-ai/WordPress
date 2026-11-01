@@ -12,7 +12,9 @@ function fixture(){
  const grant={...scope,grant_id:'b'.repeat(32),transport_id:'a'.repeat(32),
   operation:'company.remote.wpcli.full',grant_mode:'persistent',
   state:'CENTRAL_OPERATION_SCOPE_GRANTED',expires_epoch:null};
- return {now:t,site,transport,grant};
+ return {now:t,site,transport,grant,localHostTarget:{
+  registered:true,pinned_identity_verified:true,host_id:'hosting-2',
+  authority_source:'original_registered_ssh'}};
 }
 function registry(x){x.signedRegistry={...scope,verified:true,
  transport_id:x.transport.transport_id,host_id:x.transport.host_id,
@@ -38,6 +40,7 @@ function receipt(x){canary(x);x.receipt={contract:'mad4b.broker-remote-wpcli-rec
  transport_id:x.transport.transport_id,grant_id:x.grant.grant_id};return x}
 for(const [label,make,expected] of [
  ['no initial grant',()=>{const x=fixture();delete x.grant;return x},null],
+ ['host target not yet pinned',()=>{const x=fixture();delete x.localHostTarget;return x},'BIND_ORIGINAL_PINNED_HOST_TARGET'],
  ['stale registry',()=>fixture(),'REFRESH_PINNED_HOST_REGISTRY_STATUS'],
  ['missing host proof',()=>registry(fixture()),'ISSUE_AND_VERIFY_SITE_HOST_PROOF'],
  ['native not enrolled',()=>proof(fixture()),'REGISTER_NATIVE_FROM_SIGNED_HOST_PROOF'],
