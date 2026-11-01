@@ -73,7 +73,8 @@ def status(root_a, root_b, head):
                      "listed_files": len(expected), "mismatches": sorted(mismatches),
                      "manifest_digest_valid": digest_valid},
         "records": records, "source_authoritative": False,
-        "release_ready": not records and not mismatches and digest_valid,
+        "byte_parity": not records and not mismatches and digest_valid,
+        "release_ready": False,
         "mutation_performed": False
     }
 
@@ -94,7 +95,7 @@ def main():
     result=status(args.live_root.resolve(), args.source_root.resolve(), args.source_head)
     args.output.write_text(json.dumps(result,indent=2,sort_keys=True)+"\n",encoding="utf-8")
     print(json.dumps({"observed":result["observed"],"manifest":result["manifest"],
-                      "release_ready":result["release_ready"]},sort_keys=True))
+                      "byte_parity":result["byte_parity"],"release_ready":result["release_ready"]},sort_keys=True))
 
 if __name__=="__main__":
     main()
