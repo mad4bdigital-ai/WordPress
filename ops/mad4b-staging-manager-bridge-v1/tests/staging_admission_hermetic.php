@@ -61,6 +61,7 @@ class MAD4B_Company_Execution_Resolver_V1 {
         ]];
     }
     public static function plan($company,$environment,$intent){
+        if (!empty($GLOBALS['fake_content_write_ready']) && $intent==='content.write') return ['state'=>'READY_FOR_EXACT_NATIVE_WRITE','intent'=>$intent,'execution_allowed'=>true,'remote_write_permitted'=>true,'selected_channel'=>'native_company_wordpress_write','environment'=>$environment,'site_uuid'=>'123e4567-e89b-42d3-a456-426614174000','canonical_origin'=>'https://staging.example.test','blockers'=>[]];
         return ['state'=>'BLOCKED_MISSING_AUTHORITY','execution_allowed'=>false,
            'remote_write_permitted'=>false,'selected_channel'=>null,
            'environment'=>$environment,'site_uuid'=>'123e4567-e89b-42d3-a456-426614174000',
@@ -103,6 +104,13 @@ $allow=$admission::assess($company,'operations.write');
 must(!is_wp_error($allow) && $allow['policy_delegation_admitted']===true
      && $allow['write_execution_authorized']===false
      && $allow['state']==='ADMITTED_WAITING_NATIVE_EXECUTOR','owner approval does not replace Native Executor');
+$GLOBALS['fake_content_write_ready']=true;
+$cross=$admission::assess($company,'operations.write');
+must(!is_wp_error($cross) && ($cross['policy_delegation_admitted']??false)===true
+    && ($cross['write_execution_authorized']??true)===false
+    && ($cross['native_plan_state']??'')==='BLOCKED_MISSING_AUTHORITY',
+    'content.write native certification cannot substitute for operations.write');
+$GLOBALS['fake_content_write_ready']=false;
 $GLOBALS['options'][MAD4B_Company_Environment_Portfolio_Evidence_V1::ASSIGNMENTS][$key]['state']='revoked';
 must($bridge::has_delegation($manager,$company,'operations_manage',1)===false,'revocation effective immediately');
 $denied=$admission::assess($company,'operations.write');
