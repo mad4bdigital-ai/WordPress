@@ -88,7 +88,7 @@ final class MAD4B_Original_Core_Recovery_V1 {
         ));
     }
 
-    private static function verify(array $job,array $proof):bool {
+    private static function verify(array $job,array $proof,bool $fresh=true):bool {
         if (!function_exists('sodium_crypto_sign_verify_detached'))return false;
         if (($proof['contract']??'')!==self::CONTRACT
             || ($proof['job_id']??'')!==$job['job_id']
@@ -100,8 +100,13 @@ final class MAD4B_Original_Core_Recovery_V1 {
             || !preg_match('/^[a-f0-9]{32}$/D',(string)($proof['nonce']??'')))return false;
         $issued=$proof['issued']??null; $expires=$proof['expires']??null;
         if (!is_int($issued)||!is_int($expires)
-            ||$issued<time()-60||$issued>time()+10
-            ||$expires<$issued||$expires>$issued+60||$expires<time())return false;
+            ||$expires<$issued||$expires>$issued+60)return false;
+        if ($fresh) {
+            if ($issued<time()-60||$issued>time()+10||$expires<time())return false;
+        } elseif (!isset($proof['verified_epoch']) ||
+            !is_int($proof['verified_epoch']) ||
+            $proof['verified_epoch']<$issued-10 ||
+            $proof['verified_epoch']>$expires) return false;
         $key=base64_decode((string)get_option(MAD4B_Central_VPS_Broker_V1::PUBKEY,''),true);
         $sig=base64_decode((string)($proof['signature']??''),true);
         if (!is_string($key)||strlen($key)!==SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES
@@ -143,8 +148,8 @@ final class MAD4B_Original_Core_Recovery_V1 {
             return self::reject('original_journal_missing_or_uncertain');
         // The original signature is reverified, but is not treated as current
         // provider availability or as a new admission.
-        if (!self::verify($job,$proof))
-            return self::reject('signed_journal_not_current');
+        if (!self::verify($job,$proof,false))
+            return self::reject('signed_journal_invalid');
         return array('contract'=>self::CONTRACT,'job_id'=>$id,
             'original_job'=>$job,'signed_failure'=>$proof,
             'dispatch_started'=>false,'claim_committed'=>false,
@@ -156,6 +161,28 @@ final class MAD4B_Original_Core_Recovery_V1 {
         $id=(string)($input['original_job_id']??'');
         $proof=self::readOriginalRecoveryEvidence($id);
         if (is_wp_error($proof))return $proof;
+        $job=$proof['original_job'];
+        $grant=get_option(MAD4B_Central_SSH_Command_Intake_V1::PREFIX.
+            (string)($job['grant_id']??''),false);
+        $transport=get_option(MAD4B_Central_SSH_Command_Intake_V1::TRANSPORT_PREFIX.
+            (string)($job['transport_id']??''),false);
+        if (!is_array($grant)||($grant['state']??'')!=='CENTRAL_OPERATION_SCOPE_GRANTED'
+            ||($grant['company']??'')!==($job['company']??'')
+            ||($grant['operation']??'')!==($job['operation']??'')
+            ||!is_array($transport)
+            ||($transport['state']??'')!=='PENDING_INDEPENDENT_SSH_VERIFICATION'
+            ||($transport['site_uuid']??'')!==($job['site_uuid']??'')
+            ||($transport['company']??'')!==($job['company']??'')
+            ||get_option(MAD4B_Central_VPS_Broker_V1::CLAIM.$id,false)!==false)
+            return self::reject('original_authority_revoked_or_drifted');
+        if (!class_exists('MAD4B_Manager_Auto_Write_V1',false))
+            return self::reject('original_site_authority_unavailable');
+        $site=MAD4B_Manager_Auto_Write_V1::company_target((string)$job['company']);
+        if (!is_array($site)||($site['state']??'')!=='REGISTERED'
+            ||($site['site_uuid']??'')!==$job['site_uuid']
+            ||($site['canonical_origin']??'')!==$job['canonical_origin']
+            ||($site['environment']??'')!=='staging')
+            return self::reject('original_site_binding_revoked');
         // The original 305 intake deliberately never persisted raw command bytes.
         // Do NOT fabricate the signed payload from its SHA or silently clone
         // the old grant. Only the original Core's installed sealed-payload
@@ -179,7 +206,8 @@ final class MAD4B_Original_Core_Recovery_V1 {
         if ((int)$job['central_principal_id']!==get_current_user_id()
             ||($job['company']??'')!==(string)$request['company'])
             return self::reject('principal_or_company_mismatch',403);
-        return rest_ensure_response(self::recordOriginalPreDispatchFailure($id,$body['proof']));
+        $out=self::recordOriginalPreDispatchFailure($id,$body['proof']);
+        return is_wp_error($out)?$out:rest_ensure_response($out);
     }
 
     public static function inspect(WP_REST_Request $request) {
