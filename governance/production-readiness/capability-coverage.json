@@ -11862,6 +11862,63 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Reuses immutable source checksum review, inherited original Core operation policy, hermetic comparison and native pipeline negative regression tests.",
       "review_rationale": "Exact SHA source reviewed for read-only signed-evidence comparison only. Does not authorize site writes, file copying, signed receipt issuing, Staging deployment, or Production promotion."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/remote-operation-catalog.php",
+      "source_blob_sha": "f9383f5495bbf9644fb683ebcb9679820a01baa1",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/central-company-engine-governance-contract.php"
+      ],
+      "owner_role": "Central Company Management CI-only source review; separate owner attestation required for release",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance/platform/security controls cover pending capability visibility and fail-closed unauthorized dispatch. Exact-source regression runs in same PR.",
+      "review_rationale": "The pending company remote WP-CLI row is metadata only. Enrollment requires original company authority and independently verified Native binding; no direct execution surface is enabled."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-enrollment-dispatch.php",
+      "source_blob_sha": "c57ce7a8e3a686726c10ba9f3c14116f90f76ea4",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/central-company-engine-governance-contract.php"
+      ],
+      "owner_role": "Central Company Management CI-only source review; separate owner attestation required for release",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance/platform/security controls cover pending capability visibility and fail-closed unauthorized dispatch. Exact-source regression runs in same PR.",
+      "review_rationale": "The first-party discovery and info expose a non-dispatchable, non-activated pending state; no owner decision, grant, or execute ticket is created by discovery."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-operation-parity.php",
+      "source_blob_sha": "7a7642b6b3983b9344f85d5dc1b0d7718223590c",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/central-company-engine-governance-contract.php"
+      ],
+      "owner_role": "Central Company Management CI-only source review; separate owner attestation required for release",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance/platform/security controls cover pending capability visibility and fail-closed unauthorized dispatch. Exact-source regression runs in same PR.",
+      "review_rationale": "Capability parity explicitly forces execution_eligible=false and remote_parity_ready=false for pending enrollment; a matching ability string cannot activate it."
     }
   ],
   "code_change_rules": {
