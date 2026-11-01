@@ -19,6 +19,7 @@ require_once __DIR__.'/includes/class-mad4b-hub-semantic-legacy-cutover.php';
 require_once __DIR__.'/includes/class-mad4b-hub-original-context-evidence.php';
 require_once __DIR__.'/includes/class-mad4b-hub-governed-single-flight.php';
 require_once __DIR__.'/includes/class-mad4b-hub-bulk-jobs-queue.php';
+require_once __DIR__.'/includes/class-mad4b-hub-queue-site-health-enqueue.php';
 require_once __DIR__.'/includes/class-mad4b-hub-provider-receipt-bridge.php';
 require_once __DIR__.'/includes/class-mad4b-hub-queue-lifecycle.php';
 require_once __DIR__.'/includes/class-mad4b-hub-adaptive-concurrency.php';
@@ -74,6 +75,7 @@ final class MAD4B_Content_Hub {
         MAD4B_Hub_Workflow_Operations::boot();
         MAD4B_Hub_Workflow_Origin::boot();
         MAD4B_Hub_Bulk_Jobs_Queue::boot();
+        MAD4B_Hub_Queue_Site_Health_Enqueue::boot();
         MAD4B_Hub_Provider_Receipt_Bridge::boot();
         MAD4B_Hub_Queue_Lifecycle::boot();
         MAD4B_Hub_Adaptive_Concurrency::boot();

@@ -44,6 +44,14 @@ trait MAD4B_SCP_Server_Write_Catalog {
 			&& wp_has_ability( MAD4B_SCP_AI_Approval::ABILITY ) ) {
 			$candidates[] = MAD4B_SCP_AI_Approval::ABILITY;
 		}
+		// This one-purpose Ability is available only on the exact enrolled central
+		// Staging host. General mad4b/hub-bulk-enqueue stays unmounted.
+		if ( class_exists( 'MAD4B_Hub_Queue_Site_Health_Enqueue' )
+			&& function_exists( 'wp_has_ability' )
+			&& wp_has_ability( MAD4B_Hub_Queue_Site_Health_Enqueue::ABILITY )
+			&& MAD4B_Hub_Queue_Site_Health_Enqueue::site_enrolled() ) {
+			$candidates[] = MAD4B_Hub_Queue_Site_Health_Enqueue::ABILITY;
+		}
 		return array_values( array_unique( $candidates ) );
 	}
 

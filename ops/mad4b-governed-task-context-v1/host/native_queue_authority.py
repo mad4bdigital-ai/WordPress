@@ -12,7 +12,6 @@ TARGETS = {
     ('tours-central', 'staging'): {
         'container': 'etg-commerce-staging-php',
         'origin': 'https://tours.dev.mad4b.com',
-        'wp_actor': 1,
     },
 }
 
@@ -37,8 +36,17 @@ def probe(policy, company='tours-central', environment='staging', runner=subproc
     if target is None:
         result['state'] = 'WORDPRESS_TARGET_PRINCIPAL_NOT_ENROLLED'
         return result
+    # Per-site, enrolled principal; WordPress user IDs are not portable between
+    # databases. Neither the SSH root actor nor the ID '1' confers WP authority.
+    actor = scope.get('wordpress_actor_user_id')
+    if type(actor) is not int or actor < 1 or actor > 2147483647:
+        result['state'] = 'WORDPRESS_TARGET_PRINCIPAL_NOT_ENROLLED'
+        return result
+    if scope.get('canonical_origin') != target['origin']:
+        result['state'] = 'WORDPRESS_TARGET_ORIGIN_NOT_ENROLLED'
+        return result
     base = ['/usr/bin/docker', 'exec', '-u', 'www-data', target['container'],
-            'wp', '--path=/var/www/html', '--user=' + str(target['wp_actor']),
+            'wp', '--path=/var/www/html', '--user=' + str(actor),
             'mad4b', 'hub']
     try:
         checks = []
@@ -57,7 +65,7 @@ def probe(policy, company='tours-central', environment='staging', runner=subproc
         identity.get('chatgpt_oauth_verified') is not False or
         identity.get('site_origin') != target['origin'] or
         identity.get('site_environment') != environment or
-        identity.get('actor_wp_user_id') != target['wp_actor'] or
+        identity.get('actor_wp_user_id') != actor or
         identity.get('ability') != 'mad4b/hub-bulk-list-queue'):
         result['state'] = 'WORDPRESS_PRINCIPAL_OR_ORIGIN_MISMATCH'
         return result
