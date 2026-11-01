@@ -64,6 +64,14 @@ class MAD4B_Central_SSH_Command_Intake_V1 {
   return new WP_REST_Response($receipt,202);
  }
 }
+class MAD4B_Original_Core_Recovery_V1 {
+ public static $journal=null;
+ public static function readOriginalRecoveryEvidence($id){
+  return is_array(self::$journal)&&
+    (self::$journal['original_job']['job_id']??'')===$id
+    ?self::$journal:new WP_Error('no_original_journal','No verified original journal');
+ }
+}
 require __DIR__.'/original-broker-source/305-mad4b-original-sealed-rebind.php';
 function must($ok,$name){if(!$ok){fwrite(STDERR,"FAIL $name\n");exit(1);}}
 function refused($out,$piece){return is_wp_error($out)&&str_contains($out->get_error_code(),$piece);}
@@ -102,6 +110,9 @@ function signEnvelope(array $old,array $envelope,string $secret):array{
  return $envelope;
 }
 $envelope=signEnvelope($original,$envelope,$secret);
+MAD4B_Original_Core_Recovery_V1::$journal=[
+ 'original_job'=>$original,'signed_failure'=>['provider'=>'container_exec']
+];
 $rest=new WP_REST_Request();
 $rest->set_param('company','egypt-tour-gates');
 $rest->set_header('X-WP-Nonce','valid-operator-nonce');
@@ -116,6 +127,19 @@ must(refused($run($bad),'signed_payload_or_digest_invalid'),'unsigned provider s
 $cool=signEnvelope($original,$bad,$secret);
 must(refused($run($cool),'alternate_provider_not_enrolled'),'nonregistered provider refused');
 must($GLOBALS['accepted']===0,'no admission before original provider bound');
+// The rebind method must not be callable without independently verifiable
+// original failure state, even from another trusted PHP class.
+$saved=MAD4B_Original_Core_Recovery_V1::$journal;
+MAD4B_Original_Core_Recovery_V1::$journal=null;
+must(refused($run($envelope),'original_signed_pre_dispatch_journal_required'),
+ 'direct rebind must require verified original journal');
+MAD4B_Original_Core_Recovery_V1::$journal=$saved;
+$journalDifferent=$saved;
+$journalDifferent['signed_failure']['provider']='vps_ssh';
+MAD4B_Original_Core_Recovery_V1::$journal=$journalDifferent;
+must(refused($run($envelope),'same_failed_provider_cannot_be_replayed'),
+ 'same failed provider cannot be replayed');
+MAD4B_Original_Core_Recovery_V1::$journal=$saved;
 $good=$run($envelope);
 must(($good['state']??'')==='ORIGINAL_CORE_RECOVERY_JOB_COMMITTED','recovery job committed');
 must(($good['executed']??null)===false,'new job is queued not executed');
