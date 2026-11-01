@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: unified-operation-policy-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}-${{ github.event.pull_request.head.sha || github.ref }}
+  group: unified-operation-policy-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
