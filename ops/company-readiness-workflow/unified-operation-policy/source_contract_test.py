@@ -106,5 +106,74 @@ class UnifiedPolicySourceTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "BINDING_INCOMPLETE"):
                 module.full_host_catalog()
 
+    def test_full_host_original_305_transitions_are_not_fake_grants(self):
+        spec = importlib.util.spec_from_file_location("mad4b_unified_policy", CORE)
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        catalog = m.full_host_catalog()
+        site = {"company": "new-company", "environment": "production",
+                "site_uuid": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                "canonical_origin": "https://new-company.example.test"}
+        base = {"site_identity_registered": True,
+                "original_persistent_full_wpcli_grants": 0,
+                "original_matched_active_transport_grant_pairs": 0,
+                "original_matched_pending_transport_grant_pairs": 0}
+        x = m.full_host_provisioning_preview(site, base, catalog)
+        self.assertEqual(x["scope_state"], "PENDING_ORIGINAL_305_OWNER_VERIFIED_STANDING_GRANT")
+        self.assertFalse(x["grant_issued_by_preview"])
+        pending = {**base, "original_persistent_full_wpcli_grants": 1,
+                   "original_matched_pending_transport_grant_pairs": 1}
+        x = m.full_host_provisioning_preview(site, pending, catalog)
+        self.assertEqual(x["scope_state"], "PENDING_EXACT_HOST_PROOF_AND_NATIVE_TRANSPORT")
+        self.assertFalse(x["host_execution_proof_verified_by_preview"])
+        active = {**pending, "original_matched_active_transport_grant_pairs": 1}
+        x = m.full_host_provisioning_preview(site, active, catalog)
+        self.assertEqual(x["scope_state"], "PENDING_INDEPENDENT_NATIVE_EXECUTOR_AND_313_READBACK")
+        self.assertFalse(x["execution_authorized_by_preview"])
+        self.assertFalse(x["production_mutated"])
+        with self.assertRaisesRegex(RuntimeError, "GRANT_COUNTER_INVALID"):
+            m.full_host_provisioning_preview(site,
+                {**active, "original_matched_active_transport_grant_pairs": True}, catalog)
+
+    def test_company_enrollment_event_rechecks_original_core(self):
+        spec = importlib.util.spec_from_file_location("mad4b_unified_policy", CORE)
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        site = {"company": "new-company", "environment": "production",
+                "site_uuid": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                "canonical_origin": "https://new-company.example.test"}
+        original_operations = {op: {
+            "state": "BLOCKED_MISSING_AUTHORITY",
+            "execution_allowed": False,
+            "remote_write_permitted": False,
+            "blockers": ["missing_exact_grant"]
+        } for op in m.OPERATIONS}
+        plans = {"target_count": 1, "targets": [{**site,
+                    "original_operations": original_operations}]}
+        grants = {"target_count": 1, "targets": [
+            {"company": "new-company", "environment": "production",
+             "site_identity_registered": True,
+             "original_persistent_full_wpcli_grants": 0,
+             "original_matched_active_transport_grant_pairs": 0,
+             "original_matched_pending_transport_grant_pairs": 0}]}
+        legacy = {"contract": "mad4b.universal-runtime-reconciler.v1",
+                  "authority_model": "identity_proof_plus_capability_specific_provider_authority",
+                  "scopes": {}}
+        answer = m.project_enrollment_event(plans, grants, legacy, site)
+        self.assertTrue(answer["original_core_registration_rechecked"])
+        self.assertEqual(answer["full_host_authority"]["capability_count"], 13)
+        self.assertEqual(answer["full_host_authority"]["environment"], "production")
+        self.assertFalse(answer["grant_issued"])
+        self.assertFalse(answer["native_operation_executed"])
+        with self.assertRaisesRegex(RuntimeError, "SCOPE_CHANGED"):
+            m.project_enrollment_event(plans, grants, legacy,
+                {**site, "site_uuid": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"})
+        with self.assertRaisesRegex(RuntimeError, "NOT_IN_ORIGINAL_REGISTRY"):
+            m.project_enrollment_event(plans, grants, legacy,
+                {**site, "company": "other-company"})
+        with self.assertRaisesRegex(RuntimeError, "EVENT_INVALID"):
+            m.project_enrollment_event(plans, grants, legacy,
+                {**site, "grant": True})
+
 if __name__ == "__main__":
     unittest.main()
