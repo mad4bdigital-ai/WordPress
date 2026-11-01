@@ -82,7 +82,7 @@ def assess(s):
         and manager.get("operations_manage") is True,
         "WORDPRESS_ACTOR_DELEGATION_NOT_VERIFIED")
     kind=t.get("kind")
-    req(kind in KINDS,"TRANSPORT_KIND_UNSUPPORTED")
+    req(isinstance(kind,str) and kind in KINDS,"TRANSPORT_KIND_UNSUPPORTED")
     common=(t.get("company")==c and t.get("environment")=="staging"
        and t.get("site_uuid")==site and t.get("canonical_origin")==uri
        and t.get("wordpress_actor_user_id")==actor
