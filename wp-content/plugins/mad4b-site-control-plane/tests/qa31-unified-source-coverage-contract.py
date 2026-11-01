@@ -37,6 +37,7 @@ GUARDS = {'adapters/class-mad4b-scp-adapter-base.php': ('mad4b_provider_canary_e
  'class-mad4b-scp-mcp-peer-governance.php': ('write_side_channel_detected',
                                              'mcp_peer_inventory_unavailable'),
  'class-mad4b-scp-native-ability-trust.php': ('native_ability_invalid_page', 'ReflectionFunction'),
+ 'class-mad4b-scp-operator-workspace.php': ("'authorizing' => false", "'mutation_performed' => false"),
  'class-mad4b-scp-provider-connections-admin-ui.php': ('current_user_can', 'wp_die'),
  'class-mad4b-scp-provider-setup-coverage.php': ('mad4b_custom_provider_register',
                                                  "'mutation_performed'"),
@@ -66,7 +67,7 @@ def test_source_guard(path, markers):
 
 
 def main():
-    assert len(GUARDS) == 28, 'Review perimeter drift'
+    assert len(GUARDS) == 29, 'Review perimeter drift'
     for path, markers in sorted(GUARDS.items()):
         test_source_guard(path, markers)
         # Negative regression: replacing even one guard must fail this check.
@@ -110,7 +111,7 @@ def main():
         if result.returncode:
             raise SystemExit('Isolated denial/behavior regression failed: ' + name
                              + '\n' + result.stdout[-600:] + result.stderr[-600:])
-    print('QA31_UNIFIED_SOURCE_COVERAGE: PASS 28 reviewed sources, 56 guard anchors, original company comparator/registry policy, 7 PHP regressions; CI only')
+    print('QA31_UNIFIED_SOURCE_COVERAGE: PASS 29 reviewed sources, 58 guard anchors, original company comparator/registry policy, 7 PHP regressions; CI only')
 
 if __name__ == '__main__':
     main()
