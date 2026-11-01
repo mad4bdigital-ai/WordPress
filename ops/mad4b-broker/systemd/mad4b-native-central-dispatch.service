@@ -1,0 +1,18 @@
+[Unit]
+Description=MAD4B Staging VPS Native Central Dispatcher -> Broker -> Operator -> 314
+After=docker.service
+Requires=docker.service
+ConditionPathExists=/opt/mad4b-company-transport/broker-v1/vps-native-central-dispatch-worker.py
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+Environment=MAD4B_NATIVE_CENTRAL_DISPATCH=1
+WorkingDirectory=/opt/mad4b-company-transport/broker-v1
+ExecStart=/usr/bin/python3 /opt/mad4b-company-transport/broker-v1/vps-native-central-dispatch-worker.py
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+TimeoutStartSec=190s
