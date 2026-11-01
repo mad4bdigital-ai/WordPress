@@ -3605,6 +3605,143 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing MCP admission, platform identity, security, owner-scoped administrative rights and execution-denial controls cover these staging-only authorization surfaces, without granting Production execution or public access.",
       "review_rationale": "New surface ability:mad4b/staging-write-grant-reconcile-staging is source-pinned in the W1 authority integration and assessed with hermetic owner-browser, agent REST route, Site Profile, OAuth, replay, write grant, exact mapping and negative permission fixtures. This is only CI source review, not evidence that the route is registered, usable, or authorized in Production."
+    },
+    {
+      "id": "ability:mad4b/company-code-inventory-page",
+      "owner_role": "MAD4B repository technical source reviewer for CI-only coverage; not site owner acceptance",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP/WordPress permission controls, source identity and platform safety checks address the reviewed planning or bounded read-only surface; additional runtime and site authority are separate.",
+      "review_rationale": "Static reference is the original-Core signed inventory receipt source, NOT a new registered WordPress Ability; comparison checks cryptographic signature, resource hash, site/company identity and refuses any transfer or apply."
+    },
+    {
+      "id": "ability:mad4b/company-code-reconciliation-compare",
+      "owner_role": "MAD4B repository technical source reviewer for CI-only coverage; not site owner acceptance",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP/WordPress permission controls, source identity and platform safety checks address the reviewed planning or bounded read-only surface; additional runtime and site authority are separate.",
+      "review_rationale": "Read-only comparison uses WordPress policy can_read, verifies original-Core inventory receipts and bounded page scoped hashes, then returns diff with native_apply_authorized false."
+    },
+    {
+      "id": "ability:mad4b/company-code-reconciliation-plan",
+      "owner_role": "MAD4B repository technical source reviewer for CI-only coverage; not site owner acceptance",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP/WordPress permission controls, source identity and platform safety checks address the reviewed planning or bounded read-only surface; additional runtime and site authority are separate.",
+      "review_rationale": "Read-only planning uses original WordPress Ability permission callback and exact signed site/company evidence; returns authorizing false, mutation_performed false and complete_inventory_verified false."
+    },
+    {
+      "id": "operation:company.code-reconciliation.plan",
+      "owner_role": "MAD4B repository technical source reviewer for CI-only coverage; not site owner acceptance",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP/WordPress permission controls, source identity and platform safety checks address the reviewed planning or bounded read-only surface; additional runtime and site authority are separate.",
+      "review_rationale": "One dedicated plan/compare operation is cataloged read_only and observe_propose_only, with signed_core_evidence_required and no generic mutation dispatch. Existing company operations remain unchanged."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-code-reconciliation.php",
+      "owner_role": "MAD4B repository technical source reviewer for CI-only coverage; not site owner acceptance",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP/WordPress permission controls, source identity and platform safety checks address the reviewed planning or bounded read-only surface; additional runtime and site authority are separate.",
+      "review_rationale": "New bounded comparator is explicitly page-only and original-Core-signed, classifies protected/site/vendor ownership separately and performs no shell, filesystem transfer, automatic deploy or mutation."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-completeness.php",
+      "owner_role": "MAD4B repository technical source reviewer for CI-only coverage; not site owner acceptance",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP/WordPress permission controls, source identity and platform safety checks address the reviewed planning or bounded read-only surface; additional runtime and site authority are separate.",
+      "review_rationale": "New content completeness service exposes read/admin REST endpoints under explicit permission_callback and edit_others_posts. Review is CI source-only; no live content update or external acceptance is asserted."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tourism-company-launch.php",
+      "owner_role": "MAD4B repository technical source reviewer for CI-only coverage; not site owner acceptance",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing MCP/WordPress permission controls, source identity and platform safety checks address the reviewed planning or bounded read-only surface; additional runtime and site authority are separate.",
+      "review_rationale": "New tourism company launch service retains owner capability and nonce checks, bounded REST permissions, and its existing explicit company launch approval/error flow. No live activation or release authority is certified."
     }
   ],
   "lifecycle": [],
@@ -11496,6 +11633,199 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing pinned source validation, exact SHA identity, bounded GitHub HTTPS and protected candidate deploy controls cover the compact Git Data lookup.",
       "review_rationale": "The GitHub /commits/{sha} REST response may exceed the existing 262144-byte budget for multi-parent integration changes. Only the exact immutable commit lookup changes to /git/commits/{sha} (small Git object metadata). Do not raise limits, change other source selectors or treat any redirect/invalid/mismatched response as verified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/operation-registry.json",
+      "source_blob_sha": "fc54fb1d18f37e14b601b756fd7aad91fc35cfff",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "owner_role": "MAD4B technical exact-source reviewer, CI-only; no Staging or Production promotion approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source-control and permission domains govern this reviewed behavior; exact SHA and same-PR QA31 fail-closed regression are required, with live acceptance pending.",
+      "review_rationale": "Original operation registry remains generic-shell-denied, adds signed-Core read-only company comparator with observe/propose Production mode and preserves existing exact operation IDs."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli.php",
+      "source_blob_sha": "0b60ae169749bc41696c781ba69430bddf6b722a",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "owner_role": "MAD4B technical exact-source reviewer, CI-only; no Staging or Production promotion approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source-control and permission domains govern this reviewed behavior; exact SHA and same-PR QA31 fail-closed regression are required, with live acceptance pending.",
+      "review_rationale": "CLI supplies read-only runtime and package diagnostics and explicitly reports authorizing and mutation_performed false, without acquiring mutation or independent principal grants."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-code-reconciliation.php",
+      "source_blob_sha": "a334e992dfc44aa30691a814a93684a541af8d07",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "owner_role": "MAD4B technical exact-source reviewer, CI-only; no Staging or Production promotion approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source-control and permission domains govern this reviewed behavior; exact SHA and same-PR QA31 fail-closed regression are required, with live acceptance pending.",
+      "review_rationale": "Signed inventory receipt verifier cross-checks company and site identity, strictly bounded page-only evidence, protected files, and never upgrades page results to full inventory or apply."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-completeness.php",
+      "source_blob_sha": "f82c54a1831c64407c03c0ded55dc2cc26ea5168",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "owner_role": "MAD4B technical exact-source reviewer, CI-only; no Staging or Production promotion approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source-control and permission domains govern this reviewed behavior; exact SHA and same-PR QA31 fail-closed regression are required, with live acceptance pending.",
+      "review_rationale": "Content rules/readiness endpoints require WordPress editorial/admin permissions, and source regression verifies read permission and admin route callbacks without certifying any live site write."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "source_blob_sha": "9b9f3016754fe5c722fa8b553bead6790399ca3b",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "owner_role": "MAD4B technical exact-source reviewer, CI-only; no Staging or Production promotion approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source-control and permission domains govern this reviewed behavior; exact SHA and same-PR QA31 fail-closed regression are required, with live acceptance pending.",
+      "review_rationale": "Content readiness alerts separate editor read permissions from administrator and local-client write permissions; owner/admin paths stay gated and are reviewed as CI only."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-external-media-ingest.php",
+      "source_blob_sha": "504128408bb2f53d2b723191063199e9cec19c10",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "owner_role": "MAD4B technical exact-source reviewer, CI-only; no Staging or Production promotion approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source-control and permission domains govern this reviewed behavior; exact SHA and same-PR QA31 fail-closed regression are required, with live acceptance pending.",
+      "review_rationale": "External media imports require upload_files, an enrolled operator, validated HTTPS input, an exact idempotency identity, bounded image types and sizes and post-write readback."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-registry.php",
+      "source_blob_sha": "f32b488623f5c0838617dd7eb2881899d88e6536",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "owner_role": "MAD4B technical exact-source reviewer, CI-only; no Staging or Production promotion approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source-control and permission domains govern this reviewed behavior; exact SHA and same-PR QA31 fail-closed regression are required, with live acceptance pending.",
+      "review_rationale": "Original registry validates canonical operation IDs and signed read-only company comparator, requires permitted planner and bounded executor, and retains default generic mutation denial."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-setup-coverage.php",
+      "source_blob_sha": "11f03925660c37a0e76524c220b521ddbc953de8",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "owner_role": "MAD4B technical exact-source reviewer, CI-only; no Staging or Production promotion approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source-control and permission domains govern this reviewed behavior; exact SHA and same-PR QA31 fail-closed regression are required, with live acceptance pending.",
+      "review_rationale": "Provider setup source retains administrator registration checks, per-provider coverage detection and an explicit no-mutation result in its planning surface."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tourism-company-launch.php",
+      "source_blob_sha": "1c176944e3a729172707f6324df5c6607d51b572",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "owner_role": "MAD4B technical exact-source reviewer, CI-only; no Staging or Production promotion approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source-control and permission domains govern this reviewed behavior; exact SHA and same-PR QA31 fail-closed regression are required, with live acceptance pending.",
+      "review_rationale": "Company tourism launch source retains manage_options/activate_plugins owner requirements, nonce validation, REST permissions and explicit rejection when owner authority is absent."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "caeb4ab402c58f3ec092a33fc061f108e354f510",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "owner_role": "MAD4B technical exact-source reviewer, CI-only; no Staging or Production promotion approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source-control and permission domains govern this reviewed behavior; exact SHA and same-PR QA31 fail-closed regression are required, with live acceptance pending.",
+      "review_rationale": "Plugin bootstrap wires the signed read-only company comparator exactly once while maintaining existing authorization and lifecycle boot ordering."
     }
   ],
   "code_change_rules": {
