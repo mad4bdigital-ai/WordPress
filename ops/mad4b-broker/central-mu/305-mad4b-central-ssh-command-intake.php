@@ -209,8 +209,14 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
             return self::error('invalid_revoke_scope', 422);
         $prefix = $kind === 'grant' ? self::PREFIX : self::TRANSPORT_PREFIX;
         $record = get_option($prefix . $id, null);
+        $native_owner_revoke=is_array($record)
+            && ($record['principal_type']??'')==='vps_native'
+            && $company==='tours-central'
+            && class_exists('MAD4B_Central_Host_Scope_V1',false)
+            && MAD4B_Central_Host_Scope_V1::current_owner();
         if (!is_array($record) || ($record['company'] ?? '') !== $company
-            || ($record['central_principal_id'] ?? null) !== get_current_user_id())
+            || (!$native_owner_revoke
+                && ($record['central_principal_id'] ?? null) !== get_current_user_id()))
             return self::error('record_not_found', 404);
         if (($record['state'] ?? '') === 'REVOKED')
             return rest_ensure_response(array('state'=>'REVOKED','object_id'=>$id));
@@ -271,6 +277,11 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
              || $host!=='srv2030908' || $host_principal!=='root'
              || $transport_id===''))
             return self::error('central_host_persistent_local_grant_required', 422);
+        // The native-principal standing grant can only be created through
+        // a valid Ed25519 VPS Client attestation. The owner-facing 305 API
+        // may revoke it but may not mint a second grant on its transport.
+        if ($mode==='persistent' && ($transport['principal_type']??'')==='vps_native')
+            return self::error('native_grant_requires_signed_client',403);
         $scope = self::scope($company, $operation);
         if (is_wp_error($scope)) return $scope;
         if ($mode === 'persistent' && (
@@ -328,6 +339,8 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
             || !in_array($target_scope, array('wordpress','host'), true))
             return self::error('command_fields_invalid', 422);
         $grant = get_option(self::PREFIX . $id, null);
+        if (is_array($grant) && ($grant['principal_type']??'')==='vps_native')
+            return self::error('native_command_requires_signed_client',403);
         if (!is_array($grant) || ($grant['contract'] ?? '') !== self::CONTRACT
             || ($grant['company'] ?? '') !== $company
             || ($grant['central_principal_id'] ?? 0) !== get_current_user_id()
