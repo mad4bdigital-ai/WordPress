@@ -12,13 +12,22 @@ final class MAD4B_Hub_Queue_Site_Health_Enqueue {
     const ORIGIN = 'https://tours.dev.mad4b.com';
     const DATABASE = 'etg_commerce_staging';
 
-    public static function site_ready() {
+    /**
+     * Catalog enrollment is site-based, never request-user-based.
+     * Visibility is not execution authority; original NHI and grants still
+     * gate each invocation through the registered Write Ability boundary.
+     */
+    public static function site_enrolled() {
         return function_exists('wp_get_environment_type')
             && wp_get_environment_type() === 'staging'
             && function_exists('home_url')
             && rtrim((string) home_url(), '/') === self::ORIGIN
             && defined('DB_NAME') && DB_NAME === self::DATABASE
-            && class_exists('MAD4B_Content_Hub')
+            && class_exists('MAD4B_Content_Hub');
+    }
+
+    public static function site_ready() {
+        return self::site_enrolled()
             && MAD4B_Content_Hub::permission()
             && class_exists('MAD4B_Hub_Bulk_Jobs_Queue')
             && MAD4B_Hub_Bulk_Jobs_Queue::writable()
@@ -75,7 +84,7 @@ final class MAD4B_Hub_Queue_Site_Health_Enqueue {
     }
 
     public static function register() {
-        if (!self::site_ready() || !function_exists('wp_register_ability')) return;
+        if (!self::site_enrolled() || !function_exists('wp_register_ability')) return;
         if (function_exists('wp_has_ability') && wp_has_ability(self::ABILITY)) return;
         wp_register_ability(self::ABILITY, array(
             'label' => 'Staging Site Health Queue Canary',
