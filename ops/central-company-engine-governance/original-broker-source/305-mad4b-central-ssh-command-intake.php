@@ -105,10 +105,11 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
         $full_wpcli = $requested_capabilities === array('wpcli.full');
         if ($requested_capabilities !== array() && !$full_wpcli)
             return self::error('unknown_transport_capability', 422);
-        if ($full_wpcli && (!class_exists('MAD4B_Company_Manager_Unified_Administrator_Principal', false)
-            || !MAD4B_Company_Manager_Unified_Administrator_Principal::verified()))
-            return self::error('verified_owner_enrollment_required');
-        $scope = self::scope($company, 'maintenance.shell');
+        // The same authenticated company-scoped channel enrollment is the
+        // standing authorization event. Do not add a second owner step-up.
+        // Native execution still requires independent SSH and site proof.
+        $scope = self::scope($company, $full_wpcli
+            ? 'company.remote.wpcli.full' : 'maintenance.shell');
         if (is_wp_error($scope)) return $scope;
         $id = bin2hex(random_bytes(16));
         $record = array(
