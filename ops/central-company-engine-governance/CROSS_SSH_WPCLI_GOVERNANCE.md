@@ -36,7 +36,7 @@ The `MAD4B_SCP_Content_Jobs` aggregate owns content-job states, optimistic revis
 
 ### Implementation boundary
 
-The currently installed 312 authorizer is hardcoded to `maintenance.shell`, and 313 verifies one literal diagnostic. They must gain a **new reviewed original-Core administration capability** with source-pinned enrollment, command digest and signed readback; retaining the old fixed diagnostic unchanged. Do not substitute `maintenance.shell` to bypass a denied WP-CLI operation, nor treat a test-only handshake as live authorization. The VPS live extension remains pending until the actual original Core/Broker source is accessible through its authorized update channel.
+Observed Staging VPS state (2026-11-01): source changes in original 305 can enroll a persistent `company.remote.wpcli.full` transport grant; 312 accepts that operation as a separately bound *central-scope preflight*; 313 accepts a separate signed WP-CLI receipt in `PENDING_INDEPENDENT_NATIVE_READBACK`. Existing fixed maintenance diagnostics are retained. **These changes do not establish remote execution capability.** The Native Executor remains `INSTALLED_UNENROLLED` with no live `execute` interface, no company/site-specific bound native host registry and no valid persistent grant yet. The verified existing SSH channel may be the standing owner authorization only after its company/site/principal enrollment is in the original Core; never infer site authority from a generic SSH handshake. The worker must verify actual native binding, execute the command, and independently read back its outcome before marking success. No extra owner attestation or per-command approval follows properly authorized channel enrollment.
 
 ## Do not confuse these boundaries
 
