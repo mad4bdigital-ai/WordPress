@@ -81,6 +81,19 @@ with tempfile.TemporaryDirectory(prefix="mad4b-qa31-drift-") as tmp:
     assert evidence["authorizing"] is False and evidence["production_authorized"] is False
     assert evidence["protected_source_divergence_count"] >= 1
 
+    # Even evidence-mode cannot overwrite plugin files or Git checkout files.
+    before_stage = (stage / "config/policy.json").read_bytes()
+    r = invoke(stage, source, sha, stage / "config/policy.json", True)
+    assert r.returncode == 2 and (stage / "config/policy.json").read_bytes() == before_stage
+    before_source = (source / "config/policy.json").read_bytes()
+    r = invoke(stage, source, sha, source / "config/policy.json", True)
+    assert r.returncode == 2 and (source / "config/policy.json").read_bytes() == before_source
+    # A symlinked evidence path must never redirect into a live source tree.
+    redirected = root / "redirected-evidence.json"
+    redirected.symlink_to(stage / "config/policy.json")
+    r = invoke(stage, source, sha, redirected, True)
+    assert r.returncode == 2 and (stage / "config/policy.json").read_bytes() == before_stage
+
     wrong_head = root / "wrong-head.json"
     r = invoke(stage, source, "b"*40, wrong_head, True)
     assert r.returncode == 2 and not wrong_head.exists(), "Unbound Git checkout accepted"
@@ -90,4 +103,4 @@ with tempfile.TemporaryDirectory(prefix="mad4b-qa31-drift-") as tmp:
     r = invoke(stage, source, sha, missing, True)
     assert r.returncode == 3 and json.loads(missing.read_text())["staging"]["manifest_mismatch_count"] == 1
 
-print("QA31_READONLY_DRIFT_REPORT: PASS strict rejection, nonauthorizing report, exact HEAD, no source leakage")
+print("QA31_READONLY_DRIFT_REPORT: PASS strict rejection, nonauthorizing report, exact HEAD, no source leakage, no writes inside plugin trees")
