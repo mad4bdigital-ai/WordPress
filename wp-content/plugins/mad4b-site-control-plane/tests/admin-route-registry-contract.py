@@ -159,6 +159,31 @@ for path in (root / 'includes').rglob('*.php'):
             raise SystemExit('FAIL readiness scopes expanded or bypassed original menu authority')
         checked += 1
         continue
+    # The Staging Brand Trial registers a self::MENU slug rather than a
+    # literal slug. Its original REST and page authority must remain strictly
+    # staging-only and administrator-only, in addition to ordered menus.
+    if path.name == 'class-mad4b-scp-staging-brand-trial.php':
+        required = (
+            "const MENU='mad4b-staging-brand-trial';",
+            "if(wp_get_environment_type()!=='staging')return;",
+            "MAD4B_SCP_Admin_Route_Registry::register(self::MENU,'manage_options')",
+            "MAD4B_SCP_Admin_Route_Registry::schedule_submenu(static function()",
+            "add_submenu_page('mad4b-control-plane','Staging Test Brand','Staging Test Brand',",
+            "'manage_options',self::MENU,[__CLASS__,'page']",
+            "return wp_get_environment_type()==='staging'",
+            "current_user_can('manage_options') && current_user_can('activate_plugins')",
+            "if(!self::canReview())wp_die('WordPress Administrator on Staging required.');",
+            "'permission_callback'=>[__CLASS__,'canReview']",
+        )
+        for marker in required:
+            if marker not in source:
+                raise SystemExit('FAIL staging brand trial parent/permission/REST guard: ' + marker)
+        if (source.count("add_submenu_page(") != 1
+                or source.count("MAD4B_SCP_Admin_Route_Registry::register(") != 1
+                or re.search(r"add_action\(\s*['\"]admin_menu['\"]", source)):
+            raise SystemExit('FAIL staging brand trial menu scope expanded')
+        checked += 1
+        continue
     if 'add_submenu_page(' in source and (
         'MAD4B_SCP_Admin_Route_Registry::schedule_submenu(' not in source
         or re.search(r"add_action\(\s*['\"]admin_menu['\"]", source)
