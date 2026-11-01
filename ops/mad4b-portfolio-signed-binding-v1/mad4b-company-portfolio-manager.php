@@ -64,29 +64,36 @@ final class MAD4B_Company_Portfolio_Manager_V1 {
             || !wp_is_uuid((string)($row['company_site_uuid']??''))
             || !wp_is_uuid((string)($row['native_site_profile_uuid']??''))
             || !preg_match('/^[a-f0-9]{64}$/D',(string)($row['native_profile_digest']??''))) {
-            // Independently verified, exact-site Staging bindings are first-class.
-            // An unverified Production entry cannot shadow a valid signed Staging
-            // identity. This never creates a manager assignment or a remote grant.
-            if(!class_exists('MAD4B_Company_Environment_Registry_V2',false) ||
-               !class_exists('MAD4B_Environment_Signed_Identity_V4',false))
+            // Exact signed Staging identity is usable for owner-scoped company
+            // Portfolio only after the original Environment Manager approval.
+            // No Production registration, host privilege or 305 is inferred.
+            if(!self::staging()
+                || !class_exists('MAD4B_Company_Environment_Portfolio_Evidence_V1',false)
+                || !class_exists('MAD4B_Company_Environment_Registry_V2',false))
                 return self::error('company_unverified','Verified Company Registry site binding required',409);
+            $proof=MAD4B_Company_Environment_Portfolio_Evidence_V1::readback($code,'staging');
             $staging=MAD4B_Company_Environment_Registry_V2::target($code,'staging');
-            $proof=MAD4B_Environment_Signed_Identity_V4::status($code,'staging');
-            if(!is_array($staging) || !is_array($proof) ||
-               ($staging['identity_evidence']['signed_v4_centrally_verified']??false)!==true ||
-               ($proof['centrally_verified']??false)!==true ||
-               ($proof['environment']??'')!=='staging' ||
-               !wp_is_uuid((string)($proof['site_uuid']??'')) ||
-               ($staging['site_uuid']??'')!==($proof['site_uuid']??null) ||
-               ($staging['canonical_origin']??'')!==($proof['canonical_origin']??null))
+            if(!is_array($proof) || !is_array($staging)
+                || ($proof['contract']??'')!=='mad4b.company-environment-portfolio-evidence.v1'
+                || ($proof['company']??'')!==$code
+                || ($proof['environment']??'')!=='staging'
+                || ($proof['signed_identity_verified']??false)!==true
+                || ($proof['operations_delegation_approved']??false)!==true
+                || ($proof['portfolio_assignment_bound']??false)!==true
+                || ($proof['grant_issued']??true)!==false
+                || ($proof['production_mutation_allowed']??true)!==false
+                || ($staging['company_id']??'')!==$code
+                || ($staging['environment']??'')!=='staging'
+                || ($proof['canonical_origin']??null)!==($staging['canonical_origin']??null)
+                || ($proof['site_uuid']??null)!==($staging['site_uuid']??null)
+                || !wp_is_uuid((string)($proof['site_uuid']??''))
+                || !preg_match('/^[a-f0-9]{64}$/D',
+                    (string)($proof['portfolio_binding_sha256']??'')))
                 return self::error('company_unverified','Verified Company Registry site binding required',409);
-            $site=(string)$proof['site_uuid'];
-            $origin=(string)$proof['canonical_origin'];
-            $digest=hash('sha256',implode('|',['mad4b.company.staging-binding.v1',
-                $code,'staging',$site,$origin]));
-            return ['company_code'=>$code,'company_site_uuid'=>$site,
-                'binding_sha256'=>$digest,'environment'=>'staging',
-                'canonical_origin'=>$origin,'source'=>'signed_v4_current_staging'];
+            return ['company_code'=>$code,'company_site_uuid'=>$proof['site_uuid'],
+                'binding_sha256'=>$proof['portfolio_binding_sha256'],
+                'environment'=>'staging','canonical_origin'=>$proof['canonical_origin'],
+                'source'=>'original_signed_staging_portfolio'];
         }
         $identity=[$code,$row['company_site_uuid'],$row['native_site_profile_uuid'],$row['native_profile_digest']];
         return ['company_code'=>$code, 'company_site_uuid'=>$row['company_site_uuid'],
