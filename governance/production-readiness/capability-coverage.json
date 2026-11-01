@@ -11826,6 +11826,26 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing source-control and permission domains govern this reviewed behavior; exact SHA and same-PR QA31 fail-closed regression are required, with live acceptance pending.",
       "review_rationale": "Plugin bootstrap wires the signed read-only company comparator exactly once while maintaining existing authorization and lifecycle boot ordering."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-workspace.php",
+      "source_blob_sha": "af18504185a60d381c2057dd4ef367bfacdb7897",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa31-unified-source-coverage-contract.py"
+      ],
+      "owner_role": "MAD4B GitHub exact source technical reviewer, CI-only; owner and release signoffs separately required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing admin routing, permission, evidence display and immutable release policy remain applicable to this read-only operator workspace; no new authority or release capability added.",
+      "review_rationale": "Feature 007 watches the operator workspace as a historical evidence fingerprint. Its current Git blob was not recorded in the non-authorizing reviewed source registry. The same-PR QA31 regression now inspects the real current file and verifies non-authorizing/no-mutation model markers without modifying immutable Feature 007 snapshots."
     }
   ],
   "code_change_rules": {
