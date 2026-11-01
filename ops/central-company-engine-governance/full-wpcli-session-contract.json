@@ -1,0 +1,67 @@
+{
+  "contract": "mad4b.owner-enrolled-full-wpcli.v1",
+  "state": "source_contract_only_not_live",
+  "authority_source": "original_mad4b_core_company_owner_enrollment",
+  "broker_source": "original_mad4b_native_broker_312_313",
+  "permission": "company.remote.wpcli.full",
+  "permission_grant": "once_at_exact_site_connection_enrollment",
+  "permissions_revalidated_each_call": true,
+  "per_command_manual_approval": false,
+  "scope_bindings": [
+    "company_id",
+    "site_uuid",
+    "canonical_origin",
+    "environment",
+    "ssh_target_id",
+    "ssh_host_key_fingerprint",
+    "ssh_account",
+    "wordpress_root",
+    "wordpress_principal",
+    "enrollment_revision",
+    "actor_id"
+  ],
+  "command_policy": {
+    "unrestricted_wpcli": true,
+    "arbitrary_wpcli_subcommands_allowed": true,
+    "wp_eval_allowed": true,
+    "wp_eval_file_allowed": true,
+    "wp_db_query_allowed": true,
+    "plugin_theme_and_custom_command_mutations_allowed": true,
+    "arbitrary_wpcli_flags_allowed": true,
+    "shell_commands_allowed_only_with_separate_owner_enrolled_full_shell": true,
+    "subcommand_allowlist_required": false,
+    "subcommand_denylist_applied": false,
+    "commands_are_executable_without_new_owner_approval": true
+  },
+  "execution": {
+    "fixed_executable": "wp",
+    "trusted_registered_wordpress_root": true,
+    "registered_ssh_principal": true,
+    "argv_as_data_not_shell": true,
+    "shell_interpolation": false,
+    "automatic_root_escalation": false,
+    "original_core_dispatcher": true,
+    "no_parallel_authority_or_ledger": true
+  },
+  "readback": {
+    "original_core_signed_job_binding": true,
+    "independent_effect_and_output_receipt": true,
+    "original_broker_journal": true,
+    "no_blind_retry_of_uncertain_execution": true
+  },
+  "environments": [
+    "staging",
+    "production"
+  ],
+  "safety_regressions": [
+    "non_enrolled_ssh_principal_denied",
+    "foreign_company_denied",
+    "foreign_site_denied",
+    "origin_or_site_revision_drift_denied",
+    "ssh_host_key_mismatch_denied",
+    "substituted_wordpress_root_denied",
+    "expired_or_revoked_session_denied",
+    "faked_readback_denied",
+    "known_or_unknown_wpcli_subcommands_not_denied_solely_by_name"
+  ]
+}
