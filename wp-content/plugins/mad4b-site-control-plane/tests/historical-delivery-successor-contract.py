@@ -106,4 +106,31 @@ for group, path, validator in closed:
     verify(group + ":QA31 temporary repo cannot self-certify",
            not validator(Path("/tmp"), path, current, historic_sha, historic_bytes))
 
+# The UI archive's rc.104 build descriptor and README are documents, not
+# executors. Only a real ancestral SHA and exact CI-reviewed HEAD source
+# may count as a later non-authorizing successor.
+for path in (
+    "wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt",
+    "wp-content/plugins/mad4b-site-control-plane/README.md",
+):
+    archive = json.loads((EXT / "ui-delivery.json").read_text(encoding="utf-8"))
+    row = next(
+        item for section in ("code_paths", "test_paths", "spec_paths", "workflow_paths")
+        for item in archive.get(section, []) if item["path"] == path
+    )
+    current = (ROOT / path).read_bytes()
+    verified_sha = row["sha256"]
+    verify(path + ":historical rc104 source anchored and reviewed",
+           is_exact_historical_delivery_successor(ROOT, path, current, verified_sha, None))
+    verify(path + ":forged history denied",
+           not is_exact_historical_delivery_successor(ROOT, path, current, "0" * 64, None))
+    verify(path + ":different current bytes denied",
+           not is_exact_historical_delivery_successor(ROOT, path, current + b"tamper", verified_sha, None))
+    verify(path + ":fake historical size denied",
+           not is_exact_historical_delivery_successor(ROOT, path, current, verified_sha, 1))
+    verify(path + ":unreviewed sibling denied",
+           not is_exact_historical_delivery_successor(ROOT, path + ".unreviewed", current, verified_sha, None))
+    verify(path + ":disposable repository cannot attest ancestor",
+           not is_exact_historical_delivery_successor(Path("/tmp"), path, current, verified_sha, None))
+
 print("FEATURE007_HISTORICAL_DELIVERY_SUCCESSOR: PASS " + str(n) + " positive/negative assertions")
