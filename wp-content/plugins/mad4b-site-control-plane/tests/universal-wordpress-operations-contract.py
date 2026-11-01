@@ -113,6 +113,18 @@ assert serp_capture["production_policy"] == "deny"
 for row in operation["operations"]:
     assert row["planner"]
     assert row["executor"]
+    # The only optional, queue-plan-only Company Plugin Sync operation has no
+    # active runtime adapter yet. Verify its exact non-authorizing contract,
+    # never advertise its absent planner/executor as a registered Ability.
+    if row["id"] == "company.plugin-sync.request":
+        assert row["required_runtime"] is False
+        assert row["supports"] == ["queue_plan_only"]
+        assert row["generic_mutation_dispatch"] is False
+        assert row["side_effect_class"] == "central_journal_plan_only"
+        assert row["retry_semantics"] == "readback_before_retry"
+        assert row["planner"] == "mad4b/company-plugin-sync-plan"
+        assert row["executor"] == "mad4b/company-plugin-sync-request"
+        continue
     assert runtime_represents_ability(row["planner"]), f"planner not represented in runtime source: {row['planner']}"
     if row["executor"] == "exact_executor_from_plan":
         assert row["id"] == "wordpress.plugin.transaction"
