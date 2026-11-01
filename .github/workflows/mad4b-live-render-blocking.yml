@@ -8,6 +8,7 @@ on:
       - 'wp-content/mu-plugins/310-mad4b-city-slider-lcp-preload.php'
       - 'wp-content/mu-plugins/assets/mad4b-chosen-crawlable.js'
       - 'wp-content/mu-plugins/321-mad4b-public-catalog-first-render.php'
+      - 'wp-content/mu-plugins/322-mad4b-empty-jet-css-fastpath.php'
       - '.well-known/ard.json'
       - 'wp-content/mu-plugins/company-accessibility-contract.php'
       - 'wp-content/mu-plugins/assets/accessibility-swiper.js'
@@ -30,6 +31,7 @@ on:
       - 'wp-content/mu-plugins/310-mad4b-city-slider-lcp-preload.php'
       - 'wp-content/mu-plugins/assets/mad4b-chosen-crawlable.js'
       - 'wp-content/mu-plugins/321-mad4b-public-catalog-first-render.php'
+      - 'wp-content/mu-plugins/322-mad4b-empty-jet-css-fastpath.php'
       - '.well-known/ard.json'
       - 'wp-content/mu-plugins/company-accessibility-contract.php'
       - 'wp-content/mu-plugins/assets/accessibility-swiper.js'
@@ -65,6 +67,8 @@ jobs:
           php -l wp-content/mu-plugins/310-mad4b-city-slider-lcp-preload.php
           php -l wp-content/mu-plugins/company-accessibility-contract.php
           php -l wp-content/mu-plugins/321-mad4b-public-catalog-first-render.php
+          php -l wp-content/mu-plugins/322-mad4b-empty-jet-css-fastpath.php
+          php ops/qa/mad4b-render-blocking/tests/empty_jet_css_fastpath_contract.php
           php ops/qa/mad4b-render-blocking/tests/catalog-discovery-contract.php
           php -l wp-content/mu-plugins/311-mad4b-explore-global-contrast.php
           php -l wp-content/mu-plugins/312-mad4b-rate-css-resilience.php
