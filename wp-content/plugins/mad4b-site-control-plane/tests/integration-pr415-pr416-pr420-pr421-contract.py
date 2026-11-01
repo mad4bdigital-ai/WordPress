@@ -101,10 +101,52 @@ reviewed_exact_blobs = {
     and bool(entry["regression_tests"])
 }
 
+# CI workflows are not Control Plane runtime paths. Keep the strict
+# Production Readiness runtime-only code_change_rules unchanged; review the
+# one exact Feature 007 audit workflow through a separate non-authorizing
+# source record instead of broadening runtime source coverage.
+workflow_source_record = json.loads(Path(
+    "governance/production-readiness/ci-workflow-source-reviews.json"
+).read_text(encoding="utf-8"))
+if (workflow_source_record.get("contract") != "mad4b.ci-workflow-source-reviews.v1"
+        or workflow_source_record.get("authorizing") is not False
+        or workflow_source_record.get("production_authorized") is not False
+        or workflow_source_record.get("owner_attestation_provided") is not False
+        or workflow_source_record.get("runtime_scope_widened") is not False
+        or workflow_source_record.get("review_policy") != "explicit_exact_git_blob_and_fixed_CI_regression_only"):
+    raise SystemExit("INTEGRATION CONTRACT FAIL: CI workflow review authority widened")
+workflow_path = ".github/workflows/feature-007-pre-staging-hybrid-audit.yml"
+test_path = "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py"
+reviews = workflow_source_record.get("reviews")
+if (not isinstance(reviews, list) or len(reviews) != 1
+        or not isinstance(reviews[0], dict)
+        or reviews[0].get("path") != workflow_path
+        or reviews[0].get("regression_tests") != [test_path]):
+    raise SystemExit("INTEGRATION CONTRACT FAIL: CI workflow source review scope invalid")
+review = reviews[0]
+if (review.get("status") != "reviewed_for_ci_only"
+        or review.get("production_authorized") is not False
+        or review.get("live_evidence_required") is not True
+        or review.get("root_policy_authorized") is not False
+        or not isinstance(review.get("owner_role"), str)
+        or len(review["owner_role"]) < 20
+        or not isinstance(review.get("review_rationale"), str)
+        or len(review["review_rationale"]) < 80):
+    raise SystemExit("INTEGRATION CONTRACT FAIL: CI workflow source review not fail-closed")
+if not Path(test_path).is_file():
+    raise SystemExit("INTEGRATION CONTRACT FAIL: reviewed workflow regression missing")
+reviewed_workflow_exact_blobs = {(workflow_path, review["source_blob_sha"])}
+if (not isinstance(review["source_blob_sha"], str)
+        or len(review["source_blob_sha"]) != 40
+        or any(c not in "0123456789abcdef" for c in review["source_blob_sha"])):
+    raise SystemExit("INTEGRATION CONTRACT FAIL: invalid reviewed workflow Git object")
+
 def reviewed_source_supersedes_snapshot(path):
     data = Path(path).read_bytes()
     raw = b"blob " + str(len(data)).encode("ascii") + b"\0" + data
     blob_sha = hashlib.sha1(raw).hexdigest()
+    if path == workflow_path:
+        return (path, blob_sha) in reviewed_workflow_exact_blobs
     # Disposable WordPress admin smoke is a test fixture, not an executable
     # production runtime/config path and cannot enter reviewed_changes.
     # Its one exact successor also requires the reviewed Direct Profile source.
@@ -112,7 +154,9 @@ def reviewed_source_supersedes_snapshot(path):
         direct_profile = "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-direct-profile.php"
         source = Path(direct_profile).read_bytes()
         source_blob = hashlib.sha1(b"blob " + str(len(source)).encode("ascii") + b"\0" + source).hexdigest()
-        return (blob_sha == "25c4b930b7f6d80fb16726e341d140eeb1cb5f82"
+        # Reviewed successor adds the three Admin Route Registry smoke pages.
+        # Pin exact current Git blob; keep historic Feature 007 snapshots immutable.
+        return (blob_sha == "0c0c2052254a5c893a79d45aa9d985b57d8361fd"
                 and (direct_profile, source_blob) in reviewed_exact_blobs
                 and b"'mad4b-direct-access-profile' => array( 'MAD4B_SCP_Direct_Profile', 'render_page'" in data)
     return (path, blob_sha) in reviewed_exact_blobs

@@ -1,0 +1,35 @@
+name: MAD4B QA32B RC118-DFSB Staging Boundary
+on:
+  pull_request:
+    paths:
+      - 'tools/qa31_rc118_source_bridge.py'
+      - 'tools/qa32b_staging_release_fence.py'
+      - 'tests/qa31_rc118_source_bridge_contract.py'
+      - 'tests/qa32b_staging_release_fence_contract.py'
+      - 'docs/qa32b-selected-head-qa31-dfsb-handoff.md'
+      - '.github/workflows/mad4b-qa32b-release-boundary.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+
+concurrency:
+  group: qa32b-release-boundary-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+jobs:
+  source-boundary-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: QA31 runtime provenance drift contracts
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p 'qa31_rc118_source_bridge_contract.py' -v
+      - name: QA32B neutral and legacy authority separation
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p 'qa32b_staging_release_fence_contract.py' -v
+          python3 -m py_compile tools/qa31_rc118_source_bridge.py tools/qa32b_staging_release_fence.py

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.util
 import json
 from pathlib import Path, PurePosixPath
 
@@ -33,10 +34,42 @@ def source_bytes(repo: Path, path: str, manifest_path: str) -> bytes:
     return source.read_bytes()
 
 
+def reviewed_archival_successor(repo: Path, path: str, recorded_sha: object,
+                                recorded_bytes: object, current: bytes) -> bool:
+    """Accept historic delivery evidence only through the original source verifier.
+
+    No matching archive hash is replaced. Temporary repos have no authority to
+    make old source evidence appear current, and modified bytes always deny.
+    """
+    if repo.resolve() != REPO.resolve():
+        return False
+    try:
+        source = repo / path
+        if source.read_bytes() != current:
+            return False
+        validator = HERE / "validate.py"
+        if validator.is_symlink() or not validator.is_file():
+            return False
+        spec = importlib.util.spec_from_file_location("feature007_delivery_validator", validator)
+        if spec is None or spec.loader is None:
+            return False
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module.matches_immutable_delivery_source(
+            repo, path, recorded_sha, recorded_bytes
+        )
+    except (OSError, ValueError, TypeError, ImportError, AttributeError):
+        return False
+
+
 def refresh(repo: Path = REPO, write: bool = False) -> dict:
     documents = sorted((repo / EXTENSION).glob("*-delivery.json"))
     if not documents:
         raise ValueError("delivery_manifests_missing")
+    if write and repo.resolve() == REPO.resolve():
+        # The tracked G1-G9/UI manifests are archival evidence; --write is
+        # intentionally limited to disposable fixture repositories.
+        raise ValueError("immutable_repository_delivery_rebind_forbidden")
     results, pending = [], []
     for manifest in documents:
         if manifest.is_symlink():
@@ -57,7 +90,11 @@ def refresh(repo: Path = REPO, write: bool = False) -> dict:
                 seen.add(path)
                 count += 1
                 digest = hashlib.sha256(raw).hexdigest()
-                if entry["sha256"] != digest or ("bytes" in entry and entry["bytes"] != len(raw)):
+                byte_match = "bytes" not in entry or entry["bytes"] == len(raw)
+                exact = entry["sha256"] == digest and byte_match
+                if not exact and not reviewed_archival_successor(
+                    repo, path, entry["sha256"], entry.get("bytes"), raw
+                ):
                     drift.append(path)
                     entry["sha256"] = digest
                     if "bytes" in entry:

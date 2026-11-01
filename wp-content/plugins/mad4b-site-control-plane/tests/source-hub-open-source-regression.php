@@ -1,0 +1,20 @@
+<?php
+require '/var/www/html/wp-load.php';
+if(wp_get_environment_type()!=='local')exit(3);
+$c='MAD4B_SCP_Source_Hub';$fail=0;
+$check=static function($name,$valid)use(&$fail){echo $name.'='.($valid?'PASS':'FAIL').PHP_EOL;if(!$valid)$fail++;};
+$atom='<?xml version="1.0" encoding="UTF-8"?><feed xmlns="http://www.w3.org/2005/Atom"><entry><id>tag:wiki.test,2026:page-1</id><title>Open travel guide edit</title><updated>2026-10-24T14:00:00Z</updated><link href="https://en.wikivoyage.org/wiki/Test"/><summary>Community travel knowledge</summary></entry></feed>';
+$wikivoyage=$c::normalize(['adapter'=>'rss_atom','content_kind'=>'travel_reference_update'],$atom);
+$check('WIKIVOYAGE_ATOM_CATEGORY',is_array($wikivoyage)&&count($wikivoyage)===1&&$wikivoyage[0]['category']==='travel_reference_update');
+$check('WIKIVOYAGE_SOURCE_URL',is_array($wikivoyage)&&$wikivoyage[0]['article_url']==='https://en.wikivoyage.org/wiki/Test');
+$releases=$c::normalize(['adapter'=>'rss_atom','content_kind'=>'open_source_release'],$atom);
+$check('OPEN_SOURCE_RELEASE_CATEGORY',is_array($releases)&&($releases[0]['category']??'')==='open_source_release');
+$invalid=$c::normalize(['adapter'=>'rss_atom','content_kind'=>'unsupported_kind'],$atom);
+$check('INVALID_CATEGORY_FAIL_CLOSED',is_wp_error($invalid));
+$json=wp_json_encode([['date'=>'2027-01-07','name'=>'Egyptian holiday','countryCode'=>'EG','nationalHoliday'=>true],['date'=>'2027-01-08','name'=>'Regional observation','countryCode'=>'EG','nationalHoliday'=>false]]);
+$holidays=$c::normalize(['adapter'=>'nager_holidays','country'=>'EG'],$json);
+$check('NAGER_HOLIDAY_NATIONAL_ONLY',is_array($holidays)&&count($holidays)===1&&($holidays[0]['category']??'')==='national_holiday');
+$check('NO_PUBLISHED_CONTENT',empty($c::status()['auto_publish']));
+$check('NO_TEST_SOURCES_REMAIN',count(array_filter(array_keys($c::sources()),static fn($id)=>str_starts_with($id,'qa-oss-')) )===0);
+$check('NO_TEST_ITEMS_REMAIN',count(array_filter($c::items(),static fn($x)=>str_starts_with($x['source_id']??'','qa-oss-')) )===0);
+exit($fail?1:0);

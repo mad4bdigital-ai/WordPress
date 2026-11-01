@@ -16,6 +16,7 @@ on:
       - '.github/workflows/mad4b-release-verdict.yml'
       - '.github/workflows/mad4b-runtime-release-set.yml'
       - '.github/workflows/feature-007-critical-kernel.yml'
+      - '.github/workflows/mad4b-context-authority.yml'
   push:
     branches:
       - master
@@ -33,6 +34,7 @@ on:
       - '.github/workflows/mad4b-release-verdict.yml'
       - '.github/workflows/mad4b-runtime-release-set.yml'
       - '.github/workflows/feature-007-critical-kernel.yml'
+      - '.github/workflows/mad4b-context-authority.yml'
   workflow_dispatch:
 
 permissions:
@@ -122,6 +124,16 @@ jobs:
           print('package release-evidence trigger symmetry: PASS')
           PY
 
+      - name: QA30 native General Settings / MCP REST lifecycle contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          php -l "$root/includes/class-mad4b-scp-native-general-settings-contract.php"
+          php -l "$root/includes/class-mad4b-scp-mcp-peer-governance.php"
+          php -l "$root/tests/qa30-native-general-settings-rest-lifecycle.php"
+          php "$root/tests/qa30-native-general-settings-rest-lifecycle.php"
+
       - name: Verify release candidate identity coherence
         shell: bash
         run: |
@@ -184,6 +196,7 @@ jobs:
               --full-scan --head "$head" --execute --enforce \
               --output dist/mad4b-prepackage-dependency-gate.json
           fi
+          python3 tools/mad4b_predictive_dependency_gate.py --verify-report "dist/mad4b-prepackage-dependency-gate.json"
           python3 - <<'PY_INVARIANT'
           import json
           from pathlib import Path

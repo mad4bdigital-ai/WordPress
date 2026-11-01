@@ -166,6 +166,20 @@ final class MAD4B_SCP_Local_Client_Admin {
             wp_die( 'Credential vault write failed; password revoked.', '', array( 'response' => 500 ) );
         }
         @chmod( $vault, 0600 );
+        // Bind the WordPress-verified application password to the delegated agent.
+        // Never leave an unbound credential live if enrollment fails.
+        $review = MAD4B_SCP_Context_Authority::review_policy();
+        $agent_id = isset( $review['ai_agent_public_id'] ) ? (string) $review['ai_agent_public_id'] : '';
+        $fingerprint = hash( 'sha256', implode( chr( 0 ), array( 'wp_app_password', MAD4B_SCP_Site_Profile::site_uuid(), (int) $user->ID, $uuid ) ) );
+        $bound = '' !== $agent_id && class_exists( 'MAD4B_SCP_Agent_Registry' )
+            ? MAD4B_SCP_Agent_Registry::bind_subject( $agent_id, 'wp_app_password', $fingerprint, 'Local client application password' )
+            : false;
+        if ( true !== $bound ) {
+            WP_Application_Passwords::delete_application_password( $user->ID, $uuid );
+            @unlink( $vault );
+            self::audit( 'binding_failed_credential_revoked', $user->ID );
+            wp_die( 'Agent binding failed; issued credential revoked.', '', array( 'response' => 409 ) );
+        }
         delete_option( self::PENDING_OPTION );
         self::audit( 'credential_issued', $user->ID );
         wp_safe_redirect( admin_url( 'tools.php?page=mad4b-local-client&provisioned=1' ) );

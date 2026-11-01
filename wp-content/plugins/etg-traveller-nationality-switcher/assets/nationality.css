@@ -1,0 +1,19 @@
+.travel-booking-nationality-switcher,.travel-booking-traveller-nationalities{display:flex;align-items:center;gap:9px;flex-wrap:wrap;font:inherit;color:inherit}
+.travel-booking-nationality-switcher label,.travel-booking-traveller-nationality-field{display:inline-flex;align-items:center;flex-wrap:wrap;gap:8px;font:inherit}
+.travel-booking-nationality-switcher select,.travel-booking-traveller-nationality-field select{min-width:160px;max-width:85vw;border-radius:7px;border:1px solid #aec0ce;padding:8px;background:transparent;color:inherit;font:inherit}
+.travel-booking-nationality-switcher button{border:0;border-radius:7px;background:#b5e947;color:#12283a;padding:9px 15px;font-weight:650;cursor:pointer}
+.travel-booking-nationality-switcher select:focus-visible,.travel-booking-traveller-nationality-field select:focus-visible,.travel-booking-nationality-switcher button:focus-visible{outline:2px solid #8eacff;outline-offset:2px}
+.travel-booking-traveller-nationalities{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));width:100%}
+.travel-booking-block-travellers{border:1px solid #cbd5df;border-radius:9px;padding:14px;margin:14px 0;min-width:0}
+.travel-booking-block-travellers legend{font-weight:700;padding:0 5px}
+.travel-booking-block-travellers__line{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:10px;align-items:center;margin-bottom:10px}
+.travel-booking-block-travellers__line>strong{grid-column:1/-1}
+.travel-booking-block-travellers__field{display:grid;gap:5px;font-size:13px}
+.travel-booking-block-travellers__field select{max-width:100%;width:100%;padding:8px;border:1px solid #97a6b8;border-radius:6px}
+
+.travel-booking-suggestion{grid-column:1/-1;margin:3px 0;font-size:.92em}
+.travel-booking-apply-suggestion{justify-self:start;border:1px solid currentColor;border-radius:7px;padding:8px 12px;background:transparent;color:inherit;cursor:pointer}
+.travel-booking-confirmation{grid-column:1/-1;display:flex;align-items:start;gap:10px;padding:10px 0;font-weight:600}
+.travel-booking-confirmation input{width:18px;height:18px;margin-top:2px}
+.travel-booking-traveller-pager{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.travel-booking-apply-suggestion:focus-visible,.travel-booking-traveller-pager button:focus-visible,.travel-booking-confirmation input:focus-visible{outline:2px solid currentColor;outline-offset:2px}

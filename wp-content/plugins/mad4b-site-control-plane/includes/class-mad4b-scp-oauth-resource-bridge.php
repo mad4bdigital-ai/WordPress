@@ -603,7 +603,9 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			if ( 0 !== strpos( $route, '/mcp/mad4b-' ) ) throw $error; // Preserve unrelated REST behavior.
 			try { self::reset_verified_bearer_context( true ); } catch ( Throwable $ignored ) {}
 			if ( class_exists( 'MAD4B_SCP_MCP_Transport_Admission', false ) ) {
-				MAD4B_SCP_MCP_Transport_Admission::observe_rejection( 'oauth_exception', 503, 'mad4b_oauth_evaluation_exception' );
+				try {
+					MAD4B_SCP_MCP_Transport_Admission::observe_rejection( 'oauth_exception', 503, 'mad4b_oauth_evaluation_exception' );
+				} catch ( Throwable $ignored ) { /* Optional diagnostic must never defeat OAuth fail-closed response. */ }
 			}
 			$response = new WP_REST_Response(
 				array( 'error' => 'mad4b_oauth_evaluation_exception',
@@ -636,7 +638,33 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 
 		$status = self::status();
 		if ( empty( $status['effective'] ) ) return self::unauthorized_response( 'mad4b_oauth_resource_bridge_not_effective', 'OAuth resource bridge is not effective for this environment.', 503, $resource );
+		// Local-only REST path: WordPress has independently authenticated this
+		// application's Basic credential. Agent binding and ability grants are
+		// still checked by the downstream MAD4B authorization contract.
+		if ( class_exists( 'MAD4B_SCP_Application_Password_Agent_Bridge' )
+			&& MAD4B_SCP_Application_Password_Agent_Bridge::verified_for_mcp_request( $request ) ) {
+			self::reset_verified_bearer_context( true );
+			return $result;
+		}
 		$authorization = method_exists( $request, 'get_header' ) ? trim( (string) $request->get_header( 'authorization' ) ) : '';
+		// WordPress REST authenticates the first-party cookie and X-WP-Nonce
+		// before rest_pre_dispatch. Preserve that verified user BEFORE the
+		// passwordless fallback clears request-local OAuth identity. An
+		// explicitly supplied Authorization header must NEVER fall back to
+		// cookie credentials if the bearer/Passwordless claim is invalid.
+		$nonce = method_exists( $request, 'get_header' ) ? (string) $request->get_header( 'x-wp-nonce' ) : '';
+		if ( '' === $authorization && '' !== $nonce
+			&& is_user_logged_in() && current_user_can( 'manage_options' )
+			&& wp_verify_nonce( $nonce, 'wp_rest' ) ) {
+			self::reset_verified_bearer_context( false );
+			return $result;
+		}
+		if ( class_exists( 'MAD4B_SCP_Passwordless_Connection' ) ) {
+			// Clear stale OAuth identity before an independently verified local
+			// Passwordless claim; invalid claims cannot restore cookie authority.
+			self::reset_verified_bearer_context( true );
+			if ( MAD4B_SCP_Passwordless_Connection::verify_mcp( $request ) ) return $result;
+		}
 		if ( '' === $authorization ) {
 			self::reset_verified_bearer_context( false );
 			if ( is_user_logged_in() && current_user_can( 'manage_options' ) ) return $result;
@@ -694,13 +722,26 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		return array_merge( $context, self::$verified_context );
 	}
 
+	/**
+	 * A 401 Bearer challenge names the scopes REQUIRED to retry the request,
+	 * not every optional scope available to that protected resource.
+	 * For the ChatGPT MCP read entrypoint, only mad4b:read is mandatory;
+	 * existing per-Ability step-up, approval and Breakglass checks are unchanged.
+	 */
+	public static function challenge_required_scopes( $resource ) {
+		$resource = untrailingslashit( trim( (string) $resource ) );
+		if ( hash_equals( self::resource_identifier(), $resource ) )
+			return array( self::READ_SCOPE );
+		return self::scopes_for_resource( $resource );
+	}
+
 	public static function challenge_header( $resource = '' ) {
 		$resource = untrailingslashit( trim( (string) $resource ) );
 		if ( '' === $resource ) $resource = self::resource_identifier();
 		$metadata = hash_equals( self::resource_identifier(), $resource ) && class_exists( 'MAD4B_SCP_MCP_Client_Compatibility' )
 			? MAD4B_SCP_MCP_Client_Compatibility::authoritative_well_known_url()
 			: self::metadata_url( $resource );
-		return 'Bearer resource_metadata="' . esc_url_raw( $metadata ) . '", scope="' . implode( ' ', self::scopes_for_resource( $resource ) ) . '"';
+		return 'Bearer resource_metadata="' . esc_url_raw( $metadata ) . '", scope="' . implode( ' ', self::challenge_required_scopes( $resource ) ) . '"';
 	}
 
 	private static function unauthorized_response( $code, $message, $status = 401, $resource = '' ) {

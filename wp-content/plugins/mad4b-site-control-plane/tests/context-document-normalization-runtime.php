@@ -74,12 +74,10 @@ if (class_exists('ZipArchive')) {
 	$r=$normalize->invoke(null,'application/vnd.openxmlformats-officedocument.wordprocessingml.document',$docx,'brand.docx');
 	nassert(!is_wp_error($r)&&!empty($r['complete'])&&false!==strpos($r['content'],'Brand Core'),'DOCX normalization must extract document text.',$r);
 
-	$xlsx = makezip(array(
-		'xl/sharedStrings.xml'=>'<sst><si><t>Audience</t></si><si><t>Egypt</t></si></sst>',
-		'xl/worksheets/sheet1.xml'=>'<worksheet><sheetData><row><c t="s"><v>0</v></c><c t="s"><v>1</v></c></row></sheetData></worksheet>'
-	));
+	// Full OOXML workbook fixture, including workbook relationships and exact cell coordinates.
+	$xlsx = file_get_contents( __DIR__ . '/fixtures/context-media-spreadsheet-sample.xlsx' );
 	$r=$normalize->invoke(null,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',$xlsx,'plan.xlsx');
-	nassert(!is_wp_error($r)&&!empty($r['complete'])&&false!==strpos($r['content'],'Audience')&&false!==strpos($r['content'],'Egypt'),'XLSX normalization must extract workbook values.',$r);
+	nassert(!is_wp_error($r)&&!empty($r['complete'])&&false!==strpos($r['content'],'Tour Revenue')&&false!==strpos($r['content'],'Cairo')&&false!==strpos($r['content'],'Market Notes'),'XLSX normalization must extract named worksheets and values.',$r);
 
 	$pptx = makezip(array(
 		'ppt/slides/slide1.xml'=>'<p:sld xmlns:p="p" xmlns:a="a"><a:t>Campaign Strategy</a:t></p:sld>',

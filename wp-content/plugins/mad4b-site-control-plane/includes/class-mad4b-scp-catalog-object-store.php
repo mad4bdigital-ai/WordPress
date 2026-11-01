@@ -3,6 +3,18 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /** Private immutable payloads with CAS publication and deferred reclamation. */
 final class MAD4B_SCP_Catalog_Object_Store {
+
+    /** Native owner content-QA scope; never a publish/mutation approval. */
+    public static function ai_original_review_evidence($item) {
+        return MAD4B_SCP_AI_Native_Owner_Review::evidence('product_catalog',$item);
+    }
+    public static function ai_original_review_submit($item,$decision,$note,$binding) {
+        return MAD4B_SCP_AI_Native_Owner_Review::submit('product_catalog',$item,$decision,$note,$binding);
+    }
+    public static function ai_original_review_verify_receipt($item,$receipt,$binding) {
+        return MAD4B_SCP_AI_Native_Owner_Review::verify('product_catalog',$item,$receipt,$binding);
+    }
+
 	const DIRECTORY = 'mad4b_scp_catalog_objects_v2';
 	const GC_CURSOR = 'mad4b_scp_catalog_gc_cursor_v2';
 	const READER_GRACE_SECONDS = 3600;

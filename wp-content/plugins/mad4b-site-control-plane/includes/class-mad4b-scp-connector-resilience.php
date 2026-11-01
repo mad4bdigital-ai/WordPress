@@ -193,7 +193,18 @@ final class MAD4B_SCP_Connector_Resilience {
 			return new WP_Error( 'mad4b_generation_fenced_read_snapshot_unavailable', 'Runtime generation snapshot service is unavailable.' );
 		}
 
-		$before = MAD4B_SCP_Read_Consistency::snapshot_header( array() );
+		try {
+			$before = MAD4B_SCP_Read_Consistency::snapshot_header( array() );
+		} catch ( Throwable $error ) {
+			return new WP_Error( 'mad4b_generation_fenced_read_snapshot_exception',
+				'Runtime snapshot failed during the generation fence.', array(
+					'phase' => 'before_read',
+					'error_class' => get_class( $error ),
+					'raw_error_message_exposed' => false,
+					'read_only' => true,
+					'mutation_performed' => false,
+				) );
+		}
 		if ( ! is_array( $before ) || empty( $before['runtime_generation'] ) ) {
 			return new WP_Error( 'mad4b_generation_fenced_read_snapshot_incomplete', 'Runtime generation snapshot is incomplete before the read.' );
 		}
@@ -220,7 +231,18 @@ final class MAD4B_SCP_Connector_Resilience {
 				)
 			);
 		}
-		$after = MAD4B_SCP_Read_Consistency::snapshot_header( array() );
+		try {
+			$after = MAD4B_SCP_Read_Consistency::snapshot_header( array() );
+		} catch ( Throwable $error ) {
+			return new WP_Error( 'mad4b_generation_fenced_read_snapshot_exception',
+				'Runtime snapshot failed during the generation fence.', array(
+					'phase' => 'after_read',
+					'error_class' => get_class( $error ),
+					'raw_error_message_exposed' => false,
+					'read_only' => true,
+					'mutation_performed' => false,
+				) );
+		}
 		if ( ! is_array( $after ) || empty( $after['runtime_generation'] ) ) {
 			return new WP_Error( 'mad4b_generation_fenced_read_snapshot_incomplete', 'Runtime generation snapshot is incomplete after the read.' );
 		}

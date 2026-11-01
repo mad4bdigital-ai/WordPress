@@ -270,7 +270,9 @@ final class MAD4B_SCP_Abilities {
 				),
 			),
 		);
+		// No-argument reads use an object schema; explicit schemas and write gates are retained.
 		if ( is_array( $input ) ) $args['input_schema'] = $input;
+		elseif ( $readonly && null === $input ) $args['input_schema'] = array( 'type' => 'object', 'properties' => array(), 'additionalProperties' => false, 'default' => array() );
 		wp_register_ability( $name, $args );
 	}
 
@@ -299,6 +301,11 @@ final class MAD4B_SCP_Abilities {
 		if ( 'read_post' === $permission ) return array( $this, 'can_read_post' );
 		if ( 'edit_post' === $permission ) return array( $this, 'can_edit_post' );
 		return array( 'MAD4B_SCP_Policy', 'can_content' );
+	}
+
+	private static function input_schema_accepts_object( $schema ) {
+		$type = is_array( $schema ) ? ( $schema['type'] ?? null ) : null;
+		return 'object' === $type || ( is_array( $type ) && in_array( 'object', $type, true ) );
 	}
 
 	private function schema( array $properties, array $required = array() ) {
@@ -481,8 +488,7 @@ final class MAD4B_SCP_Abilities {
 		// An omitted dispatcher envelope is the empty object for an object
 		// target, not JSON null. Leave explicit null/invalid values and required
 		// target fields to the original Ability validator; never supply them.
-		if ( ! array_key_exists( 'input', $input ) && is_array( $target_input_schema )
-			&& 'object' === ( $target_input_schema['type'] ?? '' ) ) $params = array();
+		if ( ! array_key_exists( 'input', $input ) && self::input_schema_accepts_object( $target_input_schema ) ) $params = array();
 		if ( ( null === $target_input_schema || empty( $target_input_schema ) ) && is_array( $params ) && empty( $params ) ) $params = null;
 
 		$execute_target = static function () use ( $ability, $params ) {

@@ -32,6 +32,10 @@ final class MAD4B_SCP_OAuth_JWT_Header_Guard {
 		$resource = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::resource_for_route( $route ) : '';
 		$authorization = method_exists( $request, 'get_header' ) ? trim( (string) $request->get_header( 'authorization' ) ) : '';
 		if ( '' === $authorization ) return $result;
+		// A separately verified, local-only passwordless MCP token is not a JWT.
+		// Its Agent Registry binding and exact grant are checked by this verifier.
+		if ( '/mcp/mad4b-chatgpt' === $route && class_exists( 'MAD4B_SCP_Passwordless_Connection' )
+			&& MAD4B_SCP_Passwordless_Connection::verify_mcp( $request ) ) return $result;
 
 		$header = self::header_from_authorization( $authorization );
 		if ( is_wp_error( $header ) ) return self::denied( $header->get_error_code(), $header->get_error_message(), $resource );

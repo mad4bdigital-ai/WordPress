@@ -76,6 +76,46 @@ class FingerprintTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "duplicate"):
             module.refresh(self.repo)
 
+    def test_real_archival_manifests_accept_only_exact_reviewed_successors(self):
+        report = module.refresh()
+        self.assertEqual(report["drift_count"], 0)
+        self.assertEqual(report["manifest_count"], 10)
+        self.assertEqual(report["binding_count"], 227)
+        self.assertFalse(report["runtime_certification_inferred"])
+        self.assertFalse(report["authorizing"])
+
+    def test_archival_source_rejects_modified_sha_length_and_contents(self):
+        repo = module.REPO
+        item = json.loads((module.HERE / "g8-delivery.json").read_text(encoding="utf-8"))
+        rows = [x for key in module.GROUPS for x in item.get(key, [])
+                if isinstance(x, dict) and "sha256" in x]
+        row = next(x for x in rows
+                   if x["path"].endswith("/competitive-experience/validate.py"))
+        path = row["path"]
+        content = (repo / path).read_bytes()
+        self.assertTrue(module.reviewed_archival_successor(
+            repo, path, row["sha256"], row["bytes"], content))
+        self.assertFalse(module.reviewed_archival_successor(
+            repo, path, "0" * 64, row["bytes"], content))
+        self.assertFalse(module.reviewed_archival_successor(
+            repo, path, row["sha256"], row["bytes"] + 1, content))
+        self.assertFalse(module.reviewed_archival_successor(
+            repo, path, row["sha256"], row["bytes"], content + b"tampered"))
+        self.assertFalse(module.reviewed_archival_successor(
+            self.repo, path, row["sha256"], row["bytes"], content))
+        self.assertFalse(module.reviewed_archival_successor(
+            repo, path + ".unreviewed", row["sha256"], row["bytes"], content))
+
+    def test_real_archival_manifests_cannot_be_resigned(self):
+        with self.assertRaisesRegex(ValueError, "immutable_repository_delivery_rebind_forbidden"):
+            module.refresh(write=True)
+
+    def test_unreviewed_manifests_in_disposable_repo_remain_detectable(self):
+        self.doc["evidence_integrity"][0]["sha256"] = "0" * 64
+        self.save()
+        self.assertEqual(module.refresh(self.repo)["drift_count"], 1)
+        self.assertEqual(self.manifest.read_text(encoding="utf-8"), json.dumps(self.doc) + "\n")
+
     def test_later_invalid_manifest_cannot_partially_write(self):
         invalid = self.extension / "zz-delivery.json"
         invalid.write_text(json.dumps({"code_paths": []}), encoding="utf-8")

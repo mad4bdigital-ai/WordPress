@@ -1,0 +1,41 @@
+{
+  "contract": "feature007.historical-delivery-source-reviews.v1",
+  "authorizing": false,
+  "production_authorized": false,
+  "live_evidence_required": true,
+  "description": "Exact repository-source evidence only; never an owner or site authorization.",
+  "reviewed_sources": [
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/validate.py",
+      "source_blob_sha": "d5d40002fdf8c0cc24afd16258cefae99e062c0a",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/historical-delivery-successor-contract.py"
+      ],
+      "review_rationale": "G1-G9 and UI immutable source fingerprints can only match a historical Git ancestor and CI-reviewed, exact current Git source."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/historical_source_successor.py",
+      "source_blob_sha": "2a8c51aee3f5338882799cc29ad463c149d340e3",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/historical-delivery-successor-contract.py"
+      ],
+      "review_rationale": "Reviewed exact current historical delivery verifier for two narrowly scoped QA31 successors (G2 Write catalog and G8 Pre-Staging CI). Archives and historical hashes remain immutable. Original verifier blob 046bb44a3856617fd1a849a0b98ae78329af2310 remains traceable in Git history; current SHA bound to negative contract tests and CI-only source, not live or owner authority."
+    }
+  ]
+}

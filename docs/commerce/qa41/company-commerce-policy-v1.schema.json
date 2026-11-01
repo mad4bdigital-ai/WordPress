@@ -1,0 +1,228 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:mad4b:commerce:company-policy:v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "site_uuid",
+    "profile_digest",
+    "profile_revision",
+    "environment",
+    "revision",
+    "status",
+    "rules"
+  ],
+  "properties": {
+    "contract": {
+      "const": "commerce.company-policy.v1"
+    },
+    "site_uuid": {
+      "type": "string",
+      "minLength": 1
+    },
+    "profile_digest": {
+      "type": "string",
+      "minLength": 1
+    },
+    "profile_revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "environment": {
+      "type": "string",
+      "minLength": 1
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "active",
+        "retired"
+      ]
+    },
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "scope",
+          "selectors",
+          "settings"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{2,63}$"
+          },
+          "scope": {
+            "enum": [
+              "company",
+              "service_type",
+              "product",
+              "rate_context_term",
+              "rate",
+              "market",
+              "channel",
+              "override"
+            ]
+          },
+          "selectors": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "service_type": {
+                "type": "string"
+              },
+              "product_id": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "rate_context_term_id": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "rate_id": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "market": {
+                "type": "string"
+              },
+              "channel": {
+                "type": "string"
+              }
+            }
+          },
+          "settings": {
+            "type": "object",
+            "minProperties": 1,
+            "maxProperties": 25,
+            "additionalProperties": false,
+            "properties": {
+              "pricing_source": {
+                "type": "string",
+                "enum": [
+                  "rate_engine",
+                  "supplier_contract",
+                  "manual_quote"
+                ]
+              },
+              "supplier_cost_source": {
+                "type": "string",
+                "enum": [
+                  "provider",
+                  "manual_review"
+                ]
+              },
+              "margin_mode": {
+                "type": "string",
+                "enum": [
+                  "percent",
+                  "fixed",
+                  "manual_review"
+                ]
+              },
+              "tax_mode": {
+                "type": "string",
+                "enum": [
+                  "woocommerce",
+                  "external",
+                  "manual_review"
+                ]
+              },
+              "availability_mode": {
+                "type": "string",
+                "enum": [
+                  "live_provider",
+                  "allotment",
+                  "manual_confirmation"
+                ]
+              },
+              "manager_approval": {
+                "type": "string",
+                "enum": [
+                  "required",
+                  "conditional",
+                  "not_required"
+                ]
+              },
+              "traveler_acceptance": {
+                "type": "string",
+                "enum": [
+                  "required",
+                  "channel_verified"
+                ]
+              },
+              "order_timing": {
+                "type": "string",
+                "enum": [
+                  "after_acceptance",
+                  "after_payment",
+                  "manual"
+                ]
+              },
+              "supplier_booking_timing": {
+                "type": "string",
+                "enum": [
+                  "after_order",
+                  "after_payment",
+                  "manual"
+                ]
+              },
+              "deposit_mode": {
+                "type": "string",
+                "enum": [
+                  "full",
+                  "percent",
+                  "manual_review"
+                ]
+              },
+              "currency_source": {
+                "type": "string",
+                "enum": [
+                  "woocommerce",
+                  "rate",
+                  "manual_review"
+                ]
+              },
+              "rate_sale_mode": {
+                "type": "string",
+                "enum": [
+                  "parent_with_rate",
+                  "independent_rate",
+                  "both",
+                  "disabled"
+                ]
+              },
+              "margin_value": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000
+              },
+              "deposit_percent": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              }
+            }
+          }
+        }
+      }
+    },
+    "intents": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object"
+      }
+    }
+  }
+}

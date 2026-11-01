@@ -24,6 +24,10 @@ try {
  $ok = $send( $headers + array( 'X-WP-Nonce' => $nonce ) );
  $data = json_decode( wp_remote_retrieve_body( $ok ), true );
  if ( 200 !== wp_remote_retrieve_response_code( $ok ) || ! in_array( 'authenticated_wordpress_session', $data['rest_auth_modes'] ?? array(), true ) ) throw new RuntimeException( 'Advertised cookie+nonce auth did not reach gateway.' );
+ // A forged or invalid nonce must not be treated as the verified native
+ // cookie path even when the same WordPress user cookie accompanies it.
+ $bad_nonce = $send( $headers + array( 'X-WP-Nonce' => 'invalid-not-a-wordpress-rest-nonce' ) );
+ if ( wp_remote_retrieve_response_code( $bad_nonce ) < 400 ) throw new RuntimeException( 'Invalid REST nonce was accepted as the cookie authority.' );
  $without_nonce = $send( $headers );
  if ( wp_remote_retrieve_response_code( $without_nonce ) < 400 ) throw new RuntimeException( 'Cookie without REST nonce retained read authority.' );
  $bad_bearer = $send( $headers + array( 'X-WP-Nonce' => $nonce, 'Authorization' => 'Bearer invalid' ) );

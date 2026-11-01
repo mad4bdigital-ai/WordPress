@@ -63,6 +63,14 @@ REVIEWABLE_TEST_FIXTURES = frozenset({
     "wp-content/plugins/mad4b-site-control-plane/tests/g9-delivery-contract.py",
 })
 FEATURE_007_REVIEWED_BASE = "12199d0e8588dcc89d9e35fd8bac98ad6a1cc18f"
+# The G6 admin-page inventory snapshot was independently bound to the
+# integration's original master. G9 continues using the older Feature 007
+# snapshot, so select this alternate ancestor only when the passed evidence
+# is exactly the SHA/size of the original master admin fixture.
+G6_ADMIN_SMOKE_REVIEWED_BASE = "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504"
+G6_ADMIN_SMOKE_HISTORIC_SHA256 = "dac745b1e9617b76a755f690d918ab46be6924b495058cc62bcc542bde4aeab2"
+G6_ADMIN_SMOKE_HISTORIC_BYTES = 18047
+
 
 
 def is_exact_historical_test_successor(root, path, contents, historic_sha, historic_bytes=None):
@@ -72,8 +80,13 @@ def is_exact_historical_test_successor(root, path, contents, historic_sha, histo
     if not isinstance(historic_sha, str) or not re.fullmatch(r"[a-f0-9]{64}", historic_sha):
         return False
     try:
+        baseline = FEATURE_007_REVIEWED_BASE
+        if (path == "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php"
+            and historic_sha == G6_ADMIN_SMOKE_HISTORIC_SHA256
+            and historic_bytes == G6_ADMIN_SMOKE_HISTORIC_BYTES):
+            baseline = G6_ADMIN_SMOKE_REVIEWED_BASE
         old = subprocess.check_output(
-            ["git", "show", f"{FEATURE_007_REVIEWED_BASE}:{path}"],
+            ["git", "show", f"{baseline}:{path}"],
             cwd=root, stderr=subprocess.DEVNULL, timeout=8
         )
         current_commit = subprocess.check_output(
@@ -105,8 +118,98 @@ def is_exact_historical_test_successor(root, path, contents, historic_sha, histo
 
 
 def is_exact_ci_history_checkout_successor(root, path, contents, historic_sha, historic_bytes):
-    """Allow only two full-history fetch-depth lines, without re-signing G9."""
+    """Closed-path CI successors; preserve all historical SHA/byte records."""
     root = Path(root)
+    audit = ".github/workflows/feature-007-pre-staging-hybrid-audit.yml"
+    if path == audit:
+        # A reviewed workflow is not Control Plane runtime code.
+        # Do not expand the runtime review scope or re-sign immutable G8.
+        if (not isinstance(contents, bytes)
+                or root.resolve() != Path(__file__).resolve().parents[4]):
+            return False
+        try:
+            original = subprocess.check_output(
+                ["git", "show", f"{FEATURE_007_REVIEWED_BASE}:{audit}"],
+                cwd=root, stderr=subprocess.DEVNULL, timeout=8
+            )
+            current_blob = subprocess.check_output(
+                ["git", "rev-parse", "HEAD:" + audit],
+                cwd=root, stderr=subprocess.DEVNULL, timeout=8
+            ).decode().strip()
+            current_path = root / audit
+            if (current_path.is_symlink() or current_path.read_bytes() != contents
+                    or any(parent.is_symlink() for parent in current_path.parents
+                           if parent != root and parent.is_relative_to(root))):
+                return False
+            review_doc = json.loads((root /
+                "governance/production-readiness/ci-workflow-source-reviews.json"
+            ).read_text(encoding="utf-8"))
+            reviews = review_doc["reviews"]
+            if (not isinstance(reviews, list) or len(reviews) != 1
+                    or not isinstance(reviews[0], dict)):
+                return False
+            review = reviews[0]
+            regression = "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py"
+            regression_file = root / regression
+            # A separate exact Git review anchors the verifier itself.
+            inventory = json.loads((root /
+                "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/historical-delivery-source-reviews.json"
+            ).read_text(encoding="utf-8"))
+            verifier_path = "wp-content/plugins/mad4b-site-control-plane/tests/historical_source_successor.py"
+            verifier_bytes = (root / verifier_path).read_bytes()
+            verifier_blob = hashlib.sha1(
+                b"blob " + str(len(verifier_bytes)).encode("ascii") + b"\0" + verifier_bytes
+            ).hexdigest()
+            verifier_git = subprocess.check_output(
+                ["git", "rev-parse", "HEAD:" + verifier_path],
+                cwd=root, stderr=subprocess.DEVNULL, timeout=8
+            ).decode().strip()
+            verifier_rows = inventory.get("reviewed_sources", [])
+            reviewed_verifier = any(
+                isinstance(item, dict)
+                and item.get("path") == verifier_path
+                and item.get("source_blob_sha") == verifier_blob
+                and item.get("status") == "reviewed_for_ci_only"
+                and item.get("production_authorized") is False
+                and item.get("live_evidence_required") is True
+                and item.get("regression_tests") == [
+                    "wp-content/plugins/mad4b-site-control-plane/tests/historical-delivery-successor-contract.py"
+                ]
+                for item in verifier_rows
+            )
+        except (OSError, KeyError, TypeError, ValueError, subprocess.CalledProcessError,
+                subprocess.TimeoutExpired, json.JSONDecodeError):
+            return False
+        current_sha = hashlib.sha1(
+            b"blob " + str(len(contents)).encode("ascii") + b"\0" + contents
+        ).hexdigest()
+        return (
+            isinstance(historic_bytes, int) and type(historic_bytes) is int
+            and len(original) == historic_bytes == 60964
+            and hashlib.sha256(original).hexdigest() == historic_sha
+            and historic_sha == "d78b88d6878f22513689201b80b5ce870005a2039df521ec30f0b649d6be7aa4"
+            and contents != original
+            and current_blob == current_sha
+            and review_doc.get("contract") == "mad4b.ci-workflow-source-reviews.v1"
+            and review_doc.get("authorizing") is False
+            and review_doc.get("production_authorized") is False
+            and review_doc.get("owner_attestation_provided") is False
+            and review_doc.get("runtime_scope_widened") is False
+            and review_doc.get("review_policy") == "explicit_exact_git_blob_and_fixed_CI_regression_only"
+            and review.get("path") == audit
+            and review.get("source_blob_sha") == current_sha
+            and review.get("regression_tests") == [regression]
+            and review.get("status") == "reviewed_for_ci_only"
+            and review.get("production_authorized") is False
+            and review.get("root_policy_authorized") is False
+            and review.get("live_evidence_required") is True
+            and regression_file.is_file() and not regression_file.is_symlink()
+            and inventory.get("contract") == "feature007.historical-delivery-source-reviews.v1"
+            and inventory.get("authorizing") is False
+            and inventory.get("production_authorized") is False
+            and inventory.get("live_evidence_required") is True
+            and verifier_blob == verifier_git and reviewed_verifier
+        )
     if path != ".github/workflows/feature-007-spec-ci.yml":
         return False
     if not isinstance(contents, bytes):
@@ -143,3 +246,110 @@ def is_exact_ci_history_checkout_successor(root, path, contents, historic_sha, h
     expected = only_allowed.encode("utf-8")
     blob = hashlib.sha1(b"blob " + str(len(contents)).encode("ascii") + b"\0" + contents).hexdigest()
     return expected == contents and git_blob == blob
+
+
+# Versioned, closed-scope bridge for immutable G6/G8/G9 delivery evidence.
+# These are the Git commits whose *actual bytes* must match each archived
+# delivery record. Neither a current source review nor a CI pass can replace
+# the archived SHA-256 and byte count.
+DELIVERY_REVIEWED_ANCESTORS = {
+    "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php":
+        "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
+    "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/validate.py":
+        "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g5-seo-provider-families.php":
+        "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php":
+        "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
+}
+
+
+def is_exact_historical_delivery_successor(root, path, contents, historic_sha, historic_bytes):
+    """Allow only an exact CI-reviewed successor to an exact archived G6/G8/G9 file.
+
+    This cannot grant a Site Owner receipt, widen a WordPress authority or
+    certify live acceptance. The archived manifests are never modified.
+    """
+    root = Path(root)
+    ancestor = DELIVERY_REVIEWED_ANCESTORS.get(path) if isinstance(path, str) else None
+    if (not ancestor or not isinstance(contents, bytes)
+            or not isinstance(historic_sha, str) or not re.fullmatch(r"[a-f0-9]{64}", historic_sha)
+            or (historic_bytes is not None and (type(historic_bytes) is not int or historic_bytes < 20))):
+        return False
+    try:
+        source = root / path
+        if (not source.is_file() or source.is_symlink()
+                or not source.resolve().is_relative_to(root.resolve())
+                or source.read_bytes() != contents
+                or any(parent.is_symlink() for parent in source.parents
+                       if parent != root and parent.is_relative_to(root))):
+            return False
+        archived = subprocess.check_output(
+            ["git", "show", f"{ancestor}:{path}"], cwd=root,
+            stderr=subprocess.DEVNULL, timeout=8,
+        )
+        current_git_blob = subprocess.check_output(
+            ["git", "rev-parse", f"HEAD:{path}"], cwd=root,
+            stderr=subprocess.DEVNULL, timeout=8,
+        ).decode().strip()
+        reviews_path = (
+            "specs/007-content-intelligence-workflow-platform/extensions/"
+            "competitive-experience/historical-delivery-source-reviews.json"
+            if path.endswith("/competitive-experience/validate.py")
+            else "governance/production-readiness/capability-coverage.json"
+        )
+        registry = json.loads((root / reviews_path).read_text(encoding="utf-8"))
+        if reviews_path.endswith("historical-delivery-source-reviews.json"):
+            if (registry.get("contract") != "feature007.historical-delivery-source-reviews.v1"
+                    or registry.get("authorizing") is not False
+                    or registry.get("production_authorized") is not False
+                    or registry.get("live_evidence_required") is not True):
+                return False
+            review_rows = registry.get("reviewed_sources", [])
+            # Fail closed if the versioned verifier itself is modified without
+            # an exact source/test review bound to the current Git checkout.
+            verifier = "wp-content/plugins/mad4b-site-control-plane/tests/historical_source_successor.py"
+            rec = next((e for e in review_rows if e.get("path") == verifier), None)
+            actual = (root / verifier).read_bytes()
+            actual_git = subprocess.check_output(
+                ["git", "rev-parse", "HEAD:" + verifier],
+                cwd=root, stderr=subprocess.DEVNULL, timeout=8,
+            ).decode().strip()
+            actual_blob = hashlib.sha1(
+                b"blob " + str(len(actual)).encode("ascii") + b"\0" + actual
+            ).hexdigest()
+            if (not rec or not (root / verifier).is_file()
+                    or (root / verifier).is_symlink()
+                    or actual_blob != actual_git
+                    or rec.get("source_blob_sha") != actual_blob):
+                return False
+        else:
+            review_rows = registry.get("reviewed_changes", [])
+    except (OSError, ValueError, TypeError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        return False
+    if ((historic_bytes is not None and len(archived) != historic_bytes)
+            or hashlib.sha256(archived).hexdigest() != historic_sha
+            or contents == archived):
+        return False
+    blob = hashlib.sha1(
+        b"blob " + str(len(contents)).encode("ascii") + b"\0" + contents
+    ).hexdigest()
+    if current_git_blob != blob:
+        return False
+    tests_prefix = "wp-content/plugins/mad4b-site-control-plane/tests/"
+    for entry in review_rows:
+        if (entry.get("path") != path or entry.get("source_blob_sha") != blob
+                or entry.get("status") != "reviewed_for_ci_only"
+                or entry.get("production_authorized") is not False
+                or entry.get("live_evidence_required") is not True):
+            continue
+        controls = entry.get("control_ids")
+        tests = entry.get("regression_tests")
+        if (not isinstance(controls, list) or len(controls) < 2
+                or not isinstance(tests, list) or not tests
+                or not all(isinstance(t, str) and t.startswith(tests_prefix)
+                           and (root / t).is_file() and not (root / t).is_symlink()
+                           for t in tests)):
+            continue
+        return True
+    return False

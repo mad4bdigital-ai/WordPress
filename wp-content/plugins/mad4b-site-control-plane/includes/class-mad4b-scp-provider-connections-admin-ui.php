@@ -30,8 +30,10 @@ final class MAD4B_SCP_Provider_Connections_Admin_UI {
         $peer_link = MAD4B_SCP_Admin_Workspace::link( 'mad4b-adapter-coverage', array( 'tab' => 'native-peers' ) );
         if ( '' !== $peer_link ) echo '<p><a href="' . esc_url( $peer_link ) . '">' . esc_html__( 'Inspect Native MCP peer health (no network probe)', 'mad4b-site-control-plane' ) . '</a></p>';
         if ( is_wp_error( $result ) || empty( $result['providers'] ) ) {
-            echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'No verified provider adapters are available to inspect.', 'mad4b-site-control-plane' ) . '</p></div></div>';
-            return;
+            echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'No verified provider adapters are available to inspect.', 'mad4b-site-control-plane' ) . '</p></div>';
+            if ( class_exists('MAD4B_SCP_Provider_Setup_Coverage') )
+                MAD4B_SCP_Provider_Setup_Coverage::render();
+            echo '</div>';return;
         }
         echo '<table class="widefat striped"><thead><tr><th>' . esc_html__( 'Provider', 'mad4b-site-control-plane' ) . '</th><th>' . esc_html__( 'Live state', 'mad4b-site-control-plane' ) . '</th><th>' . esc_html__( 'Recommended action', 'mad4b-site-control-plane' ) . '</th><th>' . esc_html__( 'Owner handoff', 'mad4b-site-control-plane' ) . '</th></tr></thead><tbody>';
         foreach ( $result['providers'] as $row ) {
@@ -49,7 +51,10 @@ final class MAD4B_SCP_Provider_Connections_Admin_UI {
             echo '</td></tr>';
         }
         echo '</tbody></table>';
-        echo '<p class="description">' . esc_html__( 'Adding a new provider requires an adapter with a read-only status contract, reviewed owner handoff and separately certified refresh executor. No wildcard provider mutation authority is created.', 'mad4b-site-control-plane' ) . '</p></div>';
+        echo '<p class="description">' . esc_html__( 'Adding a new provider requires an adapter with a read-only status contract, reviewed owner handoff and separately certified refresh executor. No wildcard provider mutation authority is created.', 'mad4b-site-control-plane' ) . '</p>';
+        if ( class_exists('MAD4B_SCP_Provider_Setup_Coverage') )
+            MAD4B_SCP_Provider_Setup_Coverage::render();
+        echo '</div>';
     }
 }
 MAD4B_SCP_Provider_Connections_Admin_UI::boot();

@@ -117,6 +117,7 @@ $check( true === $wrong_site[0]['cross_scope_details_redacted'] && ! isset( $wro
 $source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-operator-doctor.php' );
 $main = file_get_contents( dirname( __DIR__ ) . '/mad4b-site-control-plane.php' );
 $servers = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-servers.php' );
+$core_catalog = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-server-core-catalog.php' );
 
 foreach ( array(
 	"'mad4b/operator-doctor'",
@@ -138,8 +139,10 @@ foreach ( array(
 	$check( false !== strpos( $source, $marker ), 'Doctor contract marker missing: ' . $marker );
 }
 $check( false !== strpos( $main, 'class-mad4b-scp-operator-doctor.php' ), 'Doctor runtime is not loaded' );
+$check( false !== strpos( $servers, "'mad4b-read' === \$server_id && class_exists( 'MAD4B_SCP_Operator_Doctor' )" ), 'Doctor tools must be gated to the read plane' );
+$check( false !== strpos( $servers, "wp_has_ability( \$doctor_ability )" ), 'Doctor tools must be registered before mounting' );
 foreach ( array( 'mad4b/operator-doctor', 'mad4b/operator-dead-letter-status' ) as $ability ) {
-	$check( false !== strpos( $servers, "'" . $ability . "'" ), 'Doctor ability not mounted on read plane: ' . $ability );
+	$check( false !== strpos( $core_catalog, "'" . $ability . "'" ), 'Doctor ability not declared in read-plane core catalog: ' . $ability );
 }
 foreach ( array(
 	'$wpdb->insert',
@@ -157,4 +160,4 @@ foreach ( array(
 	$check( false === strpos( $source, $forbidden ), 'Doctor contains forbidden mutation primitive: ' . $forbidden );
 }
 
-echo "mad4b.operator-doctor.v1: PASS\n";
+echo "PASS: mad4b.operator-doctor.v1\n";

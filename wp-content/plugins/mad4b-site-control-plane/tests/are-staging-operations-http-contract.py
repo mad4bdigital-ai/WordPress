@@ -6,6 +6,7 @@ MCP methods only. A successful HTTP 2xx on any unauthenticated MCP mutation fail
 It never accesses Production, stores tokens, installs plugins, or changes WordPress.
 """
 import json
+import socket
 import sys
 import time
 import urllib.error
@@ -22,6 +23,20 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
+# GitHub-hosted runners can have IPv6 DNS visibility without usable IPv6
+# egress, yielding ENETUNREACH before any HTTP response. Prefer the same
+# origin's IPv4 addresses but retain IPv6 candidates as a fallback. This
+# changes only address ordering: HTTPS hostname/TLS verification, redirect
+# refusal, authentication and expected HTTP statuses are unchanged.
+_SYSTEM_GETADDRINFO = socket.getaddrinfo
+
+
+def reachable_address_order(host, port, family=0, type=0, proto=0, flags=0):
+    addresses = _SYSTEM_GETADDRINFO(host, port, family, type, proto, flags)
+    return sorted(addresses, key=lambda address: address[0] != socket.AF_INET)
+
+
+socket.getaddrinfo = reachable_address_order
 OPENER = urllib.request.build_opener(NoRedirect)
 
 

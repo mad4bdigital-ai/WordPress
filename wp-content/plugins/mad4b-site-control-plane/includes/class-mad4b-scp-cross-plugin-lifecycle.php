@@ -75,6 +75,12 @@ final class MAD4B_SCP_Cross_Plugin_Lifecycle {
                 'source_registry_certification_review',
             ),
             'next_phase' => empty( $blockers ) ? 'staging_apply_review' : 'independent_certification_review',
+            'ai_review_lifecycle' => class_exists('MAD4B_SCP_AI_Review_Lifecycle',false)
+                ? MAD4B_SCP_AI_Review_Lifecycle::decide('cross_plugin',
+                    array('content_hash'=>(string)($row['artifact_sha256']??''),
+                          'reviewed_content_hash'=>empty($blockers)?(string)($row['artifact_sha256']??''):'',
+                          'review_status'=>empty($blockers)?'approved':'needs_changes'),
+                    array('review_mode'=>'ai_only')) : null,
             'authorizing' => false, 'mutation_performed' => false,
         );
     }

@@ -43,7 +43,7 @@ certify a working external MCP session. Write remains unverified/unready.
 ## Baseline
 
 - target branch: `master`
-- reviewed repository parent: `17a447839bd091f95d964153814bc4382677a8c8` (scoped CI-source reconciliation for PR #490 against the immutable master parent; not release attestation, runtime acceptance, or historical feature recertification; prior integration review: `35a7141b10ff0270959c9231123f99e238788e5b`)
+- reviewed repository parent: `3785892316d3c395ad144500fdecc6836ed2c176` (reviewed source-only technical impact for QA30/QA31 W1 PR #587; older reviewed source parent `e7f30d944c354c3a4f7346330ad401d995e768c5` remains preserved in `baseline-review-20261026.md`; new evidence in `baseline-review-20261029.md`. Neither this metadata synchronization nor CI-only source-review hashes authorize merges, package publication, provider activation, Staging writes, or Production deployment.)
 - Control Plane line: `0.4.0-rc.59`
 - MCP Adapter line: `0.6.1`
 - Production authorization: false

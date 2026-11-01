@@ -66,6 +66,7 @@ on:
       - '.github/workflows/mad4b-live-acceptance-evidence.yml'
       - '.github/workflows/mad4b-release-verdict.yml'
       - '.github/workflows/feature-007-critical-kernel.yml'
+      - '.github/workflows/mad4b-context-authority.yml'
   push:
     branches:
       - master
@@ -133,6 +134,7 @@ on:
       - '.github/workflows/mad4b-live-acceptance-evidence.yml'
       - '.github/workflows/mad4b-release-verdict.yml'
       - '.github/workflows/feature-007-critical-kernel.yml'
+      - '.github/workflows/mad4b-context-authority.yml'
   workflow_dispatch:
 
 permissions:

@@ -1,0 +1,190 @@
+<?php
+declare(strict_types=1);
+namespace Commerce\Composition;
+/** QA49. Identity-only, never a price/payment/booking authorization. */
+final class NativeOrderItemIdentityResolver
+{
+    public const CONTRACT='commerce.native-order-item-identity.v1';
+    private const M_ID='_commerce_native_source_id';
+    private const M_TYPE='_commerce_native_source_type';
+    private const M_PARENT='_commerce_native_parent_id';
+    private const M_DIGEST='_commerce_native_relation_sha256';
+    private const M_UNIT='_commerce_native_unit_id';
+    private const M_UNIT_REL='_commerce_native_unit_relation_id';
+    private static function err(string $code):\WC_Data_Exception {
+        return new \WC_Data_Exception($code,'Unverified native CPT Order Item identity');
+    }
+    public static function contracts():array {
+        $base=[
+            'tours-and-activities'=>[null,null],
+            'properties'=>[null,null],
+            'transportations'=>[null,null],
+            'cruises'=>[null,null],
+            'tour-rates'=>['related_tour_id','tours-and-activities'],
+            'property-rates'=>['prop_related_property_id','properties'],
+            'transport-rates'=>['source_post_id','transportations'],
+        ];
+        $out=apply_filters('commerce_composition_native_order_item_contracts',$base);
+        return is_array($out)?$out:$base;
+    }
+    private static function enabled(string $type):bool {
+        $opts=get_option('cptwooint_settings',[]);
+        return function_exists('cptwooint')
+            &&class_exists(\TinySolutions\cptwooint\Helpers\Fns::class)
+            &&is_array($opts)&&is_array($opts['selected_post_types']??null)
+            &&array_key_exists($type,$opts['selected_post_types'])
+            &&\TinySolutions\cptwooint\Helpers\Fns::is_supported($type);
+    }
+    public static function source(int $id):array {
+        if($id<1)throw self::err('commerce_identity_source_invalid');
+        $post=get_post($id);
+        if(!$post || $post->post_status!=='publish')
+            throw self::err('commerce_identity_source_not_published');
+        $type=$post->post_type;
+        if($type==='product')return ['id'=>$id,'type'=>$type,'parent'=>0,'native'=>true];
+        if(!self::enabled($type))throw self::err('commerce_identity_type_not_enabled');
+        $contract=self::contracts()[$type]??null;
+        if(!is_array($contract)||count($contract)!==2||!array_is_list($contract))
+            throw self::err('commerce_identity_type_contract_missing');
+        [$field,$parentType]=$contract;
+        $parent=0;
+        if($field!==null){
+            if(!is_string($field)||!preg_match('/^[a-z][a-z0-9_]{2,63}$/D',$field)
+                ||!is_string($parentType)||!preg_match('/^[a-z][a-z0-9_-]{2,63}$/D',$parentType))
+                throw self::err('commerce_identity_contract_invalid');
+            $raw=get_post_meta($id,$field,true);
+            if(!is_scalar($raw)||!ctype_digit((string)$raw)||(int)$raw<1)
+                throw self::err('commerce_identity_parent_missing');
+            $parent=(int)$raw;
+            $parentPost=get_post($parent);
+            if(!$parentPost||$parentPost->post_type!==$parentType
+                ||$parentPost->post_status!=='publish')
+                throw self::err('commerce_identity_parent_mismatch');
+        }elseif($parentType!==null)throw self::err('commerce_identity_contract_invalid');
+        $product=wc_get_product($id);
+        if(!($product instanceof \WC_Product)||(int)$product->get_id()!==$id)
+            throw self::err('commerce_identity_woo_product_mismatch');
+        $identity=['id'=>$id,'type'=>$type,'parent'=>$parent,'native'=>false];
+        if($type==='property-rates'){
+            $unit=PropertyUnitSourceCertification::inspect($id,$parent);
+            $identity['unit']=$unit['unit_id'];
+            $identity['unit_relation']=$unit['jet_relation_id'];
+            $identity['unit_relation_row']=$unit['jet_relation_row_id'];
+        }
+        return $identity;
+    }
+    private static function fingerprint(array $s):string {
+        return hash('sha256',wp_json_encode([
+            self::CONTRACT,home_url(),$s['id'],$s['type'],$s['parent'],
+            $s['unit']??null,$s['unit_relation']??null,$s['unit_relation_row']??null
+        ],JSON_UNESCAPED_SLASHES));
+    }
+    private static function item(int $orderId,int $itemId):\WC_Order_Item_Product {
+        if($orderId<1||$itemId<1)throw self::err('commerce_identity_item_id_invalid');
+        $item=\WC_Order_Factory::get_order_item($itemId);
+        if(!($item instanceof \WC_Order_Item_Product)
+            ||(int)$item->get_order_id()!==$orderId)
+            throw self::err('commerce_identity_item_order_mismatch');
+        return $item;
+    }
+    public static function onProductAdded($orderId,$itemId,$product,$qty,$args):void {
+        if(!($product instanceof \WC_Product))return;
+        $id=(int)$product->get_id();
+        if(get_post_type($id)==='product')return;
+        $s=self::source($id);
+        $item=self::item((int)$orderId,(int)$itemId);
+        if(!($item instanceof \TinySolutions\cptwooint\Models\CPTOrderItemProduct))
+            throw self::err('commerce_identity_cpt_factory_missing');
+        $old=(int)$item->get_product_id();
+        if($old!==0 && $old!==$id)
+            throw self::err('commerce_identity_conflicting_product');
+        $attrs=[
+            self::M_ID=>(string)$id,self::M_TYPE=>$s['type'],
+            self::M_PARENT=>(string)$s['parent'],
+            self::M_DIGEST=>self::fingerprint($s)
+        ];
+        if(isset($s['unit'])){
+            $attrs[self::M_UNIT]=(string)$s['unit'];
+            $attrs[self::M_UNIT_REL]=(string)$s['unit_relation'];
+        }
+        foreach($attrs as $key=>$value){
+            $oldValue=$item->get_meta($key,true);
+            if($oldValue!=='' && (string)$oldValue!==$value)
+                throw self::err('commerce_identity_conflicting_evidence');
+        }
+        $item->set_product_id($id);
+        foreach($attrs as $key=>$value)$item->update_meta_data($key,$value);
+        $item->save();
+        self::assertItem((int)$orderId,(int)$itemId,$id);
+    }
+    public static function assertItem(int $orderId,int $itemId,?int $expected=null):array {
+        $item=self::item($orderId,$itemId);
+        $id=(int)$item->get_product_id();
+        if($id<1 || ($expected!==null && $expected!==$id))
+            throw self::err('commerce_identity_product_id_mismatch');
+        $s=self::source($id);
+        if(!$s['native']){
+            if(!($item instanceof \TinySolutions\cptwooint\Models\CPTOrderItemProduct)
+                ||(string)$item->get_meta(self::M_ID,true)!==(string)$id
+                ||(string)$item->get_meta(self::M_TYPE,true)!==$s['type']
+                ||(string)$item->get_meta(self::M_PARENT,true)!==(string)$s['parent']
+                ||(string)$item->get_meta(self::M_DIGEST,true)!==self::fingerprint($s)
+                ||(isset($s['unit']) && ((string)$item->get_meta(self::M_UNIT,true)!==(string)$s['unit']
+                   ||(string)$item->get_meta(self::M_UNIT_REL,true)!==(string)$s['unit_relation'])))
+                throw self::err('commerce_identity_receipt_or_relation_changed');
+        }
+        return [
+            'contract'=>self::CONTRACT,'order_id'=>$orderId,'item_id'=>$itemId,
+            'source_id'=>$id,'source_type'=>$s['type'],'parent_id'=>$s['parent'],
+            'unit_id'=>$s['unit']??null,'jet_relation_id'=>$s['unit_relation']??null,
+            'identity_verified'=>true,'financial_authorized'=>false,
+            'supplier_booking_authorized'=>false
+        ];
+    }
+    public static function assertOrder(int $orderId):array {
+        $order=wc_get_order($orderId);
+        if(!($order instanceof \WC_Order))
+            throw self::err('commerce_identity_order_missing');
+        $items=$order->get_items('line_item');
+        if(!$items)throw self::err('commerce_identity_order_no_lines');
+        $verified=[];
+        foreach($items as $item)$verified[]=self::assertItem($orderId,(int)$item->get_id());
+        return [
+            'contract'=>self::CONTRACT,'order_id'=>$orderId,
+            'verified_lines'=>count($verified),'lines'=>$verified,
+            'financial_authorized'=>false,'payment_authorized'=>false
+        ];
+    }
+    /** Safe access path after WC_Order::add_product bypasses CPT factory. */
+    public static function refreshedItem(int $orderId,int $itemId,int $expected):\WC_Order_Item_Product {
+        self::assertItem($orderId,$itemId,$expected);
+        return self::item($orderId,$itemId);
+    }
+    public static function addProductLine(\WC_Order $order,\WC_Product $product,int $qty=1,array $args=[]):array {
+        if($qty<1)throw self::err('commerce_identity_quantity_invalid');
+        $source=self::source((int)$product->get_id());
+        $itemId=$order->add_product($product,$qty,$args);
+        if(!is_int($itemId)||$itemId<1)throw self::err('commerce_identity_item_create_failed');
+        $proof=self::assertItem((int)$order->get_id(),$itemId,$source['id']);
+        $fresh=wc_get_order($order->get_id());
+        if(!($fresh instanceof \WC_Order))throw self::err('commerce_identity_order_refresh_failed');
+        return ['order'=>$fresh,'item'=>self::refreshedItem((int)$fresh->get_id(),$itemId,$source['id']),'identity'=>$proof];
+    }
+    public static function needsPayment($needs,$order,$statuses):bool {
+        if(!$needs||!($order instanceof \WC_Order))return (bool)$needs;
+        try {self::assertOrder((int)$order->get_id());}
+        catch(\Throwable $e){return false;}
+        return true;
+    }
+    public static function prePaymentComplete($orderId,$transactionId=''):void {
+        self::assertOrder((int)$orderId);
+    }
+    public static function bootstrap():void {
+        if(!class_exists('WC_Order_Factory')
+            ||!class_exists(\TinySolutions\cptwooint\Models\CPTOrderItemProduct::class))
+            return;
+        add_action('woocommerce_order_add_product',[self::class,'onProductAdded'],15,5);
+        add_filter('woocommerce_order_needs_payment',[self::class,'needsPayment'],50,3);
+        add_action('woocommerce_pre_payment_complete',[self::class,'prePaymentComplete'],1,2);
+    }
+}

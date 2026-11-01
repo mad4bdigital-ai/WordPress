@@ -1,0 +1,53 @@
+{
+    "result": "PASS",
+    "checks": {
+        "registered_tour_dynamic_price_provider": {
+            "pass": true,
+            "observed": null
+        },
+        "registered_tour_rate_native_tag_provider": {
+            "pass": true,
+            "observed": null
+        },
+        "registered_transport_dynamic_price_provider": {
+            "pass": true,
+            "observed": null
+        },
+        "registered_company_text_dynamic_provider": {
+            "pass": true,
+            "observed": null
+        },
+        "preview_exposes_lack_of_certification": {
+            "pass": true,
+            "observed": null
+        },
+        "tour_unverified_previous_slot_empty": {
+            "pass": true,
+            "observed": null
+        },
+        "tour_unverified_sale_slot_empty": {
+            "pass": true,
+            "observed": null
+        },
+        "no_rate_no_fabricated_price": {
+            "pass": true,
+            "observed": null
+        },
+        "missing_transport_requires_review": {
+            "pass": true,
+            "observed": null
+        },
+        "missing_transport_price_request": {
+            "pass": true,
+            "observed": null
+        },
+        "unknown_rate_denied": {
+            "pass": true,
+            "observed": null
+        },
+        "valid_rate_price_not_auto_approved": {
+            "pass": true,
+            "observed": null
+        }
+    }
+}

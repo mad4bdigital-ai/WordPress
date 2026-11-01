@@ -1,0 +1,5 @@
+# MAD4B Source Hub: example authorized host scheduler entry (NOT installed)
+# Replace all placeholders after owner approves sources and the site-private vault.
+# Once per hour, run a bundled worker and let WordPress import validated receipts
+# using its separately enabled hourly inbox-import action.
+# 5 * * * * /usr/bin/python3 /PATH/TO/PLUGIN/bin/source-hub-batch.py --vault /PATH/TO/SITE-PRIVATE/source-hub

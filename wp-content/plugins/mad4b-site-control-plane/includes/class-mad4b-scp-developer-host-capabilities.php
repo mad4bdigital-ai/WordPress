@@ -46,6 +46,9 @@ final class MAD4B_SCP_Developer_Host_Capabilities {
 		sort( $no_network_blockers, SORT_STRING );
 		sort( $lint_blockers, SORT_STRING );
 
+		// External backends are discovered as candidates only. Neither a configured
+		// endpoint nor SSH availability is execution certification.
+		$external = self::external_backends();
 		$fingerprint_payload = array(
 			'proc_open_available' => $proc_open,
 			'wp_cli_available' => '' !== $wp,
@@ -76,6 +79,9 @@ final class MAD4B_SCP_Developer_Host_Capabilities {
 			'network_isolation_backend_certified' => $certified_network_backend,
 			'non_root_verified' => null === $root_state ? null : ! $root_state,
 			'php_binary_available' => $php_binary,
+			'external_backends' => $external,
+			'available_execution_backends' => array_values( array_merge( array( 'local_host' ), array_keys( array_filter( $external, static function ( $row ) { return ! empty( $row['configured'] ); } ) ) ) ),
+			'external_execution_certified' => false,
 			'process_backend_ready' => empty( $process_blockers ),
 			'process_backend_blockers' => $process_blockers,
 			'normal_no_network_execution_ready' => empty( $no_network_blockers ),
@@ -84,6 +90,80 @@ final class MAD4B_SCP_Developer_Host_Capabilities {
 			'workspace_php_lint_blockers' => $lint_blockers,
 			'capability_fingerprint' => hash( 'sha256', is_string( $encoded ) ? $encoded : '' ),
 		);
+	}
+
+	/**
+	 * Report explicitly configured remote backend candidates without claiming
+	 * transport reachability or execution authority. Never expose credentials,
+	 * paths, tokens, usernames or hosts to an MCP status response.
+	 */
+	public static function external_backends() {
+		$definitions = array(
+			'isolated_vps_runner' => 'MAD4B_MCP_DEVELOPER_VPS_RUNNER_ID',
+			'ssh_host_runner' => 'MAD4B_MCP_DEVELOPER_SSH_RUNNER_ID',
+			'isolated_docker_runner' => 'MAD4B_MCP_DEVELOPER_DOCKER_RUNNER_ID',
+		);
+		$results = array();
+		$cached = function_exists( 'get_transient' ) ? get_transient( 'mad4b_developer_runner_discovery' ) : false;
+		foreach ( $definitions as $backend => $constant ) {
+			$configured = defined( $constant ) && is_string( constant( $constant ) )
+				&& 1 === preg_match( '/^[a-zA-Z0-9._:-]{8,128}$/D', constant( $constant ) );
+			$results[ $backend ] = array(
+				'configured' => (bool) $configured,
+				'discovered' => (bool) $configured || ( is_array( $cached ) && ! empty( $cached['backends'][$backend] ) ),
+				'live_available_observed' => is_array( $cached ) && ! empty( $cached['backends'][$backend] ),
+				'identity_verified' => false,
+				'isolation_verified' => false,
+				'capability_attested' => false,
+				'execution_certified' => false,
+				'execution_allowed' => false,
+				'next_action' => $configured ? 'verify_runner_identity_isolation_and_signed_capability_attestation' : 'configure_reviewed_runner_identity',
+			);
+		}
+		return $results;
+	}
+
+	/** A bounded, passive discovery refresh. Never grants execution authority. */
+	public static function lifecycle_refresh() {
+		if ( ! function_exists( 'wp_get_environment_type' ) || ! in_array( wp_get_environment_type(), array( 'staging', 'development', 'local' ), true ) ) return false;
+		if ( ! function_exists( 'get_transient' ) || ! function_exists( 'set_transient' ) || ! function_exists( 'wp_safe_remote_get' ) ) return false;
+		if ( ! defined( 'MAD4B_MCP_DEVELOPER_RUNNER_DISCOVERY_URL' ) || ! defined( 'MAD4B_MCP_DEVELOPER_RUNNER_DISCOVERY_ORIGIN' ) ) return false;
+		$url = (string) MAD4B_MCP_DEVELOPER_RUNNER_DISCOVERY_URL;
+		$origin = (string) MAD4B_MCP_DEVELOPER_RUNNER_DISCOVERY_ORIGIN;
+		$u = function_exists( 'wp_parse_url' ) ? wp_parse_url( $url ) : parse_url( $url );
+		$o = function_exists( 'wp_parse_url' ) ? wp_parse_url( $origin ) : parse_url( $origin );
+		if ( ! is_array( $u ) || ! is_array( $o ) || ( $u['scheme'] ?? '' ) !== 'https' || ( $o['scheme'] ?? '' ) !== 'https'
+			|| empty( $u['host'] ) || ! hash_equals( strtolower( (string)( $o['host'] ?? '' ) ), strtolower( (string)$u['host'] ) )
+			|| isset( $u['user'] ) || isset( $u['pass'] ) || isset( $u['fragment'] ) || isset( $u['port'] ) ) return false;
+		if ( get_transient( 'mad4b_developer_runner_probe_cooldown' ) ) return false;
+		set_transient( 'mad4b_developer_runner_probe_cooldown', 1, 300 );
+		$response = wp_safe_remote_get( $url, array( 'timeout' => 3, 'redirection' => 0, 'limit_response_size' => 2048, 'headers' => array( 'Accept' => 'application/json' ) ) );
+		if ( function_exists( 'is_wp_error' ) && is_wp_error( $response ) ) return false;
+		if ( ! function_exists( 'wp_remote_retrieve_response_code' ) || 200 !== wp_remote_retrieve_response_code( $response ) ) return false;
+		$body = function_exists( 'wp_remote_retrieve_body' ) ? wp_remote_retrieve_body( $response ) : '';
+		$data = json_decode( (string)$body, true );
+		if ( ! is_array( $data ) || ( $data['contract'] ?? '' ) !== 'mad4b.runner-discovery.v1' || ! is_array( $data['backends'] ?? null ) ) return false;
+		$observed = array();
+		foreach ( array( 'isolated_vps_runner', 'ssh_host_runner', 'isolated_docker_runner' ) as $backend ) {
+			$row = $data['backends'][$backend] ?? null;
+			$observed[$backend] = is_array( $row ) && true === ( $row['available'] ?? null );
+		}
+		set_transient( 'mad4b_developer_runner_discovery', array( 'backends' => $observed, 'observed_at' => time() ), 600 );
+		return true;
+	}
+
+	public static function discovery_boot() {
+		if ( function_exists( 'add_action' ) ) {
+			add_action( 'mad4b_developer_runner_refresh', array( __CLASS__, 'lifecycle_refresh' ) );
+			add_action( 'admin_init', array( __CLASS__, 'maybe_schedule_discovery' ), 99 );
+		}
+	}
+
+	public static function maybe_schedule_discovery() {
+		if ( ! defined( 'MAD4B_MCP_DEVELOPER_RUNNER_DISCOVERY_URL' ) || ! defined( 'MAD4B_MCP_DEVELOPER_RUNNER_DISCOVERY_ORIGIN' ) ) return;
+		if ( ! function_exists( 'current_user_can' ) || ! current_user_can( 'manage_options' )
+			|| ! function_exists( 'wp_next_scheduled' ) || ! function_exists( 'wp_schedule_event' ) ) return;
+		if ( ! wp_next_scheduled( 'mad4b_developer_runner_refresh' ) ) wp_schedule_event( time() + 60, 'hourly', 'mad4b_developer_runner_refresh' );
 	}
 
 	public static function wp_cli_binary() {

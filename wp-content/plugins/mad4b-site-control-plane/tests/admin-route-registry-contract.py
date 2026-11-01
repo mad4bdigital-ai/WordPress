@@ -114,6 +114,20 @@ for path in (root / 'includes').rglob('*.php'):
         )
         if not menu_slugs or len(menu_slugs) != len(set(menu_slugs)) or set(menu_slugs) != set(routes):
             raise SystemExit(f'FAIL literal menu/route permission mismatch: {path.name}')
+# Regression: Market Profiles, Country Seasons, and Source Hub must share
+# one parent-order and capability registry rather than installing their own
+# admin_menu handler before the parent is registered.
+for filename, slug in (
+    ('class-mad4b-scp-market-profiles.php', 'mad4b-market-profiles'),
+    ('class-mad4b-scp-season-calendar.php', 'mad4b-season-calendar'),
+    ('class-mad4b-scp-source-hub.php', 'mad4b-source-hub'),
+):
+    src = (root / 'includes' / filename).read_text(encoding='utf-8')
+    if ("MAD4B_SCP_Admin_Route_Registry::register('" + slug + "','manage_options')") not in src:
+        raise SystemExit('FAIL missing original parent menu route authority: ' + slug)
+    if 'MAD4B_SCP_Admin_Route_Registry::schedule_submenu(' not in src:
+        raise SystemExit('FAIL direct admin submenu bypass: ' + slug)
+
 if checked < 14:
     raise SystemExit('FAIL incomplete admin page inventory')
 print(f'Admin route link contract: PASS ({checked} page declarations)')

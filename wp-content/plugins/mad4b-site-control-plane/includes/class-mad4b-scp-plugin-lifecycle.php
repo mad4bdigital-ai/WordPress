@@ -86,7 +86,15 @@ final class MAD4B_SCP_Plugin_Lifecycle {
 		$blockers = array_values( array_unique( $blockers ) );
 		sort( $blockers, SORT_STRING );
 
+		// Shared review guidance never grants plugin activation rights.
+        $ai_lifecycle = class_exists('MAD4B_SCP_AI_Review_Lifecycle',false)
+            ? MAD4B_SCP_AI_Review_Lifecycle::decide('plugin_lifecycle',
+                array('content_hash'=>$snapshot['state_sha256'],
+                    'review_status'=>empty($blockers)?'pending':'needs_changes',
+                    'reviewed_content_hash'=>empty($blockers)?'':$snapshot['state_sha256']),
+                array('review_mode'=>'ai_only')) : null;
 		$plan = array(
+			'ai_review_lifecycle' => $ai_lifecycle,
 			'contract' => self::CONTRACT,
 			'plugin' => $plugin,
 			'plugin_name' => $snapshot['name'],

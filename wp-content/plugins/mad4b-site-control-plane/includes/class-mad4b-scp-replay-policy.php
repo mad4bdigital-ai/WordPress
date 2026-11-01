@@ -115,11 +115,19 @@ final class MAD4B_SCP_Replay_Policy {
 
 		if ( ! empty( $claim['replayed'] ) ) {
 			$stored = isset( $claim['result'] ) && is_array( $claim['result'] ) ? $claim['result'] : array();
-			if ( 'single_use' === $mode ) {
+			// Single-use means at most ONE target execution, not denial of a
+			// readback for that exact already-completed execution. Old records
+			// marked consumed before execution have no proven result and must
+			// remain blocked until reconciled; never infer completion.
+			if ( 'single_use' === $mode && (
+				self::RESULT_CONTRACT !== ( isset( $stored['contract'] ) ? (string)$stored['contract'] : '' )
+				|| 'completed' !== ( isset( $stored['state'] ) ? (string)$stored['state'] : '' )
+				|| ! isset( $stored['dispatch_result'] ) || ! is_array( $stored['dispatch_result'] )
+			) ) {
 				return new WP_Error(
-					'mad4b_preparation_replay_denied',
-					'This preparation receipt is single-use and has already been consumed.',
-					array( 'risk_tier'=>$risk, 'reprepare_required'=>true, 'blind_retry_allowed'=>false )
+					'mad4b_preparation_replay_result_unconfirmed',
+					'A single-use request was claimed but its outcome has not been durably confirmed. Reconcile the original target; never execute it again.',
+					array( 'risk_tier'=>$risk, 'reconciliation_required'=>true, 'blind_retry_allowed'=>false )
 				);
 			}
 			if ( self::RESULT_CONTRACT !== ( isset( $stored['contract'] ) ? (string)$stored['contract'] : '' )
@@ -143,22 +151,10 @@ final class MAD4B_SCP_Replay_Policy {
 		$base['claimed'] = true;
 		$base['durable_claim'] = $claim;
 
-		if ( 'single_use' === $mode ) {
-			$consume = MAD4B_SCP_Durable_Execution::complete_idempotency(
-				$claim,
-				array(
-					'contract'=>self::RESULT_CONTRACT,
-					'state'=>'consumed_single_use',
-					'risk_tier'=>$risk,
-					'preparation_nonce'=>(string)$claims['nonce'],
-					'dispatch_result'=>null,
-					'authorizing'=>false,
-				)
-			);
-			if ( is_wp_error( $consume ) ) return $consume;
-			unset( $base['durable_claim'] );
-			$base['consumed_before_execution'] = true;
-		}
+		// Leave the exclusive durable claim pending while the target runs.
+		// Concurrent submissions cannot acquire it. A missing response or
+		// crash leaves pending evidence that requires reconciliation, not an
+		// authorization to retry. Only completion persists an exact result.
 		return $base;
 	}
 
@@ -166,11 +162,14 @@ final class MAD4B_SCP_Replay_Policy {
 		if ( self::CONTRACT !== ( isset( $admission['contract'] ) ? (string)$admission['contract'] : '' ) ) {
 			return new WP_Error( 'mad4b_replay_admission_invalid', 'Replay completion requires an exact replay admission.' );
 		}
-		if ( ! empty( $admission['replayed'] ) || 'single_use' === ( isset($admission['mode']) ? (string)$admission['mode'] : '' ) ) {
+		if ( ! empty( $admission['replayed'] ) ) {
 			return array( 'contract'=>self::CONTRACT, 'completed'=>true, 'durable_completion_required'=>false, 'authorizing'=>false );
 		}
 		if ( empty( $admission['durable_claim'] ) || ! is_array( $admission['durable_claim'] ) ) {
-			return new WP_Error( 'mad4b_replay_durable_claim_missing', 'Reusable replay completion is missing its durable idempotency claim.' );
+			return new WP_Error( 'mad4b_replay_durable_claim_missing', 'Replay completion is missing its exclusive durable idempotency claim.' );
+		}
+		if ( ! is_array( $dispatch_result ) || empty( $dispatch_result['contract'] ) ) {
+			return new WP_Error( 'mad4b_replay_dispatch_result_invalid', 'An exact structured dispatch result is required for durable completion.', array( 'reconciliation_required'=>true, 'blind_retry_allowed'=>false ) );
 		}
 		$completed = MAD4B_SCP_Durable_Execution::complete_idempotency(
 			$admission['durable_claim'],

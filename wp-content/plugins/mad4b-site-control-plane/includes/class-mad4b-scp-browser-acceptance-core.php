@@ -3,6 +3,18 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class MAD4B_SCP_Browser_Acceptance_Core {
+
+    /** Native owner content-QA scope; never a publish/mutation approval. */
+    public static function ai_original_review_evidence($item) {
+        return MAD4B_SCP_AI_Native_Owner_Review::evidence('design_template',$item);
+    }
+    public static function ai_original_review_submit($item,$decision,$note,$binding) {
+        return MAD4B_SCP_AI_Native_Owner_Review::submit('design_template',$item,$decision,$note,$binding);
+    }
+    public static function ai_original_review_verify_receipt($item,$receipt,$binding) {
+        return MAD4B_SCP_AI_Native_Owner_Review::verify('design_template',$item,$receipt,$binding);
+    }
+
 	const CONTRACT = 'mad4b.browser-acceptance-core.v1';
 	const MAX_EVIDENCE_BYTES = 131072;
 	const MAX_EVIDENCE_DEPTH = 8;

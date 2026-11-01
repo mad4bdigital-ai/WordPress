@@ -9,6 +9,18 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * are applied here.
  */
 final class MAD4B_SCP_Translation_Bridge_Adapter extends MAD4B_SCP_Adapter_Base {
+
+    /** Native owner content-QA scope; never a publish/mutation approval. */
+    public static function ai_original_review_evidence($item) {
+        return MAD4B_SCP_AI_Native_Owner_Review::evidence('localization',$item);
+    }
+    public static function ai_original_review_submit($item,$decision,$note,$binding) {
+        return MAD4B_SCP_AI_Native_Owner_Review::submit('localization',$item,$decision,$note,$binding);
+    }
+    public static function ai_original_review_verify_receipt($item,$receipt,$binding) {
+        return MAD4B_SCP_AI_Native_Owner_Review::verify('localization',$item,$receipt,$binding);
+    }
+
 	const CONTRACT = 'mad4b.translation-bridge.v1';
 	private static $hooked = false;
 

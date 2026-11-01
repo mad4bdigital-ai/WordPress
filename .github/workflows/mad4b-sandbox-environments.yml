@@ -1,0 +1,36 @@
+name: MAD4B Environment Sandbox Contracts
+on:
+  pull_request:
+    paths:
+      - 'ops/mad4b-environment-sandbox/**'
+      - '.github/workflows/mad4b-sandbox-environments.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mad4b-sandbox-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+jobs:
+  sandbox:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: Environments, namespace neutrality and fail-closed isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd ops/mad4b-environment-sandbox
+          python3 verify-bundle.py --source --brand-neutral
+          php -l 000-mad4b-environment-sandbox.php
+          php -l 005-mad4b-staging-mail-admission.php
+          php -l policy-contract.php
+          for case in 'local local' 'development development' 'staging staging' 'production production' 'production absent' 'production staging' 'staging production' 'staging absent'; do
+            read -r raw host <<< "$case"
+            if [[ "$host" == absent ]]; then host=''; fi
+            MOCK_RAW_ENV="$raw" WP_ENVIRONMENT_TYPE="$host" php policy-contract.php
+          done

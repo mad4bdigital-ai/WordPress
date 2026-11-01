@@ -36,6 +36,7 @@ final class MAD4B_SCP_Restore_Epoch {
 		$current_origin_enrolled = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled();
 		if ( empty( $external ) ) $blockers[] = 'restore_epoch_external_missing';
 		if ( empty( $binding ) ) $blockers[] = 'restore_epoch_database_binding_missing';
+		if ( ! empty( $binding ) && preg_match( '/^[a-f0-9-]{36}$/', $current_site_uuid ) && ! hash_equals( $current_site_uuid, strtolower( (string) ( $binding['site_uuid'] ?? '' ) ) ) ) $blockers[] = 'restore_epoch_binding_site_identity_mismatch';
 		if ( ! empty( $external ) && preg_match( '/^[a-f0-9-]{36}$/', $current_site_uuid ) && ! hash_equals( $current_site_uuid, strtolower( (string) ( isset( $external['site_uuid'] ) ? $external['site_uuid'] : '' ) ) ) ) $blockers[] = 'restore_epoch_site_identity_mismatch';
 		if ( ! empty( $external ) && ! $current_origin_enrolled ) $blockers[] = 'restore_epoch_site_not_enrolled';
 		if ( ! empty( $external ) && ! empty( $binding ) ) {
@@ -49,6 +50,13 @@ final class MAD4B_SCP_Restore_Epoch {
 				}
 			}
 		}
+		// Distinguish recoverable evidence loss from confirmed identity conflicts.
+		// Classification is diagnostic only and never authorizes mutation.
+		$hard_conflicts = array( 'restore_epoch_database_snapshot_detected', 'restore_epoch_site_identity_mismatch', 'restore_epoch_binding_site_identity_mismatch', 'restore_epoch_external_invalid', 'restore_epoch_database_binding_invalid' );
+		$recoverable_evidence = array( 'restore_epoch_external_missing', 'restore_epoch_database_binding_missing' );
+		$has_conflict = (bool) array_intersect( $blockers, $hard_conflicts );
+		$recoverable_only = ! empty( $blockers ) && ! array_diff( $blockers, $recoverable_evidence );
+		$classification = empty( $blockers ) ? 'READY' : ( $recoverable_only ? 'DEGRADED_RECOVERABLE' : 'QUARANTINED' );
 		$status = array(
 			'contract' => self::CONTRACT,
 			'path_configured' => '' !== $path,
@@ -60,6 +68,9 @@ final class MAD4B_SCP_Restore_Epoch {
 			'epoch' => ! empty( $external['epoch'] ) ? (int) $external['epoch'] : 0,
 			'external_record_sha256' => ! empty( $external['external_record_sha256'] ) ? (string) $external['external_record_sha256'] : '',
 			'blockers' => array_values( array_unique( $blockers ) ),
+			'classification' => $classification,
+			'mutation_blocked' => ! empty( $blockers ),
+			'recovery_action' => $recoverable_only ? 'verify_independent_evidence_and_reconcile' : ( $has_conflict ? 'investigate_identity_conflict' : ( empty( $blockers ) ? 'none' : 'diagnose_enrollment_or_storage' ) ),
 			'ready' => empty( $blockers ),
 			'quarantined' => ! empty( $blockers ),
 			'recovery_requires_write_disabled' => true,
@@ -150,6 +161,93 @@ final class MAD4B_SCP_Restore_Epoch {
 		self::$cache = null;
 		if ( is_wp_error( $bound ) ) return $bound;
 		return self::status( false, true );
+	}
+
+	/** Preview recovery from a DB binding; never asserts original-record continuity. */
+	public static function database_binding_recovery_plan() {
+		$status = self::status( false, true );
+		$binding = self::read_binding();
+		if ( ! empty( $status['external_record_present'] ) ) return new WP_Error( 'mad4b_restore_recovery_external_exists', 'Existing external evidence must be investigated, not overwritten.' );
+		if ( ! self::binding_valid( $binding ) ) return new WP_Error( 'mad4b_restore_recovery_binding_invalid', 'Valid database binding required.' );
+		if ( ! empty( array_diff( (array) $status['blockers'], array( 'restore_epoch_external_missing' ) ) ) ) return new WP_Error( 'mad4b_restore_recovery_conflicting_blockers', 'Unrelated blockers prohibit database-derived recovery.' );
+		$site = class_exists( 'MAD4B_SCP_Site_Profile' ) ? strtolower( (string) MAD4B_SCP_Site_Profile::site_uuid() ) : '';
+		if ( ! hash_equals( $site, (string) $binding['site_uuid'] ) ) return new WP_Error( 'mad4b_restore_recovery_identity_mismatch', 'Database binding belongs to a different site.' );
+		return array(
+			'contract' => 'mad4b.restore-binding-recovery-plan.v1',
+			'classification' => 'DEGRADED_RECOVERABLE',
+			'method' => 'derive_new_epoch_from_database_binding',
+			'previous_epoch' => (int) $binding['epoch'],
+			'proposed_epoch' => (int) $binding['epoch'] + 1,
+			'previous_record_sha256' => (string) $binding['external_record_sha256'],
+			'original_continuity_proven' => false,
+			'fresh_authorization_required' => true,
+			'reconcile_outstanding_operations_first' => true,
+			'write_authority_must_be_disabled' => true,
+			'publication_authorized' => false,
+			'mutation_performed' => false,
+		);
+	}
+
+	/** Environment-neutral recovery policy; checks current security state and never grants writes. */
+	public static function self_heal_plan() {
+		$status = self::status( false, true );
+		$binding = self::read_binding();
+		$site = class_exists( 'MAD4B_SCP_Site_Profile' ) ? strtolower( (string) MAD4B_SCP_Site_Profile::site_uuid() ) : '';
+		$valid = self::binding_valid( $binding );
+		$missing = empty( $status['external_record_present'] );
+		$identity_changed = $valid && ! hash_equals( $site, strtolower( (string) $binding['site_uuid'] ) );
+		$environment = function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'production';
+		$eligible = $missing && $valid && preg_match( '/^[a-f0-9-]{36}$/', $site );
+		return array(
+			'contract' => 'mad4b.restore-self-heal-plan.v1',
+			'environment' => $environment,
+			'method' => $eligible ? 'new_epoch_with_previous_database_fingerprint' : 'investigate_evidence',
+			'candidate' => (bool) $eligible,
+			'identity_changed' => $identity_changed,
+			'previous_record_sha256' => $valid ? (string) $binding['external_record_sha256'] : '',
+			'proposed_epoch' => $valid ? (int) $binding['epoch'] + 1 : null,
+			'original_continuity_proven' => false,
+			'needs_pending_operation_quarantine' => true,
+			'requires_separate_write_authority' => true,
+			'automatic_write_permitted' => false,
+			'current_status' => $status['classification'] ?? 'QUARANTINED',
+			'mutation_performed' => false,
+		);
+	}
+
+	/** Explicit recovery entrypoint: fenced, environment-neutral, never an implicit write grant. */
+	public static function recover_from_database_binding( $expected_previous_sha256, $accept_site_rebinding = false ) {
+		if ( ! function_exists( 'current_user_can' ) || ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_restore_recovery_admin_required', 'Administrator authorization required.' );
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || MAD4B_SCP_Site_Profile::write_enabled() ) return new WP_Error( 'mad4b_restore_recovery_write_must_be_disabled', 'Disable governed writing before recovery.' );
+		if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() ) return new WP_Error( 'mad4b_restore_recovery_enrollment_required', 'Exact enrolled site origin required.' );
+		$status = self::status( false, true );
+		$binding = self::read_binding();
+		if ( ! empty( $status['external_record_present'] ) || ! self::binding_valid( $binding ) ) return new WP_Error( 'mad4b_restore_recovery_evidence_conflict', 'Missing external record and valid binding required.' );
+		$expected = strtolower( trim( (string) $expected_previous_sha256 ) );
+		if ( ! preg_match( '/^[a-f0-9]{64}$/D', $expected ) || ! hash_equals( $expected, (string) $binding['external_record_sha256'] ) ) return new WP_Error( 'mad4b_restore_recovery_stale', 'Expected previous binding digest differs.' );
+		$site = strtolower( (string) MAD4B_SCP_Site_Profile::site_uuid() );
+		if ( ! preg_match( '/^[a-f0-9-]{36}$/D', $site ) ) return new WP_Error( 'mad4b_restore_recovery_site_invalid', 'Site identity unavailable.' );
+		$changed = ! hash_equals( $site, strtolower( (string) $binding['site_uuid'] ) );
+		if ( $changed && true !== $accept_site_rebinding ) return new WP_Error( 'mad4b_restore_recovery_site_rebinding_required', 'Site rebinding requires explicit acknowledgment.' );
+		$allowed = array( 'restore_epoch_external_missing', 'restore_epoch_binding_site_identity_mismatch' );
+		if ( array_diff( (array) $status['blockers'], $allowed ) ) return new WP_Error( 'mad4b_restore_recovery_unrelated_blockers', 'Other blockers require investigation.' );
+		$path = self::path();
+		if ( is_wp_error( $path ) ) return $path;
+		if ( file_exists( $path ) ) return new WP_Error( 'mad4b_restore_recovery_external_race', 'External record appeared; will not overwrite.' );
+		$next = self::make_record( $site, (int) $binding['epoch'] + 1, $expected, 'database_binding_recovery' );
+		if ( is_wp_error( $next ) ) return $next;
+		// Reconcile durable in-flight state before restoring any ability to write.
+		$reconciled = self::reconcile_restored_security_state( $next );
+		if ( is_wp_error( $reconciled ) ) return $reconciled;
+		if ( file_exists( $path ) ) return new WP_Error( 'mad4b_restore_recovery_external_race', 'External record appeared after reconciliation.' );
+		$write = self::write_external( $path, $next );
+		if ( is_wp_error( $write ) ) return $write;
+		$bound = self::write_binding( $next );
+		self::$cache = null;
+		if ( is_wp_error( $bound ) ) return new WP_Error( 'mad4b_restore_recovery_binding_uncertain', 'External record was written but binding confirmation failed; do not retry blindly.' );
+		$verified = self::status( false, true );
+		if ( empty( $verified['ready'] ) ) return new WP_Error( 'mad4b_restore_recovery_readback_failed', 'Readback did not prove epoch ready; reconciliation required.' );
+		return array( 'contract' => 'mad4b.restore-recovery-receipt.v1', 'ready' => true, 'previous_sha256' => $expected, 'new_epoch' => (int) $next['epoch'], 'reconciliation' => $reconciled, 'write_granted' => false, 'publication_authorized' => false );
 	}
 
 	public static function external_path_for_test() { return self::path(); }

@@ -1,0 +1,170 @@
+{
+    "result": "PASS",
+    "passed": 37,
+    "total": 37,
+    "tests": {
+        "overview_has_site_bound_policy": {
+            "pass": true,
+            "observed": null
+        },
+        "native_tax_disabled_observed": {
+            "pass": true,
+            "observed": null
+        },
+        "provider_rules_bounded_and_named": {
+            "pass": true,
+            "observed": null
+        },
+        "no_certified_final_quote_provider": {
+            "pass": true,
+            "observed": null
+        },
+        "no_cost_tax_inventory_provider_receipts": {
+            "pass": true,
+            "observed": null
+        },
+        "no_approval_or_order_authority": {
+            "pass": true,
+            "observed": null
+        },
+        "tenant_exact_provider_discovered_only": {
+            "pass": true,
+            "observed": null
+        },
+        "registered_provider_cannot_escalate_certification": {
+            "pass": true,
+            "observed": null
+        },
+        "cross_tenant_provider_registration_ignored": {
+            "pass": true,
+            "observed": null
+        },
+        "standalone_rate_readiness_array": {
+            "pass": true,
+            "observed": null
+        },
+        "tour_parent_readiness_array": {
+            "pass": true,
+            "observed": null
+        },
+        "rate_native_product_id_unchanged": {
+            "pass": true,
+            "observed": null
+        },
+        "parent_native_product_id_unchanged": {
+            "pass": true,
+            "observed": null
+        },
+        "same_source_and_policy_digests": {
+            "pass": true,
+            "observed": null
+        },
+        "distinct_readiness_per_selected_sale_line": {
+            "pass": true,
+            "observed": null
+        },
+        "policy_draft_blocks_certification": {
+            "pass": true,
+            "observed": null
+        },
+        "native_financial_mode_reason_exposed": {
+            "pass": true,
+            "observed": null
+        },
+        "native_tax_disabled_blocks_certification": {
+            "pass": true,
+            "observed": null
+        },
+        "manual_company_availability_provenance": {
+            "pass": true,
+            "observed": null
+        },
+        "unverified_supplier_cost_not_fabricated": {
+            "pass": true,
+            "observed": null
+        },
+        "pricing_preview_never_final": {
+            "pass": true,
+            "observed": null
+        },
+        "manager_and_traveler_remain_independent": {
+            "pass": true,
+            "observed": null
+        },
+        "native_woo_unpurchasable_exposed": {
+            "pass": true,
+            "observed": null
+        },
+        "no_financial_or_booking_writes": {
+            "pass": true,
+            "observed": null
+        },
+        "no_fake_quantity_or_cart_price": {
+            "pass": true,
+            "observed": null
+        },
+        "pending_gates_match_states": {
+            "pass": true,
+            "observed": null
+        },
+        "deterministic_digest": {
+            "pass": true,
+            "observed": null
+        },
+        "cross_tour_rate_denied": {
+            "pass": true,
+            "observed": null
+        },
+        "invalid_date_does_not_certify_quote": {
+            "pass": true,
+            "observed": null
+        },
+        "providers_rest_admin_200": {
+            "pass": true,
+            "observed": 200
+        },
+        "readiness_rest_admin_200": {
+            "pass": true,
+            "observed": null
+        },
+        "rest_authorization_stays_false": {
+            "pass": true,
+            "observed": null
+        },
+        "caller_supplied_certification_not_accepted": {
+            "pass": true,
+            "observed": null
+        },
+        "visitor_provider_read_denied": {
+            "pass": true,
+            "observed": null
+        },
+        "visitor_readiness_post_denied": {
+            "pass": true,
+            "observed": null
+        },
+        "admin_dashboard_readiness_panel": {
+            "pass": true,
+            "observed": null
+        },
+        "business_rows_unchanged": {
+            "pass": true,
+            "observed": {
+                "before": {
+                    "orders": 1,
+                    "requests": 9,
+                    "tasks": 6,
+                    "holds": 0,
+                    "bookings": 0
+                },
+                "after": {
+                    "orders": 1,
+                    "requests": 9,
+                    "tasks": 6,
+                    "holds": 0,
+                    "bookings": 0
+                }
+            }
+        }
+    }
+}

@@ -281,8 +281,17 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 		echo '<p class="description">' . esc_html__( 'Optional bounded ID supplied by the site-specific acceptance provider. Not a URL, password or script.', 'mad4b-site-control-plane' ) . '</p></td></tr></tbody></table>';
 		submit_button( __( 'Save operator preference', 'mad4b-site-control-plane' ) );
 		echo '</form>';
+        echo '<p><a href="' . esc_url( admin_url( 'admin.php?page=mad4b-provider-connections' ) ) . '">Open unified Provider Setup Coverage: credential source, setup requirements and independent certification status</a></p>';
 		echo '<h2>' . esc_html__( '3. Optional external provider credentials', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<p>' . esc_html__( 'No credentials are required for Native Hybrid. Only select an external runner if independently signed unattended browser results are needed; keep its secrets outside WordPress.', 'mad4b-site-control-plane' ) . '</p>';
+        echo '<p><strong>Credential custody:</strong> External runner secrets store (not WordPress Core Connectors). These names are setup instructions, not password inputs. MAD4B cannot check whether the external worker actually has each secret or certify its signed evidence from this page.</p>';
+        echo '<table class="widefat striped"><thead><tr><th>External browser service</th><th>Required external secret fields</th><th>WordPress verification</th></tr></thead><tbody>';
+        foreach ( self::managed_executors() as $id => $meta ) {
+            echo '<tr><td>' . esc_html( $meta[0] ) . '</td><td>';
+            foreach ( $meta[1] as $secret_field ) echo '<code>' . esc_html( $secret_field ) . '</code> ';
+            echo '</td><td><code>not verifiable from WordPress</code></td></tr>';
+        }
+        echo '</tbody></table>';
 		echo '<div data-mad4b-browser-runner-fields aria-live="polite">';
         echo '<p data-mad4b-browser-runner-auto>' . esc_html__( 'Native modes do not require provider credentials. Choose an external runner to see its credential names.', 'mad4b-site-control-plane' ) . '</p>';
         foreach ( self::managed_executors() as $id => $details ) {

@@ -35,6 +35,11 @@ $pages = array(
 	'mad4b-growth-providers' => array( 'MAD4B_SCP_G5_External_Providers', 'render', array( '' ) ),
 	'mad4b-ai-knowledge-workspace' => array( 'MAD4B_SCP_G6_Acceptance', 'render', array( '' ) ),
 	'mad4b-plugin-deployment' => array( 'MAD4B_SCP_Cross_Plugin_Admin', 'render', array( '' ) ),
+    // These three pages were registered through the shared Admin Route
+    // Registry; smoke each real page as soon as it becomes discoverable.
+    'mad4b-market-profiles' => array( 'MAD4B_SCP_Market_Profiles', 'admin_page', array( '' ) ),
+    'mad4b-season-calendar' => array( 'MAD4B_SCP_Season_Calendar', 'admin_page', array( '' ) ),
+    'mad4b-source-hub' => array( 'MAD4B_SCP_Source_Hub', 'admin_page', array( '' ) ),
 );
 $routes = MAD4B_SCP_Admin_Route_Registry::routes();
 $check( ! array_diff( array_keys( $routes ), array_keys( $pages ) ) && ! array_diff( array_keys( $pages ), array_keys( $routes ) ), 'Every declared page must have a smoke case. Missing: ' . implode( ', ', array_diff( array_keys( $routes ), array_keys( $pages ) ) ) . '; stale: ' . implode( ', ', array_diff( array_keys( $pages ), array_keys( $routes ) ) ) );

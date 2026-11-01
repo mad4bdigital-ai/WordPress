@@ -9,6 +9,18 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * purges caches or treats an SEO signal as content authority.
  */
 final class MAD4B_SCP_G5_SEO_Provider_Families {
+
+    /** Native owner content-QA scope; never a publish/mutation approval. */
+    public static function ai_original_review_evidence($item) {
+        return MAD4B_SCP_AI_Native_Owner_Review::evidence('seo_metadata',$item);
+    }
+    public static function ai_original_review_submit($item,$decision,$note,$binding) {
+        return MAD4B_SCP_AI_Native_Owner_Review::submit('seo_metadata',$item,$decision,$note,$binding);
+    }
+    public static function ai_original_review_verify_receipt($item,$receipt,$binding) {
+        return MAD4B_SCP_AI_Native_Owner_Review::verify('seo_metadata',$item,$receipt,$binding);
+    }
+
 	const CONTRACT = 'mad4b.feature007-g5-seo-provider-family.v1';
 	private static $booted = false;
 
