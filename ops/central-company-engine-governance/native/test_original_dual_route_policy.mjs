@@ -240,3 +240,30 @@ test('SSH remediation for mutation still needs independent mutation grant and ro
  assert.equal(sshRemediation({request:{...newSshRequest,
    intent:'repair'}}).state,'BLOCKED');
 });
+
+test('new signed original Core provider can be discovered without code allowlist',()=>{
+ const fresh={...recoveryProvider,provider:'independent_container_v2',
+  original_core_provider_registered:true,provider_registry_signed_verified:true};
+ const r=recover({candidates:[fresh]});
+ assert.equal(r.provider,'independent_container_v2');
+ assert.equal(r.new_core_job_required,true);
+ assert.equal(r.execution_performed,false);
+});
+test('unregistered dynamic provider is never eligible for recovery',()=>{
+ const fresh={...recoveryProvider,provider:'unsigned_provider_v2'};
+ const r=recover({candidates:[fresh]});
+ assert.equal(r.state,'BLOCKED');
+ assert.equal(r.reason,'NO_INDEPENDENTLY_AUTHORIZED_ALTERNATE_PROVIDER');
+});
+test('dynamic provider with unverified original Core Registry is rejected',()=>{
+ const fresh={...recoveryProvider,provider:'independent_container_v2',
+  original_core_provider_registered:true,provider_registry_signed_verified:false};
+ const r=recover({candidates:[fresh]});
+ assert.equal(r.state,'BLOCKED');
+});
+test('original fixed provider priority remains stable across registered additions',()=>{
+ const fresh={...recoveryProvider,provider:'independent_container_v2',
+  original_core_provider_registered:true,provider_registry_signed_verified:true};
+ const r=recover({candidates:[fresh,recoveryProvider]});
+ assert.equal(r.provider,'coolify_service');
+});
