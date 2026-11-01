@@ -12178,6 +12178,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing MCP access, provider access, and governed execution controls cover the restored routes without altering owner/nonce/approval enforcement.",
       "review_rationale": "Reviewed exact Git blob of Provider Connection Center from Staging with five restored REST routes, OAuth refresh/reconnect permission preflights and strict immutable plan inputs. The exact companion PHP runtime fixture checks denial and planned access. Live approval and production promotion remain explicitly ungranted."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-builder.php",
+      "source_blob_sha": "18fca238f3f94a6d879262804d0adaef812c5187",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-contract.py"
+      ],
+      "owner_role": "MAD4B exact-source technical CI reviewer; site owner and release remain separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing admin gates, browser-hostile input handling, and security controls already govern Brand Context draft generation; v6 tightens rather than widens scope.",
+      "review_rationale": "Reviewed live-source byte-identical v6 update binds durable idempotency to trusted brand_ref as well as site UUID, document category and source evidence. Replay and artifact readback check original job/artifact IDs, active state, site and brand ownership; cross-brand and cross-site denial verified with dedicated isolated PHP negative assertions. No provider mutation or owner approval is conferred."
     }
   ],
   "code_change_rules": {

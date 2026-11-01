@@ -22,7 +22,7 @@ seed_skill = cp / "skill-seeds" / "wordpress-brand-context-builder" / "SKILL.md"
 
 for marker in [
     "const CONTRACT = 'mad4b.brand-context-builder.v1'",
-    "const BUILDER_SPEC_VERSION = '5'",
+    "const BUILDER_SPEC_VERSION = '6'",
     "const DRAFT_PREFLIGHT_CONTRACT = 'mad4b.brand-draft-preflight.v1'",
     "MIN_NONEMPTY_SAMPLES",
     "MIN_PRIMARY_EXPRESSION_SAMPLES",
@@ -159,8 +159,20 @@ for marker in [
     if marker not in builder:
         raise SystemExit(f"missing Brand Context Builder invariant: {marker}")
 
+# v6 protects draft idempotency across brand, site, and evidence revisions.
+for invariant in (
+    "private static function draft_scoped_idempotency_key(",
+    "private static function draft_result_matches_trusted_scope(",
+    "self::draft_scoped_idempotency_key( self::site_uuid(), $trusted_brand_ref, $category, $current_generation_evidence )",
+    "self::find_existing_draft( $idempotency_key, $trusted_brand_ref )",
+    "hash_equals( (string) $trusted_brand_ref",
+    "hash_equals( (string) self::site_uuid()",
+):
+    if invariant not in builder:
+        raise SystemExit("Missing v6 site/brand-bound draft invariant: " + invariant)
+
 append_section = builder[builder.index("public static function append_draft"):builder.index("private static function source_scan_snapshot")]
-if append_section.index("MAD4B_SCP_Durable_Execution::begin_idempotency") > append_section.index("self::find_existing_draft( $idempotency_key )"):
+if append_section.index("MAD4B_SCP_Durable_Execution::begin_idempotency") > append_section.index("self::find_existing_draft( $idempotency_key, $trusted_brand_ref )"):
     raise SystemExit("Brand draft legacy lookup occurs before atomic durable idempotency claim")
 
 if "released_verified_no_effect" not in durable:
@@ -479,7 +491,7 @@ if (not isinstance(seed_version, int) or seed_version < 13
         or seeder_match is None or int(seeder_match.group(1)) != seed_version):
     raise SystemExit("Brand Context Builder requires current canonical seed manifest/seeder parity")
 
-print("mad4b.brand-context-builder.v5: PASS")
+print("mad4b.brand-context-builder.v6: PASS")
 
 
 # OAuth health must reflect access-token expiry and the last refresh outcome.
@@ -502,3 +514,4 @@ if "'token_healthy' => $connected && ( ! empty( $token['access_token'] ) || ! em
 # Exercise original convergence code without provider/generation services.
 import subprocess
 subprocess.run(["php", str(cp / "tests/brand-existing-assets-runtime.php")], check=True)
+subprocess.run(["php", str(cp / "tests/brand-context-v6-scope-runtime.php")], check=True)
