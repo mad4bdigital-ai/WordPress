@@ -95,6 +95,15 @@ final class MAD4B_Broker_Exact_SSH_Authority_V1 {
       return self::deny('OWNER_ENROLLED_WPCLI_TRANSPORT_REQUIRED');
   }
   if (($job['company']??'')==='tours-central') {
+   // Native client identity must be proved in the ORIGINAL standing
+   // 305 grant, 306 Job, transport and exact 305 request together.
+   // A WordPress user ID of 0 is NOT a user impersonation or owner grant.
+   if (($job['principal_type']??'')==='vps_native') {
+     if (!class_exists('MAD4B_Native_VPS_Principal_V1',false)
+       || !MAD4B_Native_VPS_Principal_V1::valid_job_chain($job,$grant,$transport,$req)
+       || ($job['central_principal_id']??null)!==0)
+       return self::deny('NATIVE_PRINCIPAL_CHAIN_NOT_VERIFIED');
+   } else {
    // Local native host is not a company execution target.
    if ($target!==self::HOST || ($req['target_scope']??'')!=='host'
      || ($grant['operation']??'')!=='maintenance.shell'
@@ -109,6 +118,13 @@ final class MAD4B_Broker_Exact_SSH_Authority_V1 {
    if (($grant['grant_mode']??'')==='persistent')
      $claim_key.='_'.hash('sha256',(string)($job['correlation_id']??''));
    if (get_option($claim_key,false)!==$job_id)
+     return self::deny('ORIGINAL_LOCAL_GRANT_CLAIM_MISSING');
+   }
+   // Both the native and original owner lane must consume the original
+   // per-correlation 305 claim. A persistent grant is not a wildcard job.
+   $native_claim_key=MAD4B_Central_SSH_Command_Intake_V1::CLAIM_PREFIX.(string)$job['grant_id']
+     .'_'.hash('sha256',(string)($job['correlation_id']??''));
+   if (get_option($native_claim_key,false)!==$job_id)
      return self::deny('ORIGINAL_LOCAL_GRANT_CLAIM_MISSING');
   } else {
   $target_scope=MAD4B_Manager_Auto_Write_V1::company_target((string)$job['company']);
@@ -125,7 +141,9 @@ final class MAD4B_Broker_Exact_SSH_Authority_V1 {
   return ['contract'=>self::CONTRACT,'verified'=>true,'eligible'=>true,
    'reason'=>'CENTRAL_SCOPE_VERIFIED_HOST_PROOF_REQUIRED',
    'job_id'=>$job_id,'target_id'=>$target,
-   'principal_id'=>(string)$job['central_principal_id'],
+   'principal_id'=>($job['principal_type']??'')==='vps_native'
+      ?(string)$job['principal_id']:(string)$job['central_principal_id'],
+   'principal_type'=>($job['principal_type']??'wordpress_owner'),
    'correlation_id'=>(string)$job['correlation_id'],
    'host_principal'=>$transport['host_principal'],
    'host_key_fingerprint'=>$transport['host_key_fingerprint'],
