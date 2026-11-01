@@ -128,6 +128,14 @@ export function planIndependentSshRemediation({denial,request,policy,context}={}
     denial.tenant_access_revoked===true||
     denial.operator_revoked===true)
    return stop('BLOCKED','ORIGINAL_AUTHORITY_DENIED');
+ // A Native policy denial can occur before the Core has admitted any job.
+ // Do not invent a job ID or convert this provider refusal into SSH authority.
+ // An independently authorized operator can submit a separate original 305
+ // request; this planner must not admit or dispatch it as a fallback.
+ if(denial.submission_stage==='PRE_JOB_ADMISSION' &&
+    denial.original_job_id===null &&
+    denial.original_claim_state==='NO_JOB_CREATED')
+   return stop('BLOCKED','FRESH_INDEPENDENT_305_REQUEST_REQUIRED');
  if(denial.original_claim_state!=='NOT_CLAIMED'||
     denial.dispatch_started!==false||denial.effects_possible!==false)
    return stop('PARKED_NO_REPLAY','ORIGINAL_JOB_OUTCOME_UNCERTAIN');
