@@ -35,7 +35,7 @@ function factory(){
  const router=createGovernedExecutionRoutes({core,
   typed:{'wpcli.execute':async()=>{calls.dispatch++}},
   generalShell:{executeOriginalShellJob:async()=>{calls.dispatch++}}});
- return {router,calls};
+ return {router,calls,core};
 }
 test('shared diagnosis exposes schema error without invoking any provider',()=>{
  const {router,calls}=factory();
@@ -77,5 +77,71 @@ test('uncertain transport outcome never plans alternate dispatch',()=>{
   request,failure:{...failure,effects_possible:true},
   original_core_authority:grant,candidates:[channel]});
  assert.equal(d.state,'PARKED_NO_REPLAY');
+ assert.deepEqual(calls,{claim:0,read:0,audit:0,dispatch:0});
+});
+
+test('signed original Core references drive dynamic provider discovery',async()=>{
+ const {router,core,calls}=factory();
+ core.readOriginalChannelRecoveryEvidence=async ({request_ref,failure_ref})=>({
+  request_ref,failure_ref,
+  verified_source:'original_core_execution_journal',
+  registry_source:'original_core_registered_provider_registry',
+  signed_evidence_verified:true,provider_registry_verified:true,
+  request,failure,original_core_authority:grant,candidates:[channel]
+ });
+ const result=await router.planRegisteredChannelRecovery({
+  request_ref:'request-record-1',failure_ref:'failure-record-1'
+ });
+ assert.equal(result.state,'ALTERNATIVE_REQUIRES_FRESH_CORE_ADMISSION');
+ assert.equal(result.provider,'container_exec');
+ assert.equal(result.execution_performed,false);
+ assert.deepEqual(calls,{claim:0,read:0,audit:0,dispatch:0});
+});
+test('no Core registry evidence reader does not claim or dispatch',async()=>{
+ const {router,calls}=factory();
+ const result=await router.planRegisteredChannelRecovery({
+  request_ref:'request-1',failure_ref:'failure-1'
+ });
+ assert.equal(result.reason_code,'ORIGINAL_CHANNEL_RECOVERY_EVIDENCE_READER_NOT_REGISTERED');
+ assert.deepEqual(calls,{claim:0,read:0,audit:0,dispatch:0});
+});
+test('unsigned provider inventory cannot be selected',async()=>{
+ const {router,core,calls}=factory();
+ core.readOriginalChannelRecoveryEvidence=async()=>({
+  request_ref:'request-1',failure_ref:'failure-1',
+  verified_source:'original_core_execution_journal',
+  registry_source:'original_core_registered_provider_registry',
+  signed_evidence_verified:false,provider_registry_verified:true,
+  request,failure,original_core_authority:grant,candidates:[channel]
+ });
+ const result=await router.planRegisteredChannelRecovery({
+  request_ref:'request-1',failure_ref:'failure-1'
+ });
+ assert.equal(result.reason_code,'ORIGINAL_CHANNEL_RECOVERY_EVIDENCE_UNVERIFIED');
+ assert.deepEqual(calls,{claim:0,read:0,audit:0,dispatch:0});
+});
+test('signed journal containing policy denial remains blocked',async()=>{
+ const {router,core,calls}=factory();
+ core.readOriginalChannelRecoveryEvidence=async()=>({
+  request_ref:'request-1',failure_ref:'failure-1',
+  verified_source:'original_core_execution_journal',
+  registry_source:'original_core_registered_provider_registry',
+  signed_evidence_verified:true,provider_registry_verified:true,
+  request,failure:{...failure,code:'TOOL_POLICY_REJECTED'},
+  original_core_authority:grant,candidates:[channel]
+ });
+ const result=await router.planRegisteredChannelRecovery({
+  request_ref:'request-1',failure_ref:'failure-1'
+ });
+ assert.equal(result.reason_code,'POLICY_DENIAL_CANNOT_ROUTE_AROUND');
+ assert.deepEqual(calls,{claim:0,read:0,audit:0,dispatch:0});
+});
+test('original Core evidence read timeout parks without replay',async()=>{
+ const {router,core,calls}=factory();
+ core.readOriginalChannelRecoveryEvidence=async()=>{throw Error('transport timeout')};
+ const result=await router.planRegisteredChannelRecovery({
+  request_ref:'request-1',failure_ref:'failure-1'
+ });
+ assert.equal(result.state,'PARKED_UNCERTAIN_NO_REPLAY');
  assert.deepEqual(calls,{claim:0,read:0,audit:0,dispatch:0});
 });
