@@ -42,20 +42,35 @@ jobs:
       - name: Verify pinned source evidence without granting release authority
         run: |
           set -euo pipefail
+          # Preserve read-only blocked evidence without suppressing the
+          # original strict release check below (workflow_dispatch only).
+          rm -f /tmp/qa31-source-parity-verdict.json
+          set +e
           python3 tools/qa31_release_source_gate.py \
             --evidence governance/release-parity/qa31-commerce-staging-source-parity.json \
             --github-plugin-root wp-content/plugins/mad4b-site-control-plane \
             --out /tmp/qa31-source-parity-verdict.json
+          readonly_exit=$?
+          set -e
+          if [ "$readonly_exit" -ne 0 ] && [ "$readonly_exit" -ne 3 ]; then exit "$readonly_exit"; fi
+          test -s /tmp/qa31-source-parity-verdict.json
+          export QA31_READONLY_EXIT="$readonly_exit"
           python3 - <<'PY'
           import json
+          import os
           from pathlib import Path
           result=json.loads(Path('/tmp/qa31-source-parity-verdict.json').read_text())
           assert result['authorizing'] is False
           assert result['production_authorized'] is False
           assert result['decision'] in ('BLOCKED_SOURCE_RECONCILIATION', 'SOURCE_PARITY_CANDIDATE_UNCERTIFIED')
-          assert result['unexpected_count'] == 0
+          # Read-only evidence may contain unresolved live-source differences.
+          # Preserve every blocker; only explicit release requests run --strict.
+          assert result['unexpected_count'] == len(result['unexpected_paths'])
+          assert int(os.environ['QA31_READONLY_EXIT']) == (3 if result['unexpected_count'] > 0 else 0)
           if result['decision'] == 'BLOCKED_SOURCE_RECONCILIATION':
-              assert result['pending_count'] > 0 or not result['version_match']
+              assert result['pending_count'] > 0 or result['unexpected_count'] > 0 or not result['version_match']
+          else:
+              assert result['unexpected_count'] == 0 and result['pending_count'] == 0
           print('QA31_SOURCE_PARITY_EVIDENCE: PASS; evidence only, not release authority')
           PY
 
