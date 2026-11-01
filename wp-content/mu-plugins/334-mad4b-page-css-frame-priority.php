@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Page and Frame-Aware CSS Priority — Staging
  * Description: Conservative source-bound stylesheet split; preserve viewport-critical and sticky CSS, defer tested noncritical styles only.
- * Version: 0.1.2-canary
+ * Version: 0.1.3-staged
  */
 defined('ABSPATH') || exit;
 final class MAD4B_Page_CSS_Frame_Priority_V1 {
@@ -58,13 +58,17 @@ final class MAD4B_Page_CSS_Frame_Priority_V1 {
    ||!empty($_SERVER['QUERY_STRING'])||!empty($_SERVER['HTTP_AUTHORIZATION'])
    ||!empty($_SERVER['HTTP_X_MAD4B_CURRENCY'])||!empty($_SERVER['HTTP_X_GEO_COUNTRY'])
    ||!empty($_SERVER['HTTP_CF_IPCOUNTRY'])||!empty($_SERVER['HTTP_X_FORWARDED_GEO_COUNTRY'])
-   ||($_SERVER['HTTP_X_MAD4B_CSS_PRIORITY']??'')!=='candidate-v1'
    ||!defined('LSCWP_V')||LSCWP_V!=='7.9.2'
    ||!defined('ELEMENTOR_VERSION')||ELEMENTOR_VERSION!=='4.3.5')return false;
   $path=(string)wp_parse_url($_SERVER['REQUEST_URI']??'',PHP_URL_PATH);
   $language=(string)apply_filters('wpml_current_language',null);
   if(!self::valid_route($path,$language)
    ||!self::safe_cookie_header((string)($_SERVER['HTTP_COOKIE']??''),$language))return false;
+  $priority_mode=(string)($_SERVER['HTTP_X_MAD4B_CSS_PRIORITY']??'');
+  if($priority_mode==='native-v1')return false;
+  if($priority_mode!=='candidate-v1' && !($priority_mode==='' && in_array($language,['en','ar'],true)
+   && (string)get_option('mad4b_css_priority_staging_en_ar_v1','0')==='1'))return false;
+
   $profile=get_option('mad4b_scp_brand_context_profile_v1',[]);
   return is_array($profile)&&($profile['site_uuid']??'')===self::UUID
    &&(string)get_option('litespeed.conf.optm-css_comb')==='1';
