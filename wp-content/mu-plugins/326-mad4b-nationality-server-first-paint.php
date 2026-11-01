@@ -7,7 +7,7 @@
 defined('ABSPATH') || exit;
 final class MAD4B_Nationality_Server_First_Paint_V1 {
  private const SITE_UUID='e5e64bca-ed62-48d2-b2b3-dff693cd702a';
- private const EXPECTED_JS_SHA256='2597f54af9bef4ce90153ec1798853c4ae01b5dd69f96ae68d8efa341d3e7b44';
+ private const EXPECTED_JS_SHA256='5b3d64e4f81fcd3b4c856ceb7910dae30675bea5c2cc07103abde27cdfd4d33f';
  private const PATHS=['/'=>'en','/fr/'=>'fr','/de/'=>'de','/ar/'=>'ar','/es/'=>'es','/it/'=>'it'];
  public static function eligibility():bool {
   if(PHP_SAPI==='cli'||wp_get_environment_type()!=='staging'
@@ -38,7 +38,7 @@ final class MAD4B_Nationality_Server_First_Paint_V1 {
   $scripts=wp_scripts();
   $handle=$scripts->registered['travel-booking-nationality-switcher']??null;
   if(!$handle||!str_contains((string)$handle->src,'etg-traveller-nationality-switcher/assets/nationality.js'))return;
-  $handle->ver='0.3.2-mad4b-server-first-paint';
+  $handle->ver='0.3.3-mad4b-wpml-country-names';
   // Insert before the native registered asset; search and saves remain unchanged.
   wp_add_inline_script('travel-booking-nationality-switcher',
    'window.travelBookingNationalityServerFirstPaint=true;','before');

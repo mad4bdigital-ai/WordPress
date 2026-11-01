@@ -154,24 +154,8 @@
    var nextPage=page+1;
    var url=new URL(cfg.dataset.endpoint,location.href);
    var searchTerm=input.value.trim();
-   // Only the compact mobile header uses localized country labels. The API's
-   // canonical search is English, so map an unambiguous localized name back
-   // to English without changing the visible query or selected country code.
-   if(form.closest('.header-context-controls-mobile') && searchTerm &&
-      typeof Intl!=='undefined' && typeof Intl.DisplayNames==='function'){
-    try {
-     var locale=document.documentElement.lang||'en';
-     var needle=searchTerm.toLocaleLowerCase(locale);
-     var matches=[].filter.call(select.options,function(opt){
-       return /^[A-Z]{2}$/.test(opt.value) &&
-         opt.textContent.trim().toLocaleLowerCase(locale).includes(needle);
-     });
-     if(matches.length===1){
-      var english=new Intl.DisplayNames(['en'],{type:'region'}).of(matches[0].value);
-      if(english && english!==matches[0].value) searchTerm=english;
-     }
-    }catch(e){/* retain native query when locale data is unavailable */}
-   }
+   // The REST route uses the active WPML language and returns translated
+   // country names. Send the visitor's query unchanged, including Arabic.
    url.searchParams.set('q',searchTerm);
    url.searchParams.set('page',String(nextPage));
    busy=true;

@@ -13,6 +13,10 @@ on:
       - 'wp-content/mu-plugins/324-mad4b-priceless-dynamic-css-cache.php'
       - 'wp-content/mu-plugins/325-mad4b-jetblog-mobile-server-first-paint.php'
       - 'wp-content/mu-plugins/326-mad4b-nationality-server-first-paint.php'
+      - 'wp-content/mu-plugins/327-mad4b-fluent-passport-locale.php'
+      - 'wp-content/plugins/etg-traveller-nationality-switcher/etg-traveller-nationality-switcher.php'
+      - 'ops/qa/mad4b-render-blocking/tests/test_fluent_passport_locale_contract.py'
+      - 'ops/qa/mad4b-render-blocking/fluent_passport_wpml_country_labels_acceptance.md'
       - 'wp-content/plugins/etg-traveller-nationality-switcher/assets/nationality.js'
       - 'ops/qa/mad4b-render-blocking/staging_external_css_combine.sh'
       - 'ops/qa/mad4b-render-blocking/audit_frontend_assets.py'
@@ -45,6 +49,10 @@ on:
       - 'wp-content/mu-plugins/324-mad4b-priceless-dynamic-css-cache.php'
       - 'wp-content/mu-plugins/325-mad4b-jetblog-mobile-server-first-paint.php'
       - 'wp-content/mu-plugins/326-mad4b-nationality-server-first-paint.php'
+      - 'wp-content/mu-plugins/327-mad4b-fluent-passport-locale.php'
+      - 'wp-content/plugins/etg-traveller-nationality-switcher/etg-traveller-nationality-switcher.php'
+      - 'ops/qa/mad4b-render-blocking/tests/test_fluent_passport_locale_contract.py'
+      - 'ops/qa/mad4b-render-blocking/fluent_passport_wpml_country_labels_acceptance.md'
       - 'wp-content/plugins/etg-traveller-nationality-switcher/assets/nationality.js'
       - 'ops/qa/mad4b-render-blocking/staging_external_css_combine.sh'
       - 'ops/qa/mad4b-render-blocking/audit_frontend_assets.py'
@@ -95,6 +103,10 @@ jobs:
           python3 ops/qa/mad4b-render-blocking/tests/test_jetblog_mobile_first_paint_contract.py
           php -l wp-content/mu-plugins/326-mad4b-nationality-server-first-paint.php
           python3 ops/qa/mad4b-render-blocking/tests/test_nationality_server_first_paint_contract.py
+          php -l wp-content/mu-plugins/327-mad4b-fluent-passport-locale.php
+          php -l wp-content/plugins/etg-traveller-nationality-switcher/etg-traveller-nationality-switcher.php
+          node --check wp-content/plugins/etg-traveller-nationality-switcher/assets/nationality.js
+          python3 ops/qa/mad4b-render-blocking/tests/test_fluent_passport_locale_contract.py
           node --check wp-content/plugins/etg-traveller-nationality-switcher/assets/nationality.js
           python3 ops/qa/mad4b-render-blocking/tests/test_asset_audit.py
           bash -n ops/qa/mad4b-render-blocking/staging_external_css_combine.sh

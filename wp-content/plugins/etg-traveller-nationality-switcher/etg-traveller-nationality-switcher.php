@@ -50,7 +50,7 @@ final class Travel_Booking_Traveller_Nationality_Switcher {
   if($contract!==self::CONTRACT&&!apply_filters('travel_booking/accept_legacy_nationality_contract',false,$contract))return '';
   return self::valid($record['country']??'');
  }
- public static function selected(){
+ public static function selected_manual(){
   if(!self::countries())return '';
   $keys=[self::SESSION];
   $legacy=apply_filters('travel_booking/legacy_nationality_preference_keys',[]);
@@ -60,11 +60,32 @@ final class Travel_Booking_Traveller_Nationality_Switcher {
   }
   $v='';
   foreach(array_unique($keys) as $key){if(isset($_COOKIE[$key])&&is_string($_COOKIE[$key])){$v=$_COOKIE[$key];break;}}
-  if(strlen($v)>1400||strpos($v,'.')===false)return '';
+  if(strlen($v)>1400||!str_contains($v,'.'))return '';
   [$payload,$mac]=explode('.',$v,2);
   if(!hash_equals(hash_hmac('sha256',$payload,wp_salt('auth')),$mac))return '';
   $plain=base64_decode(strtr($payload,'-_','+/'),true);
   return is_string($plain)?self::unpack(json_decode($plain,true)):'';
+ }
+ public static function selected(){
+  $manual=self::selected_manual();
+  if($manual)return $manual;
+  if(class_exists('MAD4B_Country_Switcher')){
+   $state=MAD4B_Country_Switcher::context();
+   $country=self::valid($state['country']??'');
+   if($country)return $country;
+  }
+  return '';
+ }
+ public static function preference_mode(){
+  return self::selected_manual()?'manual':'auto';
+ }
+ public static function reset_manual(){
+  if(function_exists('WC')&&WC()->session)WC()->session->__unset(self::SESSION);
+  if(!headers_sent())setcookie(self::COOKIE,'',[
+   'expires'=>time()-3600,'path'=>COOKIEPATH?:'/','secure'=>is_ssl(),'httponly'=>true,'samesite'=>'Lax'
+  ]);
+  unset($_COOKIE[self::COOKIE]);
+  return true;
  }
  public static function choose($country){
   $iso=self::valid($country);if(!$iso)return new WP_Error('travel_booking_nationality_unknown','Unsupported passport country');
@@ -78,13 +99,13 @@ final class Travel_Booking_Traveller_Nationality_Switcher {
   return $iso;
  }
  /** Names are country names from Woo; nationality is ISO2 passport country, not an invented demonym. */
- public static function selector($name='nationality',$chosen='',$allow_blank=true){
+ public static function selector($name='nationality',$chosen='',$allow_blank=true,$placeholder=''){
   $countries=self::countries();if(!$countries)return '';
   $name=(string)$name;
   if(!preg_match('/^[a-z][a-z0-9_]*(?:\[[0-9]{1,2}\])?$/D',$name))return '';
   $chosen=self::valid($chosen);
   $out='<select name="'.esc_attr($name).'" aria-label="'.esc_attr__('Passport nationality','travel-booking-traveller-nationality-switcher').'" '.($allow_blank?'':'required').'>';
-  $out.='<option value="">'.esc_html__('Select passport country','travel-booking-traveller-nationality-switcher').'</option>';
+  $out.='<option value="">'.esc_html($placeholder!==''?$placeholder:__('Select passport country','travel-booking-traveller-nationality-switcher')).'</option>';
   foreach($countries as $iso=>$label)$out.='<option value="'.esc_attr($iso).'" '.selected($chosen,$iso,false).'>'.esc_html($label).'</option>';
   return $out.'</select>';
  }
@@ -93,16 +114,31 @@ final class Travel_Booking_Traveller_Nationality_Switcher {
   $current=self::selected();
   $out='<form class="travel-booking-nationality-switcher" method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
   $out.='<input type="hidden" name="action" value="travel_booking_save_nationality">'.wp_nonce_field('travel_booking_save_nationality','_travel_booking_nationality_nonce',true,false);
-  $out.='<label>Passport nationality '.self::flag_html($current).' '.self::selector('nationality',$current).'</label>';
-  $out.='<button type="submit">'.esc_html__('Save','travel-booking-traveller-nationality-switcher').'</button></form>';
-  wp_enqueue_style('travel-booking-nationality-switcher',plugins_url('assets/nationality.css',__FILE__),[],'0.1.0');
-  wp_enqueue_script('travel-booking-nationality-switcher',plugins_url('assets/nationality.js',__FILE__),[],'0.1.0',true);
+  $ar=apply_filters('wpml_current_language',null)==='ar';
+  $label=$ar?'جنسية جواز السفر':__('Passport','travel-booking-traveller-nationality-switcher');
+  $placeholder=$ar?'اختر جنسية جواز السفر':'';
+  $out.='<label><span class="travel-booking-nationality-label">'.esc_html($label).'</span> '.self::flag_html($current).' '.self::selector('nationality',$current,true,$placeholder).'</label>';
+  // Progressive enhancement: native select stays in the DOM and is the
+  // authoritative form value, while JS adds an AJAX searchable combobox.
+  $out.='<span class="travel-booking-passport-search-config" hidden
+   data-mode="'.esc_attr(self::preference_mode()).'"
+   data-mode-auto="'.esc_attr($ar?'تلقائي حسب الدولة':'Auto · follows country').'"
+   data-mode-manual="'.esc_attr($ar?'تعديل يدوي':'Manual').'"
+   data-reset-label="'.esc_attr($ar?'استخدام دولة الإقامة':'Use selected country').'"
+   data-endpoint="'.esc_url(rest_url('travel-booking/v1/passport-options')).'"
+   data-placeholder="'.esc_attr($placeholder?:__('Search passport country','travel-booking-traveller-nationality-switcher')).'"
+   data-empty="'.esc_attr($ar?'لا توجد نتائج':'No countries found').'"
+   data-loading="'.esc_attr($ar?'جارٍ البحث…':'Searching…').'"
+   data-error="'.esc_attr($ar?'تعذر تحميل الدول. حاول مجددًا.':'Unable to load countries. Try again.').'"></span>';
+  $out.='<noscript><button type="submit">'.esc_html__('Save','travel-booking-traveller-nationality-switcher').'</button></noscript></form>';
+  wp_enqueue_style('travel-booking-nationality-switcher',plugins_url('assets/nationality.css',__FILE__),[],'0.3.0');
+  wp_enqueue_script('travel-booking-nationality-switcher',plugins_url('assets/nationality.js',__FILE__),[],'0.3.1-mobile',true);
   wp_add_inline_script('travel-booking-nationality-switcher','window.travelBookingNationalityAjax='.wp_json_encode(admin_url('admin-ajax.php?action=travel_booking_nationality_state')).';','before');
   return $out;
  }
  public static function traveler_shortcode($atts=[]){
   $a=shortcode_atts(['count'=>1,'use_preference'=>'yes'],$atts,'travel_booking_traveller_nationalities');
-  $num=max(1,min(Travel_Booking_Traveller_Management::MAX_VERIFIED_PERSONS,(int)$a['count']));$pref=($a['use_preference']==='yes')?self::selected():'';
+  $num=max(1,min(Travel_Booking_Traveller_Management::MAX_VERIFIED_PERSONS,(int)$a['count']));$pref=($a['use_preference']==='yes')?self::selected_manual():''; // Never invent a travel-document claim from market/geolocation.
   $html='<div class="travel-booking-traveller-nationalities" data-traveller-count="'.$num.'">';
   for($i=0;$i<$num;$i++){
    $html.='<label class="travel-booking-traveller-nationality-field">'.esc_html(sprintf(__('Traveller %d passport nationality','travel-booking-traveller-nationality-switcher'),$i+1));
@@ -227,9 +263,51 @@ final class Travel_Booking_Traveller_Nationality_Switcher {
  public static function ajax_state(){
   nocache_headers();$country=self::selected();
   wp_send_json_success(['contract'=>self::CONTRACT,'country'=>$country,
+   'preference_mode'=>self::preference_mode(),
    'flag_url'=>$country?self::flag_url($country):''],200);
  }
+ /**
+  * Public read-only country search for the header passport preference.
+  * Always uses the SAME source as the original <select>; no new dataset.
+  * Results are bounded and paginated; validation/save remain untouched.
+  */
+ public static function passport_search(WP_REST_Request $request){
+  $term=trim(sanitize_text_field((string)$request->get_param('q')));
+  $term=function_exists('mb_substr')?mb_substr($term,0,64):substr($term,0,64);
+  $page=max(1,min(100,(int)$request->get_param('page')));
+  $size=20;
+  $matches=[];
+  foreach(self::countries() as $code=>$label){
+   $name=(string)$label;
+   $needle=function_exists('mb_strtolower')?mb_strtolower($term,'UTF-8'):strtolower($term);
+   $haystack=function_exists('mb_strtolower')?mb_strtolower($name,'UTF-8'):strtolower($name);
+   if($term!=='' && !str_contains($haystack,$needle) &&
+      !str_contains(strtolower((string)$code),$needle))continue;
+   $matches[]=['id'=>(string)$code,'text'=>$name];
+  }
+  $count=count($matches);
+  $slice=array_slice($matches,($page-1)*$size,$size);
+  return new WP_REST_Response([
+   'contract'=>'travel_booking.passport-country-search.v1',
+   'options'=>$slice,
+   'page'=>$page,
+   'total'=>$count,
+   'has_more'=>$page*$size<$count,
+  ],200,['Cache-Control'=>'no-store']);
+ }
+ public static function register_passport_search(){
+  register_rest_route('travel-booking/v1','/passport-options',[
+   'methods'=>'GET',
+   'callback'=>[__CLASS__,'passport_search'],
+   'permission_callback'=>'__return_true',
+   'args'=>[
+    'q'=>['default'=>'','type'=>'string','sanitize_callback'=>'sanitize_text_field'],
+    'page'=>['default'=>1,'type'=>'integer','minimum'=>1,'maximum'=>100],
+   ],
+  ]);
+ }
  public static function boot(){
+  add_action('rest_api_init',[__CLASS__,'register_passport_search']);
   add_shortcode('travel_booking_nationality_switcher',[__CLASS__,'header_shortcode']);
   add_shortcode('travel_booking_traveller_nationalities',[__CLASS__,'traveler_shortcode']);
   add_action('admin_post_travel_booking_save_nationality',[__CLASS__,'post']);
