@@ -11496,6 +11496,27 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing pinned source validation, exact SHA identity, bounded GitHub HTTPS and protected candidate deploy controls cover the compact Git Data lookup.",
       "review_rationale": "The GitHub /commits/{sha} REST response may exceed the existing 262144-byte budget for multi-parent integration changes. Only the exact immutable commit lookup changes to /git/commits/{sha} (small Git object metadata). Do not raise limits, change other source selectors or treat any redirect/invalid/mismatched response as verified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php",
+      "source_blob_sha": "c852ad7cb23cfd4fdf285ec9eecdfdec9e8a22c2",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/mad4b_content_hub_queue_write_catalog_contract.py"
+      ],
+      "owner_role": "Repository source security reviewer; CI-only review; independently approved site execution required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing site-bound Write catalog, authenticated agent, exact grants, scoped approval, transaction checkpoint, audit and release tests govern this narrowly scoped diagnostic.",
+      "review_rationale": "Exact source review of the catalog's single-site diagnostic Ability; only enrolled Staging origin may mount it and ordinary broad enqueue remains excluded. No runtime identity or Production authorization is created."
     }
   ],
   "code_change_rules": {
