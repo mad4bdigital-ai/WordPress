@@ -1,0 +1,6 @@
+{
+  "contract": "mad4b.authority.readback-consumer.v1",
+  "site_host": "staging.example.org",
+  "environment": "staging",
+  "consumer_id": "example-staging"
+}
