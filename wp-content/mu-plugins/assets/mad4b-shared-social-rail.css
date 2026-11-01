@@ -1,0 +1,115 @@
+/* Shared authority: JetElements click-owned Dropbar containing an inline UAEL
+   share widget. No hardcoded Elementor IDs, post types or page selectors.
+   State class is added only after the compatible widget was discovered. */
+.elementor-widget-jet-dropbar.mad4b-share-rail-managed {
+ --mad4b-share-rail-layer:2147483000;
+ --mad4b-share-rail-surface:var(--e-global-color-bnav001,#f6f2e9);
+ --mad4b-share-rail-accent:var(--e-global-color-accent,#b48a46);
+ --mad4b-share-rail-ink:var(--e-global-color-primary,#102d40);
+}
+.elementor-widget-jet-dropbar.mad4b-share-rail-managed .jet-dropbar__content-wrapper {
+ position:fixed!important;
+ top:50dvh!important;
+ right:max(12px,env(safe-area-inset-right,0px))!important;
+ bottom:auto!important;
+ left:auto!important;
+ width:64px!important;
+ max-width:64px!important;
+ max-height:min(68dvh,400px);
+ overflow-y:auto;
+ overflow-x:hidden;
+ overscroll-behavior:contain;
+ transform:translateY(-50%)!important;
+ z-index:var(--mad4b-share-rail-layer)!important;
+ border:1px solid var(--mad4b-share-rail-accent);
+ border-radius:14px;
+ background:var(--mad4b-share-rail-surface);
+ box-shadow:0 9px 26px rgba(16,45,64,.25);
+}
+.elementor-widget-jet-dropbar.mad4b-share-rail-managed .jet-dropbar__content {
+ width:100%;
+ padding:7px 5px;
+ border-radius:inherit;
+ background:transparent;
+}
+.elementor-widget-jet-dropbar.mad4b-share-rail-managed .uael-style-inline,
+.elementor-widget-jet-dropbar.mad4b-share-rail-managed .uael-style-inline .elementor-grid,
+.elementor-widget-jet-dropbar.mad4b-share-rail-managed .jet-dropbar__content .elementor {
+ width:100%!important;
+ max-width:100%!important;
+ min-width:0!important;
+ margin:0!important;
+ box-sizing:border-box!important;
+}
+.elementor-widget-jet-dropbar.mad4b-share-rail-managed .jet-dropbar__content .e-con,
+.elementor-widget-jet-dropbar.mad4b-share-rail-managed .jet-dropbar__content .e-con-inner {
+ width:100%!important;
+ min-width:0!important;
+ max-width:100%!important;
+ padding:0!important;
+ margin:0!important;
+ box-sizing:border-box!important;
+}
+.elementor-widget-jet-dropbar.mad4b-share-rail-managed .uael-style-inline .elementor-grid {
+ position:static!important;
+ display:flex!important;
+ flex-direction:column!important;
+ align-items:center!important;
+ gap:5px!important;
+ padding:0!important;
+}
+.elementor-widget-jet-dropbar.mad4b-share-rail-managed .uael-style-inline .elementor-grid-item {
+ display:flex!important;
+ align-items:center!important;
+ justify-content:center!important;
+ width:100%!important;
+ min-width:0!important;
+ margin:0!important;
+}
+.elementor-widget-jet-dropbar.mad4b-share-rail-managed .uael-share-btn__icon {
+ display:flex;
+ justify-content:center;
+ align-items:center;
+ width:42px;
+ height:42px;
+ border-radius:9px;
+}
+.elementor-widget-jet-dropbar.mad4b-share-rail-managed .mad4b-share-rail-close {
+ display:block;
+ width:31px;
+ height:29px;
+ margin:0 0 4px auto;
+ padding:0;
+ border:1px solid rgba(16,45,64,.18);
+ border-radius:8px;
+ background:transparent;
+ color:var(--mad4b-share-rail-ink);
+ font:600 23px/1 system-ui,sans-serif;
+ cursor:pointer;
+}
+.elementor-widget-jet-dropbar.mad4b-share-rail-managed .mad4b-share-rail-close:is(:hover,:focus-visible) {
+ color:var(--mad4b-share-rail-accent);
+ border-color:currentColor;
+ outline-offset:2px;
+}
+.elementor-widget-jet-dropbar.mad4b-share-rail-managed .jet-dropbar__button {
+ touch-action:manipulation;
+}
+@media(max-width:767px) {
+ .elementor-widget-jet-dropbar.mad4b-share-rail-managed .jet-dropbar__content-wrapper {
+  top:45dvh!important;
+  max-height:min(63dvh,375px);
+  width:58px!important;
+  max-width:58px!important;
+ }
+ .elementor-widget-jet-dropbar.mad4b-share-rail-managed .uael-share-btn__icon {
+  width:39px;
+  height:39px;
+ }
+}
+@media(prefers-reduced-motion:reduce) {
+ .elementor-widget-jet-dropbar.mad4b-share-rail-managed .jet-dropbar__content-wrapper {
+  transition:none!important;
+  animation:none!important;
+ }
+}
