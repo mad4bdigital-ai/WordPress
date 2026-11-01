@@ -38,6 +38,92 @@ final class MAD4B_SCP_Central_Company_Engine_Governance {
                 'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
             ),
         ) );
+        if ( function_exists( 'wp_has_ability' ) && wp_has_ability( 'mad4b/central-company-engine-native-preflight' ) ) return;
+        wp_register_ability( 'mad4b/central-company-engine-native-preflight', array(
+            'label' => 'Central Company Native Engine Preflight',
+            'description' => 'Inspect exact site-bound original Core operation mapping and outstanding provider/evidence gates; never dispatch or authorize execution.',
+            'category' => 'mad4b-read',
+            'execute_callback' => array( __CLASS__, 'native_preflight' ),
+            'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
+            'input_schema' => array(
+                'type' => 'object',
+                'required' => array( 'engine_id' ),
+                'properties' => array(
+                    'engine_id' => array( 'type' => 'string', 'minLength' => 10, 'maxLength' => 72 ),
+                ),
+                'additionalProperties' => false,
+            ),
+            'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+            'meta' => array(
+                'public' => false, 'show_in_rest' => false,
+                'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ),
+                'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+            ),
+        ) );
+    }
+
+    /**
+     * Native Core readback is not a mutation admission, even when the operation
+     * is registered. Site Profile observes the site, but cannot attest company
+     * ownership; company-bound authority must come from the original Core.
+     */
+    public static function native_preflight( $input = array() ) {
+        if ( ! is_array( $input ) || array_keys( $input ) !== array( 'engine_id' ) ||
+            ! is_string( $input['engine_id'] ) ||
+            ! preg_match( '/^company\.[a-z][a-z0-9_]{2,63}$/D', $input['engine_id'] ) ) {
+            return self::fail( 'engine_scope_invalid' );
+        }
+        $status = self::status( array() );
+        if ( is_wp_error( $status ) ) return $status;
+        $selected = null;
+        foreach ( $status['engines'] as $row ) {
+            if ( $row['engine_id'] === $input['engine_id'] ) {
+                $selected = $row;
+                break;
+            }
+        }
+        if ( null === $selected ) return self::fail( 'engine_unregistered' );
+        $profile = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : null;
+        $site = is_array( $profile ) ? $profile : array();
+        $identity_ready = ! empty( $site['site_uuid'] ) &&
+            ! empty( $site['origin_match'] ) &&
+            ! empty( $site['deployment_binding_match'] ) &&
+            ! empty( $site['same_origin_clone_protection'] );
+        $environment = class_exists( 'MAD4B_SCP_Site_Profile' )
+            ? MAD4B_SCP_Site_Profile::current_environment()
+            : ( function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'unknown' );
+        $blockers = array();
+        if ( ! $identity_ready ) $blockers[] = 'site_identity_not_verified';
+        if ( ! $selected['core_registry_mapping'] ) $blockers[] = 'native_operation_not_registered';
+        if ( ! empty( $selected['wordpress_modules_missing'] ) ) $blockers[] = 'runtime_module_missing';
+        if ( 'vps' === $selected['source'] ) $blockers[] = 'vps_source_inventory_receipt_not_bound';
+        if ( 'company.schema_evolution' === $selected['engine_id'] ) {
+            $blockers[] = 'canonical_schema_and_provider_adapters_not_certified';
+        }
+        if ( 'company.code_reconciliation' === $selected['engine_id'] ) {
+            $blockers[] = 'target_semantic_dependency_graph_not_certified';
+        }
+        $blockers[] = 'company_binding_not_attested_by_core';
+        $blockers[] = 'native_executor_authority_and_restore_not_certified';
+        return array(
+            'contract' => 'mad4b.central-company-engine-native-preflight.v1',
+            'engine_id' => $selected['engine_id'],
+            'native_operation' => $selected['native_operation'],
+            'core_registry_mapping' => $selected['core_registry_mapping'],
+            'site_uuid' => $identity_ready ? (string) $site['site_uuid'] : '',
+            'site_identity_observed' => $identity_ready,
+            'environment' => (string) $environment,
+            'site_origin' => function_exists( 'home_url' ) ? home_url() : '',
+            'blockers' => array_values( array_unique( $blockers ) ),
+            'status' => 'BLOCKED_PENDING_NATIVE_EVIDENCE',
+            'company_scope_authority_verified' => false,
+            'full_native_executor_certified' => false,
+            'can_apply' => false,
+            'can_commit' => false,
+            'authorizing' => false,
+            'mutation_performed' => false,
+            'production_mutation' => false,
+        );
     }
 
     public static function status( $input = array() ) {

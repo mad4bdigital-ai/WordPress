@@ -16,6 +16,14 @@ $GLOBALS['registered_ability'] = array();
 function add_action( $name, $callable, $priority ) { $GLOBALS['ability_hooks'][$name] = $callable; }
 function wp_register_ability( $name, $args ) { $GLOBALS['registered_ability'][$name] = $args; return true; }
 function wp_has_ability( $name ) { return isset( $GLOBALS['registered_ability'][$name] ); }
+class MAD4B_SCP_Site_Profile {
+    public static function status() {
+        return array( 'site_uuid' => 'fixture-site-1', 'origin_match' => true,
+                      'deployment_binding_match' => true, 'same_origin_clone_protection' => true );
+    }
+    public static function current_environment() { return 'staging'; }
+}
+function home_url() { return 'https://fixture.example.test'; }
 class MAD4B_SCP_Operation_Registry {
     public static function operation( $id ) {
         if ( ! in_array( $id, array( 'company.plugin-sync.request', 'wordpress.runtime.converge' ), true ) ) {
@@ -31,6 +39,12 @@ $class::boot();
 assert( isset( $GLOBALS['ability_hooks']['wp_abilities_api_init'] ) );
 call_user_func( $GLOBALS['ability_hooks']['wp_abilities_api_init'] );
 $ability = $GLOBALS['registered_ability'][$class::ABILITY] ?? null;
+$preflight_ability = $GLOBALS['registered_ability']['mad4b/central-company-engine-native-preflight'] ?? null;
+if ( ! is_array( $preflight_ability ) ||
+     ( $preflight_ability['permission_callback'][1] ?? null ) !== 'can_read' ||
+     ( $preflight_ability['meta']['annotations']['readonly'] ?? null ) !== true ) {
+    throw new RuntimeException( 'missing_or_unsafe_preflight_ability' );
+}
 if ( ! is_array( $ability ) ||
      ( $ability['permission_callback'][1] ?? null ) !== 'can_read' ||
      ( $ability['meta']['annotations']['readonly'] ?? null ) !== true ||
@@ -63,4 +77,27 @@ if ( ! is_wp_error( $class::assess_manifest( $bad ) ) ) {
 if ( ! is_wp_error( $class::status( array( 'authorized' => true ) ) ) ) {
     throw new RuntimeException( 'caller_authority_injection_not_denied' );
 }
-echo "PASS central company native ability metadata, 9 engines / 2 core mappings, owner and cycle guards, no execution\n";
+$schema_preflight = $class::native_preflight( array( 'engine_id' => 'company.schema_evolution' ) );
+$code_preflight = $class::native_preflight( array( 'engine_id' => 'company.code_reconciliation' ) );
+foreach ( array( $schema_preflight, $code_preflight ) as $preflight ) {
+    if ( is_wp_error( $preflight ) || ( $preflight['status'] ?? '' ) !== 'BLOCKED_PENDING_NATIVE_EVIDENCE' ||
+        ( $preflight['site_uuid'] ?? '' ) !== 'fixture-site-1' ||
+        ( $preflight['company_scope_authority_verified'] ?? null ) !== false ||
+        ( $preflight['can_apply'] ?? null ) !== false ||
+        ( $preflight['production_mutation'] ?? null ) !== false ||
+        ( $preflight['core_registry_mapping'] ?? null ) !== false ) {
+        throw new RuntimeException( 'unregistered_engine_preflight_not_fail_closed' );
+    }
+}
+$identity_missing = $class::native_preflight( array( 'engine_id' => 'company.plugin_sync' ) );
+if ( is_wp_error( $identity_missing ) ||
+    ( $identity_missing['core_registry_mapping'] ?? null ) !== true ||
+    ( $identity_missing['can_apply'] ?? null ) !== false ) {
+    throw new RuntimeException( 'mapped_operation_claimed_authority' );
+}
+$invalid_scope = $class::native_preflight( array( 'engine_id' => 'company.schema_evolution',
+    'authorized' => true ) );
+if ( ! is_wp_error( $invalid_scope ) ) {
+    throw new RuntimeException( 'client_authority_injection_not_refused_by_preflight' );
+}
+echo "PASS central company native read abilities, 9 engines / 2 core mappings, owner/cycle/scope guards, no execution\n";
