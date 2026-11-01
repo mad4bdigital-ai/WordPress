@@ -1,0 +1,41 @@
+name: Central Company Engine Governance Safety
+on:
+  pull_request:
+    paths:
+      - 'ops/central-company-engine-governance/**'
+      - '.github/workflows/central-company-engine-governance-safety.yml'
+  push:
+    branches: ['feat/central-company-engine-governance-20261101']
+    paths:
+      - 'ops/central-company-engine-governance/**'
+      - '.github/workflows/central-company-engine-governance-safety.yml'
+permissions:
+  contents: read
+concurrency:
+  group: mad4b-central-company-engine-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+jobs:
+  read_only_engine_contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Validate immutable company engine contracts and original Core-only execution binding
+        env:
+          MAD4B_GOVERNANCE_USE_FIXTURE: '1'
+        run: |
+          python3 -m py_compile ops/central-company-engine-governance/governance.py ops/central-company-engine-governance/runtime_probe.py
+          python3 ops/central-company-engine-governance/test_governance.py
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('ops/central-company-engine-governance')
+          e=json.loads((p/'engine-registry.json').read_text())
+          assert e['domain_owner']=='central_company_management'
+          assert e['core_authority']=='MAD4B_SCP_Operation_Registry'
+          assert e['core_dispatch']=='original_governed_operation_pipeline'
+          assert e['default_write_policy']=='deny_without_native_operation_and_fresh_site_bound_authority'
+          assert e['site_data_replication']=='never_implicit'
+          print('PASS central-company ownership, native core inheritance, no automatic replication')
+          PY

@@ -1,0 +1,33 @@
+# Central Company Engine Governance v1
+
+**Ownership:** MAD4B Central Company Management. This is not a replacement for global Core Governance.
+
+## Capabilities
+- Validated dependency-ordered registry of nine company-management engines.
+- Live source-module inventory and exact mapping to existing MAD4B Core Operation Registry.
+- Non-authorizing company/site/environment-bound assessment.
+- Read-only native WordPress Core registry readback from central Staging.
+- Fail-closed tests for authority, duplicate dispatcher, missing Core mappings, and protected scope.
+
+## No execution authority
+It cannot generate grants, dispatch shell/WP-CLI commands, update WordPress, migrate taxonomies, install plugins, assign companies, or approve a restore/production release. The original Core Operation Registry, Dispatcher, Native Executor, authorization boundary and signed receipts remain authoritative.
+
+Core operation mapping proves registry presence only, **not** certified execution. The operation for schema evolution cannot be enabled by merely writing a placeholder.
+
+## Central VPS usage
+Run: python3 governance.py --output central-company-engine-audit.json
+Run: python3 test_governance.py
+Run: python3 runtime_probe.py > central-core-native-readback.json
+
+Run the live probe only on the enrolled central VPS. Do not publish credentials, site-private config, data rows or site-bound identities in version control.
+
+## Acceptance gates
+1. Independently prove ownership and provider capability contracts.
+2. Bind real operation to the original Core Registry and the reviewed native planner/executor; no parallel dispatchers.
+3. Independently verify exact company/site identity and fresh scoped authority.
+4. Certify provider-specific adapters, versioned source definitions, restore checkpoint.
+5. Staging native apply + readback + real restore; promote via the same Core with risk-based Production authorization.
+6. Send identity/drift conflicts to Reviews; never implicitly transfer company or site data.
+
+## Observed on 2026-11-01
+Nine engines inventoried; nine have all declared source modules; two mapped to existing Core operations. Live readback on tours.dev.mad4b.com confirms company.plugin-sync.request and wordpress.runtime.converge mapped; wordpress.taxonomy.evolve unregistered. No WordPress or company data mutation. **Not** a nine-engine runtime certification.
