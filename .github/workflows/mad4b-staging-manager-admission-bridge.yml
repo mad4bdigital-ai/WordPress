@@ -33,6 +33,12 @@ jobs:
       - name: Synthetic exact environment admission lifecycle
         run: |
           php ops/mad4b-staging-manager-bridge-v1/tests/staging_admission_hermetic.php
+      - name: Dynamic WordPress actor source and fail-closed runtime patch
+        run: |
+          set -euo pipefail
+          d=ops/mad4b-staging-manager-bridge-v1/dynamic-wpcli-actor-v1
+          python3 -m py_compile "$d/wpcli_dynamic_actor.py" "$d/tests/test_dynamic_actor.py"
+          python3 "$d/tests/test_dynamic_actor.py" -v
       - name: Confirm original broker verification and no alternate grants
         run: |
           python3 - <<'PY'
