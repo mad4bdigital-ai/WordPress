@@ -129,7 +129,7 @@ for path in (root / 'includes').rglob('*.php'):
                 raise SystemExit(f'FAIL migration decision staff/admin permission or parent scheduling: {marker}')
         if source.count("add_submenu_page(") != 1 or source.count("add_management_page(") != 1:
             raise SystemExit('FAIL migration decision extra menu scope')
-        if re.search(r"add_action\\(\\s*['\\\"]admin_menu['\\\"]", source):
+        if re.search(r"add_action\(\s*['\"]admin_menu['\"]", source)
             raise SystemExit('FAIL migration decision submenu bypasses parent scheduling')
         checked += 1
         continue
