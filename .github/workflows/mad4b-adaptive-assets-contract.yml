@@ -1,0 +1,38 @@
+name: MAD4B Adaptive Asset Intelligence Contract
+on:
+  pull_request:
+    paths:
+      - "wp-content/plugins/mad4b-adaptive-asset-intelligence/**"
+      - "wp-content/mu-plugins/335-mad4b-self-governing-css.php"
+      - "ops/qa/css-priority-auto-v1/**"
+      - ".github/workflows/mad4b-adaptive-assets-contract.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  local-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate PHP module and native notification bridge
+        run: |
+          php -v
+          php -l wp-content/plugins/mad4b-adaptive-asset-intelligence/mad4b-adaptive-asset-intelligence.php
+          php -l wp-content/plugins/mad4b-adaptive-asset-intelligence/includes/class-mad4b-scp-adaptive-asset-intelligence.php
+          php -l wp-content/mu-plugins/335-mad4b-self-governing-css.php
+          php wp-content/plugins/mad4b-adaptive-asset-intelligence/tests/contract.php
+          MAD4B_MU336_PATH=wp-content/mu-plugins/336-mad4b-litespeed-local-provider.php php ops/qa/css-priority-auto-v1/test-litespeed-local-provider.php
+      - name: Validate local browser worker scripts
+        run: |
+          node --check ops/qa/css-priority-auto-v1/css-scout.js
+          node --check ops/qa/css-priority-auto-v1/css-benchmark.js
+          bash -n ops/qa/css-priority-auto-v1/local-cycle.sh
+          bash -n ops/qa/css-priority-auto-v1/emergency-disable.sh
+          bash -n ops/qa/css-priority-auto-v1/cache-isolation-check.sh
+          python3 -m py_compile ops/qa/css-priority-auto-v1/policy-engine.py
+          python3 -m py_compile ops/qa/css-priority-auto-v1/discover-routes.py
+          python3 -m py_compile ops/qa/css-priority-auto-v1/pending-queue.py
+          python3 -m py_compile ops/qa/css-priority-auto-v1/notification-bridge.py
+          python3 ops/qa/css-priority-auto-v1/test-device-policy.py
+          python3 -m py_compile ops/qa/css-priority-auto-v1/device-turn.py

@@ -1,0 +1,218 @@
+#!/usr/bin/env python3
+"""Staging-only, fail-closed, source-bound CSS policy staging and certification."""
+import os,sys,json,hashlib,re,statistics,time,tempfile,subprocess
+from pathlib import Path
+ROOT=Path('/opt/hostinger-migrations/hosting-3/etg-commerce-staging')
+SITE=ROOT/'site-copy'
+POLICY=SITE/'wp-content/mu-plugins/mad4b-css-autonomous-policy.json'
+QA=ROOT/'qa/css-priority-auto-v1'
+HOST='tours.dev.mad4b.com'; UUID='e5e64bca-ed62-48d2-b2b3-dff693cd702a'; LANGS=('en','ar','fr','de','es','it')
+EXPECTED={'contract':'mad4b.dynamic-css.local.v1','site_host':HOST,'site_uuid':UUID}
+
+def read(path):return json.loads(Path(path).read_text())
+def save_atomic(path,obj):
+ path=Path(path); data=json.dumps(obj,sort_keys=True,indent=2,ensure_ascii=False)+'\n'
+ if len(data)>100000:raise ValueError('Manifest exceeds bound')
+ fd,name=tempfile.mkstemp(prefix='.css-policy-',dir=path.parent)
+ try:
+  with os.fdopen(fd,'w') as f:f.write(data);f.flush();os.fsync(f.fileno())
+  os.chmod(name,0o640)
+  if os.geteuid()==0:os.chown(name,0,33)
+  os.replace(name,path)
+ finally:
+  if os.path.exists(name):os.unlink(name)
+
+def runtime_snapshot():
+ """One site-scoped WP-CLI read per step, retry only transient WP-CLI failures."""
+ php='echo wp_json_encode(["site"=>site_url(),"environment"=>wp_get_environment_type(),"site_uuid"=>(get_option("mad4b_scp_brand_context_profile_v1",[])["site_uuid"]??""),"epoch"=>(int)get_option("mad4b_css_ai_epoch_v1",1),"guest"=>(string)get_option("litespeed.conf.guest","0"),"mobile_cache"=>(string)get_option("litespeed.conf.cache-mobile","0"),"css_provider"=>class_exists("MAD4B_LSC_Local_Provider_V1")?MAD4B_LSC_Local_Provider_V1::mode():"missing","litespeed_exclusive"=>class_exists("MAD4B_LSC_Local_Provider_V1")&&MAD4B_LSC_Local_Provider_V1::local_css_eligible()]);'
+ cmd=['docker','exec','-u','www-data','-w','/var/www/html','etg-commerce-staging-php','wp','eval',php,'--quiet']
+ for n in range(2):
+  r=subprocess.run(cmd,capture_output=True,text=True,timeout=28)
+  if r.returncode==0:
+   try:return json.loads(r.stdout.strip())
+   except json.JSONDecodeError:pass
+  if n==0:time.sleep(.6)
+ raise RuntimeError('STAGING_WPCLI_UNAVAILABLE: no valid local identity snapshot')
+
+_snapshot=None
+def runtime():
+ global _snapshot
+ if _snapshot is None:_snapshot=runtime_snapshot()
+ return _snapshot
+
+def scope():
+ x=runtime()
+ if (x.get('site')!='https://'+HOST or x.get('environment')!='staging' or
+     x.get('site_uuid')!=UUID or x.get('mobile_cache')!='1' or
+     x.get('css_provider')!='local_first' or x.get('litespeed_exclusive') is not True):
+  raise RuntimeError('STAGING_IDENTITY_OR_LOCAL_LITESPEED_PROVIDER_GUARD_FAILED')
+
+def epoch():
+ val=runtime().get('epoch')
+ if not isinstance(val,int) or val<1:raise RuntimeError('Bad policy epoch')
+ return val
+
+def guest_mode():
+ val=runtime().get('guest')
+ if val not in ('0','1'):raise RuntimeError('Guest mode unavailable')
+ return val
+
+def manifest():
+ doc=read(POLICY)
+ if any(doc.get(k)!=v for k,v in EXPECTED.items()):raise RuntimeError('Manifest identity mismatch')
+ if not isinstance(doc.get('routes'),dict):raise RuntimeError('Missing routes')
+ return doc
+
+def check_path(p):
+ if not isinstance(p,str) or not re.fullmatch(r'/[a-zA-Z0-9/_~.-]*',p) or '//' in p or '..' in p or len(p)>250:raise ValueError('Unsafe path')
+ return p
+
+def language(path):
+ bits=path.strip('/').split('/');return bits[0] if bits[0] in LANGS[1:] else 'en'
+
+def routekey(path):return hashlib.sha256((language(path)+'|'+path).encode()).hexdigest()
+
+def stage(path,device):
+ if device not in ('desktop','mobile'):raise ValueError('Unrecognized device policy')
+ check_path(path);scope();doc=manifest();report=read(QA/'scout-result.json')
+ if report.get('path')!=path or report.get('device')!=device or report.get('success') is not True:raise RuntimeError('Scout mismatched/failed')
+ if len(report.get('samples',[]))!=1 or any(x.get('route')!=path or x.get('status')!=200 or x.get('mobile')!=(device=='mobile') for x in report['samples']):raise RuntimeError('Unverified browser route')
+ safe={};base=(SITE/'wp-content').resolve()
+ for handle,asset in report.get('eligible',{}).items():
+  if not re.fullmatch(r'[a-z0-9_-]{3,90}',handle) or not isinstance(asset,dict):continue
+  rel=asset.get('relpath','')
+  if not re.fullmatch(r'/wp-content/(?:plugins|themes|mu-plugins)/[A-Za-z0-9/_-]+\.css',rel):continue
+  p=(SITE/rel.lstrip('/')).resolve()
+  if not p.is_file() or not p.is_relative_to(base):continue
+  if asset.get('tier') not in ('idle','below-fold'):continue
+  safe[handle]={'relpath':rel,'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'tier':asset['tier']}
+ safe=dict(list(safe.items())[:12]);key=routekey(path)
+ now=int(time.time())
+ if not safe:
+  parent=doc['routes'].get(key,{'path':path,'locale':language(path),'devices':{}})
+  parent.setdefault('devices',{})[device]={'device':device,'status':'hold','expires':now-1,'issues':['no_verified_css_assets'],'last_evaluated':now}
+  doc['routes'][key]=parent;save_atomic(POLICY,doc)
+  print(json.dumps({'path':path,'result':'native-only','reason':'no_verified_css_assets'}));return 2
+ digest=hashlib.sha256(json.dumps(safe,sort_keys=True).encode()).hexdigest()
+ parent=doc['routes'].get(key,{'path':path,'locale':language(path),'devices':{}})
+ device_map=parent.get('devices',{})
+ prev=device_map.get(device,{})
+ trials=[]
+ for tr in prev.get('trials',[]):
+  handles=tr.get('handles',[]) if isinstance(tr,dict) else []
+  hashes=tr.get('source_hashes',{}) if isinstance(tr,dict) else {}
+  if not isinstance(handles,list) or not handles or not all(h in safe for h in handles):continue
+  if hashes and isinstance(hashes,dict) and all(safe[h]['sha256']==hashes.get(h) for h in handles):trials.append(tr)
+  elif not hashes and prev.get('source_digest')==digest:trials.append(tr)
+  # Source changes invalidate only the affected historical subset, never unrelated decisions.
+ # Recover already-observed failure when upgrading from the nonadaptive v1 gate.
+ if not trials and prev.get('status')=='hold' and prev.get('assets')==safe:
+  trials=[{'handles':sorted(safe),'source_hashes':{h:a['sha256'] for h,a in safe.items()},'result':'HOLD','issues':prev.get('issues',[])}]
+ failures={tuple(t['handles']) for t in trials if t.get('result')=='HOLD' and isinstance(t.get('handles'),list)}
+ keys=list(safe)
+ proposals=[tuple(sorted(keys))]
+ # Bounded beam search: evaluate smaller independent subsets only when the full set failed.
+ if len(keys)>2:
+  mid=max(1,len(keys)//2)
+  proposals.extend([tuple(sorted(keys[:mid])),tuple(sorted(keys[mid:]))])
+ proposals.extend((item,) for item in keys)
+ proposals=list(dict.fromkeys(proposals))
+ if prev.get('status')=='certified' and prev.get('source_digest')==digest:
+  proposals.insert(0,tuple(sorted(prev['assets'])))
+ selected=next((subset for subset in proposals if subset not in failures),None)
+ if selected is None:
+  prev.update({'device':device,'status':'hold','expires':now-1,'issues':['all_candidate_subsets_failed'], 'trials':trials,'source_digest':digest})
+  parent.setdefault('devices',{})[device]=prev;doc['routes'][key]=parent;save_atomic(POLICY,doc)
+  print(json.dumps({'path':path,'result':'native-only','reason':'all_candidate_subsets_failed'}));return 2
+ chosen={name:safe[name] for name in selected}
+ parent.setdefault('devices',{})[device]={'device':device,'status':'candidate','source_version':'4.3.5/7.9.2','assets':chosen,'expires':now+86400,'created':now,'epoch':epoch(),'guest_mode':guest_mode(),'source_digest':digest,'trials':trials}
+ doc['routes'][key]=parent
+ if len(doc['routes'])>120:raise RuntimeError('Manifest full; cannot expand')
+ save_atomic(POLICY,doc)
+ print(json.dumps({'path':path,'device':device,'status':'candidate','assets':list(chosen),'tested_subsets':len(trials)}));return 0
+
+def p75(values):
+ a=sorted(values);return a[min(len(a)-1,max(0,int((len(a)-1)*0.75+0.5)))] if a else None
+
+def verify(path,device):
+ if device not in ('desktop','mobile'):raise ValueError('Unrecognized device policy')
+ scope();check_path(path);doc=manifest();key=routekey(path);parent=doc['routes'].get(key,{});entry=parent.get('devices',{}).get(device)
+ if not entry or entry.get('device')!=device or parent.get('path')!=path or parent.get('locale')!=language(path) or entry.get('status') not in ('candidate','certified'):raise RuntimeError('No staged route')
+ data=read(QA/'benchmark-result.json')
+ if data.get('path')!=path or data.get('device')!=device:raise RuntimeError('A/B path/device mismatch')
+ rows=data.get('observations',[]);issues=[]
+ if data.get('complete') is not True or len(rows)!=10 or data.get('planned')!=10:
+  issues.append('incomplete_or_insufficient_five_round_evidence')
+ measured=[]
+ for mobile in [device=='mobile']:
+  a=sorted([x for x in rows if x.get('mobile')==mobile and x.get('mode')=='native-v1'],key=lambda x:x.get('round',0))
+  b=sorted([x for x in rows if x.get('mobile')==mobile and x.get('mode')=='canary-v1'],key=lambda x:x.get('round',0))
+  if len(a)!=5 or len(b)!=5:issues.append('insufficient_repeats_'+str(mobile));continue
+  for x in a+b:
+   if x.get('status')!=200 or x.get('path')!=path or x.get('error') or x.get('failures') or not x.get('allReady',False):issues.append('failed_http_or_styles_'+str(mobile))
+  if any((x.get('tags') or 0)<1 for x in b):issues.append('missing_candidate_css_'+str(mobile))
+  if any((x.get('tags') or 0)>0 for x in a):issues.append('baseline_contaminated_'+str(mobile))
+  for na,nb in zip(a,b):
+   if any('navigations' not in x or 'guestVary' not in x for x in (na,nb)):
+    issues.append('missing_first_visit_navigation_evidence_'+str(mobile))
+   if any(int(x.get('navigations',0))!=1 for x in (na,nb)):
+    issues.append('multi_navigation_guest_reload_'+str(mobile))
+   if any(int(x.get('guestVary',0))>0 for x in (na,nb)):
+    issues.append('guest_mode_vary_before_measurement_'+str(mobile))
+   if int(nb.get('pageErrors',0))>int(na.get('pageErrors',0)):
+    issues.append('new_page_js_errors_'+str(mobile))
+  if any(not isinstance(x.get('ttfb'),(int,float)) or x['ttfb']<1 for x in a+b):
+   issues.append('missing_network_timing_'+str(mobile));continue
+  ta=statistics.median(x['ttfb'] for x in a);tb=statistics.median(x['ttfb'] for x in b)
+  if abs(tb-ta)>max(300,0.08*ta):issues.append('server_ttfb_unbalanced_'+str(mobile))
+  adjusted_benefits=[]
+  for k in ('lcp','fcp'):
+   if any(not x.get(k) for x in a+b):issues.append('missing_'+k);continue
+   base=statistics.median(x[k] for x in a)
+   candidate=statistics.median(x[k] for x in b)
+   delta=candidate-base
+   # Guest/WordPress/PHP noise must not become a false CSS win.
+   if delta>max(250,0.05*base):issues.append('raw_regression_'+k+'_'+str(mobile))
+   pa=statistics.median(x[k]-x['ttfb'] for x in a)
+   pb=statistics.median(x[k]-x['ttfb'] for x in b)
+   adjusted=pb-pa
+   if adjusted>max(120,0.08*pa):issues.append('post_ttfb_regression_'+k+'_'+str(mobile))
+   adjusted_benefits.append(-adjusted)
+   measured.append({'mobile':mobile,'metric':k,'baseline_ms':base,'candidate_ms':candidate,
+    'baseline_post_ttfb_ms':pa,'candidate_post_ttfb_ms':pb,'delta_raw_ms':delta,'delta_post_ttfb_ms':adjusted})
+  if not adjusted_benefits or max(adjusted_benefits)<50:issues.append('no_material_render_benefit_'+str(mobile))
+  clsA=[x.get('cls',1.0) for x in a];clsB=[x.get('cls',1.0) for x in b]
+  if p75(clsB)>0.12 or p75(clsB)>p75(clsA)+0.015:issues.append('cls_gate_'+str(mobile))
+  # Stable first-frame geometry and styles, without relying on variable card IDs.
+  for na,nb in zip(a,b):
+   for j in (0,1,2,3):
+    g1=(na.get('top') or [None]*5)[j];g2=(nb.get('top') or [None]*5)[j]
+    if g1 is None or g2 is None:continue
+    if g1[2:]!=g2[2:] or abs(g1[0]-g2[0])>3 or abs(g1[1]-g2[1])>3:
+     issues.append('geometry_'+str(mobile));break
+ unique=sorted(set(issues));out={'timestamp':int(time.time()),'path':path,'device':device,'observations':len(rows),'result':'HOLD' if unique else 'PASS','issues':unique,'css_assets':list(entry['assets']),'metrics':measured}
+ (QA/('last-verdict-'+device+'.json')).write_text(json.dumps(out,indent=2)+'\n')
+ # Drift check: don't certify a source that changed during browser run.
+ fresh=manifest();current=fresh['routes'].get(key,{});existing=current.get('devices',{}).get(device)
+ if existing!=entry:raise RuntimeError('Concurrent policy change; stop')
+ if int(existing.get('epoch',0))!=epoch():raise RuntimeError('WordPress content changed during A/B; no certification')
+ if str(existing.get('guest_mode','__unbound__'))!=guest_mode():raise RuntimeError('Guest Mode changed during A/B; no certification')
+ existing['trials']=(existing.get('trials',[])+[{'handles':sorted(existing['assets']),'result':'HOLD' if unique else 'PASS','issues':unique,'source_hashes':{h:a['sha256'] for h,a in existing['assets'].items()},'measured':int(time.time())}])[-32:]
+ if unique:
+  # A previously certified route loses trust and safely returns to native.
+  existing['status']='hold';existing['expires']=int(time.time())-1;existing['issues']=unique[:12]
+ else:
+  existing['status']='certified';existing['expires']=int(time.time())+3*86400;existing['evidence']='five_paired_repeats_ttfb_normalized_device_'+device;existing.pop('issues',None)
+ current['devices'][device]=existing
+ fresh['routes'][key]=current
+ save_atomic(POLICY,fresh)
+ print(json.dumps(out));return 0 if not unique else 5
+
+if __name__=='__main__':
+ try:
+  verb=sys.argv[1];path=sys.argv[2] if len(sys.argv)>2 else '/';device=sys.argv[3] if len(sys.argv)>3 else 'desktop'
+  if verb=='stage':sys.exit(stage(path,device))
+  if verb=='verify':sys.exit(verify(path,device))
+  if verb=='status':scope();d=manifest();print(json.dumps({'routes':len(d['routes']),'status':{v.get('path',k):{device:row.get('status') for device,row in v.get('devices',{}).items()} for k,v in d['routes'].items()}}));sys.exit(0)
+  raise ValueError('Expected stage|verify|status')
+ except Exception as e:print('CSS_POLICY_FAIL_CLOSED: '+str(e),file=sys.stderr);sys.exit(11)

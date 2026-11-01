@@ -51,6 +51,9 @@ final class MAD4B_Page_CSS_Frame_Priority_V1 {
   return true;
  }
  private static function enabled(): bool {
+  // Single writer: new bridge owns all active CSS experiments. Retain this file as dormant fallback.
+  if(class_exists('MAD4B_LiteSpeed_Local_Bridge',false) && MAD4B_LiteSpeed_Local_Bridge::active())return false;
+  if(class_exists('MAD4B_LSC_Local_Provider_V1') && !MAD4B_LSC_Local_Provider_V1::legacy_css_allowed())return false;
   if(PHP_SAPI==='cli'||wp_get_environment_type()!=='staging'||!did_action('wp')||is_admin()||wp_doing_ajax()
    ||is_user_logged_in()||is_preview()||($_SERVER['REQUEST_METHOD']??'')!=='GET'
    ||($_SERVER['HTTP_HOST']??'')!==self::HOST
