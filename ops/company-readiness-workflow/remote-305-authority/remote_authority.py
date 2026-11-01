@@ -28,7 +28,7 @@ PUBLIC_KEY = Path("/opt/mad4b-company-transport/broker-v1/host-ed25519-public.ba
 ENROLLER = Path("/opt/mad4b-company-transport/broker-v1/native-company-wpcli-enroll.py")
 BRIDGE = Path("/opt/mad4b-company-provisioning/source-candidates/full-host-authority-pr723")
 REPLAY_LEDGER = Path("/opt/mad4b-company-provisioning/source-candidates/issue724-remote-authority/replay-ledger.json")
-ACTIONS = {"preflight", "enroll305"}
+ACTIONS = {"preflight", "reconcile305", "enroll305"}
 FIELDS = ("contract", "action", "host_id", "company", "environment",
           "site_uuid", "canonical_origin", "issued", "expires", "nonce")
 COMPANY = re.compile(r"[a-z][a-z0-9-]{2,47}\Z")
@@ -103,17 +103,25 @@ def exact_source(row: dict, report: dict) -> dict:
 
 
 def original_native(action: str, company: str, environment: str, *, timeout=55) -> tuple[bool, str, dict]:
-    if action not in ("plan", "enroll") or environment != "staging":
+    if action not in ("plan", "enroll", "status") or environment != "staging":
         raise Denied("ORIGINAL_ENROLLMENT_ACTION_INVALID")
-    st = ENROLLER.lstat()
-    if not ENROLLER.is_file() or ENROLLER.is_symlink() or st.st_uid != 0 or st.st_mode & 0o022:
-        raise Denied("ORIGINAL_305_SCRIPT_UNTRUSTED")
-    result = subprocess.run([sys.executable, str(ENROLLER), action, "--company", company,
-                             "--environment", environment],
-                            capture_output=True, text=True, timeout=timeout, check=False)
+    if action == "status":
+        command = ["docker", "exec", "-u", "33:33", "etg-commerce-staging-php",
+                   "php", "-d", "memory_limit=512M", "/usr/local/bin/wp",
+                   "mad4b", "company-native-wpcli", "status",
+                   "--company=" + company, "--environment=" + environment,
+                   "--path=/var/www/html", "--skip-themes"]
+    else:
+        st = ENROLLER.lstat()
+        if not ENROLLER.is_file() or ENROLLER.is_symlink() or st.st_uid != 0 or st.st_mode & 0o022:
+            raise Denied("ORIGINAL_305_SCRIPT_UNTRUSTED")
+        command = [sys.executable, str(ENROLLER), action, "--company", company,
+                   "--environment", environment]
+    result = subprocess.run(command, capture_output=True, text=True,
+                            timeout=timeout, check=False)
     if result.returncode:
         m = re.search(r"ORIGINAL_COMPANY_NATIVE_ENROLLMENT_DENIED:([A-Z0-9_]+)", result.stderr)
-        return False, m.group(1) if m else "ORIGINAL_305_PRECHECK_FAILED", {}
+        return False, m.group(1) if m else "ORIGINAL_305_READBACK_FAILED", {}
     rows = []
     for line in result.stdout.splitlines():
         try:
@@ -124,7 +132,13 @@ def original_native(action: str, company: str, environment: str, *, timeout=55) 
             pass
     if len(rows) != 1:
         return False, "ORIGINAL_305_RECEIPT_INVALID", {}
-    return True, str(rows[0].get("state", "UNKNOWN")), rows[0]
+    record = rows[0]
+    if action == "status":
+        if record.get("state") == "DENIED" and record.get("reason") == "NOT_ENROLLED":
+            return False, "NOT_ENROLLED", record
+        if record.get("state") != "ORIGINAL_305_PERSISTENT_PAIR_ENROLLED":
+            return False, str(record.get("reason", "ORIGINAL_305_STATUS_INVALID")), record
+    return True, str(record.get("state", "UNKNOWN")), record
 
 
 def reserve_nonce(nonce: str, now: int, path: Path = REPLAY_LEDGER) -> None:
@@ -158,6 +172,38 @@ def reserve_nonce(nonce: str, now: int, path: Path = REPLAY_LEDGER) -> None:
         os.fsync(f.fileno())
 
 
+def _original_status(native, row: dict) -> tuple[bool, str, dict]:
+    ok, state, details = native("status", row["company"], "staging")
+    if not isinstance(details, dict):
+        raise Denied("ORIGINAL_305_STATUS_INVALID")
+    if ok:
+        if state != "ORIGINAL_305_PERSISTENT_PAIR_ENROLLED":
+            raise Denied("ORIGINAL_305_STATUS_INVALID")
+        if (details.get("contract") != "mad4b.company-native-wpcli-enrollment.v1"
+            or details.get("company") != row["company"]
+            or details.get("environment") != "staging"
+            or details.get("site_uuid") != row["site_uuid"]):
+            raise Denied("ORIGINAL_305_STATUS_SCOPE_MISMATCH")
+    elif state != "NOT_ENROLLED":
+        raise Denied("ORIGINAL_305_STATUS_UNCERTAIN")
+    return ok, state, details
+
+
+def _record_registered(result: dict, status: dict, newly_issued: bool) -> dict:
+    active = (status.get("host_authority_verified") is True
+              and status.get("full_wpcli_active") is True)
+    result.update({
+        "state": ("GRANT_ISSUED_CONFIRMED" if newly_issued
+                  else "GRANT_EXISTING_CONFIRMED"),
+        "grant_issued": newly_issued,
+        "grant_registered": True,
+        "grant_active": active,
+        "blockers": ([] if active else [
+            "INDEPENDENT_EXECUTOR_CERTIFICATION_AND_312_313_REQUIRED"]),
+    })
+    return result
+
+
 def process(request: dict, public_raw: bytes, report: dict,
             native=original_native, now: int | None = None,
             ledger: Path = REPLAY_LEDGER, refresh=None) -> dict:
@@ -167,7 +213,8 @@ def process(request: dict, public_raw: bytes, report: dict,
         "contract": RESPONSE, "target": row["company"] + ":staging",
         "action": row["action"], "site_bound": True,
         "original_manager_authority_inferred_from_ssh": False,
-        "grant_issued": False, "execution_performed": False,
+        "grant_issued": False, "grant_registered": False,
+        "grant_active": False, "execution_performed": False,
         "production_mutated": False,
         "state": "BLOCKED", "blockers": [],
     }
@@ -175,53 +222,54 @@ def process(request: dict, public_raw: bytes, report: dict,
         result["blockers"].append("EXACT_HOST_SCOPE_AND_BINDING_PENDING")
     elif item.get("full_host_scope_observed") is not True:
         result["blockers"].append("FULL_SHELL_SQL_AND_HOST_SCOPE_PENDING")
-    # Never report a usable original pair if current host policy is missing.
     if result["blockers"]:
         return result
-    if item.get("original_305_active_pair_observed") is True:
-        result["state"] = "ALREADY_ENROLLED_ORIGINAL_305_READBACK"
-        result["blockers"].append("INDEPENDENT_EXECUTION_AND_313_RECEIPT_REQUIRED")
+
+    # Presence of Original 305 grant != active native executor (projection).
+    try:
+        registered, status, existing = _original_status(native, row)
+    except Exception:
+        result["state"] = "ORIGINAL_305_STATUS_UNCERTAIN"
+        result["blockers"] = ["INDEPENDENT_305_RECONCILIATION_REQUIRED"]
         return result
-    ok, state, native_report = native("plan", row["company"], "staging")
+    if registered:
+        return _record_registered(result, existing, newly_issued=False)
+    ok, state, plan = native("plan", row["company"], "staging")
     if not ok or state != "ORIGINAL_NATIVE_SIGNED_ENROLLMENT_ADMISSIBLE":
         result["blockers"].append(state if not ok else "ORIGINAL_MANAGER_PLAN_NOT_ADMISSIBLE")
         return result
-    result["state"] = "ORIGINAL_305_PLAN_ADMISSIBLE"
     if row["action"] == "preflight":
-        result["blockers"].append("SEPARATE_ENROLL305_REQUEST_REQUIRED")
+        result["state"] = "GRANT_ISSUANCE_ADMISSIBLE"
+        result["blockers"].append("SIGNED_RECONCILE305_REQUEST_REQUIRED")
         return result
     if refresh is None:
         raise Denied("INDEPENDENT_READBACK_REQUIRED")
-    # Time must still be valid at the actual write boundary, even if live
-    # readback takes longer than the broker's short-lived request TTL.
     if row["expires"] <= int(time.time()):
         raise Denied("REQUEST_EXPIRED_BEFORE_ENROLLMENT")
     reserve_nonce(row["nonce"], int(time.time()), ledger)
-    # Original signed WordPress issuer independently re-runs all manager checks.
     try:
-        succeeded, result_code, receipt = native("enroll", row["company"], "staging")
-    except Exception as exc:
+        issued, receipt_state, receipt = native("enroll", row["company"], "staging")
+    except Exception:
         result["state"] = "ORIGINAL_305_OUTCOME_UNCERTAIN"
         result["blockers"] = ["INDEPENDENT_305_RECONCILIATION_REQUIRED"]
         return result
-    if not succeeded or result_code != "ORIGINAL_305_PERSISTENT_PAIR_ENROLLED":
+    if (not issued or receipt_state != "ORIGINAL_305_PERSISTENT_PAIR_ENROLLED"
+        or receipt.get("grant_issued") is not True):
         result["state"] = "ORIGINAL_305_OUTCOME_UNCERTAIN"
         result["blockers"] = ["INDEPENDENT_305_RECONCILIATION_REQUIRED"]
         return result
     try:
         after = exact_source(row, refresh())
+        if after.get("site_identity_registered") is not True:
+            raise Denied("ORIGINAL_SITE_IDENTITY_NOT_REGISTERED")
+        verified, code, status_row = _original_status(native, row)
+        if not verified:
+            raise Denied("ORIGINAL_305_NEW_PAIR_NOT_VERIFIED")
     except Exception:
         result["state"] = "ORIGINAL_305_OUTCOME_UNCERTAIN"
         result["blockers"] = ["INDEPENDENT_305_RECONCILIATION_REQUIRED"]
         return result
-    if after.get("original_305_active_pair_observed") is not True:
-        result["state"] = "ORIGINAL_305_READBACK_NOT_CONFIRMED"
-        result["blockers"] = ["INDEPENDENT_305_RECONCILIATION_REQUIRED"]
-        return result
-    result["state"] = "ORIGINAL_305_CONFIRMED"
-    result["grant_issued"] = receipt.get("grant_issued") is True
-    result["blockers"] = ["EXECUTOR_AND_INDEPENDENT_312_313_PENDING"]
-    return result
+    return _record_registered(result, status_row, newly_issued=True)
 
 
 def live_report() -> dict:

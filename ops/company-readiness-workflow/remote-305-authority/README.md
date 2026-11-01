@@ -50,3 +50,26 @@ python3 -m py_compile remote_authority.py test_remote_authority.py
 4. Certify `305/306/312/313/314`, independent receipts and rollback.
 5. Keep Production mutation separately approved.
 
+## Issuance objective
+
+The preferred remote action is `reconcile305` (`enroll305` remains an alias).
+It automatically requests a real site-specific persistent Grant and Transport
+from the original WordPress issuer when the exact host and manager authorization
+are already valid. A `preflight` request remains non-mutating.
+
+Original WordPress `mad4b company-native-wpcli status` confirms the persisted
+pair and live company delegation even if native executor activation is pending.
+The 305 projection's `original_305_active_pair_observed` is not proof that
+the grant was newly issued, because newly issued pairs start pending.
+
+Outcomes: `GRANT_ISSUED_CONFIRMED` means a new grant with independent readback;
+`GRANT_EXISTING_CONFIRMED` means no duplicate was created; `grant_registered`
+means the persistent record exists, while `grant_active` is only true when
+Original WordPress verifies both host authority and full WP-CLI activation.
+Individual command execution still needs independent `312/313` verification.
+
+Original Company Portfolio Manager enrollment and signed host scope remain
+mandatory. Broker signature by itself never confers a company delegation.
+Production grants cannot be issued through this Staging-only adapter.
+
+31 hermetic tests PASS locally after distinguishing issued and active grants.

@@ -33,6 +33,8 @@ class RemoteTests(unittest.TestCase):
                        "grants_created": False, "operations_executed": False,
                        "production_mutated": False, "targets": [self.item]}
         self.calls = []
+        self.pair_registered = False
+        self.pair_active = False
         self.temp = tempfile.TemporaryDirectory()
         self.ledger = Path(self.temp.name) / "ledger.json"
 
@@ -47,8 +49,18 @@ class RemoteTests(unittest.TestCase):
     def execute(self, row, native=None, refresh=None):
         def default(action, company, environment):
             self.calls.append((action, company, environment))
-            return True, ("ORIGINAL_NATIVE_SIGNED_ENROLLMENT_ADMISSIBLE" if action == "plan"
-                          else "ORIGINAL_305_PERSISTENT_PAIR_ENROLLED"), {"grant_issued": True}
+            if action == "status":
+                if not self.pair_registered:
+                    return False, "NOT_ENROLLED", {"state":"DENIED","reason":"NOT_ENROLLED"}
+                return True, "ORIGINAL_305_PERSISTENT_PAIR_ENROLLED", {
+                    "contract":"mad4b.company-native-wpcli-enrollment.v1",
+                    "company":company,"environment":environment,
+                    "site_uuid":self.uuid,"host_authority_verified":self.pair_active,
+                    "full_wpcli_active":self.pair_active, "grant_issued":False}
+            if action == "plan":
+                return True, "ORIGINAL_NATIVE_SIGNED_ENROLLMENT_ADMISSIBLE", {}
+            self.pair_registered = True
+            return True, "ORIGINAL_305_PERSISTENT_PAIR_ENROLLED", {"grant_issued":True}
         return m.process(row, self.public, self.report, native=native or default,
                          now=self.now, ledger=self.ledger, refresh=refresh)
 
@@ -58,12 +70,12 @@ class RemoteTests(unittest.TestCase):
 
     def test_valid_signed_preflight_no_grant(self):
         v = self.execute(self.signed())
-        self.assertEqual(v["state"], "ORIGINAL_305_PLAN_ADMISSIBLE")
+        self.assertEqual(v["state"], "GRANT_ISSUANCE_ADMISSIBLE")
         self.assertFalse(v["grant_issued"])
         self.assertFalse(v["execution_performed"])
         self.assertFalse(v["production_mutated"])
         self.assertFalse(v["original_manager_authority_inferred_from_ssh"])
-        self.assertEqual(self.calls, [("plan", "example-company", "staging")])
+        self.assertEqual([c[0] for c in self.calls], ["status","plan"])
 
     def test_block_remote_without_exact_scope(self):
         self.item["verified_host_scope_id"] = None
@@ -78,40 +90,50 @@ class RemoteTests(unittest.TestCase):
         self.assertFalse(self.calls)
 
     def test_manager_denied_is_not_granted(self):
-        def missing(*args):
-            return False, "ENROLLED_WORDPRESS_COMPANY_MANAGER_NOT_VERIFIED", {}
+        def missing(action,*args):
+            return (False, "NOT_ENROLLED", {"state":"DENIED","reason":"NOT_ENROLLED"}) if action=="status" else (False, "ENROLLED_WORDPRESS_COMPANY_MANAGER_NOT_VERIFIED", {})
         v = self.execute(self.signed(), native=missing)
         self.assertEqual(v["state"], "BLOCKED")
         self.assertIn("ENROLLED_WORDPRESS_COMPANY_MANAGER_NOT_VERIFIED", v["blockers"])
 
     def test_original_pair_no_double_issue(self):
-        self.item["original_305_active_pair_observed"] = True
-        v = self.execute(self.signed(action="enroll305"))
-        self.assertEqual(v["state"], "ALREADY_ENROLLED_ORIGINAL_305_READBACK")
-        self.assertFalse(self.calls)
+        self.pair_registered = True
+        v = self.execute(self.signed(action="reconcile305"))
+        self.assertEqual(v["state"], "GRANT_EXISTING_CONFIRMED")
+        self.assertTrue(v["grant_registered"])
+        self.assertFalse(v["grant_active"])
+        self.assertFalse(v["grant_issued"])
+        self.assertEqual([c[0] for c in self.calls], ["status"])
 
     def test_enrollment_confirmed_only_after_independent_source(self):
         fresh = copy.deepcopy(self.report)
-        fresh["targets"][0]["original_305_active_pair_observed"] = True
-        v = self.execute(self.signed(action="enroll305"), refresh=lambda:fresh)
-        self.assertEqual(v["state"], "ORIGINAL_305_CONFIRMED")
+        v = self.execute(self.signed(action="reconcile305"), refresh=lambda:fresh)
+        self.assertEqual(v["state"], "GRANT_ISSUED_CONFIRMED")
         self.assertTrue(v["grant_issued"])
-        self.assertEqual([x[0] for x in self.calls], ["plan","enroll"])
+        self.assertTrue(v["grant_registered"])
+        self.assertFalse(v["grant_active"])
+        self.assertEqual([x[0] for x in self.calls], ["status","plan","enroll","status"])
 
     def test_success_receipt_with_missing_live_pair_is_not_success(self):
-        v = self.execute(self.signed(action="enroll305"),refresh=lambda:self.report)
-        self.assertEqual(v["state"], "ORIGINAL_305_READBACK_NOT_CONFIRMED")
+        def native(action,*args):
+            if action == "status":return False,"NOT_ENROLLED",{"state":"DENIED","reason":"NOT_ENROLLED"}
+            if action == "plan":return True,"ORIGINAL_NATIVE_SIGNED_ENROLLMENT_ADMISSIBLE",{}
+            return True,"ORIGINAL_305_PERSISTENT_PAIR_ENROLLED",{"grant_issued":True}
+        v = self.execute(self.signed(action="reconcile305"),native=native,refresh=lambda:self.report)
+        self.assertEqual(v["state"], "ORIGINAL_305_OUTCOME_UNCERTAIN")
         self.assertFalse(v["grant_issued"])
 
     def test_uncertain_original_response_no_retry(self):
         def native(action,company,env):
+            if action == "status":
+                return False,"NOT_ENROLLED",{"state":"DENIED","reason":"NOT_ENROLLED"}
             if action == "plan":
                 return True,"ORIGINAL_NATIVE_SIGNED_ENROLLMENT_ADMISSIBLE",{}
             return False, "ORIGINAL_305_RECEIPT_INVALID",{}
-        v = self.execute(self.signed(action="enroll305"), native=native,refresh=lambda:self.report)
+        v = self.execute(self.signed(action="reconcile305"), native=native,refresh=lambda:self.report)
         self.assertEqual(v["state"], "ORIGINAL_305_OUTCOME_UNCERTAIN")
         with self.assertRaisesRegex(m.Denied,"SIGNED_REQUEST_REPLAY"):
-            self.execute(self.signed(action="enroll305"), native=native,refresh=lambda:self.report)
+            self.execute(self.signed(action="reconcile305"), native=native,refresh=lambda:self.report)
 
     def test_wrong_broker_host_denied(self):
         self.denied("host_id", "other-host", "REQUEST_HOST_OR_ACTION_INVALID")
@@ -175,26 +197,61 @@ class RemoteTests(unittest.TestCase):
         self.assertFalse(self.ledger.exists())
 
     def test_nonce_is_single_use_even_when_readback_uncertain(self):
-        v = self.execute(self.signed(action="enroll305"),refresh=lambda:self.report)
-        self.assertEqual(v["state"],"ORIGINAL_305_READBACK_NOT_CONFIRMED")
+        def native(action,*args):
+            if action == "status":return False,"NOT_ENROLLED",{"state":"DENIED","reason":"NOT_ENROLLED"}
+            if action == "plan":return True,"ORIGINAL_NATIVE_SIGNED_ENROLLMENT_ADMISSIBLE",{}
+            return True,"ORIGINAL_305_PERSISTENT_PAIR_ENROLLED",{"grant_issued":True}
+        v = self.execute(self.signed(action="reconcile305"),native=native,refresh=lambda:self.report)
+        self.assertEqual(v["state"],"ORIGINAL_305_OUTCOME_UNCERTAIN")
         with self.assertRaisesRegex(m.Denied,"SIGNED_REQUEST_REPLAY"):
-            self.execute(self.signed(action="enroll305"),refresh=lambda:self.report)
+            self.execute(self.signed(action="reconcile305"),native=native,refresh=lambda:self.report)
 
     def test_modified_ledger_permissions_rejected(self):
         self.ledger.write_text("{}")
         self.ledger.chmod(0o644)
         with self.assertRaisesRegex(m.Denied,"REPLAY_LEDGER_NOT_ROOT_PROTECTED"):
-            self.execute(self.signed(action="enroll305"),refresh=lambda:self.report)
+            self.execute(self.signed(action="reconcile305"),refresh=lambda:self.report)
+
+    def test_status_registered_pending_not_confused_with_active(self):
+        self.pair_registered = True
+        self.item["original_305_active_pair_observed"] = False
+        x = self.execute(self.signed(action="reconcile305"))
+        self.assertEqual(x["state"], "GRANT_EXISTING_CONFIRMED")
+        self.assertTrue(x["grant_registered"])
+        self.assertFalse(x["grant_active"])
+
+    def test_status_active_only_when_both_original_flags_true(self):
+        self.pair_registered = True
+        self.pair_active = True
+        x = self.execute(self.signed(action="reconcile305"))
+        self.assertTrue(x["grant_active"])
+        self.assertFalse(x["grant_issued"])
+        self.assertEqual(x["blockers"], [])
+
+    def test_original_status_scope_mismatch_denied(self):
+        def native(action,*args):
+            return True,"ORIGINAL_305_PERSISTENT_PAIR_ENROLLED",{
+                "contract":"mad4b.company-native-wpcli-enrollment.v1",
+                "company":"other-tenant", "environment":"staging", "site_uuid":self.uuid}
+        x=self.execute(self.signed(action="reconcile305"),native=native)
+        self.assertEqual(x["state"], "ORIGINAL_305_STATUS_UNCERTAIN")
+        self.assertFalse(x["grant_issued"])
+
+    def test_status_failure_does_not_issue(self):
+        def native(action,*args):return False,"ORIGINAL_305_READBACK_FAILED",{}
+        x=self.execute(self.signed(action="reconcile305"),native=native)
+        self.assertEqual(x["state"],"ORIGINAL_305_STATUS_UNCERTAIN")
+        self.assertFalse(self.ledger.exists())
 
     def test_manager_rejection_never_reserves_nonce(self):
-        def missing(*args):
-            return False, "MANAGER_NOT_VERIFIED", {}
-        self.execute(self.signed(action="enroll305"), native=missing,refresh=lambda:self.report)
+        def missing(action,*args):
+            return (False,"NOT_ENROLLED",{"state":"DENIED","reason":"NOT_ENROLLED"}) if action=="status" else (False, "MANAGER_NOT_VERIFIED", {})
+        self.execute(self.signed(action="reconcile305"), native=missing,refresh=lambda:self.report)
         self.assertFalse(self.ledger.exists())
 
     def test_enroll_needs_independent_refresh(self):
         with self.assertRaisesRegex(m.Denied,"INDEPENDENT_READBACK_REQUIRED"):
-            self.execute(self.signed(action="enroll305"))
+            self.execute(self.signed(action="reconcile305"))
         self.assertFalse(self.ledger.exists())
 
 
