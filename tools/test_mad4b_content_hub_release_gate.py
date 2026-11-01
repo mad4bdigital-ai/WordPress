@@ -6,6 +6,7 @@ import unittest
 # Import the shadow gate cases so they are part of the exact-HEAD package gate.
 from tools.test_mad4b_full_enforcement_shadow_gate import ShadowGateTests  # noqa: F401
 from tools.test_mad4b_hub_ai_client_default import ChatGPTMCPDefaultTests  # noqa: F401
+from tools.test_mad4b_staging_transport_contract import StagingTypedTransportContractTests  # noqa: F401
 
 ROOT = Path(__file__).resolve().parents[1]
 
