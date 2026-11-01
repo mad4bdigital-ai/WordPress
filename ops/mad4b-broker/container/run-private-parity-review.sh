@@ -8,11 +8,14 @@ if [[ $# -ne 0 ]]; then echo "NO_ARGUMENTS_ACCEPTED" >&2; exit 2; fi
 repo=/opt/staging/mad4b-all-open-prs-zero-gap-20261101
 ref=refs/remotes/origin/feature/central-local-native-handoff-20261101
 output=/opt/staging/mad4b-container-parity-20261101/proposals
-writer="$repo/ops/mad4b-broker/container/write-reviewed-parity-proposal.php"
+writer=/opt/staging/mad4b-container-parity-20261101/write-reviewed-parity-proposal.php
 image=wordpress:php8.5-fpm
 [[ "$(id -u)" -eq 0 ]] || { echo "HOST_READ_ATTESTATION_REQUIRES_OPERATOR" >&2; exit 2; }
 [[ -f "$writer" && ! -L "$writer" && -d "$output" && ! -L "$output" ]] || exit 2
 [[ "$(stat -c '%u:%a' "$writer")" == "0:644" ]] || exit 2
+source_hash=$(git -C "$repo" show "$ref:ops/mad4b-broker/container/write-reviewed-parity-proposal.php" | sha256sum | cut -d' ' -f1)
+installed_hash=$(sha256sum "$writer" | cut -d' ' -f1)
+[[ "$source_hash" == "$installed_hash" ]] || { echo "REVIEW_WRITER_SOURCE_DRIFT" >&2; exit 2; }
 [[ "$(stat -c '%u:%a' "$output")" == "33:700" ]] || exit 2
 [[ "$(docker inspect -f '{{.Id}}' "$image" 2>/dev/null)" != "" ]] || exit 2
 
