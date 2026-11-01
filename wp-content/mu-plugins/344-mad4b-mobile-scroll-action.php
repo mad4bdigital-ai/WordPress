@@ -14,12 +14,13 @@ final class MAD4B_Mobile_Scroll_Action {
   $p=get_option('mad4b_scp_brand_context_profile_v1',[]);
   return is_array($p)&&($p['site_uuid']??'')===self::UUID;
  }
- public static function archive():bool {
+ public static function share_page():bool {
   return self::scope()&&!is_admin()&&!is_preview()
-   &&is_post_type_archive('tours-and-activities');
+   &&(is_post_type_archive('tours-and-activities')
+      ||is_singular('tours-and-activities'));
  }
  public static function assets():void {
-  if(!self::archive())return;
+  if(!self::share_page())return;
   $base=WP_CONTENT_DIR.'/mu-plugins/assets/';
   foreach(['css','js'] as $type) {
    $name='mad4b-mobile-scroll-action.'.$type;$file=$base.$name;
@@ -30,7 +31,7 @@ final class MAD4B_Mobile_Scroll_Action {
   }
  }
  public static function no_optimize(string $tag,string $handle,string $src):string {
-  if(!self::archive()||$handle!=='mad4b-mobile-scroll-action')return $tag;
+  if(!self::share_page()||$handle!=='mad4b-mobile-scroll-action')return $tag;
   return str_replace('id="mad4b-mobile-scroll-action-js"',
    'data-no-optimize="1" data-no-defer="1" data-cfasync="false" id="mad4b-mobile-scroll-action-js"',$tag);
  }
