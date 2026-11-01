@@ -1,0 +1,13 @@
+[Unit]
+Description=MAD4B scheduled governed read-only Host Scope projection refresh
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=10min
+AccuracySec=30s
+RandomizedDelaySec=30s
+Persistent=true
+Unit=mad4b-company-host-scope-refresh.service
+
+[Install]
+WantedBy=timers.target
