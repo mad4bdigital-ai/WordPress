@@ -11671,6 +11671,28 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing Admin, delegated staff, task workflow and WordPress permission controls govern the exact Content Work Scopes screen; no added ability, workflow execution, role grants or site authority.",
       "review_rationale": "Repair a verified Admin Route Registry mismatch by declaring the existing Content Work Scopes submenu with original MAD4B_SCP_Readiness_Integrations::CAP. The same-PR negative guard checks the exact staff capability, route and submenu matching, no direct admin_menu registration, and the screen's can_manage denial. No REST/write endpoint or Production behavior is authorized."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-preactivation.php",
+      "source_blob_sha": "afa4bb84e21bf23442f381d8002f6cc0948081b1",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "AUTOMATION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py"
+      ],
+      "owner_role": "MAD4B CI-only technical exact-source review; not owner approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing WordPress user capability, admin routing, read-only readiness and workflow-lock controls govern this unactivated setup screen; no grant or release authority added.",
+      "review_rationale": "The Pre-Activation screen was already delegated to mad4b_manage_company_operations with a hard execution lock. Added the exact route declaration before scheduled submenu, preserving original staff role, screen denial and REST authorization. Same-PR test pins the lock, parent-order registration and rejects additional menu paths."
     }
   ],
   "code_change_rules": {
