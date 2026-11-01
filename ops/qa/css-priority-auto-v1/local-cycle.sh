@@ -15,6 +15,9 @@ if [ "$flag" = 1 ];then echo 'HOLD: legacy MU334 rollout enabled; disable legacy
 # Prioritize WordPress source-change events; the periodic run still checks a fallback route.
 pending=$(python3 "$Q/pending-queue.py")
 if [ "$mode" = event ] && [ -z "$pending" ];then echo 'IDLE: no WordPress asset changes';exit 0;fi
+if [ "$mode" != status ];then
+ "$Q/cache-isolation-check.sh" || { echo 'HOLD: cache isolation proof failed; no CSS analysis or promotion';exit 12; }
+fi
 python3 "$Q/discover-routes.py"
 if [ "$mode" = status ];then python3 "$Q/policy-engine.py" status;exit 0;fi
 if [ "$mode" = smoke ];then route=/;
