@@ -59,7 +59,8 @@ final class MAD4B_Central_Owner_Manager_Review_V1 {
         usort($production,static fn($a,$b)=>strcmp($a['company'],$b['company']));
         $source=['companies'=>array_column($staging,'company'),
             'nonce'=>wp_create_nonce('wp_rest'),
-            'base'=>esc_url_raw(rest_url('mad4b-central/v1/company-environments/'))];
+            'base'=>esc_url_raw(rest_url('mad4b-central/v1/company-environments/')),
+            'portfolio_base'=>esc_url_raw(rest_url('mad4b/v1/company-managers/'))];
         echo '<div class="wrap mad4b-owner-environments"><h1>MAD4B — Company & Environment Authority</h1>';
         echo '<p>All registered environments are visible. Owner approval is available only where an original authorized issuer exists. No 305 grants are created by this page.</p>';
         echo '<style>
@@ -82,7 +83,9 @@ final class MAD4B_Central_Owner_Manager_Review_V1 {
             echo '<tr data-company="'.esc_attr($item['company']).'" data-environment="staging"><td><strong>'.
                 esc_html($item['company']).'</strong></td><td>Staging</td>'.
                 '<td class="mad4b-state" role="status" aria-live="polite">Reading original plan…</td><td>'.
-                '<button type="button" class="button button-primary mad4b-approve" disabled>Approve and activate manager</button></td></tr>';
+                '<button type="button" class="button button-primary mad4b-approve" disabled>Approve and activate manager</button> '.
+                '<button type="button" class="button mad4b-portfolio-approve" disabled>Approve Company Portfolio</button>'.
+                '<p class="mad4b-portfolio-state" role="status" aria-live="polite">Checking Portfolio…</p></td></tr>';
         }
         if(!$staging)echo '<tr><td colspan="4">No Staging company targets enrolled.</td></tr>';
         echo '</tbody></table>';
@@ -143,6 +146,124 @@ final class MAD4B_Central_Owner_Manager_Review_V1 {
             }
             return data;
           }
+          function managerId(p) {
+            return typeof p.manager_id==='string' &&
+              /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(p.manager_id)
+                ?p.manager_id:null;
+          }
+          async function portfolioRequest(company,manager,transition,method='GET',body=null) {
+            if(!cfg.companies.includes(company) || !/^[a-z][a-z0-9-]{2,47}$/.test(company)
+               || !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(manager))
+              throw new Error('Original company/manager identity invalid');
+            const suffix=transition?'/delegation/transition':'/delegation';
+            const url=cfg.portfolio_base+encodeURIComponent(manager)+'/companies/'+
+              encodeURIComponent(company)+suffix;
+            const res=await fetch(url,{
+              method,credentials:'same-origin',
+              headers:{'X-WP-Nonce':cfg.nonce,'Accept':'application/json',
+                ...(body!==null?{'Content-Type':'application/json'}:{})},
+              ...(body!==null?{body:JSON.stringify(body)}:{})
+            });
+            if(!(res.headers.get('content-type')||'').includes('application/json'))
+              throw new Error('Portfolio original REST response is not JSON (HTTP '+res.status+')');
+            const result=await res.json();
+            if(!res.ok||!result||result.code)
+              throw new Error('Portfolio HTTP '+res.status+': '+(result?.message||result?.code||'Denied'));
+            return result;
+          }
+          function portfolioResult(p,env,company,manager) {
+            if(p.contract!=='mad4b.manager-company-assignment.v1' ||
+               p.manager_id!==manager || p.company_code!==company ||
+               p.company_site_uuid!==env.site_uuid ||
+               p.binding_current!==true ||
+               !Array.isArray(p.rights) || !p.rights.includes('operations_manage'))
+              throw new Error('Original Portfolio scope or Site UUID mismatch');
+            return p;
+          }
+          async function refreshPortfolio(row,env,preserveError=false){
+            const button=row.querySelector('.mad4b-portfolio-approve');
+            const label=row.querySelector('.mad4b-portfolio-state');
+            button.disabled=true;
+            if(!admissible(env,row.dataset.company)||env.assignment_state!=='active'||!managerId(env)) {
+              if(!preserveError)label.textContent='Requires active Signed V4 Staging manager';
+              return;
+            }
+            try {
+              const p=await portfolioRequest(row.dataset.company,env.manager_id,false);
+              if(p.state!=='not_assigned' && p.state!=='revoked')portfolioResult(p,env,row.dataset.company,env.manager_id);
+              if(!preserveError)label.textContent='Portfolio: '+p.state;
+              button.disabled=p.state==='active'||p.state==='suspended'||
+                row.dataset.portfolioInFlight==='true';
+              button.textContent=p.state==='active'?'Portfolio active':'Approve Company Portfolio';
+            }catch(e){
+              if(!preserveError)label.textContent='Portfolio: '+e.message;
+              button.disabled=true;
+            }
+          }
+          async function authorizePortfolio(row){
+            if(row.dataset.portfolioInFlight==='true'||row.dataset.inFlight==='true')return;
+            const button=row.querySelector('.mad4b-portfolio-approve');
+            const label=row.querySelector('.mad4b-portfolio-state');
+            button.disabled=true;
+            row.dataset.portfolioInFlight='true';
+            let outcome='error';
+            try {
+              const company=row.dataset.company;
+              for(let i=0;i<3;i++){
+                const env=await request(company,'GET');
+                if(!admissible(env,company)||env.assignment_state!=='active'||!managerId(env))
+                  throw new Error('Original Signed V4 Staging manager not active');
+                const current=await portfolioRequest(company,env.manager_id,false);
+                if(current.state==='active') {
+                  portfolioResult(current,env,company,env.manager_id);
+                  outcome='active';break;
+                }
+                if(!['not_assigned','revoked','proposed','approved'].includes(current.state))
+                  throw new Error('Portfolio requires independent owner review: '+current.state);
+                const action=current.state==='not_assigned'||current.state==='revoked'
+                  ?'propose':current.state==='proposed'?'approve':'activate';
+                const revision=current.revision;
+                if(!Number.isInteger(revision)||revision<0)
+                  throw new Error('Original Portfolio revision invalid');
+                if(current.state==='proposed'||current.state==='approved')
+                  portfolioResult(current,env,company,env.manager_id);
+                label.textContent='Original Portfolio owner REST: '+action+'…';
+                const data=action==='propose'
+                  ?{rights:['view_company','operations_manage'],
+                    reason:'Owner-approved scoped company Portfolio delegation for exact signed Staging site; no Production or native grant.',
+                    expected_revision:revision}
+                  :{action,expected_revision:revision,
+                    expected_proposal_sha256:current.proposal_sha256};
+                if(action!=='propose' &&
+                   !/^[a-f0-9]{64}$/.test(current.proposal_sha256||''))
+                  throw new Error('Portfolio proposal proof missing');
+                const next=await portfolioRequest(company,env.manager_id,
+                  action!=='propose','POST',data);
+                const expected={propose:'proposed',approve:'approved',activate:'active'}[action];
+                if(next.state!==expected||next.revision!==revision+1)
+                  throw new Error('Portfolio write readback does not match expected revision');
+                // Read again from the original independent GET source.
+                const read=await portfolioRequest(company,env.manager_id,false);
+                portfolioResult(read,env,company,env.manager_id);
+                if(read.state!==expected||read.revision!==revision+1)
+                  throw new Error('Independent Portfolio readback mismatch');
+              }
+              const env=await request(row.dataset.company,'GET');
+              const final=await portfolioRequest(row.dataset.company,env.manager_id,false);
+              portfolioResult(final,env,row.dataset.company,env.manager_id);
+              if(final.state!=='active')throw new Error('Portfolio not yet active');
+              outcome='active';
+              label.textContent='Portfolio active. Native 305 remains separate.';
+            }catch(e){
+              label.textContent='Portfolio stopped: '+e.message;
+            }finally{
+              row.dataset.portfolioInFlight='false';
+              try{
+                const env=await request(row.dataset.company,'GET');
+                await refreshPortfolio(row,env,outcome!=='active');
+              }catch(e){button.disabled=true;}
+            }
+          }
           function admissible(p,company){
             return p.contract==='mad4b.environment-manager-assignment.v1' &&
               p.company===company && p.environment==='staging' && p.eligible===true &&
@@ -161,6 +282,7 @@ final class MAD4B_Central_Owner_Manager_Review_V1 {
               button.textContent=p.assignment_state==='active'
                 ?'Manager active' : preserveError
                 ?'Retry Staging manager approval':'Approve and activate Staging manager';
+              await refreshPortfolio(row,p,preserveError);
             } catch(e) {
               if(!preserveError)label.textContent='Original REST rejected: '+e.message;
               button.disabled=true;
@@ -206,6 +328,7 @@ final class MAD4B_Central_Owner_Manager_Review_V1 {
           }
           for(const row of rows) {
             row.querySelector('.mad4b-approve').addEventListener('click',()=>authorize(row));
+            row.querySelector('.mad4b-portfolio-approve').addEventListener('click',()=>authorizePortfolio(row));
             refresh(row);
           }
         })();
