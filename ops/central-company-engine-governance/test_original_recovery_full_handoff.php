@@ -129,6 +129,7 @@ $sealed['signature']=signed($sealed['contract'],'original-core-rebind',[
 ],$secret);
 $rest=new WP_REST_Request();
 $rest->set_param('company','egypt-tour-gates');
+$rest->set_param('job_id',$id);
 $rest->set_header('X-WP-Nonce','fixture-nonce');
 $rest->set_body(json_encode(['sealed_payload'=>$sealed]));
 $result=MAD4B_Original_Core_Recovery_V1::create($rest);
