@@ -204,7 +204,7 @@ final class MAD4B_Hub_Bulk_VPS_Runner {
         WP_CLI::line(wp_json_encode($result,JSON_UNESCAPED_SLASHES));
     }
     public static function cli_status($args,$assoc){
-        if(!self::permitted())WP_CLI::error('staging_wpcli_authority_required');
+        if(!self::permitted())WP_CLI::error('verified_wpcli_queue_authority_required');
         $result=MAD4B_Hub_Bulk_Jobs_Queue::list_queue(array());
         if(is_wp_error($result))WP_CLI::error($result->get_error_code());
         foreach($result['batches'] as &$batch)unset($batch['tasks']);
