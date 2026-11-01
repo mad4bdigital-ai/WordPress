@@ -38,6 +38,27 @@ FIXTURES = (
 
 
 def main():
+    # Regression for the changed MCP Read-server facade. Trait metadata must
+    # mount only when registered, and never create independent write authority.
+    servers = (ROOT.parent / "includes" / "class-mad4b-scp-servers.php").read_text()
+    start = servers.find("public static function core_tools( $server_id )")
+    end = servers.find("// Feature 007 operator diagnostics", start)
+    trait_mount = servers[start:end] if start >= 0 and end > start else ""
+    required = (
+        "'mad4b-read' === $server_id",
+        "class_exists( 'MAD4B_SCP_Capability_Traits', false )",
+        "'mad4b/capability-trait-profile'",
+        "'mad4b/capability-trait-resolve'",
+        "function_exists( 'wp_has_ability' )",
+        "wp_has_ability( $trait_ability )",
+    )
+    if not all(item in trait_mount for item in required):
+        print("MAD4B_OPERATIONAL_ERROR_REGRESSION_FAIL: read-trait mount gate", file=sys.stderr)
+        return 1
+    if "mad4b-write" in trait_mount or "register_mutation" in trait_mount:
+        print("MAD4B_OPERATIONAL_ERROR_REGRESSION_FAIL: read-trait authority leak", file=sys.stderr)
+        return 1
+    print("MAD4B_OPERATIONAL_ERROR_REGRESSION_PASS: bounded registered read-trait mounts")
     for name in FIXTURES:
         path = (ROOT / name).resolve()
         if path.parent != ROOT or not path.is_file():
