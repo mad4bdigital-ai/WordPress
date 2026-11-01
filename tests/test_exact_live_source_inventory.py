@@ -33,18 +33,18 @@ with tempfile.TemporaryDirectory() as tmp:
     manifest["package_manifest_digest"]=hashlib.sha256(canonical.encode()).hexdigest()
     (live/"MAD4B-BUILD-PROVENANCE.json").write_text(json.dumps(manifest))
     initial=m.status(live,source,"b"*40)
-    assert initial["release_ready"] and initial["observed"]["active_gaps"]==0
+    assert initial["byte_parity"] and not initial["release_ready"] and initial["observed"]["active_gaps"]==0
     (source/"tests/t.php").write_text("<?php // source only\n")
     (source/"includes/a.php").write_text("<?php // change\n")
     after=m.status(live,source,"b"*40)
     assert after["observed"]["different"]==1
     assert after["observed"]["source_only"]==1
     assert after["observed"]["active_gaps"]==1
-    assert not after["release_ready"]
+    assert not after["byte_parity"] and not after["release_ready"]
     (live/"includes/a.php").write_text("<?php // hotfix\n")
     drift=m.status(live,source,"b"*40)
     assert drift["manifest"]["mismatches"]==["includes/a.php"]
-    assert not drift["release_ready"]
+    assert not drift["byte_parity"] and not drift["release_ready"]
     assert drift["manifest"]["manifest_digest_valid"]
     manifest["package_files"][0]["path"]="../bad"
     (live/"MAD4B-BUILD-PROVENANCE.json").write_text(json.dumps(manifest))
