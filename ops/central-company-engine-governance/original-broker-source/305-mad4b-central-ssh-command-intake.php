@@ -418,6 +418,12 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
         return rest_ensure_response($row);
     }
 
+    // Existing authenticated Intake is the only command rebind authority.
+    // This bridge does not accept new operator credentials or mint grants.
+    public static function rebindOriginalSealedCommandOnce(string $id,array $input,array $proof) {
+        return MAD4B_Original_Sealed_Command_Rebind_V1::execute($id,$input,$proof);
+    }
+
     public static function routes(): void {
         if (!class_exists('MAD4B_Central_Dual_Lane_Registry_V1', false)
             || !MAD4B_Central_Dual_Lane_Registry_V1::central()) return;
@@ -448,3 +454,4 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
     }
 }
 MAD4B_Central_SSH_Command_Intake_V1::boot();
+require_once __DIR__.'/305-mad4b-original-sealed-rebind.php';
