@@ -1,0 +1,49 @@
+name: MAD4B Exact Environment Manager Assignment
+
+on:
+  pull_request:
+    paths:
+      - "ops/mad4b-environment-manager-assignment-v1/**"
+      - ".github/workflows/mad4b-exact-environment-manager-assignment.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-exact-manager-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  exact-owner-assignment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: PHP source and tests lint
+        run: |
+          set -euo pipefail
+          p=ops/mad4b-environment-manager-assignment-v1
+          php -l "$p/317-mad4b-environment-manager-assignment.php"
+          php -l "$p/tests/assignment_lifecycle_hermetic.php"
+      - name: Owner step-up, company binding, proposal and revision lifecycle
+        run: |
+          php ops/mad4b-environment-manager-assignment-v1/tests/assignment_lifecycle_hermetic.php
+      - name: Confirm this is not the executor or a privilege bootstrap
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("ops/mad4b-environment-manager-assignment-v1/317-mad4b-environment-manager-assignment.php").read_text()
+          assert "MAD4B_Manager_Auto_Write_V1::enrolled_owner()" in s
+          assert "wp_verify_nonce($nonce,'wp_rest')" in s
+          assert "WP_CLI') && WP_CLI" in s
+          assert "'remote_write_granted'=>false" in s
+          assert "'native_executor_enabled'=>false" in s
+          assert "expected_revision" in s
+          assert "expected_proposal_sha256" in s
+          assert "GET_LOCK" in s and "RELEASE_LOCK" in s
+          print("EXACT_ENVIRONMENT_MANAGER_GUARD_PASS")
+          PY
