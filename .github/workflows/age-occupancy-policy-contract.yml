@@ -1,0 +1,31 @@
+name: Age and Occupancy Policy Contract
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-age-occupancy-registry/**'
+      - '.github/workflows/age-occupancy-policy-contract.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'wp-content/plugins/mad4b-age-occupancy-registry/**'
+      - '.github/workflows/age-occupancy-policy-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  policy-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: none
+      - name: PHP syntax and global policy contracts
+        run: |
+          find wp-content/plugins/mad4b-age-occupancy-registry -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+          php wp-content/plugins/mad4b-age-occupancy-registry/tests/global-patterns-contract.php
