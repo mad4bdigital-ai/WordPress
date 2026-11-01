@@ -70,6 +70,10 @@ export function planOriginalCoreTransportRecovery({request,previous,core,candida
     previous.claim_committed!==false||
     previous.effects_possible!==false)
    return recoveryStop('PARKED_NO_REPLAY','OUTCOME_NOT_PROVEN_SAFE_FOR_FAILOVER');
+ if(typeof denial.denial_ref!=='string'||!denial.denial_ref||
+    !/^[a-f0-9]{32}$/.test(denial.original_job_id||'')||
+    !/^[a-f0-9]{64}$/.test(denial.command_sha256||''))
+   return stop('BLOCKED','ORIGINAL_SIGNED_DENIAL_REFERENCE_REQUIRED');
  if(!request||request.kind!=='general_vps_administration'||
     !['authenticated_operator','trusted_central_compiler'].includes(request.source)||
     !/^[a-f0-9]{64}$/.test(request.command_sha256||'')||
@@ -150,7 +154,8 @@ export function planIndependentSshRemediation({denial,request,policy,context}={}
     context.permission_denial===true||
     context.independent_core_ssh_grant_verified!==true||
     context.original_core_journal_ready!==true||
-    context.grant?.authorization_ref!==request.authorization_ref)
+    context.grant?.authorization_ref!==request.authorization_ref||
+    context.grant?.company!==request.company)
    return stop('BLOCKED','INDEPENDENT_ORIGINAL_CORE_SSH_GRANT_REQUIRED');
  const decision=routeDual(policy,request,context);
  if(decision.status!=='AUTHORIZED_FOR_DISPATCH'||decision.lane!=='vps_ssh')
