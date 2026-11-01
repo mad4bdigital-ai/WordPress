@@ -1,0 +1,33 @@
+/* Desktop Tour Content sidebar — one native Elementor role, not a global
+ * .elementor-sticky override. The tall grid column remains in page flow;
+ * only its inner inquiry card sticks while the corresponding section exists.
+ * Tablets/mobile keep Elementor's original stacked document layout. */
+@media (min-width:1200px) {
+ body.single-tours-and-activities .mad4b-tour-inquiry-column {
+  position:relative;
+  min-width:0;
+  overflow:visible;
+ }
+ body.single-tours-and-activities .mad4b-tour-inquiry-column > .e-con:first-child {
+  position:sticky!important;
+  top:24px!important;
+  bottom:auto!important;
+  align-self:flex-start!important;
+  height:auto!important;
+  max-height:calc(100vh - 48px)!important;
+  max-height:calc(100dvh - 48px)!important;
+  overflow-x:hidden;
+  overflow-y:auto;
+  overscroll-behavior-y:contain;
+  scrollbar-width:thin;
+  scrollbar-color:var(--e-global-color-accent,#b48a46) transparent;
+  z-index:15;
+ }
+ body.single-tours-and-activities .mad4b-tour-inquiry-column > .e-con:first-child::-webkit-scrollbar {
+  width:5px;
+ }
+ body.single-tours-and-activities .mad4b-tour-inquiry-column > .e-con:first-child::-webkit-scrollbar-thumb {
+  border-radius:6px;
+  background:var(--e-global-color-accent,#b48a46);
+ }
+}
