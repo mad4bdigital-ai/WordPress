@@ -31,3 +31,16 @@ Run the live probe only on the enrolled central VPS. Do not publish credentials,
 
 ## Observed on 2026-11-01
 Nine engines inventoried; nine have all declared source modules; two mapped to existing Core operations. Live readback on tours.dev.mad4b.com confirms company.plugin-sync.request and wordpress.runtime.converge mapped; wordpress.taxonomy.evolve unregistered. No WordPress or company data mutation. **Not** a nine-engine runtime certification.
+
+## Native Control Plane read-only integration candidate
+
+The original plugin bootstrap registers the protected read-only ability
+mad4b/central-company-engine-governance-status on wp_abilities_api_init.
+It maps the company-specific engine catalog to the ORIGINAL Core Operation Registry.
+No mutation endpoint, second dispatcher or grant is introduced.
+
+A separate native PHP negative-test suite validates hook metadata, the
+two known Core operation mappings, duplicate-operation and dependency-cycle
+refusal and caller-injected authority refusal. VPS Shadow ran assess_manifest()
+in actual central WordPress CLI; isolated runtime bootstrap promotion and
+full native deployment certification remain outstanding.
