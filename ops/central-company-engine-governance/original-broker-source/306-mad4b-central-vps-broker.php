@@ -141,6 +141,8 @@ final class MAD4B_Central_VPS_Broker_V1 {
             'command_sha256'=>$source['command_sha256'],
             'target_scope'=>$source['target_scope'],
             'command_format'=>($source['command_format']??'maintenance.shell.text.v1'),
+            'job_type'=>($source['operation']==='company.remote.wpcli.full'
+                ? 'signed_vps_wpcli' : 'signed_host_shell'),
             'created_epoch'=>time(), 'expires_epoch'=>$source['expires_epoch'],
             'state'=>'QUEUED_FOR_VPS_BROKER_CLAIM',
             'executed'=>false,
