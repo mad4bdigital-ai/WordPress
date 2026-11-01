@@ -1,6 +1,8 @@
 <?php
 // Hermetic mapper: bearer signature has ALREADY been checked by the mocked
 // OAuth resource verifier. This test proves site/route/user gating only.
+// Subject resolution is read-only: content grants require a separate governed
+// operation and must NEVER be created by ordinary OAuth/MCP login.
 define('ABSPATH','/tmp');
 $GLOBALS['verified']=true;
 $GLOBALS['enrolled']=true;
@@ -70,22 +72,22 @@ require dirname(__DIR__).'/includes/class-mad4b-scp-oauth-subject-user-bridge.ph
 $c='MAD4B_SCP_OAuth_Subject_User_Bridge';
 verify($c::map_verified_subject(null,null,new MockRequest('/mcp/mad4b-chatgpt'))===null,'verified mapping');
 verify($GLOBALS['user_id']===7,'mapped exact WP user');
-verify($GLOBALS['enroll_calls']===1,'one bounded ChatGPT onboarding');
+verify($GLOBALS['enroll_calls']===0,'mapping never provisions a ChatGPT content grant');
 verify($c::mapped_context()['wp_user_id']===7,'mapped context retained');
 $c::map_verified_subject(null,null,new MockRequest('/mcp/mad4b-developer'));
-verify($GLOBALS['enroll_calls']===1,'developer route never provisions content grants');
+verify($GLOBALS['enroll_calls']===0,'developer route never provisions content grants');
 $c::map_verified_subject(null,null,new MockRequest('/mcp/mad4b-enrollment'));
-verify($GLOBALS['enroll_calls']===1,'enrollment route never provisions content grants');
+verify($GLOBALS['enroll_calls']===0,'enrollment route never provisions content grants');
 $GLOBALS['verified']=false;
 $c::map_verified_subject(null,null,new MockRequest('/mcp/mad4b-chatgpt'));
-verify($GLOBALS['enroll_calls']===1,'unverified bearer not provisioned');
+verify($GLOBALS['enroll_calls']===0,'unverified bearer not provisioned');
 $GLOBALS['verified']=true;
 $GLOBALS['enrolled']=false;
 $no=$c::map_verified_subject(null,null,new MockRequest('/mcp/mad4b-chatgpt'));
 verify(is_wp_error($no),'unenrolled site denied');
-verify($GLOBALS['enroll_calls']===1,'unenrolled user no actor');
+verify($GLOBALS['enroll_calls']===0,'unenrolled user no actor');
 $GLOBALS['enrolled']=true;
 $GLOBALS['write_gate']=false;
 verify($c::map_verified_subject(null,null,new MockRequest('/mcp/mad4b-chatgpt'))===null,'read remains safe during write gate denial');
-verify($GLOBALS['last_error']==='user_or_gate_invalid','operator receives bounded error code');
+verify($GLOBALS['enroll_calls']===0 && $GLOBALS['last_error']==='', 'read-only subject mapping never invokes the write gate or onboarding');
 echo "PASS: DELEGATED_OAUTH_SUBJECT_MAP_STAGING_GUARDS\n";
