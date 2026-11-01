@@ -258,3 +258,105 @@ test('Production cannot become certified by Staging report',()=>{
   channel,native,canary,receipt});
  assert.equal(result.approved,false);
 });
+
+function recoveryFixture(overrides={}){
+ const f=fixture('maintenance.shell');
+ const identity={principal_id:'7',authorization_ref:'grant-shell-01',
+   company:site.company,site_uuid:site.site_uuid,origin:site.canonical_origin,
+   environment:'staging',host_id:binding.target_host_id,
+   command_sha256,operation_contract:'maintenance.shell'};
+ const request={...identity,source:'authenticated_operator',
+   kind:'general_vps_administration',intent:'diagnostic'};
+ const previous={...identity,job_id:jobId,
+   provider:'container_exec',status:'TRANSPORT_FAILED_BEFORE_DISPATCH',
+   reason:'TRANSPORT_UNREACHABLE',verified_source:'original_core_execution_journal',
+   before_dispatch_verified:true,dispatch_started:false,
+   claim_committed:false,effects_possible:false};
+ const authority={...identity,authority_source:'original_core_305_312',
+   verified:true,grant_state:'CENTRAL_OPERATION_SCOPE_GRANTED',
+   revoked:false,original_claim_state:'NOT_CLAIMED',audit_journal_ready:true};
+ const alternative={...identity,provider:'coolify_service',available:true,
+   independently_admitted:true,original_core_binding_verified:true,
+   provider_policy_verified:true,host_identity_pinned:true,
+   operation_digest_verified:true,original_job_claim_state:'NOT_CLAIMED'};
+ const record={request,previous,core:authority,candidates:[alternative],
+   ...overrides};
+ let created=0;
+ let lastCreate=null;
+ const newJob='e'.repeat(32);
+ f.core.readOriginalRecoveryEvidence=async()=>record;
+ f.core.createOriginalRecoveryJobOnce=async input=>{
+  created++;lastCreate=input;
+  return {state:'ORIGINAL_CORE_RECOVERY_JOB_COMMITTED',
+    original_job_id:jobId,new_job_id:newJob,operation:'maintenance.shell',
+    provider:'coolify_service',command_sha256,company:site.company,
+    site_uuid:site.site_uuid,canonical_origin:site.canonical_origin,
+    environment:'staging',target_host_id:binding.target_host_id,
+    executed:false};
+ };
+ return {f,record,get created(){return created},
+   get lastCreate(){return lastCreate},newJob};
+}
+test('original Core bridge creates a new unexecuted job for proven transport outage',async()=>{
+ const s=recoveryFixture();
+ const r=await createGovernedExecutionRoutes(s.f).recoverPreDispatch({job_id:jobId});
+ assert.equal(r.state,'NEW_ORIGINAL_CORE_JOB_READY');
+ assert.equal(r.provider,'coolify_service');
+ assert.equal(r.new_job_id,s.newJob);
+ assert.equal(r.requires_original_dispatcher,true);
+ assert.equal(r.executed,false);
+ assert.equal(s.created,1);
+ assert.equal(s.f.calls.claim,0);
+ assert.equal(s.f.calls.shell,0);
+ assert.equal(s.f.calls.typed,0);
+ assert.equal(s.lastCreate.command_sha256,command_sha256);
+});
+test('refused provider policy never enters Core recovery transaction',async()=>{
+ const s=recoveryFixture({previous:{...recoveryFixture().record.previous,
+   status:'TOOL_POLICY_REJECTED'}});
+ const r=await createGovernedExecutionRoutes(s.f).recoverPreDispatch({job_id:jobId});
+ assert.equal(r.state,'BLOCKED');
+ assert.equal(s.created,0);
+});
+test('no fallback after any possible side effect',async()=>{
+ const seed=recoveryFixture().record.previous;
+ const s=recoveryFixture({previous:{...seed,effects_possible:true}});
+ const r=await createGovernedExecutionRoutes(s.f).recoverPreDispatch({job_id:jobId});
+ assert.equal(r.state,'PARKED_NO_REPLAY');
+ assert.equal(s.created,0);
+});
+test('Core refuses missing alternate operation adapter before opening job',async()=>{
+ const s=recoveryFixture();delete s.f.core.createOriginalRecoveryJobOnce;
+ const r=await createGovernedExecutionRoutes(s.f).recoverPreDispatch({job_id:jobId});
+ assert.equal(r.reason_code,'ORIGINAL_CORE_RECOVERY_ADAPTER_NOT_REGISTERED');
+ assert.equal(s.f.calls.shell,0);
+});
+test('recovery cannot convert a typed WP-CLI job to maintenance.shell',async()=>{
+ const s=recoveryFixture();
+ s.f.job.operation='company.remote.wpcli.full';
+ const r=await createGovernedExecutionRoutes(s.f).recoverPreDispatch({job_id:jobId});
+ assert.equal(r.reason_code,'ORIGINAL_JOB_RECOVERY_SCOPE_MISMATCH');
+ assert.equal(s.created,0);
+});
+test('replacement admission does not certify mismatched Core commit',async()=>{
+ const s=recoveryFixture();
+ s.f.core.createOriginalRecoveryJobOnce=async()=>({state:'QUEUED',new_job_id:s.newJob});
+ const r=await createGovernedExecutionRoutes(s.f).recoverPreDispatch({job_id:jobId});
+ assert.equal(r.state,'PARKED_UNCERTAIN_NO_REPLAY');
+ assert.equal(s.f.calls.shell,0);
+});
+test('Core journal is the authority for original job, not caller-supplied provider',async()=>{
+ const s=recoveryFixture();
+ const r=await createGovernedExecutionRoutes(s.f).recoverPreDispatch({job_id:jobId,
+   provider:'vps_ssh',command:'do-not-run'});
+ assert.equal(r.provider,'coolify_service');
+ assert.equal(r.executed,false);
+ assert.equal(s.f.calls.shell,0);
+});
+test('wrong original scope parks before creating a replacement',async()=>{
+ const s=recoveryFixture({request:{...recoveryFixture().record.request,
+   site_uuid:'foreign-site'}});
+ const r=await createGovernedExecutionRoutes(s.f).recoverPreDispatch({job_id:jobId});
+ assert.equal(r.state,'DENIED');
+ assert.equal(s.created,0);
+});
