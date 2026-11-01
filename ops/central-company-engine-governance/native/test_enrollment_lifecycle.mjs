@@ -22,6 +22,8 @@ function proof(x){registry(x);x.hostProof={...scope,verified:true,
  grant_id:x.grant.grant_id,host_id:x.transport.host_id,expires_epoch:t+90};return x}
 function native(x){proof(x);x.native={registration_state:'ENROLLED',execute_registered:true,
  grant_verifier_bound:true,site_binding_verified:true,host_key_verified:true,
+ enrollment_receipt_verified:true,enrollment_grant_id:x.grant.grant_id,
+ enrollment_transport_id:x.transport.transport_id,
  site_uuid,company,host_id:'hosting-2',host_key_fingerprint:'SHA256:pinned'};return x}
 function dispatcher(x){native(x);x.dispatcher={bound:true,site_uuid,
  transport_id:x.transport.transport_id,native_receipt_verified:true};return x}
@@ -63,6 +65,14 @@ test('revoked standing grant cannot trigger host proof',()=>{
 test('uncertain native execution is parked without replay',()=>{
  const x=canary(fixture());x.canary.execution_state='READBACK_UNCERTAIN_NO_RETRY';
  assert.equal(plan(x).state,'PARKED_UNCERTAIN_NO_REPLAY');
+});
+test('activated channel uses signed durable enrollment receipt, not expired initial proof',()=>{
+ const x=active(fixture());delete x.hostProof;
+ assert.equal(plan(x).action,'ISSUE_ORIGINAL_CORE_FIXED_WPCLI_READ_CANARY');
+});
+test('active channel without independent enrollment receipt fails closed',()=>{
+ const x=active(fixture());x.native.enrollment_receipt_verified=false;
+ assert.equal(plan(x).state,'BLOCKED_NATIVE_PROOF');
 });
 test('unverified 313 receipt never certifies',()=>{
  const x=receipt(fixture());x.receipt.independent_host_readback_verified=false;
