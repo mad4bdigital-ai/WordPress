@@ -8,7 +8,7 @@ const original = fs.readFileSync(path.join(root, '..', 'mad4b-environment-manage
 
 const html = ui.match(/pattern="([^"]+)"/);
 assert.ok(html, 'HTML company slug pattern must exist');
-const browserRegex = new RegExp('^(?:' + html[1] + ')
+const browserRegex = new RegExp('^(?:' + html[1] + ')' + String.fromCharCode(36), 'v');
 assert.equal(browserRegex.test('all-royal-egypt'), true);
 assert.equal(browserRegex.test('egypt-tour-gates'), true);
 assert.equal(browserRegex.test('Bad Company'), false);
