@@ -1,3 +1,4 @@
+import {planOriginalCoreTransportRecovery} from './original_dual_route_policy.mjs';
 // MAD4B original-Core execution routes. Typed operations and original general
 // shell are first-class peer routes. The general shell is preserved as a
 // fallback CAPABILITY, never a fallback for a denied typed invocation.
@@ -35,6 +36,87 @@ export function createGovernedExecutionRoutes({core,typed={},generalShell}){
   throw Error('ORIGINAL_CORE_AUTHORITY_ADAPTERS_REQUIRED');
  return Object.freeze({
   routes:availableGovernedRoutes(),
+  // No alternate dispatcher. Only the original Core can create the next job.
+  // This bridge does not execute either the previous job or the replacement.
+  async recoverPreDispatch({job_id}={}){
+   if(!HEX32.test(job_id||''))return fail('DENIED','ORIGINAL_JOB_ID_INVALID','maintenance.shell');
+   if(typeof core.readOriginalRecoveryEvidence!=='function'||
+      typeof core.createOriginalRecoveryJobOnce!=='function')
+     return fail('PARKED_PROVIDER_REVIEW_REQUIRED',
+       'ORIGINAL_CORE_RECOVERY_ADAPTER_NOT_REGISTERED','maintenance.shell');
+   let oldJob,record;
+   try {
+    oldJob=await core.readOriginalJob(job_id);
+    record=await core.readOriginalRecoveryEvidence(job_id);
+   }catch {
+    return fail('PARKED_UNCERTAIN_NO_REPLAY',
+      'ORIGINAL_RECOVERY_JOURNAL_UNAVAILABLE','maintenance.shell');
+   }
+   // This is recovery of an independently admitted original Shell operation,
+   // not a way to turn a rejected typed/WP-CLI job into general Shell.
+   const req=record?.request;
+   if(!oldJob||oldJob.job_id!==job_id||
+      oldJob.operation!=='maintenance.shell'||
+      oldJob.environment!=='staging'||
+      !exact(oldJob,oldJob,BIND)||
+      !req||req.operation_contract!=='maintenance.shell'||
+      req.company!==oldJob.company||req.site_uuid!==oldJob.site_uuid||
+      req.origin!==oldJob.canonical_origin||
+      req.environment!==oldJob.environment||
+      req.host_id!==oldJob.target_host_id||
+      req.command_sha256!==oldJob.command_sha256||
+      record?.previous?.job_id!==job_id)
+     return fail('DENIED','ORIGINAL_JOB_RECOVERY_SCOPE_MISMATCH','maintenance.shell');
+   const plan=planOriginalCoreTransportRecovery(record);
+   if(plan.state!=='CANDIDATE_REQUIRES_NEW_CORE_ADMISSION')
+     return fail(plan.state,plan.reason,'maintenance.shell');
+   // The provider choice is not authority. A Core transaction MUST validate
+   // current 305/312 grant, exact source digest, provider, unclaimed state,
+   // journal and unique replacement id before committing.
+   let result;
+   try {
+    result=await core.createOriginalRecoveryJobOnce({
+      original_job_id:job_id,
+      operation:'maintenance.shell',
+      provider:plan.provider,
+      command_sha256:oldJob.command_sha256,
+      site_uuid:oldJob.site_uuid,
+      company:oldJob.company,
+      canonical_origin:oldJob.canonical_origin,
+      environment:oldJob.environment,
+      target_host_id:oldJob.target_host_id
+    });
+   }catch {
+    return fail('PARKED_UNCERTAIN_NO_REPLAY',
+      'ORIGINAL_RECOVERY_JOB_CREATION_UNCERTAIN','maintenance.shell');
+   }
+   if(!result||result.state!=='ORIGINAL_CORE_RECOVERY_JOB_COMMITTED'||
+      !HEX32.test(result.new_job_id||'')||result.new_job_id===job_id||
+      result.original_job_id!==job_id||result.operation!=='maintenance.shell'||
+      result.provider!==plan.provider||result.command_sha256!==oldJob.command_sha256||
+      result.company!==oldJob.company||result.site_uuid!==oldJob.site_uuid||
+      result.canonical_origin!==oldJob.canonical_origin||
+      result.environment!==oldJob.environment||
+      result.target_host_id!==oldJob.target_host_id||
+      result.executed!==false)
+     return fail('PARKED_UNCERTAIN_NO_REPLAY',
+       'ORIGINAL_CORE_RECOVERY_COMMIT_UNVERIFIED','maintenance.shell');
+   try {
+    await core.audit({job_id,operation:'maintenance.shell',
+      state:'ORIGINAL_RECOVERY_NEW_JOB_COMMITTED_NOT_DISPATCHED',
+      recovery_job_id:result.new_job_id,provider:plan.provider});
+   }catch {
+    return fail('PARKED_UNCERTAIN_NO_REPLAY',
+      'ORIGINAL_RECOVERY_AUDIT_UNCERTAIN','maintenance.shell');
+   }
+   return Object.freeze({
+     contract:'mad4b.original-core-execution-result.v1',
+     state:'NEW_ORIGINAL_CORE_JOB_READY',operation:'maintenance.shell',
+     original_job_id:job_id,new_job_id:result.new_job_id,
+     provider:plan.provider,verified:false,executed:false,
+     requires_original_dispatcher:true,replay_permitted:false
+   });
+  },
   async execute({job_id,operation}){
    if(!HEX32.test(job_id)||!modeFor(operation))
     return fail('DENIED','OPERATION_OR_JOB_ID_INVALID',operation);
