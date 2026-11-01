@@ -104,3 +104,64 @@ export function planOriginalCoreTransportRecovery({request,previous,core,candida
  }
  return recoveryStop('BLOCKED','NO_INDEPENDENTLY_AUTHORIZED_ALTERNATE_PROVIDER');
 }
+
+/**
+ * Explicit operator remediation for a native-provider-specific denial.
+ * This is NOT a fallback execution/replay. A separate SSH operator request,
+ * with a different command and separately verified Core grant, must be
+ * admitted as a new 305 job. A denied provider never supplies SSH authority.
+ */
+export function planIndependentSshRemediation({denial,request,policy,context}={}){
+ const stop=(state,reason)=>Object.freeze({
+  contract:'mad4b.central-independent-ssh-remediation.v1',
+  state,reason,execution_performed:false,original_job_replayed:false,
+  new_core_job_required:false
+ });
+ if(!denial||denial.state!=='DENIED'||
+    denial.denial_scope!=='native_provider_only'||
+    denial.evidence_source!=='original_core_signed_journal'||
+    denial.verified!==true||
+    !['SIGNED_POLICY_ROTATION_REQUIRED','NATIVE_CLIENT_PROVIDER_AUTHORIZATION_DENIED']
+      .includes(denial.reason_code))
+   return stop('BLOCKED','NOT_A_VERIFIED_PROVIDER_SCOPED_DENIAL');
+ if(denial.global_security_denial===true||
+    denial.tenant_access_revoked===true||
+    denial.operator_revoked===true)
+   return stop('BLOCKED','ORIGINAL_AUTHORITY_DENIED');
+ if(denial.original_claim_state!=='NOT_CLAIMED'||
+    denial.dispatch_started!==false||denial.effects_possible!==false)
+   return stop('PARKED_NO_REPLAY','ORIGINAL_JOB_OUTCOME_UNCERTAIN');
+ if(!request||request.kind!=='general_vps_administration'||
+    request.lane!=='vps_ssh'||
+    request.source!=='authenticated_operator'||
+    request.independent_operator_intent_verified!==true||
+    request.fresh_core_admission_required!==true||
+    request.prior_denial_ref!==denial.denial_ref||
+    request.command_sha256===denial.command_sha256||
+    request.authorization_ref===denial.authorization_ref||
+    request.correlation_id===denial.correlation_id)
+   return stop('BLOCKED','FRESH_INDEPENDENT_SSH_INTENT_REQUIRED');
+ for(const k of ['company','site_uuid','origin','environment','host_id']){
+  if(typeof denial[k]!=='string'||!denial[k]||
+     denial[k]!==request[k])
+   return stop('BLOCKED','ORIGINAL_HOST_OR_SITE_SCOPE_CHANGED');
+ }
+ if(!context||context.security_denial===true||
+    context.permission_denial===true||
+    context.independent_core_ssh_grant_verified!==true||
+    context.original_core_journal_ready!==true||
+    context.grant?.authorization_ref!==request.authorization_ref)
+   return stop('BLOCKED','INDEPENDENT_ORIGINAL_CORE_SSH_GRANT_REQUIRED');
+ const decision=routeDual(policy,request,context);
+ if(decision.status!=='AUTHORIZED_FOR_DISPATCH'||decision.lane!=='vps_ssh')
+   return stop('BLOCKED','NEW_SSH_REQUEST_NOT_AUTHORIZED_'+decision.reason);
+ return Object.freeze({
+  contract:'mad4b.central-independent-ssh-remediation.v1',
+  state:'NEW_ORIGINAL_CORE_ADMISSION_REQUIRED',provider:'vps_ssh',
+  prior_denial_ref:denial.denial_ref,
+  new_core_job_required:true,requires_original_305_intake:true,
+  requires_independent_claim_and_312_313:true,
+  execution_performed:false,original_job_replayed:false,
+  prior_rejection_still_effective:true
+ });
+}
