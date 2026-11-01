@@ -1,0 +1,45 @@
+# MAD4B Remote Company Delegation Orchestrator — Issue #724
+
+Status: **Staging-only source candidate; no live owner REST credentials or Production writes are configured.**
+
+## Remote workflow
+
+An authenticated original WordPress owner, operating through an approved browser session with WP nonce or a verified first-party OAuth step-up, can run the existing original issuer lifecycle remotely. The workflow never changes the owner, sets an arbitrary WP user, creates an owner token, or treats VPS root/SSH as a company owner.
+
+1. Obtain the exact company + Staging Site UUID + canonical origin from PR #723 Original Core live reconciliation, never from a user-supplied hostname.
+2. Call original `mad4b-central/v1/company-environments/{company}/staging/manager-assignment` owner REST endpoint. Verify bound site SHA and CAS revision on every `propose → approve → activate` operation. Re-read Original WordPress state after each change.
+3. Call original `mad4b/v1/company-managers/{manager_id}/companies/{company}/delegation` and its transition endpoint. Only `view_company` + `operations_manage` are requested, and the issuer must approve before advancing. The manager ID must be an exact existing registered UUID; no synthetic managers or users are created.
+4. Only after both assignment streams confirm `active`, submit a narrowly scoped `reconcile305` signed request to the PR #725 fixed host adapter. Its original WordPress 305 issuer independently validates membership, site scope, signed host policy, and issuer authority.
+5. Accept an issued/existing Grant only after independent original 305 status readback. Distinguish `grant_issued`, `grant_registered`, `grant_active`; Staging execution remains gated by original 306/312/313/314.
+
+## Components
+
+- `remote_delegation.py`: original owner REST adapter + exact-site CAS-aware workflow.
+- `signed_broker.py`: fixed command broker adapter; Ed25519 signing from an already enrolled root-protected key; no arbitrary command or shell fallback in this authorization lane.
+- `test_remote_delegation.py`, `test_signed_broker.py`: isolated regression tests including unauthorized owner, cross-site drift, stale revision, wrong Broker receipts, non-Staging mutation, replay-purpose checks and signature-pinning.
+
+## Use / integration boundary
+
+This folder provides importable source; the host runner must explicitly connect the original owner-authenticated REST session to `OriginalOwnerRest`, then call `Orchestrator(OriginalOwnerRest(headers), SignedOriginal305Broker())`. Credentials must be delivered in memory by an approved, original issuer-connected application and must never be written to CLI arguments, audit logs or Git. Original REST operations will fail closed without a valid owner session. Do not configure a machine-wide login or generic OAuth bypass.
+
+The Broker adapter is fixed to the installed Staging path for PR #725. It **does not install the worker, register a network endpoint, provide full Shell or activate a Native Executor**. Deployment requires a guarded service wiring step, health checks and rollback under the original release process.
+
+## Validation on central VPS (2026-11-01)
+
+- Python syntax: PASS.
+- Hermetic tests: **36/36 PASS**.
+- Live read-only original environment manager plan:
+  - `all-royal-egypt:staging` — `eligible=true`, `assignment_state=missing`, next `propose`.
+  - `egypt-tour-gates:staging` — `current_signed_target_missing`.
+  - `tours-central:staging` — `current_signed_target_missing`.
+- Original 305 Staging registration not activated for any of the three sites. No remote owner writes or new Grants were issued in this test, and no Production mutations occurred.
+
+## Acceptance needed before live operation
+
+- Enroll a valid original owner REST session or first-party OAuth step-up with the exact company scope (not SSH-derived admin impersonation).
+- Repair Original signed identity for ETG/Tours Central and host-policy scope for ETG/ARE through their existing issuer.
+- Confirm delegated manager membership through Original Core.
+- Wire the fixed dispatcher, test a real newly issued 305 Grant, prove independent 312/313 and rollback.
+- Keep separate explicit Production approval.
+
+No root-level CONSTRAINTS.md was modified; existing repo quality gates and site-boundary checks remain mandatory.
