@@ -183,8 +183,20 @@ final class MAD4B_Environment_Manager_Assignment_V1 {
         $key=$manager.'|'.$company.'|staging';
         $wpdb=$GLOBALS['wpdb'];
         $lock='mad4b:environment-manager:'.substr(hash('sha256',$key),0,30);
-        if((int)$wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s,3)',$lock))!==1)
+        $acquired=$wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s,3)',$lock));
+        if((string)$acquired!=='1') {
+            // Distinguish contention from a failed/unsupported lock backend. Never
+            // authorize an owner write when DB locking cannot be confirmed.
+            $acquireError=(string)$wpdb->last_error;
+            $holder=$wpdb->get_var($wpdb->prepare('SELECT IS_USED_LOCK(%s)',$lock));
+            $inspectionError=(string)$wpdb->last_error;
+            if($acquireError!=='' || $inspectionError!==''
+               || ($acquired===null && $holder===null))
+                return self::failure('assignment_lock_backend_unavailable',503);
+            // The owner's request was authenticated but NOT committed. The caller
+            // should re-read the revision and retry only on a fresh explicit action.
             return self::failure('assignment_locked',423);
+        }
         try {
             $store=get_option(MAD4B_Company_Environment_Portfolio_Evidence_V1::ASSIGNMENTS,[]);
             if(!is_array($store))return self::failure('assignment_store_invalid',503);
