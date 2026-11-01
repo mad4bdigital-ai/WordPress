@@ -23,10 +23,15 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
         // A WP-CLI user override is not an authenticated owner confirmation.
         if (defined('WP_CLI') && WP_CLI) return false;
         $nonce = (string) $request->get_header('X-WP-Nonce');
-        if ($nonce !== '' && wp_verify_nonce($nonce, 'wp_rest')) {
-            return get_current_user_id() > 0;
+        if ($nonce !== '') {
+            // A valid authenticated REST session is sufficient. Never fall
+            // through from a supplied but invalid nonce to a second identity.
+            return (bool) wp_verify_nonce($nonce, 'wp_rest')
+                && get_current_user_id() > 0;
         }
-        // Only the enrolled OAuth bearer with step-up, never a synthetic user.
+        // No earlier REST-session proof: preserve the original Unified
+        // Administrator principal as the alternative verified entrypoint.
+        // It is an either/or identity check, not a second approval.
         return class_exists('MAD4B_Company_Manager_Unified_Administrator_Principal', false)
             && MAD4B_Company_Manager_Unified_Administrator_Principal::verified();
     }
