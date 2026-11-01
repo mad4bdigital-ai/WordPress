@@ -24,14 +24,14 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
         if (defined('WP_CLI') && WP_CLI) return false;
         $nonce = (string) $request->get_header('X-WP-Nonce');
         if ($nonce !== '') {
-            // A valid authenticated REST session is sufficient. Never fall
-            // through from a supplied but invalid nonce to a second identity.
+            // A supplied invalid REST nonce must fail closed. Only the
+            // absence of a nonce permits the original separately verified
+            // Unified Administrator identity route.
             return (bool) wp_verify_nonce($nonce, 'wp_rest')
                 && get_current_user_id() > 0;
         }
-        // No earlier REST-session proof: preserve the original Unified
-        // Administrator principal as the alternative verified entrypoint.
-        // It is an either/or identity check, not a second approval.
+        // No REST-session proof: original Unified Administrator is an
+        // alternative identity, not a fallback after failed verification.
         return class_exists('MAD4B_Company_Manager_Unified_Administrator_Principal', false)
             && MAD4B_Company_Manager_Unified_Administrator_Principal::verified();
     }
@@ -54,6 +54,22 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
     }
 
     private static function scope(string $company, string $operation) {
+        // The Central VPS is a workload, never a customer company target.
+        // The original enrolled WP owner admits only this local host scope;
+        // the independent VPS operator must still prove its own authority.
+        if ($company === 'tours-central') {
+            if ($operation !== 'maintenance.shell' ||
+                !class_exists('MAD4B_Central_Host_Scope_V1', false) ||
+                !MAD4B_Central_Host_Scope_V1::current_owner())
+                return self::error('central_host_owner_or_operation_required');
+            $host=MAD4B_Central_Host_Scope_V1::inspect();
+            if (($host['state']??'')!=='CENTRAL_HOST_IDENTITY_VERIFIED')
+                return self::error('central_host_site_identity_required');
+            return array('site_uuid'=>$host['site_uuid'],
+                'canonical_origin'=>$host['canonical_origin'],
+                'environment'=>$host['environment'],
+                'assignment_revision'=>0);
+        }
         if (!class_exists('MAD4B_Company_Operation_Admission_V1', false)
             || !class_exists('MAD4B_Manager_Auto_Write_V1', false)
             || (!in_array($operation, MAD4B_Central_Dual_Lane_Registry_V1::HOST_MAINTENANCE, true)
@@ -110,11 +126,15 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
         $full_wpcli = $requested_capabilities === array('wpcli.full');
         if ($requested_capabilities !== array() && !$full_wpcli)
             return self::error('unknown_transport_capability', 422);
-        // The same authenticated company-scoped channel enrollment is the
-        // standing authorization event. Do not add a second owner step-up.
-        // Native execution still requires independent SSH and site proof.
-        $scope = self::scope($company, $full_wpcli
-            ? 'company.remote.wpcli.full' : 'maintenance.shell');
+        if ($full_wpcli && (!class_exists('MAD4B_Company_Manager_Unified_Administrator_Principal', false)
+            || !MAD4B_Company_Manager_Unified_Administrator_Principal::verified()))
+            return self::error('verified_owner_enrollment_required');
+        if ($company==='tours-central' &&
+            ($host!=='srv2030908' || $principal!=='root'
+             || $reference!=='vault:registry/local-srv2030908'
+             || $requested_capabilities!==array()))
+            return self::error('central_host_exact_local_transport_required', 422);
+        $scope = self::scope($company, 'maintenance.shell');
         if (is_wp_error($scope)) return $scope;
         $id = bin2hex(random_bytes(16));
         $record = array(
@@ -194,8 +214,14 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
             return self::error('invalid_revoke_scope', 422);
         $prefix = $kind === 'grant' ? self::PREFIX : self::TRANSPORT_PREFIX;
         $record = get_option($prefix . $id, null);
+        $native_owner_revoke=is_array($record)
+            && ($record['principal_type']??'')==='vps_native'
+            && $company==='tours-central'
+            && class_exists('MAD4B_Central_Host_Scope_V1',false)
+            && MAD4B_Central_Host_Scope_V1::current_owner();
         if (!is_array($record) || ($record['company'] ?? '') !== $company
-            || ($record['central_principal_id'] ?? null) !== get_current_user_id())
+            || (!$native_owner_revoke
+                && ($record['central_principal_id'] ?? null) !== get_current_user_id()))
             return self::error('record_not_found', 404);
         if (($record['state'] ?? '') === 'REVOKED')
             return rest_ensure_response(array('state'=>'REVOKED','object_id'=>$id));
@@ -251,6 +277,16 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
             || ($mode === 'one_time' && ($ttl < 30 || $ttl > self::TTL_MAX))
             || strlen($reason) < 10 || strlen($reason) > 240)
             return self::error('grant_fields_invalid', 422);
+        if ($company==='tours-central' &&
+            ($operation!=='maintenance.shell' || $mode!=='persistent'
+             || $host!=='srv2030908' || $host_principal!=='root'
+             || $transport_id===''))
+            return self::error('central_host_persistent_local_grant_required', 422);
+        // The native-principal standing grant can only be created through
+        // a valid Ed25519 VPS Client attestation. The owner-facing 305 API
+        // may revoke it but may not mint a second grant on its transport.
+        if ($mode==='persistent' && ($transport['principal_type']??'')==='vps_native')
+            return self::error('native_grant_requires_signed_client',403);
         $scope = self::scope($company, $operation);
         if (is_wp_error($scope)) return $scope;
         if ($mode === 'persistent' && (
@@ -308,6 +344,8 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
             || !in_array($target_scope, array('wordpress','host'), true))
             return self::error('command_fields_invalid', 422);
         $grant = get_option(self::PREFIX . $id, null);
+        if (is_array($grant) && ($grant['principal_type']??'')==='vps_native')
+            return self::error('native_command_requires_signed_client',403);
         if (!is_array($grant) || ($grant['contract'] ?? '') !== self::CONTRACT
             || ($grant['company'] ?? '') !== $company
             || ($grant['central_principal_id'] ?? 0) !== get_current_user_id()
@@ -344,6 +382,11 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
             $command_byte_length = strlen($command);
             $command_format = 'maintenance.shell.text.v1';
         }
+        if ($company==='tours-central' &&
+            ($target_scope!=='host' ||
+             ($grant['target_host_id']??'')!=='srv2030908' ||
+             ($grant['target_ssh_principal']??'')!=='root'))
+            return self::error('central_host_command_target_scope_invalid', 422);
         $scope = self::scope($company, (string) $grant['operation']);
         if (is_wp_error($scope)) return $scope;
         foreach (array('site_uuid','environment','canonical_origin','assignment_revision') as $field) {
@@ -418,8 +461,7 @@ final class MAD4B_Central_SSH_Command_Intake_V1 {
         return rest_ensure_response($row);
     }
 
-    // Existing authenticated Intake is the only command rebind authority.
-    // This bridge does not accept new operator credentials or mint grants.
+    // Original 305 intake owns the rebind; it does not invent an actor or grant.
     public static function rebindOriginalSealedCommandOnce(string $id,array $input,array $proof) {
         return MAD4B_Original_Sealed_Command_Rebind_V1::execute($id,$input,$proof);
     }
