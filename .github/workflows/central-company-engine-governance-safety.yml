@@ -37,6 +37,8 @@ jobs:
           php ops/central-company-engine-governance/test_original_broker_306_312.php
           node --check ops/central-company-engine-governance/native/signed_argv_envelope.mjs
           node --check ops/central-company-engine-governance/native/full_wpcli_execute.mjs
+          node --check ops/central-company-engine-governance/native/core_native_binding.mjs
+          node --test ops/central-company-engine-governance/native/test_core_native_binding.mjs
           node --test ops/central-company-engine-governance/native/test_signed_argv_envelope.mjs ops/central-company-engine-governance/native/test_full_wpcli_execute.mjs
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-company-engine-governance.php
           php ops/central-company-engine-governance/test_native_read_surface.php
