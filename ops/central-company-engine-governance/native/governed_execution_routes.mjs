@@ -1,4 +1,5 @@
 import {planOriginalCoreTransportRecovery,planIndependentSshRemediation} from './original_dual_route_policy.mjs';
+import {diagnoseInvocationFailure,planAuthorizedChannelAlternatives} from './authorized_channel_recovery.mjs';
 // MAD4B original-Core execution routes. Typed operations and original general
 // shell are first-class peer routes. The general shell is preserved as a
 // fallback CAPABILITY, never a fallback for a denied typed invocation.
@@ -36,6 +37,16 @@ export function createGovernedExecutionRoutes({core,typed={},generalShell}){
   throw Error('ORIGINAL_CORE_AUTHORITY_ADAPTERS_REQUIRED');
  return Object.freeze({
   routes:availableGovernedRoutes(),
+  // One common, read-only channel diagnosis for typed and general routes.
+  // This returns a plan, never dispatches, grants or replays a Core job.
+  diagnoseChannelFailure(failure){
+   return diagnoseInvocationFailure(failure);
+  },
+  planChannelRecovery({request,failure,original_core_authority,candidates=[]}={}){
+   return planAuthorizedChannelAlternatives({
+    request,failure,core:original_core_authority,candidates
+   });
+  },
   // A refused Native provider may lead to a NEW, independently authorized
   // SSH operation, never a replay or authority transfer from the denied job.
   async prepareIndependentSshRemediation({denial_ref,ssh_request_ref}={}){
