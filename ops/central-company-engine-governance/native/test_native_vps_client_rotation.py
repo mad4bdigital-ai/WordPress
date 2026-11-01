@@ -108,4 +108,46 @@ except RuntimeError as exc:
 else:
     raise AssertionError("rotation without no-execution receipt must deny")
 assert len(calls) == 3
+# An already-current HTTP 409 is a verified no-op only if original Core
+# readback confirms the same policy, host key and active grant/transport.
+from types import SimpleNamespace
+original_run = client.subprocess.run
+def native_readback(command, **kwargs):
+    assert command[:3] == ["docker","exec","-u"]
+    return SimpleNamespace(stdout=json.dumps({
+        "ledger_valid": True,
+        "policy_sha256": "a" * 64,
+        "fingerprint": "SHA256:" + "A" * 43,
+        "grant_active": True,
+        "transport_active": True
+    }) + "\n")
+client.subprocess.run = native_readback
+assert client.verify_original_policy_readback("a"*64,"SHA256:"+"A"*43)
+assert not client.verify_original_policy_readback("b"*64,"SHA256:"+"A"*43)
+client.subprocess.run = original_run
+def policy_current(request, timeout):
+    verify(request)
+    raise HTTPError(request.full_url,409,"Conflict",{},
+        io.BytesIO(json.dumps({
+            "code":"mad4b_native_vps_policy_already_current"
+        }).encode("utf-8")))
+client.urlopen = policy_current
+client.verify_original_policy_readback = lambda policy,fingerprint: (
+    policy=="a"*64 and fingerprint=="SHA256:"+"A"*43
+)
+with contextlib.redirect_stdout(io.StringIO()) as out:
+    client.run("rotate","",None)
+result=json.loads(out.getvalue())
+assert result["state"]=="ORIGINAL_SIGNED_POLICY_ALREADY_CURRENT_VERIFIED"
+assert result["grant_changed"] is False
+assert result["shell_executed"] is False
+assert len(calls)==4
+client.verify_original_policy_readback = lambda *_: False
+try:
+    client.run("rotate","",None)
+except RuntimeError as exc:
+    assert str(exc)=="SIGNED_POLICY_ALREADY_CURRENT_READBACK_UNCERTAIN"
+else:
+    raise AssertionError("unverified already-current must remain denied")
+assert len(calls)==5
 print("PASS native client signed rotate, policy-drift 409 classification, no replay, uncertain-readback rejection")
