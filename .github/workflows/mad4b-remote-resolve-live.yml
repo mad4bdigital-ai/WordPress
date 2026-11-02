@@ -10,6 +10,13 @@ on:
     paths:
       - 'ops/company-readiness-workflow/remote-resolve-live-v3/**'
       - '.github/workflows/mad4b-remote-resolve-live.yml'
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-remote-resolve-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
 jobs:
   read_only_source_tests:
     name: Remote Resolve exact-site source contract
@@ -18,6 +25,10 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
       - name: Python compile and unit contracts
         run: |
           python3 -m py_compile ops/company-readiness-workflow/remote-resolve-live-v3/live_status_bridge.py
