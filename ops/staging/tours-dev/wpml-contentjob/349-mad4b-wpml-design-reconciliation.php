@@ -96,6 +96,34 @@ final class MAD4B_WPML_Design_Reconciliation_V1 {
         $target_s=(array)($target['settings']??[]);
         foreach($source_s as $k=>$v) {
             $type=self::reference_key($k);
+            // JetSmartFilters stores filter_id as an array of WPML post IDs.
+            // Resolve each member in its original order, not (int)$array=1.
+            if($type&&is_array($v)) {
+                if(!$v||count($v)>24||array_keys($v)!==range(0,count($v)-1)){
+                    $issues[]=['code'=>'invalid_reference_array','field'=>$k,'lang'=>$lang,
+                        'widget'=>$source['id']??''];continue;
+                }
+                $mapped=[];$all_valid=true;
+                foreach($v as $position=>$source_id){
+                    if(!is_scalar($source_id)||!ctype_digit((string)$source_id)
+                        ||(int)$source_id<=0||get_post_type((int)$source_id)!==$type){
+                        $issues[]=['code'=>'invalid_source_reference','field'=>$k,
+                            'source_id'=>(int)$source_id,'lang'=>$lang,'widget'=>$source['id']??''];
+                        $all_valid=false;continue;
+                    }
+                    $translated=self::translated_object((int)$source_id,$type,$lang);
+                    if(!$translated){
+                        $issues[]=['code'=>'missing_linked_reference','field'=>$k,
+                            'source_id'=>(int)$source_id,'lang'=>$lang,'widget'=>$source['id']??''];
+                        $all_valid=false;continue;
+                    }
+                    $mapped[]=is_int($source_id)?$translated:(string)$translated;
+                }
+                if($all_valid&&$mapped!==(array)($target_s[$k]??[])){
+                    $target_s[$k]=$mapped;$changed++;
+                }
+                continue;
+            }
             if($type&&is_numeric($v)&&(int)$v>0) {
                 $translated=self::translated_object((int)$v,$type,$lang);
                 if(!$translated) {
