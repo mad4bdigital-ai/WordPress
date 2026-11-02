@@ -50,6 +50,19 @@ final class MAD4B_WPML_Translation_Need_V1 {
     }
     continue;
    }
+   if($key==='title' && $node_type==='heading'
+      && is_string($v) && trim($v)==='Add Your Heading Text Here'
+      && !empty($value['__dynamic__']['title'])
+      && is_string($value['__dynamic__']['title'])
+      && preg_match('/name="(?:jet-post-custom-field|post-title)"/',
+         $value['__dynamic__']['title'])){
+      // Elementor's stock editor placeholder is superseded by a verified
+      // dynamic heading binding. Never classify it as an editorial translation
+      // request, but still inspect dynamic tag labels in __dynamic__ above.
+      $technical['dynamic_placeholder_overrides']=
+        ($technical['dynamic_placeholder_overrides']??0)+1;
+      continue;
+   }
    if(in_array($key,['shortcode','raw_shortcode','custom_shortcode'],true)){if($v)$technical['shortcode_widgets']++;continue;}
    if(is_array($v)){self::inspect_settings($v,$prefix?($prefix.'/'.$key):$key,$texts,$technical,$node_type);continue;}
    if(!self::visible_key($key))continue;
