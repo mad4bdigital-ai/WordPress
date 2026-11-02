@@ -43,10 +43,11 @@ add_action('woocommerce_settings_tabs_rate_generation',static function(){
  $field('Rate kind',$choices,'Uses tour-rates, property-rates or transport-rates; never creates a new CPT.');
  $field('Parent product ID','<input name="parent_id" required type="number" min="1" step="1" value="'.esc_attr($sourceId?:'').'" />',
   'Tour ID, Property ID or Transportation ID (existing JetEngine CPT post).');
- $field('Tour language pricing','<select name="pricing_locale_mode"><option value="independent">Independent amount + currency per Tour language</option></select>',
-  'Tour Rate only. The selected parent Tour determines the WPML language. English/USD and French/EUR may intentionally differ; generated drafts never inherit a translation price.');
- $field('Expected Tour language (optional)','<input name="pricing_language" type="text" maxlength="8" pattern="[a-z]{2}(-[a-z]{2})?" placeholder="Auto from parent Tour" />',
-  'If filled, must equal the selected Tour WPML language; mismatch is rejected. This does not change page language or visitor currency.');
+ $field('Tour language pricing',
+  '<select name="pricing_locale_mode"><option value="inherit" selected>Inherit existing pricing behavior (default)</option><option value="independent">Override: independent amount + currency for this Tour language</option></select>',
+  'Inherit preserves the original generator, source values and fingerprint. Override creates a separate localized Rate draft without changing translated Rates.');
+ $field('Expected Tour language (override only)','<input name="pricing_language" type="text" maxlength="8" pattern="[a-z]{2}(-[a-z]{2})?" placeholder="Auto from parent Tour" />',
+  'Optional in Override mode only. Must equal the parent Tour language; market, nationality and WCML currency remain separate.');
  $field('Unit ID (accommodation only)','<input name="unit_id" type="number" min="1" step="1"/>',
   'Existing property → unit relation is verified by Booking Experience.');
  foreach($types as $kind=>$label){
@@ -65,7 +66,7 @@ add_action('woocommerce_settings_tabs_rate_generation',static function(){
   '<option value="on_request">Supplier confirmation on request</option>'.
   '<option value="allotment">Managed allotment (needs stock setup)</option></select></span>',
   'If left blank, draft is incomplete and cannot be treated as an available stay.');
- echo '<p><strong>WPML Rate price authority:</strong> choose the translated Tour post as parent, enter its original amount and currency; the generator binds the new draft to that Tour language. Existing translated Rates are never synchronized or overwritten.</p>';
+ echo '<p><strong>WPML Rate price authority:</strong> Inherit keeps the current Rate Generator and original source policy. Override binds a new draft to the translated Tour with its explicit original price and currency. Existing published Rates are never synchronized or overwritten.</p>';
  $field('Base amount','<input name="amount" type="number" min="0.0001" max="99999999" step="0.0001" value="'.esc_attr(is_numeric($seedAmount)&&(float)$seedAmount>0?$seedAmount:'').'"/>');
  $currency='<select name="currency">';
  foreach(get_woocommerce_currencies() as $code=>$label)
@@ -95,7 +96,7 @@ add_action('woocommerce_settings_tabs_rate_generation',static function(){
  $batch=get_transient('shared_rate_batch_preview_'.get_current_user_id());
  $csv=is_array($batch)?(string)($batch['csv']??''):'';
  echo '<hr><h3>Batch Rate Source — CSV (Preview before creating Drafts)</h3>';
- echo '<p>Paste a CSV with kind, parent_id, currency, price_unit, valid_from and valid_to columns; optional pricing_locale_mode=independent and pricing_language matching the parent Tour, supplier cost, markup and stay terms. Up to '.(int)Shared_Product_Rate_Source_Batch::MAX_ROWS.' rows, 64 KB. No rate is published or sold by this action.</p>';
+ echo '<p>Paste a CSV with kind, parent_id, currency, price_unit, valid_from and valid_to columns; optional pricing_locale_mode=independent plus pricing_language matching the translated Tour for overrides; omit both columns for default inheritance, supplier cost, markup and stay terms. Up to '.(int)Shared_Product_Rate_Source_Batch::MAX_ROWS.' rows, 64 KB. No rate is published or sold by this action.</p>';
  echo '<textarea name="rate_source_csv" rows="8" maxlength="'.(int)Shared_Product_Rate_Source_Batch::MAX_BYTES.'" style="width:100%;max-width:900px" placeholder="Paste CSV header and rows">'.esc_textarea($csv).'</textarea>';
  echo '<p><button class="button" type="submit" name="operation" value="batch_preview" formnovalidate>Validate CSV — no writes</button> ';
  if(is_array($batch)&&$csv!=='')echo '<button class="button button-primary" type="submit" name="operation" value="batch_create" formnovalidate>Create reviewed Draft batch</button>';
@@ -269,9 +270,15 @@ add_action('admin_init',static function(){
  if($kind==='tour'){
   foreach(['accommodation_assignment_mode','accommodation_stage_source_rate_id'] as $field)if(isset($raw[$field])&&$raw[$field]!=='')$payload[$field]=$raw[$field];
   foreach(['single_factor','double_factor','triple_factor'] as $field)$payload[$field]=$raw[$field]??null;
-  $payload['pricing_locale_mode']='independent';
-  if(isset($raw['pricing_language'])&&trim((string)$raw['pricing_language'])!=='')
-   $payload['pricing_language']=sanitize_text_field((string)$raw['pricing_language']);
+  // Omit the new keys for the legacy/default path: fingerprint parity matters.
+  $mode=$raw['pricing_locale_mode']??'inherit';
+  if($mode==='independent'){
+   $payload['pricing_locale_mode']='independent';
+   if(isset($raw['pricing_language'])&&trim((string)$raw['pricing_language'])!=='')
+    $payload['pricing_language']=sanitize_text_field((string)$raw['pricing_language']);
+  }elseif($mode!=='inherit'&&$mode!==''){
+   $payload['pricing_locale_mode']=sanitize_text_field((string)$mode);
+  }
   if(!empty($raw['package_term_id']))$payload['package_term_id']=$raw['package_term_id'];
  }elseif($kind==='accommodation'){
   foreach(['min_nights','max_nights','max_adults','max_children','inventory_policy'] as $field)
