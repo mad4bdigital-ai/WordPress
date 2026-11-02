@@ -6,7 +6,7 @@ This code mirrors the root-protected Central Staging native-contract reconciler 
 
 - An authenticated host SSH probe is infrastructure connectivity, not a company/site-specific Production authorization.
 - `ORIGINAL_305_PERSISTENT_PAIR_ENROLLED` does not imply `original_active_transport_present`.
-- Signed Host Proof is bound to the original company/environment, fresh (under 15 minutes), verified by Original WordPress, and not claimed to certify the Native Executor.
+- Signed Host Proof is bound to the original company/environment, fresh (within Original Core's 30-minute validity window), verified by Original WordPress, and not claimed to certify the Native Executor.
 - `original_transport_activation_performed=false` and `production_mutated_by_reconciler=false` are always emitted by this **read-only** convergence.
 - No default Production grant, no fabricated Site UUID, no cross-company wildcard, no WordPress actor substitution. Previously enrolled original actors and per-site original issuers must approve actual transitions.
 - Actual 306 owner-authenticated Job, original 312 claim/verification, external native target execution, independent 313 receipt, and rollback/canary remain separate.
@@ -19,3 +19,7 @@ Production remote control is **requested** and is supported by the same discover
 
 Run isolated contracts: `python3 -m unittest -v test_universal_native_reconcile.py`.
 VPS live mirror is `/opt/mad4b-company-provisioning/bin/company-native-contract-auto-reconcile.py`; the scheduled service uses its own registered `systemd` lock. This PR source is **not** an independent authorized issuer or a Production deployment.
+
+## Production proof freshness parity
+
+Original Core `MAD4B_Company_Native_Host_Proof_V1::status` verifies a signed proof for 1800 seconds. Previously the VPS read-only projection rejected the same proof after 900 seconds, reporting a false stale state on Wayfa Production. The projection now respects the original 1800-second window; no additional local expiration gate or transport-state rewrite is imposed.
