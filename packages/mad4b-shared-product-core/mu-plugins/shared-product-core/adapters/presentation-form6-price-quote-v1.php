@@ -283,8 +283,8 @@ add_action('fluentform/after_form_render',static function($form){
   const positive=(raw)=>/^[1-9][0-9]{0,4}$/.test(raw)?Number(raw):0;
   const zeroAllowed=(raw)=>/^(0|[1-9][0-9]{0,2})$/.test(raw)?Number(raw):null;
   const dateIso=(raw)=>{
-   if(/^\\d{4}-\\d{2}-\\d{2}$/.test(raw))return raw;
-   const m=/^(\\d{1,2})-([A-Za-z]{3})-(\\d{4})$/.exec(raw);
+   if(/^\d{4}-\d{2}-\d{2}$/.test(raw))return raw;
+   const m=/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/.exec(raw);
    if(!m)return '';
    const index=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'].indexOf(m[2].toLowerCase());
    return index<0?'':m[3]+'-'+String(index+1).padStart(2,'0')+'-'+m[1].padStart(2,'0');
