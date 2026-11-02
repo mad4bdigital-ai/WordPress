@@ -30,8 +30,9 @@ $check('missing_term_translation_held',
 $job=MAD4B_SCP_Content_Jobs::relationship_plan([
  'job_id'=>'fe3d871e-ee50-435c-93fb-63bcdb1bf3b7']);
 $check('actual_wpml_contentjob_issue_source_binding',
- ($job['state']??'')==='WAITING_ARTIFACT' &&
- ($job['candidate_local_id']??0)===2951 &&
+ ($job['state']??'')==='READY' &&
+ ($job['artifact_id']??0)===2951 &&
+ ($job['family']['target_id']??0)===2951 &&
  ($job['source_reference']['evidence_issue_id']??'')===
  'fbe96c19822da33bccd77520554d66e4d4bfa3ad8518ff62a138747445639a63');
 $jobEl=MAD4B_SCP_Content_Jobs::relationship_plan([
@@ -66,9 +67,12 @@ $legacy=class_exists('MAD4B_Central_Relationship_Derivation');
 $check('parallel_experimental_write_router_not_loaded',!$legacy);
 $j=MAD4B_SCP_Content_Jobs::get_job([
  'job_id'=>'fe3d871e-ee50-435c-93fb-63bcdb1bf3b7']);
-$check('original_job_state_and_revision_unchanged',
+$check('real_source_verified_artifact_linked_without_publication',
  ($j['job']['state']??'')==='WAITING_REVIEW' &&
- ($j['job']['job_revision']??0)===4);
+ ($j['job']['stage']??'')==='EDITORIAL_QA' &&
+ ($j['job']['current_artifact_id']??'')==='2951' &&
+ ($j['job']['job_revision']??0)===5 &&
+ get_term_meta(2951,'is_public',true)==='0');
 $failed=array_values(array_filter($cases,static fn($x)=>!$x['pass']));
 echo wp_json_encode(['contract'=>$c::CONTRACT.'.acceptance',
  'pass'=>!$failed,'checks'=>count($cases),'failed'=>$failed,

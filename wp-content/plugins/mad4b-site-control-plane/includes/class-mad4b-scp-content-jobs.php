@@ -5,6 +5,7 @@ if ( ! class_exists( 'MAD4B_SCP_Content_Workflow_Modes' ) ) require_once __DIR__
 if ( ! class_exists( 'MAD4B_SCP_Identifiers' ) ) require_once __DIR__ . '/class-mad4b-scp-identifiers.php';
 if ( ! class_exists( 'MAD4B_SCP_Operational_Integrity' ) ) require_once __DIR__ . '/class-mad4b-scp-operational-integrity.php';
 if ( ! class_exists( 'MAD4B_SCP_Content_Relationship_Graph' ) ) require_once __DIR__ . '/class-mad4b-scp-content-relationship-graph.php';
+if ( ! class_exists( 'MAD4B_SCP_Content_Relationship_Writeback' ) ) require_once __DIR__ . '/class-mad4b-scp-content-relationship-writeback.php';
 
 /**
  * Durable ContentJob domain service.
@@ -77,6 +78,29 @@ final class MAD4B_SCP_Content_Jobs {
 			),
 			array(),
 			true
+		);
+		self::register(
+			'mad4b/content-job-typed-relation-write-plan',
+			'Plan CWA-Certified Typed Relationship Write from Native ContentJob',
+			'typed_relation_write_plan',
+			array(
+				'job_id'=>array('type'=>'string','minLength'=>36,'maxLength'=>36),
+				'relationship_kind'=>array('type'=>'string','enum'=>array('featured_image','elementor_template_refs','typed_meta')),
+				'meta_key'=>array('type'=>'string','maxLength'=>80,'default'=>''),
+			),
+			array('job_id','relationship_kind'),true
+		);
+		self::register(
+			'mad4b/content-job-typed-relation-write-apply',
+			'Apply Exact Owner-Authorized CWA Typed Relationship with Native Readback',
+			'typed_relation_write_apply',
+			array(
+				'job_id'=>array('type'=>'string','minLength'=>36,'maxLength'=>36),
+				'relationship_kind'=>array('type'=>'string','enum'=>array('featured_image','elementor_template_refs','typed_meta')),
+				'meta_key'=>array('type'=>'string','maxLength'=>80,'default'=>''),
+				'expected_source_sha256'=>array('type'=>'string','pattern'=>'^[a-f0-9]{64}$'),
+			),
+			array('job_id','relationship_kind','expected_source_sha256'),false
 		);
 		self::register(
 			'mad4b/content-job-relationship-plan',
@@ -456,6 +480,13 @@ final class MAD4B_SCP_Content_Jobs {
 	 * guess; missing target post/term is a dependency, not a fabricated
 	 * reference or permission to create one.
 	 */
+	public static function typed_relation_write_plan( $input ) {
+		return MAD4B_SCP_Content_Relationship_Writeback::plan( (array)$input );
+	}
+	public static function typed_relation_write_apply( $input ) {
+		return MAD4B_SCP_Content_Relationship_Writeback::apply( (array)$input );
+	}
+
 	public static function relationship_plan( $input ) {
 		if ( ! class_exists( 'MAD4B_SCP_Content_Relationship_Graph' ) )
 			return array( 'state'=>'HOLD','reason'=>'relationship_graph_runtime_missing' );
@@ -679,9 +710,35 @@ final class MAD4B_SCP_Content_Jobs {
 			if ( is_wp_error( $row ) ) throw new RuntimeException( $row->get_error_code() );
 			if ( $expected_revision !== (int) $row['job_revision'] ) throw new RuntimeException( 'content_job_revision_conflict' );
 			if ( in_array( $row['state'], array( 'COMPLETED', 'CANCELLED' ), true ) ) throw new RuntimeException( 'content_job_terminal_immutable' );
+			// A translation job must not accept an arbitrary external Artifact
+			// ID in ANY lifecycle transition. An exact same-site native WPML
+			// family and current original Job revision are mandatory.
+			$artifact_changed = $artifact_id!=='' &&
+				$artifact_id!==(string)$row['current_artifact_id'];
+			if ($artifact_changed && ($row['content_type']??'')==='translation') {
+				$local=ctype_digit($artifact_id)?(int)$artifact_id:0;
+				if ((string)$row['current_artifact_id']!=='' || !$local ||
+					!class_exists('MAD4B_SCP_Content_Relationship_Graph',false))
+					throw new RuntimeException('content_job_localized_artifact_binding_denied');
+				$projection=MAD4B_SCP_Content_Relationship_Graph::planJob($job_id);
+				$kind=(string)($projection['source_reference']['kind']??'');
+				$permitted=$kind==='term'?current_user_can('edit_term',$local):
+					($kind==='post'&&current_user_can('edit_post',$local));
+				if(($projection['state']??'')!=='WAITING_ARTIFACT' ||
+					(int)($projection['candidate_local_id']??0)!==$local ||
+					(int)($projection['job_revision']??-1)!==$expected_revision ||
+					!$permitted)
+					throw new RuntimeException('content_job_localized_artifact_binding_denied');
+			}
 			$same_state = hash_equals( (string) $row['state'], $new_state );
 			$same_stage = hash_equals( (string) $row['stage'], $new_stage );
-			if ( $same_state && $same_stage ) throw new RuntimeException( 'content_job_noop_transition' );
+			if ( $same_state && $same_stage ) {
+				// A native, source-verified WPML artifact may be bound without
+				// manufacturing a workflow state/stage transition. Original
+				// ContentJob transaction, revision CAS, audit and actor remain.
+				if (!$artifact_changed ||($row['content_type']??'')!=='translation')
+					throw new RuntimeException('content_job_noop_transition');
+			}
 			$allowed = self::transition_map();
 			if ( ! $same_state && ( ! isset( $allowed[ $row['state'] ] ) || ! in_array( $new_state, $allowed[ $row['state'] ], true ) ) ) {
 				throw new RuntimeException( 'content_job_state_transition_denied' );
