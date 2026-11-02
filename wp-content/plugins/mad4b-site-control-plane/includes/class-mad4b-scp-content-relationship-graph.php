@@ -7,6 +7,7 @@
  * by their original domain implementations, NOT inferred by name/slug.
  */
 defined('ABSPATH') || exit;
+require_once __DIR__ . '/class-mad4b-scp-content-relationship-providers.php';
 
 final class MAD4B_SCP_Content_Relationship_Graph {
  const CONTRACT='mad4b.content-relationship-graph.v1';
@@ -261,6 +262,10 @@ final class MAD4B_SCP_Content_Relationship_Graph {
   if(!$source)return $result+['state'=>'HOLD','reason'=>'source_reference_unavailable'];
   $mapped=self::resolve($source['kind'],$source['id'],$source['type'],$locale);
   $result['family']=$mapped;
+  if(($mapped['state']??'')==='RESOLVED' && ($source['kind']??'')==='post') {
+   $result['extensions']['native_typed_relations']=
+      MAD4B_SCP_Content_Relationship_Providers::inspect($job,$mapped,$source);
+  }
   if(!empty($source['binding_target_id']) &&
     ($mapped['state']??'')==='RESOLVED' &&
     (int)$source['binding_target_id']!==(int)$mapped['target_id'])
@@ -278,7 +283,8 @@ final class MAD4B_SCP_Content_Relationship_Graph {
   // registered source-compatible providers can implement them.
   $extensions=apply_filters('mad4b/contentjob/relationship_graph_extensions',[],
     $job,$mapped);
-  $result['extensions']=is_array($extensions)?$extensions:[];
+  $result['extensions']=array_merge($result['extensions']??[],
+    is_array($extensions)?$extensions:[]);
   $result['graph_sha256']=hash('sha256',wp_json_encode([
     $jobId,$job['job_revision'],$mapped,$result['extensions'],$site],
     JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
