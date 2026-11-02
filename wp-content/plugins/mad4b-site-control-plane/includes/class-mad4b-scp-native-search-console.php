@@ -203,7 +203,12 @@ final class MAD4B_SCP_Native_Search_Console {
     }
     private static function api($method,$url,$bearer,$payload=null) {
         // No client-supplied URLs: only Google's fixed HTTPS resource paths.
-        if(!str_starts_with($url,self::API)||!preg_match('#^https://www\.googleapis\.com/webmasters/v3/sites(?:/|$)#',$url))
+        $target=wp_parse_url($url);
+        if(!is_array($target)||($target['scheme']??'')!=='https'||
+            ($target['host']??'')!=='www.googleapis.com'||
+            isset($target['port'])||isset($target['user'])||isset($target['pass'])||
+            isset($target['fragment'])||
+            !preg_match('#^/webmasters/v3/sites(?:/|$)#D',(string)($target['path']??'')))
             return new WP_Error('mad4b_gsc_outbound_url_denied');
         $args=array('method'=>$method,'timeout'=>18,'redirection'=>0,
             'headers'=>array('Authorization'=>'Bearer '.$bearer,'Accept'=>'application/json'));
