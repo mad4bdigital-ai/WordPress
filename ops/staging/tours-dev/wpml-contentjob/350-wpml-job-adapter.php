@@ -419,6 +419,82 @@ final class MAD4B_WPML_ContentJob_Adapter {
    'state'=>$r['job']['state'],'review_reference'=>$review_reference,
    'job_id'=>$id,'content_published'=>false];
  }
+ /** Validate external Elementor/JetEngine links in one draft, without mutation. */
+ private static function draft_reference_qa($source,$target,$lang){
+  $raw=(string)get_post_meta($source,'_elementor_data',true);
+  $translated=(string)get_post_meta($target,'_elementor_data',true);
+  $base=json_decode($raw,true);$local=json_decode($translated,true);
+  if(!is_array($base)||!is_array($local))
+   return ['verified'=>false,'checked'=>0,'issues'=>[['code'=>'elementor_tree_unavailable']]];
+  $flatten=static function($nodes)use(&$flatten){
+   $out=[];
+   foreach((array)$nodes as $node){
+    if(!is_array($node))continue;
+    if(isset($node['id']))$out[(string)$node['id']]=(array)($node['settings']??[]);
+    foreach($flatten($node['elements']??[]) as $key=>$value)$out[$key]=$value;
+   }
+   return $out;
+  };
+  $src=$flatten($base);$dst=$flatten($local);$checked=0;$issues=[];
+  $ref_types=['lisitng_id'=>'jet-engine','listing_id'=>'jet-engine',
+   'listing_item_id'=>'jet-engine','template_id'=>'elementor_library',
+   'filter_id'=>'jet-smart-filters','popup_id'=>'elementor_library'];
+  foreach($src as $node=>$settings){
+   if(!array_key_exists($node,$dst)){
+    $issues[]=['code'=>'missing_widget','widget'=>$node];continue;
+   }
+   foreach($ref_types as $field=>$type){
+    if(!array_key_exists($field,$settings))continue;
+    $raw=$settings[$field];$is_list=is_array($raw);
+    $sources=[];
+    if($is_list){
+     if(!$raw||count($raw)>24||array_keys($raw)!==range(0,count($raw)-1)){
+      $issues[]=['code'=>'invalid_reference_array','widget'=>$node,'field'=>$field];continue;
+     }
+     foreach($raw as $v){
+      if(!is_scalar($v)||!ctype_digit((string)$v)||(int)$v<=0){
+       $issues[]=['code'=>'invalid_reference_array_item','widget'=>$node,'field'=>$field];
+       continue 2;
+      }
+      $sources[]=(int)$v;
+     }
+    }elseif(is_scalar($raw)&&ctype_digit((string)$raw)&&(int)$raw>0){
+     $sources[]=(int)$raw;
+    }else continue;
+    $current=$dst[$node][$field]??null;
+    $targets=is_array($current)?array_values($current):[$current];
+    if($is_list!==is_array($current)||count($targets)!==count($sources)){
+     $issues[]=['code'=>'reference_shape_mismatch','widget'=>$node,'field'=>$field];
+     continue;
+    }
+    foreach($sources as $position=>$source_id){
+     $checked++;
+     $found=is_scalar($targets[$position]??null)?(int)$targets[$position]:0;
+     if(get_post_type($source_id)!==$type){
+      $issues[]=['code'=>'invalid_source_reference','widget'=>$node,
+       'field'=>$field,'source_id'=>$source_id,'expected_type'=>$type];
+      continue;
+     }
+     $expected=(int)apply_filters('wpml_object_id',$source_id,$type,false,$lang);
+     if(!$expected&&$type==='elementor_library'
+       &&class_exists('MAD4B_WPML_Translation_Need_V1')){
+       $need=MAD4B_WPML_Translation_Need_V1::source($source_id);
+       if(is_array($need)&&($need['classification']??'')==='shared_dynamic_provider'
+         &&$found===$source_id)continue;
+     }
+     if(!$expected){
+      $issues[]=['code'=>'localized_reference_missing','widget'=>$node,
+       'field'=>$field,'source_id'=>$source_id,'expected_type'=>$type];
+     }elseif($expected!==$found){
+      $issues[]=['code'=>'localized_reference_mismatch','widget'=>$node,
+       'field'=>$field,'source_id'=>$source_id,'expected_target_id'=>$expected,
+       'actual_target_id'=>$found];
+     }
+    }
+   }
+  }
+  return ['verified'=>!$issues,'checked'=>$checked,'issues'=>array_slice($issues,0,15)];
+ }
  /** A visible review ledger, separate from the translation execution queue. */
  public static function review_dashboard($limit=80){
   if(!self::ready()||!MAD4B_SCP_Policy::can_read())
@@ -426,7 +502,8 @@ final class MAD4B_WPML_ContentJob_Adapter {
   $limit=max(1,min(100,(int)$limit));$map=(array)get_option(self::MAP,[]);
   $outbox=(array)get_option('mad4b_elementor_localization_outbox_v1',[]);
   $rows=[];$totals=['draft_pending_review'=>0,'review_with_published_target'=>0,
-    'draft_without_native_review'=>0,'needs_translation_or_other'=>0];
+    'draft_without_native_review'=>0,'needs_translation_or_other'=>0,
+    'draft_references_unresolved'=>0,'draft_references_verified'=>0];
   foreach($map as $m){
    $source=(int)($m['source_post_id']??0);$lang=(string)($m['lang']??'');
    $type=(string)($m['type']??'');
@@ -443,10 +520,21 @@ final class MAD4B_WPML_ContentJob_Adapter {
     $outbox_states[(string)($issue['status']??'unknown')]=true;
    $state_list=array_keys($outbox_states);
    $is_draft=$post_status==='draft';
+   $reference_qa=$is_draft&&$type==='elementor_library'
+      ?self::draft_reference_qa($source,$target,$lang)
+      :['verified'=>null,'checked'=>0,'issues'=>[]];
+   $review_blockers=$is_draft
+      ?['editorial_review','public_render_readback','unpublished_translation']
+      :['editorial_review_or_receipts'];
+   if($is_draft&&$reference_qa['verified']===false)
+     $review_blockers[]='wpml_reference_mapping_unresolved';
+   elseif($is_draft)$review_blockers[]='wpml_reference_mapping_verified';
    $is_review=$job_state==='WAITING_REVIEW';
    if($is_draft){
     if($is_review)$totals['draft_pending_review']++;
     else $totals['draft_without_native_review']++;
+    if($reference_qa['verified']===false)$totals['draft_references_unresolved']++;
+    elseif($reference_qa['verified']===true)$totals['draft_references_verified']++;
    }elseif($is_review)$totals['review_with_published_target']++;
    else $totals['needs_translation_or_other']++;
    if(!$is_draft&&!$is_review)continue;
@@ -458,8 +546,8 @@ final class MAD4B_WPML_ContentJob_Adapter {
      'outbox_statuses'=>$state_list,
      'review_kind'=>$is_draft?'unpublished_wpml_draft':'published_target_pending_review',
      'publicly_visible_translation'=>$post_status==='publish',
-     'review_blockers'=>$is_draft?['editorial_review','wpml_reference_mapping',
-       'public_render_readback','unpublished_translation']:['editorial_review_or_receipts'],
+     'review_blockers'=>$review_blockers,
+     'reference_qa'=>$reference_qa,
      'auto_completed'=>false];
   }
   return ['contract'=>'mad4b.wpml.review-dashboard.v1',
