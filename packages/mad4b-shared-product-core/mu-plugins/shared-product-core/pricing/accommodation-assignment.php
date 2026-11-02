@@ -1,9 +1,10 @@
 <?php
 /** Deterministic draft-only discovery. Never infers overnight geometry or inventory. */
 if(!defined('ABSPATH'))return;
-$mad4bRateAssignmentEnabled=(defined('MAD4B_COMMERCE_RUNTIME_ENABLED')&&MAD4B_COMMERCE_RUNTIME_ENABLED===true)
- ||((defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true)
- &&(defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true));
+// Runtime authorization is independent of site environment (local/staging/production).
+// Never use WP_ENVIRONMENT_TYPE as a feature gate for Rate Generator discovery.
+$mad4bRateAssignmentEnabled=defined('MAD4B_COMMERCE_RUNTIME_ENABLED')
+ && MAD4B_COMMERCE_RUNTIME_ENABLED===true;
 if(!$mad4bRateAssignmentEnabled)return;
 function shared_product_assignment_location($id){
  $seen=[];$location=0;$kind='';$country=0;$chain=[];
@@ -12,7 +13,7 @@ function shared_product_assignment_location($id){
   $seen[$id]=true;$term=get_term($id,'destinations');if(!$term instanceof WP_Term)return null;
   $type=(string)get_term_meta($id,'destination_type',true);
   $chain[]=['id'=>(int)$id,'parent'=>(int)$term->parent,'type'=>$type];
-  if(!$location&&in_array($type,['city','state_governorate'],true)){$location=(int)$id;$kind=$type;}
+  if(!$location&&in_array($type,['zone_area','city','state_governorate'],true)){$location=(int)$id;$kind=$type;}
   if($type==='country'){$country=(int)$id;break;}
   $id=(int)$term->parent;
  }
@@ -36,16 +37,22 @@ function shared_product_accommodation_assignment($tour,$source=0,$package=0){
  $locations=shared_product_assignment_cities($tour);if(is_wp_error($locations))return $locations;
  $groups=[];foreach($locations as $location=>$loc)$groups[$location]=['destination_term_id'=>$location,'destination_type'=>$loc['location_type'],'country_id'=>$loc['country_id'],'tour_ancestry'=>$loc['ancestry'],'property_ids'=>[],'property_receipts'=>[]];
  $packageValid=$package>0&&term_exists($package,'package_levels');
- $ids=$packageValid?get_posts(['post_type'=>'properties','post_status'=>'publish','posts_per_page'=>1001,'fields'=>'ids','orderby'=>'ID','order'=>'ASC','suppress_filters'=>true,'meta_query'=>[['key'=>'prop_use_in_tour_rate_generation','value'=>'1','compare'=>'=']]]):[];
+ if($package>0&&!$packageValid)return new WP_Error('accommodation_assignment_package_invalid');
+ // Explicit opt-in is required for dynamic discovery; item price and
+ // package-level metadata are optional. No inference of missing sell amounts.
+ $ids=get_posts(['post_type'=>'properties','post_status'=>'publish','posts_per_page'=>1001,'fields'=>'ids','orderby'=>'ID','order'=>'ASC','suppress_filters'=>true,'meta_query'=>[['key'=>'prop_use_in_tour_rate_generation','value'=>'1','compare'=>'=']]]);
  if(count($ids)>1000)return new WP_Error('accommodation_assignment_candidate_limit');
  sort($ids,SORT_NUMERIC);
  foreach($ids as $id){
   if(get_post_field('post_password',$id)!==''||get_post_meta($id,'_booking_experience_qa_pricing_fixture',true)!=='')continue;
   $packages=wp_get_object_terms($id,'package_levels',['fields'=>'ids']);if(is_wp_error($packages))return $packages;
   $packages=array_values(array_unique(array_map('intval',$packages)));sort($packages,SORT_NUMERIC);
-  if(function_exists('BookingExperience\\tour_stay_property_package_allowed')){
-   if(!BookingExperience\tour_stay_property_package_allowed((int)$source,(int)$id,(int)$package))continue;
-  }elseif(!in_array((int)$package,$packages,true))continue;
+  // A declared Property package scope is restrictive; absent terms do not
+  // block the explicitly opted-in Property from this generator preview.
+  if($package && $packages && !in_array((int)$package,$packages,true))continue;
+  // If inheriting stages, retain the source Rate's explicit linked choices.
+  if($source && function_exists('BookingExperience\\tour_stay_property_package_allowed')
+     && !BookingExperience\tour_stay_property_package_allowed((int)$source,(int)$id,(int)$package))continue;
   $propertyLocations=shared_product_assignment_cities($id);if(is_wp_error($propertyLocations))return $propertyLocations;
   foreach($locations as $location=>$scope)foreach($propertyLocations as $loc){
    if(!shared_product_assignment_matches($loc,$scope))continue;
@@ -54,7 +61,7 @@ function shared_product_accommodation_assignment($tour,$source=0,$package=0){
   }
  }
  foreach($groups as &$group){$group['property_ids']=array_values(array_unique($group['property_ids']));sort($group['property_ids'],SORT_NUMERIC);}unset($group);
- $receipt=['schema'=>'tour-accommodation-assignment.v2','tour_id'=>(int)$tour,'package_term_id'=>(int)$package,'source_rate_id'=>(int)$source,'groups'=>array_values($groups),'source_geometry'=>[],'stages'=>[],'property_ids'=>[],'status'=>$packageValid?'needs_city':'needs_package_level','checkout_ready'=>false];
+ $receipt=['schema'=>'tour-accommodation-assignment.v2','tour_id'=>(int)$tour,'package_term_id'=>(int)$package,'source_rate_id'=>(int)$source,'groups'=>array_values($groups),'source_geometry'=>[],'stages'=>[],'property_ids'=>[],'status'=>'needs_city','checkout_ready'=>false];
  $stages=[];$required=[];
  if($source){
   if(get_post_type($source)!=='tour-rates'||!in_array(get_post_status($source),['publish','draft'],true)||(int)get_post_meta($source,'related_tour_id',true)!==(int)$tour)return new WP_Error('accommodation_assignment_source_rate_invalid');
@@ -75,7 +82,7 @@ function shared_product_accommodation_assignment($tour,$source=0,$package=0){
    $stage['properties']=$choices;$stages[]=$stage;$required[]=$choices;
   }
  }
- if($packageValid&&$groups){
+ if($groups){
   if(!$source&&count($groups)>1)$receipt['status']='needs_stage_plan';
   else{
    if(!$source)$required=[reset($groups)['property_ids']];
@@ -89,3 +96,4 @@ function shared_product_accommodation_assignment($tour,$source=0,$package=0){
  }
  return $receipt;
 }
+
