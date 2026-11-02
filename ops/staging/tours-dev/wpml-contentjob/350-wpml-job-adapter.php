@@ -181,6 +181,90 @@ final class MAD4B_WPML_ContentJob_Adapter {
     'translation_executed'=>false,'published'=>false];
   }finally{$wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)','mad4b_wpml_jobs_native_intake'));}
  }
+ /** Resolve a ContentJob to authoritative WPML objects and translation QA without mutating them. */
+ public static function binding($input){
+  if(!self::ready())return new WP_Error('wpml_bridge_wrong_site');
+  $id=strtolower(trim((string)($input['job_id']??'')));
+  if(!preg_match('/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/D',$id))
+   return new WP_Error('wpml_bridge_invalid_job_id');
+  $native=MAD4B_SCP_Content_Jobs::get_job(['job_id'=>$id]);
+  if(is_wp_error($native))return $native;
+  if(($native['job']['content_type']??'')!=='translation')
+   return new WP_Error('wpml_bridge_not_translation_job');
+  $scope=self::scope();if(is_wp_error($scope))return $scope;
+  $match=null;$map=(array)get_option(self::MAP,[]);
+  foreach($map as $key=>$row){
+   if(($row['job_id']??'')!==$id)continue;
+   $expected=self::key($scope,[
+    'src'=>(int)$row['source_post_id'],'type'=>(string)$row['type'],
+    'lang'=>(string)$row['lang']]);
+   if(!hash_equals((string)$key,$expected))return new WP_Error('wpml_bridge_binding_key_mismatch');
+   $match=$row;break;
+  }
+  if(!$match)return new WP_Error('wpml_bridge_binding_not_found');
+  $source=(int)$match['source_post_id'];$target=(int)$match['target_post_id'];
+  $lang=(string)$match['lang'];
+  $issues=[];$gaps=(array)($match['gap_codes']??[]);
+  foreach((array)get_option('mad4b_elementor_localization_outbox_v1',[]) as $o){
+   if((int)($o['source_post_id']??0)!==$source
+    ||($o['target_language']??'')!==$lang)continue;
+   if(!in_array(($o['gap_code']??''),$gaps,true))continue;
+   $issues[]=['code'=>$o['gap_code'],'status'=>$o['status']??'unknown',
+    'receipt_id'=>$o['receipt_id']??null,
+    'readback_passed'=>$o['readback_passed']??null];
+  }
+  global $wpdb;$native_wpml=[];
+  foreach(array_slice((array)($match['native_wpml_job_ids']??[]),0,25) as $wid){
+   $wid=(int)$wid;if($wid<=0)continue;
+   $q=$wpdb->get_row($wpdb->prepare(
+    "SELECT j.job_id,j.translated,s.status,s.needs_update FROM {$wpdb->prefix}icl_translate_job j
+      JOIN {$wpdb->prefix}icl_translation_status s ON s.rid=j.rid WHERE j.job_id=%d LIMIT 1",
+    $wid),ARRAY_A);
+   if($q)$native_wpml[]=['job_id'=>(int)$q['job_id'],'translated'=>(int)$q['translated'],
+    'status'=>(int)$q['status'],'needs_update'=>(int)$q['needs_update']];
+  }
+  $gaps_verified=$gaps ? !!$issues : true;
+  if($gaps){
+   foreach($gaps as $gap){
+    $matched=array_values(array_filter($issues,static fn($v)=>$v['code']===$gap));
+    if(!$matched){$gaps_verified=false;continue;}
+    foreach($matched as $v)if($v['status']!=='verified'||$v['readback_passed']!==true)
+     $gaps_verified=false;
+   }
+  }
+  $native_verified=!empty($match['native_wpml_job_ids']);
+  if($native_verified){
+   if(count($native_wpml)!==count(array_unique($match['native_wpml_job_ids'])))$native_verified=false;
+   foreach($native_wpml as $v)if(!$v['translated']||$v['needs_update'])$native_verified=false;
+  }
+  $requires_native=!empty($match['native_wpml_job_ids']);
+  $requires_gap=!empty($gaps);
+  $ready=($requires_gap||$requires_native)&&$gaps_verified&&(!$requires_native||$native_verified);
+  return ['contract'=>'mad4b.wpml.contentjob-binding.v1','job_id'=>$id,
+   'source_post_id'=>$source,'target_post_id'=>$target,'target_language'=>$lang,
+   'post_type'=>$match['type'],'native_job_state'=>$native['job']['state'],
+   'master_or_post_excluded'=>!mad4b_wpml_auto_sync_allowed_v1($source,$target),
+   'outbox_issues'=>$issues,'native_wpml_jobs'=>$native_wpml,
+   'readback_verified'=>$ready,'review_required'=>true,'auto_publish'=>false,
+   'mutation_performed'=>false];
+ }
+ public static function register_abilities(){
+  if(!function_exists('wp_register_ability')||!self::ready())return;
+  $name='mad4b/wpml-contentjob-binding';
+  if(function_exists('wp_has_ability')&&wp_has_ability($name))return;
+  wp_register_ability($name,[
+   'label'=>'Resolve Native ContentJob to WPML Task and Translation Evidence',
+   'description'=>'Scoped read-only mapping from ContentJob ID to source/target and WPML translation status.',
+   'category'=>'mad4b-read',
+   'execute_callback'=>static fn($input)=>self::binding((array)$input),
+   'permission_callback'=>static fn($input)=>MAD4B_SCP_Policy::can_read(),
+   'input_schema'=>['type'=>'object','properties'=>[
+    'job_id'=>['type'=>'string','minLength'=>36,'maxLength'=>36]],
+    'required'=>['job_id'],'additionalProperties'=>false],
+   'output_schema'=>['type'=>'object','additionalProperties'=>true],
+   'meta'=>['mcp'=>['public'=>false,'type'=>'tool','surface'=>'read']]
+  ]);
+ }
  public static function cli($args,$opts){
   $cmd=$args[0]??'status';
   if($cmd==='preview'||$cmd==='status')$r=self::preview();
@@ -191,6 +275,7 @@ final class MAD4B_WPML_ContentJob_Adapter {
  }
  public static function boot(){
   if(!self::ready())return;
+  add_action('wp_abilities_api_init',[__CLASS__,'register_abilities'],45);
   add_action(self::EVENT,static function(){
    // The site cron has no WordPress principal and must not invent one.
    // Discovery keeps the translation outbox visible; host-scoped native
