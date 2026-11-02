@@ -27,18 +27,38 @@ function shared_product_booking_modes_from_taxonomy($tour_id) {
  return ['taxonomy'=>'tour_categories','modes'=>array_keys($modes),'terms'=>$recognized];
 }
 
+/**
+ * WPML translates the season TERM but not always the authoritative season
+ * date metadata. Inherit only from a verified, bidirectionally linked original
+ * when the localized term is unconfigured. Explicit localized disabled/dated
+ * policies always take precedence. Never infer availability from a slug.
+ */
+function shared_product_season_policy_term($term) {
+ if(!$term instanceof WP_Term || $term->taxonomy!=='season')return $term;
+ if(get_term_meta($term->term_id,'season_enabled',true)!=='')return $term;
+ $default=apply_filters('wpml_default_language',null);
+ $current=apply_filters('wpml_current_language',null);
+ if(!is_string($default)||!is_string($current)||$default===''||$current===''||$default===$current)return $term;
+ $id=apply_filters('wpml_object_id',(int)$term->term_id,'season',false,$default);
+ if(!is_numeric($id)||(int)$id<1||(int)$id===(int)$term->term_id)return $term;
+ $back=apply_filters('wpml_object_id',(int)$id,'season',false,$current);
+ if((int)$back!==(int)$term->term_id)return $term;
+ $original=get_term((int)$id,'season');
+ return ($original instanceof WP_Term && $original->taxonomy==='season')?$original:$term;
+}
 function shared_product_season_term_matches_date($term,$date) {
  if(!$term instanceof WP_Term || $term->taxonomy!=='season' || !is_string($date))return false;
- if(get_term_meta($term->term_id,'season_enabled',true)!=='1')return false;
- $mode=(string)get_term_meta($term->term_id,'season_mode',true);
+ $policyTerm=shared_product_season_policy_term($term);
+ if(get_term_meta($policyTerm->term_id,'season_enabled',true)!=='1')return false;
+ $mode=(string)get_term_meta($policyTerm->term_id,'season_mode',true);
  if($mode!=='' && $mode!=='travel')return false;
  $d=DateTimeImmutable::createFromFormat('!Y-m-d',$date,new DateTimeZone('UTC'));
  if(!$d || $d->format('Y-m-d')!==$date)return false;
- $sm=(int)get_term_meta($term->term_id,'season_start_month',true);
- $sd=(int)get_term_meta($term->term_id,'season_start_day',true);
- $em=(int)get_term_meta($term->term_id,'season_end_month',true);
- $ed=(int)get_term_meta($term->term_id,'season_end_day',true);
- $cross=get_term_meta($term->term_id,'season_cross_year',true)==='1';
+ $sm=(int)get_term_meta($policyTerm->term_id,'season_start_month',true);
+ $sd=(int)get_term_meta($policyTerm->term_id,'season_start_day',true);
+ $em=(int)get_term_meta($policyTerm->term_id,'season_end_month',true);
+ $ed=(int)get_term_meta($policyTerm->term_id,'season_end_day',true);
+ $cross=get_term_meta($policyTerm->term_id,'season_cross_year',true)==='1';
  $year=(int)substr($date,0,4);
  foreach([$year-1,$year] as $y){
   if(!checkdate($sm,$sd,$y)||!checkdate($em,$ed,$y+($cross?1:0)))continue;
