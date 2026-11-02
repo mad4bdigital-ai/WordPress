@@ -24,7 +24,9 @@ final class IndexingPolicy {
 	private function sharedPresentationMismatch(array $context):string{
 		$profile=(array)($context['profile']??array());
 		if(!in_array('tours-and-activities',(array)($profile['post_types']??array()),true))return '';
-		if(!function_exists('shared_presentation_provider_v2'))return '';
+		if(!function_exists('shared_presentation_provider_v2')||!class_exists('Presentation_Policy_Context_v1'))return 'shared_presentation_policy_unavailable';
+		$policy=\Presentation_Policy_Context_v1::decide('tours-and-activities','archive','discover');
+		if(empty($policy['allowed']))return 'shared_presentation_archive_restricted';
 		$source=shared_presentation_provider_v2('tours.archive');
 		if(!is_array($source))return 'shared_presentation_provider_unavailable';
 		$routes=array_values((array)($profile['routes']??array()));
