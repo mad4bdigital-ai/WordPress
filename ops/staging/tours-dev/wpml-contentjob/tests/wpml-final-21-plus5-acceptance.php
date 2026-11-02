@@ -1,0 +1,96 @@
+<?php
+/** Read-only WPML staging milestone acceptance, no simulated approvals. */
+defined('ABSPATH')||exit(1);
+if(wp_get_environment_type()!=='staging'
+ ||rtrim(home_url(),'/')!=='https://tours.dev.mad4b.com'
+ ||get_current_user_id()!==26||!current_user_can('manage_options')
+ ||!MAD4B_SCP_Policy::can_read())WP_CLI::error('scope_denied');
+$checks=0;
+$must=function($condition,$name)use(&$checks){
+ if(!$condition)WP_CLI::error('final_qa_'.$name);
+ $checks++;
+};
+$published=[68832,68833,68834,68836,68835,68838,68837,68839,68840,68841,68842,68843];
+$existing=[35108,43777,35110,44268,44266,39504,40545,35112,44251];
+$review_targets=['ar'=>68827,'fr'=>68828,'de'=>68829,'es'=>68830,'it'=>68831];
+$listing_targets=['ar'=>68847,'fr'=>68848,'de'=>68849,'es'=>68850,'it'=>68851];
+$must(count($published)===12&&count($existing)===9,'approved_scope');
+$pub_rows=[];$prior_rows=[];
+foreach($published as $id){
+ $p=(array)get_option('mad4b_wpml_staging_publication_receipt_'.$id.'_v1',[]);
+ $a=(array)get_option('mad4b_wpml_review_final_approval_'.$id.'_v1',[]);
+ $j=isset($p['job'])?MAD4B_SCP_Content_Jobs::get_job(['job_id'=>$p['job']]):null;
+ $must(get_post_status($id)==='publish','published_'.$id);
+ $must(($p['wpml_readback_passed']??false)===true,'wpml_'.$id);
+ $must(($p['elementor_sha256']??'')===hash('sha256',(string)get_post_meta($id,'_elementor_data',true)),'digest_'.$id);
+ $must(($a['native_state']??'')==='COMPLETED'
+    &&($a['receipt_id']??'')===($p['receipt_id']??null),'approval_receipt_'.$id);
+ $must(is_array($j)&&($j['job']['state']??'')==='COMPLETED','native_job_'.$id);
+ $b=MAD4B_WPML_ContentJob_Adapter::binding(['job_id'=>$p['job']]);
+ $must(!is_wp_error($b)&&($b['readback_verified']??false)===true
+  &&(int)$b['target_post_id']===$id,'binding_'.$id);
+ $pub_rows[]=['target'=>$id,'locale'=>$p['lang'],'native_state'=>'COMPLETED',
+   'receipt_id'=>$p['receipt_id']];
+}
+foreach($existing as $id){
+ $audit=(array)get_option('mad4b_wpml_existing_review_approval_'.$id.'_v1',[]);
+ $job=$audit['native_job']??null;
+ $j=$job?MAD4B_SCP_Content_Jobs::get_job(['job_id'=>$job]):null;
+ $must(get_post_status($id)==='publish','existing_published_'.$id);
+ $must(($audit['native_state']??'')==='COMPLETED','existing_approval_'.$id);
+ $must(is_array($j)&&($j['job']['state']??'')==='COMPLETED','existing_native_'.$id);
+ $must(!empty($audit['original_translation_receipts']),'existing_receipt_'.$id);
+ $prior_rows[]=['target'=>$id,'locale'=>$audit['locale'],'native_state'=>'COMPLETED'];
+}
+$source_reviews=wp_count_posts('custom-reviews');
+$trusted_reviews=(int)($source_reviews->publish??0);
+$must($trusted_reviews===0,'no_trusted_review_data');
+$review_drafts=[];
+$source_trid=(int)apply_filters('wpml_element_trid',null,43727,'post_jet-engine');
+foreach($review_targets as $locale=>$id){
+ $listing=$listing_targets[$locale];
+ $must(get_post_status($id)==='draft','review_section_draft_'.$id);
+ $must(get_post_status($listing)==='draft','jet_listing_draft_'.$listing);
+ $must((int)apply_filters('wpml_object_id',43727,'jet-engine',false,$locale)===$listing,
+   'review_listing_wpml_'.$locale);
+ $must($source_trid===(int)apply_filters('wpml_element_trid',null,$listing,'post_jet-engine'),
+   'review_listing_trid_'.$locale);
+ $proof=(array)get_option('mad4b_wpml_review_listing_link_proof_'.$id.'_v1',[]);
+ $must((int)($proof['listing_draft']??0)===$listing,'linked_reference_receipt_'.$locale);
+ $scan=json_decode((string)get_post_meta($id,'_elementor_data',true),true);
+ $ref=[];
+ $walk=function($tree)use(&$walk,&$ref){
+  foreach((array)$tree as $widget){
+   if(!is_array($widget))continue;
+   if(array_key_exists('lisitng_id',(array)($widget['settings']??[])))
+    $ref[]=$widget['settings']['lisitng_id'];
+   $walk($widget['elements']??[]);
+  }
+ };
+ $walk($scan);
+ $must(count($ref)===1&&(int)$ref[0]===$listing,'real_elementor_reference_'.$id);
+ $review_drafts[]=['target'=>$id,'locale'=>$locale,'linked_listing_draft'=>$listing];
+}
+$dashboard=MAD4B_WPML_ContentJob_Adapter::review_dashboard(100);
+$must(!is_wp_error($dashboard),'review_dashboard');
+$t=$dashboard['totals'];
+$must((int)$t['draft_pending_review']===5,'five_pending_reviews');
+$must((int)$t['review_with_published_target']===0,'no_old_review_pending');
+$must((int)$t['draft_references_unresolved']===5,'review_data_still_blocked');
+$must((int)$t['draft_without_native_review']===0,'all_reviews_have_native_jobs');
+foreach($dashboard['rows'] as $r){
+ $must(($r['native_state']??'')==='WAITING_REVIEW','review_visible_to_control_plane');
+ $codes=array_column($r['reference_qa']['issues']??[],'code');
+ $must(in_array('localized_reference_unpublished',$codes,true)
+   &&in_array('verified_reviews_data_missing',$codes,true),'review_data_and_listing_blocker');
+}
+ob_start();MAD4B_Control_Plane_WPML_Review_UI_V1::render();$html=ob_get_clean();
+$must(substr_count($html,'Verified custom reviews: 0')===5,'review_blockers_visible_in_gui');
+return_result:
+echo wp_json_encode(['contract'=>'mad4b.wpml.final-milestone-acceptance.v1',
+ 'verified_assertions'=>$checks,'published_completed'=>count($pub_rows),
+ 'prepublished_approved'=>count($prior_rows),'pending_review_drafts'=>count($review_drafts),
+ 'trusted_reviews_published'=>$trusted_reviews,'rendered_gui_blockers'=>5,
+ 'dashboard_totals'=>$t,'newly_published'=>$pub_rows,'prior_published'=>$prior_rows,
+ 'blocked_reviews'=>$review_drafts,'production_changed'=>false],
+ JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)."\n";
