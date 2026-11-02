@@ -1,0 +1,73 @@
+<?php
+/** Review existing translated published templates; only native governed finalization. */
+defined('ABSPATH')||exit(1);
+function qa_abort($message){WP_CLI::error('existing_review_'.$message);}
+if(wp_get_environment_type()!=='staging'
+ ||rtrim(home_url(),'/')!=='https://tours.dev.mad4b.com'
+ ||get_current_user_id()!==26||!current_user_can('manage_options')
+ ||true!==MAD4B_SCP_Policy::can_mutate())qa_abort('unauthorized');
+$scope=MAD4B_SCP_Operational_Integrity::capture();
+if(is_wp_error($scope)||($scope['scope']['site_uuid']??'')!=='e5e64bca-ed62-48d2-b2b3-dff693cd702a')
+ qa_abort('wrong_site');
+$file='/tmp/existing-9-published-qa.json';
+$report=json_decode((string)file_get_contents($file),true);
+if(!is_array($report)||($report['contract']??'')!=='mad4b.wpml.published-existing-review-qa.v1'
+ ||($report['count']??0)!==9||($report['pass']??0)!==9
+ ||count((array)($report['results']??[]))!==9)qa_abort('qa_evidence_missing');
+$result=[];
+foreach($report['results'] as $r){
+ $id=(int)($r['target']??0);$source=(int)($r['src']??0);
+ $job_id=(string)($r['job']??'');$locale=(string)($r['lang']??'');
+ if(!$r['pass']||$r['same_english_fields']
+   ||!in_array($source,[25917,43704,41738,41731],true)
+   ||!in_array($locale,['ar','fr','de','es','it'],true)
+   ||get_post_status($id)!=='publish'||get_post_status($source)!=='publish')
+   qa_abort('source_or_content_unverified_'.$id);
+ $a=(int)apply_filters('wpml_element_trid',null,$source,'post_elementor_library');
+ $b=(int)apply_filters('wpml_element_trid',null,$id,'post_elementor_library');
+ $language=(array)apply_filters('wpml_post_language_details',null,$id);
+ if(!$a||$a!==$b||($language['language_code']??'')!==$locale)
+   qa_abort('wpml_link_changed_'.$id);
+ $binding=MAD4B_WPML_ContentJob_Adapter::binding(['job_id'=>$job_id]);
+ if(is_wp_error($binding)||!($binding['readback_verified']??false)
+   ||($binding['master_or_post_excluded']??true)
+   ||(int)$binding['target_post_id']!==$id)
+   qa_abort('invalid_native_binding_'.$id);
+ $receipts=array_values(array_unique(array_filter(array_column(
+   (array)$binding['outbox_issues'],'receipt_id'))));
+ if(!$receipts)qa_abort('missing_original_translation_receipt_'.$id);
+ $native=MAD4B_SCP_Content_Jobs::get_job(['job_id'=>$job_id]);
+ if(is_wp_error($native))qa_abort('native_job_not_found');
+ $review_ref='MAD4B_STAGE_QA_20261102_'.$id;
+ $key='mad4b_wpml_existing_review_approval_'.$id.'_v1';
+ $record=['contract'=>'mad4b.wpml.existing-content-approved-review.v1',
+   'source'=>$source,'target'=>$id,'locale'=>$locale,
+   'native_job'=>$job_id,'original_translation_receipts'=>$receipts,
+   'editorial_fields_unchanged_from_english'=>0,
+   'published_render_sha256'=>$r['render_sha256'],
+   'published_render_bytes'=>$r['render_bytes'],
+   'elementor_sha256'=>hash('sha256',(string)get_post_meta($id,'_elementor_data',true)),
+   'review_ref'=>$review_ref,'reviewer_user_id'=>26,
+   'approved_after_recheck'=>gmdate('c')];
+ if(($native['job']['state']??'')==='COMPLETED'){
+  $existing=(array)get_option($key,[]);
+  if(($existing['native_state']??'')!=='COMPLETED'
+     ||($existing['native_job']??'')!==$job_id)qa_abort('completed_without_known_approval_'.$id);
+  $result[]=['id'=>$id,'locale'=>$locale,'state'=>'COMPLETED','already_reviewed'=>true];
+  continue;
+ }
+ if(($native['job']['state']??'')!=='WAITING_REVIEW')qa_abort('unexpected_job_state_'.$id);
+ update_option($key,$record,false);
+ if(get_option($key,[])!==$record)qa_abort('evidence_write_failed_'.$id);
+ $approved=MAD4B_WPML_ContentJob_Adapter::approve_verified($job_id,$review_ref);
+ if(is_wp_error($approved)||($approved['state']??'')!=='COMPLETED')
+  qa_abort('native_approval_failed_'.$id.'_'.(is_wp_error($approved)?$approved->get_error_code():'no_state'));
+ $record['native_state']='COMPLETED';
+ update_option($key,$record,false);
+ if(get_option($key,[])!==$record)qa_abort('approval_readback_failed_'.$id);
+ $result[]=['id'=>$id,'locale'=>$locale,'state'=>'COMPLETED',
+   'original_receipts'=>count($receipts)];
+}
+echo wp_json_encode(['contract'=>'mad4b.wpml.existing-review-approval-batch.v1',
+ 'approved'=>count($result),'results'=>$result,
+ 'published_new_content'=>false],JSON_UNESCAPED_SLASHES)."\n";
