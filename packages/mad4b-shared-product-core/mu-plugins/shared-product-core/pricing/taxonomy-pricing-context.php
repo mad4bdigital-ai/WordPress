@@ -33,32 +33,34 @@ function shared_product_booking_modes_from_taxonomy($tour_id) {
  * when the localized term is unconfigured. Explicit localized disabled/dated
  * policies always take precedence. Never infer availability from a slug.
  */
-function shared_product_season_policy_term($term) {
- if(!$term instanceof WP_Term || $term->taxonomy!=='season')return $term;
- if(get_term_meta($term->term_id,'season_enabled',true)!=='')return $term;
+function shared_product_season_policy_term_id($term): int {
+ if(!$term instanceof WP_Term || $term->taxonomy!=='season')return 0;
+ $translated=(int)$term->term_id;
+ if(get_term_meta($translated,'season_enabled',true)!=='')return $translated;
  $default=apply_filters('wpml_default_language',null);
  $current=apply_filters('wpml_current_language',null);
- if(!is_string($default)||!is_string($current)||$default===''||$current===''||$default===$current)return $term;
- $id=apply_filters('wpml_object_id',(int)$term->term_id,'season',false,$default);
- if(!is_numeric($id)||(int)$id<1||(int)$id===(int)$term->term_id)return $term;
+ if(!is_string($default)||!is_string($current)||$default===''||$current===''||$default===$current)return $translated;
+ $id=apply_filters('wpml_object_id',$translated,'season',false,$default);
+ if(!is_numeric($id)||(int)$id<1||(int)$id===$translated)return $translated;
  $back=apply_filters('wpml_object_id',(int)$id,'season',false,$current);
- if((int)$back!==(int)$term->term_id)return $term;
- $original=get_term((int)$id,'season');
- return ($original instanceof WP_Term && $original->taxonomy==='season')?$original:$term;
+ if((int)$back!==$translated)return $translated;
+ // get_term($id) is translated back to the active language by WPML.
+ // Read only the verified original term's metadata by its original ID.
+ return (int)$id;
 }
 function shared_product_season_term_matches_date($term,$date) {
  if(!$term instanceof WP_Term || $term->taxonomy!=='season' || !is_string($date))return false;
- $policyTerm=shared_product_season_policy_term($term);
- if(get_term_meta($policyTerm->term_id,'season_enabled',true)!=='1')return false;
- $mode=(string)get_term_meta($policyTerm->term_id,'season_mode',true);
+ $policyTermId=shared_product_season_policy_term_id($term);
+ if(get_term_meta($policyTermId,'season_enabled',true)!=='1')return false;
+ $mode=(string)get_term_meta($policyTermId,'season_mode',true);
  if($mode!=='' && $mode!=='travel')return false;
  $d=DateTimeImmutable::createFromFormat('!Y-m-d',$date,new DateTimeZone('UTC'));
  if(!$d || $d->format('Y-m-d')!==$date)return false;
- $sm=(int)get_term_meta($policyTerm->term_id,'season_start_month',true);
- $sd=(int)get_term_meta($policyTerm->term_id,'season_start_day',true);
- $em=(int)get_term_meta($policyTerm->term_id,'season_end_month',true);
- $ed=(int)get_term_meta($policyTerm->term_id,'season_end_day',true);
- $cross=get_term_meta($policyTerm->term_id,'season_cross_year',true)==='1';
+ $sm=(int)get_term_meta($policyTermId,'season_start_month',true);
+ $sd=(int)get_term_meta($policyTermId,'season_start_day',true);
+ $em=(int)get_term_meta($policyTermId,'season_end_month',true);
+ $ed=(int)get_term_meta($policyTermId,'season_end_day',true);
+ $cross=get_term_meta($policyTermId,'season_cross_year',true)==='1';
  $year=(int)substr($date,0,4);
  foreach([$year-1,$year] as $y){
   if(!checkdate($sm,$sd,$y)||!checkdate($em,$ed,$y+($cross?1:0)))continue;
