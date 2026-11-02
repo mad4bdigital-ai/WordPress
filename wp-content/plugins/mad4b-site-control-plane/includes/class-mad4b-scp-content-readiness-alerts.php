@@ -27,7 +27,6 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         add_action('admin_bar_menu', array(__CLASS__, 'admin_bar'), 95);
         add_action('rest_api_init', array(__CLASS__, 'register_rest_routes'));
         add_action('admin_notices', array(__CLASS__, 'admin_notice'));
-        add_action('admin_init', array(__CLASS__, 'dispatch_origin_content_jobs'), 30);
         MAD4B_SCP_Readiness_Workflow_Options::boot();
         MAD4B_SCP_Content_Completeness::boot();
     }
@@ -260,7 +259,25 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                           !apply_filters('wpml_object_id',$object_id,$type,false,(string)apply_filters('wpml_default_language',null))) );
                 $performance=preg_match('/^perf_(?:(?:rbcss|lcpdelay|fontcss|inlinecss)_[a-f0-9]{12}|ttfb_site|lcpdiscover_home|ratecss_product|ratecss_source_missing|empty_accommodation_ui|mobile_toc_spacing|rate_origin_ui|rate_schedule_default|toc_bottom_gap|tour_h2_global|rate_locale_parity|rate_schema_drift|rate_origin_config|rate_orphan|catalog_initial_layout|catalog_svg_price_first_paint|catalog_template_drift|chosen_crawlability|ard_manifest|header_escape_text|forced_reflow_home|lcp_request_wait|swiper_focus_[a-f0-9]{12}|probe_stale)$/D',$code) &&
                     $source==='mad4b-live-performance' && $type==='site' && $object_id===0;
-                $valid=is_array($row) && ($dfsb||$localization||$performance) &&
+                // Preserve scoring only for the exact DFSB WPML gap contract.
+                // Other external feeds cannot supply priority/triage metadata.
+                $wpmlGap = $dfsb && preg_match(
+                    '/^dfsb_wpml_(?:term_missing|route_slug|base_slug_unverified|cpt_base_unverified)_[a-z0-9_-]+_[0-9]+_[a-z]{2}$/D',
+                    $code
+                );
+                $wpmlPriorityValid = !$wpmlGap || (
+                    is_int($row['priority']??null) &&
+                    $row['priority']>=0 && $row['priority']<=100 &&
+                    is_array($row['triage']??null) &&
+                    in_array($row['triage']['tier']??'',array(
+                        'visitor_facing_published_term','destination_not_public',
+                        'active_service_published_taxonomy','active_service_frontend_cpt',
+                        'internal_or_unproven_cpt','candidate','term_unavailable',
+                        'term_count_unavailable','unregistered_subject'
+                    ),true) &&
+                    (int)($row['triage']['priority']??-1)===$row['priority']
+                );
+                $valid=$wpmlPriorityValid && is_array($row) && ($dfsb||$localization||$performance) &&
                     hash_equals($expected,$id) &&
                     in_array($row['severity']??'',array('critical','high','medium','low'),true) &&
                     is_string($row['label']??null) &&
@@ -269,11 +286,25 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                     !isset($externalIds[$id]);
                 if (!$valid) {$complete=false;break;}
                 $externalIds[$id]=true;
-                $issues[]=array(
+                $accepted=array(
                     'id'=>$id,'post_type'=>$type,'object_id'=>$object_id,'code'=>$code,
                     'severity'=>$row['severity'],'label'=>sanitize_text_field($row['label']),
                     'source'=>$source
                 );
+                if ($wpmlGap) {
+                    $accepted['priority']=$row['priority'];
+                    $triage=$row['triage'];
+                    // Bounded read-only evidence, not authorization or posting instructions.
+                    $accepted['triage']=array(
+                        'tier'=>sanitize_key($triage['tier']),
+                        'service_active'=>(bool)($triage['service_active']??false),
+                        'frontend_visible'=>(bool)($triage['frontend_visible']??false),
+                        'source_published_term_count'=>absint($triage['source_published_term_count']??0),
+                        'published_posts'=>absint($triage['published_posts']??0),
+                        'destination_is_public'=>sanitize_text_field((string)($triage['destination_is_public']??''))
+                    );
+                }
+                $issues[]=$accepted;
             }
         }
         $completeness=MAD4B_SCP_Content_Completeness::discover();
@@ -395,93 +426,6 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
             MAD4B_SCP_Readiness_Integrations::record_changes($old,$new);
         return self::summary($new);
     }
-    /**
-     * Convert existing origin intake requests through the ORIGINAL ContentJob aggregate.
-     * A real, enrolled WordPress administrator/NHI is mandatory: cron/SSH status
-     * alone must never impersonate a WordPress content-writing principal.
-     */
-    public static function dispatch_origin_content_jobs() {
-        if (!is_admin() || !current_user_can('manage_options') ||
-            !class_exists('MAD4B_SCP_Policy') ||
-            MAD4B_SCP_Policy::can_mutate()!==true ||
-            !class_exists('MAD4B_SCP_Content_Jobs') ||
-            !class_exists('MAD4B_SCP_Operational_Integrity')) return;
-        $snapshot=MAD4B_SCP_Operational_Integrity::capture();
-        if (is_wp_error($snapshot)) return;
-        $scope=(array)($snapshot['scope']??array());
-        $site_uuid=(string)($scope['site_uuid']??'');
-        $brand_id=(string)($scope['brand_ref']??'');
-        if (!$site_uuid || !$brand_id || $site_uuid!==(string)MAD4B_SCP_Site_Profile::site_uuid()) return;
-        global $wpdb;
-        $table=MAD4B_SCP_Schema::tables()['content_jobs']??'';
-        if (!$table) return;
-        $lock_name='mad4b_origin_intake_'.get_current_blog_id();
-        if ((int)$wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s,0)',$lock_name))!==1) return;
-        try {
-            $processed=0;
-            $rows=(array)get_option(self::STORE,array());
-            foreach($rows as $id=>$row) {
-                if ($processed>=4) break;
-                $request=(array)($row['content_job_request']??array());
-                if (($row['status']??'')!=='open' || ($row['code']??'')!=='origin_missing' ||
-                    ($request['status']??'')!=='PRIORITY_INTAKE' ||
-                    ($request['site_uuid']??'')!==$site_uuid ||
-                    !empty($row['content_job_id']) ||
-                    !preg_match('/^[a-f0-9]{64}$/D',(string)($request['deduplication_key']??''))) continue;
-                $post_id=absint($request['canonical_post_id']??0);
-                if (!$post_id || get_post_status($post_id)!=='publish' ||
-                    trim((string)get_post_meta($post_id,'tour_origin_address',true))!=='') continue;
-                $source_id=absint($request['source_post_id']??0);
-                $terms=wp_get_object_terms($source_id,'destinations',array('fields'=>'ids'));
-                if (!$source_id || is_wp_error($terms)) continue;
-                $terms=array_map('intval',(array)$terms);sort($terms,SORT_NUMERIC);
-                $fresh_sha=hash('sha256',wp_json_encode(array(
-                    'canonical_id'=>$post_id,
-                    'origin_term'=>get_post_meta($source_id,'tour_origin_location_term',true),
-                    'destination_terms'=>$terms,
-                ),JSON_UNESCAPED_SLASHES));
-                if (!hash_equals((string)($request['source_sha256']??''),$fresh_sha)) continue;
-                $token=(string)$request['deduplication_key'];
-                $marker='origin-gap-ref:'.$token;
-                $matches=$wpdb->get_col($wpdb->prepare(
-                    "SELECT job_id FROM {$table} WHERE site_uuid=%s AND brand_id=%s AND subject LIKE %s LIMIT 3",
-                    $site_uuid,$brand_id,'%'.$wpdb->esc_like($marker).'%'));
-                if(count((array)$matches)>1) continue; // Conflicting original jobs need reconciliation.
-                $job_id=count((array)$matches)===1 ? (string)$matches[0] : '';
-                if (!$job_id) {
-                    $source=get_post($post_id);
-                    $subject='Origin source research: '.wp_strip_all_tags((string)$source->post_title).
-                        ' [tours-and-activities #'.$post_id.'] '.$marker;
-                    $result=MAD4B_SCP_Content_Jobs::create_job(array(
-                        'brand_id'=>$brand_id,'subject'=>mb_substr($subject,0,5000),
-                        'language'=>'en','country'=>'global',
-                        'content_type'=>'research_observation',
-                        'target_post_type'=>'tours-and-activities',
-                        'research_depth'=>'standard','automation_level'=>'assisted',
-                        'reason'=>'Readiness origin_missing issue '.$id.'; evidence '.
-                            $request['source_sha256'].'. Verify official departure/pickup or marina source and geocoding; no inference, automatic publication or price change.'
-                    ));
-                    if(is_wp_error($result)) continue;
-                    $job_id=(string)($result['job']['job_id']??'');
-                    if(!$job_id) continue; // Unknown commit: next pass must reconcile by token.
-                }
-                $verified=MAD4B_SCP_Content_Jobs::get_job(array('job_id'=>$job_id));
-                if(is_wp_error($verified) || (string)($verified['job']['job_id']??'')!==$job_id) continue;
-                $latest=(array)get_option(self::STORE,array());
-                if (($latest[$id]['content_job_request']['deduplication_key']??'')!==$token ||
-                    ($latest[$id]['status']??'')!=='open') continue;
-                $latest[$id]['content_job_id']=$job_id;
-                $latest[$id]['content_job_request']['status']='LINKED';
-                $latest[$id]['content_job_request']['linked_at']=gmdate('c');
-                update_option(self::STORE,$latest,false);
-                $check=(array)get_option(self::STORE,array());
-                if(($check[$id]['content_job_id']??'')===$job_id) $processed++;
-            }
-        } finally {
-            $wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)',$lock_name));
-        }
-    }
-
     private static function rule_enabled_for($issue,$cfg) {
         $type=$issue['post_type']??'';$code=$issue['code']??'';
         if(str_starts_with($code,'loc_') && ($issue['source']??'')==='mad4b-elementor-localization')
