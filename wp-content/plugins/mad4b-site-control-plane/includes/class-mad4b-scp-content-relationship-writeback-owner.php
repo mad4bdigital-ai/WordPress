@@ -7,6 +7,37 @@
 defined('ABSPATH') || exit;
 final class MAD4B_SCP_Relationship_Owner_Write_Adapter implements MAD4B_Central_Enrichment_Write_Adapter {
  const CONTRACT='mad4b.contentjob.owner-writeback.v1';
+ const CERT_CONTRACT='mad4b.contentjob.typed-owner-certification.v1';
+ /**
+  * Pure original-owner certificate validator. The trusted context is built
+  * locally from WPML/ContentJob/native provider readbacks, not client input.
+  * This function by itself does NOT authorize a mutation.
+  */
+ public static function certificateValid($proof,array $trusted,int $now=0):bool {
+  if(!is_array($proof))return false;
+  $now=$now?:time();
+  if(($proof['contract']??'')!==self::CERT_CONTRACT)return false;
+  foreach(['site_uuid','job_id','original_ability','native_source_sha256',
+     'binding_sha256','provider_id'] as $key){
+   if(!isset($trusted[$key],$proof[$key])||
+     !is_string($proof[$key])||
+     !hash_equals((string)$trusted[$key],(string)$proof[$key]))return false;
+  }
+  foreach(['source_post_id','target_post_id'] as $key)
+   if(!isset($trusted[$key],$proof[$key]) ||
+      !is_int($proof[$key]) ||$proof[$key]!==$trusted[$key])return false;
+  $verified=$proof['verified_at']??null;
+  if(!is_int($verified)||$verified<=0||
+    $verified>$now+60||
+    $verified<$now-MAD4B_SCP_Central_Write_Acceptance::DEFAULT_TTL)
+    return false;
+  if(($proof['independent_verification']??null)!==true ||
+    ($proof['quality_pass']??null)!==true ||
+    ($proof['rights_pass']??null)!==true)return false;
+  return MAD4B_SCP_Central_Write_Acceptance::sha(
+      $proof['evidence_sha256']??null);
+ }
+
  private string $jobId; private string $kind; private string $field;
  public function __construct(string $jobId,string $kind,string $field=''){
   $this->jobId=$jobId;$this->kind=$kind;$this->field=$field;
@@ -96,20 +127,35 @@ final class MAD4B_SCP_Relationship_Owner_Write_Adapter implements MAD4B_Central_
     'site_uuid'=>$plan['site_uuid'],'family_sha256'=>$family['identity_sha256'],
     'owner_ability'=>$ability,'preview'=>$value,'binding'=>$binding];
   $hash=hash('sha256',wp_json_encode($snapshot,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
-  // Stable for the current minute while the native source/owner readbacks
-  // are rechecked; only first-party reviewed data yields these booleans.
-  return [$plan,$j,$value,$ability,$hash,$binding];
+  // WPML readback verifies translation identity, NOT rights, field quality
+  // or Elementor/provider QA. Only a separately certified source-owning
+  // provider can attest those independently; never synthesize booleans from
+  // a successful translation or the PHP clock.
+  $trusted=[
+    'site_uuid'=>$plan['site_uuid'],'job_id'=>$this->jobId,
+    'source_post_id'=>$source,'target_post_id'=>$target,
+    'original_ability'=>$ability,'native_source_sha256'=>$hash,
+    'binding_sha256'=>hash('sha256',
+      wp_json_encode($binding,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)),
+    'provider_id'=>$this->kind==='elementor'?'elementor':'jetengine'
+  ];
+  $proof=apply_filters('mad4b/contentjob/typed_owner_certified_evidence',
+    null,$this->kind,$this->jobId,$trusted+['owner_preview'=>$value]);
+  if(!self::certificateValid($proof,$trusted))
+    throw new RuntimeException('original_owner_independent_quality_rights_evidence_missing');
+  return [$plan,$j,$value,$ability,$hash,$binding,$proof];
  }
  public function source(array $claim):array {
-  [$plan,$job,$value,$ability,$hash,$binding]=$this->owner();
+  [$plan,$job,$value,$ability,$hash,$binding,$proof]=$this->owner();
   $reference=$this->kind==='typed_meta'?'field:'.$this->field:'elementor-structural';
   return ['site_uuid'=>$plan['site_uuid'],'environment'=>$plan['environment'],
    'subject_id'=>'post:'.(int)$plan['family']['target_id'],'ability'=>$ability,
    'job_id'=>$this->jobId,'source_sha256'=>$hash,
    'revision'=>(string)$job['job_revision'],'reference_id'=>$reference,
-   'evidence_sha256'=>hash('sha256',wp_json_encode($binding,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)),
-   'evidence_verified_at'=>intdiv(time(),60)*60,
-   'independent_verification'=>true,'quality_pass'=>true,'rights_pass'=>true];
+   'evidence_sha256'=>$proof['evidence_sha256'],
+   'evidence_verified_at'=>$proof['verified_at'],
+   'independent_verification'=>$proof['independent_verification'],
+   'quality_pass'=>$proof['quality_pass'],'rights_pass'=>$proof['rights_pass']];
  }
  public function authorize(array $claim,array $source):bool {
   try {[$plan,$job,$value,$ability]=$this->owner();}
