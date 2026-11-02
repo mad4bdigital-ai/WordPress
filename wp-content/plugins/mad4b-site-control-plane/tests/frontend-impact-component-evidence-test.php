@@ -3,9 +3,17 @@
 // No WordPress bootstrap, network requests, user sessions, or database writes.
 define('ABSPATH','/tmp/');
 $GLOBALS['fip_hook']=null;
+$GLOBALS['fip_booking_id_hook']=null;
 function add_filter($name,$callback,$priority=10,$accepted=1) {
     if($name==='mad4b/frontend_impact/score_unmapped_issue')$GLOBALS['fip_hook']=$callback;
+    if($name==='mad4b/frontend_impact/booking_form_ids')$GLOBALS['fip_booking_id_hook']=$callback;
 }
+function apply_filters($name,$value) {
+    if($name==='mad4b/frontend_impact/booking_form_ids'&&is_callable($GLOBALS['fip_booking_id_hook']))
+        return ($GLOBALS['fip_booking_id_hook'])($value);
+    return $value;
+}
+function shared_presentation_form6_price_quote() {return null;}
 function get_post_type($id) {return $id===60800?'tour-rates':($id===60629?'tours-and-activities':null);}
 function get_post_status($id) {return $id===60629?'publish':null;}
 function get_post_meta($id,$field,$single=false) {
@@ -50,5 +58,16 @@ foreach($cases as [$label,$i,$p,$expected]){
  if($actual!==null && (($value['publication_authorized']??true)!==false ||
     ($value['booking_authorized']??true)!==false))throw new RuntimeException('Unsafe mutation metadata');
 }
+// A fake HTML fixture verifies only the static DOM contract. Real staging
+// page acceptance is separately demonstrated using a public GET.
+require '/var/www/html/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-frontend-impact-priority.php';
+$markup='<!doctype html><html><body><div class="elementor-element" data-id="one"><span class="etg-tour-price etg-price-native">150</span><form id="fluentform_6" data-form_id="6" class="frm-fluent-form"><button type="submit">Select</button></form></div></body></html>';
+$parsed=MAD4B_SCP_Frontend_Impact_Priority::inspect_html($markup,
+    'https://example.test/tours/example/','tour');
+if(($parsed['booking_form_contracts']??[])!==[6] ||
+   ($parsed['booking_controls']??0)!==1 ||
+   ($parsed['price_surfaces']??0)!==1)
+    throw new RuntimeException('Native booking/price DOM contract failed');
+$checks[]=['case'=>'native_booking_form_and_price_dom','expected'=>true,'actual'=>true,'pass'=>true];
 echo json_encode(['contract'=>'mad4b.frontend-impact-component-acceptance.v1',
     'checks'=>count($checks),'passed'=>count($checks),'results'=>$checks],JSON_UNESCAPED_SLASHES)."\n";
