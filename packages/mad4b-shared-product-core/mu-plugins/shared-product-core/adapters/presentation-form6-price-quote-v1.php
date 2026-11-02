@@ -36,8 +36,9 @@ function shared_presentation_form6_price_quote($raw) {
  }
  $adults=(int)$raw['adults'];$children=(int)$raw['children'];$infants=(int)$raw['infants'];
  if($adults<1||$adults+$children+$infants>100)return new WP_Error('form6_quote_traveler_invalid');
- // Child/infant pricing is not inferable from adult person prices.
- if($children||$infants)return new WP_Error('form6_quote_age_pricing_requires_manual_review');
+ // Missing child/infant policy never hides an otherwise valid adult-source price.
+ // Quote the adults only; unknown minor charges must not be treated as zero.
+ $hasMinors=$children>0||$infants>0;
  $date=$raw['travel_date']??null;
  if(!is_string($date)||!preg_match('/^\d{4}-\d{2}-\d{2}$/D',$date))
   return new WP_Error('form6_quote_date_invalid');
@@ -80,11 +81,20 @@ function shared_presentation_form6_price_quote($raw) {
    }
   }
  }
- return ['status'=>'price_preview_only','tour_id'=>$tour,
+ $adultReference=round((float)$total,2);
+ return ['status'=>$hasMinors?'partial_price_preview_only':'price_preview_only','tour_id'=>$tour,
   'pricing_tour_id'=>$pricingTour,'source'=>$source,
-  'rate_id'=>$rate?:null,'currency'=>$currency,'subtotal'=>round(array_sum(array_column($lines,'amount')),2),
-  'total'=>round((float)$total,2),'lines'=>$lines,'extra_prices'=>$extraPrices,
-  'pricing_scope'=>'tour_base_and_eligible_optional_activities_only',
+  'rate_id'=>$rate?:null,'currency'=>$currency,
+  'subtotal'=>$hasMinors?null:round(array_sum(array_column($lines,'amount')),2),
+  // Never assign an adult-only reference to the all-traveller total field.
+  'total'=>$hasMinors?null:$adultReference,
+  'base_preview_amount'=>$hasMinors?$adultReference:null,
+  'base_preview_scope'=>$hasMinors?'adults_only_excludes_children_infants':null,
+  'base_preview_adults'=>$hasMinors?$adults:null,
+  'child_price_state'=>$hasMinors?'requires_separate_pricing': 'not_applicable',
+  'children_count'=>$children,'infants_count'=>$infants,
+  'lines'=>$lines,'extra_prices'=>$extraPrices,
+  'pricing_scope'=>$hasMinors?'adults_only_reference_without_minor_charges':'tour_base_and_eligible_optional_activities_only',
   'component_adjustments_certified'=>false,'availability'=>'not_checked',
   'checkout_ready'=>false,'order_created'=>false];
 }
@@ -396,9 +406,16 @@ add_filter('fluentform/filter_insert_data',static function($insert){
  if(is_wp_error($quote)){
   $record['reason']=$quote->get_error_code();
  }else{
-  $record['state']='server_price_preview';
+  // Persist a server-priced adult reference, never a fabricated child-inclusive total.
+  $partial=($quote['status']??'')==='partial_price_preview_only';
+  $record['state']=$partial?'partial_price_preview':'server_price_preview';
   $record['currency']=$quote['currency'];
-  $record['total']=$quote['total'];
+  if($partial){
+   $record['base_preview_amount']=$quote['base_preview_amount'];
+   $record['base_preview_adults']=$quote['base_preview_adults'];
+   $record['minor_price_state']='requires_separate_pricing';
+   $record['checkout_ready']=false;
+  }else $record['total']=$quote['total'];
   $record['price_scope']=$quote['pricing_scope'];
   $record['rate_id']=$quote['rate_id'];
  }
