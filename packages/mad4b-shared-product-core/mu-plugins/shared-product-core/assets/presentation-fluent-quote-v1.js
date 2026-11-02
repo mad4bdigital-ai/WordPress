@@ -579,6 +579,22 @@
  }
  document.addEventListener('shared-presentation-form-projected',e=>{if(e.target?.matches?.('form.fluent_form_6'))schedule(e.target);});
  document.addEventListener('shared-presentation-selection-changed',()=>{for(const form of forms)if(form.isConnected)schedule(form);});
+ // Market, passport and selected-country preferences are server owned.
+ // On a persisted change, invalidate the stable quote signature and re-quote.
+ // Never infer market pricing or converted amounts from the browser.
+ const refreshMarketQuotes=()=>{
+  for(const form of forms){
+   if(!form.isConnected)continue;
+   const state=states.get(form);
+   if(!state)continue;
+   state.lastSettledPriceSignature=null;
+   state.activePriceSignature=null;
+   state.controller?.abort();
+   schedule(form);
+  }
+ };
+ window.addEventListener('visitor-market:changed',refreshMarketQuotes);
+ document.addEventListener('visitor-preferences:saved',refreshMarketQuotes);
  initialize();
  new MutationObserver(()=>initialize()).observe(document.body,{subtree:true,childList:true});
  window.SharedPresentationFluentQuoteV1=Object.freeze({version:'1.0.0',readOnly:true,getPayload:selected});
