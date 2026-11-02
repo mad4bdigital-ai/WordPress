@@ -105,9 +105,6 @@ final class Shared_Product_Rate_Generation {
       return new WP_Error('rate_generator_locale_parent_mismatch');
     $params['pricing_locale_mode']='independent';
     $params['pricing_language']=$language;
-    $meta['_shared_generated_locale_policy']='independent';
-    $meta['_shared_generated_locale_language']=$language;
-    $meta['_shared_generated_price_authority']='explicit_locale_amount_and_currency';
    }elseif(isset($input['pricing_language'])){
     return new WP_Error('rate_generator_locale_mode_required');
    }
@@ -166,6 +163,11 @@ final class Shared_Product_Rate_Generation {
     'tour_rate_end_date'=>(string)strtotime($to.' 00:00:00 UTC'),
     'base_currency'=>$currency,'unit_type'=>$unit,'is_on_sale'=>'0'];
    foreach($factors as $tier=>$factor)$meta[$tier.'_price']=number_format((float)$money*(float)$factor,2,'.','');
+   if($localeMode==='independent'){
+    $meta['_shared_generated_locale_policy']='independent';
+    $meta['_shared_generated_locale_language']=$language;
+    $meta['_shared_generated_price_authority']='explicit_locale_amount_and_currency';
+   }
    if($package)$meta['related_package_term_id']=$package;
    if($program)$meta['related_program_term_id']=$program;
    if($season)$meta['_shared_generation_season_term_id']=$season;
