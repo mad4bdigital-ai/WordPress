@@ -190,6 +190,8 @@ def reconcile():
     for row in standing:
         row['host_proof_independently_verified']=False
         row['original_transport_activation_performed']=False
+        row['original_305_pending_transport_is_expected']=False
+        row['native_job_dispatched_by_reconciler']=False
         row['production_mutated_by_reconciler']=False
         if (not row['site_identity_registered']
             or not row['original_persistent_grant_present']
@@ -218,13 +220,16 @@ def reconcile():
           and type(proof.get('proof_epoch')) is int
           and 0<=now-proof['proof_epoch']<900)
         row['host_proof_independently_verified']=bool(verified)
+        row['original_305_pending_transport_is_expected']=bool(verified)
         row['host_proof_receipt_state']=('ORIGINAL_SIGNED_HOST_PROOF_FRESH'
           if verified else 'ORIGINAL_HOST_PROOF_MISSING_STALE_OR_MISMATCHED')
         row['next_original_typed_transition']=(
-          'ACTIVATE_ORIGINAL_ENROLLED_305_TRANSPORT_VIA_AUTHENTICATED_ISSUER'
+          'READY_FOR_ORIGINAL_306_312_SIGNED_READ_CANARY'
           if verified else 'REISSUE_ORIGINAL_EXACT_SIGNED_HOST_PROOF')
-        # 305 grants, host proofs and standing transport all remain separate.
-        # No admin user override, implicit entitlement or operation dispatched.
+        # ORIGINAL 312 expects a pending original 305 transport by design.
+        # Never rewrite it to ACTIVE. A fresh owner-issued per-job 306/312
+        # claim and native 313 readback remain mandatory before execution.
+        # No admin override, implied entitlement, or operation dispatched.
     handler_cert=json.loads(checked_command([
         sys.executable,str(ROOT/'bin/company-native-handler-source-cert.py')]))
     if (handler_cert.get('state')!='STAGING_SOURCE_CANDIDATE_EXACT_TESTS_VERIFIED'
