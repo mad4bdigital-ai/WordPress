@@ -80,11 +80,17 @@ final class MAD4B_SCP_Relationship_Media_Write_Adapter implements MAD4B_Central_
   $args=['post_id'=>(int)$plan['family']['target_id'],
     'attachment_id'=>(int)$image['expected_target_attachment_id'],
     'expected_thumbnail_id'=>0];
+  $ability=wp_get_ability('media/set-featured');
+  // The original Ability permission preflight is mandatory BEFORE CWA's
+  // atomic claim. Otherwise an NHI/approval denial becomes an avoidable
+  // UNKNOWN attempt despite no underlying WordPress mutation.
   return is_object($media)&&$media->is_available()&&
     method_exists($media,'can_set_featured') &&
     $media->can_set_featured($args)===true &&
     current_user_can('edit_post',$args['post_id']) &&
-    MAD4B_SCP_Policy::can_mutate()===true;
+    MAD4B_SCP_Policy::can_mutate()===true &&
+    is_object($ability) && method_exists($ability,'check_permissions') &&
+    $ability->check_permissions($args)===true;
  }
  public function apply(array $claim,array $source):array {
   [$plan,$image]=$this->binding();
