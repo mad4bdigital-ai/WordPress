@@ -1,0 +1,19 @@
+[Unit]
+Description=MAD4B original 305 exact-company Cross-SSH host proof refresh (Staging only)
+After=docker.service network-online.target
+Wants=network-online.target
+Requires=docker.service
+ConditionPathExists=/opt/mad4b-company-provisioning/source-candidates/cross-ssh-host-proof-v1/refresh_proofs.py
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+ExecStart=/usr/bin/python3 /opt/mad4b-company-provisioning/source-candidates/cross-ssh-host-proof-v1/refresh_proofs.py
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+RestrictSUIDSGID=true
+TimeoutStartSec=240s

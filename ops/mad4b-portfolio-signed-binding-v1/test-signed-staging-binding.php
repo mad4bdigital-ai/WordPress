@@ -1,79 +1,90 @@
 <?php
-/**
- * Isolated contract tests for Portfolio Manager's existing company_binding().
- * No WordPress boot, DB connection, REST calls, grants, or remote writes.
- */
+/** Isolated original signed Staging company binding contract. No writes. */
 declare(strict_types=1);
-define('ABSPATH', '/isolated-test/');
+define('ABSPATH','/isolated-test/');
+define('DB_NAME','etg_commerce_staging');
 $GLOBALS['options']=[];
-$GLOBALS['candidate']=[];
-$GLOBALS['proof']=[];
-$GLOBALS['hooks']=[];
-function add_action(...$args) { $GLOBALS['hooks'][]=$args[0]; }
-function get_option($name,$default=[]) {return $GLOBALS['options'][$name]??$default;}
-function wp_is_uuid($value) {return is_string($value)&&preg_match('/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/D',$value)===1;}
-function is_wp_error($value) {return $value instanceof WP_Error;}
+$GLOBALS['proof_enabled']=true;
+$GLOBALS['delegated']=true;
+$GLOBALS['bound']=true;
+$GLOBALS['native_environment']='staging';
+$GLOBALS['signed_site']='49c562d1-8f2f-456f-b454-26816c6ba4cb';
+$GLOBALS['origin']='https://staging.allroyalegypt.com';
+$GLOBALS['company']='all-royal-egypt';
+$GLOBALS['calls']=0;
+function add_action(...$x) {}
+function wp_get_environment_type(){return $GLOBALS['native_environment'];}
+function wp_parse_url($x,$part){return parse_url($x,$part);}
+function home_url($p='/'){return 'https://tours.dev.mad4b.com/';}
+function wp_is_uuid($x){return is_string($x)&&preg_match('/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/D',$x)===1;}
+function get_option($k,$d=[]){return $GLOBALS['options'][$k]??$d;}
+function is_wp_error($x){return $x instanceof WP_Error;}
 class WP_Error {
- private string $code;
- function __construct($code,$message='',$meta=[]) {$this->code=$code;}
- function get_error_code() {return $this->code;}
+ private string $error;
+ function __construct($name,$message='',$meta=[]){$this->error=$name;}
+ function get_error_code(){return $this->error;}
 }
-class MAD4B_Company_Environment_Registry_V2 {
- static function target($company,$env) {return $GLOBALS['candidate'][$company.':'.$env]??null;}
+class MAD4B_Company_Environment_Registry_V2{
+ static function target($c,$e){return [
+    'company_id'=>$c,'environment'=>$e,'site_uuid'=>$GLOBALS['signed_site'],
+    'canonical_origin'=>$GLOBALS['origin']];}
 }
-class MAD4B_Environment_Signed_Identity_V4 {
- static function status($company,$env) {return $GLOBALS['proof'][$company.':'.$env]??['centrally_verified'=>false];}
+class MAD4B_Company_Environment_Portfolio_Evidence_V1{
+ static function readback($c,$e){
+   $GLOBALS['calls']++;
+   $site=$GLOBALS['signed_site'];$origin=$GLOBALS['origin'];
+   return [
+    'contract'=>'mad4b.company-environment-portfolio-evidence.v1',
+    'company'=>$c,'environment'=>$e,'site_uuid'=>$site,'canonical_origin'=>$origin,
+    'signed_identity_verified'=>$GLOBALS['proof_enabled'],
+    'operations_delegation_approved'=>$GLOBALS['delegated'],
+    'portfolio_assignment_bound'=>$GLOBALS['bound'],
+    'portfolio_binding_sha256'=>hash('sha256',implode('|',
+       [$c,$e,$site,$origin,str_repeat('f',64)])),
+    'grant_issued'=>false,'production_mutation_allowed'=>false];
+ }
 }
 require __DIR__.'/mad4b-company-portfolio-manager.php';
-
-$company='all-royal-egypt';
-$site='49c562d1-8f2f-456f-b454-26816c6ba4cb';
-$origin='https://staging.allroyalegypt.com';
-$env='staging';
-$target=['company_id'=>$company,'environment'=>$env,'site_uuid'=>$site,
-    'canonical_origin'=>$origin,'identity_evidence'=>['signed_v4_centrally_verified'=>true]];
-$proof=['company_id'=>$company,'environment'=>$env,'site_uuid'=>$site,
-    'canonical_origin'=>$origin,'centrally_verified'=>true];
-$GLOBALS['candidate'][$company.':'.$env]=$target;
-$GLOBALS['proof'][$company.':'.$env]=$proof;
-function check_case($condition,$name) {
- if(!$condition) {fwrite(STDERR,'FAIL '.$name.PHP_EOL);exit(1);}
- echo 'PASS '.$name.PHP_EOL;
+function check_case($yes,$label){
+ if(!$yes){fwrite(STDERR,"FAIL $label\n");exit(2);}
+ echo "PASS $label\n";
 }
-$code=MAD4B_Company_Portfolio_Manager_V1::REGISTRY;
-check_case(count($GLOBALS['options'])===0,'no_initial_storage_writes');
-$r=MAD4B_Company_Portfolio_Manager_V1::company_binding($company);
-check_case(!is_wp_error($r),'exact_verified_staging_binding_accepted');
-check_case(($r['company_site_uuid']??'')===$site && ($r['environment']??'')==='staging','exact_staging_identity_preserved');
-$expected=hash('sha256',implode('|',['mad4b.company.staging-binding.v1',$company,$env,$site,$origin]));
-check_case(($r['binding_sha256']??null)===$expected,'scope_hash_binds_company_environment_site_origin');
-
-$GLOBALS['proof'][$company.':'.$env]['centrally_verified']=false;
-check_case(is_wp_error(MAD4B_Company_Portfolio_Manager_V1::company_binding($company)),'expired_or_unverified_proof_denied');
-$GLOBALS['proof'][$company.':'.$env]=$proof;
-$GLOBALS['proof'][$company.':'.$env]['canonical_origin']='https://evil.invalid';
-check_case(is_wp_error(MAD4B_Company_Portfolio_Manager_V1::company_binding($company)),'mismatched_proof_origin_denied');
-$GLOBALS['proof'][$company.':'.$env]=$proof;
-$GLOBALS['proof'][$company.':'.$env]['site_uuid']='11111111-1111-1111-1111-111111111111';
-check_case(is_wp_error(MAD4B_Company_Portfolio_Manager_V1::company_binding($company)),'mismatched_proof_site_denied');
-$GLOBALS['proof'][$company.':'.$env]=$proof;
-$GLOBALS['candidate'][$company.':'.$env]['identity_evidence']['signed_v4_centrally_verified']=false;
-check_case(is_wp_error(MAD4B_Company_Portfolio_Manager_V1::company_binding($company)),'registry_must_confirm_signed_proof');
-$GLOBALS['candidate'][$company.':'.$env]=$target;
-
+$p='MAD4B_Company_Portfolio_Manager_V1';
+$company='all-royal-egypt';
+$r=$p::company_binding($company);
+check_case(!is_wp_error($r),'signed_staging_portfolio_identity_accepted');
+check_case($r['company_site_uuid']===$GLOBALS['signed_site'],'exact_staging_site_uuid');
+$expected=hash('sha256',implode('|',[$company,'staging',$GLOBALS['signed_site'],
+ $GLOBALS['origin'],str_repeat('f',64)]));
+check_case($r['binding_sha256']===$expected,'original_environment_portfolio_binding_reused');
+check_case($r['environment']==='staging','environment_explicit');
+check_case(!isset($GLOBALS['options'][$p::ASSIGNMENTS]),'no_owner_approval_implicitly_created');
+$GLOBALS['proof_enabled']=false;
+check_case(is_wp_error($p::company_binding($company)),'unsigned_original_proof_denied');
+$GLOBALS['proof_enabled']=true;$GLOBALS['delegated']=false;
+check_case(is_wp_error($p::company_binding($company)),'unapproved_environment_manager_denied');
+$GLOBALS['delegated']=true;$GLOBALS['bound']=false;
+check_case(is_wp_error($p::company_binding($company)),'unbound_environment_manager_denied');
+$GLOBALS['bound']=true;$GLOBALS['native_environment']='production';
+check_case(is_wp_error($p::company_binding($company)),'production_does_not_inherit_staging');
+$GLOBALS['native_environment']='staging';
+$GLOBALS['options'][$p::REGISTRY][$company]=[
+ 'company_code'=>$company,'host_binding_verified'=>false];
+check_case(is_wp_error($p::company_binding($company)),'conflicting_explicit_legacy_registry_denied');
+unset($GLOBALS['options'][$p::REGISTRY][$company]);
 $way='wayfatours';$wayuuid='b0725ffa-87e1-47e3-b0c0-c4aa4eb8882b';
-$nativeuuid='78622475-bd53-48ce-af1a-4ff3e3c01470';
-$digest=str_repeat('a',64);
-$GLOBALS['options'][$code][$way]=['company_code'=>$way,'host_binding_verified'=>true,'company_site_uuid'=>$wayuuid,
- 'native_site_profile_uuid'=>$nativeuuid,'native_profile_digest'=>$digest];
-$legacy=MAD4B_Company_Portfolio_Manager_V1::company_binding($way);
-check_case(!is_wp_error($legacy),'original_production_legacy_binding_preserved');
-check_case(($legacy['binding_sha256']??null)===hash('sha256',implode('|',[$way,$wayuuid,$nativeuuid,$digest])),'original_production_hash_unchanged');
-check_case(!isset($legacy['source']),'no_implicit_production_rebinding');
-$drift=MAD4B_Company_Portfolio_Manager_V1::transition_row([
- 'state'=>'proposed','revision'=>1,'binding_sha256'=>str_repeat('0',64),
- 'proposal_sha256'=>str_repeat('1',64)],'approve',1,$expected,1,str_repeat('1',64));
-check_case(is_wp_error($drift),'existing_assignment_binding_drift_denied');
-check_case(!isset($GLOBALS['options'][MAD4B_Company_Portfolio_Manager_V1::ASSIGNMENTS]),'no_delegation_created');
-check_case(!isset($GLOBALS['options']['mad4b_central_ssh_command_intake_v1']),'no_original_grant_created');
-echo 'PASS 14/14 isolated portfolio binding assertions'.PHP_EOL;
+$native='78622475-bd53-48ce-af1a-4ff3e3c01470';$digest=str_repeat('a',64);
+$GLOBALS['options'][$p::REGISTRY][$way]=[
+ 'company_code'=>$way,'host_binding_verified'=>true,
+ 'company_site_uuid'=>$wayuuid,'native_site_profile_uuid'=>$native,
+ 'native_profile_digest'=>$digest];
+$old=$p::company_binding($way);
+check_case(!is_wp_error($old),'valid_legacy_binding_preserved');
+check_case($old['binding_sha256']===hash('sha256',implode('|',
+ [$way,$wayuuid,$native,$digest])),'valid_legacy_hash_preserved');
+$drift=$p::transition_row(['state'=>'proposed','revision'=>1,
+ 'binding_sha256'=>str_repeat('0',64),'proposal_sha256'=>str_repeat('1',64)],
+ 'approve',1,$expected,1,str_repeat('1',64));
+check_case(is_wp_error($drift),'manager_assignment_drift_fails_closed');
+check_case(!isset($GLOBALS['options'][$p::ASSIGNMENTS]),'no_grants_or_assignment_mutation');
+echo "SIGNED_STAGING_PORTFOLIO: PASS\n";
