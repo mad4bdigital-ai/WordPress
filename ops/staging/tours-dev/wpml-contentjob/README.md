@@ -44,3 +44,12 @@ The observed live readback suite passed 108 assertions on 2 November 2026, and t
 - The map and native ContentJobs must be reconciled by `job_id` and `wpml-ref:<sha256>` before replaying an uncertain create. Never blind-retry a failed or unknown COMMIT.
 - WPML translation assignments, content QA, verified receipt processing, and native completion transitions require a separate, permitted executor. Do not infer successful translation from `QUEUED`.
 - No Production installation or GitHub merge is authorized by this pilot alone.
+
+
+## 2 November 2026 live follow-up
+
+- Site-root execution confirmed MU-Plugin `356-mad4b-jetengine-count-locale.php` v0.1.1 is deployed. Direct HTML readback of `/ar/`, `/fr/`, `/de/`, `/es/`, `/it/` returned HTTP 200 and the expected locale-specific count suffix. The v0.2 singular/plural refinement in this PR is **source-only**, not deployed: deployment attempt was denied by the execution channel.
+- Found two obsolete native translation ContentJobs for Elementor template `25909` (`ar`, `fr`). Fresh `301` discovery returned `resolved_after_readback`, translated template links exist, no English fixed heading/fallback in translated Elementor settings, and neither job had an underlying WPML translation job. Cancelled both using `MAD4B_SCP_Content_Jobs::cancel_job()`, verified `CANCELLED` via native get, and persisted map resolution as `obsolete_fresh_translation_readback`. **Not** reported as translations executed.
+- Latest inspected map: 92 mapped jobs, 90 `QUEUED`, 2 `CANCELLED`. Source discovery reported 150 eligible items (the native recurring intake continues). No verified translation receipt was present for sampled queued jobs; work is **not completed**.
+- Unit tests: 43 singular/plural/idempotence/noninterference assertions passed using container PHP. Counts and grammar include ar 1/2/6/16, singular French/German/Spanish, and Italian.
+- The independent WordPress timer is the authorized Staging-only intake/QA readback workflow; the absence of a translation provider with verified receipts prevents promotion to `WAITING_REVIEW` or `COMPLETED`. Do not mark queued editorial work complete without a verified receipt.
