@@ -1,6 +1,6 @@
 <?php
 /** Generic selection of extra-options presentation; safety-scoped to isolated Lab. */
-if (!defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+if ((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 add_filter('body_class',static function($classes){
  $tour_post=function_exists('shared_presentation_primary_tour_post_v1') ? shared_presentation_primary_tour_post_v1() : null;
  if(!($tour_post instanceof WP_Post))return $classes;

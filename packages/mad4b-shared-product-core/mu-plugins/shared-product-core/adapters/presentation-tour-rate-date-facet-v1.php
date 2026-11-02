@@ -5,7 +5,7 @@
  * or makes an availability/inventory commitment.
  */
 defined('ABSPATH') || exit;
-if (!defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+if ((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 
 function shared_presentation_tour_rate_window_v1($raw): ?array {
     if (!is_scalar($raw) || !preg_match(

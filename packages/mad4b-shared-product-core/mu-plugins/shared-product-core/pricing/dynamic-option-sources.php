@@ -1,6 +1,6 @@
 <?php
 /** Live registries for financial policy fields. Read-only; lab only. */
-if(!defined('ABSPATH')||!defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY)return;
+if(!defined('ABSPATH')||(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))return;
 function shared_product_country_options(){
  $countries=[];$terms=get_terms(['taxonomy'=>'destinations','hide_empty'=>false]);
  if(is_wp_error($terms))return $countries;

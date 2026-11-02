@@ -1,6 +1,6 @@
 <?php
-/** Lab-only denormalized index for native JetSmartFilters query var related_package_term_id. */
-if(!defined('ABSPATH')||!defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY)return;
+/** runtime-authorized denormalized index for native JetSmartFilters query var related_package_term_id. */
+if(!defined('ABSPATH')||(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))return;
 function shared_product_sync_rate_package_index($rate_id){
  $rate_id=absint($rate_id);
  if(get_post_type($rate_id)!=='tour-rates')return new WP_Error('invalid_rate');

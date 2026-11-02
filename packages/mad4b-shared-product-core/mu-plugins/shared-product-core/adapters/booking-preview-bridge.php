@@ -1,6 +1,6 @@
 <?php
-/** Lab-only booking quote bridge. No cart, order, payment or inventory mutation. */
-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+/** runtime-authorized booking quote bridge. No cart, order, payment or inventory mutation. */
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 add_action('rest_api_init',static function(){register_rest_route('shared-product/v1','/booking-preview',[
  'methods'=>'POST','permission_callback'=>'__return_true',
  'callback'=>static function(WP_REST_Request $req){

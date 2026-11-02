@@ -1,7 +1,7 @@
 <?php
-/** Local Lab only: optional, source-backed room and meal choices. */
+/** governed runtime only: optional, source-backed room and meal choices. */
 defined('ABSPATH')||exit;
-if(wp_get_environment_type()!=='local'||!defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY)return;
+if((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)||(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))return;
 function shared_form6_stay_stage($tour,$rate,$key,$property){
  if(get_post_type($tour)!=='tours-and-activities'||get_post_status($tour)!=='publish'||
     get_post_type($rate)!=='tour-rates'||get_post_status($rate)!=='publish'||

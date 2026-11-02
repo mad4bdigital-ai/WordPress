@@ -1,10 +1,8 @@
 <?php
 /** Plugin Name: Shared Product Core Loader (Governed Runtime) */
 if (!defined('ABSPATH')) exit;
-// A runtime grant is independent of WP_ENVIRONMENT_TYPE; Local Lab keeps its own opt-in.
-$mad4bSharedRuntime=(defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED === true)
-    || (function_exists('wp_get_environment_type') && wp_get_environment_type() === 'local'
-    && defined('SHARED_PRODUCT_LAB_ONLY') && SHARED_PRODUCT_LAB_ONLY === true);
+// A runtime grant is independent of WP_ENVIRONMENT_TYPE; governed runtime keeps its own opt-in.
+$mad4bSharedRuntime=defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true;
 if (!$mad4bSharedRuntime) return;
 $root=__DIR__.'/shared-product-core/';
 require_once $root.'core.php';
@@ -83,7 +81,7 @@ require_once $root.'adapters/presentation-compatibility-manifest-v1.php';
 require_once $root.'adapters/presentation-source-field-guard-v1.php';
 // Read-only, local-only native display adapter arbitration.
 require_once $root.'adapters/presentation-adapter-registry-v1.php';
-// Read-only WPML/Listing context inspection for Local Lab.
+// Read-only WPML/Listing context inspection for governed runtime.
 require_once $root.'adapters/presentation-context-v1.php';
 // One canonical catalog contract for WPML facets, signed JSF and WCML presentation.
 require_once $root.'adapters/presentation-context-registry-v2.php';

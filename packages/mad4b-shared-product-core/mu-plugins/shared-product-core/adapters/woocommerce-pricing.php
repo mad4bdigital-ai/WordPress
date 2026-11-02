@@ -1,6 +1,6 @@
 <?php
 /** Shared Product Core: WooCommerce quote snapshot contract (Lab only). */
-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 /** Generate from authoritative rate data, never client-supplied amount or currency. */
 function shared_product_quote_snapshot($rate_id, $audience, $occupancy, $display_currency = null) {
     if (!function_exists('pricing_audience_quote') || !function_exists('pricing_currency_convert')) return new WP_Error('resolver_missing');

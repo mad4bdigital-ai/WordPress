@@ -1,6 +1,6 @@
 <?php
 /** Validate a WooCommerce-native multi-booking cart draft. No cart writes. */
-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 function shared_product_booking_v2_cart_draft($configurations) {
  if (!is_array($configurations)||!array_is_list($configurations)||count($configurations)<1||count($configurations)>20)
   return new WP_Error('booking_v2_cart_lines_invalid');

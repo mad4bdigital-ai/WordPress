@@ -1,6 +1,6 @@
 <?php
 /** Multiple Elementor containers can subscribe to the same tour-scoped choice state. */
-if(!defined('ABSPATH')||!defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY)return;
+if(!defined('ABSPATH')||(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))return;
 add_shortcode('shared_product_visual_picker',static function($args){
  $a=shortcode_atts(['tour_id'=>0,'type'=>'hotels'],$args);
  $id=absint($a['tour_id'])?:get_the_ID();

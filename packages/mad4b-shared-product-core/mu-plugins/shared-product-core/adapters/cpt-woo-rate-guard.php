@@ -1,10 +1,10 @@
 <?php
 /**
- * Lab-only safety boundary for CPTWoo native product identity.
+ * runtime-authorized safety boundary for CPTWoo native product identity.
  * CPTWoo owns the mapping, while Rate/Quote registries own commercial approval.
  */
-if (!defined('ABSPATH') || wp_get_environment_type()!=='local' ||
-    !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true) ||
+    (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 
 /** Child rate records have no standalone price/checkout authority by being WC-readable. */
 function shared_product_cptwoo_rate_requires_review($id): bool {

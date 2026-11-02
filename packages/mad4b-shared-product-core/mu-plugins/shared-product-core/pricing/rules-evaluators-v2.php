@@ -1,6 +1,6 @@
 <?php
 /** Declarative evaluator pipeline: new factors register without changing quote engine. */
-if(!defined('ABSPATH')||!defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY)return;
+if(!defined('ABSPATH')||(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))return;
 function shared_product_rule_evaluators_v2(){
  $factors=[
   'source_policy'=>['phase'=>5,'callback'=>'shared_product_rule_source_policy_v2'],

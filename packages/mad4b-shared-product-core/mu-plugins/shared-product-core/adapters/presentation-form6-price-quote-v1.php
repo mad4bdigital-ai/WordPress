@@ -4,12 +4,12 @@ defined('ABSPATH')||exit;
 /**
  * Presentation is a governed runtime capability, not an environment type.
  * Explicit runtime enablement works for Staging (and for authorized deployments).
- * Local Lab keeps its isolated opt-in for standalone development only.
+ * governed runtime keeps its isolated opt-in for standalone development only.
  */
 function shared_product_form6_price_runtime_enabled(): bool {
  return (defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED === true)
-  || (function_exists('wp_get_environment_type') && wp_get_environment_type()==='local'
-   && defined('SHARED_PRODUCT_LAB_ONLY') && SHARED_PRODUCT_LAB_ONLY === true);
+  || ((defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true)
+   && (defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true));
 }
 if(!shared_product_form6_price_runtime_enabled())return;
 function shared_presentation_form6_price_quote($raw) {

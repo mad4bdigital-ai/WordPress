@@ -1,6 +1,6 @@
 <?php
 /** Core-owned Global Offer verification boundary; fail closed until checkout certification exists. */
-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 function shared_product_verify_global_offer_quote($envelope,$campaign,$rule,$eligible_ids){
  if (!$campaign instanceof WP_Post || $campaign->post_type!=='offer-campaign' || $campaign->post_status!=='publish') return false;
  if (!is_array($rule) || !is_array($eligible_ids) || !$eligible_ids || !is_array($envelope)) return false;

@@ -1,6 +1,6 @@
 <?php
-/** Lab-only signed JetSmartFilters Query Builder parent-tour context restoration. */
-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+/** runtime-authorized signed JetSmartFilters Query Builder parent-tour context restoration. */
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 add_filter('jet-engine/query-builder/types/posts-query/args',static function($args,$query){
  if(!wp_doing_ajax() || ($_REQUEST['action']??'')!=='jet_smart_filters')return $args;
  if(!in_array($query->query_id??'', ['tour_rate_single_tour','tour_rates'],true))return $args;

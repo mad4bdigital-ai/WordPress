@@ -1,6 +1,6 @@
 <?php
 /** Lab only: Elementor global typography and rem-based actions for card and accordion layouts. */
-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 add_action('wp_head',static function(){
  $kit=\Elementor\Plugin::instance()->kits_manager->get_active_kit();
  $settings=$kit?$kit->get_settings():[];

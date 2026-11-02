@@ -1,6 +1,6 @@
 <?php
 /** Source-neutral scheduling and quote eligibility decisions; inventory never silently assumed. Lab only. */
-if (!defined('ABSPATH')||wp_get_environment_type()!=='local'||!defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY)return;
+if (!defined('ABSPATH')||(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)||(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))return;
 final class Shared_Product_Scheduling_Eligibility {
  const INTENTS=['inquiry','quote','request','instant'];
  private static function result(string $status,string $reason,string $source): array {

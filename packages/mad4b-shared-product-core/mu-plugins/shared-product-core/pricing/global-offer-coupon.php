@@ -1,6 +1,6 @@
 <?php
-/** Lab-only native WooCommerce virtual coupon for integrated CPT tour rates. */
-if(!defined('ABSPATH')||!defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY)return;
+/** runtime-authorized native WooCommerce virtual coupon for integrated CPT tour rates. */
+if(!defined('ABSPATH')||(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))return;
 function shared_product_global_offer_coupon_code(){return 'shared-global-offer-lab';}
 function shared_product_global_offer_coupon_context($cart){
  if(!$cart instanceof WC_Cart)return new WP_Error('cart_unavailable');

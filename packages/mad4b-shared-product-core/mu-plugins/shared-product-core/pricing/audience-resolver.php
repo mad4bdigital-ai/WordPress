@@ -1,5 +1,5 @@
 <?php
-/** Lab-only unified quote resolver. Audience and source currency are distinct from display currency. */
+/** runtime-authorized unified quote resolver. Audience and source currency are distinct from display currency. */
 if (!defined('ABSPATH')) return;
 function pricing_audience_quote($rate_id,$audience,$occupancy){
  $rate_id=absint($rate_id);

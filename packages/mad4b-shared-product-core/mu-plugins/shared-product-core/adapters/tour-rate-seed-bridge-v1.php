@@ -1,10 +1,10 @@
 <?php
 /**
- * Local Lab: the Tour CPT editor itself is an authoritative seed for the existing
+ * governed runtime: the Tour CPT editor itself is an authoritative seed for the existing
  * native draft Rate Generator. No vendor cost, contract, or alternate price store.
  */
 defined('ABSPATH')||exit;
-if(wp_get_environment_type()!=='local'||!defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY)return;
+if((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)||(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))return;
 final class Shared_Tour_Rate_Seed_Bridge_v1 {
  const META='_shared_tour_rate_seed_input_v1';
  const FIELDS=['valid_from','valid_to','package_term_id','program_term_id','season_term_id','assignment_mode','source_type','source_rate_id','factor_mode'];
@@ -254,7 +254,7 @@ final class Shared_Tour_Rate_Seed_Bridge_v1 {
   update_post_meta($id,self::META,$valid);
  }
  static function action():void {
-  if(wp_get_environment_type()!=='local'||!current_user_can('manage_woocommerce'))
+  if((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)||!current_user_can('manage_woocommerce'))
    wp_die('Rate generator unavailable',403);
   $id=absint($_POST['tour_id']??0);
   if(!$id||get_post_type($id)!=='tours-and-activities'||

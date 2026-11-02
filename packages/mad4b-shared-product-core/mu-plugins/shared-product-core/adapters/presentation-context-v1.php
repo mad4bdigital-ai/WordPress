@@ -1,8 +1,8 @@
 <?php
-/** Read-only context inspection, Local Lab. Does not grant booking authority. */
+/** Read-only context inspection, governed runtime. Does not grant booking authority. */
 defined('ABSPATH') || exit;
-if (function_exists('wp_get_environment_type') && wp_get_environment_type()==='local'
- && defined('SHARED_PRODUCT_LAB_ONLY') && SHARED_PRODUCT_LAB_ONLY) {
+if ((defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true)
+ && (defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true)) {
 final class Shared_Product_Presentation_Context_v1 {
  public static function inspect(int $id): array {
   if (!class_exists('Shared_Product_Presentation_Compatibility_v1'))

@@ -5,8 +5,8 @@
  * contact providers. Existing native Fluent Forms adapters keep ownership.
  */
 defined('ABSPATH') || exit;
-if (wp_get_environment_type() !== 'local' ||
-    !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+if ((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true) ||
+    (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 
 function shared_presentation_fluent_form_sources_v1():array {
     static $building=false;

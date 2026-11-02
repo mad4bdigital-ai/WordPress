@@ -1,6 +1,6 @@
 <?php
 /** Read-only pricing evidence for a specific linked tour rate. Not checkout authorization. */
-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 function shared_product_global_offer_rate_evidence($tour_id,$rate_id,$audience,$occupancy){
  $tour_id=absint($tour_id);$rate_id=absint($rate_id);
  if(get_post_type($tour_id)!=='tours-and-activities'||get_post_status($tour_id)!=='publish')return new WP_Error('invalid_offer_tour');

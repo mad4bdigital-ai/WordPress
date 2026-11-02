@@ -1,6 +1,6 @@
 <?php
 /** Resolve policy settings through the registered JetEngine Options Page, no hardcoded site slug. */
-if(!defined('ABSPATH')||!defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY)return;
+if(!defined('ABSPATH')||(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))return;
 function shared_product_jet_policy_raw($field){
  if(!function_exists('jet_engine')||!isset(jet_engine()->options_pages->data))return new WP_Error('policy_options_provider_missing');
  foreach(jet_engine()->options_pages->data->get_items() as $page){

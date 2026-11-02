@@ -1,6 +1,6 @@
 <?php
 /** Strict provider integration boundary: read-only and fail-closed in Lab. */
-if(!defined('ABSPATH')||!defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY)return;
+if(!defined('ABSPATH')||(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))return;
 function shared_product_refund_provider_recheck($order_id,$reservation_hash){
  $order=wc_get_order(absint($order_id));if(!$order)return new WP_Error('provider_order_missing');
  if(!is_string($reservation_hash)||!preg_match('/^[a-f0-9]{64}$/D',$reservation_hash))return new WP_Error('provider_reservation_hash_invalid');

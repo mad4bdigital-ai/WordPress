@@ -1,6 +1,6 @@
 <?php
-/** Lab-only diagnostic of current JetEngine pricing policies. No writes. */
-if(!defined('ABSPATH')||!defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY)return;
+/** runtime-authorized diagnostic of current JetEngine pricing policies. No writes. */
+if(!defined('ABSPATH')||(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))return;
 function shared_product_mode_readiness_inventory(){
  $policies=shared_product_mode_policies();if(is_wp_error($policies))return $policies;
  $result=[];

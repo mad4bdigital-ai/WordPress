@@ -1,6 +1,6 @@
 <?php
 /** Reusable rate selection actions, limited to single-tour context. */
-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 /** Buttons are rendered inside both original listing-item Elementor layouts. */
 function shared_product_rate_selection_actions_markup(){
  global $wp_the_query; $rate=get_the_ID(); $tour_page=$wp_the_query instanceof WP_Query && $wp_the_query->is_singular('tours-and-activities') && get_post_type($wp_the_query->get_queried_object_id())==='tours-and-activities'; if (!$tour_page && wp_doing_ajax() && ($_REQUEST['action']??'')==='jet_smart_filters' && ($_REQUEST['provider']??'')==='jet-engine/tour_rates' && function_exists('jet_smart_filters')) {

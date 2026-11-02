@@ -1,6 +1,6 @@
 <?php
 /** Deterministic minor-unit ledger; preview only. Does not change orders/payments. */
-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 /** Currency precision must be frozen with a quote; never infer it from the visitor's current display. */
 function shared_product_ledger_currency_decimals($currency){
  $zero=['JPY','KRW','VND','CLP','ISK','PYG','RWF','UGX','XAF','XOF','XPF'];

@@ -3,7 +3,7 @@
  * Tour Rate facets: the same resolved JetEngine Query Builder listing drives
  * filter values. Not a separate independent terms query.
  */
-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 
 /** True only for an explicit cruise-tour mode. */
 function shared_product_program_mode_supported($mode) {

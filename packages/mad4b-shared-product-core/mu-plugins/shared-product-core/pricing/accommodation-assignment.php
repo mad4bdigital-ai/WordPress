@@ -2,8 +2,8 @@
 /** Deterministic draft-only discovery. Never infers overnight geometry or inventory. */
 if(!defined('ABSPATH'))return;
 $mad4bRateAssignmentEnabled=(defined('MAD4B_COMMERCE_RUNTIME_ENABLED')&&MAD4B_COMMERCE_RUNTIME_ENABLED===true)
- ||(function_exists('wp_get_environment_type')&&wp_get_environment_type()==='local'
- &&defined('SHARED_PRODUCT_LAB_ONLY')&&SHARED_PRODUCT_LAB_ONLY===true);
+ ||((defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true)
+ &&(defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true));
 if(!$mad4bRateAssignmentEnabled)return;
 function shared_product_assignment_location($id){
  $seen=[];$location=0;$kind='';$country=0;$chain=[];

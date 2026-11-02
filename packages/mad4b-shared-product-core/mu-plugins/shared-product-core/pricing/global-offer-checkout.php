@@ -1,6 +1,6 @@
 <?php
-/** Lab-only Global Offer checkout discount. Applies an auditable non-taxable fee once per totals pass. */
-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+/** runtime-authorized Global Offer checkout discount. Applies an auditable non-taxable fee once per totals pass. */
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 function shared_product_global_offer_cart_discount($cart){
  if(!$cart instanceof WC_Cart || !function_exists('global_offer_product_eligible'))return new WP_Error('cart_or_eligibility_missing');
  $other_coupons=array_filter($cart->get_applied_coupons(),static fn($code)=>$code!=='shared-global-offer-lab');

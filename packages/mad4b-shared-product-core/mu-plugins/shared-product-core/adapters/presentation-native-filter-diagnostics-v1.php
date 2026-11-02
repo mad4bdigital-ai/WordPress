@@ -7,8 +7,8 @@
  * policies remain with their native domain owners.
  */
 defined('ABSPATH') || exit;
-if (wp_get_environment_type() !== 'local'
-    || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+if ((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)
+    || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 
 function shared_presentation_native_filter_diagnostics_v1(): array {
     $sources = shared_presentation_native_typed_manifest_v1();
@@ -98,8 +98,8 @@ function shared_presentation_native_filter_rest_v1(array $payload, int $status =
 add_action('rest_api_init', static function(): void {
     $admin = static function(): bool {
         return current_user_can('manage_options')
-            && wp_get_environment_type() === 'local'
-            && defined('SHARED_PRODUCT_LAB_ONLY') && SHARED_PRODUCT_LAB_ONLY;
+            && (defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true)
+            && (defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true);
     };
     register_rest_route('shared-product/v1', '/native-filter-contracts', [
         'methods' => WP_REST_Server::READABLE,

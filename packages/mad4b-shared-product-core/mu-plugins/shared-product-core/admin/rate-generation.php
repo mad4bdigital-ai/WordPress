@@ -1,6 +1,6 @@
 <?php
 /** WooCommerce Settings tab — parameterized existing CPT rate drafts only. */
-if (!defined('ABSPATH') || wp_get_environment_type()!=='local' || !class_exists('Shared_Product_Rate_Generation')) return;
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true) || !class_exists('Shared_Product_Rate_Generation')) return;
 add_filter('woocommerce_settings_tabs_array',static function($tabs){
  $tabs['rate_generation']=__('Rate Generation','woocommerce');return $tabs;
 },82);
@@ -212,7 +212,7 @@ add_action('admin_init',static function(){
     ($_GET['tab']??'')!=='rate_generation'||!isset($_POST['operation']))return;
  if(!current_user_can('manage_woocommerce'))wp_die('Permission denied',403);
  check_admin_referer('shared_product_rate_generation','shared_rate_generation_nonce');
- if(wp_get_environment_type()!=='local')wp_die('Not a Lab site',403);
+ if((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))wp_die('Runtime grant required',403);
  $raw=wp_unslash($_POST);
  $op=$raw['operation']??'';
  if($op==='choice_preview'||$op==='choice_quote'){

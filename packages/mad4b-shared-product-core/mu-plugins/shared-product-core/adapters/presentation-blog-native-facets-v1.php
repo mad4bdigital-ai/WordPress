@@ -5,7 +5,7 @@
  * This provider is read-only and adds no cross-service taxonomy permissions.
  */
 defined('ABSPATH') || exit;
-if (wp_get_environment_type() !== 'local') return;
+if ((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 
 add_filter('jet-smart-filters/filters/filter-options', static function($options, $filter_id){
     if ((int)$filter_id !== 16374 ||

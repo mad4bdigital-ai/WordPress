@@ -1,6 +1,6 @@
 <?php
-/** Lab-only Query 310 season filter on full-page reload, preserving rate query and eligibility. */
-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+/** runtime-authorized Query 310 season filter on full-page reload, preserving rate query and eligibility. */
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 add_filter('jet-engine/query-builder/types/posts-query/args',static function($args,$query){
  if (is_admin() || wp_doing_ajax() || ($query->query_id??'')!=='tour_rates') return $args;
  if (($_GET['jsf']??'')!=='jet-engine:tour_rates') return $args;

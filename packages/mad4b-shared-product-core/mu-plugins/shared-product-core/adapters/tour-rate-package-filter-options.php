@@ -1,6 +1,6 @@
 <?php
-/** Lab-only context-aware options for the JetSmartFilters package select clone. */
-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+/** runtime-authorized context-aware options for the JetSmartFilters package select clone. */
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 function shared_product_rate_supported_package_options($tour_id){
  $tour_id=absint($tour_id);
  if(get_post_type($tour_id)!=='tours-and-activities')return [];

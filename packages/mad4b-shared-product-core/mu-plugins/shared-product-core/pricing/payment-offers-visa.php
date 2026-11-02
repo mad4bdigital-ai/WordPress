@@ -1,6 +1,6 @@
 <?php
 /** Site-neutral financial rules and visa catalog prototype; isolated lab only. */
-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 add_action('init', static function(){
  register_post_type('travel-visa',['label'=>'Visas','public'=>false,'show_ui'=>true,'show_in_rest'=>true,'supports'=>['title','editor','revisions'],'menu_icon'=>'dashicons-id','capability_type'=>'post']);
  register_taxonomy_for_object_type('destinations','travel-visa');

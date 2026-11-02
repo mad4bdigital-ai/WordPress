@@ -1,5 +1,5 @@
 <?php
-/** Lab-only reusable product date coverage core. */
+/** runtime-authorized reusable product date coverage core. */
 if (!defined('ABSPATH')) exit;
 interface Shared_Product_Date_Provider {
  public function supports(int $product_id): bool;

@@ -6,7 +6,7 @@
  * objects, term relations, and section eligibility from canonical term data.
  */
 defined('ABSPATH')||exit;
-if(wp_get_environment_type()!=='local'||!defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY)return;
+if((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)||(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))return;
 final class Shared_Product_Destination_Term_Presentation_v1 {
  const ARCHIVE_DOCUMENTS=[45649,48558];
  const TEMPLATES=[45799,45774,45886];

@@ -5,7 +5,7 @@
  * Service Activation sale eligibility. Does not mutate taxonomy term parents.
  */
 defined('ABSPATH') || exit;
-if (wp_get_environment_type() !== 'local') return;
+if ((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 
 function shared_presentation_company_location_facet_v1(array $options, int $filter_id, bool $native_binding_verified=false): array {
     if (!$filter_id || !function_exists('shared_presentation_provider_v2') ||

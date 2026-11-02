@@ -1,6 +1,6 @@
 <?php
 /** Accommodation composition decision: independent property layer for complex stays. Lab only. */
-if(!defined('ABSPATH')||!defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY)return;
+if(!defined('ABSPATH')||(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))return;
 function shared_product_property_layer_plan($rate_id,$selection){
  if(!is_array($selection)||get_post_type($rate_id)!=='tour-rates')return new WP_Error('invalid_property_plan');
  $linked=shared_product_rate_related_options($rate_id);if(is_wp_error($linked))return $linked;

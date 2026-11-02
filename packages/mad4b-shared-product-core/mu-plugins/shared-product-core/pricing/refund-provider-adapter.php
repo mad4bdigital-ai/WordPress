@@ -1,6 +1,6 @@
 <?php
 /** Provider evidence validator. No remote calls, webhooks or financial writes. */
-if(!defined('ABSPATH')||!defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY)return;
+if(!defined('ABSPATH')||(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))return;
 function shared_product_refund_provider_evidence_check($order_id,$reservation_hash,$evidence){
  if(!is_array($evidence)||!is_string($reservation_hash)||!preg_match('/^[a-f0-9]{64}$/D',$reservation_hash))return new WP_Error('provider_invalid_evidence');
  $order=wc_get_order(absint($order_id));if(!$order)return new WP_Error('provider_order_missing');
@@ -20,7 +20,7 @@ function shared_product_refund_provider_evidence_check($order_id,$reservation_ha
  return ['consistent'=>true,'authenticity'=>'not_established','provider_refund_id'=>$evidence['provider_refund_id'],'status'=>$evidence['status'],'automatic_transition_allowed'=>false];
 }
 
-/** Lab-only evidence intake. Records consistency, never establishes authenticity. */
+/** runtime-authorized evidence intake. Records consistency, never establishes authenticity. */
 function shared_product_refund_provider_evidence_record($order_id,$reservation_hash,$event_id,$evidence){
  if(!is_string($event_id)||!preg_match('/^[A-Za-z0-9_.:-]{8,128}$/D',$event_id))return new WP_Error('provider_event_id_invalid');
  return shared_product_refund_with_order_lock($order_id,static function($id)use($reservation_hash,$event_id,$evidence){

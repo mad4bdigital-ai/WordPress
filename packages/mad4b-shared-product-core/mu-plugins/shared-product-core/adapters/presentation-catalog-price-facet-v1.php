@@ -1,11 +1,11 @@
 <?php
 /**
- * Local Lab: quote-derived numeric filter for the native Tours catalog.
+ * governed runtime: quote-derived numeric filter for the native Tours catalog.
  * In-memory index is rebuilt each request (no stale postmeta or exchange rates).
  * Never mutates Rates, stored selling prices, WCML settings or orders.
  */
 defined('ABSPATH') || exit;
-if (wp_get_environment_type() !== 'local') return;
+if ((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 
 function shared_presentation_catalog_price_scope_v1(): bool {
     if (wp_doing_ajax()) return is_array(shared_presentation_catalog_jsf_request_v1());

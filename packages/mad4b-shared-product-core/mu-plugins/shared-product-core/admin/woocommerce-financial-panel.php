@@ -1,6 +1,6 @@
 <?php
 /** Read-only financial diagnostics on the native WooCommerce order screen (HPOS + legacy). Lab only. */
-if(!defined('ABSPATH')||!defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY)return;
+if(!defined('ABSPATH')||(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))return;
 add_action('add_meta_boxes',static function(){
  if(!current_user_can('manage_woocommerce'))return;
  $screen=class_exists('Automattic\\WooCommerce\\Utilities\\OrderUtil') && \Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled()?'woocommerce_page_wc-orders':'shop_order';

@@ -1,6 +1,6 @@
 <?php
 /** Existing CPT rate generator: no new price store, no implicit publication. */
-if (!defined('ABSPATH') || wp_get_environment_type() !== 'local' || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true) || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 
 require_once __DIR__.'/accommodation-assignment.php';
 
@@ -399,7 +399,7 @@ final class Shared_Product_Rate_Generation {
   */
  public static function selection_inspect($input){
   if(!current_user_can('manage_woocommerce'))return new WP_Error('rate_choice_permission_denied');
-  if(wp_get_environment_type()!=='local'||!is_array($input))return new WP_Error('rate_choice_context_invalid');
+  if((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)||!is_array($input))return new WP_Error('rate_choice_context_invalid');
   $allowed=['kind','parent_id','unit_id','service_date','checkout','rooms','adults','children',
     'audience','occupancy','package_term_id','rate_scope','rate_id'];
   if(array_diff(array_keys($input),$allowed))return new WP_Error('rate_choice_context_fields_unknown');
@@ -520,7 +520,7 @@ final class Shared_Product_Rate_Generation {
  /** Recheck explicit Rate against native owner immediately before a price-only preview. */
  public static function quote_for_explicit_rate($input){
   if(!current_user_can('manage_woocommerce'))return new WP_Error('rate_quote_permission_denied');
-  if(wp_get_environment_type()!=='local'||!is_array($input))return new WP_Error('rate_quote_context_invalid');
+  if((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)||!is_array($input))return new WP_Error('rate_quote_context_invalid');
   $allowed=['kind','parent_id','rate_id','service_date','checkout','unit_id','rooms',
    'adults','children','persons','audience','occupancy','package_term_id','rate_scope'];
   if(array_diff(array_keys($input),$allowed))return new WP_Error('rate_quote_unexpected_fields');

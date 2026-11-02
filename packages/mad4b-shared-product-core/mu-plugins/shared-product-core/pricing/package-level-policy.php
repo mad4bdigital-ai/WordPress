@@ -1,6 +1,6 @@
 <?php
 /** Central package-level pricing, preview-only. */
-if(!defined('ABSPATH')||!defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY)return;
+if(!defined('ABSPATH')||(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))return;
 function shared_product_package_level_preview($tour,$rate,$level,$base){
  $tour=(int)$tour;$rate=$rate===null?null:(int)$rate;$level=(int)$level;
  $term=get_term($level,'package_levels');

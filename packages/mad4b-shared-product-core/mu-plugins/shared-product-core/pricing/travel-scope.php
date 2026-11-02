@@ -1,6 +1,6 @@
 <?php
 /** Physical service geography is separate from traveler nationality/residence and booking location. Lab only. */
-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 function shared_product_travel_scope($origin_destination_term_id, $service_country_term_ids, $traveler_context = []) {
     if(!is_array($service_country_term_ids)||!is_array($traveler_context))return new WP_Error('invalid_travel_scope_inputs');
     $countries=[];

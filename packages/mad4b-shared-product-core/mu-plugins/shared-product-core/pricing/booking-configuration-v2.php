@@ -2,8 +2,8 @@
 /** Booking Configuration v2: server-only validated price preview, not checkout authority. */
 if (!defined('ABSPATH'))return;
 $mad4bBookingPreviewEnabled=(defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true)
- || (function_exists('wp_get_environment_type') && wp_get_environment_type()==='local'
-  && defined('SHARED_PRODUCT_LAB_ONLY') && SHARED_PRODUCT_LAB_ONLY===true);
+ || ((defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true)
+  && (defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true));
 if (!$mad4bBookingPreviewEnabled)return;
 require_once __DIR__.'/extra-source-quote.php';
 /** Optional passenger gender for supplier manifests; never a pricing or eligibility authority. */

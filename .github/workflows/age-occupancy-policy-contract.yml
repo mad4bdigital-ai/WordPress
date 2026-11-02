@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - 'wp-content/plugins/mad4b-age-occupancy-registry/**'
+      - 'packages/mad4b-shared-product-core/mu-plugins/**'
+      - 'packages/mad4b-shared-product-core/tests/environment-neutral-runtime-contract.php'
       - 'wp-content/plugins/commerce-composition/includes/InquiryQualification.php'
       - 'wp-content/plugins/commerce-composition/includes/RequestReviewAdmin.php'
       - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/presentation-form6-price-quote-v1.php'
@@ -82,6 +84,8 @@ jobs:
           php packages/mad4b-shared-product-core/tests/season-wpml-inheritance-contract.php
           php packages/mad4b-shared-product-core/tests/rate-localized-pricing-source-contract.php
           php packages/mad4b-shared-product-core/tests/rate-locale-policy-runtime.php
+          find packages/mad4b-shared-product-core/mu-plugins -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+          php packages/mad4b-shared-product-core/tests/environment-neutral-runtime-contract.php
       - name: Canonical Fluent Form 6 pricing UI contract
         run: |
           node --check packages/mad4b-shared-product-core/mu-plugins/shared-product-core/assets/presentation-fluent-quote-v1.js

@@ -4,7 +4,7 @@
  * currently eligible general-audience price through the original pricing
  * engine. No price, policy or order mutation.
  */
-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 
 /**
  * Source of truth for the native Tour Rates query and its filter facets.

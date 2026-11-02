@@ -5,7 +5,7 @@
  * A query_var named start_price is not necessarily a price widget.
  */
 defined('ABSPATH') || exit;
-if (wp_get_environment_type() !== 'local') return;
+if ((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 
 add_filter('jet-engine/listings/dynamic-field/custom-value', static function($value,$settings,$renderer=null){
     if ($value!==null || !is_array($settings) || ($settings['dynamic_field_source']??'')!=='meta') return $value;

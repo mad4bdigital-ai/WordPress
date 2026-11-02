@@ -3,7 +3,7 @@
  * Shared Pricing bridge for the existing Elementor / JetEngine price layouts.
  * Read-only: a tag resolves the current Rate; it never changes or stores prices.
  */
-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 
 function shared_product_legacy_rate_tag($rate_id=0,$audience='general',$occupancy='double',$role='final') {
  $rate_id=absint($rate_id);
