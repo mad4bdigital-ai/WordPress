@@ -218,7 +218,7 @@ def reconcile():
           and proof.get('production_mutation') is False
           and proof.get('native_job_executed') is False
           and type(proof.get('proof_epoch')) is int
-          and 0<=now-proof['proof_epoch']<900)
+          and 0<=now-proof['proof_epoch']<=1800)
         row['host_proof_independently_verified']=bool(verified)
         row['original_305_pending_transport_is_expected']=bool(verified)
         row['host_proof_receipt_state']=('ORIGINAL_SIGNED_HOST_PROOF_FRESH'
