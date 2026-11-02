@@ -10,7 +10,7 @@
 
 ## Existing Control Plane comparator
 
-The *live* Staging Control Plane contains `class-mad4b-scp-content-readiness-alerts.php`; that file was not present at the corresponding GitHub branch path. Rather than inventing a new full source file from partial data, the narrowly scoped, staged and tested change is preserved in `readiness-comparator.patch`. Reconcile it into the canonical source once its exact path is tracked. Do **not** overwrite other live runtime changes.
+The full, source-verified Staging `class-mad4b-scp-content-readiness-alerts.php` has now been reconciled directly to its canonical GitHub path, including the in-tier `mad4b/content_readiness/impact_score` comparator. Its native dependencies `class-mad4b-scp-readiness-workflow-options.php` and `class-mad4b-scp-content-completeness.php` were reconciled as well. The two newly tracked admin submenu modules now use `MAD4B_SCP_Admin_Route_Registry` to honor the existing parent-order contract. `mad4b-site-control-plane.php` explicitly loads and boots Readiness and Impact, and classifies `/mad4b-frontend-impact/v1/` as an owned REST namespace. The separate `readiness-comparator.patch` is a historical reconciliation aid, not an unapplied blocker.
 
 Priority overlay is read-only and affects **sorting within existing severity**; it never replaces the provider score in the issue ledger or changes readiness/ContentJob states.
 
@@ -24,6 +24,21 @@ Priority overlay is read-only and affects **sorting within existing severity**; 
 - 11/11 standalone contract assertions PASS, including fail-closed for unobserved rate and form issues and no booking/publication authorization.
 - `GET /`, `/fr/`, `/es/`: HTTP 200, TLS valid.
 - New manual full-scan retries sometimes return `STAGING_WPCLI_BUSY` due to concurrent WordPress CLI sessions. Do not bypass the lock. The last successful persisted readback remains authoritative; do not claim a subsequent scan succeeded without checking its timestamp.
+
+## Browser-driven acceptance (2026-11-02)
+
+- Host-side Chromium/Playwright performed **14/14 PASS** interactions against real Staging public pages. Repeatable script: `wp-content/plugins/mad4b-site-control-plane/tests/frontend-impact-live-browser-acceptance.py`; structured evidence: `ops/staging/tours-dev/frontend-impact/evidence/browser-acceptance-20261102.json`.
+- English **Packages**: opened `Select Tour Type` Accordion, clicked the genuine JetSmartFilters label; 78 rendered listing items before, 58 after, native JSF URL updated, two AJAX 200s.
+- Spanish **Paquetes**: clicked genuine visible label, 78 items before, 57 after, matching locale JSF URL, two AJAX 200s.
+- English and Spanish real published tour pages: scrolled to Form 6 as needed, then clicked native `+` (adults 2→3) and `−` (3→2). No Submit, Checkout, Woo Order, or supplier POST; no page JavaScript errors observed in these tested pages.
+- The English filter Accordion is intentionally closed initially; the Spanish filter panel was initially visible. This difference in default presentation is not the same as failure to filter, and may be considered separately for design parity.
+- Explicit `GET /wp-json/mad4b-frontend-impact/v1/summary` unauthenticated returns HTTP **401**, while a verified WordPress administrator REST dispatch returns **200**, with 18 sampled pages and 121 ranked issues. This is a summary/read-only route.
+- Read-only comparator test PASS using actual persisted issues with overlay 91 vs 25: higher impact wins within severity; Critical still supersedes High; resolved issues remain last and source issue ledger is unchanged.
+- Scoped PHP lint PASS; public home and WPML pages return HTTP 200. Production not modified.
+
+## Release gate
+
+The PR remains Draft until GitHub Actions conclude successfully, all required reviews/authority are satisfied, and a release deployment is approved. This PR may introduce canonical readiness source that was previously absent from GitHub but active on Staging; CI admin route checks apply. Never treat an unfinished GitHub workflow as PASS.
 
 ## Exposure / safety limits
 
