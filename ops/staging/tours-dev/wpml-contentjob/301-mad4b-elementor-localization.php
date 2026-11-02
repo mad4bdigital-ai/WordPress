@@ -11,7 +11,7 @@ final class MAD4B_Elementor_Localization_V1 {
     const RENDER='mad4b_elementor_render_observations_v1';
     const SOURCE='mad4b-elementor-localization';
     private static $busy=false;
-    private static $text_keys=['title','editor','text','description','button_text','placeholder','label','heading','subtitle','caption','content','text_content','html','before_text','after_text','item_text','tab_title','tab_content','button_label'];
+    private static $text_keys=['title','editor','text','description','button_text','placeholder','label','heading','subtitle','caption','content','text_content','html','before_text','after_text','item_text','tab_title','tab_content','button_label','search_placeholder_text','search_category_select_placeholder','search_submit_label','results_counter_text','full_results_btn_text','negative_search','server_error','apply_button_text','not_found_message','link_label','featured_read_more_text','browse_label','custom_home_page_label','search_results_title','read_more_text','show_more_text','show_less_text'];
     private static function enabled() {
         return wp_get_environment_type()==='staging'
             && wp_parse_url(home_url(),PHP_URL_HOST)==='tours.dev.mad4b.com'
