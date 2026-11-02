@@ -28,7 +28,20 @@ final class MAD4B_WPML_Translation_Need_V1 {
  private static function inspect_settings($value,$prefix,&$texts,&$technical,&$node_type){
   foreach((array)$value as $key=>$v){
    if(!is_string($key))continue;
-   if($key==='__dynamic__'){ $technical['dynamic_tag_refs']++;continue; }
+   if($key==='__dynamic__'){
+    foreach((array)$v as $field=>$tag){
+     $technical['dynamic_tag_refs']++;
+     if(!is_string($tag)||!preg_match('/settings="([^"]+)"/',$tag,$m))continue;
+     $decoded=json_decode(rawurldecode($m[1]),true);
+     if(!is_array($decoded))continue;
+     foreach(['before','after','custom_format','label','placeholder','empty_message'] as $label_key){
+      $candidate=self::literal($decoded[$label_key]??null);
+      if($candidate)$texts[]=['widget'=>$node_type,'field'=>'dynamic_tag/'.$field.'/'.$label_key,
+       'sample'=>$candidate];
+     }
+    }
+    continue;
+   }
    if(in_array($key,['shortcode','raw_shortcode','custom_shortcode'],true)){if($v)$technical['shortcode_widgets']++;continue;}
    if(is_array($v)){self::inspect_settings($v,$prefix?($prefix.'/'.$key):$key,$texts,$technical,$node_type);continue;}
    if(!self::visible_key($key))continue;
