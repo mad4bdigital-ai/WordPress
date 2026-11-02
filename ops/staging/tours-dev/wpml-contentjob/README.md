@@ -69,3 +69,19 @@ The priority engine and public HTML crawler were derived from an exact SHA-256 s
 **Current scope:** the site/host/service identity remains explicitly bound to the authorized `tours.dev.mad4b.com` Staging pilot. Do not treat this source snapshot as globally deployed or as Production approval. No production site changed.
 
 **Rollback:** stop `mad4b-wpml-content-intake-staging.timer`, restore `357-mad4b-wpml-frontend-priority.php` and `live-frontend-probe.py` from the lab's `live-source/` and exact SHA-256 manifest, then restart the timer. Priority option state is independent from translation content and from native ContentJobs.
+
+## Silent draft masking prevention — Staging verification (2 November 2026)
+
+A real live mismatch existed: \`wpml_get_element_translations\` omitted drafts while \`wpml_object_id\` resolved them, so the 301 scanner repeatedly emitted \`loc_missing_XX\` with \`target_post_id=0\`. Native ContentJobs correctly remained \`WAITING_REVIEW\`, but the outbox called the draft "missing" and still allowed a translation executor to pick it up.
+
+The repair reads the WPML object ID for a **draft only** when all of these match: current source's translation TRID, target language, post type, and draft status. It never treats the draft as published or as a final translation receipt.
+
+- The original issue key and native ContentJob ID are retained; the gap code \`loc_missing_XX\` still correctly indicates **missing published translation**.
+- The existing outbox row now has \`status=needs_review\`, \`stage=WPML_DRAFT_REVIEW\`, \`operation=review_unpublished_wpml_draft\`, \`review_state=draft_unpublished_pending_review\`, and a concrete target ID.
+- Draft rows remain discoverable in \`MAD4B_WPML_ContentJob_Adapter::discover()\`; its preview counts \`draft_pending_review\`. They are intentionally **not** offered to the regular MCP execution pickup that only returns \`queued\` work.
+- \`MAD4B_WPML_ContentJob_Adapter::binding()\` reports target draft status, review blockers, and \`readback_verified=false\` until real publication/receipt checks pass.
+- A read-only \`mad4b/wpml-review-dashboard\` WordPress ability and \`wp mad4b-wpml-jobs review-dashboard\` CLI command expose all pending review work, separating unpublished draft and published-target editorial review states.
+- After applying on Staging, the real review dashboard returned **17/17** linked drafts in \`needs_review\`, **9** published-target jobs still awaiting editorial review, **0** unmapped drafts, and 121 other outstanding translation jobs. It preserved **154** existing mapped jobs and native states, without generating replacement jobs, publishing drafts, changing Production, or auto-completing tasks.
+- Exact representative issue: \`Home Properties Search Box\`, French, draft ID \`68832\`: "WPML translation draft #68832 exists but is unpublished. Elementor references, locale rendering and editorial review remain pending". Stage \`WPML_DRAFT_REVIEW\`; reference \`review_unpublished_wpml_draft\`; public homepage HTTP 200.
+
+This makes the review task explicit in the underlying WordPress ability, Outbox, and ContentJob evidence. An independent Control Plane dashboard frontend must consume the ability to render a dedicated panel; **ability registration alone is not proof that a visible dashboard UI has been wired**. Continue to distinguish technical review handoff from completed translations.
