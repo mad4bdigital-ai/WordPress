@@ -255,6 +255,49 @@ final class MAD4B_WPML_Auto_Qualification_V1 {
    return self::reason('canonical_url_mismatch',['canonical'=>$m[1]]);
   return ['eligible'=>true,'reason'=>'http_200_canonical_noindex_pass','http_code'=>200];
  }
+ private static function centralTermAcceptance(array $e,array $issue):array {
+  if(!class_exists('MAD4B_SCP_Central_Write_Acceptance',false))
+   return self::reason('central_acceptance_unavailable');
+  $c='MAD4B_SCP_Central_Write_Acceptance';
+  $id=(int)$e['target_term_id'];
+  $qa=json_decode(self::nativeMeta($id,'_mad4b_wpml_quality_receipt_v1'),true);
+  if(!is_array($qa))return self::reason('central_translation_qa_missing');
+  $scope=$c::site_scope();
+  $verified=$qa['verified_at']??null;
+  $verified=is_int($verified)?$verified:(strtotime((string)$verified)?:0);
+  $sourceHash=(string)$e['source_hash'];
+  $revision=(string)$e['translation_hash'];
+  $reference='term:'.$id.'/locale:'.(string)$e['locale'];
+  $proofHash=hash('sha256',wp_json_encode($qa,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
+  $quality=($qa['fact_check_pass']??false)===true &&
+    ($qa['language_review_pass']??false)===true &&
+    ($qa['brand_editorial_pass']??false)===true &&
+    (int)($qa['quality_score']??0)>=90;
+  $native=[
+   'site_uuid'=>$scope['site_uuid']??'',
+   'environment'=>$scope['environment']??'',
+   'subject_id'=>'term:'.$id,'ability'=>'mad4b/wpml-auto-qualify-term',
+   'job_id'=>$issue['job']['job_id']??'',
+   'source_sha256'=>$sourceHash,'revision'=>$revision,
+   'reference_id'=>$reference,'evidence_sha256'=>$proofHash,
+   'evidence_verified_at'=>$verified,
+   'independent_verification'=>($qa['independent_verification']??null)===true,
+   'quality_pass'=>$quality,'rights_pass'=>($qa['rights_pass']??null)===true
+  ];
+  $claim=[
+   'contract'=>$c::CONTRACT,'site_uuid'=>$native['site_uuid'],
+   'environment'=>$native['environment'],'subject_id'=>$native['subject_id'],
+   'ability'=>$native['ability'],'job_id'=>$native['job_id'],
+   'source_sha256'=>$sourceHash,'revision'=>$revision,
+   'reference_id'=>$reference,'evidence_sha256'=>$proofHash,
+   'verified_at'=>$verified,
+   'independent_verification'=>$native['independent_verification'],
+   'quality_pass'=>$quality,'rights_pass'=>$native['rights_pass']
+  ];
+  $claim['idempotency_key']=$c::intent_key($native,$scope,$proofHash);
+  $result=$c::verify($claim,$native,$scope);
+  return !empty($result['eligible'])?$result:self::reason('central_'.$result['reason']);
+ }
  private static function publishTerm(array $e):array {
   $id=(int)$e['target_term_id'];$source=(int)$e['source_term_id'];$tax=$e['taxonomy'];
   $oldSource=self::nativeMeta($source,'is_public');
@@ -297,6 +340,12 @@ final class MAD4B_WPML_Auto_Qualification_V1 {
     $e=self::inspectIssue($issue['issue']);
     if(empty($e['eligible']) || $e['translation_hash']!==$row['evidence']['translation_hash'])
      continue;
+    $central=self::centralTermAcceptance($e,$issue);
+    if(empty($central['eligible'])) {
+     $held[]=['issue_id'=>$row['issue_id'],'job_id'=>$row['job_id'],
+       'reason'=>$central['reason'],'mutation_performed'=>false];
+     continue;
+    }
     $checked++;
     $result=self::publishTerm($e);
     $receipt=['issue_id'=>$row['issue_id'],'job_id'=>$issue['job']['job_id'],'at'=>gmdate('c')]+$result;

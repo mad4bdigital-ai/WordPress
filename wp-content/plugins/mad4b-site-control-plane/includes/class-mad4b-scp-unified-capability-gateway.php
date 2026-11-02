@@ -1,6 +1,7 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 require_once __DIR__ . '/class-mad4b-scp-capability-transport-routing.php';
+require_once __DIR__ . '/class-mad4b-scp-central-write-acceptance.php';
 
 /**
  * Client-adaptive capability gateway.
@@ -81,6 +82,7 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 			'per_client_projection_isolation' => false,
 			'authority_effect' => 'none',
 			'central_transport_routing' => MAD4B_SCP_Capability_Transport_Routing::manifest(),
+			'central_write_acceptance' => MAD4B_SCP_Central_Write_Acceptance::descriptor(),
 			'mcp_fallback' => array(
 				'resource' => class_exists( 'MAD4B_SCP_MCP_Client_Compatibility' ) ? MAD4B_SCP_MCP_Client_Compatibility::resource_identifier() : '',
 				'discovery_tool' => class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' ) ? MAD4B_SCP_ChatGPT_Tool_Projection::DISCOVER_ABILITY : 'mad4b/chatgpt-tool-projection-discover',
@@ -286,6 +288,7 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 			'contract' => self::CONTRACT,
 			'client_capabilities' => $caps,
 			'central_transport_routing' => MAD4B_SCP_Capability_Transport_Routing::manifest(),
+			'central_write_acceptance' => MAD4B_SCP_Central_Write_Acceptance::descriptor(),
 			'central_current_request' => MAD4B_SCP_Capability_Transport_Routing::current_request(),
 			'client_claims_authoritative' => false,
 			'host_refresh_confirmation_required' => true,
