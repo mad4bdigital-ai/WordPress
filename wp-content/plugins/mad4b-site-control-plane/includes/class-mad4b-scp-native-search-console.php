@@ -20,9 +20,57 @@ final class MAD4B_SCP_Native_Search_Console {
         self::$booted=true;
         MAD4B_SCP_Admin_Route_Registry::schedule_submenu(array(__CLASS__,'menu'),99);
         add_action('admin_post_mad4b_native_gsc_action',array(__CLASS__,'post_action'));
+        add_action('wp_abilities_api_init',array(__CLASS__,'register_abilities'),37);
         add_filter('mad4b/seo_opportunities/native_page_metrics',array(__CLASS__,'seo_page_metrics'),10,2);
     }
 
+    /** MCP-visible, WordPress-admin-only, read-only native GSC projections. */
+    public static function register_abilities() {
+        if(!function_exists('wp_register_ability'))return;
+        foreach(array(
+            'mad4b/search-console-status'=>array('status_read','Read Search Console Connection Status'),
+            'mad4b/search-console-observations'=>array('observation_refs','List Retained Search Console Evidence References')
+        )as $name=>$record){
+            if(function_exists('wp_has_ability')&&wp_has_ability($name))continue;
+            wp_register_ability($name,array(
+                'label'=>$record[1],
+                'description'=>'Site-bound retained Search Console evidence. No OAuth secrets or provider execution.',
+                'category'=>'mad4b-admin',
+                'execute_callback'=>array(__CLASS__,$record[0]),
+                'permission_callback'=>static fn()=>current_user_can('manage_options'),
+                'input_schema'=>array('type'=>'object','additionalProperties'=>false,'properties'=>array(
+                    'limit'=>array('type'=>'integer','minimum'=>1,'maximum'=>50),
+                    'offset'=>array('type'=>'integer','minimum'=>0,'maximum'=>3000))),
+                'output_schema'=>array('type'=>'object','additionalProperties'=>true),
+                'meta'=>array('public'=>false,'show_in_rest'=>false,
+                    'mcp'=>array('public'=>false,'type'=>'tool','surface'=>'admin'),
+                    'annotations'=>array('readonly'=>true,'destructive'=>false,'idempotent'=>true))
+            ));
+        }
+    }
+    public static function status_read($input=array()) {
+        if(!current_user_can('manage_options'))return new WP_Error('mad4b_gsc_permission_denied');
+        return self::status();
+    }
+    public static function observation_refs($input=array()) {
+        if(!current_user_can('manage_options'))return new WP_Error('mad4b_gsc_permission_denied');
+        $input=is_array($input)?$input:array();
+        if(array_diff(array_keys($input),array('limit','offset')))return new WP_Error('mad4b_gsc_input_invalid');
+        $limit=max(1,min(50,(int)($input['limit']??20)));
+        $offset=max(0,min(3000,(int)($input['offset']??0)));
+        $snapshot=self::valid_snapshot();$items=array();
+        if($snapshot) {
+            $rows=array_slice(array_values($snapshot['rows']),$offset,$limit);
+            foreach($rows as $row)$items[]=array(
+                'provider_id'=>'google-search-console',
+                'observation_id'=>hash('sha256',$snapshot['sha256'].'|'.$row['page']),
+                'page'=>$row['page'],'impressions'=>$row['impressions'],
+                'observed_at'=>$snapshot['captured_at']);
+        }
+        return array('contract'=>'mad4b.native-gsc-reference-index.v1',
+            'state'=>$snapshot?'retained':'unavailable','count'=>$snapshot?count($snapshot['rows']):0,
+            'offset'=>$offset,'limit'=>$limit,'items'=>$items,'authorizing'=>false);
+    }
     public static function menu() {
         add_submenu_page('mad4b-control-plane','Google Search Console','Search Console',
             'manage_options','mad4b-native-search-console',array(__CLASS__,'render'));
