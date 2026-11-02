@@ -164,10 +164,31 @@ final class MAD4B_SCP_Relationship_Owner_Write_Adapter implements MAD4B_Central_
     !MAD4B_SCP_Policy::can_mutate())return false;
   if($this->kind==='elementor')
    return wp_has_ability('elementor/set-dynamic-tag') &&
-      class_exists('MAD4B_WPML_Design_Reconciliation_V1',false);
+      class_exists('MAD4B_WPML_Design_Reconciliation_V1',false) &&
+      MAD4B_WPML_Design_Reconciliation_V1::enabled() &&
+      function_exists('mad4b_wpml_auto_sync_allowed_v1') &&
+      mad4b_wpml_auto_sync_allowed_v1($value['source'],$value['target']) &&
+      current_user_can('edit_post',$value['source']);
   $jet=MAD4B_SCP_Adapter_Registry::instance()->get('jetengine');
-  return wp_has_ability('jetengine/update-post-meta')&&is_object($jet)&&
-    $jet->can_edit_post(['post_id'=>$value['target']])===true;
+  if(!is_object($jet)||!$jet->is_available()||
+     !method_exists($jet,'capture_reversible_state')||
+     !wp_has_ability('jetengine/update-post-meta'))return false;
+  $args=['post_id'=>(int)$value['target'],'field'=>$value['field'],
+    'value'=>(int)$value['localized_reference'],'allow_create'=>true];
+  $identity=MAD4B_SCP_Identity_Context::current();
+  $principal=is_wp_error($identity)?$identity:
+    MAD4B_SCP_Mutation_Principal::resolve($identity,
+      'jetengine/update-post-meta',$args);
+  if(is_wp_error($principal)||!is_array($principal))return false;
+  $ability=wp_get_ability('jetengine/update-post-meta');
+  if(!$ability||$ability->check_permissions($args)!==true||
+     $jet->can_edit_post(['post_id'=>$value['target']])!==true)return false;
+  // The original JetEngine adapter validates the exact field/create policy,
+  // protected/sensitive meta rules, and reversible state before CWA claims
+  // an idempotency intent. An identity or policy denial never becomes UNKNOWN.
+  $snapshot=$jet->capture_reversible_state('jetengine/update-post-meta',$args);
+  return !is_wp_error($snapshot)&&is_array($snapshot)&&
+    ($snapshot['state']['exists']??null)===false;
  }
  public function apply(array $claim,array $source):array {
   [$plan,$job,$v]=$this->owner();
