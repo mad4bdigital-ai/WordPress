@@ -169,6 +169,20 @@ final class MAD4B_Control_Plane_WPML_Review_UI_V1 {
             $target_state = (string)($row['target_post_status'] ?? 'missing');
             $job_state = (string)($row['native_state'] ?? 'unknown');
             $blockers = array_values(array_filter((array)($row['review_blockers'] ?? array()), 'is_string'));
+            $reference_qa = (array)($row['reference_qa'] ?? array());
+            $reference_issues = array_values(array_filter((array)($reference_qa['issues'] ?? array()), 'is_array'));
+            $details = array();
+            foreach ($reference_issues as $issue) {
+                $code = (string)($issue['code'] ?? '');
+                if ($code === 'verified_reviews_data_missing')
+                    $details[] = 'Verified custom reviews: ' . (int)($issue['verified_published_reviews'] ?? 0)
+                        . ' published. Connect or validate the actual source before publication';
+                elseif ($code === 'localized_reference_unpublished')
+                    $details[] = 'Linked JetEngine listing #' . (int)($issue['target_id'] ?? 0)
+                        . ' is ' . (string)($issue['target_status'] ?? 'unpublished');
+                elseif ($code !== '')
+                    $details[] = 'Reference issue: ' . $code;
+            }
             $outbox_states = array_values(array_filter((array)($row['outbox_statuses'] ?? array()), 'is_string'));
             echo '<tr>';
             echo '<td data-label="Source"><strong>' . ($source_url ? '<a href="' . esc_url($source_url) . '">' . esc_html($title) . '</a>' : esc_html($title))
@@ -179,7 +193,9 @@ final class MAD4B_Control_Plane_WPML_Review_UI_V1 {
             echo '<td data-label="Native ContentJob"><span class="mad4b-wpml-state">' . esc_html($job_state) . '</span><br>'
                 . '<code>' . esc_html((string)($row['job_id'] ?? '')) . '</code><br><small>Outbox: '
                 . esc_html(implode(', ', $outbox_states)) . '</small></td>';
-            echo '<td data-label="Pending checks"><small>' . esc_html(implode(', ', $blockers)) . '</small></td>';
+            echo '<td data-label="Pending checks"><small>' . esc_html(implode(', ', $blockers));
+            if ($details) echo '<span style="display:block;margin-top:6px">' . esc_html(implode('; ', $details)) . '</span>';
+            echo '</small></td>';
             echo '<td data-label="Review">' . ($url ? '<a class="button button-small" href="' . esc_url($url) . '" aria-label="Open WPML draft or target ' . $id . ' for review">Open in WordPress</a>'
                 : '<span>Review record</span>') . '</td></tr>';
         }
