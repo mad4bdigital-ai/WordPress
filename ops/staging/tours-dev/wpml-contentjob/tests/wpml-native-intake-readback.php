@@ -59,6 +59,8 @@ foreach($map as $key=>$m) {
         && ($binding['source_post_id']??0)===(int)($m['source_post_id']??0)
         && ($binding['target_language']??'')===($m['lang']??'')
         && ($binding['mutation_performed']??null)===false
+        && isset($binding['current_gap_codes'])
+        && isset($binding['current_native_wpml_job_ids'])
         && ($binding['auto_publish']??true)===false,
         'scoped read-only binding '.$m['job_id']);
 }
