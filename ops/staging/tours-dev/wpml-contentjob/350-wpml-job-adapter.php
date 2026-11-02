@@ -255,6 +255,19 @@ final class MAD4B_WPML_ContentJob_Adapter {
        && (string)$now['lang']===$lang){$current=$now;break;}
   }
   if($current&&!empty($current['dst']))$target=(int)$current['dst'];
+  // A historical intake mapping may have captured target_post_id=0 while
+  // WPML drafts were excluded from its original translation collection.
+  // After publication the discovery gap disappears; resolve the authoritative
+  // WPML ID directly and verify the source TRID, target locale and post type.
+  $live_target=(int)apply_filters('wpml_object_id',$source,(string)$match['type'],false,$lang);
+  if($live_target && get_post_type($live_target)===(string)$match['type']){
+   $source_trid=(int)apply_filters('wpml_element_trid',null,$source,'post_'.$match['type']);
+   $target_trid=(int)apply_filters('wpml_element_trid',null,$live_target,'post_'.$match['type']);
+   $locale_data=(array)apply_filters('wpml_post_language_details',null,$live_target);
+   if($source_trid>0 && $source_trid===$target_trid
+     &&($locale_data['language_code']??'')===$lang)
+    $target=$live_target;
+  }
   $gaps=array_values(array_unique(array_merge((array)($match['gap_codes']??[]),
       (array)($current['gaps']??[]))));
   $wpml_ids=array_values(array_unique(array_merge((array)($match['native_wpml_job_ids']??[]),
@@ -489,6 +502,25 @@ final class MAD4B_WPML_ContentJob_Adapter {
       $issues[]=['code'=>'localized_reference_mismatch','widget'=>$node,
        'field'=>$field,'source_id'=>$source_id,'expected_target_id'=>$expected,
        'actual_target_id'=>$found];
+     }elseif(get_post_status($expected)!=='publish'){
+      // A correctly WPML-linked draft is NOT a usable published provider.
+      $issues[]=['code'=>'localized_reference_unpublished','widget'=>$node,
+       'field'=>$field,'source_id'=>$source_id,'target_id'=>$expected,
+       'target_status'=>get_post_status($expected)];
+     }
+     if($type==='jet-engine'){
+      // Data-source readiness is independent of correct listing IDs.
+      $listing=(array)get_post_meta($source_id,'_listing_data',true);
+      $entity=(string)($listing['post_type']??'');
+      if(($listing['source']??'')==='posts'&&$entity==='custom-reviews'){
+       $counts=wp_count_posts($entity);
+       $public_count=is_object($counts)?(int)($counts->publish??0):0;
+       if($public_count<=0){
+        $issues[]=['code'=>'verified_reviews_data_missing','widget'=>$node,
+         'field'=>$field,'source_id'=>$source_id,'data_post_type'=>$entity,
+         'verified_published_reviews'=>$public_count];
+       }
+      }
      }
     }
    }
