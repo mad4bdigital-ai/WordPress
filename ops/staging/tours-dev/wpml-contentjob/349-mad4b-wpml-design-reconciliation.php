@@ -38,6 +38,20 @@ final class MAD4B_WPML_Design_Reconciliation_V1 {
         $refs=apply_filters('wpml_get_element_translations',null,$trid,'post_'.$type);
         $out=[];
         foreach((array)$refs as $lang=>$o)if(is_object($o)&&!empty($o->element_id))$out[$lang]=(int)$o->element_id;
+        // WPML's translations collection can omit drafts. Resolve through the
+        // native WPML object-ID filter, then enforce the same source TRID,
+        // language, type, and an explicitly unpublished draft status.
+        // Never equate a draft with an approved/published translation.
+        $active=(array)apply_filters('wpml_active_languages',null);
+        foreach(array_keys($active) as $lang) {
+            if(!is_string($lang)||isset($out[$lang])||$lang===self::language($id))continue;
+            $candidate=(int)apply_filters('wpml_object_id',(int)$id,$type,false,$lang);
+            if(!$candidate||$candidate===(int)$id||get_post_type($candidate)!==$type
+                ||get_post_status($candidate)!=='draft'||self::language($candidate)!==$lang)continue;
+            $trid2=(int)apply_filters('wpml_element_trid',null,$candidate,'post_'.$type);
+            if($trid2!==(int)$trid)continue;
+            $out[$lang]=$candidate;
+        }
         return $out;
     }
     private static function canonical($id) {
