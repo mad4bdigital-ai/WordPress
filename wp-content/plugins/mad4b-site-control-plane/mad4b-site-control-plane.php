@@ -130,6 +130,7 @@ if ( ! ( defined( 'MAD4B_SCP_FORCE_FULL_BOOT' ) && true === constant( 'MAD4B_SCP
 	if ( '' !== $mad4b_scp_early_rest_path ) {
 		$mad4b_scp_early_owned = 0 === strpos( $mad4b_scp_early_rest_path, '/mcp/mad4b-' )
 			|| 0 === strpos( $mad4b_scp_early_rest_path, '/mad4b/' )
+            || 0 === strpos( $mad4b_scp_early_rest_path, '/mad4b-localization/v1/' )
             || in_array($mad4b_scp_early_rest_path,array(
                     '/mad4b-local-ai/v1/context-review',
                     '/mad4b-local-ai/v1/domain-review'),true);
