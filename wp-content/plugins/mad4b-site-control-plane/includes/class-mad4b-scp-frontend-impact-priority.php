@@ -186,12 +186,21 @@ final class MAD4B_SCP_Frontend_Impact_Priority {
         $children=self::group_size($parent);
         $score=35+$rank+min(16,$children*2)+($hits?8:0);
         $score=min(96,max(10,$score));
-        return ['score'=>$score,'confidence'=>$hits?'observed_navigation':'source_inferred',
+        $ranking=['score'=>$score,'confidence'=>$hits?'observed_navigation':'source_inferred',
             'surface'=>$kind,'observed_urls'=>array_slice(array_values(array_unique($hits)),0,3),
             'group'=>'destinations/'.$lang.'/'.$parent,
             'evidence'=>$hits?'localized_parent_found_in_public_navigation':'parent_not_seen_in_bounded_live_sample',
             'source_term_id'=>$source,'parent_term_id'=>$parent,
             'localized_parent_id'=>$translated,'source_children'=>$children,'locale'=>$lang];
+        // Optional MU adapters enrich evidence from Shared Product Core and
+        // presentation policy. They cannot grant eligibility or mutate content.
+        $enriched=apply_filters('mad4b/frontend_impact/score_context',$ranking,
+            ['taxonomy'=>$tax,'source_term_id'=>$source,'parent_term_id'=>$parent,
+             'localized_parent_id'=>$translated,'locale'=>$lang,'issue_code'=>$code]);
+        if(!is_array($enriched)||!isset($enriched['score'])||!is_int($enriched['score']))
+            return $ranking;
+        $enriched['score']=max(0,min(100,$enriched['score']));
+        return $enriched;
     }
     public static function scan(int $per_lang=1,bool $internal_cron=false) {
         if(!self::authorized() && !($internal_cron && doing_action(self::HOOK)))
