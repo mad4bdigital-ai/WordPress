@@ -4,21 +4,45 @@ namespace DynamicFilterSEOBridge\IndexFlow;
 /** Reads real WordPress/WPML objects. Never copies translated slugs into settings. */
 final class WordPressRouteEnvironment {
     public function term(string $taxonomy, int $id, string $locale): array {
-        $term = get_term($id, $taxonomy);
-        if (!$term instanceof \WP_Term) return array();
-        $semantic = $id;
+        $locale = sanitize_key($locale);
+        if (!$id || !taxonomy_exists($taxonomy)) return array();
+        $resolver = new \DynamicFilterSEOBridge\WPML\LanguageResolver();
         if (has_filter('wpml_object_id')) {
-            $default = apply_filters('wpml_default_language', null);
-            if (!is_string($default) || '' === $default) return array();
-            $semantic = (int)apply_filters('wpml_object_id', $id, $taxonomy, false, $default);
-            // No return-original fallback: a missing translation denies the route.
-            $localized = (int)apply_filters('wpml_object_id', $semantic, $taxonomy, false, $locale);
-            if (!$semantic || $localized !== $id) return array();
+            $default = $resolver->defaultLanguage();
+            $active = $resolver->activeLanguages();
+            if (!$default || !isset($active[$locale])) return array();
+            // WPML filters get_term() to the current language even when the
+            // requested ID belongs to a translation. Read the identity and
+            // translated slug in their *respective* language contexts.
+            $base = $resolver->executeInLanguage($default, static function () use ($taxonomy, $id, $default) {
+                $source = (int)apply_filters('wpml_object_id', $id, $taxonomy, false, $default);
+                return $source > 0 ? $source : null;
+            });
+            $semantic = (int)($base['result'] ?? 0);
+            if (empty($base['available']) || $semantic < 1) return array();
+            $target = $resolver->executeInLanguage($locale, static function () use ($taxonomy, $id, $semantic, $locale) {
+                $mapped = (int)apply_filters('wpml_object_id', $semantic, $taxonomy, false, $locale);
+                if ($mapped !== $id) return null;
+                $term = get_term($id, $taxonomy);
+                if (!$term instanceof \WP_Term || (int)$term->term_id !== $id) return null;
+                if (has_filter('wpml_element_language_code')) {
+                    $actual = sanitize_key((string)apply_filters('wpml_element_language_code', null,
+                        array('element_id'=>$id, 'element_type'=>'tax_'.$taxonomy)));
+                    if ($actual !== $locale) return null;
+                }
+                return $term;
+            });
+            $term = $target['result'] ?? null;
+            if (empty($target['available']) || !$term instanceof \WP_Term) return array();
         } else {
             $siteLocale = str_replace('_', '-', (string)get_locale());
-            if (strtolower($locale) !== strtolower($siteLocale) && strtolower($locale) !== strtolower(substr($siteLocale, 0, 2))) return array();
+            if ($locale !== strtolower($siteLocale) && $locale !== strtolower(substr($siteLocale, 0, 2))) return array();
+            $term = get_term($id, $taxonomy);
+            if (!$term instanceof \WP_Term) return array();
+            $semantic = $id;
         }
-        return array('term_id' => $id, 'semantic_id' => $semantic, 'slug' => (string)$term->slug);
+        $slug = (string)$term->slug;
+        return '' !== trim($slug) ? array('term_id'=>$id, 'semantic_id'=>$semantic, 'slug'=>$slug) : array();
     }
 
     public function page(int $id, string $locale): array {

@@ -19,8 +19,21 @@ final class NativeFeaturePriority {
         return function_exists('jet_smart_filters');
     }
 
+    public static function jetSmartFiltersSeoActive(): bool {
+        if ( ! self::jetSmartFiltersAvailable() ) return false;
+        try {
+            $vendor = jet_smart_filters();
+            return isset( $vendor->settings ) && ! empty( $vendor->settings->is_seo_enabled );
+        } catch ( \Throwable $e ) {
+            // An unavailable native SEO setting never proves that it is disabled.
+            return true;
+        }
+    }
+
     public static function bridgeSeoFallbackAllowed(): bool {
-        return self::fallbackForAvailability(self::jetSmartFiltersAvailable());
+        // JetSmartFilters may be active for faceting while its separate SEO engine
+        // is explicitly OFF. Rank Math remains the single metadata publisher then.
+        return ! self::jetSmartFiltersAvailable() || ! self::jetSmartFiltersSeoActive();
     }
 
     public static function fallbackForAvailability(bool $jetSmartFiltersAvailable): bool {
@@ -33,8 +46,9 @@ final class NativeFeaturePriority {
         return array(
             'contract' => self::CONTRACT,
             'native_filter_plugin_available' => $available,
-            'overlapping_seo_owner' => $available ? 'jet_smart_filters' : 'dfsb_fallback_via_rank_math',
-            'overlapping_seo_fallback_allowed' => !$available,
+            'native_filter_seo_active' => self::jetSmartFiltersSeoActive(),
+            'overlapping_seo_owner' => $available && self::jetSmartFiltersSeoActive() ? 'jet_smart_filters' : 'dfsb_fallback_via_rank_math',
+            'overlapping_seo_fallback_allowed' => self::bridgeSeoFallbackAllowed(),
             'metadata_publisher' => 'rank_math',
             'sitemap_publisher' => 'rank_math',
             'unique_context_and_presentation_preserved' => true,

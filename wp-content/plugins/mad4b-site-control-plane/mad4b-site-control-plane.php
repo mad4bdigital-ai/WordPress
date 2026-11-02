@@ -190,6 +190,8 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-public-holidays.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connection-identity-resolver.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connection-doctor.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-environment.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dfsb-environment-policy.php';
+MAD4B_SCP_DFSB_Environment_Policy::boot();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-maintenance-lease.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-post-update-continuation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-portable-readonly-connection.php';
