@@ -195,7 +195,14 @@ final class RequestReviewAdmin
                         '<p>Quote: ';
                     if($draft['quote_state']==='preview_only')
                         echo esc_html(number_format_i18n($draft['preview_amount'],2).' '.$draft['currency']);
-                    else echo 'Requires Review ('.esc_html($draft['reason']).')';
+                    elseif($draft['quote_state']==='partial_preview'
+                        &&is_numeric($draft['base_preview_amount']??null)
+                        &&(int)($draft['base_preview_adults']??0)>0){
+                        echo '<strong>Adult price reference: '.esc_html(
+                            number_format_i18n((float)$draft['base_preview_amount'],2).' '.$draft['currency']
+                        ).'</strong> ('.esc_html((string)$draft['base_preview_adults']).' adult(s)).';
+                        echo '<p>Child/infant charges and any additional services are not included. Final group total requires review.</p>';
+                    }else echo 'Requires Review ('.esc_html($draft['reason']).')';
                     echo '</p><small>Not approved. No sale or supplier booking.</small>';
                 }elseif($draft->get_error_code()==='qualification_not_found'){
                     $selected=(int)($_GET['qualify_form']??0)===$fid &&
