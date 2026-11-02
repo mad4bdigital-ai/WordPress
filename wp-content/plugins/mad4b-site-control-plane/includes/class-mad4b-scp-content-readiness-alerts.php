@@ -7,6 +7,7 @@
 defined('ABSPATH') || exit;
 require_once __DIR__.'/class-mad4b-scp-readiness-workflow-options.php';
 require_once __DIR__.'/class-mad4b-scp-content-completeness.php';
+require_once __DIR__.'/class-mad4b-scp-geo-quality.php';
 require_once __DIR__.'/class-mad4b-scp-readiness-integrations.php';
 require_once __DIR__.'/class-mad4b-scp-readiness-scopes.php';
 require_once __DIR__.'/class-mad4b-scp-readiness-preactivation.php';
@@ -58,6 +59,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
             'owner_fields' => self::map($saved['owner_fields'] ?? array()),
             'end_date_fields' => self::map($saved['end_date_fields'] ?? array()),
             'stop_sale_fields' => self::map($saved['stop_sale_fields'] ?? array()),
+            'geo_quality_enabled' => !empty($saved['geo_quality_enabled']),
             'scheduled_scan_enabled' => !empty($saved['scheduled_scan_enabled']),
             'scheduled_scan_interval_minutes' => max(15,min(1440,absint($saved['scheduled_scan_interval_minutes'] ?? 60))),
             'board_id' => absint($saved['board_id'] ?? 0),
@@ -285,6 +287,10 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         $completeness=MAD4B_SCP_Content_Completeness::discover();
         if(empty($completeness['complete']))$complete=false;
         else $issues=array_merge($issues,(array)$completeness['issues']);
+        // First-party, source-only geo/transport candidates; existing Ledger owns reconciliation.
+        $geo=MAD4B_SCP_Geo_Quality::discover($cfg);
+        if(empty($geo['complete']))$complete=false;
+        else $issues=array_merge($issues,(array)$geo['issues']);
         if(count($issues)>self::MAX_ISSUES)$complete=false;
         return array('contract'=>'mad4b.content-readiness.discovery.v1','complete'=>$complete,
             'post_counts'=>$counts,'scanned'=>$scanned,'issues'=>$issues,
@@ -363,6 +369,10 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                 if(($rule['id']??'')===$rule_id)return true;
             return false;
         }
+        if(str_starts_with($code,'geo_'))
+            return !empty($cfg['geo_quality_enabled']) &&
+                in_array($type,$cfg['post_types'],true) &&
+                in_array($code,MAD4B_SCP_Geo_Quality::CODES,true);
         if($code==='cron_overdue')return (bool)$cfg['check_cron'];
         if($code==='form_submissions_unread')return !empty($cfg['form_id']);
         if(!in_array($type,$cfg['post_types'],true))return false;
@@ -618,6 +628,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         $settings['media_reuse_threshold']=max(0,min(100,absint($_POST['media_reuse_threshold']??0)));
         $settings['form_id']=absint($_POST['form_id']??0);
         $settings['form_unread_days']=max(1,min(90,absint($_POST['form_unread_days']??7)));
+        $settings['geo_quality_enabled']=isset($_POST['geo_quality_enabled']);
         $settings['scheduled_scan_enabled']=isset($_POST['scheduled_scan_enabled']);
         $settings['scheduled_scan_interval_minutes']=max(15,min(1440,absint($_POST['scheduled_scan_interval_minutes']??60)));
         $settings['check_wpml']=isset($_POST['check_wpml']);
@@ -751,7 +762,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         echo '<p><label>Disallowed origin levels (CSV)<br><input class="large-text" name="invalid_origin_levels" value="'.esc_attr(implode(',',(array)$rules['invalid_origin_levels'])).'"></label></p>';
         foreach(array('scheduled_scan_interval_minutes'=>'Scheduled scan minimum interval (minutes)', 'media_reuse_threshold'=>'Shared gallery review threshold (0 disables)', 'form_id'=>'Fluent Forms ID', 'form_unread_days'=>'Unread follow-up threshold (days)') as $field=>$label)
             echo '<p><label>'.esc_html($label).' <input type="number" min="0" name="'.esc_attr($field).'" value="'.(int)$rules[$field].'"></label></p>';
-        foreach(array('scheduled_scan_enabled'=>'Enable local server-side scheduled scans (issue ledger only; no notifications or tasks)','check_wpml'=>'Detect missing WPML language','check_cron'=>'Detect overdue WP-Cron') as $field=>$label)
+        foreach(array('geo_quality_enabled'=>'Enable source-only station, cruise boarding and transport-price quality alerts (no geocoding or pricing writes)','scheduled_scan_enabled'=>'Enable local server-side scheduled scans (issue ledger only; no notifications or tasks)','check_wpml'=>'Detect missing WPML language','check_cron'=>'Detect overdue WP-Cron') as $field=>$label)
             echo '<p><label><input type="checkbox" name="'.esc_attr($field).'" '.checked($rules[$field],true,false).'>'.esc_html($label).'</label></p>';
         submit_button('Save rules');echo '</form>';
         }
