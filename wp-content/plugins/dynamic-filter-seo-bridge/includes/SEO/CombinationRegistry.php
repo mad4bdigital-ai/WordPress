@@ -12,8 +12,9 @@ final class CombinationRegistry {
 		$filters = (array) ( $context['filters'] ?? array() );
 		$profile = (array) ( $context['profile'] ?? array() );
 		$count = count( $filters );
-		$requires = $count > 1 || ( 1 === $count && ! empty( $profile['require_exact_for_single'] ) );
-		if ( array_key_exists( 'require_exact_combination_approval', $profile ) && empty( $profile['require_exact_combination_approval'] ) ) { $requires = false; }
+		$autoQualifiedSingle = 1 === $count && !empty($profile['taxonomy_rules'][(string)array_key_first($filters)]['auto_qualified']);
+        $requires = $autoQualifiedSingle || $count > 1 || ( 1 === $count && ! empty( $profile['require_exact_for_single'] ) );
+		if ( !$autoQualifiedSingle && array_key_exists( 'require_exact_combination_approval', $profile ) && empty( $profile['require_exact_combination_approval'] ) ) { $requires = false; }
 		elseif ( ! $profile && ! $this->config->get( 'require_exact_combination_approval', true ) ) { $requires = false; }
 		$signature = $this->signature( $context );
 		$legacySignature = $this->legacySignature( $context );

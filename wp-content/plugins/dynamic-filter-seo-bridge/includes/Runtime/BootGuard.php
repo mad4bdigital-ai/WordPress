@@ -140,11 +140,17 @@ final class BootGuard {
         $ready = !empty($identity['provenance_complete'])
             && !empty($identity['installed_content_valid'])
             && 'ok' === (string) ($identity['exact_build_reason'] ?? '');
-        // A locally committed source snapshot can be byte-exact but is not
-        // a governed, published release. A local version MUST carry a valid
-        // detached package-provenance receipt before Full Boot is offered.
+        // Host-managed local builds are NOT certified releases. Full Boot can
+        // run only when the Control Plane has explicitly approved THIS exact
+        // source commit for its effective environment and the embedded
+        // manifest verifies every installed source file. No production/staging
+        // identity, certificate or package checksum is fabricated.
         $localCandidate = false !== strpos((string) ($identity['plugin_version'] ?? ''), '-local.');
-        $governanceBlocked = $localCandidate && empty($identity['package_provenance_valid']);
+        $localApproved = $localCandidate
+            && class_exists('MAD4B_SCP_DFSB_Environment_Policy')
+            && method_exists('MAD4B_SCP_DFSB_Environment_Policy', 'localPackageApproved')
+            && \MAD4B_SCP_DFSB_Environment_Policy::localPackageApproved((string) ($identity['git_sha'] ?? ''));
+        $governanceBlocked = $localCandidate && empty($identity['package_provenance_valid']) && !$localApproved;
         if ($governanceBlocked) { $ready = false; }
         return array(
             'ready' => $ready,
@@ -154,6 +160,7 @@ final class BootGuard {
             'installed_content_valid' => !empty($identity['installed_content_valid']),
             'provenance_complete' => !empty($identity['provenance_complete']),
             'authorizing' => false,
+            'local_package_approved_by_control_plane' => $localApproved,
         );
     }
 
