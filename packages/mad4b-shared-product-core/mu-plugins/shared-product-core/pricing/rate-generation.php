@@ -176,6 +176,12 @@ final class Shared_Product_Rate_Generation {
    if($source===false)return new WP_Error('accommodation_assignment_source_rate_invalid');
    if($assignmentMode==='manual'&&$source)return new WP_Error('accommodation_assignment_manual_source_conflict');
    if($assignmentMode==='auto'){
+    // Some early MU loaders evaluate this helper before their runtime grant.
+    // A previously skipped include must not produce a fatal on Staging.
+    if(!function_exists('shared_product_accommodation_assignment'))
+      require __DIR__.'/accommodation-assignment.php';
+    if(!function_exists('shared_product_accommodation_assignment'))
+      return new WP_Error('rate_generator_assignment_provider_unavailable');
     $assignment=shared_product_accommodation_assignment((int)$id,(int)$source,(int)$package);if(is_wp_error($assignment))return $assignment;
     $params['accommodation_assignment']=$assignment;
     $meta['accommodation_assignment_mode']='auto';
