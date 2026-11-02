@@ -250,6 +250,94 @@ add_action('rest_api_init',static function(){
 });
 
 /**
+ * Lab-only, read-only on-form price reference. The guest never supplies an amount.
+ * Attach to the original Form #6 without editing form definitions or WooCommerce.
+ * Unsupported or incomplete inputs leave the reference unavailable, not zero.
+ */
+add_action('fluentform/after_form_render',static function($form){
+ if((int)($form->id??0)!==6)return;
+ $postId=(int)get_queried_object_id();
+ if($postId<1||get_post_type($postId)!=='tours-and-activities')$postId=0;
+ echo '<output class="shared-form6-price-reference" role="status" aria-live="polite" data-tour-id="'.esc_attr((string)$postId).'" data-endpoint="'.esc_url(rest_url('shared-product/v1/tour-form-price-preview')).'">Select a valid Tour Rate, travel date and travellers to view an indicative price.</output>';
+ ?>
+ <script>
+ (function(script){
+  "use strict";
+  const output=script.previousElementSibling;
+  if(!output||!output.classList.contains('shared-form6-price-reference'))return;
+  const previous=output.previousElementSibling;
+  const form=(previous&&(previous.matches&&previous.matches('form')?previous:previous.querySelector&&previous.querySelector('form')))
+   ||document.querySelector('form.fluent_form_6,form[data-form_id="6"],form[data-form-id="6"]');
+  if(!form)return;
+  let revision=0,controller=null,debounce=0;
+  const read=(names)=>{
+   for(const name of names){
+    const node=Array.from(form.querySelectorAll('input,select,textarea'))
+     .find(el=>el.name===name || el.name===name+'[]');
+    if(!node)continue;
+    const value=String(node.value||'').trim();
+    if(value)return value;
+   }
+   return '';
+  };
+  const positive=(raw)=>/^[1-9][0-9]{0,4}$/.test(raw)?Number(raw):0;
+  const zeroAllowed=(raw)=>/^(0|[1-9][0-9]{0,2})$/.test(raw)?Number(raw):null;
+  const dateIso=(raw)=>{
+   if(/^\\d{4}-\\d{2}-\\d{2}$/.test(raw))return raw;
+   const m=/^(\\d{1,2})-([A-Za-z]{3})-(\\d{4})$/.exec(raw);
+   if(!m)return '';
+   const index=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'].indexOf(m[2].toLowerCase());
+   return index<0?'':m[3]+'-'+String(index+1).padStart(2,'0')+'-'+m[1].padStart(2,'0');
+  };
+  const update=()=>{
+   const id=++revision;
+   if(controller)controller.abort();
+   const rate=positive(read(['shared_rate_id','rate_id','tour_rate_id','selected_rate_id','shared_selected_rate_id']));
+   const tour=positive(read(['tour_id','shared_tour_id']))||positive(output.dataset.tourId||'');
+   const date=dateIso(read(['datetime','travel_date','start_date']));
+   const adults=zeroAllowed(read(['no_of_adults','adults']));
+   const children=zeroAllowed(read(['no_of_children','children']))??0;
+   const infants=zeroAllowed(read(['no_of_infants','infants']))??0;
+   const occupancy=read(['shared_occupancy','occupancy'])||'double';
+   if(!tour||!rate||!date||adults===null||adults<1||!['single','double','triple'].includes(occupancy)){
+    output.textContent='Select a valid Tour Rate, travel date and number of adults to view a price.';
+    return;
+   }
+   output.textContent='Calculating price reference…';
+   controller=new AbortController();
+   fetch(output.dataset.endpoint,{
+    method:'POST',credentials:'same-origin',cache:'no-store',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({tour_id:tour,source:'rate',rate_id:rate,travel_date:date,
+     adults,children,infants,occupancy,extras:[]}),
+    signal:controller.signal
+   }).then(response=>response.ok?response.json():Promise.reject(new Error('quote_unavailable')))
+    .then(data=>{
+     if(id!==revision)return;
+     const scoped=data.status==='partial_price_preview_only'&&data.display_kind==='adults_only_reference';
+     const complete=data.status==='price_preview_only'&&data.display_kind==='nonbinding_price_preview';
+     const amount=data.display_amount;
+     if((!scoped&&!complete)||typeof amount!=='number'||!Number.isFinite(amount)||amount<=0||
+      typeof data.currency!=='string'||!/^[A-Z]{3}$/.test(data.currency))throw new Error('quote_invalid');
+     const formatted=new Intl.NumberFormat(document.documentElement.lang||'en',{style:'currency',currency:data.currency}).format(amount);
+     output.textContent=scoped?
+      'Adult price reference ('+adults+' adult(s)): '+formatted+'. Child/infant charges are not included. Final group price requires review.':
+      'Indicative tour price: '+formatted+'. Availability and final price require confirmation.';
+    }).catch(error=>{
+     if(id!==revision||error.name==='AbortError')return;
+     output.textContent='Price reference unavailable for this selection.';
+    });
+  };
+  const refresh=()=>{clearTimeout(debounce);debounce=setTimeout(update,180);};
+  form.addEventListener('input',refresh);
+  form.addEventListener('change',refresh);
+  refresh();
+ })(document.currentScript);
+ </script>
+ <?php
+},20,1);
+
+/**
  * Retain source-verified stage/property preferences for staff review only.
  * This intentionally does NOT turn a selected hotel into a priced stay.
  */
