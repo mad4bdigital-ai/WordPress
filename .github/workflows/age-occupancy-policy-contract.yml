@@ -7,8 +7,9 @@ on:
       - 'wp-content/plugins/commerce-composition/includes/InquiryQualification.php'
       - 'wp-content/plugins/commerce-composition/includes/RequestReviewAdmin.php'
       - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/presentation-form6-price-quote-v1.php'
+      - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/assets/presentation-fluent-quote-v1.js'
       - 'packages/mad4b-shared-product-core/tests/form6-missing-minor-policy-contract.php'
-      - 'packages/mad4b-shared-product-core/tests/form6-preview-widget-smoke.js'
+      - 'packages/mad4b-shared-product-core/tests/form6-native-pricing-contract.js'
       - '.github/workflows/age-occupancy-policy-contract.yml'
   push:
     branches: [master]
@@ -17,8 +18,9 @@ on:
       - 'wp-content/plugins/commerce-composition/includes/InquiryQualification.php'
       - 'wp-content/plugins/commerce-composition/includes/RequestReviewAdmin.php'
       - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/presentation-form6-price-quote-v1.php'
+      - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/assets/presentation-fluent-quote-v1.js'
       - 'packages/mad4b-shared-product-core/tests/form6-missing-minor-policy-contract.php'
-      - 'packages/mad4b-shared-product-core/tests/form6-preview-widget-smoke.js'
+      - 'packages/mad4b-shared-product-core/tests/form6-native-pricing-contract.js'
       - '.github/workflows/age-occupancy-policy-contract.yml'
   workflow_dispatch:
 
@@ -49,18 +51,7 @@ jobs:
           php -l wp-content/plugins/commerce-composition/includes/RequestReviewAdmin.php
           php -l packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/presentation-form6-price-quote-v1.php
           php packages/mad4b-shared-product-core/tests/form6-missing-minor-policy-contract.php
-      - name: Form 6 browser adapter JavaScript syntax
+      - name: Canonical Fluent Form 6 pricing UI contract
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          src=Path('packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/presentation-form6-price-quote-v1.php').read_text()
-          start=src.index('<script>',src.index("add_action('fluentform/after_form_render'"))+len('<script>')
-          end=src.index('</script>',start)
-          js=src[start:end]
-          assert "partial_price_preview_only" in js and "adults_only_reference" in js
-          assert "cache:'no-store'" in js and "Final group price requires review" in js
-          assert "total:" not in js and "checkout" not in js.lower()
-          Path('/tmp/mad4b-form6-ref-preview.js').write_text(js)
-          PY
-          node --check /tmp/mad4b-form6-ref-preview.js
-          node packages/mad4b-shared-product-core/tests/form6-preview-widget-smoke.js
+          node --check packages/mad4b-shared-product-core/mu-plugins/shared-product-core/assets/presentation-fluent-quote-v1.js
+          node packages/mad4b-shared-product-core/tests/form6-native-pricing-contract.js
