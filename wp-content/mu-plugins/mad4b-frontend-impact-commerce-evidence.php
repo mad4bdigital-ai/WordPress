@@ -5,6 +5,14 @@
  * Version: 1.0.0
  */
 defined('ABSPATH') || exit;
+// Site adapter: Native Shared Product Form 6 price-quote contract is the
+// source of truth for whether this Form is configured as a booking interface.
+// The core scanner never hard-codes form IDs or assumes every form is booking.
+add_filter('mad4b/frontend_impact/booking_form_ids',static function($ids){
+    if(function_exists('shared_presentation_form6_price_quote'))$ids[]=6;
+    return array_values(array_unique(array_map('intval',(array)$ids)));
+},20,1);
+
 
 add_filter('mad4b/frontend_impact/score_unmapped_issue',static function($unmapped,$issue,$pages) {
     if(!is_array($issue)||!is_array($pages))return $unmapped;
