@@ -3,6 +3,8 @@ namespace DynamicFilterSEOBridge\Integration;
 use DynamicFilterSEOBridge\SEO\SafeBootSeoAudit;
 use DynamicFilterSEOBridge\Runtime\BootGuard;
 
+require_once __DIR__ . '/WPMLTermRouteGapScanner.php';
+
 /** Site-wide, stable-fingerprint SEO issues for an explicit MAD4B scan only. */
 final class GapAlertSource {
     public const CONTRACT='dfsb.readiness-gap-source.v1';
@@ -41,6 +43,13 @@ final class GapAlertSource {
         if(!empty($audit['safe_boot_held']) && empty($audit['release_ready'])){
             $issues[]=$this->make('dfsb_release_not_certified','high',
                 'DFSB installed source does not have release certification');
+        }
+        // These are read-only priority ContentJob *requests*, not job writes.
+        // MAD4B's issue reconciliation owns dedupe, visibility and governed routing.
+        try {
+            $issues = array_merge($issues, WPMLTermRouteGapScanner::scan());
+        } catch (\Throwable $e) {
+            return new \WP_Error('dfsb_wpml_scan_incomplete','WPML term route evidence incomplete');
         }
         return $issues;
     }
