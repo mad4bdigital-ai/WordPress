@@ -41,4 +41,10 @@ assert(js.includes('numberLocale=document.documentElement.lang'),"currency forma
 assert(php.includes("MAD4B_COMMERCE_RUNTIME_ENABLED"));
 assert(php.includes("shared_product_form6_price_runtime_enabled"));
 assert(!php.includes("wp_get_environment_type()!=='local'"));
+for(const event of [
+ "window.addEventListener('visitor-market:changed',refreshMarketQuotes)",
+ "document.addEventListener('visitor-preferences:saved',refreshMarketQuotes)",
+ "state.lastSettledPriceSignature=null",
+ "state.controller?.abort()"
+])assert(js.includes(event),"market revalidation regression: "+event);
 console.log("FORM6_NATIVE_PRICING_CONTRACT_PASS");
