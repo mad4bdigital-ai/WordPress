@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Translation Provider Routing
  * Description: Active ChatGPT MCP first, authorized synchronous external providers second. No implicit queue.
- * Version: 0.1.0-staging
+ * Version: 0.2.0-staging
  */
 defined('ABSPATH') || exit;
 
@@ -179,21 +179,37 @@ final class MAD4B_Translation_Provider_Router {
             return self::denied('invalid_plan_input');
         $request=self::request((string)($input['issue_id']??''));
         if(is_wp_error($request))return $request;
-        $selection=self::choose(self::active_mcp_session(),self::external_status($request));
+        // Provider and transport are independent: HTTP MCP and VPS stdio
+        // carry the same active ChatGPT client work, but VPS read-only never
+        // qualifies as a transport for any translation writeback.
+        if(!class_exists('MAD4B_Translation_Transport_Router'))
+            return self::denied('transport_router_unavailable');
+        $transport=MAD4B_Translation_Transport_Router::plan($request,self::active_mcp_session());
+        $handoff=!empty($transport['routing']['selected_transport']);
+        $selection=self::choose($handoff,self::external_status($request));
+        $selection['selected_transport']=$transport['routing']['selected_transport'];
         return ['contract'=>self::CONTRACT.'.plan','site_uuid'=>$scope['site_uuid'],
             'environment'=>$scope['environment'],'request'=>$request,'routing'=>$selection,
-            'model_invoked'=>false,'translation_written'=>false,'network_performed'=>false];
+            'transport'=>$transport,'model_invoked'=>false,
+            'translation_written'=>false,'network_performed'=>false];
     }
     public static function run($input=[]) {
         $scope=self::scope(true);if(is_wp_error($scope))return $scope;
         $plan=self::plan($input);if(is_wp_error($plan))return $plan;
         $route=$plan['routing'];$request=$plan['request'];
-        if($route['selected_provider']==='chatgpt_mcp_session')
+        if($route['selected_provider']==='chatgpt_mcp_session') {
+            $transport=$plan['transport']['routing']['selected_transport']??null;
+            if(!in_array($transport,[
+                MAD4B_Translation_Transport_Router::HTTPS_ID,
+                MAD4B_Translation_Transport_Router::VPS_ID],true))
+                return self::denied('client_transport_lost');
             return ['contract'=>self::CONTRACT.'.dispatch','status'=>'ACTIVE_CLIENT_HANDOFF',
-                'job_id'=>$request['job_id'],'issue_id'=>$request['issue_id'],
+                'transport'=>$transport,'job_id'=>$request['job_id'],
+                'issue_id'=>$request['issue_id'],
                 'source_sha256'=>$request['source_sha256'],'request'=>$request,
-                'writer_required'=>'MAD4B governed WPML writeback; revalidate source and job revision',
+                'writer_required'=>'MAD4B governed WPML writeback; revalidate exact per-site write grant, source and job revision',
                 'model_invoked_by_wordpress'=>false,'background_queued'=>false];
+        }
         if(!$route['selected_provider'])
             return ['contract'=>self::CONTRACT.'.dispatch','status'=>'HOLD_PROVIDER_UNAVAILABLE',
                 'issue_id'=>$request['issue_id'],'background_queued'=>false,'paid_api_called'=>false];
@@ -279,7 +295,7 @@ final class MAD4B_Translation_Provider_Router {
                 'output_schema'=>['type'=>'object','additionalProperties'=>true],
                 'meta'=>['public'=>false,'show_in_rest'=>false,
                     'mcp'=>['public'=>false,'type'=>'tool','surface'=>$entry[1]?'write':'read'],
-                    'annotations'=>['readonly'=>!$entry[1],'idempotent'=>true,'destructive'=>false]],
+                    'annotations'=>['readonly'=>!$entry[1],'idempotent'=>!$entry[1],'destructive'=>false]],
             ]);
         }
     }
