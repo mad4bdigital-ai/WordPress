@@ -5,6 +5,9 @@ $generation=(string)file_get_contents($root.'pricing/rate-generation.php');
 $admin=(string)file_get_contents($root.'admin/rate-generation.php');
 $batch=(string)file_get_contents($root.'pricing/rate-source-batch.php');
 $assignment=(string)file_get_contents($root.'pricing/accommodation-assignment.php');
+$bookingSource=(string)file_get_contents($root.'pricing/booking-configuration-v2.php');
+$rateBatch=(string)file_get_contents($root.'pricing/rate-source-batch.php');
+$sourcePriority=(string)file_get_contents($root.'pricing/source-resolution-policy.php');
 $locale=(string)file_get_contents($root.'pricing/rate-locale-policy.php');
 $resolver=(string)file_get_contents($root.'pricing/price-resolver.php');
 $audience=(string)file_get_contents($root.'pricing/audience-resolver.php');
@@ -38,6 +41,12 @@ $checks=[
  'presentation_resolver_shared'=>str_contains($resolver,'shared_product_rate_locale_decision('),
  'audience_woocommerce_shared'=>str_contains($audience,'shared_product_rate_locale_decision('),
  'booking_shared'=>str_contains($booking,'shared_product_rate_locale_decision('),
+ 'booking_runtime_grant'=>str_contains($bookingSource,'MAD4B_COMMERCE_RUNTIME_ENABLED'),
+ 'booking_not_lab_required'=>!str_contains($bookingSource,"if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY')"),
+ 'batch_runtime_grant'=>str_contains($rateBatch,'MAD4B_COMMERCE_RUNTIME_ENABLED'),
+ 'batch_no_staging_local_rejection'=>!str_contains($rateBatch,"wp_get_environment_type()!=='local'"),
+ 'source_priority_runtime_grant'=>str_contains($sourcePriority,'MAD4B_COMMERCE_RUNTIME_ENABLED'),
+ 'source_priority_no_lab_dependency'=>!str_contains($sourcePriority,"if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY')"),
  'assignment_runtime_grant'=>str_contains($assignment,'MAD4B_COMMERCE_RUNTIME_ENABLED'),
  'assignment_no_local_only_return'=>!str_contains($assignment,"if(!defined('ABSPATH')||!defined('SHARED_PRODUCT_LAB_ONLY')")
 ];
