@@ -229,6 +229,82 @@ final class MAD4B_SCP_Central_Write_Acceptance {
     }
 
     /**
+     * Explicit reconciliation of an uncertain ORIGINAL attempt. This never
+     * calls apply() and never replays an external or native write. Evidence
+     * and permission are reread, then the original durable attempt key is
+     * promoted only after the reviewed provider's independent native readback.
+     */
+    public static function reconcile(array $claim,
+        MAD4B_Central_Enrichment_Write_Adapter $adapter,array $native_result):array {
+        if(!self::permitted())return self::fail('actor_or_site_mutation_denied');
+        if(($native_result['success']??null)!==true)
+            return self::fail('reconciliation_result_not_success');
+        $scope=self::site_scope();
+        try {$source=$adapter->source($claim);}
+        catch(Throwable $e){return self::fail('reconciliation_native_source_unavailable');}
+        $proof=self::verify($claim,$source,$scope);
+        if(!$proof['eligible'])return $proof;
+        try {$authorized=$adapter->authorize($claim,$source);}
+        catch(Throwable $e){$authorized=false;}
+        if($authorized!==true)return self::fail('reconciliation_original_permission_denied');
+        global $wpdb;
+        $key='mad4b_cwa_'.hash('sha256',$proof['idempotency_key']);
+        $lock='mad4b:cwa:'.substr($key,-32);
+        if((int)$wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s,0)',$lock))!==1)
+            return self::fail('reconciliation_operation_locked');
+        try {
+            $entry=get_option($key,null);
+            if(!is_array($entry)||!in_array($entry['state']??'',
+               ['UNKNOWN','IN_PROGRESS','VERIFIED'],true))
+                return self::fail('original_uncertain_attempt_not_found');
+            foreach(['site_uuid','job_id','subject_id','source_sha256','evidence_sha256'] as $field){
+                if(!isset($entry[$field],$proof[$field])||
+                    !hash_equals((string)$entry[$field],(string)$proof[$field]))
+                    return self::fail('original_attempt_binding_mismatch');
+            }
+            try {$fresh=$adapter->source($claim);}
+            catch(Throwable $e){return self::fail('reconciliation_source_changed');}
+            $verified=self::verify($claim,$fresh,self::site_scope());
+            if(!$verified['eligible'])return $verified;
+            try {$same=$adapter->authorize($claim,$fresh);}
+            catch(Throwable $e){$same=false;}
+            if($same!==true)return self::fail('reconciliation_permission_changed');
+            try {$ok=$adapter->readback($claim,$fresh,$native_result);}
+            catch(Throwable $e){$ok=false;}
+            if($ok!==true)return self::fail('reconciliation_readback_incomplete');
+            if(($entry['state']??'')==='VERIFIED'){
+                if(($entry['result']??null)!==$native_result)
+                    return self::fail('previously_verified_result_changed');
+                return ['contract'=>self::CONTRACT,'eligible'=>true,
+                    'reason'=>'ALREADY_VERIFIED','receipt_sha256'=>$entry['receipt_sha256']??null,
+                    'mutation_performed'=>false,'reconciliation_only'=>true];
+            }
+            $receipt=hash('sha256',wp_json_encode([
+                'contract'=>self::CONTRACT,'intent'=>$proof['idempotency_key'],
+                'result'=>$native_result,'site_uuid'=>$scope['site_uuid']],
+                JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
+            $changed=array_merge($entry,[
+                'state'=>'VERIFIED','result'=>$native_result,
+                'receipt_sha256'=>$receipt,'verified_at'=>gmdate('c'),
+                'reconciled_at'=>gmdate('c'),'recovered_from'=>$entry['state']
+            ]);
+            if(!update_option($key,$changed,false))
+                return self::fail('reconciliation_receipt_persist_failed');
+            $saved=get_option($key,[]);
+            if(($saved['state']??'')!=='VERIFIED' ||
+               ($saved['receipt_sha256']??'')!==$receipt)
+                return self::fail('reconciliation_receipt_readback_failed');
+            return ['contract'=>self::CONTRACT,'eligible'=>true,
+                'reason'=>'VERIFIED_ORIGINAL_WRITE_BY_READBACK',
+                'receipt_sha256'=>$receipt,'mutation_performed'=>false,
+                'reconciliation_only'=>true,'job_id'=>$proof['job_id'],
+                'subject_id'=>$proof['subject_id']];
+        }finally {
+            $wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)',$lock));
+        }
+    }
+
+    /**
      * Registration-time integration flag for reviewed enrichment abilities.
      * These are read by the central audit, not an auto-grant to any tool.
      */

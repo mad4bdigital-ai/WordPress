@@ -73,6 +73,25 @@ try {
    ($retry['reason']??'')==='prior_attempt_uncertain_requires_reconciliation' &&
    $failAdapter->count===1 &&
    (get_option($key2,[])['state']??'')==='UNKNOWN';
+ $invalidResult=$c::reconcile($claim2,$failAdapter,[
+   'success'=>false,'readback_value'=>'fixture-confirmed']);
+ $checks['reconcile_requires_original_success_evidence']=
+   ($invalidResult['reason']??'')==='reconciliation_result_not_success' &&
+   (get_option($key2,[])['state']??'')==='UNKNOWN' &&
+   $failAdapter->count===1;
+ $native=['success'=>true,'readback_value'=>'fixture-confirmed'];
+ $verified=$c::reconcile($claim2,$failAdapter,$native);
+ $checks['original_unknown_reconciled_without_reexecution']=
+   ($verified['reason']??'')==='VERIFIED_ORIGINAL_WRITE_BY_READBACK' &&
+   !empty($verified['reconciliation_only']) &&
+   ($verified['mutation_performed']??true)===false &&
+   $failAdapter->count===1 &&
+   (get_option($key2,[])['state']??'')==='VERIFIED';
+ $again=$c::reconcile($claim2,$failAdapter,$native);
+ $checks['reconciled_receipt_stable_and_idempotent']=
+   ($again['reason']??'')==='ALREADY_VERIFIED' &&
+   ($again['receipt_sha256']??'')===($verified['receipt_sha256']??null) &&
+   $failAdapter->count===1;
 }finally{delete_option($key2);}
 $checks['uncertain_fixture_removed']=get_option($key2,null)===null;
 

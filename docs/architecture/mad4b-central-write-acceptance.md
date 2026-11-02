@@ -36,3 +36,21 @@ A future project can extend the coverage per-Ability, without changing the gener
 - A real open Origin issue is still blocked at eligibility and `writeback_allowed=false` (no fabricated supplier proof).
 - WPML plan reports 177 open gaps, zero ready. DFSB 0.4.0-alpha.14-local.6 boot remains unfaulted; SEO publication and managed routes remain off.
 - An actual authorized, non-fixture production-like enrichment write across ChatGPT MCP or remote REST still needs a valid source-bound proof plus native readback. No Production sites modified.
+
+## First live source-backed positive write/readback — Kom Ombo French (2026-11-02)
+
+On **ETG Staging only**, an authorized WordPress operator (user ID 26) completed a real source-bound native WPML enrichment for existing ContentJob `fe3d871e-ee50-435c-93fb-63bcdb1bf3b7` linked to existing issue `fbe96c19822da33bccd77520554d66e4d4bfa3ad8518ff62a138747445639a63`. Source public English term `2352` (`kom Ombo`) and French parent `130` were verified directly against WordPress/WPML. The translation's geographic and historical facts were corroborated against the Egyptian Ministry of Tourism and Antiquities and the French archaeological institute IFAO. No Place ID or supplier evidence was invented.
+
+The first authorized CWA adapter invocation created **French destination term 2951**, `ville-de-kom-ombo`, WPML `trid=419051`, with the correct parent, native review/provenance meta, and **`is_public=0`**. The linked ContentJob transitioned `QUEUED → RUNNING → WAITING_REVIEW (EDITORIAL_QA)`, revision `4`. The source English term remained `is_public=1`.
+
+First readback was **false-negative**: WordPress's native term insertion stripped `<p>` tags from the supplied translated HTML; the stored plain text is byte-for-byte equal to `wp_strip_all_tags()` of the intended description, but not to the original HTML. The central attempt was correctly held as `UNKNOWN` and was **not replayed**.
+
+Fixed the reviewed adapter's readback to compare normalized native term text. Added general-purpose `MAD4B_SCP_Central_Write_Acceptance::reconcile()` to make **readback-only** recovery of a pre-existing `UNKNOWN/IN_PROGRESS` attempt possible with independent native source, original permission, immutable site/job/evidence bindings and registered provider readback, without invoking `apply()` again. Verified the original attempt, then promoted only its original native receipt to `VERIFIED`:
+
+- Receipt SHA256 `7bd06fbe21729032bc83386902c08c4fdbe6b9f7c241bbad3b0f1aa0ece1372e`.
+- Previous attempt status `UNKNOWN`; `reconciled_at=2026-11-02T18:25:40+00:00`; original mutation was not replayed.
+- Exact native readback: one French term with `term_id=2951`, WPML `fr`, published English source unchanged, target private, linked ContentJob `WAITING_REVIEW`.
+- Updated shared fixture **11/11 PASS** including failed evidence/permission, original one-write success, uncertain attempt no-replay, independent reconciliation, idempotent verified receipt, no re-execution, and fixture cleanup.
+- This proves a **real authorized enrichment write, first-party WPML readback, and durable CWA receipt**. It does **not** mean the French page was published or the ContentJob completed. Independent publication QA and the eligible localized public tour requirements remain pending; `is_public=0` is intentional.
+
+The exact reviewed one-off canary script is included at `tools/dfsb-neutral/central-write-real-kom-ombo-fr-staging.php` for source/audit parity. Do **not** run its original write mode again. Any legitimate repeat verification must use readback or the guarded reconciliation-only path. The script is hard-scoped to one existing Staging term/site, never a multi-tenant automatic writer.
