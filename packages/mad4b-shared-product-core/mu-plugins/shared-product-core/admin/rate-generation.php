@@ -65,6 +65,7 @@ add_action('woocommerce_settings_tabs_rate_generation',static function(){
   '<option value="on_request">Supplier confirmation on request</option>'.
   '<option value="allotment">Managed allotment (needs stock setup)</option></select></span>',
   'If left blank, draft is incomplete and cannot be treated as an available stay.');
+ echo '<p><strong>WPML Rate price authority:</strong> choose the translated Tour post as parent, enter its original amount and currency; the generator binds the new draft to that Tour language. Existing translated Rates are never synchronized or overwritten.</p>';
  $field('Base amount','<input name="amount" type="number" min="0.0001" max="99999999" step="0.0001" value="'.esc_attr(is_numeric($seedAmount)&&(float)$seedAmount>0?$seedAmount:'').'"/>');
  $currency='<select name="currency">';
  foreach(get_woocommerce_currencies() as $code=>$label)
@@ -94,7 +95,7 @@ add_action('woocommerce_settings_tabs_rate_generation',static function(){
  $batch=get_transient('shared_rate_batch_preview_'.get_current_user_id());
  $csv=is_array($batch)?(string)($batch['csv']??''):'';
  echo '<hr><h3>Batch Rate Source — CSV (Preview before creating Drafts)</h3>';
- echo '<p>Paste a CSV with kind, parent_id, currency, price_unit, valid_from and valid_to columns; optional supplier cost, markup and stay terms. Up to '.(int)Shared_Product_Rate_Source_Batch::MAX_ROWS.' rows, 64 KB. No rate is published or sold by this action.</p>';
+ echo '<p>Paste a CSV with kind, parent_id, currency, price_unit, valid_from and valid_to columns; optional pricing_locale_mode=independent and pricing_language matching the parent Tour, supplier cost, markup and stay terms. Up to '.(int)Shared_Product_Rate_Source_Batch::MAX_ROWS.' rows, 64 KB. No rate is published or sold by this action.</p>';
  echo '<textarea name="rate_source_csv" rows="8" maxlength="'.(int)Shared_Product_Rate_Source_Batch::MAX_BYTES.'" style="width:100%;max-width:900px" placeholder="Paste CSV header and rows">'.esc_textarea($csv).'</textarea>';
  echo '<p><button class="button" type="submit" name="operation" value="batch_preview" formnovalidate>Validate CSV — no writes</button> ';
  if(is_array($batch)&&$csv!=='')echo '<button class="button button-primary" type="submit" name="operation" value="batch_create" formnovalidate>Create reviewed Draft batch</button>';
