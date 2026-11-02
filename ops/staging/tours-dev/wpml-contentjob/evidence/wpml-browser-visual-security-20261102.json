@@ -1,0 +1,225 @@
+{
+  "contract": "mad4b.wpml.visual-browser-qa.v1",
+  "render_source": "WordPress generated HTML via authorized WP-CLI; file:// Chromium, no session forgery",
+  "authenticated_browser_checked": false,
+  "checks": [
+    {
+      "check": "desktop no document overflow",
+      "pass": true,
+      "details": {
+        "doc": 1440,
+        "viewport": 1440,
+        "scrollPossible": false,
+        "scrollDidMove": false,
+        "width": 1358,
+        "table": 1358,
+        "rows": 26,
+        "ariaStatus": 1,
+        "filters": [
+          {
+            "name": "locale",
+            "label": 1
+          },
+          {
+            "name": "view",
+            "label": 1
+          }
+        ],
+        "formMethod": "get",
+        "formTarget": "https://tours.dev.mad4b.com/wp-admin/admin.php",
+        "publishActions": 0
+      }
+    },
+    {
+      "check": "desktop no mutation buttons",
+      "pass": true,
+      "details": null
+    },
+    {
+      "check": "desktop read-only filtering",
+      "pass": true,
+      "details": null
+    },
+    {
+      "check": "desktop select labels",
+      "pass": true,
+      "details": null
+    },
+    {
+      "check": "desktop shows all review items",
+      "pass": true,
+      "details": null
+    },
+    {
+      "check": "mobile no document overflow",
+      "pass": true,
+      "details": {
+        "doc": 390,
+        "viewport": 390,
+        "scrollPossible": true,
+        "scrollDidMove": true,
+        "width": 344,
+        "table": 670,
+        "rows": 26,
+        "ariaStatus": 1,
+        "filters": [
+          {
+            "name": "locale",
+            "label": 1
+          },
+          {
+            "name": "view",
+            "label": 1
+          }
+        ],
+        "formMethod": "get",
+        "formTarget": "https://tours.dev.mad4b.com/wp-admin/admin.php",
+        "publishActions": 0
+      }
+    },
+    {
+      "check": "mobile no mutation buttons",
+      "pass": true,
+      "details": null
+    },
+    {
+      "check": "mobile read-only filtering",
+      "pass": true,
+      "details": null
+    },
+    {
+      "check": "mobile select labels",
+      "pass": true,
+      "details": null
+    },
+    {
+      "check": "mobile table scroll works",
+      "pass": true,
+      "details": null
+    },
+    {
+      "check": "mobile shows all review items",
+      "pass": true,
+      "details": null
+    },
+    {
+      "check": "small_mobile no document overflow",
+      "pass": true,
+      "details": {
+        "doc": 320,
+        "viewport": 320,
+        "scrollPossible": true,
+        "scrollDidMove": true,
+        "width": 274,
+        "table": 670,
+        "rows": 26,
+        "ariaStatus": 1,
+        "filters": [
+          {
+            "name": "locale",
+            "label": 1
+          },
+          {
+            "name": "view",
+            "label": 1
+          }
+        ],
+        "formMethod": "get",
+        "formTarget": "https://tours.dev.mad4b.com/wp-admin/admin.php",
+        "publishActions": 0
+      }
+    },
+    {
+      "check": "small_mobile no mutation buttons",
+      "pass": true,
+      "details": null
+    },
+    {
+      "check": "small_mobile read-only filtering",
+      "pass": true,
+      "details": null
+    },
+    {
+      "check": "small_mobile select labels",
+      "pass": true,
+      "details": null
+    },
+    {
+      "check": "small_mobile table scroll works",
+      "pass": true,
+      "details": null
+    },
+    {
+      "check": "small_mobile shows all review items",
+      "pass": true,
+      "details": null
+    },
+    {
+      "check": "fr_draft no document overflow",
+      "pass": true,
+      "details": {
+        "doc": 390,
+        "viewport": 390,
+        "scrollPossible": true,
+        "scrollDidMove": true,
+        "width": 344,
+        "table": 645,
+        "rows": 4,
+        "ariaStatus": 1,
+        "filters": [
+          {
+            "name": "locale",
+            "label": 1
+          },
+          {
+            "name": "view",
+            "label": 1
+          }
+        ],
+        "formMethod": "get",
+        "formTarget": "https://tours.dev.mad4b.com/wp-admin/admin.php",
+        "publishActions": 0
+      }
+    },
+    {
+      "check": "fr_draft no mutation buttons",
+      "pass": true,
+      "details": null
+    },
+    {
+      "check": "fr_draft read-only filtering",
+      "pass": true,
+      "details": null
+    },
+    {
+      "check": "fr_draft select labels",
+      "pass": true,
+      "details": null
+    },
+    {
+      "check": "fr_draft table scroll works",
+      "pass": true,
+      "details": null
+    },
+    {
+      "check": "filtered page only four French draft rows",
+      "pass": true,
+      "details": null
+    },
+    {
+      "check": "real admin page enforces WordPress login",
+      "pass": true,
+      "details": {
+        "status": 200,
+        "redirect_to_login": true
+      }
+    },
+    {
+      "check": "anonymous session cannot see draft ledger",
+      "pass": true,
+      "details": null
+    }
+  ],
+  "passed": 25,
+  "failed": 0
+}
