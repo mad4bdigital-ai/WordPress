@@ -10,6 +10,7 @@ final class Shared_Product_Rate_Source_Batch {
  const REQUIRED=['kind','parent_id','currency','price_unit','valid_from','valid_to'];
  const COLUMNS=['kind','parent_id','unit_id','supplier_sku','supplier_cost',
   'pricing_rule_kind','pricing_rule_value','amount','currency','price_unit',
+  'pricing_locale_mode','pricing_language',
   'valid_from','valid_to','single_factor','double_factor','triple_factor',
   'package_term_id','min_nights','max_nights','max_adults','max_children',
   'inventory_policy','rate_scope','accommodation_assignment_mode','accommodation_stage_source_rate_id'];
