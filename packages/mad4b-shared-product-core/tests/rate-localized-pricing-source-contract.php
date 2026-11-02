@@ -5,6 +5,11 @@ $generation=(string)file_get_contents($root.'pricing/rate-generation.php');
 $admin=(string)file_get_contents($root.'admin/rate-generation.php');
 $batch=(string)file_get_contents($root.'pricing/rate-source-batch.php');
 $assignment=(string)file_get_contents($root.'pricing/accommodation-assignment.php');
+$locale=(string)file_get_contents($root.'pricing/rate-locale-policy.php');
+$resolver=(string)file_get_contents($root.'pricing/price-resolver.php');
+$audience=(string)file_get_contents($root.'pricing/audience-resolver.php');
+$booking=(string)file_get_contents($root.'pricing/booking-configuration-v2.php');
+$loader=(string)file_get_contents(dirname($root).'/shared-product-core-loader.php');
 $checks=[
  'mode_opt_in'=>str_contains($generation,"'pricing_locale_mode'"),
  'language_matches_parent'=>str_contains($generation,'rate_generator_locale_parent_mismatch'),
@@ -19,11 +24,20 @@ $checks=[
  'rollback_failure'=>str_contains($generation,'wp_delete_post($created,true)'),
  'runtime_grant_create'=>str_contains($generation,'rate_generator_runtime_grant_required'),
  'no_local_only_creation'=>!str_contains($generation,'rate_generator_nonlab_denied'),
- 'admin_exposes_locale_policy'=>str_contains($admin,'Independent amount + currency per Tour language'),
+ 'admin_default_inherit'=>str_contains($admin,'value="inherit" selected'),
+ 'admin_exposes_override'=>str_contains($admin,'Override: independent amount + currency for this Tour language'),
+ 'admin_post_default_omits_mode'=>str_contains($admin,"$"."mode=$"."raw['pricing_locale_mode']??'inherit'"),
+ 'legacy_fingerprint_safe'=>str_contains($generation,"$"."input['pricing_locale_mode']??'inherit'"),
+ 'explicit_inherit_mode'=>str_contains($generation,"['inherit','independent']"),
  'admin_post_passes_locale_mode'=>str_contains($admin,"$"."payload['pricing_locale_mode']='independent'"),
  'csv_locale_mode'=>str_contains($batch,"'pricing_locale_mode'"),
  'csv_locale_language'=>str_contains($batch,"'pricing_language'"),
  'admin_csv_guidance'=>str_contains($admin,'optional pricing_locale_mode=independent'),
+ 'shared_rate_policy_present'=>str_contains($locale,'function shared_product_rate_locale_decision('),
+ 'loader_invokes_shared_policy'=>str_contains($loader,"require_once $"."root.'pricing/rate-locale-policy.php'"),
+ 'presentation_resolver_shared'=>str_contains($resolver,'shared_product_rate_locale_decision('),
+ 'audience_woocommerce_shared'=>str_contains($audience,'shared_product_rate_locale_decision('),
+ 'booking_shared'=>str_contains($booking,'shared_product_rate_locale_decision('),
  'assignment_runtime_grant'=>str_contains($assignment,'MAD4B_COMMERCE_RUNTIME_ENABLED'),
  'assignment_no_local_only_return'=>!str_contains($assignment,"if(!defined('ABSPATH')||!defined('SHARED_PRODUCT_LAB_ONLY')")
 ];
