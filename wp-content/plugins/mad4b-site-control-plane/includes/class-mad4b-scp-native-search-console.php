@@ -18,7 +18,7 @@ final class MAD4B_SCP_Native_Search_Console {
     public static function boot() {
         if(self::$booted)return;
         self::$booted=true;
-        add_action('admin_menu',array(__CLASS__,'menu'),99);
+        MAD4B_SCP_Admin_Route_Registry::schedule_submenu(array(__CLASS__,'menu'),99);
         add_action('admin_post_mad4b_native_gsc_action',array(__CLASS__,'post_action'));
         add_filter('mad4b/seo_opportunities/native_page_metrics',array(__CLASS__,'seo_page_metrics'),10,2);
     }
