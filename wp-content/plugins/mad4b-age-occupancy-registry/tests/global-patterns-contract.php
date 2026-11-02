@@ -12,6 +12,7 @@ final class WP_Error {
 function is_wp_error($value){return $value instanceof WP_Error;}
 function sanitize_key($value){return strtolower((string)preg_replace('/[^a-z0-9_\-]/','',(string)$value));}
 function add_action($tag,$callback){return true;}
+function add_filter($tag,$callback,$priority=10,$accepted=1){return true;}
 function maybe_unserialize($value){return $value;}
 
 require dirname(__DIR__).'/includes/admin.php';
@@ -49,6 +50,26 @@ $assert('no_executable_formula',is_wp_error($r)&&$r->get_error_code()==='age_pol
 $assert('jetengine_price_page',MAD4B_Age_Occupancy_JetEngine_Bridge::is_pricing_page(['slug'=>'price-calculation','name'=>'Price Calculation']));
 $assert('jetengine_financial_fields',MAD4B_Age_Occupancy_JetEngine_Bridge::is_pricing_page(['slug'=>'custom','meta_fields'=>[['name'=>'shared_mode_policy_rows']]]));
 $assert('jetengine_unrelated_page_excluded',!MAD4B_Age_Occupancy_JetEngine_Bridge::is_pricing_page(['slug'=>'destinations','name'=>'Destinations']));
+// No global age bands: supplied ages must not suppress the established Rate price.
+class MAD4B_Age_Occupancy_Registry {
+ public static function policy($context=[]){return ['version'=>'age-occupancy.v1','policy'=>['bands'=>[]]];}
+}
+require dirname(__DIR__).'/includes/age-aware-stay.php';
+$noPolicy=MAD4B_Age_Aware_Stay::preview(['child_ages'=>[7]],0,0,99,2,1,1);
+$checks['no_policy_does_not_block_legacy_price']=$noPolicy===null;
+$badAges=MAD4B_Age_Aware_Stay::preview(['child_ages'=>[7,8]],0,0,99,2,1,1);
+$checks['no_policy_still_validates_count']=is_wp_error($badAges)&&$badAges->get_error_code()==='stay_age_count_mismatch';
+$badAge=MAD4B_Age_Aware_Stay::preview(['child_ages'=>[-1]],0,0,99,2,1,1);
+$checks['no_policy_still_validates_age']=is_wp_error($badAge)&&$badAge->get_error_code()==='stay_age_value_invalid';
+$multiple=MAD4B_Age_Aware_Stay::preview(['room_occupancy'=>[
+ ['children'=>1,'child_ages'=>[2]],['children'=>1,'child_ages'=>[7]]
+]],0,0,99,4,2,2);
+$checks['no_policy_multir_room_fallback']=$multiple===null;
+$wrongMultiple=MAD4B_Age_Aware_Stay::preview(['room_occupancy'=>[
+ ['children'=>1,'child_ages'=>[2]],['children'=>1,'child_ages'=>[]]
+]],0,0,99,4,2,2);
+$checks['no_policy_multir_room_mismatch_rejected']=is_wp_error($wrongMultiple)
+ &&$wrongMultiple->get_error_code()==='stay_age_assignment_mismatch';
 foreach($checks as $name=>$pass)echo $name.'='.($pass?'PASS':'FAIL').PHP_EOL;
 echo 'TOTAL='.count(array_filter($checks)).'/'.count($checks).PHP_EOL;
 exit(in_array(false,$checks,true)?1:0);
