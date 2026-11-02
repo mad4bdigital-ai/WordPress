@@ -113,6 +113,7 @@ a8d7ab14c0dee191858cb98a0c3688694c3bf46e2d1f159c2698f93ebf755c04  shared-product
 db4d306ee624e8e99470458d34955ea3e7156911cdc830ccd771082c45fadd0e  shared-product-core/pricing/property-layer-policy.php
 fb25f1048c6bc4cf82852e121a42ed75d381dc84b37f3daaa797d22454389e7b  shared-product-core/pricing/rate-field-presenter.php
 3e1c3923728c81202ccb6ccd1cefeddd947bc42cdb726d68fed32a812b2461ae  shared-product-core/pricing/rate-generation.php
+70dbdf8f5a9d3e410858a298e697a5b6224585357da3cdc6cf6755ea537dead5  shared-product-core/pricing/rate-locale-policy.php
 7241acb4e57af5fe17bf0029e39491e5ff43e0a0c2bd8e5aa0d1e177cc4a39fc  shared-product-core/pricing/rate-source-batch.php
 6a7a2584002723acd954c0d4aa3535bacb33541a95a36e9ba8177a7a16c24c80  shared-product-core/pricing/refund-provider-adapter.php
 35ee469051f9be38f027c7e54ddf2740d09aa11dc1ca027c5e705efe88966b25  shared-product-core/pricing/refund-provider-recheck.php
@@ -132,4 +133,3 @@ ee36eb9d50a936ae25c37eea466b0aaa435a1ff346b82f2ef382febdf6abbd36  shared-product
 83cd8c4cf5245b1922e231e4450ab123f30efad3df39d8b8fc67289d00f96c53  shared-product-core/scheduling/program-calendar.php
 9ee47a4fb8d7ba61a9aeefb42e4e8dd415164115ad50263257c6b998dc078688  shared-product-core/tests/field-contract-release-gate.php
 e86ea42578d3fd98cbfb14dbbaddc36b9549555346485be51f94920fcd186958  shared-product-core/tests/primary-tour-query-context-regression-cli.php
-70dbdf8f5a9d3e410858a298e697a5b6224585357da3cdc6cf6755ea537dead5  shared-product-core/pricing/rate-locale-policy.php
