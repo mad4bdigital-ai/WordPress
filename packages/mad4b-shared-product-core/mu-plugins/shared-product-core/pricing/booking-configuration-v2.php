@@ -25,6 +25,8 @@ function shared_product_booking_v2_validate($payload) {
  if($source==='rate'){
   $rate=filter_var($rate,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
   if(!$rate||get_post_type($rate)!=='tour-rates'||get_post_status($rate)!=='publish'||(int)get_post_meta($rate,'related_tour_id',true)!==$id)return new WP_Error('booking_v2_rate_mismatch');
+  $locale=shared_product_rate_locale_decision((int)$rate,(int)$id);
+  if(!$locale['allowed'])return new WP_Error('booking_v2_'.$locale['reason']);
  }elseif($rate!==null)return new WP_Error('booking_v2_direct_rate_forbidden');
  $intent=$payload['booking_intent']??'quote';if(!in_array($intent,['inquiry','quote','request','instant'],true))return new WP_Error('booking_v2_intent_invalid');
  $date=$payload['travel_date']??null;
