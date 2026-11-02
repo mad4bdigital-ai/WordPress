@@ -85,7 +85,15 @@ final class MAD4B_WPML_Design_Reconciliation_V1 {
             if($type&&is_numeric($v)&&(int)$v>0) {
                 $translated=self::translated_object((int)$v,$type,$lang);
                 if(!$translated) {
-                    $issues[]=['code'=>'missing_linked_reference','field'=>$k,'source_id'=>(int)$v,'lang'=>$lang,'widget'=>$source['id']??''];
+                    $shared=false;
+                    if($type==='elementor_library'
+                       &&class_exists('MAD4B_WPML_Translation_Need_V1')){
+                        $need=MAD4B_WPML_Translation_Need_V1::source((int)$v);
+                        $shared=!is_wp_error($need)
+                           &&($need['classification']??'')==='shared_dynamic_provider';
+                    }
+                    if(!$shared || (string)($target_s[$k]??'')!==(string)$v)
+                        $issues[]=['code'=>'missing_linked_reference','field'=>$k,'source_id'=>(int)$v,'lang'=>$lang,'widget'=>$source['id']??''];
                 }elseif((string)($target_s[$k]??'')!==(string)$translated) {
                     $target_s[$k]=is_int($v)?$translated:(string)$translated;
                     $changed++;
