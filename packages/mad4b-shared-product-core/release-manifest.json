@@ -7,8 +7,8 @@
     "8.3",
     "8.5"
   ],
-  "source_file_count": 135,
-  "source_manifest_sha256": "8423e0db38d8b5b358e57c38fe12c87e9c57959d9fcf9307efc8975500cb1c0f",
+  "source_file_count": 136,
+  "source_manifest_sha256": "fa24d0c1bb6d80a5d149768dc63cffa50823d2aaae10affef673fcabce17583b",
   "activation": "MAD4B_COMMERCE_RUNTIME_ENABLED=true on any WordPress environment; no Local Lab bypass",
   "stage": "Source-wide runtime gating refactor; CI and Staging acceptance before any Production deployment",
   "deploy_automatically": false,
