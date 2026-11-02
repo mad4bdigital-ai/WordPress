@@ -3,6 +3,7 @@
 $root=dirname(__DIR__).'/mu-plugins/shared-product-core/';
 $generation=(string)file_get_contents($root.'pricing/rate-generation.php');
 $admin=(string)file_get_contents($root.'admin/rate-generation.php');
+$batch=(string)file_get_contents($root.'pricing/rate-source-batch.php');
 $assignment=(string)file_get_contents($root.'pricing/accommodation-assignment.php');
 $checks=[
  'mode_opt_in'=>str_contains($generation,"'pricing_locale_mode'"),
@@ -20,6 +21,9 @@ $checks=[
  'no_local_only_creation'=>!str_contains($generation,'rate_generator_nonlab_denied'),
  'admin_exposes_locale_policy'=>str_contains($admin,'Independent amount + currency per Tour language'),
  'admin_post_passes_locale_mode'=>str_contains($admin,"$"."payload['pricing_locale_mode']='independent'"),
+ 'csv_locale_mode'=>str_contains($batch,"'pricing_locale_mode'"),
+ 'csv_locale_language'=>str_contains($batch,"'pricing_language'"),
+ 'admin_csv_guidance'=>str_contains($admin,'optional pricing_locale_mode=independent'),
  'assignment_runtime_grant'=>str_contains($assignment,'MAD4B_COMMERCE_RUNTIME_ENABLED'),
  'assignment_no_local_only_return'=>!str_contains($assignment,"if(!defined('ABSPATH')||!defined('SHARED_PRODUCT_LAB_ONLY')")
 ];
