@@ -1,11 +1,12 @@
 <?php
 /**
- * Local Lab: validate original Fluent Form #6 plus native Rate/Stay/Extra
+ * Governed runtime: validate original Fluent Form #6 plus native Rate/Stay/Extra
  * selections. Read-only intake evidence, never a booking/price authority.
  */
 defined('ABSPATH') || exit;
-if (function_exists('wp_get_environment_type') && wp_get_environment_type()==='local'
- && defined('SHARED_PRODUCT_LAB_ONLY') && SHARED_PRODUCT_LAB_ONLY) {
+if ((defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED === true)
+ || (function_exists('wp_get_environment_type') && wp_get_environment_type()==='local'
+ && defined('SHARED_PRODUCT_LAB_ONLY') && SHARED_PRODUCT_LAB_ONLY === true)) {
 if(is_file(__DIR__.'/presentation-stay-selection-v1.php'))require_once __DIR__.'/presentation-stay-selection-v1.php';
 final class Shared_Product_Presentation_Form6_Candidate_v1 {
  private static function fail(string $code): WP_Error {
