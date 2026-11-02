@@ -130,6 +130,7 @@ if ( ! ( defined( 'MAD4B_SCP_FORCE_FULL_BOOT' ) && true === constant( 'MAD4B_SCP
 	if ( '' !== $mad4b_scp_early_rest_path ) {
 		$mad4b_scp_early_owned = 0 === strpos( $mad4b_scp_early_rest_path, '/mcp/mad4b-' )
 			|| 0 === strpos( $mad4b_scp_early_rest_path, '/mad4b/' )
+            || 0 === strpos( $mad4b_scp_early_rest_path, '/mad4b-frontend-impact/v1/' )
             || in_array($mad4b_scp_early_rest_path,array(
                     '/mad4b-local-ai/v1/context-review',
                     '/mad4b-local-ai/v1/domain-review'),true);
@@ -185,6 +186,9 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-switcher-sources.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-market-context.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-market-preferences.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-season-calendar.php';
+// Reconciled native readiness source, evaluated by the read-only impact policy.
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-content-readiness-alerts.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-frontend-impact-priority.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-source-hub.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-public-holidays.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connection-identity-resolver.php';
@@ -729,6 +733,8 @@ MAD4B_SCP_Market_Profiles::boot();
 MAD4B_SCP_Market_Context::boot();
 MAD4B_SCP_Market_Preferences::boot();
 MAD4B_SCP_Season_Calendar::boot();
+MAD4B_SCP_Content_Readiness_Alerts::boot();
+MAD4B_SCP_Frontend_Impact_Priority::boot();
 MAD4B_SCP_Public_Holidays::boot();
 MAD4B_SCP_Source_Hub::boot();
 MAD4B_SCP_Staging_Autopilot::boot();
