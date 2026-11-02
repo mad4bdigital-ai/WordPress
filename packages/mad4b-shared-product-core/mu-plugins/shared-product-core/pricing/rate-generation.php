@@ -28,7 +28,7 @@ final class Shared_Product_Rate_Generation {
  public static function prepare($input) {
   if(!is_array($input))return new WP_Error('rate_generator_input_invalid');
   $allowed=['kind','parent_id','unit_id','amount','currency','price_unit','valid_from','valid_to',
-   'pricing_locale_mode','pricing_language','single_factor','double_factor','triple_factor','package_term_id','program_term_id','season_term_id','seed_origin','seed_source_rate_id','rate_scope',
+   'pricing_locale_mode','pricing_language','occupancy_factor_mode','single_factor','double_factor','triple_factor','package_term_id','program_term_id','season_term_id','seed_origin','seed_source_rate_id','rate_scope',
    'min_nights','max_nights','max_adults','max_children','inventory_policy',
    'supplier_sku','supplier_cost','pricing_rule_kind','pricing_rule_value',
    'accommodation_assignment_mode','accommodation_stage_source_rate_id'];
@@ -119,6 +119,20 @@ final class Shared_Product_Rate_Generation {
    }
    $package=absint($input['package_term_id']??0);
    if($package && !term_exists($package,'package_levels'))return new WP_Error('rate_generator_package_term_invalid');
+   // Explicit occupancy policy opt-in: legacy input stays byte-for-byte compatible.
+   $factorMode=$input['occupancy_factor_mode']??'legacy';
+   if(!is_string($factorMode))return new WP_Error('occupancy_generation_mode_invalid');
+   $occupancy=shared_product_occupancy_generation_factors((int)$id,$factors,$factorMode);
+   if(is_wp_error($occupancy))return $occupancy;
+   $factors=$occupancy['factors'];
+   if($factorMode!=='legacy'){
+    $params['occupancy_factor_mode']=$factorMode;
+    $params['occupancy_policy_source']=$occupancy['source'];
+    if($occupancy['policy']!==null){
+     $params['occupancy_policy_version']='v1';
+     $params['occupancy_policy_snapshot']=$occupancy['policy'];
+    }
+   }
    $params['factors']=$factors;$params['package_term_id']=$package;
    // Optional relations from the Tour CPT Seed. Native rate discovery reads the
    // Program ID from postmeta and Season from the actual WordPress taxonomy.
