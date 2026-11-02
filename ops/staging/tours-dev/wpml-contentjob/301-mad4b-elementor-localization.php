@@ -33,6 +33,18 @@ final class MAD4B_Elementor_Localization_V1 {
         $data=apply_filters('wpml_get_element_translations',null,$trid,'post_'.$type);
         $out=[];
         foreach((array)$data as $lang=>$v)if(is_object($v)&&!empty($v->element_id))$out[$lang]=(int)$v->element_id;
+        // WPML's translation collection can omit drafts even when the
+        // legitimate WPML object-ID lookup resolves them. Never equate a
+        // missing *published* translation with a missing translation draft.
+        foreach(self::languages() as $lang){
+            if($lang===self::lang($id)||isset($out[$lang]))continue;
+            $draft_id=(int)apply_filters('wpml_object_id',(int)$id,$type,false,$lang);
+            if(!$draft_id||$draft_id===(int)$id||get_post_type($draft_id)!==$type
+                ||get_post_status($draft_id)!=='draft'||self::lang($draft_id)!==$lang)continue;
+            $candidate_trid=(int)apply_filters('wpml_element_trid',null,$draft_id,'post_'.$type);
+            if($candidate_trid!==(int)$trid)continue;
+            $out[$lang]=$draft_id;
+        }
         return $out;
     }
     private static function tree($id){
@@ -101,8 +113,13 @@ final class MAD4B_Elementor_Localization_V1 {
             if($lang===$default)continue;
             $dst=$tr[$lang]??0;
             $codes=[];
-            if(!$dst||!get_post($dst)||get_post_status($dst)!=='publish'){
-                $codes['missing']='Published eligible content has no published '.$lang.' translation';
+            $target_status=$dst?(string)get_post_status($dst):'missing';
+            $draft_pending_review=$dst>0 && $target_status==='draft'
+                && self::lang($dst)===$lang;
+            if(!$dst||!get_post($dst)||$target_status!=='publish'){
+                $codes['missing']=$draft_pending_review
+                    ? 'WPML translation draft #'.$dst.' exists but is unpublished. Elementor references, locale rendering and editorial review remain pending'
+                    : 'Published eligible content has no published '.$lang.' translation';
             } else {
                 $target=self::flatten(self::tree($dst));
                 $missing=array_diff_key($base,$target);
@@ -155,7 +172,9 @@ final class MAD4B_Elementor_Localization_V1 {
                     'code'=>$full,'post_type'=>$type,'object_id'=>$src_id,
                     'severity'=>in_array($code,['missing','layout'],true)?'high':'medium',
                     'label'=>mb_substr('['.$lang.'] '.get_the_title($src_id).': '.$message,0,239),
-                    'source'=>self::SOURCE];
+                    'source'=>self::SOURCE,
+                    'target_post_id'=>(int)$dst,'target_post_status'=>$target_status,
+                    'review_state'=>$draft_pending_review?'draft_unpublished_pending_review':'translation_gap_unresolved'];
                 $issues[]=$row;
                 if(in_array($code,['missing','layout','text'],true)){
                     $jobs[]=['key'=>hash('sha256',home_url().'|'.$src_id.'|'.$lang.'|'.$code),
@@ -163,8 +182,12 @@ final class MAD4B_Elementor_Localization_V1 {
                         'target_language'=>$lang,'gap_code'=>$full,'issue_id'=>$row['id'],
                         'source_sha256'=>self::source_digest($src_id,$source),
                         'scope'=>'company-published-visible-content',
-                        'stage'=>'WPML_TRANSLATION','executor'=>'mcp_client',
-                        'operation'=>$code==='layout'?'align_elementor_layout_and_translate':'translate_missing_elementor_strings',
+                        'stage'=>$draft_pending_review?'WPML_DRAFT_REVIEW':'WPML_TRANSLATION',
+                        'executor'=>'mcp_client',
+                        'operation'=>$draft_pending_review?'review_unpublished_wpml_draft'
+                           :($code==='layout'?'align_elementor_layout_and_translate':'translate_missing_elementor_strings'),
+                        'review_state'=>$draft_pending_review?'draft_unpublished_pending_review':'translation_gap_unresolved',
+                        'target_post_status'=>$target_status,
                         'preserve_translations'=>true,'no_automatic_publish'=>true];
                 }
             }
@@ -241,6 +264,12 @@ final class MAD4B_Elementor_Localization_V1 {
             $state=$same?($before['status']??'queued'):'queued';
             if(in_array($state,['completed','verified'],true))$state='queued';
             if($state==='leased' && strtotime($before['lease_until']??'1970-01-01')<time())$state='queued';
+            // Keep the gap visible in the queue and Control Plane, while
+            // preventing the translation executor from re-translating an
+            // already linked but unpublished WPML draft.
+            if(($job['review_state']??'')==='draft_unpublished_pending_review'
+                &&in_array($state,['queued','needs_review'],true))$state='needs_review';
+            elseif($state==='needs_review')$state='queued';
             $new[$key]=array_merge($job,[
                 'status'=>$state,'created_at'=>$before['created_at']??$now,
                 'updated_at'=>$now,'attempts'=>(int)($before['attempts']??0),
