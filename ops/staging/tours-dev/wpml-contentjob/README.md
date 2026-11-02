@@ -85,3 +85,15 @@ The repair reads the WPML object ID for a **draft only** when all of these match
 - Exact representative issue: \`Home Properties Search Box\`, French, draft ID \`68832\`: "WPML translation draft #68832 exists but is unpublished. Elementor references, locale rendering and editorial review remain pending". Stage \`WPML_DRAFT_REVIEW\`; reference \`review_unpublished_wpml_draft\`; public homepage HTTP 200.
 
 This makes the review task explicit in the underlying WordPress ability, Outbox, and ContentJob evidence. An independent Control Plane dashboard frontend must consume the ability to render a dedicated panel; **ability registration alone is not proof that a visible dashboard UI has been wired**. Continue to distinguish technical review handoff from completed translations.
+
+## Control Plane visible WPML review ledger — Staging pilot, November 2, 2026
+
+The live Control Plane at `tours.dev.mad4b.com` (plugin `mad4b-site-control-plane` 0.4.0-rc.118) has an existing Content Readiness admin screen. The added Staging-only MU plugin `358-mad4b-control-plane-wpml-review-ui.php` registers a native submenu under `MAD4B Control Plane → WPML Reviews`, and a contextual warning/link under `MAD4B Control Plane → Content Readiness`. The admin URL is:
+
+`https://tours.dev.mad4b.com/wp-admin/admin.php?page=mad4b-wpml-review-dashboard`
+
+The view reads `MAD4B_WPML_ContentJob_Adapter::review_dashboard(100)` and displays exact WPML target IDs, localized post language, post status, native ContentJob ID and state, outbox statuses, review blockers, and normal WordPress editor links. Accessible GET filters for locale and review type; no new writes, approval shortcuts, publishing or brand-context dependencies. Requires WordPress `manage_options` **and** MAD4B read authorization. Its cached data remains protected by a fresh authorization check.
+
+Live acceptance following installation: PHP syntax PASS; exact installed SHA-256 matched source; 16 UI integration checks PASS; native admin submenu and Control Plane route registry PASS; dynamic staging-only acceptance **58 assertions PASS**, with 17 unpublished drafts, 9 published targets requiring approval, 121 other pending native ContentJobs. The real webpage requires a normal authenticated WordPress session; a logged-out HTTP probe correctly redirected to `wp-login.php`. The HTML markup and admin registration were tested using authorized WordPress CLI, but no authenticated interactive browser screenshot was captured. Frontend homepage HTTP 200, intake timer active, Production unchanged.
+
+The independent regression test lives in `tests/wpml-review-ui-acceptance.php`; run with the site's enrolled WP-CLI user, not an unauthenticated or fabricated principal. The review page intentionally cannot transition `WAITING_REVIEW` to `COMPLETED` or publish a draft.
