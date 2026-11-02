@@ -78,6 +78,11 @@ final class MAD4B_Elementor_Localization_V1 {
         $base=self::flatten($source);$issues=[];$jobs=[];
         $render=get_option(self::RENDER,[]);
         $render=is_array($render)?$render:[];
+        // Render observations are evidence, not permanent facts: never use
+        // stale snapshots or HTML from the EN page to accuse another locale.
+        // Fresh locale-specific observations can still create translation jobs.
+        $seen_at=strtotime((string)($render['observed_at']??''));
+        $render_fresh=$seen_at && $seen_at>=time()-3600 && $seen_at<=time()+120;
         if($type==='page' && isset($render['h1'][$src_id]) && (int)$render['h1'][$src_id]['count']===0){
             $code='loc_h1_'.$default;
             $issues[]=['id'=>hash('sha256',get_current_blog_id().'|'.$type.'|'.$src_id.'|'.$code),
@@ -126,7 +131,9 @@ final class MAD4B_Elementor_Localization_V1 {
             }
             $rendered=0;
             foreach((array)($render['leaks']??[]) as $leak){
-                if(!is_array($leak)||($leak['lang']??'')!==$lang)continue;
+                if(!$render_fresh||!is_array($leak)||($leak['lang']??'')!==$lang)continue;
+                $observed_page_id=(int)($leak['page_id']??0);
+                if($observed_page_id && self::lang($observed_page_id)!==$lang)continue;
                 $template_id=(int)($leak['template_id']??0);
                 $owner=$template_id?apply_filters('wpml_object_id',$template_id,'elementor_library',false,$default):0;
                 if(!$owner && $template_id)$owner=$template_id;
