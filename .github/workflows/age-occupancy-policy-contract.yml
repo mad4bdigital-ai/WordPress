@@ -8,6 +8,7 @@ on:
       - 'wp-content/plugins/commerce-composition/includes/RequestReviewAdmin.php'
       - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/presentation-form6-price-quote-v1.php'
       - 'packages/mad4b-shared-product-core/tests/form6-missing-minor-policy-contract.php'
+      - 'packages/mad4b-shared-product-core/tests/form6-preview-widget-smoke.js'
       - '.github/workflows/age-occupancy-policy-contract.yml'
   push:
     branches: [master]
@@ -17,6 +18,7 @@ on:
       - 'wp-content/plugins/commerce-composition/includes/RequestReviewAdmin.php'
       - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/presentation-form6-price-quote-v1.php'
       - 'packages/mad4b-shared-product-core/tests/form6-missing-minor-policy-contract.php'
+      - 'packages/mad4b-shared-product-core/tests/form6-preview-widget-smoke.js'
       - '.github/workflows/age-occupancy-policy-contract.yml'
   workflow_dispatch:
 
@@ -61,3 +63,4 @@ jobs:
           Path('/tmp/mad4b-form6-ref-preview.js').write_text(js)
           PY
           node --check /tmp/mad4b-form6-ref-preview.js
+          node packages/mad4b-shared-product-core/tests/form6-preview-widget-smoke.js
