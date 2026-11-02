@@ -41,6 +41,7 @@ require_once $root.'pricing/refund-provider-adapter.php';
 require_once $root.'pricing/refund-provider-recheck.php';
 require_once $root.'admin/woocommerce-refund-recheck.php';
 require_once $root.'admin/woocommerce-financial-panel.php';
+require_once $root.'pricing/rate-locale-policy.php';
 foreach (['currency-provider.php','price-resolver.php','price-presenter.php','occupancy-presenter.php','audience-resolver.php','rate-field-presenter.php'] as $module) {
  require_once $root.'pricing/'.$module;
 }
