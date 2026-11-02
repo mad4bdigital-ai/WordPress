@@ -430,14 +430,6 @@ final class MAD4B_SCP_Content_Jobs {
 		if ( is_wp_error( $transactional ) ) return $transactional;
 		$checkpoint = MAD4B_SCP_Operational_Integrity::capture();
 		if ( is_wp_error( $checkpoint ) ) return $checkpoint;
-		// Deny an unidentified WP-CLI or Cron principal BEFORE any transactional writes.
-		// The final integrity check below still guards against authority changes.
-		if ( ! class_exists( 'MAD4B_SCP_Policy' ) || true !== MAD4B_SCP_Policy::can_mutate() ) {
-			return new WP_Error( 'mad4b_content_job_authorized_actor_required',
-				'A verified WordPress administrator or governed NHI is required to create ContentJobs.',
-				array( 'stage' => 'pre_transaction_authorization', 'mutation_performed' => false,
-					'requires_authorized_principal' => true ) );
-		}
 		$scope = $checkpoint['scope'];
 		$site_uuid = (string) $scope['site_uuid'];
 		$subject = trim( wp_strip_all_tags( (string) $input['subject'] ) );
@@ -462,6 +454,15 @@ final class MAD4B_SCP_Content_Jobs {
 		}
 		$publish_at = self::normalize_datetime( isset( $input['desired_publish_at'] ) ? $input['desired_publish_at'] : '' );
 		if ( is_wp_error( $publish_at ) ) return $publish_at;
+
+		// Deny an unidentified WP-CLI or Cron principal BEFORE any transactional writes.
+		// The final integrity check below still guards against authority changes.
+		if ( ! class_exists( 'MAD4B_SCP_Policy' ) || true !== MAD4B_SCP_Policy::can_mutate() ) {
+			return new WP_Error( 'mad4b_content_job_authorized_actor_required',
+				'A verified WordPress administrator or governed NHI is required to create ContentJobs.',
+				array( 'stage' => 'pre_transaction_authorization', 'mutation_performed' => false,
+					'requires_authorized_principal' => true ) );
+		}
 
 		$job_id = strtolower( wp_generate_uuid4() );
 		$now = gmdate( 'Y-m-d H:i:s' );
