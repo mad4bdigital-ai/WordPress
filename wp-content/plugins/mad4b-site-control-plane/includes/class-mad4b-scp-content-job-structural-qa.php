@@ -53,6 +53,69 @@ final class MAD4B_SCP_Content_Job_Structural_QA {
    'after_sha256'=>hash('sha256',wp_json_encode($after))];
   return true;
  }
+ private static function receiptKey(string $site,string $job):string {
+  return 'mad4b_cj_structural_qa_'.hash('sha256',$site.'|'.$job);
+ }
+ /** Re-read independently verified local document facts before accepting any receipt. */
+ public static function receipt(string $jobId):array {
+  $current=self::inspect($jobId);
+  if(($current['state']??'')!=='STRUCTURAL_DOCUMENT_VERIFIED')
+   return self::hold('original_structural_evidence_not_eligible');
+  $key=self::receiptKey($current['site_uuid'],$jobId);
+  $saved=get_option($key,null);
+  if(!is_array($saved)||($saved['contract']??'')!==self::CONTRACT.'.attestation'||
+     ($saved['state']??'')!=='STRUCTURAL_DOCUMENT_ATTESTED'||
+     !hash_equals((string)($saved['evidence_sha256']??''),$current['evidence_sha256'])||
+     (int)($saved['target_post_id']??0)!==$current['target_post_id']||
+     (int)($saved['job_revision']??0)!==$current['job_revision'])
+   return self::hold('original_structural_attestation_missing_or_stale');
+  return $saved+['mutation_performed'=>false];
+ }
+ /**
+  * A source-bound structural DOCUMENT attestation, not a browser/interaction
+  * certificate or permission to skip translation QA.
+  */
+ public static function attest(string $jobId):array {
+  if(wp_get_environment_type()!=='staging'||
+     !MAD4B_SCP_Central_Write_Acceptance::permitted())
+   return self::hold('staging_original_actor_required');
+  $current=self::inspect($jobId);
+  if(($current['state']??'')!=='STRUCTURAL_DOCUMENT_VERIFIED')
+   return self::hold('original_structural_qa_hold');
+  if(!current_user_can('edit_post',$current['source_post_id'])||
+     !current_user_can('edit_post',$current['target_post_id']))
+   return self::hold('original_object_edit_permission_denied');
+  $checkpoint=MAD4B_SCP_Operational_Integrity::capture();
+  if(is_wp_error($checkpoint)||
+     ($checkpoint['scope']['site_uuid']??'')!==$current['site_uuid'])
+   return self::hold('original_site_integrity_unavailable');
+  $key=self::receiptKey($current['site_uuid'],$jobId);
+  $existing=get_option($key,null);
+  if(is_array($existing))
+   return self::receipt($jobId);
+  $receipt=['contract'=>self::CONTRACT.'.attestation',
+    'state'=>'STRUCTURAL_DOCUMENT_ATTESTED',
+    'job_id'=>$jobId,'job_revision'=>$current['job_revision'],
+    'site_uuid'=>$current['site_uuid'],
+    'source_post_id'=>$current['source_post_id'],
+    'target_post_id'=>$current['target_post_id'],
+    'source_sha256'=>$current['source_sha256'],
+    'target_sha256'=>$current['target_sha256'],
+    'planned_sha256'=>$current['planned_sha256'],
+    'evidence_sha256'=>$current['evidence_sha256'],
+    'changed_path_count'=>$current['changed_path_count'],
+    'no_rights_bearing_delta'=>true,
+    'editorial_review_completed'=>false,
+    'browser_render_verified'=>false,
+    'cwa_write_authorized'=>false,
+    'reviewed_by_original_user'=>get_current_user_id(),
+    'attested_at'=>gmdate('c')];
+  if(!add_option($key,$receipt,'',false))
+   return self::hold('attestation_exists_or_write_uncertain');
+  $fresh=self::receipt($jobId);
+  return ($fresh['state']??'')==='STRUCTURAL_DOCUMENT_ATTESTED'
+    ?$fresh:self::hold('attestation_native_readback_failed');
+ }
  public static function inspect(string $jobId):array {
   $base=['contract'=>self::CONTRACT,'job_id'=>$jobId,'mutation_performed'=>false];
   if(!class_exists('MAD4B_WPML_Structural_Sync_V2',false)||
