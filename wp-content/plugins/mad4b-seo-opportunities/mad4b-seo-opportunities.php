@@ -76,10 +76,17 @@ final class MAD4B_SEO_Opportunities {
                 }catch(Throwable $e){}
             }
         }
+        $cp=class_exists('MAD4B_SCP_Native_Search_Console',false)
+            ? MAD4B_SCP_Native_Search_Console::status() : array();
         return array('rank_math'=>array('state'=>$fresh?'fresh':'stale_or_absent','last_row'=>$last?:null,
             'age_days'=>$age===PHP_INT_MAX?null:(int)floor($age/DAY_IN_SECONDS)),
             'native'=>array('state'=>$native?'certified_adapter':'unavailable','providers'=>$native),
-            'allowed_performance_sources'=>$fresh?array('rank_math'):$native,
+            'control_plane_gsc'=>array(
+                'state'=>!empty($cp['retained_evidence_ready'])?'fresh_retained':
+                    (!empty($cp['capture_ready'])?'consent_ready':'consent_or_connection_required'),
+                'pages'=>(int)($cp['pages']??0)),
+            'allowed_performance_sources'=>$fresh?array('rank_math'):
+                (!empty($cp['retained_evidence_ready'])?array('mad4b_native_gsc'):$native),
             'no_credentials_accessed'=>true);
     }
     private static function rank_gsc(array $targetUrls,array $source):array {
@@ -104,7 +111,11 @@ final class MAD4B_SEO_Opportunities {
         return $out;
     }
     private static function native_gsc(array $targetUrls,array $source):array {
-        // Use MAD4B's *own* G5 policy, consent, rights and provenance checks.
+        // First reuse the native Control Plane's property-bound, fresh, retained
+        // observations. It never exposes OAuth credentials to this plugin.
+        $native=apply_filters('mad4b/seo_opportunities/native_page_metrics',array(),$targetUrls);
+        if(is_array($native) && $native)return $native;
+        // Next use MAD4B's G5 policy, consent, rights and provenance checks.
         // Server-owned connection code may supply immutable observation refs.
         // No generic Google HTTP calls or user-submitted credential handles.
         if(($source['native']['state']??'')!=='certified_adapter' ||

@@ -22,3 +22,6 @@ If provider observations are stale or missing, performance opportunities are wit
 Staging source-only candidate. No automatic Production deployment or IndexFlow activation.
 Source options: mad4b_seo_opportunities_v1 and mad4b_seo_opportunities_snapshot_v1.
 Contract: mad4b.seo-opportunities.v1.
+
+## Native MAD4B Control Plane GSC bridge
+The owned Control Plane class MAD4B_SCP_Native_Search_Console offers a nonce-protected, site-scoped Search Console report capture through the existing encrypted Google Workspace grant. The user must select search_console=read and finish Google consent. After verified capture, a 7-day bounded, immutable-checksummed retained page report is projected through mad4b/seo_opportunities/native_page_metrics. Rank Math remains the first source when fresh. No background OAuth consent or Google token sharing occurs.
