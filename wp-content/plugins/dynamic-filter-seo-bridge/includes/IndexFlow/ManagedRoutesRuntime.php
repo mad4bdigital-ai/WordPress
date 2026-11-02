@@ -23,12 +23,12 @@ final class ManagedRoutesRuntime {
         };
         if (!$authority()) return null;
         $vendor = jet_smart_filters();
-        if (!isset($vendor->settings) || 'permalink' !== $vendor->settings->get('url_structure_type')
-            || filter_var($vendor->settings->get('use_url_aliases'), FILTER_VALIDATE_BOOLEAN)) return null;
+        if (!isset($vendor->settings) || 'permalink' !== $vendor->settings->get('url_structure_type')) return null;
         try {
             $snapshot = (new RouteDocumentStore())->snapshot();
             if (!$snapshot['exists']) return null;
             $service = RouteDocumentStore::architecture($snapshot['document']);
+            if (!self::vendorAliasesCompatible($vendor->settings, $service)) return null;
             $allowed = static function (array $row) use ($profiles, $service, $config): bool {
                 if ('rank_math' !== $row['seo_owner']) return false;
                 $parsed = (new \DynamicFilterSEOBridge\JetSmartFilters\FilterUrlParser($profiles->allowedTaxonomies()))->parse($service->technicalUrl($row['state']));
@@ -39,6 +39,43 @@ final class ManagedRoutesRuntime {
             };
             return new self($service, $allowed, $authority);
         } catch (\Throwable $e) { return null; }
+    }
+
+    /**
+     * Native JetSmartFilters aliases may coexist with managed URLs when they
+     * do not rewrite the exact approved native or managed route paths.
+     * No global vendor setting is changed.
+     */
+    public static function aliasConflicts(array $aliases, array $paths): bool {
+        foreach ($aliases as $alias) {
+            if (!is_array($alias)) return true;
+            $needle = (string) ($alias['needle'] ?? '');
+            $replacement = (string) ($alias['replacement'] ?? '');
+            if ('' === $needle || '' === $replacement) continue;
+            foreach ($paths as $path) {
+                $path = (string) $path;
+                if ('' === $path) return true;
+                if (false !== strpos($path, $needle) || false !== strpos($path, $replacement)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static function vendorAliasesCompatible($settings, ManagedUrlArchitecture $service): bool {
+        if (!filter_var($settings->get('use_url_aliases'), FILTER_VALIDATE_BOOLEAN)) return true;
+        $aliases = $settings->get('url_aliases');
+        if (!is_array($aliases)) return false;
+        $paths = array();
+        foreach ((array) ($service->preview()['routes'] ?? array()) as $entry) {
+            if (!is_array($entry)) return false;
+            $row = $service->lookup((string) ($entry['identity'] ?? ''), (string) ($entry['locale'] ?? ''));
+            if (empty($row['state'])) return false;
+            $paths[] = (string) ($entry['url'] ?? '');
+            $paths[] = $service->technicalUrl($row['state']);
+        }
+        return ! self::aliasConflicts($aliases, $paths);
     }
 
     public function register(): void {
