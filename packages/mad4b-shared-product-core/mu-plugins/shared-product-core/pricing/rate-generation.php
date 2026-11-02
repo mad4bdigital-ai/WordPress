@@ -668,7 +668,8 @@ final class Shared_Product_Rate_Generation {
  }
  public static function create($input) {
   if(!current_user_can('manage_woocommerce'))return new WP_Error('rate_generator_permission_denied');
-  if(wp_get_environment_type()!=='local')return new WP_Error('rate_generator_nonlab_denied');
+  if(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED')||MAD4B_COMMERCE_RUNTIME_ENABLED!==true)
+   return new WP_Error('rate_generator_runtime_grant_required');
   $plan=self::prepare($input);if(is_wp_error($plan))return $plan;
   // Unique wp_options key is an atomic mutex across PHP processes.
   // Locks never authorize publication; stale locks fail closed for operator review.
