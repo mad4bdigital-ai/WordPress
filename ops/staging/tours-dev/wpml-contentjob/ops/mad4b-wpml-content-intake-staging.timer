@@ -1,0 +1,13 @@
+[Unit]
+Description=Periodically reconcile WPML source tasks with native MAD4B ContentJobs (Staging)
+
+[Timer]
+OnBootSec=300s
+OnUnitInactiveSec=300s
+AccuracySec=45s
+RandomizedDelaySec=0
+Persistent=true
+Unit=mad4b-wpml-content-intake-staging.service
+
+[Install]
+WantedBy=timers.target
