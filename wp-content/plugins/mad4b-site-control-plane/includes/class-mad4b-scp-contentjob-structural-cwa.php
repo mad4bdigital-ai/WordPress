@@ -97,7 +97,9 @@ final class MAD4B_SCP_Structural_Only_CWA_Adapter implements MAD4B_Central_Enric
  }
  public function authorize(array $claim,array $source):bool {
   try{$facts=$this->facts();}catch(Throwable $e){return false;}
-  if(get_option('mad4b_contentjob_structural_cwa_enabled','no')!=='yes')return false;
+  if(get_option('mad4b_contentjob_structural_cwa_enabled','no')!=='yes'||
+     get_option('mad4b_contentjob_structural_cwa_exact_job','')!==$this->job)
+    return false;
   $ability=wp_get_ability('mad4b/content-job-structural-cwa-apply');
   return is_object($ability)&&
     $ability->check_permissions(['job_id'=>$this->job])===true &&
