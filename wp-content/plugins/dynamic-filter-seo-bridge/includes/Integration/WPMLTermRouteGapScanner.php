@@ -133,6 +133,16 @@ final class WPMLTermRouteGapScanner {
                         continue;
                     }
                     $term = $translation['term'];
+                    // A newly linked WPML term is not editorial approval.
+                    // Keep the original stable term_missing issue/ContentJob
+                    // open until the localized term passes review and is
+                    // explicitly released. Do not auto-close on mere linkage.
+                    if ((string)get_term_meta((int)$term->term_id,
+                            '_mad4b_wpml_review_required',true)==='1') {
+                        $issues[] = self::issue($taxonomy,(int)$source->term_id,$locale,
+                            'term_missing','WPML term translated but pending editorial/public URL review');
+                        continue;
+                    }
                     $resolved = $route->term($taxonomy,(int)$term->term_id,$locale);
                     if (!$resolved || (int)($resolved['semantic_id'] ?? 0) !== (int)$source->term_id ||
                         (string)($resolved['slug'] ?? '') !== (string)$term->slug) {
