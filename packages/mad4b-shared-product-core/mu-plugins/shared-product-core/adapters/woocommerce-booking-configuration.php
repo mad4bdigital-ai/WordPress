@@ -1,6 +1,6 @@
 <?php
 /** Explicit composite booking configuration for already integrated tour-rates. Lab only. */
-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 function shared_product_booking_configuration_quote($rate_id,$audience,$occupancy,$selection){
  if(get_post_type($rate_id)!=='tour-rates'||get_post_status($rate_id)!=='publish'||!is_array($selection))return new WP_Error('booking_invalid_rate_or_options');
  $allowed=['persons','rooms','cabins','vehicles','days','trips','tables'];

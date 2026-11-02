@@ -2,7 +2,7 @@
 /** Native JetSmartFilters provider routing for original Grid/Accordion modes. */
 if(!defined('ABSPATH'))return;
 add_action('elementor/frontend/widget/before_render',static function($widget){
- if(wp_get_environment_type()!=='local')return;
+ if((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))return;
  $tour_post=function_exists('shared_presentation_primary_tour_post_v1') ? shared_presentation_primary_tour_post_v1() : null;
  if(!($tour_post instanceof WP_Post))return;
  if(!is_object($widget)||!method_exists($widget,'get_name')||!method_exists($widget,'get_settings')||!method_exists($widget,'set_settings'))return;

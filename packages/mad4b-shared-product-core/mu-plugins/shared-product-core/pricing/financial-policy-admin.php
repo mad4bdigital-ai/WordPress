@@ -1,6 +1,6 @@
 <?php
 /** Generic guarded administrative policy editing, isolated lab. */
-if(!defined('ABSPATH')||!defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY)return;
+if(!defined('ABSPATH')||(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))return;
 function shared_product_validate_financial_rules($rules){
  if(!is_array($rules)||($rules['schema']??null)!==1||!is_array($rules['payment_fees']??null)||!is_array($rules['offers']??null)||count($rules['offers'])>100)return new WP_Error('invalid_financial_policy_schema');
  foreach($rules['payment_fees'] as $method=>$fee){
@@ -21,7 +21,7 @@ add_action('admin_menu',static function(){
  add_submenu_page('options-general.php','Booking Financial Policies','Booking Financial Policies','manage_options','shared-product-financial',static function(){
   if(!current_user_can('manage_options'))wp_die('Forbidden');
   $saved=get_option('shared_product_payment_offer_rules',null);
-  echo '<div class="wrap"><h1>Booking Financial Policies</h1><p>Lab-only policy editor. Preview calculations do not authorize payment charges.</p>';
+  echo '<div class="wrap"><h1>Booking Financial Policies</h1><p>runtime-authorized policy editor. Preview calculations do not authorize payment charges.</p>';
   if(isset($_GET['updated']))echo '<div class="notice notice-success"><p>Validated policy saved.</p></div>';
   echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';wp_nonce_field('shared_product_financial_save');
   echo '<input type="hidden" name="action" value="shared_product_financial_save"><label for="financial-rules">Payment fees and scoped promotions (JSON)</label><p><textarea id="financial-rules" name="financial_rules" rows="22" style="width:100%;font-family:monospace">'.esc_textarea($saved===null?'':wp_json_encode($saved,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES)).'</textarea></p>';

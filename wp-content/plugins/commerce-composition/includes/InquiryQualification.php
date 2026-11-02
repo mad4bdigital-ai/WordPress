@@ -205,12 +205,11 @@ final class InquiryQualification
             'preview_amount'=>null,'currency'=>null,'reason'=>'price_not_certified',
             'manager_approved'=>false,'traveler_accepted'=>false,
             'checkout_authorized'=>false,'supplier_booking_authorized'=>false];
-        // This single-service preview cannot price child/infant ages,
-        // and cannot certify the multi-service plan in Form 7.
-        if($original['children']>0||$original['infants']>0){
-            $result['reason']='age_pricing_requires_review';return $result;
-        }
-        if($form===7){
+        // Minor pricing is separate from visibility of the already verified Rate.
+        // In a request with children, only price the adults, not the full party.
+        // Multi-service Form 7 cannot claim its additional components were quoted.
+        $hasMinors=$original['children']>0||$original['infants']>0;
+        if($form===7&&!$hasMinors){
             $result['reason']='custom_multi_service_scope_requires_review';return $result;
         }
         if(!function_exists('shared_product_pricing_quote_contract_v2')){
@@ -220,7 +219,7 @@ final class InquiryQualification
             'schema_version'=>2,'tour_id'=>$tour,
             'source'=>$rate===null?'direct':'rate','rate_id'=>$rate,
             'travel_date'=>$original['date'],'audience'=>$saved['audience'],
-            'occupancy'=>$saved['occupancy'],'quantities'=>['persons'=>$original['persons']],
+            'occupancy'=>$saved['occupancy'],'quantities'=>['persons'=>$hasMinors?$original['adults']:$original['persons']],
             'booking_intent'=>'quote','extras'=>[],'selections'=>[]
         ];
         $quote=shared_product_pricing_quote_contract_v2($configuration);
@@ -229,11 +228,24 @@ final class InquiryQualification
             (float)$quote['total']<=0||!preg_match('/^[A-Z]{3}$/D',(string)($quote['currency']??''))){
             $result['reason']='quote_not_verified';return $result;
         }
-        $result['quote_state']='preview_only';
-        $result['status']='quote_draft';
-        $result['preview_amount']=(float)$quote['total'];
         $result['currency']=$quote['currency'];
-        $result['reason']='awaiting_manager_quote_policy';
+        if($hasMinors){
+            // Do not place the adult reference into preview_amount, which callers
+            // display as an all-party total. Checkout and approval remain denied.
+            $result['quote_state']='partial_preview';
+            $result['base_preview_amount']=(float)$quote['total'];
+            $result['base_preview_adults']=$original['adults'];
+            $result['base_preview_scope']=$form===7
+                ?'adults_only_single_tour_no_custom_services'
+                :'adults_only_excludes_children_infants';
+            $result['minor_price_state']='requires_separate_pricing';
+            $result['reason']='age_pricing_requires_review';
+        }else{
+            $result['quote_state']='preview_only';
+            $result['status']='quote_draft';
+            $result['preview_amount']=(float)$quote['total'];
+            $result['reason']='awaiting_manager_quote_policy';
+        }
         return $result;
     }
 }

@@ -1,7 +1,9 @@
 <?php
-/** Plugin Name: Shared Product Core Loader (Lab) */
+/** Plugin Name: Shared Product Core Loader (Governed Runtime) */
 if (!defined('ABSPATH')) exit;
-if (wp_get_environment_type() !== 'local' || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+// A runtime grant is independent of WP_ENVIRONMENT_TYPE; governed runtime keeps its own opt-in.
+$mad4bSharedRuntime=defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true;
+if (!$mad4bSharedRuntime) return;
 $root=__DIR__.'/shared-product-core/';
 require_once $root.'core.php';
 require_once $root.'contracts/field-shape-contract-v1.php';
@@ -37,9 +39,11 @@ require_once $root.'pricing/refund-provider-adapter.php';
 require_once $root.'pricing/refund-provider-recheck.php';
 require_once $root.'admin/woocommerce-refund-recheck.php';
 require_once $root.'admin/woocommerce-financial-panel.php';
+require_once $root.'pricing/rate-locale-policy.php';
 foreach (['currency-provider.php','price-resolver.php','price-presenter.php','occupancy-presenter.php','audience-resolver.php','rate-field-presenter.php'] as $module) {
  require_once $root.'pricing/'.$module;
 }
+require_once $root.'pricing/occupancy-policy-v1.php';
 require_once $root.'pricing/rate-generation.php';
 require_once $root.'pricing/rate-source-batch.php';
 require_once $root.'admin/rate-generation.php';
@@ -77,7 +81,7 @@ require_once $root.'adapters/presentation-compatibility-manifest-v1.php';
 require_once $root.'adapters/presentation-source-field-guard-v1.php';
 // Read-only, local-only native display adapter arbitration.
 require_once $root.'adapters/presentation-adapter-registry-v1.php';
-// Read-only WPML/Listing context inspection for Local Lab.
+// Read-only WPML/Listing context inspection for governed runtime.
 require_once $root.'adapters/presentation-context-v1.php';
 // One canonical catalog contract for WPML facets, signed JSF and WCML presentation.
 require_once $root.'adapters/presentation-context-registry-v2.php';

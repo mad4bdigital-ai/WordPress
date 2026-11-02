@@ -3,8 +3,8 @@
  * Program scheduling (Lab): date presentation, not bookable inventory.
  * Read-only; never treats rate coverage as a confirmed reservation.
  */
-if (!defined('ABSPATH') || wp_get_environment_type() !== 'local' ||
-    !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true) ||
+    (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 
 final class Shared_Product_Program_Schedule {
  public static function parse_date($value,?DateTimeZone $timezone=null){

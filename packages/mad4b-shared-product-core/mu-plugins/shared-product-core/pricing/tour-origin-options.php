@@ -1,6 +1,6 @@
 <?php
 /** Lab: Tour Origin choices strictly from the tour's assigned destination terms. */
-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 function shared_product_tour_origin_choices($tour_id) {
     if (get_post_type($tour_id)!=='tours-and-activities') return [];
     $terms=wp_get_post_terms($tour_id,'destinations');

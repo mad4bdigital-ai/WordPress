@@ -1,6 +1,6 @@
 <?php
-/** Lab-only: refuse a malformed composite booking before cart item insertion. Never enable purchases. */
-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+/** runtime-authorized: refuse a malformed composite booking before cart item insertion. Never enable purchases. */
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 add_filter('woocommerce_add_to_cart_validation', static function($valid,$product_id,$quantity) {
  if (!$valid || get_post_type($product_id)!=='tour-rates') return $valid;
  if (!isset($_REQUEST['shared_booking_configuration'])) return $valid;

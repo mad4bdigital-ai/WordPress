@@ -1,6 +1,6 @@
 <?php
 /** Visa matrix, country-level only; quotation not an eligibility guarantee. */
-if(!defined('ABSPATH')||!defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY)return;
+if(!defined('ABSPATH')||(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))return;
 function shared_product_visa_matrix_validate($matrix){
  if(!is_array($matrix)||($matrix['schema']??null)!==1||!is_array($matrix['rates']??null)||count($matrix['rates'])>200)return new WP_Error('invalid_visa_matrix');
  $seen=[];

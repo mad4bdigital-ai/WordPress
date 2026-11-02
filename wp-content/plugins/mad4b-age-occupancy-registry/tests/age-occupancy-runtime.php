@@ -6,7 +6,7 @@ $fixture=['rate_id'=>66526,'checkin'=>'2026-12-01','checkout'=>'2026-12-03','roo
 $before=\BookingExperience\unified_accommodation_preview($fixture);
 $assert('legacy_pricing_unchanged',!is_wp_error($before)&&abs($before['preview_total']-240)<.001);
 $unconfigured=\BookingExperience\unified_accommodation_preview($fixture+['child_ages'=>[1]]);
-$assert('no_silent_age_policy',is_wp_error($unconfigured)&&$unconfigured->get_error_code()==='stay_age_policy_unconfigured');
+$assert('unconfigured_policy_uses_existing_rate',!is_wp_error($unconfigured)&&abs($unconfigured['preview_total']-$before['preview_total'])<.001);
 $bands=[['id'=>'infant','min_age'=>0,'max_age'=>2,'price_factor'=>0.0,'count_in_capacity'=>false],['id'=>'child','min_age'=>3,'max_age'=>17,'price_factor'=>0.5,'count_in_capacity'=>true]];
 $apply=function($record,$level,$context)use($bands){return $level==='rate' && (int)($context['rate_id']??0)===66526?['bands'=>$bands,'age_pricing_enabled'=>true]:$record;};
 add_filter('mad4b/age_occupancy/policy_level',$apply,20,3);
@@ -25,7 +25,7 @@ $assert('unmapped_age_reject',is_wp_error($missing)&&$missing->get_error_code()=
 $room_child=\BookingExperience\unified_accommodation_preview($fixture+['room_occupancy'=>[['adults'=>2,'children'=>1,'child_ages'=>[7]]]]);
 $assert('room_assignment_ages',!is_wp_error($room_child)&&abs($room_child['preview_total']-$child['preview_total'])<.001);
 $other=MAD4B_Age_Aware_Stay::preview(['child_ages'=>[7]],0,0,99999,2,1,1);
-$assert('unconfigured_rate_reject',is_wp_error($other)&&$other->get_error_code()==='stay_age_policy_unconfigured');
+$assert('unconfigured_rate_falls_back_to_legacy', $other===null);
 $direct=MAD4B_Pricing_Quote_Dispatch::preview('accommodation_rate',$fixture+['child_ages'=>[7]]);
 $assert('registry_dispatch_parity',!is_wp_error($direct)&&$direct['quote']['preview_total']===$child['preview_total']);
 $multi=$fixture;

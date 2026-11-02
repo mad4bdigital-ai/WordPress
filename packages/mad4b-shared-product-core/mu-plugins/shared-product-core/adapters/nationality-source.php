@@ -1,6 +1,6 @@
 <?php
 /** Generic nationality provider; legacy site-specific class is isolated here. */
-if(!defined('ABSPATH')||wp_get_environment_type()!=='local'||!defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY)return;
+if(!defined('ABSPATH')||(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)||(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))return;
 final class Shared_Product_Nationality_Source {
  private static function provider(){
   $provider=apply_filters('shared_product_nationality_source',null);

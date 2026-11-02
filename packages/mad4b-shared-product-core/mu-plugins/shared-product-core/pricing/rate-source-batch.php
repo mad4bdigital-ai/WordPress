@@ -1,8 +1,10 @@
 <?php
 /** Existing Rate Generator companion: governed CSV preview → optional draft-only batch. */
-if (!defined('ABSPATH') || wp_get_environment_type()!=='local' ||
-    !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY ||
-    !class_exists('Shared_Product_Rate_Generation'))return;
+if (!defined('ABSPATH') || !class_exists('Shared_Product_Rate_Generation'))return;
+$mad4bRateBatchEnabled=(defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true)
+ || ((defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true)
+  && (defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true));
+if (!$mad4bRateBatchEnabled)return;
 
 final class Shared_Product_Rate_Source_Batch {
  const MAX_ROWS=30;
@@ -10,6 +12,7 @@ final class Shared_Product_Rate_Source_Batch {
  const REQUIRED=['kind','parent_id','currency','price_unit','valid_from','valid_to'];
  const COLUMNS=['kind','parent_id','unit_id','supplier_sku','supplier_cost',
   'pricing_rule_kind','pricing_rule_value','amount','currency','price_unit',
+  'pricing_locale_mode','pricing_language',
   'valid_from','valid_to','single_factor','double_factor','triple_factor',
   'package_term_id','min_nights','max_nights','max_adults','max_children',
   'inventory_policy','rate_scope','accommodation_assignment_mode','accommodation_stage_source_rate_id'];

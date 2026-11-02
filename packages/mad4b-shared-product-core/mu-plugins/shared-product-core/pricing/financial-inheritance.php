@@ -1,6 +1,6 @@
 <?php
-/** Inheritable financial controls. No checkout authority. Lab-only. */
-if(!defined('ABSPATH')||!defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY)return;
+/** Inheritable financial controls. No checkout authority. runtime-authorized. */
+if(!defined('ABSPATH')||(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))return;
 function shared_product_financial_field_choices(){return [
  'tax_price_basis'=>['exclusive','inclusive'],
  'discount_tax_order'=>['before_tax','after_tax'],

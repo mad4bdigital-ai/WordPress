@@ -7,6 +7,8 @@ function shared_product_card_date_policy(){
 function pricing_rate_presentation($rate_id,$projection_mode=false) {
  $rate=get_post($rate_id);
  if (!$rate || $rate->post_type!=='tour-rates' || $rate->post_status!=='publish')return ['status'=>'unavailable'];
+ $locale=shared_product_rate_locale_decision((int)$rate_id);
+ if(!$locale['allowed'])return ['status'=>'unavailable','reason'=>$locale['reason']];
  if ((string)get_post_meta($rate_id,'avilabile_status',true)==='0' || (string)get_post_meta($rate_id,'stop_sale',true)==='1')return ['status'=>'unavailable'];
  $today=current_time('timestamp',true);
  $start=(int)get_post_meta($rate_id,'tour_rate_start_date',true);$end=(int)get_post_meta($rate_id,'tour_rate_end_date',true);

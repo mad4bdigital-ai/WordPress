@@ -7,8 +7,8 @@
  * open sales, change source queries, or grant WordPress permissions.
  */
 defined('ABSPATH') || exit;
-if (function_exists('wp_get_environment_type') && wp_get_environment_type()==='local'
- && defined('SHARED_PRODUCT_LAB_ONLY') && SHARED_PRODUCT_LAB_ONLY) {
+if ((defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true)
+ && (defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true)) {
 final class Shared_Product_Presentation_Transport_Context_v1 {
  private const VERSION='1.0.0';
  private const CATEGORY=[

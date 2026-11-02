@@ -1,6 +1,6 @@
 <?php
 /** Inheritable, generic notice deadlines for composite bookings. No inventory authority. Lab only. */
-if(!defined('ABSPATH')||wp_get_environment_type()!=='local'||!defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY)return;
+if(!defined('ABSPATH')||(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)||(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))return;
 final class Shared_Product_Advance_Notice {
  const META_KEY='shared_product_advance_notice_days';
  const VERSION='1.0.0';

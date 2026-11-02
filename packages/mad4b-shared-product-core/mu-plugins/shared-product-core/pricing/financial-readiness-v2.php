@@ -1,6 +1,6 @@
 <?php
 /** Diagnostic only, never supplies missing commercial policy values. */
-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 function shared_product_financial_readiness_v2($tour_id, $rate_id=null) {
  $tour_id=absint($tour_id); $rate_id=$rate_id===null?null:absint($rate_id);
  if(get_post_type($tour_id)!=='tours-and-activities')return new WP_Error('readiness_invalid_tour');

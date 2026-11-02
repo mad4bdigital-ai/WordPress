@@ -1,6 +1,6 @@
 <?php
 /** Generic pricing strategy registry and resolved rate-to-tour mode, lab only. */
-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 function shared_product_tour_context($rate_id) {
     $rate_id=absint($rate_id);
     if (get_post_type($rate_id)!=='tour-rates' || get_post_status($rate_id)!=='publish') return new WP_Error('invalid_rate');

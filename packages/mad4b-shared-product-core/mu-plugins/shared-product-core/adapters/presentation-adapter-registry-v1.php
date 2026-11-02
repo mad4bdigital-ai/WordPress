@@ -7,10 +7,8 @@
 defined('ABSPATH') || exit;
 // Conditional declaration: a top-level return is not enough to prevent
 // PHP's compile-time registration of an unconditional class declaration.
-if (function_exists('wp_get_environment_type')
-    && wp_get_environment_type() === 'local'
-    && defined('SHARED_PRODUCT_LAB_ONLY')
-    && SHARED_PRODUCT_LAB_ONLY
+if ((defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true)
+    && (defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true)
 ) {
 final class Shared_Product_Presentation_Adapter_Registry_v1 {
     private const VERSION = '1.0.0';
@@ -105,4 +103,4 @@ final class Shared_Product_Presentation_Adapter_Registry_v1 {
                 'sealed'=>$this->sealed,'size'=>count($ids),'ids'=>$ids];
     }
 }
-} // Strict Local Lab-only conditional declaration.
+} // Strict governed runtime-only conditional declaration.

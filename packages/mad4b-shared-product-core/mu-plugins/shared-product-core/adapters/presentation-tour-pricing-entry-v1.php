@@ -1,7 +1,7 @@
 <?php
-/** Local-Lab-only Tour creation pricing entry + seed-rate simulator (never prices or writes Rates). */
+/** Local-runtime-authorized Tour creation pricing entry + seed-rate simulator (never prices or writes Rates). */
 defined('ABSPATH') || exit;
-if (wp_get_environment_type()!=='local'||!defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY)return;
+if ((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)||(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))return;
 final class Shared_Tour_Pricing_Entry_v1 {
  const MODE='_shared_tour_price_entry_mode_v1';
  const FACTORS='_shared_tour_price_seed_factors_v1';

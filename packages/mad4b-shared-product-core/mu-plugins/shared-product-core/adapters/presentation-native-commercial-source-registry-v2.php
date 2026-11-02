@@ -4,8 +4,8 @@
  * promote a source to sellable filter or change a native JSF/JetEngine query.
  */
 defined('ABSPATH') || exit;
-if (wp_get_environment_type()!=='local'
-    || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+if ((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)
+    || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 
 function shared_presentation_commercial_source_registry_v2():array {
     $result=[
@@ -129,8 +129,8 @@ add_action('rest_api_init',static function():void {
     register_rest_route('shared-product/v1','/native-commercial-sources',[
         'methods'=>WP_REST_Server::READABLE,
         'permission_callback'=>static fn():bool =>
-            wp_get_environment_type()==='local'
-            && defined('SHARED_PRODUCT_LAB_ONLY') && SHARED_PRODUCT_LAB_ONLY
+            (defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true)
+            && (defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true)
             && current_user_can('manage_options'),
         'callback'=>static function(){
             $response=new WP_REST_Response(shared_presentation_commercial_source_registry_v2());

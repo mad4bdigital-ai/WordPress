@@ -1,6 +1,6 @@
 <?php
-/** Lab-only DB advisory lock for refund validation/preview; never triggers a refund. */
-if(!defined('ABSPATH')||!defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY)return;
+/** runtime-authorized DB advisory lock for refund validation/preview; never triggers a refund. */
+if(!defined('ABSPATH')||(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))return;
 function shared_product_refund_with_order_lock($order_id,$callback,$timeout=0){
  global $wpdb;
  $id=absint($order_id);
@@ -21,7 +21,7 @@ function shared_product_refund_locked_preview($order_id,$request){
  });
 }
 
-/** Lab-only idempotent reservation of a refund preview. Never sends money. */
+/** runtime-authorized idempotent reservation of a refund preview. Never sends money. */
 function shared_product_refund_reserve_preview($order_id,$idempotency_key,$request){
  if(!is_string($idempotency_key)||!preg_match('/^[A-Za-z0-9_-]{12,100}$/D',$idempotency_key)||!is_array($request))return new WP_Error('refund_invalid_idempotency_request');
  return shared_product_refund_with_order_lock($order_id,static function($id)use($idempotency_key,$request){

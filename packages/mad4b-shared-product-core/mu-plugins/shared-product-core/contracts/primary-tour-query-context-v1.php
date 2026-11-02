@@ -8,7 +8,7 @@
 defined('ABSPATH') || exit;
 if (!function_exists('shared_presentation_primary_tour_post_v1')) {
     function shared_presentation_primary_tour_post_v1(): ?\WP_Post {
-        if (wp_get_environment_type() !== 'local') return null;
+        if ((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return null;
         $q = $GLOBALS['wp_the_query'] ?? null;
         if (!($q instanceof \WP_Query) || !$q->is_singular) return null;
         $obj = $q->queried_object ?? null;

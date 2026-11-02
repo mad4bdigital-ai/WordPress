@@ -1,6 +1,6 @@
 <?php
-/** Lab-only gateway eligibility: existing Woo gateways are filtered, never enabled. */
-if(!defined('ABSPATH')||!defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY)return;
+/** runtime-authorized gateway eligibility: existing Woo gateways are filtered, never enabled. */
+if(!defined('ABSPATH')||(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))return;
 function shared_product_gateway_availability_rules(){
  $raw=shared_product_jet_policy_raw('shared_gateway_availability_rows');
  if(is_wp_error($raw))return $raw;

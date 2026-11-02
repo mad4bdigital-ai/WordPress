@@ -1,6 +1,6 @@
 <?php
 /** Central rule catalog and traceable Booking v2 quote. Lab, read-only. */
-if(!defined('ABSPATH')||!defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY)return;
+if(!defined('ABSPATH')||(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))return;
 function shared_product_pricing_rules_catalog_v2(){
  return [
  'source'=>['phase'=>'base','authority'=>'source-resolution-policy','state'=>'partial'],

@@ -2,7 +2,7 @@
 /* Read-only WP CLI field-contract release gate. */
 if(PHP_SAPI!=='cli')exit(70);
 require dirname(__DIR__,4).'/wp-load.php';
-if(wp_get_environment_type()!=='local'||!class_exists('Shared_Product_Field_Shape_Contract_v1'))exit(71);
+if((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)||!class_exists('Shared_Product_Field_Shape_Contract_v1'))exit(71);
 $c='Shared_Product_Field_Shape_Contract_v1';
 $stat=['elementor'=>0,'empty_legacy'=>0,'invalid_json'=>0,'bad_bindings'=>0,'repeater'=>0,'bad_repeater'=>0];$examples=[];
 $bad=[['id'=>'f1','settings'=>['__dynamic__'=>['jedv_field'=>'[elementor-tag id="x" name="jet-post-custom-image" settings="%7B%7D"]']],'elements'=>[]]];

@@ -1,6 +1,6 @@
 <?php
 /** Dynamic tour rate facets: read-only Lab endpoint, never asserts inventory or checkout authority. */
-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 function shared_product_tour_rate_search($tour_id,$choices=[]){
  $tour_id=absint($tour_id);
  if(get_post_type($tour_id)!=='tours-and-activities'||get_post_status($tour_id)!=='publish')return new WP_Error('tour_not_available');

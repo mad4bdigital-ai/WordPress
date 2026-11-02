@@ -186,8 +186,8 @@
     },
     {
       "path": "includes/InquiryQualification.php",
-      "sha256": "1bab280d788e07250333f462d327366d1de6ce522f377e71f1fbb746213c134e",
-      "bytes": 13607
+      "sha256": "7d0e0271d4ebaedbfbacd7bb81f7e571236b0cb5e406f48848a95630c4a964c1",
+      "bytes": 14405
     },
     {
       "path": "includes/IntakeCaseApi.php",
@@ -296,8 +296,8 @@
     },
     {
       "path": "includes/RequestReviewAdmin.php",
-      "sha256": "fb81a3ea69f654b7e496f8b71596cd408f2e20cd47bb18ac243411658d4fdd04",
-      "bytes": 18684
+      "sha256": "817412304ac13e89af2464e0ebb6bbbd4017db459ca06dcbe1c4fd45e6f9ec87",
+      "bytes": 19325
     },
     {
       "path": "includes/RequestReviewApi.php",
@@ -370,7 +370,7 @@
       "bytes": 41975
     }
   ],
-  "evidence": "QA42A VPS PHP + GitHub SHA match",
+  "evidence": "PR #737 exact-source digest refresh; previous QA42A VPS/runtime evidence does not certify this revision; runtime acceptance pending",
   "excludes": [
     "tests",
     "evidence",

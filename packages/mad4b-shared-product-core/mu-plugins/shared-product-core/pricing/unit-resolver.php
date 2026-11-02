@@ -1,6 +1,6 @@
 <?php
 /** Generic JetEngine glossary-backed price unit resolution. Lab only. */
-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 function shared_product_unit_glossary($post_type, $field_name) {
     // Backward-compatible lookup API; the editor field has moved to Transport Rates.
     if($post_type==='transportations' && $field_name==='trans_unit_type')

@@ -1,6 +1,6 @@
 <?php
-/** Lab-only CPT product indicative getter. Reuse established rate projection and source policy. */
-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+/** runtime-authorized CPT product indicative getter. Reuse established rate projection and source policy. */
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 function shared_product_cpt_indicative_price($id) {
  $type=get_post_type($id);
  if($type==='tours-and-activities'){

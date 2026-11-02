@@ -1,6 +1,6 @@
 <?php
 /** Lab read-only related choices: JetEngine metadata remains authoritative. */
-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 function shared_product_related_post_ids($value,$type,$limit=80){
  if(is_string($value))$value=maybe_unserialize($value);
  if(is_scalar($value)&&$value!=='')$value=[$value];

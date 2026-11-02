@@ -1,6 +1,6 @@
 <?php
-/** Lab-only Fluent Forms compatibility and optional per-traveler collection. */
-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+/** runtime-authorized Fluent Forms compatibility and optional per-traveler collection. */
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 /**
  * Fluent Form Arrival Date datetime uses d-M-y, e.g. 15-Aug-26.
  * Normalize strictly to ISO at intake. Booking v2 calls it travel_date.

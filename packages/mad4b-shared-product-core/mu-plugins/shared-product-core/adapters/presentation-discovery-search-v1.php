@@ -6,7 +6,7 @@
  * no write, price, availability or authorization is granted by this resolver.
  */
 defined('ABSPATH')||exit;
-if(wp_get_environment_type()==='local' && defined('SHARED_PRODUCT_LAB_ONLY') && SHARED_PRODUCT_LAB_ONLY) {
+if((defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true) && (defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true)) {
 final class Shared_Product_Discovery_Search_Presentation_v1 {
  private const SCOPES=['all','destinations','tours-and-activities','properties','transportations','articles'];
  private const TERMS_LISTING=45927;

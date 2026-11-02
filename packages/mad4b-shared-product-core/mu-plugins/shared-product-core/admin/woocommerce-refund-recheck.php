@@ -1,6 +1,6 @@
 <?php
 /** Native WooCommerce admin-post recheck: no external provider registered by default. */
-if(!defined('ABSPATH')||!defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY)return;
+if(!defined('ABSPATH')||(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))return;
 add_action('admin_post_shared_product_refund_recheck',static function(){
  if(!current_user_can('manage_woocommerce'))wp_die('Forbidden',403);
  $id=isset($_POST['order_id'])?absint(wp_unslash($_POST['order_id'])):0;

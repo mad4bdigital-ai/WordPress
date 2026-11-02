@@ -8,7 +8,7 @@
  * Does not mutate native widgets, JetEngine queries, terms or sellable rates.
  */
 defined('ABSPATH') || exit;
-if (wp_get_environment_type() !== 'local') return;
+if ((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 
 function shared_presentation_native_facet_discovery_v1(array $provider): array {
     static $building = false;

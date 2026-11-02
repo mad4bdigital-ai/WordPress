@@ -1,11 +1,13 @@
 <?php
-/** Lab-only unified quote resolver. Audience and source currency are distinct from display currency. */
+/** runtime-authorized unified quote resolver. Audience and source currency are distinct from display currency. */
 if (!defined('ABSPATH')) return;
 function pricing_audience_quote($rate_id,$audience,$occupancy){
  $rate_id=absint($rate_id);
  if(!in_array($audience,['general','egyptians'],true)||!in_array($occupancy,['single','double','triple'],true))return ['status'=>'invalid_request'];
  $p=get_post($rate_id);
  if(!$p||$p->post_type!=='tour-rates'||$p->post_status!=='publish')return ['status'=>'unavailable','reason'=>'unpublished'];
+ $locale=shared_product_rate_locale_decision($rate_id);
+ if(!$locale['allowed'])return ['status'=>'unavailable','reason'=>$locale['reason']];
  if((string)get_post_meta($rate_id,'stop_sale',true)==='1'||(string)get_post_meta($rate_id,'avilabile_status',true)==='0')return ['status'=>'unavailable','reason'=>'stopped'];
  $now=current_time('timestamp',true);$start=(int)get_post_meta($rate_id,'tour_rate_start_date',true);$end=(int)get_post_meta($rate_id,'tour_rate_end_date',true);
  if(($start&&$now<$start)||($end&&$now>$end))return ['status'=>'unavailable','reason'=>'outside_period'];

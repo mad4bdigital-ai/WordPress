@@ -5,7 +5,7 @@
  * published company services/posts supply eligible option IDs.
  */
 defined('ABSPATH') || exit;
-if(wp_get_environment_type()!=='local')return;
+if((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))return;
 
 function shared_presentation_published_facet_terms_v1(string $postType,string $taxonomy): array {
     $key='shared_facet_post_terms_'.md5($postType.'|'.$taxonomy);

@@ -5,7 +5,7 @@
  * vendor plugin mutations are permitted in this class.
  */
 defined('ABSPATH') || exit;
-if (wp_get_environment_type() !== 'local' || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+if ((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true) || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 final class Shared_Product_Presentation_Compatibility_v1 {
  private const SCHEMA_VERSION='1.0.0';
  private static function capability(bool $available,string $source,string $missing='not_installed'): array {

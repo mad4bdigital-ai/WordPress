@@ -1,6 +1,6 @@
 <?php
 /** Extra selection and server-authoritative unit quote; isolated Lab preview only. */
-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 add_shortcode('extra_select_actions',static function(){
  global $wp_the_query;
  $extra=get_the_ID();$parent=$wp_the_query instanceof WP_Query && $wp_the_query->is_singular('tours-and-activities')?(int)$wp_the_query->get_queried_object_id():0;

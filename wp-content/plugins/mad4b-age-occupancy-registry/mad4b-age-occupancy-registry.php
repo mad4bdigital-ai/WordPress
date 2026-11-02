@@ -46,5 +46,8 @@ final class MAD4B_Age_Occupancy_Registry {
 }
 
 require_once __DIR__ . '/includes/age-aware-stay.php';
-if (is_admin()) require_once __DIR__ . '/includes/admin.php';
+if (is_admin()) {
+ require_once __DIR__ . '/includes/admin.php';
+ require_once __DIR__ . '/includes/jetengine-policy-bridge.php';
+}
 if (class_exists('MAD4B_Age_Occupancy_Registry')) require_once __DIR__ . '/includes/fluent-forms.php';

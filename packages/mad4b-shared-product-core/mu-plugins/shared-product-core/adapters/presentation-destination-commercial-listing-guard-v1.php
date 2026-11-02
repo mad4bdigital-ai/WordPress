@@ -4,8 +4,8 @@
  * Company source approval is checked at the exact native listing boundary.
  */
 defined('ABSPATH')||exit;
-if(wp_get_environment_type()!=='local'
- || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY)return;
+if((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)
+ || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))return;
 
 function shared_presentation_destination_editorial_allowed_v1(int $termId):bool{
     $term=get_term($termId,'destinations');

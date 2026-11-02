@@ -1,6 +1,6 @@
 <?php
 /** Group tier quote is preview-only, never alters Cart. */
-if(!defined('ABSPATH')||!defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY)return;
+if(!defined('ABSPATH')||(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))return;
 function shared_product_group_tier_preview($tour,$rate,$tier,$people,$base){
  $term=get_term((int)$tier,'group-size-tiers');
  if(!$term||is_wp_error($term))return new WP_Error('group_tier_unknown');

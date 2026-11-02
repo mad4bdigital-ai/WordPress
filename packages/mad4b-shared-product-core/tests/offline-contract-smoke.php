@@ -2,6 +2,7 @@
 /** WordPress-free contract smoke suite. Intentionally performs zero DB/network I/O. */
 error_reporting(E_ALL);
 define('ABSPATH',__DIR__);
+define('MAD4B_COMMERCE_RUNTIME_ENABLED',true); // Source contract: explicit runtime grant, not local-only activation.
 function wp_get_environment_type(){return 'local';}
 function get_post_type($id){return $id===201?'tours-and-activities':($id===202?'transportations':'page');}
 class WP_Post {public int $ID;public string $post_type;function __construct(int $id,string $type){$this->ID=$id;$this->post_type=$type;}}

@@ -5,8 +5,8 @@
  * Reads native JetEngine meta/term relationships, never duration-options.
  */
 defined('ABSPATH') || exit;
-if (wp_get_environment_type() !== 'local'
- || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+if ((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)
+ || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 
 function shared_product_program_canonical_term_v1(int $termId):int {
     if(!$termId || !term_exists($termId,'programs'))return 0;
@@ -161,8 +161,8 @@ add_action('rest_api_init',static function(){
     register_rest_route('shared-product/v1','/tour-program-source',[
         'methods'=>WP_REST_Server::READABLE,
         'permission_callback'=>static fn()=>current_user_can('manage_options')
-            && wp_get_environment_type()==='local'
-            && defined('SHARED_PRODUCT_LAB_ONLY')&&SHARED_PRODUCT_LAB_ONLY,
+            && (defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true)
+            && (defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true),
         'args'=>['tour_id'=>['required'=>true,'type'=>'integer','minimum'=>1]],
         'callback'=>static function(WP_REST_Request $request){
             $id=absint($request['tour_id']);

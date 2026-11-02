@@ -2,7 +2,7 @@
 /** Read-only primary tour vs JetEngine nested repeater query contract tests. */
 if(PHP_SAPI!=='cli')exit(70);
 require dirname(__DIR__,4).'/wp-load.php';
-if(wp_get_environment_type()!=='local'||!function_exists('shared_presentation_primary_tour_post_v1'))exit(71);
+if((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)||!function_exists('shared_presentation_primary_tour_post_v1'))exit(71);
 $issues=[];$cases=0;
 $check=static function(bool $ok,string $name)use(&$issues,&$cases){$cases++;if(!$ok)$issues[]=$name;echo ($ok?'PASS ':'FAIL ').$name."\n";};
 $tours=get_posts(['post_type'=>'tours-and-activities','post_status'=>'publish','posts_per_page'=>1,'orderby'=>'ID','order'=>'DESC','suppress_filters'=>true]);

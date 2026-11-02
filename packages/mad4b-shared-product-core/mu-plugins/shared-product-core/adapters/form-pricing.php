@@ -1,6 +1,6 @@
 <?php
 /** Shared Product Core — generic, read-only form quote presentation, lab only. */
-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 function shared_product_form_price_breakdown($rate_id, $audience, $occupancy, $currency = null) {
     foreach (['pricing_engine_enabled','booking_enabled','tax_percent','service_fee_percent'] as $key) {
         $v=shared_product_pricing_setting($key);

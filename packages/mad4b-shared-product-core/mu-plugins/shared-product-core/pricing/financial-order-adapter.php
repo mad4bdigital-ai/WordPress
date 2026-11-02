@@ -1,6 +1,6 @@
 <?php
 /** Explicit lab-only HPOS-compatible snapshot persistence; no payment or refund side effects. */
-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 function shared_product_order_ledger_save($order,$ledger){
  if(!($order instanceof WC_Order)||$order->get_id()<1)return new WP_Error('ledger_invalid_order');
  $existing=$order->get_meta('_shared_financial_snapshot',true);

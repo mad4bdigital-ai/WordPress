@@ -1,6 +1,6 @@
 <?php
 /** Guide-language and transportation surcharges layered on a base booking. Lab only. */
-if(!defined('ABSPATH')||!defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY)return;
+if(!defined('ABSPATH')||(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))return;
 function shared_product_booking_modifiers($rate_id,$language,$transport,$people=1,$currency=null){
  $tour=shared_product_tour_context($rate_id);if(is_wp_error($tour))return $tour;
  $count=filter_var($people,FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>999]]);

@@ -1,4 +1,4 @@
-/** Local Lab: server-calculated read-only quote beside existing Fluent Form #6. */
+/** Governed runtime: server-calculated nonfinancial quote beside original Fluent Form #6. */
 (() => {
  'use strict';
  const cfg=window.SharedPresentationFluentConfigV1;
@@ -7,6 +7,10 @@
     cfg.scope!=='tour_single_booking'||
     !document.body.classList.contains('single-tours-and-activities')||
     !cfg.formScopeSelector)return;
+ const language=String(document.documentElement.lang||'en').split(/[-_]/)[0].toLowerCase();
+ const messages={"en":{"estimate":"Estimated price","adults":"Adult subtotal: ","unpriced":"Adults only · child/infant prices are not included · final total on request","calcAdults":"Calculating adult price…","final":"Final price to confirm","priceOnRequest":"Price on request","calculating":"Calculating…","chooseDate":"Select travel date","chooseRoom":"Select date & occupancy","room":"Room occupancy ","chooseOccupancy":"Choose occupancy","single":"Single","double":"Double","triple":"Triple","noPayment":"No payment required","extras":"Extra activities","transport":"Transport options","from":"From ","tourEstimate":"Tour estimate · subject to confirmation","estimateAvailability":"Estimate · subject to availability","included":"Included","inPackage":"In package","extraToConfirm":"Extras to confirm"},"fr":{"estimate":"Prix estimé","adults":"Sous-total adultes : ","unpriced":"Adultes uniquement · tarifs enfants/bébés non inclus · total définitif sur demande","calcAdults":"Calcul du prix adultes…","final":"Prix final à confirmer","priceOnRequest":"Prix sur demande","calculating":"Calcul en cours…","chooseDate":"Choisissez la date de voyage","chooseRoom":"Choisissez la date et l’occupation","room":"Occupation ","chooseOccupancy":"Choisir l’occupation","single":"Individuelle","double":"Double","triple":"Triple","noPayment":"Aucun paiement requis","extras":"Activités supplémentaires","transport":"Transports","from":"À partir de ","tourEstimate":"Prix indicatif du circuit · à confirmer","estimateAvailability":"Estimation · sous réserve de disponibilité","included":"Inclus","inPackage":"Dans le forfait","extraToConfirm":"Extras à confirmer"},"de":{"estimate":"Geschätzter Preis","adults":"Zwischensumme Erwachsene: ","unpriced":"Nur Erwachsene · Kinder-/Babypreise nicht enthalten · Endpreis auf Anfrage","calcAdults":"Erwachsenenpreis wird berechnet…","final":"Endpreis muss bestätigt werden","priceOnRequest":"Preis auf Anfrage","calculating":"Berechnung läuft…","chooseDate":"Reisedatum wählen","chooseRoom":"Datum und Belegung wählen","room":"Zimmerbelegung ","chooseOccupancy":"Belegung wählen","single":"Einzel","double":"Doppel","triple":"Dreibett","noPayment":"Keine Zahlung erforderlich","extras":"Zusatzaktivitäten","transport":"Transportoptionen","from":"Ab ","tourEstimate":"Unverbindlicher Reisepreis · Bestätigung erforderlich","estimateAvailability":"Schätzung · vorbehaltlich Verfügbarkeit","included":"Inklusive","inPackage":"Im Paket","extraToConfirm":"Extras noch zu bestätigen"},"es":{"estimate":"Precio estimado","adults":"Subtotal de adultos: ","unpriced":"Solo adultos · no incluye precios de niños/bebés · total final a consultar","calcAdults":"Calculando precio de adultos…","final":"Precio final por confirmar","priceOnRequest":"Precio a consultar","calculating":"Calculando…","chooseDate":"Elige la fecha del viaje","chooseRoom":"Elige fecha y ocupación","room":"Ocupación ","chooseOccupancy":"Elegir ocupación","single":"Individual","double":"Doble","triple":"Triple","noPayment":"No se requiere pago","extras":"Actividades adicionales","transport":"Opciones de transporte","from":"Desde ","tourEstimate":"Precio orientativo · sujeto a confirmación","estimateAvailability":"Estimación · sujeta a disponibilidad","included":"Incluido","inPackage":"En el paquete","extraToConfirm":"Extras por confirmar"},"it":{"estimate":"Prezzo stimato","adults":"Subtotale adulti: ","unpriced":"Solo adulti · prezzi bambini/neonati esclusi · totale finale su richiesta","calcAdults":"Calcolo del prezzo adulti…","final":"Prezzo finale da confermare","priceOnRequest":"Prezzo su richiesta","calculating":"Calcolo in corso…","chooseDate":"Seleziona la data di viaggio","chooseRoom":"Seleziona data e occupazione","room":"Occupazione ","chooseOccupancy":"Scegli occupazione","single":"Singola","double":"Doppia","triple":"Tripla","noPayment":"Nessun pagamento richiesto","extras":"Attività extra","transport":"Opzioni di trasporto","from":"Da ","tourEstimate":"Prezzo indicativo · soggetto a conferma","estimateAvailability":"Stima · soggetta a disponibilità","included":"Incluso","inPackage":"Nel pacchetto","extraToConfirm":"Extra da confermare"},"ar":{"estimate":"السعر التقديري","adults":"إجمالي البالغين المرجعي: ","unpriced":"البالغون فقط · أسعار الأطفال والرضع غير مشمولة · الإجمالي النهائي عند التأكيد","calcAdults":"جارٍ حساب سعر البالغين…","final":"السعر النهائي يحتاج تأكيدًا","priceOnRequest":"السعر عند الطلب","calculating":"جارٍ الحساب…","chooseDate":"اختر تاريخ الرحلة","chooseRoom":"اختر التاريخ والإشغال","room":"إشغال الغرفة ","chooseOccupancy":"اختر الإشغال","single":"فردية","double":"مزدوجة","triple":"ثلاثية","noPayment":"لا يلزم الدفع الآن","extras":"الأنشطة الإضافية","transport":"خيارات النقل","from":"يبدأ من ","tourEstimate":"سعر الرحلة تقديري ويحتاج تأكيدًا","estimateAvailability":"سعر تقديري حسب التوفر","included":"مشمول","inPackage":"ضمن الباقة","extraToConfirm":"إضافات تحتاج تأكيدًا"}};
+ const t=key=>String(cfg.i18n?.[key]??messages[language]?.[key]??messages.en[key]??key);
+ const numberLocale=document.documentElement.lang||'en';
  const allowedForm=form=>!!(form&&form.matches(cfg.formScopeSelector));
  const bound=new WeakSet(),forms=new Set(),states=new WeakMap();
  const asInt=v=>/^(0|[1-9][0-9]{0,2})$/.test(String(v??''))?Number(v):null;
@@ -95,7 +99,7 @@
   return priceOnly;
  }
  function amount(value,currency){
-  try{return new Intl.NumberFormat(undefined,{style:'currency',currency,maximumFractionDigits:2}).format(value);}
+  try{return new Intl.NumberFormat(numberLocale,{style:'currency',currency,maximumFractionDigits:2}).format(value);}
   catch(_){return String(value)+' '+currency;}
  }
 
@@ -107,7 +111,7 @@
   const source=cfg.extraDetails?.[String(id)]?.preview_price;
   if(!source||!Number.isFinite(Number(source.amount))||
      Number(source.amount)<=0||!/^[A-Z]{3}$/.test(source.currency||''))return null;
-  return 'From '+amount(Number(source.amount),source.currency)
+  return t('from')+amount(Number(source.amount),source.currency)
     +(source.unit==='per_person'?' / person':'');
  }
  function resetExtraPrices(state){
@@ -115,7 +119,7 @@
    const text=row.querySelector('.shared-extra-unit-price');
    if(!text)continue;
    const possible=indicativeExtraUnit(row.dataset.extraTourId);
-   text.textContent=possible||'Price on request';
+   text.textContent=possible||t('priceOnRequest');
    text.dataset.priceStatus=possible?'indicative':'unverified';
   }
  }
@@ -196,7 +200,7 @@
      target.dataset.priceStatus='verified';
     }else{
      const value=indicativeExtraUnit(id);
-     target.textContent=value||'Price on request';
+     target.textContent=value||t('priceOnRequest');
      target.dataset.priceStatus=value?'indicative':'unverified';
     }
    }
@@ -352,7 +356,7 @@
     const price=document.createElement('span');price.className='shared-extra-unit-price';
     // No client-rendered CPT raw price: the effective unit amount may
     // depend on dates, package, FX and Rate source arbitration.
-    price.textContent=indicativeExtraUnit(key)||'Price on request';
+    price.textContent=indicativeExtraUnit(key)||t('priceOnRequest');
     price.dataset.priceStatus=indicativeExtraUnit(key)?'indicative':'unverified';
     const controls=document.createElement('div');controls.className='shared-extra-counter';
     const decrease=document.createElement('button');decrease.type='button';
@@ -406,69 +410,73 @@
   // A known Direct Tour retail price can still be shown as an adult-only
   // lower-bound when child/infant pricing requires a human review.
   // Never turn that subtotal into the form's commercial total.
-  const partialDirect=(!payload&&intent&&intent.source==='direct'&&
-    (intent.children>0||intent.infants>0))?
-    {...intent,children:0,infants:0,extras:[],stay_stages:[]}:null;
+  const partialAdults=(!payload&&intent&&
+    (intent.children>0||intent.infants>0)&&
+    (intent.source==='direct'||(intent.source==='rate'&&asRateId(intent.rate_id))))?
+    {...intent,extras:[],stay_stages:[]}:null;
   state.intent.value=intent?JSON.stringify(intent):'';
   // A transport-only preference does not change the price inputs.
   // Keep the last source-validated amount instead of blanking it to
   // Calculating and re-fetching an identical quote.
-  const signature=(payload||partialDirect)?JSON.stringify({
-    price:payload||partialDirect,stays:intent?.stay_stages||[],
-    scope:partialDirect?'adults_only_unpriced_minors':'full_estimate'
+  const signature=(payload||partialAdults)?JSON.stringify({
+    price:payload||partialAdults,stays:intent?.stay_stages||[],
+    scope:partialAdults?'adults_only_unpriced_minors':'full_estimate'
   }):null;
   if(signature&&state.lastSettledPriceSignature===signature&&
      state.output.querySelector('.shared-price-amount'))return;
   const seq=++state.seq;
   state.activePriceSignature=signature;
   state.controller?.abort();state.controller=null;
-  if(!payload&&!partialDirect){
+  if(!payload&&!partialAdults){
    state.lastSettledPriceSignature=null;
    state.output.textContent=state.roomContext?
-     'Select date & occupancy':'Select travel date';
+     t('chooseRoom'):t('chooseDate');
    resetExtraPrices(state);
    return;
   }
-  if(partialDirect){
-   state.output.textContent='Calculating adult base…';
+  if(partialAdults){
+   state.output.textContent=t('calcAdults');
    resetExtraPrices(state);
    const controller=new AbortController();state.controller=controller;
    try{
-    const {stay_stages,...adultPrice}=partialDirect;
+    const {stay_stages,...adultPrice}=partialAdults;
     const response=await fetch(cfg.quoteEndpoint,{
       method:'POST',headers:{'Content-Type':'application/json'},
       credentials:'same-origin',body:JSON.stringify(adultPrice),signal:controller.signal
     });
     const quote=await response.json();
     if(seq!==state.seq)return;
-    if(response.ok&&quote.status==='price_preview_only'&&
-       Number.isFinite(Number(quote.total))&&quote.total>0&&
+    if(response.ok&&quote.status==='partial_price_preview_only'&&
+       quote.display_kind==='adults_only_reference'&&quote.total===null&&
+       quote.checkout_ready===false&&quote.order_created===false&&
+       quote.children_count===intent.children&&quote.infants_count===intent.infants&&
+       Number.isFinite(Number(quote.display_amount))&&quote.display_amount>0&&
        /^[A-Z]{3}$/.test(quote.currency||'')){
       const value=document.createElement('span');
       value.className='shared-price-amount';
-      value.textContent='From '+amount(quote.total,quote.currency);
+      value.textContent=t('adults')+amount(quote.display_amount,quote.currency);
       const scope=document.createElement('small');
       scope.className='shared-price-scope';
-      scope.textContent='Adults only · child/infant pricing and extras to confirm';
+      scope.textContent=t('unpriced');
       state.output.replaceChildren(value,scope);
       state.panel.dataset.priceScope='adults_only_unpriced_minors';
       state.lastSettledPriceSignature=signature;
     }else{
-      state.output.textContent='Final price to confirm';
+      state.output.textContent=t('final');
       state.lastSettledPriceSignature=null;
     }
    }catch(error){
     if(seq===state.seq&&error.name!=='AbortError')
-      state.output.textContent='Final price to confirm';
+      state.output.textContent=t('final');
    }
    return;
   }
-  state.output.textContent='Calculating…';
+  state.output.textContent=t('calculating');
   // Avoid keeping a stale confirmed per-person price after changing dates,
   // occupancy, activity count, or Rate selection.
   resetExtraPrices(state);
   const controller=new AbortController();state.controller=controller;
-  // Pure read-only estimate is allowed through the Local QA preview gateway;
+  // Pure read-only estimate is allowed through the governed preview gateway;
   // POST authorization for booking/Fluent Forms remains deliberately closed.
   if(await indicativePreview(state,{...payload,stay_stages:intent?.stay_stages||[]},seq,controller.signal))return;
   try{
@@ -477,14 +485,14 @@
    const data=await response.json();if(seq!==state.seq)return;
    if(!response.ok||data.status!=='price_preview_only'){
 
-     if(seq===state.seq)state.output.textContent='Price on request';
+     if(seq===state.seq)state.output.textContent=t('priceOnRequest');
      return;
    }
    showPrice(state,data,Boolean(data.component_adjustments_certified===false));
    state.lastSettledPriceSignature=state.activePriceSignature;
   }catch(err){
    if(seq!==state.seq||err.name==='AbortError')return;
-   state.output.textContent='Price on request';
+   state.output.textContent=t('priceOnRequest');
   }
  }
  function schedule(form){
@@ -501,11 +509,11 @@
   const panel=document.createElement('div');panel.className='shared-fluent-server-quote shared-price-first-preview';
   panel.style.cssText='padding:12px;margin-block:12px;border:1px solid var(--e-global-color-secondary,#ddd);border-radius:10px';
   const title=document.createElement('strong');title.className='shared-price-title';
-  title.textContent='Estimated price';
-  const label=document.createElement('label');label.textContent='Room occupancy ';
+  title.textContent=t('estimate');
+  const label=document.createElement('label');label.textContent=t('room');
   label.className='shared-room-occupancy-field';label.hidden=true;
   const occupancy=document.createElement('select');
-  [['','Choose occupancy'],['single','Single'],['double','Double'],['triple','Triple']].forEach(([value,name])=>{
+  [['',t('chooseOccupancy')],['single',t('single')],['double',t('double')],['triple',t('triple')]].forEach(([value,name])=>{
    const el=document.createElement('option');el.value=value;el.textContent=name;occupancy.append(el);
   });
   occupancy.addEventListener('change',()=>schedule(form));label.append(occupancy);
@@ -513,7 +521,7 @@
   picker.hidden=true;picker.dataset.selectedCount='0';
   picker.setAttribute('aria-label','Selected extra activities');
   const pickerTitle=document.createElement('h3');pickerTitle.className='shared-extra-picker-title';
-  pickerTitle.textContent='Extra activities';
+  pickerTitle.textContent=t('extras');
   const extraWrap=document.createElement('div');extraWrap.className='shared-fluent-extras-quantities';
   picker.append(pickerTitle,extraWrap);
   const transportPicker=document.createElement('section');
@@ -521,7 +529,7 @@
   transportPicker.setAttribute('aria-label','Selected transport options');
   const transportTitle=document.createElement('h3');
   transportTitle.className='shared-transport-heading';
-  transportTitle.textContent='Transport options';
+  transportTitle.textContent=t('transport');
   const transportWrap=document.createElement('div');
   transportWrap.className='shared-transport-list';
   transportPicker.append(transportTitle,transportWrap);
@@ -535,7 +543,7 @@
   const output=document.createElement('output');output.setAttribute('aria-live','polite');
   output.style.cssText='display:block;margin-block:10px;font-weight:600';
   const note=document.createElement('small');note.className='shared-price-note';
-  note.textContent='No payment required';
+  note.textContent=t('noPayment');
   const intent=document.createElement('input');
   intent.type='hidden';intent.name='shared_tour_selection_v2';intent.autocomplete='off';
   form.append(intent);
@@ -571,6 +579,22 @@
  }
  document.addEventListener('shared-presentation-form-projected',e=>{if(e.target?.matches?.('form.fluent_form_6'))schedule(e.target);});
  document.addEventListener('shared-presentation-selection-changed',()=>{for(const form of forms)if(form.isConnected)schedule(form);});
+ // Market, passport and selected-country preferences are server owned.
+ // On a persisted change, invalidate the stable quote signature and re-quote.
+ // Never infer market pricing or converted amounts from the browser.
+ const refreshMarketQuotes=()=>{
+  for(const form of forms){
+   if(!form.isConnected)continue;
+   const state=states.get(form);
+   if(!state)continue;
+   state.lastSettledPriceSignature=null;
+   state.activePriceSignature=null;
+   state.controller?.abort();
+   schedule(form);
+  }
+ };
+ window.addEventListener('visitor-market:changed',refreshMarketQuotes);
+ document.addEventListener('visitor-preferences:saved',refreshMarketQuotes);
  initialize();
  new MutationObserver(()=>initialize()).observe(document.body,{subtree:true,childList:true});
  window.SharedPresentationFluentQuoteV1=Object.freeze({version:'1.0.0',readOnly:true,getPayload:selected});

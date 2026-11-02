@@ -1,6 +1,6 @@
 <?php
 /** Extensible, explicit rate matrix evaluators. Never infer missing prices. */
-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 function shared_product_rate_matrix($rate_id) {
     $raw=get_post_meta($rate_id,'shared_product_rate_matrix',true);
     if(!is_string($raw) || trim($raw)==='')return new WP_Error('rate_matrix_not_configured');

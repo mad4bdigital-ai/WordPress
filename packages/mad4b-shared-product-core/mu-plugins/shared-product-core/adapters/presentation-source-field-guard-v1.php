@@ -4,7 +4,7 @@
  * Never converts composite tag values to strings and never rewrites contents.
  */
 defined('ABSPATH') || exit;
-if (wp_get_environment_type() !== 'local' || !class_exists('Shared_Product_Field_Shape_Contract_v1')) return;
+if ((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true) || !class_exists('Shared_Product_Field_Shape_Contract_v1')) return;
 
 add_filter('elementor/document/save/data',static function($data,$document){
     if (!is_array($data) || !isset($data['elements']) || !is_array($data['elements'])) return $data;

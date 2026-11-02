@@ -3,7 +3,7 @@
  * Bridge native CPTWoo setup to existing WooCommerce Rate Generation.
  * Only navigation and read-only configuration status; no vendor plugin patches.
  */
-if(!defined('ABSPATH')||wp_get_environment_type()!=='local'||!is_admin())return;
+if(!defined('ABSPATH')||(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)||!is_admin())return;
 add_action('admin_menu',static function(){
  if(!current_user_can('manage_woocommerce')||!function_exists('cptwooint'))return;
  $target=admin_url('admin.php?page=wc-settings&tab=rate_generation');

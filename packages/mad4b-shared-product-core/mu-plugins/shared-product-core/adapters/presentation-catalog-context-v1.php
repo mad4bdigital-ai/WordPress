@@ -5,7 +5,7 @@
  * This is a public display context, never an authorization or price authority.
  */
 defined('ABSPATH') || exit;
-if (wp_get_environment_type() !== 'local') return;
+if ((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 
 function shared_presentation_catalog_contract_v1(): array {
     $provider = function_exists('shared_presentation_provider_v2')

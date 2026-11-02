@@ -4,9 +4,9 @@
  * provider remains responsible for signing and transporting settings.
  */
 defined('ABSPATH') || exit;
-if (function_exists('wp_get_environment_type') && wp_get_environment_type()==='local') {
+if ((defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true)) {
 add_action('elementor/frontend/widget/after_render',static function($widget):void {
- if(wp_get_environment_type()!=='local'||wp_doing_ajax()
+ if((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)||wp_doing_ajax()
   ||!function_exists('shared_presentation_primary_tour_post_v1')
   ||!is_object($widget)||!method_exists($widget,'get_name')
   ||$widget->get_name()!=='jet-listing-grid'||!function_exists('jet_smart_filters'))return;

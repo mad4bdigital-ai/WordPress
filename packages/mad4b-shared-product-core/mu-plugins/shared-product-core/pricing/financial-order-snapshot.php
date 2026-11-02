@@ -1,6 +1,6 @@
 <?php
-/** Lab-only immutable quote envelope and order readback; no automatic order writes. */
-if (!defined('ABSPATH') || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+/** runtime-authorized immutable quote envelope and order readback; no automatic order writes. */
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 function shared_product_ledger_snapshot_prepare($ledger) {
  if (!is_array($ledger) || ($ledger['schema']??null)!==2 || !is_array($ledger['lines']??null)) return new WP_Error('snapshot_invalid_ledger');
  $currency=$ledger['currency']??null;

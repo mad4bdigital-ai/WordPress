@@ -42,8 +42,37 @@ final class MAD4B_Age_Aware_Stay {
   $has_room_ages=false;
   if(is_array($alloc))foreach($alloc as $row)if(is_array($row)&&array_key_exists('child_ages',$row))$has_room_ages=true;
   if(!$bands){
-   if($input_ages||$has_room_ages)return new WP_Error('stay_age_policy_unconfigured');
-   return null; // Original count-based occupancy and pricing remain untouched.
+   // A missing age policy is not an unavailable Rate. Preserve the existing
+   // count-based accommodation price, even if a form collected passenger ages.
+   // Validate supplied ages for integrity; do not infer free or discounted fares.
+   if($input_ages){
+    $ages=$input['child_ages'];
+    if(!is_array($ages)||!array_is_list($ages)||count($ages)!==$children)
+     return new WP_Error('stay_age_count_mismatch');
+    foreach($ages as $age)
+     if(!is_int($age)||$age<0||$age>120)return new WP_Error('stay_age_value_invalid');
+   }
+   if($has_room_ages){
+    if(!is_array($alloc)||!array_is_list($alloc)||count($alloc)!==$rooms)
+     return new WP_Error('stay_age_assignment_invalid');
+    $collected=[];
+    foreach($alloc as $row){
+     if(!is_array($row)||!is_array($row['child_ages']??null)
+        ||!array_is_list($row['child_ages'])||!is_int($row['children']??null)
+        ||count($row['child_ages'])!==$row['children'])
+      return new WP_Error('stay_age_assignment_mismatch');
+     foreach($row['child_ages'] as $age){
+      if(!is_int($age)||$age<0||$age>120)return new WP_Error('stay_age_value_invalid');
+      $collected[]=$age;
+     }
+    }
+    if(count($collected)!==$children)return new WP_Error('stay_age_count_mismatch');
+    if($input_ages){
+     $original=$input['child_ages'];sort($original);sort($collected);
+     if($original!==$collected)return new WP_Error('stay_age_assignment_mismatch');
+    }
+   }
+   return null; // Existing occupancy and rate arithmetic stay authoritative.
   }
   if(!$children){
    if($input_ages&&$input['child_ages']!==[])return new WP_Error('stay_age_count_mismatch');

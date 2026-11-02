@@ -1,6 +1,6 @@
 <?php
 /** Existing CPT rate generator: no new price store, no implicit publication. */
-if (!defined('ABSPATH') || wp_get_environment_type() !== 'local' || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true) || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)) return;
 
 require_once __DIR__.'/accommodation-assignment.php';
 
@@ -28,7 +28,7 @@ final class Shared_Product_Rate_Generation {
  public static function prepare($input) {
   if(!is_array($input))return new WP_Error('rate_generator_input_invalid');
   $allowed=['kind','parent_id','unit_id','amount','currency','price_unit','valid_from','valid_to',
-   'single_factor','double_factor','triple_factor','package_term_id','program_term_id','season_term_id','seed_origin','seed_source_rate_id','rate_scope',
+   'pricing_locale_mode','pricing_language','occupancy_factor_mode','single_factor','double_factor','triple_factor','package_term_id','program_term_id','season_term_id','seed_origin','seed_source_rate_id','rate_scope',
    'min_nights','max_nights','max_adults','max_children','inventory_policy',
    'supplier_sku','supplier_cost','pricing_rule_kind','pricing_rule_value',
    'accommodation_assignment_mode','accommodation_stage_source_rate_id'];
@@ -91,6 +91,25 @@ final class Shared_Product_Rate_Generation {
   $meta=[];$params=['kind'=>$kind,'parent_id'=>(int)$id,'price_unit'=>$unit,
     'amount'=>$money,'currency'=>$currency,'valid_from'=>$from,'valid_to'=>$to];
   if($kind==='tour'){
+   // Backward compatible: omitting the option or explicitly selecting
+   // 'inherit' follows the original generator and preserves its fingerprint.
+   // A localized override is opt-in; it never overwrites inherited Rates.
+   $localeMode=$input['pricing_locale_mode']??'inherit';
+   if(!is_string($localeMode)||!in_array($localeMode,['inherit','independent'],true))
+     return new WP_Error('rate_generator_locale_mode_invalid');
+   if($localeMode==='independent'){
+    $detail=apply_filters('wpml_post_language_details',null,(int)$id);
+    $language=is_array($detail)?($detail['language_code']??''):null;
+    if(!is_string($language)||!preg_match('/^[a-z]{2}(?:-[a-z]{2})?$/D',$language))
+      return new WP_Error('rate_generator_parent_language_unverified');
+    $requested=$input['pricing_language']??$language;
+    if(!is_string($requested)||$requested!==$language)
+      return new WP_Error('rate_generator_locale_parent_mismatch');
+    $params['pricing_locale_mode']='independent';
+    $params['pricing_language']=$language;
+   }elseif(isset($input['pricing_language'])&&$input['pricing_language']!==''){
+    return new WP_Error('rate_generator_locale_override_required');
+   }
    $factors=[];
    foreach(['single','double','triple'] as $tier){
     $raw=$input[$tier.'_factor']??'1';
@@ -100,6 +119,20 @@ final class Shared_Product_Rate_Generation {
    }
    $package=absint($input['package_term_id']??0);
    if($package && !term_exists($package,'package_levels'))return new WP_Error('rate_generator_package_term_invalid');
+   // Explicit occupancy policy opt-in: legacy input stays byte-for-byte compatible.
+   $factorMode=$input['occupancy_factor_mode']??'legacy';
+   if(!is_string($factorMode))return new WP_Error('occupancy_generation_mode_invalid');
+   $occupancy=shared_product_occupancy_generation_factors((int)$id,$factors,$factorMode);
+   if(is_wp_error($occupancy))return $occupancy;
+   $factors=$occupancy['factors'];
+   if($factorMode!=='legacy'){
+    $params['occupancy_factor_mode']=$factorMode;
+    $params['occupancy_policy_source']=$occupancy['source'];
+    if($occupancy['policy']!==null){
+     $params['occupancy_policy_version']='v1';
+     $params['occupancy_policy_snapshot']=$occupancy['policy'];
+    }
+   }
    $params['factors']=$factors;$params['package_term_id']=$package;
    // Optional relations from the Tour CPT Seed. Native rate discovery reads the
    // Program ID from postmeta and Season from the actual WordPress taxonomy.
@@ -146,6 +179,11 @@ final class Shared_Product_Rate_Generation {
     'tour_rate_end_date'=>(string)strtotime($to.' 00:00:00 UTC'),
     'base_currency'=>$currency,'unit_type'=>$unit,'is_on_sale'=>'0'];
    foreach($factors as $tier=>$factor)$meta[$tier.'_price']=number_format((float)$money*(float)$factor,2,'.','');
+   if($localeMode==='independent'){
+    $meta['_shared_generated_locale_policy']='independent';
+    $meta['_shared_generated_locale_language']=$language;
+    $meta['_shared_generated_price_authority']='explicit_locale_amount_and_currency';
+   }
    if($package)$meta['related_package_term_id']=$package;
    if($program)$meta['related_program_term_id']=$program;
    if($season)$meta['_shared_generation_season_term_id']=$season;
@@ -156,6 +194,12 @@ final class Shared_Product_Rate_Generation {
    if($source===false)return new WP_Error('accommodation_assignment_source_rate_invalid');
    if($assignmentMode==='manual'&&$source)return new WP_Error('accommodation_assignment_manual_source_conflict');
    if($assignmentMode==='auto'){
+    // Some early MU loaders evaluate this helper before their runtime grant.
+    // A previously skipped include must not produce a fatal on Staging.
+    if(!function_exists('shared_product_accommodation_assignment'))
+      require __DIR__.'/accommodation-assignment.php';
+    if(!function_exists('shared_product_accommodation_assignment'))
+      return new WP_Error('rate_generator_assignment_provider_unavailable');
     $assignment=shared_product_accommodation_assignment((int)$id,(int)$source,(int)$package);if(is_wp_error($assignment))return $assignment;
     $params['accommodation_assignment']=$assignment;
     $meta['accommodation_assignment_mode']='auto';
@@ -355,7 +399,7 @@ final class Shared_Product_Rate_Generation {
   */
  public static function selection_inspect($input){
   if(!current_user_can('manage_woocommerce'))return new WP_Error('rate_choice_permission_denied');
-  if(wp_get_environment_type()!=='local'||!is_array($input))return new WP_Error('rate_choice_context_invalid');
+  if((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)||!is_array($input))return new WP_Error('rate_choice_context_invalid');
   $allowed=['kind','parent_id','unit_id','service_date','checkout','rooms','adults','children',
     'audience','occupancy','package_term_id','rate_scope','rate_id'];
   if(array_diff(array_keys($input),$allowed))return new WP_Error('rate_choice_context_fields_unknown');
@@ -476,7 +520,7 @@ final class Shared_Product_Rate_Generation {
  /** Recheck explicit Rate against native owner immediately before a price-only preview. */
  public static function quote_for_explicit_rate($input){
   if(!current_user_can('manage_woocommerce'))return new WP_Error('rate_quote_permission_denied');
-  if(wp_get_environment_type()!=='local'||!is_array($input))return new WP_Error('rate_quote_context_invalid');
+  if((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true)||!is_array($input))return new WP_Error('rate_quote_context_invalid');
   $allowed=['kind','parent_id','rate_id','service_date','checkout','unit_id','rooms',
    'adults','children','persons','audience','occupancy','package_term_id','rate_scope'];
   if(array_diff(array_keys($input),$allowed))return new WP_Error('rate_quote_unexpected_fields');
@@ -640,7 +684,8 @@ final class Shared_Product_Rate_Generation {
  }
  public static function create($input) {
   if(!current_user_can('manage_woocommerce'))return new WP_Error('rate_generator_permission_denied');
-  if(wp_get_environment_type()!=='local')return new WP_Error('rate_generator_nonlab_denied');
+  if(!defined('MAD4B_COMMERCE_RUNTIME_ENABLED')||MAD4B_COMMERCE_RUNTIME_ENABLED!==true)
+   return new WP_Error('rate_generator_runtime_grant_required');
   $plan=self::prepare($input);if(is_wp_error($plan))return $plan;
   // Unique wp_options key is an atomic mutex across PHP processes.
   // Locks never authorize publication; stale locks fail closed for operator review.
@@ -679,6 +724,36 @@ final class Shared_Product_Rate_Generation {
    if(is_wp_error($assigned)||!has_term((int)$plan['parameters']['season_term_id'],'season',$created)){
     wp_delete_post($created,true);
     return new WP_Error('rate_generator_season_save_failed');
+   }
+  }
+  if($plan['kind']==='tour'){
+   $independent=($plan['parameters']['pricing_locale_mode']??'')==='independent';
+   $parentLanguage=apply_filters('wpml_post_language_details',null,(int)$plan['parent_id']);
+   $lang=$independent?$plan['parameters']['pricing_language']:
+     (is_array($parentLanguage)?($parentLanguage['language_code']??null):null);
+   // Both the inherited/default and override drafts belong to the selected
+   // translated Tour; only override changes the price-provenance fingerprint.
+   if(is_string($lang)&&preg_match('/^[a-z]{2}(?:-[a-z]{2})?$/D',$lang)){
+    do_action('wpml_set_element_language_details',[
+     'element_id'=>(int)$created,'element_type'=>'post_tour-rates',
+     'trid'=>false,'language_code'=>$lang,'source_language_code'=>null
+    ]);
+    $detail=apply_filters('wpml_post_language_details',null,(int)$created);
+    if(!is_array($detail)||($detail['language_code']??'')!==$lang){
+     wp_delete_post($created,true);
+     return new WP_Error('rate_generator_locale_binding_failed');
+    }
+   }elseif($independent){
+    wp_delete_post($created,true);
+    return new WP_Error('rate_generator_parent_language_unverified');
+   }
+   // WordPress/WPML can remap the linked parent on insert. Rebind once,
+   // then validate for both modes; do not touch source price or other Rates.
+   if((int)get_post_meta($created,'related_tour_id',true)!==(int)$plan['parent_id'])
+     update_post_meta($created,'related_tour_id',(int)$plan['parent_id']);
+   if((int)get_post_meta($created,'related_tour_id',true)!==(int)$plan['parent_id']){
+    wp_delete_post($created,true);
+    return new WP_Error('rate_generator_locale_parent_binding_failed');
    }
   }
   if(get_post_type($created)!==$plan['post_type']||get_post_status($created)!=='draft'||

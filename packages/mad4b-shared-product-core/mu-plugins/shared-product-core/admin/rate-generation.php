@@ -1,6 +1,6 @@
 <?php
 /** WooCommerce Settings tab — parameterized existing CPT rate drafts only. */
-if (!defined('ABSPATH') || wp_get_environment_type()!=='local' || !class_exists('Shared_Product_Rate_Generation')) return;
+if (!defined('ABSPATH') || (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true) || !class_exists('Shared_Product_Rate_Generation')) return;
 add_filter('woocommerce_settings_tabs_array',static function($tabs){
  $tabs['rate_generation']=__('Rate Generation','woocommerce');return $tabs;
 },82);
@@ -43,6 +43,11 @@ add_action('woocommerce_settings_tabs_rate_generation',static function(){
  $field('Rate kind',$choices,'Uses tour-rates, property-rates or transport-rates; never creates a new CPT.');
  $field('Parent product ID','<input name="parent_id" required type="number" min="1" step="1" value="'.esc_attr($sourceId?:'').'" />',
   'Tour ID, Property ID or Transportation ID (existing JetEngine CPT post).');
+ $field('Tour language pricing',
+  '<select name="pricing_locale_mode"><option value="inherit" selected>Inherit existing pricing behavior (default)</option><option value="independent">Override: independent amount + currency for this Tour language</option></select>',
+  'Inherit preserves the original generator, source values and fingerprint. Override creates a separate localized Rate draft without changing translated Rates.');
+ $field('Expected Tour language (override only)','<input name="pricing_language" type="text" maxlength="8" pattern="[a-z]{2}(-[a-z]{2})?" placeholder="Auto from parent Tour" />',
+  'Optional in Override mode only. Must equal the parent Tour language; market, nationality and WCML currency remain separate.');
  $field('Unit ID (accommodation only)','<input name="unit_id" type="number" min="1" step="1"/>',
   'Existing property → unit relation is verified by Booking Experience.');
  foreach($types as $kind=>$label){
@@ -61,11 +66,12 @@ add_action('woocommerce_settings_tabs_rate_generation',static function(){
   '<option value="on_request">Supplier confirmation on request</option>'.
   '<option value="allotment">Managed allotment (needs stock setup)</option></select></span>',
   'If left blank, draft is incomplete and cannot be treated as an available stay.');
+ echo '<p><strong>WPML Rate price authority:</strong> Inherit keeps the current Rate Generator and original source policy. Override binds a new draft to the translated Tour with its explicit original price and currency. Existing published Rates are never synchronized or overwritten.</p>';
  $field('Base amount','<input name="amount" type="number" min="0.0001" max="99999999" step="0.0001" value="'.esc_attr(is_numeric($seedAmount)&&(float)$seedAmount>0?$seedAmount:'').'"/>');
  $currency='<select name="currency">';
  foreach(get_woocommerce_currencies() as $code=>$label)
   $currency.='<option value="'.esc_attr($code).'" '.selected($code,$seedCurrency&&array_key_exists($seedCurrency,get_woocommerce_currencies())?$seedCurrency:get_woocommerce_currency(),false).'>'.esc_html($code).'</option>';
- $field('Currency',$currency.'</select>');
+ $field('Currency',$currency.'</select>','Original currency for this locale-specific Rate. WCML converts only for display; it must not overwrite this field.');
  $field('Supplier SKU / reference','<input name="supplier_sku" maxlength="96"/>','Required when using supplier cost.');
  $field('Supplier unit cost','<input name="supplier_cost" type="number" min="0.0001" step="0.0001"/>','Alternative to manual amount; price is proposed, not approved.');
  $field('Price calculation','<select name="pricing_rule_kind"><option value="">Choose policy</option><option value="markup_percent">Markup % of cost</option><option value="target_margin_percent">Target margin % of selling price</option><option value="fixed_profit">Fixed profit</option></select>');
@@ -90,7 +96,7 @@ add_action('woocommerce_settings_tabs_rate_generation',static function(){
  $batch=get_transient('shared_rate_batch_preview_'.get_current_user_id());
  $csv=is_array($batch)?(string)($batch['csv']??''):'';
  echo '<hr><h3>Batch Rate Source — CSV (Preview before creating Drafts)</h3>';
- echo '<p>Paste a CSV with kind, parent_id, currency, price_unit, valid_from and valid_to columns; optional supplier cost, markup and stay terms. Up to '.(int)Shared_Product_Rate_Source_Batch::MAX_ROWS.' rows, 64 KB. No rate is published or sold by this action.</p>';
+ echo '<p>Paste a CSV with kind, parent_id, currency, price_unit, valid_from and valid_to columns; optional pricing_locale_mode=independent plus pricing_language matching the translated Tour for overrides; omit both columns for default inheritance, supplier cost, markup and stay terms. Up to '.(int)Shared_Product_Rate_Source_Batch::MAX_ROWS.' rows, 64 KB. No rate is published or sold by this action.</p>';
  echo '<textarea name="rate_source_csv" rows="8" maxlength="'.(int)Shared_Product_Rate_Source_Batch::MAX_BYTES.'" style="width:100%;max-width:900px" placeholder="Paste CSV header and rows">'.esc_textarea($csv).'</textarea>';
  echo '<p><button class="button" type="submit" name="operation" value="batch_preview" formnovalidate>Validate CSV — no writes</button> ';
  if(is_array($batch)&&$csv!=='')echo '<button class="button button-primary" type="submit" name="operation" value="batch_create" formnovalidate>Create reviewed Draft batch</button>';
@@ -206,7 +212,7 @@ add_action('admin_init',static function(){
     ($_GET['tab']??'')!=='rate_generation'||!isset($_POST['operation']))return;
  if(!current_user_can('manage_woocommerce'))wp_die('Permission denied',403);
  check_admin_referer('shared_product_rate_generation','shared_rate_generation_nonce');
- if(wp_get_environment_type()!=='local')wp_die('Not a Lab site',403);
+ if((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))wp_die('Runtime grant required',403);
  $raw=wp_unslash($_POST);
  $op=$raw['operation']??'';
  if($op==='choice_preview'||$op==='choice_quote'){
@@ -264,6 +270,15 @@ add_action('admin_init',static function(){
  if($kind==='tour'){
   foreach(['accommodation_assignment_mode','accommodation_stage_source_rate_id'] as $field)if(isset($raw[$field])&&$raw[$field]!=='')$payload[$field]=$raw[$field];
   foreach(['single_factor','double_factor','triple_factor'] as $field)$payload[$field]=$raw[$field]??null;
+  // Omit the new keys for the legacy/default path: fingerprint parity matters.
+  $mode=$raw['pricing_locale_mode']??'inherit';
+  if($mode==='independent'){
+   $payload['pricing_locale_mode']='independent';
+   if(isset($raw['pricing_language'])&&trim((string)$raw['pricing_language'])!=='')
+    $payload['pricing_language']=sanitize_text_field((string)$raw['pricing_language']);
+  }elseif($mode!=='inherit'&&$mode!==''){
+   $payload['pricing_locale_mode']=sanitize_text_field((string)$mode);
+  }
   if(!empty($raw['package_term_id']))$payload['package_term_id']=$raw['package_term_id'];
  }elseif($kind==='accommodation'){
   foreach(['min_nights','max_nights','max_adults','max_children','inventory_policy'] as $field)
