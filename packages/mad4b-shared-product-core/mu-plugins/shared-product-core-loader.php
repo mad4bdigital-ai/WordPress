@@ -1,7 +1,11 @@
 <?php
-/** Plugin Name: Shared Product Core Loader (Lab) */
+/** Plugin Name: Shared Product Core Loader (Governed Runtime) */
 if (!defined('ABSPATH')) exit;
-if (wp_get_environment_type() !== 'local' || !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY) return;
+// A runtime grant is independent of WP_ENVIRONMENT_TYPE; Local Lab keeps its own opt-in.
+$mad4bSharedRuntime=(defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED === true)
+    || (function_exists('wp_get_environment_type') && wp_get_environment_type() === 'local'
+    && defined('SHARED_PRODUCT_LAB_ONLY') && SHARED_PRODUCT_LAB_ONLY === true);
+if (!$mad4bSharedRuntime) return;
 $root=__DIR__.'/shared-product-core/';
 require_once $root.'core.php';
 require_once $root.'contracts/field-shape-contract-v1.php';
