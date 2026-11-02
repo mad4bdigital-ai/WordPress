@@ -4,11 +4,19 @@ on:
   pull_request:
     paths:
       - 'wp-content/plugins/mad4b-age-occupancy-registry/**'
+      - 'wp-content/plugins/commerce-composition/includes/InquiryQualification.php'
+      - 'wp-content/plugins/commerce-composition/includes/RequestReviewAdmin.php'
+      - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/presentation-form6-price-quote-v1.php'
+      - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/tests/form6-missing-minor-policy-contract.php'
       - '.github/workflows/age-occupancy-policy-contract.yml'
   push:
     branches: [master]
     paths:
       - 'wp-content/plugins/mad4b-age-occupancy-registry/**'
+      - 'wp-content/plugins/commerce-composition/includes/InquiryQualification.php'
+      - 'wp-content/plugins/commerce-composition/includes/RequestReviewAdmin.php'
+      - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/presentation-form6-price-quote-v1.php'
+      - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/tests/form6-missing-minor-policy-contract.php'
       - '.github/workflows/age-occupancy-policy-contract.yml'
   workflow_dispatch:
 
@@ -35,3 +43,7 @@ jobs:
         run: |
           find wp-content/plugins/mad4b-age-occupancy-registry -type f -name '*.php' -print0 | xargs -0 -n1 php -l
           php wp-content/plugins/mad4b-age-occupancy-registry/tests/global-patterns-contract.php
+          php -l wp-content/plugins/commerce-composition/includes/InquiryQualification.php
+          php -l wp-content/plugins/commerce-composition/includes/RequestReviewAdmin.php
+          php -l packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/presentation-form6-price-quote-v1.php
+          php packages/mad4b-shared-product-core/mu-plugins/shared-product-core/tests/form6-missing-minor-policy-contract.php
