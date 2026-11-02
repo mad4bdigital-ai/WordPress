@@ -172,7 +172,7 @@ def main():
     args = parser.parse_args()
     if os.geteuid() != 0:
         raise InvalidEvidence("ROOT_ORIGINAL_EVIDENCE_REQUIRED")
-    reports = {k: read_protected(ROOT / path, required=k in ("policy", "identity", "native"))
+    reports = {k: read_protected(ROOT / path, required=k == "policy")
                for k, path in FILES.items()}
     result = project(reports)
     if args.action == "once":
