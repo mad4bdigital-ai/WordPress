@@ -76,8 +76,12 @@ final class MAD4B_SCP_Native_Search_Console {
     }
     public static function decode_rows($payload,$site_origin) {
         $out=array();
-        if(!is_array($payload)||!is_array($payload['rows']??null))return new WP_Error('mad4b_gsc_response_invalid');
-        foreach($payload['rows'] as $entry) {
+        if(!is_array($payload)||
+            (array_key_exists('rows',$payload)&&!is_array($payload['rows'])))
+            return new WP_Error('mad4b_gsc_response_invalid');
+        // Search Console may omit rows entirely when the property has no
+        // finalized search data for the selected date range.
+        foreach((array)($payload['rows']??array()) as $entry) {
             if(!is_array($entry)||count((array)($entry['keys']??array()))!==1)continue;
             $url=(string)$entry['keys'][0];
             $parts=wp_parse_url($url);
