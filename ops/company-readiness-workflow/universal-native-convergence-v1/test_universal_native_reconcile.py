@@ -70,8 +70,10 @@ class UniversalNativeConvergenceTests(unittest.TestCase):
         ast.parse(source)
         self.assertNotIn("wayfa_host_proof_plan",source)
         self.assertNotIn("refresh_signed_host_proof",source)
-        self.assertIn("ACTIVATE_ORIGINAL_ENROLLED_305_TRANSPORT_VIA_AUTHENTICATED_ISSUER",source)
+        self.assertIn("READY_FOR_ORIGINAL_306_312_SIGNED_READ_CANARY",source)
         self.assertIn("original_transport_activation_performed",source)
+        self.assertIn("original_305_pending_transport_is_expected",source)
+        self.assertNotIn("ACTIVATE_ORIGINAL_ENROLLED_305_TRANSPORT_VIA_AUTHENTICATED_ISSUER",source)
 
     def test_exact_proof_requires_current_original_contract(self):
         source=SOURCE.read_text()
