@@ -31,6 +31,14 @@ final class MAD4B_WPML_Translation_Need_V1 {
    if($key==='__dynamic__'){
     foreach((array)$v as $field=>$tag){
      $technical['dynamic_tag_refs']++;
+     if(is_string($tag)&&$field==='shortcode'
+       &&str_contains($tag,'name="jet-options-page"')
+       &&preg_match('/settings="([^"]+)"/',$tag,$provider_match)){
+       $provider=json_decode(rawurldecode($provider_match[1]),true);
+       if(is_array($provider)&&isset($provider['option_field'])
+          &&is_string($provider['option_field'])&&$provider['option_field']!=='')
+         $technical['provider_shortcode_option_refs']=($technical['provider_shortcode_option_refs']??0)+1;
+     }
      if(!is_string($tag)||!preg_match('/settings="([^"]+)"/',$tag,$m))continue;
      $decoded=json_decode(rawurldecode($m[1]),true);
      if(!is_array($decoded))continue;
@@ -80,9 +88,14 @@ final class MAD4B_WPML_Translation_Need_V1 {
   // templates. For content posts, even empty titles do not auto-certify.
   // Shortcode providers can render text outside _elementor_data: keep review.
   $eligible_type=in_array($kind,['elementor_library','jet-engine'],true);
-  $classification=$texts?'translation_required':($eligible_type
+  $shared_shortcode=$kind==='elementor_library' && !$texts
+    && trim((string)$post->post_content)==='' && trim((string)$post->post_excerpt)===''
+    && $technical['widget_count']===2 && $technical['shortcode_widgets']===1
+    && $technical['dynamic_tag_refs']===1
+    && ($technical['provider_shortcode_option_refs']??0)===1;
+  $classification=$texts?'translation_required':($shared_shortcode?'shared_dynamic_provider':($eligible_type
     && !$technical['shortcode_widgets'] && $technical['widget_count']>0
-    ?'technical_only':'needs_render_review');
+    ?'technical_only':'needs_render_review'));
   return self::$memo[$id]=[
    'classification'=>$classification,'source_post_id'=>$id,'type'=>$kind,
    'visible_literals'=>count($texts),'examples'=>array_slice($texts,0,12),
