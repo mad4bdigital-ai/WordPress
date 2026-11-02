@@ -448,7 +448,6 @@ MAD4B_SCP_Deployment_Mode_Resolver::boot();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-semantic-content-field-contracts.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-ai-approval.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-google-drive-context.php';
-require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-native-search-console.php';
 // Staging-only governed pending Google OAuth revocation retry via discoverable Abilities.
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-google-revocation-remote.php';
 // Provider-neutral health, human OAuth handoff and approved refresh lifecycle.
@@ -656,7 +655,6 @@ MAD4B_SCP_Admin_Experience::boot();
 MAD4B_SCP_Cross_Plugin_Deployment::boot();
 MAD4B_SCP_Cross_Plugin_Admin::boot();
 MAD4B_SCP_G5_External_Providers::boot();
-MAD4B_SCP_Native_Search_Console::boot();
 MAD4B_SCP_G5_Growth_Evidence::boot();
 MAD4B_SCP_G5_SEO_Provider_Families::boot();
 MAD4B_SCP_G5_Acceptance::boot();

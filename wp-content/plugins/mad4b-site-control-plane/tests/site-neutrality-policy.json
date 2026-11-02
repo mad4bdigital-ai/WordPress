@@ -224,6 +224,12 @@
         "api.github.com"
       ],
       "rationale": "Immutable public GitHub REST source-reader authority only, not a tenant or site default. This exact hostname pin rejects config drift to unreviewed providers; HTTPS, TLS, DNS and redirect checks remain governed by Egress Policy."
+    },
+    "includes/class-mad4b-scp-native-search-console.php": {
+      "hosts": [
+        "www.googleapis.com"
+      ],
+      "rationale": "Explicitly reviewed fixed Google Search Console HTTPS API endpoint (/webmasters/v3/sites), site-owned property selection and consent-gated read-only capture. Never a tenant origin or caller-chosen host."
     }
   },
   "optional_named_tag_integrations": [

@@ -321,7 +321,19 @@ final class MAD4B_SEO_Opportunities {
         if(isset($data['error']))WP_CLI::error($data['error']);
     }
 }
-add_action('plugins_loaded',array('MAD4B_SEO_Opportunities','boot'),32);
+// Optional extension loaded only when both governed plugins exist.
+ // The Control Plane bootstrap remains byte-identical to its release baseline.
+ add_action('plugins_loaded',static function():void {
+     if(!class_exists('MAD4B_SCP_G5_External_Providers',false)
+         ||!class_exists('MAD4B_SCP_Google_Drive_Context',false)
+         ||!class_exists('MAD4B_SCP_Admin_Route_Registry',false))return;
+     $source=WP_PLUGIN_DIR.'/mad4b-site-control-plane/includes/class-mad4b-scp-native-search-console.php';
+     if(!is_file($source)||!is_readable($source))return;
+     require_once $source;
+     if(class_exists('MAD4B_SCP_Native_Search_Console',false))
+         MAD4B_SCP_Native_Search_Console::boot();
+ },31);
+ add_action('plugins_loaded',array('MAD4B_SEO_Opportunities','boot'),32);
 register_activation_hook(__FILE__,static function():void{
     if(!wp_next_scheduled('mad4b_seo_opportunities_daily'))
         wp_schedule_event(time()+6*HOUR_IN_SECONDS,'daily','mad4b_seo_opportunities_daily');
