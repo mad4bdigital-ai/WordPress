@@ -7,6 +7,7 @@ if ( ! class_exists( 'MAD4B_SCP_Operational_Integrity' ) ) require_once __DIR__ 
 if ( ! class_exists( 'MAD4B_SCP_Content_Relationship_Graph' ) ) require_once __DIR__ . '/class-mad4b-scp-content-relationship-graph.php';
 if ( ! class_exists( 'MAD4B_SCP_Content_Relationship_Writeback' ) ) require_once __DIR__ . '/class-mad4b-scp-content-relationship-writeback.php';
 if ( ! class_exists( 'MAD4B_SCP_Content_Job_Structural_QA' ) ) require_once __DIR__ . '/class-mad4b-scp-content-job-structural-qa.php';
+if ( ! class_exists( 'MAD4B_SCP_Structural_Only_CWA_Adapter' ) ) require_once __DIR__ . '/class-mad4b-scp-contentjob-structural-cwa.php';
 if ( ! class_exists( 'MAD4B_SCP_Content_Job_Group_Orchestrator' ) ) require_once __DIR__ . '/class-mad4b-scp-content-job-groups.php';
 
 /**
@@ -104,6 +105,13 @@ final class MAD4B_SCP_Content_Jobs {
 			),
 			array('job_id','relationship_kind','expected_source_sha256'),false
 		);
+		self::register(
+            'mad4b/content-job-structural-cwa-apply',
+            'Apply Exact Native WPML Structural-Only CWA and Readback',
+            'structural_cwa_apply',
+            array('job_id'=>array('type'=>'string','minLength'=>36,'maxLength'=>36)),
+            array('job_id'),false
+        );
 		self::register(
             'mad4b/content-job-structural-qa-plan',
             'Inspect Exact Source-Owned Elementor Structural Delta',
@@ -508,6 +516,12 @@ final class MAD4B_SCP_Content_Jobs {
 	 * guess; missing target post/term is a dependency, not a fabricated
 	 * reference or permission to create one.
 	 */
+    public static function structural_cwa_apply($input) {
+        $job=(string)($input['job_id']??'');
+        if(!preg_match('/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/D',$job))
+            return array('state'=>'HOLD','reason'=>'invalid_original_structural_job');
+        return (new MAD4B_SCP_Structural_Only_CWA_Adapter($job))->run();
+    }
     public static function structural_qa_plan($input) {
         return MAD4B_SCP_Content_Job_Structural_QA::inspect((string)($input['job_id']??''));
     }
