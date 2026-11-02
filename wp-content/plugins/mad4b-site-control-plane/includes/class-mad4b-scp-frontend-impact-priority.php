@@ -171,7 +171,7 @@ final class MAD4B_SCP_Frontend_Impact_Priority {
             }
         }
         $result['form_ids']=array_slice(array_values(array_unique($result['form_ids'])),0,30);
-        $price=$xp->query('//*[contains(@class,"elementor-widget-jet-listing-dynamic-field") and (contains(translate(@class,"PRICE","price"),"price") or contains(translate(@class,"RATE","rate"),"rate"))] | //*[contains(@class,"woocommerce-Price-amount")] | //*[contains(@class,"jet-listing-dynamic-field__content") and contains(@class,"price")]');
+        $price=$xp->query('//*[contains(@class,"etg-tour-price") or contains(@class,"etg-price-native") or contains(@class,"woocommerce-Price-amount") or contains(@class,"jet-listing-dynamic-field__content") and contains(@class,"price")]');
         $result['price_surfaces']=$price?$price->length:0;
         $booking=$xp->query('//*[contains(@class,"booking-form") or contains(@class,"booking-widget") or contains(@class,"rate-selection") or contains(@class,"tour-rate-picker") or contains(@class,"pricing-widget")]');
         $result['booking_controls']=$booking?$booking->length:0;
