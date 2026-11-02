@@ -67,7 +67,10 @@ final class MAD4B_SCP_Relationship_Owner_Write_Adapter implements MAD4B_Central_
    $inspection=$typed['relationships']['elementor_template_refs']??[];
    if(!in_array($inspection['status']??'',['REVIEW_WITH_OWNER_ADAPTER'],true))
     throw new RuntimeException('no_certified_template_reference_candidate');
-   $preview=MAD4B_WPML_Design_Reconciliation_V1::reconcile($source,false);
+   $preview=MAD4B_WPML_Design_Reconciliation_V1::reconcile_exact(
+     $source,$target,false,
+     (string)$inspection['source_document_sha256'],
+     (string)$inspection['target_document_sha256']);
    if(is_wp_error($preview)||!is_array($preview)||
       ($preview['unresolved_refs_or_widgets']??1)!==0)
     throw new RuntimeException('elementor_owner_plan_unavailable_or_unresolved');
@@ -193,13 +196,17 @@ final class MAD4B_SCP_Relationship_Owner_Write_Adapter implements MAD4B_Central_
  public function apply(array $claim,array $source):array {
   [$plan,$job,$v]=$this->owner();
   if($this->kind==='elementor'){
-   $r=MAD4B_WPML_Design_Reconciliation_V1::reconcile($v['source'],true);
+   $r=MAD4B_WPML_Design_Reconciliation_V1::reconcile_exact(
+     $v['source'],$v['target'],true,
+     (string)$v['source_document_sha256'],
+     (string)$v['target_document_sha256']);
    if(is_wp_error($r))return ['success'=>false,'reason'=>$r->get_error_code()];
    $changed=array_values(array_filter((array)$r['translations'],fn($x)=>!empty($x['updated'])));
    $success=count($changed)===1 && (int)$changed[0]['target']===$v['target']
      &&($r['unresolved_refs_or_widgets']??1)===0;
    return ['success'=>$success,'target'=>$v['target'],'source'=>$v['source'],
-    'owner'=>'MAD4B_WPML_Design_Reconciliation_V1',
+    'source_document_sha256'=>$v['source_document_sha256'],
+    'owner'=>'MAD4B_WPML_Design_Reconciliation_V1::reconcile_exact',
     'owner_result'=>$changed];
   }
   $args=['post_id'=>$v['target'],'field'=>$v['field'],
@@ -221,7 +228,10 @@ final class MAD4B_SCP_Relationship_Owner_Write_Adapter implements MAD4B_Central_
   if($this->kind==='typed_meta')
    return (int)get_post_meta($target,$result['field'],true)===(int)$result['value'];
   $src=(int)($result['source']??0);
-  $p=MAD4B_WPML_Design_Reconciliation_V1::reconcile($src,false);
+  $currentTarget=(string)get_post_meta($target,'_elementor_data',true);
+  $p=MAD4B_WPML_Design_Reconciliation_V1::reconcile_exact(
+     $src,$target,false,(string)($result['source_document_sha256']??''),
+     hash('sha256',$currentTarget));
   if(is_wp_error($p)||($p['unresolved_refs_or_widgets']??1)!==0)return false;
   foreach($p['translations']??[] as $x)
    if((int)($x['target']??0)===$target)return empty($x['would_update']);
