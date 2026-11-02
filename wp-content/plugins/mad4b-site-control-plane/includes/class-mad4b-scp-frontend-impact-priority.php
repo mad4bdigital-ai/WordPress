@@ -30,9 +30,9 @@ final class MAD4B_SCP_Frontend_Impact_Priority {
         }
     }
     public static function scheduled_scan():void {
-        // This callback is allowed only during the registered WP-Cron action;
-        // it cannot be invoked to gain operator write privileges.
-        self::scan(1,true);
+        // Bounded multilingual home, archive and one verified tour detail.
+        // The cron action is not a publication or write authority.
+        self::scan(3,true);
     }
     public static function authorized():bool {
         return current_user_can('manage_options') ||
@@ -86,6 +86,40 @@ final class MAD4B_SCP_Frontend_Impact_Priority {
                 $urls[$locale][]=['url'=>$candidate,'kind'=>'archive'];
                 break;
             }
+            if(count($urls[$locale])===1) {
+                $archive=get_post_type_archive_link('tours-and-activities');
+                if(is_string($archive) && self::same_origin($archive)) {
+                    $candidate=$locale===apply_filters('wpml_default_language',null)
+                        ? $archive : trailingslashit($homepage).'tours-and-activities/';
+                    if(self::same_origin($candidate))
+                        $urls[$locale][]=['url'=>$candidate,'kind'=>'archive'];
+                }
+            }
+            if($per_lang<3)continue;
+            // Select one real, previously observed public tour detail. Never
+            // guess paths from taxonomy labels or filtered JSF archive URLs.
+            foreach((array)($prior['pages'][$locale]??[]) as $page) {
+                $path=(string)($page['path']??'');
+                if(strlen($path)>300 || !str_contains($path,'/tours-and-activities/')
+                   || str_contains($path,'/jsf/') ||
+                   ($page['kind']??'')!=='linked_page')continue;
+                if($locale!==apply_filters('wpml_default_language',null)
+                   && !str_starts_with($path,'/'.$locale.'/'))continue;
+                $candidate=home_url($path);
+                if(!self::same_origin($candidate))continue;
+                $urls[$locale][]=['url'=>$candidate,'kind'=>'tour'];
+                break;
+            }
+            if(count($urls[$locale])<3 && $locale===apply_filters('wpml_default_language',null)) {
+                $products=get_posts(['post_type'=>'tours-and-activities',
+                    'post_status'=>'publish','numberposts'=>1,'orderby'=>'modified',
+                    'order'=>'DESC','suppress_filters'=>true]);
+                if($products) {
+                    $candidate=get_permalink($products[0]);
+                    if(is_string($candidate)&&self::same_origin($candidate))
+                        $urls[$locale][]=['url'=>$candidate,'kind'=>'tour'];
+                }
+            }
         }
         return $urls;
     }
@@ -94,6 +128,8 @@ final class MAD4B_SCP_Frontend_Impact_Priority {
             'url'=>$url,'kind'=>$kind,'status'=>200,
             'mega_menus'=>0,'deep_tabs'=>0,'listing_grids'=>0,
             'empty_listings'=>0,'filters'=>0,'forms'=>0,
+            'price_surfaces'=>0,'booking_controls'=>0,'fluent_forms'=>0,
+            'form_ids'=>[],'post_ids'=>[],
             'elementor_elements'=>0,'navigation_text'=>'',
             'observed_at'=>gmdate('c'),'body_sha256'=>hash('sha256',$html)
         ];
@@ -123,6 +159,29 @@ final class MAD4B_SCP_Frontend_Impact_Priority {
         $result['filters']=$filters?$filters->length:0;
         $forms=$xp->query('//form');
         $result['forms']=$forms?$forms->length:0;
+        // Visitor-facing presence only. Never collect values, visitors' inputs,
+        // hidden tokens, form contents, or personally identifying data.
+        $fluent=$xp->query('//form[contains(@class,"fluentform") or starts-with(@id,"fluentform_")]');
+        $result['fluent_forms']=$fluent?$fluent->length:0;
+        if($fluent)foreach($fluent as $form){
+            foreach(['data-form_id','data-form-id','id'] as $attribute){
+                $v=(string)$form->getAttribute($attribute);
+                if(preg_match('/(?:^|_)([1-9][0-9]{0,6})$/D',$v,$m))
+                    $result['form_ids'][]=(int)$m[1];
+            }
+        }
+        $result['form_ids']=array_slice(array_values(array_unique($result['form_ids'])),0,30);
+        $price=$xp->query('//*[contains(@class,"elementor-widget-jet-listing-dynamic-field") and (contains(translate(@class,"PRICE","price"),"price") or contains(translate(@class,"RATE","rate"),"rate"))] | //*[contains(@class,"woocommerce-Price-amount")] | //*[contains(@class,"jet-listing-dynamic-field__content") and contains(@class,"price")]');
+        $result['price_surfaces']=$price?$price->length:0;
+        $booking=$xp->query('//*[contains(@class,"booking-form") or contains(@class,"booking-widget") or contains(@class,"rate-selection") or contains(@class,"tour-rate-picker") or contains(@class,"pricing-widget")]');
+        $result['booking_controls']=$booking?$booking->length:0;
+        $ids=$xp->query('//*[@data-post-id]');
+        if($ids)foreach($ids as $node){
+            $id=(string)$node->getAttribute('data-post-id');
+            if(ctype_digit($id)&&(int)$id>0)$result['post_ids'][]=(int)$id;
+            if(count($result['post_ids'])>=320)break;
+        }
+        $result['post_ids']=array_slice(array_values(array_unique($result['post_ids'])),0,200);
         $elements=$xp->query('//*[@data-id and contains(@class,"elementor-element")]');
         $result['elementor_elements']=$elements?$elements->length:0;
         $pieces=[];
@@ -165,8 +224,14 @@ final class MAD4B_SCP_Frontend_Impact_Priority {
         $code=(string)($issue['code']??'');
         $base=['score'=>null,'confidence'=>'not_mapped','surface'=>'unknown',
             'observed_urls'=>[],'group'=>'','evidence'=>'no_live_element_binding'];
-        if(!preg_match('/^dfsb_wpml_term_missing_([a-z0-9_-]+)_(\d+)_([a-z]{2})$/D',$code,$m))
-            return $base;
+        if(!preg_match('/^dfsb_wpml_term_missing_([a-z0-9_-]+)_(\d+)_([a-z]{2})$/D',$code,$m)) {
+            $proposal=apply_filters('mad4b/frontend_impact/score_unmapped_issue',$base,$issue,$pages);
+            // Non-taxonomy providers may only return a typed, bounded score.
+            return is_array($proposal) && isset($proposal['score']) &&
+                is_int($proposal['score']) && $proposal['score']>=0 &&
+                $proposal['score']<=100 && is_string($proposal['evidence']??null)
+                ?$proposal:$base;
+        }
         $tax=$m[1];$source=(int)$m[2];$lang=$m[3];
         if($tax!=='destinations'||!isset($pages[$lang]))return $base;
         $parent=self::canonical_parent($source);
@@ -205,7 +270,7 @@ final class MAD4B_SCP_Frontend_Impact_Priority {
     public static function scan(int $per_lang=1,bool $internal_cron=false) {
         if(!self::authorized() && !($internal_cron && doing_action(self::HOOK)))
             return new WP_Error('frontend_impact_operator_required');
-        $per_lang=max(1,min(2,$per_lang));
+        $per_lang=max(1,min(3,$per_lang));
         $targets=self::targets($per_lang);
         $previous=self::snapshot();$pages=[];$failures=[];$ok=0;
         foreach($targets as $lang=>$urls){
@@ -219,10 +284,17 @@ final class MAD4B_SCP_Frontend_Impact_Priority {
             }
         }
         // A partial or failed scan must never erase the last trusted result.
-        if($ok<max(2,(int)ceil(count($targets)*0.6)))
+        // Missing one locale's home page invalidates cross-language parity.
+        $home_complete=true;
+        foreach($targets as $lang=>$links) {
+            if(!array_filter((array)($pages[$lang]??[]),
+                static fn($p)=>($p['kind']??'')==='home'))$home_complete=false;
+        }
+        if(!$home_complete || $ok<max(2,(int)ceil(
+            array_sum(array_map('count',$targets))*0.6)))
             return new WP_Error('frontend_impact_coverage_incomplete','Live crawl coverage incomplete; last good evidence preserved');
         $ledger=(array)get_option('mad4b_content_readiness_issues_v1',[]);
-        $scores=[];$groups=[];
+        $scores=[];$groups=[];$categories=[];
         foreach($ledger as $key=>$issue){
             if(!is_array($issue)||($issue['status']??'open')==='resolved')continue;
             $impact=self::scored_issue($issue,$pages);
@@ -231,10 +303,14 @@ final class MAD4B_SCP_Frontend_Impact_Priority {
             $scores[$id]=array_merge(['code'=>(string)($issue['code']??''),
                 'severity'=>(string)($issue['severity']??'medium'),
                 'content_job_id'=>(string)($issue['content_job_id']??'')],$impact);
+            $cat=(string)($impact['component_kind']??'destination_navigation');
+            $categories[$cat]=($categories[$cat]??0)+1;
             $group=$impact['group'];if(!$group)continue;
             if(!isset($groups[$group]))$groups[$group]=[
-                'group'=>$group,'score'=>0,'issue_count'=>0,'source_parent'=>$impact['parent_term_id'],
-                'localized_parent'=>$impact['localized_parent_id'],'locale'=>$impact['locale'],
+                'group'=>$group,'score'=>0,'issue_count'=>0,
+                'source_parent'=>$impact['parent_term_id']??null,
+                'localized_parent'=>$impact['localized_parent_id']??null,
+                'locale'=>$impact['locale']??null,
                 'observed_urls'=>[],'confidence'=>$impact['confidence']
             ];
             $groups[$group]['issue_count']++;
@@ -242,10 +318,33 @@ final class MAD4B_SCP_Frontend_Impact_Priority {
             $groups[$group]['observed_urls']=array_values(array_unique(array_merge(
                 $groups[$group]['observed_urls'],$impact['observed_urls'])));
         }
+        $parity=[];
+        $en=(array)($pages['en']??[]);
+        $source_archive=null;
+        foreach($en as $p)if(($p['kind']??'')==='archive')$source_archive=$p;
+        if($source_archive){
+            foreach($pages as $locale=>$records) {
+                if($locale==='en')continue;
+                foreach($records as $p){
+                    if(($p['kind']??'')!=='archive')continue;
+                    if(($source_archive['filters']??0)>0 && ($p['filters']??0)===0)
+                        $parity[]=['locale'=>$locale,'component'=>'jetsmartfilters',
+                            'source_url'=>$source_archive['url'],'target_url'=>$p['url'],
+                            'source_present'=>(int)$source_archive['filters'],
+                            'target_present'=>0,'status'=>'candidate_requires_semantic_verification'];
+                    if(($source_archive['listing_grids']??0)>0 && ($p['listing_grids']??0)===0)
+                        $parity[]=['locale'=>$locale,'component'=>'jetengine_listing',
+                            'source_url'=>$source_archive['url'],'target_url'=>$p['url'],
+                            'source_present'=>(int)$source_archive['listing_grids'],
+                            'target_present'=>0,'status'=>'candidate_requires_semantic_verification'];
+                }
+            }
+        }
         $data=['contract'=>self::VERSION,'observed_at'=>gmdate('c'),'site'=>home_url(),
             'languages'=>array_keys($targets),'pages'=>$pages,'pages_checked'=>$ok,
             'failures'=>$failures,'scores'=>$scores,'groups'=>array_values($groups),
             'source_issues'=>count($ledger),'issues_ranked'=>count($scores),
+            'categories'=>$categories,'surface_parity_candidates'=>$parity,
             'content_jobs_mutated'=>false,'publication_mutated'=>false];
         if(!update_option(self::SNAPSHOT,$data,false) &&
            get_option(self::SNAPSHOT,[])!==$data)
@@ -256,6 +355,7 @@ final class MAD4B_SCP_Frontend_Impact_Priority {
             return new WP_Error('frontend_impact_snapshot_readback_failed');
         return ['status'=>'SCANNED','pages'=>$ok,'languages'=>count($pages),
             'issues_ranked'=>count($scores),'groups'=>count($groups),
+            'categories'=>$categories,'surface_parity_candidates'=>count($parity),
             'failures'=>$failures,'observed_at'=>$data['observed_at']];
     }
     public static function snapshot():array {
@@ -286,6 +386,8 @@ final class MAD4B_SCP_Frontend_Impact_Priority {
             'sampled_pages'=>(int)($snap['pages_checked']??0),
             'issues_ranked'=>(int)($snap['issues_ranked']??0),
             'clusters'=>count($groups),
+            'categories'=>$snap['categories']??[],
+            'surface_parity_candidates'=>$snap['surface_parity_candidates']??[],
             'failed_requests'=>$snap['failures']??[],
             'groups'=>array_slice($groups,0,$limit),
             'issues'=>array_slice($rows,0,$limit),
