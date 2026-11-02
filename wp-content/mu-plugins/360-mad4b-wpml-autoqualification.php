@@ -128,6 +128,20 @@ final class MAD4B_WPML_Auto_Qualification_V1 {
   }
   $old=self::nativeMeta($id,'is_public');
   if($old!=='0')return self::reason('nonprivate_candidate_needs_review',['target_term_id'=>$id]);
+  // Independent editorial/fact QA is mandatory: length and HTTP tests
+  // alone do not verify truth or translation quality.
+  $qa=json_decode(self::nativeMeta($id,'_mad4b_wpml_quality_receipt_v1'),true);
+  $sourceProof=hash('sha256',$original['name'].'|'.$original['description'].'|'.$source);
+  $translationProof=hash('sha256',$translated['name'].'|'.$translated['description'].'|'.$translated['slug']);
+  if(!is_array($qa) ||
+      ($qa['contract']??'')!=='mad4b.wpml-source-backed-language-qa.v1' ||
+      ($qa['source_sha256']??'')!==$sourceProof ||
+      ($qa['translation_sha256']??'')!==$translationProof ||
+      ($qa['language']??'')!==$locale ||
+      empty($qa['fact_check_pass']) || empty($qa['language_review_pass']) ||
+      empty($qa['brand_editorial_pass']) ||
+      (int)($qa['quality_score']??0)<90)
+    return self::reason('verified_editorial_fact_qa_receipt_missing',['target_term_id'=>$id]);
   return ['eligible'=>true,'reason'=>'canary_ready',
    'target_term_id'=>$id,'locale'=>$locale,'taxonomy'=>$tax,
    'source_term_id'=>$source,'previous_visibility'=>$old,
