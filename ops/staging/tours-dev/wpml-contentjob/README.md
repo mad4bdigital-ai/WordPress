@@ -107,3 +107,15 @@ Instead, the user-authorized WP-CLI operator rendered exact current WordPress ad
 The repeatable `tests/wpml-browser-visual-security-checks.py` ran **25 browser assertions PASS / 0 FAIL**: zero document overflow, navigable scrolling table, labeled dropdowns, safe editor links, no publish/approve/complete UI actions, correct 26 reviewed items and four French-only draft rows. A real anonymous browser navigation to the protected admin route correctly redirected to WordPress Login and did not reveal the review ledger. Evidence: `evidence/wpml-browser-visual-security-20261102.json`.
 
 **Not yet claimed:** an actual screenshot and interaction from an already-authenticated administrator browser session. This requires connected authenticated browser access (e.g. in Work mode or an originating browser context) rather than creating a session with backend privileges. Production not changed; review draft states unchanged.
+
+## Final native VPS browser acceptance — 2 November 2026
+
+An authenticated **real Chromium** browser, launched on the authorized VPS, opened `/wp-admin/admin.php?page=mad4b-wpml-review-dashboard` using a short-lived, genuine WordPress Core session issued for the existing authorized Staging administrator (user 26). No account or password was created/changed. This was **not** the user's personal browser session. Credentials remained in the local runner's memory and were not saved to screenshots or GitHub.
+
+The first real-browser pass caught a WordPress-admin-only mobile issue: at 320px, the page overflowed to 358px and table cells were visually clipped. Changed the Staging-only UI (MU file 358) to make review rows accessible **labeled cards at widths <=782px**, while preserving the desktop table. The first automatic QA session cleanup was not confirmed during a period of simultaneous WP-CLI load, but the sole short-lived localhost test session was later matched exactly and revoked through native WP session APIs. Independent `wp user session list 26` readback returned `[]`.
+
+**Final post-fix actual authenticated-browser checks:** desktop 1440px and mobile 390px/320px showed 26 review items; the French-drafts filter showed four. All four had HTTP 200, the real WordPress admin navigation, no JavaScript page errors and no document horizontal overflow. The actual Content Readiness admin page displayed the WPML review notice with its link. Native PHP regression: 58 assertions passed. Live MU file SHA-256 matched the tested source `e9ab443f5dcc49b6ac32463a85467d0fefe9d829a143ce1b1ab091894fadff68`. The frontend responded HTTP 200, the intake timer remained active, and 17 drafts + 9 published awaiting review + 121 other pending remained tracked. Production unchanged.
+
+Final audit (including chronological session-revocation evidence): `evidence/wpml-vps-authenticated-visual-acceptance-final-20261102.json`. Screenshots of authenticated admin data are stored **privately on the VPS** rather than being published to the repository.
+
+**Acceptance status: PASS.** This verifies the admin UI and its read-only control-plane integration; it does not imply approval, publication, or completion of the remaining ContentJobs.
