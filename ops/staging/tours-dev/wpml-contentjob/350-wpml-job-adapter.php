@@ -235,11 +235,14 @@ final class MAD4B_WPML_ContentJob_Adapter {
   $wpml_ids=array_values(array_unique(array_merge((array)($match['native_wpml_job_ids']??[]),
       (array)($current['native_jobs']??[]))));
   $issues=[];
-  foreach((array)get_option('mad4b_elementor_localization_outbox_v1',[]) as $o){
+  foreach((array)get_option('mad4b_elementor_localization_outbox_v1',[]) as $outbox_key=>$o){
    if((int)($o['source_post_id']??0)!==$source
     ||($o['target_language']??'')!==$lang)continue;
    if(!in_array(($o['gap_code']??''),$gaps,true))continue;
    $issues[]=['code'=>$o['gap_code'],'status'=>$o['status']??'unknown',
+    'key'=>(string)$outbox_key,
+    'expected_source_sha256'=>$o['source_sha256']??null,
+    'operation'=>$o['operation']??null,'lease_until'=>$o['lease_until']??null,
     'receipt_id'=>$o['receipt_id']??null,
     'readback_passed'=>$o['readback_passed']??null];
   }
@@ -270,7 +273,11 @@ final class MAD4B_WPML_ContentJob_Adapter {
   $requires_native=!empty($wpml_ids);
   $requires_gap=!empty($gaps);
   $ready=($requires_gap||$requires_native)&&$gaps_verified&&(!$requires_native||$native_verified);
+  $analysis=class_exists('MAD4B_WPML_Translation_Need_V1')
+    ?MAD4B_WPML_Translation_Need_V1::source($source):null;
   return ['contract'=>'mad4b.wpml.contentjob-binding.v1','job_id'=>$id,
+   'translation_classification'=>is_array($analysis)?$analysis['classification']:'needs_render_review',
+   'static_string_examples'=>is_array($analysis)?array_slice($analysis['examples'],0,7):[],
    'source_post_id'=>$source,'target_post_id'=>$target,'target_language'=>$lang,
    'post_type'=>$match['type'],'native_job_state'=>$native['job']['state'],
    'master_or_post_excluded'=>!mad4b_wpml_auto_sync_allowed_v1($source,$target),
@@ -278,6 +285,81 @@ final class MAD4B_WPML_ContentJob_Adapter {
    'outbox_issues'=>$issues,'native_wpml_jobs'=>$native_wpml,
    'readback_verified'=>$ready,'review_required'=>true,'auto_publish'=>false,
    'mutation_performed'=>false];
+ }
+ /** Advance verified WPML receipts to governed editorial review, never to completion without review. */
+ public static function reconcile_verified($limit=5,$only_id=''){
+  if(!self::ready()||true!==MAD4B_SCP_Policy::can_mutate())
+   return new WP_Error('wpml_reconcile_executor_not_authorized');
+  $limit=max(1,min(15,(int)$limit));$map=(array)get_option(self::MAP,[]);
+  $summary=['checked'=>0,'ready'=>0,'waiting_review'=>0,'already_waiting'=>0,
+    'unverified'=>0,'excluded'=>0,'errors'=>[]];
+  $rows=array_values(array_filter($map,static function($m)use($only_id){
+   return !empty($m['job_id'])&&(!$only_id||$m['job_id']===$only_id);
+  }));
+  $total=count($rows);
+  $cursor_key='mad4b_wpml_content_job_qa_cursor_v1';
+  $cursor=$only_id?0:((int)get_option($cursor_key,0)%max(1,$total));
+  $attempts=min($total,$limit);
+  for($i=0;$i<$attempts;$i++){
+   $m=$rows[($cursor+$i)%$total];
+   $summary['checked']++;
+   $v=self::binding(['job_id'=>$m['job_id']]);
+   if(is_wp_error($v)){$summary['errors'][]=$v->get_error_code();continue;}
+   if($v['master_or_post_excluded']){$summary['excluded']++;continue;}
+   if(!$v['readback_verified']){$summary['unverified']++;continue;}
+   $summary['ready']++;
+   $job=MAD4B_SCP_Content_Jobs::get_job(['job_id'=>$m['job_id']]);
+   if(is_wp_error($job)){$summary['errors'][]=$job->get_error_code();continue;}
+   $row=$job['job'];
+   if($row['state']==='WAITING_REVIEW'){$summary['already_waiting']++;continue;}
+   if(in_array($row['state'],['COMPLETED','CANCELLED'],true))continue;
+   if($row['state']==='QUEUED'){
+    $first=MAD4B_SCP_Content_Jobs::transition_job([
+     'job_id'=>$m['job_id'],'expected_revision'=>(int)$row['job_revision'],
+     'state'=>'RUNNING','stage'=>'FINAL_QA',
+     'reason'=>'Verified WPML translation and localization receipts passed native readback; editor review pending.']);
+    if(is_wp_error($first)){$summary['errors'][]=$first->get_error_code();continue;}
+    $row=$first['job'];
+   }
+   if($row['state']==='RUNNING'){
+    $next=MAD4B_SCP_Content_Jobs::transition_job([
+     'job_id'=>$m['job_id'],'expected_revision'=>(int)$row['job_revision'],
+     'state'=>'WAITING_REVIEW','stage'=>'FINAL_QA',
+     'reason'=>'Localization verified against WPML and Elementor source; awaiting editorial approval.']);
+    if(is_wp_error($next)){$summary['errors'][]=$next->get_error_code();continue;}
+    $summary['waiting_review']++;
+   }
+  }
+  if(!$only_id&&$total>0)update_option($cursor_key,($cursor+$attempts)%$total,false);
+  return ['contract'=>'mad4b.wpml.contentjob-qa-reconcile.v1','summary'=>$summary,
+   'source_count'=>$total,'next_review_cursor'=>$only_id?null:(($cursor+$attempts)%max(1,$total)),
+   'content_published'=>false,'translation_generated'=>false];
+ }
+ public static function approve_verified($id,$review_reference){
+  if(!self::ready()||!MAD4B_SCP_Policy::can_mutate()||!current_user_can('manage_options'))
+   return new WP_Error('wpml_review_authority_denied');
+  $review_reference=trim(sanitize_text_field((string)$review_reference));
+  if(!preg_match('/^[a-zA-Z0-9:._-]{8,110}$/D',$review_reference))
+   return new WP_Error('wpml_review_reference_required');
+  $binding=self::binding(['job_id'=>$id]);
+  if(is_wp_error($binding))return $binding;
+  if(!$binding['readback_verified']||$binding['master_or_post_excluded'])
+   return new WP_Error('wpml_review_missing_verified_translation_receipts');
+  $job=MAD4B_SCP_Content_Jobs::get_job(['job_id'=>$id]);
+  if(is_wp_error($job))return $job;
+  $row=$job['job'];
+  if($row['state']==='COMPLETED')return ['job'=>$row,'already_completed'=>true];
+  if($row['state']!=='WAITING_REVIEW')
+   return new WP_Error('wpml_review_requires_waiting_review_state');
+  $r=MAD4B_SCP_Content_Jobs::transition_job([
+   'job_id'=>$id,'expected_revision'=>(int)$row['job_revision'],
+   'state'=>'COMPLETED','stage'=>'FINAL_QA',
+   'reason'=>'WPML localization reviewed and approved under reference '.$review_reference.
+     '; native translation and source readback verified.']);
+  if(is_wp_error($r))return $r;
+  return ['contract'=>'mad4b.wpml.contentjob-reviewed-completion.v1',
+   'state'=>$r['job']['state'],'review_reference'=>$review_reference,
+   'job_id'=>$id,'content_published'=>false];
  }
  public static function register_abilities(){
   if(!function_exists('wp_register_ability')||!self::ready())return;
@@ -300,7 +382,9 @@ final class MAD4B_WPML_ContentJob_Adapter {
   $cmd=$args[0]??'status';
   if($cmd==='preview'||$cmd==='status')$r=self::preview();
   elseif($cmd==='run')$r=self::run($opts['limit']??5,$opts['source']??0);
-  else WP_CLI::error('Usage: wp mad4b-wpml-jobs preview|status|run --limit=5 --source=0');
+  elseif($cmd==='reconcile')$r=self::reconcile_verified($opts['limit']??5,$opts['job-id']??'');
+  elseif($cmd==='approve')$r=self::approve_verified($args[1]??'',$opts['review-ref']??'');
+  else WP_CLI::error('Usage: wp mad4b-wpml-jobs preview|status|run|reconcile|approve <job-id> --review-ref=...');
   if(is_wp_error($r))WP_CLI::error($r->get_error_code());
   WP_CLI::line(wp_json_encode($r,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
  }
