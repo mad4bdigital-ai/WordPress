@@ -8,7 +8,7 @@
     "8.5"
   ],
   "source_file_count": 134,
-  "source_manifest_sha256": "563125146f9eda666d57a26c7a8cdab1edc269f2df7397b84546e9549d950589",
+  "source_manifest_sha256": "8c8f28fc8428c9af904addc8f2c96374abd8fe7b9041409c2c4ac56a197452af",
   "activation": "local Lab only; production activation not authorized",
   "stage": "requires per-tenant parity, integration tests, editor UI acceptance and explicit rollout approval",
   "deploy_automatically": false,
