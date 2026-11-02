@@ -76,11 +76,10 @@ if ($term instanceof \WP_Term && $active) {
     }
 }
 
-$check($policy && !MAD4B_SCP_DFSB_Environment_Policy::allows('publication')
-    ? empty((new \DynamicFilterSEOBridge\SEO\PublicationRegistry(
-        $cfg, $profiles, null, null, null, null, $languages, null, null, null
-    ))->published())
-    : true, 'No SEO publication when policy denies');
+$decision = (new \DynamicFilterSEOBridge\SEO\IndexingPolicy($cfg))->decide(array('active' => true));
+$check(!$policy || MAD4B_SCP_DFSB_Environment_Policy::allows('publication')
+    || ($decision['reason'] ?? '') === 'control_plane_publication_disabled',
+    'SEO indexing denied when Control Plane publication is OFF');
 if ($failures) {
     fwrite(STDERR, implode(', ', $failures) . PHP_EOL);
     exit(1);
