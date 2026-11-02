@@ -11,6 +11,13 @@ on:
       - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/pricing/taxonomy-pricing-context.php'
       - 'packages/mad4b-shared-product-core/tests/season-wpml-inheritance-contract.php'
       - 'packages/mad4b-shared-product-core/tests/rate-localized-pricing-source-contract.php'
+      - 'packages/mad4b-shared-product-core/tests/rate-locale-policy-runtime.php'
+      - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/pricing/rate-locale-policy.php'
+      - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/pricing/price-resolver.php'
+      - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/pricing/audience-resolver.php'
+      - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/pricing/booking-configuration-v2.php'
+      - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core-loader.php'
+      - 'ops/etg-staging-locale-switchers/local-presentation-selection-registry-v1.php'
       - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/pricing/rate-generation.php'
       - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/pricing/accommodation-assignment.php'
       - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/pricing/rate-source-batch.php'
@@ -29,6 +36,13 @@ on:
       - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/pricing/taxonomy-pricing-context.php'
       - 'packages/mad4b-shared-product-core/tests/season-wpml-inheritance-contract.php'
       - 'packages/mad4b-shared-product-core/tests/rate-localized-pricing-source-contract.php'
+      - 'packages/mad4b-shared-product-core/tests/rate-locale-policy-runtime.php'
+      - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/pricing/rate-locale-policy.php'
+      - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/pricing/price-resolver.php'
+      - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/pricing/audience-resolver.php'
+      - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/pricing/booking-configuration-v2.php'
+      - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core-loader.php'
+      - 'ops/etg-staging-locale-switchers/local-presentation-selection-registry-v1.php'
       - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/pricing/rate-generation.php'
       - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/pricing/accommodation-assignment.php'
       - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/pricing/rate-source-batch.php'
@@ -67,6 +81,7 @@ jobs:
           php packages/mad4b-shared-product-core/tests/form6-missing-minor-policy-contract.php
           php packages/mad4b-shared-product-core/tests/season-wpml-inheritance-contract.php
           php packages/mad4b-shared-product-core/tests/rate-localized-pricing-source-contract.php
+          php packages/mad4b-shared-product-core/tests/rate-locale-policy-runtime.php
       - name: Canonical Fluent Form 6 pricing UI contract
         run: |
           node --check packages/mad4b-shared-product-core/mu-plugins/shared-product-core/assets/presentation-fluent-quote-v1.js
