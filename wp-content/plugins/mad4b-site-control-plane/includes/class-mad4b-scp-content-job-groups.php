@@ -62,16 +62,43 @@ final class MAD4B_SCP_Content_Job_Group_Orchestrator {
      MAD4B_SCP_Content_Job_Structural_QA::inspect($jobId):[];
    $attested=$jobId!==''?
      MAD4B_SCP_Content_Job_Structural_QA::receipt($jobId):[];
+   $current=(string)get_post_meta($target,'_elementor_data',true);
+   $normalized=hash('sha256',wp_json_encode(json_decode($current,true),
+     JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
+   $final=$jobId!==''?(array)get_option(
+     'mad4b_cj_structural_final_browser_'.hash('sha256',
+       $scope['site_uuid'].'|'.$jobId),[]):[];
+   $postwriteVerified=$state==='ALREADY_SYNCED' &&
+     ($final['contract']??'')==='mad4b.contentjob.structural-final-browser.v1' &&
+     ($final['state']??'')==='POSTWRITE_BROWSER_VERIFIED' &&
+     ($final['job_id']??'')===$jobId &&
+     (int)($final['target_post_id']??0)===$target &&
+     ($final['site_uuid']??'')===$scope['site_uuid'] &&
+     ($final['normalized_document_sha256']??'')===$normalized &&
+     ($final['anchor_count']??0)===1 &&
+     MAD4B_SCP_Central_Write_Acceptance::sha(
+       $final['original_cwa_receipt_sha256']??null) &&
+     MAD4B_SCP_Central_Write_Acceptance::sha(
+       $final['evidence_sha256']??null);
+   if($postwriteVerified)
+     $counts['postwrite_verified']=($counts['postwrite_verified']??0)+1;
    $children[]=['target_id'=>$target,'locale'=>$locale,'job_id'=>$jobId,
     'state'=>$state,'reason'=>$reason,
-    'structural_qa_state'=>$structural['state']??'NOT_SCANNED',
+    'structural_qa_state'=>$postwriteVerified?
+      'POSTWRITE_BROWSER_VERIFIED':($structural['state']??'NOT_SCANNED'),
     'structural_qa_evidence_sha256'=>$structural['evidence_sha256']??null,
     'structural_delta_count'=>$structural['changed_path_count']??0,
-    'structural_attestation_state'=>$attested['state']??'NOT_ATTESTED',
-    'structural_qa_render_verified'=>false,
+    'structural_attestation_state'=>$postwriteVerified?
+      'ORIGINAL_PREWRITE_SUPERSEDED':($attested['state']??'NOT_ATTESTED'),
+    'structural_qa_render_verified'=>$postwriteVerified,
+    'postwrite_browser_state'=>$postwriteVerified?'VERIFIED':'NOT_VERIFIED',
+    'postwrite_browser_receipt_sha256'=>$postwriteVerified?
+      $final['evidence_sha256']:null,
+    'original_cwa_receipt_sha256'=>$postwriteVerified?
+      $final['original_cwa_receipt_sha256']:null,
+    'editorial_translation_approved'=>false,
     'expected_source_sha256'=>$owner['owner_plan']['source_sha256']??null,
-    'current_target_document_sha256'=>hash('sha256',
-      (string)get_post_meta($target,'_elementor_data',true)),
+    'current_target_document_sha256'=>hash('sha256',$current),
     'would_update'=>!empty($item['would_update'])];
   }
   usort($children,fn($a,$b)=>strcmp($a['locale'],$b['locale']));
