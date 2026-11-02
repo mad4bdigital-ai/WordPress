@@ -91,11 +91,13 @@ final class Shared_Product_Rate_Generation {
   $meta=[];$params=['kind'=>$kind,'parent_id'=>(int)$id,'price_unit'=>$unit,
     'amount'=>$money,'currency'=>$currency,'valid_from'=>$from,'valid_to'=>$to];
   if($kind==='tour'){
-   // Tour translations can have deliberately different native Rate currencies
-   // and prices. Never infer a localized price from the source translation.
-   $localeMode=$input['pricing_locale_mode']??null;
-   if($localeMode!==null){
-    if($localeMode!=='independent')return new WP_Error('rate_generator_locale_mode_invalid');
+   // Backward compatible: omitting the option or explicitly selecting
+   // 'inherit' follows the original generator and preserves its fingerprint.
+   // A localized override is opt-in; it never overwrites inherited Rates.
+   $localeMode=$input['pricing_locale_mode']??'inherit';
+   if(!is_string($localeMode)||!in_array($localeMode,['inherit','independent'],true))
+     return new WP_Error('rate_generator_locale_mode_invalid');
+   if($localeMode==='independent'){
     $detail=apply_filters('wpml_post_language_details',null,(int)$id);
     $language=is_array($detail)?($detail['language_code']??''):null;
     if(!is_string($language)||!preg_match('/^[a-z]{2}(?:-[a-z]{2})?$/D',$language))
@@ -105,8 +107,8 @@ final class Shared_Product_Rate_Generation {
       return new WP_Error('rate_generator_locale_parent_mismatch');
     $params['pricing_locale_mode']='independent';
     $params['pricing_language']=$language;
-   }elseif(isset($input['pricing_language'])){
-    return new WP_Error('rate_generator_locale_mode_required');
+   }elseif(isset($input['pricing_language'])&&$input['pricing_language']!==''){
+    return new WP_Error('rate_generator_locale_override_required');
    }
    $factors=[];
    foreach(['single','double','triple'] as $tier){
