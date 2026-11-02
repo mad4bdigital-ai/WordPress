@@ -45,6 +45,7 @@ require_once $root.'pricing/rate-locale-policy.php';
 foreach (['currency-provider.php','price-resolver.php','price-presenter.php','occupancy-presenter.php','audience-resolver.php','rate-field-presenter.php'] as $module) {
  require_once $root.'pricing/'.$module;
 }
+require_once $root.'pricing/occupancy-policy-v1.php';
 require_once $root.'pricing/rate-generation.php';
 require_once $root.'pricing/rate-source-batch.php';
 require_once $root.'admin/rate-generation.php';
