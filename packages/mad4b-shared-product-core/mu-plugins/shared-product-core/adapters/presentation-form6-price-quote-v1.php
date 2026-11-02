@@ -91,6 +91,10 @@ function shared_presentation_form6_price_quote($raw) {
   'base_preview_amount'=>$hasMinors?$adultReference:null,
   'base_preview_scope'=>$hasMinors?'adults_only_excludes_children_infants':null,
   'base_preview_adults'=>$hasMinors?$adults:null,
+  // Presentation consumers must label this nonbinding amount by its scope.
+  'display_amount'=>$adultReference,
+  'display_kind'=>$hasMinors?'adults_only_reference':'nonbinding_price_preview',
+  'display_notice'=>$hasMinors?'Child/infant charges are not included; final booking total requires review.':null,
   'child_price_state'=>$hasMinors?'requires_separate_pricing': 'not_applicable',
   'children_count'=>$children,'infants_count'=>$infants,
   'lines'=>$lines,'extra_prices'=>$extraPrices,
@@ -235,7 +239,12 @@ add_action('rest_api_init',static function(){
    $result=shared_presentation_form6_price_quote($request->get_json_params());
    if(is_wp_error($result))return new WP_Error($result->get_error_code(),
      'Price preview unavailable',['status'=>422]);
-   return rest_ensure_response($result);
+   $response=rest_ensure_response($result);
+   if($response instanceof WP_REST_Response){
+    $response->header('Cache-Control','private, no-store, max-age=0');
+    $response->header('X-Robots-Tag','noindex, nofollow');
+   }
+   return $response;
   }
  ]);
 });
