@@ -1,0 +1,82 @@
+<?php
+/** Run on authorized MAD4B Staging via WP-CLI --user=26, read-only. */
+defined('ABSPATH')||exit(1);
+if(wp_get_environment_type()!=='staging'
+ ||rtrim(home_url(),'/')!=='https://tours.dev.mad4b.com'
+ ||!MAD4B_SCP_Policy::can_read()||!current_user_can('manage_options'))
+ WP_CLI::error('QA_authority_mismatch');
+$count=0;
+$assert=function($ok,$description)use(&$count){
+ if(!$ok)WP_CLI::error('QA_ASSERTION_FAILED_'.$description);
+ $count++;
+};
+$d=MAD4B_WPML_ContentJob_Adapter::review_dashboard(100);
+$assert(is_array($d)&&($d['contract']??'')==='mad4b.wpml.review-dashboard.v1','contract');
+$totals=$d['totals'];
+$assert((int)$totals['draft_pending_review']===17,'draft_total');
+$assert((int)$totals['draft_references_verified']===12,'verified_refs');
+$assert((int)$totals['draft_references_unresolved']===5,'blocked_refs');
+$assert((int)$totals['review_with_published_target']===9,'published_review_total');
+$assert((int)$totals['draft_without_native_review']===0,'unmapped_drafts');
+$rows=(array)$d['rows'];
+$expected_filters=[41731=>41732,41738=>41739];
+$observed=0;$blocked=0;$ready=0;$published=0;
+foreach($rows as $row){
+ if(!is_array($row))continue;
+ $source=(int)($row['source_post_id']??0);
+ $locale=(string)($row['target_language']??'');
+ $target=(int)($row['target_post_id']??0);
+ $status=(string)($row['target_post_status']??'');
+ $assert(($row['native_state']??'')==='WAITING_REVIEW','native_job_pending_review');
+ if($status==='draft'){
+  $assert(get_post_status($target)==='draft','draft_not_published');
+  $q=(array)($row['reference_qa']??[]);
+  if($q['verified']===false){
+   $blocked++;
+   $assert($source===43721,'unresolved_only_reviews');
+   $assert(count($q['issues'])===1,'single_review_listing_blocker');
+   $issue=$q['issues'][0];
+   $assert($issue['code']==='localized_reference_missing'
+       &&(int)$issue['source_id']===43727
+       &&$issue['field']==='lisitng_id','missing_translated_reviews_listing');
+   continue;
+  }
+  $ready++;$assert($q['verified']===true,'all_references_verified');
+  if(isset($expected_filters[$source])){
+   $reference=$expected_filters[$source];
+   $expected=(int)apply_filters('wpml_object_id',$reference,'jet-smart-filters',false,$locale);
+   $assert($expected>0&&get_post_status($expected)==='publish','filter_locale_exists');
+   $raw=json_decode((string)get_post_meta($target,'_elementor_data',true),true);
+   $values=[];
+   $collect=function($nodes)use(&$collect,&$values){foreach((array)$nodes as $node){
+    if(!is_array($node))continue;
+    if(array_key_exists('filter_id',(array)($node['settings']??[])))
+      $values[]=$node['settings']['filter_id'];
+    $collect($node['elements']??[]);
+   }};$collect($raw);
+   $assert(count($values)===1&&$values[0]===[(string)$expected],
+      'filter_array_points_at_correct_wpml_translation');
+   $proof=(array)get_option('mad4b_wpml_filter_array_ref_proof_'.$target.'_v1',[]);
+   $assert((int)($proof['target_filter']??0)===$expected,'filter_rollback_and_proof');
+   $observed++;
+  }elseif($source===54880){
+   $proof=(array)get_option('mad4b_wpml_review_ref_proof_'.$target.'_v1',[]);
+   $assert((int)($proof['translated_listing_id']??0)>0
+     &&($proof['still_draft']??false)===true,'tours_listing_ref_proof');
+  }
+ }elseif($status==='publish'){
+  $published++;
+  $b=MAD4B_WPML_ContentJob_Adapter::binding(['job_id'=>$row['job_id']]);
+  $assert(!is_wp_error($b)&&($b['readback_verified']??false)===true,
+   'published_translation_receipt_verified');
+ }
+}
+$assert($ready===12&&$blocked===5&&$published===9,'expected_partition');
+$assert($observed===8,'eight_filter_array_refs');
+echo wp_json_encode(['contract'=>'mad4b.wpml.review-reference-qa.v1',
+ 'assertions'=>$count,'drafts_reference_verified'=>$ready,
+ 'drafts_blocked_by_untranslated_review_listing'=>$blocked,
+ 'translated_jet_filter_array_refs'=>$observed,
+ 'published_verified_receipts'=>$published,
+ 'drafts_published_by_test'=>0,'native_jobs_completed_by_test'=>0],
+ JSON_UNESCAPED_SLASHES)."\n";
