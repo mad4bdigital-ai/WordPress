@@ -29,6 +29,14 @@ for(const fragment of [
  "Final price to confirm"
 ])assert(js.includes(fragment),"missing canonical partial contract: "+fragment);
 assert(js.includes("data.status!=='price_preview_only'"),"adult-only preview unchanged");
+assert(js.includes("const partialAdults="),"Rate and Direct pricing must allow partial adults");
+assert(js.includes("intent.source==='rate'&&asRateId(intent.rate_id)"),"selected Rate must participate in minor preview");
+assert(js.includes("amount(quote.display_amount,quote.currency)"),"must render non-null amount");
+assert(!js.includes("amount(quote.total,quote.currency)"),"must never format a null full total");
+for(const lang of ['en','fr','de','es','it','ar'])
+ assert(js.includes('"'+lang+'":{'),"missing translation: "+lang);
+assert(js.includes('numberLocale=document.documentElement.lang'),"currency formatting must follow document language");
+
 // The PHP endpoint must be runtime-gated, not restricted to the WordPress local environment.
 assert(php.includes("MAD4B_COMMERCE_RUNTIME_ENABLED"));
 assert(php.includes("shared_product_form6_price_runtime_enabled"));
