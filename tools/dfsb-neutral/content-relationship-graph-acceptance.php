@@ -40,6 +40,19 @@ $check('existing_elementor_contentjob_uses_bridge',
  ($jobEl['state']??'')==='WAITING_ARTIFACT' &&
  ($jobEl['candidate_local_id']??0)===39535 &&
  ($jobEl['family']['identity_authority']??'')===MAD4B_SCP_Translation_Bridge_Adapter::CONTRACT);
+$originalJob=MAD4B_SCP_Content_Jobs::relationship_plan([
+ 'job_id'=>'ee20798f-4e3c-41de-aafc-96a73c05bae7']);
+$check('reuse_prior_native_wpml_contentjob_intake_binding',
+ ($originalJob['source_reference']['evidence_owner']??'')==='mad4b.wpml.contentjob-binding.v1' &&
+ ($originalJob['source_reference']['id']??0)===43704 &&
+ ($originalJob['candidate_local_id']??0)===56139 &&
+ ($originalJob['family']['identity_authority']??'')===
+   MAD4B_SCP_Translation_Bridge_Adapter::CONTRACT);
+$check('previous_outbox_review_blockers_not_overridden',
+ ($originalJob['state']??'')==='WAITING_ARTIFACT' &&
+ ($originalJob['source_reference']['binding_native_readback_verified']??true)===false &&
+ in_array('outbox_receipt_or_localization_gap_unverified',
+   $originalJob['source_reference']['binding_review_blockers']??[],true));
 $wrongArtifact=MAD4B_SCP_Content_Jobs::relationship_plan([
  'job_id'=>'2158e5c3-7534-4435-a311-93b5da3542d4',
  'artifact_id'=>57563,'artifact_kind'=>'post']);

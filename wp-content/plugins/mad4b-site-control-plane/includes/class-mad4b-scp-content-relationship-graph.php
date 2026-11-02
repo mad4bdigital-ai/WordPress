@@ -174,6 +174,29 @@ final class MAD4B_SCP_Content_Relationship_Graph {
  private static function findSubjectSource(array $job):?array {
   $type=(string)($job['target_post_type']??'');
   $subject=(string)($job['subject']??'');
+  // The earlier native WPML ContentJob intake module is the authoritative
+  // source of mapped post IDs, localization outbox, native WPML job status and
+  // editorial review blockers. Reuse it; do not parse wpml-ref from a title
+  // and manufacture source identity from untrusted arbitrary post numbers.
+  if(str_contains($subject,'wpml-ref:')) {
+   if(!class_exists('MAD4B_WPML_ContentJob_Adapter',false))
+    return null;
+   $native=MAD4B_WPML_ContentJob_Adapter::binding([
+      'job_id'=>(string)($job['job_id']??'')]);
+   if(is_wp_error($native)||!is_array($native)||
+     ($native['contract']??'')!=='mad4b.wpml.contentjob-binding.v1'||
+     ($native['job_id']??'')!==($job['job_id']??null)||
+     ($native['target_language']??'')!==($job['language']??null)||
+     ($native['post_type']??'')!==$type ||
+     ($native['native_job_state']??'')!==($job['state']??null)||
+     (int)($native['source_post_id']??0)<1)
+      return null;
+   return ['kind'=>'post','id'=>(int)$native['source_post_id'],
+     'type'=>$type,'evidence_owner'=>'mad4b.wpml.contentjob-binding.v1',
+     'binding_target_id'=>(int)($native['target_post_id']??0),
+     'binding_review_blockers'=>(array)($native['review_blockers']??[]),
+     'binding_native_readback_verified'=>(bool)($native['readback_verified']??false)];
+  }
   // Bounded *known* source convention, not arbitrary numbers in the title.
   if($type!=='' && preg_match('/^Elementor section translation\s+([a-z0-9_-]+)\s+#([0-9]+)\s+\[([a-z]{2})\]/D',$subject,$m)
     &&$m[1]===$type &&$m[3]===($job['language']??null))
@@ -212,10 +235,18 @@ final class MAD4B_SCP_Content_Relationship_Graph {
     return self::hold('cross_site_job_denied');
   $locale=(string)($job['language']??'');
   if(!self::validLocale($locale))return self::hold('job_target_language_invalid');
-  $artifactId=$artifactId?:((ctype_digit((string)($job['current_artifact_id']??'')))
-    ?(int)$job['current_artifact_id']:0);
+  $recordedArtifact=ctype_digit((string)($job['current_artifact_id']??''))
+    ?(int)$job['current_artifact_id']:0;
+  $recordedTarget=ctype_digit((string)($job['target_post_id']??''))
+    ?(int)$job['target_post_id']:0;
+  $artifactId=$artifactId?:$recordedArtifact;
   $source=self::findSubjectSource($job);
-  if(!$source&&$artifactId && $artifactType==='post'){
+  // Never permit a caller to invent the source of an unrelated ContentJob
+  // by supplying its own artifact. Only a source previously stored on the
+  // original native Job (exact CAS identity) can unlock this fallback.
+  if(!$source&&$artifactId&&$artifactType==='post' &&
+     ($artifactId===$recordedArtifact||$artifactId===$recordedTarget) &&
+     ($recordedArtifact>0||$recordedTarget>0)){
    $p=get_post($artifactId);
    if($p)$source=['kind'=>'post','id'=>$artifactId,'type'=>$p->post_type];
   }
@@ -230,6 +261,10 @@ final class MAD4B_SCP_Content_Relationship_Graph {
   if(!$source)return $result+['state'=>'HOLD','reason'=>'source_reference_unavailable'];
   $mapped=self::resolve($source['kind'],$source['id'],$source['type'],$locale);
   $result['family']=$mapped;
+  if(!empty($source['binding_target_id']) &&
+    ($mapped['state']??'')==='RESOLVED' &&
+    (int)$source['binding_target_id']!==(int)$mapped['target_id'])
+    return $result+['state'=>'HOLD','reason'=>'native_contentjob_binding_vs_wpml_target_mismatch'];
   if(($mapped['state']??'')!=='RESOLVED')return $result+[
      'state'=>'WAITING_DEPENDENCY','reason'=>$mapped['reason']??'member_missing'];
   if($artifactId && $artifactId!==(int)$mapped['target_id'])
