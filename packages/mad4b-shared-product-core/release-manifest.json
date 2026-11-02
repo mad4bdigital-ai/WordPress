@@ -8,7 +8,7 @@
     "8.5"
   ],
   "source_file_count": 134,
-  "source_manifest_sha256": "432fb46afc299e7107e1414b80285d2ec7092803bb8e2f9a06bb2f4d3de2d182",
+  "source_manifest_sha256": "f22ba8a76ed19c08ad2e6e52b5bbcf410af86e0ad7e79c68727423777ecdc155",
   "activation": "Explicit MAD4B_COMMERCE_RUNTIME_ENABLED runtime grant, or SHARED_PRODUCT_LAB_ONLY for local development; production rollout not authorized",
   "stage": "source-only candidate with ETG Staging canary for six-locale season inheritance; browser acceptance and Production rollout remain separate",
   "deploy_automatically": false,
