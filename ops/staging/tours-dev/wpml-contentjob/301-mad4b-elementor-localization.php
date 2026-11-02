@@ -274,11 +274,33 @@ final class MAD4B_Elementor_Localization_V1 {
                 'status'=>$state,'created_at'=>$before['created_at']??$now,
                 'updated_at'=>$now,'attempts'=>(int)($before['attempts']??0),
                 'last_error'=>$before['last_error']??null,
-                'lease_until'=>$state==='leased'?($before['lease_until']??null):null]);
+                'lease_until'=>$state==='leased'?($before['lease_until']??null):null,
+                // Intake must preserve the native MCP claimant identity during
+                // active leases. Dropping claimed_by_user while retaining
+                // status=leased breaks the subsequent guarded Ack.
+                'claimed_at'=>$state==='leased'?($before['claimed_at']??null):null,
+                'claimed_by_user'=>$state==='leased'?($before['claimed_by_user']??null):null]);
         }
-        foreach($new as $key=>$job)if(!isset($active[$key])&&in_array($job['status'],['queued','leased'],true)){
-            $new[$key]['status']='resolved_after_readback';
-            $new[$key]['updated_at']=$now;
+        foreach($new as $key=>$job)if(!isset($active[$key])){
+            $state=(string)($job['status']??'');
+            $active_lease=$state==='leased'
+                &&strtotime((string)($job['lease_until']??'1970-01-01'))>=time();
+            // A live client lease must survive disappearance of the issue:
+            // otherwise the queue silently changes leased to
+            // resolved_after_readback before the client can submit Ack and
+            // its verifiable Receipt. The fresh issue scan is still used by
+            // Ack to verify that the gap really disappeared.
+            if($active_lease)continue;
+            if(in_array($state,['queued','leased','needs_review'],true)){
+                $new[$key]['status']='resolved_after_readback';
+                $new[$key]['updated_at']=$now;
+                if($state==='leased'){
+                    $new[$key]['last_error']='lease_expired_before_ack_after_gap_resolved';
+                    $new[$key]['lease_until']=null;
+                    $new[$key]['claimed_at']=null;
+                    $new[$key]['claimed_by_user']=null;
+                }
+            }
         }
         if(count($new)>2300)return new WP_Error('mad4b_localization_queue_capacity');
         if($new!==$old){
@@ -389,6 +411,13 @@ final class MAD4B_Elementor_Localization_V1 {
             $id=(int)($opts['source']??35138);
             $r=self::sync_source($id,false);
         }elseif($mode==='scan'){$r=self::queue_scan();}
+        elseif($mode==='recover'){
+            $r=self::recover_claim([
+                'key'=>(string)($opts['key']??''),
+                'expected_source_sha256'=>(string)($opts['digest']??''),
+                'receipt_id'=>(string)($opts['receipt']??'')
+            ]);
+        }
         elseif($mode==='sync'){
             $id=(int)($opts['source']??0);
             if(!$id||($opts['confirm']??'')!=='SYNC ORIGINAL STYLES ONLY')
@@ -427,6 +456,136 @@ final class MAD4B_Elementor_Localization_V1 {
             return ['contract'=>'mad4b.localization.claim.v1','job'=>$j,
                 'client_must_translate_using_governed_content_abilities'=>true,
                 'auto_publish'=>false];
+        });
+    }
+    /**
+     * Recover a PREVIOUSLY claimed, prematurely resolved job through fresh
+     * authority, WPML and publication-proof validation. The outcome is only a
+     * new leased Claim, never a forged Ack or native ContentJob completion.
+     */
+    public static function recover_claim($input){
+        if(!self::enabled()||!current_user_can('edit_others_posts')
+            ||!current_user_can('manage_options')
+            ||!class_exists('MAD4B_SCP_Policy')||!MAD4B_SCP_Policy::can_mutate())
+            return new WP_Error('mad4b_localization_recovery_unauthorized');
+        $key=(string)($input['key']??'');
+        $digest=(string)($input['expected_source_sha256']??'');
+        $receipt_id=(string)($input['receipt_id']??'');
+        if(!preg_match('/^[a-f0-9]{64}$/D',$key)
+            ||!preg_match('/^[a-f0-9]{64}$/D',$digest)
+            ||!preg_match('/^mad4b[.]wpml[.](?:hero|stage)[.][a-f0-9]{32,40}$/D',$receipt_id))
+            return new WP_Error('mad4b_localization_recovery_invalid_input');
+        $scope=MAD4B_SCP_Operational_Integrity::capture();
+        if(is_wp_error($scope)||($scope['scope']['site_uuid']??'')!=='e5e64bca-ed62-48d2-b2b3-dff693cd702a')
+            return new WP_Error('mad4b_localization_recovery_site_mismatch');
+        return self::with_outbox_lock(static function()use($key,$digest,$receipt_id){
+            $jobs=self::outbox();
+            $row=$jobs[$key]??null;
+            if(!$row||($row['status']??'')!=='resolved_after_readback'
+                ||(int)($row['claimed_by_user']??0)!==get_current_user_id()
+                ||!empty($row['receipt_id'])
+                ||($row['source_sha256']??'')!==$digest
+                ||(int)($row['attempts']??0)>=5)
+                return new WP_Error('mad4b_localization_recovery_not_eligible');
+            $expired=strtotime((string)($row['lease_until']??''));
+            $claimed=strtotime((string)($row['claimed_at']??''));
+            $now=time();
+            if(!$expired||!$claimed||$expired>$now
+                ||$expired<$now-86400||$claimed>$expired)
+                return new WP_Error('mad4b_localization_recovery_lease_mismatch');
+            $source=(int)($row['source_post_id']??0);
+            $locale=(string)($row['target_language']??'');
+            $type=get_post_type($source);
+            if(!$source||!in_array($type,self::types(),true)
+                ||!in_array($locale,self::languages(),true)
+                ||$locale===self::default_lang()
+                ||get_post_status($source)!=='publish'
+                ||self::source_digest($source,self::tree($source))!==$digest)
+                return new WP_Error('mad4b_localization_recovery_source_mismatch');
+            $target=(int)apply_filters('wpml_object_id',$source,$type,false,$locale);
+            $trid=(int)apply_filters('wpml_element_trid',null,$source,'post_'.$type);
+            $trid_target=(int)apply_filters('wpml_element_trid',null,$target,'post_'.$type);
+            $lang_details=(array)apply_filters('wpml_post_language_details',null,$target);
+            if(!$target||get_post_type($target)!==$type||get_post_status($target)!=='publish'
+                ||!$trid||$trid_target!==$trid
+                ||($lang_details['language_code']??'')!==$locale)
+                return new WP_Error('mad4b_localization_recovery_wpml_mismatch');
+            $hero=(array)get_option('mad4b_wpml_hero_publication_receipt_'.$locale.'_v1',[]);
+            $standard=(array)get_option('mad4b_wpml_staging_publication_receipt_'.$target.'_v1',[]);
+            $proof=($hero['receipt_id']??'')===$receipt_id?$hero:$standard;
+            $verified=(bool)($proof['wpml_readback_verified']??$proof['wpml_readback_passed']??false);
+            $source_sha=hash('sha256',(string)get_post_meta($source,'_elementor_data',true));
+            $target_sha=hash('sha256',(string)get_post_meta($target,'_elementor_data',true));
+            $original_target_sha=(string)($proof['target_sha256']??$proof['elementor_sha256']??'');
+            $target_sha_verified=$original_target_sha===$target_sha;
+            if(!$target_sha_verified){
+                // The original publication receipt is immutable. A later
+                // Elementor/WPML sync requires an independent, fresh,
+                // read-only render + locale + reference + media attestation.
+                $a=(array)get_option('mad4b_wpml_hero_current_readback_attestation_'.$target.'_v1',[]);
+                $when=strtotime((string)($a['readback_at']??''));
+                $target_sha_verified=($a['contract']??'')==='mad4b.wpml.hero-current-readback-attestation.v1'
+                  &&($a['site_uuid']??'')==='e5e64bca-ed62-48d2-b2b3-dff693cd702a'
+                  &&(int)($a['source']??0)===$source
+                  &&(int)($a['target']??0)===$target
+                  &&($a['locale']??'')===$locale
+                  &&($a['original_publication_receipt']??'')===$receipt_id
+                  &&($a['original_target_sha256']??'')===$original_target_sha
+                  &&($a['source_sha256']??'')===$source_sha
+                  &&($a['verified_current_target_sha256']??'')===$target_sha
+                  &&(int)($a['verified_literals']??0)===13
+                  &&(int)($a['localized_refs']??0)===3
+                  &&(int)($a['localized_images']??0)===5
+                  &&(int)($a['widget_nodes']??0)===26
+                  &&(int)($a['wpml_trid']??0)===$trid
+                  &&($a['review_job']??'')===($proof['job']??'')
+                  &&(int)($a['operator']??0)===get_current_user_id()
+                  &&(int)($a['render_bytes']??0)>18000
+                  &&preg_match('/^[a-f0-9]{64}$/D',(string)($a['render_sha256']??''))
+                  &&$when!==false&&$when>=time()-900&&$when<=time()+60;
+            }
+            if(($proof['receipt_id']??'')!==$receipt_id||!$verified
+                ||(int)($proof['source']??0)!==$source
+                ||(int)($proof['target']??0)!==$target
+                ||($proof['locale']??$proof['lang']??'')!==$locale
+                ||($proof['source_sha256']??'')!==$source_sha
+                ||!$target_sha_verified)
+                return new WP_Error('mad4b_localization_recovery_receipt_mismatch');
+            $map=(array)get_option('mad4b_wpml_content_job_map_v1',[]);
+            $mapped=false;
+            foreach($map as $m){
+                if((int)($m['source_post_id']??0)!==$source
+                    ||($m['lang']??'')!==$locale)continue;
+                if(($m['job_id']??'')!==($proof['job']??''))continue;
+                $j=MAD4B_SCP_Content_Jobs::get_job(['job_id'=>$m['job_id']]);
+                if(!is_wp_error($j)&&($j['job']['state']??'')==='QUEUED')$mapped=true;
+            }
+            if(!$mapped)return new WP_Error('mad4b_localization_recovery_native_job_mismatch');
+            [$issues]=self::alerts_for($source,$type,self::translations($source,$type),
+                self::languages(),self::default_lang());
+            foreach($issues as $issue)if(($issue['id']??'')===($row['issue_id']??''))
+                return new WP_Error('mad4b_localization_recovery_gap_still_present');
+            $audit_key='mad4b_wpml_recovery_'.substr($key,0,24).'_'.substr(hash('sha256',$receipt_id),0,16);
+            $audit=['contract'=>'mad4b.localization.recovery-audit.v1','source'=>$source,
+                'target'=>$target,'locale'=>$locale,'operator'=>get_current_user_id(),
+                'old_state'=>'resolved_after_readback','old_claim'=>$claimed,
+                'old_expiry'=>$expired,'publication_receipt'=>$receipt_id,'at'=>gmdate('c')];
+            if(!add_option($audit_key,$audit,false))
+                return new WP_Error('mad4b_localization_recovery_already_attempted');
+            $row['status']='leased';
+            $row['attempts']=(int)$row['attempts']+1;
+            $row['claimed_by_user']=get_current_user_id();
+            $row['claimed_at']=gmdate('c');
+            $row['lease_until']=gmdate('c',time()+1800);
+            $row['updated_at']=gmdate('c');
+            $row['last_error']=null;
+            $row['recovery_audit_option']=$audit_key;
+            $jobs[$key]=$row;
+            update_option(self::OPTION,$jobs,false);
+            if(get_option(self::OPTION,[])!==$jobs)
+                return new WP_Error('mad4b_localization_recovery_write_unconfirmed');
+            return ['contract'=>'mad4b.localization.recovery-claim.v1',
+                'status'=>'leased','job'=>$row,'audit_option'=>$audit_key];
         });
     }
     public static function ack($input){
@@ -472,7 +631,7 @@ final class MAD4B_Elementor_Localization_V1 {
                     'executor'=>'mcp_client','requires_authenticated_client'=>true,
                     'status'=>'queued_not_executed','jobs'=>array_slice($list,0,40)]);
             }]);
-        foreach(['claim'=>'claim','ack'=>'ack'] as $action=>$method)
+        foreach(['claim'=>'claim','ack'=>'ack','recover'=>'recover_claim'] as $action=>$method)
             register_rest_route('mad4b-localization/v1','/jobs/'.$action,[
                 'methods'=>'POST','permission_callback'=>static fn()=>current_user_can('edit_others_posts'),
                 'callback'=>static function($request)use($method){
