@@ -1,7 +1,7 @@
 <?php
 namespace DynamicFilterSEOBridge\IndexFlow;
 
-/** Staging-only vendor handoff. The storage Provider cannot activate this scope. */
+/** Environment-scoped, Control Plane-governed vendor handoff. */
 final class ManagedRoutesRuntime {
     private static $active;
     private $service;
@@ -13,7 +13,9 @@ final class ManagedRoutesRuntime {
     }
 
     public static function fromEnvironment($config, $profiles): ?self {
-        if (!$config->enabled() || !function_exists('wp_get_environment_type') || 'staging' !== wp_get_environment_type()
+        if (!$config->enabled()
+            || !class_exists('MAD4B_SCP_DFSB_Environment_Policy')
+            || !\MAD4B_SCP_DFSB_Environment_Policy::allows('managed_routes')
             || !class_exists('MAD4B_SCP_Provider_Contracts') || !function_exists('jet_smart_filters')
             || !(new \DynamicFilterSEOBridge\Compatibility())->rankMath()) return null;
         $authority = static function (): bool {
