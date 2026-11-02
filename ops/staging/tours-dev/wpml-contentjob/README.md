@@ -53,3 +53,19 @@ The observed live readback suite passed 108 assertions on 2 November 2026, and t
 - Latest inspected map: 92 mapped jobs, 90 `QUEUED`, 2 `CANCELLED`. Source discovery reported 150 eligible items (the native recurring intake continues). No verified translation receipt was present for sampled queued jobs; work is **not completed**.
 - Unit tests: 43 singular/plural/idempotence/noninterference assertions passed using container PHP. Counts and grammar include ar 1/2/6/16, singular French/German/Spanish, and Italian.
 - The independent WordPress timer is the authorized Staging-only intake/QA readback workflow; the absence of a translation provider with verified receipts prevents promotion to `WAITING_REVIEW` or `COMPLETED`. Do not mark queued editorial work complete without a verified receipt.
+
+## Dynamic frontend-first priority — locally tested 2 November 2026
+
+The priority engine and public HTML crawler were derived from an exact SHA-256 snapshot of current Staging files, staged in the host-isolated local lab at `/opt/staging/mad4b-wpml-priority-local-lab-20261102`. The lab has read-only source files, tests, and rollback hashes. Changes were syntax-checked and exercised offline **before** the Staging-only rollout.
+
+- **Dynamic languages:** discover locale links from the public WPML home page; native importer cross-validates locale keys against `wpml_active_languages` and the configured default language.
+- **Observed visibility, not publication alone:** inspect public HTML `data-elementor-id`, `data-listing-id` and `data-post-id` on the locale homepage, discovered tour archive and rotating linked pages.
+- **Dynamic coverage:** switch which public URLs are probed on every scan; retain up to 28 previously confirmed pages per locale, bounded to 36 hours, with **per-page** observation timestamps and freshness decay.
+- **Refresh and failure isolation:** enrolled Staging host worker refreshes visibility every ~20 minutes; scanner uses an exclusive local lock and bounded concurrent HTTP fetches, rejects off-host redirects, writes JSON atomically, and refuses to replace known-good evidence when new coverage is insufficient. A failed crawl cannot make a previously observed page invisible.
+- **Fairness:** new native ContentJobs favor observed homepage and archive dependencies, while unobserved work retains a low-priority fallback. Receipt review reserves half its slots for top-priority work and rotates the other half through the outstanding queue; no job is closed without authorized translation receipts.
+- **Local acceptance:** 93 Python fixture assertions (rotation, lock-friendly output model, expiry, no-overwrite outage, foreign-host rejection) and 19 PHP assertions (real captured HTML evidence, dynamic locale extension, priority sorting, negative coverage and outdated evidence). Live public-HTML read-only lab crawl returned 31 verified pages across five languages.
+- **Staging readback after rollout:** native priority import reports 31 pages and five languages, WordPress timer active, all five locale homepages HTTP 200. The priority mechanism does not translate or publish content.
+
+**Current scope:** the site/host/service identity remains explicitly bound to the authorized `tours.dev.mad4b.com` Staging pilot. Do not treat this source snapshot as globally deployed or as Production approval. No production site changed.
+
+**Rollback:** stop `mad4b-wpml-content-intake-staging.timer`, restore `357-mad4b-wpml-frontend-priority.php` and `live-frontend-probe.py` from the lab's `live-source/` and exact SHA-256 manifest, then restart the timer. Priority option state is independent from translation content and from native ContentJobs.
