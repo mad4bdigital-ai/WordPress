@@ -53,3 +53,25 @@ All 5 child jobs are currently HOLD for original write, after successful creatio
 ## Follow-up for generalization
 
 Extract the one-shot WPML original-child admission into a reusable original-provider method with strict lineage, active-job uniqueness, durable claim per child, bounded batch, source/site snapshots, and post-transition readback. Add an alert driver for per-child `review_blockers` and quality/rights evidence. Then certify a single positive exact Elementor owner write via CWA before enabling group apply. Do not broaden WordPress authorizations or the original provider's target scope.
+
+
+## Structural-only QA and five immutable document attestations (2026-11-03 Cairo)
+
+Original Staging plugin runtime now includes `MAD4B_SCP_Content_Job_Structural_QA` and two native WordPress Abilities:
+`mad4b/content-job-structural-qa-plan` (read-only) and
+`mad4b/content-job-structural-qa-attest` (original-authorized, writes only one scoped QA option).
+
+The independent inspection re-reads the exact native WPML ContentJob and currently linked Elementor pair, then uses the *original* `MAD4B_WPML_Structural_Sync_V2::plan` to compute candidate structural changes. It validates the original authoring tree, exact widget identity/order, no duplicated HTML anchors, no replacements of existing authored anchors, no changes outside an explicit small allowlist of responsive padding, CSS classes, animation, element anchor, and responsive gaps. Any text, media, link, unknown setting, or widget graph changes are rejected. Evidence is bound to site, native job/revision, source SHA, target SHA, planned SHA, changed paths, and WPML target identity; stale receipts fail independent fresh readback.
+
+All five site-local structural documents passed exact source-controlled inspection:
+ar `40547` (11 paths); de `34597` (11); es `34605` (10);
+fr `34599` (11); it `39502` (10). The original source's missing `_element_id=state_governorate` anchor is predicted to be restored without a duplicate, along with style-only deltas.
+
+Five **`STRUCTURAL_DOCUMENT_ATTESTED`** durable scoped original WordPress receipts were saved via `MAD4B_SCP_Content_Jobs::structural_qa_attest`, and all five passed fresh independent `receipt` readback. Each receipt explicitly says `editorial_review_completed=false`, `browser_render_verified=false`, and `cwa_write_authorized=false`. These are document-review attestations, not the broader independent Elementor owner quality/rights certificates that would authorize published-target writeback.
+
+Persistent reproducible Staging acceptance:
+`tools/dfsb-neutral/etg-staging-contentjob-structural-qa-acceptance.php`, **20/20 PASS**, including 5 exact document identity/plan tests, 5 fresh immutable attestation tests, 7 negative/positive field fences, and 3 ability/disabled-write guards. Group 8/8, original typed-owner certificate 17/17, typed writeback guards 12/12 rechecked PASS on the same Staging after deployment.
+
+Group plan now exposes `structural_qa_state`, `structural_attestation_state`, `structural_qa_evidence_sha256`, `structural_delta_count`, and `structural_qa_render_verified` per Child. All five remain `HOLD:native_wpml_owner_readback_or_review_pending`; the group-wide write option remains `no`. No target Elementor JSON, translation text, publication status, CWA receipt, production file, or original editorial WPML receipt was changed by QA.
+
+**Next distinct gate:** independent interactive/browser render QA and original Elementor write-owner certificate for the exact structural scope, then exact target CWA write/rollback and post-write frontend readback. Original editorial translation/outbox review remains independent; never use a document-only attestation to fabricate `quality_pass` or `rights_pass` on a general write contract.
