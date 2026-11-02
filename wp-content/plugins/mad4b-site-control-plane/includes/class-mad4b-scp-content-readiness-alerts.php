@@ -246,7 +246,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                 $object_id=is_array($row)?absint($row['object_id']??0):0;
                 $source=is_array($row)?(string)($row['source']??''):'';
                 $expected=hash('sha256',get_current_blog_id().'|'.$type.'|'.$object_id.'|'.$code);
-                $dfsb=preg_match('/^dfsb_[a-z0-9_]+$/D',$code) &&
+                $dfsb=preg_match('/^dfsb_[a-z0-9_-]+$/D',$code) &&
                     $source==='dynamic-filter-seo-bridge' && $type==='site' && $object_id===0;
                 $localization=preg_match('/^loc_(?:layout|text|missing|h1|brand|binding|style)_(?:ar|de|en|es|fr|it)$/D',$code) &&
                     $source==='mad4b-elementor-localization' &&
