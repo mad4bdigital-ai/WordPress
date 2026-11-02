@@ -29,16 +29,25 @@ final class MAD4B_WPML_Frontend_Priority_V1 {
    return new WP_Error('wpml_priority_wrong_contract_or_site');
   $seen=strtotime((string)($snapshot['observed_at']??''));
   if(!$seen||abs(time()-$seen)>3600)return new WP_Error('wpml_priority_observation_stale');
-  $languages=['ar','fr','de','es','it'];$checked=0;$pages=0;$compact=[];
+  // Discover languages from the live WPML registry, not a manual locale list.
+  $languages=array_keys((array)apply_filters('wpml_active_languages',null));
+  $languages=array_values(array_filter($languages,static fn($lang)=>
+    is_string($lang)&&preg_match('/^[a-z]{2}(?:-[a-z]{2})?$/D',$lang)&&$lang!==(string)apply_filters('wpml_default_language',null)));
+  $checked=0;$pages=0;$compact=[];
   foreach($languages as $lang){
    $links=(array)($snapshot['pages'][$lang]??[]);
-   if(!$links||count($links)>6)continue;
+   if(!$links||count($links)>32)continue;
    $valid=[];
    foreach($links as $page){
     $path=(string)($page['path']??'');
     if(!str_starts_with($path,'/'.$lang.'/')||strlen($path)>300
      ||(int)($page['http_status']??0)!==200)continue;
-    $row=['path'=>$path,'kind'=>($page['kind']??'')==='home'?'home':'linked_page'];
+    $at=(string)($page['observed_at']??$snapshot['observed_at']??'');
+    $observed_at=strtotime($at);
+    if(!$observed_at||$observed_at>time()+120||$observed_at<time()-36*3600)continue;
+    $kind=(string)($page['kind']??'linked_page');
+    $row=['path'=>$path,'kind'=>in_array($kind,['home','archive','linked_page'],true)?$kind:'linked_page',
+      'observed_at'=>gmdate('c',$observed_at)];
     foreach(['elementor_ids','listing_ids','post_ids'] as $field){
      $ids=(array)($page[$field]??[]);
      if(count($ids)>400)continue 2;
@@ -50,7 +59,7 @@ final class MAD4B_WPML_Frontend_Priority_V1 {
    if($valid){$compact[$lang]=$valid;$pages+=count($valid);$checked++;}
   }
   // A partial crawl cannot erase established evidence. Keep last good snapshot.
-  if($checked<4||$pages<12)return new WP_Error('wpml_priority_coverage_incomplete');
+  if($checked<min(4,count($languages))||$pages<12)return new WP_Error('wpml_priority_coverage_incomplete');
   $data=['contract'=>'mad4b.wpml.frontend-priority.v1','at'=>gmdate('c',$seen),
    'lang_count'=>$checked,'pages_count'=>$pages,'pages'=>$compact,
    'source_sha256'=>hash('sha256',$source_bytes)];
@@ -87,7 +96,11 @@ final class MAD4B_WPML_Frontend_Priority_V1 {
   $ids=array_values(array_unique(array_filter([$target,$source])));
   $best=0;$path=null;$matches=0;
   foreach($snap['pages'][$lang] as $page) {
-   $home=$page['kind']==='home';$base=$home?900:690;
+   $page_at=strtotime((string)($page['observed_at']??$snap['at']??''))?:0;
+   $page_age=$page_at?time()-$page_at:PHP_INT_MAX;
+   if($page_age>36*3600||$page_age< -120)continue;
+   $home=$page['kind']==='home';
+   $base=$home?900:(($page['kind']??'')==='archive'?810:690);
    $el=(array)($page['elementor_ids']??[]);
    $listing=(array)($page['listing_ids']??[]);
    $posts=(array)($page['post_ids']??[]);
@@ -96,6 +109,10 @@ final class MAD4B_WPML_Frontend_Priority_V1 {
     elseif(in_array($id,$listing,true)){$score=$base+30;$matches++;}
     elseif(in_array($id,$posts,true)){$score=$base-60;$matches++;}
     else continue;
+    // Older public HTML is still positive evidence, but loses priority
+    // gradually so newer visible surfaces win.
+    $page_decay=$page_age>18*3600?0.55:($page_age>6*3600?0.75:1.0);
+    $score=(int)round($score*$page_decay);
     if($score>$best){$best=$score;$path=$page['path'];}
    }
   }
