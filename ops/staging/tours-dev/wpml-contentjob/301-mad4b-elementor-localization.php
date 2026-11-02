@@ -430,6 +430,8 @@ final class MAD4B_Elementor_Localization_V1 {
             'methods'=>'GET','permission_callback'=>static fn()=>current_user_can('edit_others_posts'),
             'callback'=>static function($request){
                 $list=array_values(array_filter(self::outbox(),static fn($x)=>($x['status']??'')==='queued'));
+                if(class_exists('MAD4B_WPML_Frontend_Priority_V1'))
+                    $list=MAD4B_WPML_Frontend_Priority_V1::sort_outbox($list,40);
                 return rest_ensure_response(['contract'=>'mad4b.localization.mcp-outbox.v1',
                     'executor'=>'mcp_client','requires_authenticated_client'=>true,
                     'status'=>'queued_not_executed','jobs'=>array_slice($list,0,40)]);
@@ -450,9 +452,13 @@ final class MAD4B_Elementor_Localization_V1 {
             'label'=>'MAD4B Localization MCP Client Job Outbox',
             'description'=>'Authenticated MCP Client reads pending Elementor/WPML translation jobs. Reading does not execute translation.',
             'category'=>'mad4b-read',
-            'execute_callback'=>static fn($in)=>['contract'=>'mad4b.localization.mcp-outbox.v1',
-                'status'=>'queued_not_executed','jobs'=>array_slice(array_values(array_filter(
-                    self::outbox(),static fn($x)=>($x['status']??'')==='queued')),0,40)],
+            'execute_callback'=>static function($in){
+                $jobs=array_values(array_filter(self::outbox(),static fn($x)=>($x['status']??'')==='queued'));
+                if(class_exists('MAD4B_WPML_Frontend_Priority_V1'))
+                    $jobs=MAD4B_WPML_Frontend_Priority_V1::sort_outbox($jobs,40);
+                return ['contract'=>'mad4b.localization.mcp-outbox.v1',
+                    'status'=>'queued_not_executed','jobs'=>array_slice($jobs,0,40)];
+            },
             'permission_callback'=>static fn($in)=>current_user_can('edit_others_posts'),
             'input_schema'=>['type'=>'object','properties'=>[],'additionalProperties'=>false],
             'output_schema'=>['type'=>'object','additionalProperties'=>true],
