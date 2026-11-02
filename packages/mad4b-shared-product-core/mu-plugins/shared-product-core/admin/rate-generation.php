@@ -43,6 +43,10 @@ add_action('woocommerce_settings_tabs_rate_generation',static function(){
  $field('Rate kind',$choices,'Uses tour-rates, property-rates or transport-rates; never creates a new CPT.');
  $field('Parent product ID','<input name="parent_id" required type="number" min="1" step="1" value="'.esc_attr($sourceId?:'').'" />',
   'Tour ID, Property ID or Transportation ID (existing JetEngine CPT post).');
+ $field('Tour language pricing','<select name="pricing_locale_mode"><option value="independent">Independent amount + currency per Tour language</option></select>',
+  'Tour Rate only. The selected parent Tour determines the WPML language. English/USD and French/EUR may intentionally differ; generated drafts never inherit a translation price.');
+ $field('Expected Tour language (optional)','<input name="pricing_language" type="text" maxlength="8" pattern="[a-z]{2}(-[a-z]{2})?" placeholder="Auto from parent Tour" />',
+  'If filled, must equal the selected Tour WPML language; mismatch is rejected. This does not change page language or visitor currency.');
  $field('Unit ID (accommodation only)','<input name="unit_id" type="number" min="1" step="1"/>',
   'Existing property → unit relation is verified by Booking Experience.');
  foreach($types as $kind=>$label){
@@ -65,7 +69,7 @@ add_action('woocommerce_settings_tabs_rate_generation',static function(){
  $currency='<select name="currency">';
  foreach(get_woocommerce_currencies() as $code=>$label)
   $currency.='<option value="'.esc_attr($code).'" '.selected($code,$seedCurrency&&array_key_exists($seedCurrency,get_woocommerce_currencies())?$seedCurrency:get_woocommerce_currency(),false).'>'.esc_html($code).'</option>';
- $field('Currency',$currency.'</select>');
+ $field('Currency',$currency.'</select>','Original currency for this locale-specific Rate. WCML converts only for display; it must not overwrite this field.');
  $field('Supplier SKU / reference','<input name="supplier_sku" maxlength="96"/>','Required when using supplier cost.');
  $field('Supplier unit cost','<input name="supplier_cost" type="number" min="0.0001" step="0.0001"/>','Alternative to manual amount; price is proposed, not approved.');
  $field('Price calculation','<select name="pricing_rule_kind"><option value="">Choose policy</option><option value="markup_percent">Markup % of cost</option><option value="target_margin_percent">Target margin % of selling price</option><option value="fixed_profit">Fixed profit</option></select>');
@@ -264,6 +268,9 @@ add_action('admin_init',static function(){
  if($kind==='tour'){
   foreach(['accommodation_assignment_mode','accommodation_stage_source_rate_id'] as $field)if(isset($raw[$field])&&$raw[$field]!=='')$payload[$field]=$raw[$field];
   foreach(['single_factor','double_factor','triple_factor'] as $field)$payload[$field]=$raw[$field]??null;
+  $payload['pricing_locale_mode']='independent';
+  if(isset($raw['pricing_language'])&&trim((string)$raw['pricing_language'])!=='')
+   $payload['pricing_language']=sanitize_text_field((string)$raw['pricing_language']);
   if(!empty($raw['package_term_id']))$payload['package_term_id']=$raw['package_term_id'];
  }elseif($kind==='accommodation'){
   foreach(['min_nights','max_nights','max_adults','max_children','inventory_policy'] as $field)
