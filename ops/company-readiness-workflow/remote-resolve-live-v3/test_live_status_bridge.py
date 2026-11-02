@@ -84,4 +84,45 @@ class BridgeTests(unittest.TestCase):
         self.data["policy"]["grants_created"]=True
         with self.assertRaises(m.InvalidEvidence):m.project(self.data)
 
+    def test_all_existing_seven_environments_covered(self):
+        from pathlib import Path
+        known = self.data["policy"]["targets"]
+        known.extend([
+            {"target":"egypt-tour-gates:staging",
+             "canonical_origin":"https://staging.egypttourgates.com",
+             "site_uuid":"d745d81f-6fc4-5c6a-99dd-d953c92137bf",
+             "identity_registered_by_original_305":True},
+            {"target":"wayfatours:production",
+             "canonical_origin":"https://wayfatours.com",
+             "site_uuid":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+             "identity_registered_by_original_305":True}
+        ])
+        self.data["policy"]["target_count"]=len(known)
+        output=m.project(self.data)
+        self.assertEqual(output["target_count"],7)
+        self.assertEqual(len({r["target"] for r in output["targets"]}),7)
+        self.assertFalse(output["controller_issued_grants"])
+
+    def test_future_company_is_discovered_without_site_allowlist(self):
+        self.data["policy"]["targets"].append({
+            "target":"future-company:production",
+            "canonical_origin":"https://future-company.example",
+            "site_uuid":None,
+            "identity_registered_by_original_305":False})
+        self.data["policy"]["target_count"]+=1
+        output=m.project(self.data)
+        result=next(x for x in output["targets"] if x["target"]=="future-company:production")
+        self.assertEqual(result["next_action"],"DISCOVER_SITE_PROFILE_VIA_REGISTERED_CROSS_SSH")
+        self.assertTrue(result["retry_automatically"])
+        self.assertFalse(result["grants_created"])
+
+    def test_one_unenrolled_production_target_does_not_stop_staging(self):
+        self.data["crossssh"]["targets"]=[{"target":"all-royal-egypt:staging",
+            "origin":"https://staging.allroyalegypt.com",
+            "site_uuid":ARE,"remote_wpcli_readback_verified":True}]
+        output=m.project(self.data)
+        self.assertEqual(output["target_count"],5)
+        self.assertTrue(output["targets"][3]["remote_wpcli_readback_observed"])
+        self.assertTrue(all(x["retry_automatically"] for x in output["targets"][:3]))
+
 if __name__ == "__main__": unittest.main()
