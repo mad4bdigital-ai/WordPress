@@ -81,10 +81,18 @@ final class MAD4B_SCP_Relationship_Media_Write_Adapter implements MAD4B_Central_
     'attachment_id'=>(int)$image['expected_target_attachment_id'],
     'expected_thumbnail_id'=>0];
   $ability=wp_get_ability('media/set-featured');
+  // Match the native reversible adapter's original principal admission
+  // before CWA reserves a durable intent. This reads the trusted identity
+  // and the provider's exact per-object permission; it never grants identity.
+  $identity=MAD4B_SCP_Identity_Context::current();
+  $principal=is_wp_error($identity)?$identity:
+    MAD4B_SCP_Mutation_Principal::resolve($identity,'media/set-featured',$args);
   // The original Ability permission preflight is mandatory BEFORE CWA's
   // atomic claim. Otherwise an NHI/approval denial becomes an avoidable
   // UNKNOWN attempt despite no underlying WordPress mutation.
-  return is_object($media)&&$media->is_available()&&
+  return !is_wp_error($principal) &&
+    is_array($principal) &&
+    is_object($media)&&$media->is_available()&&
     method_exists($media,'can_set_featured') &&
     $media->can_set_featured($args)===true &&
     current_user_can('edit_post',$args['post_id']) &&
