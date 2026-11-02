@@ -58,8 +58,17 @@ final class MAD4B_SCP_Content_Job_Group_Orchestrator {
     $reason=$state==='HOLD'?(string)($owner['reason']??'original_owner_not_certified'):'';
     $counts[$state==='READY'?'ready':'hold']++;
    }
+   $structural=$jobId!==''?
+     MAD4B_SCP_Content_Job_Structural_QA::inspect($jobId):[];
+   $attested=$jobId!==''?
+     MAD4B_SCP_Content_Job_Structural_QA::receipt($jobId):[];
    $children[]=['target_id'=>$target,'locale'=>$locale,'job_id'=>$jobId,
     'state'=>$state,'reason'=>$reason,
+    'structural_qa_state'=>$structural['state']??'NOT_SCANNED',
+    'structural_qa_evidence_sha256'=>$structural['evidence_sha256']??null,
+    'structural_delta_count'=>$structural['changed_path_count']??0,
+    'structural_attestation_state'=>$attested['state']??'NOT_ATTESTED',
+    'structural_qa_render_verified'=>false,
     'expected_source_sha256'=>$owner['owner_plan']['source_sha256']??null,
     'current_target_document_sha256'=>hash('sha256',
       (string)get_post_meta($target,'_elementor_data',true)),
