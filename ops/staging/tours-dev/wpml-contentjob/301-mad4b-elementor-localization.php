@@ -75,6 +75,13 @@ final class MAD4B_Elementor_Localization_V1 {
         // Public tours and products normally use shared Single templates and do
         // not contain _elementor_data. WPML record coverage still applies.
         if(!$source && $type==='elementor_library')return [[],[]];
+        // Dynamically discovered shortcode-only providers have no fixed
+        // translation strings. External provider localization remains separate.
+        if($type==='elementor_library'&&class_exists('MAD4B_WPML_Translation_Need_V1')){
+            $need=MAD4B_WPML_Translation_Need_V1::source($src_id);
+            if(!is_wp_error($need)
+                &&($need['classification']??'')==='shared_dynamic_provider')return [[],[]];
+        }
         $base=self::flatten($source);$issues=[];$jobs=[];
         $render=get_option(self::RENDER,[]);
         $render=is_array($render)?$render:[];
