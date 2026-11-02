@@ -39,7 +39,7 @@ $cases=[
  'reject_image_changes'=>[['settings'=>['image'=>['id'=>14]]],['settings'=>['image'=>['id'=>17]]],false],
  'reject_url_changes'=>[['settings'=>['url'=>'/a']],['settings'=>['url'=>'/b']],false],
  'reject_widget_identity'=>[['id'=>'widget1'],['id'=>'widget2'],false],
- 'permit_responsive_padding'=>[['settings'=>['padding_mobile'=>['top'=>'0']]],['settings'=>['padding_mobile'=>['top'=>'50']],true],
+ 'permit_responsive_padding'=>[['settings'=>['padding_mobile'=>['top'=>'0']]],['settings'=>['padding_mobile'=>['top'=>'50']]],true],
  'permit_new_safe_anchor'=>[['settings'=>[]],['settings'=>['_element_id'=>'state_governorate']],true],
  'reject_existing_anchor_replacement'=>[['settings'=>['_element_id'=>'custom']],['settings'=>['_element_id'=>'changed']],false]
 ];
