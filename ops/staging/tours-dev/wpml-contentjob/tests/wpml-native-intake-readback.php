@@ -9,7 +9,7 @@ function wpml_intake_check($ok, $label) {
     echo "PASS: ".$label.PHP_EOL;
 }
 wpml_intake_check(class_exists('MAD4B_WPML_ContentJob_Adapter'), 'adapter loaded');
-wpml_intake_check(function_exists('wp_has_ability') && wp_has_ability('mad4b/wpml-contentjob-binding')!==null, 'binding ability available');
+wpml_intake_check(function_exists('wp_has_ability') && !!wp_has_ability('mad4b/wpml-contentjob-binding'), 'binding ability available');
 wpml_intake_check(MAD4B_WPML_ContentJob_Adapter::ready(), 'bound to staging');
 $preview=MAD4B_WPML_ContentJob_Adapter::preview();
 wpml_intake_check(!is_wp_error($preview), 'read-only discovery');
