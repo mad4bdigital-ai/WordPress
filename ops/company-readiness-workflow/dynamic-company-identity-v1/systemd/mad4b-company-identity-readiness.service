@@ -1,0 +1,19 @@
+[Unit]
+Description=MAD4B Original Company Identity Readiness (all discovered companies/environments, read-only)
+Requires=docker.service
+After=docker.service
+ConditionPathExists=/opt/mad4b-company-provisioning/source-candidates/dynamic-company-identity-v1/plan.py
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+WorkingDirectory=/opt/mad4b-company-provisioning/source-candidates/dynamic-company-identity-v1
+ExecStart=/usr/bin/python3 /opt/mad4b-company-provisioning/source-candidates/dynamic-company-identity-v1/plan.py
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+RestrictSUIDSGID=true
+TimeoutStartSec=220s
