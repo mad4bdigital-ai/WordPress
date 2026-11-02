@@ -1,0 +1,17 @@
+[Unit]
+Description=MAD4B exact-company Remote Resolve evidence convergence (read-only)
+After=docker.service
+Wants=docker.service
+ConditionPathExists=/opt/mad4b-company-provisioning/reports/company-unified-operation-policy-current.json
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+ExecStart=/usr/bin/python3 /opt/mad4b-company-provisioning/source-candidates/remote-resolve-live-v3/live_status_bridge.py once
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/opt/mad4b-company-provisioning/reports
