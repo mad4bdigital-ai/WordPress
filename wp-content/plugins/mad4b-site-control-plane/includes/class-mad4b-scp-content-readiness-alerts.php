@@ -339,6 +339,15 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         } elseif (!current_user_can('manage_options')) return new WP_Error('mad4b_readiness_permission_denied');
         if (!is_array($scan) || empty($scan['complete']) || !isset($scan['issues']))
             return new WP_Error('mad4b_readiness_incomplete_scan');
+        // Serialize full-ledger reconciliation with the bounded WPML URL
+        // ContentJob intake. Never overwrite a freshly linked issue using
+        // a stale discovery snapshot from another WordPress CLI session.
+        global $wpdb;
+        $readinessLock='mad4b_wpml_url_jobs_'.get_current_blog_id();
+        if((int)$wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s,0)',$readinessLock))!==1)
+            return new WP_Error('mad4b_readiness_shared_ledger_lock_busy',
+                'A governed ContentJob intake is updating the issue ledger; retry after it completes.');
+        try {
         $old=(array)get_option(self::STORE,array());$now=gmdate('c');$new=$old;
         $seen=array();
         foreach ($scan['issues'] as $row) {
@@ -425,6 +434,9 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         if(class_exists('MAD4B_SCP_Readiness_Integrations'))
             MAD4B_SCP_Readiness_Integrations::record_changes($old,$new);
         return self::summary($new);
+        } finally {
+            $wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)',$readinessLock));
+        }
     }
     private static function rule_enabled_for($issue,$cfg) {
         $type=$issue['post_type']??'';$code=$issue['code']??'';
