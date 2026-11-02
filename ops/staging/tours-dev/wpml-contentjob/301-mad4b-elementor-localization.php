@@ -1,0 +1,737 @@
+<?php
+/**
+ * Plugin Name: MAD4B Elementor/WPML Integrity & Translation Outbox
+ * Description: Read-only localization gap discovery, safe shared-style synchronization and authenticated MCP Client task pickup.
+ * Version: 0.1.0-staging
+ */
+defined('ABSPATH') || exit;
+final class MAD4B_Elementor_Localization_V1 {
+    const OPTION='mad4b_elementor_localization_outbox_v1';
+    const REPORT='mad4b_elementor_localization_health_v1';
+    const RENDER='mad4b_elementor_render_observations_v1';
+    const SOURCE='mad4b-elementor-localization';
+    private static $busy=false;
+    private static $text_keys=['title','editor','text','description','button_text','placeholder','label','heading','subtitle','caption','content','text_content','html','before_text','after_text','item_text','tab_title','tab_content','button_label','search_placeholder_text','search_category_select_placeholder','search_submit_label','results_counter_text','full_results_btn_text','negative_search','server_error','apply_button_text','not_found_message','link_label','featured_read_more_text','browse_label','custom_home_page_label','search_results_title','read_more_text','show_more_text','show_less_text'];
+    private static function enabled() {
+        return wp_get_environment_type()==='staging'
+            && wp_parse_url(home_url(),PHP_URL_HOST)==='tours.dev.mad4b.com'
+            && defined('ICL_SITEPRESS_VERSION');
+    }
+    private static function types(){return ['page','tours-and-activities','elementor_library','product'];}
+    private static function languages() {
+        $langs=apply_filters('wpml_active_languages',null,'skip_missing=0');
+        return is_array($langs)?array_values(array_intersect(['en','fr','de','es','it','ar'],array_keys($langs))):[];
+    }
+    private static function default_lang(){return (string)apply_filters('wpml_default_language',null);}
+    private static function lang($id){
+        $d=apply_filters('wpml_post_language_details',null,(int)$id);
+        return is_array($d)?(string)($d['language_code']??''):'';
+    }
+    private static function translations($id,$type){
+        $trid=apply_filters('wpml_element_trid',null,$id,'post_'.$type);
+        if(!$trid)return [];
+        $data=apply_filters('wpml_get_element_translations',null,$trid,'post_'.$type);
+        $out=[];
+        foreach((array)$data as $lang=>$v)if(is_object($v)&&!empty($v->element_id))$out[$lang]=(int)$v->element_id;
+        // WPML's translation collection can omit drafts even when the
+        // legitimate WPML object-ID lookup resolves them. Never equate a
+        // missing *published* translation with a missing translation draft.
+        foreach(self::languages() as $lang){
+            if($lang===self::lang($id)||isset($out[$lang]))continue;
+            $draft_id=(int)apply_filters('wpml_object_id',(int)$id,$type,false,$lang);
+            if(!$draft_id||$draft_id===(int)$id||get_post_type($draft_id)!==$type
+                ||get_post_status($draft_id)!=='draft'||self::lang($draft_id)!==$lang)continue;
+            $candidate_trid=(int)apply_filters('wpml_element_trid',null,$draft_id,'post_'.$type);
+            if($candidate_trid!==(int)$trid)continue;
+            $out[$lang]=$draft_id;
+        }
+        return $out;
+    }
+    private static function tree($id){
+        $raw=get_post_meta($id,'_elementor_data',true);
+        if(!$raw)return [];
+        $value=is_string($raw)?json_decode($raw,true):$raw;
+        return is_array($value)?$value:[];
+    }
+    private static function flatten($tree,$parent='root',&$map=[]){
+        foreach((array)$tree as $order=>$node){
+            if(!is_array($node)||!isset($node['id']))continue;
+            $id=(string)$node['id'];
+            if(!preg_match('/^[a-z0-9]{5,15}$/i',$id)||isset($map[$id]))continue;
+            $map[$id]=['id'=>$id,'parent'=>$parent,'order'=>(int)$order,
+                'type'=>(string)($node['widgetType']??$node['elType']??''),
+                'settings'=>(array)($node['settings']??[])];
+            if(!empty($node['elements']))self::flatten($node['elements'],$id,$map);
+        }
+        return $map;
+    }
+    private static function text($value){
+        if(!is_scalar($value)||is_bool($value))return '';
+        $s=trim(html_entity_decode(wp_strip_all_tags((string)$value),ENT_QUOTES,'UTF-8'));
+        if(str_contains($s,'[')||str_contains($s,'{{')||preg_match('/^https?:|^\d+$/',$s))return '';
+        return preg_replace('/\s+/u',' ',$s);
+    }
+    private static function english_text($text){
+        return strlen($text)>=9 && preg_match('/[A-Za-z]{3,}/',$text);
+    }
+    private static function source_digest($id,$tree){
+        if($tree)return hash('sha256',wp_json_encode($tree));
+        return hash('sha256',wp_json_encode([
+            'post_id'=>(int)$id,'title'=>(string)get_post_field('post_title',$id),
+            'content'=>(string)get_post_field('post_content',$id),
+            'excerpt'=>(string)get_post_field('post_excerpt',$id),
+            'modified_gmt'=>(string)get_post_field('post_modified_gmt',$id)]));
+    }
+    private static function alerts_for($src_id,$type,$tr,$langs,$default){
+        $source=self::tree($src_id);
+        // Public tours and products normally use shared Single templates and do
+        // not contain _elementor_data. WPML record coverage still applies.
+        if(!$source && $type==='elementor_library')return [[],[]];
+        // Dynamically discovered shortcode-only providers have no fixed
+        // translation strings. External provider localization remains separate.
+        if($type==='elementor_library'&&class_exists('MAD4B_WPML_Translation_Need_V1')){
+            $need=MAD4B_WPML_Translation_Need_V1::source($src_id);
+            if(!is_wp_error($need)
+                &&($need['classification']??'')==='shared_dynamic_provider')return [[],[]];
+        }
+        $base=self::flatten($source);$issues=[];$jobs=[];
+        $render=get_option(self::RENDER,[]);
+        $render=is_array($render)?$render:[];
+        // Render observations are evidence, not permanent facts: never use
+        // stale snapshots or HTML from the EN page to accuse another locale.
+        // Fresh locale-specific observations can still create translation jobs.
+        $seen_at=strtotime((string)($render['observed_at']??''));
+        $render_fresh=$seen_at && $seen_at>=time()-3600 && $seen_at<=time()+120;
+        if($type==='page' && isset($render['h1'][$src_id]) && (int)$render['h1'][$src_id]['count']===0){
+            $code='loc_h1_'.$default;
+            $issues[]=['id'=>hash('sha256',get_current_blog_id().'|'.$type.'|'.$src_id.'|'.$code),
+                'code'=>$code,'post_type'=>$type,'object_id'=>$src_id,'severity'=>'medium',
+                'label'=>get_the_title($src_id).': browser-verified published page has no visible H1',
+                'source'=>self::SOURCE];
+        }
+        foreach($langs as $lang){
+            if($lang===$default)continue;
+            $dst=$tr[$lang]??0;
+            $codes=[];
+            $target_status=$dst?(string)get_post_status($dst):'missing';
+            $draft_pending_review=$dst>0 && $target_status==='draft'
+                && self::lang($dst)===$lang;
+            if(!$dst||!get_post($dst)||$target_status!=='publish'){
+                $codes['missing']=$draft_pending_review
+                    ? 'WPML translation draft #'.$dst.' exists but is unpublished. Elementor references, locale rendering and editorial review remain pending'
+                    : 'Published eligible content has no published '.$lang.' translation';
+            } else {
+                $target=self::flatten(self::tree($dst));
+                $missing=array_diff_key($base,$target);
+                $changed=[];
+                foreach($base as $id=>$node){
+                    if(!isset($target[$id]))continue;
+                    $t=$target[$id];
+                    if($t['type']!==$node['type']||$t['parent']!==$node['parent']||$t['order']!==$node['order'])
+                        $changed[]=$id;
+                }
+                if($missing||$changed) $codes['layout']='Elementor layout differs from source in '.$lang.' ('.count($missing).' absent, '.count($changed).' moved/changed)';
+                $equal=[];
+                foreach($base as $id=>$node){
+                    if(!isset($target[$id]))continue;
+                    foreach(self::$text_keys as $key){
+                        $a=self::text($node['settings'][$key]??'');
+                        $b=self::text($target[$id]['settings'][$key]??'');
+                        if(self::english_text($a)&&$b===$a){$equal[]=$id.':'.$key;}
+                    }
+                }
+                if($equal) $codes['text']='Elementor text remains identical to English in '.$lang.' ('.count($equal).' fields)';
+                // Shared Single template does not make the underlying public
+                // tour's language-specific title/content optional.
+                if(!$source && in_array($type,['tours-and-activities','product','page'],true)){
+                    $same=[];
+                    foreach(['post_title','post_excerpt','post_content'] as $field){
+                        $a=self::text(get_post_field($field,$src_id));
+                        $b=self::text(get_post_field($field,$dst));
+                        if(self::english_text($a) && $b===$a)$same[]=$field;
+                    }
+                    if($same)$codes['text']='Published '.$lang.' content still matches English fields: '.implode(',',$same);
+                }
+            }
+            $rendered=0;
+            foreach((array)($render['leaks']??[]) as $leak){
+                if(!$render_fresh||!is_array($leak)||($leak['lang']??'')!==$lang)continue;
+                $observed_page_id=(int)($leak['page_id']??0);
+                if($observed_page_id && self::lang($observed_page_id)!==$lang)continue;
+                $template_id=(int)($leak['template_id']??0);
+                $owner=$template_id?apply_filters('wpml_object_id',$template_id,'elementor_library',false,$default):0;
+                if(!$owner && $template_id)$owner=$template_id;
+                if($type==='elementor_library' && (int)$owner===$src_id)$rendered++;
+                elseif($type==='page' && !$template_id && (int)($leak['page_id']??0)===$src_id)$rendered++;
+            }
+            if($rendered && !isset($codes['missing']))
+                $codes['text']='Browser confirms '.$rendered.' English Elementor widgets in '.$lang.' rendered output';
+            foreach($codes as $code=>$message){
+                $full='loc_'.$code.'_'.$lang;
+                $row=['id'=>hash('sha256',get_current_blog_id().'|'.$type.'|'.$src_id.'|'.$full),
+                    'code'=>$full,'post_type'=>$type,'object_id'=>$src_id,
+                    'severity'=>in_array($code,['missing','layout'],true)?'high':'medium',
+                    'label'=>mb_substr('['.$lang.'] '.get_the_title($src_id).': '.$message,0,239),
+                    'source'=>self::SOURCE,
+                    'target_post_id'=>(int)$dst,'target_post_status'=>$target_status,
+                    'review_state'=>$draft_pending_review?'draft_unpublished_pending_review':'translation_gap_unresolved'];
+                $issues[]=$row;
+                if(in_array($code,['missing','layout','text'],true)){
+                    $jobs[]=['key'=>hash('sha256',home_url().'|'.$src_id.'|'.$lang.'|'.$code),
+                        'source_post_id'=>$src_id,'target_post_id'=>$dst,'post_type'=>$type,
+                        'target_language'=>$lang,'gap_code'=>$full,'issue_id'=>$row['id'],
+                        'source_sha256'=>self::source_digest($src_id,$source),
+                        'scope'=>'company-published-visible-content',
+                        'stage'=>$draft_pending_review?'WPML_DRAFT_REVIEW':'WPML_TRANSLATION',
+                        'executor'=>'mcp_client',
+                        'operation'=>$draft_pending_review?'review_unpublished_wpml_draft'
+                           :($code==='layout'?'align_elementor_layout_and_translate':'translate_missing_elementor_strings'),
+                        'review_state'=>$draft_pending_review?'draft_unpublished_pending_review':'translation_gap_unresolved',
+                        'target_post_status'=>$target_status,
+                        'preserve_translations'=>true,'no_automatic_publish'=>true];
+                }
+            }
+        }
+        return [$issues,$jobs];
+    }
+    private static function active_templates(){
+        // Resolve only templates referenced by published frontend content; never
+        // blanket-queue all saved Elementor library drafts/popup experiments.
+        $active=[];
+        $scan=function($tree)use(&$scan,&$active){
+            foreach((array)$tree as $node){
+                if(!is_array($node))continue;
+                $v=$node['settings']['template_id']??0;
+                if(is_numeric($v) && (int)$v>0)$active[(int)$v]=true;
+                $shortcode=$node['settings']['shortcode']??'';
+                if(is_string($shortcode)&&preg_match_all('/\[elementor-template\s+[^\]]*id=[\"\']?([0-9]+)/',$shortcode,$matches))
+                    foreach($matches[1] as $id)$active[(int)$id]=true;
+                if(!empty($node['elements']))$scan($node['elements']);
+            }
+        };
+        foreach(['page','tours-and-activities','product'] as $type){
+            $ids=get_posts(['post_type'=>$type,'post_status'=>'publish','numberposts'=>-1,
+                'fields'=>'ids','suppress_filters'=>true]);
+            foreach($ids as $id)$scan(self::tree($id));
+        }
+        // Follow one-level references in linked templates, to detect actual
+        // rendered template sections without scanning the whole library.
+        $first=array_keys($active);
+        foreach(array_slice($first,0,160) as $id)$scan(self::tree($id));
+        return $active;
+    }
+    public static function inspect($limit=250){
+        $limit=max(1,min(500,(int)$limit));
+        if(!self::enabled())return ['complete'=>false,'issues'=>[],'jobs'=>[],'reason'=>'target_unavailable'];
+        $langs=self::languages();$default=self::default_lang();
+        $issues=[];$jobs=[];$seen=0;$counts=[];$active=self::active_templates();
+        foreach(self::types() as $type){
+            $ids=get_posts(['post_type'=>$type,'post_status'=>'publish','numberposts'=>-1,
+                'fields'=>'ids','suppress_filters'=>true,'orderby'=>'ID','order'=>'DESC']);
+            $counts[$type]=count($ids);
+            foreach($ids as $id){
+                if($type==='elementor_library'&&!isset($active[$id]))continue;
+                if(self::lang($id)!==$default)continue;
+                $seen++;if($seen>$limit)break 2;
+                [$a,$b]=self::alerts_for((int)$id,$type,self::translations($id,$type),$langs,$default);
+                array_push($issues,...$a);array_push($jobs,...$b);
+            }
+        }
+        return ['contract'=>'mad4b.elementor-localization.scan.v1','complete'=>$seen<=$limit,
+            'scanned_sources'=>min($seen,$limit),'post_counts'=>$counts,
+            'issues'=>$issues,'jobs'=>$jobs,'locale_count'=>count($langs),
+            'source_language'=>$default];
+    }
+    public static function external($rows,$cfg){
+        if(!is_array($rows)||!self::enabled())return $rows;
+        $scan=self::inspect(450);
+        if(!$scan['complete'])return $rows; // Existing issue ledger refuses incomplete scans.
+        return array_merge($rows,$scan['issues']);
+    }
+    public static function outbox(){
+        $jobs=get_option(self::OPTION,[]);
+        return is_array($jobs)?$jobs:[];
+    }
+    public static function queue_scan(){
+        if(!self::enabled())return new WP_Error('mad4b_localization_unavailable');
+        $s=self::inspect(450);
+        if(!$s['complete'])return new WP_Error('mad4b_localization_incomplete_scan');
+        $old=self::outbox();$new=$old;$active=[];$now=gmdate('c');
+        foreach($s['jobs'] as $job){
+            $key=$job['key'];$active[$key]=1;
+            $before=$new[$key]??[];
+            $same=isset($before['source_sha256'])&&$before['source_sha256']===$job['source_sha256'];
+            $state=$same?($before['status']??'queued'):'queued';
+            if(in_array($state,['completed','verified'],true))$state='queued';
+            if($state==='leased' && strtotime($before['lease_until']??'1970-01-01')<time())$state='queued';
+            // Keep the gap visible in the queue and Control Plane, while
+            // preventing the translation executor from re-translating an
+            // already linked but unpublished WPML draft.
+            if(($job['review_state']??'')==='draft_unpublished_pending_review'
+                &&in_array($state,['queued','needs_review'],true))$state='needs_review';
+            elseif($state==='needs_review')$state='queued';
+            $new[$key]=array_merge($job,[
+                'status'=>$state,'created_at'=>$before['created_at']??$now,
+                'updated_at'=>$now,'attempts'=>(int)($before['attempts']??0),
+                'last_error'=>$before['last_error']??null,
+                'lease_until'=>$state==='leased'?($before['lease_until']??null):null,
+                // Intake must preserve the native MCP claimant identity during
+                // active leases. Dropping claimed_by_user while retaining
+                // status=leased breaks the subsequent guarded Ack.
+                'claimed_at'=>$state==='leased'?($before['claimed_at']??null):null,
+                'claimed_by_user'=>$state==='leased'?($before['claimed_by_user']??null):null]);
+        }
+        foreach($new as $key=>$job)if(!isset($active[$key])){
+            $state=(string)($job['status']??'');
+            $active_lease=$state==='leased'
+                &&strtotime((string)($job['lease_until']??'1970-01-01'))>=time();
+            // A live client lease must survive disappearance of the issue:
+            // otherwise the queue silently changes leased to
+            // resolved_after_readback before the client can submit Ack and
+            // its verifiable Receipt. The fresh issue scan is still used by
+            // Ack to verify that the gap really disappeared.
+            if($active_lease)continue;
+            if(in_array($state,['queued','leased','needs_review'],true)){
+                $new[$key]['status']='resolved_after_readback';
+                $new[$key]['updated_at']=$now;
+                if($state==='leased'){
+                    $new[$key]['last_error']='lease_expired_before_ack_after_gap_resolved';
+                    // Preserve the expired claim's original actor and lease
+                    // timestamps. Recovery validates all three, the 24-hour
+                    // bound, WPML publication proof and the native job state.
+                    // Clearing them here made every previously leased
+                    // resolved_after_readback row permanently ineligible.
+                    // No new lease is granted by this scan.
+                    $new[$key]['lease_until']=$job['lease_until']??null;
+                    $new[$key]['claimed_at']=$job['claimed_at']??null;
+                    $new[$key]['claimed_by_user']=$job['claimed_by_user']??null;
+                }
+            }
+        }
+        if(count($new)>2300)return new WP_Error('mad4b_localization_queue_capacity');
+        if($new!==$old){
+            update_option(self::OPTION,$new,false);
+            if(get_option(self::OPTION,[])!==$new)return new WP_Error('mad4b_localization_queue_readback_failed');
+        }
+        update_option(self::REPORT,['at'=>$now,'scan_sources'=>$s['scanned_sources'],
+            'issues'=>count($s['issues']),'jobs'=>count($s['jobs']),
+            'pending'=>count(array_filter($new,static fn($j)=>($j['status']??'')==='queued')),
+            'mcp_execution_verified'=>false],false);
+        do_action('mad4b/localization/jobs_reconciled',['at'=>$now,'queued'=>count($s['jobs'])]);
+        return ['contract'=>$s['contract'],'status'=>'scanned','sources'=>$s['scanned_sources'],
+            'issues'=>count($s['issues']),'jobs'=>count($s['jobs']),
+            'outbox_total'=>count($new),'actual_mcp_execution'=>false];
+    }
+    private static function is_style($key,$rtl=false){
+        $key=(string)$key;
+        if(in_array($key,['template_id','shortcode','__dynamic__','jedv_conditions','display_condition_list','__globals__'],true))return false;
+        // Never replace locale-bound media/URLs or Arabic typography/direction.
+        if(preg_match('/(?:image|video|media|icon|url|link|placeholder)/i',$key))return false;
+        if($rtl && preg_match('/(?:direction|align|justify|order|float|font|typography|margin|padding|transform)/i',$key))return false;
+        return (bool)preg_match('/^(?:_?(?:margin|padding|width|height|align|flex|grid|gap|order|position|overflow|z_index|border|box_shadow|background|shape_divider|typography|font|color|opacity|css_classes|size|display|hide_on|sticky|animation|transform|custom_css|justify|direction|content_width|object_fit|space_between|column|row|section|container|jet_sticky))/', $key);
+    }
+    private static function merge_existing($source,$target,&$updated=0,$rtl=false){
+        $map=[];foreach((array)$target as $node)if(is_array($node)&&isset($node['id']))$map[$node['id']]=$node;
+        $output=[];$used=[];
+        foreach((array)$source as $s){
+            $id=$s['id']??'';
+            if(!$id||!isset($map[$id]))continue; // Missing widget cannot expose untranslated English.
+            $t=$map[$id];$used[$id]=true;
+            if(($s['widgetType']??$s['elType']??'')!==($t['widgetType']??$t['elType']??'')){$output[]=$t;continue;}
+            foreach((array)($s['settings']??[]) as $k=>$v)if(self::is_style($k,$rtl)) {
+                if(!isset($t['settings'][$k])||$t['settings'][$k]!==$v){$t['settings'][$k]=$v;$updated++;}
+            }
+            $original=$t['elements']??[];
+            $t['elements']=self::merge_existing($s['elements']??[],$original,$updated,$rtl);
+            $output[]=$t;
+        }
+        foreach($map as $id=>$t)if(!isset($used[$id]))$output[]=$t; // Preserve locale-specific widgets.
+        if(array_keys($output)!==array_keys($target)||$output!==$target)$updated++;
+        return $output;
+    }
+    public static function sync_source($id,$apply=false){
+        $id=(int)$id;$post=get_post($id);
+        if(!self::enabled()||!$post||!in_array($post->post_type,self::types(),true)||self::lang($id)!==self::default_lang())
+            return new WP_Error('mad4b_localization_source_invalid');
+        if($apply&&function_exists('mad4b_wpml_auto_sync_allowed_v1')
+           &&!mad4b_wpml_auto_sync_allowed_v1($id))return new WP_Error('mad4b_wpml_design_sync_disabled_or_excluded');
+        $source=self::tree($id);
+        if(!$source)return new WP_Error('mad4b_localization_not_elementor');
+        $results=[];
+        foreach(self::translations($id,$post->post_type) as $lang=>$target_id){
+            if($lang===self::default_lang()||get_post_status($target_id)!=='publish')continue;
+            if($apply&&function_exists('mad4b_wpml_auto_sync_allowed_v1')
+               &&!mad4b_wpml_auto_sync_allowed_v1($id,$target_id))continue;
+            $before=self::tree($target_id);
+            if(!$before)continue;
+            $changes=0;$after=self::merge_existing($source,$before,$changes,$lang==='ar');
+            $delta=$after!==$before;
+            $row=['lang'=>$lang,'target_id'=>$target_id,'style_or_order_changes'=>$changes,
+                'would_update'=>$delta,'updated'=>false,'missing_nodes'=>count(array_diff_key(self::flatten($source),self::flatten($before)))];
+            if($apply&&$delta){
+                $old=get_post_meta($target_id,'_elementor_data',true);
+                $backup='mad4b_layout_backup_'.(int)$target_id.'_'.substr(hash('sha256',(string)$old),0,12);
+                update_option($backup,['source'=>$id,'target'=>$target_id,'at'=>gmdate('c'),'original'=>$old],false);
+                if(!get_option($backup))return new WP_Error('mad4b_localization_backup_failed');
+                self::$busy=true;
+                try{$ok=update_post_meta($target_id,'_elementor_data',wp_slash(wp_json_encode($after)));}
+                finally{self::$busy=false;}
+                if(!$ok||self::tree($target_id)!==$after)return new WP_Error('mad4b_localization_sync_readback_failed');
+                // Invalidate only the affected translated Elementor CSS asset;
+                // the next normal render regenerates it from the synced tree.
+                $row['elementor_css_invalidated']=false;
+                if(class_exists('Elementor\Core\Files\CSS\Post')){
+                    try{
+                        $css=new \Elementor\Core\Files\CSS\Post($target_id);
+                        $css->delete();
+                        $row['elementor_css_invalidated']=true;
+                    }catch(\Throwable $e){error_log('[MAD4B Localization] CSS invalidate failed for post '.$target_id);}
+                }
+                $row['updated']=true;$row['rollback_option']=$backup;
+            }
+            $results[]=$row;
+        }
+        return ['contract'=>'mad4b.elementor-structure-sync.v1','source'=>$id,'applied'=>(bool)$apply,'translations'=>$results,
+            'translation_texts_overwritten'=>false,'missing_widgets_copied'=>false];
+    }
+    public static function after_meta($meta_id,$id,$key,$value){
+        if(self::$busy||$key!=='_elementor_data'||!self::enabled())return;
+        if(function_exists('mad4b_wpml_auto_sync_allowed_v1')
+           &&!mad4b_wpml_auto_sync_allowed_v1($id))return;
+        if(self::lang($id)!==self::default_lang())return;
+        self::sync_source($id,true);
+        wp_schedule_single_event(time()+30,'mad4b_localization_scan_v1');
+    }
+    public static function cron_scan(){
+        $r=self::queue_scan();
+        if(is_wp_error($r))error_log('[MAD4B Localization] Scan: '.$r->get_error_code());
+    }
+    public static function cli($args,$opts){
+        $mode=$args[0]??'status';
+        if($mode==='status'){
+            WP_CLI::line(wp_json_encode(['report'=>get_option(self::REPORT,[]),
+                'pending'=>array_slice(array_values(array_filter(self::outbox(),static fn($x)=>$x['status']==='queued')),0,8)],JSON_PRETTY_PRINT));
+            return;
+        }
+        if($mode==='preview'){
+            $id=(int)($opts['source']??35138);
+            $r=self::sync_source($id,false);
+        }elseif($mode==='scan'){$r=self::queue_scan();}
+        elseif($mode==='recover'){
+            $r=self::recover_claim([
+                'key'=>(string)($opts['key']??''),
+                'expected_source_sha256'=>(string)($opts['digest']??''),
+                'receipt_id'=>(string)($opts['receipt']??'')
+            ]);
+        }
+        elseif($mode==='sync'){
+            $id=(int)($opts['source']??0);
+            if(!$id||($opts['confirm']??'')!=='SYNC ORIGINAL STYLES ONLY')
+                WP_CLI::error('Exact --source and --confirm required');
+            $r=self::sync_source($id,true);
+        }else WP_CLI::error('Allowed: status, preview, scan, sync');
+        if(is_wp_error($r))WP_CLI::error($r->get_error_code());
+        WP_CLI::line(wp_json_encode($r,JSON_PRETTY_PRINT));
+    }
+    private static function with_outbox_lock($callback){
+        global $wpdb;
+        $lock='mad4b_elementor_localization_v1';
+        $ok=(string)$wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s,2)',$lock))==='1';
+        if(!$ok)return new WP_Error('mad4b_localization_busy');
+        try{return $callback();}finally{$wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)',$lock));}
+    }
+    public static function claim($input){
+        if(!self::enabled()||!current_user_can('edit_others_posts'))
+            return new WP_Error('mad4b_localization_claim_unauthorized');
+        $key=(string)($input['key']??'');$expected=(string)($input['expected_source_sha256']??'');
+        if(!preg_match('/^[a-f0-9]{64}$/D',$key)||!preg_match('/^[a-f0-9]{64}$/D',$expected))
+            return new WP_Error('mad4b_localization_bad_request');
+        return self::with_outbox_lock(static function()use($key,$expected){
+            $jobs=self::outbox();$j=$jobs[$key]??null;
+            if(!$j||$j['status']!=='queued'||!hash_equals($j['source_sha256'],$expected))
+                return new WP_Error('mad4b_localization_stale_or_not_queued');
+            $current=self::source_digest($j['source_post_id'],self::tree($j['source_post_id']));
+            if(!hash_equals($expected,$current))return new WP_Error('mad4b_localization_source_moved');
+            if((int)($j['attempts']??0)>=5)return new WP_Error('mad4b_localization_retry_limit');
+            $j['status']='leased';$j['attempts']=(int)($j['attempts']??0)+1;
+            $j['lease_until']=gmdate('c',time()+1800);
+            $j['claimed_at']=gmdate('c');$j['claimed_by_user']=get_current_user_id();
+            $jobs[$key]=$j;
+            update_option(self::OPTION,$jobs,false);
+            if(get_option(self::OPTION,[])!==$jobs)return new WP_Error('mad4b_localization_claim_write_failed');
+            return ['contract'=>'mad4b.localization.claim.v1','job'=>$j,
+                'client_must_translate_using_governed_content_abilities'=>true,
+                'auto_publish'=>false];
+        });
+    }
+    /**
+     * Recover a PREVIOUSLY claimed, prematurely resolved job through fresh
+     * authority, WPML and publication-proof validation. The outcome is only a
+     * new leased Claim, never a forged Ack or native ContentJob completion.
+     */
+    public static function recover_claim($input){
+        if(!self::enabled()||!current_user_can('edit_others_posts')
+            ||!current_user_can('manage_options')
+            ||!class_exists('MAD4B_SCP_Policy')||!MAD4B_SCP_Policy::can_mutate())
+            return new WP_Error('mad4b_localization_recovery_unauthorized');
+        $key=(string)($input['key']??'');
+        $digest=(string)($input['expected_source_sha256']??'');
+        $receipt_id=(string)($input['receipt_id']??'');
+        if(!preg_match('/^[a-f0-9]{64}$/D',$key)
+            ||!preg_match('/^[a-f0-9]{64}$/D',$digest)
+            ||!preg_match('/^mad4b[.]wpml[.](?:hero|stage)[.][a-f0-9]{32,40}$/D',$receipt_id))
+            return new WP_Error('mad4b_localization_recovery_invalid_input');
+        $scope=MAD4B_SCP_Operational_Integrity::capture();
+        if(is_wp_error($scope)||($scope['scope']['site_uuid']??'')!=='e5e64bca-ed62-48d2-b2b3-dff693cd702a')
+            return new WP_Error('mad4b_localization_recovery_site_mismatch');
+        return self::with_outbox_lock(static function()use($key,$digest,$receipt_id){
+            $jobs=self::outbox();
+            $row=$jobs[$key]??null;
+            if(!$row||($row['status']??'')!=='resolved_after_readback'
+                ||(int)($row['claimed_by_user']??0)!==get_current_user_id()
+                ||!empty($row['receipt_id'])
+                ||($row['source_sha256']??'')!==$digest
+                ||(int)($row['attempts']??0)>=5)
+                return new WP_Error('mad4b_localization_recovery_not_eligible');
+            $expired=strtotime((string)($row['lease_until']??''));
+            $claimed=strtotime((string)($row['claimed_at']??''));
+            $now=time();
+            if(!$expired||!$claimed||$expired>$now
+                ||$expired<$now-86400||$claimed>$expired)
+                return new WP_Error('mad4b_localization_recovery_lease_mismatch');
+            $source=(int)($row['source_post_id']??0);
+            $locale=(string)($row['target_language']??'');
+            $type=get_post_type($source);
+            if(!$source||!in_array($type,self::types(),true)
+                ||!in_array($locale,self::languages(),true)
+                ||$locale===self::default_lang()
+                ||get_post_status($source)!=='publish'
+                ||self::source_digest($source,self::tree($source))!==$digest)
+                return new WP_Error('mad4b_localization_recovery_source_mismatch');
+            $target=(int)apply_filters('wpml_object_id',$source,$type,false,$locale);
+            $trid=(int)apply_filters('wpml_element_trid',null,$source,'post_'.$type);
+            $trid_target=(int)apply_filters('wpml_element_trid',null,$target,'post_'.$type);
+            $lang_details=(array)apply_filters('wpml_post_language_details',null,$target);
+            if(!$target||get_post_type($target)!==$type||get_post_status($target)!=='publish'
+                ||!$trid||$trid_target!==$trid
+                ||($lang_details['language_code']??'')!==$locale)
+                return new WP_Error('mad4b_localization_recovery_wpml_mismatch');
+            $hero=(array)get_option('mad4b_wpml_hero_publication_receipt_'.$locale.'_v1',[]);
+            $standard=(array)get_option('mad4b_wpml_staging_publication_receipt_'.$target.'_v1',[]);
+            $proof=($hero['receipt_id']??'')===$receipt_id?$hero:$standard;
+            $verified=(bool)($proof['wpml_readback_verified']??$proof['wpml_readback_passed']??false);
+            $source_sha=hash('sha256',(string)get_post_meta($source,'_elementor_data',true));
+            $target_sha=hash('sha256',(string)get_post_meta($target,'_elementor_data',true));
+            $original_target_sha=(string)($proof['target_sha256']??$proof['elementor_sha256']??'');
+            $target_sha_verified=$original_target_sha===$target_sha;
+            if(!$target_sha_verified){
+                // The original publication receipt is immutable. A later
+                // Elementor/WPML sync requires an independent, fresh,
+                // read-only render + locale + reference + media attestation.
+                $a=(array)get_option('mad4b_wpml_hero_current_readback_attestation_'.$target.'_v1',[]);
+                $when=strtotime((string)($a['readback_at']??''));
+                $target_sha_verified=($a['contract']??'')==='mad4b.wpml.hero-current-readback-attestation.v1'
+                  &&($a['site_uuid']??'')==='e5e64bca-ed62-48d2-b2b3-dff693cd702a'
+                  &&(int)($a['source']??0)===$source
+                  &&(int)($a['target']??0)===$target
+                  &&($a['locale']??'')===$locale
+                  &&($a['original_publication_receipt']??'')===$receipt_id
+                  &&($a['original_target_sha256']??'')===$original_target_sha
+                  &&($a['source_sha256']??'')===$source_sha
+                  &&($a['verified_current_target_sha256']??'')===$target_sha
+                  &&(int)($a['verified_literals']??0)===13
+                  &&(int)($a['localized_refs']??0)===3
+                  &&(int)($a['localized_images']??0)===5
+                  &&(int)($a['widget_nodes']??0)===26
+                  &&(int)($a['wpml_trid']??0)===$trid
+                  &&($a['review_job']??'')===($proof['job']??'')
+                  &&(int)($a['operator']??0)===get_current_user_id()
+                  &&(int)($a['render_bytes']??0)>18000
+                  &&preg_match('/^[a-f0-9]{64}$/D',(string)($a['render_sha256']??''))
+                  &&$when!==false&&$when>=time()-900&&$when<=time()+60;
+            }
+            if(($proof['receipt_id']??'')!==$receipt_id||!$verified
+                ||(int)($proof['source']??0)!==$source
+                ||(int)($proof['target']??0)!==$target
+                ||($proof['locale']??$proof['lang']??'')!==$locale
+                ||($proof['source_sha256']??'')!==$source_sha
+                ||!$target_sha_verified)
+                return new WP_Error('mad4b_localization_recovery_receipt_mismatch');
+            $map=(array)get_option('mad4b_wpml_content_job_map_v1',[]);
+            $mapped=false;
+            foreach($map as $m){
+                if((int)($m['source_post_id']??0)!==$source
+                    ||($m['lang']??'')!==$locale)continue;
+                if(($m['job_id']??'')!==($proof['job']??''))continue;
+                $j=MAD4B_SCP_Content_Jobs::get_job(['job_id'=>$m['job_id']]);
+                if(!is_wp_error($j)&&($j['job']['state']??'')==='QUEUED')$mapped=true;
+            }
+            if(!$mapped)return new WP_Error('mad4b_localization_recovery_native_job_mismatch');
+            [$issues]=self::alerts_for($source,$type,self::translations($source,$type),
+                self::languages(),self::default_lang());
+            foreach($issues as $issue)if(($issue['id']??'')===($row['issue_id']??''))
+                return new WP_Error('mad4b_localization_recovery_gap_still_present');
+            $audit_key='mad4b_wpml_recovery_'.substr($key,0,24).'_'.substr(hash('sha256',$receipt_id),0,16);
+            $audit=['contract'=>'mad4b.localization.recovery-audit.v1','source'=>$source,
+                'target'=>$target,'locale'=>$locale,'operator'=>get_current_user_id(),
+                'old_state'=>'resolved_after_readback','old_claim'=>$claimed,
+                'old_expiry'=>$expired,'publication_receipt'=>$receipt_id,'at'=>gmdate('c')];
+            if(!add_option($audit_key,$audit,false))
+                return new WP_Error('mad4b_localization_recovery_already_attempted');
+            $row['status']='leased';
+            $row['attempts']=(int)$row['attempts']+1;
+            $row['claimed_by_user']=get_current_user_id();
+            $row['claimed_at']=gmdate('c');
+            $row['lease_until']=gmdate('c',time()+1800);
+            $row['updated_at']=gmdate('c');
+            $row['last_error']=null;
+            $row['recovery_audit_option']=$audit_key;
+            $jobs[$key]=$row;
+            update_option(self::OPTION,$jobs,false);
+            if(get_option(self::OPTION,[])!==$jobs)
+                return new WP_Error('mad4b_localization_recovery_write_unconfirmed');
+            return ['contract'=>'mad4b.localization.recovery-claim.v1',
+                'status'=>'leased','job'=>$row,'audit_option'=>$audit_key];
+        });
+    }
+    public static function ack($input){
+        if(!self::enabled()||!current_user_can('edit_others_posts'))
+            return new WP_Error('mad4b_localization_ack_unauthorized');
+        $key=(string)($input['key']??'');$expected=(string)($input['expected_source_sha256']??'');
+        $receipt=(string)($input['receipt_id']??'');
+        if(!preg_match('/^[a-f0-9]{64}$/D',$key)||!preg_match('/^[a-f0-9]{64}$/D',$expected)
+            ||!preg_match('/^[a-zA-Z0-9:._-]{8,150}$/D',$receipt))
+            return new WP_Error('mad4b_localization_ack_bad_request');
+        return self::with_outbox_lock(static function()use($key,$expected,$receipt){
+            $jobs=self::outbox();$j=$jobs[$key]??null;
+            if(!$j||($j['status']??'')!=='leased'||!hash_equals($expected,$j['source_sha256']))
+                return new WP_Error('mad4b_localization_ack_not_leased');
+            if((int)($j['claimed_by_user']??0)!==get_current_user_id())
+                return new WP_Error('mad4b_localization_claimed_by_other');
+            $post=get_post($j['source_post_id']);if(!$post)return new WP_Error('mad4b_localization_source_gone');
+            $current=self::source_digest($j['source_post_id'],self::tree($j['source_post_id']));
+            if(!hash_equals($expected,$current))return new WP_Error('mad4b_localization_source_changed');
+            [$issues]=self::alerts_for((int)$post->ID,$post->post_type,self::translations($post->ID,$post->post_type),
+                self::languages(),self::default_lang());
+            $still=array_filter($issues,static fn($i)=>$i['id']===$j['issue_id']);
+            $passed=!$still;
+            $j['status']=$passed?'verified':'needs_review';
+            $j['acknowledged_at']=gmdate('c');$j['receipt_id']=$receipt;
+            $j['readback_passed']=$passed;
+            $j['last_error']=$passed?null:'source_issue_still_visible';
+            $jobs[$key]=$j;
+            update_option(self::OPTION,$jobs,false);
+            if(get_option(self::OPTION,[])!==$jobs)return new WP_Error('mad4b_localization_ack_write_failed');
+            return ['contract'=>'mad4b.localization.ack.v1','status'=>$j['status'],
+                'source_readback_verified'=>$passed,'receipt_id'=>$receipt];
+        });
+    }
+    public static function rest_register(){
+        register_rest_route('mad4b-localization/v1','/jobs',[
+            'methods'=>'GET','permission_callback'=>static fn()=>current_user_can('edit_others_posts'),
+            'callback'=>static function($request){
+                $list=array_values(array_filter(self::outbox(),static fn($x)=>($x['status']??'')==='queued'));
+                if(class_exists('MAD4B_WPML_Frontend_Priority_V1'))
+                    $list=MAD4B_WPML_Frontend_Priority_V1::sort_outbox($list,40);
+                return rest_ensure_response(['contract'=>'mad4b.localization.mcp-outbox.v1',
+                    'executor'=>'mcp_client','requires_authenticated_client'=>true,
+                    'status'=>'queued_not_executed','jobs'=>array_slice($list,0,40)]);
+            }]);
+        foreach(['claim'=>'claim','ack'=>'ack','recover'=>'recover_claim'] as $action=>$method)
+            register_rest_route('mad4b-localization/v1','/jobs/'.$action,[
+                'methods'=>'POST','permission_callback'=>static fn()=>current_user_can('edit_others_posts'),
+                'callback'=>static function($request)use($method){
+                    $r=self::$method($request->get_json_params());
+                    if(is_wp_error($r)&&$method==='recover_claim'){
+                        // A denied or stale recovery is a client/authority failure,
+                        // not an unclassified REST 500. Never change the gate itself.
+                        $status_by_code=[
+                            'mad4b_localization_recovery_unauthorized'=>403,
+                            'mad4b_localization_recovery_invalid_input'=>400,
+                            'mad4b_localization_recovery_site_mismatch'=>403,
+                            'mad4b_localization_recovery_not_eligible'=>409,
+                            'mad4b_localization_recovery_lease_mismatch'=>409,
+                            'mad4b_localization_recovery_source_mismatch'=>409,
+                            'mad4b_localization_recovery_wpml_mismatch'=>409,
+                            'mad4b_localization_recovery_receipt_mismatch'=>422,
+                            'mad4b_localization_recovery_native_job_mismatch'=>409,
+                            'mad4b_localization_recovery_gap_still_present'=>409,
+                            'mad4b_localization_recovery_already_attempted'=>409,
+                            'mad4b_localization_recovery_write_unconfirmed'=>500
+                        ];
+                        $code=$r->get_error_code();
+                        $data=(array)$r->get_error_data($code);
+                        if(!isset($data['status'])){
+                            $data['status']=$status_by_code[$code]??500;
+                            $r->add_data($data,$code);
+                        }
+                    }
+                    return is_wp_error($r)?$r:rest_ensure_response($r);
+                }]);
+    }
+    public static function register_abilities(){
+        if(!function_exists('wp_register_ability')||!self::enabled())return;
+        $name='mad4b/localization-jobs';
+        if(function_exists('wp_has_ability')&&wp_has_ability($name))return;
+        wp_register_ability($name,[
+            'label'=>'MAD4B Localization MCP Client Job Outbox',
+            'description'=>'Authenticated MCP Client reads pending Elementor/WPML translation jobs. Reading does not execute translation.',
+            'category'=>'mad4b-read',
+            'execute_callback'=>static function($in){
+                $jobs=array_values(array_filter(self::outbox(),static fn($x)=>($x['status']??'')==='queued'));
+                if(class_exists('MAD4B_WPML_Frontend_Priority_V1'))
+                    $jobs=MAD4B_WPML_Frontend_Priority_V1::sort_outbox($jobs,40);
+                return ['contract'=>'mad4b.localization.mcp-outbox.v1',
+                    'status'=>'queued_not_executed','jobs'=>array_slice($jobs,0,40)];
+            },
+            'permission_callback'=>static fn($in)=>current_user_can('edit_others_posts'),
+            'input_schema'=>['type'=>'object','properties'=>[],'additionalProperties'=>false],
+            'output_schema'=>['type'=>'object','additionalProperties'=>true],
+            'meta'=>['mcp'=>['public'=>false,'type'=>'tool','surface'=>'read']]
+        ]);
+        foreach(['mad4b/localization-claim'=>'claim','mad4b/localization-ack'=>'ack'] as $ability=>$method){
+            if(function_exists('wp_has_ability')&&wp_has_ability($ability))continue;
+            $schema=['type'=>'object','properties'=>[
+                'key'=>['type'=>'string','pattern'=>'^[a-f0-9]{64}$'],
+                'expected_source_sha256'=>['type'=>'string','pattern'=>'^[a-f0-9]{64}$'],
+                'receipt_id'=>['type'=>'string','minLength'=>8,'maxLength'=>150],
+            ],'required'=>$method==='ack'?['key','expected_source_sha256','receipt_id']:['key','expected_source_sha256'],
+                'additionalProperties'=>false];
+            wp_register_ability($ability,[
+                'label'=>$method==='claim'?'Claim Localized Content Job':'Acknowledge Localized Content Result',
+                'description'=>'Authenticated exact-source MCP client operation with durable readback.',
+                'category'=>'mad4b-write','execute_callback'=>static fn($in)=>self::$method($in),
+                'permission_callback'=>static fn($in)=>current_user_can('edit_others_posts'),
+                'input_schema'=>$schema,'output_schema'=>['type'=>'object','additionalProperties'=>true],
+                'meta'=>['mcp'=>['public'=>false,'type'=>'tool','surface'=>'write']]
+            ]);
+        }
+    }
+    public static function admin(){
+        if(!current_user_can('edit_others_posts'))return;
+        $h=get_option(self::REPORT,[]);
+        echo '<div class="notice notice-info"><p>MAD4B Localization: '.esc_html((string)($h['issues']??'not scanned')).
+            ' Elementor/WPML gaps; MCP client jobs queued: '.esc_html((string)($h['pending']??'unknown')).
+            ' — <a href="'.esc_url(admin_url('admin.php?page=mad4b-content-readiness-alerts')).'">Content Readiness</a></p></div>';
+    }
+    public static function boot(){
+        if(!self::enabled())return;
+        add_filter('mad4b/content_readiness/external_issues',[__CLASS__,'external'],30,2);
+        add_action('updated_post_meta',[__CLASS__,'after_meta'],20,4);
+        add_action('added_post_meta',[__CLASS__,'after_meta'],20,4);
+        add_action('elementor/editor/after_save',static function($post_id){
+            if(self::$busy||!self::enabled())return;
+            $r=self::sync_source((int)$post_id,true);
+            if(!is_wp_error($r))wp_schedule_single_event(time()+30,'mad4b_localization_scan_v1');
+        },100,1);
+        add_action('mad4b_localization_scan_v1',[__CLASS__,'cron_scan']);
+        add_action('init',static function(){if(!wp_next_scheduled('mad4b_localization_scan_v1'))
+            wp_schedule_event(time()+60,'hourly','mad4b_localization_scan_v1');},30);
+        add_action('rest_api_init',[__CLASS__,'rest_register']);
+        add_action('wp_abilities_api_init',[__CLASS__,'register_abilities'],40);
+        add_action('admin_notices',[__CLASS__,'admin']);
+        if(defined('WP_CLI')&&WP_CLI&&class_exists('WP_CLI'))
+            WP_CLI::add_command('mad4b localization',[__CLASS__,'cli']);
+    }
+}
+add_action('plugins_loaded',['MAD4B_Elementor_Localization_V1','boot'],30);

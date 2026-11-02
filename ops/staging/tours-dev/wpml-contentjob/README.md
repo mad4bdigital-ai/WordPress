@@ -1,0 +1,161 @@
+# WPML → MAD4B ContentJobs — Central Staging pilot
+
+This folder is a **site-bound Staging source snapshot**, not an installable global release. The native Control Plane authority fix is reviewed separately in [PR #741](https://github.com/mad4bdigital-ai/WordPress/pull/741); it must be reconciled against the current deployed plugin before any promotion.
+
+## Scope and authority
+
+- Target: `https://tours.dev.mad4b.com`, WordPress `staging`, exact site UUID validated in the host runner.
+- WPML source: native `icl_translate_job` entries with `translated=0`, plus pending Elementor localization outbox entries from engine 301.
+- One canonical `content_type=translation` ContentJob per `site_uuid + post_type + source_post_id + locale`. Local WordPress option `mad4b_wpml_content_job_map_v1` retains the mapping, native WPML task IDs, and gap codes.
+- Only `MAD4B_SCP_Content_Jobs::create_job()` and `transition_job()` write ContentJob records; no manual inserts into ContentJob tables.
+- `349` provides the default-enabled site-level Master Switch and per-post/translation exclusion; `301` and `305` are the local engines wired into the same deny-only guard.
+- Every mutation requires `MAD4B_SCP_Policy::can_mutate()`. Anonymous WP-Cron/CLI cannot create a native ContentJob. The native host runner uses a verified WordPress administrator principal and checks environment, site UUID, login, and live policy each run.
+- ContentJobs start at `NEW` and are transitioned to `QUEUED` through the native state machine. **No translation, assignment, completion, or publication is performed by this intake adapter.**
+- The read-only governed ability `mad4b/wpml-contentjob-binding` resolves an exact ContentJob ID to source post, translated post, language, WPML task IDs, localization gap statuses, and readback evidence. It cannot mutate or publish.
+
+## Files
+
+- `301-mad4b-elementor-localization.php` — Staging source snapshot of the localization scanner / MCP claim-ack outbox.
+- `305-mad4b-elementor-style-parity.php` — Staging source snapshot of interactive style parity.
+- `349-mad4b-wpml-design-reconciliation.php` — site master control and source-to-linked-translation design parity.
+- `350-wpml-job-adapter.php` — native ContentJob intake, deduplication, safe reconciliation, scoped binding ability.
+- `ops/mad4b-wpml-intake-tours-dev.sh` — scoped, single-run host worker. `--user=26` is a pilot-specific **existing administrator**, not a universal operator or credential. The worker checks the actual login and site identity rather than trusting ID alone.
+- `ops/mad4b-wpml-content-intake-staging.{service,timer}` — host-native recurring intake; 5-minute cadence.
+- `tests/wpml-native-intake-readback.php` — tests no-write preview, Master OFF, post exclusion, native idempotency, and source/locale binding.
+
+## Acceptance
+
+Run **only in the enrolled Staging container**:
+
+```bash
+docker exec -u www-data etg-commerce-staging-php wp mad4b-wpml-jobs preview --user=26 --path=/var/www/html --skip-themes
+docker exec -u www-data etg-commerce-staging-php wp eval-file /tmp/wpml-native-intake-readback.php --user=26 --path=/var/www/html --skip-themes
+systemctl status mad4b-wpml-content-intake-staging.timer
+journalctl -u mad4b-wpml-content-intake-staging.service -n 25
+```
+
+The observed live readback suite passed 108 assertions on 2 November 2026, and the public homepage returned HTTP 200. This is **not** translation-executor certification or general multi-company rollout acceptance.
+
+## Rollback and incident response
+
+- Stop future intake immediately: `systemctl disable --now mad4b-wpml-content-intake-staging.timer`.
+- Master OFF stops this adapter accepting new work; per-post exclusion prevents source/target intake. Existing native ContentJobs are **not** deleted automatically.
+- The live Control Plane service's before-image is retained in `/opt/staging/mad4b-wpml-content-jobs-bridge-20261102/class-content-jobs-before.php`. Keep the post-change acceptance evidence.
+- The map and native ContentJobs must be reconciled by `job_id` and `wpml-ref:<sha256>` before replaying an uncertain create. Never blind-retry a failed or unknown COMMIT.
+- WPML translation assignments, content QA, verified receipt processing, and native completion transitions require a separate, permitted executor. Do not infer successful translation from `QUEUED`.
+- No Production installation or GitHub merge is authorized by this pilot alone.
+
+
+## 2 November 2026 live follow-up
+
+- Site-root execution confirmed MU-Plugin `356-mad4b-jetengine-count-locale.php` v0.1.1 is deployed. Direct HTML readback of `/ar/`, `/fr/`, `/de/`, `/es/`, `/it/` returned HTTP 200 and the expected locale-specific count suffix. The v0.2 singular/plural refinement in this PR is **source-only**, not deployed: deployment attempt was denied by the execution channel.
+- Found two obsolete native translation ContentJobs for Elementor template `25909` (`ar`, `fr`). Fresh `301` discovery returned `resolved_after_readback`, translated template links exist, no English fixed heading/fallback in translated Elementor settings, and neither job had an underlying WPML translation job. Cancelled both using `MAD4B_SCP_Content_Jobs::cancel_job()`, verified `CANCELLED` via native get, and persisted map resolution as `obsolete_fresh_translation_readback`. **Not** reported as translations executed.
+- Latest inspected map: 92 mapped jobs, 90 `QUEUED`, 2 `CANCELLED`. Source discovery reported 150 eligible items (the native recurring intake continues). No verified translation receipt was present for sampled queued jobs; work is **not completed**.
+- Unit tests: 43 singular/plural/idempotence/noninterference assertions passed using container PHP. Counts and grammar include ar 1/2/6/16, singular French/German/Spanish, and Italian.
+- The independent WordPress timer is the authorized Staging-only intake/QA readback workflow; the absence of a translation provider with verified receipts prevents promotion to `WAITING_REVIEW` or `COMPLETED`. Do not mark queued editorial work complete without a verified receipt.
+
+## Dynamic frontend-first priority — locally tested 2 November 2026
+
+The priority engine and public HTML crawler were derived from an exact SHA-256 snapshot of current Staging files, staged in the host-isolated local lab at `/opt/staging/mad4b-wpml-priority-local-lab-20261102`. The lab has read-only source files, tests, and rollback hashes. Changes were syntax-checked and exercised offline **before** the Staging-only rollout.
+
+- **Dynamic languages:** discover locale links from the public WPML home page; native importer cross-validates locale keys against `wpml_active_languages` and the configured default language.
+- **Observed visibility, not publication alone:** inspect public HTML `data-elementor-id`, `data-listing-id` and `data-post-id` on the locale homepage, discovered tour archive and rotating linked pages.
+- **Dynamic coverage:** switch which public URLs are probed on every scan; retain up to 28 previously confirmed pages per locale, bounded to 36 hours, with **per-page** observation timestamps and freshness decay.
+- **Refresh and failure isolation:** enrolled Staging host worker refreshes visibility every ~20 minutes; scanner uses an exclusive local lock and bounded concurrent HTTP fetches, rejects off-host redirects, writes JSON atomically, and refuses to replace known-good evidence when new coverage is insufficient. A failed crawl cannot make a previously observed page invisible.
+- **Fairness:** new native ContentJobs favor observed homepage and archive dependencies, while unobserved work retains a low-priority fallback. Receipt review reserves half its slots for top-priority work and rotates the other half through the outstanding queue; no job is closed without authorized translation receipts.
+- **Local acceptance:** 93 Python fixture assertions (rotation, lock-friendly output model, expiry, no-overwrite outage, foreign-host rejection) and 19 PHP assertions (real captured HTML evidence, dynamic locale extension, priority sorting, negative coverage and outdated evidence). Live public-HTML read-only lab crawl returned 31 verified pages across five languages.
+- **Staging readback after rollout:** native priority import reports 31 pages and five languages, WordPress timer active, all five locale homepages HTTP 200. The priority mechanism does not translate or publish content.
+
+**Current scope:** the site/host/service identity remains explicitly bound to the authorized `tours.dev.mad4b.com` Staging pilot. Do not treat this source snapshot as globally deployed or as Production approval. No production site changed.
+
+**Rollback:** stop `mad4b-wpml-content-intake-staging.timer`, restore `357-mad4b-wpml-frontend-priority.php` and `live-frontend-probe.py` from the lab's `live-source/` and exact SHA-256 manifest, then restart the timer. Priority option state is independent from translation content and from native ContentJobs.
+
+## Silent draft masking prevention — Staging verification (2 November 2026)
+
+A real live mismatch existed: \`wpml_get_element_translations\` omitted drafts while \`wpml_object_id\` resolved them, so the 301 scanner repeatedly emitted \`loc_missing_XX\` with \`target_post_id=0\`. Native ContentJobs correctly remained \`WAITING_REVIEW\`, but the outbox called the draft "missing" and still allowed a translation executor to pick it up.
+
+The repair reads the WPML object ID for a **draft only** when all of these match: current source's translation TRID, target language, post type, and draft status. It never treats the draft as published or as a final translation receipt.
+
+- The original issue key and native ContentJob ID are retained; the gap code \`loc_missing_XX\` still correctly indicates **missing published translation**.
+- The existing outbox row now has \`status=needs_review\`, \`stage=WPML_DRAFT_REVIEW\`, \`operation=review_unpublished_wpml_draft\`, \`review_state=draft_unpublished_pending_review\`, and a concrete target ID.
+- Draft rows remain discoverable in \`MAD4B_WPML_ContentJob_Adapter::discover()\`; its preview counts \`draft_pending_review\`. They are intentionally **not** offered to the regular MCP execution pickup that only returns \`queued\` work.
+- \`MAD4B_WPML_ContentJob_Adapter::binding()\` reports target draft status, review blockers, and \`readback_verified=false\` until real publication/receipt checks pass.
+- A read-only \`mad4b/wpml-review-dashboard\` WordPress ability and \`wp mad4b-wpml-jobs review-dashboard\` CLI command expose all pending review work, separating unpublished draft and published-target editorial review states.
+- After applying on Staging, the real review dashboard returned **17/17** linked drafts in \`needs_review\`, **9** published-target jobs still awaiting editorial review, **0** unmapped drafts, and 121 other outstanding translation jobs. It preserved **154** existing mapped jobs and native states, without generating replacement jobs, publishing drafts, changing Production, or auto-completing tasks.
+- Exact representative issue: \`Home Properties Search Box\`, French, draft ID \`68832\`: "WPML translation draft #68832 exists but is unpublished. Elementor references, locale rendering and editorial review remain pending". Stage \`WPML_DRAFT_REVIEW\`; reference \`review_unpublished_wpml_draft\`; public homepage HTTP 200.
+
+This makes the review task explicit in the underlying WordPress ability, Outbox, and ContentJob evidence. An independent Control Plane dashboard frontend must consume the ability to render a dedicated panel; **ability registration alone is not proof that a visible dashboard UI has been wired**. Continue to distinguish technical review handoff from completed translations.
+
+## Control Plane visible WPML review ledger — Staging pilot, November 2, 2026
+
+The live Control Plane at `tours.dev.mad4b.com` (plugin `mad4b-site-control-plane` 0.4.0-rc.118) has an existing Content Readiness admin screen. The added Staging-only MU plugin `358-mad4b-control-plane-wpml-review-ui.php` registers a native submenu under `MAD4B Control Plane → WPML Reviews`, and a contextual warning/link under `MAD4B Control Plane → Content Readiness`. The admin URL is:
+
+`https://tours.dev.mad4b.com/wp-admin/admin.php?page=mad4b-wpml-review-dashboard`
+
+The view reads `MAD4B_WPML_ContentJob_Adapter::review_dashboard(100)` and displays exact WPML target IDs, localized post language, post status, native ContentJob ID and state, outbox statuses, review blockers, and normal WordPress editor links. Accessible GET filters for locale and review type; no new writes, approval shortcuts, publishing or brand-context dependencies. Requires WordPress `manage_options` **and** MAD4B read authorization. Its cached data remains protected by a fresh authorization check.
+
+Live acceptance following installation: PHP syntax PASS; exact installed SHA-256 matched source; 16 UI integration checks PASS; native admin submenu and Control Plane route registry PASS; dynamic staging-only acceptance **58 assertions PASS**, with 17 unpublished drafts, 9 published targets requiring approval, 121 other pending native ContentJobs. The real webpage requires a normal authenticated WordPress session; a logged-out HTTP probe correctly redirected to `wp-login.php`. The HTML markup and admin registration were tested using authorized WordPress CLI, but no authenticated interactive browser screenshot was captured. Frontend homepage HTTP 200, intake timer active, Production unchanged.
+
+The independent regression test lives in `tests/wpml-review-ui-acceptance.php`; run with the site's enrolled WP-CLI user, not an unauthenticated or fabricated principal. The review page intentionally cannot transition `WAITING_REVIEW` to `COMPLETED` or publish a draft.
+
+## Browser visual acceptance — 2 November 2026
+
+The requested **authenticated browser** session was not available from the current ChatGPT context (connected Browser extension required the originating browser context; the authorized Desktop Commander device was offline). No WordPress session, cookie or administrator principal was fabricated.
+
+Instead, the user-authorized WP-CLI operator rendered exact current WordPress admin markup to a private local-only HTML file. The native WordPress admin CSS was included, and local Chromium/Playwright rendered screenshots at 1440px desktop, 390px mobile, 320px mobile and French-only draft filter. Screenshots stay in the server-side isolated QA folder, not a public endpoint. The first apparent document overflow was traced to the **visual test harness wrapper** (`box-sizing: content-box` plus padding), not deployed UI markup. Fixing the harness restored exact viewport widths with the table horizontally scrollable inside its own container.
+
+The repeatable `tests/wpml-browser-visual-security-checks.py` ran **25 browser assertions PASS / 0 FAIL**: zero document overflow, navigable scrolling table, labeled dropdowns, safe editor links, no publish/approve/complete UI actions, correct 26 reviewed items and four French-only draft rows. A real anonymous browser navigation to the protected admin route correctly redirected to WordPress Login and did not reveal the review ledger. Evidence: `evidence/wpml-browser-visual-security-20261102.json`.
+
+**Not yet claimed:** an actual screenshot and interaction from an already-authenticated administrator browser session. This requires connected authenticated browser access (e.g. in Work mode or an originating browser context) rather than creating a session with backend privileges. Production not changed; review draft states unchanged.
+
+## Final native VPS browser acceptance — 2 November 2026
+
+An authenticated **real Chromium** browser, launched on the authorized VPS, opened `/wp-admin/admin.php?page=mad4b-wpml-review-dashboard` using a short-lived, genuine WordPress Core session issued for the existing authorized Staging administrator (user 26). No account or password was created/changed. This was **not** the user's personal browser session. Credentials remained in the local runner's memory and were not saved to screenshots or GitHub.
+
+The first real-browser pass caught a WordPress-admin-only mobile issue: at 320px, the page overflowed to 358px and table cells were visually clipped. Changed the Staging-only UI (MU file 358) to make review rows accessible **labeled cards at widths <=782px**, while preserving the desktop table. The first automatic QA session cleanup was not confirmed during a period of simultaneous WP-CLI load, but the sole short-lived localhost test session was later matched exactly and revoked through native WP session APIs. Independent `wp user session list 26` readback returned `[]`.
+
+**Final post-fix actual authenticated-browser checks:** desktop 1440px and mobile 390px/320px showed 26 review items; the French-drafts filter showed four. All four had HTTP 200, the real WordPress admin navigation, no JavaScript page errors and no document horizontal overflow. The actual Content Readiness admin page displayed the WPML review notice with its link. Native PHP regression: 58 assertions passed. Live MU file SHA-256 matched the tested source `e9ab443f5dcc49b6ac32463a85467d0fefe9d829a143ce1b1ab091894fadff68`. The frontend responded HTTP 200, the intake timer remained active, and 17 drafts + 9 published awaiting review + 121 other pending remained tracked. Production unchanged.
+
+Final audit (including chronological session-revocation evidence): `evidence/wpml-vps-authenticated-visual-acceptance-final-20261102.json`. Screenshots of authenticated admin data are stored **privately on the VPS** rather than being published to the repository.
+
+**Acceptance status: PASS.** This verifies the admin UI and its read-only control-plane integration; it does not imply approval, publication, or completion of the remaining ContentJobs.
+
+## Review continuation — live-first Staging execution on 2 November 2026
+
+Work resumed from the 26 `WAITING_REVIEW` native WPML ContentJobs. The first 17-draft audit found 8 unresolved JetEngine references: three local tour listing links (source 54880 → translated drafts ar/fr/de) and five `Custom Business Reviews` listing dependencies (source JetEngine listing 43727 has no WPML locale variants). All 17 drafts retained exact Elementor widget counts/types.
+
+**Actual targeted repairs:** corrected the three tour listing references to real, published locale-specific JetEngine listings; each received SHA-bound rollback evidence in WordPress `mad4b_wpml_review_ref_proof_<target>_v1`. A deeper review detected eight further JetSmartFilters dependencies: source search widget `filter_id` is an **array of numeric post-ID strings**, not a scalar. Corrected the eight French/German/Spanish/Italian hotel and transport search drafts to their existing published WPML filters, keeping the original sequence, data types, and source TRID. Every edit was authorized on Staging, performed only on `_elementor_data`, backed up and checked by WordPress readback; none published a draft or completed a ContentJob.
+
+**Permanent dynamic logic:** live `349-mad4b-wpml-design-reconciliation.php` now recognizes legitimate WPML drafts and maps reference arrays through `wpml_object_id`. Live `350-wpml-job-adapter.php` has a bounded, read-only draft-reference validator handling both scalar IDs and JetSmartFilters arrays (avoids incorrect `(int)$array == 1` inference). It reports individual unresolved source/widget/field and clear counters (`draft_references_verified`, `draft_references_unresolved`). Live `358-mad4b-control-plane-wpml-review-ui.php` displays both counters and a specific warning for unresolved locale listings; reviews are not silently hidden.
+
+**Source regression identified and corrected:** six French `Home Blog Section` text fields were reset to English by a subsequent source sync despite an earlier receipt. The live outbox correctly reopened `loc_text_fr`. A new valid Claim, exact targeted translation, hash-backed rollback, native Ack, and fresh WPML readback restored `Lire la suite` and `Tout` and yielded a new receipt. Re-scanning then confirmed **all nine published-target review jobs have current verified localization receipts**.
+
+**Acceptance:** `tests/wpml-review-reference-live-acceptance.php` passed **114 live, read-only assertions**. Confirmed 17 draft jobs still in `WAITING_REVIEW`: 12 now have verified technical references and 5 are blocked by missing localized `Custom Review Listing` (source 43727). Verified all eight array-valued filter references and all nine published-target receipts. Control Plane GUI integration test: 58 PASS; live Staging frontend HTTP 200 and intake timer active. No Production changes.
+
+**Remaining decisions:** technical reference validation is **not editorial approval or proof of public rendering**. The five review templates rely on a reviews listing with placeholder-looking structure and unverified localized review data; never invent reviews or publish empty placeholders to clear the queue. Leave all 17 drafts unpublished and all 26 ContentJobs visible pending authorized content review, preview/render checks and separate editorial approval. The 121 other translation requests remain outstanding and require genuine translation/provider work where appropriate.
+
+## 2 November 2026 — Staging publication and final receipts
+
+User-authorized execution on `tours.dev.mad4b.com` (Staging-only, WordPress operator 26). Each action checked MAD4B site scope and WordPress authority. The original review set included 17 unpublished Elementor translations plus nine previously published templates still in native `WAITING_REVIEW`.
+
+**12/12 Elementor drafts were rendered and localized before publication.** Verified translated source strings, real Elementor markup, language switching, WPML TRIDs and correctly mapped JetEngine/JetSmartFilters references. On each Staging publication, a rollback option and SHA-256-bound publication receipt was saved, WordPress post status was read back as `publish`, and the original native ContentJob approval was executed only after verified live source-gap disappearance, WPML target readback, signed-by-process Staging QA reference and matching historical outbox issue receipt.
+
+An implementation gap was discovered in the original bridge: persisted `target_post_id=0` from initial intake survived even after publication. The live `350-wpml-job-adapter.php` now re-resolves the authoritative WPML target with source/target TRID, locale and type checks; no guesses. The added Staging-only `359-mad4b-wpml-staging-review-seal.php` seals resolved historical outbox gaps only upon exact evidence matching, then calls existing `approve_verified` / native `MAD4B_SCP_Content_Jobs` transition, rather than claiming completion based on queue labels.
+
+**9/9 previously published translations** were independently re-rendered and checked for receipt validity, locale and unchanged English fields before original native `approve_verified` was invoked. All nine became `COMPLETED`; no content was newly published in this part of the work.
+
+**Five verified WPML-linked JetEngine listing drafts** were created via the existing native `mad4b-technical-copy` path, and each unpublished review-section draft was linked to its own language-specific draft listing. The review listing source contains three Elementor stock title placeholders that are overridden by verified dynamic tags; classifier 351 now recognizes only this exact guarded case as technical, not a license to skip real editorial strings. The underlying `custom-reviews` CPT has **zero** published entries. Therefore the five review sections and their five linked listings remain `draft`; their five native review ContentJobs remain `WAITING_REVIEW` with a visible Control Plane warning. Reference QA correctly distinguishes a linked *draft* from a published usable listing and shows `localized_reference_unpublished` plus `verified_reviews_data_missing`. Never invent, scrape unattributed, or auto-publish customer reviews.
+
+**Verified live outcome:** 12 newly published + 9 existing approved = **21 native ContentJobs COMPLETED**, with 5 draft review tasks still visible. The separate 121 other translation ContentJobs are outside this completed batch and remain outstanding. Live `WPML Reviews` has five review rows, no published-target reviews awaiting approval, and five source-data blockers. Five locale homepages returned HTTP 200; native intake timer remained active. WordPress real-data acceptance `tests/wpml-final-21-plus5-acceptance.php` passed **156 assertions**, with an accompanying source-backed JSON report `evidence/wpml-final-21-plus5-20261102.json`. Only Staging was modified; no Production deployment and no GitHub merge.
+
+## Final Hero recovery closure — 2 November 2026 (Staging)
+
+Both `Home Hero Section 2` translations were already published and had independently valid original publication Receipts, but native ContentJobs were stuck in `QUEUED`. German `68865` completed via original Outbox `ack`, `reconcile_verified` and `approve_verified`. French `68864` had a historical `resolved_after_readback` state created while the original Claim was still live; by the time recovery was attempted its 30-minute lease had expired. Plain `claim` and `ack` correctly refused that state.
+
+The original French publication receipt remained immutable. The target Elementor SHA-256 changed after publication, so simply replaying the old receipt was rejected. An independent, fresh readback verified all 13 translated text fields, 3 localized links, 5 localized WPML images, 26 matching Elementor widget nodes, the WPML TRID and locale, and actual locale-specific Elementor rendering. The resulting `mad4b.wpml.hero-current-readback-attestation.v1` was recorded against the **original** publication receipt and current target SHA.
+
+Staging MU `301-mad4b-elementor-localization.php` now supports governed `recover_claim`: a prior `resolved_after_readback` claim may receive a fresh, short-lived lease only when the original claimant is the authenticated operator, the old lease has expired within a bounded recovery window, source digest and WPML linkage are intact, the target is published, an original exact publication receipt (plus current attestation if SHA has changed) is valid, the original native ContentJob is still `QUEUED`, the original localization issue is absent, the site is the intended Staging company, and retry limits allow. It writes a recovery audit and returns only a **leased Claim**; it cannot auto-approve or forge a native ContentJob transition. Registered REST route `POST /wp-json/mad4b-localization/v1/jobs/recover` uses WordPress permission checks; its full externally authenticated REST call has **not** been tested in this cycle. Actual recovery and final approval were executed through the authorized local WordPress operator via WP-CLI.
+
+After recovery, **the original** `MAD4B_Elementor_Localization_V1::ack` returned `verified` with source readback, `reconcile_verified` advanced the French job to `WAITING_REVIEW`, and `approve_verified` advanced it to `COMPLETED`. German and French native jobs now both read `COMPLETED`, their Outbox entries remain `verified` after a fresh periodic-style `queue_scan`, and the two localized templates remain published. Exact IDs: FR target `68864`, job `89c69db1-d12e-4812-a198-bb9e3441e944`; DE target `68865`, job `2eb24538-fab8-4cc0-b63c-5d2aaa42fbb9`.
+
+The regression script `tests/wpml-hero-governed-recovery-acceptance.php` passed **47 live Staging assertions**, including denial of malformed and repeated recovery, no re-execution, correct original receipts, correct WPML links, complete native job state, unchanged separate review backlog and registered REST route. Evidence is in `evidence/wpml-hero-two-jobs-completed-recovery-20261102.json`. French and German homepages return HTTP 200, the WPML intake timer is active, and the **five unrelated review-content drafts remain blocked and visible**. Production unchanged. PR #743 remains Draft pending regular review/merge.
