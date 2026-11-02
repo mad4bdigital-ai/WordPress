@@ -723,6 +723,15 @@ final class Shared_Product_Rate_Generation {
     wp_delete_post($created,true);
     return new WP_Error('rate_generator_locale_binding_failed');
    }
+   // WPML may rewrite related_tour_id to the currently active language
+   // during wp_insert_post(). Bind the Rate to its explicitly chosen parent
+   // AFTER assigning its own language, and verify the stored relationship.
+   if((int)get_post_meta($created,'related_tour_id',true)!==(int)$plan['parent_id'])
+     update_post_meta($created,'related_tour_id',(int)$plan['parent_id']);
+   if((int)get_post_meta($created,'related_tour_id',true)!==(int)$plan['parent_id']){
+    wp_delete_post($created,true);
+    return new WP_Error('rate_generator_locale_parent_binding_failed');
+   }
   }
   if(get_post_type($created)!==$plan['post_type']||get_post_status($created)!=='draft'||
      get_post_meta($created,self::META,true)!==$plan['fingerprint']){
