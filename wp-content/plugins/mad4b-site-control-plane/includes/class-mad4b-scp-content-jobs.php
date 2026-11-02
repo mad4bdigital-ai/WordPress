@@ -455,6 +455,15 @@ final class MAD4B_SCP_Content_Jobs {
 		$publish_at = self::normalize_datetime( isset( $input['desired_publish_at'] ) ? $input['desired_publish_at'] : '' );
 		if ( is_wp_error( $publish_at ) ) return $publish_at;
 
+		// Deny an unidentified WP-CLI or Cron principal BEFORE any transactional writes.
+		// The final integrity check below still guards against authority changes.
+		if ( ! class_exists( 'MAD4B_SCP_Policy' ) || true !== MAD4B_SCP_Policy::can_mutate() ) {
+			return new WP_Error( 'mad4b_content_job_authorized_actor_required',
+				'A verified WordPress administrator or governed NHI is required to create ContentJobs.',
+				array( 'stage' => 'pre_transaction_authorization', 'mutation_performed' => false,
+					'requires_authorized_principal' => true ) );
+		}
+
 		$job_id = strtolower( wp_generate_uuid4() );
 		$now = gmdate( 'Y-m-d H:i:s' );
 		$actor = self::actor();
@@ -495,13 +504,18 @@ final class MAD4B_SCP_Content_Jobs {
 			return new WP_Error( 'mad4b_content_job_transaction_unavailable', 'ContentJob creation requires an atomic database transaction.' );
 		}
 		try {
+			$failure_stage = 'insert_content_job';
 			if ( false === $wpdb->insert( $t['content_jobs'], $data ) ) throw new RuntimeException( 'content_job_insert_failed' );
+			$failure_stage = 'append_content_job_event';
 			$event = self::append_event_locked( $job_id, 1, 'CREATED', '', 'NEW', '', 'INTAKE', (string) $input['reason'], $actor, '', '' );
 			if ( is_wp_error( $event ) ) throw new RuntimeException( $event->get_error_code() );
+			$failure_stage = 'append_audit';
 			$audit = MAD4B_SCP_Audit::record( 'mad4b/content-job-create', array( 'job_id' => $job_id, 'site_uuid' => $site_uuid, 'revision' => 1 ), 'ok', true );
 			if ( is_wp_error( $audit ) ) throw new RuntimeException( $audit->get_error_code() );
+			$failure_stage = 'assert_operational_integrity';
 			$fence = MAD4B_SCP_Operational_Integrity::assert_unchanged( $checkpoint, true );
 			if ( is_wp_error( $fence ) ) throw new RuntimeException( $fence->get_error_code() );
+			$failure_stage = 'commit';
 			if ( false === $wpdb->query( 'COMMIT' ) ) {
 				// A lost acknowledgement does not prove the database rolled back.
 				// A blind client retry can create a second job; demand scoped readback.
@@ -515,8 +529,17 @@ final class MAD4B_SCP_Content_Jobs {
 			if ( false === $rolled_back ) {
 				return new WP_Error( 'mad4b_content_job_rollback_uncertain', 'ContentJob rollback could not be confirmed; reconcile the exact job.', array( 'job_id' => $job_id, 'blind_retry_allowed' => false, 'reconciliation_required' => true ) );
 			}
-			// Do not return raw SQL or PHP exception details over REST / MCP.
-			return new WP_Error( 'mad4b_content_job_create_failed', 'Unable to create ContentJob.', array( 'blind_retry_allowed' => false, 'rollback_confirmed' => true ) );
+			// Report only a bounded machine-readable code, never raw SQL or secrets.
+			$failure_code = sanitize_key( $e->getMessage() );
+			if ( ! preg_match( '/^(mad4b_|content_job_)[a-z0-9_]{3,90}$/D', $failure_code ) ) {
+				$failure_code = 'content_job_unexpected_exception';
+			}
+			error_log( '[MAD4B ContentJob] create_rolled_back stage=' . $failure_stage .
+				' failure=' . $failure_code . ' exception=' . get_class( $e ) );
+			return new WP_Error( 'mad4b_content_job_create_failed', 'Unable to create ContentJob.', array(
+				'blind_retry_allowed' => false, 'rollback_confirmed' => true,
+				'failure_stage' => $failure_stage, 'failure_code' => $failure_code,
+			) );
 		}
 		return self::get_job( array( 'job_id' => $job_id ) );
 	}

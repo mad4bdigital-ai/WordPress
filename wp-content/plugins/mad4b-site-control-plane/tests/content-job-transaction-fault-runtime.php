@@ -12,6 +12,7 @@ class WP_Error {
 }
 function is_wp_error($v){return $v instanceof WP_Error;}
 function add_action(){}
+function do_action(...$args){}
 function absint($n){return abs((int)$n);}
 function sanitize_key($s){return strtolower(preg_replace('/[^a-z0-9_-]/','',(string)$s));}
 function sanitize_text_field($s){return trim(strip_tags((string)$s));}
@@ -85,6 +86,17 @@ assert_pass(is_wp_error($r)&&$r->get_error_code()==='mad4b_content_job_transacti
 assert_pass(count($wpdb->queries)===0&&count($wpdb->inserts)===0,'nontransactional storage starts no write');
 $GLOBALS['transactional_ok']=true;
 
+// Anonymous CLI/cron principals must fail BEFORE a job insert or BEGIN.
+$wpdb=fresh_db();$GLOBALS['mutation_enabled']=false;
+$r=MAD4B_SCP_Content_Jobs::create_job($input);
+assert_pass(is_wp_error($r)&&$r->get_error_code()==='mad4b_content_job_authorized_actor_required',
+    'anonymous ContentJob creator rejected explicitly');
+assert_pass($r->get_error_data()['mutation_performed']===false,
+    'preflight result declares zero mutation');
+assert_pass(count($wpdb->queries)===0&&count($wpdb->inserts)===0,
+    'no transaction or writes when actor is not authorized');
+$GLOBALS['mutation_enabled']=true;
+
 $wpdb=fresh_db();$wpdb->fail_begin=true;
 $r=MAD4B_SCP_Content_Jobs::create_job($input);
 assert_pass(is_wp_error($r)&&$r->get_error_code()==='mad4b_content_job_transaction_unavailable','missing BEGIN denied');
@@ -102,6 +114,9 @@ $wpdb=fresh_db();$GLOBALS['test_revoke_at_audit']=true;
 $r=MAD4B_SCP_Content_Jobs::create_job($input);
 assert_pass(is_wp_error($r)&&$r->get_error_code()==='mad4b_content_job_create_failed','revocation rolls back');
 assert_pass(in_array('ROLLBACK',$wpdb->queries,true)&&!in_array('COMMIT',$wpdb->queries,true),'revoked policy prevents commit');
+assert_pass($r->get_error_data()['failure_stage']==='assert_operational_integrity'
+    && $r->get_error_data()['failure_code']==='mad4b_integrity_authorization_revoked',
+    'revocation yields bounded diagnostic fields after confirmed rollback');
 $GLOBALS['test_revoke_at_audit']=false;
 
 // ROLLBACK acknowledgement loss is also outcome-uncertain, even after deny.

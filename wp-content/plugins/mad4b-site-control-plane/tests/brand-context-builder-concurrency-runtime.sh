@@ -39,6 +39,14 @@ final class MAD4B_SCP_Operational_Integrity {
       ? true : new WP_Error('brand_lineage_test_scope_changed');
   }
 }
+// This synthetic integration fixture already supplies an authorized Staging
+// scope via its Operational_Integrity test double. Mirror the exact mutation
+// permission predicate: the production policy still rejects anonymous actors.
+if (!class_exists('MAD4B_SCP_Policy')) {
+  final class MAD4B_SCP_Policy {
+    public static function can_mutate() { return true; }
+  }
+}
 require_once $root . '/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php';
 require_once $root . '/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-artifacts.php';
 
