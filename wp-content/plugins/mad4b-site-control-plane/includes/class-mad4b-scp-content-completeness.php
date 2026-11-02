@@ -17,7 +17,7 @@ final class MAD4B_SCP_Content_Completeness {
         'seo_og_title','seo_og_description','seo_canonical',
         'term_description','term_meta_text','term_meta_image');
     public static function boot() {
-        add_action('admin_menu',array(__CLASS__,'menu'),33);
+        MAD4B_SCP_Admin_Route_Registry::schedule_submenu(array(__CLASS__,'menu'));
         add_action('admin_post_mad4b_completeness_save',array(__CLASS__,'save'));
         add_action('rest_api_init',array(__CLASS__,'routes'));
     }
@@ -351,6 +351,7 @@ final class MAD4B_SCP_Content_Completeness {
             'complete'=>$complete,'issues'=>$issues,'evaluated'=>$scanned,'skipped_unknown'=>$unknown);
     }
     public static function menu() {
+        MAD4B_SCP_Admin_Route_Registry::register(self::PAGE,'manage_options');
         add_submenu_page('mad4b-control-plane','Content Completeness & SEO',
             'Completeness & SEO','manage_options',self::PAGE,array(__CLASS__,'render'));
     }
