@@ -62,6 +62,16 @@ final class MAD4B_WPML_ContentJob_Adapter {
    $r['native_jobs']=array_values(array_unique($r['native_jobs']));
    $r['eligible']=get_post_status($r['src'])==='publish'&&$r['lang']!==$origin
      &&mad4b_wpml_auto_sync_allowed_v1($r['src'],$r['dst']);
+   $target=(int)($r['dst']??0);
+   $status=$target?(string)get_post_status($target):'missing';
+   $r['target_post_status']=$status;
+   if($status==='draft' && $target>0){
+    $details=apply_filters('wpml_post_language_details',null,$target);
+    if(is_array($details)&&($details['language_code']??'')===$r['lang']){
+     $r['draft_pending_review']=true;
+     $r['review_blocker']='WPML-linked target is unpublished. Editorial, Elementor reference and public render checks required';
+    }
+   }
    // Skip language-specific translation jobs ONLY when runtime evidence
    // confirms this is a reusable text-free technical structure, and no
    // separate native WPML job exists. Never suppress user-facing content.
@@ -75,6 +85,7 @@ final class MAD4B_WPML_ContentJob_Adapter {
      $r['eligible']=false;
     }elseif($r['classification']==='needs_render_review')$r['work_kind']='render_review_required';
    }
+   if(!empty($r['draft_pending_review']))$r['work_kind']='draft_pending_review';
   }unset($r);
   ksort($group,SORT_STRING);
   return ['items'=>array_values($group),'counts'=>$stats];
@@ -84,15 +95,18 @@ final class MAD4B_WPML_ContentJob_Adapter {
   $scope=self::scope();if(is_wp_error($scope))return $scope;
   $scan=self::discover();$map=(array)get_option(self::MAP,[]);
   $summary=['eligible'=>0,'excluded'=>0,'mapped'=>0,'total'=>count($scan['items']),
-    'technical_design_only'=>0,'render_review_required'=>0];$examples=[];
+    'technical_design_only'=>0,'render_review_required'=>0,'draft_pending_review'=>0];$examples=[];
   foreach($scan['items'] as $r){
    $summary[$r['eligible']?'eligible':'excluded']++;
    if(($r['work_kind']??'')==='technical_design_only')$summary['technical_design_only']++;
    if(($r['work_kind']??'')==='render_review_required')$summary['render_review_required']++;
+   if(($r['work_kind']??'')==='draft_pending_review')$summary['draft_pending_review']++;
    if(!empty($map[self::key($scope,$r)]['job_id']))$summary['mapped']++;
    if(count($examples)<12)$examples[]=['source'=>$r['src'],'lang'=>$r['lang'],'gaps'=>$r['gaps'],
     'native_wpml_jobs'=>$r['native_jobs'],'eligible'=>$r['eligible'],
     'work_kind'=>$r['work_kind']??'editorial_translation',
+    'target_post_id'=>$r['dst']??0,'target_post_status'=>$r['target_post_status']??'missing',
+    'review_blocker'=>$r['review_blocker']??null,
     'classification'=>$r['classification']??'content_post'];
   }
   return ['contract'=>'mad4b.wpml.content-job-intake.v1','summary'=>$summary,'sources'=>$scan['counts'],
@@ -283,13 +297,24 @@ final class MAD4B_WPML_ContentJob_Adapter {
   }
   $requires_native=!empty($wpml_ids);
   $requires_gap=!empty($gaps);
-  $ready=($requires_gap||$requires_native)&&$gaps_verified&&(!$requires_native||$native_verified);
+  $target_status=$target?(string)get_post_status($target):'missing';
+  $draft_pending_review=$target>0&&$target_status==='draft';
+  $ready=($requires_gap||$requires_native)&&$gaps_verified&&(!$requires_native||$native_verified)
+    &&$target_status==='publish';
+  $review_blockers=[];
+  if($draft_pending_review)$review_blockers[]='unpublished_wpml_draft';
+  if(!$gaps_verified)$review_blockers[]='outbox_receipt_or_localization_gap_unverified';
+  if($requires_native&&!$native_verified)$review_blockers[]='native_wpml_job_unverified';
+  if(!$draft_pending_review&&$target_status!=='publish')$review_blockers[]='published_target_missing';
   $analysis=class_exists('MAD4B_WPML_Translation_Need_V1')
     ?MAD4B_WPML_Translation_Need_V1::source($source):null;
   return ['contract'=>'mad4b.wpml.contentjob-binding.v1','job_id'=>$id,
    'translation_classification'=>is_array($analysis)?$analysis['classification']:'needs_render_review',
    'static_string_examples'=>is_array($analysis)?array_slice($analysis['examples'],0,7):[],
    'source_post_id'=>$source,'target_post_id'=>$target,'target_language'=>$lang,
+   'target_post_status'=>$target_status,'draft_pending_review'=>$draft_pending_review,
+   'review_blockers'=>$review_blockers,
+   'review_visibility'=>'control_plane_and_outbox',
    'post_type'=>$match['type'],'native_job_state'=>$native['job']['state'],
    'master_or_post_excluded'=>!mad4b_wpml_auto_sync_allowed_v1($source,$target),
    'current_gap_codes'=>$gaps,'current_native_wpml_job_ids'=>$wpml_ids,
@@ -394,6 +419,53 @@ final class MAD4B_WPML_ContentJob_Adapter {
    'state'=>$r['job']['state'],'review_reference'=>$review_reference,
    'job_id'=>$id,'content_published'=>false];
  }
+ /** A visible review ledger, separate from the translation execution queue. */
+ public static function review_dashboard($limit=80){
+  if(!self::ready()||!MAD4B_SCP_Policy::can_read())
+   return new WP_Error('wpml_review_dashboard_read_denied');
+  $limit=max(1,min(100,(int)$limit));$map=(array)get_option(self::MAP,[]);
+  $outbox=(array)get_option('mad4b_elementor_localization_outbox_v1',[]);
+  $rows=[];$totals=['draft_pending_review'=>0,'review_with_published_target'=>0,
+    'draft_without_native_review'=>0,'needs_translation_or_other'=>0];
+  foreach($map as $m){
+   $source=(int)($m['source_post_id']??0);$lang=(string)($m['lang']??'');
+   $type=(string)($m['type']??'');
+   if(!$source||!$lang||!$type||empty($m['job_id']))continue;
+   $target=(int)apply_filters('wpml_object_id',$source,$type,false,$lang);
+   $post_status=$target?(string)get_post_status($target):'missing';
+   $job_state=(string)($m['state']??'UNKNOWN');
+   $native=MAD4B_SCP_Content_Jobs::get_job(['job_id'=>$m['job_id']]);
+   if(!is_wp_error($native))$job_state=(string)($native['job']['state']??$job_state);
+   if($job_state==='CANCELLED'||$job_state==='COMPLETED')continue;
+   $outbox_states=[];
+   foreach($outbox as $issue)if((int)($issue['source_post_id']??0)===$source
+       &&($issue['target_language']??'')===$lang)
+    $outbox_states[(string)($issue['status']??'unknown')]=true;
+   $state_list=array_keys($outbox_states);
+   $is_draft=$post_status==='draft';
+   $is_review=$job_state==='WAITING_REVIEW';
+   if($is_draft){
+    if($is_review)$totals['draft_pending_review']++;
+    else $totals['draft_without_native_review']++;
+   }elseif($is_review)$totals['review_with_published_target']++;
+   else $totals['needs_translation_or_other']++;
+   if(!$is_draft&&!$is_review)continue;
+   if(count($rows)>=$limit)continue;
+   $rows[]=['job_id'=>$m['job_id'],'native_state'=>$job_state,
+     'source_post_id'=>$source,'source_title'=>get_the_title($source),
+     'target_post_id'=>$target,'target_post_status'=>$post_status,
+     'target_language'=>$lang,'post_type'=>$type,
+     'outbox_statuses'=>$state_list,
+     'review_kind'=>$is_draft?'unpublished_wpml_draft':'published_target_pending_review',
+     'publicly_visible_translation'=>$post_status==='publish',
+     'review_blockers'=>$is_draft?['editorial_review','wpml_reference_mapping',
+       'public_render_readback','unpublished_translation']:['editorial_review_or_receipts'],
+     'auto_completed'=>false];
+  }
+  return ['contract'=>'mad4b.wpml.review-dashboard.v1',
+   'site'=>home_url(),'totals'=>$totals,'rows'=>$rows,
+   'record_count'=>count($rows),'publication_changed'=>false,'job_state_changed'=>false];
+ }
  public static function register_abilities(){
   if(!function_exists('wp_register_ability')||!self::ready())return;
   $name='mad4b/wpml-contentjob-binding';
@@ -410,12 +482,67 @@ final class MAD4B_WPML_ContentJob_Adapter {
    'output_schema'=>['type'=>'object','additionalProperties'=>true],
    'meta'=>['mcp'=>['public'=>false,'type'=>'tool','surface'=>'read']]
   ]);
+  $dashboard='mad4b/wpml-review-dashboard';
+  if(!function_exists('wp_has_ability')||!wp_has_ability($dashboard))
+   wp_register_ability($dashboard,[
+    'label'=>'WPML Pending Draft and ContentJob Review Dashboard',
+    'description'=>'Read-only visibility of WPML draft translation status, ContentJob review state and pending outbox items.',
+    'category'=>'mad4b-read',
+    'execute_callback'=>static fn($input)=>self::review_dashboard((int)($input['limit']??80)),
+    'permission_callback'=>static fn($input)=>MAD4B_SCP_Policy::can_read(),
+    'input_schema'=>['type'=>'object','properties'=>[
+      'limit'=>['type'=>'integer','minimum'=>1,'maximum'=>100]],
+     'additionalProperties'=>false],
+    'output_schema'=>['type'=>'object','additionalProperties'=>true],
+    'meta'=>['mcp'=>['public'=>false,'type'=>'tool','surface'=>'read']]
+   ]);
+ }
+ /** Refresh cached ContentJob states from the native authority; no job changes. */
+ public static function refresh_native_states($limit=40){
+  if(!self::ready()||!class_exists('MAD4B_SCP_Policy')
+     ||true!==MAD4B_SCP_Policy::can_mutate())return new WP_Error('wpml_map_sync_not_authorized');
+  global $wpdb;
+  if((string)$wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s,2)','mad4b_wpml_map_state_sync'))!=='1')
+   return new WP_Error('wpml_map_sync_busy');
+  try{
+   $map=(array)get_option(self::MAP,[]);
+   $keys=array_keys($map);$n=count($keys);
+   $limit=max(1,min(80,(int)$limit));
+   if(!$n)return ['contract'=>'mad4b.wpml.map-native-state-sync.v1','scanned'=>0,'updated'=>0];
+   $cursor_key='mad4b_wpml_map_native_status_cursor_v1';
+   $cursor=(int)get_option($cursor_key,0)%$n;
+   $scan=min($limit,$n);$changed=[];$errors=[];
+   for($i=0;$i<$scan;$i++){
+    $key=$keys[($cursor+$i)%$n];
+    $id=(string)($map[$key]['job_id']??'');
+    if(!$id)continue;
+    $actual=MAD4B_SCP_Content_Jobs::get_job(['job_id'=>$id]);
+    if(is_wp_error($actual)){$errors[]=$actual->get_error_code();continue;}
+    $state=(string)($actual['job']['state']??'');
+    if(!in_array($state,['QUEUED','RUNNING','WAITING_REVIEW','COMPLETED','CANCELLED','FAILED'],true))continue;
+    if(($map[$key]['state']??'')!==$state){
+     $map[$key]['state']=$state;$map[$key]['observed_native_state_at']=gmdate('c');
+     $changed[]=$id;
+    }
+   }
+   if($changed){
+    update_option(self::MAP,$map,false);
+    if(get_option(self::MAP,[])!==$map)return new WP_Error('wpml_map_sync_readback_failed');
+   }
+   update_option($cursor_key,($cursor+$scan)%$n,false);
+   return ['contract'=>'mad4b.wpml.map-native-state-sync.v1',
+     'scanned'=>$scan,'updated'=>count($changed),'ids'=>array_slice($changed,0,15),
+     'errors'=>array_slice($errors,0,8),
+     'next_cursor'=>($cursor+$scan)%$n,'content_mutated'=>false,'job_state_mutated'=>false];
+  }finally{$wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)','mad4b_wpml_map_state_sync'));}
  }
  public static function cli($args,$opts){
   $cmd=$args[0]??'status';
   if($cmd==='preview'||$cmd==='status')$r=self::preview();
   elseif($cmd==='run')$r=self::run($opts['limit']??5,$opts['source']??0);
   elseif($cmd==='reconcile')$r=self::reconcile_verified($opts['limit']??5,$opts['job-id']??'');
+  elseif($cmd==='sync-state')$r=self::refresh_native_states($opts['limit']??40);
+  elseif($cmd==='review-dashboard')$r=self::review_dashboard($opts['limit']??80);
   elseif($cmd==='approve')$r=self::approve_verified($args[1]??'',$opts['review-ref']??'');
   else WP_CLI::error('Usage: wp mad4b-wpml-jobs preview|status|run|reconcile|approve <job-id> --review-ref=...');
   if(is_wp_error($r))WP_CLI::error($r->get_error_code());
