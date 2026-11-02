@@ -4,6 +4,7 @@ namespace DynamicFilterSEOBridge\Admin;
 use DynamicFilterSEOBridge\IndexFlow\ManagedUrlArchitecture;
 use DynamicFilterSEOBridge\IndexFlow\WordPressRouteResolver;
 use DynamicFilterSEOBridge\IndexFlow\RouteDocumentStore;
+require_once __DIR__ . '/RewriteTranslationMatrix.php';
 
 /** Draft planning UI. POST evaluates in memory; it is deliberately not a save. */
 final class UrlArchitecturePage {
@@ -42,6 +43,7 @@ final class UrlArchitecturePage {
             echo '<h2>Route, canonical, hreflang and rewrite candidates</h2><pre style="white-space:pre-wrap;overflow-wrap:anywhere">' . esc_html(wp_json_encode($preview, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)) . '</pre>';
         }
         if (is_array($migration)) echo '<h2>Migration plan — no redirects applied</h2><pre style="white-space:pre-wrap;overflow-wrap:anywhere">' . esc_html(wp_json_encode($migration, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)) . '</pre>';
+        RewriteTranslationMatrix::render();
         echo '<h2>Governed storage</h2><p>Use the authorized MAD4B routes-plan → routes-apply → routes-verify operations and central mutation-undo. The plan binds the stored revision, proposed document, live dependencies and migration. Storage does not activate routes or SEO. This screen exposes no direct write endpoint.</p></div>';
     }
 

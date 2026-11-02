@@ -4,6 +4,8 @@ namespace DynamicFilterSEOBridge\Integration;
 use DynamicFilterSEOBridge\IndexFlow\WordPressRouteEnvironment;
 use DynamicFilterSEOBridge\Terms\AutoQualifiedTermPolicy;
 use DynamicFilterSEOBridge\WPML\LanguageResolver;
+require_once __DIR__ . '/RewriteGapPriority.php';
+require_once dirname(__DIR__) . '/IndexFlow/LocalizedTaxonomyBase.php';
 
 /** Read-only, bounded source for the governed MAD4B Content Readiness ledger. */
 final class WPMLTermRouteGapScanner {
@@ -13,10 +15,13 @@ final class WPMLTermRouteGapScanner {
 
     private static function issue(string $taxonomy, int $id, string $locale, string $reason, string $description): array {
         $code = 'dfsb_wpml_' . $reason . '_' . $taxonomy . '_' . $id . '_' . $locale;
+        $triage=RewriteGapPriority::inspect($taxonomy,$id,$reason);
         return array(
             'id' => hash('sha256', get_current_blog_id() . '|site|0|' . $code),
             'post_type' => 'site', 'object_id' => 0, 'code' => $code,
             'severity' => 'high',
+            'priority' => $triage['priority'],
+            'triage' => $triage,
             'label' => substr('Priority ContentJob: ' . $description . '; source taxonomy=' . $taxonomy
                 . ' term=' . $id . ' target=' . $locale, 0, 240),
             'source' => 'dynamic-filter-seo-bridge',
@@ -44,6 +49,61 @@ final class WPMLTermRouteGapScanner {
         $authorized = $declared ? array_intersect($registered, $declared) : $registered;
         $route = new WordPressRouteEnvironment();
         $issues = array();
+        // Inspect public taxonomy bases across all plugins, not just tour
+        // facets. Term translation completeness remains profile-scoped below.
+        $taxonomies = get_taxonomies(array('public'=>true),'objects');
+        $scannedTaxonomies = 0;
+        foreach ($taxonomies as $taxonomyName=>$taxonomyObject) {
+            if (empty($taxonomyObject->rewrite) || !is_array($taxonomyObject->rewrite)
+                || empty($taxonomyObject->rewrite['slug'])) continue;
+            $count = wp_count_terms(array('taxonomy'=>$taxonomyName,'hide_empty'=>true));
+            if (is_wp_error($count)) throw new \RuntimeException('dfsb_wpml_taxonomy_population_unavailable');
+            if ((int)$count < 1) continue;
+            if (++$scannedTaxonomies > 50) throw new \RuntimeException('dfsb_wpml_taxonomy_base_scan_incomplete');
+            foreach ($locales as $locale) {
+                if ($locale === $default) continue;
+                $base = \DynamicFilterSEOBridge\IndexFlow\LocalizedRewriteBase::inspect(
+                    'taxonomy', (string)$taxonomyName, $locale);
+                if (!empty($base['translation_verified'])) continue;
+                $issues[] = self::issue((string)$taxonomyName,0,$locale,'base_slug_unverified',
+                    'Registered taxonomy rewrite base has no verified per-language WPML translation');
+            }
+        }
+        // Inspect all public, rewritable CPT bases that have published content;
+        // the site may add new CPTs without requiring a DFSB code change.
+        $types = get_post_types(array('public'=>true),'objects');
+        $scanned = 0;
+        foreach ($types as $typeName => $typeObject) {
+            if (in_array($typeName,array('post','page','attachment'),true) ||
+                empty($typeObject->rewrite) || !is_array($typeObject->rewrite) ||
+                empty($typeObject->rewrite['slug'])) continue;
+            $counts=wp_count_posts($typeName);
+            if (!is_object($counts) || (int)($counts->publish??0)<1) continue;
+            if (++$scanned>30) throw new \RuntimeException('dfsb_wpml_cpt_base_scan_incomplete');
+            foreach ($locales as $locale) {
+                if ($locale===$default) continue;
+                $base=\DynamicFilterSEOBridge\IndexFlow\LocalizedRewriteBase::inspect('post_type',$typeName,$locale);
+                if (!empty($base['translation_verified'])) continue;
+                $issues[]=self::issue($typeName,0,$locale,'cpt_base_unverified',
+                    'CPT permalink rewrite base requires a verified per-language WPML translation');
+            }
+        }
+
+        // A missing translated taxonomy URL base is a separate, actionable
+        // WPML settings issue; it must not be disguised as a missing term.
+        foreach ($authorized as $taxonomy) {
+            foreach ($locales as $locale) {
+                if ($locale === $default) continue;
+                $base = \DynamicFilterSEOBridge\IndexFlow\LocalizedTaxonomyBase::inspect((string)$taxonomy, $locale);
+                if (!empty($base['translation_verified'])) continue;
+                if (isset($taxonomies[$taxonomy]) &&
+                    is_array($taxonomies[$taxonomy]->rewrite??null) &&
+                    !empty($taxonomies[$taxonomy]->rewrite['slug'])) continue;
+                $issues[] = self::issue((string)$taxonomy, 0, $locale,
+                    'base_slug_unverified', 'Native facet taxonomy URL rewrite is missing or unverified');
+            }
+        }
+
         foreach ($authorized as $taxonomy) {
             $taxonomy = sanitize_key((string)$taxonomy);
             if (!$taxonomy || !taxonomy_exists($taxonomy)) continue;
@@ -83,6 +143,8 @@ final class WPMLTermRouteGapScanner {
                 }
             }
         }
+        if (count($issues) > self::MAX_ISSUES)
+            throw new \RuntimeException('dfsb_wpml_issue_scan_capacity_exceeded');
         return $issues;
     }
 }
