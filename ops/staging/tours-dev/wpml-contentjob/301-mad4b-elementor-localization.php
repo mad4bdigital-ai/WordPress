@@ -636,6 +636,30 @@ final class MAD4B_Elementor_Localization_V1 {
                 'methods'=>'POST','permission_callback'=>static fn()=>current_user_can('edit_others_posts'),
                 'callback'=>static function($request)use($method){
                     $r=self::$method($request->get_json_params());
+                    if(is_wp_error($r)&&$method==='recover_claim'){
+                        // A denied or stale recovery is a client/authority failure,
+                        // not an unclassified REST 500. Never change the gate itself.
+                        $status_by_code=[
+                            'mad4b_localization_recovery_unauthorized'=>403,
+                            'mad4b_localization_recovery_invalid_input'=>400,
+                            'mad4b_localization_recovery_site_mismatch'=>403,
+                            'mad4b_localization_recovery_not_eligible'=>409,
+                            'mad4b_localization_recovery_lease_mismatch'=>409,
+                            'mad4b_localization_recovery_source_mismatch'=>409,
+                            'mad4b_localization_recovery_wpml_mismatch'=>409,
+                            'mad4b_localization_recovery_receipt_mismatch'=>422,
+                            'mad4b_localization_recovery_native_job_mismatch'=>409,
+                            'mad4b_localization_recovery_gap_still_present'=>409,
+                            'mad4b_localization_recovery_already_attempted'=>409,
+                            'mad4b_localization_recovery_write_unconfirmed'=>500
+                        ];
+                        $code=$r->get_error_code();
+                        $data=(array)$r->get_error_data($code);
+                        if(!isset($data['status'])){
+                            $data['status']=$status_by_code[$code]??500;
+                            $r->add_data($data,$code);
+                        }
+                    }
                     return is_wp_error($r)?$r:rest_ensure_response($r);
                 }]);
     }
