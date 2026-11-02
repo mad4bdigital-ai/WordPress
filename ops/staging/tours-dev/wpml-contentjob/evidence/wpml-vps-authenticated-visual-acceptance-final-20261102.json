@@ -1,0 +1,80 @@
+{
+  "contract": "mad4b.wpml.vps-authenticated-visual-final-acceptance.v1",
+  "date_utc": "2026-11-02",
+  "site": "https://tours.dev.mad4b.com",
+  "environment": "staging",
+  "authentication": "VPS Chromium, genuine short-lived WordPress core session for the existing authorized staging administrator (user ID 26); no new account or password changes",
+  "screen_results": [
+    {
+      "name": "desktop_1440",
+      "authenticated": true,
+      "http": 200,
+      "admin_sidebar": true,
+      "review_rows": 26,
+      "layout": "table",
+      "document_width": 1440,
+      "passed": true
+    },
+    {
+      "name": "mobile_390",
+      "authenticated": true,
+      "http": 200,
+      "admin_sidebar": true,
+      "review_rows": 26,
+      "layout": "labeled cards",
+      "document_width": 390,
+      "passed": true
+    },
+    {
+      "name": "mobile_320",
+      "authenticated": true,
+      "http": 200,
+      "admin_sidebar": true,
+      "review_rows": 26,
+      "layout": "labeled cards",
+      "document_width": 320,
+      "passed": true
+    },
+    {
+      "name": "french_drafts_390",
+      "authenticated": true,
+      "http": 200,
+      "review_rows": 4,
+      "layout": "labeled cards",
+      "document_width": 390,
+      "passed": true
+    }
+  ],
+  "content_readiness": {
+    "authenticated_http": 200,
+    "wpml_review_notice_count": 1,
+    "review_dashboard_link_present": true
+  },
+  "observed_javascript_errors": 0,
+  "no_publish_or_approve_controls": true,
+  "native_session_cleanup": {
+    "initial_automatic_revoke": "Not confirmed because WP-CLI was busy",
+    "subsequent_revocation": "SUCCESS: matched sole short-lived local QA session exactly against WordPress session metadata and revoked it",
+    "independent_wp_cli_readback_utc": "2026-11-02T15:49:49Z",
+    "active_sessions_after": 0,
+    "cookie_or_token_saved_to_evidence": false
+  },
+  "wpcli_php_ui_regression": {
+    "assertions": 58,
+    "passed": true,
+    "read_only": true
+  },
+  "live_php_sha256": "e9ab443f5dcc49b6ac32463a85467d0fefe9d829a143ce1b1ab091894fadff68",
+  "source_matches_live_sha256": true,
+  "frontend_http": 200,
+  "wpml_intake_timer": "active",
+  "review_totals": {
+    "draft_pending_review": 17,
+    "review_with_published_target": 9,
+    "draft_without_native_review": 0,
+    "other_pending": 121
+  },
+  "production_changed": false,
+  "screenshots": "Private server-side QA folder only; no protected admin media published to GitHub",
+  "final_status": "PASS_AFTER_INDEPENDENT_SESSION_CLEANUP"
+}
