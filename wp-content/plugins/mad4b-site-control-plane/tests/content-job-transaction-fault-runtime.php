@@ -12,6 +12,7 @@ class WP_Error {
 }
 function is_wp_error($v){return $v instanceof WP_Error;}
 function add_action(){}
+function do_action(...$args){}
 function absint($n){return abs((int)$n);}
 function sanitize_key($s){return strtolower(preg_replace('/[^a-z0-9_-]/','',(string)$s));}
 function sanitize_text_field($s){return trim(strip_tags((string)$s));}
