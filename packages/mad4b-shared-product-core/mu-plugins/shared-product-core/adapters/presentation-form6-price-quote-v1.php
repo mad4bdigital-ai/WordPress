@@ -1,7 +1,17 @@
 <?php
-/** Local lab; read-only price preview for the existing Fluent Form #6. */
+/** Governed, nonfinancial price preview for original Fluent Form #6. */
 defined('ABSPATH')||exit;
-if(wp_get_environment_type()!=='local'||!defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY)return;
+/**
+ * Presentation is a governed runtime capability, not an environment type.
+ * Explicit runtime enablement works for Staging (and for authorized deployments).
+ * Local Lab keeps its isolated opt-in for standalone development only.
+ */
+function shared_product_form6_price_runtime_enabled(): bool {
+ return (defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED === true)
+  || (function_exists('wp_get_environment_type') && wp_get_environment_type()==='local'
+   && defined('SHARED_PRODUCT_LAB_ONLY') && SHARED_PRODUCT_LAB_ONLY === true);
+}
+if(!shared_product_form6_price_runtime_enabled())return;
 function shared_presentation_form6_price_quote($raw) {
  if(!is_array($raw)||array_diff(array_keys($raw),
  ['tour_id','source','rate_id','travel_date','adults','children','infants','occupancy','extras']))
@@ -250,7 +260,7 @@ add_action('rest_api_init',static function(){
 });
 
 /**
- * Lab-only, read-only on-form price reference. The guest never supplies an amount.
+ * Governed-runtime, read-only on-form price reference. The guest never supplies an amount.
  * Attach to the original Form #6 without editing form definitions or WooCommerce.
  * Unsupported or incomplete inputs leave the reference unavailable, not zero.
  */
@@ -376,11 +386,10 @@ function shared_presentation_form6_validate_stay_choices($tour,$rate,$rows){
  return $out;
 }
 
-// REV82 Local Lab: retain a server-verified quote snapshot within the existing
+// Governed runtime: retain a server-verified quote snapshot within the existing
 // Fluent Form #6 submission. This is NOT a WooCommerce order or price approval.
 add_filter('fluentform/filter_insert_data',static function($insert){
- if(wp_get_environment_type()!=='local'||!defined('SHARED_PRODUCT_LAB_ONLY')||
-    !SHARED_PRODUCT_LAB_ONLY||!is_array($insert)||
+ if(!shared_product_form6_price_runtime_enabled()||!is_array($insert)||
     (int)($insert['form_id']??0)!==6)return $insert;
  $raw=$_POST['shared_tour_selection_v2']??null;
  // Fluent Forms AJAX sends the serialized form as POST[data], not as flat POST fields.
@@ -568,8 +577,7 @@ add_filter('fluentform/filter_insert_data',static function($insert){
  */
 add_action('fluentform/before_form_actions_processing',
     static function($submissionId,$formData,$form) {
-        if(wp_get_environment_type()!=='local'||
-            !defined('SHARED_PRODUCT_LAB_ONLY')||!SHARED_PRODUCT_LAB_ONLY||
+        if(!shared_product_form6_price_runtime_enabled()||
             (int)($form->id??0)!==6||!is_numeric($submissionId))return;
         global $wpdb,$wp_filter;
         $saved=$wpdb->get_var($wpdb->prepare(
@@ -621,7 +629,7 @@ add_action('fluentform/before_form_actions_processing',
  */
 add_filter('fluentform/submission_confirmation',
     static function($response,$form,$confirmation=null,$submissionId=null,$formData=null){
-        if(wp_get_environment_type()!=='local'||!is_array($response)||
+        if(!shared_product_form6_price_runtime_enabled()||!is_array($response)||
            !is_object($form)||!is_numeric($form->id??null)||
            !is_numeric($submissionId))return $response;
         global $wpdb;
