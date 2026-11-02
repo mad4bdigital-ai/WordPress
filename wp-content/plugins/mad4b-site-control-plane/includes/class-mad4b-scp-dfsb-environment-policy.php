@@ -10,7 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_DFSB_Environment_Policy {
     const OPTION = 'mad4b_scp_dfsb_environment_modes';
     const CONTRACT = 'mad4b.scp.dfsb-environment-policy.v1';
-    const FEATURES = array( 'publication', 'managed_routes' );
+    const FEATURES = array( 'publication', 'managed_routes', 'native_local_boot' );
 
     public static function environment() {
         if ( ! class_exists( 'MAD4B_SCP_Environment' ) ) return '';
@@ -30,12 +30,25 @@ final class MAD4B_SCP_DFSB_Environment_Policy {
         return is_array( $environment_modes ) && true === ( $environment_modes[ $feature ] ?? false );
     }
 
+    /** An exact approved Git commit is mandatory for source-local operation. */
+    public static function localPackageApproved( $sourceSha ) {
+        if ( ! self::allows( 'native_local_boot' ) ) return false;
+        $env = self::environment();
+        $all = get_option( self::OPTION, array() );
+        $expected = is_array( $all ) ? (string) ( $all[ $env ]['native_local_source_sha'] ?? '' ) : '';
+        $actual = strtolower( trim( (string) $sourceSha ) );
+        return (bool) preg_match( '/^[a-f0-9]{40}$/D', $expected )
+            && (bool) preg_match( '/^[a-f0-9]{40}$/D', $actual )
+            && hash_equals( $expected, $actual );
+    }
+
     public static function snapshot() {
         return array(
             'contract' => self::CONTRACT,
             'effective_environment' => self::environment(),
             'publication' => self::allows( 'publication' ),
             'managed_routes' => self::allows( 'managed_routes' ),
+            'native_local_boot' => self::allows( 'native_local_boot' ),
             'authorizing' => false,
             'source' => self::OPTION,
         );
@@ -64,6 +77,8 @@ final class MAD4B_SCP_DFSB_Environment_Policy {
         $settings[ $environment ] = array(
             'publication' => in_array( 'publication', $mode, true ),
             'managed_routes' => in_array( 'managed_routes', $mode, true ),
+            'native_local_boot' => in_array( 'native_local_boot', $mode, true ),
+            'native_local_source_sha' => sanitize_text_field( wp_unslash( $_POST['native_local_source_sha'] ?? '' ) ),
         );
         update_option( self::OPTION, $settings, false );
         wp_safe_redirect( add_query_arg( 'updated', '1',
@@ -88,10 +103,15 @@ final class MAD4B_SCP_DFSB_Environment_Policy {
         foreach ( array(
             'managed_routes' => 'Enable approved managed filter routes for this environment',
             'publication' => 'Allow verified filtered SEO publication for this environment',
+            'native_local_boot' => 'Permit guarded Full Boot of an exact approved local Git source with valid installed manifest',
         ) as $feature => $label ) {
             echo '<p><label><input type="checkbox" name="dfsb_mode[]" value="' . esc_attr( $feature ) . '" '
                 . checked( self::allows( $feature ), true, false ) . '> ' . esc_html( $label ) . '</label></p>';
         }
+        $all = get_option( self::OPTION, array() );
+        $expected = is_array( $all ) ? (string) ( $all[ $env ]['native_local_source_sha'] ?? '' ) : '';
+        echo '<p><label>Approved local Git commit SHA (40 hexadecimal characters): ';
+        echo '<input type="text" name="native_local_source_sha" maxlength="40" value="' . esc_attr( $expected ) . '" size="44" autocomplete="off"></label></p>';
         submit_button( 'Save environment policy' );
         echo '</form></div>';
     }
