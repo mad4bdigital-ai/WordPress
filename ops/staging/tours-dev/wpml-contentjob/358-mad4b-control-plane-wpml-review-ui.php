@@ -89,7 +89,8 @@ final class MAD4B_Control_Plane_WPML_Review_UI_V1 {
         $other = (int)($totals['needs_translation_or_other'] ?? 0);
         $unmapped = (int)($totals['draft_without_native_review'] ?? 0);
 
-        echo '<style>.mad4b-wpml-review-ledger .mad4b-wpml-metrics{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0}'
+        echo '<style>.mad4b-wpml-review-ledger{min-width:0;max-width:100%;box-sizing:border-box;overflow-x:clip}'
+            . '.mad4b-wpml-review-ledger .mad4b-wpml-metrics{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0}'
             . '.mad4b-wpml-review-ledger .mad4b-wpml-metric{background:#fff;border:1px solid #c3c4c7;border-left:3px solid #2271b1;min-width:160px;padding:12px 16px;box-sizing:border-box}'
             . '.mad4b-wpml-review-ledger .mad4b-wpml-metric strong{display:block;font-size:23px;line-height:1.5}'
             . '.mad4b-wpml-review-ledger .mad4b-wpml-filters{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin:16px 0}'
@@ -99,7 +100,19 @@ final class MAD4B_Control_Plane_WPML_Review_UI_V1 {
             . '.mad4b-wpml-review-ledger code{overflow-wrap:anywhere}'
             . '.mad4b-wpml-review-ledger .mad4b-wpml-state{display:inline-block;background:#f0f0f1;border-radius:3px;padding:2px 7px;font-weight:600}'
             . '.mad4b-wpml-review-ledger .mad4b-wpml-warning{border-left:4px solid #dba617;padding:10px 14px;background:#fff;margin:15px 0}'
-            . '@media(max-width:782px){.mad4b-wpml-review-ledger .mad4b-wpml-metric{flex:1 1 120px;min-width:0}.mad4b-wpml-review-ledger .mad4b-wpml-filters>*{min-width:150px}}</style>';
+            . '@media(max-width:782px){'
+            . '.mad4b-wpml-review-ledger .mad4b-wpml-metric{flex:1 1 120px;min-width:0}'
+            . '.mad4b-wpml-review-ledger .mad4b-wpml-filters>*{min-width:150px}'
+            . '.mad4b-wpml-review-ledger .mad4b-wpml-table-scroll{width:100%;max-width:100%;overflow-x:clip}'
+            . '.mad4b-wpml-review-ledger .mad4b-wpml-table{display:block;min-width:0!important;width:100%!important;border:0;background:transparent}'
+            . '.mad4b-wpml-review-ledger .mad4b-wpml-table thead{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip-path:inset(50%);white-space:nowrap}'
+            . '.mad4b-wpml-review-ledger .mad4b-wpml-table tbody{display:block;min-width:0;width:100%}'
+            . '.mad4b-wpml-review-ledger .mad4b-wpml-table tbody tr{display:block;max-width:100%;min-width:0;margin:0 0 12px;background:#fff;border:1px solid #c3c4c7;border-radius:5px;padding:5px 0}'
+            . '.mad4b-wpml-review-ledger .mad4b-wpml-table tbody td{display:block!important;width:auto!important;max-width:100%;box-sizing:border-box;min-width:0;padding:7px 12px!important;border:0!important;word-break:break-word;overflow-wrap:anywhere}'
+            . '.mad4b-wpml-review-ledger .mad4b-wpml-table tbody td::before{content:attr(data-label);display:block;font-size:11px;letter-spacing:.01em;color:#50575e;font-weight:700;margin:0 0 3px}'
+            . '.mad4b-wpml-review-ledger .mad4b-wpml-table tbody td[colspan]::before{content:none}'
+            . '.mad4b-wpml-review-ledger .mad4b-wpml-table tbody td .button{max-width:100%}'
+            . '}</style>';
         echo '<div class="mad4b-wpml-metrics" role="group" aria-label="WPML review counts">';
         foreach (array(
             array($drafts, 'Unpublished drafts awaiting review'),
@@ -149,16 +162,16 @@ final class MAD4B_Control_Plane_WPML_Review_UI_V1 {
             $blockers = array_values(array_filter((array)($row['review_blockers'] ?? array()), 'is_string'));
             $outbox_states = array_values(array_filter((array)($row['outbox_statuses'] ?? array()), 'is_string'));
             echo '<tr>';
-            echo '<td><strong>' . ($source_url ? '<a href="' . esc_url($source_url) . '">' . esc_html($title) . '</a>' : esc_html($title))
+            echo '<td data-label="Source"><strong>' . ($source_url ? '<a href="' . esc_url($source_url) . '">' . esc_html($title) . '</a>' : esc_html($title))
                 . '</strong><br><small>Source #' . $source . ' · ' . esc_html((string)($row['post_type'] ?? '')) . '</small></td>';
-            echo '<td><strong>' . esc_html((string)($row['target_language'] ?? '')) . '</strong></td>';
-            echo '<td><span class="mad4b-wpml-state">' . esc_html($target_state) . '</span><br>'
+            echo '<td data-label="Language"><strong>' . esc_html((string)($row['target_language'] ?? '')) . '</strong></td>';
+            echo '<td data-label="WPML target"><span class="mad4b-wpml-state">' . esc_html($target_state) . '</span><br>'
                 . ($id ? '<small>WPML #' . $id . '</small>' : '<small>No target yet</small>') . '</td>';
-            echo '<td><span class="mad4b-wpml-state">' . esc_html($job_state) . '</span><br>'
+            echo '<td data-label="Native ContentJob"><span class="mad4b-wpml-state">' . esc_html($job_state) . '</span><br>'
                 . '<code>' . esc_html((string)($row['job_id'] ?? '')) . '</code><br><small>Outbox: '
                 . esc_html(implode(', ', $outbox_states)) . '</small></td>';
-            echo '<td><small>' . esc_html(implode(', ', $blockers)) . '</small></td>';
-            echo '<td>' . ($url ? '<a class="button button-small" href="' . esc_url($url) . '" aria-label="Open WPML draft or target ' . $id . ' for review">Open in WordPress</a>'
+            echo '<td data-label="Pending checks"><small>' . esc_html(implode(', ', $blockers)) . '</small></td>';
+            echo '<td data-label="Review">' . ($url ? '<a class="button button-small" href="' . esc_url($url) . '" aria-label="Open WPML draft or target ' . $id . ' for review">Open in WordPress</a>'
                 : '<span>Review record</span>') . '</td></tr>';
         }
         echo '</tbody></table></div>';
