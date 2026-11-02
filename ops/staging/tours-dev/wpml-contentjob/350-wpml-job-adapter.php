@@ -204,7 +204,19 @@ final class MAD4B_WPML_ContentJob_Adapter {
   if(!$match)return new WP_Error('wpml_bridge_binding_not_found');
   $source=(int)$match['source_post_id'];$target=(int)$match['target_post_id'];
   $lang=(string)$match['lang'];
-  $issues=[];$gaps=(array)($match['gap_codes']??[]);
+  // The persisted binding is historical evidence. Re-read current WPML and
+  // localization sources to detect new tasks for the same post and locale.
+  $current=null;
+  foreach(self::discover()['items'] as $now){
+   if((int)$now['src']===$source && (string)$now['type']===(string)$match['type']
+       && (string)$now['lang']===$lang){$current=$now;break;}
+  }
+  if($current&&!empty($current['dst']))$target=(int)$current['dst'];
+  $gaps=array_values(array_unique(array_merge((array)($match['gap_codes']??[]),
+      (array)($current['gaps']??[]))));
+  $wpml_ids=array_values(array_unique(array_merge((array)($match['native_wpml_job_ids']??[]),
+      (array)($current['native_jobs']??[]))));
+  $issues=[];
   foreach((array)get_option('mad4b_elementor_localization_outbox_v1',[]) as $o){
    if((int)($o['source_post_id']??0)!==$source
     ||($o['target_language']??'')!==$lang)continue;
@@ -214,7 +226,7 @@ final class MAD4B_WPML_ContentJob_Adapter {
     'readback_passed'=>$o['readback_passed']??null];
   }
   global $wpdb;$native_wpml=[];
-  foreach(array_slice((array)($match['native_wpml_job_ids']??[]),0,25) as $wid){
+  foreach(array_slice($wpml_ids,0,25) as $wid){
    $wid=(int)$wid;if($wid<=0)continue;
    $q=$wpdb->get_row($wpdb->prepare(
     "SELECT j.job_id,j.translated,s.status,s.needs_update FROM {$wpdb->prefix}icl_translate_job j
@@ -232,18 +244,19 @@ final class MAD4B_WPML_ContentJob_Adapter {
      $gaps_verified=false;
    }
   }
-  $native_verified=!empty($match['native_wpml_job_ids']);
+  $native_verified=!empty($wpml_ids);
   if($native_verified){
-   if(count($native_wpml)!==count(array_unique($match['native_wpml_job_ids'])))$native_verified=false;
+   if(count($native_wpml)!==count($wpml_ids))$native_verified=false;
    foreach($native_wpml as $v)if(!$v['translated']||$v['needs_update'])$native_verified=false;
   }
-  $requires_native=!empty($match['native_wpml_job_ids']);
+  $requires_native=!empty($wpml_ids);
   $requires_gap=!empty($gaps);
   $ready=($requires_gap||$requires_native)&&$gaps_verified&&(!$requires_native||$native_verified);
   return ['contract'=>'mad4b.wpml.contentjob-binding.v1','job_id'=>$id,
    'source_post_id'=>$source,'target_post_id'=>$target,'target_language'=>$lang,
    'post_type'=>$match['type'],'native_job_state'=>$native['job']['state'],
    'master_or_post_excluded'=>!mad4b_wpml_auto_sync_allowed_v1($source,$target),
+   'current_gap_codes'=>$gaps,'current_native_wpml_job_ids'=>$wpml_ids,
    'outbox_issues'=>$issues,'native_wpml_jobs'=>$native_wpml,
    'readback_verified'=>$ready,'review_required'=>true,'auto_publish'=>false,
    'mutation_performed'=>false];
