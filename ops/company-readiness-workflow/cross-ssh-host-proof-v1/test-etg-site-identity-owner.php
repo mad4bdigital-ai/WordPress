@@ -8,7 +8,10 @@ $GLOBALS['foreign']=false;
 function wp_get_environment_type(){return $GLOBALS['native'];}
 function home_url($p='/'){return $GLOBALS['origin'].'/';}
 function untrailingslashit($x){return rtrim($x,'/');}
-function add_action(...$a){}
+$GLOBALS['hooks']=[];
+function add_action($name,$callback,$priority=10) {
+    $GLOBALS['hooks'][$name][]=['callback'=>$callback,'priority'=>$priority];
+}
 function get_option($x,$d=null){return $GLOBALS['registered']??$d;}
 class MAD4B_Company_Signed_Site_Profile_V4 {}
 class MAD4B_SCP_Site_Profile {
@@ -22,6 +25,15 @@ class MAD4B_SCP_Site_Profile {
 }
 require __DIR__.'/etg-staging-site-identity-owner.php';
 $p='MAD4B_ETG_Site_Identity_Enrollment_V1';
+if (!isset($GLOBALS['hooks']['plugins_loaded'][0]) ||
+    $GLOBALS['hooks']['plugins_loaded'][0]['priority']!==30)
+    {fwrite(STDERR,"FAIL Deferred plugin initialization missing\n");exit(2);}
+echo "PASS MU plugin defers until ordinary plugins loaded\n";
+($GLOBALS['hooks']['plugins_loaded'][0]['callback'])();
+if (!isset($GLOBALS['hooks']['admin_post_'.$p::ACTION][0]) ||
+    !isset($GLOBALS['hooks']['admin_menu'][0]))
+    {fwrite(STDERR,"FAIL Owner-only routes not registered after load\n");exit(2);}
+echo "PASS Admin menu and original owner POST hook registered after load\n";
 function assert_state($expected,$label){global $p;
  $actual=$p::state();if($actual!==$expected){fwrite(STDERR,"FAIL $label: $actual\n");exit(2);}
  echo "PASS $label\n";}
