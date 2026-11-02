@@ -1,8 +1,10 @@
 <?php
 /** Existing Rate Generator companion: governed CSV preview → optional draft-only batch. */
-if (!defined('ABSPATH') || wp_get_environment_type()!=='local' ||
-    !defined('SHARED_PRODUCT_LAB_ONLY') || !SHARED_PRODUCT_LAB_ONLY ||
-    !class_exists('Shared_Product_Rate_Generation'))return;
+if (!defined('ABSPATH') || !class_exists('Shared_Product_Rate_Generation'))return;
+$mad4bRateBatchEnabled=(defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true)
+ || (function_exists('wp_get_environment_type') && wp_get_environment_type()==='local'
+  && defined('SHARED_PRODUCT_LAB_ONLY') && SHARED_PRODUCT_LAB_ONLY===true);
+if (!$mad4bRateBatchEnabled)return;
 
 final class Shared_Product_Rate_Source_Batch {
  const MAX_ROWS=30;
