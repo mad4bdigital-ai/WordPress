@@ -8,6 +8,8 @@ on:
       - 'wp-content/plugins/commerce-composition/includes/RequestReviewAdmin.php'
       - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/presentation-form6-price-quote-v1.php'
       - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/assets/presentation-fluent-quote-v1.js'
+      - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/pricing/taxonomy-pricing-context.php'
+      - 'packages/mad4b-shared-product-core/tests/season-wpml-inheritance-contract.php'
       - 'packages/mad4b-shared-product-core/tests/form6-missing-minor-policy-contract.php'
       - 'packages/mad4b-shared-product-core/tests/form6-native-pricing-contract.js'
       - '.github/workflows/age-occupancy-policy-contract.yml'
@@ -19,6 +21,8 @@ on:
       - 'wp-content/plugins/commerce-composition/includes/RequestReviewAdmin.php'
       - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/presentation-form6-price-quote-v1.php'
       - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/assets/presentation-fluent-quote-v1.js'
+      - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/pricing/taxonomy-pricing-context.php'
+      - 'packages/mad4b-shared-product-core/tests/season-wpml-inheritance-contract.php'
       - 'packages/mad4b-shared-product-core/tests/form6-missing-minor-policy-contract.php'
       - 'packages/mad4b-shared-product-core/tests/form6-native-pricing-contract.js'
       - '.github/workflows/age-occupancy-policy-contract.yml'
@@ -51,6 +55,7 @@ jobs:
           php -l wp-content/plugins/commerce-composition/includes/RequestReviewAdmin.php
           php -l packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/presentation-form6-price-quote-v1.php
           php packages/mad4b-shared-product-core/tests/form6-missing-minor-policy-contract.php
+          php packages/mad4b-shared-product-core/tests/season-wpml-inheritance-contract.php
       - name: Canonical Fluent Form 6 pricing UI contract
         run: |
           node --check packages/mad4b-shared-product-core/mu-plugins/shared-product-core/assets/presentation-fluent-quote-v1.js
