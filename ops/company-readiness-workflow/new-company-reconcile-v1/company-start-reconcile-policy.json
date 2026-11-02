@@ -1,0 +1,347 @@
+{
+  "contract": "mad4b.company-start-reconcile-completeness-policy.v1",
+  "scope": "all_companies_all_new_sites_staging_and_production",
+  "integration": {
+    "entrypoint": "Start Company → Reconcile",
+    "upstream": "company-native-publication-lifecycle.v1",
+    "runtime_wiring": "REQUIRED_BEFORE_POLICY_ACTIVE",
+    "desired_state_owner": "MAD4B Company/Site Profile",
+    "authority_owner": "Original Core + exact-site Native Executor",
+    "automation": "per_site_scheduled_and_event_driven",
+    "policy_is_not_a_grant": true
+  },
+  "modes": {
+    "fresh": {
+      "definition": "empty new WordPress; schemas/providers/site identity are provisioned; company content separately supplied",
+      "must_preserve_admin_verifier": false
+    },
+    "template_clone": {
+      "definition": "share approved neutral schema/widgets/layouts/queries/options structures; never source company private data",
+      "must_preserve_admin_verifier": false
+    },
+    "tenant_migration": {
+      "definition": "authorized origin tenant content and admins with exact owner scope, integrity and site remap; no silent password reset",
+      "must_preserve_admin_verifier": true
+    }
+  },
+  "field_disposition": {
+    "SHARED_DEFINITION": "copy after owner/provider/schema checks; normalize embedded source IDs",
+    "TENANT_OWNED": "new company value or reviewed explicit same-owner migration",
+    "SITE_RUNTIME": "regenerate on destination; never clone transient state/cache/indexes",
+    "RECONNECT": "install provider; require new company credentials or verified existing tenant binding",
+    "FORBIDDEN": "never copy customers/leads/orders/payments/tokens/OAuth/grants/audit/supplier-private history to another tenant",
+    "REVIEW": "unknown ownership/provenance/values produce a Content Job; do not bulk copy"
+  },
+  "invariants": {
+    "site_identity_exact": [
+      "company_id",
+      "site_uuid",
+      "canonical_origin",
+      "environment",
+      "profile_revision"
+    ],
+    "source_and_target_are_distinct": true,
+    "no_stale_evidence": true,
+    "evidence_max_age_seconds": 1800,
+    "expected_manifest_requires": [
+      "source_snapshot_digest",
+      "eligible_object_manifest_digest",
+      "language_scope",
+      "source_company",
+      "target_company",
+      "template_build_digest"
+    ],
+    "compare": "eligible semantic inventories and source-to-target ID maps, never raw table totals",
+    "immutable_plan_digest_before_writes": true,
+    "idempotency_key": "sha256(site_uuid|environment|manifest_digest|check_id|observed_digest)",
+    "source_db_read_only": true,
+    "clone_mode_default": "template_clone",
+    "scope_isolation": "deny-by-default",
+    "no_password_rotation_for_same_owner_admin_migration": true,
+    "no_unapproved_production_change": true,
+    "do_not_confuse_transport_with_authority": true
+  },
+  "gates": {
+    "bootstrap": [
+      "identity_binding",
+      "authority_chain",
+      "rollback_backup",
+      "source_scope",
+      "private_data_exclusion"
+    ],
+    "functional": [
+      "plugin_dependency_graph",
+      "package_completeness",
+      "schema_taxonomy_registration",
+      "eligible_content_inventory",
+      "id_relationship_integrity",
+      "form_definitions",
+      "admin_login_continuity",
+      "wpml_language_scope",
+      "media_reference_inventory",
+      "mu_presentation_dependencies",
+      "jetengine_query_options",
+      "jsf_index_local",
+      "elementor_template_conditions",
+      "theme_design_tokens",
+      "menus_destinations",
+      "shortcode_bindings"
+    ],
+    "publish": [
+      "browser_render_desktop_mobile",
+      "browser_render_all_languages",
+      "interactive_navigation_filters",
+      "css_assets_hero",
+      "no_cross_tenant_brand",
+      "public_link_integrity",
+      "runtime_fatal_health",
+      "rollback_backup"
+    ],
+    "commercial": [
+      "commerce_pricing_booking",
+      "checkout_and_notifications",
+      "company_provider_connections",
+      "data_privacy_compliance"
+    ]
+  },
+  "checks": {
+    "identity_binding": {
+      "severity": "P0",
+      "owner": "Original Core",
+      "repair": "ENROLL_EXACT_SITE",
+      "auto": false
+    },
+    "authority_chain": {
+      "severity": "P0",
+      "owner": "Native Executor",
+      "repair": "RECONCILE_ORIGINAL_AUTHORITY",
+      "auto": false
+    },
+    "rollback_backup": {
+      "severity": "P0",
+      "owner": "Provisioning",
+      "repair": "CAPTURE_AND_PROVE_BACKUP",
+      "auto": true
+    },
+    "source_scope": {
+      "severity": "P0",
+      "owner": "Tenant Field Registry",
+      "repair": "REBUILD_SOURCE_MANIFEST",
+      "auto": true
+    },
+    "private_data_exclusion": {
+      "severity": "P0",
+      "owner": "Tenant Field Registry",
+      "repair": "QUARANTINE_UNCLASSIFIED_DATA",
+      "auto": false
+    },
+    "plugin_dependency_graph": {
+      "severity": "P0",
+      "owner": "Plugin Lifecycle",
+      "repair": "RECONCILE_REQUIRED_PLUGINS",
+      "auto": true
+    },
+    "package_completeness": {
+      "severity": "P0",
+      "owner": "Plugin Lifecycle",
+      "repair": "RESTORE_VERIFIED_DEPENDENCY_PACKAGE",
+      "auto": true
+    },
+    "schema_taxonomy_registration": {
+      "severity": "P1",
+      "owner": "JetEngine + Native WP",
+      "repair": "REGISTER_SCHEMAS_TAXONOMIES",
+      "auto": true
+    },
+    "eligible_content_inventory": {
+      "severity": "P0",
+      "owner": "Content Relationship Graph",
+      "repair": "RECONCILE_ELIGIBLE_OBJECTS",
+      "auto": true
+    },
+    "id_relationship_integrity": {
+      "severity": "P0",
+      "owner": "Content Relationship Graph",
+      "repair": "REMAP_IDS_AND_REFERENCES",
+      "auto": true
+    },
+    "form_definitions": {
+      "severity": "P1",
+      "owner": "Fluent Forms",
+      "repair": "MIGRATE_FORM_SCHEMA_ONLY",
+      "auto": true
+    },
+    "admin_login_continuity": {
+      "severity": "P0",
+      "owner": "WordPress Identity",
+      "repair": "RECONCILE_AUTHORIZED_ADMIN_VERIFIERS",
+      "auto": false
+    },
+    "wpml_language_scope": {
+      "severity": "P0",
+      "owner": "WPML",
+      "repair": "REBUILD_SCOPED_TRANSLATIONS",
+      "auto": true
+    },
+    "media_reference_inventory": {
+      "severity": "P1",
+      "owner": "Media Provider",
+      "repair": "RESTORE_OWNED_MEDIA_OR_JOB",
+      "auto": true
+    },
+    "mu_presentation_dependencies": {
+      "severity": "P0",
+      "owner": "Presentation Core",
+      "repair": "RESOLVE_PORTABLE_PRESENTATION_MODULES",
+      "auto": true
+    },
+    "jetengine_query_options": {
+      "severity": "P0",
+      "owner": "JetEngine",
+      "repair": "RESTORE_QUERY_AND_PAGE_OPTIONS",
+      "auto": true
+    },
+    "jsf_index_local": {
+      "severity": "P1",
+      "owner": "JetSmartFilters",
+      "repair": "REBUILD_SITE_LOCAL_INDEX",
+      "auto": true
+    },
+    "elementor_template_conditions": {
+      "severity": "P0",
+      "owner": "Elementor",
+      "repair": "RESTORE_CONDITIONS_AND_REBUILD_CACHE",
+      "auto": true
+    },
+    "theme_design_tokens": {
+      "severity": "P1",
+      "owner": "Brand Look & Feel",
+      "repair": "RECONCILE_KIT_TOKENS_AND_THEME_OPTIONS",
+      "auto": true
+    },
+    "menus_destinations": {
+      "severity": "P0",
+      "owner": "Presentation + Destinations",
+      "repair": "RECONCILE_NAV_PROVIDER_AND_VISIBILITY",
+      "auto": true
+    },
+    "shortcode_bindings": {
+      "severity": "P0",
+      "owner": "Presentation",
+      "repair": "RECONNECT_SHORTCODE_PROVIDER",
+      "auto": true
+    },
+    "browser_render_desktop_mobile": {
+      "severity": "P0",
+      "owner": "Browser Acceptance",
+      "repair": "VISUAL_FRONTEND_CONTENT_JOB",
+      "auto": true
+    },
+    "browser_render_all_languages": {
+      "severity": "P0",
+      "owner": "Browser Acceptance",
+      "repair": "VISUAL_LOCALIZED_CONTENT_JOB",
+      "auto": true
+    },
+    "interactive_navigation_filters": {
+      "severity": "P0",
+      "owner": "JetSmartFilters + Browser",
+      "repair": "RESTORE_INTERACTION_BINDINGS",
+      "auto": true
+    },
+    "css_assets_hero": {
+      "severity": "P0",
+      "owner": "Elementor + Media",
+      "repair": "REGENERATE_CSS_AND_HERO_MEDIA",
+      "auto": true
+    },
+    "no_cross_tenant_brand": {
+      "severity": "P0",
+      "owner": "Brand Core",
+      "repair": "REMAP_BRAND_CONTACT_ORIGIN",
+      "auto": false
+    },
+    "public_link_integrity": {
+      "severity": "P1",
+      "owner": "Navigation",
+      "repair": "REWRITE_AND_READBACK_LINKS",
+      "auto": true
+    },
+    "runtime_fatal_health": {
+      "severity": "P0",
+      "owner": "Native Runtime",
+      "repair": "REMEDIATE_FATAL_AND_MEMORY",
+      "auto": true
+    },
+    "commerce_pricing_booking": {
+      "severity": "P0",
+      "owner": "Commerce",
+      "repair": "RECONCILE_PRICE_AND_BOOKING",
+      "auto": false
+    },
+    "checkout_and_notifications": {
+      "severity": "P0",
+      "owner": "WooCommerce + Fluent",
+      "repair": "RECONNECT_SENDER_AND_PAYMENT",
+      "auto": false
+    },
+    "company_provider_connections": {
+      "severity": "P0",
+      "owner": "Provider Registry",
+      "repair": "RECONNECT_EXACT_TENANT_PROVIDERS",
+      "auto": false
+    },
+    "data_privacy_compliance": {
+      "severity": "P0",
+      "owner": "Governance",
+      "repair": "REVIEW_COMPANY_DATA_ISOLATION",
+      "auto": false
+    }
+  },
+  "skip": {
+    "only_when": "explicit profile disabled feature, provider confirms not applicable and site-scoped signed evidence",
+    "otherwise": "UNKNOWN_BLOCKS"
+  },
+  "automation": {
+    "discovery_triggers": [
+      "company.created",
+      "site.bootstrap.313_verified",
+      "provider.activated",
+      "content.changed",
+      "template.added",
+      "term.changed",
+      "translation.changed",
+      "navigation.changed",
+      "deployment.finished",
+      "scheduled.reconcile"
+    ],
+    "job_states": [
+      "DISCOVERED",
+      "QUEUED",
+      "AUTHORIZED",
+      "EXECUTED",
+      "READBACK_VERIFIED",
+      "SEMANTIC_VERIFIED",
+      "CLOSED",
+      "BLOCKED",
+      "RETRYABLE"
+    ],
+    "retry": {
+      "base_seconds": 90,
+      "multiplier": 2,
+      "max_seconds": 3600,
+      "max_attempts": 5
+    },
+    "concurrency": "one writer per company+site+environment; independent sites never blocked by unrelated incidents",
+    "repairs": "invoke existing certified provider/Content Job/Original Native Executor; never raw SQL bypass of provider ownership",
+    "recurrence": "recheck missing prerequisites until evidence valid; avoid infinite loops; P0 incident after bounded retries"
+  },
+  "promotion": {
+    "when_critical_missing": "NOT_READY",
+    "when_public_already_serving_and_missing": "LIVE_WITH_GAPS_P0",
+    "require_independent_browser_probe": true,
+    "do_not_treat_http_200_as_publish_proof": true,
+    "never_auto_rollback_without_exact_site_authority": true,
+    "public_publish_scope": "only authorized exact target and manifest digest"
+  }
+}
