@@ -6,6 +6,7 @@ if ( ! class_exists( 'MAD4B_SCP_Identifiers' ) ) require_once __DIR__ . '/class-
 if ( ! class_exists( 'MAD4B_SCP_Operational_Integrity' ) ) require_once __DIR__ . '/class-mad4b-scp-operational-integrity.php';
 if ( ! class_exists( 'MAD4B_SCP_Content_Relationship_Graph' ) ) require_once __DIR__ . '/class-mad4b-scp-content-relationship-graph.php';
 if ( ! class_exists( 'MAD4B_SCP_Content_Relationship_Writeback' ) ) require_once __DIR__ . '/class-mad4b-scp-content-relationship-writeback.php';
+if ( ! class_exists( 'MAD4B_SCP_Content_Job_Group_Orchestrator' ) ) require_once __DIR__ . '/class-mad4b-scp-content-job-groups.php';
 
 /**
  * Durable ContentJob domain service.
@@ -102,6 +103,1607 @@ final class MAD4B_SCP_Content_Jobs {
 			),
 			array('job_id','relationship_kind','expected_source_sha256'),false
 		);
+		self::register(
+            'mad4b/content-job-group-plan',
+            'Plan Original WPML ContentJob Group with Isolated Child Owners',
+            'group_plan',
+            array('source_post_id'=>array('type'=>'integer','minimum'=>1)),
+            array('source_post_id'),true
+        );
+        self::register(
+            'mad4b/content-job-group-apply',
+            'Apply Opted-In CWA Qualified Child Operations in Exact Group',
+            'group_apply',
+            array(
+              'source_post_id'=>array('type'=>'integer','minimum'=>1),
+              'group_id'=>array('type'=>'string','pattern'=>'^[a-f0-9]{64}
+			'Resolve Current ContentJob Language Family and Typed Cross-Language References',
+			'relationship_plan',
+			array(
+				'job_id' => array('type'=>'string','minLength'=>36,'maxLength'=>36),
+				'artifact_id' => array('type'=>'integer','minimum'=>0,'default'=>0),
+				'artifact_kind' => array('type'=>'string','enum'=>array('','post','term'),'default'=>''),
+			),
+			array('job_id'), true
+		);
+		self::register(
+			'mad4b/content-job-dependency-plan',
+			'Plan Brand Recovery and Resume One Existing Content Job',
+			'dependency_plan',
+			array( 'job_id' => array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36 ) ),
+			array( 'job_id' ),
+			true
+		);
+		self::register(
+			'mad4b/content-job-get',
+			'Get Content Job',
+			'get_job',
+			array( 'job_id' => array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36 ) ),
+			array( 'job_id' ),
+			true
+		);
+		self::register(
+			'mad4b/content-job-events',
+			'Get Content Job Events',
+			'get_events',
+			array(
+				'job_id' => array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36 ),
+				'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 500, 'default' => 100 ),
+			),
+			array( 'job_id' ),
+			true
+		);
+		self::register(
+            'mad4b/content-workflow-modes', 'Read Content Workflow Review Modes',
+            'workflow_modes', array( 'job_id' => array( 'type' => 'string', 'maxLength' => 36, 'default' => '' ) ), array(), true
+        );
+		self::register(
+			'mad4b/content-job-create',
+			'Create Content Job',
+			'create_job',
+			array(
+				'brand_id' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 191 ),
+				'subject' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 5000 ),
+				'primary_keyword' => array( 'type' => 'string', 'maxLength' => 191, 'default' => '' ),
+				'language' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 32 ),
+				'country' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 32 ),
+				'content_type' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 64 ),
+				'writer_profile_id' => array( 'type' => 'string', 'pattern' => '^(|[a-f0-9]{64})$', 'default' => '' ),
+				'writer_profile_version' => array( 'type' => 'string', 'pattern' => '^(|[a-f0-9]{64})$', 'default' => '' ),
+				'research_depth' => array( 'type' => 'string', 'maxLength' => 32, 'default' => 'standard' ),
+				'automation_level' => array( 'type' => 'string', 'enum' => MAD4B_SCP_Content_Workflow_Modes::choices(), 'default' => 'autonomous' ),
+				'target_post_type' => array( 'type' => 'string', 'maxLength' => 64, 'default' => '' ),
+				'desired_publish_at' => array( 'type' => 'string', 'maxLength' => 32, 'default' => '' ),
+				'reason' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 500 ),
+			),
+			array( 'brand_id', 'subject', 'language', 'country', 'content_type', 'reason' ),
+			false
+		);
+		self::register(
+			'mad4b/content-job-transition',
+			'Transition Content Job',
+			'transition_job',
+			array(
+				'job_id' => array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36 ),
+				'expected_revision' => array( 'type' => 'integer', 'minimum' => 1 ),
+				'state' => array( 'type' => 'string', 'enum' => self::states() ),
+				'stage' => array( 'type' => 'string', 'enum' => self::stages() ),
+				'reason' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 500 ),
+				'plan_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$', 'default' => '' ),
+				'artifact_id' => array( 'type' => 'string', 'maxLength' => 191, 'default' => '' ),
+			),
+			array( 'job_id', 'expected_revision', 'state', 'stage', 'reason' ),
+			false
+		);
+		self::register(
+			'mad4b/content-job-cancel',
+			'Cancel Content Job',
+			'cancel_job',
+			array(
+				'job_id' => array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36 ),
+				'expected_revision' => array( 'type' => 'integer', 'minimum' => 1 ),
+				'reason' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 500 ),
+			),
+			array( 'job_id', 'expected_revision', 'reason' ),
+			false
+		);
+	}
+
+	private static function register( $name, $label, $method, array $properties, array $required, $readonly ) {
+		if ( function_exists( 'wp_has_ability' ) && wp_has_ability( $name ) ) return;
+		wp_register_ability(
+			$name,
+			array(
+				'label' => $label,
+				'description' => $label . ' through the governed Feature 007 ContentJob aggregate.',
+				'category' => $readonly ? 'mad4b-read' : 'mad4b-write',
+				'execute_callback' => array( __CLASS__, $method ),
+				'permission_callback' => $readonly ? array( 'MAD4B_SCP_Policy', 'can_read' ) : array( 'MAD4B_SCP_Policy', 'can_mutate' ),
+				'input_schema' => array(
+					'type' => 'object',
+					'properties' => $properties,
+					'required' => $required,
+					'additionalProperties' => false,
+				),
+				'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+				'meta' => array(
+					'public' => false,
+					'show_in_rest' => false,
+					'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => $readonly ? 'read' : 'write' ),
+					'annotations' => array(
+						'readonly' => (bool) $readonly,
+						'destructive' => ! $readonly,
+						'idempotent' => $readonly,
+					),
+				),
+			)
+		);
+	}
+
+	private static function schema_ready() {
+		return class_exists( 'MAD4B_SCP_Schema' ) && MAD4B_SCP_Schema::critical_ready();
+	}
+
+	/** Fail closed before opening a transaction on nontransactional storage. */
+	private static function transactional_write_ready() {
+		if ( ! self::schema_ready() || ! method_exists( 'MAD4B_SCP_Schema', 'transactional_storage_status' ) ) {
+			return new WP_Error( 'mad4b_content_job_transactional_storage_unavailable', 'Transactional storage preflight is not available.' );
+		}
+		$storage = MAD4B_SCP_Schema::transactional_storage_status(
+			array( 'content_jobs', 'content_job_events', 'audit_events', 'audit_heads' ),
+			true
+		);
+		if ( ! is_array( $storage ) || empty( $storage['ready'] ) || empty( $storage['read_your_writes'] ) ) {
+			return new WP_Error( 'mad4b_content_job_transactional_storage_blocked', 'Required content and audit tables must use write-safe transactional storage.' );
+		}
+		return true;
+	}
+
+	private static function site_uuid() {
+		$uuid = class_exists( 'MAD4B_SCP_Site_Profile' ) ? strtolower( trim( (string) MAD4B_SCP_Site_Profile::site_uuid() ) ) : '';
+		return preg_match( '/^[a-f0-9-]{36}$/', $uuid ) ? $uuid : '';
+	}
+
+	/** Re-evaluate all scope dimensions and profile revisions on every entry. */
+	private static function trusted_scope() {
+		$checkpoint = MAD4B_SCP_Operational_Integrity::capture();
+		return is_wp_error( $checkpoint ) ? $checkpoint : $checkpoint['scope'];
+	}
+
+	private static function valid_uuid( $value ) {
+		return class_exists( 'MAD4B_SCP_Identifiers' ) && '' !== MAD4B_SCP_Identifiers::job_id( $value );
+	}
+
+	private static function actor() {
+        if ( class_exists( 'MAD4B_Native_Origin_Content_Jobs_V1', false )
+            && MAD4B_Native_Origin_Content_Jobs_V1::is_admitted() )
+            return MAD4B_Native_Origin_Content_Jobs_V1::actor();
+		$actor = array( 'type' => 'wordpress_user', 'id' => (string) get_current_user_id(), 'nhi' => '' );
+		if ( class_exists( 'MAD4B_SCP_Identity_Context' ) && class_exists( 'MAD4B_SCP_Agent_Registry' ) ) {
+			$identity = MAD4B_SCP_Identity_Context::current();
+			if ( ! is_wp_error( $identity ) ) {
+				$agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
+				if ( ! is_wp_error( $agent ) && ! empty( $agent['public_id'] ) ) {
+					$actor['type'] = 'nhi';
+					$actor['id'] = strtolower( (string) $agent['public_id'] );
+					$actor['nhi'] = $actor['id'];
+				}
+			}
+		}
+		return $actor;
+	}
+
+	private static function normalize_datetime( $value ) {
+		$value = trim( (string) $value );
+		if ( '' === $value ) return null;
+		// UI natural language is resolved upstream. Durable jobs accept only a
+		// normalized ISO 8601 instant with an explicit offset (or Z).
+		if ( ! preg_match( '/^(\\d{4})-(\\d{2})-(\\d{2})T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)(?:\\.\\d{1,6})?(Z|[+-](?:0\\d|1[0-4]):[0-5]\\d)$/D', $value, $match ) ||
+			! checkdate( (int) $match[2], (int) $match[3], (int) $match[1] ) ) {
+			return new WP_Error( 'mad4b_content_job_timezone_required', 'Publish time must be an exact ISO 8601 instant with an explicit timezone offset or Z.' );
+		}
+		if ( preg_match( '/^[+-]14:(?!00$)/', $match[7] ) ) return new WP_Error( 'mad4b_content_job_timezone_invalid', 'Timezone offsets must be within fourteen hours.' );
+		try {
+			$instant = new DateTimeImmutable( $value );
+			return $instant->setTimezone( new DateTimeZone( 'UTC' ) )->format( 'Y-m-d H:i:s' );
+		} catch ( Exception $e ) {
+			return new WP_Error( 'mad4b_content_job_datetime_invalid', 'Invalid desired publish datetime.' );
+		}
+	}
+
+	private static function row( $row ) {
+		if ( ! is_array( $row ) ) return null;
+		foreach ( array( 'id', 'target_post_id', 'job_revision', 'created_by_user' ) as $key ) {
+			if ( array_key_exists( $key, $row ) && null !== $row[ $key ] ) $row[ $key ] = (int) $row[ $key ];
+		}
+		return $row;
+	}
+
+	public static function list_jobs( $input ) {
+		global $wpdb;
+		if ( ! self::schema_ready() ) return new WP_Error( 'mad4b_content_job_schema_unavailable', 'ContentJob schema is not ready.' );
+		$scope = self::trusted_scope();
+		if ( is_wp_error( $scope ) ) return $scope;
+		$t = MAD4B_SCP_Schema::tables();
+		$where = array( 'site_uuid=%s', 'brand_id=%s', 'tenant_id=%s' );
+		$args = array( $scope['site_uuid'], $scope['brand_ref'], $scope['tenant_ref'] );
+		$state = isset( $input['state'] ) ? strtoupper( sanitize_key( (string) $input['state'] ) ) : '';
+		$stage = isset( $input['stage'] ) ? strtoupper( sanitize_key( (string) $input['stage'] ) ) : '';
+		if ( '' !== $state ) { $where[] = 'state=%s'; $args[] = $state; }
+		if ( '' !== $stage ) { $where[] = 'stage=%s'; $args[] = $stage; }
+		$limit = isset( $input['limit'] ) ? max( 1, min( 200, absint( $input['limit'] ) ) ) : 50;
+		$args[] = $limit;
+		$sql = "SELECT * FROM {$t['content_jobs']} WHERE " . implode( ' AND ', $where ) . ' ORDER BY updated_at DESC,id DESC LIMIT %d';
+		$rows = $wpdb->get_results( $wpdb->prepare( $sql, $args ), ARRAY_A );
+		return array(
+			'contract' => self::CONTRACT,
+			'items' => array_values( array_filter( array_map( array( __CLASS__, 'row' ), is_array( $rows ) ? $rows : array() ) ) ),
+			'count' => is_array( $rows ) ? count( $rows ) : 0,
+			// A zero here is not a site-wide Doctor clearance: this query is
+			// intentionally constrained by the current brand and tenant fence.
+			'read_scope' => 'site_uuid_brand_id_tenant_id',
+			'site_wide_inventory_evaluated' => false,
+			'zero_rows_clear_site_wide_doctor' => false,
+			'cross_scope_repair_allowed' => false,
+			'mutation_performed' => false,
+		);
+	}
+
+	/**
+	 * Read-only recovery of the original durable ContentJob.
+	 * Each actual Brand creation/review and Job transition is separately
+	 * dispatched through its current, exact-approved governed Ability.
+	 */
+	public static function dependency_plan( $input ) {
+		$job_id = is_array( $input ) && isset( $input['job_id'] ) ? strtolower( trim( (string) $input['job_id'] ) ) : '';
+		$record = self::get_job( array( 'job_id' => $job_id ) );
+		if ( is_wp_error( $record ) ) return $record;
+		$job = $record['job'] ?? null;
+		if ( ! is_array( $job ) ) return new WP_Error( 'mad4b_content_recovery_job_unavailable', 'Exact ContentJob not found.' );
+		if ( ! class_exists( 'MAD4B_SCP_Context_Authority' ) || ! class_exists( 'MAD4B_SCP_Brand_Core_Control_Loop' ) )
+			return new WP_Error( 'mad4b_content_recovery_dependencies_unavailable', 'Governed Brand Core runtime unavailable.' );
+		$coverage = MAD4B_SCP_Context_Authority::brand_core_coverage();
+		$route = MAD4B_SCP_Brand_Core_Control_Loop::status();
+		if ( is_wp_error( $coverage ) ) return $coverage;
+		if ( is_wp_error( $route ) ) return $route;
+		if ( ! is_array( $coverage ) || ! is_array( $route ) ||
+			empty( $coverage['context_fingerprint'] ) ||
+			! hash_equals( (string) ( $coverage['authority_manifest_fingerprint'] ?? '' ), (string) ( $route['authority_manifest_fingerprint'] ?? '' ) ) ||
+			(int) ( $coverage['registry_revision'] ?? -1 ) !== (int) ( $route['registry_revision'] ?? -2 ) )
+			return new WP_Error( 'mad4b_content_recovery_snapshot_drift', 'Brand coverage changed; obtain a fresh recovery snapshot.' );
+		$plan=self::dependency_reduce($job,$coverage,$route);
+		if(is_array($plan) && class_exists('MAD4B_SCP_AI_Review_Lifecycle',false)) {
+			$review_needed=('WAITING_REVIEW'===(string)($job['state']??''));
+			$plan['ai_review_lifecycle']=MAD4B_SCP_AI_Review_Lifecycle::decide('content_job',array(
+				'content_hash'=>strtolower((string)($job['current_artifact_sha256']??'')),
+				'review_status'=>$review_needed?'waiting_review':'unreviewed',
+				'content_complete'=>!empty($job['current_artifact_id']),
+			),array('review_mode'=>(string)(MAD4B_SCP_Context_Authority::review_policy()['mode']??'human_only')));
+		}
+		if ( is_array( $plan ) && empty( $plan['resume_ready'] ) && ! empty( $plan['next_ability'] ) && class_exists( 'MAD4B_SCP_Guided_Continuation' ) ) {
+			$automatic = MAD4B_SCP_Guided_Continuation::run( array(
+				'next_ability' => (string) $plan['next_ability'],
+				'original_operation_sha256' => hash( 'sha256', (string) $job_id ),
+				'max_steps' => 2,
+			) );
+			$plan['automatic_read_continuation'] = $automatic;
+			if ( is_array( $automatic ) && ! empty( $automatic['resume_original_request'] ) ) {
+				// Same durable job and optimistic revision: never create a
+				// duplicate or silently change its stage. Refresh both authority
+				// reads and require exact revision + manifest agreement again.
+				$fresh_coverage = MAD4B_SCP_Context_Authority::brand_core_coverage();
+				$fresh_route = MAD4B_SCP_Brand_Core_Control_Loop::status();
+				if ( is_array( $fresh_coverage ) && is_array( $fresh_route )
+					&& ! empty( $fresh_coverage['context_fingerprint'] )
+					&& hash_equals( (string) ( $fresh_coverage['authority_manifest_fingerprint'] ?? '' ), (string) ( $fresh_route['authority_manifest_fingerprint'] ?? '' ) )
+					&& (int) ( $fresh_coverage['registry_revision'] ?? -1 ) === (int) ( $fresh_route['registry_revision'] ?? -2 ) ) {
+					$fresh_plan = self::dependency_reduce( $job, $fresh_coverage, $fresh_route );
+					if ( is_array( $fresh_plan ) && ! empty( $fresh_plan['resume_ready'] ) ) {
+						$fresh_plan['automatic_read_continuation'] = $automatic;
+						$fresh_plan['original_job_rechecked'] = true;
+						$plan = $fresh_plan;
+					}
+				}
+			}
+		}
+		// Informational dependency projection from the certified Translation
+		// Bridge / native WPML term identity. It MUST NOT decide Brand Core
+		// continuation eligibility or write into the durable job aggregate.
+		if(is_array($plan) && ($job['content_type']??'')==='translation' &&
+			class_exists('MAD4B_SCP_Content_Relationship_Graph',false)) {
+			$plan['localized_relationship_graph']=
+				MAD4B_SCP_Content_Relationship_Graph::planJob($job_id);
+			$plan['localized_relationship_graph_authorizes_write']=false;
+		}
+		return $plan;
+	}
+
+	/** Pure reducer for fail-closed regression testing. */
+	public static function dependency_reduce( array $job, array $coverage, array $route ) {
+		$id = (string) ( $job['job_id'] ?? '' );
+		$state = (string) ( $job['state'] ?? '' );
+		$revision = (int) ( $job['job_revision'] ?? 0 );
+		$terminal = in_array( $state, array( 'COMPLETED', 'CANCELLED' ), true );
+		$missing = array_values( (array) ( $coverage['missing_required_context_sets'] ?? array() ) );
+		$conflicts = array_values( (array) ( $coverage['conflicting_required_context_sets'] ?? array() ) );
+		$ready = ! $terminal && ! empty( $coverage['ready'] ) && ! empty( $route['ready'] )
+			&& 'READY' === (string) ( $route['state'] ?? '' ) && ! $missing && ! $conflicts;
+		$steps = array();
+		foreach ( (array) ( $route['categories'] ?? array() ) as $c ) {
+			if ( ! is_array( $c ) || 'READY' === (string) ( $c['state'] ?? '' ) ) continue;
+			$category = (string) ( $c['category'] ?? '' );
+			if ( ! in_array( $category, array( 'brand_strategy', 'tone_of_voice', 'editorial_guidelines' ), true ) ) continue;
+			$steps[] = array(
+				'category' => $category,
+				'state' => (string) ( $c['state'] ?? '' ),
+				'depends_on' => array_values( (array) ( $c['dependencies'] ?? array() ) ),
+				'next_ability' => (string) ( $c['next_ability'] ?? 'context/brand-core-coverage' ),
+				'requires_governed_approval' => true, 'readback_after_mutation' => true,
+				'automatically_approve_unreviewed_asset' => false,
+			);
+		}
+		$basis = array( $id, $revision, $state, (string) ( $job['stage'] ?? '' ),
+			(string) ( $coverage['context_fingerprint'] ?? '' ),
+			(string) ( $coverage['authority_manifest_fingerprint'] ?? '' ),
+			(int) ( $coverage['registry_revision'] ?? 0 ), (string) ( $route['snapshot_sha256'] ?? '' ) );
+		$sha = hash( 'sha256', wp_json_encode( $basis ) );
+		$transition = array();
+		if ( ! $terminal && $ready && in_array( $state, array( 'NEW', 'QUEUED', 'BLOCKED', 'WAITING_REVIEW' ), true ) ) {
+			$transition = array(
+				'ability' => 'mad4b/content-job-transition',
+				'input' => array( 'job_id' => $id, 'expected_revision' => $revision,
+					'state' => 'NEW' === $state ? 'QUEUED' : 'RUNNING',
+					'stage' => 'KNOWLEDGE_DISPATCH', 'plan_sha256' => $sha,
+					'reason' => 'Reviewed Brand Core is ready; resume original ContentJob.' ),
+				'exact_approval_required' => true,
+			);
+		} elseif ( ! $terminal && ! $ready && in_array( $state, array( 'QUEUED', 'RUNNING', 'WAITING_REVIEW' ), true ) ) {
+			$transition = array(
+				'ability' => 'mad4b/content-job-transition',
+				'input' => array( 'job_id' => $id, 'expected_revision' => $revision,
+					'state' => 'BLOCKED', 'stage' => 'KNOWLEDGE_DISPATCH',
+					'plan_sha256' => $sha, 'reason' => 'Await governed Brand Core dependency recovery.' ),
+				'exact_approval_required' => true,
+			);
+		}
+		return array(
+			'contract' => 'mad4b.content-job-dependency-recovery.v1',
+			'job_id' => $id, 'job_revision' => $revision,
+			'original_task' => array( 'subject' => (string) ( $job['subject'] ?? '' ),
+				'language' => (string) ( $job['language'] ?? '' ),
+				'target_post_type' => (string) ( $job['target_post_type'] ?? '' ),
+				'target_post_id' => $job['target_post_id'] ?? null ),
+			'state' => $terminal ? 'TERMINAL' : ( $ready ? 'RESUME_READY' : 'RECOVER_BRAND_CORE' ),
+			'resume_ready' => $ready, 'missing_context_sets' => $missing,
+			'conflicting_context_sets' => $conflicts, 'recovery_steps' => $steps,
+			'next_ability' => $terminal ? '' : ( $ready ? 'mad4b/skill-get' : (string) ( $route['next_ability'] ?? 'context/brand-core-control-loop' ) ),
+			'next_transition' => $transition, 'plan_sha256' => $sha,
+			'resume_chain' => array( 'mad4b/skill-get', 'mad4b/approval-plan',
+				'mad4b/content-create-post', 'mad4b/content-get-post', 'mad4b/content-job-transition' ),
+			'original_job_only' => true, 'fresh_context_receipt_required' => true,
+			'exact_approval_per_mutation_required' => true,
+			'no_blind_retry' => true, 'auto_approve_unreviewed_assets' => false,
+			'production_mutation_allowed' => false, 'read_only' => true,
+			'mutation_performed' => false,
+		);
+	}
+
+	/**
+	 * Shared read-only ContentJob step. Exact WPML family, not a language
+	 * guess; missing target post/term is a dependency, not a fabricated
+	 * reference or permission to create one.
+	 */
+    public static function group_plan($input) {
+        return MAD4B_SCP_Content_Job_Group_Orchestrator::plan((array)$input);
+    }
+    public static function group_apply($input) {
+        return MAD4B_SCP_Content_Job_Group_Orchestrator::apply((array)$input);
+    }
+
+	public static function typed_relation_write_plan( $input ) {
+		return MAD4B_SCP_Content_Relationship_Writeback::plan( (array)$input );
+	}
+	public static function typed_relation_write_apply( $input ) {
+		return MAD4B_SCP_Content_Relationship_Writeback::apply( (array)$input );
+	}
+
+	public static function relationship_plan( $input ) {
+		if ( ! class_exists( 'MAD4B_SCP_Content_Relationship_Graph' ) )
+			return array( 'state'=>'HOLD','reason'=>'relationship_graph_runtime_missing' );
+		$job_id = (string) ( $input['job_id'] ?? '' );
+		$artifact = absint( $input['artifact_id'] ?? 0 );
+		$kind = (string) ( $input['artifact_kind'] ?? '' );
+		return MAD4B_SCP_Content_Relationship_Graph::planJob($job_id,$artifact,$kind);
+	}
+
+	public static function get_job( $input ) {
+		$job_id = isset( $input['job_id'] ) ? strtolower( trim( (string) $input['job_id'] ) ) : '';
+		$row = self::load_job( $job_id, false );
+		if ( is_wp_error( $row ) ) return $row;
+		return array( 'contract' => self::CONTRACT, 'job' => self::row( $row ), 'mutation_performed' => false );
+	}
+
+	public static function get_events( $input ) {
+		global $wpdb;
+		$job_id = isset( $input['job_id'] ) ? strtolower( trim( (string) $input['job_id'] ) ) : '';
+		$job = self::load_job( $job_id, false );
+		if ( is_wp_error( $job ) ) return $job;
+		$limit = isset( $input['limit'] ) ? max( 1, min( 500, absint( $input['limit'] ) ) ) : 100;
+		$t = MAD4B_SCP_Schema::tables();
+		$rows = $wpdb->get_results(
+			$wpdb->prepare( "SELECT * FROM {$t['content_job_events']} WHERE job_id=%s ORDER BY sequence ASC LIMIT %d", $job_id, $limit ),
+			ARRAY_A
+		);
+		return array(
+			'contract' => self::EVENT_CONTRACT,
+			'job_id' => $job_id,
+			'items' => is_array( $rows ) ? $rows : array(),
+			'count' => is_array( $rows ) ? count( $rows ) : 0,
+			'mutation_performed' => false,
+		);
+	}
+
+    public static function workflow_modes( $input ) {
+        return MAD4B_SCP_Content_Workflow_Modes::catalog( $input );
+    }
+
+	public static function create_job( $input ) {
+		global $wpdb;
+		if ( ! self::schema_ready() ) return new WP_Error( 'mad4b_content_job_schema_unavailable', 'ContentJob schema is not ready.' );
+		$transactional = self::transactional_write_ready();
+		if ( is_wp_error( $transactional ) ) return $transactional;
+		$checkpoint = MAD4B_SCP_Operational_Integrity::capture();
+		if ( is_wp_error( $checkpoint ) ) return $checkpoint;
+		$scope = $checkpoint['scope'];
+		$site_uuid = (string) $scope['site_uuid'];
+		$subject = trim( wp_strip_all_tags( (string) $input['subject'] ) );
+		if ( '' === $subject || strlen( $subject ) > 5000 ) return new WP_Error( 'mad4b_content_job_subject_invalid', 'ContentJob subject is missing or too long.' );
+		$brand_id = sanitize_text_field( (string) $input['brand_id'] );
+		if ( ! hash_equals( (string) $scope['brand_ref'], $brand_id ) ) {
+			return new WP_Error( 'mad4b_content_job_brand_mismatch', 'The supplied brand does not match the trusted deployment scope.' );
+		}
+		$language = sanitize_key( (string) $input['language'] );
+		$country = sanitize_key( (string) $input['country'] );
+		$content_type = sanitize_key( (string) $input['content_type'] );
+		if ( '' === $brand_id || '' === $language || '' === $country || '' === $content_type ) return new WP_Error( 'mad4b_content_job_identity_invalid', 'ContentJob brand/market/type identity is incomplete.' );
+		$writer_profile_id = strtolower( trim( (string) ( $input['writer_profile_id'] ?? '' ) ) );
+		$writer_profile_version = strtolower( trim( (string) ( $input['writer_profile_version'] ?? '' ) ) );
+		if ( ( '' === $writer_profile_id ) xor ( '' === $writer_profile_version ) ) {
+			return new WP_Error( 'mad4b_writer_profile_binding_incomplete', 'WriterProfile identity and version must be supplied together.' );
+		}
+		if ( '' !== $writer_profile_id
+			&& ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $writer_profile_id )
+				|| 1 !== preg_match( '/^[a-f0-9]{64}$/', $writer_profile_version ) ) ) {
+			return new WP_Error( 'mad4b_writer_profile_identity_invalid', 'WriterProfile identity and version must be exact SHA-256 identities.' );
+		}
+        $automation_level = MAD4B_SCP_Content_Workflow_Modes::requested(
+            $input['automation_level'] ?? MAD4B_SCP_Content_Workflow_Modes::DEFAULT_MODE
+        );
+        if ( is_wp_error( $automation_level ) ) return $automation_level;
+		$publish_at = self::normalize_datetime( isset( $input['desired_publish_at'] ) ? $input['desired_publish_at'] : '' );
+		if ( is_wp_error( $publish_at ) ) return $publish_at;
+        // Reject an unidentified WP-CLI / cron actor BEFORE opening a transaction.
+        // The final integrity fence remains mandatory after all native writes.
+        if ( ( ! class_exists( 'MAD4B_SCP_Policy' ) || true !== MAD4B_SCP_Policy::can_mutate() )
+            && !( class_exists( 'MAD4B_Native_Origin_Content_Jobs_V1', false )
+                && MAD4B_Native_Origin_Content_Jobs_V1::admitted_for( $input, $scope ) ) ) {
+            return new WP_Error( 'mad4b_content_job_authorized_actor_required',
+                'A verified administrator or governed NHI is required to create ContentJobs.',
+                array( 'mutation_performed' => false, 'stage' => 'pre_transaction_authorization',
+                    'requires_authorized_principal' => true ) );
+        }
+
+		$job_id = strtolower( wp_generate_uuid4() );
+		$now = gmdate( 'Y-m-d H:i:s' );
+		$actor = self::actor();
+		$t = MAD4B_SCP_Schema::tables();
+		$data = array(
+			'job_id' => $job_id,
+			'tenant_id' => (string) $scope['tenant_ref'],
+			'site_uuid' => $site_uuid,
+			'brand_id' => (string) $scope['brand_ref'],
+			'subject' => $subject,
+			'primary_keyword' => sanitize_text_field( isset( $input['primary_keyword'] ) ? (string) $input['primary_keyword'] : '' ),
+			'language' => $language,
+			'country' => $country,
+			'content_type' => $content_type,
+			'writer_profile_id' => $writer_profile_id,
+			'writer_profile_version' => $writer_profile_version,
+			'research_depth' => sanitize_key( isset( $input['research_depth'] ) ? (string) $input['research_depth'] : 'standard' ),
+			'automation_level' => $automation_level,
+			'state' => 'NEW',
+			'stage' => 'INTAKE',
+			'target_post_type' => sanitize_key( isset( $input['target_post_type'] ) ? (string) $input['target_post_type'] : '' ),
+			'target_post_id' => null,
+			'desired_publish_at' => $publish_at,
+			'current_artifact_id' => '',
+			'quality_status' => 'unknown',
+			'last_error_code' => '',
+			'last_error_summary' => '',
+			'job_revision' => 1,
+			'created_by_nhi' => $actor['nhi'],
+			'created_by_user' => get_current_user_id(),
+			'created_at' => $now,
+			'updated_at' => $now,
+			'completed_at' => null,
+			'cancelled_at' => null,
+		);
+
+		if ( false === $wpdb->query( 'START TRANSACTION' ) ) {
+			return new WP_Error( 'mad4b_content_job_transaction_unavailable', 'ContentJob creation requires an atomic database transaction.' );
+		}
+		try {
+			$failure_stage='insert_content_job';
+			if ( false === $wpdb->insert( $t['content_jobs'], $data ) ) throw new RuntimeException( 'content_job_insert_failed' );
+			$failure_stage='append_content_job_event';
+			$event = self::append_event_locked( $job_id, 1, 'CREATED', '', 'NEW', '', 'INTAKE', (string) $input['reason'], $actor, '', '' );
+			if ( is_wp_error( $event ) ) throw new RuntimeException( $event->get_error_code() );
+			$failure_stage='append_audit';
+			$audit = MAD4B_SCP_Audit::record( 'mad4b/content-job-create', array( 'job_id' => $job_id, 'site_uuid' => $site_uuid, 'revision' => 1 ), 'ok', true );
+			if ( is_wp_error( $audit ) ) throw new RuntimeException( $audit->get_error_code() );
+			$failure_stage='assert_operational_integrity';
+			$fence = MAD4B_SCP_Operational_Integrity::assert_unchanged( $checkpoint, true );
+			if ( is_wp_error( $fence ) ) throw new RuntimeException( $fence->get_error_code() );
+			$failure_stage='commit';
+			if ( false === $wpdb->query( 'COMMIT' ) ) {
+				// A lost acknowledgement does not prove the database rolled back.
+				// A blind client retry can create a second job; demand scoped readback.
+				MAD4B_SCP_Audit::transaction_rolled_back();
+				return new WP_Error( 'mad4b_content_job_commit_uncertain', 'Creation outcome is unknown; reconcile the exact job before retrying.', array( 'job_id' => $job_id, 'blind_retry_allowed' => false, 'reconciliation_required' => true ) );
+			}
+			MAD4B_SCP_Audit::transaction_committed();
+		} catch ( Throwable $e ) {
+			$rolled_back = $wpdb->query( 'ROLLBACK' );
+			MAD4B_SCP_Audit::transaction_rolled_back();
+			if ( false === $rolled_back ) {
+				return new WP_Error( 'mad4b_content_job_rollback_uncertain', 'ContentJob rollback could not be confirmed; reconcile the exact job.', array( 'job_id' => $job_id, 'blind_retry_allowed' => false, 'reconciliation_required' => true ) );
+			}
+            // Persist a structured, non-secret failure code instead of masking the step.
+            $failure_code = sanitize_key( $e->getMessage() );
+            if ( ! preg_match( '/^(mad4b_|content_job_)[a-z0-9_]{3,90}$/D', $failure_code ) )
+                $failure_code = 'content_job_unexpected_exception';
+            error_log( '[MAD4B ContentJob] create_rolled_back stage=' . $failure_stage .
+                ' failure=' . $failure_code . ' exception=' . get_class( $e ) );
+            return new WP_Error( 'mad4b_content_job_create_failed', 'Unable to create ContentJob.', array(
+                'blind_retry_allowed' => false, 'rollback_confirmed' => true,
+                'failure_stage' => $failure_stage, 'failure_code' => $failure_code,
+            ) );
+		}
+		// Post-commit event only; listeners must not alter the committed transaction.
+        do_action( 'mad4b_scp_content_job_created', array(
+            'job_id' => $job_id, 'job_revision' => 1,
+            'state' => 'NEW', 'stage' => 'INTAKE' ) );
+		return self::get_job( array( 'job_id' => $job_id ) );
+	}
+
+	public static function transition_job( $input ) {
+		return self::transition(
+			isset( $input['job_id'] ) ? $input['job_id'] : '',
+			isset( $input['expected_revision'] ) ? $input['expected_revision'] : 0,
+			isset( $input['state'] ) ? $input['state'] : '',
+			isset( $input['stage'] ) ? $input['stage'] : '',
+			isset( $input['reason'] ) ? $input['reason'] : '',
+			isset( $input['plan_sha256'] ) ? $input['plan_sha256'] : '',
+			isset( $input['artifact_id'] ) ? $input['artifact_id'] : ''
+		);
+	}
+
+	public static function cancel_job( $input ) {
+		$job = self::load_job( isset( $input['job_id'] ) ? $input['job_id'] : '', false );
+		if ( is_wp_error( $job ) ) return $job;
+		return self::transition(
+			$job['job_id'],
+			isset( $input['expected_revision'] ) ? $input['expected_revision'] : 0,
+			'CANCELLED',
+			$job['stage'],
+			isset( $input['reason'] ) ? $input['reason'] : '',
+			'',
+			''
+		);
+	}
+
+	private static function transition( $job_id, $expected_revision, $new_state, $new_stage, $reason, $plan_sha256, $artifact_id ) {
+		global $wpdb;
+		if ( ! self::schema_ready() ) return new WP_Error( 'mad4b_content_job_schema_unavailable', 'ContentJob schema is not ready.' );
+		$transactional = self::transactional_write_ready();
+		if ( is_wp_error( $transactional ) ) return $transactional;
+		$job_id = strtolower( trim( (string) $job_id ) );
+		if ( ! self::valid_uuid( $job_id ) ) return new WP_Error( 'mad4b_content_job_id_invalid', 'ContentJob ID is invalid.' );
+		$expected_revision = absint( $expected_revision );
+		$new_state = strtoupper( sanitize_key( (string) $new_state ) );
+		$new_stage = strtoupper( sanitize_key( (string) $new_stage ) );
+		$reason = trim( sanitize_text_field( (string) $reason ) );
+		$plan_sha256 = strtolower( trim( (string) $plan_sha256 ) );
+		$artifact_id = sanitize_text_field( (string) $artifact_id );
+		if ( ! in_array( $new_state, self::states(), true ) || ! in_array( $new_stage, self::stages(), true ) ) return new WP_Error( 'mad4b_content_job_transition_invalid', 'Requested state/stage is invalid.' );
+		if ( '' !== $plan_sha256 && ! preg_match( '/^[a-f0-9]{64}$/', $plan_sha256 ) ) return new WP_Error( 'mad4b_content_job_plan_invalid', 'Plan SHA is invalid.' );
+		if ( strlen( $reason ) < 3 ) return new WP_Error( 'mad4b_content_job_reason_required', 'Transition reason is required.' );
+
+		$checkpoint = MAD4B_SCP_Operational_Integrity::capture();
+		if ( is_wp_error( $checkpoint ) ) return $checkpoint;
+		$t = MAD4B_SCP_Schema::tables();
+		if ( false === $wpdb->query( 'START TRANSACTION' ) ) {
+			return new WP_Error( 'mad4b_content_job_transaction_unavailable', 'ContentJob transition requires an atomic database transaction.' );
+		}
+		try {
+			$row = self::load_job( $job_id, true );
+			if ( is_wp_error( $row ) ) throw new RuntimeException( $row->get_error_code() );
+			if ( $expected_revision !== (int) $row['job_revision'] ) throw new RuntimeException( 'content_job_revision_conflict' );
+			if ( in_array( $row['state'], array( 'COMPLETED', 'CANCELLED' ), true ) ) throw new RuntimeException( 'content_job_terminal_immutable' );
+			// A translation job must not accept an arbitrary external Artifact
+			// ID in ANY lifecycle transition. An exact same-site native WPML
+			// family and current original Job revision are mandatory.
+			$artifact_changed = $artifact_id!=='' &&
+				$artifact_id!==(string)$row['current_artifact_id'];
+			if ($artifact_changed && ($row['content_type']??'')==='translation') {
+				$local=ctype_digit($artifact_id)?(int)$artifact_id:0;
+				if ((string)$row['current_artifact_id']!=='' || !$local ||
+					!class_exists('MAD4B_SCP_Content_Relationship_Graph',false))
+					throw new RuntimeException('content_job_localized_artifact_binding_denied');
+				$projection=MAD4B_SCP_Content_Relationship_Graph::planJob($job_id);
+				$kind=(string)($projection['source_reference']['kind']??'');
+				$permitted=$kind==='term'?current_user_can('edit_term',$local):
+					($kind==='post'&&current_user_can('edit_post',$local));
+				if(($projection['state']??'')!=='WAITING_ARTIFACT' ||
+					(int)($projection['candidate_local_id']??0)!==$local ||
+					(int)($projection['job_revision']??-1)!==$expected_revision ||
+					!$permitted)
+					throw new RuntimeException('content_job_localized_artifact_binding_denied');
+			}
+			$same_state = hash_equals( (string) $row['state'], $new_state );
+			$same_stage = hash_equals( (string) $row['stage'], $new_stage );
+			if ( $same_state && $same_stage ) {
+				// A native, source-verified WPML artifact may be bound without
+				// manufacturing a workflow state/stage transition. Original
+				// ContentJob transaction, revision CAS, audit and actor remain.
+				if (!$artifact_changed ||($row['content_type']??'')!=='translation')
+					throw new RuntimeException('content_job_noop_transition');
+			}
+			$allowed = self::transition_map();
+			if ( ! $same_state && ( ! isset( $allowed[ $row['state'] ] ) || ! in_array( $new_state, $allowed[ $row['state'] ], true ) ) ) {
+				throw new RuntimeException( 'content_job_state_transition_denied' );
+			}
+
+			$revision = $expected_revision + 1;
+			$now = gmdate( 'Y-m-d H:i:s' );
+			$update = array(
+				'state' => $new_state,
+				'stage' => $new_stage,
+				'current_artifact_id' => '' !== $artifact_id ? $artifact_id : (string) $row['current_artifact_id'],
+				'job_revision' => $revision,
+				'updated_at' => $now,
+				'completed_at' => 'COMPLETED' === $new_state ? $now : $row['completed_at'],
+				'cancelled_at' => 'CANCELLED' === $new_state ? $now : $row['cancelled_at'],
+			);
+			$changed = $wpdb->update(
+				$t['content_jobs'],
+				$update,
+				array( 'id' => (int) $row['id'], 'job_revision' => $expected_revision, 'site_uuid' => (string) $row['site_uuid'], 'brand_id' => (string) $row['brand_id'], 'tenant_id' => (string) $checkpoint['scope']['tenant_ref'] ),
+				null,
+				array( '%d', '%d', '%s', '%s', '%s' )
+			);
+			if ( 1 !== (int) $changed ) throw new RuntimeException( 'content_job_transition_cas_failed' );
+			$actor = self::actor();
+			$event = self::append_event_locked(
+				$job_id,
+				$revision,
+				'CANCELLED' === $new_state ? 'CANCELLED' : 'TRANSITIONED',
+				(string) $row['state'],
+				$new_state,
+				(string) $row['stage'],
+				$new_stage,
+				$reason,
+				$actor,
+				$plan_sha256,
+				$artifact_id
+			);
+			if ( is_wp_error( $event ) ) throw new RuntimeException( $event->get_error_code() );
+			$audit = MAD4B_SCP_Audit::record( 'mad4b/content-job-transition', array( 'job_id' => $job_id, 'from_revision' => $expected_revision, 'to_revision' => $revision, 'state' => $new_state, 'stage' => $new_stage ), 'ok', true );
+			if ( is_wp_error( $audit ) ) throw new RuntimeException( $audit->get_error_code() );
+			$fence = MAD4B_SCP_Operational_Integrity::assert_unchanged( $checkpoint, true );
+			if ( is_wp_error( $fence ) ) throw new RuntimeException( $fence->get_error_code() );
+			if ( false === $wpdb->query( 'COMMIT' ) ) {
+				MAD4B_SCP_Audit::transaction_rolled_back();
+				return new WP_Error( 'mad4b_content_job_transition_commit_uncertain', 'Transition outcome is unknown; read back the exact job revision before retrying.', array( 'job_id' => $job_id, 'expected_new_revision' => $revision, 'blind_retry_allowed' => false, 'reconciliation_required' => true ) );
+			}
+			MAD4B_SCP_Audit::transaction_committed();
+		} catch ( Throwable $e ) {
+			$rolled_back = $wpdb->query( 'ROLLBACK' );
+			MAD4B_SCP_Audit::transaction_rolled_back();
+			if ( false === $rolled_back ) {
+				return new WP_Error( 'mad4b_content_job_transition_rollback_uncertain', 'Transition rollback could not be confirmed; reconcile the exact job revision.', array( 'job_id' => $job_id, 'expected_new_revision' => $expected_revision + 1, 'blind_retry_allowed' => false, 'reconciliation_required' => true ) );
+			}
+			$code = $e->getMessage();
+			if ( 'content_job_revision_conflict' === $code ) return new WP_Error( 'mad4b_content_job_revision_conflict', 'ContentJob revision changed since the requested transition.' );
+			if ( 'content_job_terminal_immutable' === $code ) return new WP_Error( 'mad4b_content_job_terminal_immutable', 'Completed or cancelled ContentJob history is immutable.' );
+			if ( 'content_job_state_transition_denied' === $code ) return new WP_Error( 'mad4b_content_job_state_transition_denied', 'Requested lifecycle transition is not allowed.' );
+			if ( 'content_job_noop_transition' === $code ) return new WP_Error( 'mad4b_content_job_noop_transition', 'State and stage are unchanged.' );
+			return new WP_Error( 'mad4b_content_job_transition_failed', 'Unable to transition ContentJob.', array( 'blind_retry_allowed' => false, 'rollback_confirmed' => true ) );
+		}
+        // Only a committed state change may emit the authoritative lifecycle event.
+        do_action( 'mad4b_scp_content_job_transitioned', array(
+            'job_id' => $job_id, 'job_revision' => $revision,
+            'state' => $new_state, 'stage' => $new_stage ) );
+		return self::get_job( array( 'job_id' => $job_id ) );
+	}
+
+	private static function load_job( $job_id, $for_update ) {
+		global $wpdb;
+		if ( ! self::valid_uuid( $job_id ) ) return new WP_Error( 'mad4b_content_job_id_invalid', 'ContentJob ID is invalid.' );
+		$scope = self::trusted_scope();
+		if ( is_wp_error( $scope ) ) return $scope;
+		$t = MAD4B_SCP_Schema::tables();
+		$sql = $wpdb->prepare( "SELECT * FROM {$t['content_jobs']} WHERE job_id=%s AND site_uuid=%s AND brand_id=%s AND tenant_id=%s LIMIT 1" . ( $for_update ? ' FOR UPDATE' : '' ), $job_id, $scope['site_uuid'], $scope['brand_ref'], $scope['tenant_ref'] );
+		$row = $wpdb->get_row( $sql, ARRAY_A );
+		return is_array( $row ) ? $row : new WP_Error( 'mad4b_content_job_missing', 'ContentJob is not visible within the current authorized site, brand and tenant scope.' );
+	}
+
+	private static function append_event_locked( $job_id, $sequence, $event_type, $previous_state, $new_state, $previous_stage, $new_stage, $reason, array $actor, $plan_sha256, $artifact_id ) {
+		global $wpdb;
+		$t = MAD4B_SCP_Schema::tables();
+		$previous_hash = (string) $wpdb->get_var(
+			$wpdb->prepare( "SELECT entry_sha256 FROM {$t['content_job_events']} WHERE job_id=%s ORDER BY sequence DESC LIMIT 1", $job_id )
+		);
+		$event_id = strtolower( wp_generate_uuid4() );
+		$now = gmdate( 'Y-m-d H:i:s' );
+		$material = array(
+			'contract' => self::EVENT_CONTRACT,
+			'event_id' => $event_id,
+			'job_id' => $job_id,
+			'sequence' => (int) $sequence,
+			'event_type' => sanitize_key( (string) $event_type ),
+			'previous_state' => (string) $previous_state,
+			'new_state' => (string) $new_state,
+			'previous_stage' => (string) $previous_stage,
+			'new_stage' => (string) $new_stage,
+			'reason_code' => substr( sanitize_key( (string) $reason ), 0, 64 ),
+			'actor_type' => sanitize_key( (string) $actor['type'] ),
+			'actor_id' => substr( sanitize_text_field( (string) $actor['id'] ), 0, 191 ),
+			'plan_sha256' => (string) $plan_sha256,
+			'artifact_id' => substr( sanitize_text_field( (string) $artifact_id ), 0, 191 ),
+			'provider_id' => '',
+			'previous_entry_sha256' => $previous_hash,
+			'created_at' => $now,
+		);
+		$entry_hash = hash( 'sha256', self::stable_json( $material ) );
+		$ok = $wpdb->insert(
+			$t['content_job_events'],
+			array(
+				'event_id' => $event_id,
+				'job_id' => $job_id,
+				'sequence' => (int) $sequence,
+				'event_type' => $material['event_type'],
+				'previous_state' => $previous_state,
+				'new_state' => $new_state,
+				'previous_stage' => $previous_stage,
+				'new_stage' => $new_stage,
+				'reason_code' => $material['reason_code'],
+				'correlation_id' => '',
+				'actor_type' => $material['actor_type'],
+				'actor_id' => $material['actor_id'],
+				'plan_sha256' => $plan_sha256,
+				'artifact_id' => $artifact_id,
+				'provider_id' => '',
+				'metadata_json' => wp_json_encode( array( 'reason' => $reason ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ),
+				'previous_entry_sha256' => $previous_hash,
+				'entry_sha256' => $entry_hash,
+				'created_at' => $now,
+			)
+		);
+		if ( false === $ok ) return new WP_Error( 'mad4b_content_job_event_insert_failed', 'Unable to append ContentJob event.', array( 'db_error' => $wpdb->last_error ) );
+		return array( 'event_id' => $event_id, 'entry_sha256' => $entry_hash, 'sequence' => (int) $sequence );
+	}
+
+	private static function stable_json( $value ) {
+		$value = self::sort_value( $value );
+		$json = wp_json_encode( $value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		return false === $json ? '' : $json;
+	}
+
+	private static function sort_value( $value ) {
+		if ( ! is_array( $value ) ) return $value;
+		$is_list = array_keys( $value ) === range( 0, count( $value ) - 1 );
+		if ( ! $is_list ) ksort( $value, SORT_STRING );
+		foreach ( $value as $key => $item ) $value[ $key ] = self::sort_value( $item );
+		return $value;
+	}
+}
+
+MAD4B_SCP_Content_Jobs::boot();
+),
+              'expected_snapshot_sha256'=>array('type'=>'string','pattern'=>'^[a-f0-9]{64}
+			'Resolve Current ContentJob Language Family and Typed Cross-Language References',
+			'relationship_plan',
+			array(
+				'job_id' => array('type'=>'string','minLength'=>36,'maxLength'=>36),
+				'artifact_id' => array('type'=>'integer','minimum'=>0,'default'=>0),
+				'artifact_kind' => array('type'=>'string','enum'=>array('','post','term'),'default'=>''),
+			),
+			array('job_id'), true
+		);
+		self::register(
+			'mad4b/content-job-dependency-plan',
+			'Plan Brand Recovery and Resume One Existing Content Job',
+			'dependency_plan',
+			array( 'job_id' => array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36 ) ),
+			array( 'job_id' ),
+			true
+		);
+		self::register(
+			'mad4b/content-job-get',
+			'Get Content Job',
+			'get_job',
+			array( 'job_id' => array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36 ) ),
+			array( 'job_id' ),
+			true
+		);
+		self::register(
+			'mad4b/content-job-events',
+			'Get Content Job Events',
+			'get_events',
+			array(
+				'job_id' => array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36 ),
+				'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 500, 'default' => 100 ),
+			),
+			array( 'job_id' ),
+			true
+		);
+		self::register(
+            'mad4b/content-workflow-modes', 'Read Content Workflow Review Modes',
+            'workflow_modes', array( 'job_id' => array( 'type' => 'string', 'maxLength' => 36, 'default' => '' ) ), array(), true
+        );
+		self::register(
+			'mad4b/content-job-create',
+			'Create Content Job',
+			'create_job',
+			array(
+				'brand_id' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 191 ),
+				'subject' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 5000 ),
+				'primary_keyword' => array( 'type' => 'string', 'maxLength' => 191, 'default' => '' ),
+				'language' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 32 ),
+				'country' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 32 ),
+				'content_type' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 64 ),
+				'writer_profile_id' => array( 'type' => 'string', 'pattern' => '^(|[a-f0-9]{64})$', 'default' => '' ),
+				'writer_profile_version' => array( 'type' => 'string', 'pattern' => '^(|[a-f0-9]{64})$', 'default' => '' ),
+				'research_depth' => array( 'type' => 'string', 'maxLength' => 32, 'default' => 'standard' ),
+				'automation_level' => array( 'type' => 'string', 'enum' => MAD4B_SCP_Content_Workflow_Modes::choices(), 'default' => 'autonomous' ),
+				'target_post_type' => array( 'type' => 'string', 'maxLength' => 64, 'default' => '' ),
+				'desired_publish_at' => array( 'type' => 'string', 'maxLength' => 32, 'default' => '' ),
+				'reason' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 500 ),
+			),
+			array( 'brand_id', 'subject', 'language', 'country', 'content_type', 'reason' ),
+			false
+		);
+		self::register(
+			'mad4b/content-job-transition',
+			'Transition Content Job',
+			'transition_job',
+			array(
+				'job_id' => array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36 ),
+				'expected_revision' => array( 'type' => 'integer', 'minimum' => 1 ),
+				'state' => array( 'type' => 'string', 'enum' => self::states() ),
+				'stage' => array( 'type' => 'string', 'enum' => self::stages() ),
+				'reason' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 500 ),
+				'plan_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$', 'default' => '' ),
+				'artifact_id' => array( 'type' => 'string', 'maxLength' => 191, 'default' => '' ),
+			),
+			array( 'job_id', 'expected_revision', 'state', 'stage', 'reason' ),
+			false
+		);
+		self::register(
+			'mad4b/content-job-cancel',
+			'Cancel Content Job',
+			'cancel_job',
+			array(
+				'job_id' => array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36 ),
+				'expected_revision' => array( 'type' => 'integer', 'minimum' => 1 ),
+				'reason' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 500 ),
+			),
+			array( 'job_id', 'expected_revision', 'reason' ),
+			false
+		);
+	}
+
+	private static function register( $name, $label, $method, array $properties, array $required, $readonly ) {
+		if ( function_exists( 'wp_has_ability' ) && wp_has_ability( $name ) ) return;
+		wp_register_ability(
+			$name,
+			array(
+				'label' => $label,
+				'description' => $label . ' through the governed Feature 007 ContentJob aggregate.',
+				'category' => $readonly ? 'mad4b-read' : 'mad4b-write',
+				'execute_callback' => array( __CLASS__, $method ),
+				'permission_callback' => $readonly ? array( 'MAD4B_SCP_Policy', 'can_read' ) : array( 'MAD4B_SCP_Policy', 'can_mutate' ),
+				'input_schema' => array(
+					'type' => 'object',
+					'properties' => $properties,
+					'required' => $required,
+					'additionalProperties' => false,
+				),
+				'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+				'meta' => array(
+					'public' => false,
+					'show_in_rest' => false,
+					'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => $readonly ? 'read' : 'write' ),
+					'annotations' => array(
+						'readonly' => (bool) $readonly,
+						'destructive' => ! $readonly,
+						'idempotent' => $readonly,
+					),
+				),
+			)
+		);
+	}
+
+	private static function schema_ready() {
+		return class_exists( 'MAD4B_SCP_Schema' ) && MAD4B_SCP_Schema::critical_ready();
+	}
+
+	/** Fail closed before opening a transaction on nontransactional storage. */
+	private static function transactional_write_ready() {
+		if ( ! self::schema_ready() || ! method_exists( 'MAD4B_SCP_Schema', 'transactional_storage_status' ) ) {
+			return new WP_Error( 'mad4b_content_job_transactional_storage_unavailable', 'Transactional storage preflight is not available.' );
+		}
+		$storage = MAD4B_SCP_Schema::transactional_storage_status(
+			array( 'content_jobs', 'content_job_events', 'audit_events', 'audit_heads' ),
+			true
+		);
+		if ( ! is_array( $storage ) || empty( $storage['ready'] ) || empty( $storage['read_your_writes'] ) ) {
+			return new WP_Error( 'mad4b_content_job_transactional_storage_blocked', 'Required content and audit tables must use write-safe transactional storage.' );
+		}
+		return true;
+	}
+
+	private static function site_uuid() {
+		$uuid = class_exists( 'MAD4B_SCP_Site_Profile' ) ? strtolower( trim( (string) MAD4B_SCP_Site_Profile::site_uuid() ) ) : '';
+		return preg_match( '/^[a-f0-9-]{36}$/', $uuid ) ? $uuid : '';
+	}
+
+	/** Re-evaluate all scope dimensions and profile revisions on every entry. */
+	private static function trusted_scope() {
+		$checkpoint = MAD4B_SCP_Operational_Integrity::capture();
+		return is_wp_error( $checkpoint ) ? $checkpoint : $checkpoint['scope'];
+	}
+
+	private static function valid_uuid( $value ) {
+		return class_exists( 'MAD4B_SCP_Identifiers' ) && '' !== MAD4B_SCP_Identifiers::job_id( $value );
+	}
+
+	private static function actor() {
+        if ( class_exists( 'MAD4B_Native_Origin_Content_Jobs_V1', false )
+            && MAD4B_Native_Origin_Content_Jobs_V1::is_admitted() )
+            return MAD4B_Native_Origin_Content_Jobs_V1::actor();
+		$actor = array( 'type' => 'wordpress_user', 'id' => (string) get_current_user_id(), 'nhi' => '' );
+		if ( class_exists( 'MAD4B_SCP_Identity_Context' ) && class_exists( 'MAD4B_SCP_Agent_Registry' ) ) {
+			$identity = MAD4B_SCP_Identity_Context::current();
+			if ( ! is_wp_error( $identity ) ) {
+				$agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
+				if ( ! is_wp_error( $agent ) && ! empty( $agent['public_id'] ) ) {
+					$actor['type'] = 'nhi';
+					$actor['id'] = strtolower( (string) $agent['public_id'] );
+					$actor['nhi'] = $actor['id'];
+				}
+			}
+		}
+		return $actor;
+	}
+
+	private static function normalize_datetime( $value ) {
+		$value = trim( (string) $value );
+		if ( '' === $value ) return null;
+		// UI natural language is resolved upstream. Durable jobs accept only a
+		// normalized ISO 8601 instant with an explicit offset (or Z).
+		if ( ! preg_match( '/^(\\d{4})-(\\d{2})-(\\d{2})T([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)(?:\\.\\d{1,6})?(Z|[+-](?:0\\d|1[0-4]):[0-5]\\d)$/D', $value, $match ) ||
+			! checkdate( (int) $match[2], (int) $match[3], (int) $match[1] ) ) {
+			return new WP_Error( 'mad4b_content_job_timezone_required', 'Publish time must be an exact ISO 8601 instant with an explicit timezone offset or Z.' );
+		}
+		if ( preg_match( '/^[+-]14:(?!00$)/', $match[7] ) ) return new WP_Error( 'mad4b_content_job_timezone_invalid', 'Timezone offsets must be within fourteen hours.' );
+		try {
+			$instant = new DateTimeImmutable( $value );
+			return $instant->setTimezone( new DateTimeZone( 'UTC' ) )->format( 'Y-m-d H:i:s' );
+		} catch ( Exception $e ) {
+			return new WP_Error( 'mad4b_content_job_datetime_invalid', 'Invalid desired publish datetime.' );
+		}
+	}
+
+	private static function row( $row ) {
+		if ( ! is_array( $row ) ) return null;
+		foreach ( array( 'id', 'target_post_id', 'job_revision', 'created_by_user' ) as $key ) {
+			if ( array_key_exists( $key, $row ) && null !== $row[ $key ] ) $row[ $key ] = (int) $row[ $key ];
+		}
+		return $row;
+	}
+
+	public static function list_jobs( $input ) {
+		global $wpdb;
+		if ( ! self::schema_ready() ) return new WP_Error( 'mad4b_content_job_schema_unavailable', 'ContentJob schema is not ready.' );
+		$scope = self::trusted_scope();
+		if ( is_wp_error( $scope ) ) return $scope;
+		$t = MAD4B_SCP_Schema::tables();
+		$where = array( 'site_uuid=%s', 'brand_id=%s', 'tenant_id=%s' );
+		$args = array( $scope['site_uuid'], $scope['brand_ref'], $scope['tenant_ref'] );
+		$state = isset( $input['state'] ) ? strtoupper( sanitize_key( (string) $input['state'] ) ) : '';
+		$stage = isset( $input['stage'] ) ? strtoupper( sanitize_key( (string) $input['stage'] ) ) : '';
+		if ( '' !== $state ) { $where[] = 'state=%s'; $args[] = $state; }
+		if ( '' !== $stage ) { $where[] = 'stage=%s'; $args[] = $stage; }
+		$limit = isset( $input['limit'] ) ? max( 1, min( 200, absint( $input['limit'] ) ) ) : 50;
+		$args[] = $limit;
+		$sql = "SELECT * FROM {$t['content_jobs']} WHERE " . implode( ' AND ', $where ) . ' ORDER BY updated_at DESC,id DESC LIMIT %d';
+		$rows = $wpdb->get_results( $wpdb->prepare( $sql, $args ), ARRAY_A );
+		return array(
+			'contract' => self::CONTRACT,
+			'items' => array_values( array_filter( array_map( array( __CLASS__, 'row' ), is_array( $rows ) ? $rows : array() ) ) ),
+			'count' => is_array( $rows ) ? count( $rows ) : 0,
+			// A zero here is not a site-wide Doctor clearance: this query is
+			// intentionally constrained by the current brand and tenant fence.
+			'read_scope' => 'site_uuid_brand_id_tenant_id',
+			'site_wide_inventory_evaluated' => false,
+			'zero_rows_clear_site_wide_doctor' => false,
+			'cross_scope_repair_allowed' => false,
+			'mutation_performed' => false,
+		);
+	}
+
+	/**
+	 * Read-only recovery of the original durable ContentJob.
+	 * Each actual Brand creation/review and Job transition is separately
+	 * dispatched through its current, exact-approved governed Ability.
+	 */
+	public static function dependency_plan( $input ) {
+		$job_id = is_array( $input ) && isset( $input['job_id'] ) ? strtolower( trim( (string) $input['job_id'] ) ) : '';
+		$record = self::get_job( array( 'job_id' => $job_id ) );
+		if ( is_wp_error( $record ) ) return $record;
+		$job = $record['job'] ?? null;
+		if ( ! is_array( $job ) ) return new WP_Error( 'mad4b_content_recovery_job_unavailable', 'Exact ContentJob not found.' );
+		if ( ! class_exists( 'MAD4B_SCP_Context_Authority' ) || ! class_exists( 'MAD4B_SCP_Brand_Core_Control_Loop' ) )
+			return new WP_Error( 'mad4b_content_recovery_dependencies_unavailable', 'Governed Brand Core runtime unavailable.' );
+		$coverage = MAD4B_SCP_Context_Authority::brand_core_coverage();
+		$route = MAD4B_SCP_Brand_Core_Control_Loop::status();
+		if ( is_wp_error( $coverage ) ) return $coverage;
+		if ( is_wp_error( $route ) ) return $route;
+		if ( ! is_array( $coverage ) || ! is_array( $route ) ||
+			empty( $coverage['context_fingerprint'] ) ||
+			! hash_equals( (string) ( $coverage['authority_manifest_fingerprint'] ?? '' ), (string) ( $route['authority_manifest_fingerprint'] ?? '' ) ) ||
+			(int) ( $coverage['registry_revision'] ?? -1 ) !== (int) ( $route['registry_revision'] ?? -2 ) )
+			return new WP_Error( 'mad4b_content_recovery_snapshot_drift', 'Brand coverage changed; obtain a fresh recovery snapshot.' );
+		$plan=self::dependency_reduce($job,$coverage,$route);
+		if(is_array($plan) && class_exists('MAD4B_SCP_AI_Review_Lifecycle',false)) {
+			$review_needed=('WAITING_REVIEW'===(string)($job['state']??''));
+			$plan['ai_review_lifecycle']=MAD4B_SCP_AI_Review_Lifecycle::decide('content_job',array(
+				'content_hash'=>strtolower((string)($job['current_artifact_sha256']??'')),
+				'review_status'=>$review_needed?'waiting_review':'unreviewed',
+				'content_complete'=>!empty($job['current_artifact_id']),
+			),array('review_mode'=>(string)(MAD4B_SCP_Context_Authority::review_policy()['mode']??'human_only')));
+		}
+		if ( is_array( $plan ) && empty( $plan['resume_ready'] ) && ! empty( $plan['next_ability'] ) && class_exists( 'MAD4B_SCP_Guided_Continuation' ) ) {
+			$automatic = MAD4B_SCP_Guided_Continuation::run( array(
+				'next_ability' => (string) $plan['next_ability'],
+				'original_operation_sha256' => hash( 'sha256', (string) $job_id ),
+				'max_steps' => 2,
+			) );
+			$plan['automatic_read_continuation'] = $automatic;
+			if ( is_array( $automatic ) && ! empty( $automatic['resume_original_request'] ) ) {
+				// Same durable job and optimistic revision: never create a
+				// duplicate or silently change its stage. Refresh both authority
+				// reads and require exact revision + manifest agreement again.
+				$fresh_coverage = MAD4B_SCP_Context_Authority::brand_core_coverage();
+				$fresh_route = MAD4B_SCP_Brand_Core_Control_Loop::status();
+				if ( is_array( $fresh_coverage ) && is_array( $fresh_route )
+					&& ! empty( $fresh_coverage['context_fingerprint'] )
+					&& hash_equals( (string) ( $fresh_coverage['authority_manifest_fingerprint'] ?? '' ), (string) ( $fresh_route['authority_manifest_fingerprint'] ?? '' ) )
+					&& (int) ( $fresh_coverage['registry_revision'] ?? -1 ) === (int) ( $fresh_route['registry_revision'] ?? -2 ) ) {
+					$fresh_plan = self::dependency_reduce( $job, $fresh_coverage, $fresh_route );
+					if ( is_array( $fresh_plan ) && ! empty( $fresh_plan['resume_ready'] ) ) {
+						$fresh_plan['automatic_read_continuation'] = $automatic;
+						$fresh_plan['original_job_rechecked'] = true;
+						$plan = $fresh_plan;
+					}
+				}
+			}
+		}
+		// Informational dependency projection from the certified Translation
+		// Bridge / native WPML term identity. It MUST NOT decide Brand Core
+		// continuation eligibility or write into the durable job aggregate.
+		if(is_array($plan) && ($job['content_type']??'')==='translation' &&
+			class_exists('MAD4B_SCP_Content_Relationship_Graph',false)) {
+			$plan['localized_relationship_graph']=
+				MAD4B_SCP_Content_Relationship_Graph::planJob($job_id);
+			$plan['localized_relationship_graph_authorizes_write']=false;
+		}
+		return $plan;
+	}
+
+	/** Pure reducer for fail-closed regression testing. */
+	public static function dependency_reduce( array $job, array $coverage, array $route ) {
+		$id = (string) ( $job['job_id'] ?? '' );
+		$state = (string) ( $job['state'] ?? '' );
+		$revision = (int) ( $job['job_revision'] ?? 0 );
+		$terminal = in_array( $state, array( 'COMPLETED', 'CANCELLED' ), true );
+		$missing = array_values( (array) ( $coverage['missing_required_context_sets'] ?? array() ) );
+		$conflicts = array_values( (array) ( $coverage['conflicting_required_context_sets'] ?? array() ) );
+		$ready = ! $terminal && ! empty( $coverage['ready'] ) && ! empty( $route['ready'] )
+			&& 'READY' === (string) ( $route['state'] ?? '' ) && ! $missing && ! $conflicts;
+		$steps = array();
+		foreach ( (array) ( $route['categories'] ?? array() ) as $c ) {
+			if ( ! is_array( $c ) || 'READY' === (string) ( $c['state'] ?? '' ) ) continue;
+			$category = (string) ( $c['category'] ?? '' );
+			if ( ! in_array( $category, array( 'brand_strategy', 'tone_of_voice', 'editorial_guidelines' ), true ) ) continue;
+			$steps[] = array(
+				'category' => $category,
+				'state' => (string) ( $c['state'] ?? '' ),
+				'depends_on' => array_values( (array) ( $c['dependencies'] ?? array() ) ),
+				'next_ability' => (string) ( $c['next_ability'] ?? 'context/brand-core-coverage' ),
+				'requires_governed_approval' => true, 'readback_after_mutation' => true,
+				'automatically_approve_unreviewed_asset' => false,
+			);
+		}
+		$basis = array( $id, $revision, $state, (string) ( $job['stage'] ?? '' ),
+			(string) ( $coverage['context_fingerprint'] ?? '' ),
+			(string) ( $coverage['authority_manifest_fingerprint'] ?? '' ),
+			(int) ( $coverage['registry_revision'] ?? 0 ), (string) ( $route['snapshot_sha256'] ?? '' ) );
+		$sha = hash( 'sha256', wp_json_encode( $basis ) );
+		$transition = array();
+		if ( ! $terminal && $ready && in_array( $state, array( 'NEW', 'QUEUED', 'BLOCKED', 'WAITING_REVIEW' ), true ) ) {
+			$transition = array(
+				'ability' => 'mad4b/content-job-transition',
+				'input' => array( 'job_id' => $id, 'expected_revision' => $revision,
+					'state' => 'NEW' === $state ? 'QUEUED' : 'RUNNING',
+					'stage' => 'KNOWLEDGE_DISPATCH', 'plan_sha256' => $sha,
+					'reason' => 'Reviewed Brand Core is ready; resume original ContentJob.' ),
+				'exact_approval_required' => true,
+			);
+		} elseif ( ! $terminal && ! $ready && in_array( $state, array( 'QUEUED', 'RUNNING', 'WAITING_REVIEW' ), true ) ) {
+			$transition = array(
+				'ability' => 'mad4b/content-job-transition',
+				'input' => array( 'job_id' => $id, 'expected_revision' => $revision,
+					'state' => 'BLOCKED', 'stage' => 'KNOWLEDGE_DISPATCH',
+					'plan_sha256' => $sha, 'reason' => 'Await governed Brand Core dependency recovery.' ),
+				'exact_approval_required' => true,
+			);
+		}
+		return array(
+			'contract' => 'mad4b.content-job-dependency-recovery.v1',
+			'job_id' => $id, 'job_revision' => $revision,
+			'original_task' => array( 'subject' => (string) ( $job['subject'] ?? '' ),
+				'language' => (string) ( $job['language'] ?? '' ),
+				'target_post_type' => (string) ( $job['target_post_type'] ?? '' ),
+				'target_post_id' => $job['target_post_id'] ?? null ),
+			'state' => $terminal ? 'TERMINAL' : ( $ready ? 'RESUME_READY' : 'RECOVER_BRAND_CORE' ),
+			'resume_ready' => $ready, 'missing_context_sets' => $missing,
+			'conflicting_context_sets' => $conflicts, 'recovery_steps' => $steps,
+			'next_ability' => $terminal ? '' : ( $ready ? 'mad4b/skill-get' : (string) ( $route['next_ability'] ?? 'context/brand-core-control-loop' ) ),
+			'next_transition' => $transition, 'plan_sha256' => $sha,
+			'resume_chain' => array( 'mad4b/skill-get', 'mad4b/approval-plan',
+				'mad4b/content-create-post', 'mad4b/content-get-post', 'mad4b/content-job-transition' ),
+			'original_job_only' => true, 'fresh_context_receipt_required' => true,
+			'exact_approval_per_mutation_required' => true,
+			'no_blind_retry' => true, 'auto_approve_unreviewed_assets' => false,
+			'production_mutation_allowed' => false, 'read_only' => true,
+			'mutation_performed' => false,
+		);
+	}
+
+	/**
+	 * Shared read-only ContentJob step. Exact WPML family, not a language
+	 * guess; missing target post/term is a dependency, not a fabricated
+	 * reference or permission to create one.
+	 */
+	public static function typed_relation_write_plan( $input ) {
+		return MAD4B_SCP_Content_Relationship_Writeback::plan( (array)$input );
+	}
+	public static function typed_relation_write_apply( $input ) {
+		return MAD4B_SCP_Content_Relationship_Writeback::apply( (array)$input );
+	}
+
+	public static function relationship_plan( $input ) {
+		if ( ! class_exists( 'MAD4B_SCP_Content_Relationship_Graph' ) )
+			return array( 'state'=>'HOLD','reason'=>'relationship_graph_runtime_missing' );
+		$job_id = (string) ( $input['job_id'] ?? '' );
+		$artifact = absint( $input['artifact_id'] ?? 0 );
+		$kind = (string) ( $input['artifact_kind'] ?? '' );
+		return MAD4B_SCP_Content_Relationship_Graph::planJob($job_id,$artifact,$kind);
+	}
+
+	public static function get_job( $input ) {
+		$job_id = isset( $input['job_id'] ) ? strtolower( trim( (string) $input['job_id'] ) ) : '';
+		$row = self::load_job( $job_id, false );
+		if ( is_wp_error( $row ) ) return $row;
+		return array( 'contract' => self::CONTRACT, 'job' => self::row( $row ), 'mutation_performed' => false );
+	}
+
+	public static function get_events( $input ) {
+		global $wpdb;
+		$job_id = isset( $input['job_id'] ) ? strtolower( trim( (string) $input['job_id'] ) ) : '';
+		$job = self::load_job( $job_id, false );
+		if ( is_wp_error( $job ) ) return $job;
+		$limit = isset( $input['limit'] ) ? max( 1, min( 500, absint( $input['limit'] ) ) ) : 100;
+		$t = MAD4B_SCP_Schema::tables();
+		$rows = $wpdb->get_results(
+			$wpdb->prepare( "SELECT * FROM {$t['content_job_events']} WHERE job_id=%s ORDER BY sequence ASC LIMIT %d", $job_id, $limit ),
+			ARRAY_A
+		);
+		return array(
+			'contract' => self::EVENT_CONTRACT,
+			'job_id' => $job_id,
+			'items' => is_array( $rows ) ? $rows : array(),
+			'count' => is_array( $rows ) ? count( $rows ) : 0,
+			'mutation_performed' => false,
+		);
+	}
+
+    public static function workflow_modes( $input ) {
+        return MAD4B_SCP_Content_Workflow_Modes::catalog( $input );
+    }
+
+	public static function create_job( $input ) {
+		global $wpdb;
+		if ( ! self::schema_ready() ) return new WP_Error( 'mad4b_content_job_schema_unavailable', 'ContentJob schema is not ready.' );
+		$transactional = self::transactional_write_ready();
+		if ( is_wp_error( $transactional ) ) return $transactional;
+		$checkpoint = MAD4B_SCP_Operational_Integrity::capture();
+		if ( is_wp_error( $checkpoint ) ) return $checkpoint;
+		$scope = $checkpoint['scope'];
+		$site_uuid = (string) $scope['site_uuid'];
+		$subject = trim( wp_strip_all_tags( (string) $input['subject'] ) );
+		if ( '' === $subject || strlen( $subject ) > 5000 ) return new WP_Error( 'mad4b_content_job_subject_invalid', 'ContentJob subject is missing or too long.' );
+		$brand_id = sanitize_text_field( (string) $input['brand_id'] );
+		if ( ! hash_equals( (string) $scope['brand_ref'], $brand_id ) ) {
+			return new WP_Error( 'mad4b_content_job_brand_mismatch', 'The supplied brand does not match the trusted deployment scope.' );
+		}
+		$language = sanitize_key( (string) $input['language'] );
+		$country = sanitize_key( (string) $input['country'] );
+		$content_type = sanitize_key( (string) $input['content_type'] );
+		if ( '' === $brand_id || '' === $language || '' === $country || '' === $content_type ) return new WP_Error( 'mad4b_content_job_identity_invalid', 'ContentJob brand/market/type identity is incomplete.' );
+		$writer_profile_id = strtolower( trim( (string) ( $input['writer_profile_id'] ?? '' ) ) );
+		$writer_profile_version = strtolower( trim( (string) ( $input['writer_profile_version'] ?? '' ) ) );
+		if ( ( '' === $writer_profile_id ) xor ( '' === $writer_profile_version ) ) {
+			return new WP_Error( 'mad4b_writer_profile_binding_incomplete', 'WriterProfile identity and version must be supplied together.' );
+		}
+		if ( '' !== $writer_profile_id
+			&& ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $writer_profile_id )
+				|| 1 !== preg_match( '/^[a-f0-9]{64}$/', $writer_profile_version ) ) ) {
+			return new WP_Error( 'mad4b_writer_profile_identity_invalid', 'WriterProfile identity and version must be exact SHA-256 identities.' );
+		}
+        $automation_level = MAD4B_SCP_Content_Workflow_Modes::requested(
+            $input['automation_level'] ?? MAD4B_SCP_Content_Workflow_Modes::DEFAULT_MODE
+        );
+        if ( is_wp_error( $automation_level ) ) return $automation_level;
+		$publish_at = self::normalize_datetime( isset( $input['desired_publish_at'] ) ? $input['desired_publish_at'] : '' );
+		if ( is_wp_error( $publish_at ) ) return $publish_at;
+        // Reject an unidentified WP-CLI / cron actor BEFORE opening a transaction.
+        // The final integrity fence remains mandatory after all native writes.
+        if ( ( ! class_exists( 'MAD4B_SCP_Policy' ) || true !== MAD4B_SCP_Policy::can_mutate() )
+            && !( class_exists( 'MAD4B_Native_Origin_Content_Jobs_V1', false )
+                && MAD4B_Native_Origin_Content_Jobs_V1::admitted_for( $input, $scope ) ) ) {
+            return new WP_Error( 'mad4b_content_job_authorized_actor_required',
+                'A verified administrator or governed NHI is required to create ContentJobs.',
+                array( 'mutation_performed' => false, 'stage' => 'pre_transaction_authorization',
+                    'requires_authorized_principal' => true ) );
+        }
+
+		$job_id = strtolower( wp_generate_uuid4() );
+		$now = gmdate( 'Y-m-d H:i:s' );
+		$actor = self::actor();
+		$t = MAD4B_SCP_Schema::tables();
+		$data = array(
+			'job_id' => $job_id,
+			'tenant_id' => (string) $scope['tenant_ref'],
+			'site_uuid' => $site_uuid,
+			'brand_id' => (string) $scope['brand_ref'],
+			'subject' => $subject,
+			'primary_keyword' => sanitize_text_field( isset( $input['primary_keyword'] ) ? (string) $input['primary_keyword'] : '' ),
+			'language' => $language,
+			'country' => $country,
+			'content_type' => $content_type,
+			'writer_profile_id' => $writer_profile_id,
+			'writer_profile_version' => $writer_profile_version,
+			'research_depth' => sanitize_key( isset( $input['research_depth'] ) ? (string) $input['research_depth'] : 'standard' ),
+			'automation_level' => $automation_level,
+			'state' => 'NEW',
+			'stage' => 'INTAKE',
+			'target_post_type' => sanitize_key( isset( $input['target_post_type'] ) ? (string) $input['target_post_type'] : '' ),
+			'target_post_id' => null,
+			'desired_publish_at' => $publish_at,
+			'current_artifact_id' => '',
+			'quality_status' => 'unknown',
+			'last_error_code' => '',
+			'last_error_summary' => '',
+			'job_revision' => 1,
+			'created_by_nhi' => $actor['nhi'],
+			'created_by_user' => get_current_user_id(),
+			'created_at' => $now,
+			'updated_at' => $now,
+			'completed_at' => null,
+			'cancelled_at' => null,
+		);
+
+		if ( false === $wpdb->query( 'START TRANSACTION' ) ) {
+			return new WP_Error( 'mad4b_content_job_transaction_unavailable', 'ContentJob creation requires an atomic database transaction.' );
+		}
+		try {
+			$failure_stage='insert_content_job';
+			if ( false === $wpdb->insert( $t['content_jobs'], $data ) ) throw new RuntimeException( 'content_job_insert_failed' );
+			$failure_stage='append_content_job_event';
+			$event = self::append_event_locked( $job_id, 1, 'CREATED', '', 'NEW', '', 'INTAKE', (string) $input['reason'], $actor, '', '' );
+			if ( is_wp_error( $event ) ) throw new RuntimeException( $event->get_error_code() );
+			$failure_stage='append_audit';
+			$audit = MAD4B_SCP_Audit::record( 'mad4b/content-job-create', array( 'job_id' => $job_id, 'site_uuid' => $site_uuid, 'revision' => 1 ), 'ok', true );
+			if ( is_wp_error( $audit ) ) throw new RuntimeException( $audit->get_error_code() );
+			$failure_stage='assert_operational_integrity';
+			$fence = MAD4B_SCP_Operational_Integrity::assert_unchanged( $checkpoint, true );
+			if ( is_wp_error( $fence ) ) throw new RuntimeException( $fence->get_error_code() );
+			$failure_stage='commit';
+			if ( false === $wpdb->query( 'COMMIT' ) ) {
+				// A lost acknowledgement does not prove the database rolled back.
+				// A blind client retry can create a second job; demand scoped readback.
+				MAD4B_SCP_Audit::transaction_rolled_back();
+				return new WP_Error( 'mad4b_content_job_commit_uncertain', 'Creation outcome is unknown; reconcile the exact job before retrying.', array( 'job_id' => $job_id, 'blind_retry_allowed' => false, 'reconciliation_required' => true ) );
+			}
+			MAD4B_SCP_Audit::transaction_committed();
+		} catch ( Throwable $e ) {
+			$rolled_back = $wpdb->query( 'ROLLBACK' );
+			MAD4B_SCP_Audit::transaction_rolled_back();
+			if ( false === $rolled_back ) {
+				return new WP_Error( 'mad4b_content_job_rollback_uncertain', 'ContentJob rollback could not be confirmed; reconcile the exact job.', array( 'job_id' => $job_id, 'blind_retry_allowed' => false, 'reconciliation_required' => true ) );
+			}
+            // Persist a structured, non-secret failure code instead of masking the step.
+            $failure_code = sanitize_key( $e->getMessage() );
+            if ( ! preg_match( '/^(mad4b_|content_job_)[a-z0-9_]{3,90}$/D', $failure_code ) )
+                $failure_code = 'content_job_unexpected_exception';
+            error_log( '[MAD4B ContentJob] create_rolled_back stage=' . $failure_stage .
+                ' failure=' . $failure_code . ' exception=' . get_class( $e ) );
+            return new WP_Error( 'mad4b_content_job_create_failed', 'Unable to create ContentJob.', array(
+                'blind_retry_allowed' => false, 'rollback_confirmed' => true,
+                'failure_stage' => $failure_stage, 'failure_code' => $failure_code,
+            ) );
+		}
+		// Post-commit event only; listeners must not alter the committed transaction.
+        do_action( 'mad4b_scp_content_job_created', array(
+            'job_id' => $job_id, 'job_revision' => 1,
+            'state' => 'NEW', 'stage' => 'INTAKE' ) );
+		return self::get_job( array( 'job_id' => $job_id ) );
+	}
+
+	public static function transition_job( $input ) {
+		return self::transition(
+			isset( $input['job_id'] ) ? $input['job_id'] : '',
+			isset( $input['expected_revision'] ) ? $input['expected_revision'] : 0,
+			isset( $input['state'] ) ? $input['state'] : '',
+			isset( $input['stage'] ) ? $input['stage'] : '',
+			isset( $input['reason'] ) ? $input['reason'] : '',
+			isset( $input['plan_sha256'] ) ? $input['plan_sha256'] : '',
+			isset( $input['artifact_id'] ) ? $input['artifact_id'] : ''
+		);
+	}
+
+	public static function cancel_job( $input ) {
+		$job = self::load_job( isset( $input['job_id'] ) ? $input['job_id'] : '', false );
+		if ( is_wp_error( $job ) ) return $job;
+		return self::transition(
+			$job['job_id'],
+			isset( $input['expected_revision'] ) ? $input['expected_revision'] : 0,
+			'CANCELLED',
+			$job['stage'],
+			isset( $input['reason'] ) ? $input['reason'] : '',
+			'',
+			''
+		);
+	}
+
+	private static function transition( $job_id, $expected_revision, $new_state, $new_stage, $reason, $plan_sha256, $artifact_id ) {
+		global $wpdb;
+		if ( ! self::schema_ready() ) return new WP_Error( 'mad4b_content_job_schema_unavailable', 'ContentJob schema is not ready.' );
+		$transactional = self::transactional_write_ready();
+		if ( is_wp_error( $transactional ) ) return $transactional;
+		$job_id = strtolower( trim( (string) $job_id ) );
+		if ( ! self::valid_uuid( $job_id ) ) return new WP_Error( 'mad4b_content_job_id_invalid', 'ContentJob ID is invalid.' );
+		$expected_revision = absint( $expected_revision );
+		$new_state = strtoupper( sanitize_key( (string) $new_state ) );
+		$new_stage = strtoupper( sanitize_key( (string) $new_stage ) );
+		$reason = trim( sanitize_text_field( (string) $reason ) );
+		$plan_sha256 = strtolower( trim( (string) $plan_sha256 ) );
+		$artifact_id = sanitize_text_field( (string) $artifact_id );
+		if ( ! in_array( $new_state, self::states(), true ) || ! in_array( $new_stage, self::stages(), true ) ) return new WP_Error( 'mad4b_content_job_transition_invalid', 'Requested state/stage is invalid.' );
+		if ( '' !== $plan_sha256 && ! preg_match( '/^[a-f0-9]{64}$/', $plan_sha256 ) ) return new WP_Error( 'mad4b_content_job_plan_invalid', 'Plan SHA is invalid.' );
+		if ( strlen( $reason ) < 3 ) return new WP_Error( 'mad4b_content_job_reason_required', 'Transition reason is required.' );
+
+		$checkpoint = MAD4B_SCP_Operational_Integrity::capture();
+		if ( is_wp_error( $checkpoint ) ) return $checkpoint;
+		$t = MAD4B_SCP_Schema::tables();
+		if ( false === $wpdb->query( 'START TRANSACTION' ) ) {
+			return new WP_Error( 'mad4b_content_job_transaction_unavailable', 'ContentJob transition requires an atomic database transaction.' );
+		}
+		try {
+			$row = self::load_job( $job_id, true );
+			if ( is_wp_error( $row ) ) throw new RuntimeException( $row->get_error_code() );
+			if ( $expected_revision !== (int) $row['job_revision'] ) throw new RuntimeException( 'content_job_revision_conflict' );
+			if ( in_array( $row['state'], array( 'COMPLETED', 'CANCELLED' ), true ) ) throw new RuntimeException( 'content_job_terminal_immutable' );
+			// A translation job must not accept an arbitrary external Artifact
+			// ID in ANY lifecycle transition. An exact same-site native WPML
+			// family and current original Job revision are mandatory.
+			$artifact_changed = $artifact_id!=='' &&
+				$artifact_id!==(string)$row['current_artifact_id'];
+			if ($artifact_changed && ($row['content_type']??'')==='translation') {
+				$local=ctype_digit($artifact_id)?(int)$artifact_id:0;
+				if ((string)$row['current_artifact_id']!=='' || !$local ||
+					!class_exists('MAD4B_SCP_Content_Relationship_Graph',false))
+					throw new RuntimeException('content_job_localized_artifact_binding_denied');
+				$projection=MAD4B_SCP_Content_Relationship_Graph::planJob($job_id);
+				$kind=(string)($projection['source_reference']['kind']??'');
+				$permitted=$kind==='term'?current_user_can('edit_term',$local):
+					($kind==='post'&&current_user_can('edit_post',$local));
+				if(($projection['state']??'')!=='WAITING_ARTIFACT' ||
+					(int)($projection['candidate_local_id']??0)!==$local ||
+					(int)($projection['job_revision']??-1)!==$expected_revision ||
+					!$permitted)
+					throw new RuntimeException('content_job_localized_artifact_binding_denied');
+			}
+			$same_state = hash_equals( (string) $row['state'], $new_state );
+			$same_stage = hash_equals( (string) $row['stage'], $new_stage );
+			if ( $same_state && $same_stage ) {
+				// A native, source-verified WPML artifact may be bound without
+				// manufacturing a workflow state/stage transition. Original
+				// ContentJob transaction, revision CAS, audit and actor remain.
+				if (!$artifact_changed ||($row['content_type']??'')!=='translation')
+					throw new RuntimeException('content_job_noop_transition');
+			}
+			$allowed = self::transition_map();
+			if ( ! $same_state && ( ! isset( $allowed[ $row['state'] ] ) || ! in_array( $new_state, $allowed[ $row['state'] ], true ) ) ) {
+				throw new RuntimeException( 'content_job_state_transition_denied' );
+			}
+
+			$revision = $expected_revision + 1;
+			$now = gmdate( 'Y-m-d H:i:s' );
+			$update = array(
+				'state' => $new_state,
+				'stage' => $new_stage,
+				'current_artifact_id' => '' !== $artifact_id ? $artifact_id : (string) $row['current_artifact_id'],
+				'job_revision' => $revision,
+				'updated_at' => $now,
+				'completed_at' => 'COMPLETED' === $new_state ? $now : $row['completed_at'],
+				'cancelled_at' => 'CANCELLED' === $new_state ? $now : $row['cancelled_at'],
+			);
+			$changed = $wpdb->update(
+				$t['content_jobs'],
+				$update,
+				array( 'id' => (int) $row['id'], 'job_revision' => $expected_revision, 'site_uuid' => (string) $row['site_uuid'], 'brand_id' => (string) $row['brand_id'], 'tenant_id' => (string) $checkpoint['scope']['tenant_ref'] ),
+				null,
+				array( '%d', '%d', '%s', '%s', '%s' )
+			);
+			if ( 1 !== (int) $changed ) throw new RuntimeException( 'content_job_transition_cas_failed' );
+			$actor = self::actor();
+			$event = self::append_event_locked(
+				$job_id,
+				$revision,
+				'CANCELLED' === $new_state ? 'CANCELLED' : 'TRANSITIONED',
+				(string) $row['state'],
+				$new_state,
+				(string) $row['stage'],
+				$new_stage,
+				$reason,
+				$actor,
+				$plan_sha256,
+				$artifact_id
+			);
+			if ( is_wp_error( $event ) ) throw new RuntimeException( $event->get_error_code() );
+			$audit = MAD4B_SCP_Audit::record( 'mad4b/content-job-transition', array( 'job_id' => $job_id, 'from_revision' => $expected_revision, 'to_revision' => $revision, 'state' => $new_state, 'stage' => $new_stage ), 'ok', true );
+			if ( is_wp_error( $audit ) ) throw new RuntimeException( $audit->get_error_code() );
+			$fence = MAD4B_SCP_Operational_Integrity::assert_unchanged( $checkpoint, true );
+			if ( is_wp_error( $fence ) ) throw new RuntimeException( $fence->get_error_code() );
+			if ( false === $wpdb->query( 'COMMIT' ) ) {
+				MAD4B_SCP_Audit::transaction_rolled_back();
+				return new WP_Error( 'mad4b_content_job_transition_commit_uncertain', 'Transition outcome is unknown; read back the exact job revision before retrying.', array( 'job_id' => $job_id, 'expected_new_revision' => $revision, 'blind_retry_allowed' => false, 'reconciliation_required' => true ) );
+			}
+			MAD4B_SCP_Audit::transaction_committed();
+		} catch ( Throwable $e ) {
+			$rolled_back = $wpdb->query( 'ROLLBACK' );
+			MAD4B_SCP_Audit::transaction_rolled_back();
+			if ( false === $rolled_back ) {
+				return new WP_Error( 'mad4b_content_job_transition_rollback_uncertain', 'Transition rollback could not be confirmed; reconcile the exact job revision.', array( 'job_id' => $job_id, 'expected_new_revision' => $expected_revision + 1, 'blind_retry_allowed' => false, 'reconciliation_required' => true ) );
+			}
+			$code = $e->getMessage();
+			if ( 'content_job_revision_conflict' === $code ) return new WP_Error( 'mad4b_content_job_revision_conflict', 'ContentJob revision changed since the requested transition.' );
+			if ( 'content_job_terminal_immutable' === $code ) return new WP_Error( 'mad4b_content_job_terminal_immutable', 'Completed or cancelled ContentJob history is immutable.' );
+			if ( 'content_job_state_transition_denied' === $code ) return new WP_Error( 'mad4b_content_job_state_transition_denied', 'Requested lifecycle transition is not allowed.' );
+			if ( 'content_job_noop_transition' === $code ) return new WP_Error( 'mad4b_content_job_noop_transition', 'State and stage are unchanged.' );
+			return new WP_Error( 'mad4b_content_job_transition_failed', 'Unable to transition ContentJob.', array( 'blind_retry_allowed' => false, 'rollback_confirmed' => true ) );
+		}
+        // Only a committed state change may emit the authoritative lifecycle event.
+        do_action( 'mad4b_scp_content_job_transitioned', array(
+            'job_id' => $job_id, 'job_revision' => $revision,
+            'state' => $new_state, 'stage' => $new_stage ) );
+		return self::get_job( array( 'job_id' => $job_id ) );
+	}
+
+	private static function load_job( $job_id, $for_update ) {
+		global $wpdb;
+		if ( ! self::valid_uuid( $job_id ) ) return new WP_Error( 'mad4b_content_job_id_invalid', 'ContentJob ID is invalid.' );
+		$scope = self::trusted_scope();
+		if ( is_wp_error( $scope ) ) return $scope;
+		$t = MAD4B_SCP_Schema::tables();
+		$sql = $wpdb->prepare( "SELECT * FROM {$t['content_jobs']} WHERE job_id=%s AND site_uuid=%s AND brand_id=%s AND tenant_id=%s LIMIT 1" . ( $for_update ? ' FOR UPDATE' : '' ), $job_id, $scope['site_uuid'], $scope['brand_ref'], $scope['tenant_ref'] );
+		$row = $wpdb->get_row( $sql, ARRAY_A );
+		return is_array( $row ) ? $row : new WP_Error( 'mad4b_content_job_missing', 'ContentJob is not visible within the current authorized site, brand and tenant scope.' );
+	}
+
+	private static function append_event_locked( $job_id, $sequence, $event_type, $previous_state, $new_state, $previous_stage, $new_stage, $reason, array $actor, $plan_sha256, $artifact_id ) {
+		global $wpdb;
+		$t = MAD4B_SCP_Schema::tables();
+		$previous_hash = (string) $wpdb->get_var(
+			$wpdb->prepare( "SELECT entry_sha256 FROM {$t['content_job_events']} WHERE job_id=%s ORDER BY sequence DESC LIMIT 1", $job_id )
+		);
+		$event_id = strtolower( wp_generate_uuid4() );
+		$now = gmdate( 'Y-m-d H:i:s' );
+		$material = array(
+			'contract' => self::EVENT_CONTRACT,
+			'event_id' => $event_id,
+			'job_id' => $job_id,
+			'sequence' => (int) $sequence,
+			'event_type' => sanitize_key( (string) $event_type ),
+			'previous_state' => (string) $previous_state,
+			'new_state' => (string) $new_state,
+			'previous_stage' => (string) $previous_stage,
+			'new_stage' => (string) $new_stage,
+			'reason_code' => substr( sanitize_key( (string) $reason ), 0, 64 ),
+			'actor_type' => sanitize_key( (string) $actor['type'] ),
+			'actor_id' => substr( sanitize_text_field( (string) $actor['id'] ), 0, 191 ),
+			'plan_sha256' => (string) $plan_sha256,
+			'artifact_id' => substr( sanitize_text_field( (string) $artifact_id ), 0, 191 ),
+			'provider_id' => '',
+			'previous_entry_sha256' => $previous_hash,
+			'created_at' => $now,
+		);
+		$entry_hash = hash( 'sha256', self::stable_json( $material ) );
+		$ok = $wpdb->insert(
+			$t['content_job_events'],
+			array(
+				'event_id' => $event_id,
+				'job_id' => $job_id,
+				'sequence' => (int) $sequence,
+				'event_type' => $material['event_type'],
+				'previous_state' => $previous_state,
+				'new_state' => $new_state,
+				'previous_stage' => $previous_stage,
+				'new_stage' => $new_stage,
+				'reason_code' => $material['reason_code'],
+				'correlation_id' => '',
+				'actor_type' => $material['actor_type'],
+				'actor_id' => $material['actor_id'],
+				'plan_sha256' => $plan_sha256,
+				'artifact_id' => $artifact_id,
+				'provider_id' => '',
+				'metadata_json' => wp_json_encode( array( 'reason' => $reason ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ),
+				'previous_entry_sha256' => $previous_hash,
+				'entry_sha256' => $entry_hash,
+				'created_at' => $now,
+			)
+		);
+		if ( false === $ok ) return new WP_Error( 'mad4b_content_job_event_insert_failed', 'Unable to append ContentJob event.', array( 'db_error' => $wpdb->last_error ) );
+		return array( 'event_id' => $event_id, 'entry_sha256' => $entry_hash, 'sequence' => (int) $sequence );
+	}
+
+	private static function stable_json( $value ) {
+		$value = self::sort_value( $value );
+		$json = wp_json_encode( $value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		return false === $json ? '' : $json;
+	}
+
+	private static function sort_value( $value ) {
+		if ( ! is_array( $value ) ) return $value;
+		$is_list = array_keys( $value ) === range( 0, count( $value ) - 1 );
+		if ( ! $is_list ) ksort( $value, SORT_STRING );
+		foreach ( $value as $key => $item ) $value[ $key ] = self::sort_value( $item );
+		return $value;
+	}
+}
+
+MAD4B_SCP_Content_Jobs::boot();
+),
+              'target_ids'=>array('type'=>'array','minItems'=>1,'maxItems'=>8,
+                'items'=>array('type'=>'integer','minimum'=>1))
+            ),
+            array('source_post_id','group_id','expected_snapshot_sha256','target_ids'),false
+        );
 		self::register(
 			'mad4b/content-job-relationship-plan',
 			'Resolve Current ContentJob Language Family and Typed Cross-Language References',
