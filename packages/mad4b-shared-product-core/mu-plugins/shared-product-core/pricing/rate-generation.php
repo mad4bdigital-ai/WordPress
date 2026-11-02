@@ -28,7 +28,7 @@ final class Shared_Product_Rate_Generation {
  public static function prepare($input) {
   if(!is_array($input))return new WP_Error('rate_generator_input_invalid');
   $allowed=['kind','parent_id','unit_id','amount','currency','price_unit','valid_from','valid_to',
-   'single_factor','double_factor','triple_factor','package_term_id','program_term_id','season_term_id','seed_origin','seed_source_rate_id','rate_scope',
+   'pricing_locale_mode','pricing_language','single_factor','double_factor','triple_factor','package_term_id','program_term_id','season_term_id','seed_origin','seed_source_rate_id','rate_scope',
    'min_nights','max_nights','max_adults','max_children','inventory_policy',
    'supplier_sku','supplier_cost','pricing_rule_kind','pricing_rule_value',
    'accommodation_assignment_mode','accommodation_stage_source_rate_id'];
@@ -91,6 +91,26 @@ final class Shared_Product_Rate_Generation {
   $meta=[];$params=['kind'=>$kind,'parent_id'=>(int)$id,'price_unit'=>$unit,
     'amount'=>$money,'currency'=>$currency,'valid_from'=>$from,'valid_to'=>$to];
   if($kind==='tour'){
+   // Tour translations can have deliberately different native Rate currencies
+   // and prices. Never infer a localized price from the source translation.
+   $localeMode=$input['pricing_locale_mode']??null;
+   if($localeMode!==null){
+    if($localeMode!=='independent')return new WP_Error('rate_generator_locale_mode_invalid');
+    $detail=apply_filters('wpml_post_language_details',null,(int)$id);
+    $language=is_array($detail)?($detail['language_code']??''):null;
+    if(!is_string($language)||!preg_match('/^[a-z]{2}(?:-[a-z]{2})?$/D',$language))
+      return new WP_Error('rate_generator_parent_language_unverified');
+    $requested=$input['pricing_language']??$language;
+    if(!is_string($requested)||$requested!==$language)
+      return new WP_Error('rate_generator_locale_parent_mismatch');
+    $params['pricing_locale_mode']='independent';
+    $params['pricing_language']=$language;
+    $meta['_shared_generated_locale_policy']='independent';
+    $meta['_shared_generated_locale_language']=$language;
+    $meta['_shared_generated_price_authority']='explicit_locale_amount_and_currency';
+   }elseif(isset($input['pricing_language'])){
+    return new WP_Error('rate_generator_locale_mode_required');
+   }
    $factors=[];
    foreach(['single','double','triple'] as $tier){
     $raw=$input[$tier.'_factor']??'1';
@@ -679,6 +699,20 @@ final class Shared_Product_Rate_Generation {
    if(is_wp_error($assigned)||!has_term((int)$plan['parameters']['season_term_id'],'season',$created)){
     wp_delete_post($created,true);
     return new WP_Error('rate_generator_season_save_failed');
+   }
+  }
+  if($plan['kind']==='tour'&&($plan['parameters']['pricing_locale_mode']??'')==='independent'){
+   $lang=$plan['parameters']['pricing_language'];
+   // A new locale-owned Rate is NOT a duplicate of another translated Rate.
+   // WPML's default language during admin POST must not decide ownership.
+   do_action('wpml_set_element_language_details',[
+    'element_id'=>(int)$created,'element_type'=>'post_tour-rates',
+    'trid'=>false,'language_code'=>$lang,'source_language_code'=>null
+   ]);
+   $detail=apply_filters('wpml_post_language_details',null,(int)$created);
+   if(!is_array($detail)||($detail['language_code']??'')!==$lang){
+    wp_delete_post($created,true);
+    return new WP_Error('rate_generator_locale_binding_failed');
    }
   }
   if(get_post_type($created)!==$plan['post_type']||get_post_status($created)!=='draft'||
