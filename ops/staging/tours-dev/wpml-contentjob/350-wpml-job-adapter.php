@@ -62,6 +62,19 @@ final class MAD4B_WPML_ContentJob_Adapter {
    $r['native_jobs']=array_values(array_unique($r['native_jobs']));
    $r['eligible']=get_post_status($r['src'])==='publish'&&$r['lang']!==$origin
      &&mad4b_wpml_auto_sync_allowed_v1($r['src'],$r['dst']);
+   // Skip language-specific translation jobs ONLY when runtime evidence
+   // confirms this is a reusable text-free technical structure, and no
+   // separate native WPML job exists. Never suppress user-facing content.
+   $r['work_kind']='editorial_translation';
+   if(in_array($r['type'],['elementor_library','jet-engine'],true)
+      &&class_exists('MAD4B_WPML_Translation_Need_V1')){
+    $analysis=MAD4B_WPML_Translation_Need_V1::source($r['src']);
+    $r['classification']=is_wp_error($analysis)?'needs_render_review':$analysis['classification'];
+    if($r['classification']==='technical_only' && empty($r['native_jobs'])){
+     $r['work_kind']='technical_design_only';
+     $r['eligible']=false;
+    }elseif($r['classification']==='needs_render_review')$r['work_kind']='render_review_required';
+   }
   }unset($r);
   ksort($group,SORT_STRING);
   return ['items'=>array_values($group),'counts'=>$stats];
@@ -70,12 +83,17 @@ final class MAD4B_WPML_ContentJob_Adapter {
   if(!self::ready())return new WP_Error('bridge_wrong_site');
   $scope=self::scope();if(is_wp_error($scope))return $scope;
   $scan=self::discover();$map=(array)get_option(self::MAP,[]);
-  $summary=['eligible'=>0,'excluded'=>0,'mapped'=>0,'total'=>count($scan['items'])];$examples=[];
+  $summary=['eligible'=>0,'excluded'=>0,'mapped'=>0,'total'=>count($scan['items']),
+    'technical_design_only'=>0,'render_review_required'=>0];$examples=[];
   foreach($scan['items'] as $r){
    $summary[$r['eligible']?'eligible':'excluded']++;
+   if(($r['work_kind']??'')==='technical_design_only')$summary['technical_design_only']++;
+   if(($r['work_kind']??'')==='render_review_required')$summary['render_review_required']++;
    if(!empty($map[self::key($scope,$r)]['job_id']))$summary['mapped']++;
    if(count($examples)<12)$examples[]=['source'=>$r['src'],'lang'=>$r['lang'],'gaps'=>$r['gaps'],
-    'native_wpml_jobs'=>$r['native_jobs'],'eligible'=>$r['eligible']];
+    'native_wpml_jobs'=>$r['native_jobs'],'eligible'=>$r['eligible'],
+    'work_kind'=>$r['work_kind']??'editorial_translation',
+    'classification'=>$r['classification']??'content_post'];
   }
   return ['contract'=>'mad4b.wpml.content-job-intake.v1','summary'=>$summary,'sources'=>$scan['counts'],
     'samples'=>$examples,'no_publish'=>true,'mutation'=>false];
