@@ -712,22 +712,29 @@ final class Shared_Product_Rate_Generation {
     return new WP_Error('rate_generator_season_save_failed');
    }
   }
-  if($plan['kind']==='tour'&&($plan['parameters']['pricing_locale_mode']??'')==='independent'){
-   $lang=$plan['parameters']['pricing_language'];
-   // A new locale-owned Rate is NOT a duplicate of another translated Rate.
-   // WPML's default language during admin POST must not decide ownership.
-   do_action('wpml_set_element_language_details',[
-    'element_id'=>(int)$created,'element_type'=>'post_tour-rates',
-    'trid'=>false,'language_code'=>$lang,'source_language_code'=>null
-   ]);
-   $detail=apply_filters('wpml_post_language_details',null,(int)$created);
-   if(!is_array($detail)||($detail['language_code']??'')!==$lang){
+  if($plan['kind']==='tour'){
+   $independent=($plan['parameters']['pricing_locale_mode']??'')==='independent';
+   $parentLanguage=apply_filters('wpml_post_language_details',null,(int)$plan['parent_id']);
+   $lang=$independent?$plan['parameters']['pricing_language']:
+     (is_array($parentLanguage)?($parentLanguage['language_code']??null):null);
+   // Both the inherited/default and override drafts belong to the selected
+   // translated Tour; only override changes the price-provenance fingerprint.
+   if(is_string($lang)&&preg_match('/^[a-z]{2}(?:-[a-z]{2})?$/D',$lang)){
+    do_action('wpml_set_element_language_details',[
+     'element_id'=>(int)$created,'element_type'=>'post_tour-rates',
+     'trid'=>false,'language_code'=>$lang,'source_language_code'=>null
+    ]);
+    $detail=apply_filters('wpml_post_language_details',null,(int)$created);
+    if(!is_array($detail)||($detail['language_code']??'')!==$lang){
+     wp_delete_post($created,true);
+     return new WP_Error('rate_generator_locale_binding_failed');
+    }
+   }elseif($independent){
     wp_delete_post($created,true);
-    return new WP_Error('rate_generator_locale_binding_failed');
+    return new WP_Error('rate_generator_parent_language_unverified');
    }
-   // WPML may rewrite related_tour_id to the currently active language
-   // during wp_insert_post(). Bind the Rate to its explicitly chosen parent
-   // AFTER assigning its own language, and verify the stored relationship.
+   // WordPress/WPML can remap the linked parent on insert. Rebind once,
+   // then validate for both modes; do not touch source price or other Rates.
    if((int)get_post_meta($created,'related_tour_id',true)!==(int)$plan['parent_id'])
      update_post_meta($created,'related_tour_id',(int)$plan['parent_id']);
    if((int)get_post_meta($created,'related_tour_id',true)!==(int)$plan['parent_id']){
