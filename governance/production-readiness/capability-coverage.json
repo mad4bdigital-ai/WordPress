@@ -11659,6 +11659,45 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing metadata/data read, provider OAuth, security and MCP policies apply without broadening global authorization.",
       "review_rationale": "Reviewed the exact source blob for an optional native GSC read adapter and bounded admin-only page-level observations; static URL origin and scope guards, no arbitrary Google URL/redirect, no credentials exposed. The hermetic regression covers cross-origin, query-metric validation and fail-closed Google URL restrictions. Independent site-bound OAuth consent and Production deployment remain excluded."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/adapter-support-catalog.json",
+      "source_blob_sha": "0464260665584d6965d5b8cb53c0f4e0c9292649",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-search-console-boundary-contract.py"
+      ],
+      "owner_role": "MAD4B repository source security reviewer; CI-only record; deployment authorization independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source-package, adapter inventory, security, platform identity and scope-isolation controls already govern this read-only catalog mapping.",
+      "review_rationale": "Exact source adapter family is inventory-only with plugin_status_read permitted. All SEO metadata updates, external provider execution, Content Job creation and IndexFlow publication explicitly remain forbidden. No live permission is granted from a repository mapping."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/repository-plugin-artifacts.json",
+      "source_blob_sha": "768f2b70293e93f410c78abd3be5612849b92d38",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-search-console-boundary-contract.py"
+      ],
+      "owner_role": "MAD4B repository source security reviewer; CI-only record; deployment authorization independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing source-package, adapter inventory, security, platform identity and scope-isolation controls already govern this read-only catalog mapping.",
+      "review_rationale": "Exact source ZIP artifact family is mapped solely to a read-only repository inventory route, not an installation, approval or publication mechanism. Existing artifact mapping remains preserved and no Production authority is inferred."
     }
   ],
   "code_change_rules": {

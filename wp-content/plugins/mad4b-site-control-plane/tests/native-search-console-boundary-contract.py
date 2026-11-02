@@ -78,3 +78,22 @@ res=subprocess.run([os.environ.get("MAD4B_TEST_PHP_BIN","php"),"-r",php,args.php
 assert res.returncode==0,(res.stdout,res.stderr)
 assert "NATIVE_GSC_AUTHORITY_HERMETIC_PASS" in res.stdout,res.stdout
 print("NATIVE_GSC_REVIEW_ONLY_REGRESSION_PASS")
+
+# Explicit repository artifact/adapter contracts: read-only, no hidden writes.
+import json
+adapter_catalog=json.loads((root/"config/adapter-support-catalog.json").read_text())
+artifact_catalog=json.loads((root/"config/repository-plugin-artifacts.json").read_text())
+family=next((x for x in adapter_catalog.get("families",[]) if x.get("id")=="seo-opportunities"),None)
+assert family is not None,"SEO family missing from adapter catalog"
+assert family.get("strategy")=="registered_adapter"
+assert family.get("mutation_scope")=="none_read_only"
+assert family.get("functional_mode")=="inventory_only"
+assert family.get("functional_safe_now")==["plugin_status_read"]
+assert all(x in family.get("functional_prohibited_until_certified",[]) for x in
+           ["content_job_create","seo_metadata_write","indexflow_publish","external_provider_execute"])
+artifact=artifact_catalog.get("families",{}).get("seo-opportunities")
+assert artifact is not None,"SEO archive not mapped to the repository"
+assert artifact.get("support_mode")=="family_read"
+assert artifact.get("mutation_scope")=="none"
+assert artifact.get("artifacts")==["mad4b-seo-opportunities.zip"]
+print("NATIVE_GSC_REPOSITORY_READ_ONLY_INVARIANTS_PASS")
