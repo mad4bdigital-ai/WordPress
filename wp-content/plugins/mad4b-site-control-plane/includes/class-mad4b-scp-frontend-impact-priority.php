@@ -171,10 +171,18 @@ final class MAD4B_SCP_Frontend_Impact_Priority {
             }
         }
         $result['form_ids']=array_slice(array_values(array_unique($result['form_ids'])),0,30);
+        // Providers may declare their own verified native booking form IDs.
+        // Presence of markup is NOT evidence of a completed booking/payment.
+        $booking_ids=(array)apply_filters('mad4b/frontend_impact/booking_form_ids',[]);
+        $booking_ids=array_values(array_unique(array_filter(array_map('intval',$booking_ids),
+            static fn($id)=>$id>0&&$id<=999999)));
+        $result['booking_form_contracts']=$kind==='tour'
+            ?array_slice(array_values(array_intersect($result['form_ids'],$booking_ids)),0,12)
+            :[];
         $price=$xp->query('//*[contains(@class,"etg-tour-price") or contains(@class,"etg-price-native") or contains(@class,"woocommerce-Price-amount") or contains(@class,"jet-listing-dynamic-field__content") and contains(@class,"price")]');
         $result['price_surfaces']=$price?$price->length:0;
         $booking=$xp->query('//*[contains(@class,"booking-form") or contains(@class,"booking-widget") or contains(@class,"rate-selection") or contains(@class,"tour-rate-picker") or contains(@class,"pricing-widget")]');
-        $result['booking_controls']=$booking?$booking->length:0;
+        $result['booking_controls']=($booking?$booking->length:0)+count($result['booking_form_contracts']);
         $ids=$xp->query('//*[@data-post-id]');
         if($ids)foreach($ids as $node){
             $id=(string)$node->getAttribute('data-post-id');
