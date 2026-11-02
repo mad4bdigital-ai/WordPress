@@ -296,9 +296,15 @@ final class MAD4B_Elementor_Localization_V1 {
                 $new[$key]['updated_at']=$now;
                 if($state==='leased'){
                     $new[$key]['last_error']='lease_expired_before_ack_after_gap_resolved';
-                    $new[$key]['lease_until']=null;
-                    $new[$key]['claimed_at']=null;
-                    $new[$key]['claimed_by_user']=null;
+                    // Preserve the expired claim's original actor and lease
+                    // timestamps. Recovery validates all three, the 24-hour
+                    // bound, WPML publication proof and the native job state.
+                    // Clearing them here made every previously leased
+                    // resolved_after_readback row permanently ineligible.
+                    // No new lease is granted by this scan.
+                    $new[$key]['lease_until']=$job['lease_until']??null;
+                    $new[$key]['claimed_at']=$job['claimed_at']??null;
+                    $new[$key]['claimed_by_user']=$job['claimed_by_user']??null;
                 }
             }
         }
