@@ -7,7 +7,7 @@ on:
       - 'wp-content/plugins/commerce-composition/includes/InquiryQualification.php'
       - 'wp-content/plugins/commerce-composition/includes/RequestReviewAdmin.php'
       - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/presentation-form6-price-quote-v1.php'
-      - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/tests/form6-missing-minor-policy-contract.php'
+      - 'packages/mad4b-shared-product-core/tests/form6-missing-minor-policy-contract.php'
       - '.github/workflows/age-occupancy-policy-contract.yml'
   push:
     branches: [master]
@@ -16,7 +16,7 @@ on:
       - 'wp-content/plugins/commerce-composition/includes/InquiryQualification.php'
       - 'wp-content/plugins/commerce-composition/includes/RequestReviewAdmin.php'
       - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/presentation-form6-price-quote-v1.php'
-      - 'packages/mad4b-shared-product-core/mu-plugins/shared-product-core/tests/form6-missing-minor-policy-contract.php'
+      - 'packages/mad4b-shared-product-core/tests/form6-missing-minor-policy-contract.php'
       - '.github/workflows/age-occupancy-policy-contract.yml'
   workflow_dispatch:
 
@@ -46,4 +46,4 @@ jobs:
           php -l wp-content/plugins/commerce-composition/includes/InquiryQualification.php
           php -l wp-content/plugins/commerce-composition/includes/RequestReviewAdmin.php
           php -l packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/presentation-form6-price-quote-v1.php
-          php packages/mad4b-shared-product-core/mu-plugins/shared-product-core/tests/form6-missing-minor-policy-contract.php
+          php packages/mad4b-shared-product-core/tests/form6-missing-minor-policy-contract.php
