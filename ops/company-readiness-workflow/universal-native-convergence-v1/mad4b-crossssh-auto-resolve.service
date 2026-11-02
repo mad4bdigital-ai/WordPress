@@ -1,0 +1,19 @@
+[Unit]
+Description=MAD4B Pinned Cross-SSH missing-binding auto-resolution and read canary
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=/opt/mad4b-company-transport/unified-execution-router-v1/auto_resolve.py
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+WorkingDirectory=/opt/mad4b-company-transport/unified-execution-router-v1
+ExecStart=/usr/bin/flock -n /run/lock/mad4b-crossssh-auto-resolve.lock /usr/bin/python3 /opt/mad4b-company-transport/unified-execution-router-v1/auto_resolve.py apply
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+TimeoutStartSec=180
+StandardOutput=journal
+StandardError=journal
