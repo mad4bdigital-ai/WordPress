@@ -201,7 +201,8 @@ final class MAD4B_Translation_Provider_Router {
             $transport=$plan['transport']['routing']['selected_transport']??null;
             if(!in_array($transport,[
                 MAD4B_Translation_Transport_Router::HTTPS_ID,
-                MAD4B_Translation_Transport_Router::VPS_ID],true))
+                MAD4B_Translation_Transport_Router::VPS_ID,
+                MAD4B_Translation_Transport_Router::REST_ID],true))
                 return self::denied('client_transport_lost');
             return ['contract'=>self::CONTRACT.'.dispatch','status'=>'ACTIVE_CLIENT_HANDOFF',
                 'transport'=>$transport,'job_id'=>$request['job_id'],

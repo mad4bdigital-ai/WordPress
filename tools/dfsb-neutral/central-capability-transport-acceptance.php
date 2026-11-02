@@ -15,6 +15,19 @@ $cases=[
  ['name'=>'http_write_without_read_proof_denied','effect'=>'write','state'=>['http_write_authenticated'=>true],'want'=>null],
  ['name'=>'read_only_stdio_write_denied','effect'=>'write','state'=>['vps_read_verified'=>true],'want'=>null],
  ['name'=>'rest_read_write_denied','effect'=>'write','state'=>['rest_read_authenticated'=>true],'want'=>null],
+ ['name'=>'rest_exact_local_or_remote_write_allowed','effect'=>'write','state'=>[
+    'rest_read_authenticated'=>true,'rest_exact_write_verified'=>true,
+    'rest_site_identity_verified'=>true,'rest_operation_permission_verified'=>true],'want'=>$c::REST],
+ ['name'=>'rest_no_site_binding_denied','effect'=>'write','state'=>[
+    'rest_read_authenticated'=>true,'rest_exact_write_verified'=>true,
+    'rest_operation_permission_verified'=>true],'want'=>null],
+ ['name'=>'rest_no_operation_permission_denied','effect'=>'write','state'=>[
+    'rest_read_authenticated'=>true,'rest_exact_write_verified'=>true,
+    'rest_site_identity_verified'=>true],'want'=>null],
+ ['name'=>'rest_write_claim_without_auth_denied','effect'=>'write','state'=>[
+    'rest_exact_write_verified'=>true,'rest_site_identity_verified'=>true,
+    'rest_operation_permission_verified'=>true],'want'=>null],
+
  ['name'=>'historic_audit_without_current_proof','effect'=>'write','state'=>[
     'historical_portfolio_read_verified'=>true],'want'=>null],
  ['name'=>'unknown_result_never_retry','effect'=>'write','state'=>[
@@ -38,9 +51,17 @@ foreach($cases as $case){
    'status'=>$r['status']??''];
  if(!$pass)$errors[]=$case['name'];
 }
+// A CLI administrator must NOT be able to manufacture a current REST
+// write proof by passing an arbitrary request body or WP-CLI --user flag.
+$synthetic=new WP_REST_Request('POST','/mad4b/v1/content-readiness/sync-one');
+$proof=$c::rest_write_evidence($synthetic);
+if(($proof['rest_exact_write_verified']??true)!==false)
+ $errors[]='wpcli_generated_rest_write_authority';
 $manifest=MAD4B_SCP_Unified_Capability_Gateway::public_manifest();
 if(($manifest['central_transport_routing']['contract']??'')!==$c::CONTRACT)
  $errors[]='gateway_manifest_missing';
+if(!in_array($c::REST,$manifest['central_transport_routing']['write_channels']??[],true))
+ $errors[]='rest_write_missing_from_central_manifest';
 $nego=MAD4B_SCP_Unified_Capability_Gateway::negotiate([], 'internal');
 if(($nego['central_transport_routing']['contract']??'')!==$c::CONTRACT)
  $errors[]='gateway_negotiation_missing';
@@ -58,7 +79,7 @@ if(!array_key_exists('selected_transport',$feature) || $feature['selected_transp
 echo wp_json_encode([
   'contract'=>'mad4b.central-capability-transport-acceptance.v1',
   'pass'=>count($errors)===0,
-  'cases'=>count($cases)+4,'failures'=>$errors,
+  'cases'=>count($cases)+6,'failures'=>$errors,
   'results'=>$out,'central_gateway_manifest'=>true,
   'central_gateway_negotiation'=>true,
   'translation_provider_reuse'=>true,

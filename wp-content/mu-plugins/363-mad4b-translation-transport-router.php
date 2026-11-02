@@ -21,6 +21,7 @@ final class MAD4B_Translation_Transport_Router {
     const MAX_ADAPTERS = 8;
     const HTTPS_ID = 'wordpress_mcp_https';
     const VPS_ID = 'vps_mcp_stdio';
+    const REST_ID = 'rest_gateway';
 
     private static function adapters(): array {
         $raw = apply_filters('mad4b/translation/transport_adapters',[]);
@@ -29,7 +30,7 @@ final class MAD4B_Translation_Transport_Router {
         foreach($raw as $a){
             if(!$a instanceof MAD4B_Translation_Transport_Adapter)continue;
             try {$id=$a->transport_id();}catch(Throwable $e){continue;}
-            if(!in_array($id,[self::VPS_ID],true))continue;
+            if(!in_array($id,[self::VPS_ID,self::REST_ID],true))continue;
             if(isset($items[$id])||isset($duplicate[$id])){
                 unset($items[$id]);$duplicate[$id]=true;continue;
             }
@@ -86,10 +87,32 @@ final class MAD4B_Translation_Transport_Router {
     }
 
     /**
+     * REST write requires evidence from the current registered WordPress REST
+     * route's native permission callback. An adapter cannot self-assert an
+     * authenticated REST write session: core verifies it from WP_REST_Request.
+     */
+    private static function rest_preflight(array $source):array {
+        $adapters=self::adapters();
+        if(!isset($adapters[self::REST_ID]))return [];
+        try {$result=$adapters[self::REST_ID]->preflight($source);}
+        catch(Throwable $e){return [];}
+        if(!is_array($result)||!($result['current_rest_request']??null) instanceof WP_REST_Request
+            ||!class_exists('MAD4B_SCP_Capability_Transport_Routing')
+            ||($result['current_client_session_bound']??null)!==true
+            ||($result['model_provider']??null)!=='chatgpt_mcp_session'
+            ||($result['job_id']??null)!==($source['job_id']??null)
+            ||($result['source_sha256']??null)!==($source['source_sha256']??null))return [];
+        $e=MAD4B_SCP_Capability_Transport_Routing::rest_write_evidence($result['current_rest_request']);
+        if(($e['rest_exact_write_verified']??false)!==true ||
+          ($e['site_uuid']??null)!==(MAD4B_SCP_Site_Profile::site_uuid()))return [];
+        return $e;
+    }
+
+    /**
      * Pure policy: tested without network or authority. Never infer a write
      * grant from a successful read-only MCP connection.
      */
-    public static function choose(bool $http_authenticated,array $vps):array {
+    public static function choose(bool $http_authenticated,array $vps,array $rest=[]):array {
         $vpsWrite=($vps['write_certified_in_current_request']??null)===true;
         $vpsRead=($vps['read_verified_in_current_request']??null)===true;
         // Delegate route selection to the same central policy used by
@@ -103,6 +126,10 @@ final class MAD4B_Translation_Transport_Router {
             'http_write_authenticated'=>$http_authenticated,
             'vps_read_verified'=>$vpsRead,
             'vps_exact_write_verified'=>$vpsWrite,
+            'rest_read_authenticated'=>($rest['rest_read_authenticated']??false)===true,
+            'rest_exact_write_verified'=>($rest['rest_exact_write_verified']??false)===true,
+            'rest_site_identity_verified'=>($rest['rest_site_identity_verified']??false)===true,
+            'rest_operation_permission_verified'=>($rest['rest_operation_permission_verified']??false)===true,
             'previous_attempt_outcome'=>'not_started'
         ]);
         $selected=$central['selected_transport']??null;
@@ -118,10 +145,13 @@ final class MAD4B_Translation_Transport_Router {
                 ['id'=>self::VPS_ID,'priority'=>1,
                     'mode'=>'local_stdio_mcp',
                     'status'=>$vpsWrite?'ready_for_exact_write':
-                        ($vpsRead?'read_only_write_held':'write_not_certified_or_client_unbound')]
+                        ($vpsRead?'read_only_write_held':'write_not_certified_or_client_unbound')],
+                ['id'=>self::REST_ID,'priority'=>2,'mode'=>'governed_native_rest',
+                    'status'=>($rest['rest_exact_write_verified']??false)===true?
+                    'ready_for_exact_write':'no_registered_authenticated_write_proof']
             ],
             'safe_fallback'=>['http_unavailable_before_write'=>'vps_only_after_exact_current_write_authorization',
-                'vps_write_unavailable'=>'connected_consented_api_or_hold',
+                'vps_write_unavailable'=>'registered_authenticated_rest_write_or_connected_consented_api_or_hold',
                 'unknown_or_partial_write'=>'hold_for_reconciliation_never_retry'],
             'client_session_required'=>true,
             'vps_read_grants_write'=>false,
@@ -133,7 +163,8 @@ final class MAD4B_Translation_Transport_Router {
         $site=class_exists('MAD4B_SCP_Site_Profile')?
             MAD4B_SCP_Site_Profile::status():[];
         $vps=self::vps_preflight($request);
-        $chosen=self::choose($http_authenticated,$vps);
+        $rest=self::rest_preflight($request);
+        $chosen=self::choose($http_authenticated,$vps,$rest);
         return [
             'contract'=>self::CONTRACT.'.plan',
             'site_uuid'=>$site['site_uuid']??null,
@@ -142,6 +173,7 @@ final class MAD4B_Translation_Transport_Router {
             'source_sha256'=>$request['source_sha256']??null,
             'routing'=>$chosen,
             'vps_preflight'=>$vps,
+            'rest_preflight'=>$rest,
             'http_request_authenticated'=>$http_authenticated,
             'vps_historical_read_is_not_write_proof'=>true,
             'no_authority_created'=>true,
@@ -158,7 +190,14 @@ final class MAD4B_Translation_Transport_Router {
         $b=self::choose(false,$ready);
         $c=self::choose(false,$read);
         $d=self::choose(false,[]);
-        $pass=$a['selected_transport']===self::HTTPS_ID
+        $proof=['rest_read_authenticated'=>true,'rest_exact_write_verified'=>true,
+          'rest_site_identity_verified'=>true,'rest_operation_permission_verified'=>true];
+        $restOk=self::choose(false,[],$proof);
+        $restMissing=self::choose(false,[],[
+          'rest_read_authenticated'=>true,'rest_exact_write_verified'=>true]);
+        $pass=$restOk['selected_transport']===self::REST_ID
+            &&$restMissing['selected_transport']===null
+            &&$a['selected_transport']===self::HTTPS_ID
             &&$b['selected_transport']===self::VPS_ID
             &&$c['selected_transport']===null
             &&$d['selected_transport']===null
@@ -168,6 +207,8 @@ final class MAD4B_Translation_Transport_Router {
             'vps_write_fallback'=>$b['selected_transport'],
             'vps_read_only'=>$c['transport_state'],
             'no_transport'=>$d['transport_state'],
+            'rest_exact_write'=>$restOk['selected_transport'],
+            'rest_without_scope'=>$restMissing['transport_state'],
             'default_queue'=>false]));
         if(!$pass)WP_CLI::error('transport_fixture_failed');
     }
