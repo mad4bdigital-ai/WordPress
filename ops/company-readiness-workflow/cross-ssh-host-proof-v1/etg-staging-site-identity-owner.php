@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B ETG Original Site Identity Enrollment (Staging)
  * Description: Exact signed-profile identity registration by the authenticated site administrator. No grants or remote execution.
- * Version: 0.1.0
+ * Version: 0.1.1
  */
 defined('ABSPATH') || exit;
 if (!class_exists('MAD4B_ETG_Site_Identity_Enrollment_V1', false)) {
@@ -82,13 +82,17 @@ final class MAD4B_ETG_Site_Identity_Enrollment_V1 {
         exit;
     }
     public static function boot(): void {
-        if (!self::exact()) return;
-        add_action('admin_menu',static function(){
-            if (self::permitted())
-                add_management_page('MAD4B Site Identity','MAD4B Site Identity',
-                    'manage_options',self::PAGE,[__CLASS__,'page']);
-        });
-        add_action('admin_post_'.self::ACTION,[__CLASS__,'enroll']);
+        // MU plugins load before ordinary Site Control Plane and Signed V4.
+        // Defer identity checks until all ordinary plugins have loaded.
+        add_action('plugins_loaded', static function(){
+            if (!self::exact()) return;
+            add_action('admin_menu',static function(){
+                if (self::permitted())
+                    add_management_page('MAD4B Site Identity','MAD4B Site Identity',
+                        'manage_options',self::PAGE,[__CLASS__,'page']);
+            });
+            add_action('admin_post_'.self::ACTION,[__CLASS__,'enroll']);
+        },30);
     }
 }
 MAD4B_ETG_Site_Identity_Enrollment_V1::boot();
