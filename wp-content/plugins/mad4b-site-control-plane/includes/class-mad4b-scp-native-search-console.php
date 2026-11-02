@@ -121,6 +121,8 @@ final class MAD4B_SCP_Native_Search_Console {
         if(!is_string($s['sha256']??null)||!hash_equals($s['sha256'],$digest))return null;
         return $s;
     }
+    /** G5 server-owned retained observation read; no network or credential exposure. */
+    public static function retained_snapshot() { return self::valid_snapshot(); }
     public static function seo_page_metrics($existing,$targetUrls) {
         if(!is_array($existing)||$existing)return $existing;
         if(!is_array($targetUrls))return array();
@@ -261,6 +263,117 @@ final class MAD4B_SCP_Native_Search_Console {
         echo '</div>';
     }
 }
+
+/**
+ * Native G5 stored-observation Adapter. It is registered for discovery even
+ * when blocked. Certification requires an actual consented, still valid site
+ * snapshot; no placeholder credentials or fabricated observations authorize.
+ */
+final class MAD4B_SCP_Native_GSC_G5_Adapter implements MAD4B_SCP_G5_Stored_Observation_Adapter {
+    const PROVIDER='google-search-console';
+    private function snapshot() { return MAD4B_SCP_Native_Search_Console::retained_snapshot(); }
+    public function descriptor() {
+        $s=$this->snapshot();$site=MAD4B_SCP_Site_Profile::site_uuid();
+        $grants=MAD4B_SCP_Google_Drive_Context::workspace_grants_status();
+        $grant=(string)($grants['grant_sha256']??'');
+        $artifact=is_array($s)?(string)$s['sha256']:str_repeat('0',64);
+        return array('contract'=>MAD4B_SCP_G5_External_Providers::CONTRACT,
+            'provider_id'=>self::PROVIDER,'strategy_id'=>'stored.growth-evidence.v1',
+            'adapter_sha256'=>hash_file('sha256',__FILE__),
+            'artifact_sha256'=>$artifact,
+            'schema_sha256'=>hash('sha256','mad4b.native-gsc-page-observation.schema.v1'),
+            'generation_sha256'=>hash('sha256',$artifact.'|'.$grant.'|'.$site),
+            'account_ref'=>hash('sha256','mad4b-google|'.$grant.'|'.$site),
+            'tenant_ref'=>hash('sha256','mad4b-tenant|'.$site),
+            'site_uuid'=>$site,'certified'=>is_array($s),
+            'expires_at'=>is_array($s)?(int)$s['valid_until']:0,
+            'required_scopes'=>array(MAD4B_SCP_Native_Search_Console::SCOPE),
+            'property_refs'=>array(is_array($s)?(string)$s['property']:'not_configured'),
+            'capability_ids'=>array('page'),
+            'effects'=>array('retained_aggregate_read'),
+            'economics'=>array('quota_units'=>0,'max_cost_micro'=>0,'currency'=>'USD'),
+            'rights'=>array('aggregate_read_allowed'=>true,'normalized_allowed'=>true,
+                'max_retention_seconds'=>7*DAY_IN_SECONDS,
+                'storage_regions'=>array('site_local'),'redistribution_allowed'=>false),
+            'metrics'=>array(
+                'clicks'=>array('semantic_id'=>'clicks','unit'=>'count'),
+                'impressions'=>array('semantic_id'=>'impressions','unit'=>'count'),
+                'ctr'=>array('semantic_id'=>'ctr','unit'=>'percent'),
+                'position'=>array('semantic_id'=>'position','unit'=>'position')
+            )
+        );
+    }
+    public function setup_fields() {
+        return array('property'=>array('label'=>'Verified Google property','kind'=>'property',
+            'required'=>true,'max_length'=>191));
+    }
+    private function scope() {
+        $d=$this->descriptor();
+        return array('account_ref'=>$d['account_ref'],'property_ref'=>$d['property_refs'][0],
+            'tenant_ref'=>$d['tenant_ref'],'site_uuid'=>$d['site_uuid'],
+            'capability_id'=>'page');
+    }
+    public function authorize_read(array $scope) {
+        if(!current_user_can('manage_options'))return false;
+        $d=$this->descriptor();
+        if(empty($d['certified'])||$d['expires_at']<=time())return false;
+        return hash_equals(MAD4B_SCP_G5_External_Providers::digest($this->scope()),
+            MAD4B_SCP_G5_External_Providers::digest($scope));
+    }
+    public function consent_status(array $scope) {
+        if(!$this->authorize_read($scope))return array();
+        $d=$this->descriptor();
+        return array('expires_at'=>$d['expires_at'],
+            'granted_scopes'=>array(MAD4B_SCP_Native_Search_Console::SCOPE),
+            'account_ref'=>$d['account_ref'],'property_ref'=>$scope['property_ref'],
+            'tenant_ref'=>$d['tenant_ref'],
+            'generation_sha256'=>$d['generation_sha256']);
+    }
+    private function find($id) {
+        if(!is_string($id)||!preg_match('/^[a-f0-9]{64}$/D',$id))return null;
+        $s=$this->snapshot();if(!is_array($s))return null;
+        foreach($s['rows'] as $row) {
+            if(hash_equals($id,hash('sha256',$s['sha256'].'|'.$row['page'])))return $row;
+        }
+        return null;
+    }
+    public function observation_scope($observation_id) {
+        return $this->find($observation_id)?$this->scope():new WP_Error('mad4b_gsc_observation_missing');
+    }
+    public function read_observation($observation_id,array $authorized_scope) {
+        if(!$this->authorize_read($authorized_scope))return new WP_Error('mad4b_gsc_observation_access_denied');
+        $row=$this->find($observation_id);$s=$this->snapshot();
+        if(!$row||!$s)return new WP_Error('mad4b_gsc_observation_missing');
+        $d=$this->descriptor();
+        return array('contract'=>MAD4B_SCP_G5_Growth_Evidence::CONTRACT,
+            'provider_id'=>self::PROVIDER,'observation_id'=>$observation_id,
+            'generation_sha256'=>$d['generation_sha256'],'schema_sha256'=>$d['schema_sha256'],
+            'privacy_class'=>'aggregate_only','scope'=>$this->scope(),
+            'observed_at'=>(int)$s['captured_unix'],'valid_until'=>(int)$s['valid_until'],
+            'source_sha256'=>(string)$s['sha256'],'storage_region'=>'site_local',
+            'dimensions'=>array('query'=>'all_queries_aggregate',
+                'surface_ref'=>(string)$row['page'],'market'=>'global',
+                'language'=>'und','window_start'=>$s['window_start'],
+                'window_end'=>$s['window_end'],'attribution_window_seconds'=>0,
+                'timezone'=>'UTC','granularity'=>'28_days','metric_currency'=>'NONE'),
+            'metrics'=>array('clicks'=>(float)$row['clicks'],
+                'impressions'=>(float)$row['impressions'],
+                'ctr'=>(float)$row['ctr_percent'],'position'=>(float)$row['position']),
+            // GSC searchAnalytics returns a top-rows table, not an
+            // independently verified complete universe of search queries.
+            'sampling'=>array('state'=>'unknown','rate'=>0.0,
+                'method'=>'gsc_top_rows','thresholding'=>true),
+            'cost'=>array('state'=>'settled','quota_units'=>0,'cost_micro'=>0,
+                'currency'=>'USD','receipt_sha256'=>hash('sha256','retained-read|'.$observation_id),
+                'budget_state'=>'admitted'),
+            'contradictions'=>array());
+    }
+}
+add_filter('mad4b_scp_g5_stored_observation_adapters',static function($adapters){
+    $adapters=is_array($adapters)?$adapters:array();
+    $adapters[]=new MAD4B_SCP_Native_GSC_G5_Adapter();
+    return $adapters;
+},20);
 
 // Register the exact capability-scoped admin route, not a generic action endpoint.
 if(class_exists('MAD4B_SCP_Admin_Route_Registry',false))
