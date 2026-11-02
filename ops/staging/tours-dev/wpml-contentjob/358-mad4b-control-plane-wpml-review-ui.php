@@ -88,6 +88,8 @@ final class MAD4B_Control_Plane_WPML_Review_UI_V1 {
         $published = (int)($totals['review_with_published_target'] ?? 0);
         $other = (int)($totals['needs_translation_or_other'] ?? 0);
         $unmapped = (int)($totals['draft_without_native_review'] ?? 0);
+        $references_ok = (int)($totals['draft_references_verified'] ?? 0);
+        $references_blocked = (int)($totals['draft_references_unresolved'] ?? 0);
 
         echo '<style>.mad4b-wpml-review-ledger{min-width:0;max-width:100%;box-sizing:border-box;overflow-x:clip}'
             . '.mad4b-wpml-review-ledger .mad4b-wpml-metrics{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0}'
@@ -118,6 +120,8 @@ final class MAD4B_Control_Plane_WPML_Review_UI_V1 {
             array($drafts, 'Unpublished drafts awaiting review'),
             array($published, 'Published targets awaiting approval'),
             array($unmapped, 'Drafts without native review'),
+            array($references_ok, 'Drafts with verified technical references'),
+            array($references_blocked, 'Drafts with unresolved references'),
             array($other, 'Other outstanding translation work'),
         ) as $metric) {
             echo '<div class="mad4b-wpml-metric"><strong>' . (int)$metric[0] . '</strong><span>'
@@ -129,6 +133,11 @@ final class MAD4B_Control_Plane_WPML_Review_UI_V1 {
                 . ' WPML draft translations require review.</strong> Verify Elementor / JetEngine references, language output and public rendering before publication. These ContentJobs remain visible in WAITING_REVIEW.</div>';
         if ($unmapped > 0)
             echo '<div class="notice notice-error"><p>Some drafts are missing a native review handoff. Investigate their ContentJob associations; do not automatically cancel them.</p></div>';
+        if ($references_blocked > 0)
+            echo '<div class="notice notice-warning"><p><strong>' . $references_blocked
+                . ' WPML drafts have unresolved localized Elementor / JetEngine references.</strong> '
+                . 'Their ContentJobs remain WAITING_REVIEW. Resolve the referenced provider or listing before publishing; '
+                . 'do not create placeholder reviews or substitute an English listing without validation.</p></div>';
 
         list($locale, $view, $langs, $views) = self::filters();
         echo '<form method="get" action="' . esc_url(admin_url('admin.php')) . '" class="mad4b-wpml-filters">';
