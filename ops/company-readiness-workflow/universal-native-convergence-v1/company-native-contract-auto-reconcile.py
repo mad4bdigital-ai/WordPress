@@ -150,11 +150,10 @@ def standing_default_actions(sites,channels):
 def channel_runtime_preflight():
     script=ROOT/'bin/mad4b-execution-channel-preflight.py'
     result={}
-    for name in ('central_identity','wayfa_host_proof_plan'):
+    for name in ('central_identity',):
         raw=checked_command([sys.executable,str(script),name])
         data=json.loads(raw)
-        required=('CENTRAL_WPCLI_READ_CONFIRMED' if name=='central_identity'
-            else 'HOST_PROOF_READ_ONLY_PLAN_VERIFIED')
+        required='CENTRAL_WPCLI_READ_CONFIRMED'
         if (data.get('contract')!='mad4b.execution-channel-preflight.v1'
             or data.get('state')!=required
             or data.get('required_key_name')!='shell_access'
@@ -164,42 +163,6 @@ def channel_runtime_preflight():
         # Do not embed observation times in the stable report fingerprint.
         result[name]=data['state']
     return result
-
-def refresh_signed_host_proof(row):
-    # Original Core 305 pair must be present before a signed proof is allowed.
-    if (not row.get('original_persistent_grant_present')
-        or row.get('original_pending_transport_count',0)<1):
-        return 'ORIGINAL_305_PAIR_NOT_PENDING'
-    cmd=['docker','exec','-u','33:33','etg-commerce-staging-php',
-      '/usr/local/bin/wp','mad4b','company-native-host-proof','status',
-      '--company='+row['company_code'],
-      '--environment='+row['environment'],
-      '--path=/var/www/html','--skip-themes']
-    status=json.loads(checked_command(cmd).strip())
-    now=int(datetime.datetime.now(datetime.timezone.utc).timestamp())
-    if (status.get('verified') is True
-        and status.get('state')=='HOST_PROOF_VERIFIED_NATIVE_EXECUTOR_PENDING'
-        and isinstance(status.get('proof_epoch'),int)
-        and 0 <= now-status['proof_epoch'] < 900):
-        return 'ORIGINAL_SIGNED_HOST_PROOF_FRESH'
-    signer='/opt/mad4b-company-transport/broker-v1/company-native-host-proof.py'
-    args=[sys.executable,signer]
-    scope=['--company',row['company_code'],'--environment',row['environment']]
-    prepared=json.loads(checked_command(args+['plan']+scope))
-    if (prepared.get('state')!='INDEPENDENT_HOST_SITE_PROOF_READY'
-        or prepared.get('production_content_mutated') is not False):
-        raise RuntimeError('ORIGINAL_SIGNED_HOST_PROOF_PLAN_NOT_ELIGIBLE')
-    # Exactly one signed attestation per cycle; no retry after uncertain response.
-    executed=json.loads(checked_command(args+['attest']+scope))
-    if (executed.get('state')!='HOST_PROOF_VERIFIED_NATIVE_EXECUTOR_PENDING'
-        or executed.get('production_content_mutated') is not False):
-        raise RuntimeError('SIGNED_HOST_PROOF_ATTESTATION_NOT_CONFIRMED')
-    readback=json.loads(checked_command(cmd).strip())
-    if (readback.get('verified') is not True
-        or readback.get('state')!='HOST_PROOF_VERIFIED_NATIVE_EXECUTOR_PENDING'
-        or readback.get('native_executor_certified') is not False):
-        raise RuntimeError('SIGNED_HOST_PROOF_INDEPENDENT_READBACK_FAILED')
-    return 'ORIGINAL_SIGNED_HOST_PROOF_REFRESHED_AND_READBACK_VERIFIED'
 
 def reconcile():
     policy=json.loads((ROOT/'policies/company-native-publication-lifecycle-v1.json').read_text())
