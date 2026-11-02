@@ -1,0 +1,105 @@
+<?php
+/** Read-only acceptance: native recovery, Ack, and final ContentJob state on Staging. */
+defined('ABSPATH') || exit(1);
+$fail = static function($reason){WP_CLI::error('hero_recovery_acceptance_'.$reason);};
+if(wp_get_environment_type()!=='staging'
+ ||rtrim(home_url(),'/')!=='https://tours.dev.mad4b.com'
+ ||get_current_user_id()!==26||!current_user_can('manage_options')
+ ||!MAD4B_SCP_Policy::can_read())$fail('scope');
+$scope=MAD4B_SCP_Operational_Integrity::capture();
+if(is_wp_error($scope)||($scope['scope']['site_uuid']??'')!=='e5e64bca-ed62-48d2-b2b3-dff693cd702a')
+ $fail('company_scope');
+$assertions=0;
+$ok=static function($condition,$code)use(&$assertions,$fail){
+ if(!$condition)$fail($code);
+ $assertions++;
+};
+$jobs=[
+ 'fr'=>[
+   'target'=>68864,
+   'job'=>'89c69db1-d12e-4812-a198-bb9e3441e944',
+   'key'=>'c6b4413e2acce49576cd590c561dfb01bdb8efe8a959c9143975279a1ea8ee5d'
+ ],
+ 'de'=>[
+   'target'=>68865,
+   'job'=>'2eb24538-fab8-4cc0-b63c-5d2aaa42fbb9',
+   'key'=>'6568b4221002a1ce9b95286d7679b56bf449e5bc68746890d4abdddd33156197'
+ ]
+];
+$original=(array)MAD4B_Elementor_Localization_V1::outbox();
+$rows=[];
+foreach($jobs as $lang=>$item){
+ $id=$item['target'];$j=$item['job'];$key=$item['key'];
+ $receipt=(array)get_option('mad4b_wpml_hero_publication_receipt_'.$lang.'_v1',[]);
+ $native=MAD4B_SCP_Content_Jobs::get_job(['job_id'=>$j]);
+ $binding=MAD4B_WPML_ContentJob_Adapter::binding(['job_id'=>$j]);
+ $row=$original[$key]??[];
+ $ok(!is_wp_error($native),'native_job_found_'.$lang);
+ $ok(!is_wp_error($binding),'binding_available_'.$lang);
+ $ok(($native['job']['state']??'')==='COMPLETED','native_completed_'.$lang);
+ $ok(($binding['readback_verified']??false)===true,'readback_verified_'.$lang);
+ $ok(($binding['native_job_state']??'')==='COMPLETED','binding_completed_'.$lang);
+ $ok(($binding['master_or_post_excluded']??true)===false,'not_excluded_'.$lang);
+ $ok((int)($binding['target_post_id']??0)===$id,'mapped_target_'.$lang);
+ $ok((int)apply_filters('wpml_object_id',41727,'elementor_library',false,$lang)===$id,'wpml_target_'.$lang);
+ $ok(get_post_status($id)==='publish','published_'.$lang);
+ $ok(($row['status']??'')==='verified','outbox_verified_'.$lang);
+ $ok(($row['readback_passed']??false)===true,'ack_readback_'.$lang);
+ $ok(($row['receipt_id']??null)===($receipt['receipt_id']??'MISSING'),'receipt_matches_'.$lang);
+ $ok(($receipt['job']??'')===$j,'published_receipt_job_'.$lang);
+ $ok(($receipt['wpml_readback_verified']??false)===true,'publication_readback_'.$lang);
+ $trid_source=(int)apply_filters('wpml_element_trid',null,41727,'post_elementor_library');
+ $trid_target=(int)apply_filters('wpml_element_trid',null,$id,'post_elementor_library');
+ $ok($trid_source>0&&$trid_source===$trid_target,'trid_'.$lang);
+ $lang_details=(array)apply_filters('wpml_post_language_details',null,$id);
+ $ok(($lang_details['language_code']??'')===$lang,'locale_'.$lang);
+ // Already completed jobs must never issue another Claim or transition again.
+ $before=(array)MAD4B_Elementor_Localization_V1::outbox()[$key];
+ $repeat=MAD4B_Elementor_Localization_V1::recover_claim([
+    'key'=>$key,'expected_source_sha256'=>$before['source_sha256'],
+    'receipt_id'=>$receipt['receipt_id']
+ ]);
+ $ok(is_wp_error($repeat)&&$repeat->get_error_code()==='mad4b_localization_recovery_not_eligible',
+    'repeat_recovery_rejected_'.$lang);
+ $after=(array)MAD4B_Elementor_Localization_V1::outbox()[$key];
+ $ok($before===$after,'repeat_has_no_side_effect_'.$lang);
+ $invalid=MAD4B_Elementor_Localization_V1::recover_claim([
+    'key'=>$key,'expected_source_sha256'=>$before['source_sha256'],'receipt_id'=>'INVALID'
+ ]);
+ $ok(is_wp_error($invalid)&&$invalid->get_error_code()==='mad4b_localization_recovery_invalid_input',
+    'malformed_receipt_rejected_'.$lang);
+ $rows[]=[
+  'locale'=>$lang,'target'=>$id,'native_job'=>$j,'native_state'=>'COMPLETED',
+  'outbox_state'=>$after['status'],'native_receipt_id'=>$after['receipt_id'],
+  'target_current_sha256'=>hash('sha256',(string)get_post_meta($id,'_elementor_data',true))
+ ];
+}
+$attestation=(array)get_option('mad4b_wpml_hero_current_readback_attestation_68864_v1',[]);
+$old_receipt=(array)get_option('mad4b_wpml_hero_publication_receipt_fr_v1',[]);
+$ok(($attestation['contract']??'')==='mad4b.wpml.hero-current-readback-attestation.v1',
+ 'supplemental_attestation_exists');
+$ok(($attestation['original_publication_receipt']??'')===($old_receipt['receipt_id']??''),
+ 'supplemental_binding_to_original_receipt');
+$ok(($attestation['verified_current_target_sha256']??'')
+ ===hash('sha256',(string)get_post_meta(68864,'_elementor_data',true)),'supplemental_current_target_sha');
+$ok(($attestation['verified_literals']??0)===13
+ &&($attestation['localized_refs']??0)===3
+ &&($attestation['localized_images']??0)===5,'supplemental_semantic_checks');
+$ok(($attestation['original_target_sha256']??'')===($old_receipt['target_sha256']??''),
+ 'supplemental_preserves_original_receipt_sha');
+$routes=rest_get_server()->get_routes();
+$ok(isset($routes['/mad4b-localization/v1/jobs/recover']),'rest_recovery_registered');
+$dashboard=MAD4B_WPML_ContentJob_Adapter::review_dashboard(100);
+$ok(!is_wp_error($dashboard),'dashboard_works');
+$ok((int)($dashboard['totals']['draft_pending_review']??-1)===5,
+ 'unrelated_five_reviews_remain_visible');
+$ok((int)($dashboard['totals']['draft_references_unresolved']??-1)===5,
+ 'unrelated_review_blockers_remain');
+echo wp_json_encode([
+ 'contract'=>'mad4b.wpml.hero-recovery-acceptance.v1',
+ 'assertions_passed'=>$assertions,'hero_jobs'=>$rows,
+ 'unauthorized_or_repeated_recovery_rejected'=>true,
+ 'fresh_french_readback_attestation_verified'=>true,
+ 'unrelated_review_drafts_still_open'=>5,
+ 'production_changed'=>false,'at_utc'=>gmdate('c')
+],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)."\n";
