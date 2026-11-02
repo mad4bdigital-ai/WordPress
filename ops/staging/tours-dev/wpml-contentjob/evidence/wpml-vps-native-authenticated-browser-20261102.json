@@ -1,0 +1,182 @@
+{
+  "contract": "mad4b.wpml.vps-native-authenticated-browser.v1",
+  "website": "https://tours.dev.mad4b.com",
+  "authentication": "ephemeral_native_WordPress_session_via_existing_authorized_operator_26",
+  "browser": "Playwright Chromium on same VPS",
+  "tested_at_utc": "2026-11-02T15:43:58.481493+00:00",
+  "screens": [
+    {
+      "case": "desktop_full",
+      "http": 200,
+      "login_redirect": false,
+      "path": "/wp-admin/admin.php",
+      "console_errors": [],
+      "inspection": {
+        "heading": "WPML Translation Reviews",
+        "wpAdminSidebar": true,
+        "wordpressToolbar": true,
+        "documentWidth": 1440,
+        "viewportWidth": 1440,
+        "tableRows": 26,
+        "scrollInner": false,
+        "mobileCards": false,
+        "dataLabeledCells": 156,
+        "metrics": [
+          17,
+          9,
+          0,
+          121
+        ],
+        "filters": [
+          {
+            "name": "locale",
+            "value": "all",
+            "labelled": true
+          },
+          {
+            "name": "view",
+            "value": "all",
+            "labelled": true
+          }
+        ],
+        "hasDraft68832": true,
+        "hasReviewState": true,
+        "hasOutbox": true,
+        "editorLinksValid": true,
+        "mutationControls": 0
+      }
+    },
+    {
+      "case": "mobile_full",
+      "http": 200,
+      "login_redirect": false,
+      "path": "/wp-admin/admin.php",
+      "console_errors": [],
+      "inspection": {
+        "heading": "WPML Translation Reviews",
+        "wpAdminSidebar": true,
+        "wordpressToolbar": true,
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "tableRows": 26,
+        "scrollInner": false,
+        "mobileCards": true,
+        "dataLabeledCells": 156,
+        "metrics": [
+          17,
+          9,
+          0,
+          121
+        ],
+        "filters": [
+          {
+            "name": "locale",
+            "value": "all",
+            "labelled": true
+          },
+          {
+            "name": "view",
+            "value": "all",
+            "labelled": true
+          }
+        ],
+        "hasDraft68832": true,
+        "hasReviewState": true,
+        "hasOutbox": true,
+        "editorLinksValid": true,
+        "mutationControls": 0
+      }
+    },
+    {
+      "case": "mobile_small",
+      "http": 200,
+      "login_redirect": false,
+      "path": "/wp-admin/admin.php",
+      "console_errors": [],
+      "inspection": {
+        "heading": "WPML Translation Reviews",
+        "wpAdminSidebar": true,
+        "wordpressToolbar": true,
+        "documentWidth": 320,
+        "viewportWidth": 320,
+        "tableRows": 26,
+        "scrollInner": false,
+        "mobileCards": true,
+        "dataLabeledCells": 156,
+        "metrics": [
+          17,
+          9,
+          0,
+          121
+        ],
+        "filters": [
+          {
+            "name": "locale",
+            "value": "all",
+            "labelled": true
+          },
+          {
+            "name": "view",
+            "value": "all",
+            "labelled": true
+          }
+        ],
+        "hasDraft68832": true,
+        "hasReviewState": true,
+        "hasOutbox": true,
+        "editorLinksValid": true,
+        "mutationControls": 0
+      }
+    },
+    {
+      "case": "french_drafts",
+      "http": 200,
+      "login_redirect": false,
+      "path": "/wp-admin/admin.php",
+      "console_errors": [],
+      "inspection": {
+        "heading": "WPML Translation Reviews",
+        "wpAdminSidebar": true,
+        "wordpressToolbar": true,
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "tableRows": 4,
+        "scrollInner": false,
+        "mobileCards": true,
+        "dataLabeledCells": 24,
+        "metrics": [
+          17,
+          9,
+          0,
+          121
+        ],
+        "filters": [
+          {
+            "name": "locale",
+            "value": "fr",
+            "labelled": true
+          },
+          {
+            "name": "view",
+            "value": "draft",
+            "labelled": true
+          }
+        ],
+        "hasDraft68832": true,
+        "hasReviewState": true,
+        "hasOutbox": true,
+        "editorLinksValid": true,
+        "mutationControls": 0
+      }
+    }
+  ],
+  "failures": [],
+  "session_revoked": false,
+  "content_readiness": {
+    "http": 200,
+    "notice_count": 1,
+    "has_review_link": true,
+    "is_wp_admin": true
+  },
+  "status": "FAIL_OR_INCOMPLETE"
+}
