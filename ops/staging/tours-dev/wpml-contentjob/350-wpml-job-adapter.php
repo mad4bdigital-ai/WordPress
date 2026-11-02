@@ -134,7 +134,13 @@ final class MAD4B_WPML_ContentJob_Adapter {
     $ka=self::key($scope,$a);$kb=self::key($scope,$b);
     $pa=!empty($map[$ka]['job_id'])||!empty($map[$ka]['uncertain'])?1:0;
     $pb=!empty($map[$kb]['job_id'])||!empty($map[$kb]['uncertain'])?1:0;
-    return ($pa<=>$pb)?:strcmp($ka,$kb);
+    if($pa!==$pb)return $pa<=>$pb;
+    if(class_exists('MAD4B_WPML_Frontend_Priority_V1')){
+     $ra=MAD4B_WPML_Frontend_Priority_V1::rank($a['src'],$a['type'],$a['lang'],$a['dst']);
+     $rb=MAD4B_WPML_Frontend_Priority_V1::rank($b['src'],$b['type'],$b['lang'],$b['dst']);
+     if($ra['priority']!==$rb['priority'])return $rb['priority']<=>$ra['priority'];
+    }
+    return strcmp($ka,$kb);
    });
    $limit=max(1,min(10,(int)$limit));$done=0;$created=0;$reused=0;$skipped=0;$errors=[];$jobs=[];$remaining=0;
    foreach($list as $r){
@@ -187,7 +193,12 @@ final class MAD4B_WPML_ContentJob_Adapter {
      if(is_wp_error($next))$errors[]='native_transition_'.$next->get_error_code();
      else{$map[$key]['state']='QUEUED';self::commit_map($map);}
     }
-    $jobs[]=['source'=>$r['src'],'lang'=>$r['lang'],'job_id'=>$native['job_id']];
+    $priority=class_exists('MAD4B_WPML_Frontend_Priority_V1')
+       ?MAD4B_WPML_Frontend_Priority_V1::rank($r['src'],$r['type'],$r['lang'],$r['dst']):null;
+    $jobs[]=['source'=>$r['src'],'lang'=>$r['lang'],'job_id'=>$native['job_id'],
+       'frontend_priority'=>$priority['priority']??null,
+       'priority_evidence'=>$priority['evidence']??'unavailable',
+       'priority_path'=>$priority['evidence_path']??null];
    }
    $audit=(array)get_option(self::AUDIT,[]);
    $audit[]=['at'=>gmdate('c'),'created'=>$created,'reused'=>$reused,'errors'=>$errors,'source'=>$only_source];
@@ -293,15 +304,36 @@ final class MAD4B_WPML_ContentJob_Adapter {
   $limit=max(1,min(15,(int)$limit));$map=(array)get_option(self::MAP,[]);
   $summary=['checked'=>0,'ready'=>0,'waiting_review'=>0,'already_waiting'=>0,
     'unverified'=>0,'excluded'=>0,'errors'=>[]];
-  $rows=array_values(array_filter($map,static function($m)use($only_id){
-   return !empty($m['job_id'])&&(!$only_id||$m['job_id']===$only_id);
+  $all=array_values(array_filter($map,static function($m)use($only_id){
+   return !empty($m['job_id'])
+     && !in_array(($m['state']??''),['COMPLETED','CANCELLED'],true)
+     && (!$only_id||$m['job_id']===$only_id);
   }));
-  $total=count($rows);
+  $total=count($all);
   $cursor_key='mad4b_wpml_content_job_qa_cursor_v1';
-  $cursor=$only_id?0:((int)get_option($cursor_key,0)%max(1,$total));
-  $attempts=min($total,$limit);
+  $cursor=(int)get_option($cursor_key,0);
+  if(!$only_id&&class_exists('MAD4B_WPML_Frontend_Priority_V1')){
+   usort($all,static function($a,$b){
+    $ra=MAD4B_WPML_Frontend_Priority_V1::rank($a['source_post_id'],$a['type'],$a['lang'],$a['target_post_id']);
+    $rb=MAD4B_WPML_Frontend_Priority_V1::rank($b['source_post_id'],$b['type'],$b['lang'],$b['target_post_id']);
+    return ($rb['priority']<=>$ra['priority'])?:strcmp($a['job_id'],$b['job_id']);
+   });
+  }
+  // Split review capacity between visible high-priority work and older
+  // unresolved work, preventing starvation when the top jobs lack receipts.
+  $hot_count=$only_id?min($limit,$total):min((int)floor($limit/2),$total);
+  $rows=array_slice($all,0,$hot_count);
+  $rest=array_slice($all,$hot_count);
+  $rest_count=count($rest);
+  if($rest_count>0){
+   $offset=$cursor%$rest_count;
+   $take=min($limit-count($rows),$rest_count);
+   for($i=0;$i<$take;$i++)$rows[]=$rest[($offset+$i)%$rest_count];
+   $next_cursor=($offset+$take)%$rest_count;
+  }else $next_cursor=0;
+  $attempts=count($rows);
   for($i=0;$i<$attempts;$i++){
-   $m=$rows[($cursor+$i)%$total];
+   $m=$rows[$i];
    $summary['checked']++;
    $v=self::binding(['job_id'=>$m['job_id']]);
    if(is_wp_error($v)){$summary['errors'][]=$v->get_error_code();continue;}
@@ -330,9 +362,10 @@ final class MAD4B_WPML_ContentJob_Adapter {
     $summary['waiting_review']++;
    }
   }
-  if(!$only_id&&$total>0)update_option($cursor_key,($cursor+$attempts)%$total,false);
+  if(!$only_id&&$total>0)update_option($cursor_key,$next_cursor,false);
   return ['contract'=>'mad4b.wpml.contentjob-qa-reconcile.v1','summary'=>$summary,
-   'source_count'=>$total,'next_review_cursor'=>$only_id?null:(($cursor+$attempts)%max(1,$total)),
+   'source_count'=>$total,'frontend_first_review_slots'=>$hot_count,
+   'next_review_cursor'=>$only_id?null:$next_cursor,
    'content_published'=>false,'translation_generated'=>false];
  }
  public static function approve_verified($id,$review_reference){
