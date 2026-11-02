@@ -32,7 +32,7 @@ Age price factors affect only `per_person` and `per_person_night`. `per_room_nig
 
 ## Rollout guardrails
 
-Legacy quotes without an age policy remain unchanged. Once age bands are configured for a rate, quotes with children must supply age details to avoid silent mispricing. Do not enable age policies on live booking forms until those forms collect and transmit the ages. Rate/room/source parity can be tested locally using `tests/age-occupancy-runtime.php`; admin validation via `tests/admin-policy-runtime.php`.
+Legacy quotes without an age policy remain unchanged. If a submitted enquiry includes child ages but **no age policy is configured**, the plugin validates the age counts and ranges, then preserves existing count-based occupancy and Rate arithmetic instead of rejecting the price preview. This fallback never invents free child fares or discounts; a child-inclusive final commercial quote may still need review. Once age bands are configured for a rate, quotes with children must supply age details to avoid silent mispricing. Do not enable age policies on live booking forms until those forms collect and transmit the ages. Rate/room/source parity can be tested locally using `tests/age-occupancy-runtime.php`; admin validation via `tests/admin-policy-runtime.php`.
 
 Current commercial boundary: accommodation shadow quotes and age-aware capacity are integrated. Tour/transport fare arithmetic, persistence of age-specific quote evidence into new checkout orders and full browser acceptance are not yet certified.
 
@@ -68,3 +68,9 @@ These are **per-person factor** presets, not currency-denominated fixed fees, ar
 When a **registered JetEngine Options Page** for price/financial calculations is opened, an admin-only notice links to the same WooCommerce canonical editor and summarizes whether a global policy is configured. Matching uses JetEngine's live options-page registry (page slug/title or recognized financial policy fields), not hardcoded page IDs. JetEngine's mode, payment and offer settings remain separately owned. There is no second JetEngine copy of the age policy.
 
 **Release limits:** Global policy settings remain untouched until a WooCommerce manager saves the form. Age factors presently affect certified accommodation per-person pricing previews only. Tour/transport calculations, fixed-currency child fees, real browser verification of JetEngine page detection, Checkout/HPOS/order persistence and Staging integration need separate acceptance. A globally saved band is not proof of commercial authorization for Tours or Transportation.
+
+## Missing child-policy price visibility
+
+The Form 6 read-only pricing endpoint no longer rejects a request just because it includes children or infants. It prices **adults only** using the selected server-verified Tour/Rate source and returns `status=partial_price_preview_only`, `base_preview_amount`, `display_amount`, `display_kind=adults_only_reference` and an explicit `display_notice`; `total` and `subtotal` stay null. UI consumers must render `display_amount` together with its scope and warning rather than treating it as the full family quote. A no-minors request retains the original `total` field and status.
+
+Commerce Composition operator previews for Forms 7 and 8 likewise expose `quote_state=partial_preview` and `base_preview_amount` for the adult price, while preserving `preview_amount=null` and `status=requires_review`. Form 7's additional services are **not** included in that reference. Saving Form 6 writes a `partial_price_preview` nonfinancial status and adult reference only, never a fabricated all-party total. Checkout and supplier booking remain unauthorized. These adapters are Local/Lab-only pending installed site browser verification.
