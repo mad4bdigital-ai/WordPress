@@ -1,4 +1,4 @@
-/** Local Lab: server-calculated read-only quote beside existing Fluent Form #6. */
+/** Governed runtime: server-calculated nonfinancial quote beside original Fluent Form #6. */
 (() => {
  'use strict';
  const cfg=window.SharedPresentationFluentConfigV1;
@@ -408,7 +408,7 @@
   // Never turn that subtotal into the form's commercial total.
   const partialDirect=(!payload&&intent&&intent.source==='direct'&&
     (intent.children>0||intent.infants>0))?
-    {...intent,children:0,infants:0,extras:[],stay_stages:[]}:null;
+    {...intent,extras:[],stay_stages:[]}:null;
   state.intent.value=intent?JSON.stringify(intent):'';
   // A transport-only preference does not change the price inputs.
   // Keep the last source-validated amount instead of blanking it to
@@ -441,8 +441,11 @@
     });
     const quote=await response.json();
     if(seq!==state.seq)return;
-    if(response.ok&&quote.status==='price_preview_only'&&
-       Number.isFinite(Number(quote.total))&&quote.total>0&&
+    if(response.ok&&quote.status==='partial_price_preview_only'&&
+       quote.display_kind==='adults_only_reference'&&quote.total===null&&
+       quote.checkout_ready===false&&quote.order_created===false&&
+       quote.children_count===intent.children&&quote.infants_count===intent.infants&&
+       Number.isFinite(Number(quote.display_amount))&&quote.display_amount>0&&
        /^[A-Z]{3}$/.test(quote.currency||'')){
       const value=document.createElement('span');
       value.className='shared-price-amount';
@@ -468,7 +471,7 @@
   // occupancy, activity count, or Rate selection.
   resetExtraPrices(state);
   const controller=new AbortController();state.controller=controller;
-  // Pure read-only estimate is allowed through the Local QA preview gateway;
+  // Pure read-only estimate is allowed through the governed preview gateway;
   // POST authorization for booking/Fluent Forms remains deliberately closed.
   if(await indicativePreview(state,{...payload,stay_stages:intent?.stay_stages||[]},seq,controller.signal))return;
   try{
