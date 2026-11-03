@@ -217,6 +217,7 @@ final class MAD4B_SCP_Company_Task_Handoff {
         }
     }
     public static function adminMenu():void {
+        MAD4B_SCP_Admin_Route_Registry::register('mad4b-task-handoffs','mad4b_work_company_tasks');
         add_menu_page('My Task Handoffs','Task Handoffs','mad4b_work_company_tasks',
             'mad4b-task-handoffs',[__CLASS__,'screen'],'dashicons-migrate',34);
     }
