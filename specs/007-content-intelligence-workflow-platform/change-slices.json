@@ -4,8 +4,8 @@
   "reviewed_base_sha": "ba0db6f92c76772d5dff12b11106357193743815",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 68,
-  "changed_paths_sha256": "07935be07143c9358ee131442307e5199df3478676f36d06af44923862c2a8f9",
+  "changed_file_count": 75,
+  "changed_paths_sha256": "b9d3a025db21cf65440811462c948bdd4ad006868a922dea3684eb772c17dd2c",
   "slices": [
     {
       "id": "agent-and-execution-governance",
@@ -73,9 +73,14 @@
       "path_globs": [
         "tools/production_readiness_registry.py",
         "tools/readiness_test_execution.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/historical-delivery-successor-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/historical_source_successor.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/live-bootstrap-source-closure-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/pr750-runtime-source-regression.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/pr750-runtime-source-regression.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/rc104-merged-release-regression.py"
       ]
     },
     {
@@ -84,6 +89,7 @@
       "revert_boundary": "Revert isolated bootstrap as a whole only with verified complete prior dependency graph and private-booking fence",
       "certification": "exact_head",
       "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/historical-delivery-source-reviews.json",
         "wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt",
         "wp-content/plugins/mad4b-site-control-plane/README.md",
         "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-local-brand-draft-adapter.php",
@@ -118,6 +124,7 @@
       "revert_boundary": "Revert readiness domain core, its display and source-specific MU intake adapters together without touching existing WordPress Issue Ledger",
       "certification": "exact_head",
       "path_globs": [
+        ".github/workflows/mad4b-production-readiness-matrix.yml",
         "wp-content/mu-plugins/mad4b-readiness-pricing-geo-locale-adapter.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-admin-view.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
