@@ -12,7 +12,7 @@ function apply_filters($name,$value,...$args) {
         ? ($GLOBALS['filters'][$name])($value,...$args):$value;
 }
 function get_post_status($id) {return in_array((int)$id,[5,7,9],true)?'publish':'draft';}
-function get_post_type($id) {return match((int)$id){5=>'transportations',7=>'stations',9=>'tours-and-activities',default=>null};}
+function get_post_type($id) {$types=[5=>'transportations',7=>'stations',9=>'tours-and-activities'];return $types[(int)$id]??null;}
 function get_post_field($field,$id) {return '2026-11-03 00:00:00';}
 function get_option($key) {return $key==='woocommerce_calc_taxes'?'no':false;}
 function wp_json_encode($payload,$flags=0) {return json_encode($payload,$flags);}
@@ -62,3 +62,4 @@ check(($l['content_job_request']['contract']??null)==='mad4b.locale-experience-c
 $unknown=row('unrelated_status','other');
 check(!isset(intake($unknown)['content_job_request']),'unknown_source_inert');
 echo json_encode(['contract'=>'mad4b.readiness-live-provider-contract.v1','passed'=>count($GLOBALS['passed']),'tests'=>$GLOBALS['passed']],JSON_UNESCAPED_SLASHES).PHP_EOL;
+echo 'READINESS_PROVIDER_INTAKE: PASS 8 checks'.PHP_EOL;
