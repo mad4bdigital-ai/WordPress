@@ -28,9 +28,13 @@ final class MAD4B_SCP_Company_Local_WPCLI {
         $before=MAD4B_SCP_Operational_Integrity::capture();
         if (is_wp_error($before)) return $before;
         $scope=$before['scope']??array();
-        if (($scope['environment']??'')!=='staging' ||
-            ($scope['site_uuid']??'')!== 'e5e64bca-ed62-48d2-b2b3-dff693cd702a' ||
-            home_url()!=='https://tours.dev.mad4b.com' ||
+        $identity=(array)apply_filters('mad4b/company/local_wpcli_identity',array());
+        $expected_uuid=(string)($identity['site_uuid']??'');
+        $expected_url=(string)($identity['site_url']??'');
+        if ($expected_uuid==='' || $expected_url==='' ||
+            ($scope['environment']??'')!=='staging' ||
+            ($scope['site_uuid']??'')!==$expected_uuid ||
+            home_url()!==$expected_url ||
             wp_get_environment_type()!=='staging')
             return self::error('central_staging_scope_mismatch');
         $op=MAD4B_SCP_Operation_Registry::operation(self::OPERATION);
