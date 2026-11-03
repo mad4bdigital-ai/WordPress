@@ -355,11 +355,50 @@
 
     function schedule(provider, queryId) { var key = groupKey(provider, queryId); if (timers[key]) { window.clearTimeout(timers[key]); } timers[key] = window.setTimeout(function () { delete timers[key]; send(provider, queryId); }, 25); }
     function scheduleKey(key) { var parts = String(key || '').split('/'); if (parts.length < 2) { return; } schedule(parts[0], parts.slice(1).join('/')); }
+
+    // Native JSF may hydrate a multi-term deep link one checkbox at a time.
+    // Coalesce only that initial burst (never normal user filtering) so a
+    // partial taxonomy state does not launch a redundant Listing render.
+    // Keep every native query value, operator, callback and render authority.
+    function coalesceNativeDirectLinkHydration(jsf, pathState) {
+        if (!pathState.valid || !pathState.group || userFilterGesture) { return; }
+        var terms = pathState.query || {};
+        var hasMultipleTerms = Object.keys(terms).some(function (key) {
+            if (key.indexOf('_tax_query_') !== 0 || typeof terms[key] !== 'string') { return false; }
+            return terms[key].split(',').filter(function (part) { return part && !/^operator_(?:AND|IN)$/.test(part); }).length > 1;
+        });
+        if (!hasMultipleTerms) { return; }
+        var group = jsf.filterGroups && jsf.filterGroups[pathState.group];
+        if (!group || typeof group.ajaxRequest !== 'function' || group.__dfsbHydrationCoalescing) { return; }
+        var original = group.ajaxRequest, scheduled = null, latestArgs = null, finished = false;
+        var hardDeadline = null;
+        function flush() {
+            if (finished) { return; }
+            finished = true;
+            if (scheduled !== null) { window.clearTimeout(scheduled); scheduled = null; }
+            if (hardDeadline !== null) { window.clearTimeout(hardDeadline); hardDeadline = null; }
+            if (group.ajaxRequest === wrapped) { group.ajaxRequest = original; }
+            delete group.__dfsbHydrationCoalescing;
+            if (latestArgs) { var args = latestArgs; latestArgs = null; original.apply(group, args); }
+        }
+        function wrapped() {
+            latestArgs = Array.prototype.slice.call(arguments);
+            if (userFilterGesture) { flush(); return; }
+            if (scheduled !== null) { window.clearTimeout(scheduled); }
+            scheduled = window.setTimeout(flush, 200);
+        }
+        group.__dfsbHydrationCoalescing = true;
+        group.ajaxRequest = wrapped;
+        // Bounded release even if native initialization never settles.
+        hardDeadline = window.setTimeout(flush, 1500);
+    }
+
     function init() {
         normalizeNeutralBindings();
         if (initialized) { return; } var contract = jsfRuntimeContract(); if (!contract.ready) { emitRuntimeContractBlocked(contract); return; } runtimeBlockedSignature = '';
         var jsf = window.JetSmartFilters; initialized = true;
         var pathState = prettyPathState();
+        coalesceNativeDirectLinkHydration(jsf, pathState);
         if (pathState.valid && pathState.group && queryHasSemanticFilters(pathState.query)) { initialSemanticKeys[pathState.group] = true; }
         groupKeys().forEach(function (key) { var group = jsf.filterGroups[key]; if (group && queryHasSemanticFilters(group.currentQuery)) { initialSemanticKeys[key] = true; } });
         jsf.events.subscribe('ajaxFilters/start-loading', function (provider, queryId) {
