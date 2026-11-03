@@ -14755,6 +14755,24 @@
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/pr750-runtime-source-regression.py"
       ]
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-user-lifecycle.php",
+      "source_blob_sha": "2b00bfdf4ef2d36503488249d51863f668ddff25",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "owner_role": "MAD4B technical CI reviewer; no site owner or Production authority",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-user-lifecycle-rest-isolation-hermetic.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/pr750-runtime-source-regression.py"
+      ],
+      "review_rationale": "Exact rebuilt lifecycle source restricts suspended-user REST interception to MAD4B-owned routes while retaining session revocation, password authentication checks and previous denial propagation. Hermetic test proves suspended staff denial, foreign WordPress/WPML REST non-interference, healthy/anonymous isolation. CI-only; independent live acceptance and owner sign-off remain required."
     }
   ],
   "code_change_rules": {
