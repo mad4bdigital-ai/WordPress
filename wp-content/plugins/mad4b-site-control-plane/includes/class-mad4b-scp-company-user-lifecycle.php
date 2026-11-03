@@ -178,6 +178,13 @@ final class MAD4B_SCP_Company_User_Lifecycle {
             return new WP_Error('company_user_suspended','This staff account is suspended.', ['status'=>403]);
         return $result;
     }
+    /** Only MAD4B REST routes own this guard; core/WPML/third-party REST is untouched. */
+    public static function guardScopedREST($result,$server,$request){
+        if(is_wp_error($result) || !($request instanceof WP_REST_Request))return $result;
+        $route=(string)$request->get_route();
+        if(strpos($route,'/mad4b/')!==0 && strpos($route,'/mad4b-')!==0)return $result;
+        return self::guardREST($result);
+    }
     public static function guardApplicationPassword($error,$user,$item,$password):void {
         if($user instanceof WP_User && is_array(get_user_meta($user->ID,self::SUSPEND,true)))
             $error->add('company_user_suspended','This company staff account is suspended.');
@@ -219,7 +226,7 @@ final class MAD4B_SCP_Company_User_Lifecycle {
     }
     public static function register():void {
         add_filter('authenticate',[__CLASS__,'authenticate'],95,3);
-        add_filter('rest_authentication_errors',[__CLASS__,'guardREST'],95);
+        add_filter('rest_pre_dispatch',[__CLASS__,'guardScopedREST'],95,3);
         add_action('wp_authenticate_application_password_errors',[__CLASS__,'guardApplicationPassword'],95,4);
         add_action('rest_api_init',[__CLASS__,'rest'],30);
     }
