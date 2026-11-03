@@ -106,12 +106,34 @@ function shared_presentation_catalog_jsf_request_v1(): ?array {
     $contract=shared_presentation_catalog_contract_v1();
     if (($_POST['provider'] ?? '') !== $contract['provider']) return null;
     $settings=$_POST['settings'] ?? null;
-    if (!is_array($settings) || (string)($settings['lisitng_id'] ?? '') !== (string)$contract['listing_id'] ||
+    if (!is_array($settings) ||
         (string)($settings['custom_query_id'] ?? '') !== (string)$contract['query_id'] ||
         !preg_match('/^[a-f0-9]{32}$/i',(string)($settings['jsf_signature'] ?? ''))) return null;
     $referrer=$_POST['referrer']['uri'] ?? null;
     $context=shared_presentation_catalog_url_context_v1($referrer);
     if (!$context) return null;
+    // WPML duplicates the native JetEngine Listing document per language.
+    // The source ID alone is insufficient for an authenticated filter render.
+    // Accept only the exact, published WPML sibling belonging to the signed
+    // native query and the language determined from the validated URL.
+    $source_id=absint($contract['listing_id'] ?? 0);
+    $raw_listing=$settings['lisitng_id'] ?? '';
+    if (!is_scalar($raw_listing) || !ctype_digit((string)$raw_listing)) return null;
+    $requested_id=(int)$raw_listing;
+    $language=(string)($context['language'] ?? '');
+    if (!$source_id || !$requested_id ||
+        !in_array($language,['en','ar','de','es','fr','it'],true) ||
+        get_post_type($source_id)!=='jet-engine' || get_post_status($source_id)!=='publish') return null;
+    $expected_id=$language==='en' ? $source_id
+        : (int)apply_filters('wpml_object_id',$source_id,'jet-engine',false,$language);
+    if (!$expected_id || $expected_id!==$requested_id ||
+        get_post_type($requested_id)!=='jet-engine' ||
+        get_post_status($requested_id)!=='publish') return null;
+    $source_trid=(int)apply_filters('wpml_element_trid',null,$source_id,'post_jet-engine');
+    $target_trid=(int)apply_filters('wpml_element_trid',null,$requested_id,'post_jet-engine');
+    $details=apply_filters('wpml_post_language_details',null,$requested_id);
+    if (!$source_trid || $target_trid!==$source_trid || !is_array($details) ||
+        ($details['language_code'] ?? '')!==$language) return null;
     // The new signed facet values are checked by native JetSmartFilters. Validate
     // shape here too: do not convert unknown providers into archive authority.
     $q=$_POST['query'] ?? [];
