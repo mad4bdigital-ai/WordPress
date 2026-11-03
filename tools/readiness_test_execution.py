@@ -106,6 +106,7 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # Explicitly reviewed PR750 no-network hermetic executable fixtures.
     "wp-content/plugins/mad4b-site-control-plane/tests/company-admin-menu-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/readiness-live-provider-contract.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/company-user-lifecycle-rest-isolation-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/self-update-selected-head-release-trust-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/staging-source-selector-runtime.php",
     "tests/remote-execution/unified-operator-session-policy-smoke.php",
