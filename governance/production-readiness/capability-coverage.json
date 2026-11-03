@@ -12287,13 +12287,13 @@
         "SECURITY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/historical-delivery-successor-contract.py"
+        "tests/contentjob-review-coverage-contract.py"
       ],
       "owner_role": "Automated CI source-only reviewer; independent owner review required for release",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
-      "review_rationale": "Exact Git blob of wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php examined for reviewed native owner contract and existing execution fences and independently bounded by the associated CI regression; historical release manifests stay immutable. This source review is not Production approval. Feature 007 exact archival source successor is verified by its original checked-in hermetic positive/denial regression; no archived SHA/size is rewritten, and separate live owner acceptance remains required."
+      "review_rationale": "Exact Git blob of wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php examined for reviewed native owner contract and existing execution fences and independently bounded by the associated CI regression; historical release manifests stay immutable. This source review is not Production approval."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",

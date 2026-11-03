@@ -36,6 +36,22 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/historical-delivery-successor-contract.py"
       ],
       "review_rationale": "Reviewed exact current historical delivery verifier for two narrowly scoped QA31 successors (G2 Write catalog and G8 Pre-Staging CI). Archives and historical hashes remain immutable. Original verifier blob 046bb44a3856617fd1a849a0b98ae78329af2310 remains traceable in Git history; current SHA bound to negative contract tests and CI-only source, not live or owner authority."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/historical_source_successor.py",
+      "source_blob_sha": "34b695000c3545befb245c600d50b64b1a97e2f5",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/historical-delivery-successor-contract.py"
+      ],
+      "review_rationale": "Additive, exact Git blob CI-only verifier successor review. All preceding immutable evidence rows are retained. The new code recognizes the already reviewed top-level ContentJob regression for the original source-bound bootstrap only alongside the native original archival positive/negative contract. It still enforces source identity, current Git blob and original SHA/byte history. This source review does not certify live acceptance or Production grants."
     }
   ]
 }

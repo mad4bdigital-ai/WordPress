@@ -309,7 +309,6 @@ def is_exact_historical_delivery_successor(root, path, contents, historic_sha, h
             # Fail closed if the versioned verifier itself is modified without
             # an exact source/test review bound to the current Git checkout.
             verifier = "wp-content/plugins/mad4b-site-control-plane/tests/historical_source_successor.py"
-            rec = next((e for e in review_rows if e.get("path") == verifier), None)
             actual = (root / verifier).read_bytes()
             actual_git = subprocess.check_output(
                 ["git", "rev-parse", "HEAD:" + verifier],
@@ -318,6 +317,12 @@ def is_exact_historical_delivery_successor(root, path, contents, historic_sha, h
             actual_blob = hashlib.sha1(
                 b"blob " + str(len(actual)).encode("ascii") + b"\0" + actual
             ).hexdigest()
+            # Multiple exact-source generations can have distinct immutable
+            # CI-only reviews; never rewrite a previous review to bless a new
+            # verifier. Only the currently checked out Git blob may qualify.
+            rec = next((e for e in review_rows
+                        if e.get("path") == verifier
+                        and e.get("source_blob_sha") == actual_blob), None)
             if (not rec or not (root / verifier).is_file()
                     or (root / verifier).is_symlink()
                     or actual_blob != actual_git
@@ -337,6 +342,13 @@ def is_exact_historical_delivery_successor(root, path, contents, historic_sha, h
     if current_git_blob != blob:
         return False
     tests_prefix = "wp-content/plugins/mad4b-site-control-plane/tests/"
+    # The original source registry already reviewed a top-level ContentJob
+    # regression for this bootstrap. This is an existing, exact-version
+    # review, not a newly self-issued grant. The independent Feature 007
+    # archival successor contract is required as a second source check.
+    boot = "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php"
+    reviewed_boot_test = "tests/contentjob-review-coverage-contract.py"
+    archival_contract = root / tests_prefix / "historical-delivery-successor-contract.py"
     for entry in review_rows:
         if (entry.get("path") != path or entry.get("source_blob_sha") != blob
                 or entry.get("status") != "reviewed_for_ci_only"
@@ -347,9 +359,15 @@ def is_exact_historical_delivery_successor(root, path, contents, historic_sha, h
         tests = entry.get("regression_tests")
         if (not isinstance(controls, list) or len(controls) < 2
                 or not isinstance(tests, list) or not tests
-                or not all(isinstance(t, str) and t.startswith(tests_prefix)
+                or not all(isinstance(t, str)
+                           and (t.startswith(tests_prefix)
+                                or (path == boot and t == reviewed_boot_test))
                            and (root / t).is_file() and not (root / t).is_symlink()
-                           for t in tests)):
+                           for t in tests)
+                or (path == boot and (
+                    not isinstance(tests, list) or reviewed_boot_test not in tests
+                    or not archival_contract.is_file()
+                    or archival_contract.is_symlink()))):
             continue
         return True
     return False
