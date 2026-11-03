@@ -63,6 +63,17 @@ for marker in (
     if marker not in notice:
         raise SystemExit('FAIL admin environment notice lost a safety guard: ' + marker)
 
+# Explicit access preservation for company staff: do not silently change
+# the original mad4b_manage_company_operations capability to manage_options.
+SCOPED={
+  'class-mad4b-scp-readiness-scopes.php':('self::PAGE','MAD4B_SCP_Readiness_Integrations::CAP'),
+  'class-mad4b-scp-readiness-preactivation.php':('self::PAGE','self::CAP'),
+  'class-mad4b-scp-staging-context-fixtures.php':('self::MENU',"'mad4b_manage_company_operations'"),
+  'class-mad4b-scp-company-migration-decisions.php':('self::MENU',"'mad4b_manage_company_operations'"),
+  'class-mad4b-scp-company-master-admin.php':("'mad4b-company'",'self::CAP'),
+  'class-mad4b-scp-staging-brand-trial.php':('self::MENU',"'manage_options'"),
+  'class-mad4b-scp-company-task-handoff.php':("'mad4b-task-handoffs'","'mad4b_work_company_tasks'"),
+}
 checked = 0
 for path in (root / 'includes').rglob('*.php'):
     source = path.read_text(encoding='utf-8')
@@ -86,10 +97,40 @@ for path in (root / 'includes').rglob('*.php'):
         continue
     if 'add_submenu_page(' in source and (
         'MAD4B_SCP_Admin_Route_Registry::schedule_submenu(' not in source
-        or re.search(r"add_action\(\s*['\"]admin_menu['\"]", source)
+        or (re.search(r"add_action\(\s*['\"]admin_menu['\"]", source)
+            and not (path.name == 'class-mad4b-scp-company-master-admin.php'
+                and "add_action('admin_menu',array(__CLASS__,'menus'),12);" in source
+                and "schedule_submenu(array(__CLASS__,'submenu'))" in source))
     ):
         raise SystemExit(f'FAIL submenu bypasses parent-order contract: {path.name}')
     checked += 1
+    if path.name in SCOPED:
+        slug,cap=SCOPED[path.name]
+        if f"MAD4B_SCP_Admin_Route_Registry::register({slug},{cap})" not in source:
+            raise SystemExit('FAIL scoped company route missing precise original capability: '+path.name)
+        # No authority expansion. Source must still use the same capability
+        # for its WordPress menu registration as for route declaration.
+        if path.name in ('class-mad4b-scp-staging-context-fixtures.php',
+                         'class-mad4b-scp-company-migration-decisions.php') and (
+            "'mad4b_manage_company_operations',self::MENU" not in source):
+            raise SystemExit('FAIL staff menu permission drift: '+path.name)
+        if path.name == 'class-mad4b-scp-company-master-admin.php':
+            if "add_menu_page('Company Operations','Company',self::CAP" not in source or (
+                "add_submenu_page('mad4b-company','Team & Translation','Team & Translation',self::CAP" not in source):
+                raise SystemExit('FAIL master admin menu capability drift')
+        continue
+    if path.name == 'class-mad4b-scp-readiness-integrations.php':
+        if ("const CAP='mad4b_manage_company_operations'" not in source or
+            "MAD4B_SCP_Admin_Route_Registry::register($slug,self::CAP)" not in source):
+            raise SystemExit('FAIL readiness route company capability drift')
+        for slug in ('MAD4B_SCP_Content_Readiness_Alerts::PAGE',
+                     'MAD4B_SCP_Readiness_Workflow_Options::PAGE',
+                     'MAD4B_SCP_Content_Completeness::PAGE'):
+            if slug not in source:
+                raise SystemExit('FAIL readiness route missing '+slug)
+        if source.count("self::CAP,") < 3:
+            raise SystemExit('FAIL readiness menu permissions drift')
+        continue
     owner = re.search(r'final class (\w+)', source).group(1)
     slug = re.search(r"const (PAGE_SLUG|PAGE)\s*=\s*['\"](mad4b-[^'\"]+)['\"]", source)
     if slug:
