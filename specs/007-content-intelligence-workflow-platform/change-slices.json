@@ -4,8 +4,8 @@
   "reviewed_base_sha": "ba0db6f92c76772d5dff12b11106357193743815",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 75,
-  "changed_paths_sha256": "b9d3a025db21cf65440811462c948bdd4ad006868a922dea3684eb772c17dd2c",
+  "changed_file_count": 76,
+  "changed_paths_sha256": "df377fadee28aacd997d1ae46fb66d5bd51e0affd3bd6cdb2ac53e94010b50ac",
   "slices": [
     {
       "id": "agent-and-execution-governance",
@@ -62,7 +62,8 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-migration-decision-catalog.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-brand-trial.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-context-fixtures.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/company-admin-menu-hermetic.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-admin-menu-hermetic.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-user-lifecycle-rest-isolation-hermetic.php"
       ]
     },
     {
