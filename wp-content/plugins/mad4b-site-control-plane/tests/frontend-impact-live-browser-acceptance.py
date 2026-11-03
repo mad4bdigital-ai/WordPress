@@ -18,7 +18,14 @@ def archive(browser, lang, target):
         response=page.goto(url,wait_until='domcontentloaded',timeout=45000)
         page.wait_for_timeout(650)
         label=page.locator('label:has(input[name="tour-types"][data-label="'+target+'"])').first
-        # The page has 20+ JetEngine grids: header mega-menu listings,\n        # hidden editorial content and nested card enrichments. Only the\n        # real archive's *direct* card children are filter results.\n        main=page.locator('#tours_query_archive .jet-listing-grid').first\n        cards=main.locator(':scope > .jet-listing-grid__items > .jet-listing-grid__item')\n        initial=cards.count()\n        checked(lang+'_archive_grid_scoped',main.count()==1 and initial>0,\n                {'main_archive_items':initial})
+        # The page has 20+ JetEngine grids: header mega-menu listings,
+        # hidden editorial content and nested card enrichments. Only the
+        # real archive's *direct* card children are filter results.
+        main=page.locator('#tours_query_archive .jet-listing-grid').first
+        cards=main.locator(':scope > .jet-listing-grid__items > .jet-listing-grid__item')
+        initial=cards.count()
+        checked(lang+'_archive_grid_scoped',main.count()==1 and initial>0,
+                {'main_archive_items':initial})
         if lang=='en':
             item=page.locator('details.e-n-accordion-item:has(input[name="tour-types"])').first
             checked('en_accordion_collapsed_initially',item.count()>0 and item.get_attribute('open') is None)
@@ -27,11 +34,26 @@ def archive(browser, lang, target):
         checked(lang+'_filter_label_visible',label.is_visible())
         if not label.is_visible():return
         label.click(timeout=9500)
-        # Wait for real AJAX completion in the intended grid instead of a\n        # fixed delay and an unrelated global .jet-listing-grid__item count.\n        # Preserve a failed result if the archive never updates.\n        try:\n            page.wait_for_function("""before => {\n                const g=document.querySelector('#tours_query_archive .jet-listing-grid');\n                if (!g || g.classList.contains('jet-filters-loading')) return false;\n                const count=g.querySelectorAll(':scope > .jet-listing-grid__items > .jet-listing-grid__item').length;\n                return count > 0 && count < before;\n            }""",arg=initial,timeout=25000)\n        except PlaywrightTimeoutError:\n            pass\n        after=cards.count()
+        # Wait for real AJAX completion in the intended grid instead of a
+        # fixed delay and an unrelated global .jet-listing-grid__item count.
+        # Preserve a failed result if the archive never updates.
+        try:
+            page.wait_for_function("""before => {
+                const g=document.querySelector('#tours_query_archive .jet-listing-grid');
+                if (!g || g.classList.contains('jet-filters-loading')) return false;
+                const count=g.querySelectorAll(':scope > .jet-listing-grid__items > .jet-listing-grid__item').length;
+                return count > 0 && count < before;
+            }""",arg=initial,timeout=25000)
+        except PlaywrightTimeoutError:
+            pass
+        after=cards.count()
         slug='paquetes' if lang=='es' else 'packages'
         selected=page.locator('input[name="tour-types"][data-label="'+target+'"]').first.is_checked()
         checked(lang+'_jsf_interactive_filter',selected and '/jsf/' in page.url and 'tour-types:'+slug in page.url and after<initial and after>0 and all(x==200 for x in ajax),
-                {'initial_main_archive_items':initial,'filtered_main_archive_items':after,\n                 'main_grid_loading':'jet-filters-loading' in (main.get_attribute('class') or ''),\n                 'url_path':page.url.split('tours.dev.mad4b.com')[-1],\n                 'ajax_statuses':ajax})
+                {'initial_main_archive_items':initial,'filtered_main_archive_items':after,
+                 'main_grid_loading':'jet-filters-loading' in (main.get_attribute('class') or ''),
+                 'url_path':page.url.split('tours.dev.mad4b.com')[-1],
+                 'ajax_statuses':ajax})
         checked(lang+'_filter_no_supplier_write_requests',not attempted,{'attempted':len(attempted)})
     finally:page.close()
 
