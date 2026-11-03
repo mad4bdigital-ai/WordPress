@@ -1,0 +1,44 @@
+name: MAD4B SERP Evidence Policy
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-intelligence.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/serp-presentation-evidence-contract.php'
+      - '.github/workflows/mad4b-serp-evidence-policy.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-intelligence.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/serp-presentation-evidence-contract.php'
+      - '.github/workflows/mad4b-serp-evidence-policy.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-serp-evidence-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  policy-contract:
+    name: SERP evidence contract (source-only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: Lint and validate native SERP provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          PLUGIN=wp-content/plugins/mad4b-site-control-plane
+          php -l "$PLUGIN/includes/class-mad4b-scp-research-intelligence.php"
+          php -l "$PLUGIN/tests/serp-presentation-evidence-contract.php"
+          php "$PLUGIN/tests/serp-presentation-evidence-contract.php"

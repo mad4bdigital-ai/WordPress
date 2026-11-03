@@ -156,7 +156,89 @@ final class MAD4B_SCP_Research_Intelligence {
 		return self::persist_observation( (string) $input['job_id'], 'keyword_research', 'KEYWORD_RESEARCH', $payload, 'keyword research observation' );
 	}
 
+	/**
+	 * Staging Central SERP intake. A provider's claimed rank is not evidence
+	 * unless its source request, engine, capture time, device and location are
+	 * recorded. This is a structural provenance check, not an independent audit
+	 * of the provider's ranking or volume measurements.
+	 *
+	 * Kept in the release-owned Research Intelligence service: an update must
+	 * never depend on the Staging-only Content Creation Control Bridge class.
+	 */
+	private static function validate_serp_presentation_evidence( $input ) {
+		if ( ! is_array( $input ) ) {
+			return new WP_Error( 'mad4b_serp_policy_input_invalid', 'SERP observation must be an object.' );
+		}
+		foreach ( array( 'job_id', 'query', 'market', 'language', 'provider_id', 'collected_at', 'request_sha256' ) as $field ) {
+			if ( ! is_scalar( $input[ $field ] ?? null ) || '' === trim( (string) $input[ $field ] ) ) {
+				return new WP_Error( 'mad4b_serp_policy_required_field', 'Missing SERP field: ' . $field );
+			}
+		}
+		$state = strtolower( trim( (string) ( $input['provider_state'] ?? 'succeeded' ) ) );
+		$records = $input['results'] ?? array();
+		if ( ! is_array( $records ) || count( $records ) > 100 || ( 'succeeded' === $state && count( $records ) < 1 ) ) {
+			return new WP_Error( 'mad4b_serp_policy_result_count', 'Successful SERP observations require 1-100 results.' );
+		}
+		$rank_proofs = 0;
+		foreach ( $records as $index => $row ) {
+			if ( ! is_array( $row ) ) {
+				return new WP_Error( 'mad4b_serp_policy_result_invalid', 'SERP result must be an object: ' . $index );
+			}
+			$url = trim( (string) ( $row['url'] ?? '' ) );
+			$parsed = parse_url( $url );
+			if ( false === $parsed || 'https' !== strtolower( (string) ( $parsed['scheme'] ?? '' ) )
+				|| empty( $parsed['host'] ) || isset( $parsed['user'] ) || isset( $parsed['pass'] )
+				|| ! filter_var( $url, FILTER_VALIDATE_URL ) ) {
+				return new WP_Error( 'mad4b_serp_policy_https_required', 'Valid HTTPS result URL required: ' . $index );
+			}
+			if ( '' === trim( (string) ( $row['title'] ?? '' ) ) ) {
+				return new WP_Error( 'mad4b_serp_policy_title_required', 'Result title is required: ' . $index );
+			}
+			$rank = $row['rank'] ?? null;
+			if ( null !== $rank && '' !== $rank ) {
+				$proof = $row['ranking_proof'] ?? array();
+				if ( ! is_numeric( $rank ) || (int) $rank < 1 || (float) $rank != (int) $rank
+					|| empty( $row['rank_verified'] ) || ! is_array( $proof ) ) {
+					return new WP_Error( 'mad4b_serp_policy_unverified_rank', 'Rank must have provider provenance: ' . $index );
+				}
+				foreach ( array( 'provider_request_id', 'engine', 'captured_at', 'device', 'location' ) as $field ) {
+					if ( ! is_scalar( $proof[ $field ] ?? null ) || '' === trim( (string) $proof[ $field ] ) ) {
+						return new WP_Error( 'mad4b_serp_policy_unverified_rank', 'Missing ranking proof: ' . $field );
+					}
+				}
+				$rank_proofs++;
+			}
+			$volume = $row['search_volume'] ?? null;
+			if ( null !== $volume && '' !== $volume ) {
+				$proof = $row['volume_proof'] ?? array();
+				if ( ! is_numeric( $volume ) || (float) $volume < 0 || ! is_array( $proof )
+					|| empty( $proof['provider_request_id'] ) || empty( $proof['period'] ) ) {
+					return new WP_Error( 'mad4b_serp_policy_unverified_volume', 'Search volume needs provider and measurement period: ' . $index );
+				}
+			}
+		}
+		$provider = strtolower( trim( (string) $input['provider_id'] ) );
+		$discovery = in_array( $provider, array( 'chatgpt_web_search', 'web_search', 'web_discovery' ), true );
+		if ( $discovery && $rank_proofs > 0 ) {
+			return new WP_Error( 'mad4b_serp_policy_discovery_rank_prohibited', 'Web discovery is not a ranking measurement provider.' );
+		}
+		return array(
+			'contract' => 'mad4b.serp-presentation-policy.v1',
+			'evidence_class' => ( $discovery || 0 === $rank_proofs ) ? 'web_discovery' : 'provider_attributed_serp',
+			'provider_provenance_count' => $rank_proofs,
+			'independent_ranking_certified' => false,
+			'publishing_authority_created' => false,
+		);
+	}
+
 	public static function record_serp( $input ) {
+		// Central Staging must enforce provenance without a dependency on any
+		// site-local Content Creation Control Bridge. Provider failures with
+		// empty result sets remain valid observations.
+		if ( 'staging' === wp_get_environment_type() && '1' === getenv( 'MAD4B_CENTRAL_HUB_ENABLED' ) ) {
+			$policy = self::validate_serp_presentation_evidence( $input );
+			if ( is_wp_error( $policy ) ) return $policy;
+		}
 		$base = self::provider_observation( $input, 'serp' );
 		if ( is_wp_error( $base ) ) return $base;
 		$records = isset( $input['results'] ) && is_array( $input['results'] ) ? $input['results'] : array();
@@ -172,6 +254,11 @@ final class MAD4B_SCP_Research_Intelligence {
 				'features' => self::canonicalize( isset( $input['features'] ) && is_array( $input['features'] ) ? $input['features'] : array() ),
 			)
 		);
+		if ( isset( $policy ) && is_array( $policy ) ) {
+			$payload['presentation_evidence_class'] = $policy['evidence_class'];
+			$payload['presentation_policy_contract'] = $policy['contract'];
+			$payload['independent_ranking_certified'] = false;
+		}
 		$payload['snapshot_sha256'] = self::digest( $payload );
 		return self::persist_observation( (string) $input['job_id'], 'serp_research', 'SERP_RESEARCH', $payload, 'SERP snapshot observation' );
 	}
