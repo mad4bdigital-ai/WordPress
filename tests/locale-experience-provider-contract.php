@@ -124,4 +124,5 @@ $failed=array_keys(array_filter($checks,static fn($pass)=>!$pass));
 echo json_encode(['contract'=>'mad4b.locale-experience.offline.v1',
 'success'=>count($failed)===0,'passed'=>count($checks)-count($failed),
 'total'=>count($checks),'failures'=>$failed],JSON_UNESCAPED_SLASHES),PHP_EOL;
+echo 'SUMMARY checks='.count($checks).' failures='.count($failed),PHP_EOL;
 if($failed)exit(1);
