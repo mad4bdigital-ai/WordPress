@@ -10,9 +10,12 @@ final class MAD4B_SCP_Structural_Only_CWA_Adapter implements MAD4B_Central_Enric
  private string $job;
  public function __construct(string $job){$this->job=$job;}
  private function facts():array {
+  // Site-neutral original-provider fencing: staging + current, evidence-bound
+  // Site Profile identity. No hostname or tenant default grants authority.
   if(wp_get_environment_type()!=='staging' ||
-    rtrim(home_url(),'/')!=='https://tours.dev.mad4b.com')
-    throw new RuntimeException('structural_cwa_staging_only');
+    !class_exists('MAD4B_SCP_Site_Profile') ||
+    !MAD4B_SCP_Site_Profile::site_uuid())
+    throw new RuntimeException('structural_cwa_staging_site_profile_required');
   $qa=MAD4B_SCP_Content_Job_Structural_QA::receipt($this->job);
   if(($qa['state']??'')!=='STRUCTURAL_DOCUMENT_ATTESTED' ||
      ($qa['editorial_review_completed']??true)!==false ||

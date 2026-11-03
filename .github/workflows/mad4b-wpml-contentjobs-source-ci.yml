@@ -12,6 +12,10 @@ on:
       - '.github/workflows/mad4b-wpml-contentjobs-source-ci.yml'
   workflow_dispatch:
 
+concurrency:
+  group: mad4b-wpml-cj-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 

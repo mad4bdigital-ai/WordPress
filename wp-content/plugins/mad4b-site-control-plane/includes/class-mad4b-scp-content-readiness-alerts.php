@@ -365,31 +365,43 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
             $code=(string)($row['code']??'');
             // Existing Issue Ledger is the only source of origin research intake.
             // Native ContentJob creation remains governed by its own actor gate.
-            if ($code==='origin_missing' && ($row['post_type']??'')==='tours-and-activities') {
+            $issueType=sanitize_key((string)($row['post_type']??''));
+            $sourceRules=self::rules();
+            $sourceField=(string)($sourceRules['origin_source_fields'][$issueType]
+                ??$sourceRules['origin_fields'][$issueType]??'');
+            $locationTax=(string)($sourceRules['location_taxonomies'][$issueType]??'');
+            // Only explicitly configured owner fields qualify for original
+            // research intake. A generic site must never assume tour semantics.
+            if ($code==='origin_missing' && $issueType && $sourceField
+                && post_type_exists($issueType)) {
                 $post_id=absint($row['object_id']??0);
-                $canonical_id=self::canonical($post_id,'tours-and-activities');
+                $canonical_id=self::canonical($post_id,$issueType);
                 $site_uuid=class_exists('MAD4B_SCP_Site_Profile')
                     ? (string) MAD4B_SCP_Site_Profile::site_uuid() : '';
                 if ($post_id && $canonical_id && $site_uuid
                     && get_post_status($post_id)==='publish') {
-                    $term_ids=wp_get_object_terms($post_id,'destinations',array('fields'=>'ids'));
+                    $term_ids=$locationTax && taxonomy_exists($locationTax)
+                        ? wp_get_object_terms($post_id,$locationTax,array('fields'=>'ids'))
+                        : array();
                     $term_ids=is_wp_error($term_ids) ? array() : array_map('intval',(array)$term_ids);
                     sort($term_ids,SORT_NUMERIC);
-                    $fingerprint=hash('sha256',$site_uuid.'|tours-and-activities|'.$canonical_id.'|origin_missing');
+                    $fingerprint=hash('sha256',$site_uuid.'|'.$issueType.'|'.$canonical_id.'|origin_missing');
                     $source_sha=hash('sha256',wp_json_encode(array(
                         'canonical_id'=>$canonical_id,
-                        'origin_term'=>get_post_meta($post_id,'tour_origin_location_term',true),
-                        'destination_terms'=>$term_ids,
+                        'origin_field'=>$sourceField,
+                        'origin_value'=>get_post_meta($post_id,$sourceField,true),
+                        'location_taxonomy'=>$locationTax,
+                        'location_terms'=>$term_ids,
                     ),JSON_UNESCAPED_SLASHES));
                     $new[$key]['content_job_request']=array(
                         'contract'=>'mad4b.readiness-contentjob-intake.v1',
                         'status'=>!empty($previous['content_job_id']) ? 'LINKED' : 'PRIORITY_INTAKE',
                         'priority'=>85, 'source_issue_id'=>$key,
-                        'gap_code'=>'origin_missing','post_type'=>'tours-and-activities',
+                        'gap_code'=>'origin_missing','post_type'=>$issueType,
                         'source_post_id'=>$post_id,'canonical_post_id'=>$canonical_id,
                         'site_uuid'=>$site_uuid,'content_type'=>'research_observation',
                         'source_sha256'=>$source_sha,'deduplication_key'=>$fingerprint,
-                        'reason'=>'Resolve the canonical origin source using official evidence; distinguish pickup from cruise boarding, and verify coordinates before any writeback.',
+                        'reason'=>'Resolve the configured source location from approved evidence and validate the appropriate service handoff before writeback.',
                         'requires_governed_content_job_admission'=>true,
                         'publication_authorized'=>false,'price_inference_authorized'=>false
                     );
