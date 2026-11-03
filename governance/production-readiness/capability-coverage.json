@@ -4057,6 +4057,26 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing original GOVERNANCE-01, PLATFORM-01 and SECURITY-01 already define site identity, source trace, admin authority and no auto-publish defaults; this source review introduces no new Production grant.",
       "review_rationale": "Original locale browser observation provider reviewed with 23/23 isolated negative/positive tests, including 24-screen completeness, exact company UUID, freshness, cross-domain rejection, unprivileged rejection, SHA tampering, bounded 23 alert deduplication, and candidate-vs-certified translation separation. Original staging proof 17/17 exists independently; this CI-only review is not a human attestation, native ContentJob admission or publication approval."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-geo-quality.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-source-parity-contract.py",
+        "tests/geo-quality-provider-contract.php"
+      ],
+      "owner_role": "Automated source-only CI reviewer; original company owner retains release authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Original site-bound Governance, Platform and Security controls already provide source rights, scan bounds, tenant identity and no mutation. No provider publication or Production grant is introduced.",
+      "review_rationale": "Source review of the actual Geo Quality provider copied from current Staging runtime (trailing blank normalization only). The hermetic negative/positive fixture executed 17/17 cases across nine gap codes, verified nonblocking transport prices, candidate-only coordinates and boarding applicability. Original read-only Staging discovery 1,096/1,096 parity independently verified."
     }
   ],
   "lifecycle": [],
@@ -12308,6 +12328,44 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Exact original Git blob reviewed: First-party browser evidence provider: import is site-bound, requires original manage_options and mutation policy, verifies fresh full locale x page x viewport coverage and rejects untrusted URLs, then exposes read-only, source SHA-bound priority candidates with no automatic content write. Offline fixture 23/23 plus original Staging readback 17/17; not an owner signature or Production readiness certificate."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "source_blob_sha": "c2d9aebb4987b191248fef21b723d224ef05e28b",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/readiness-source-parity-contract.py",
+        "tests/geo-quality-provider-contract.php",
+        "tests/locale-experience-provider-contract.php"
+      ],
+      "owner_role": "CI source reviewer; independent authorized site owner required for any release",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact Git blob reviewed: Reconciled original live first-party Readiness discovery preserving Geo Quality, variable pickup research evidence, published Pricing Workbench alerts and source-hash ContentJob requests, restored original generic origin registry and preserved locale browser alerts. Verified 1,096 exact issue-payload comparisons on live Staging; no option mutation. Automated negative/positive regressions include Geo 17/17, static source integrity 26/26, Locale 23/23 and original live Staging 1,096/1,096. Neither AI-assisted review nor CI source review is a human owner attestation or site deployment authorization."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-geo-quality.php",
+      "source_blob_sha": "0356ec10c3cb6163dc26b2f0dcd3cd2dfcdfddd6",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-source-parity-contract.py",
+        "tests/geo-quality-provider-contract.php",
+        "tests/locale-experience-provider-contract.php"
+      ],
+      "owner_role": "CI source reviewer; independent authorized site owner required for any release",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact Git blob reviewed: Complete Geo provider including nine bounded station, cruise, property and transport-fare quality sources, safe source-owned term relationships, explicit per-site enablement and never-authorized geocoding, pricing or publication. Automated negative/positive regressions include Geo 17/17, static source integrity 26/26, Locale 23/23 and original live Staging 1,096/1,096. Neither AI-assisted review nor CI source review is a human owner attestation or site deployment authorization."
     }
   ],
   "code_change_rules": {
