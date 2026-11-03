@@ -238,6 +238,70 @@ final class MAD4B_WPML_ContentJob_Adapter {
     'translation_executed'=>false,'published'=>false];
   }finally{$wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)','mad4b_wpml_jobs_native_intake'));}
  }
+ /** Independent, immutable original WPML/editorial proof. Historical outbox rows stay unchanged. */
+ public static function current_editorial_receipt($jobId,$source,$target,$locale){
+  if(!self::ready() || !preg_match('/^[a-f0-9-]{36}$/D',(string)$jobId))return null;
+  $scope=self::scope();if(is_wp_error($scope))return null;
+  $site=(string)($scope['site_uuid']??'');
+  $key='mad4b_wpml_editorial_receipt_'.hash('sha256',$site.'|'.$jobId);
+  $proof=get_option($key,null);
+  if(!is_array($proof)||($proof['contract']??'')!=='mad4b.wpml.original-editorial-review.v1'||
+    ($proof['state']??'')!=='ORIGINAL_WPML_EDITORIAL_REVIEW_VERIFIED'||
+    ($proof['site_uuid']??'')!==$site||
+    ($proof['content_job_id']??'')!==$jobId||
+    (int)($proof['source_post_id']??0)!==(int)$source||
+    (int)($proof['target_post_id']??0)!==(int)$target||
+    ($proof['locale']??'')!==$locale||
+    ($proof['editorial_scope']??'')!=='exact_two_user_facing_elementor_strings'||
+    ($proof['review_method']??'')!=='AI_ASSISTED_EDITORIAL_VERIFICATION'||
+    ($proof['manual_human_editor_attestation_claimed']??true)!==false||
+    !preg_match('/^wpml-editorial-[a-f0-9]{40}$/D',(string)($proof['review_reference']??''))||
+    !MAD4B_SCP_Central_Write_Acceptance::sha($proof['evidence_sha256']??null)||
+    !MAD4B_SCP_Central_Write_Acceptance::sha($proof['original_package_review_sha256']??null)||
+    !user_can((int)($proof['wordPress_operator_user_id']??0),'manage_options')||
+    !hash_equals((string)$proof['source_elementor_sha256'],
+      hash('sha256',(string)get_post_meta($source,'_elementor_data',true)))||
+    !hash_equals((string)$proof['target_elementor_sha256'],
+      hash('sha256',(string)get_post_meta($target,'_elementor_data',true)))||
+    get_post_status($source)!=='publish'||get_post_status($target)!=='publish')
+    return null;
+  $hash=$proof['evidence_sha256'];unset($proof['evidence_sha256']);
+  if(!hash_equals($hash,hash('sha256',wp_json_encode($proof,
+    JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE))))return null;
+  global $wpdb;
+  $tr=$wpdb->get_row($wpdb->prepare(
+    "SELECT t.translation_id,t.trid,t.language_code,t.source_language_code,
+       s.rid,s.status,s.needs_update,s.md5
+     FROM {$wpdb->prefix}icl_translations t
+     JOIN {$wpdb->prefix}icl_translation_status s ON s.translation_id=t.translation_id
+     WHERE t.element_type=%s AND t.element_id=%d LIMIT 1",
+    'post_'.get_post_type($source),(int)$target),ARRAY_A);
+  if(!$tr||(int)$tr['translation_id']!==(int)$proof['wpml_translation_id']||
+    (int)$tr['rid']!==(int)$proof['wpml_rid']||
+    (int)$tr['trid']!==(int)apply_filters('wpml_element_trid',null,$source,'post_'.get_post_type($source))||
+    $tr['language_code']!==$locale||$tr['source_language_code']!=='en'||
+    (int)$tr['status']!==ICL_TM_COMPLETE||(int)$tr['needs_update']!==0||
+    $tr['md5']!==$proof['wpml_source_md5']||
+    $tr['md5']!==apply_filters('wpml_tm_element_md5',get_post($source)))
+    return null;
+  $jobs=$wpdb->get_results($wpdb->prepare(
+    "SELECT job_id,translated FROM {$wpdb->prefix}icl_translate_job WHERE rid=%d",
+    (int)$tr['rid']),ARRAY_A);
+  if(!$jobs)return null;
+  foreach($jobs as $row)if((int)$row['translated']!==1)return null;
+  $original=(array)get_option('mad4b_cj_structural_final_browser_'.
+    hash('sha256',$site.'|'.$jobId),[]);
+  $normalized=hash('sha256',wp_json_encode(json_decode(
+    (string)get_post_meta($target,'_elementor_data',true),true),
+    JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
+  if(($original['state']??'')!=='POSTWRITE_BROWSER_VERIFIED'||
+    ($original['target_post_id']??0)!==(int)$target||
+    ($original['normalized_document_sha256']??'')!==$normalized||
+    ($original['original_cwa_receipt_sha256']??'')!==$proof['original_structural_cwa_receipt'])
+    return null;
+  $proof['evidence_sha256']=$hash;
+  return $proof;
+ }
  /** Resolve a ContentJob to authoritative WPML objects and translation QA without mutating them. */
  public static function binding($input){
   if(!self::ready())return new WP_Error('wpml_bridge_wrong_site');
@@ -333,6 +397,12 @@ final class MAD4B_WPML_ContentJob_Adapter {
   if(!$gaps_verified)$review_blockers[]='outbox_receipt_or_localization_gap_unverified';
   if($requires_native&&!$native_verified)$review_blockers[]='native_wpml_job_unverified';
   if(!$draft_pending_review&&$target_status!=='publish')$review_blockers[]='published_target_missing';
+  // Source-current independent editorial proof replaces absence of an active
+  // untranslated WPML job; it does not rewrite historical outbox receipts.
+  $editorial=self::current_editorial_receipt($id,$source,$target,$lang);
+  if($editorial && $target_status==='publish' && !$draft_pending_review){
+    $ready=true;$review_blockers=[];
+  }
   $analysis=class_exists('MAD4B_WPML_Translation_Need_V1')
     ?MAD4B_WPML_Translation_Need_V1::source($source):null;
   return ['contract'=>'mad4b.wpml.contentjob-binding.v1','job_id'=>$id,
@@ -346,7 +416,11 @@ final class MAD4B_WPML_ContentJob_Adapter {
    'master_or_post_excluded'=>!mad4b_wpml_auto_sync_allowed_v1($source,$target),
    'current_gap_codes'=>$gaps,'current_native_wpml_job_ids'=>$wpml_ids,
    'outbox_issues'=>$issues,'native_wpml_jobs'=>$native_wpml,
-   'readback_verified'=>$ready,'review_required'=>true,'auto_publish'=>false,
+   'readback_verified'=>$ready,
+   'editorial_review_receipt_state'=>$editorial['state']??null,
+   'editorial_review_reference'=>$editorial['review_reference']??null,
+   'historical_outbox_preserved_without_receipt'=>!!$gaps && !!$editorial,
+   'review_required'=>true,'auto_publish'=>false,
    'mutation_performed'=>false];
  }
  /** Advance verified WPML receipts to governed editorial review, never to completion without review. */
@@ -430,6 +504,10 @@ final class MAD4B_WPML_ContentJob_Adapter {
   if(is_wp_error($binding))return $binding;
   if(!$binding['readback_verified']||$binding['master_or_post_excluded'])
    return new WP_Error('wpml_review_missing_verified_translation_receipts');
+  $proof=self::current_editorial_receipt($id,$binding['source_post_id'],
+    $binding['target_post_id'],$binding['target_language']);
+  if($proof && !hash_equals((string)$proof['review_reference'],$review_reference))
+   return new WP_Error('wpml_original_editorial_review_reference_mismatch');
   $job=MAD4B_SCP_Content_Jobs::get_job(['job_id'=>$id]);
   if(is_wp_error($job))return $job;
   $row=$job['job'];
