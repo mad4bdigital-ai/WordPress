@@ -17,9 +17,13 @@ final class MAD4B_SCP_Readiness_Integrations {
     public static function boot() {
         add_action('rest_api_init',array(__CLASS__,'routes'));
         add_action('admin_bar_menu',array(__CLASS__,'admin_bar'),97);
-        add_action('admin_menu',array(__CLASS__,'company_menu'),34);
+        MAD4B_SCP_Admin_Route_Registry::schedule_submenu(array(__CLASS__,'company_menu'),34);
     }
     public static function company_menu() {
+        foreach(array(MAD4B_SCP_Content_Readiness_Alerts::PAGE,
+            MAD4B_SCP_Readiness_Workflow_Options::PAGE,
+            MAD4B_SCP_Content_Completeness::PAGE) as $slug)
+            MAD4B_SCP_Admin_Route_Registry::register($slug,self::CAP);
         add_submenu_page('mad4b-company','Content Readiness','Content Readiness',self::CAP,
             MAD4B_SCP_Content_Readiness_Alerts::PAGE,array('MAD4B_SCP_Content_Readiness_Alerts','render'));
         add_submenu_page('mad4b-company','Content Follow-up','Content Follow-up',self::CAP,
