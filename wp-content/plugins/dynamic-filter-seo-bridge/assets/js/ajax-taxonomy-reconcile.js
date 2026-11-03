@@ -53,14 +53,12 @@
         if (!group || !group.currentQuery || typeof group.currentQuery !== 'object') { return; }
         var state = pathState();
         if (!state.valid || !state.group || state.group !== key) { return; }
-        var next = {};
-        Object.keys(group.currentQuery).forEach(function (name) {
-            if (name === 'tax_query' || name.indexOf('_tax_query_') === 0) { return; }
-            next[name] = group.currentQuery[name];
-        });
-        Object.keys(state.query).forEach(function (name) { next[name] = state.query[name]; });
-        group.currentQuery = next;
-        document.dispatchEvent(new CustomEvent('etg-dfsb/jsf-taxonomy-reconciled', { detail: { group: key, taxonomy_query: state.query } }));
+        // JetSmartFilters owns its native numeric term IDs, operator semantics,
+        // and reset lifecycle. URL slugs are display evidence only: never
+        // replace group.currentQuery after a user interaction or deep link.
+        document.dispatchEvent(new CustomEvent('etg-dfsb/jsf-taxonomy-reconciled', {
+            detail: { group: key, taxonomy_query: state.query, native_query_preserved: true }
+        }));
     }
 
     function reconcileKey(key) {
@@ -77,8 +75,6 @@
         Object.keys(jsf.filterGroups).forEach(reconcileKey);
         jsf.events.subscribe('ajaxFilters/updated', function (provider, queryId) {
             reconcile(provider, queryId);
-            window.setTimeout(function () { reconcile(provider, queryId); }, 0);
-            window.setTimeout(function () { reconcile(provider, queryId); }, 10);
         });
     }
 
