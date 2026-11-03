@@ -11,6 +11,48 @@
     }
     if (!cfg.endpoint) { return; }
 
+    // Native JSF checkboxes already support data-relational-operator="AND".
+    // On a direct URL with an explicit, valid operator, provide that native
+    // configuration BEFORE JSF creates filter instances. This is a DOM input
+    // option, not an overwrite of JSF's currentQuery, signed AJAX or counts.
+    function configureNativeDirectLinkOperators() {
+        var state = prettyPathState();
+        if (!state.valid || !state.group || !state.query) { return; }
+        var separator = state.group.indexOf('/');
+        if (separator <= 0) { return; }
+        var provider = state.group.slice(0, separator);
+        var queryId = state.group.slice(separator + 1);
+        Object.keys(state.query).forEach(function (key) {
+            if (key.indexOf('_tax_query_') !== 0) { return; }
+            var data = state.query[key];
+            // Local Staging parser historically supplied comma-separated strings;
+            // the canonical #733 parser supplies arrays for explicit operators.
+            // Accept both validated forms without assigning native currentQuery.
+            var parts = Array.isArray(data) ? data.map(String) :
+                (typeof data === 'string' ? data.split(',').map(function (v) { return v.trim(); }) : []);
+            if (parts.length < 3 || parts.length > 21) { return; }
+            var op = parts[parts.length - 1];
+            if (op !== 'operator_AND' && op !== 'operator_IN') { return; }
+            var selected = parts.slice(0, -1);
+            if (selected.length < 2 ||
+                selected.some(function (v) { return !/^[A-Za-z0-9_-]{1,100}$/.test(v); }) ||
+                selected.filter(function (v, i) { return selected.indexOf(v) === i; }).length !== selected.length) { return; }
+            var taxonomy = key.slice('_tax_query_'.length);
+            Array.prototype.forEach.call(document.querySelectorAll('.jet-checkboxes-list[data-smart-filter="checkboxes"][data-query-type="tax_query"]'), function (el) {
+                if (el.getAttribute('data-query-var') !== taxonomy || el.getAttribute('data-content-provider') !== provider || el.getAttribute('data-query-id') !== queryId) { return; }
+                var options = Array.prototype.map.call(el.querySelectorAll('input[data-url-value]'), function (input) {
+                    return String(input.getAttribute('data-url-value') || '');
+                });
+                if (!selected.every(function (slug) { return options.indexOf(slug) !== -1; })) { return; }
+                // Native checkbox processData appends operator_AND only when
+                // two or more actual inputs are selected; allow it to do so.
+                if (op === 'operator_AND') { el.setAttribute('data-relational-operator', 'AND'); }
+                else { el.removeAttribute('data-relational-operator'); }
+            });
+        });
+    }
+    document.addEventListener('jet-smart-filters/before-init', configureNativeDirectLinkOperators, { capture: true, once: true });
+
     var timers = {}, sequences = {}, controllers = {}, activeKeys = {}, eventSeenKeys = {}, initialSemanticKeys = {};
     var initialized = false, runtimeBlockedSignature = '';
     // Prepare the non-authorizing presentation while native JSF renders.
