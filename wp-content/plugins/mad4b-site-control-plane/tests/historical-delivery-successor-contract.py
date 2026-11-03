@@ -82,6 +82,10 @@ closed = [
      is_exact_historical_delivery_successor),
     ("g8", ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
      is_exact_ci_history_checkout_successor),
+    ("ui", "wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt",
+     is_exact_historical_delivery_successor),
+    ("ui", "wp-content/plugins/mad4b-site-control-plane/README.md",
+     is_exact_historical_delivery_successor),
 ]
 for group, path, validator in closed:
     archive = json.loads((EXT / (group + "-delivery.json")).read_text(encoding="utf-8"))
