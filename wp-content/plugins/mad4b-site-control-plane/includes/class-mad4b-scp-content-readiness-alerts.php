@@ -7,6 +7,7 @@
 defined('ABSPATH') || exit;
 require_once __DIR__.'/class-mad4b-scp-readiness-workflow-options.php';
 require_once __DIR__.'/class-mad4b-scp-content-completeness.php';
+require_once __DIR__.'/class-mad4b-scp-content-readiness-admin-view.php';
 
 final class MAD4B_SCP_Content_Readiness_Alerts {
     const VERSION = '1.0.0';
@@ -332,58 +333,9 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
      * Reject stale/incomplete evidence, negated pickup claims, and wrong tenants.
      */
     private static function source_backed_hotel_pickup($id,$type) {
-        if($type!=='tours-and-activities'||get_post_status($id)!=='publish'||
-           !class_exists('MAD4B_SCP_Research_Groups')||
-           !class_exists('MAD4B_SCP_Site_Profile'))return false;
-        $highlight=get_post_meta($id,'highlight_rows',true);
-        if(!is_string($highlight)||strlen($highlight)>60000)return false;
-        $text=trim(wp_strip_all_tags($highlight));
-        if(!preg_match('/\bhotel\s+pick[ -]?up\b/i',$text) ||
-           preg_match('/\b(?:no|not|without|excluded|not included)\b.{0,36}\bhotel\s+pick[ -]?up\b/i',$text))
-           return false;
-        $site=(string)MAD4B_SCP_Site_Profile::site_uuid();
-        $canonical=self::canonical($id,$type);
-        global $wpdb;
-        $group=$wpdb->prefix.'mad4b_research_groups';
-        $record=$wpdb->prefix.'mad4b_research_records';
-        $raw=$wpdb->get_var($wpdb->prepare(
-            "SELECT r.data_json FROM {$record} r INNER JOIN {$group} g ON g.id=r.group_id
-             WHERE g.task_key=%s AND g.site_uuid=%s AND r.provider_id=%s
-             ORDER BY r.id DESC LIMIT 1",
-            'origin:tour:'.$canonical,$site,'native_wp_source'));
-        $e=is_string($raw)?json_decode($raw,true):null;
-        if(!is_array($e)||($e['contract']??'')!=='mad4b.origin-evidence-workflow.v1'||
-           (int)($e['post_id']??0)!==$id ||
-           ($e['site_uuid']??'')!==$site ||
-           ($e['classification']??'')!=='variable_hotel_pickup' ||
-           ($e['exact_pickup_verified']??true)!==false)
-            return false;
-        $terms=wp_get_object_terms($id,'destinations',['fields'=>'ids']);
-        if(is_wp_error($terms))return false;
-        $terms=array_map('intval',(array)$terms);sort($terms,SORT_NUMERIC);
-        $source=hash('sha256',wp_json_encode([
-            'canonical_id'=>$canonical,
-            'origin_term'=>get_post_meta($id,'tour_origin_location_term',true),
-            'destination_terms'=>$terms
-        ],JSON_UNESCAPED_SLASHES));
-        if(!hash_equals((string)($e['source_sha256']??''),$source))return false;
-        // A stored classification alone cannot outlive changed tour copy.
-        $quotes=(array)($e['source_snippets']['highlight_rows']??[]);
-        $matched=false;
-        $now=trim(preg_replace('/\s+/u',' ',$text));
-        foreach($quotes as $quote){
-            $quote=trim(preg_replace('/\s+/u',' ',(string)$quote));
-            if(strlen($quote)>=35 && str_contains($now,$quote) &&
-               preg_match('/\bhotel\s+pick[ -]?up\b/i',$quote))$matched=true;
-        }
-        if(!$matched)return false;
-        $issue_key=hash('sha256',get_current_blog_id().'|'.$type.'|'.$id.'|origin_missing');
-        $ledger=(array)get_option(self::STORE,[]);
-        if(($ledger[$issue_key]['content_job_id']??'')!==(string)($e['job_id']??''))return false;
-        return ['policy'=>'variable_guest_hotel_pickup','source'=>'published_tour_highlights',
-            'source_meta_sha256'=>hash('sha256',$highlight),
-            'research_job_id'=>(string)($e['job_id']??''),
-            'fixed_origin_required'=>false,'guest_location_capture_verified'=>false];
+        $e=apply_filters('mad4b/content_readiness/source_backed_hotel_pickup',false,$id,$type);
+        return is_array($e) && !empty($e['source_meta_sha256']) &&
+            ($e['fixed_origin_required']??true)===false ? $e : false;
     }
 
     public static function run_scheduled() {
@@ -420,6 +372,8 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         try {
         $old=(array)get_option(self::STORE,array());$now=gmdate('c');$new=$old;
         $seen=array();
+        $originType=sanitize_key((string)apply_filters('mad4b/content_readiness/source_origin_post_type',''));
+        if(!$originType || !post_type_exists($originType))$originType='';
         foreach ($scan['issues'] as $row) {
             $key=$row['id'];$seen[$key]=true;
             $previous=$new[$key]??array();
@@ -433,8 +387,8 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
             // The native ContentJob service owns real creation, and requires a
             // verified principal, brand scope, and independently selected market.
             $code=(string)($row['code']??'');
-            if($code==='pickup_guest_location_capture_unverified' && $row['post_type']==='tours-and-activities'){
-                $priorKey=hash('sha256',get_current_blog_id().'|tours-and-activities|'.absint($row['object_id']).'|origin_missing');
+            if($code==='pickup_guest_location_capture_unverified' && $originType && ($row['post_type']??'')===$originType){
+                $priorKey=hash('sha256',get_current_blog_id().'|'.$originType.'|'.absint($row['object_id']).'|origin_missing');
                 if(!empty($old[$priorKey]['content_job_id']) &&
                    ($row['source_evidence']['research_job_id']??'')===$old[$priorKey]['content_job_id']){
                     $new[$key]['content_job_id']=$old[$priorKey]['content_job_id'];
@@ -444,9 +398,9 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
             }
             // Existing Issue Ledger is the only source of origin research intake.
             // Native ContentJob creation remains governed by its own actor gate.
-            if ($code==='origin_missing' && ($row['post_type']??'')==='tours-and-activities') {
+            if ($code==='origin_missing' && $originType && ($row['post_type']??'')===$originType) {
                 $post_id=absint($row['object_id']??0);
-                $canonical_id=self::canonical($post_id,'tours-and-activities');
+                $canonical_id=self::canonical($post_id,$originType);
                 $site_uuid=class_exists('MAD4B_SCP_Site_Profile')
                     ? (string) MAD4B_SCP_Site_Profile::site_uuid() : '';
                 if ($post_id && $canonical_id && $site_uuid
@@ -454,7 +408,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                     $term_ids=wp_get_object_terms($post_id,'destinations',array('fields'=>'ids'));
                     $term_ids=is_wp_error($term_ids) ? array() : array_map('intval',(array)$term_ids);
                     sort($term_ids,SORT_NUMERIC);
-                    $fingerprint=hash('sha256',$site_uuid.'|tours-and-activities|'.$canonical_id.'|origin_missing');
+                    $fingerprint=hash('sha256',$site_uuid.'|'.$originType.'|'.$canonical_id.'|origin_missing');
                     $source_sha=hash('sha256',wp_json_encode(array(
                         'canonical_id'=>$canonical_id,
                         'origin_term'=>get_post_meta($post_id,'tour_origin_location_term',true),
@@ -464,7 +418,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                         'contract'=>'mad4b.readiness-contentjob-intake.v1',
                         'status'=>!empty($previous['content_job_id']) ? 'LINKED' : 'PRIORITY_INTAKE',
                         'priority'=>85, 'source_issue_id'=>$key,
-                        'gap_code'=>'origin_missing','post_type'=>'tours-and-activities',
+                        'gap_code'=>'origin_missing','post_type'=>$originType,
                         'source_post_id'=>$post_id,'canonical_post_id'=>$canonical_id,
                         'site_uuid'=>$site_uuid,'content_type'=>'research_observation',
                         'source_sha256'=>$source_sha,'deduplication_key'=>$fingerprint,
@@ -644,6 +598,9 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
             'snapshot_count'=>count($rows),
             'read_only'=>true,
         ));
+    }
+    public static function sort_issues(array &$rows):void {
+        usort($rows,array(__CLASS__,'priority_compare'));
     }
     private static function priority_compare($a,$b) {
         $sa=(($a['status']??'open')==='resolved')?1:0;
@@ -907,111 +864,8 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         wp_safe_redirect(admin_url('admin.php?page='.self::PAGE));exit;
     }
     public static function render() {
-        if(!current_user_can('edit_others_posts'))wp_die('Forbidden',403);
-        $rules=self::rules();$issues=(array)get_option(self::STORE,array());$counts=self::summary($issues);
-        $flash=get_transient('mad4b_readiness_result_'.get_current_user_id());
-        delete_transient('mad4b_readiness_result_'.get_current_user_id());
-        echo '<div class="wrap"><h1>Content Readiness &amp; Alerts</h1>';
-        echo '<p>Source-backed issue ledger. Approved local scheduler reconciles issues; external tasks and messages remain governed separately.</p>';
-        echo '<p><a class="button button-secondary" href="'.esc_url(admin_url('admin.php?page='.MAD4B_SCP_Readiness_Workflow_Options::PAGE)).'">Follow-up &amp; Notifications Settings</a></p>';
-        if($flash)echo '<div class="notice notice-info"><pre>'.esc_html(wp_json_encode($flash)).'</pre></div>';
-        echo '<h2>Open: '.(int)$counts['open'].' | Critical: '.(int)$counts['critical'].' | High: '.(int)$counts['high'].' | Resolved: '.(int)$counts['resolved'].'</h2>';
-        if(current_user_can('manage_options')) {
-        echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
-        wp_nonce_field('mad4b_readiness_scan');
-        echo '<input type="hidden" name="action" value="mad4b_readiness_scan">';
-        submit_button('Scan & reconcile content issues','primary','submit',false);echo '</form>';
-        echo '<h2>Site-specific source rules</h2><form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
-        wp_nonce_field('mad4b_readiness_rules');echo '<input type="hidden" name="action" value="mad4b_readiness_save_rules">';
-        $fields=array('post_types'=>'Content post types (comma-separated)',
-            'origin_fields'=>'Origin meta by post type',
-            'origin_source_fields'=>'Origin source term ID meta by post type',
-            'origin_source_taxonomies'=>'Origin term taxonomy by post type',
-            'location_taxonomies'=>'Location taxonomy by post type',
-            'media_fields'=>'Media meta by post type',
-            'owner_fields'=>'Owner meta by post type',
-            'end_date_fields'=>'End date meta by post type',
-            'stop_sale_fields'=>'Stop sale meta by post type');
-        foreach($fields as $field=>$name){
-            $value=$rules[$field];
-            if(is_array($value)) {
-                $parts=array();foreach($value as $t=>$key)$parts[]=is_string($t)?$t.':'.$key:$key;
-                $value=implode(', ',$parts);
-            }
-            echo '<p><label>'.esc_html($name).'<br><input class="large-text" name="'.esc_attr($field).'" value="'.esc_attr((string)$value).'"></label></p>';
-        }
-        echo '<p><label>Disallowed origin levels (CSV)<br><input class="large-text" name="invalid_origin_levels" value="'.esc_attr(implode(',',(array)$rules['invalid_origin_levels'])).'"></label></p>';
-        foreach(array('scheduled_scan_interval_minutes'=>'Scheduled scan minimum interval (minutes)', 'media_reuse_threshold'=>'Shared gallery review threshold (0 disables)', 'form_id'=>'Fluent Forms ID', 'form_unread_days'=>'Unread follow-up threshold (days)') as $field=>$label)
-            echo '<p><label>'.esc_html($label).' <input type="number" min="0" name="'.esc_attr($field).'" value="'.(int)$rules[$field].'"></label></p>';
-        foreach(array('scheduled_scan_enabled'=>'Enable local server-side scheduled scans (issue ledger only; no notifications or tasks)','check_wpml'=>'Detect missing WPML language','check_cron'=>'Detect overdue WP-Cron') as $field=>$label)
-            echo '<p><label><input type="checkbox" name="'.esc_attr($field).'" '.checked($rules[$field],true,false).'>'.esc_html($label).'</label></p>';
-        submit_button('Save rules');echo '</form>';
-        }
-        $requestedStatus=sanitize_key((string)wp_unslash($_GET['readiness_status']??'open'));
-        if(!in_array($requestedStatus,array('open','resolved','all'),true))$requestedStatus='open';
-        $requestedSeverity=sanitize_key((string)wp_unslash($_GET['readiness_severity']??'all'));
-        if(!in_array($requestedSeverity,array('all','critical','high','medium','low'),true))$requestedSeverity='all';
-        $rows=array_values(array_filter($issues,static function($row) use($requestedStatus,$requestedSeverity){
-            if(!is_array($row))return false;
-            $state=(($row['status']??'open')==='resolved')?'resolved':'open';
-            return ($requestedStatus==='all'||$state===$requestedStatus) &&
-                ($requestedSeverity==='all'||($row['severity']??'medium')===$requestedSeverity);
-        }));
-        usort($rows,array(__CLASS__,'priority_compare'));
-        $totalRows=count($rows);
-        $totalPages=max(1,(int)ceil($totalRows/100));
-        $issuePage=max(1,min($totalPages,absint($_GET['readiness_page']??1)));
-        echo '<h2>Issues</h2><form method="get" style="margin:12px 0">';
-        echo '<input type="hidden" name="page" value="'.esc_attr(self::PAGE).'">';
-        foreach(array('readiness_status'=>array('open'=>'Open','resolved'=>'Resolved','all'=>'All'),
-                      'readiness_severity'=>array('all'=>'All severities','critical'=>'Critical','high'=>'High','medium'=>'Medium','low'=>'Low')) as $field=>$options){
-            $selected=$field==='readiness_status'?$requestedStatus:$requestedSeverity;
-            echo '<label>'.esc_html($field==='readiness_status'?'Status':'Severity').' <select name="'.esc_attr($field).'">';
-            foreach($options as $key=>$value)echo '<option value="'.esc_attr($key).'" '.selected($selected,$key,false).'>'.esc_html($value).'</option>';
-            echo '</select></label> ';
-        }
-        echo '<button class="button">Filter</button></form>';
-        $exportUrl=wp_nonce_url(add_query_arg(array('action'=>'mad4b_readiness_export',
-            'readiness_status'=>$requestedStatus,'readiness_severity'=>$requestedSeverity),
-            admin_url('admin-post.php')),'mad4b_readiness_export');
-        echo '<p><a class="button button-secondary" href="'.esc_url($exportUrl).'">Export matching issues (CSV)</a></p>';
-        echo '<p class="description">Showing '.($totalRows?((($issuePage-1)*100)+1):0).'-'.min($issuePage*100,$totalRows).' of '.$totalRows.' matching issues.</p>';
-        echo '<table class="widefat striped"><thead><tr><th>Severity</th><th>Source</th><th>Issue</th><th>Status</th><th>Fluent Boards</th></tr></thead><tbody>';
-        foreach(array_slice($rows,($issuePage-1)*100,100) as $row) {
-            $url=$row['object_id']?get_edit_post_link($row['object_id']):'';
-            $label=esc_html((string)$row['post_type'].' #'.(int)$row['object_id']);
-            if($url)$label='<a href="'.esc_url($url).'">'.$label.'</a>';
-            $evidence=(array)($row['source_evidence']??array());
-            if (!empty($evidence['term_id']) && !empty($evidence['taxonomy'])) {
-                $termUrl=get_edit_term_link(absint($evidence['term_id']),sanitize_key($evidence['taxonomy']));
-                $sourceLabel='Source: '.sanitize_key($evidence['taxonomy']).' #'.absint($evidence['term_id']).
-                    ' / '.sanitize_key($evidence['level']??'unverified');
-                if (is_string($termUrl) && $termUrl)
-                    $label.='<p class="description"><a href="'.esc_url($termUrl).'">'.esc_html($sourceLabel).'</a></p>';
-                else $label.='<p class="description">'.esc_html($sourceLabel).'</p>';
-            }
-            echo '<tr><td>'.esc_html($row['severity']).'</td><td>'.$label.'</td><td>'.esc_html($row['label']).'</td><td>'.esc_html($row['status']).'</td><td>';
-            if(!empty($row['board_task_id']))echo 'Task #'.(int)$row['board_task_id'];
-            elseif(($row['status']??'')!=='resolved' && current_user_can('manage_options')) {
-                echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
-                wp_nonce_field('mad4b_readiness_board_sync');
-                echo '<input type="hidden" name="action" value="mad4b_readiness_board_sync">';
-                echo '<input type="hidden" name="issue_id" value="'.esc_attr($row['id']).'">';
-                echo '<button class="button" '.disabled(empty(MAD4B_SCP_Readiness_Workflow_Options::settings()['board_tasks'])||!class_exists('MAD4B_SCP_Policy')||!MAD4B_SCP_Policy::can_mutate(),true,false).'>Create Board Task</button></form>';
-            }
-            echo '</td></tr>';
-        }
-        echo '</tbody></table>';
-        if($totalPages>1){
-            echo '<p class="tablenav-pages">Page '.(int)$issuePage.' of '.(int)$totalPages.' ';
-            foreach(array('Previous'=>$issuePage-1,'Next'=>$issuePage+1) as $label=>$target){
-                if($target<1||$target>$totalPages)continue;
-                $url=add_query_arg(array('page'=>self::PAGE,'readiness_status'=>$requestedStatus,
-                    'readiness_severity'=>$requestedSeverity,'readiness_page'=>$target),admin_url('admin.php'));
-                echo '<a class="button" style="margin-left:8px" href="'.esc_url($url).'">'.esc_html($label).'</a>';
-            }
-            echo '</p>';
-        }
-        echo '</div>';
+        MAD4B_SCP_Content_Readiness_Admin_View::render();
     }
+
 }
+
