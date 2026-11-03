@@ -82,6 +82,17 @@ final class MAD4B_SCP_Content_Job_Group_Orchestrator {
        $final['evidence_sha256']??null);
    if($postwriteVerified)
      $counts['postwrite_verified']=($counts['postwrite_verified']??0)+1;
+   $nativeEditorial=$jobId!==''?
+     MAD4B_SCP_Content_Jobs::get_job(['job_id'=>$jobId]):null;
+   $editorialReceipt=$jobId!==''&&class_exists('MAD4B_WPML_ContentJob_Adapter')?
+     MAD4B_WPML_ContentJob_Adapter::current_editorial_receipt(
+       $jobId,$source,$target,$locale):null;
+   $editorialCompleted=is_array($editorialReceipt) &&
+     !is_wp_error($nativeEditorial) &&
+     ($nativeEditorial['job']['state']??'')==='COMPLETED' &&
+     $postwriteVerified;
+   if($editorialCompleted)
+     $counts['editorial_completed']=($counts['editorial_completed']??0)+1;
    $children[]=['target_id'=>$target,'locale'=>$locale,'job_id'=>$jobId,
     'state'=>$state,'reason'=>$reason,
     'structural_qa_state'=>$postwriteVerified?
@@ -96,7 +107,12 @@ final class MAD4B_SCP_Content_Job_Group_Orchestrator {
       $final['evidence_sha256']:null,
     'original_cwa_receipt_sha256'=>$postwriteVerified?
       $final['original_cwa_receipt_sha256']:null,
-    'editorial_translation_approved'=>false,
+    'editorial_translation_approved'=>$editorialCompleted,
+    'editorial_review_state'=>$editorialCompleted?'COMPLETED_VERIFIED':'NOT_COMPLETED',
+    'editorial_review_method'=>$editorialCompleted?
+      $editorialReceipt['review_method']:null,
+    'editorial_review_reference'=>$editorialCompleted?
+      $editorialReceipt['review_reference']:null,
     'expected_source_sha256'=>$owner['owner_plan']['source_sha256']??null,
     'current_target_document_sha256'=>hash('sha256',$current),
     'would_update'=>!empty($item['would_update'])];
