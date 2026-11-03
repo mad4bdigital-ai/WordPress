@@ -9,6 +9,8 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/**'
       - 'tools/dfsb-neutral/**'
       - 'tests/wpml-contentjob-source-parity.py'
+      - 'tests/contentjob-review-coverage-contract.py'
+      - 'governance/production-readiness/capability-coverage.json'
       - '.github/workflows/mad4b-wpml-contentjobs-source-ci.yml'
   workflow_dispatch:
 
@@ -35,6 +37,8 @@ jobs:
         run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
       - name: Verify source/provenance parity and review gates
         run: python3 tests/wpml-contentjob-source-parity.py
+      - name: Verify CI-only source review, exact abilities and fail-closed mutations
+        run: python3 tests/contentjob-review-coverage-contract.py
       - name: Configure PHP
         uses: shivammathur/setup-php@v2
         with:
