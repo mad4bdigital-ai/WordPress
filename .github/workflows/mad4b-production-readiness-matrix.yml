@@ -121,6 +121,13 @@ jobs:
         with:
           php-version: '8.3'
           coverage: none
+      - name: Prepare browser dependencies only when a mapped regression needs Chromium
+        run: |
+          set -euo pipefail
+          if python3 -c 'import json,sys; p=json.load(open("artifacts/production-readiness/capability-impact.json")); sys.exit(0 if "wp-content/plugins/mad4b-site-control-plane/tests/frontend-impact-live-browser-acceptance.py" in p["required_regression_tests"] else 1)'; then
+            python3 -m pip install --disable-pip-version-check --no-input playwright==1.56.0
+            python3 -m playwright install --with-deps chromium
+          fi
       - name: Execute required mapped regression tests, not merely check filenames
         env:
           EXACT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}

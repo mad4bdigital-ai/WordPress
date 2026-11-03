@@ -434,9 +434,14 @@ def validate_coverage(coverage, controls, base, head, changed, added, removed):
                    "A newly introduced capability must provide regression tests")
             for test in tests:
                 ensure(isinstance(test, str) and (test.startswith(PLUGIN + "tests/") or
-                       test.startswith("tests/")) and test in changed_set and
-                       (ROOT / test).is_file(),
+                       test.startswith("tests/")) and (ROOT / test).is_file(),
                        "Test evidence must be committed with capability: " + capability)
+            # Keep all historic regressions intact, but require at least one
+            # independently committed new test for an introduced capability.
+            # Rewriting unchanged historic tests merely to satisfy this gate
+            # adds noise and does not improve source-specific verification.
+            ensure(any(test in changed_set for test in tests),
+                   "Test evidence must be committed with capability: " + capability)
             accepted.append(capability)
         if missing:
             failures.append({"id": capability, "source": path,

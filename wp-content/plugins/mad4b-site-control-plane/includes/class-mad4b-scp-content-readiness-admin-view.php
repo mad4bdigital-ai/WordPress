@@ -1,5 +1,5 @@
 <?php
-/** MAD4B Content Readiness — bounded admin presentation. */
+/** MAD4B Readiness Admin View — presentation-only; no discovery or writeback. */
 defined('ABSPATH') || exit;
 final class MAD4B_SCP_Content_Readiness_Admin_View {
     public static function render() {
@@ -39,7 +39,7 @@ final class MAD4B_SCP_Content_Readiness_Admin_View {
         echo '<p><label>Disallowed origin levels (CSV)<br><input class="large-text" name="invalid_origin_levels" value="'.esc_attr(implode(',',(array)$rules['invalid_origin_levels'])).'"></label></p>';
         foreach(array('scheduled_scan_interval_minutes'=>'Scheduled scan minimum interval (minutes)', 'media_reuse_threshold'=>'Shared gallery review threshold (0 disables)', 'form_id'=>'Fluent Forms ID', 'form_unread_days'=>'Unread follow-up threshold (days)') as $field=>$label)
             echo '<p><label>'.esc_html($label).' <input type="number" min="0" name="'.esc_attr($field).'" value="'.(int)$rules[$field].'"></label></p>';
-        foreach(array('scheduled_scan_enabled'=>'Enable local server-side scheduled scans (issue ledger only; no notifications or tasks)','check_wpml'=>'Detect missing WPML language','check_cron'=>'Detect overdue WP-Cron') as $field=>$label)
+        foreach(array('geo_quality_enabled'=>'Enable source-only station, cruise boarding and transport-price quality alerts (no geocoding or pricing writes)','scheduled_scan_enabled'=>'Enable local server-side scheduled scans (issue ledger only; no notifications or tasks)','check_wpml'=>'Detect missing WPML language','check_cron'=>'Detect overdue WP-Cron') as $field=>$label)
             echo '<p><label><input type="checkbox" name="'.esc_attr($field).'" '.checked($rules[$field],true,false).'>'.esc_html($label).'</label></p>';
         submit_button('Save rules');echo '</form>';
         }
@@ -109,5 +109,44 @@ final class MAD4B_SCP_Content_Readiness_Admin_View {
             echo '</p>';
         }
         echo '</div>';
+    }
+    public static function handle_export() {
+        if (!current_user_can('edit_others_posts')) wp_die('Forbidden',403);
+        check_admin_referer('mad4b_readiness_export');
+        $status=sanitize_key((string)wp_unslash($_GET['readiness_status']??'open'));
+        if (!in_array($status,array('open','resolved','all'),true)) $status='open';
+        $severity=sanitize_key((string)wp_unslash($_GET['readiness_severity']??'all'));
+        if (!in_array($severity,array('all','critical','high','medium','low'),true)) $severity='all';
+        $rows=array_values(array_filter((array)get_option(MAD4B_SCP_Content_Readiness_Alerts::STORE,array()),
+            static function($row)use($status,$severity){
+                if(!is_array($row))return false;
+                $state=(($row['status']??'open')==='resolved')?'resolved':'open';
+                return ($status==='all'||$state===$status)
+                    && ($severity==='all'||($row['severity']??'medium')===$severity);
+            }));
+        MAD4B_SCP_Content_Readiness_Alerts::sort_issues($rows);
+        nocache_headers();
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="mad4b-content-readiness-'.gmdate('Ymd').'.csv"');
+        $output=fopen('php://output','w');
+        fputcsv($output,array('issue_id','severity','status','post_type','post_id','content_title','code',
+            'source_taxonomy','source_term_id','source_level','description','edit_url','last_seen'));
+        foreach($rows as $row){
+            $e=(array)($row['source_evidence']??array());
+            $id=absint($row['object_id']??0);
+            $url=$id?get_edit_post_link($id,'raw'):'';
+            $values=array($row['id']??'',$row['severity']??'',$row['status']??'',
+                $row['post_type']??'',$id,($id?html_entity_decode(wp_strip_all_tags(get_the_title($id)),ENT_QUOTES,'UTF-8'):''),$row['code']??'',$e['taxonomy']??'',
+                absint($e['term_id']??0),$e['level']??'',$row['label']??'',
+                $url,$row['last_seen']??'');
+            // Prevent spreadsheet formula execution in exported source labels.
+            $values=array_map(static function($v){
+                $v=(string)$v;
+                return preg_match('/^[=+@\-\t\r]/',$v)?"'".$v:$v;
+            },$values);
+            fputcsv($output,$values);
+        }
+        fclose($output);
+        exit;
     }
 }

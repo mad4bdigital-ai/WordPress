@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Executable CI regression for reconciled Staging rc.104 source only.
+"""Executable CI regression for reconciled rc118 source, preserving rc104 safety regressions.
 
 Not a release attestation or live Staging authorization.
 """
@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PLUGIN = ROOT / 'mad4b-site-control-plane.php'
 INCLUDES = ROOT / 'includes'
 RUNTIME_FIXTURE = ROOT / 'tests/approval-plan-route-preflight-runtime.php'
-TARGET = '0.4.0-rc.104'
+TARGET = '0.4.0-rc.118'
 
 
 def require(ok, message):
@@ -31,11 +31,15 @@ def run(args):
 
 def main():
     source = PLUGIN.read_text()
-    require(re.search(r'(?m)^\s*\* Version: 0\.4\.0-rc\.104\s*$', source),
+    require(re.search(r'(?m)^\s*\* Version: 0\.4\.0-rc\.118\s*$', source),
             'WordPress plugin header did not advance')
     require("define( 'MAD4B_SCP_VERSION', '" + TARGET + "' );" in source,
             'Plugin runtime version is inconsistent')
     require(source.count('0.4.0-rc.103') == 0, 'Old plugin version retained')
+    require((ROOT/'MAD4B-RUNTIME-BUILD.txt').read_text().splitlines()[0] ==
+            'release=' + TARGET, 'Runtime build marker disagrees with plugin header')
+    require('Current plugin version: **' + TARGET + '**.' in (ROOT/'README.md').read_text(),
+            'README identity disagrees with plugin header')
     router = (INCLUDES/'class-mad4b-scp-adaptive-operation-router.php').read_text()
     guard = (INCLUDES/'class-mad4b-scp-staging-write-planning-guard.php').read_text()
     require('approval_plan_execution_preflight' in router, 'Merged live preflight missing')

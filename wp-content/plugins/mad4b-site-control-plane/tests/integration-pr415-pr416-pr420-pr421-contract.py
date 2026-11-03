@@ -166,10 +166,26 @@ def reviewed_source_supersedes_snapshot(path):
             b"'mad4b-frontend-impact-priority' => array( 'MAD4B_SCP_Frontend_Impact_Priority', 'admin'",
         )
         new_reviewed_sha = "1290eaa92a9078bf77f647f432d9ba1805c4e35e"
+        # Review eight additional rc118 company pages as one exact fixture,
+        # preserving both earlier exact successor blobs and archived hashes.
+        company_route_cases = (
+            b"'mad4b-company' => array( 'MAD4B_SCP_Company_Master_Admin', 'screen'",
+            b"'mad4b-task-handoffs' => array( 'MAD4B_SCP_Company_Task_Handoff', 'screen'",
+            b"'mad4b-company-migration-decisions' => array( 'MAD4B_SCP_Company_Migration_Decisions', 'page'",
+            b"'mad4b-dfsb-environments' => array( 'MAD4B_SCP_DFSB_Environment_Policy', 'render'",
+            b"'mad4b-readiness-scopes' => array( 'MAD4B_SCP_Readiness_Scopes', 'screen'",
+            b"'mad4b-readiness-preactivation' => array( 'MAD4B_SCP_Readiness_PreActivation', 'screen'",
+            b"'mad4b-staging-brand-trial' => array( 'MAD4B_SCP_Staging_Brand_Trial', 'page'",
+            b"'mad4b-staging-context-fixtures' => array( 'MAD4B_SCP_Staging_Context_Fixtures', 'page'",
+        )
+        rc118_reviewed_sha = "975ca85c1a5c9d0ff17cf561470393252ba32ba0"
         fixture_reviewed = (
             blob_sha == "0c0c2052254a5c893a79d45aa9d985b57d8361fd"
             or (blob_sha == new_reviewed_sha and all(
                 marker in data for marker in extra_route_cases
+            ))
+            or (blob_sha == rc118_reviewed_sha and all(
+                marker in data for marker in extra_route_cases + company_route_cases
             ))
         )
         return (fixture_reviewed

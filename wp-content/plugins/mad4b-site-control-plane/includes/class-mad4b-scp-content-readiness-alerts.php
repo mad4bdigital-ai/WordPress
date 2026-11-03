@@ -8,6 +8,8 @@ defined('ABSPATH') || exit;
 require_once __DIR__.'/class-mad4b-scp-readiness-workflow-options.php';
 require_once __DIR__.'/class-mad4b-scp-content-completeness.php';
 require_once __DIR__.'/class-mad4b-scp-content-readiness-admin-view.php';
+require_once __DIR__.'/class-mad4b-scp-geo-quality.php';
+require_once __DIR__.'/class-mad4b-scp-locale-experience-alerts.php';
 
 final class MAD4B_SCP_Content_Readiness_Alerts {
     const VERSION = '1.0.0';
@@ -52,6 +54,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
             'owner_fields' => self::map($saved['owner_fields'] ?? array()),
             'end_date_fields' => self::map($saved['end_date_fields'] ?? array()),
             'stop_sale_fields' => self::map($saved['stop_sale_fields'] ?? array()),
+            'geo_quality_enabled' => !empty($saved['geo_quality_enabled']),
             'scheduled_scan_enabled' => !empty($saved['scheduled_scan_enabled']),
             'scheduled_scan_interval_minutes' => max(15,min(1440,absint($saved['scheduled_scan_interval_minutes'] ?? 60))),
             'board_id' => absint($saved['board_id'] ?? 0),
@@ -270,6 +273,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                           !apply_filters('wpml_object_id',$object_id,$type,false,(string)apply_filters('wpml_default_language',null))) );
                 $performance=preg_match('/^perf_(?:(?:rbcss|lcpdelay|fontcss|inlinecss)_[a-f0-9]{12}|ttfb_site|lcpdiscover_home|ratecss_product|ratecss_source_missing|empty_accommodation_ui|mobile_toc_spacing|rate_origin_ui|rate_schedule_default|toc_bottom_gap|tour_h2_global|rate_locale_parity|rate_schema_drift|rate_origin_config|rate_orphan|catalog_initial_layout|catalog_svg_price_first_paint|catalog_template_drift|chosen_crawlability|ard_manifest|header_escape_text|forced_reflow_home|lcp_request_wait|swiper_focus_[a-f0-9]{12}|probe_stale)$/D',$code) &&
                     $source==='mad4b-live-performance' && $type==='site' && $object_id===0;
+                $pricing=(bool)apply_filters('mad4b/content_readiness/valid_pricing_alert',false,$row);
                 // Preserve scoring only for the exact DFSB WPML gap contract.
                 // Other external feeds cannot supply priority/triage metadata.
                 $wpmlGap = $dfsb && preg_match(
@@ -288,7 +292,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                     ),true) &&
                     (int)($row['triage']['priority']??-1)===$row['priority']
                 );
-                $valid=$wpmlPriorityValid && is_array($row) && ($dfsb||$localization||$performance) &&
+                $valid=$wpmlPriorityValid && is_array($row) && ($dfsb||$localization||$performance||$pricing) &&
                     hash_equals($expected,$id) &&
                     in_array($row['severity']??'',array('critical','high','medium','low'),true) &&
                     is_string($row['label']??null) &&
@@ -321,6 +325,15 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         $completeness=MAD4B_SCP_Content_Completeness::discover();
         if(empty($completeness['complete']))$complete=false;
         else $issues=array_merge($issues,(array)$completeness['issues']);
+        // Browser-observed locale parity uses public, fresh, reviewed evidence.
+        // Zero full-page requests on GET or bootstrap; no automatic translation.
+        $localeAudit=MAD4B_SCP_Locale_Experience_Alerts::discover();
+        if(empty($localeAudit['complete']))$complete=false;
+        else $issues=array_merge($issues,(array)$localeAudit['issues']);
+        // First-party, source-only geo/transport candidates; existing Ledger owns reconciliation.
+        $geo=MAD4B_SCP_Geo_Quality::discover($cfg);
+        if(empty($geo['complete']))$complete=false;
+        else $issues=array_merge($issues,(array)$geo['issues']);
         if(count($issues)>self::MAX_ISSUES)$complete=false;
         return array('contract'=>'mad4b.content-readiness.discovery.v1','complete'=>$complete,
             'post_counts'=>$counts,'scanned'=>$scanned,'issues'=>$issues,
@@ -428,6 +441,25 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                     );
                 }
             }
+            // Provider-specific pricing, Geo and locale evidence is delegated
+            // to a read-only adapter, never to a write or job-creation grant.
+            $provider=apply_filters('mad4b/content_readiness/provider_job_intake',
+                $new[$key],$row,$previous,$key);
+            if(is_array($provider)){
+                $req=$provider['content_job_request']??null;
+                if(is_array($req) && !empty($req['contract']) &&
+                   ($req['requires_governed_content_job_admission']??false)===true &&
+                   empty($req['publication_authorized']) &&
+                   empty($req['auto_publication_authorized']) &&
+                   empty($req['external_dispatch_authorized']) &&
+                   empty($req['price_inference_authorized']) &&
+                   empty($req['financial_authorization']) &&
+                   empty($req['checkout_authorized']))
+                    $new[$key]['content_job_request']=$req;
+                if(isset($provider['priority']) && is_int($provider['priority']) &&
+                   $provider['priority']>=0 && $provider['priority']<=100)
+                    $new[$key]['priority']=$provider['priority'];
+            }
             if(($row['source']??'')==='dynamic-filter-seo-bridge'
                 && preg_match('/^dfsb_wpml_(term_missing|route_slug|base_slug_unverified|cpt_base_unverified)_([a-z0-9_-]+)_([0-9]+)_([a-z]{2})$/D',$code,$m)) {
                 $new[$key]['content_job_request']=array(
@@ -472,6 +504,11 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         }
     }
     private static function rule_enabled_for($issue,$cfg) {
+        if(($issue['source']??'')==='mad4b-locale-experience' &&
+            preg_match('/^lexp_(?:asset_http_error|cross_locale_link|visible_term_parity|filter_visibility_drift|untranslated_ui_candidate)_[a-z]{2}$/D',(string)($issue['code']??'')))
+            return class_exists('MAD4B_SCP_Locale_Experience_Alerts') &&
+                MAD4B_SCP_Locale_Experience_Alerts::current()!==null;
+
         $type=$issue['post_type']??'';$code=$issue['code']??'';
         if(str_starts_with($code,'loc_') && ($issue['source']??'')==='mad4b-elementor-localization')
             return has_filter('mad4b/content_readiness/external_issues')!==false;
@@ -491,6 +528,10 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                 if(($rule['id']??'')===$rule_id)return true;
             return false;
         }
+        if(str_starts_with($code,'geo_'))
+            return !empty($cfg['geo_quality_enabled']) &&
+                in_array($type,$cfg['post_types'],true) &&
+                in_array($code,MAD4B_SCP_Geo_Quality::CODES,true);
         if($code==='cron_overdue')return (bool)$cfg['check_cron'];
         if($code==='form_submissions_unread')return !empty($cfg['form_id']);
         if(!in_array($type,$cfg['post_types'],true))return false;
@@ -651,6 +692,12 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                 'object_id'=>absint($row['object_id']??0),
                 'code'=>(string)($row['code']??''),
                 'severity'=>(string)($row['severity']??'medium'),
+                'priority'=>max(0,min(100,absint($row['priority']??0))),
+                'source'=>sanitize_key((string)($row['source']??'native')),
+                'locale_evidence'=>($row['source']??'')==='mad4b-locale-experience'
+                    ?(array)($row['source_evidence']??array()):null,
+                'content_job_request'=>($row['source']??'')==='mad4b-locale-experience'
+                    ?(array)($row['content_job_request']??array()):null,
                 'label'=>(string)($row['label']??''),
                 'status'=>$state,
                 'first_seen'=>$row['first_seen']??null,
@@ -699,43 +746,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
     }
     /** Export currently observed issues for a human source-data repair queue. */
     public static function handle_export() {
-        if (!current_user_can('edit_others_posts')) wp_die('Forbidden',403);
-        check_admin_referer('mad4b_readiness_export');
-        $status=sanitize_key((string)wp_unslash($_GET['readiness_status']??'open'));
-        if (!in_array($status,array('open','resolved','all'),true)) $status='open';
-        $severity=sanitize_key((string)wp_unslash($_GET['readiness_severity']??'all'));
-        if (!in_array($severity,array('all','critical','high','medium','low'),true)) $severity='all';
-        $rows=array_values(array_filter((array)get_option(self::STORE,array()),
-            static function($row)use($status,$severity){
-                if(!is_array($row))return false;
-                $state=(($row['status']??'open')==='resolved')?'resolved':'open';
-                return ($status==='all'||$state===$status)
-                    && ($severity==='all'||($row['severity']??'medium')===$severity);
-            }));
-        usort($rows,array(__CLASS__,'priority_compare'));
-        nocache_headers();
-        header('Content-Type: text/csv; charset=utf-8');
-        header('Content-Disposition: attachment; filename="mad4b-content-readiness-'.gmdate('Ymd').'.csv"');
-        $output=fopen('php://output','w');
-        fputcsv($output,array('issue_id','severity','status','post_type','post_id','content_title','code',
-            'source_taxonomy','source_term_id','source_level','description','edit_url','last_seen'));
-        foreach($rows as $row){
-            $e=(array)($row['source_evidence']??array());
-            $id=absint($row['object_id']??0);
-            $url=$id?get_edit_post_link($id,'raw'):'';
-            $values=array($row['id']??'',$row['severity']??'',$row['status']??'',
-                $row['post_type']??'',$id,($id?html_entity_decode(wp_strip_all_tags(get_the_title($id)),ENT_QUOTES,'UTF-8'):''),$row['code']??'',$e['taxonomy']??'',
-                absint($e['term_id']??0),$e['level']??'',$row['label']??'',
-                $url,$row['last_seen']??'');
-            // Prevent spreadsheet formula execution in exported source labels.
-            $values=array_map(static function($v){
-                $v=(string)$v;
-                return preg_match('/^[=+@\-\t\r]/',$v)?"'".$v:$v;
-            },$values);
-            fputcsv($output,$values);
-        }
-        fclose($output);
-        exit;
+        MAD4B_SCP_Content_Readiness_Admin_View::handle_export();
     }
     public static function handle_scan() {
         if(!current_user_can('manage_options'))wp_die('Forbidden',403);
@@ -767,6 +778,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         $settings['media_reuse_threshold']=max(0,min(100,absint($_POST['media_reuse_threshold']??0)));
         $settings['form_id']=absint($_POST['form_id']??0);
         $settings['form_unread_days']=max(1,min(90,absint($_POST['form_unread_days']??7)));
+        $settings['geo_quality_enabled']=isset($_POST['geo_quality_enabled']);
         $settings['scheduled_scan_enabled']=isset($_POST['scheduled_scan_enabled']);
         $settings['scheduled_scan_interval_minutes']=max(15,min(1440,absint($_POST['scheduled_scan_interval_minutes']??60)));
         $settings['check_wpml']=isset($_POST['check_wpml']);
@@ -805,7 +817,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         $link=$row['object_id']?get_edit_post_link($row['object_id'],'raw'):'';
         $taskData=array('title'=>$subject,'stage_id'=>$stage,'source'=>'mad4b-readiness',
             'source_id'=>$issue_id,
-            'description'=>'Readiness Issue: '.$issue_id."\n".esc_url_raw((string)$link).'  '.sanitize_text_field($row['label']));
+            'description'=>'Readiness Issue: '.$issue_id."\n".esc_url_raw((string)$link).'  '.sanitize_text_field($row['label']). (!empty($row['content_job_id']) ? "\nNative ContentJob: ".sanitize_text_field((string)$row['content_job_id']) : ''));
         $assigned=MAD4B_SCP_Readiness_Workflow_Options::assigned_user($row);
         if($assigned)$taskData['assignees']=array($assigned);
         try {
@@ -868,4 +880,3 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
     }
 
 }
-

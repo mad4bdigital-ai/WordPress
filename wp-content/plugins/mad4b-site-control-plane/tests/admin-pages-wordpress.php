@@ -46,6 +46,16 @@ $pages = array(
     'mad4b-content-readiness-workflow' => array( 'MAD4B_SCP_Readiness_Workflow_Options', 'render', array( '' ) ),
     'mad4b-content-completeness' => array( 'MAD4B_SCP_Content_Completeness', 'render', array( '' ) ),
     'mad4b-frontend-impact-priority' => array( 'MAD4B_SCP_Frontend_Impact_Priority', 'admin', array( '' ) ),
+    // Live rc118 adds company-scoped pages. Cover their actual renderers and
+    // unauthorized direct access without weakening the route registry.
+    'mad4b-company' => array( 'MAD4B_SCP_Company_Master_Admin', 'screen', array( '' ) ),
+    'mad4b-task-handoffs' => array( 'MAD4B_SCP_Company_Task_Handoff', 'screen', array( '' ) ),
+    'mad4b-company-migration-decisions' => array( 'MAD4B_SCP_Company_Migration_Decisions', 'page', array( '' ) ),
+    'mad4b-dfsb-environments' => array( 'MAD4B_SCP_DFSB_Environment_Policy', 'render', array( '' ) ),
+    'mad4b-readiness-scopes' => array( 'MAD4B_SCP_Readiness_Scopes', 'screen', array( '' ) ),
+    'mad4b-readiness-preactivation' => array( 'MAD4B_SCP_Readiness_PreActivation', 'screen', array( '' ) ),
+    'mad4b-staging-brand-trial' => array( 'MAD4B_SCP_Staging_Brand_Trial', 'page', array( '' ) ),
+    'mad4b-staging-context-fixtures' => array( 'MAD4B_SCP_Staging_Context_Fixtures', 'page', array( '' ) ),
 );
 $routes = MAD4B_SCP_Admin_Route_Registry::routes();
 $check( ! array_diff( array_keys( $routes ), array_keys( $pages ) ) && ! array_diff( array_keys( $pages ), array_keys( $routes ) ), 'Every declared page must have a smoke case. Missing: ' . implode( ', ', array_diff( array_keys( $routes ), array_keys( $pages ) ) ) . '; stale: ' . implode( ', ', array_diff( array_keys( $pages ), array_keys( $routes ) ) ) );

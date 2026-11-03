@@ -1,0 +1,391 @@
+{
+  "contract": "mad4b.rc118-forwardport-source-provenance.v1",
+  "recorded_at_utc": "2026-11-03T02:32:01.607355+00:00",
+  "source": "WordPress staging runtime at tours.dev.mad4b.com",
+  "source_is_deployed": false,
+  "production_authorized": false,
+  "forward_port_ref": "reconcile/pr745-live-runtime-20261103",
+  "base_pr_ref": "feat/frontend-impact-live-priority-20261102",
+  "live_bootstrap_requires": 507,
+  "live_only_requires_in_base": 47,
+  "recovered_plugin_sources": 53,
+  "summary": {
+    "REVIEWED_GENERIC_ADAPTATION": 6,
+    "EXACT_LIVE_SOURCE": 47
+  },
+  "adaptation_reason": "Site-specific URL, post type and write scope bound through gated MU adapters; original staging source unchanged",
+  "release_gate": "NOT_PROMOTED_SOURCE_ONLY",
+  "rows": [
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-provider-adapter.php",
+      "live_sha256": "ab6492af7fa7539d2ac7dde7e53f9f70b5be45240eef9307c0bdf294f341e95c",
+      "forward_port_sha256": "fb625467fa34a65c1ca420dc00b153a5402d9a9e50e4c5dd1d3ecbaec6fc2706",
+      "status": "REVIEWED_GENERIC_ADAPTATION",
+      "original_git_blob_present": false
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-dfsb-adapter.php",
+      "live_sha256": "7a0a817d4b93d83a344840b51ecada1e89cb5e7e6f88dede9a15cdc5f7974dd7",
+      "forward_port_sha256": "7a0a817d4b93d83a344840b51ecada1e89cb5e7e6f88dede9a15cdc5f7974dd7",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-local-brand-draft-adapter.php",
+      "live_sha256": "ba08bab80236d29adcf98010a5567a67925595dc0cd322b4e1d297100e17c27f",
+      "forward_port_sha256": "ba08bab80236d29adcf98010a5567a67925595dc0cd322b4e1d297100e17c27f",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-interaction-ui.php",
+      "live_sha256": "a49cf0ed5a21ed6235e30dffb0f650f6f59d19db3b21c67db6ec2778b502991e",
+      "forward_port_sha256": "a49cf0ed5a21ed6235e30dffb0f650f6f59d19db3b21c67db6ec2778b502991e",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-agent-grant-lifecycle.php",
+      "live_sha256": "7d4bbb9b65003edc623138861e91f0216025eaff60e299582266c11dde47d68e",
+      "forward_port_sha256": "7d4bbb9b65003edc623138861e91f0216025eaff60e299582266c11dde47d68e",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-task-routing.php",
+      "live_sha256": "7783241dcd74e0b196891a8672739c78b001bfd19560fd76ecfc401b937cb3b2",
+      "forward_port_sha256": "7783241dcd74e0b196891a8672739c78b001bfd19560fd76ecfc401b937cb3b2",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-auto-reconciliation.php",
+      "live_sha256": "1465a1e518031aa07e9770dcfa0976eb1492677dc4eafdbb9ab0efb2450cc238",
+      "forward_port_sha256": "1465a1e518031aa07e9770dcfa0976eb1492677dc4eafdbb9ab0efb2450cc238",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-reviews-bridge.php",
+      "live_sha256": "75c866b308536f07b752947ae8ca65994a90e7835aeb5432ecb8b2eb7098d6bf",
+      "forward_port_sha256": "75c866b308536f07b752947ae8ca65994a90e7835aeb5432ecb8b2eb7098d6bf",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": false
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-background-agent-admission.php",
+      "live_sha256": "4db34bdebc6158e460027cd57713223798cc696778cc2ac145954e0092300da0",
+      "forward_port_sha256": "4db34bdebc6158e460027cd57713223798cc696778cc2ac145954e0092300da0",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-background-agent-dispatch.php",
+      "live_sha256": "d50e226773418c2bcc7e0c9de2088582be37bc5896e8ef5bee63bdec869bae18",
+      "forward_port_sha256": "d50e226773418c2bcc7e0c9de2088582be37bc5896e8ef5bee63bdec869bae18",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli-execution-context.php",
+      "live_sha256": "45f45d034ad2c15aeb6235aed2619b88f6f25f289c1357a42e2e3e4fa41fb724",
+      "forward_port_sha256": "45f45d034ad2c15aeb6235aed2619b88f6f25f289c1357a42e2e3e4fa41fb724",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli-readiness.php",
+      "live_sha256": "2914a5805968134bf653e4849bb0f94141f63aedf99bf162ed78f513d6171e97",
+      "forward_port_sha256": "2914a5805968134bf653e4849bb0f94141f63aedf99bf162ed78f513d6171e97",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-code-reconciliation.php",
+      "live_sha256": "21df6902b7455551ba93e8f409d72391186b9fcc148be6b586d666f5e41e1794",
+      "forward_port_sha256": "21df6902b7455551ba93e8f409d72391186b9fcc148be6b586d666f5e41e1794",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-communication-team.php",
+      "live_sha256": "e7890a6887cf62ea008ebc6aedd863e26d1d78fd15e16e6e352782ce8baae293",
+      "forward_port_sha256": "e7890a6887cf62ea008ebc6aedd863e26d1d78fd15e16e6e352782ce8baae293",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-communication.php",
+      "live_sha256": "81a8c4d77b66750abeb6e568bf88360ea8a26b37abfe724902f6b4c7e93d0efd",
+      "forward_port_sha256": "81a8c4d77b66750abeb6e568bf88360ea8a26b37abfe724902f6b4c7e93d0efd",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-email-routing.php",
+      "live_sha256": "befb397659902c8ac8af948f237007e3bc48cf2a396ade42d81b2521ffe6b9ff",
+      "forward_port_sha256": "befb397659902c8ac8af948f237007e3bc48cf2a396ade42d81b2521ffe6b9ff",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-local-wpcli.php",
+      "live_sha256": "a2057b090e005d374f3039ef164a1c4793d8723d72cd125fe45dec90a46eed4a",
+      "forward_port_sha256": "39aeaf3d32bb1fffb8de4ff11183a94a4b797526ddc5f9b38472450ac0831756",
+      "status": "REVIEWED_GENERIC_ADAPTATION",
+      "original_git_blob_present": false
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-master-admin.php",
+      "live_sha256": "0cfe68ea11598587a9cdaeed2313859cb95dff893b3972d2bb6a593fd2af4e4d",
+      "forward_port_sha256": "0cfe68ea11598587a9cdaeed2313859cb95dff893b3972d2bb6a593fd2af4e4d",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-migration-decisions.php",
+      "live_sha256": "408febe1cea99ce389f84e9035f91dce1930843ec2f535e9cbc9d987198e2488",
+      "forward_port_sha256": "408febe1cea99ce389f84e9035f91dce1930843ec2f535e9cbc9d987198e2488",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-operations-policy.php",
+      "live_sha256": "759ce17f33738d8b78be86b07695e00984b4eea70f1a0481f262142e288a2ecf",
+      "forward_port_sha256": "cc5efc9b3ffa651bef48f665973920eccd1953d4d84f5bb91a32fe1124b68c07",
+      "status": "REVIEWED_GENERIC_ADAPTATION",
+      "original_git_blob_present": false
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-owner-activation.php",
+      "live_sha256": "ca980531ed98d3391deb66a63573b4ef6becebf2ba3e009d92467879b3212bc3",
+      "forward_port_sha256": "ca980531ed98d3391deb66a63573b4ef6becebf2ba3e009d92467879b3212bc3",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-release-status.php",
+      "live_sha256": "0d5c2d5c642caa2216823f578af0c63a834c643b4ecc70a85d08df29a1c56898",
+      "forward_port_sha256": "0d5c2d5c642caa2216823f578af0c63a834c643b4ecc70a85d08df29a1c56898",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-sender-policy.php",
+      "live_sha256": "df87f3a527778b7b2ff747cb036aed31750ea92e3ea407ecf6f2fdc8578549bc",
+      "forward_port_sha256": "df87f3a527778b7b2ff747cb036aed31750ea92e3ea407ecf6f2fdc8578549bc",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-task-handoff.php",
+      "live_sha256": "e647d8078b9d3f6544e3940d1f7b6d82e8a03ec069e30721a3a1cf9cb59a47c6",
+      "forward_port_sha256": "e647d8078b9d3f6544e3940d1f7b6d82e8a03ec069e30721a3a1cf9cb59a47c6",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-tenant-migration.php",
+      "live_sha256": "06447093ff420e76af963d07285922972ff29be17ca1cb5d2072738d9c41bbf9",
+      "forward_port_sha256": "b69247d5be8c00a23e9fa00b6e9e511029fb4593456912a7426a13050e7db10b",
+      "status": "REVIEWED_GENERIC_ADAPTATION",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-user-lifecycle.php",
+      "live_sha256": "7d6417579a2d64e67a9d5535e1724d68cb5a361739edefefb1186c0c5fabbf5d",
+      "forward_port_sha256": "7d6417579a2d64e67a9d5535e1724d68cb5a361739edefefb1186c0c5fabbf5d",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": false
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-ai-governance.php",
+      "live_sha256": "bd39809b26e5c64faf332d149a6accf44ff228f6c0e375d5482b8d22058ae1c2",
+      "forward_port_sha256": "bd39809b26e5c64faf332d149a6accf44ff228f6c0e375d5482b8d22058ae1c2",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-connector-vault.php",
+      "live_sha256": "166015109319ec3a88d130b295d9272101c3858d57bd49f7680f533464dbfc2b",
+      "forward_port_sha256": "166015109319ec3a88d130b295d9272101c3858d57bd49f7680f533464dbfc2b",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dfsb-environment-policy.php",
+      "live_sha256": "fd05827b9f8a8bdcd6bfd0e8a8155b5593534185dc400608de5a91cb21cc488c",
+      "forward_port_sha256": "fd05827b9f8a8bdcd6bfd0e8a8155b5593534185dc400608de5a91cb21cc488c",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-authority.php",
+      "live_sha256": "ac9c06b517e12243d0619d28798061bbc741a0a3b3811af75dc2ca95140e2d6e",
+      "forward_port_sha256": "ac9c06b517e12243d0619d28798061bbc741a0a3b3811af75dc2ca95140e2d6e",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-global-runtime-lifecycle.php",
+      "live_sha256": "792461cd6a7573757fe35a8e4411e2d4983801fc260b003701d1c26d1bd139d8",
+      "forward_port_sha256": "792461cd6a7573757fe35a8e4411e2d4983801fc260b003701d1c26d1bd139d8",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-guided-continuation.php",
+      "live_sha256": "975aa17dec21915fca05da5dd1e0142801b8682dea36733031c388f77ec7cbfd",
+      "forward_port_sha256": "975aa17dec21915fca05da5dd1e0142801b8682dea36733031c388f77ec7cbfd",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-hub-jetengine-consumer-governance.php",
+      "live_sha256": "857ccb61407c483c90e6874c9e3c3ff7d7008ebe8ae4d552dc8c04cb5ac729be",
+      "forward_port_sha256": "857ccb61407c483c90e6874c9e3c3ff7d7008ebe8ae4d552dc8c04cb5ac729be",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-ai-governance.php",
+      "live_sha256": "8b5f2761443664f28493c1a9b409c6492cc678cfc8eb42ffa18368bc8a978492",
+      "forward_port_sha256": "8b5f2761443664f28493c1a9b409c6492cc678cfc8eb42ffa18368bc8a978492",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-ollama-ability.php",
+      "live_sha256": "9d18eaeefb2265a3364bdff00fd913c2954ee24855e0242338c6b0c80a6a7586",
+      "forward_port_sha256": "9d18eaeefb2265a3364bdff00fd913c2954ee24855e0242338c6b0c80a6a7586",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-transport-policy.php",
+      "live_sha256": "01e512bf052c24e36f03f5dd4d9f53892645de7f75808c229aa16532295b25a9",
+      "forward_port_sha256": "01e512bf052c24e36f03f5dd4d9f53892645de7f75808c229aa16532295b25a9",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-migration-decision-catalog.php",
+      "live_sha256": "2321244f43113cc998887c03ad923ab8dfc50510c33a73d435a4127afc787b8d",
+      "forward_port_sha256": "2321244f43113cc998887c03ad923ab8dfc50510c33a73d435a4127afc787b8d",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-settings-locator.php",
+      "live_sha256": "e8f668a868fcd93babcdab1ff0db0fca1512dd715720e20fff8f5b5e18f382ff",
+      "forward_port_sha256": "e8f668a868fcd93babcdab1ff0db0fca1512dd715720e20fff8f5b5e18f382ff",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-installed-artifact.php",
+      "live_sha256": "e2572ee834a16b641e4707fc3ecf7324997d01173483a05528ba62651b20e512",
+      "forward_port_sha256": "e2572ee834a16b641e4707fc3ecf7324997d01173483a05528ba62651b20e512",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-integrations.php",
+      "live_sha256": "5ad0e90f76843527ffaac5bcde288beb181f83d7590141a77ea59e33428f69cb",
+      "forward_port_sha256": "5ad0e90f76843527ffaac5bcde288beb181f83d7590141a77ea59e33428f69cb",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-preactivation.php",
+      "live_sha256": "d9a07f0e9d9105e24cd2a27ab6ef1ce8c086c8f4e8e3688724e1d23bfd74f915",
+      "forward_port_sha256": "d9a07f0e9d9105e24cd2a27ab6ef1ce8c086c8f4e8e3688724e1d23bfd74f915",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-scopes.php",
+      "live_sha256": "cf7943d2c8706c6a8f8812b9d95dc3a3a7dc70aa55fdf396f3faffc2f380ab2b",
+      "forward_port_sha256": "cf7943d2c8706c6a8f8812b9d95dc3a3a7dc70aa55fdf396f3faffc2f380ab2b",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-lifecycle-rest.php",
+      "live_sha256": "046b4a2f23f05a942ad4fc838bfc8731449b2db401e4064e738d877028d4dbb3",
+      "forward_port_sha256": "046b4a2f23f05a942ad4fc838bfc8731449b2db401e4064e738d877028d4dbb3",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-brand-trial.php",
+      "live_sha256": "ea9b0e70a8e34e225024a3e668a6a05c3e50434d97842b016458e9a6a9ba677e",
+      "forward_port_sha256": "ea9b0e70a8e34e225024a3e668a6a05c3e50434d97842b016458e9a6a9ba677e",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": false
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-context-fixtures.php",
+      "live_sha256": "bb5d334b9b0855e18c1259ece83f5c8a0796e1e8863cfd47925bccbc8259cda3",
+      "forward_port_sha256": "bb5d334b9b0855e18c1259ece83f5c8a0796e1e8863cfd47925bccbc8259cda3",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": false
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-fixture-drafts.php",
+      "live_sha256": "7ec0cdcf8dc8a1a7b0ddb99ce876582bc0e3b8edd4fde00b97119aac204c063e",
+      "forward_port_sha256": "7ec0cdcf8dc8a1a7b0ddb99ce876582bc0e3b8edd4fde00b97119aac204c063e",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-gate-funnel.php",
+      "live_sha256": "af70fcca989e0d00f5c9af2f7287e1896212e2597111b710c3174a1093390b19",
+      "forward_port_sha256": "af70fcca989e0d00f5c9af2f7287e1896212e2597111b710c3174a1093390b19",
+      "status": "EXACT_LIVE_SOURCE",
+      "original_git_blob_present": true
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-team-preparation.php",
+      "live_sha256": "32ef4b54ad67d541fe1de2cd827b14dca76300cc005bc5df77164987df752615",
+      "forward_port_sha256": "32ef4b54ad67d541fe1de2cd827b14dca76300cc005bc5df77164987df752615",
+      "status": "EXACT_LIVE_SOURCE",
+      "source_class": "transitive_or_experience"
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-event-automation.php",
+      "live_sha256": "68b693e28da0c1ca0a5c5a887f5c8916d0b0132f8c0629babe7c347a708babef",
+      "forward_port_sha256": "68b693e28da0c1ca0a5c5a887f5c8916d0b0132f8c0629babe7c347a708babef",
+      "status": "EXACT_LIVE_SOURCE",
+      "source_class": "transitive_or_experience"
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-governed-writes.php",
+      "live_sha256": "53f27db33a04980a6103987b0927805fe0df7afd20df3cc7f768c3e8815de9f4",
+      "forward_port_sha256": "d133603a1dcae1e19a377aef2d5935f63b320675c06edfee87056e0d2faf1e3e",
+      "status": "REVIEWED_GENERIC_ADAPTATION",
+      "source_class": "transitive_or_experience"
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-chatbotx-write-preflight.php",
+      "live_sha256": "da5f525201efdb522582ce40d6103b270304b1ac86e14620cb58e2b31730047e",
+      "forward_port_sha256": "730e4baea8525cbe9c79ef92f7af3675fc743be5c4a7b29df3467e350988f8d8",
+      "status": "REVIEWED_GENERIC_ADAPTATION",
+      "source_class": "transitive_or_experience"
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-geo-quality.php",
+      "live_sha256": "79a3f48ee3563338d2f185770df29614b2910d78eb6561499dac078ba2c74098",
+      "forward_port_sha256": "79a3f48ee3563338d2f185770df29614b2910d78eb6561499dac078ba2c74098",
+      "status": "EXACT_LIVE_SOURCE",
+      "source_class": "transitive_or_experience"
+    },
+    {
+      "source": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-locale-experience-alerts.php",
+      "live_sha256": "ca05fccee813f2b614d9bedbfdf9d51620e24ef2d56338211fc85d280d1362f9",
+      "forward_port_sha256": "ca05fccee813f2b614d9bedbfdf9d51620e24ef2d56338211fc85d280d1362f9",
+      "status": "EXACT_LIVE_SOURCE",
+      "source_class": "transitive_or_experience"
+    }
+  ]
+}
