@@ -75,6 +75,11 @@ guarded("class-mad4b-scp-company-tenant-migration.php",
         "current_user_can","permission_callback","nonce")
 guarded("class-mad4b-scp-staging-brand-trial.php",
         "wp_get_environment_type","current_user_can","permission_callback")
+staff_guard=guarded("class-mad4b-scp-company-user-lifecycle.php",
+        "rest_pre_dispatch","guardScopedREST",
+        "wp_authenticate_application_password_errors")
+need("add_filter('rest_authentication_errors'" not in staff_guard,
+     "company_user_lifecycle_globally_intercepts_rest_authentication")
 guarded("class-mad4b-scp-company-local-wpcli.php",
         "mad4b/company/local_wpcli_identity","read_only","MAD4B_SCP_Operation_Pipeline")
 guarded("class-mad4b-scp-content-readiness-alerts.php",
@@ -89,6 +94,7 @@ if lint:
     for relative in [
         "wp-content/plugins/mad4b-site-control-plane/tests/company-admin-menu-hermetic.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/readiness-live-provider-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-user-lifecycle-rest-isolation-hermetic.php",
     ]:
         result=subprocess.run([lint,str(ROOT/relative)],capture_output=True,text=True,timeout=50)
         need(result.returncode==0,"hermetic_behavior_regression:"+relative+":"+result.stderr[:240])
