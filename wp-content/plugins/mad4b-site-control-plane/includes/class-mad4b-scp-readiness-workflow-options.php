@@ -27,7 +27,7 @@ final class MAD4B_SCP_Readiness_Workflow_Options {
         if(str_starts_with($code,'media_'))return 'media';
         if(str_starts_with($code,'origin_'))return 'origin';
         if(str_starts_with($code,'wpml_'))return 'wpml';
-        if(str_starts_with($code,'expired_rate_')||str_starts_with($code,'rate_')||str_starts_with($code,'owner_reference_'))return 'pricing';
+        if(str_starts_with($code,'pricing_')||str_starts_with($code,'geo_transport_price_')||str_starts_with($code,'expired_rate_')||str_starts_with($code,'rate_')||str_starts_with($code,'owner_reference_'))return 'pricing';
         if(str_starts_with($code,'location_'))return 'destinations';
         if(str_starts_with($code,'dfsb_wpml_'))return 'wpml';
         if(str_starts_with($code,'dfsb_'))return 'seo';
