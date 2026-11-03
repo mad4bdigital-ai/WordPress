@@ -460,7 +460,8 @@ final class MAD4B_SCP_Company_Migration_Decisions {
             .'})();</script></div>';
     }
     public static function boot(): void {
-        add_action('admin_menu',static function(){
+        MAD4B_SCP_Admin_Route_Registry::schedule_submenu(static function(){
+            MAD4B_SCP_Admin_Route_Registry::register(self::MENU,'mad4b_manage_company_operations');
             add_management_page('Company Migration Decisions','Company Migration Decisions',
                 'manage_options',self::MENU,[__CLASS__,'page']);
             if(class_exists('MAD4B_Tenant_Operations_Workspace'))
