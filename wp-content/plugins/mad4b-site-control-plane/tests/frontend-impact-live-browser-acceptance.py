@@ -1,5 +1,5 @@
 import json, sys, datetime
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
 BASE="https://tours.dev.mad4b.com"
 REPORT={'contract':'mad4b.frontend-impact-browser-acceptance.v1',
@@ -18,7 +18,7 @@ def archive(browser, lang, target):
         response=page.goto(url,wait_until='domcontentloaded',timeout=45000)
         page.wait_for_timeout(650)
         label=page.locator('label:has(input[name="tour-types"][data-label="'+target+'"])').first
-        initial=page.locator('.jet-listing-grid__item').count()
+        # The page has 20+ JetEngine grids: header mega-menu listings,\n        # hidden editorial content and nested card enrichments. Only the\n        # real archive's *direct* card children are filter results.\n        main=page.locator('#tours_query_archive .jet-listing-grid').first\n        cards=main.locator(':scope > .jet-listing-grid__items > .jet-listing-grid__item')\n        initial=cards.count()\n        checked(lang+'_archive_grid_scoped',main.count()==1 and initial>0,\n                {'main_archive_items':initial})
         if lang=='en':
             item=page.locator('details.e-n-accordion-item:has(input[name="tour-types"])').first
             checked('en_accordion_collapsed_initially',item.count()>0 and item.get_attribute('open') is None)
@@ -27,12 +27,11 @@ def archive(browser, lang, target):
         checked(lang+'_filter_label_visible',label.is_visible())
         if not label.is_visible():return
         label.click(timeout=9500)
-        page.wait_for_timeout(2600)
-        after=page.locator('.jet-listing-grid__item').count()
+        # Wait for real AJAX completion in the intended grid instead of a\n        # fixed delay and an unrelated global .jet-listing-grid__item count.\n        # Preserve a failed result if the archive never updates.\n        try:\n            page.wait_for_function("""before => {\n                const g=document.querySelector('#tours_query_archive .jet-listing-grid');\n                if (!g || g.classList.contains('jet-filters-loading')) return false;\n                const count=g.querySelectorAll(':scope > .jet-listing-grid__items > .jet-listing-grid__item').length;\n                return count > 0 && count < before;\n            }""",arg=initial,timeout=25000)\n        except PlaywrightTimeoutError:\n            pass\n        after=cards.count()
         slug='paquetes' if lang=='es' else 'packages'
         selected=page.locator('input[name="tour-types"][data-label="'+target+'"]').first.is_checked()
         checked(lang+'_jsf_interactive_filter',selected and '/jsf/' in page.url and 'tour-types:'+slug in page.url and after<initial and after>0 and all(x==200 for x in ajax),
-                {'initial_items':initial,'filtered_items':after,'url_path':page.url.split('tours.dev.mad4b.com')[-1],'ajax_statuses':ajax})
+                {'initial_main_archive_items':initial,'filtered_main_archive_items':after,\n                 'main_grid_loading':'jet-filters-loading' in (main.get_attribute('class') or ''),\n                 'url_path':page.url.split('tours.dev.mad4b.com')[-1],\n                 'ajax_statuses':ajax})
         checked(lang+'_filter_no_supplier_write_requests',not attempted,{'attempted':len(attempted)})
     finally:page.close()
 
@@ -76,6 +75,6 @@ with sync_playwright() as p:
 REPORT['passed']=sum(1 for v in REPORT['checks'] if v['pass'])
 REPORT['total']=len(REPORT['checks'])
 REPORT['status']='PASS' if REPORT['passed']==REPORT['total'] else 'FAIL'
-open('/tmp/mad4b-pr745-browser-acceptance-20261102.json','w').write(json.dumps(REPORT,ensure_ascii=False,indent=2)+'\n')
+open('/tmp/mad4b-pr750-browser-acceptance-20261103.json','w').write(json.dumps(REPORT,ensure_ascii=False,indent=2)+'\n')
 print(json.dumps({'status':REPORT['status'],'passed':REPORT['passed'],'total':REPORT['total'],'results':REPORT['checks']},ensure_ascii=False))
 sys.exit(0 if REPORT['status']=='PASS' else 1)
