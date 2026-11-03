@@ -4,8 +4,8 @@
   "reviewed_base_sha": "ba0db6f92c76772d5dff12b11106357193743815",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 60,
-  "changed_paths_sha256": "7367f6eb69984b51e10665fe89a7ef1c568a04f985abd40f46ff41e6013f105c",
+  "changed_file_count": 61,
+  "changed_paths_sha256": "9146f4d4b17d2a443baf92118c979c511d7be8fdadbcc4f3fe2d63ef055bd585",
   "slices": [
     {
       "id": "agent-and-execution-governance",
@@ -79,6 +79,7 @@
       "revert_boundary": "Revert isolated bootstrap as a whole only with verified complete prior dependency graph and private-booking fence",
       "certification": "exact_head",
       "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt",
         "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-local-brand-draft-adapter.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli-readiness.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-global-runtime-lifecycle.php",
