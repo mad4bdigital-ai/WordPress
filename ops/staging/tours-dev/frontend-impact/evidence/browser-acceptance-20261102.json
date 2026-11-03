@@ -1,0 +1,115 @@
+{
+  "contract": "mad4b.frontend-impact-browser-acceptance.v1",
+  "site": "https://tours.dev.mad4b.com",
+  "at_utc": "2026-11-02T21:05:28.586724+00:00",
+  "no_submit_or_supplier_actions": true,
+  "checks": [
+    {
+      "name": "es_filter_label_visible",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "es_jsf_interactive_filter",
+      "pass": true,
+      "details": {
+        "initial_items": 78,
+        "filtered_items": 57,
+        "url_path": "/es/tours-and-activities/jsf/jet-engine:tours_query_archive/tax/tour-types:paquetes/",
+        "ajax_statuses": [
+          200,
+          200
+        ]
+      }
+    },
+    {
+      "name": "es_filter_no_supplier_write_requests",
+      "pass": true,
+      "details": {
+        "attempted": 0
+      }
+    },
+    {
+      "name": "en_accordion_collapsed_initially",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "en_accordion_expands",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "en_filter_label_visible",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "en_jsf_interactive_filter",
+      "pass": true,
+      "details": {
+        "initial_items": 78,
+        "filtered_items": 58,
+        "url_path": "/tours-and-activities/jsf/jet-engine:tours_query_archive/tax/tour-types:packages/",
+        "ajax_statuses": [
+          200,
+          200
+        ]
+      }
+    },
+    {
+      "name": "en_filter_no_supplier_write_requests",
+      "pass": true,
+      "details": {
+        "attempted": 0
+      }
+    },
+    {
+      "name": "en_form6_visible_after_natural_scroll",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "en_booking_traveler_stepper",
+      "pass": true,
+      "details": {
+        "before": "2",
+        "plus": "3",
+        "minus": "2"
+      }
+    },
+    {
+      "name": "en_booking_without_submit_or_financial_mutation",
+      "pass": true,
+      "details": {
+        "financial_POST_requests": 0,
+        "page_js_errors": []
+      }
+    },
+    {
+      "name": "es_form6_visible_after_natural_scroll",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "es_booking_traveler_stepper",
+      "pass": true,
+      "details": {
+        "before": "2",
+        "plus": "3",
+        "minus": "2"
+      }
+    },
+    {
+      "name": "es_booking_without_submit_or_financial_mutation",
+      "pass": true,
+      "details": {
+        "financial_POST_requests": 0,
+        "page_js_errors": []
+      }
+    }
+  ],
+  "passed": 14,
+  "total": 14,
+  "status": "PASS"
+}
