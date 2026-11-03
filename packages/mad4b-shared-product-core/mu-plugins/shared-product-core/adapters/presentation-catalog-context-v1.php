@@ -101,7 +101,38 @@ function shared_presentation_catalog_url_context_v1($referrer): ?array {
         'page'=>isset($m[3]) && $m[3]!=='' ? (int)$m[3] : 1];
 }
 
+/**
+ * Signed JSF requests repeatedly enter the WCML client-currency hook while
+ * rendering a Listing. Validate stable POST/referrer state once per HTTP
+ * request, not once per rendered price or metadata field.
+ *
+ * Guard reentrant calls while WPML resolves a term: an incomplete validation
+ * can never become an authorized catalogue context.
+ * Cache positive validated results only; negative calls remain fail-closed.
+ */
 function shared_presentation_catalog_jsf_request_v1(): ?array {
+    static $validated = null, $validatedPost = null, $validating = false;
+    if (!wp_doing_ajax() || ($_POST['action'] ?? '') !== 'jet_smart_filters') return null;
+    // A saved copy of the POST superglobal is copy-on-write. Strict identity
+    // compares the entire native signed payload without serializing it on
+    // every WCML price-hook call. Any changed provider/query/settings forces
+    // a fresh validation rather than reusing a prior signed render context.
+    if ($validated !== null && $validatedPost === $_POST) return $validated;
+    if ($validating) return null;
+    $validating = true;
+    try {
+        $context = shared_presentation_catalog_jsf_request_uncached_v1();
+        if (is_array($context)) {
+            $validated = $context;
+            $validatedPost = $_POST;
+        }
+        return $context;
+    } finally {
+        $validating = false;
+    }
+}
+
+function shared_presentation_catalog_jsf_request_uncached_v1(): ?array {
     if (!wp_doing_ajax() || ($_POST['action'] ?? '') !== 'jet_smart_filters') return null;
     $contract=shared_presentation_catalog_contract_v1();
     if (($_POST['provider'] ?? '') !== $contract['provider']) return null;
