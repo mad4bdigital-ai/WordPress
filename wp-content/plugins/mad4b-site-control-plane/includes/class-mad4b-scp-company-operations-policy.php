@@ -87,7 +87,8 @@ final class MAD4B_SCP_Company_Operations_Policy {
     public static function contentPostData($data,$postarr){
         if(!in_array('master_admin',(array)wp_get_current_user()->roles,true))return $data;
         if(self::get()['content_publication_policy']!=='review')return $data;
-        if(!in_array($data['post_type']??'', ['post','page','tours-and-activities','properties','transportations'],true))return $data;
+        $approved=array_merge(['post','page'],(array)apply_filters('mad4b/company/approved_post_types',array()));
+        if(!in_array($data['post_type']??'', $approved,true))return $data;
         if(($data['post_status']??'')!=='publish')return $data;
         $old=isset($postarr['ID'])&&$postarr['ID']?get_post_status((int)$postarr['ID']):false;
         if($old==='publish')return $data;
