@@ -1,76 +1,217 @@
-/* The SEO editorials live in the results column, after the actual listings. */
+/* Elementor Brand Kit 60050 is the sole visual authority for archive editorials.
+ * Keep the editorial outside the JetEngine results provider's replaced DOM.
+ */
 .dfsb-archive-editorial {
-    width: 100%;
-    min-width: 0;
-    padding: clamp(16px, 2.2vw, 28px);
-    margin: 24px 0 14px;
-    border: 1px solid rgba(29, 56, 75, .1);
-    border-radius: var(--dfsb-editorial-radius, 16px);
-    background: var(--dfsb-editorial-surface, #fff);
-    box-shadow: 0 5px 24px rgba(18, 42, 67, .045);
-    color: var(--e-global-color-text, #334a5d);
-    gap: 14px;
-    box-sizing: border-box;
+  --dfsb-surface: var(--e-global-color-80789f7, #F9F7F5);
+  --dfsb-ink: var(--e-global-color-text, #102D40);
+  --dfsb-primary: var(--e-global-color-primary, #102D40);
+  --dfsb-secondary: var(--e-global-color-secondary, #204C50);
+  --dfsb-accent: var(--e-global-color-accent, #B48A46);
+  --dfsb-white: var(--e-global-color-0ce0fb4, #fff);
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(12px, 1.4vw, 20px);
+  padding: clamp(18px, 2.1vw, 30px);
+  margin: 24px 0 14px;
+  background: var(--dfsb-white);
+  color: var(--dfsb-ink);
+  border: 1px solid color-mix(in srgb, var(--dfsb-primary) 12%, transparent);
+  border-radius: 16px;
+  box-shadow: 0 5px 24px rgba(16, 45, 64, .045);
+  overflow: visible;
+  opacity: 1;
+  visibility: visible;
+  isolation: isolate;
+  position: relative;
+  z-index: 1;
 }
 .dfsb-archive-editorial .elementor-heading-title,
-.dfsb-archive-editorial h2,
-.dfsb-archive-editorial h3 { font-size: clamp(16px, 1.2vw, 20px) !important; line-height: 1.45 !important; color: var(--e-global-color-primary, #243a4c); }
-.dfsb-archive-editorial p,
-.dfsb-archive-editorial .jet-listing-dynamic-field__content {
-    font-size: 13px !important;
-    line-height: 1.7 !important;
-    color: var(--e-global-color-text, #586879);
-    overflow-wrap: anywhere;
+.dfsb-archive-editorial :is(h2, h3) {
+  color: var(--dfsb-primary) !important;
+  font-family: var(--e-global-typography-secondary-font-family, inherit);
+  font-weight: var(--e-global-typography-secondary-font-weight, 600);
+  font-size: clamp(1.05rem, 1.1vw, 1.35rem) !important;
+  line-height: 1.4 !important;
 }
-.dfsb-archive-editorial .seo-readmore-btn-wrap { text-align: center !important; width: 100%; }
-.dfsb-archive-editorial .seo-readmore-btn { font-size: 13px !important; border-radius: var(--dfsb-editorial-button-radius, 9px) !important; padding: 8px 14px !important; }
+.dfsb-archive-editorial :is(p, li, .jet-listing-dynamic-field__content, .seo-readmore-content, .etg-filter-term-section) {
+  color: var(--dfsb-ink) !important;
+  font-family: var(--e-global-typography-text-font-family, inherit);
+  font-size: var(--e-global-typography-text-font-size, 1rem) !important;
+  line-height: 1.7 !important;
+  opacity: 1 !important;
+  overflow-wrap: break-word;
+}
+.dfsb-archive-editorial .seo-readmore { color: var(--dfsb-ink); text-align: start; }
+.dfsb-archive-editorial .seo-readmore-btn-wrap { width: 100%; text-align: start !important; margin-block-start: 14px; }
+.dfsb-archive-editorial .seo-readmore-btn {
+  font: inherit;
+  font-size: .91rem !important;
+  font-weight: 700;
+  padding: 10px 18px !important;
+  border: 1px solid transparent !important;
+  border-radius: 9px !important;
+  color: var(--dfsb-white) !important;
+  background: var(--dfsb-secondary) !important;
+  opacity: 1 !important;
+  cursor: pointer;
+}
+.dfsb-archive-editorial .seo-readmore-btn:hover {
+  background: var(--dfsb-primary) !important;
+  color: var(--dfsb-white) !important;
+}
+.dfsb-archive-editorial :is(button,a):focus-visible {
+  outline: 3px solid var(--dfsb-accent) !important;
+  outline-offset: 3px;
+}
 .dfsb-archive-editorial .e-con:has(> .elementor-widget-jet-listing-dynamic-field) {
-    display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: start;
-    gap: 18px;
-}
-.dfsb-archive-editorial .e-con:has(> .elementor-widget-jet-listing-dynamic-field) > * { min-width: 0; width: auto !important; }
-@media (max-width: 767px) {
-    .dfsb-archive-editorial { margin: 16px 0 8px; padding: 16px; border-radius: var(--dfsb-editorial-field-radius, 12px); }
-    .dfsb-archive-editorial .e-con:has(> .elementor-widget-jet-listing-dynamic-field) { grid-template-columns: minmax(0, 1fr); gap: 12px; }
-    .dfsb-archive-editorial .elementor-heading-title,
-    .dfsb-archive-editorial h2,
-    .dfsb-archive-editorial h3 { font-size: 16px !important; }
-}
-/* Empty native/Bridge slots must not leave a blank card under the results. */
-.dfsb-archive-editorial[hidden],
-.dfsb-archive-editorial .elementor-widget-jet-listing-dynamic-field[hidden] { display: none !important; }
-.dfsb-archive-editorial .e-con:has(> .elementor-widget-jet-listing-dynamic-field) {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  align-items: stretch;
+  gap: 16px;
+  min-width: 0;
 }
 .dfsb-archive-editorial .e-con:has(> .elementor-widget-jet-listing-dynamic-field) > .elementor-widget-jet-listing-dynamic-field {
-    border: 1px solid var(--dfsb-editorial-border, #edf0f3);
-    background: var(--e-global-color-secondary, #fafbfd);
-    border-radius: var(--dfsb-editorial-field-radius, 12px);
-    padding: 14px;
-    text-align: start !important;
+  width: 100% !important;
+  min-width: 0;
+  margin: 0;
+  padding: clamp(14px, 1.6vw, 22px);
+  background: var(--dfsb-surface) !important;
+  color: var(--dfsb-ink) !important;
+  border: 1px solid color-mix(in srgb, var(--dfsb-primary) 12%, transparent);
+  border-inline-start: 3px solid var(--dfsb-accent);
+  border-radius: 12px;
+  text-align: start;
+  opacity: 1 !important;
 }
-.dfsb-archive-editorial .e-con:has(> .elementor-widget-jet-listing-dynamic-field) .jet-listing-dynamic-field__content {
-    text-align: start !important;
-}
-
-/* Optional cross-CPT archive copy. Never inserted without an Elementor slot. */
-.dfsb-context-editorial {
-  color: var(--e-global-color-text, inherit);
+.dfsb-archive-editorial .etg-filter-term-section > :first-child { margin-block-start: 0; }
+.dfsb-archive-editorial .etg-filter-term-section > :last-child { margin-block-end: 0; }
+.dfsb-archive-editorial .dfsb-editorial-status {
+  color: var(--dfsb-primary);
+  background: var(--dfsb-surface);
   font: inherit;
-  line-height: 1.7;
-  margin-block: 1rem;
-  max-width: 100%;
-  overflow-wrap: anywhere;
+  font-size: .9rem;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 0;
 }
-.dfsb-context-heading {
-  color: var(--e-global-color-primary, inherit);
-  font: inherit;
-  font-weight: 600;
-  line-height: 1.4;
-  margin-block: 0.5rem 1rem;
+.dfsb-archive-editorial.dfsb-editorial-loading .dfsb-editorial-status {
+  border-inline-start: 3px solid var(--dfsb-accent);
 }
 @media (max-width: 767px) {
-  .dfsb-context-editorial { margin-block: 0.75rem; }
+  .dfsb-archive-editorial { margin: 16px 0 8px; padding: 16px; border-radius: 12px; }
+  .dfsb-archive-editorial .e-con:has(> .elementor-widget-jet-listing-dynamic-field) {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dfsb-archive-editorial .seo-readmore-content-wrap { transition: none !important; }
+}
+/* Optional generic non-template editorial tokens */
+.dfsb-context-editorial { color: var(--e-global-color-text, inherit); line-height: 1.7; margin-block: 1rem; }
+.dfsb-context-heading { color: var(--e-global-color-primary, inherit); font-weight: 600; line-height: 1.4; }
+
+.dfsb-archive-editorial .dfsb-term-set {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.dfsb-archive-editorial .dfsb-term-detail {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--e-global-color-primary) 12%, transparent);
+  border-radius: 9px;
+  background: var(--dfsb-surface) !important;
+  overflow: clip;
+  color: var(--dfsb-ink) !important;
+}
+.dfsb-archive-editorial .dfsb-term-detail summary,
+.dfsb-archive-editorial .dfsb-term-detail--single h3 {
+  cursor: pointer;
+  font-family: var(--e-global-typography-secondary-font-family, inherit);
+  color: var(--e-global-color-primary, inherit) !important;
+  font-size: 1rem !important;
+  font-weight: 650;
+  line-height: 1.5;
+  padding: 12px 14px;
+  margin: 0;
+}
+.dfsb-archive-editorial .dfsb-term-detail > p,
+.dfsb-archive-editorial .dfsb-term-detail__body {
+  padding: 0 14px 14px;
+  margin: 0;
+}
+.dfsb-archive-editorial .dfsb-term-detail summary:focus-visible {
+  outline: 3px solid var(--e-global-color-accent, currentColor);
+  outline-offset: -3px;
+}
+
+
+/* Retain local.6 empty-slot visibility and scoped responsive safety. */
+.dfsb-archive-editorial .elementor-widget-jet-listing-dynamic-field[hidden],
+.dfsb-archive-editorial .dfsb-editorial-status[hidden],
+.dfsb-archive-editorial[hidden] { display: none !important; }
+.dfsb-archive-editorial .e-con,
+.dfsb-archive-editorial .elementor-widget,
+.dfsb-archive-editorial .jet-listing-dynamic-field__content {
+  min-width: 0;
+  max-width: 100%;
+}
+.dfsb-archive-editorial :is(h2,h3,p,.jet-listing-dynamic-field__content) {
+  overflow-wrap: anywhere;
+}
+.dfsb-archive-editorial .etg-filter-term-section h2 { font-size: clamp(1rem,1.25vw,1.25rem) !important; }
+.dfsb-archive-editorial:dir(rtl) .dfsb-term-detail { text-align: start; }
+.dfsb-context-editorial { max-width: 100%; overflow-wrap: anywhere; }
+
+/* Canonical term component: no rich-text markup or CSS from JetEngine term pages. */
+.dfsb-archive-editorial .dfsb-editorial-cards { display: grid; gap: 14px; min-width: 0; }
+.dfsb-archive-editorial .dfsb-editorial-group { min-width: 0; }
+.dfsb-archive-editorial .dfsb-term-set {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 225px), 1fr));
+  align-items: stretch;
+}
+.dfsb-archive-editorial .dfsb-term-detail {
+  height: 100%;
+  background: var(--dfsb-surface) !important;
+  border-inline-start: 3px solid var(--dfsb-accent);
+}
+.dfsb-archive-editorial .dfsb-term-detail :is(h3,summary,p,.dfsb-term-detail__body) {
+  color: var(--dfsb-ink) !important;
+  background: transparent !important;
+  font-family: var(--e-global-typography-text-font-family, inherit);
+  opacity: 1 !important;
+  overflow-wrap: anywhere;
+}
+.dfsb-archive-editorial .dfsb-term-detail summary { list-style-position: inside; }
+.dfsb-archive-editorial .dfsb-term-detail[open] summary { border-block-end: 1px solid color-mix(in srgb,var(--dfsb-primary) 12%,transparent); }
+@media (max-width: 767px) {
+  .dfsb-archive-editorial .dfsb-term-set { grid-template-columns: minmax(0,1fr); }
+}
+
+/* JetEngine display-inline wrappers shrink to content width after live AJAX.
+ * Own the layout in DFSB only; never alter the shared tour Listing cards.
+ */
+.dfsb-archive-editorial .jet-listing-dynamic-field.display-inline {
+  display: block !important;
+  width: 100% !important;
+}
+.dfsb-archive-editorial .jet-listing-dynamic-field__inline-wrap,
+.dfsb-archive-editorial .jet-listing-dynamic-field__content,
+.dfsb-archive-editorial .etg-dfsb-live-slot,
+.dfsb-archive-editorial .dfsb-editorial-cards,
+.dfsb-archive-editorial .dfsb-editorial-group,
+.dfsb-archive-editorial .dfsb-term-set {
+  display: block;
+  width: 100% !important;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.dfsb-archive-editorial .dfsb-editorial-cards,
+.dfsb-archive-editorial .dfsb-term-set {
+  display: grid;
 }

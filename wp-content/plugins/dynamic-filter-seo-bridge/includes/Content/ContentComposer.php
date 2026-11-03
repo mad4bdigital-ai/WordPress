@@ -21,9 +21,9 @@ final class ContentComposer {
 		$terms = (array) ( $context['terms'] ?? array() );
 		$mode = $this->compositionMode( $context );
 		if ( 'travel' === $mode ) {
-			$location = $this->termName( $terms, 'location' );
-			$type = $this->termName( $terms, 'tour_type' );
-			$style = $this->termName( $terms, 'style' );
+			$location = $this->roleName( $context, 'location' );
+			$type = $this->roleName( $context, 'tour_type' );
+			$style = $this->roleName( $context, 'style' );
 			if ( 0 === strpos( $language, 'ar' ) ) {
 				$lead = trim( implode( ' ', array_filter( array( $type, $style ) ) ) );
 				$title = $location && $lead ? $lead . ' في ' . $location : ( $location ?: $lead );
@@ -35,7 +35,7 @@ final class ContentComposer {
 		} else {
 			$names = array();
 			foreach ( $this->orderedRoles( $context ) as $role ) {
-				$name = $this->termName( $terms, $role );
+				$name = $this->roleName( $context, $role );
 				if ( '' !== $name ) { $names[] = $name; }
 			}
 			$title = implode( ' — ', array_unique( $names ) );
@@ -46,10 +46,40 @@ final class ContentComposer {
 	}
 
 	public function intro( array $context ): string {
+        // Selected term sets are canonical for a multi-term filter; a short
+        // introduction must not import rich-text CSS from term widgets.
+        $names = array();
+        $seen = array();
+        foreach ((array)($context['term_sets']??array()) as $set) {
+            foreach (array_slice((array)$set,0,20) as $entry) {
+                $id=(int)($entry['term_id']??0);
+                $name=trim((string)($entry['name']??''));
+                if(!$id||!$name||isset($seen[$id]))continue;
+                $seen[$id]=true;$names[]=$name;
+            }
+        }
+        if (count($names)>1) {
+            $language=substr(sanitize_key((string)($context['language']??'en')),0,2);
+            $prefix=array(
+                'en'=>'Explore experiences for ',
+                'es'=>'Explora experiencias en ',
+                'ar'=>'استكشف التجارب المرتبطة بـ',
+                'de'=>'Entdecke Erlebnisse in ',
+                'fr'=>'Découvrez des expériences à ',
+                'it'=>'Scopri esperienze a ',
+            );
+            $intro=esc_html(($prefix[$language]??$prefix['en']).$this->joinNames($names,$language));
+            return function_exists('apply_filters') ?
+                (string)apply_filters('dfsb/seo/intro',apply_filters('etg_filter_seo_intro',$intro,$context),$context):$intro;
+        }
 		$parts = array();
 		foreach ( $this->orderedTerms( $context ) as $term ) {
 			$text = ! empty( $term['short_description'] ) ? (string) $term['short_description'] : (string) ( $term['description'] ?? '' );
-			if ( '' !== trim( wp_strip_all_tags( $text ) ) ) { $parts[] = wp_kses_post( $text ); }
+			// Eliminate inherited Elementor markup and inline styles from term copy.
+            $plain=trim((string)preg_replace('/\s+/u',' ',wp_strip_all_tags($text)));
+            if(function_exists('mb_substr'))$plain=mb_substr($plain,0,1200);
+            else $plain=substr($plain,0,1200);
+            if($plain!=='')$parts[]=esc_html($plain);
 		}
 		$intro = implode( "\n\n", array_unique( $parts ) );
 		return function_exists( 'apply_filters' ) ? (string) apply_filters( 'dfsb/seo/intro', apply_filters( 'etg_filter_seo_intro', $intro, $context ), $context ) : $intro;
@@ -121,6 +151,7 @@ final class ContentComposer {
 
 	private function orderedRoles( array $context ): array {
 		$terms = (array) ( $context['terms'] ?? array() );
+        foreach(array_keys((array)($context['term_sets']??array())) as $role){if(!isset($terms[$role]))$terms[$role]=array();}
 		$rules = (array) ( $context['profile']['taxonomy_rules'] ?? array() );
 		$rows = array();
 		foreach ( $rules as $taxonomy => $rule ) {
@@ -141,6 +172,29 @@ final class ContentComposer {
 		$terms = (array) ( $context['terms'] ?? array() );
 		return isset( $terms['location'] ) || isset( $terms['tour_type'] ) || isset( $terms['style'] ) ? 'travel' : 'generic';
 	}
+
+    /** Native term_sets reflect every selection, rather than the first term. */
+    private function roleName(array $context,string $role):string {
+        $set=(array)($context['term_sets'][$role]??array());
+        $names=array();$seen=array();
+        foreach(array_slice($set,0,20) as $item){
+            $item=(array)$item;$id=(int)($item['term_id']??0);
+            $name=trim((string)($item['name']??''));
+            if(!$name||($id&&isset($seen[$id]))||in_array($name,$names,true))continue;
+            if($id)$seen[$id]=true;
+            $names[]=$name;
+        }
+        if(!$names) return $this->termName((array)($context['terms']??array()),$role);
+        return $this->joinNames($names,substr(sanitize_key((string)($context['language']??'en')),0,2));
+    }
+    private function joinNames(array $names,string $language):string {
+        $names=array_values(array_filter(array_map('trim',$names),'strlen'));
+        if(count($names)>8){$extra=count($names)-8;$names=array_slice($names,0,8);$names[]='+'.$extra;}
+        if(count($names)<2)return (string)($names[0]??'');
+        $join=array('en'=>' & ','es'=>' y ','ar'=>' و','de'=>' und ','fr'=>' et ','it'=>' e ');
+        $last=array_pop($names);
+        return implode($language==='ar'?'، ':', ',$names).($join[$language]??' & ').$last;
+    }
 
 	private function termName( array $terms, string $role ): string { return ! empty( $terms[ $role ]['name'] ) ? trim( (string) $terms[ $role ]['name'] ) : ''; }
 

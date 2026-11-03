@@ -11,8 +11,67 @@
     }
     if (!cfg.endpoint) { return; }
 
+    // Native JSF checkboxes already support data-relational-operator="AND".
+    // On a direct URL with an explicit, valid operator, provide that native
+    // configuration BEFORE JSF creates filter instances. This is a DOM input
+    // option, not an overwrite of JSF's currentQuery, signed AJAX or counts.
+    function configureNativeDirectLinkOperators() {
+        var state = prettyPathState();
+        if (!state.valid || !state.group || !state.query) { return; }
+        var separator = state.group.indexOf('/');
+        if (separator <= 0) { return; }
+        var provider = state.group.slice(0, separator);
+        var queryId = state.group.slice(separator + 1);
+        Object.keys(state.query).forEach(function (key) {
+            if (key.indexOf('_tax_query_') !== 0) { return; }
+            var data = state.query[key];
+            // Local Staging parser historically supplied comma-separated strings;
+            // the canonical #733 parser supplies arrays for explicit operators.
+            // Accept both validated forms without assigning native currentQuery.
+            var parts = Array.isArray(data) ? data.map(String) :
+                (typeof data === 'string' ? data.split(',').map(function (v) { return v.trim(); }) : []);
+            if (parts.length < 3 || parts.length > 21) { return; }
+            var op = parts[parts.length - 1];
+            if (op !== 'operator_AND' && op !== 'operator_IN') { return; }
+            var selected = parts.slice(0, -1);
+            if (selected.length < 2 ||
+                selected.some(function (v) { return !/^[A-Za-z0-9_-]{1,100}$/.test(v); }) ||
+                selected.filter(function (v, i) { return selected.indexOf(v) === i; }).length !== selected.length) { return; }
+            var taxonomy = key.slice('_tax_query_'.length);
+            Array.prototype.forEach.call(document.querySelectorAll('.jet-checkboxes-list[data-smart-filter="checkboxes"][data-query-type="tax_query"]'), function (el) {
+                if (el.getAttribute('data-query-var') !== taxonomy || el.getAttribute('data-content-provider') !== provider || el.getAttribute('data-query-id') !== queryId) { return; }
+                var options = Array.prototype.map.call(el.querySelectorAll('input[data-url-value]'), function (input) {
+                    return String(input.getAttribute('data-url-value') || '');
+                });
+                if (!selected.every(function (slug) { return options.indexOf(slug) !== -1; })) { return; }
+                // Native checkbox processData appends operator_AND only when
+                // two or more actual inputs are selected; allow it to do so.
+                if (op === 'operator_AND') { el.setAttribute('data-relational-operator', 'AND'); }
+                else { el.removeAttribute('data-relational-operator'); }
+            });
+        });
+    }
+    document.addEventListener('jet-smart-filters/before-init', configureNativeDirectLinkOperators, { capture: true, once: true });
+
     var timers = {}, sequences = {}, controllers = {}, activeKeys = {}, eventSeenKeys = {}, initialSemanticKeys = {};
     var initialized = false, runtimeBlockedSignature = '';
+    // Prepare the non-authorizing presentation while native JSF renders.
+    // Commit it only after the Listing reports its matching query as updated.
+    var nativePending = {}, prepared = {}, userFilterGesture = false;
+    // JSF can dispatch filter/apply and start-loading while hydrating a direct
+    // URL, without ever dispatching updated. Distinguish user interactions
+    // from initial runtime activation using trusted native DOM gestures.
+    function trackUserFilterGesture(event) {
+        if (!event.isTrusted || !event.target || typeof event.target.closest !== 'function') { return; }
+        if (event.target.closest('[class*="jet-smart-filters"],[class*="jet-remove-filter"],[class*="jet-filters"]')) {
+            userFilterGesture = true;
+        }
+    }
+    document.addEventListener('click', trackUserFilterGesture, true);
+    document.addEventListener('pointerdown', trackUserFilterGesture, true);
+    document.addEventListener('keydown', trackUserFilterGesture, true);
+    // A deep-linked JSF hydration may emit browser-trusted change events
+    // without any user action. Do not use change alone as interaction proof.
     var initialValues = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
     var boundGroups = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
     var groupRetryState = { pathGroup: '', attempts: 0, timer: null };
@@ -82,8 +141,33 @@
             var pair = String(pairs[i] || '').trim(); if (!pair) { continue; }
             var pairColon = pair.indexOf(':'); if (pairColon <= 0 || pairColon === pair.length - 1) { return { group: key, query: {}, valid: false, reason: 'pretty_path_filter_malformed' }; }
             var taxonomy = pair.slice(0, pairColon).trim(), value = pair.slice(pairColon + 1).trim();
-            if (!/^[A-Za-z0-9_-]+$/.test(taxonomy) || !value || value.length > 500 || seen[taxonomy]) { return { group: key, query: {}, valid: false, reason: seen[taxonomy] ? 'pretty_path_filter_duplicate' : 'pretty_path_filter_malformed' }; }
-            seen[taxonomy] = true; query['_tax_query_' + taxonomy] = value;
+            if (!/^[A-Za-z0-9_-]+$/.test(taxonomy) || !value || value.length > 500) { return { group: key, query: {}, valid: false, reason: 'pretty_path_filter_malformed' }; }
+            // JetSmartFilters permits several selected terms of a taxonomy.
+            // Merge commas/repeated taxonomy facets without overwriting them.
+            // AND/OR evaluation still belongs to JSF's signed query, not this URL.
+            var terms = value.split(',').map(function (term) { return term.trim(); });
+            if (!terms.length || terms.some(function (term) { return !/^[A-Za-z0-9_-]{1,100}$/.test(term); })) {
+                return { group: key, query: {}, valid: false, reason: 'pretty_path_term_malformed' };
+            }
+            // An explicit native JSF operator is not a taxonomy term. Preserve
+            // it separately so an AND deep-link never becomes an assumed IN
+            // count or a fabricated slug named "operator_AND".
+            var operators = terms.filter(function (term) { return /^operator_(?:AND|IN)$/.test(term); });
+            if (operators.length > 1) { return { group: key, query: {}, valid: false, reason: 'pretty_path_operator_ambiguous' }; }
+            if (terms.some(function (term) { return /^operator_/i.test(term) && !/^operator_(?:AND|IN)$/.test(term); })) {
+                return { group: key, query: {}, valid: false, reason: 'pretty_path_operator_unsupported' };
+            }
+            terms = terms.filter(function (term) { return !/^operator_(?:AND|IN)$/.test(term); });
+            if (!terms.length) { return { group: key, query: {}, valid: false, reason: 'pretty_path_terms_missing' }; }
+            var existing = seen[taxonomy] || [], merged = existing.concat(terms);
+            merged = merged.filter(function (term, index) { return merged.indexOf(term) === index; });
+            if (merged.length > 20) { return { group: key, query: {}, valid: false, reason: 'pretty_path_term_limit_exceeded' }; }
+            seen[taxonomy] = merged;
+            if (operators.length && merged.length > 1) {
+                query['_tax_query_' + taxonomy] = merged.concat(operators);
+            } else {
+                query['_tax_query_' + taxonomy] = merged.join(',');
+            }
         }
         return { group: key, query: query, valid: true, reason: 'pretty_url_group' };
     }
@@ -129,16 +213,38 @@
         var postType = String(query.get('post_type') || '');
         return /^[a-z0-9_-]{1,80}$/.test(postType) ? '/' + postType + '/' : '/';
     }
+    function nativeQueryMatchesPath(native, pathQuery) {
+        if (!native || typeof native !== 'object' || !pathQuery || typeof pathQuery !== 'object') { return false; }
+        var pathKeys = Object.keys(pathQuery), nativeKeys = Object.keys(native).filter(function (key) { return queryHasSemanticFilters((function () { var q = {}; q[key] = native[key]; return q; }())); });
+        if (!pathKeys.length || pathKeys.length !== nativeKeys.length) { return false; }
+        return pathKeys.every(function (key) {
+            if (key.indexOf('_tax_query_') !== 0 || !Object.prototype.hasOwnProperty.call(native, key)) { return false; }
+            var taxonomy = key.slice('_tax_query_'.length);
+            var raw = Array.isArray(native[key]) ? native[key] : String(native[key] || '').split(',');
+            var nativeTerms = raw.map(String).filter(function (value) { return value && value.indexOf('operator_') !== 0; });
+            var pretty = Array.isArray(pathQuery[key]) ? pathQuery[key] : String(pathQuery[key] || '').split(',');
+            var prettyTerms = pretty.filter(function (value) { return value && value.indexOf('operator_') !== 0; });
+            if (nativeTerms.length !== prettyTerms.length) { return false; }
+            var inputs = Array.prototype.slice.call(document.querySelectorAll('input[data-url-value]'));
+            var slugs = nativeTerms.map(function (term) {
+                if (!/^[0-9]+$/.test(term)) { return term; }
+                var input = inputs.find(function (el) { return el.name === taxonomy && String(el.value) === term; });
+                return input ? String(input.getAttribute('data-url-value') || '') : '';
+            });
+            slugs.sort(); prettyTerms.sort();
+            return slugs.every(function (slug, index) { return slug && slug === prettyTerms[index]; });
+        });
+    }
+
     function effectiveCurrentQuery(key, group) {
         var currentQuery = group && group.currentQuery && typeof group.currentQuery === 'object' ? group.currentQuery : {};
         var state = prettyPathState();
-        // At direct URL hydration JetSmartFilters may initialize only one of
-        // several taxonomy facets (e.g. half-day but not Cairo). Reconstruct
-        // the full *presentation* state from the validated deep-link path
-        // until a live filter event is seen; after that, JSF's observed query
-        // replaces the URL snapshot. Backend scope checks remain authoritative.
+        // On direct URL hydration use the real native JSF query (including
+        // AND/IN operator) if its terms exactly match the validated deep link.
+        // Only fall back to the URL snapshot when JSF has not hydrated every
+        // facet. This is presentation evidence, never URL publication authority.
         if (!eventSeenKeys[key] && state.valid && state.group === key && queryHasSemanticFilters(state.query)) {
-            return state.query;
+            return nativeQueryMatchesPath(currentQuery, state.query) ? currentQuery : state.query;
         }
         return currentQuery;
     }
@@ -275,12 +381,34 @@
         emitDFSBEvent('dfsb/ajax-presentation-updated', data);
     }
 
+    function processPreparedResponse(result, key) {
+        if (!result.ok) { blockFailClosed('http_error', key, { reason: 'http_error', http_status: result.status }); return; }
+        if (result.invalidJson || !result.data) { blockFailClosed('invalid_response', key, { http_status: result.status }); return; }
+        applyResponse(result.data, key);
+    }
+    function queryFingerprint(key) {
+        var group = window.JetSmartFilters && window.JetSmartFilters.filterGroups ?
+            window.JetSmartFilters.filterGroups[key] : null;
+        var query = group && group.currentQuery && typeof group.currentQuery === 'object' ? group.currentQuery : {};
+        return (window.location.pathname || '/') + '|' + JSON.stringify(query);
+    }
+
     function readHttpResponse(response) { return response.text().then(function (text) { var data = null, invalidJson = false; if (text) { try { data = JSON.parse(text); } catch (error) { invalidJson = true; } } return { ok: response.ok, status: response.status, data: data, invalidJson: invalidJson }; }); }
     function send(provider, queryId) {
         var contract = jsfRuntimeContract(); if (!contract.ready) { emitRuntimeContractBlocked(contract); return; } runtimeBlockedSignature = '';
         var jsf = window.JetSmartFilters, key = groupKey(provider, queryId), group = jsf.filterGroups[key]; if (!group) { return; }
         var currentQuery = effectiveCurrentQuery(key, group);
         if (!queryHasSemanticFilters(currentQuery)) {
+            delete prepared[key];
+            // Clearing the URL while JSF still renders must not reveal stale
+            // initial copy before the native result commits.
+            if (nativePending[key]) {
+                // A quick reset while the prior filtered prefetch is still
+                // pending must invalidate its sequence and abort its transport.
+                sequences[key] = (sequences[key] || 0) + 1;
+                if (controllers[key]) { controllers[key].abort(); delete controllers[key]; }
+                return;
+            }
             if (initialSemanticKeys[key]) { clearTransient('filters_cleared', key); } else { restoreInitial('filters_cleared', key); }
             if (controllers[key]) { controllers[key].abort(); delete controllers[key]; }
             var resolvedAfterClear = syncAutoBindings(); if (resolvedAfterClear && resolvedAfterClear !== key) { scheduleKey(resolvedAfterClear); }
@@ -289,17 +417,25 @@
         var b = bindings(key); if (!b.tokens.length && !b.slots.length) { emitAutoGroupStatus(); return; }
         sequences[key] = (sequences[key] || 0) + 1; var requestId = sequences[key]; if (controllers[key]) { controllers[key].abort(); } controllers[key] = typeof AbortController !== 'undefined' ? new AbortController() : null;
         var requestPath = window.location.pathname || '/';
+        if (nativePending[key]) {
+            prepared[key] = { fingerprint: requestPath + '|' + JSON.stringify(currentQuery), waiting: true, result: null };
+        } else { delete prepared[key]; }
         var options = { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider: String(provider || ''), query_id: String(queryId || ''), request_path: requestPath, archive_path: baseArchivePath(requestPath), current_query: currentQuery, tokens: b.tokens, slots: b.slots }) };
         if (controllers[key]) { options.signal = controllers[key].signal; }
         var timedOut = false, timeoutId = null, transport = fetch(cfg.endpoint, options).then(readHttpResponse);
         var deadline = new Promise(function (resolve, reject) { timeoutId = window.setTimeout(function () { timedOut = true; if (controllers[key]) { controllers[key].abort(); } var error = new Error('Dynamic Filter SEO Bridge AJAX presentation timeout'); error.name = 'DFSBTimeoutError'; reject(error); }, requestTimeoutMs); });
         Promise.race([transport, deadline]).then(function (result) {
             if (requestId !== sequences[key]) { return; }
-            if (!result.ok) { blockFailClosed('http_error', key, { reason: 'http_error', http_status: result.status }); return; }
-            if (result.invalidJson || !result.data) { blockFailClosed('invalid_response', key, { http_status: result.status }); return; }
-            applyResponse(result.data, key);
+            if (nativePending[key] && prepared[key] && prepared[key].waiting) {
+                prepared[key].result = result;
+                return;
+            }
+            delete prepared[key];
+            processPreparedResponse(result, key);
         }).catch(function (error) {
             if (requestId !== sequences[key]) { return; }
+            delete prepared[key];
+            if (nativePending[key]) { return; }
             if (timedOut || (error && error.name === 'DFSBTimeoutError')) { blockFailClosed('timeout', key, { reason: 'timeout', timeout_ms: requestTimeoutMs }); return; }
             if (error && error.name === 'AbortError') { return; }
             blockFailClosed('transport_error', key);
@@ -308,14 +444,105 @@
 
     function schedule(provider, queryId) { var key = groupKey(provider, queryId); if (timers[key]) { window.clearTimeout(timers[key]); } timers[key] = window.setTimeout(function () { delete timers[key]; send(provider, queryId); }, 25); }
     function scheduleKey(key) { var parts = String(key || '').split('/'); if (parts.length < 2) { return; } schedule(parts[0], parts.slice(1).join('/')); }
+
+    // Native JSF may hydrate a multi-term deep link one checkbox at a time.
+    // Coalesce only that initial burst (never normal user filtering) so a
+    // partial taxonomy state does not launch a redundant Listing render.
+    // Keep every native query value, operator, callback and render authority.
+    function coalesceNativeDirectLinkHydration(jsf, pathState) {
+        if (!pathState.valid || !pathState.group || userFilterGesture) { return; }
+        var terms = pathState.query || {};
+        var hasMultipleTerms = Object.keys(terms).some(function (key) {
+            if (key.indexOf('_tax_query_') !== 0) { return false; }
+            // Multi-term URL parsing from Shared Core/JSF may preserve an
+            // explicit operator as an array: [term, term, operator_AND].
+            // Coalescing applies to both native representations without
+            // treating the operator as a selected taxonomy term.
+            var value = terms[key];
+            var parts = Array.isArray(value) ? value : (typeof value === 'string' ? value.split(',') : []);
+            return parts.filter(function (part) { return part && !/^operator_(?:AND|IN)$/.test(String(part)); }).length > 1;
+        });
+        if (!hasMultipleTerms) { return; }
+        var group = jsf.filterGroups && jsf.filterGroups[pathState.group];
+        if (!group || typeof group.ajaxRequest !== 'function' || group.__dfsbHydrationCoalescing) { return; }
+        var original = group.ajaxRequest, scheduled = null, latestArgs = null, finished = false;
+        var hardDeadline = null;
+        function flush() {
+            if (finished) { return; }
+            finished = true;
+            if (scheduled !== null) { window.clearTimeout(scheduled); scheduled = null; }
+            if (hardDeadline !== null) { window.clearTimeout(hardDeadline); hardDeadline = null; }
+            if (group.ajaxRequest === wrapped) { group.ajaxRequest = original; }
+            delete group.__dfsbHydrationCoalescing;
+            if (latestArgs) { var args = latestArgs; latestArgs = null; original.apply(group, args); }
+        }
+        function wrapped() {
+            latestArgs = Array.prototype.slice.call(arguments);
+            if (userFilterGesture) { flush(); return; }
+            if (scheduled !== null) { window.clearTimeout(scheduled); }
+            scheduled = window.setTimeout(flush, 200);
+        }
+        group.__dfsbHydrationCoalescing = true;
+        group.ajaxRequest = wrapped;
+        // Bounded release even if native initialization never settles.
+        hardDeadline = window.setTimeout(flush, 1500);
+    }
+
     function init() {
         normalizeNeutralBindings();
         if (initialized) { return; } var contract = jsfRuntimeContract(); if (!contract.ready) { emitRuntimeContractBlocked(contract); return; } runtimeBlockedSignature = '';
         var jsf = window.JetSmartFilters; initialized = true;
         var pathState = prettyPathState();
+        coalesceNativeDirectLinkHydration(jsf, pathState);
         if (pathState.valid && pathState.group && queryHasSemanticFilters(pathState.query)) { initialSemanticKeys[pathState.group] = true; }
         groupKeys().forEach(function (key) { var group = jsf.filterGroups[key]; if (group && queryHasSemanticFilters(group.currentQuery)) { initialSemanticKeys[key] = true; } });
-        jsf.events.subscribe('ajaxFilters/updated', function (provider, queryId) { var key = groupKey(provider, queryId); eventSeenKeys[key] = true; var resolved = syncAutoBindings(); schedule(provider, queryId); if (resolved && resolved !== key) { scheduleKey(resolved); } });
+        jsf.events.subscribe('ajaxFilters/start-loading', function (provider, queryId) {
+            var key = groupKey(provider, queryId);
+            if (!jsf.filterGroups[key]) { return; }
+            // The first direct-link hydration can contain a signed, complete
+            // route but no native updated event. Let the REST response render
+            // once verified; do not leave it buffered indefinitely.
+            if (initialSemanticKeys[key] && !userFilterGesture && !eventSeenKeys[key]) {
+                nativePending[key] = false;
+                schedule(provider, queryId);
+                return;
+            }
+            eventSeenKeys[key] = true;
+            nativePending[key] = true;
+            emitDFSBEvent('dfsb/ajax-presentation-start', { group: key, source: 'native_jsf_loading' });
+            schedule(provider, queryId);
+        });
+        jsf.events.subscribe('ajaxFilters/end-loading', function (provider, queryId) {
+            var key = groupKey(provider, queryId);
+            // An unsuccessful native Listing fetch might never emit 'updated'.
+            // Do not leave the Editorial surface showing an endless spinner.
+            if (nativePending[key]) {
+                nativePending[key] = false;
+                delete prepared[key];
+                sequences[key] = (sequences[key] || 0) + 1;
+                if (controllers[key]) { controllers[key].abort(); delete controllers[key]; }
+                emitDFSBEvent('dfsb/ajax-presentation-blocked', { reason: 'native_jsf_update_missing', group: key });
+            }
+        });
+        jsf.events.subscribe('ajaxFilters/updated', function (provider, queryId) {
+            var key = groupKey(provider, queryId);
+            eventSeenKeys[key] = true;
+            nativePending[key] = false;
+            var resolved = syncAutoBindings(), early = prepared[key];
+            if (early && early.fingerprint === queryFingerprint(key)) {
+                if (early.result) {
+                    delete prepared[key];
+                    processPreparedResponse(early.result, key);
+                }
+                // A matching pending early request will finish after the native
+                // grid, so do not issue a redundant REST request.
+                if (resolved && resolved !== key) { scheduleKey(resolved); }
+                return;
+            }
+            delete prepared[key];
+            schedule(provider, queryId);
+            if (resolved && resolved !== key) { scheduleKey(resolved); }
+        });
         if (pathState.valid && pathState.group && groupKeys().indexOf(pathState.group) !== -1 && queryHasSemanticFilters(pathState.query)) { scheduleKey(pathState.group); }
         groupKeys().forEach(function (key) { var parts = key.split('/'), group = jsf.filterGroups[key]; if (parts.length >= 2 && group && queryHasSemanticFilters(group.currentQuery)) { schedule(parts[0], parts.slice(1).join('/')); } });
         syncAutoBindings();
