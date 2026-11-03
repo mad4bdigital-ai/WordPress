@@ -7,6 +7,7 @@
 defined('ABSPATH') || exit;
 require_once __DIR__.'/class-mad4b-scp-readiness-workflow-options.php';
 require_once __DIR__.'/class-mad4b-scp-content-completeness.php';
+require_once __DIR__.'/class-mad4b-scp-locale-experience-alerts.php';
 
 final class MAD4B_SCP_Content_Readiness_Alerts {
     const VERSION = '1.0.0';
@@ -307,6 +308,11 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                 $issues[]=$accepted;
             }
         }
+        // Browser-observed locale parity uses fresh public evidence, not WPML
+        // approval or publication authority. No browser requests on GET.
+        $localeAudit=MAD4B_SCP_Locale_Experience_Alerts::discover();
+        if(empty($localeAudit['complete']))$complete=false;
+        else $issues=array_merge($issues,(array)$localeAudit['issues']);
         $completeness=MAD4B_SCP_Content_Completeness::discover();
         if(empty($completeness['complete']))$complete=false;
         else $issues=array_merge($issues,(array)$completeness['issues']);
@@ -407,6 +413,33 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                     );
                 }
             }
+            if(($row['source']??'')==='mad4b-locale-experience' &&
+               preg_match('/^lexp_(asset_http_error|cross_locale_link|visible_term_parity|filter_visibility_drift|untranslated_ui_candidate)_([a-z]{2})$/D',$code,$m) &&
+               class_exists('MAD4B_SCP_Locale_Experience_Alerts') &&
+               MAD4B_SCP_Locale_Experience_Alerts::current()) {
+                $site_uuid=class_exists('MAD4B_SCP_Site_Profile')
+                    ?(string)MAD4B_SCP_Site_Profile::site_uuid():'';
+                $e=(array)($row['source_evidence']??array());
+                if($site_uuid && !empty($e['observations'])){
+                    $new[$key]['priority']=max(0,min(100,(int)($row['priority']??0)));
+                    $new[$key]['content_job_request']=array(
+                       'contract'=>'mad4b.locale-experience-contentjob-intake.v1',
+                       'status'=>!empty($previous['content_job_id'])?'LINKED':'PRIORITY_INTAKE',
+                       'priority'=>$new[$key]['priority'],
+                       'source_issue_id'=>$key,'site_uuid'=>$site_uuid,
+                       'language'=>$m[2],'gap_code'=>$code,
+                       'content_type'=>'localization_observation',
+                       'task_family'=>in_array($m[1],array('asset_http_error','cross_locale_link'),true)
+                          ?'published_experience_repair':'wpml_eligibility_investigation',
+                       'source_sha256'=>hash('sha256',wp_json_encode($e,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)),
+                       'deduplication_key'=>hash('sha256',$site_uuid.'|'.$code),
+                       'requires_governed_content_job_admission'=>true,
+                       'requires_original_wpml_and_query_evidence'=>true,
+                       'auto_translation_authorized'=>false,'auto_publication_authorized'=>false,
+                       'external_scraper_dispatch_authorized'=>false
+                    );
+                }
+            }
             if(($row['source']??'')==='dynamic-filter-seo-bridge'
                 && preg_match('/^dfsb_wpml_(term_missing|route_slug|base_slug_unverified|cpt_base_unverified)_([a-z0-9_-]+)_([0-9]+)_([a-z]{2})$/D',$code,$m)) {
                 $new[$key]['content_job_request']=array(
@@ -451,6 +484,12 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         }
     }
     private static function rule_enabled_for($issue,$cfg) {
+        if(($issue['source']??'')==='mad4b-locale-experience' &&
+            preg_match('/^lexp_(?:asset_http_error|cross_locale_link|visible_term_parity|filter_visibility_drift|untranslated_ui_candidate)_[a-z]{2}$/D',(string)($issue['code']??'')))
+            return class_exists('MAD4B_SCP_Locale_Experience_Alerts') &&
+                MAD4B_SCP_Locale_Experience_Alerts::current()!==null;
+
+
         $type=$issue['post_type']??'';$code=$issue['code']??'';
         if(str_starts_with($code,'loc_') && ($issue['source']??'')==='mad4b-elementor-localization')
             return has_filter('mad4b/content_readiness/external_issues')!==false;
@@ -618,7 +657,14 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                 'object_id'=>absint($row['object_id']??0),
                 'code'=>(string)($row['code']??''),
                 'severity'=>(string)($row['severity']??'medium'),
+                'priority'=>max(0,min(100,absint($row['priority']??0))),
+                'source'=>sanitize_key((string)($row['source']??'native')),
+                'locale_evidence'=>($row['source']??'')==='mad4b-locale-experience'
+                    ?(array)($row['source_evidence']??array()):null,
+                'content_job_request'=>($row['source']??'')==='mad4b-locale-experience'
+                    ?(array)($row['content_job_request']??array()):null,
                 'label'=>(string)($row['label']??''),
+
                 'status'=>$state,
                 'first_seen'=>$row['first_seen']??null,
                 'last_seen'=>$row['last_seen']??null,

@@ -1,0 +1,64 @@
+name: MAD4B Locale Experience Alerts - source and safety CI
+
+on:
+  pull_request:
+    branches: [master, 'live/dfsb-alpha14-local2-20261102']
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-locale-experience-alerts.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php'
+      - 'tests/locale-experience-provider-contract.php'
+      - 'tools/dfsb-neutral/locale-experience/**'
+      - '.github/workflows/mad4b-locale-experience-source-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-locale-experience-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Exact source HEAD
+        env:
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$SHA"
+      - name: PHP isolated provider contract
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring
+          coverage: none
+      - run: php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-locale-experience-alerts.php
+      - run: php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php
+      - run: php tests/locale-experience-provider-contract.php
+      - name: Collector source and packaging
+        run: |
+          set -euo pipefail
+          python3 -m py_compile tools/dfsb-neutral/locale-experience/collector.py
+          bash -n tools/dfsb-neutral/locale-experience/run.sh
+          python3 - <<'PY'
+          from pathlib import Path
+          provider=Path('wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-locale-experience-alerts.php').read_text()
+          ledger=Path('wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php').read_text()
+          assert "class-mad4b-scp-locale-experience-alerts.php" in ledger
+          assert "MAD4B_SCP_Locale_Experience_Alerts::discover()" in ledger
+          assert "mad4b.locale-experience-contentjob-intake.v1" in ledger
+          assert "'auto_publication_authorized'=>false" in ledger
+          assert "'requires_governed_content_job_admission'=>true" in ledger
+          assert "'source'=>'mad4b-locale-experience'" in provider
+          assert "MAX_AGE = 21600" in provider
+          assert "current_user_can('manage_options')" in provider
+          assert 'tours.dev.mad4b.com' not in provider
+          print('PASS source-scoped locale provider integration and default-deny publication')
+          PY
+      - name: Report precise test scope
+        run: echo "Source-only CI; no WordPress site mutation, browser crawl, human approval or Production deployment"
