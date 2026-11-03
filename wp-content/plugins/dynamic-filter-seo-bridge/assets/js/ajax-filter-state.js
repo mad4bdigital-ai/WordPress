@@ -15,7 +15,21 @@
     var initialized = false, runtimeBlockedSignature = '';
     // Prepare the non-authorizing presentation while native JSF renders.
     // Commit it only after the Listing reports its matching query as updated.
-    var nativePending = {}, prepared = {};
+    var nativePending = {}, prepared = {}, userFilterGesture = false;
+    // JSF can dispatch filter/apply and start-loading while hydrating a direct
+    // URL, without ever dispatching updated. Distinguish user interactions
+    // from initial runtime activation using trusted native DOM gestures.
+    function trackUserFilterGesture(event) {
+        if (!event.isTrusted || !event.target || typeof event.target.closest !== 'function') { return; }
+        if (event.target.closest('[class*="jet-smart-filters"],[class*="jet-remove-filter"],[class*="jet-filters"]')) {
+            userFilterGesture = true;
+        }
+    }
+    document.addEventListener('click', trackUserFilterGesture, true);
+    document.addEventListener('pointerdown', trackUserFilterGesture, true);
+    document.addEventListener('keydown', trackUserFilterGesture, true);
+    // A deep-linked JSF hydration may emit browser-trusted change events
+    // without any user action. Do not use change alone as interaction proof.
     var initialValues = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
     var boundGroups = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
     var groupRetryState = { pathGroup: '', attempts: 0, timer: null };
@@ -351,6 +365,14 @@
         jsf.events.subscribe('ajaxFilters/start-loading', function (provider, queryId) {
             var key = groupKey(provider, queryId);
             if (!jsf.filterGroups[key]) { return; }
+            // The first direct-link hydration can contain a signed, complete
+            // route but no native updated event. Let the REST response render
+            // once verified; do not leave it buffered indefinitely.
+            if (initialSemanticKeys[key] && !userFilterGesture && !eventSeenKeys[key]) {
+                nativePending[key] = false;
+                schedule(provider, queryId);
+                return;
+            }
             eventSeenKeys[key] = true;
             nativePending[key] = true;
             emitDFSBEvent('dfsb/ajax-presentation-start', { group: key, source: 'native_jsf_loading' });
