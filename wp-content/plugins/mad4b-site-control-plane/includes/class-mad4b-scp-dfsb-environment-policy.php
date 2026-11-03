@@ -55,11 +55,12 @@ final class MAD4B_SCP_DFSB_Environment_Policy {
     }
 
     public static function boot() {
-        add_action( 'admin_menu', array( __CLASS__, 'menu' ) );
+        MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'menu' ) );
         add_action( 'admin_post_mad4b_scp_dfsb_policy_save', array( __CLASS__, 'save' ) );
     }
 
     public static function menu() {
+        MAD4B_SCP_Admin_Route_Registry::register('mad4b-dfsb-environments','manage_options');
         add_submenu_page( 'mad4b-control-plane', 'Dynamic SEO Environments',
             'Dynamic SEO Environments', 'manage_options',
             'mad4b-dfsb-environments', array( __CLASS__, 'render' ) );
