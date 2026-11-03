@@ -41,7 +41,7 @@ def live_sha(container: str, docroot: str, relative: str) -> str | None:
 def bootstrap_dependencies(source: str) -> set[str]:
     import re
     return set(re.findall(
-        r"""require_once\\s+MAD4B_SCP_DIR\\s*\\.\\s*['"]([^'"]+)['"]""",
+        r"""require_once\s+MAD4B_SCP_DIR\s*\.\s*['"]([^'"]+)['"]""",
         source,
     ))
 
@@ -60,6 +60,8 @@ def bootstrap_coverage(repo: pathlib.Path, container: str, docroot: str) -> dict
         raise RuntimeError("live bootstrap could not be read safely")
     wanted = bootstrap_dependencies(candidate.read_text(encoding="utf-8"))
     loaded = bootstrap_dependencies(live.stdout)
+    if len(wanted) < 50 or len(loaded) < 50:
+        raise RuntimeError("bootstrap require parser yielded unexpectedly few modules")
     extra = sorted(loaded - wanted)
     missing = [p for p in extra
                if not (repo / "wp-content/plugins/mad4b-site-control-plane" / p).is_file()]
