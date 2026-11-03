@@ -7,6 +7,8 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-locale-experience-alerts.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-geo-quality.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-completeness.php'
+      - 'tests/readiness-issues-filter-contract.php'
       - 'tests/geo-quality-provider-contract.php'
       - 'tests/readiness-source-parity-contract.py'
       - 'tools/readiness_test_execution.py'
@@ -44,6 +46,9 @@ jobs:
       - run: php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-locale-experience-alerts.php
       - run: php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-geo-quality.php
       - run: php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php
+      - run: php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-completeness.php
+      - name: Source-only Readiness REST and original Completeness security contracts
+        run: php tests/readiness-issues-filter-contract.php
       - run: php tests/locale-experience-provider-contract.php
       - run: php tests/geo-quality-provider-contract.php
       - name: Verify original readiness-provider integration contracts

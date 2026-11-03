@@ -778,6 +778,12 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
             'methods' => 'GET',
             'callback' => array(__CLASS__, 'rest_issues'),
             'permission_callback' => array(__CLASS__, 'rest_permission'),
+            'args'=>array(
+                'source'=>array('type'=>'string','required'=>false),
+                'language'=>array('type'=>'string','required'=>false),
+                'assignment'=>array('type'=>'string','required'=>false,
+                    'enum'=>array('all','linked','unassigned','content_job','board')),
+            ),
         ));
         // Only real, authenticated local-client credentials may write.
         register_rest_route($namespace, '/sync-one', array(
@@ -872,6 +878,18 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         $severity=sanitize_key((string)($request->get_param('severity')??''));
         $type=sanitize_key((string)($request->get_param('post_type')??''));
         $code=sanitize_key((string)($request->get_param('code')??''));
+        $source=sanitize_key((string)($request->get_param('source')??''));
+        $languageRaw=(string)($request->get_param('language')??'');
+        $language=strtolower(trim($languageRaw));
+        // Deny invalid input before sanitization can silently turn a malformed
+        // or injected language into an unfiltered site-wide request.
+        if($language!=='' && !preg_match('/^[a-z]{2}$/D',$language))
+            return new WP_Error('mad4b_readiness_locale_filter_invalid',
+                'Use an exact two-letter language.',array('status'=>400));
+        $assignment=sanitize_key((string)($request->get_param('assignment')??'all'));
+        if(!in_array($assignment,array('all','linked','unassigned','content_job','board'),true))
+            return new WP_Error('mad4b_readiness_assignment_filter_invalid',
+                'Unsupported assignment filter.',array('status'=>400));
         $result=array();
         foreach((array)get_option(self::STORE,array()) as $row) {
             if(!is_array($row))continue;
@@ -880,6 +898,18 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
             if($severity && ($row['severity']??'')!==$severity)continue;
             if($type && ($row['post_type']??'')!==$type)continue;
             if($code && ($row['code']??'')!==$code)continue;
+            $sourceValue=sanitize_key((string)($row['source']??'native'));
+            if($source && $sourceValue!==$source)continue;
+            $issueLanguage=sanitize_key((string)($row['content_job_request']['language']??''));
+            if(!$issueLanguage && preg_match('/_([a-z]{2})$/D',(string)($row['code']??''),$m))
+                $issueLanguage=$m[1];
+            if($language && $issueLanguage!==$language)continue;
+            $hasJob=!empty($row['content_job_id']);
+            $hasBoard=!empty($row['board_task_id']);
+            if(($assignment==='linked' && !$hasJob && !$hasBoard)
+                ||($assignment==='unassigned' && ($hasJob||$hasBoard))
+                ||($assignment==='content_job' && !$hasJob)
+                ||($assignment==='board' && !$hasBoard))continue;
             $e=(array)($row['source_evidence']??array());
             $result[]=array(
                 'issue_id'=>(string)($row['id']??''),
@@ -888,7 +918,9 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                 'code'=>(string)($row['code']??''),
                 'severity'=>(string)($row['severity']??'medium'),
                 'priority'=>max(0,min(100,absint($row['priority']??0))),
-                'source'=>sanitize_key((string)($row['source']??'native')),
+                'source'=>$sourceValue,
+                'language'=>$issueLanguage?:null,
+                'content_job_id'=>$hasJob?sanitize_text_field((string)$row['content_job_id']):null,
                 'locale_evidence'=>($row['source']??'')==='mad4b-locale-experience'
                     ?(array)($row['source_evidence']??array()):null,
                 'content_job_request'=>($row['source']??'')==='mad4b-locale-experience'

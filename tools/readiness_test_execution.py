@@ -29,6 +29,9 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # Reviewed exact stand-alone source-only Geo contract. No WordPress
     # mutation, filesystem network access or arbitrary PHP script admission.
     "tests/geo-quality-provider-contract.php",
+    # Exact scoped REST filter / original source-owned Content Completeness
+    # hermetic regression. No network, database, writes or arbitrary PHP trust.
+    "tests/readiness-issues-filter-contract.php",
     "tests/remote-execution/chatgpt-optional-catalog-smoke.php",
     "tests/remote-execution/developer-preparation-bridge-smoke.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/mcp-catalog-adaptive-budget.php",
@@ -240,6 +243,8 @@ def self_test():
         "php", str((ROOT / "tests/locale-experience-provider-contract.php").resolve())]
     assert command_for("tests/geo-quality-provider-contract.php") == [
         "php", str((ROOT / "tests/geo-quality-provider-contract.php").resolve())]
+    assert command_for("tests/readiness-issues-filter-contract.php") == [
+        "php", str((ROOT / "tests/readiness-issues-filter-contract.php").resolve())]
     assert command_for("tests/production_readiness_registry_contract.py")[0] == sys.executable
     assert command_for("tests/remote-execution/operator-grants-convergence-smoke.php")[0] == "php"
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/generation-snapshot-exception-runtime.php")[0] == "php"
