@@ -119,7 +119,8 @@ add_filter('mad4b/content_readiness/provider_job_intake',static function($curren
             // The verified external scanner cannot provide job IDs or authorizations;
             // reconciler owns this intake contract after source validation.
             if (($row['source']??'')==='mad4b-pricing-workbench'
-                && str_starts_with($code,'pricing_')) {
+                && str_starts_with($code,'pricing_')
+                && apply_filters('mad4b/content_readiness/valid_pricing_alert',false,$row)===true) {
                 $type=(string)($row['post_type']??'');
                 $post_id=absint($row['object_id']??0);
                 $site_uuid=class_exists('MAD4B_SCP_Site_Profile')
