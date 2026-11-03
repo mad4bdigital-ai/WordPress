@@ -16,7 +16,7 @@ final class MAD4B_SCP_Readiness_Scopes {
 
     public static function boot() {
         add_action('rest_api_init',array(__CLASS__,'routes'));
-        add_action('admin_menu',array(__CLASS__,'menu'),35);
+        MAD4B_SCP_Admin_Route_Registry::schedule_submenu(array(__CLASS__,'menu'),35);
     }
     public static function can_manage() {
         return MAD4B_SCP_Readiness_Integrations::can_manage();
@@ -373,6 +373,7 @@ final class MAD4B_SCP_Readiness_Scopes {
             'callback'=>array(__CLASS__,'rest_sync')));
     }
     public static function menu() {
+        MAD4B_SCP_Admin_Route_Registry::register(self::PAGE,MAD4B_SCP_Readiness_Integrations::CAP);
         add_submenu_page('mad4b-company','Content Work Scopes','Content Work Scopes',
             MAD4B_SCP_Readiness_Integrations::CAP,self::PAGE,array(__CLASS__,'screen'));
     }
