@@ -5,7 +5,11 @@ on:
     branches: [master, 'live/dfsb-alpha14-local2-20261102']
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-locale-experience-alerts.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-geo-quality.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php'
+      - 'tests/geo-quality-provider-contract.php'
+      - 'tests/readiness-source-parity-contract.py'
+      - 'tools/readiness_test_execution.py'
       - 'tests/locale-experience-provider-contract.php'
       - 'tools/dfsb-neutral/locale-experience/**'
       - '.github/workflows/mad4b-locale-experience-source-ci.yml'
@@ -38,8 +42,12 @@ jobs:
           extensions: mbstring
           coverage: none
       - run: php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-locale-experience-alerts.php
+      - run: php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-geo-quality.php
       - run: php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php
       - run: php tests/locale-experience-provider-contract.php
+      - run: php tests/geo-quality-provider-contract.php
+      - name: Verify original readiness-provider integration contracts
+        run: python3 tests/readiness-source-parity-contract.py
       - name: Collector source and packaging
         run: |
           set -euo pipefail

@@ -23,3 +23,18 @@ Exact original Staging timer **`mad4b-locale-experience-staging.timer`** on the 
 
 ## Regression and CI
 `.github/workflows/mad4b-locale-experience-source-ci.yml` performs PHP lint, the hermetic provider contract, Python collector compilation, shell syntax and source linkage assertions. Source CI cannot prove a browser's current visual state, native ContentJob completion or business publication approval. The Staging WP-CLI evidence is separately checked with `tools/dfsb-neutral/locale-experience/staging-readback-acceptance.php`.
+
+
+## Live-to-source reconciliation: 2026-11-03, PR #749
+
+The Staging Readiness source contains additional originally executed features absent from the earlier GitHub source: configurable Geo Quality; station/tour/cruise/transport-rate research and nonblocking price opportunities; source-bounded variable hotel pickup; Pricing Workbench source admission and non-authorizing ContentJob requests; source-revision change detection; original board linking to native job IDs; and source-impact sorting within an unchanged severity tier. The canonical original source now incorporates all corresponding live behavior, not a replacement that strips either Geo/Pricing or the locale provider.
+
+The original GitHub origin research previously generalized its fields across post types; the Staging runtime contained an older hardcoded `tours-and-activities` intake. The reconciled source retains the **original generic configurable field/taxonomy source**, with a narrow conditional snapshot-compatibility path only if the original Tour-specific configured source matches the existing native owner schema; this does not restrict other post types, companies or environments.
+
+New canonical source: `wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-geo-quality.php` (actual Staging implementation), enabled per site by `geo_quality_enabled`, never globally. Geo can produce 9 specific research-only codes and never fills coordinates, assumes a cruise berth, changes taxonomy, publishes content, or invents supplier pricing. Native Write/ContentJob admission remain separately authorized.
+
+**Live read-only parity proof:** Both the unchanged running Staging and the reconciled candidate source returned complete source discovery with **1,096/1,096 identical issue IDs and SHA-256 payloads**, identical original rules, zero extra/missing/different issues. The old Ledger remained unchanged. This was a direct WordPress WP-CLI read of the actual Staging data in an isolated PHP process, not a simulated HTML scrape. The original Staging source remains in place; the candidate was run read-only.
+
+Hermetic negative and positive coverage includes `tests/geo-quality-provider-contract.php` (**17/17**), `tests/readiness-source-parity-contract.py` (**26/26**, including fail-closed source mutations), and the previously existing locale provider (**23/23**) and original Staging acceptance (**17/17**). These protect the next deployment from dropping production features, but they do not authorize site writes or Production release.
+
+Deployment caution: this parity certifies **the Readiness module's current discovery output** and scoped dependencies, not every unrelated plugin/MU file or every future runtime version. Reconfirm the Staging source SHA and re-run the checks whenever the live site changes; do not overwrite newer site code with a stale review tree.
