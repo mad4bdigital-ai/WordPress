@@ -1,0 +1,19 @@
+[Unit]
+Description=MAD4B Original Core read-only Full Host Scope snapshot refresh (no grants)
+After=docker.service
+Requires=docker.service
+ConditionPathExists=/opt/mad4b-company-provisioning/source-candidates/issue724-remote-orchestrator/refresh_scope_snapshot.py
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+WorkingDirectory=/opt/mad4b-company-provisioning/source-candidates/issue724-remote-orchestrator
+ExecStart=/usr/bin/python3 /opt/mad4b-company-provisioning/source-candidates/issue724-remote-orchestrator/refresh_scope_snapshot.py
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+RestrictSUIDSGID=true
+TimeoutStartSec=220s

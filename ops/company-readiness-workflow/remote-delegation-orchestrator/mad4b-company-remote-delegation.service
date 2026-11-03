@@ -1,0 +1,28 @@
+[Unit]
+Description=MAD4B Root-only Remote Staging Delegation Orchestrator (original owner REST -> signed 305)
+After=docker.service
+Requires=docker.service
+ConditionPathExists=/opt/mad4b-company-provisioning/source-candidates/issue724-remote-orchestrator/remote_service.py
+
+[Service]
+Type=simple
+User=root
+Group=root
+UMask=0077
+RuntimeDirectory=mad4b-company-remote-delegation
+RuntimeDirectoryMode=0700
+WorkingDirectory=/opt/mad4b-company-provisioning/source-candidates/issue724-remote-orchestrator
+ExecStart=/usr/bin/python3 /opt/mad4b-company-provisioning/source-candidates/issue724-remote-orchestrator/remote_service.py
+Restart=on-failure
+RestartSec=4
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+RestrictSUIDSGID=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target

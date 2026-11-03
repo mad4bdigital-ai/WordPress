@@ -1,0 +1,16 @@
+{
+    "result": "PASS",
+    "checks": {
+        "services_200": true,
+        "services_paginated": true,
+        "service_rows_no_financial_fields": true,
+        "rates_200": true,
+        "rates_only_source_type": true,
+        "unregistered_type_denied": true,
+        "arbitrary_domain_denied": true,
+        "oversized_page_denied": true,
+        "company_source_definition_bound": true,
+        "no_administrative_write_authority": true,
+        "guest_denied": true
+    }
+}

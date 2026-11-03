@@ -1482,6 +1482,11 @@ final class MAD4B_SCP_Staging_Write_Authority {
 	public static function reconciliation_plan() {
 		$status = self::base_status();
 		$tools = self::write_tools();
+		// One live provider snapshot rather than rebuilding the full dynamic
+		// adapter certification catalog for every candidate in $tools.
+		$providers = class_exists( 'MAD4B_SCP_Servers' )
+			&& method_exists( 'MAD4B_SCP_Servers', 'live_write_provider_snapshot' )
+			? MAD4B_SCP_Servers::live_write_provider_snapshot() : array();
 		$rows = array();
 		$missing = array();
 		$stale = array();
@@ -1563,7 +1568,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 
 		$desired = array();
 		foreach ( $tools as $ability ) {
-			$provider = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::provider_for_ability( 'mad4b-write', $ability ) : null;
+			$provider = isset( $providers[ $ability ] ) ? $providers[ $ability ] : null;
 			$row = array(
 				'ability' => (string) $ability,
 				'provider' => null === $provider ? '' : (string) $provider,

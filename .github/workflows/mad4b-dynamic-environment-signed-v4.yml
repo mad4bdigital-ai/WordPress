@@ -1,0 +1,49 @@
+name: MAD4B Dynamic Environment Signed Identity V4
+
+on:
+  pull_request:
+    paths:
+      - "ops/mad4b-dynamic-environment-identity-v1/**"
+      - ".github/workflows/mad4b-dynamic-environment-signed-v4.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-dynamic-env-identity-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  verified-staging-identity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Lint exactly reviewed PHP source
+        run: |
+          set -euo pipefail
+          d=ops/mad4b-dynamic-environment-identity-v1
+          php -l "$d/291-mad4b-central-signed-site-profile-v4.php"
+          php -l "$d/299-mad4b-environment-signed-identity-v4.php"
+          php -l "$d/tests/dynamic_env_signed_v4.php"
+      - name: Verify environment-scoped signed challenge and fail-closed policy
+        run: |
+          php ops/mad4b-dynamic-environment-identity-v1/tests/dynamic_env_signed_v4.php
+      - name: Check no hardcoded company-specific fallback or remote write
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          root=Path("ops/mad4b-dynamic-environment-identity-v1")
+          a=(root/"291-mad4b-central-signed-site-profile-v4.php").read_text()
+          b=(root/"299-mad4b-environment-signed-identity-v4.php").read_text()
+          assert "MAD4B_Environment_Signed_Identity_V4::verify($id,'staging')" in a
+          assert "update_option(self::OPT,$registry" not in a
+          assert "($target['environment']??'')!=='staging'" in a
+          assert "strcasecmp($host,$production)===0" in b
+          assert "remote_write_authorized'=>false" in b
+          print("DYNAMIC_SIGNED_IDENTITY_SCOPE_PASS")
+          PY

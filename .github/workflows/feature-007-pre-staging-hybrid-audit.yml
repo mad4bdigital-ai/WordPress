@@ -76,6 +76,7 @@ jobs:
               --full-scan --head "$head" --execute --enforce \
               --output dist/mad4b-predictive-dependency-gate.json
           fi
+          python3 tools/mad4b_predictive_dependency_gate.py --verify-report "dist/mad4b-predictive-dependency-gate.json"
 
       # Replay fault combinations sourced from sanitized ETG/ARE live
       # observations. Execute genuine hermetic PHP failure-injection fixtures.

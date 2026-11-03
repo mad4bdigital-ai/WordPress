@@ -359,6 +359,39 @@ final class MAD4B_SCP_Staging_Write_Planning_Guard {
 			$expected_provider = MAD4B_SCP_Servers::provider_for_ability( 'mad4b-write', $target_ability );
 			if ( null === $expected_provider ) return new WP_Error( 'mad4b_remote_plan_target_unmounted', 'Remote approval target is not mounted on mad4b-write.' );
 			if ( isset( $input['provider'] ) && '' !== trim( (string) $input['provider'] ) && sanitize_key( (string) $input['provider'] ) !== $expected_provider ) return new WP_Error( 'mad4b_remote_plan_provider_mismatch', 'Remote approval target provider does not match the certified mad4b-write mount.' );
+			// Planning and dispatch must share the same exact, current provider
+			// certification gate. A mounted write tool is NOT proof that its
+			// provider capability is certified for transport. Do not mint an
+			// unexecutable approval ticket, which would expire while the provider
+			// still remains at DISCOVERED / R0_DISPOSABLE.
+			if ( 'core' !== $expected_provider ) {
+				if ( ! class_exists( 'MAD4B_SCP_Provider_Transport_Eligibility' ) ) {
+					return new WP_Error( 'mad4b_remote_plan_provider_inspection_unavailable', 'Provider certification inspection is required before issuing an approval ticket.' );
+				}
+				$inspection = MAD4B_SCP_Provider_Transport_Eligibility::inspect_target_certification( 'write', $target_ability );
+				if ( ! is_array( $inspection ) || empty( $inspection['applicable'] )
+					|| ! isset( $inspection['provider_id'] )
+					|| ! hash_equals( (string) $expected_provider, (string) $inspection['provider_id'] )
+					|| empty( $inspection['static_certification_ready'] )
+					|| empty( $inspection['release_ring_eligible'] ) ) {
+					$reason = is_array( $inspection ) && ! empty( $inspection['reason_code'] )
+						? sanitize_key( (string) $inspection['reason_code'] ) : 'provider_static_certification_unverified';
+					return new WP_Error(
+						'mad4b_remote_plan_provider_not_write_certified',
+						'No approval ticket was created: the exact provider capability is not certified for normal write transport.',
+						array(
+							'provider_id' => $expected_provider, 'target_ability' => $target_ability,
+							'reason_code' => $reason,
+							'certification_level' => is_array( $inspection ) ? (string) ( $inspection['certification_level'] ?? '' ) : '',
+							'release_ring' => is_array( $inspection ) ? (string) ( $inspection['release_ring'] ?? '' ) : '',
+							'next_action' => is_array( $inspection ) && ! empty( $inspection['next_action'] )
+								? sanitize_key( (string) $inspection['next_action'] ) : 'inspect_exact_provider_capability_evidence',
+							'ticket_created' => false, 'mutation_performed' => false,
+							'blind_retry_allowed' => false,
+						)
+					);
+				}
+			}
 		}
 
 		if ( ! class_exists( 'MAD4B_SCP_Resource_Constraint_Set' ) ) return new WP_Error( 'mad4b_resource_constraint_compiler_unavailable', 'Resource constraint compiler is unavailable for approval planning.' );

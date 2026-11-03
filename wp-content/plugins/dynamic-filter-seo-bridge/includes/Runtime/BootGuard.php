@@ -26,6 +26,12 @@ final class BootGuard {
     }
 
     public static function shouldHold(): bool {
+        // Persistent hold=false is NOT release authority. Recheck the source,
+        // detached receipt and independent provider certificate every request,
+        // including when a previously trusted certificate has been revoked.
+        if ( empty( self::releaseReadiness()['ready'] ) ) { return true; }
+        // Development overrides can only bypass the manual hold after an
+        // independently certified exact package has passed the authority gate.
         if (defined('DFSB_FORCE_FULL_BOOT') && DFSB_FORCE_FULL_BOOT) { return false; }
         $state = self::state();
         if (self::$build === '' || (string)($state['build'] ?? '') !== self::$build) { return true; }
@@ -33,6 +39,7 @@ final class BootGuard {
     }
 
     public static function run(callable $boot): bool {
+        if ( empty( self::releaseReadiness()['ready'] ) ) { return false; }
         self::$monitoring = true;
         try {
             $boot();
@@ -114,7 +121,7 @@ final class BootGuard {
         if (!current_user_can('manage_options') || !self::shouldHold()) { return; }
         $state = self::state();
         $url = wp_nonce_url(admin_url('admin-post.php?action=' . self::RETRY_ACTION), self::RETRY_ACTION);
-        echo '<div class="notice notice-warning"><p><strong>Dynamic Filter SEO Bridge is in Safe Boot mode.</strong> Full Elementor/JetEngine integration is not loaded, so this request cannot white-screen wp-admin.</p>';
+        echo '<div class="notice notice-warning"><p><strong>Dynamic Filter SEO Bridge is in Safe Boot mode.</strong> SEO Full Boot and advanced integrations remain held. Independently source-verified, read-only Elementor context and native filter context can still operate; public SEO publication is disabled.</p>';
         if (!empty($state['faulted'])) {
             echo '<p>Last guarded failure: <code>' . esc_html((string)($state['surface'] ?? 'boot')) . '</code> — ' . esc_html((string)($state['message'] ?? 'unknown error'));
             if (!empty($state['file'])) { echo ' <code>' . esc_html((string)$state['file']) . ':' . esc_html((string)($state['line'] ?? 0)) . '</code>'; }
@@ -134,33 +141,73 @@ final class BootGuard {
         return is_array($state) ? $state : array();
     }
 
-    /** Non-authorizing check; the existing release build is not changed here. */
+    /**
+     * Read-only release authority. Neither an embedded identity, a locally
+     * written receipt nor a signed source build independently authorizes boot.
+     * All three must be bound to the exact approved provider/package row.
+     */
     public static function releaseReadiness(): array {
         $identity = \DynamicFilterSEOBridge\Diagnostics\BuildIdentity::collect();
-        $ready = !empty($identity['provenance_complete'])
-            && !empty($identity['installed_content_valid'])
-            && 'ok' === (string) ($identity['exact_build_reason'] ?? '');
-        // Host-managed local builds are NOT certified releases. Full Boot can
-        // run only when the Control Plane has explicitly approved THIS exact
-        // source commit for its effective environment and the embedded
-        // manifest verifies every installed source file. No production/staging
-        // identity, certificate or package checksum is fabricated.
-        $localCandidate = false !== strpos((string) ($identity['plugin_version'] ?? ''), '-local.');
-        $localApproved = $localCandidate
-            && class_exists('MAD4B_SCP_DFSB_Environment_Policy')
-            && method_exists('MAD4B_SCP_DFSB_Environment_Policy', 'localPackageApproved')
-            && \MAD4B_SCP_DFSB_Environment_Policy::localPackageApproved((string) ($identity['git_sha'] ?? ''));
-        $governanceBlocked = $localCandidate && empty($identity['package_provenance_valid']) && !$localApproved;
-        if ($governanceBlocked) { $ready = false; }
+        $version = (string) ( $identity['plugin_version'] ?? '' );
+        $sourceSha = strtolower( (string) ( $identity['git_sha'] ?? '' ) );
+        $packageSha = strtolower( (string) ( $identity['package_sha256'] ?? '' ) );
+
+        $integrity = ! empty( $identity['valid'] )
+            && ! empty( $identity['installed_content_valid'] )
+            && ! empty( $identity['provenance_complete'] )
+            && ! empty( $identity['package_provenance_valid'] )
+            && 'ok' === (string) ( $identity['exact_build_reason'] ?? '' )
+            && 1 === preg_match( '/^[a-f0-9]{64}$/D', $packageSha );
+
+        $provider = array();
+        $source = array();
+        $authorityAvailable = class_exists( 'MAD4B_SCP_Provider_Contracts' )
+            && method_exists( 'MAD4B_SCP_Provider_Contracts', 'get_for_version' )
+            && class_exists( 'MAD4B_SCP_Cross_Plugin_Deployment' )
+            && method_exists( 'MAD4B_SCP_Cross_Plugin_Deployment', 'sources' );
+        if ( $authorityAvailable && $integrity ) {
+            $provider = \MAD4B_SCP_Provider_Contracts::get_for_version( 'dynamic-filter-seo-bridge', $version );
+            $sources = \MAD4B_SCP_Cross_Plugin_Deployment::sources();
+            $source = isset( $sources['dynamic-filter-seo-bridge'] )
+                && is_array( $sources['dynamic-filter-seo-bridge'] )
+                ? $sources['dynamic-filter-seo-bridge'] : array();
+        }
+
+        $plugin = 'dynamic-filter-seo-bridge/dynamic-filter-seo-bridge.php';
+        $certified = $integrity
+            && $authorityAvailable
+            && is_array( $provider ) && ! empty( $provider )
+            && is_array( $source ) && ! empty( $source )
+            && (string) ( $provider['plugin_file'] ?? '' ) === $plugin
+            && (string) ( $source['plugin_file'] ?? '' ) === $plugin
+            && (string) ( $source['provider_id'] ?? '' ) === 'dynamic-filter-seo-bridge'
+            && (string) ( $provider['version'] ?? '' ) === $version
+            && (string) ( $source['artifact_version'] ?? '' ) === $version
+            && (string) ( $source['candidate_artifact_version'] ?? '' ) === $version
+            && (string) ( $source['package_certification'] ?? '' ) === 'certified'
+            && (string) ( $source['review_state'] ?? '' ) === 'source_reviewed_artifact_certified'
+            && (string) ( $source['source_commit_sha'] ?? '' ) === $sourceSha
+            && (string) ( $source['candidate_source_commit_sha'] ?? '' ) === $sourceSha
+            && hash_equals( $packageSha, strtolower( (string) ( $provider['archive_sha256'] ?? '' ) ) )
+            && hash_equals( $packageSha, strtolower( (string) ( $source['artifact_sha256'] ?? '' ) ) )
+            && ! empty( $provider['require_runtime_integrity'] );
+
+        $reason = (string) ( $identity['exact_build_reason'] ?? 'unverified' );
+        if ( 'ok' === $reason ) {
+            if ( ! $integrity ) {
+                $reason = 'certified_release_receipt_required';
+            } elseif ( ! $certified ) {
+                $reason = 'independent_provider_certificate_required';
+            }
+        }
         return array(
-            'ready' => $ready,
-            'reason' => $governanceBlocked && 'ok' === (string) ($identity['exact_build_reason'] ?? '')
-                ? 'local_source_candidate_not_certified'
-                : (string) ($identity['exact_build_reason'] ?? 'unverified'),
-            'installed_content_valid' => !empty($identity['installed_content_valid']),
-            'provenance_complete' => !empty($identity['provenance_complete']),
+            'ready' => (bool) $certified,
+            'reason' => $certified ? 'ok' : $reason,
+            'installed_content_valid' => ! empty( $identity['installed_content_valid'] ),
+            'provenance_complete' => ! empty( $identity['provenance_complete'] ),
+            'package_provenance_valid' => ! empty( $identity['package_provenance_valid'] ),
+            'provider_certificate_valid' => (bool) $certified,
             'authorizing' => false,
-            'local_package_approved_by_control_plane' => $localApproved,
         );
     }
 

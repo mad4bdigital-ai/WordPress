@@ -1,0 +1,18 @@
+{
+  "contract": "mad4b.single-owner-authority-qa-evidence.v1",
+  "captured_at_utc": "2026-10-29T17:55:11.687555+00:00",
+  "environment": "isolated_qa_on_staging_vps",
+  "policy_php_checks_passed": 25,
+  "ledger_mariadb_checks_passed": 9,
+  "operational_permits_after": 0,
+  "operational_events_after": 0,
+  "operational_issuance_enabled": false,
+  "temporary_qa_databases_remaining": 0,
+  "real_owner_identity_enrolled": false,
+  "operational_ca_enrolled": false,
+  "live_single_owner_mode_enabled": false,
+  "production_mutation": false,
+  "staging_authority_database_mutation": false,
+  "source_policy_sha256": "fda2709d9f4bce34b245c21ddbed0a7aa350409881a0187641856b2360d3c02e",
+  "ledger_source_sha256": "6932aaebd5d5da9e78210967a809d9811f03fec0ed1e955de7a4b8ef5da4264c"
+}

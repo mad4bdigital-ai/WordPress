@@ -60,6 +60,20 @@ $branch['reference'] = 'feature/next-candidate';
 $GLOBALS['http_body'] = array( 'sha' => $sha1 );
 $commit = array( 'repository' => $repo, 'type' => 'commit', 'reference' => $sha1 );
 expect( $cls::resolve( $commit )['resolved_sha'] === $sha1, 'exact commit supported' );
+expect( end( $GLOBALS['requests'] )['url'] ===
+    'https://api.github.com/repos/mad4bdigital-ai/WordPress/git/commits/' . $sha1,
+    'exact commit uses compact Git Data endpoint rather than unbounded changed-file REST payload' );
+expect( end( $GLOBALS['requests'] )['options']['limit_response_size'] === 262144,
+    'compact commit verification preserves exact 256-KiB response ceiling' );
+$GLOBALS['http_body'] = array( 'sha' => $sha1, 'parents' => array( array( 'sha' => $sha2 ) ),
+    'tree' => array( 'sha' => str_repeat( 'c', 40 ) ) );
+expect( $cls::resolve( $commit )['resolved_sha'] === $sha1,
+    'compact Git Data shape verifies exact SHA even with parents and tree' );
+$GLOBALS['http_body'] = array( 'sha' => $sha1, 'oversized' => str_repeat( 'x', 262145 ) );
+expect( is_wp_error( $cls::resolve( $commit ) ),
+    'oversized fake Git Data response remains denied, no budget increase' );
+$GLOBALS['http_body'] = array( 'sha' => $sha1 );
+
 $GLOBALS['http_body']['sha'] = $sha2;
 expect( is_wp_error( $cls::resolve( $commit ) ), 'commit mismatch refused' );
 $GLOBALS['http_fail'] = true;

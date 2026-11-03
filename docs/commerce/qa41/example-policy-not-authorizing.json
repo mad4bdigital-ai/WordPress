@@ -1,0 +1,40 @@
+{
+  "contract": "commerce.company-policy.v1",
+  "site_uuid": "REPLACE_WITH_ENROLLED_SITE_UUID",
+  "profile_digest": "REPLACE_WITH_EXACT_SITE_PROFILE_DIGEST",
+  "profile_revision": 1,
+  "environment": "local",
+  "revision": 1,
+  "status": "draft",
+  "rules": [
+    {
+      "id": "company_defaults",
+      "scope": "company",
+      "selectors": {},
+      "settings": {
+        "pricing_source": "rate_engine",
+        "supplier_cost_source": "manual_review",
+        "margin_mode": "manual_review",
+        "tax_mode": "manual_review",
+        "availability_mode": "live_provider",
+        "manager_approval": "required",
+        "traveler_acceptance": "required",
+        "order_timing": "after_acceptance",
+        "supplier_booking_timing": "after_order",
+        "deposit_mode": "manual_review",
+        "currency_source": "manual_review",
+        "rate_sale_mode": "both"
+      }
+    },
+    {
+      "id": "rate_specific_sale_mode",
+      "scope": "rate",
+      "selectors": {
+        "rate_id": 123
+      },
+      "settings": {
+        "rate_sale_mode": "independent_rate"
+      }
+    }
+  ]
+}

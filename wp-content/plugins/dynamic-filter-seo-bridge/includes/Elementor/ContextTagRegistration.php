@@ -3,7 +3,7 @@ namespace DynamicFilterSEOBridge\Elementor;
 
 use DynamicFilterSEOBridge\Elementor\DynamicTags\ContextValueTag;
 use DynamicFilterSEOBridge\Elementor\DynamicTags\ContextImageTag;
-use DynamicFilterSEOBridge\Runtime\BootGuard;
+use DynamicFilterSEOBridge\Runtime\RuntimeLayers;
 
 /** Safe opt-in tag; no public source output until full boot certification. */
 final class ContextTagRegistration {
@@ -15,7 +15,7 @@ final class ContextTagRegistration {
         }
     }
     public function register($manager): void {
-        if(BootGuard::shouldHold() && !is_admin() && !current_user_can('manage_options'))return;
+        if(!RuntimeLayers::canPresent())return;
         if(!class_exists('Elementor\Core\DynamicTags\Tag'))return;
         if(method_exists($manager,'register_group')){
             $manager->register_group('dfsb-context',array('title'=>'Context Sources'));

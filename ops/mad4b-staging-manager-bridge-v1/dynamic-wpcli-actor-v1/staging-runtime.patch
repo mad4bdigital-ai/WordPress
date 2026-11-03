@@ -1,0 +1,303 @@
+--- a/broker-v1/remote-exact-canary.py
++++ b/broker-v1/remote-exact-canary.py
+@@ -2,6 +2,11 @@
+ """MAD4B fixed remote diagnostic lane: exact 312 grant -> two pinned SSH probes -> signed 313.
+ No arbitrary command, no grant issuance, no host enrollment, no retry of uncertain executions.
+ """
++import sys
++from pathlib import Path as _Mad4bPath
++sys.path.insert(0, str(_Mad4bPath(__file__).resolve().parents[1]))
++from wpcli_dynamic_actor import with_actor
++
+ import base64, datetime, fcntl, hashlib, json, os, re, secrets, subprocess, sys, time
+ from pathlib import Path
+ from cryptography.hazmat.primitives import serialization
+@@ -19,12 +24,12 @@
+ DIGEST=hashlib.sha256(COMMAND.encode()).hexdigest()
+ OUTPUT_SHA=hashlib.sha256(MARKER.encode()).hexdigest()
+ WP=['/usr/bin/docker','exec','-u','www-data','etg-commerce-staging-php',
+-    '/usr/local/bin/wp','--path=/var/www/html','--skip-themes','--user=1',
++    '/usr/local/bin/wp','--path=/var/www/html','--skip-themes','__MAD4B_DYNAMIC_WORDPRESS_ACTOR__',
+     'mad4b']
+ HEX32=re.compile(r'^[0-9a-f]{32}$')
+ 
+ def call(cmd,seconds=40):
+-    p=subprocess.run(cmd,capture_output=True,text=True,check=False,timeout=seconds)
++    p=subprocess.run(with_actor(cmd),capture_output=True,text=True,check=False,timeout=seconds)
+     if p.returncode:
+         raise RuntimeError('TRUSTED_LOCAL_COMMAND_NOT_SUCCESSFUL')
+     rows=[x for x in p.stdout.splitlines() if x.startswith('{')]
+--- a/broker-v1/vps-broker-poller.py
++++ b/broker-v1/vps-broker-poller.py
+@@ -3,6 +3,11 @@
+ Dispatch/Claim using a host-owned signing key. Never executes queued shell commands.
+ The host-only execution stage requires independent SSH authority and exact bytes.
+ """
++import sys
++from pathlib import Path as _Mad4bPath
++sys.path.insert(0, str(_Mad4bPath(__file__).resolve().parents[1]))
++from wpcli_dynamic_actor import with_actor
++
+ import argparse
+ import base64
+ import datetime
+@@ -31,7 +36,7 @@
+ HOST = "srv2030908"
+ WP = "/usr/local/bin/wp"
+ WP_BASE = [DOCKER, "exec", "-u", "www-data", CONTAINER, WP,
+-           "--path=/var/www/html", "--skip-themes", "--user=1", "mad4b", "broker"]
++           "--path=/var/www/html", "--skip-themes", "__MAD4B_DYNAMIC_WORDPRESS_ACTOR__", "mad4b", "broker"]
+ 
+ def assert_root():
+     if os.geteuid() != 0:
+@@ -64,7 +69,7 @@
+     return base64.b64encode(secret.sign(msg)).decode("ascii")
+ 
+ def wp_call(args, timeout=35):
+-    cmd = WP_BASE + args
++    cmd = with_actor(WP_BASE + args)
+     out = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout,
+                          env={**os.environ, "LC_ALL":"C"}, check=False)
+     if out.returncode != 0:
+--- a/broker-v1/vps-broker-registry-ssh-status-sync.py
++++ b/broker-v1/vps-broker-registry-ssh-status-sync.py
+@@ -2,6 +2,11 @@
+ """Synchronize sanitized Registry SSH transport status to central WordPress.
+ Uses the existing Broker signer, not any SSH secret or central grant issuance.
+ """
++import sys
++from pathlib import Path as _Mad4bPath
++sys.path.insert(0, str(_Mad4bPath(__file__).resolve().parents[1]))
++from wpcli_dynamic_actor import with_actor
++
+ import base64
+ import hashlib
+ import json
+@@ -20,7 +25,7 @@
+ CONTRACT='mad4b.broker-registry-ssh-status.v1'
+ HOST='srv2030908'
+ WP=['/usr/bin/docker','exec','-u','www-data','etg-commerce-staging-php',
+-'/usr/local/bin/wp','--path=/var/www/html','--skip-themes','--user=1',
++'/usr/local/bin/wp','--path=/var/www/html','--skip-themes','__MAD4B_DYNAMIC_WORDPRESS_ACTOR__',
+ 'mad4b','broker-registry-ssh','sync']
+ def make():
+     report=json.loads(SOURCE.read_text())
+@@ -57,7 +62,7 @@
+         print(json.dumps({'state':'PREVIEW','targets':payload['targets'],
+                           'central_authority':False,'production_mutation':False}))
+         return
+-    p=subprocess.run(WP+args,capture_output=True,text=True,check=False,timeout=40)
++    p=subprocess.run(with_actor(WP+args),capture_output=True,text=True,check=False,timeout=40)
+     if p.returncode: raise RuntimeError('CENTRAL_STATUS_SYNC_DENIED')
+     receipt=json.loads(p.stdout.splitlines()[-1])
+     if not(receipt.get('signature_verified') is True
+--- a/broker-v1/vps-broker-journal-sync.py
++++ b/broker-v1/vps-broker-journal-sync.py
+@@ -2,6 +2,11 @@
+ """MAD4B signed, sanitized VPS Broker journal reconciliation to Central WordPress.
+ No shell execution, no credentials included, no mutation to company sites.
+ """
++import sys
++from pathlib import Path as _Mad4bPath
++sys.path.insert(0, str(_Mad4bPath(__file__).resolve().parents[1]))
++from wpcli_dynamic_actor import with_actor
++
+ import argparse, base64, datetime, hashlib, json, os, pathlib, secrets, subprocess, time
+ from cryptography.hazmat.primitives import serialization
+ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+@@ -15,7 +20,7 @@
+          'CLAIM_RESULT_UNCERTAIN','PENDING_NOT_ELIGIBLE',
+          'NATIVE_SSH_AUTHORITY_PENDING','NATIVE_SSH_AUTHORITY_READY'}
+ WP=['/usr/bin/docker','exec','-u','www-data','etg-commerce-staging-php',
+-    '/usr/local/bin/wp','--path=/var/www/html','--skip-themes','--user=1',
++    '/usr/local/bin/wp','--path=/var/www/html','--skip-themes','__MAD4B_DYNAMIC_WORDPRESS_ACTOR__',
+     'mad4b','broker-journal','sync']
+ 
+ def prepare():
+@@ -51,7 +56,7 @@
+     if a.action=='preview':
+         print(json.dumps({'contract':CONTRACT,'events':len(events),'execution_performed':False}))
+         return
+-    proc=subprocess.run(WP+args,capture_output=True,text=True,timeout=50,check=False)
++    proc=subprocess.run(with_actor(WP+args),capture_output=True,text=True,timeout=50,check=False)
+     if proc.returncode!=0:
+         print(json.dumps({'contract':CONTRACT,'state':'SYNC_FAILED',
+                           'wp_cli_exit':proc.returncode,'execution_performed':False}))
+--- a/broker-v1/native-executor-enrollment-preflight.py
++++ b/broker-v1/native-executor-enrollment-preflight.py
+@@ -2,10 +2,15 @@
+ """Non-authorizing Native Executor inventory + signed WordPress Broker preflight.
+ Read-only, fixed WP-CLI calls, no grant issuance, registration mutation or dispatch.
+ """
++import sys
++from pathlib import Path as _Mad4bPath
++sys.path.insert(0, str(_Mad4bPath(__file__).resolve().parents[1]))
++from wpcli_dynamic_actor import with_actor
++
+ import hashlib,json,os,pathlib,subprocess,sys,time
+ BASE=pathlib.Path('/opt/mad4b-company-provisioning/governed-execution/native-ssh-v1')
+ SITE='https://tours.dev.mad4b.com'
+-WP=['/usr/bin/docker','exec','-u','www-data','-w','/var/www/html','etg-commerce-staging-php','/usr/local/bin/wp','--user=1']
++WP=['/usr/bin/docker','exec','-u','www-data','-w','/var/www/html','etg-commerce-staging-php','/usr/local/bin/wp','__MAD4B_DYNAMIC_WORDPRESS_ACTOR__']
+ 
+ # Fixed, bounded WP-CLI inventory projection. No secrets, payloads, IDs, or writes.
+ GRANT_PROJECTION = r"""
+@@ -23,7 +28,7 @@
+ """
+ 
+ def cli(args):
+-    proc=subprocess.run(WP+args+['--skip-themes'],text=True,capture_output=True,timeout=35,check=False)
++    proc=subprocess.run(with_actor(WP+args+['--skip-themes']),text=True,capture_output=True,timeout=35,check=False)
+     if proc.returncode or proc.stderr.strip():raise RuntimeError('WP_CLI_READ_DENIED')
+     return proc.stdout.strip()
+ 
+--- a/broker-v1/broker-native-ssh-reconcile.py
++++ b/broker-v1/broker-native-ssh-reconcile.py
+@@ -2,6 +2,11 @@
+ """Read-only broker -> Managed SSH readiness reconciliation.
+ No SSH, no grant issuance, no commands from queued jobs.
+ """
++import sys
++from pathlib import Path as _Mad4bPath
++sys.path.insert(0, str(_Mad4bPath(__file__).resolve().parents[1]))
++from wpcli_dynamic_actor import with_actor
++
+ import datetime as dt
+ import hashlib
+ import json
+@@ -67,10 +72,10 @@
+         return [], None
+     command = ['/usr/bin/docker', 'exec', '-u', 'www-data',
+                'etg-commerce-staging-php', '/usr/local/bin/wp',
+-               '--path=/var/www/html', '--skip-themes', '--user=1',
++               '--path=/var/www/html', '--skip-themes', '__MAD4B_DYNAMIC_WORDPRESS_ACTOR__',
+                'mad4b', 'broker-authority', 'claimed', '--limit=10']
+     try:
+-        response = subprocess.run(command, capture_output=True, text=True,
++        response = subprocess.run(with_actor(command), capture_output=True, text=True,
+                                   check=False, timeout=40)
+         if response.returncode or response.stderr.strip():
+             return [], None
+--- a/broker-v1/vps-broker-remote-ssh-canary.py
++++ b/broker-v1/vps-broker-remote-ssh-canary.py
+@@ -3,6 +3,11 @@
+ Only fixed nonmutating printf; never executes source-job command text.
+ Requires independently verified signed central scope and fresh, single-use local claim.
+ """
++import sys
++from pathlib import Path as _Mad4bPath
++sys.path.insert(0, str(_Mad4bPath(__file__).resolve().parents[1]))
++from wpcli_dynamic_actor import with_actor
++
+ import base64
+ import datetime as dt
+ import fcntl
+@@ -30,11 +35,11 @@
+ COMMAND_SHA=hashlib.sha256(COMMAND.encode()).hexdigest()
+ OUTPUT_SHA=hashlib.sha256(OUTPUT).hexdigest()
+ WP=['/usr/bin/docker','exec','-u','www-data','etg-commerce-staging-php','/usr/local/bin/wp',
+-    '--path=/var/www/html','--skip-themes','--user=1']
++    '--path=/var/www/html','--skip-themes','__MAD4B_DYNAMIC_WORDPRESS_ACTOR__']
+ HEX32=re.compile(r'^[a-f0-9]{32}$')
+ 
+ def wp(command):
+-    p=subprocess.run(WP+command,capture_output=True,text=True,timeout=42,check=False)
++    p=subprocess.run(with_actor(WP+command),capture_output=True,text=True,timeout=42,check=False)
+     if p.returncode or p.stderr.strip():raise RuntimeError('CENTRAL_WPCLI_DENIED_OR_UNAVAILABLE')
+     try:return json.loads(p.stdout.strip().splitlines()[-1])
+     except (ValueError,IndexError) as exc:raise RuntimeError('CENTRAL_READBACK_INVALID') from exc
+--- a/broker-v1/vps-broker-fixed-diagnostic.py
++++ b/broker-v1/vps-broker-fixed-diagnostic.py
+@@ -5,6 +5,11 @@
+ digest, separate host-side execution and readback. Never runs queued shell text.
+ Never retries a claimed operation after an uncertain execution.
+ """
++import sys
++from pathlib import Path as _Mad4bPath
++sys.path.insert(0, str(_Mad4bPath(__file__).resolve().parents[1]))
++from wpcli_dynamic_actor import with_actor
++
+ import base64
+ import datetime
+ import hashlib
+@@ -30,11 +35,11 @@
+ COMMAND_SHA = hashlib.sha256(COMMAND.encode()).hexdigest()
+ OUTPUT_SHA = hashlib.sha256(OUTPUT).hexdigest()
+ WP = ['/usr/bin/docker','exec','-u','www-data','etg-commerce-staging-php',
+-      '/usr/local/bin/wp','--path=/var/www/html','--skip-themes','--user=1',
++      '/usr/local/bin/wp','--path=/var/www/html','--skip-themes','__MAD4B_DYNAMIC_WORDPRESS_ACTOR__',
+       'mad4b','broker-diagnostic']
+ 
+ def wp(args):
+-    p = subprocess.run(WP + args, capture_output=True, text=True,
++    p = subprocess.run(with_actor(WP + args), capture_output=True, text=True,
+                        timeout=40, check=False)
+     if p.returncode != 0:
+         raise RuntimeError('WP_CLI_DENIED_OR_UNAVAILABLE')
+--- a/universal-runtime-v1/resolver.py
++++ b/universal-runtime-v1/resolver.py
+@@ -1,5 +1,10 @@
+ #!/usr/bin/env python3
+ """MAD4B Universal Runtime Resolver: persistent, governed convergence kernel."""
++import sys
++from pathlib import Path as _Mad4bPath
++sys.path.insert(0, str(_Mad4bPath(__file__).resolve().parents[1]))
++from wpcli_dynamic_actor import with_actor
++
+ import argparse
+ import datetime as dt
+ import fcntl
+@@ -40,7 +45,7 @@
+     return json.dumps(value,sort_keys=True,separators=(",",":"),ensure_ascii=False)
+ def command(argv,timeout=35):
+     try:
+-        r=subprocess.run(argv,capture_output=True,text=True,timeout=timeout,check=False)
++        r=subprocess.run(with_actor(argv),capture_output=True,text=True,timeout=timeout,check=False)
+         return (r.returncode, r.stdout[:16000],r.stderr[-800:])
+     except (OSError,subprocess.TimeoutExpired):
+         return (75,"","command_unavailable_or_timeout")
+@@ -151,7 +156,7 @@
+     if scope.get("identity_adapter")!="central_scoped_v4":
+         return result("awaiting_provider","wpcli","site_identity_adapter_not_enrolled")
+     args=["docker","exec","-u","www-data","etg-commerce-staging-php","wp",
+-          "mad4b-v4-scope","verify",target,"--user=1",
++          "mad4b-v4-scope","verify",target,"__MAD4B_DYNAMIC_WORDPRESS_ACTOR__",
+           "--path=/var/www/html","--skip-themes"]
+     rc,out,_=command(args,timeout=40)
+     try:d=json.loads(out)
+--- a/universal-runtime-v1/central_control_readback.py
++++ b/universal-runtime-v1/central_control_readback.py
+@@ -12,7 +12,7 @@
+ TARGET="tours-central:staging"
+ CONTAINER="etg-commerce-staging-php"
+ WP=["docker","exec","-u","www-data",CONTAINER,"wp","eval"]
+-ARGS=["--user=1","--path=/var/www/html","--skip-themes"]
++ARGS=["--path=/var/www/html","--skip-themes"]
+ SOURCE_PHP=r'''$identity=array("site_uuid"=>(string)MAD4B_SCP_Site_Profile::site_uuid(),
+ "environment"=>(string)MAD4B_SCP_Site_Profile::current_environment(),
+ "canonical_origin"=>rtrim(home_url("/"),"/"));
+--- a/universal-runtime-v1/multi_transport_authority.py
++++ b/universal-runtime-v1/multi_transport_authority.py
+@@ -5,6 +5,11 @@
+ does not create grants, impersonate WordPress users, or consume queued
+ arbitrary shell programs.
+ """
++import sys
++from pathlib import Path as _Mad4bPath
++sys.path.insert(0, str(_Mad4bPath(__file__).resolve().parents[1]))
++from wpcli_dynamic_actor import with_actor
++
+ import hashlib
+ import datetime as dt
+ import importlib.util
+@@ -152,8 +157,8 @@
+     '''Inspect the exact original signed claims without fetching command text.'''
+     cmd=['docker','exec','-u','www-data','etg-commerce-staging-php','wp',
+          'mad4b','broker-authority','claimed','--limit=5',
+-         '--user=1','--path=/var/www/html','--skip-themes']
+-    data=execute(cmd,timeout=40)
++         '__MAD4B_DYNAMIC_WORDPRESS_ACTOR__','--path=/var/www/html','--skip-themes']
++    data=execute(with_actor(cmd),timeout=40)
+     if not (isinstance(data,dict)
+             and data.get('contract')=='mad4b.broker-exact-ssh-authority.v1'
+             and isinstance(data.get('claimed'),list)

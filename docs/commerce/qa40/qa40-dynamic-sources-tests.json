@@ -1,0 +1,33 @@
+{
+    "result": "PASS",
+    "checks": {
+        "transport_source_supported": {
+            "pass": true,
+            "observed": "read"
+        },
+        "transport_no_checkout": {
+            "pass": true,
+            "observed": null
+        },
+        "rate_relationship_no_booking": {
+            "pass": true,
+            "observed": null
+        },
+        "transport_editor_says_indicative": {
+            "pass": true,
+            "observed": null
+        },
+        "transport_no_misleading_final": {
+            "pass": true,
+            "observed": null
+        },
+        "invalid_date_rejected": {
+            "pass": true,
+            "observed": null
+        },
+        "invalid_source_rejected": {
+            "pass": true,
+            "observed": null
+        }
+    }
+}

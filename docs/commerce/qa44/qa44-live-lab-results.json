@@ -1,0 +1,130 @@
+{
+    "result": "PASS",
+    "passed": 27,
+    "total": 27,
+    "tests": {
+        "rate_inspection_valid": {
+            "pass": true,
+            "observed": null
+        },
+        "source_providers_six": {
+            "pass": true,
+            "observed": null
+        },
+        "no_providers_currently": {
+            "pass": true,
+            "observed": null
+        },
+        "quote_not_certified": {
+            "pass": true,
+            "observed": null
+        },
+        "write_authority_locked": {
+            "pass": true,
+            "observed": null
+        },
+        "policy_draft_held": {
+            "pass": true,
+            "observed": null
+        },
+        "chosen_native_rate": {
+            "pass": true,
+            "observed": null
+        },
+        "parent_native_tour": {
+            "pass": true,
+            "observed": null
+        },
+        "parent_rate_distinct_plan": {
+            "pass": true,
+            "observed": null
+        },
+        "foreign_tenant_denied": {
+            "pass": true,
+            "observed": null
+        },
+        "missing_verifier_denied": {
+            "pass": true,
+            "observed": null
+        },
+        "receipt_foreign_site_denied_before_verifier": {
+            "pass": true,
+            "observed": null
+        },
+        "expired_receipt_denied": {
+            "pass": true,
+            "observed": null
+        },
+        "wrong_sale_line_denied": {
+            "pass": true,
+            "observed": null
+        },
+        "unverified_provenance_denied": {
+            "pass": true,
+            "observed": null
+        },
+        "provider_read_exception_denied": {
+            "pass": true,
+            "observed": null
+        },
+        "verifier_result_evidence_only": {
+            "pass": true,
+            "observed": null
+        },
+        "synthetic_verification_never_grants_sale": {
+            "pass": true,
+            "observed": null
+        },
+        "synthetic_secret_payload_not_echoed": {
+            "pass": true,
+            "observed": null
+        },
+        "all_synthetic_receipts_still_not_quote": {
+            "pass": true,
+            "observed": null
+        },
+        "only_whitelisted_context_sent": {
+            "pass": true,
+            "observed": null
+        },
+        "unknown_personal_config_not_forwarded": {
+            "pass": true,
+            "observed": null
+        },
+        "rest_admin_ok": {
+            "pass": true,
+            "observed": 200
+        },
+        "rest_no_store": {
+            "pass": true,
+            "observed": null
+        },
+        "rest_reject_client_receipt": {
+            "pass": true,
+            "observed": 400
+        },
+        "rest_anonymous_denied": {
+            "pass": true,
+            "observed": 401
+        },
+        "orders_tasks_inventory_unchanged": {
+            "pass": true,
+            "observed": {
+                "before": {
+                    "orders": 1,
+                    "requests": 9,
+                    "tasks": 6,
+                    "holds": 0,
+                    "bookings": 0
+                },
+                "after": {
+                    "orders": 1,
+                    "requests": 9,
+                    "tasks": 6,
+                    "holds": 0,
+                    "bookings": 0
+                }
+            }
+        }
+    }
+}

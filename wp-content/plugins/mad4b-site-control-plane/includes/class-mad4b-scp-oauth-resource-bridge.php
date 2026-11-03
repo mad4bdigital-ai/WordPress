@@ -722,13 +722,26 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		return array_merge( $context, self::$verified_context );
 	}
 
+	/**
+	 * A 401 Bearer challenge names the scopes REQUIRED to retry the request,
+	 * not every optional scope available to that protected resource.
+	 * For the ChatGPT MCP read entrypoint, only mad4b:read is mandatory;
+	 * existing per-Ability step-up, approval and Breakglass checks are unchanged.
+	 */
+	public static function challenge_required_scopes( $resource ) {
+		$resource = untrailingslashit( trim( (string) $resource ) );
+		if ( hash_equals( self::resource_identifier(), $resource ) )
+			return array( self::READ_SCOPE );
+		return self::scopes_for_resource( $resource );
+	}
+
 	public static function challenge_header( $resource = '' ) {
 		$resource = untrailingslashit( trim( (string) $resource ) );
 		if ( '' === $resource ) $resource = self::resource_identifier();
 		$metadata = hash_equals( self::resource_identifier(), $resource ) && class_exists( 'MAD4B_SCP_MCP_Client_Compatibility' )
 			? MAD4B_SCP_MCP_Client_Compatibility::authoritative_well_known_url()
 			: self::metadata_url( $resource );
-		return 'Bearer resource_metadata="' . esc_url_raw( $metadata ) . '", scope="' . implode( ' ', self::scopes_for_resource( $resource ) ) . '"';
+		return 'Bearer resource_metadata="' . esc_url_raw( $metadata ) . '", scope="' . implode( ' ', self::challenge_required_scopes( $resource ) ) . '"';
 	}
 
 	private static function unauthorized_response( $code, $message, $status = 401, $resource = '' ) {

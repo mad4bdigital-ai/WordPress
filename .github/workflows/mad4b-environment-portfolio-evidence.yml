@@ -1,0 +1,34 @@
+name: MAD4B Environment Portfolio Evidence
+
+on:
+  pull_request:
+    paths:
+      - "ops/mad4b-environment-portfolio-evidence-v1/**"
+      - ".github/workflows/mad4b-environment-portfolio-evidence.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-environment-portfolio-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  portfolio-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: PHP syntax
+        run: |
+          set -euo pipefail
+          d=ops/mad4b-environment-portfolio-evidence-v1
+          php -l "$d/316-mad4b-company-environment-portfolio-evidence.php"
+          php -l "$d/tests/portfolio_readback_hermetic.php"
+      - name: Exact environment identity, assignment, and grant isolation
+        run: |
+          php ops/mad4b-environment-portfolio-evidence-v1/tests/portfolio_readback_hermetic.php

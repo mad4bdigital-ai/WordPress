@@ -1,0 +1,20 @@
+{
+    "status": "PASS",
+    "count": 12,
+    "passed": 12,
+    "checks": {
+        "diagnostic_schema": true,
+        "site_profile_authority_healthy": true,
+        "foreign_company_record_detected": true,
+        "foreign_policy_record_detected": true,
+        "site_reenrollment_classification": true,
+        "commercial_write_remains_denied": true,
+        "automatic_rebinding_denied": true,
+        "no_raw_uuid_or_digest_disclosed": true,
+        "administrator_rest_200": true,
+        "administrator_result_has_no_financial_grant": true,
+        "guest_rest_denied": true,
+        "business_counts_unchanged": true
+    },
+    "classification": "foreign_or_reenrolled_site_profile"
+}

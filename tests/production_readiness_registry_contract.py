@@ -265,6 +265,37 @@ with mock.patch.object(reg, "git_text", return_value=trait_source):
 with mock.patch.object(reg, "git_text", return_value="<?php // 'mad4b/comment-only'"):
     assert not reg.php_capabilities(head, reg.PLUGIN + "includes/comment-only.php")
 
+# A registered REST namespace must never become a fictional WP Ability
+# merely because the same class also declares an ability inventory. A real
+# ability name elsewhere in that source must still be detected.
+mixed_source = """<?php
+class MAD4B_Example_Registration {
+    public static function register() {
+        register_rest_route('mad4b/v1', '/agent-grants/status', array());
+        wp_register_ability('mad4b/genuine-ability', array());
+    }
+}
+"""
+with mock.patch.object(reg, "git_text", return_value=mixed_source):
+    discovered = reg.php_capabilities(head, reg.PLUGIN + "includes/class-mad4b-scp-agent-grant-lifecycle.php")
+    assert "ability:mad4b/v1" not in discovered
+    assert "ability:mad4b/genuine-ability" in discovered
+    assert "rest:mad4b/v1/agent-grants/status" in reg.registered_surfaces(
+        head, reg.PLUGIN + "includes/class-mad4b-scp-agent-grant-lifecycle.php")
+
+# The REST route alone is not an Ability, even if unrelated ability definitions
+# trigger the conservative static scanner in the same file.
+namespace_only = """<?php
+class MAD4B_Example_Registration {
+    public static function ability_definitions() { return array(); }
+    public static function register() {
+        register_rest_route("mad4b/v1", '/agent-grants/status', array());
+    }
+}
+"""
+with mock.patch.object(reg, "git_text", return_value=namespace_only):
+    assert not reg.php_capabilities(head, reg.PLUGIN + "includes/class-mad4b-scp-agent-grant-lifecycle.php")
+
 # A controlled migration allows a reviewed rule correction without mutating
 # history or weakening its P0/linked controls.
 old_rule = copy.deepcopy(policy["domain_rules"][0])

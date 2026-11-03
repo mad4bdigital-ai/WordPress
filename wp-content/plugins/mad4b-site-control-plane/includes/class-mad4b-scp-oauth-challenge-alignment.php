@@ -42,7 +42,7 @@ final class MAD4B_SCP_OAuth_Challenge_Alignment {
 		$metadata_url = MAD4B_SCP_MCP_Client_Compatibility::authoritative_well_known_url( $server_id );
 		if ( '' === $metadata_url || 'https' !== strtolower( (string) wp_parse_url( $metadata_url, PHP_URL_SCHEME ) ) ) return $response;
 		$resource = MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier( $server_id );
-		$scopes = MAD4B_SCP_OAuth_Resource_Bridge::scopes_for_resource( $resource );
+		$scopes = MAD4B_SCP_OAuth_Resource_Bridge::challenge_required_scopes( $resource );
 
 		$response->header(
 			'WWW-Authenticate',

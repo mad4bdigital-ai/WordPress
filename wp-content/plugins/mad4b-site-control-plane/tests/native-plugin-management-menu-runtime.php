@@ -25,6 +25,13 @@ require dirname( __DIR__ ) . '/mad4b-site-control-plane.php';
 function native_nav_assert( $ok, $message ) {
     if ( ! $ok ) { fwrite( STDERR, 'FAIL: ' . $message . PHP_EOL ); exit( 1 ); }
 }
+// The native early-admin fast path loads QA30's contract before full WordPress
+// hooks exist in this hermetic fixture. Loading must remain nonfatal without
+// weakening the hook registration performed under an actual WordPress runtime.
+native_nav_assert( ! function_exists( 'add_filter' ),
+    'Fixture must model native early-admin lifecycle without WP filter hooks' );
+native_nav_assert( class_exists( 'MAD4B_SCP_Native_General_Settings_Contract', false ),
+    'Scoped General Settings contract must load without requiring WP hook APIs' );
 native_nav_assert( defined( 'MAD4B_SCP_EARLY_ZERO_TOUCH_REASON' )
     && 'wordpress_plugin_management_read' === MAD4B_SCP_EARLY_ZERO_TOUCH_REASON,
     'Native plugins.php must remain zero-touch' );

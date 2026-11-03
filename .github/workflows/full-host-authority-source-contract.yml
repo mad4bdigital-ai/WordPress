@@ -1,0 +1,31 @@
+name: MAD4B universal full host authority source contract
+on:
+  pull_request:
+    paths:
+      - 'ops/company-readiness-workflow/full-host-authority/**'
+      - '.github/workflows/full-host-authority-source-contract.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: full-host-authority-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  source-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile pure source
+        run: python -m compileall -q ops/company-readiness-workflow/full-host-authority
+      - name: Run fail-closed boundary tests
+        run: |
+          cd ops/company-readiness-workflow/full-host-authority
+          python -m unittest discover -s . -p 'test_*.py' -v
+# Source-only; no tokens, grants, credentials, remote access or deployment.

@@ -1,0 +1,35 @@
+name: MAD4B Environment Executor Preflight
+
+on:
+  pull_request:
+    paths:
+      - "ops/mad4b-environment-executor-gate-v1/**"
+      - ".github/workflows/mad4b-environment-executor-preflight.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-environment-executor-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  preflight-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Python syntax validation
+        run: |
+          python3 -m py_compile \
+            ops/mad4b-environment-executor-gate-v1/preflight.py \
+            ops/mad4b-environment-executor-gate-v1/tests/test_preflight.py
+      - name: Offline company environment evidence tests
+        run: |
+          python3 -m unittest discover \
+            -s ops/mad4b-environment-executor-gate-v1/tests \
+            -p 'test_*.py' -v

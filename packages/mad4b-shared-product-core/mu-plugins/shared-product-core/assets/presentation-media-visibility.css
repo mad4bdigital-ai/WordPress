@@ -1,0 +1,12 @@
+/**
+ * Native transportation gallery: reserve a consistent thumbnail aspect ratio
+ * before LiteSpeed replaces its 100x100 SVG placeholder with a real image.
+ * Typography, brand colors and card layout remain Elementor-owned.
+ */
+.booking-component-list .jet-engine-gallery-slider__item-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}

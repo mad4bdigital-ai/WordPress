@@ -10,6 +10,8 @@ final class MAD4B_SCP_Approval_Impact_Binding {
 		$provider = sanitize_key( (string) $provider );
 		if ( '' === $provider ) $provider = 'core';
 		$input = is_array( $input ) ? $input : array();
+		$input = self::stable_approval_input( $ability_name, $provider, $input );
+		if ( is_wp_error( $input ) ) return $input;
 
 		$resource_set = class_exists( 'MAD4B_SCP_Resource_Constraint_Set' )
 			? MAD4B_SCP_Resource_Constraint_Set::compile( $ability_name, $provider, $input ) : array();
@@ -73,6 +75,41 @@ final class MAD4B_SCP_Approval_Impact_Binding {
 		if ( is_wp_error( $binding_sha ) ) return $binding_sha;
 		$out['binding_sha256']=$binding_sha;
 		return $out;
+	}
+
+	/**
+	 * Bind Brand Draft approval to immutable context identity, not the time at
+	 * which a new cryptographically signed receipt happened to be issued.
+	 * Every invocation MUST validate its live signed receipt first; normalization
+	 * never makes an invalid, expired, foreign or stale receipt acceptable.
+	 * All other write abilities retain their exact original input semantics.
+	 */
+	public static function stable_approval_input( $ability_name, $provider, $input ) {
+		$input = is_array( $input ) ? $input : array();
+		if ( 'core' !== sanitize_key( (string) $provider )
+			|| ! in_array( (string) $ability_name, array( 'context/brand-draft-create', 'context/brand-draft-append' ), true ) )
+			return $input;
+
+		$receipt = isset( $input['_mad4b_context_receipt'] ) && is_array( $input['_mad4b_context_receipt'] )
+			? $input['_mad4b_context_receipt'] : array();
+		if ( empty( $receipt ) || ! class_exists( 'MAD4B_SCP_Context_Preflight' ) )
+			return new WP_Error( 'mad4b_approval_brand_receipt_required', 'An exact signed Brand Context Receipt is required for this approval.' );
+		$verified = MAD4B_SCP_Context_Preflight::validate_receipt_binding( $receipt );
+		if ( is_wp_error( $verified ) ) return $verified;
+		if ( empty( $verified['ready'] ) || (string) $ability_name !== (string) ( $verified['intended_ability'] ?? '' )
+			|| 'workflow:brand-context:wordpress-brand-context-builder' !== (string) ( $verified['skill_logical_id'] ?? '' )
+			|| array( 'brand_strategy' ) !== (array) ( $receipt['declared_required_context_sets'] ?? array() ) )
+			return new WP_Error( 'mad4b_approval_brand_receipt_scope_invalid', 'Brand Draft approval requires the verified Brand Strategy-only Skill Context Receipt for the exact ability.' );
+
+		// These three values are issuance-specific. Their signed content and
+		// freshness have ALREADY been checked above. All remaining receipt
+		// fields, including brand_id, site_uuid, current policy/content authority
+		// fingerprints, asset identities, intended ability and task scope stay
+		// bound into the immutable ticket payload.
+		$stable = $receipt;
+		unset( $stable['observed_at'], $stable['receipt_sha256'], $stable['receipt_signature'] );
+		$input['_mad4b_context_receipt'] = $stable;
+		return $input;
 	}
 
 	private static function provider_generation( $provider ) {

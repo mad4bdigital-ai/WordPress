@@ -1,0 +1,27 @@
+<?php
+if(parse_url(home_url('/'),PHP_URL_HOST)!=='tours.dev.mad4b.com')die('WRONG_SITE');
+$admins=get_users(['role'=>'administrator','number'=>1,'fields'=>'ID']);if(!$admins)die('ADMIN_MISSING');
+wp_set_current_user((int)$admins[0]);
+$id='14d65a58-73f2-4f1c-8512-c9fb652317a0';
+$job=MAD4B_SCP_Content_Jobs::get_job(['job_id'=>$id]);
+if(is_wp_error($job))die($job->get_error_code());
+$rev=(int)$job['job']['job_revision'];$stage=$job['job']['stage'];
+echo 'JOB '.wp_json_encode(['id'=>$id,'revision'=>$rev,'stage'=>$stage,'state'=>$job['job']['state']])."\n";
+$c=MAD4B_Hub_Runtime_Triggers::controls();
+echo 'CONTROLS '.wp_json_encode($c['settings']??$c)."\n";
+$input=['job_id'=>$id,'expected_job_revision'=>$rev,'stage'=>$stage,'trigger_key'=>'manual-qa-runtime-20261030'];
+$dry=MAD4B_Hub_Runtime_Triggers::manual(array_merge($input,['dry_run'=>true]));
+echo 'DRY_RUN '.(is_wp_error($dry)?$dry->get_error_code():wp_json_encode(['dry_run'=>$dry['dry_run'],'job_id'=>$dry['content_job_id'],'stage'=>$dry['stage'],'queued'=>$dry['queued']]))."\n";
+$first=MAD4B_Hub_Runtime_Triggers::manual($input);
+echo 'FIRST '.(is_wp_error($first)?$first->get_error_code():wp_json_encode(['batch_id'=>$first['batch_id'],'stage_items'=>$first['stage_items'],'queued_tasks'=>$first['queued_tasks'],'replayed'=>$first['replayed'],'content_job_id'=>$first['content_job_id']]))."\n";
+$again=MAD4B_Hub_Runtime_Triggers::manual($input);
+echo 'RETRY '.(is_wp_error($again)?$again->get_error_code():wp_json_encode(['batch_id'=>$again['batch_id'],'replayed'=>$again['replayed'],'content_job_id'=>$again['content_job_id']]))."\n";
+$status=MAD4B_Hub_Runtime_Triggers::job_status(['job_id'=>$id]);
+echo 'JOB_STATUS '.(is_wp_error($status)?$status->get_error_code():wp_json_encode(['job_id'=>$status['content_job_id'],'batches'=>$status['batch_count'],'recent_batch'=>$status['batches'][0]??null]))."\n";
+$bad=MAD4B_Hub_Runtime_Triggers::manual(['job_id'=>'00000000-0000-0000-0000-000000000000','expected_job_revision'=>1,'trigger_key'=>'fake-job-qa']);
+echo 'FAKE_JOB_DENIED '.(is_wp_error($bad)?$bad->get_error_code():'FAIL')."\n";
+wp_set_current_user(0);
+$req=new WP_REST_Request('POST','/mad4b-hub/v1/control-workflow/runtime/trigger');
+$req->set_body(wp_json_encode($input));$req->set_header('Content-Type','application/json');
+$r=rest_do_request($req);
+echo 'ANONYMOUS_HTTP '.$r->get_status()."\n";

@@ -44,6 +44,14 @@ trait MAD4B_SCP_Server_Write_Catalog {
 			&& wp_has_ability( MAD4B_SCP_AI_Approval::ABILITY ) ) {
 			$candidates[] = MAD4B_SCP_AI_Approval::ABILITY;
 		}
+		// This one-purpose Ability is available only on the exact enrolled central
+		// Staging host. General mad4b/hub-bulk-enqueue stays unmounted.
+		if ( class_exists( 'MAD4B_Hub_Queue_Site_Health_Enqueue' )
+			&& function_exists( 'wp_has_ability' )
+			&& wp_has_ability( MAD4B_Hub_Queue_Site_Health_Enqueue::ABILITY )
+			&& MAD4B_Hub_Queue_Site_Health_Enqueue::site_enrolled() ) {
+			$candidates[] = MAD4B_Hub_Queue_Site_Health_Enqueue::ABILITY;
+		}
 		return array_values( array_unique( $candidates ) );
 	}
 
@@ -74,6 +82,29 @@ trait MAD4B_SCP_Server_Write_Catalog {
 		ksort( $result, SORT_STRING );
 		if ( $cacheable ) self::$registered_adapter_write_candidates_cache = $result;
 		return $result;
+	}
+
+	/**
+	 * One read-only provider snapshot of the effective, currently mounted Write
+	 * inventory. An unregistered/uncertified Adapter cannot become a grant
+	 * target by supplying an Ability name alone.
+	 */
+	public static function live_write_provider_snapshot() {
+		$runtime = self::write_tools();
+		$core = array_fill_keys( self::core_write_candidates(), true );
+		$adapters = self::registered_adapter_write_candidates();
+		$providers = array();
+		foreach ( $runtime as $ability ) {
+			$ability = (string) $ability;
+			if ( isset( $core[ $ability ] ) ) {
+				$providers[ $ability ] = 'core';
+			} elseif ( isset( $adapters[ $ability ] ) && '' !== (string) $adapters[ $ability ] ) {
+				$providers[ $ability ] = (string) $adapters[ $ability ];
+			}
+			// Unknown provider remains unmounted; no invented grant authority.
+		}
+		ksort( $providers, SORT_STRING );
+		return $providers;
 	}
 
 	public static function catalog_external_write_tools() {

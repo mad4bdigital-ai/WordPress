@@ -1,0 +1,31 @@
+{
+  "contract": "mad4b.wo-vacation-homepage-media-review.v1",
+  "environment": "staging",
+  "site_origin": "https://tours.dev.mad4b.com",
+  "source_site_uuid": "e5e64bca-ed62-48d2-b2b3-dff693cd702a",
+  "source_of_attachment_ids": "read-only public homepage rendered HTML audit 2026-10-29",
+  "confirmed_metadata_audit_on": "2026-10-30",
+  "affected_homepage_attachment_ids": [27149, 26852, 26927, 26623, 26618],
+  "evidence": {
+    "reviewed": 5,
+    "old_brand_in_alt_text": 5,
+    "old_brand_in_attachment_title": 5,
+    "rights_related_attachment_meta_keys": 0,
+    "media_rights_certified": 0
+  },
+  "decision": "BLOCK_AUTO_REUSE_PENDING_RIGHTS_REVIEW",
+  "must_not": [
+    "mass_replace_media_titles_or_alt_to_hide_original_brand",
+    "carry_prior-company_attachment_ids_into_another_site",
+    "infer_license_or_ownership_from_image_visibility",
+    "copy_media_bytes_or_private_licenses_into_git",
+    "autopublish_real_company_offers_from_demo"
+  ],
+  "next_steps": [
+    "owner_review_original_image_license_or_source_provenance",
+    "replace_affected_homepage_media_with_licensed_wo_vacation_demo_assets_or_authorize_existing_usage",
+    "then_review_language_variants_and_social_open_graph",
+    "retest_public_html_accessibility_text_after_approved_changes"
+  ],
+  "automatic_mutation_authorized": false
+}

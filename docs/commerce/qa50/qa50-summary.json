@@ -1,0 +1,47 @@
+{
+  "qa": "QA50",
+  "status": "PASS",
+  "date": "2026-10-28",
+  "environment": "ETG Woo Lab VPS isolated HPOS transaction",
+  "source_relationship": {
+    "rate_id": 67074,
+    "property_id": 67063,
+    "unit_id": 67070,
+    "jet_relation_id_discovered": 223,
+    "jet_relation_id_hardcoded_in_runtime": false,
+    "proof": "only one native JetEngine property-unit relation",
+    "availability_certified": false
+  },
+  "tests": {
+    "qa50": 47,
+    "qa49": 38,
+    "qa48": 60,
+    "qa46": 36,
+    "qa45": 44,
+    "qa44": 27,
+    "qa43": 37,
+    "total": 289
+  },
+  "runtime_source_parity": "73/73",
+  "finance": {
+    "receipts": "in-memory synthetic HMAC test receipts",
+    "real_gateway_available": false,
+    "merchant_charges": 0,
+    "real_supplier_bookings": 0,
+    "company_policy": "draft",
+    "external_charge_gate": "fail-closed for explicitly managed commerce orders",
+    "external_charge_authorized": false
+  },
+  "rollback": {
+    "orders_before": 1,
+    "orders_after": 1,
+    "items_before": 1,
+    "items_after": 1,
+    "jet_relation_rows_before": 33,
+    "jet_relation_rows_after": 33,
+    "quote_options_after": 0,
+    "approval_options_after": 0
+  },
+  "production_mutated": false,
+  "evidence_vps": "/opt/commerce-components/evidence/etg-commerce-certification-simulation-qa50-20261028/"
+}

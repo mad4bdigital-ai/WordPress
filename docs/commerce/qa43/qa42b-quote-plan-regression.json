@@ -1,0 +1,120 @@
+{
+    "result": "PASS",
+    "passed": 25,
+    "total": 25,
+    "checks": {
+        "new_company_profile_valid": {
+            "pass": true,
+            "details": null
+        },
+        "new_policy_draft": {
+            "pass": true,
+            "details": null
+        },
+        "quote_plan_class_loaded": {
+            "pass": true,
+            "details": null
+        },
+        "native_preflight_real_company": {
+            "pass": true,
+            "details": null
+        },
+        "parent_tour_preflight_real_company": {
+            "pass": true,
+            "details": null
+        },
+        "preflight_same_digest_when_source_changes": {
+            "pass": true,
+            "details": null
+        },
+        "independent_rate_plan_valid": {
+            "pass": true,
+            "details": null
+        },
+        "parent_tour_plan_valid": {
+            "pass": true,
+            "details": null
+        },
+        "rate_uses_native_woo_id": {
+            "pass": true,
+            "details": null
+        },
+        "parent_uses_native_woo_id": {
+            "pass": true,
+            "details": null
+        },
+        "rate_context_preserved": {
+            "pass": true,
+            "details": null
+        },
+        "different_sale_line_plans_have_different_digests": {
+            "pass": true,
+            "details": null
+        },
+        "no_cart_quantity_or_price_created": {
+            "pass": true,
+            "details": null
+        },
+        "manager_approval_from_new_company": {
+            "pass": true,
+            "details": null
+        },
+        "manual_availability_from_new_company": {
+            "pass": true,
+            "details": null
+        },
+        "no_final_quote_or_payment": {
+            "pass": true,
+            "details": null
+        },
+        "order_and_supplier_booking_blocked": {
+            "pass": true,
+            "details": null
+        },
+        "cart_write_blocked": {
+            "pass": true,
+            "details": null
+        },
+        "forged_approved_preflight_rejected": {
+            "pass": true,
+            "details": null
+        },
+        "unexpected_sale_role_rejected": {
+            "pass": true,
+            "details": null
+        },
+        "quote_plan_rest_admin_200": {
+            "pass": true,
+            "details": null
+        },
+        "rest_no_checkout_grant": {
+            "pass": true,
+            "details": null
+        },
+        "wrong_relation_rest_denied": {
+            "pass": true,
+            "details": null
+        },
+        "guest_quote_plan_rest_denied": {
+            "pass": true,
+            "details": null
+        },
+        "no_business_rows_mutated": {
+            "pass": true,
+            "details": {
+                "before": {
+                    "orders": 1,
+                    "requests": 9,
+                    "tasks": 6,
+                    "holds": 0
+                },
+                "after": {
+                    "orders": 1,
+                    "requests": 9,
+                    "tasks": 6,
+                    "holds": 0
+                }
+            }
+        }
+    }
+}

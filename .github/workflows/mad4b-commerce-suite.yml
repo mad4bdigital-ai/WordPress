@@ -1,0 +1,76 @@
+name: MAD4B Commerce Suite - candidate contract quality
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-commerce-suite/**'
+      - 'packages/mad4b-shared-product-core/**'
+      - '.github/workflows/mad4b-commerce-suite.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+env:
+  SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+concurrency:
+  group: mad4b-commerce-suite-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+jobs:
+  suite-contract:
+    name: Suite PHP matrix contract
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.3', '8.5']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Lint Commerce Suite
+        run: |
+          find wp-content/plugins/mad4b-commerce-suite -name '*.php' -type f -print0 |
+            xargs -0 -n1 php -l
+      - name: Verify non-executing module enrollment
+        run: php wp-content/plugins/mad4b-commerce-suite/tests/offline-contract.php
+      - name: Validate tenant readiness fails closed
+        run: php wp-content/plugins/mad4b-commerce-suite/tests/readiness.php
+      - name: Verify admin-only diagnostics without WooCommerce
+        run: php wp-content/plugins/mad4b-commerce-suite/tests/admin-fallback.php
+      - name: Audit frozen local source
+        run: |
+          python3 packages/mad4b-shared-product-core/tests/verify-snapshot.py
+          python3 packages/mad4b-shared-product-core/tests/assembly-gate.py
+      - name: Source-only engine census
+        run: |
+          python3 packages/mad4b-shared-product-core/tests/source-census.py > commerce-source-census.json
+          python3 -m json.tool commerce-source-census.json > /dev/null
+          python3 -c "import json; r=json.load(open('commerce-source-census.json')); assert r['source_only_file_count']==134; assert r['safe_to_auto_deploy'] is False; print('CENSUS_SOURCE_ONLY_PASS')"
+      - name: Enforce complete static source assembly
+        run: |
+          python3 packages/mad4b-shared-product-core/tests/assembly-gate.py --release
+          python3 packages/mad4b-shared-product-core/tests/known-source-gap-gate.py
+
+  package-shell:
+    name: Source-only admin shell ZIP
+    needs: suite-contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          persist-credentials: false
+      - name: Package non-executing admin shell
+        run: |
+          mkdir -p dist
+          (cd wp-content/plugins && zip -rq ../../dist/mad4b-commerce-suite-0.1.0-dev-SHELL-ONLY.zip mad4b-commerce-suite -x 'mad4b-commerce-suite/tests/*')
+          test -s dist/mad4b-commerce-suite-0.1.0-dev-SHELL-ONLY.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-commerce-suite-shell-only-do-not-deploy
+          path: dist/mad4b-commerce-suite-0.1.0-dev-SHELL-ONLY.zip
+          if-no-files-found: error
+          retention-days: 7

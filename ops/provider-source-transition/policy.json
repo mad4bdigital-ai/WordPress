@@ -1,0 +1,23 @@
+{
+  "contract": "mad4b.provider-source-transition.v1",
+  "default_new_company": "canonical_source_only",
+  "implicit_legacy_fallback": false,
+  "execution_authority": "never_derived_from_source_selection",
+  "families": [
+    {
+      "family": "dynamic-filter-seo-bridge",
+      "canonical_source_id": "dynamic-filter-seo-bridge",
+      "legacy_source_ids": [
+        "etg-dynamic-filter-seo-bridge"
+      ],
+      "historical_provider_ids": [
+        "etg-dfsb",
+        "etg-dfsb-write"
+      ],
+      "legacy_policy": "preserve_existing_pins_read_only",
+      "canonical_policy": "candidate_until_exact_package_and_site_certification",
+      "mutation_policy": "deny",
+      "first_party_runtime_write_authority": "separate_owner_signed_execution_contract_required"
+    }
+  ]
+}

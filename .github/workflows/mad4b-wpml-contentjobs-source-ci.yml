@@ -1,0 +1,51 @@
+name: MAD4B WPML ContentJob Source Integration (offline)
+
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - 'wp-content/mu-plugins/349-mad4b-wpml-design-reconciliation.php'
+      - 'wp-content/mu-plugins/350-wpml-job-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/**'
+      - 'tools/dfsb-neutral/**'
+      - 'tests/wpml-contentjob-source-parity.py'
+      - '.github/workflows/mad4b-wpml-contentjobs-source-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  canonical-wpml-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact PR source head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Verify exact checkout SHA
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - name: Verify source/provenance parity and review gates
+        run: python3 tests/wpml-contentjob-source-parity.py
+      - name: Configure PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: Lint all source-owned WPML/ContentJob PHP
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/mu-plugins/349-mad4b-wpml-design-reconciliation.php
+          php -l wp-content/mu-plugins/350-wpml-job-adapter.php
+          find wp-content/plugins/mad4b-site-control-plane/includes -maxdepth 1 -type f \
+            \( -name 'class-mad4b-scp-content-*.php' -o -name 'class-mad4b-scp-central-write-acceptance.php' \) \
+            -print0 | sort -z | xargs -0 -n1 php -l
+      - name: Source integrity is not live runtime approval
+        run: |
+          echo "Source-only checks; live Staging WPML/CWA/browser readback is separate."
+          echo "No production credentials, secrets, publishes, or deployment commands."
