@@ -191,7 +191,7 @@ final class Bootstrap {
         // Read-only native WPML route mapping for active JSF facets.
         // Enqueue on base and filtered archives, preserving native query owners.
         if($compatibility->wpml()&&($needsJetSmartFilters||$previewJetSmartFilters||$needsJetEngine)){
-            add_action('wp_enqueue_scripts',array(new \\DynamicFilterSEOBridge\\WPML\\ActiveFacetLanguageSwitcher(),'enqueue'),45);
+            add_action('wp_enqueue_scripts',array(new \DynamicFilterSEOBridge\WPML\ActiveFacetLanguageSwitcher(),'enqueue'),45);
         }
 
         // Admin/read-only surfaces remain available while Global is OFF so an
