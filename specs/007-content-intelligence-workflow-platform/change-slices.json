@@ -4,8 +4,8 @@
   "reviewed_base_sha": "ba0db6f92c76772d5dff12b11106357193743815",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 62,
-  "changed_paths_sha256": "191a324f8ad1d9f6a42663dd2108bb68a7aac7017617d9fbfc44b35869a01cd3",
+  "changed_file_count": 68,
+  "changed_paths_sha256": "07935be07143c9358ee131442307e5199df3478676f36d06af44923862c2a8f9",
   "slices": [
     {
       "id": "agent-and-execution-governance",
@@ -61,7 +61,8 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-user-lifecycle.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-migration-decision-catalog.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-brand-trial.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-context-fixtures.php"
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-context-fixtures.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/company-admin-menu-hermetic.php"
       ]
     },
     {
@@ -70,7 +71,11 @@
       "revert_boundary": "Revert test and diagnostics only; no production authorization or runtime state should be inferred",
       "certification": "exact_head",
       "path_globs": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/live-bootstrap-source-closure-contract.py"
+        "tools/production_readiness_registry.py",
+        "tools/readiness_test_execution.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/live-bootstrap-source-closure-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/pr750-runtime-source-regression.py"
       ]
     },
     {
@@ -102,6 +107,7 @@
       "revert_boundary": "Revert only source-evidence/manifest changes; never discard original live snapshots or promote Production",
       "certification": "exact_head",
       "path_globs": [
+        "governance/production-readiness/capability-coverage.json",
         "ops/staging/tours-dev/frontend-impact/evidence/rc118-forwardport-sources-20261103.json",
         "specs/007-content-intelligence-workflow-platform/change-slices.json"
       ]
