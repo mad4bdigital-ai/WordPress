@@ -261,6 +261,13 @@ DELIVERY_REVIEWED_ANCESTORS = {
         "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
     "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php":
         "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
+    # UI archive authenticates rc104 identities from this fixed historical
+    # commit. The newer rc118 identity is separately reviewed below; archives
+    # are never rewritten.
+    "wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt":
+        "afb11833d1913f3d1391688b245336d0247991ce",
+    "wp-content/plugins/mad4b-site-control-plane/README.md":
+        "afb11833d1913f3d1391688b245336d0247991ce",
 }
 
 
@@ -295,7 +302,9 @@ def is_exact_historical_delivery_successor(root, path, contents, historic_sha, h
         reviews_path = (
             "specs/007-content-intelligence-workflow-platform/extensions/"
             "competitive-experience/historical-delivery-source-reviews.json"
-            if path.endswith("/competitive-experience/validate.py")
+            if (path.endswith("/competitive-experience/validate.py")
+                or path.endswith("/MAD4B-RUNTIME-BUILD.txt")
+                or path.endswith("/mad4b-site-control-plane/README.md"))
             else "governance/production-readiness/capability-coverage.json"
         )
         registry = json.loads((root / reviews_path).read_text(encoding="utf-8"))
@@ -331,6 +340,17 @@ def is_exact_historical_delivery_successor(root, path, contents, historic_sha, h
             or hashlib.sha256(archived).hexdigest() != historic_sha
             or contents == archived):
         return False
+    # New UI release identity must align with the restored bootstrap.
+    # A reviewed arbitrary README/marker blob may not misstate the version.
+    plugin = root / "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php"
+    if path.endswith("/MAD4B-RUNTIME-BUILD.txt"):
+        if (not contents.startswith(b"release=0.4.0-rc.118\n")
+                or b"Version: 0.4.0-rc.118" not in plugin.read_bytes()):
+            return False
+    if path.endswith("/mad4b-site-control-plane/README.md"):
+        if (b"Current plugin version: **0.4.0-rc.118**." not in contents
+                or b"Version: 0.4.0-rc.118" not in plugin.read_bytes()):
+            return False
     blob = hashlib.sha1(
         b"blob " + str(len(contents)).encode("ascii") + b"\0" + contents
     ).hexdigest()
