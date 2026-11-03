@@ -4038,6 +4038,64 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing mapped provider, platform and security controls cover this original site-scoped feature; no new Production capability or permission is granted by this source review.",
       "review_rationale": "Exact newly introduced service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-workflow-options.php examined for bounded site-specific routing and Admin registry; dedicated source regression validates immutable provider fences, write/read-only classification and negative mutations. This is a CI source review, never a human signer or live site authorization."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-locale-experience-alerts.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/locale-experience-provider-contract.php"
+      ],
+      "owner_role": "Automated CI source-review operator; human site owner authority remains separate",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing original GOVERNANCE-01, PLATFORM-01 and SECURITY-01 already define site identity, source trace, admin authority and no auto-publish defaults; this source review introduces no new Production grant.",
+      "review_rationale": "Original locale browser observation provider reviewed with 23/23 isolated negative/positive tests, including 24-screen completeness, exact company UUID, freshness, cross-domain rejection, unprivileged rejection, SHA tampering, bounded 23 alert deduplication, and candidate-vs-certified translation separation. Original staging proof 17/17 exists independently; this CI-only review is not a human attestation, native ContentJob admission or publication approval."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-geo-quality.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-source-parity-contract.py",
+        "tests/geo-quality-provider-contract.php"
+      ],
+      "owner_role": "Automated source-only CI reviewer; original company owner retains release authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Original site-bound Governance, Platform and Security controls already provide source rights, scan bounds, tenant identity and no mutation. No provider publication or Production grant is introduced.",
+      "review_rationale": "Source review of the actual Geo Quality provider copied from current Staging runtime (trailing blank normalization only). The hermetic negative/positive fixture executed 17/17 cases across nine gap codes, verified nonblocking transport prices, candidate-only coordinates and boarding applicability. Original read-only Staging discovery 1,096/1,096 parity independently verified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-completeness.php",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/readiness-issues-filter-contract.php"
+      ],
+      "owner_role": "CI source-only reviewer; original WordPress company owner authorizes any live content repair separately",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing provider, AI and localization controls require bounded per-site rules, original admin rights and immutable source evidence. No new publication, price or remote write capability is added.",
+      "review_rationale": "Original Staging rc.118 Content Completeness source was absent from the reviewed GitHub plugin while Readiness source required it. Copied exact runtime PHP bytes with SHA-256 readback and reviewed explicit post type/taxonomy/source-field bounds, source-only no-write discovery, administrator nonce on rule updates and independent WP-REST permissions. The no-network isolated original-source regression executes 22 positive/negative assertions. CI-only source review, not permission to overwrite the entire site plugin."
     }
   ],
   "lifecycle": [],
@@ -12255,6 +12313,116 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Exact Git blob of wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php examined for reviewed native owner contract and existing execution fences and independently bounded by the associated CI regression; historical release manifests stay immutable. This source review is not Production approval."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "source_blob_sha": "861d79be4a92430db0576843ab48c114d350dae9",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/locale-experience-provider-contract.php"
+      ],
+      "owner_role": "Automated CI-only source reviewer; independent company owner required for release",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact original Git blob reviewed: Original Content Readiness Ledger extension: deduplicates each locale gap into site-scoped original issue fingerprint; attaches safe PRIORITY_INTAKE requests, correct severity and observable source evidence in authorized GET; never auto admits original ContentJobs, dispatches a scraper or publishes translations. Offline fixture 23/23 plus original Staging readback 17/17; not an owner signature or Production readiness certificate."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-locale-experience-alerts.php",
+      "source_blob_sha": "fca43b0819e24f7f4efb32643b78030b1b371029",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/locale-experience-provider-contract.php"
+      ],
+      "owner_role": "Automated CI-only source reviewer; independent company owner required for release",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact original Git blob reviewed: First-party browser evidence provider: import is site-bound, requires original manage_options and mutation policy, verifies fresh full locale x page x viewport coverage and rejects untrusted URLs, then exposes read-only, source SHA-bound priority candidates with no automatic content write. Offline fixture 23/23 plus original Staging readback 17/17; not an owner signature or Production readiness certificate."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "source_blob_sha": "c2d9aebb4987b191248fef21b723d224ef05e28b",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/readiness-source-parity-contract.py",
+        "tests/geo-quality-provider-contract.php",
+        "tests/locale-experience-provider-contract.php"
+      ],
+      "owner_role": "CI source reviewer; independent authorized site owner required for any release",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact Git blob reviewed: Reconciled original live first-party Readiness discovery preserving Geo Quality, variable pickup research evidence, published Pricing Workbench alerts and source-hash ContentJob requests, restored original generic origin registry and preserved locale browser alerts. Verified 1,096 exact issue-payload comparisons on live Staging; no option mutation. Automated negative/positive regressions include Geo 17/17, static source integrity 26/26, Locale 23/23 and original live Staging 1,096/1,096. Neither AI-assisted review nor CI source review is a human owner attestation or site deployment authorization."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-geo-quality.php",
+      "source_blob_sha": "0356ec10c3cb6163dc26b2f0dcd3cd2dfcdfddd6",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/readiness-source-parity-contract.py",
+        "tests/geo-quality-provider-contract.php",
+        "tests/locale-experience-provider-contract.php"
+      ],
+      "owner_role": "CI source reviewer; independent authorized site owner required for any release",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact Git blob reviewed: Complete Geo provider including nine bounded station, cruise, property and transport-fare quality sources, safe source-owned term relationships, explicit per-site enablement and never-authorized geocoding, pricing or publication. Automated negative/positive regressions include Geo 17/17, static source integrity 26/26, Locale 23/23 and original live Staging 1,096/1,096. Neither AI-assisted review nor CI source review is a human owner attestation or site deployment authorization."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-completeness.php",
+      "source_blob_sha": "88415df4d689347dd6f0193bd87f9ec2c21200eb",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/readiness-issues-filter-contract.php",
+        "tests/readiness-source-parity-contract.py",
+        "tests/locale-experience-provider-contract.php"
+      ],
+      "owner_role": "Source-only CI reviewer, not an independent live company ContentJob or Production owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact Git object source reviewed: Exact unmodified original rc.118 Completeness provider source, governing per-content-type post/term rules, mandatory source-bound media, inherited relation, dynamic SEO unknown states, and owner-only update interfaces. Hermetic 22/22 negative and positive source-unit assertions, original readiness source static 26/26, no actor/production grant. Native WordPress staging source-filter smoke also passed 10/10 prior to scoped deployment and REST readback afterwards. Source review cannot certify full plugin parity."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "source_blob_sha": "1b0887dbbe5ccde28561bad8d016a2683162060f",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/readiness-issues-filter-contract.php",
+        "tests/readiness-source-parity-contract.py",
+        "tests/locale-experience-provider-contract.php"
+      ],
+      "owner_role": "Source-only CI reviewer, not an independent live company ContentJob or Production owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact Git object source reviewed: Readiness originally reviewed source with explicit source/language/assignment REST read filters. Preserves existing severity-tier priority and locale intake behavior, returns native ContentJob ID without authorization, rejects malformed input before sanitization, does not mutate on GET. Its feature has been deployed narrowly to the original Staging Readiness PHP under exact pre-source SHA CAS with independent native REST readback. Hermetic 22/22 negative and positive source-unit assertions, original readiness source static 26/26, no actor/production grant. Native WordPress staging source-filter smoke also passed 10/10 prior to scoped deployment and REST readback afterwards. Source review cannot certify full plugin parity."
     }
   ],
   "code_change_rules": {

@@ -7,6 +7,8 @@
 defined('ABSPATH') || exit;
 require_once __DIR__.'/class-mad4b-scp-readiness-workflow-options.php';
 require_once __DIR__.'/class-mad4b-scp-content-completeness.php';
+require_once __DIR__.'/class-mad4b-scp-geo-quality.php';
+require_once __DIR__.'/class-mad4b-scp-locale-experience-alerts.php';
 
 final class MAD4B_SCP_Content_Readiness_Alerts {
     const VERSION = '1.0.0';
@@ -51,6 +53,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
             'owner_fields' => self::map($saved['owner_fields'] ?? array()),
             'end_date_fields' => self::map($saved['end_date_fields'] ?? array()),
             'stop_sale_fields' => self::map($saved['stop_sale_fields'] ?? array()),
+            'geo_quality_enabled' => !empty($saved['geo_quality_enabled']),
             'scheduled_scan_enabled' => !empty($saved['scheduled_scan_enabled']),
             'scheduled_scan_interval_minutes' => max(15,min(1440,absint($saved['scheduled_scan_interval_minutes'] ?? 60))),
             'board_id' => absint($saved['board_id'] ?? 0),
@@ -155,8 +158,18 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                 }
                 // One root cause first: a continent cannot be used to fill the
                 // absent pickup address, so do not create two tasks for it.
-                if ($originIsMissing && !$invalidOrigin)
-                    $issues[]=self::issue($type,$id,'origin_missing','medium','Origin and approved pickup source must be reviewed; do not infer location from title');
+                if ($originIsMissing && !$invalidOrigin) {
+                    $variablePickup=self::source_backed_hotel_pickup($id,$type);
+                    if ($variablePickup) {
+                        $issue=self::issue($type,$id,'pickup_guest_location_capture_unverified','medium',
+                            'Published tour has variable hotel pickup. Validate guest hotel/location collection in the actual booking flow; a fixed departure point does not apply.');
+                        $issue['source_evidence']=$variablePickup;
+                        $issues[]=$issue;
+                    } else {
+                        $issues[]=self::issue($type,$id,'origin_missing','medium',
+                            'Origin and approved pickup source must be reviewed; do not infer location from title');
+                    }
+                }
                 $taxonomy=$cfg['location_taxonomies'][$type]??'';
                 if ($taxonomy && taxonomy_exists($taxonomy)) {
                     $terms=wp_get_object_terms($id,$taxonomy,array('fields'=>'ids'));
@@ -259,6 +272,24 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                           !apply_filters('wpml_object_id',$object_id,$type,false,(string)apply_filters('wpml_default_language',null))) );
                 $performance=preg_match('/^perf_(?:(?:rbcss|lcpdelay|fontcss|inlinecss)_[a-f0-9]{12}|ttfb_site|lcpdiscover_home|ratecss_product|ratecss_source_missing|empty_accommodation_ui|mobile_toc_spacing|rate_origin_ui|rate_schedule_default|toc_bottom_gap|tour_h2_global|rate_locale_parity|rate_schema_drift|rate_origin_config|rate_orphan|catalog_initial_layout|catalog_svg_price_first_paint|catalog_template_drift|chosen_crawlability|ard_manifest|header_escape_text|forced_reflow_home|lcp_request_wait|swiper_focus_[a-f0-9]{12}|probe_stale)$/D',$code) &&
                     $source==='mad4b-live-performance' && $type==='site' && $object_id===0;
+                $pricing = $source==='mad4b-pricing-workbench' && (
+                    ($type==='site' && $object_id===0 &&
+                     in_array($code,['pricing_market_profile_missing','pricing_tax_policy_missing',
+                       'pricing_property_rate_missing','pricing_transport_rate_missing'],true))
+                    || ($object_id>0 && post_type_exists($type) &&
+                        get_post_type($object_id)===$type &&
+                        get_post_status($object_id)==='publish' &&
+                        // The first-party Pricing Workbench already owns its
+                        // native subject-model resolution. The central Ledger
+                        // accepts only exact bounded codes on a published
+                        // subject, never imposes one site's post-type names.
+                        in_array($code,[
+                            'pricing_native_rate_missing',
+                            'pricing_display_inquiry_conflict',
+                            'pricing_property_unit_missing',
+                            'pricing_transport_rate_unapproved'
+                        ],true))
+                );
                 // Preserve scoring only for the exact DFSB WPML gap contract.
                 // Other external feeds cannot supply priority/triage metadata.
                 $wpmlGap = $dfsb && preg_match(
@@ -277,7 +308,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                     ),true) &&
                     (int)($row['triage']['priority']??-1)===$row['priority']
                 );
-                $valid=$wpmlPriorityValid && is_array($row) && ($dfsb||$localization||$performance) &&
+                $valid=$wpmlPriorityValid && is_array($row) && ($dfsb||$localization||$performance||$pricing) &&
                     hash_equals($expected,$id) &&
                     in_array($row['severity']??'',array('critical','high','medium','low'),true) &&
                     is_string($row['label']??null) &&
@@ -310,12 +341,85 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         $completeness=MAD4B_SCP_Content_Completeness::discover();
         if(empty($completeness['complete']))$complete=false;
         else $issues=array_merge($issues,(array)$completeness['issues']);
+        // Browser-observed locale parity uses public, fresh, reviewed evidence.
+        // Zero full-page requests on GET or bootstrap; no automatic translation.
+        $localeAudit=MAD4B_SCP_Locale_Experience_Alerts::discover();
+        if(empty($localeAudit['complete']))$complete=false;
+        else $issues=array_merge($issues,(array)$localeAudit['issues']);
+        // First-party, source-only geo/transport candidates; existing Ledger owns reconciliation.
+        $geo=MAD4B_SCP_Geo_Quality::discover($cfg);
+        if(empty($geo['complete']))$complete=false;
+        else $issues=array_merge($issues,(array)$geo['issues']);
         if(count($issues)>self::MAX_ISSUES)$complete=false;
         return array('contract'=>'mad4b.content-readiness.discovery.v1','complete'=>$complete,
             'post_counts'=>$counts,'scanned'=>$scanned,'issues'=>$issues,
             'completeness_evaluated'=>absint($completeness['evaluated']??0),
             'completeness_skipped_unknown'=>absint($completeness['skipped_unknown']??0));
     }
+    /**
+     * First-party source determines whether a FIXED origin is applicable.
+     * Does not certify the guest-facing booking location collection.
+     * Reject stale/incomplete evidence, negated pickup claims, and wrong tenants.
+     */
+    private static function source_backed_hotel_pickup($id,$type) {
+        // Apply only to this company's configured origin-bearing post types;
+        // the original source-bound Research Group is the authoritative proof.
+        $rules=self::rules();
+        if(!post_type_exists($type)||empty($rules['origin_fields'][$type])||
+           get_post_status($id)!=='publish'||
+           !class_exists('MAD4B_SCP_Research_Groups')||
+           !class_exists('MAD4B_SCP_Site_Profile'))return false;
+        $highlight=get_post_meta($id,'highlight_rows',true);
+        if(!is_string($highlight)||strlen($highlight)>60000)return false;
+        $text=trim(wp_strip_all_tags($highlight));
+        if(!preg_match('/\bhotel\s+pick[ -]?up\b/i',$text) ||
+           preg_match('/\b(?:no|not|without|excluded|not included)\b.{0,36}\bhotel\s+pick[ -]?up\b/i',$text))
+           return false;
+        $site=(string)MAD4B_SCP_Site_Profile::site_uuid();
+        $canonical=self::canonical($id,$type);
+        global $wpdb;
+        $group=$wpdb->prefix.'mad4b_research_groups';
+        $record=$wpdb->prefix.'mad4b_research_records';
+        $raw=$wpdb->get_var($wpdb->prepare(
+            "SELECT r.data_json FROM {$record} r INNER JOIN {$group} g ON g.id=r.group_id
+             WHERE g.task_key=%s AND g.site_uuid=%s AND r.provider_id=%s
+             ORDER BY r.id DESC LIMIT 1",
+            'origin:tour:'.$canonical,$site,'native_wp_source'));
+        $e=is_string($raw)?json_decode($raw,true):null;
+        if(!is_array($e)||($e['contract']??'')!=='mad4b.origin-evidence-workflow.v1'||
+           (int)($e['post_id']??0)!==$id ||
+           ($e['site_uuid']??'')!==$site ||
+           ($e['classification']??'')!=='variable_hotel_pickup' ||
+           ($e['exact_pickup_verified']??true)!==false)
+            return false;
+        $terms=wp_get_object_terms($id,'destinations',['fields'=>'ids']);
+        if(is_wp_error($terms))return false;
+        $terms=array_map('intval',(array)$terms);sort($terms,SORT_NUMERIC);
+        $source=hash('sha256',wp_json_encode([
+            'canonical_id'=>$canonical,
+            'origin_term'=>get_post_meta($id,'tour_origin_location_term',true),
+            'destination_terms'=>$terms
+        ],JSON_UNESCAPED_SLASHES));
+        if(!hash_equals((string)($e['source_sha256']??''),$source))return false;
+        // A stored classification alone cannot outlive changed tour copy.
+        $quotes=(array)($e['source_snippets']['highlight_rows']??[]);
+        $matched=false;
+        $now=trim(preg_replace('/\s+/u',' ',$text));
+        foreach($quotes as $quote){
+            $quote=trim(preg_replace('/\s+/u',' ',(string)$quote));
+            if(strlen($quote)>=35 && str_contains($now,$quote) &&
+               preg_match('/\bhotel\s+pick[ -]?up\b/i',$quote))$matched=true;
+        }
+        if(!$matched)return false;
+        $issue_key=hash('sha256',get_current_blog_id().'|'.$type.'|'.$id.'|origin_missing');
+        $ledger=(array)get_option(self::STORE,[]);
+        if(($ledger[$issue_key]['content_job_id']??'')!==(string)($e['job_id']??''))return false;
+        return ['policy'=>'variable_guest_hotel_pickup','source'=>'published_tour_highlights',
+            'source_meta_sha256'=>hash('sha256',$highlight),
+            'research_job_id'=>(string)($e['job_id']??''),
+            'fixed_origin_required'=>false,'guest_location_capture_verified'=>false];
+    }
+
     public static function run_scheduled() {
         if (!self::trusted_scheduled_cli()) return new WP_Error('mad4b_readiness_scheduler_unauthorized');
         $cfg=self::rules();
@@ -363,47 +467,194 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
             // The native ContentJob service owns real creation, and requires a
             // verified principal, brand scope, and independently selected market.
             $code=(string)($row['code']??'');
+            if($code==='pickup_guest_location_capture_unverified' &&
+               !empty($row['post_type']) && post_type_exists((string)$row['post_type'])){
+                $subjectType=sanitize_key((string)$row['post_type']);
+                $priorKey=hash('sha256',get_current_blog_id().'|'.$subjectType.'|'.absint($row['object_id']).'|origin_missing');
+                if(!empty($old[$priorKey]['content_job_id']) &&
+                   ($row['source_evidence']['research_job_id']??'')===$old[$priorKey]['content_job_id']){
+                    $new[$key]['content_job_id']=$old[$priorKey]['content_job_id'];
+                    $new[$key]['reclassified_from_origin_issue']=$priorKey;
+                    $new[$key]['research_evidence_reused']=true;
+                }
+            }
             // Existing Issue Ledger is the only source of origin research intake.
             // Native ContentJob creation remains governed by its own actor gate.
+            // Existing original native field registry determines the origin,
+            // including custom WPML post types. No travel model is imposed on
+            // unrelated companies or sources.
             $issueType=sanitize_key((string)($row['post_type']??''));
             $sourceRules=self::rules();
             $sourceField=(string)($sourceRules['origin_source_fields'][$issueType]
                 ??$sourceRules['origin_fields'][$issueType]??'');
             $locationTax=(string)($sourceRules['location_taxonomies'][$issueType]??'');
-            // Only explicitly configured owner fields qualify for original
-            // research intake. A generic site must never assume tour semantics.
-            if ($code==='origin_missing' && $issueType && $sourceField
-                && post_type_exists($issueType)) {
+            if($code==='origin_missing' && $issueType && $sourceField &&
+               post_type_exists($issueType)) {
                 $post_id=absint($row['object_id']??0);
                 $canonical_id=self::canonical($post_id,$issueType);
                 $site_uuid=class_exists('MAD4B_SCP_Site_Profile')
-                    ? (string) MAD4B_SCP_Site_Profile::site_uuid() : '';
-                if ($post_id && $canonical_id && $site_uuid
-                    && get_post_status($post_id)==='publish') {
+                    ? (string)MAD4B_SCP_Site_Profile::site_uuid() : '';
+                if($post_id && $canonical_id && $site_uuid &&
+                   get_post_status($post_id)==='publish') {
                     $term_ids=$locationTax && taxonomy_exists($locationTax)
-                        ? wp_get_object_terms($post_id,$locationTax,array('fields'=>'ids'))
-                        : array();
-                    $term_ids=is_wp_error($term_ids) ? array() : array_map('intval',(array)$term_ids);
+                        ?wp_get_object_terms($post_id,$locationTax,array('fields'=>'ids'))
+                        :array();
+                    $term_ids=is_wp_error($term_ids)?array():array_map('intval',(array)$term_ids);
                     sort($term_ids,SORT_NUMERIC);
                     $fingerprint=hash('sha256',$site_uuid.'|'.$issueType.'|'.$canonical_id.'|origin_missing');
-                    $source_sha=hash('sha256',wp_json_encode(array(
+                    // Preserve the exact source snapshot for the existing
+                    // first-party Tour/Origin research contract only when its
+                    // configured owner field and taxonomy match that schema.
+                    // All other types use the generic source-field registry.
+                    $usesNativeTourOrigin=$sourceField==='tour_origin_location_term' &&
+                        $locationTax==='destinations';
+                    $sourcePayload=$usesNativeTourOrigin?array(
+                        'canonical_id'=>$canonical_id,
+                        'origin_term'=>get_post_meta($post_id,$sourceField,true),
+                        'destination_terms'=>$term_ids
+                    ):array(
                         'canonical_id'=>$canonical_id,
                         'origin_field'=>$sourceField,
                         'origin_value'=>get_post_meta($post_id,$sourceField,true),
                         'location_taxonomy'=>$locationTax,
-                        'location_terms'=>$term_ids,
-                    ),JSON_UNESCAPED_SLASHES));
+                        'location_terms'=>$term_ids
+                    );
                     $new[$key]['content_job_request']=array(
                         'contract'=>'mad4b.readiness-contentjob-intake.v1',
-                        'status'=>!empty($previous['content_job_id']) ? 'LINKED' : 'PRIORITY_INTAKE',
-                        'priority'=>85, 'source_issue_id'=>$key,
+                        'status'=>!empty($previous['content_job_id'])?'LINKED':'PRIORITY_INTAKE',
+                        'priority'=>85,'source_issue_id'=>$key,
                         'gap_code'=>'origin_missing','post_type'=>$issueType,
                         'source_post_id'=>$post_id,'canonical_post_id'=>$canonical_id,
                         'site_uuid'=>$site_uuid,'content_type'=>'research_observation',
-                        'source_sha256'=>$source_sha,'deduplication_key'=>$fingerprint,
-                        'reason'=>'Resolve the configured source location from approved evidence and validate the appropriate service handoff before writeback.',
+                        'source_sha256'=>hash('sha256',wp_json_encode($sourcePayload,JSON_UNESCAPED_SLASHES)),
+                        'deduplication_key'=>$fingerprint,
+                        'reason'=>'Resolve the source-bound configured origin and verify pickup, boarding or station applicability before writeback.',
                         'requires_governed_content_job_admission'=>true,
                         'publication_authorized'=>false,'price_inference_authorized'=>false
+                    );
+                }
+            }
+            // Source-only Geo / transport ContentJob intake requests.
+            // Discovery never creates a job, geocodes, changes taxonomy, prices,
+            // or dispatches tasks; admission is delegated to the native provider.
+            if (in_array($code, array(
+                'geo_station_destination_unlinked',
+                'geo_station_locality_unverified',
+                'geo_station_coordinates_invalid',
+                'geo_transport_route_stations_invalid',
+                'geo_transport_price_evidence_unverified',
+                'geo_transport_rate_expired',
+                'geo_cruise_boarding_unverified',
+                'geo_cruise_boarding_applicability_unverified',
+                'geo_property_pickup_unverified'
+            ), true) && !empty($row['object_id'])) {
+                $post_id=absint($row['object_id']);
+                $type=sanitize_key((string)($row['post_type']??''));
+                $canonical_id=self::canonical($post_id,$type);
+                $site_uuid=class_exists('MAD4B_SCP_Site_Profile')
+                    ? (string)MAD4B_SCP_Site_Profile::site_uuid() : '';
+                if ($canonical_id && $site_uuid && get_post_status($post_id)==='publish') {
+                    $evidence=(array)($row['source_evidence']??array());
+                    $family=str_starts_with($code,'geo_transport_price')
+                        || $code==='geo_transport_rate_expired'
+                        ? 'transport_pricing_opportunity' : 'geo_source_verification';
+                    $fingerprint=hash('sha256',$site_uuid.'|'.$type.'|'.$canonical_id.'|'.$code);
+                    $source_sha=hash('sha256',wp_json_encode(array(
+                        'post_id'=>$post_id,'canonical_id'=>$canonical_id,
+                        'issue_code'=>$code,'evidence'=>$evidence,
+                    ),JSON_UNESCAPED_SLASHES));
+                    $new[$key]['content_job_request']=array(
+                        'contract'=>'mad4b.geo-fact-verification-intake.v1',
+                        'status'=>!empty($previous['content_job_id'])?'LINKED':'PRIORITY_INTAKE',
+                        'priority'=>$family==='transport_pricing_opportunity'?58:68,
+                        'source_issue_id'=>$key,'gap_code'=>$code,
+                        'post_type'=>$type,'source_post_id'=>$post_id,
+                        'canonical_post_id'=>$canonical_id,'site_uuid'=>$site_uuid,
+                        'content_type'=>'research_observation',
+                        'task_family'=>$family,'source_sha256'=>$source_sha,
+                        'deduplication_key'=>$fingerprint,
+                        'requires_governed_content_job_admission'=>true,
+                        'independent_source_verification_required'=>true,
+                        'external_dispatch_authorized'=>false,
+                        'publication_authorized'=>false,
+                        'taxonomy_write_authorized'=>false,
+                        'price_inference_authorized'=>false,
+                        'commercial_booking_authorized'=>false
+                    );
+                }
+            }
+            if(($row['source']??'')==='mad4b-locale-experience' &&
+               preg_match('/^lexp_(asset_http_error|cross_locale_link|visible_term_parity|filter_visibility_drift|untranslated_ui_candidate)_([a-z]{2})$/D',$code,$m) &&
+               class_exists('MAD4B_SCP_Locale_Experience_Alerts') &&
+               MAD4B_SCP_Locale_Experience_Alerts::current()) {
+                $site_uuid=class_exists('MAD4B_SCP_Site_Profile')
+                    ?(string)MAD4B_SCP_Site_Profile::site_uuid():'';
+                $e=(array)($row['source_evidence']??array());
+                if($site_uuid && !empty($e['observations'])){
+                    $new[$key]['priority']=max(0,min(100,(int)($row['priority']??0)));
+                    $new[$key]['content_job_request']=array(
+                       'contract'=>'mad4b.locale-experience-contentjob-intake.v1',
+                       'status'=>!empty($previous['content_job_id'])?'LINKED':'PRIORITY_INTAKE',
+                       'priority'=>$new[$key]['priority'],
+                       'source_issue_id'=>$key,'site_uuid'=>$site_uuid,
+                       'language'=>$m[2],'gap_code'=>$code,
+                       'content_type'=>'localization_observation',
+                       'task_family'=>in_array($m[1],array('asset_http_error','cross_locale_link'),true)
+                          ?'published_experience_repair':'wpml_eligibility_investigation',
+                       'source_sha256'=>hash('sha256',wp_json_encode($e,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)),
+                       'deduplication_key'=>hash('sha256',$site_uuid.'|'.$code),
+                       'requires_governed_content_job_admission'=>true,
+                       'requires_original_wpml_and_query_evidence'=>true,
+                       'auto_translation_authorized'=>false,'auto_publication_authorized'=>false,
+                       'external_scraper_dispatch_authorized'=>false
+                    );
+                }
+            }
+            // Pricing Workbench: durable, review-only native ContentJob requests.
+            // The verified external scanner cannot provide job IDs or authorizations;
+            // reconciler owns this intake contract after source validation.
+            if (($row['source']??'')==='mad4b-pricing-workbench'
+                && str_starts_with($code,'pricing_')) {
+                $type=(string)($row['post_type']??'');
+                $post_id=absint($row['object_id']??0);
+                $site_uuid=class_exists('MAD4B_SCP_Site_Profile')
+                    ? (string)MAD4B_SCP_Site_Profile::site_uuid() : '';
+                $canonical=$post_id ? self::canonical($post_id,$type) : 0;
+                if ($site_uuid && ($type==='site' || ($canonical
+                    && get_post_status($post_id)==='publish'))) {
+                    $configuration=in_array($code,array(
+                        'pricing_market_profile_missing','pricing_tax_policy_missing'
+                    ),true);
+                    $subject_type=$configuration?'pricing_configuration_review':'pricing_source_research';
+                    $fingerprint=hash('sha256', $site_uuid.'|pricing|'.$type.'|'.
+                        ($canonical?:0).'|'.$code);
+                    $snapshot=hash('sha256',wp_json_encode(array(
+                        'site_uuid'=>$site_uuid,'code'=>$code,'type'=>$type,
+                        'canonical_id'=>$canonical,
+                        'post_modified_gmt'=>$post_id?get_post_field('post_modified_gmt',$post_id):'',
+                        'label'=>(string)($row['label']??''),
+                        'tax_option'=>$code==='pricing_tax_policy_missing'
+                            ?get_option('woocommerce_calc_taxes'):null,
+                    ),JSON_UNESCAPED_SLASHES));
+                    $prior=(array)($previous['content_job_request']??array());
+                    $linked=!empty($previous['content_job_id']);
+                    $state=$linked
+                        ? (($prior['source_sha256']??'')!==$snapshot
+                            ?'SOURCE_CHANGED_REVIEW':'LINKED')
+                        :'PRIORITY_INTAKE';
+                    $new[$key]['content_job_request']=array(
+                        'contract'=>'mad4b.pricing-source-contentjob-intake.v1',
+                        'status'=>$state,'priority'=>($row['severity']??'')==='critical'?90:75,
+                        'source_issue_id'=>$key,'gap_code'=>$code,
+                        'post_type'=>$type,'source_post_id'=>$post_id,
+                        'canonical_post_id'=>$canonical,'site_uuid'=>$site_uuid,
+                        'content_type'=>$subject_type,'task_family'=>$subject_type,
+                        'source_sha256'=>$snapshot,'deduplication_key'=>$fingerprint,
+                        'requires_governed_content_job_admission'=>true,
+                        'requires_independent_supplier_evidence'=>!$configuration,
+                        'financial_authorization'=>false,'price_inference_authorized'=>false,
+                        'publication_authorized'=>false,'checkout_authorized'=>false,
+                        'external_dispatch_authorized'=>false
                     );
                 }
             }
@@ -451,6 +702,11 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         }
     }
     private static function rule_enabled_for($issue,$cfg) {
+        if(($issue['source']??'')==='mad4b-locale-experience' &&
+            preg_match('/^lexp_(?:asset_http_error|cross_locale_link|visible_term_parity|filter_visibility_drift|untranslated_ui_candidate)_[a-z]{2}$/D',(string)($issue['code']??'')))
+            return class_exists('MAD4B_SCP_Locale_Experience_Alerts') &&
+                MAD4B_SCP_Locale_Experience_Alerts::current()!==null;
+
         $type=$issue['post_type']??'';$code=$issue['code']??'';
         if(str_starts_with($code,'loc_') && ($issue['source']??'')==='mad4b-elementor-localization')
             return has_filter('mad4b/content_readiness/external_issues')!==false;
@@ -470,12 +726,17 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                 if(($rule['id']??'')===$rule_id)return true;
             return false;
         }
+        if(str_starts_with($code,'geo_'))
+            return !empty($cfg['geo_quality_enabled']) &&
+                in_array($type,$cfg['post_types'],true) &&
+                in_array($code,MAD4B_SCP_Geo_Quality::CODES,true);
         if($code==='cron_overdue')return (bool)$cfg['check_cron'];
         if($code==='form_submissions_unread')return !empty($cfg['form_id']);
         if(!in_array($type,$cfg['post_types'],true))return false;
         switch($code) {
             case 'wpml_language_unregistered':return (bool)$cfg['check_wpml'];
             case 'origin_missing':return !empty($cfg['origin_fields'][$type]);
+            case 'pickup_guest_location_capture_unverified':return !empty($cfg['origin_fields'][$type]);
             case 'origin_source_too_broad':
             case 'origin_source_invalid_reference':return !empty($cfg['origin_source_fields'][$type])&&!empty($cfg['origin_source_taxonomies'][$type]);
             case 'location_unlinked':return !empty($cfg['location_taxonomies'][$type])&&taxonomy_exists($cfg['location_taxonomies'][$type]);
@@ -517,6 +778,12 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
             'methods' => 'GET',
             'callback' => array(__CLASS__, 'rest_issues'),
             'permission_callback' => array(__CLASS__, 'rest_permission'),
+            'args'=>array(
+                'source'=>array('type'=>'string','required'=>false),
+                'language'=>array('type'=>'string','required'=>false),
+                'assignment'=>array('type'=>'string','required'=>false,
+                    'enum'=>array('all','linked','unassigned','content_job','board')),
+            ),
         ));
         // Only real, authenticated local-client credentials may write.
         register_rest_route($namespace, '/sync-one', array(
@@ -592,6 +859,14 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         if($ar!==$br)return $ar<=>$br;
         $ap=max(0,min(100,(int)($a['priority']??0)));
         $bp=max(0,min(100,(int)($b['priority']??0)));
+        // Dynamic verified public-surface impact overrides only ordering INSIDE
+        // the existing severity/taxonomy tier. Never rewrites provider priority.
+        $impactA=apply_filters('mad4b/content_readiness/impact_score',null,$a);
+        $impactB=apply_filters('mad4b/content_readiness/impact_score',null,$b);
+        if(is_int($impactA) && is_int($impactB) && $impactA!==$impactB)
+            return $impactB<=>$impactA;
+        if(is_int($impactA) && !is_int($impactB))return -1;
+        if(!is_int($impactA) && is_int($impactB))return 1;
         if($ap!==$bp)return $bp<=>$ap;
         return strcmp($b['last_seen']??'',$a['last_seen']??'');
     }
@@ -603,6 +878,18 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         $severity=sanitize_key((string)($request->get_param('severity')??''));
         $type=sanitize_key((string)($request->get_param('post_type')??''));
         $code=sanitize_key((string)($request->get_param('code')??''));
+        $source=sanitize_key((string)($request->get_param('source')??''));
+        $languageRaw=(string)($request->get_param('language')??'');
+        $language=strtolower(trim($languageRaw));
+        // Deny invalid input before sanitization can silently turn a malformed
+        // or injected language into an unfiltered site-wide request.
+        if($language!=='' && !preg_match('/^[a-z]{2}$/D',$language))
+            return new WP_Error('mad4b_readiness_locale_filter_invalid',
+                'Use an exact two-letter language.',array('status'=>400));
+        $assignment=sanitize_key((string)($request->get_param('assignment')??'all'));
+        if(!in_array($assignment,array('all','linked','unassigned','content_job','board'),true))
+            return new WP_Error('mad4b_readiness_assignment_filter_invalid',
+                'Unsupported assignment filter.',array('status'=>400));
         $result=array();
         foreach((array)get_option(self::STORE,array()) as $row) {
             if(!is_array($row))continue;
@@ -611,6 +898,18 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
             if($severity && ($row['severity']??'')!==$severity)continue;
             if($type && ($row['post_type']??'')!==$type)continue;
             if($code && ($row['code']??'')!==$code)continue;
+            $sourceValue=sanitize_key((string)($row['source']??'native'));
+            if($source && $sourceValue!==$source)continue;
+            $issueLanguage=sanitize_key((string)($row['content_job_request']['language']??''));
+            if(!$issueLanguage && preg_match('/_([a-z]{2})$/D',(string)($row['code']??''),$m))
+                $issueLanguage=$m[1];
+            if($language && $issueLanguage!==$language)continue;
+            $hasJob=!empty($row['content_job_id']);
+            $hasBoard=!empty($row['board_task_id']);
+            if(($assignment==='linked' && !$hasJob && !$hasBoard)
+                ||($assignment==='unassigned' && ($hasJob||$hasBoard))
+                ||($assignment==='content_job' && !$hasJob)
+                ||($assignment==='board' && !$hasBoard))continue;
             $e=(array)($row['source_evidence']??array());
             $result[]=array(
                 'issue_id'=>(string)($row['id']??''),
@@ -618,6 +917,14 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
                 'object_id'=>absint($row['object_id']??0),
                 'code'=>(string)($row['code']??''),
                 'severity'=>(string)($row['severity']??'medium'),
+                'priority'=>max(0,min(100,absint($row['priority']??0))),
+                'source'=>$sourceValue,
+                'language'=>$issueLanguage?:null,
+                'content_job_id'=>$hasJob?sanitize_text_field((string)$row['content_job_id']):null,
+                'locale_evidence'=>($row['source']??'')==='mad4b-locale-experience'
+                    ?(array)($row['source_evidence']??array()):null,
+                'content_job_request'=>($row['source']??'')==='mad4b-locale-experience'
+                    ?(array)($row['content_job_request']??array()):null,
                 'label'=>(string)($row['label']??''),
                 'status'=>$state,
                 'first_seen'=>$row['first_seen']??null,
@@ -734,6 +1041,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         $settings['media_reuse_threshold']=max(0,min(100,absint($_POST['media_reuse_threshold']??0)));
         $settings['form_id']=absint($_POST['form_id']??0);
         $settings['form_unread_days']=max(1,min(90,absint($_POST['form_unread_days']??7)));
+        $settings['geo_quality_enabled']=isset($_POST['geo_quality_enabled']);
         $settings['scheduled_scan_enabled']=isset($_POST['scheduled_scan_enabled']);
         $settings['scheduled_scan_interval_minutes']=max(15,min(1440,absint($_POST['scheduled_scan_interval_minutes']??60)));
         $settings['check_wpml']=isset($_POST['check_wpml']);
@@ -772,7 +1080,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         $link=$row['object_id']?get_edit_post_link($row['object_id'],'raw'):'';
         $taskData=array('title'=>$subject,'stage_id'=>$stage,'source'=>'mad4b-readiness',
             'source_id'=>$issue_id,
-            'description'=>'Readiness Issue: '.$issue_id."\n".esc_url_raw((string)$link).'  '.sanitize_text_field($row['label']));
+            'description'=>'Readiness Issue: '.$issue_id."\n".esc_url_raw((string)$link).'  '.sanitize_text_field($row['label']). (!empty($row['content_job_id']) ? "\nNative ContentJob: ".sanitize_text_field((string)$row['content_job_id']) : ''));
         $assigned=MAD4B_SCP_Readiness_Workflow_Options::assigned_user($row);
         if($assigned)$taskData['assignees']=array($assigned);
         try {
@@ -867,7 +1175,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         echo '<p><label>Disallowed origin levels (CSV)<br><input class="large-text" name="invalid_origin_levels" value="'.esc_attr(implode(',',(array)$rules['invalid_origin_levels'])).'"></label></p>';
         foreach(array('scheduled_scan_interval_minutes'=>'Scheduled scan minimum interval (minutes)', 'media_reuse_threshold'=>'Shared gallery review threshold (0 disables)', 'form_id'=>'Fluent Forms ID', 'form_unread_days'=>'Unread follow-up threshold (days)') as $field=>$label)
             echo '<p><label>'.esc_html($label).' <input type="number" min="0" name="'.esc_attr($field).'" value="'.(int)$rules[$field].'"></label></p>';
-        foreach(array('scheduled_scan_enabled'=>'Enable local server-side scheduled scans (issue ledger only; no notifications or tasks)','check_wpml'=>'Detect missing WPML language','check_cron'=>'Detect overdue WP-Cron') as $field=>$label)
+        foreach(array('geo_quality_enabled'=>'Enable source-only station, cruise boarding and transport-price quality alerts (no geocoding or pricing writes)','scheduled_scan_enabled'=>'Enable local server-side scheduled scans (issue ledger only; no notifications or tasks)','check_wpml'=>'Detect missing WPML language','check_cron'=>'Detect overdue WP-Cron') as $field=>$label)
             echo '<p><label><input type="checkbox" name="'.esc_attr($field).'" '.checked($rules[$field],true,false).'>'.esc_html($label).'</label></p>';
         submit_button('Save rules');echo '</form>';
         }

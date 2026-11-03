@@ -35,6 +35,7 @@ $pages = array(
 	'mad4b-growth-providers' => array( 'MAD4B_SCP_G5_External_Providers', 'render', array( '' ) ),
 	'mad4b-ai-knowledge-workspace' => array( 'MAD4B_SCP_G6_Acceptance', 'render', array( '' ) ),
 	'mad4b-plugin-deployment' => array( 'MAD4B_SCP_Cross_Plugin_Admin', 'render', array( '' ) ),
+	'mad4b-dfsb-environments' => array( 'MAD4B_SCP_DFSB_Environment_Policy', 'render', array( '' ) ),
     // These three pages were registered through the shared Admin Route
     // Registry; smoke each real page as soon as it becomes discoverable.
     'mad4b-market-profiles' => array( 'MAD4B_SCP_Market_Profiles', 'admin_page', array( '' ) ),

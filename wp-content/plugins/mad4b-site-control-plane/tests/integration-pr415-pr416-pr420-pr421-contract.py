@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Fail-closed source and evidence contract for four-PR integrated candidate."""
 import hashlib
+import subprocess
 import json
 from pathlib import Path
 
@@ -156,9 +157,29 @@ def reviewed_source_supersedes_snapshot(path):
         source_blob = hashlib.sha1(b"blob " + str(len(source)).encode("ascii") + b"\0" + source).hexdigest()
         # Reviewed successor adds the three Admin Route Registry smoke pages.
         # Pin exact current Git blob; keep historic Feature 007 snapshots immutable.
-        return (blob_sha == "0c0c2052254a5c893a79d45aa9d985b57d8361fd"
+        # Two exact reviewed generations of the disposable smoke case. The
+        # original source (0c0c...) is immutable. Its successor adds the
+        # registered DFSB environment route with real render/permission checks.
+        # No generic test-file trust, new WordPress grant or release approval.
+        known_admin_smoke_blobs = {
+            "0c0c2052254a5c893a79d45aa9d985b57d8361fd",
+            "dd56e40e1481167b82a9635f27ebb828d917320d",
+        }
+        if blob_sha not in known_admin_smoke_blobs:
+            return False
+        actual_head_blob = subprocess.check_output(
+            ["git", "rev-parse", "HEAD:" + path],
+            text=True, timeout=8,
+        ).strip()
+        dfsb_path = "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dfsb-environment-policy.php"
+        dfsb_source = Path(dfsb_path).read_bytes()
+        dfsb_route = (b"Admin_Route_Registry::register( 'mad4b-dfsb-environments', 'manage_options' )" in dfsb_source)
+        dfsb_smoke = (b"'mad4b-dfsb-environments' => array( 'MAD4B_SCP_DFSB_Environment_Policy', 'render'" in data)
+        return (actual_head_blob == blob_sha
                 and (direct_profile, source_blob) in reviewed_exact_blobs
-                and b"'mad4b-direct-access-profile' => array( 'MAD4B_SCP_Direct_Profile', 'render_page'" in data)
+                and b"'mad4b-direct-access-profile' => array( 'MAD4B_SCP_Direct_Profile', 'render_page'" in data
+                and (blob_sha != "dd56e40e1481167b82a9635f27ebb828d917320d"
+                     or (dfsb_route and dfsb_smoke)))
     return (path, blob_sha) in reviewed_exact_blobs
 
 
