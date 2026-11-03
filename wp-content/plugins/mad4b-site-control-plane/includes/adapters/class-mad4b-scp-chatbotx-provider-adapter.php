@@ -66,6 +66,9 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
     public function reversible_contracts() { return array(); }
     public function register_abilities() {
         if ( ! $this->is_available() ) return;
+        $approved_draft_types=array_values(array_filter(array_unique(array_map('sanitize_key',
+            (array)apply_filters('mad4b/company/approved_post_types',array()))),
+            static fn($type)=>post_type_exists($type)));
         $permission = array('MAD4B_SCP_Policy', 'can_read');
         $this->add_ability('mad4b/chatbotx-provider-snapshot',
             'Read ChatbotX Provider and WordPress Surface Inventory',
@@ -83,7 +86,7 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
                 'customer_id'=>array('type'=>'integer','minimum'=>1),
                 'mailbox_id'=>array('type'=>'integer','minimum'=>1),
                 'ticket_id'=>array('type'=>'integer','minimum'=>1),
-                'post_type'=>array('type'=>'string','enum'=>array('tours-and-activities','properties','transportations'))
+                'post_type'=>array('type'=>'string','enum'=>$approved_draft_types)
             ),array('ability')));
         $this->add_ability('mad4b/chatbotx-integration-inventory',
             'Read Existing Workflow, CRM, Commerce and Pricing Provider Coverage',
@@ -125,7 +128,7 @@ final class MAD4B_SCP_ChatbotX_Provider_Adapter extends MAD4B_SCP_Adapter_Base {
             'write',false,true,true);
         $this->add_ability('mad4b/chatbotx-cpt-create-draft',
             'Create Unpublished Travel CPT Draft','cpt_create_draft',$admin,$this->schema(array(
-                'post_type'=>array('type'=>'string','enum'=>array('tours-and-activities','properties','transportations')),
+                'post_type'=>array('type'=>'string','enum'=>$approved_draft_types),
                 'title'=>array('type'=>'string','minLength'=>1,'maxLength'=>180),
                 'idempotency_key'=>$idempotency
             ),array('post_type','title','idempotency_key')),
