@@ -38,6 +38,42 @@ def live_sha(container: str, docroot: str, relative: str) -> str | None:
     raise RuntimeError("live hash check failed: " + relative + " (" + r.stderr[:130] + ")")
 
 
+def bootstrap_dependencies(source: str) -> set[str]:
+    import re
+    return set(re.findall(
+        r"""require_once\\s+MAD4B_SCP_DIR\\s*\\.\\s*['"]([^'"]+)['"]""",
+        source,
+    ))
+
+
+def bootstrap_coverage(repo: pathlib.Path, container: str, docroot: str) -> dict:
+    path = "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php"
+    candidate = (repo / path)
+    if not candidate.is_file():
+        return {"status": "UNKNOWN_CANDIDATE_BOOTSTRAP"}
+    live = subprocess.run(
+        ["docker", "exec", "-u", "0", container, "cat",
+         docroot.rstrip("/") + "/" + path],
+        capture_output=True, text=True, timeout=25,
+    )
+    if live.returncode:
+        raise RuntimeError("live bootstrap could not be read safely")
+    wanted = bootstrap_dependencies(candidate.read_text(encoding="utf-8"))
+    loaded = bootstrap_dependencies(live.stdout)
+    extra = sorted(loaded - wanted)
+    missing = [p for p in extra
+               if not (repo / "wp-content/plugins/mad4b-site-control-plane" / p).is_file()]
+    return {
+        "status": "BOOTSTRAP_DRIFT" if extra else "MATCH",
+        "candidate_requires": len(wanted),
+        "live_requires": len(loaded),
+        "extra_live_require_count": len(extra),
+        "extra_not_in_candidate": len(missing),
+        "extra_live_require_paths": extra,
+        "not_in_candidate_paths": missing,
+    }
+
+
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--repo", type=pathlib.Path, required=True)
@@ -66,13 +102,17 @@ def main() -> int:
                      "candidate_sha256": original, "installed_sha256": installed})
     counts = {label: sum(row["status"] == label for row in rows)
               for label in ("MATCH_EXACT_SOURCE", "LIVE_SOURCE_DRIFT", "NOT_INSTALLED")}
-    hold = counts["LIVE_SOURCE_DRIFT"] > 0 or counts["NOT_INSTALLED"] > 0
+    bootstrap = bootstrap_coverage(repo, a.container, a.docroot)
+    hold = (counts["LIVE_SOURCE_DRIFT"] > 0 or
+            counts["NOT_INSTALLED"] > 0 or
+            bootstrap["status"] != "MATCH")
     report = {
         "contract": "mad4b.live-wordpress-source-parity.v1",
         "checked_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
         "git_head": current, "git_base": base, "docker_container": a.container,
         "document_root": a.docroot, "source_count": len(rows), "summary": counts,
         "promotion_gate": "HOLD_SOURCE_RECONCILIATION" if hold else "MATCH",
+        "bootstrap_dependency_coverage": bootstrap,
         "deployment_executed": False,
         "source_replaced": False,
         "rows": rows,
