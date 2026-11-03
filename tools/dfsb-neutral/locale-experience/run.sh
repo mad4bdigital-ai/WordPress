@@ -57,3 +57,20 @@ export MAD4B_OBSERVATION_OUT="$tmp"
       "priority_alert_count"=>count(MAD4B_SCP_Locale_Experience_Alerts::discover()["issues"]),
       "only_intake_requests"=>true,"publication_authorized"=>false]),PHP_EOL;
 ' --allow-root --user="$MAD4B_WP_OPERATOR"
+
+# Opt-in, company-scoped original ContentJob intake. Never grants publication.
+# Existing WordPress original actor and Site Profile proof remain mandatory.
+if [ "${MAD4B_LOCALE_NATIVE_INTAKE_ENABLED:-0}" = '1' ]; then
+  source_dir="$(cd -- "$(dirname -- "$0")" && pwd -P)"
+  native="$source_dir/native-intake.php"
+  [ -f "$native" ] && [ ! -L "$native" ] || {
+    echo 'DENIED_MISSING_OR_SYMLINK_NATIVE_INTAKE_SOURCE'; exit 5;
+  }
+  export MAD4B_LOCALE_NATIVE_INTAKE_ENABLED=1
+  /usr/bin/docker cp "$native" "$MAD4B_WP_CONTAINER":/tmp/mad4b-locale-native-intake.php
+  /usr/bin/docker exec -e MAD4B_SITE_UUID -e MAD4B_SITE_BASE \
+    -e MAD4B_SITE_ENVIRONMENT -e MAD4B_LOCALE_NATIVE_INTAKE_ENABLED \
+    --workdir /var/www/html "$MAD4B_WP_CONTAINER" wp eval \
+    'define("MAD4B_LOCALE_NATIVE_INTAKE_EXECUTE",true);require "/tmp/mad4b-locale-native-intake.php";' \
+    --allow-root --user="$MAD4B_WP_OPERATOR"
+fi
