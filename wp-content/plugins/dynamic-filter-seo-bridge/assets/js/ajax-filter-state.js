@@ -13,6 +13,9 @@
 
     var timers = {}, sequences = {}, controllers = {}, activeKeys = {}, eventSeenKeys = {}, initialSemanticKeys = {};
     var initialized = false, runtimeBlockedSignature = '';
+    // Prepare the non-authorizing presentation while native JSF renders.
+    // Commit it only after the Listing reports its matching query as updated.
+    var nativePending = {}, prepared = {};
     var initialValues = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
     var boundGroups = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
     var groupRetryState = { pathGroup: '', attempts: 0, timer: null };
@@ -275,12 +278,34 @@
         emitDFSBEvent('dfsb/ajax-presentation-updated', data);
     }
 
+    function processPreparedResponse(result, key) {
+        if (!result.ok) { blockFailClosed('http_error', key, { reason: 'http_error', http_status: result.status }); return; }
+        if (result.invalidJson || !result.data) { blockFailClosed('invalid_response', key, { http_status: result.status }); return; }
+        applyResponse(result.data, key);
+    }
+    function queryFingerprint(key) {
+        var group = window.JetSmartFilters && window.JetSmartFilters.filterGroups ?
+            window.JetSmartFilters.filterGroups[key] : null;
+        var query = group && group.currentQuery && typeof group.currentQuery === 'object' ? group.currentQuery : {};
+        return (window.location.pathname || '/') + '|' + JSON.stringify(query);
+    }
+
     function readHttpResponse(response) { return response.text().then(function (text) { var data = null, invalidJson = false; if (text) { try { data = JSON.parse(text); } catch (error) { invalidJson = true; } } return { ok: response.ok, status: response.status, data: data, invalidJson: invalidJson }; }); }
     function send(provider, queryId) {
         var contract = jsfRuntimeContract(); if (!contract.ready) { emitRuntimeContractBlocked(contract); return; } runtimeBlockedSignature = '';
         var jsf = window.JetSmartFilters, key = groupKey(provider, queryId), group = jsf.filterGroups[key]; if (!group) { return; }
         var currentQuery = effectiveCurrentQuery(key, group);
         if (!queryHasSemanticFilters(currentQuery)) {
+            delete prepared[key];
+            // Clearing the URL while JSF still renders must not reveal stale
+            // initial copy before the native result commits.
+            if (nativePending[key]) {
+                // A quick reset while the prior filtered prefetch is still
+                // pending must invalidate its sequence and abort its transport.
+                sequences[key] = (sequences[key] || 0) + 1;
+                if (controllers[key]) { controllers[key].abort(); delete controllers[key]; }
+                return;
+            }
             if (initialSemanticKeys[key]) { clearTransient('filters_cleared', key); } else { restoreInitial('filters_cleared', key); }
             if (controllers[key]) { controllers[key].abort(); delete controllers[key]; }
             var resolvedAfterClear = syncAutoBindings(); if (resolvedAfterClear && resolvedAfterClear !== key) { scheduleKey(resolvedAfterClear); }
@@ -289,17 +314,25 @@
         var b = bindings(key); if (!b.tokens.length && !b.slots.length) { emitAutoGroupStatus(); return; }
         sequences[key] = (sequences[key] || 0) + 1; var requestId = sequences[key]; if (controllers[key]) { controllers[key].abort(); } controllers[key] = typeof AbortController !== 'undefined' ? new AbortController() : null;
         var requestPath = window.location.pathname || '/';
+        if (nativePending[key]) {
+            prepared[key] = { fingerprint: requestPath + '|' + JSON.stringify(currentQuery), waiting: true, result: null };
+        } else { delete prepared[key]; }
         var options = { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider: String(provider || ''), query_id: String(queryId || ''), request_path: requestPath, archive_path: baseArchivePath(requestPath), current_query: currentQuery, tokens: b.tokens, slots: b.slots }) };
         if (controllers[key]) { options.signal = controllers[key].signal; }
         var timedOut = false, timeoutId = null, transport = fetch(cfg.endpoint, options).then(readHttpResponse);
         var deadline = new Promise(function (resolve, reject) { timeoutId = window.setTimeout(function () { timedOut = true; if (controllers[key]) { controllers[key].abort(); } var error = new Error('Dynamic Filter SEO Bridge AJAX presentation timeout'); error.name = 'DFSBTimeoutError'; reject(error); }, requestTimeoutMs); });
         Promise.race([transport, deadline]).then(function (result) {
             if (requestId !== sequences[key]) { return; }
-            if (!result.ok) { blockFailClosed('http_error', key, { reason: 'http_error', http_status: result.status }); return; }
-            if (result.invalidJson || !result.data) { blockFailClosed('invalid_response', key, { http_status: result.status }); return; }
-            applyResponse(result.data, key);
+            if (nativePending[key] && prepared[key] && prepared[key].waiting) {
+                prepared[key].result = result;
+                return;
+            }
+            delete prepared[key];
+            processPreparedResponse(result, key);
         }).catch(function (error) {
             if (requestId !== sequences[key]) { return; }
+            delete prepared[key];
+            if (nativePending[key]) { return; }
             if (timedOut || (error && error.name === 'DFSBTimeoutError')) { blockFailClosed('timeout', key, { reason: 'timeout', timeout_ms: requestTimeoutMs }); return; }
             if (error && error.name === 'AbortError') { return; }
             blockFailClosed('transport_error', key);
@@ -315,7 +348,45 @@
         var pathState = prettyPathState();
         if (pathState.valid && pathState.group && queryHasSemanticFilters(pathState.query)) { initialSemanticKeys[pathState.group] = true; }
         groupKeys().forEach(function (key) { var group = jsf.filterGroups[key]; if (group && queryHasSemanticFilters(group.currentQuery)) { initialSemanticKeys[key] = true; } });
-        jsf.events.subscribe('ajaxFilters/updated', function (provider, queryId) { var key = groupKey(provider, queryId); eventSeenKeys[key] = true; var resolved = syncAutoBindings(); schedule(provider, queryId); if (resolved && resolved !== key) { scheduleKey(resolved); } });
+        jsf.events.subscribe('ajaxFilters/start-loading', function (provider, queryId) {
+            var key = groupKey(provider, queryId);
+            if (!jsf.filterGroups[key]) { return; }
+            eventSeenKeys[key] = true;
+            nativePending[key] = true;
+            emitDFSBEvent('dfsb/ajax-presentation-start', { group: key, source: 'native_jsf_loading' });
+            schedule(provider, queryId);
+        });
+        jsf.events.subscribe('ajaxFilters/end-loading', function (provider, queryId) {
+            var key = groupKey(provider, queryId);
+            // An unsuccessful native Listing fetch might never emit 'updated'.
+            // Do not leave the Editorial surface showing an endless spinner.
+            if (nativePending[key]) {
+                nativePending[key] = false;
+                delete prepared[key];
+                sequences[key] = (sequences[key] || 0) + 1;
+                if (controllers[key]) { controllers[key].abort(); delete controllers[key]; }
+                emitDFSBEvent('dfsb/ajax-presentation-blocked', { reason: 'native_jsf_update_missing', group: key });
+            }
+        });
+        jsf.events.subscribe('ajaxFilters/updated', function (provider, queryId) {
+            var key = groupKey(provider, queryId);
+            eventSeenKeys[key] = true;
+            nativePending[key] = false;
+            var resolved = syncAutoBindings(), early = prepared[key];
+            if (early && early.fingerprint === queryFingerprint(key)) {
+                if (early.result) {
+                    delete prepared[key];
+                    processPreparedResponse(early.result, key);
+                }
+                // A matching pending early request will finish after the native
+                // grid, so do not issue a redundant REST request.
+                if (resolved && resolved !== key) { scheduleKey(resolved); }
+                return;
+            }
+            delete prepared[key];
+            schedule(provider, queryId);
+            if (resolved && resolved !== key) { scheduleKey(resolved); }
+        });
         if (pathState.valid && pathState.group && groupKeys().indexOf(pathState.group) !== -1 && queryHasSemanticFilters(pathState.query)) { scheduleKey(pathState.group); }
         groupKeys().forEach(function (key) { var parts = key.split('/'), group = jsf.filterGroups[key]; if (parts.length >= 2 && group && queryHasSemanticFilters(group.currentQuery)) { schedule(parts[0], parts.slice(1).join('/')); } });
         syncAutoBindings();
