@@ -14,7 +14,7 @@
   var lang = (document.documentElement.lang || 'en').slice(0, 2).toLowerCase();
   var labels = strings[lang] || strings.en;
   function normalize(text) { return String(text || '').replace(/\s+/g, ' ').trim().toLowerCase(); }
-  function bodyOf(el) { return normalize(el && el.textContent); }
+  function bodyOf(el) { return normalize(el && el.innerText); }
   function bind(panel) {
     if (!panel || panel.dataset.dfsbEditorialBound === '1') return;
     panel.dataset.dfsbEditorialBound = '1';
@@ -79,9 +79,8 @@
     document.addEventListener('dfsb/ajax-presentation-reset', function () { pending = false; error = false; noResults = false; schedule(); });
     document.addEventListener('etg-dfsb/ajax-presentation-reset', function () { pending = false; error = false; noResults = false; schedule(); });
     document.addEventListener('dfsb/presentation-updated', schedule);
-    if (typeof MutationObserver === 'function') {
-      new MutationObserver(schedule).observe(panel, {childList: true, subtree: true, characterData: true});
-    }
+    // AJAX and Elementor emit explicit events. Observing our own text/hidden
+    // mutations causes extra work and visual re-layout during hydration.
     update();
   }
   function init() { document.querySelectorAll('.dfsb-archive-editorial').forEach(bind); }

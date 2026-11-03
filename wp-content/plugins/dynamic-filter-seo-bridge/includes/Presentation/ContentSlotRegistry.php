@@ -37,9 +37,10 @@ final class ContentSlotRegistry {
             'hero_image'=>array('id'=>'hero_image','label'=>'Hero Image','enabled'=>true,'type'=>'image','template'=>'{{resolved}}','fallback'=>'','prefix'=>'','suffix'=>'','max_length'=>0,'media_mode'=>'priority'),
             'hero_gallery'=>array('id'=>'hero_gallery','label'=>'Hero Gallery','enabled'=>true,'type'=>'gallery','template'=>'{{resolved}}','fallback'=>'','prefix'=>'','suffix'=>'','max_length'=>0,'media_mode'=>'combined'),
             'results_summary'=>array('id'=>'results_summary','label'=>'Results Summary','enabled'=>true,'type'=>'text','template'=>'{{result_summary}}','fallback'=>'','prefix'=>'','suffix'=>'','max_length'=>300),
+            'editorial_cards'=>array('id'=>'editorial_cards','label'=>'Selected Term Cards','enabled'=>true,'type'=>'html','template'=>'{{editorial_cards}}','fallback'=>'','prefix'=>'','suffix'=>'','max_length'=>0),
         );
         if($this->legacyCompatibility){
-            $definitions['location_section']=array('id'=>'location_section','label'=>'Location Section','enabled'=>true,'type'=>'html','template'=>'<section class="etg-filter-term-section etg-filter-term-section--location"><h2>{{term:location:name}}</h2><div>{{term:location:description}}</div></section>','fallback'=>'','prefix'=>'','suffix'=>'','max_length'=>8000);
+            $definitions['location_section']=array('id'=>'location_section','label'=>'Location Section','enabled'=>true,'type'=>'html','template'=>'{{terms:location:sections}}','fallback'=>'','prefix'=>'','suffix'=>'','max_length'=>8000);
             $definitions['tour_type_section']=array('id'=>'tour_type_section','label'=>'Tour Type Section','enabled'=>true,'type'=>'html','template'=>'{{terms:tour_type:sections}}','fallback'=>'','prefix'=>'','suffix'=>'','max_length'=>8000);
             $definitions['style_section']=array('id'=>'style_section','label'=>'Style Section','enabled'=>true,'type'=>'html','template'=>'{{terms:style:sections}}','fallback'=>'','prefix'=>'','suffix'=>'','max_length'=>8000);
         }
