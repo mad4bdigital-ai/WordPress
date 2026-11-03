@@ -30,7 +30,7 @@ final class ContainerDynamicBackground {
     public function enqueueAssets(): void {
         if (is_admin()) { return; }
         $version=defined('DFSB_ASSET_VERSION') ? DFSB_ASSET_VERSION : DFSB_VERSION;
-        $labVersion=function_exists('wp_get_environment_type') && wp_get_environment_type()==='local';
+        $labVersion=function_exists('wp_get_environment_type') && in_array(wp_get_environment_type(),array('local','development','staging'),true);
         $cssFile=dirname(DFSB_MAIN_FILE).'/assets/css/container-dynamic-background.css';
         $jsFile=dirname(DFSB_MAIN_FILE).'/assets/js/container-dynamic-background.js';
         $editorialFile=dirname(DFSB_MAIN_FILE).'/assets/css/dfsb-archive-editorial.css';
