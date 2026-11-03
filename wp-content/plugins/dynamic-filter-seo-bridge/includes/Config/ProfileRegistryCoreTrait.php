@@ -1,6 +1,8 @@
 <?php
 namespace DynamicFilterSEOBridge\Config;
 
+require_once dirname( __DIR__ ) . '/Terms/AutoQualifiedTermPolicy.php';
+
 trait ProfileRegistryCoreTrait {
 	public function __construct( Configuration $config ) { $this->config = $config; }
 
@@ -33,6 +35,7 @@ trait ProfileRegistryCoreTrait {
 			}
 			$out = $normalized;
 		}
+		$out = \DynamicFilterSEOBridge\Terms\AutoQualifiedTermPolicy::expand( $out );
 		$this->profiles = $out;
 		return $out;
 	}

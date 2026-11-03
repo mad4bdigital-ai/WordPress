@@ -3605,6 +3605,439 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing MCP admission, platform identity, security, owner-scoped administrative rights and execution-denial controls cover these staging-only authorization surfaces, without granting Production execution or public access.",
       "review_rationale": "New surface ability:mad4b/staging-write-grant-reconcile-staging is source-pinned in the W1 authority integration and assessed with hermetic owner-browser, agent REST route, Site Profile, OAuth, replay, write grant, exact mapping and negative permission fixtures. This is only CI source review, not evidence that the route is registered, usable, or authorized in Production."
+    },
+    {
+      "id": "ability:mad4b/content-job-group-apply",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated GitHub CI source reviewer; independent domain owner retains production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing mapped provider, platform and security controls cover this original site-scoped feature; no new Production capability or permission is granted by this source review.",
+      "review_rationale": "Exact newly introduced ability:mad4b/content-job-group-apply examined for original scoped abilities and transactional creation; dedicated source regression validates immutable provider fences, write/read-only classification and negative mutations. This is a CI source review, never a human signer or live site authorization."
+    },
+    {
+      "id": "ability:mad4b/content-job-group-plan",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated GitHub CI source reviewer; independent domain owner retains production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing mapped provider, platform and security controls cover this original site-scoped feature; no new Production capability or permission is granted by this source review.",
+      "review_rationale": "Exact newly introduced ability:mad4b/content-job-group-plan examined for original scoped abilities and transactional creation; dedicated source regression validates immutable provider fences, write/read-only classification and negative mutations. This is a CI source review, never a human signer or live site authorization."
+    },
+    {
+      "id": "ability:mad4b/content-job-relationship-plan",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated GitHub CI source reviewer; independent domain owner retains production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing mapped provider, platform and security controls cover this original site-scoped feature; no new Production capability or permission is granted by this source review.",
+      "review_rationale": "Exact newly introduced ability:mad4b/content-job-relationship-plan examined for original scoped abilities and transactional creation; dedicated source regression validates immutable provider fences, write/read-only classification and negative mutations. This is a CI source review, never a human signer or live site authorization."
+    },
+    {
+      "id": "ability:mad4b/content-job-structural-cwa-apply",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated GitHub CI source reviewer; independent domain owner retains production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing mapped provider, platform and security controls cover this original site-scoped feature; no new Production capability or permission is granted by this source review.",
+      "review_rationale": "Exact newly introduced ability:mad4b/content-job-structural-cwa-apply examined for original scoped abilities and transactional creation; dedicated source regression validates immutable provider fences, write/read-only classification and negative mutations. This is a CI source review, never a human signer or live site authorization."
+    },
+    {
+      "id": "ability:mad4b/content-job-structural-qa-attest",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated GitHub CI source reviewer; independent domain owner retains production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing mapped provider, platform and security controls cover this original site-scoped feature; no new Production capability or permission is granted by this source review.",
+      "review_rationale": "Exact newly introduced ability:mad4b/content-job-structural-qa-attest examined for original scoped abilities and transactional creation; dedicated source regression validates immutable provider fences, write/read-only classification and negative mutations. This is a CI source review, never a human signer or live site authorization."
+    },
+    {
+      "id": "ability:mad4b/content-job-structural-qa-plan",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated GitHub CI source reviewer; independent domain owner retains production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing mapped provider, platform and security controls cover this original site-scoped feature; no new Production capability or permission is granted by this source review.",
+      "review_rationale": "Exact newly introduced ability:mad4b/content-job-structural-qa-plan examined for original scoped abilities and transactional creation; dedicated source regression validates immutable provider fences, write/read-only classification and negative mutations. This is a CI source review, never a human signer or live site authorization."
+    },
+    {
+      "id": "ability:mad4b/content-job-typed-relation-write-apply",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated GitHub CI source reviewer; independent domain owner retains production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing mapped provider, platform and security controls cover this original site-scoped feature; no new Production capability or permission is granted by this source review.",
+      "review_rationale": "Exact newly introduced ability:mad4b/content-job-typed-relation-write-apply examined for original scoped abilities and transactional creation; dedicated source regression validates immutable provider fences, write/read-only classification and negative mutations. This is a CI source review, never a human signer or live site authorization."
+    },
+    {
+      "id": "ability:mad4b/content-job-typed-relation-write-plan",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated GitHub CI source reviewer; independent domain owner retains production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing mapped provider, platform and security controls cover this original site-scoped feature; no new Production capability or permission is granted by this source review.",
+      "review_rationale": "Exact newly introduced ability:mad4b/content-job-typed-relation-write-plan examined for original scoped abilities and transactional creation; dedicated source regression validates immutable provider fences, write/read-only classification and negative mutations. This is a CI source review, never a human signer or live site authorization."
+    },
+    {
+      "id": "ability:mad4b/content-workflow-modes",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated GitHub CI source reviewer; independent domain owner retains production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing mapped provider, platform and security controls cover this original site-scoped feature; no new Production capability or permission is granted by this source review.",
+      "review_rationale": "Exact newly introduced ability:mad4b/content-workflow-modes examined for original scoped abilities and transactional creation; dedicated source regression validates immutable provider fences, write/read-only classification and negative mutations. This is a CI source review, never a human signer or live site authorization."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-transport-routing.php",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated GitHub CI source reviewer; independent domain owner retains production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing mapped provider, platform and security controls cover this original site-scoped feature; no new Production capability or permission is granted by this source review.",
+      "review_rationale": "Exact newly introduced service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-transport-routing.php examined for request and site-bound routing evidence; dedicated source regression validates immutable provider fences, write/read-only classification and negative mutations. This is a CI source review, never a human signer or live site authorization."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-write-acceptance.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated GitHub CI source reviewer; independent domain owner retains production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing mapped provider, platform and security controls cover this original site-scoped feature; no new Production capability or permission is granted by this source review.",
+      "review_rationale": "Exact newly introduced service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-write-acceptance.php examined for native-source verification, reference binding, rights and replay; dedicated source regression validates immutable provider fences, write/read-only classification and negative mutations. This is a CI source review, never a human signer or live site authorization."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-job-groups.php",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated GitHub CI source reviewer; independent domain owner retains production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing mapped provider, platform and security controls cover this original site-scoped feature; no new Production capability or permission is granted by this source review.",
+      "review_rationale": "Exact newly introduced service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-job-groups.php examined for opt-in, exact per-target plan and snapshot-bound apply; dedicated source regression validates immutable provider fences, write/read-only classification and negative mutations. This is a CI source review, never a human signer or live site authorization."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-job-structural-qa.php",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated GitHub CI source reviewer; independent domain owner retains production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing mapped provider, platform and security controls cover this original site-scoped feature; no new Production capability or permission is granted by this source review.",
+      "review_rationale": "Exact newly introduced service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-job-structural-qa.php examined for Elementor document QA evidence, actor and owner boundaries; dedicated source regression validates immutable provider fences, write/read-only classification and negative mutations. This is a CI source review, never a human signer or live site authorization."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated GitHub CI source reviewer; independent domain owner retains production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing mapped provider, platform and security controls cover this original site-scoped feature; no new Production capability or permission is granted by this source review.",
+      "review_rationale": "Exact newly introduced service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php examined for runtime site-neutral readiness rules and trusted intake; dedicated source regression validates immutable provider fences, write/read-only classification and negative mutations. This is a CI source review, never a human signer or live site authorization."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-graph.php",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated GitHub CI source reviewer; independent domain owner retains production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing mapped provider, platform and security controls cover this original site-scoped feature; no new Production capability or permission is granted by this source review.",
+      "review_rationale": "Exact newly introduced service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-graph.php examined for WPML source/target family and site-resolution checks; dedicated source regression validates immutable provider fences, write/read-only classification and negative mutations. This is a CI source review, never a human signer or live site authorization."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-providers.php",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated GitHub CI source reviewer; independent domain owner retains production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing mapped provider, platform and security controls cover this original site-scoped feature; no new Production capability or permission is granted by this source review.",
+      "review_rationale": "Exact newly introduced service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-providers.php examined for read-only native relationship source inventory; dedicated source regression validates immutable provider fences, write/read-only classification and negative mutations. This is a CI source review, never a human signer or live site authorization."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-writeback-media.php",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated GitHub CI source reviewer; independent domain owner retains production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing mapped provider, platform and security controls cover this original site-scoped feature; no new Production capability or permission is granted by this source review.",
+      "review_rationale": "Exact newly introduced service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-writeback-media.php examined for media owner identity and independent readback; dedicated source regression validates immutable provider fences, write/read-only classification and negative mutations. This is a CI source review, never a human signer or live site authorization."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-writeback-owner.php",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated GitHub CI source reviewer; independent domain owner retains production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing mapped provider, platform and security controls cover this original site-scoped feature; no new Production capability or permission is granted by this source review.",
+      "review_rationale": "Exact newly introduced service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-writeback-owner.php examined for typed certificate and source-bound native owner permission; dedicated source regression validates immutable provider fences, write/read-only classification and negative mutations. This is a CI source review, never a human signer or live site authorization."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-writeback.php",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated GitHub CI source reviewer; independent domain owner retains production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing mapped provider, platform and security controls cover this original site-scoped feature; no new Production capability or permission is granted by this source review.",
+      "review_rationale": "Exact newly introduced service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-writeback.php examined for exact typed native CWA writeback routing; dedicated source regression validates immutable provider fences, write/read-only classification and negative mutations. This is a CI source review, never a human signer or live site authorization."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-workflow-modes.php",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated GitHub CI source reviewer; independent domain owner retains production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing mapped provider, platform and security controls cover this original site-scoped feature; no new Production capability or permission is granted by this source review.",
+      "review_rationale": "Exact newly introduced service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-workflow-modes.php examined for autonomous review not equal to publishing; dedicated source regression validates immutable provider fences, write/read-only classification and negative mutations. This is a CI source review, never a human signer or live site authorization."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-contentjob-structural-cwa.php",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated GitHub CI source reviewer; independent domain owner retains production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing mapped provider, platform and security controls cover this original site-scoped feature; no new Production capability or permission is granted by this source review.",
+      "review_rationale": "Exact newly introduced service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-contentjob-structural-cwa.php examined for separate staging-scoped structural CWA and browser evidence; dedicated source regression validates immutable provider fences, write/read-only classification and negative mutations. This is a CI source review, never a human signer or live site authorization."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dfsb-environment-policy.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated GitHub CI source reviewer; independent domain owner retains production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing mapped provider, platform and security controls cover this original site-scoped feature; no new Production capability or permission is granted by this source review.",
+      "review_rationale": "Exact newly introduced service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dfsb-environment-policy.php examined for per-site opt-in and exact Git package source; dedicated source regression validates immutable provider fences, write/read-only classification and negative mutations. This is a CI source review, never a human signer or live site authorization."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-workflow-options.php",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated GitHub CI source reviewer; independent domain owner retains production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Existing mapped provider, platform and security controls cover this original site-scoped feature; no new Production capability or permission is granted by this source review.",
+      "review_rationale": "Exact newly introduced service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-workflow-options.php examined for bounded site-specific routing and Admin registry; dedicated source regression validates immutable provider fences, write/read-only classification and negative mutations. This is a CI source review, never a human signer or live site authorization."
     }
   ],
   "lifecycle": [],
@@ -11538,6 +11971,290 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The existing original Agent Registry exact grant, Staging-only provider review, site profile, mutation gate, owner approval, checkpoint, readback and audit safeguards govern this single diagnostic, without wildcard rights.",
       "review_rationale": "Exact source review allows a core grant to be considered only for mad4b/hub-queue-site-health-enqueue when the Ability is registered on the correct central Staging site. No grant is issued merely because this provider pair appears; broad hub-bulk-enqueue remains outside the reviewed policy and Production is not enabled."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-transport-routing.php",
+      "source_blob_sha": "64f25bfb845ab34eacf83febba6e18c872c45e5f",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated CI source-only reviewer; independent owner review required for release",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact Git blob of wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-transport-routing.php examined for request and site-bound routing evidence and independently bounded by the associated CI regression; historical release manifests stay immutable. This source review is not Production approval."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-write-acceptance.php",
+      "source_blob_sha": "bb0897c9a135b58954e64d5c2dd1f4127221751d",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated CI source-only reviewer; independent owner review required for release",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact Git blob of wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-central-write-acceptance.php examined for native-source verification, reference binding, rights and replay and independently bounded by the associated CI regression; historical release manifests stay immutable. This source review is not Production approval."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-job-groups.php",
+      "source_blob_sha": "f72038c0d76deab0d6ee70f32f6b5440b5be1709",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated CI source-only reviewer; independent owner review required for release",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact Git blob of wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-job-groups.php examined for opt-in, exact per-target plan and snapshot-bound apply and independently bounded by the associated CI regression; historical release manifests stay immutable. This source review is not Production approval."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-job-structural-qa.php",
+      "source_blob_sha": "b3611557e1dd9689447d4141531814049b3e396d",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated CI source-only reviewer; independent owner review required for release",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact Git blob of wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-job-structural-qa.php examined for Elementor document QA evidence, actor and owner boundaries and independently bounded by the associated CI regression; historical release manifests stay immutable. This source review is not Production approval."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php",
+      "source_blob_sha": "7043a1662f720b9221344ca3af09628b38e1b0a0",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated CI source-only reviewer; independent owner review required for release",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact Git blob of wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php examined for original scoped abilities and transactional creation and independently bounded by the associated CI regression; historical release manifests stay immutable. This source review is not Production approval."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "source_blob_sha": "6cce0faa3c9a2a05bea4d6f378fb2184fb852b1b",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated CI source-only reviewer; independent owner review required for release",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact Git blob of wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php examined for runtime site-neutral readiness rules and trusted intake and independently bounded by the associated CI regression; historical release manifests stay immutable. This source review is not Production approval."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-graph.php",
+      "source_blob_sha": "d0b4611b1552c231c3082166e7de8cdcdae47e56",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated CI source-only reviewer; independent owner review required for release",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact Git blob of wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-graph.php examined for WPML source/target family and site-resolution checks and independently bounded by the associated CI regression; historical release manifests stay immutable. This source review is not Production approval."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-providers.php",
+      "source_blob_sha": "48ffbed429866c75eb5f01051d28d17739f4c7f8",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated CI source-only reviewer; independent owner review required for release",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact Git blob of wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-providers.php examined for read-only native relationship source inventory and independently bounded by the associated CI regression; historical release manifests stay immutable. This source review is not Production approval."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-writeback-media.php",
+      "source_blob_sha": "e06d81bf8d249ce64808c7c6f1aaefd182fb15ad",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated CI source-only reviewer; independent owner review required for release",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact Git blob of wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-writeback-media.php examined for media owner identity and independent readback and independently bounded by the associated CI regression; historical release manifests stay immutable. This source review is not Production approval."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-writeback-owner.php",
+      "source_blob_sha": "38471da3c3f2a62ee0e3244c3b7122ca10c4c4b7",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated CI source-only reviewer; independent owner review required for release",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact Git blob of wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-writeback-owner.php examined for typed certificate and source-bound native owner permission and independently bounded by the associated CI regression; historical release manifests stay immutable. This source review is not Production approval."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-writeback.php",
+      "source_blob_sha": "981b3c431f0f76c0be4cb4d91c09fa70708bf105",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated CI source-only reviewer; independent owner review required for release",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact Git blob of wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-relationship-writeback.php examined for exact typed native CWA writeback routing and independently bounded by the associated CI regression; historical release manifests stay immutable. This source review is not Production approval."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-workflow-modes.php",
+      "source_blob_sha": "bb2a5e2cb8f2c2e5eea38c94d3ae143c2a5e0311",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated CI source-only reviewer; independent owner review required for release",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact Git blob of wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-workflow-modes.php examined for autonomous review not equal to publishing and independently bounded by the associated CI regression; historical release manifests stay immutable. This source review is not Production approval."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-contentjob-structural-cwa.php",
+      "source_blob_sha": "8d248503e53bf16746a589415a4166b722e7a14c",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated CI source-only reviewer; independent owner review required for release",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact Git blob of wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-contentjob-structural-cwa.php examined for separate staging-scoped structural CWA and browser evidence and independently bounded by the associated CI regression; historical release manifests stay immutable. This source review is not Production approval."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dfsb-environment-policy.php",
+      "source_blob_sha": "77b99e075929ede6bc20d6a8a726a9c117025b8e",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated CI source-only reviewer; independent owner review required for release",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact Git blob of wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dfsb-environment-policy.php examined for per-site opt-in and exact Git package source and independently bounded by the associated CI regression; historical release manifests stay immutable. This source review is not Production approval."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-workflow-options.php",
+      "source_blob_sha": "ed75e9466cc4bd4f1964e1958cf2ceeb341aa5e6",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated CI source-only reviewer; independent owner review required for release",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact Git blob of wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-workflow-options.php examined for bounded site-specific routing and Admin registry and independently bounded by the associated CI regression; historical release manifests stay immutable. This source review is not Production approval."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-capability-gateway.php",
+      "source_blob_sha": "5fce219729507df78edbb38d1d2e16f2ac60a500",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated CI source-only reviewer; independent owner review required for release",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact Git blob of wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-capability-gateway.php examined for blog-bound ability dispatch and request scope and independently bounded by the associated CI regression; historical release manifests stay immutable. This source review is not Production approval."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "e1a2cac1bc92e7cc42ecd5f6bec46e113e039d5b",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/contentjob-review-coverage-contract.py"
+      ],
+      "owner_role": "Automated CI source-only reviewer; independent owner review required for release",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact Git blob of wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php examined for reviewed native owner contract and existing execution fences and independently bounded by the associated CI regression; historical release manifests stay immutable. This source review is not Production approval."
     }
   ],
   "code_change_rules": {

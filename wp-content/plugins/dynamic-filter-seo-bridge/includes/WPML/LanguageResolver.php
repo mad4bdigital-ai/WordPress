@@ -88,12 +88,30 @@ final class LanguageResolver implements LanguageResolverInterface {
 	}
 
 	public function resolve( WP_Term $term, string $taxonomy, ?string $language = null ): array {
-		$language = $language ?: $this->currentLanguage();
-		if ( ! has_filter( 'wpml_object_id' ) ) { return array( 'term' => $term, 'translation_fallback' => false ); }
-		$translatedId = apply_filters( 'wpml_object_id', $term->term_id, $taxonomy, false, $language );
-		if ( ! $translatedId ) { return array( 'term' => $term, 'translation_fallback' => true ); }
-		$translated = get_term( (int) $translatedId, $taxonomy );
-		if ( ! $translated instanceof WP_Term ) { return array( 'term' => $term, 'translation_fallback' => true ); }
+		$language = sanitize_key( (string) ( $language ?: $this->currentLanguage() ) );
+		if ( ! has_filter( 'wpml_object_id' ) ) {
+			return array( 'term' => $term, 'translation_fallback' => false );
+		}
+		// WPML's term query filters are language-context-sensitive even when
+		// wpml_object_id receives an explicit target language.
+		$execution = $this->executeInLanguage( $language, static function () use ( $term, $taxonomy, $language ) {
+			$id = apply_filters( 'wpml_object_id', $term->term_id, $taxonomy, false, $language );
+			if ( ! $id ) return null;
+			$translated = get_term( (int) $id, $taxonomy );
+			if ( ! $translated instanceof WP_Term ) return null;
+			if ( has_filter( 'wpml_element_language_code' ) ) {
+				$actual = apply_filters( 'wpml_element_language_code', null, array(
+					'element_id' => $translated->term_id,
+					'element_type' => 'tax_' . $taxonomy,
+				) );
+				if ( $actual && sanitize_key( (string) $actual ) !== $language ) return null;
+			}
+			return $translated;
+		} );
+		$translated = $execution['result'] ?? null;
+		if ( empty( $execution['available'] ) || ! $translated instanceof WP_Term ) {
+			return array( 'term' => $term, 'translation_fallback' => true );
+		}
 		return array( 'term' => $translated, 'translation_fallback' => false );
 	}
 }

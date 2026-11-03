@@ -1,6 +1,8 @@
 <?php
 namespace DynamicFilterSEOBridge\IndexFlow;
 
+require_once __DIR__ . '/LocalizedTaxonomyBase.php';
+
 /**
  * Bounded publication registry and pure URL contracts. No persistence, query
  * execution, authority grants, redirects or SEO output takes place here.
@@ -222,6 +224,7 @@ final class ManagedUrlArchitecture {
 
     private function profile(string $id, string $locale): array {
         $profile = $this->document['profiles'][$id] ?? array();
+        if (isset($profile['post_type']) && (!is_string($profile['post_type']) || !post_type_exists($profile['post_type']))) throw new \InvalidArgumentException('invalid_managed_cpt');
         if (!is_array($profile) || !in_array($profile['strategy'] ?? '', array('native', 'aliased', 'published_seo'), true)
             || !is_array($profile['bases'] ?? null) || !isset($profile['bases'][$locale]) || !is_array($profile['dimensions'] ?? null)
             || !$profile['dimensions'] || count($profile['dimensions']) > 10) throw new \InvalidArgumentException('invalid_route_profile');
@@ -250,6 +253,16 @@ final class ManagedUrlArchitecture {
         } else {
             $base = $profile['bases'][$state['locale']];
             if (!is_string($base)) throw new \InvalidArgumentException('invalid_archive_base');
+            // A native CPT archive may itself have a custom WPML base slug.
+            // A published SEO route cannot rely on stale configured paths.
+            if (!empty($profile['post_type'])) {
+                $postType = sanitize_key((string)$profile['post_type']);
+                $archive = LocalizedRewriteBase::archive($postType,$state['locale']);
+                if (empty($archive['ready']) || empty($archive['translation_verified']))
+                    throw new \InvalidArgumentException('unverified_translated_cpt_base');
+                if (rtrim((string)($archive['archive_url']??''),'/') !== rtrim($base,'/'))
+                    throw new \InvalidArgumentException('archive_base_drift_from_wpml_permalink');
+            }
             $url = $this->cleanUrl($base);
             $slugs = array();
             foreach ($profile['dimensions'] as $dimension) {
@@ -262,7 +275,10 @@ final class ManagedUrlArchitecture {
                     if (isset($slugs[$slug])) throw new \InvalidArgumentException('ambiguous_dimension_slug');
                     $slugs[$slug] = true;
                     // Include dimension labels to keep optional dimensions unambiguous.
-                    $url .= rawurlencode($dimension['name']) . '/' . $slug . '/';
+                    // URL segment is an actual WordPress taxonomy rewrite base,
+                    // localized by WPML, not the internal filter dimension key.
+                    $segment = LocalizedTaxonomyBase::requireBase($taxonomy, $state['locale']);
+                    $url .= $segment . '/' . $slug . '/';
                 }
             }
             $url = $this->cleanUrl($url);

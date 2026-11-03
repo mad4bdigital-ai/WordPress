@@ -39,6 +39,18 @@ final class MAD4B_SCP_Operational_Integrity {
       ? true : new WP_Error('brand_lineage_test_scope_changed');
   }
 }
+// The disposable CI install has an actual WordPress admin; only this
+// intentionally isolated fixture supplies a narrow policy adapter for the
+// original create_job permission check. Never authorize anonymous CLI.
+if (!class_exists('MAD4B_SCP_Policy')) {
+  final class MAD4B_SCP_Policy {
+    public static function can_mutate() { return current_user_can('manage_options'); }
+  }
+}
+if (!current_user_can('manage_options')) {
+  fwrite(STDERR, "FAIL fixture original WordPress administrator missing\n");
+  exit(1);
+}
 require_once $root . '/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php';
 require_once $root . '/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-artifacts.php';
 
@@ -104,4 +116,4 @@ echo "mad4b.brand-context-builder.cross-job-lineage.v2: PASS\n";
 PHP
 
 export MAD4B_REPO_ROOT="$ROOT"
-wp --path="$ROOT" --allow-root --skip-plugins --skip-themes eval-file "$TMP/lineage.php"
+wp --path="$ROOT" --allow-root --user=admin --skip-plugins --skip-themes eval-file "$TMP/lineage.php"

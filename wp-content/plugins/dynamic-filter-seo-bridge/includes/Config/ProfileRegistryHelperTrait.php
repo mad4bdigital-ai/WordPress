@@ -47,7 +47,18 @@ trait ProfileRegistryHelperTrait {
 		$segment = strtolower( trim( $segment ) );
 		if ( ! preg_match( '/^[a-z0-9_-]{2,24}$/', $segment ) ) { return false; }
 		$codes = array();
-		if ( function_exists( 'apply_filters' ) ) { $codes = (array) apply_filters( 'etg_filter_seo_language_codes', array(), $this->config ); }
+		if ( function_exists( 'apply_filters' ) ) {
+			// WPML owns the active language registry; no duplicated per-profile list.
+			$active = apply_filters( 'wpml_active_languages', null, array( 'skip_missing' => 0 ) );
+			if ( is_array( $active ) ) {
+				foreach ( $active as $key => $details ) {
+					$code = is_array( $details ) ? (string) ( $details['language_code'] ?? $key ) : (string) $key;
+					if ( '' !== $code ) $codes[] = $code;
+				}
+			}
+			// Other language providers can contribute validated codes explicitly.
+			$codes = (array) apply_filters( 'etg_filter_seo_language_codes', $codes, $this->config );
+		}
 		foreach ( $codes as $code ) {
 			$code = strtolower( trim( (string) $code ) );
 			if ( '' !== $code && $segment === $code && preg_match( '/^[a-z0-9_-]{2,24}$/', $code ) ) { return true; }
