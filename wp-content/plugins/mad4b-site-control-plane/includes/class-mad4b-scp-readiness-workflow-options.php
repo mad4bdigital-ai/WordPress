@@ -13,7 +13,8 @@ final class MAD4B_SCP_Readiness_Workflow_Options {
         'seo'=>'SEO / Dynamic Filters','general'=>'Other Content'
     );
     public static function boot() {
-        add_action('admin_menu',array(__CLASS__,'menu'),32);
+        MAD4B_SCP_Admin_Route_Registry::register(self::PAGE,'manage_options');
+        MAD4B_SCP_Admin_Route_Registry::schedule_submenu(array(__CLASS__,'menu'));
         add_action('admin_post_mad4b_readiness_workflow_save',array(__CLASS__,'save'));
     }
     public static function group_for_issue($issue) {

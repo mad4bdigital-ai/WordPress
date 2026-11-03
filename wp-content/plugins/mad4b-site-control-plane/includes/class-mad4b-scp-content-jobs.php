@@ -712,10 +712,12 @@ final class MAD4B_SCP_Content_Jobs {
                 'failure_stage' => $failure_stage, 'failure_code' => $failure_code,
             ) );
 		}
-		// Post-commit event only; listeners must not alter the committed transaction.
-        do_action( 'mad4b_scp_content_job_created', array(
-            'job_id' => $job_id, 'job_revision' => 1,
-            'state' => 'NEW', 'stage' => 'INTAKE' ) );
+		// Post-commit event only. WordPress always defines this hook;
+        // isolated transaction fixtures may intentionally omit the dispatcher.
+        if ( function_exists( 'do_action' ) )
+            do_action( 'mad4b_scp_content_job_created', array(
+                'job_id' => $job_id, 'job_revision' => 1,
+                'state' => 'NEW', 'stage' => 'INTAKE' ) );
 		return self::get_job( array( 'job_id' => $job_id ) );
 	}
 
