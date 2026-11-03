@@ -284,6 +284,9 @@ final class MAD4B_SCP_Company_Master_Admin {
     }
     public static function menus():void {
         add_menu_page('Company Operations','Company',self::CAP,'mad4b-company',array(__CLASS__,'screen'),'dashicons-groups',33);
+        MAD4B_SCP_Admin_Route_Registry::register('mad4b-company',self::CAP);
+    }
+    public static function submenu():void {
         add_submenu_page('mad4b-company','Team & Translation','Team & Translation',self::CAP,'mad4b-company',array(__CLASS__,'screen'));
     }
     public static function routes():void {
@@ -322,6 +325,7 @@ final class MAD4B_SCP_Company_Master_Admin {
     public static function register():void {
         add_action('init',array(__CLASS__,'migrate'),99);
         add_action('admin_menu',array(__CLASS__,'menus'),12);
+        MAD4B_SCP_Admin_Route_Registry::schedule_submenu(array(__CLASS__,'submenu'));
         add_action('admin_init',array(__CLASS__,'ensureBoardAccess'),80);
         add_action('rest_api_init',array(__CLASS__,'routes'),30);
         add_action('admin_post_mad4b_company_staff_operation',array(__CLASS__,'adminPost'));
