@@ -4,8 +4,8 @@
   "reviewed_base_sha": "ba0db6f92c76772d5dff12b11106357193743815",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 76,
-  "changed_paths_sha256": "df377fadee28aacd997d1ae46fb66d5bd51e0affd3bd6cdb2ac53e94010b50ac",
+  "changed_file_count": 77,
+  "changed_paths_sha256": "60a6c952a58a874492bd39ca8b530b481d55b535cd48b6615e61d36f9c677cce",
   "slices": [
     {
       "id": "agent-and-execution-governance",
@@ -76,6 +76,7 @@
         "tools/readiness_test_execution.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/frontend-impact-live-browser-acceptance.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/historical-delivery-successor-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/historical_source_successor.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py",
