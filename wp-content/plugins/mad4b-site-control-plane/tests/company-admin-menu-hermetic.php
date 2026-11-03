@@ -63,4 +63,4 @@ if(!MAD4B_SCP_Readiness_Integrations::can_manage() || !MAD4B_SCP_Readiness_PreAc
 $GLOBALS['grant']=[];
 if(MAD4B_SCP_Readiness_Integrations::can_manage() || MAD4B_SCP_Readiness_PreActivation::can_manage())
     throw new RuntimeException('unprivileged caller granted readiness access');
-echo 'MAD4B_COMPANY_ADMIN_MENU_HERMETIC PASS parent-order=1 scoped=6 operator_allow=1 anonymous_deny=1'.PHP_EOL;
+echo 'MAD4B_COMPANY_ADMIN_MENU_HERMETIC: PASS'.PHP_EOL;
