@@ -74,50 +74,63 @@ final class MAD4B_SCP_Frontend_Impact_Priority {
         $home=self::languages();
         $prior=(array)get_option('mad4b_wpml_frontend_visibility_v1',[]);
         $urls=[];
+        // Adapters select business-specific types. A generic Control Plane may
+        // inspect only registered public post types, never assume a tour model.
+        $archives=(array)apply_filters('mad4b/frontend_impact/archive_post_types',
+            get_post_types(['public'=>true,'has_archive'=>true],'names'));
+        $details=(array)apply_filters('mad4b/frontend_impact/detail_post_types',
+            get_post_types(['public'=>true,'_builtin'=>false],'names'));
+        $archives=array_values(array_filter(array_unique(array_map('sanitize_key',$archives)),
+            static fn($type)=>post_type_exists($type)));
+        $details=array_values(array_filter(array_unique(array_map('sanitize_key',$details)),
+            static fn($type)=>post_type_exists($type)));
         foreach($home as $locale=>$homepage){
             $urls[$locale][]=['url'=>$homepage,'kind'=>'home'];
             if($per_lang<2)continue;
             foreach((array)($prior['pages'][$locale]??[]) as $page) {
                 if(($page['kind']??'')!=='archive')continue;
                 $path=(string)($page['path']??'');
-                if(!str_starts_with($path,'/'.$locale.'/')||strlen($path)>260)continue;
+                if(strlen($path)>260)continue;
                 $candidate=home_url($path);
                 if(!self::same_origin($candidate))continue;
                 $urls[$locale][]=['url'=>$candidate,'kind'=>'archive'];
                 break;
             }
             if(count($urls[$locale])===1) {
-                $archive=get_post_type_archive_link('tours-and-activities');
-                if(is_string($archive) && self::same_origin($archive)) {
-                    $candidate=$locale===apply_filters('wpml_default_language',null)
-                        ? $archive : trailingslashit($homepage).'tours-and-activities/';
-                    if(self::same_origin($candidate))
-                        $urls[$locale][]=['url'=>$candidate,'kind'=>'archive'];
+                foreach($archives as $type){
+                    $archive=get_post_type_archive_link($type);
+                    if(!is_string($archive) || !self::same_origin($archive))continue;
+                    $candidate=(string)apply_filters('wpml_permalink',$archive,$locale,true);
+                    if(!self::same_origin($candidate))continue;
+                    $urls[$locale][]=['url'=>$candidate,'kind'=>'archive'];
+                    break;
                 }
             }
             if($per_lang<3)continue;
-            // Select one real, previously observed public tour detail. Never
-            // guess paths from taxonomy labels or filtered JSF archive URLs.
             foreach((array)($prior['pages'][$locale]??[]) as $page) {
+                if(($page['kind']??'')!=='linked_page')continue;
                 $path=(string)($page['path']??'');
-                if(strlen($path)>300 || !str_contains($path,'/tours-and-activities/')
-                   || str_contains($path,'/jsf/') ||
-                   ($page['kind']??'')!=='linked_page')continue;
-                if($locale!==apply_filters('wpml_default_language',null)
-                   && !str_starts_with($path,'/'.$locale.'/'))continue;
+                if(strlen($path)>300 || str_contains($path,'/jsf/'))continue;
                 $candidate=home_url($path);
                 if(!self::same_origin($candidate))continue;
+                $id=url_to_postid($candidate);
+                if(!$id || !in_array(get_post_type($id),$details,true) ||
+                    get_post_status($id)!=='publish')continue;
                 $urls[$locale][]=['url'=>$candidate,'kind'=>'tour'];
                 break;
             }
-            if(count($urls[$locale])<3 && $locale===apply_filters('wpml_default_language',null)) {
-                $products=get_posts(['post_type'=>'tours-and-activities',
-                    'post_status'=>'publish','numberposts'=>1,'orderby'=>'modified',
-                    'order'=>'DESC','suppress_filters'=>true]);
-                if($products) {
-                    $candidate=get_permalink($products[0]);
-                    if(is_string($candidate)&&self::same_origin($candidate))
-                        $urls[$locale][]=['url'=>$candidate,'kind'=>'tour'];
+            if(count($urls[$locale])<3) {
+                foreach($details as $type){
+                    $posts=get_posts(['post_type'=>$type,
+                        'post_status'=>'publish','numberposts'=>1,
+                        'orderby'=>'modified','order'=>'DESC','suppress_filters'=>false]);
+                    if(!$posts)continue;
+                    $candidate=get_permalink($posts[0]);
+                    if(!is_string($candidate) || !self::same_origin($candidate))continue;
+                    $mapped=(string)apply_filters('wpml_permalink',$candidate,$locale,true);
+                    if(!self::same_origin($mapped))continue;
+                    $urls[$locale][]=['url'=>$mapped,'kind'=>'tour'];
+                    break;
                 }
             }
         }
