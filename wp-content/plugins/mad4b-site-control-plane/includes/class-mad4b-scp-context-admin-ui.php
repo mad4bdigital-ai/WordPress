@@ -725,8 +725,7 @@ final class MAD4B_SCP_Context_Admin_UI {
      */
     private static function ownership_lifecycle_snapshot() {
         if ( ! current_user_can( 'manage_options' )
-            || ! class_exists( 'MAD4B_SCP_Context_Authority', false )
-            || ! method_exists( 'MAD4B_SCP_Context_Authority', 'status' ) ) return null;
+            || ! class_exists( 'MAD4B_SCP_Context_Authority', false ) ) return null;
         $context = MAD4B_SCP_Context_Authority::status();
         if ( ! is_array( $context ) ) return null;
         $lifecycle = isset( $context['ownership_reconciliation_lifecycle'] )
