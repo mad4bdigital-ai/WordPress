@@ -1,0 +1,64 @@
+{
+  "generated_utc": "2026-11-04",
+  "site": "https://tours.dev.mad4b.com",
+  "scope": "published English tours-and-activities WPML source groups only",
+  "english_published": 45,
+  "language_coverage": {
+    "ar": {
+      "published": 23,
+      "missing": 22,
+      "sample_missing_source_ids": [
+        54877,
+        54924,
+        54951,
+        54960,
+        54971,
+        55098,
+        55113,
+        55125
+      ]
+    },
+    "fr": {
+      "published": 29,
+      "missing": 16,
+      "sample_missing_source_ids": [
+        54877,
+        54924,
+        54951,
+        54960,
+        54971,
+        55098,
+        55113,
+        55125
+      ]
+    },
+    "de": {
+      "published": 29,
+      "missing": 16,
+      "sample_missing_source_ids": [
+        54877,
+        54924,
+        54951,
+        54960,
+        54971,
+        55098,
+        55113,
+        55125
+      ]
+    },
+    "es": {
+      "published": 45,
+      "missing": 0
+    },
+    "it": {
+      "published": 45,
+      "missing": 0
+    }
+  },
+  "limitations": [
+    "Counts do not imply translation quality or readiness.",
+    "Counts exclude drafts and any non-English-original Tour groups.",
+    "No Tour pages were created or published by this audit.",
+    "WPML fallback and homepage template filtering may expose English source Tours on localized pages."
+  ]
+}
