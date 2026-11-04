@@ -126,6 +126,17 @@ final class MAD4B_Hub_Company_Owned_Catalog_V1 {
             'rights_evidence_blocks_reconcile'=>false,
             'rights_evidence_blocks_schema_transfer'=>false,
             'rights_evidence_blocks_vendor_adapter'=>false,
+            // Technical QA schema validation is independent of ownership paperwork.
+            // This describes metadata preflight, not permission to publish or redistribute.
+            'native_schema_qa_preflight'=>[
+                'mode'=>'metadata_only',
+                'rights_documents_required'=>false,
+                'site_binding_verified'=>true,
+                'original_provider_validation_required'=>true,
+                'source_to_target_id_readback_required'=>true,
+                'source_content_transfer_authorized'=>false,
+                'production_write_authorized'=>false
+            ],
             'company_profile_export_required'=>true,
             'full_company_distribution_authorized'=>$evidence['full_distribution_authorized'],
             'publication_performed'=>false,'remote_or_local_writes'=>0,
