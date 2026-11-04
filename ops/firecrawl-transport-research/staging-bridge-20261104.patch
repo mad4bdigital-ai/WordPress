@@ -28,7 +28,7 @@
   }
 --- a/wp-content/plugins/mad4b-platform/modules/services/289-mad4b-firecrawl-research-bridge-v1.php
 +++ b/wp-content/plugins/mad4b-platform/modules/services/289-mad4b-firecrawl-research-bridge-v1.php
-@@ -23,8 +23,48 @@
+@@ -23,8 +23,65 @@
   }
   public static function boot(){
    add_action('wp_abilities_api_init',[__CLASS__,'ability'],76);
@@ -66,6 +66,23 @@
 +   echo '<p><strong>'.esc_html__('Artifact ID:','mad4b-platform').'</strong> <code>'.esc_html((string)$quality['artifact_id']).'</code></p>';
 +  if(!empty($quality['blocking_reason']))
 +   echo '<p><strong>'.esc_html__('Access issue:','mad4b-platform').'</strong> '.esc_html((string)$quality['blocking_reason']).'</p>';
++  // Alternative public references never replace the source bound to the
++  // original ContentJob and must not be interpreted as scraped evidence.
++  $references=$quality['reference_candidates']??[];
++  if(is_array($references) && $references){
++   echo '<p><strong>'.esc_html__('Other official references — review only:','mad4b-platform').'</strong></p><ul>';
++   foreach(array_slice($references,0,5) as $candidate){
++    if(!is_array($candidate))continue;
++    $u=(string)($candidate['url']??'');
++    $host=strtolower((string)wp_parse_url($u,PHP_URL_HOST));
++    if(wp_parse_url($u,PHP_URL_SCHEME)!=='https' ||
++       !in_array($host,['cairo.gov.eg','www.cairo.gov.eg'],true))continue;
++    $label=trim((string)($candidate['label']??''));
++    echo '<li><a href="'.esc_url($u).'" target="_blank" rel="noopener noreferrer">'.
++       esc_html($label!==''?$label:$host).'</a></li>';
++   }
++   echo '</ul><p><em>'.esc_html__('Not captured by Firecrawl; no schedule or ticket-price approval.','mad4b-platform').'</em></p>';
++  }
 +  $flags=$quality['quality_flags']??[];
 +  if(is_array($flags) && $flags){
 +   echo '<p><strong>'.esc_html__('Review flags:','mad4b-platform').'</strong></p><ul>';
@@ -77,7 +94,7 @@
   }
   public static function manifest($m){
    // Provider manifests may be inspected before the SCP provider plugin boots.
-@@ -160,23 +200,117 @@
+@@ -160,23 +217,117 @@
       return null;
    return $r;
   }
@@ -202,7 +219,7 @@
    $contentHash=hash('sha256',$markdown);
    $saved=MAD4B_SCP_Artifacts::append_artifact([
     'job_id'=>$job,'artifact_type'=>'scraped_page',
-@@ -184,7 +318,10 @@
+@@ -184,7 +335,10 @@
       'captured_at'=>$captured['captured_at'],'provider'=>'firecrawl',
       'supplier_verified'=>false,'pricing_verified'=>false],
     'metadata'=>['draft_post_id'=>$id,'http_status'=>$captured['http_status'],
@@ -214,7 +231,7 @@
     'producer_stage'=>$v['job_stage'],'producer_ref'=>'firecrawl:'.$id,
     'reason'=>'Source-bound transport candidate research capture; no supplier certification or publishing'
    ]);
-@@ -200,6 +337,8 @@
+@@ -200,6 +354,8 @@
    $all[hash('sha256',$job.'|'.$url)]=$receipt;
    if(!update_post_meta($id,self::RECEIPT_META,$all))
     return new WP_Error('firecrawl_research_receipt_persistence_failed');
