@@ -11611,8 +11611,7 @@
         "SECURITY-02"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/context-foreign-recycle-source-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/context-admin-recovery-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-foreign-recycle-source-contract.py"
       ],
       "owner_role": "MAD4B source-security reviewer; CI-only review, no deployment or external owner authorization",
       "status": "reviewed_for_ci_only",
@@ -11620,7 +11619,7 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing named security, site-bound ownership, fail-closed source, administrator and archive verification controls cover this exact code change; source review does not authorize Production.",
-      "review_rationale": "The exact current Central Staging Context Admin UI invokes the live Context Authority::status() API, which exists and reports 2 archived foreign sources, 9 archived assets and no current quarantine. The PHP fixture previously lacked that API; CI now includes a live-compatible read-only status fixture and tests the same lifecycle without changing the actual runtime UI."
+      "review_rationale": "The exact current Central Staging Context Admin UI invokes the live Context Authority::status() API, which exists and reports 2 archived foreign sources, 9 archived assets and no current quarantine. The PHP fixture previously lacked that API; CI now includes a live-compatible read-only status fixture and tests the same lifecycle without changing the actual runtime UI. The independent PHP 8.5.12 admin recovery regression executes in MAD4B Admin Performance CI rather than the production readiness trusted Python regression runner."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php",
