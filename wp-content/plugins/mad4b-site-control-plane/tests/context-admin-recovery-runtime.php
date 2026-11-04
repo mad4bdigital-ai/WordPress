@@ -89,7 +89,7 @@ final class MAD4B_SCP_Servers {
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-admin-settings-persistence.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-context-admin-ui.php';
 function render( $method ) {
- $reflection = new ReflectionMethod( 'MAD4B_SCP_Context_Admin_UI', $method ); $reflection->setAccessible( true );
+ $reflection = new ReflectionMethod( 'MAD4B_SCP_Context_Admin_UI', $method ); if ( PHP_VERSION_ID < 80500 ) $reflection->setAccessible( true );
  ob_start(); try { $reflection->invoke( null ); return ob_get_contents(); } finally { ob_end_clean(); }
 }
 function views( $html ) {
