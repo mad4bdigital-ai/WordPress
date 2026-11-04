@@ -1,0 +1,225 @@
+--- a/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-firecrawl-provider.php
++++ b/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-firecrawl-provider.php
+@@ -506,7 +506,7 @@
+   $scrape_payload=['url'=>$source_url,'formats'=>['markdown'],'onlyMainContent'=>!$render_dynamic];
+   if($render_dynamic){$scrape_payload['waitFor']=3000;$scrape_payload['maxAge']=0;$scrape_payload['timeout']=80000;}
+   $res=self::scrape_timed($mode,$endpoint,[
+-   'timeout'=>35,'redirection'=>0,'sslverify'=>true,'limit_response_size'=>180000,
++   'timeout'=>35,'redirection'=>0,'sslverify'=>true,'limit_response_size'=>1500000,
+    'headers'=>$headers,'body'=>wp_json_encode($scrape_payload)],$source_url,'research');
+   if(is_wp_error($res)){
+    error_log('MAD4B_FIRECRAWL_PROVIDER_TRANSPORT_RESULT '.wp_json_encode([
+@@ -521,8 +521,14 @@
+   if(!is_array($json)||($json['success']??false)!==true)
+    return new WP_Error('mad4b_firecrawl_research_provider_failed');
+   $markdown=trim((string)($json['data']['markdown']??$json['markdown']??''));
+-  if($markdown===''||strlen($markdown)>60000)
+-   return new WP_Error('mad4b_firecrawl_research_markdown_invalid');
++  // Bounded diagnostics only: no raw page content or provider credentials.
++  $markdown_limit=MAD4B_Hub_Capture_Parser::MARKDOWN_LIMIT;
++  if($markdown===''||strlen($markdown)>$markdown_limit)
++   return new WP_Error('mad4b_firecrawl_research_markdown_invalid',
++    'Research markdown is empty or exceeds the shared parser artifact limit.',
++    ['reason'=>$markdown===''?'empty_markdown':'artifact_size_limit',
++     'markdown_bytes'=>strlen($markdown),'limit_bytes'=>$markdown_limit,
++     'http_status'=>$http]);
+   return ['source_url'=>$source_url,'markdown'=>$markdown,'http_status'=>$http,
+    'captured_at'=>gmdate('c'),'provider'=>'firecrawl','evidence_only'=>true];
+  }
+--- a/wp-content/plugins/mad4b-platform/modules/services/289-mad4b-firecrawl-research-bridge-v1.php
++++ b/wp-content/plugins/mad4b-platform/modules/services/289-mad4b-firecrawl-research-bridge-v1.php
+@@ -23,8 +23,48 @@
+  }
+  public static function boot(){
+   add_action('wp_abilities_api_init',[__CLASS__,'ability'],76);
++  add_action('add_meta_boxes_transportations',[__CLASS__,'add_review_box']);
+   add_filter('mad4b_hub_vps_capability_contracts',[__CLASS__,'contracts'],49);
+   add_filter('mad4b_provider_capability_manifests',[__CLASS__,'manifest'],25);
++ }
++ /**
++  * Read-only source evidence on the native JetEngine transportation editor.
++  * No approval, publication, booking, or supplier permission is issued here.
++  */
++ public static function add_review_box($post){
++  if(!is_object($post) || $post->post_type!=='transportations' ||
++     !current_user_can('edit_post',$post->ID) ||
++     wp_get_environment_type()!=='staging' ||
++     wp_parse_url(home_url(),PHP_URL_HOST)!=='tours.dev.mad4b.com')return;
++  add_meta_box('mad4b-transport-source-review',
++   __('MAD4B — Source Research Quality','mad4b-platform'),
++   [__CLASS__,'render_quality_box'],'transportations','side','high');
++ }
++ public static function render_quality_box($post){
++  if(!is_object($post)||$post->post_type!=='transportations'||
++     !current_user_can('edit_post',$post->ID))return;
++  $quality=get_post_meta($post->ID,'_mad4b_source_capture_quality_v1',true);
++  $source=(string)get_post_meta($post->ID,'_mad4b_source_research_url',true);
++  if(!is_array($quality)||!$quality){
++   echo '<p>'.esc_html__('No reviewed source capture is recorded for this draft.','mad4b-platform').'</p>';
++   return;
++  }
++  $state=(string)($quality['state']??'UNKNOWN');
++  echo '<p><strong>'.esc_html__('Capture status:','mad4b-platform').'</strong> '.esc_html($state).'</p>';
++  if($source!=='')
++   echo '<p><strong>'.esc_html__('Bound source:','mad4b-platform').'</strong> <a href="'.esc_url($source).'" target="_blank" rel="noopener noreferrer">'.esc_html(wp_parse_url($source,PHP_URL_HOST)).'</a></p>';
++  if(!empty($quality['artifact_id']))
++   echo '<p><strong>'.esc_html__('Artifact ID:','mad4b-platform').'</strong> <code>'.esc_html((string)$quality['artifact_id']).'</code></p>';
++  if(!empty($quality['blocking_reason']))
++   echo '<p><strong>'.esc_html__('Access issue:','mad4b-platform').'</strong> '.esc_html((string)$quality['blocking_reason']).'</p>';
++  $flags=$quality['quality_flags']??[];
++  if(is_array($flags) && $flags){
++   echo '<p><strong>'.esc_html__('Review flags:','mad4b-platform').'</strong></p><ul>';
++   foreach(array_slice($flags,0,12) as $flag)
++    if(is_scalar($flag))echo '<li>'.esc_html((string)$flag).'</li>';
++   echo '</ul>';
++  }
++  echo '<p><em>'.esc_html__('Reference only. Supplier verification, fares and live availability remain separate checks.','mad4b-platform').'</em></p>';
+  }
+  public static function manifest($m){
+   // Provider manifests may be inspected before the SCP provider plugin boots.
+@@ -160,23 +200,117 @@
+      return null;
+   return $r;
+  }
++ /**
++  * Reference-quality gate only; it never establishes commercial eligibility.
++  * Language mismatches are advisories, while access challenges are rejected.
++  */
++ public static function content_review($markdown,$source_url=''){
++  $raw=trim((string)$markdown);
++  $flags=[];$reason='';
++  $head=mb_substr($raw,0,1600,'UTF-8');
++  if(strlen($raw)<200)$reason='INSUFFICIENT_LENGTH';
++  elseif(preg_match('/(?:just a moment\.{0,3}|checking your browser|cloudflare ray id|verify you are human|attention required!.*cloudflare|access denied.*cloudflare)/iu',$head))
++   $reason='ACCESS_CHALLENGE';
++  elseif(preg_match('/^\s*(?:loading\.{0,3}|جار[يى] التحميل)/iu',$head) && strlen($raw)<600)
++   $reason='DYNAMIC_LOADING_SHELL';
++  // Count visible words, excluding image labels and URL characters.
++  $visible=preg_replace('/!\[[^]]*\]\([^)]+\)/u',' ',$raw);
++  $visible=preg_replace('/\[([^]]+)\]\([^)]+\)/u','$1',$visible);
++  $visible=preg_replace('~https?://[^\s)]+~u',' ',$visible);
++  $visible=preg_replace('/[#*_|]+/u',' ',$visible);
++  $visible=trim((string)preg_replace('/\s+/u',' ',$visible));
++  $visible_chars=mb_strlen($visible,'UTF-8');
++  if($reason==='' && $visible_chars<120)$reason='INSUFFICIENT_VISIBLE_TEXT';
++
++  $arabic=(int)preg_match_all('/\p{Arabic}/u',$visible);
++  $latin=(int)preg_match_all('/[A-Za-z]/u',$visible);
++  $ratio=($arabic+$latin)>0?round($arabic/($arabic+$latin),3):0.0;
++  $language=$arabic>=60 && $ratio>=0.65?'ar':($latin>=100 && $ratio<=0.2?'en':'mixed_or_unknown');
++  $expected='';
++  $query=(string)wp_parse_url((string)$source_url,PHP_URL_QUERY);
++  if($query!==''){parse_str($query,$params);$expected=strtolower((string)($params['lang']??''));}
++  if($expected==='' && preg_match('~^/(en|ar|fr|de|es|it)(?:[-/]|$)~i',(string)wp_parse_url((string)$source_url,PHP_URL_PATH),$match))
++   $expected=strtolower($match[1]);
++  if($expected!=='' && $language!=='mixed_or_unknown' && $language!==$expected)
++   $flags[]='SOURCE_LOCALE_MISMATCH';
++  $flags[]='SUPPLIER_UNVERIFIED';
++  $flags[]='FARES_AND_AVAILABILITY_UNVERIFIED';
++  if($reason!=='')$flags[]=$reason;
++  return ['substantive'=>$reason==='',
++   'state'=>$reason===''?'REFERENCE_REVIEW_REQUIRED':'CAPTURE_REJECTED',
++   'reason'=>$reason,'flags'=>$flags,
++   'markdown_bytes'=>strlen($raw),'visible_chars'=>$visible_chars,
++   'language_hint'=>$language,'source_language_hint'=>$expected,
++   'arabic_character_ratio'=>$ratio,
++   'supplier_verified'=>false,'fares_verified'=>false,'availability_verified'=>false];
++ }
+  public static function content_substantive($markdown){
+-  $plain=trim((string)$markdown);
+-  if(strlen($plain)<200)return false;
+-  if(preg_match('/^\s*(?:loading\.{0,3}|جار[يى] التحميل)/iu',$plain) && strlen($plain)<600)return false;
+-  return true;
++  return self::content_review($markdown)['substantive'];
++ }
++ /**
++  * Converge the existing per-post research quality record on the exact durable
++  * Artifact. No JetEngine commercial fields or publication state are changed.
++  */
++ private static function sync_post_quality($id,$job,$url,$receipt){
++  $artifact_id=(string)($receipt['artifact_id']??'');
++  if(!wp_is_uuid($artifact_id))return false;
++  if((string)get_post_meta($id,'_mad4b_source_research_url',true)!==$url)return false;
++  $read=MAD4B_SCP_Artifacts::get_artifact(['artifact_id'=>$artifact_id]);
++  if(is_wp_error($read))return false;
++  $a=$read['artifact']??[];$p=$a['payload']??[];
++  $markdown=(string)($p['markdown']??'');
++  $sha=hash('sha256',$markdown);
++  if(($a['job_id']??'')!==$job || ($p['source_url']??'')!==$url ||
++     ($p['source_sha256']??'')!==$sha || ($receipt['source_sha256']??'')!==$sha)
++    return false;
++  $quality=self::content_review($markdown,$url);
++  if(!$quality['substantive'])return false;
++  $key='_mad4b_source_capture_quality_v1';
++  $prev=get_post_meta($id,$key,true);
++  if(is_array($prev) && ($prev['state']??'')===$quality['state'] &&
++     ($prev['artifact_id']??'')===$artifact_id &&
++     ($prev['source_sha256']??'')===$sha &&
++     ($prev['quality_flags']??[])===$quality['flags'])return true;
++  $next=['state'=>$quality['state'],'artifact_id'=>$artifact_id,
++   'job_id'=>$job,'source_url'=>$url,'source_sha256'=>$sha,
++   'markdown_bytes'=>strlen($markdown),'quality_flags'=>$quality['flags'],
++   'language_hint'=>$quality['language_hint'],
++   'source_language_hint'=>$quality['source_language_hint'],
++   'arabic_character_ratio'=>$quality['arabic_character_ratio'],
++   'review_only'=>true,'pricing_verified'=>false,'supplier_verified'=>false,
++   'availability_verified'=>false,'publish_authorized'=>false,
++   'native_313_receipt_verified'=>false,'checked_at_utc'=>gmdate('c')];
++  if(is_array($prev) && !empty($prev['previous_evidence']))
++   $next['previous_evidence']=$prev['previous_evidence'];
++  elseif(is_array($prev) && !empty($prev['artifact_id']) &&
++    $prev['artifact_id']!==$artifact_id)
++   $next['previous_evidence']=[
++     'state'=>$prev['state']??'','artifact_id'=>$prev['artifact_id'],
++     'markdown_bytes'=>$prev['markdown_bytes']??null,
++     'source_sha256'=>$prev['source_sha256']??'',
++     'checked_at_utc'=>$prev['checked_at_utc']??''];
++  $changed=update_post_meta($id,$key,$next,is_array($prev)?$prev:'');
++  return (bool)$changed && get_post_meta($id,$key,true)===$next;
+  }
+  public static function execute($input){
+   $v=self::validate($input);if(is_wp_error($v))return $v;
+   $job=$v['job_id'];$id=$v['draft_post_id'];$url=$v['source_url'];
+   $prior=self::prior($id,$job,$url);
+-  if($prior)return $prior;
++  if($prior){
++   if(!self::sync_post_quality($id,$job,$url,$prior))
++    return new WP_Error('firecrawl_research_quality_persistence_failed');
++   return $prior;
++  }
+   // Provider-owned credential routing. This method never returns raw keys.
+   $captured=MAD4B_SCP_Firecrawl_Provider::scrape_research_url($job,$id,$url,true);
+   if(is_wp_error($captured))return $captured;
+   $markdown=(string)($captured['markdown']??'');
+-  if(trim($markdown)===''||strlen($markdown)>60000)return new WP_Error('firecrawl_research_capture_invalid');
+-  if(!self::content_substantive($markdown))return new WP_Error('firecrawl_research_insufficient_js_shell');
++  if(trim($markdown)===''||strlen($markdown)>MAD4B_Hub_Capture_Parser::MARKDOWN_LIMIT)return new WP_Error('firecrawl_research_capture_invalid');
++  $quality=self::content_review($markdown,$url);
++  if(!$quality['substantive'])
++   return new WP_Error('firecrawl_research_insufficient_js_shell',
++    'Capture rejected by research quality gate.',
++    ['reason'=>$quality['reason'],'markdown_bytes'=>$quality['markdown_bytes']]);
+   $contentHash=hash('sha256',$markdown);
+   $saved=MAD4B_SCP_Artifacts::append_artifact([
+    'job_id'=>$job,'artifact_type'=>'scraped_page',
+@@ -184,7 +318,10 @@
+      'captured_at'=>$captured['captured_at'],'provider'=>'firecrawl',
+      'supplier_verified'=>false,'pricing_verified'=>false],
+    'metadata'=>['draft_post_id'=>$id,'http_status'=>$captured['http_status'],
+-     'research_only'=>true,'publish_authorized'=>false],
++     'research_only'=>true,'publish_authorized'=>false,
++     'quality_state'=>$quality['state'],'quality_flags'=>$quality['flags'],
++     'language_hint'=>$quality['language_hint'],
++     'source_language_hint'=>$quality['source_language_hint']],
+    'producer_stage'=>$v['job_stage'],'producer_ref'=>'firecrawl:'.$id,
+    'reason'=>'Source-bound transport candidate research capture; no supplier certification or publishing'
+   ]);
+@@ -200,6 +337,8 @@
+   $all[hash('sha256',$job.'|'.$url)]=$receipt;
+   if(!update_post_meta($id,self::RECEIPT_META,$all))
+    return new WP_Error('firecrawl_research_receipt_persistence_failed');
++  if(!self::sync_post_quality($id,$job,$url,$receipt))
++   return new WP_Error('firecrawl_research_quality_persistence_failed');
+   return $receipt;
+  }
+  public static function verify($task,$result){
