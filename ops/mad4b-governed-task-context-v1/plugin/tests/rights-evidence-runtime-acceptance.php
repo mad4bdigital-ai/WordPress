@@ -67,6 +67,15 @@ foreach(['tours-central','wayfatours'] as $company) {
        &&($catalog['rights_evidence_blocks_vendor_adapter']??true)===false
        &&($catalog['rights_evidence_blocks_reconcile']??true)===false
        &&($catalog['rights_review_recommended']??false)===true;
+    $qa=$catalog['native_schema_qa_preflight']??[];
+    $checks[$company.'_qa_schema_preflight_independent_of_rights']=
+      ($qa['mode']??null)==='metadata_only'
+      &&($qa['rights_documents_required']??true)===false
+      &&($qa['site_binding_verified']??false)===true
+      &&($qa['original_provider_validation_required']??false)===true
+      &&($qa['source_to_target_id_readback_required']??false)===true
+      &&($qa['source_content_transfer_authorized']??true)===false
+      &&($qa['production_write_authorized']??true)===false;
     $checks[$company.'_rights_no_publication']=($r['publication_performed']??true)===false
       &&($r['records_created']??-1)===0
       &&($catalog['publication_performed']??true)===false;
