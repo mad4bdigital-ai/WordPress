@@ -31,6 +31,10 @@ jobs:
           coverage: none
       - name: Validate source owner contract
         run: php wp-content/plugins/mad4b-commerce/tests/source-owner-parity.php
+      - name: Validate 94-file owned runtime checksum inventory
+        run: |
+          cd wp-content/plugins/mad4b-commerce
+          sha256sum -c source-files.sha256
       - name: Lint all owned PHP
         run: |
           find wp-content/plugins/mad4b-commerce -type f -name '*.php' -print0 |
