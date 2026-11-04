@@ -28,3 +28,5 @@ jobs:
           python-version: "3.12"
       - name: Validate fail-closed runtime manifest checks
         run: python3 -m unittest discover -s ops/control-plane-runtime-provenance -p "test_*.py" -v
+      - name: Verify Context foreign-source recycle fail-closed contracts
+        run: python3 wp-content/plugins/mad4b-site-control-plane/tests/context-foreign-recycle-source-contract.py -v
