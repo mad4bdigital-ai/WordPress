@@ -38,6 +38,7 @@ require_once __DIR__.'/includes/class-mad4b-hub-capture-parser.php';
 require_once __DIR__.'/includes/class-mad4b-hub-capture-registry.php';
 require_once __DIR__.'/includes/class-mad4b-hub-media-manifest.php';
 require_once __DIR__.'/includes/class-mad4b-hub-publication-targets.php';
+require_once __DIR__.'/includes/class-mad4b-hub-company-owned-catalog.php';
 require_once __DIR__.'/includes/class-mad4b-hub-review-gallery.php';
 require_once __DIR__.'/includes/class-mad4b-hub-review-frontend-preview.php';
 require_once __DIR__.'/includes/class-mad4b-hub-review-ui.php';
