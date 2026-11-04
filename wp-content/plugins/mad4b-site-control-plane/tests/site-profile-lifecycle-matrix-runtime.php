@@ -164,4 +164,6 @@ foreach(array('shared_lease','foreign_lease','lease_lost','status_dropped','prof
  else {journey_check(is_wp_error($repair) && false===get_option(MAD4B_SCP_MCP_Runtime_Recovery::OPTION),'fault published armed result');if('foreign_lease'===$fault)journey_check(!file_exists($destination) && MAD4B_SCP_Runtime_Maintenance_Lease::owned($lease,'runtime_convergence'),'forged lease mutated runtime');}
  journey_check(!MAD4B_SCP_MCP_Runtime_Recovery::active(),'fault leaked active privilege');
 }
+if ( (int) $GLOBALS['assertions'] < 1 ) throw new RuntimeException('No lifecycle assertions executed');
+echo 'SUMMARY checks=' . (int) $GLOBALS['assertions'] . ' failures=0' . PHP_EOL;
 echo wp_json_encode(array('contract'=>'mad4b.site-profile-lifecycle-matrix.v1','enrollment_pairs'=>$journeys,'fault_cases'=>9,'assertions'=>$GLOBALS['assertions'],'result'=>'PASS')) . PHP_EOL;
