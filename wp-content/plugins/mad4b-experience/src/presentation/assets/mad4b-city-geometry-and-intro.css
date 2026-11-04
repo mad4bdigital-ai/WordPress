@@ -1,0 +1,84 @@
+/* City source listings: perfect circular cards across WPML/Elementor breakpoints. */
+:is(.elementor-45927,.elementor-68816,.elementor-68818,.elementor-68821,.elementor-68823,.elementor-68825)
+ .elementor-element-95d1c9c {
+ box-sizing:border-box!important;
+ width:min(400px,100%)!important;
+ max-width:100%!important;
+ height:auto!important;
+ min-height:0!important;
+ aspect-ratio:1 / 1!important;
+ border-radius:50%!important;
+ overflow:hidden!important;
+ margin-inline:auto!important;
+ top:auto!important;
+ transform:none;
+ display:flex!important;
+ flex-direction:column!important;
+ justify-content:center!important;
+ align-items:center!important;
+ gap:10px!important;
+}
+@media(max-width:767px) {
+ :is(.elementor-45927,.elementor-68816,.elementor-68818,.elementor-68821,.elementor-68823,.elementor-68825)
+  .elementor-element-95d1c9c { width:min(300px,100%)!important; }
+}
+:is(.elementor-45927,.elementor-68816,.elementor-68818,.elementor-68821,.elementor-68823,.elementor-68825)
+ :is(.elementor-element-3b68b75,.elementor-element-402c8ca) {
+ position:static!important;
+ inset:auto!important;
+ transform:none!important;
+ margin:0!important;
+ width:92%!important;
+ max-width:100%!important;
+ text-align:center!important;
+ flex:0 0 auto!important;
+ align-self:center!important;
+}
+:is(.elementor-45927,.elementor-68816,.elementor-68818,.elementor-68821,.elementor-68823,.elementor-68825)
+ .elementor-element-3b68b75 { order:1!important; }
+:is(.elementor-45927,.elementor-68816,.elementor-68818,.elementor-68821,.elementor-68823,.elementor-68825)
+ .elementor-element-402c8ca { order:2!important; }
+/* Gate only city background images outside the actual screen/slider geometry.
+   Unlike Swiper's active classes, this does not hide rightmost visible cards. */
+html.mad4b-city-geometry-lazy .elementor-element-95d1c9c:not(.mad4b-city-geometry-visible) {
+ background-image:none!important;
+}
+/* Exactly one coherent travel-introduction block after the city carousel. */
+.mad4b-home-unified-intro {
+ margin-inline:auto;
+ width:100%;
+ max-width:100%;
+ text-align:center;
+}
+.mad4b-home-unified-intro .mad4b-home-intro-heading {
+ margin:0 auto 16px!important;
+ padding:0;
+ max-width:820px;
+ color:var(--e-global-color-primary,#15384a);
+ font-size:clamp(23px,2.15vw,34px)!important;
+ font-weight:600;
+ line-height:1.25!important;
+ letter-spacing:normal;
+ text-align:center;
+ text-wrap:balance;
+}
+.mad4b-home-unified-intro p {
+ max-width:860px;
+ margin:0 auto 15px;
+ color:var(--e-global-color-text,#334b55);
+ font-size:clamp(15px,1.13vw,17px)!important;
+ font-weight:400;
+ line-height:1.75!important;
+ text-align:center;
+}
+.mad4b-home-unified-intro :is(.elementor-widget-seo_readmore,.seo-readmore,.seo_readmore) {
+ margin-inline:auto;
+ max-width:900px;
+}
+.mad4b-home-unified-intro :is(a,button) { touch-action:manipulation; }
+html[dir=rtl] .mad4b-home-unified-intro { direction:rtl; }
+@media(max-width:767px) {
+ .mad4b-home-unified-intro .mad4b-home-intro-heading { margin-bottom:12px!important; }
+ .mad4b-home-unified-intro p { font-size:15px!important; line-height:1.7!important; }
+}
+
