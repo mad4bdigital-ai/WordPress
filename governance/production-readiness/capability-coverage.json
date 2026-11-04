@@ -3605,6 +3605,28 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing MCP admission, platform identity, security, owner-scoped administrative rights and execution-denial controls cover these staging-only authorization surfaces, without granting Production execution or public access.",
       "review_rationale": "New surface ability:mad4b/staging-write-grant-reconcile-staging is source-pinned in the W1 authority integration and assessed with hermetic owner-browser, agent REST route, Site Profile, OAuth, replay, write grant, exact mapping and negative permission fixtures. This is only CI source review, not evidence that the route is registered, usable, or authorized in Production."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-adapter-dynamic-integrity.php",
+      "owner_role": "MAD4B repository MCP source reviewer — CI-only capability coverage, not a live or Production execution authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/dependency-certified-runtime-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-runtime-recovery-runtime.php"
+      ],
+      "needs_new_control": false,
+      "new_control_ids": [],
+      "coverage_reuse_rationale": "Dynamic integrity is an internal official MCP Adapter discovery and privileged-maintenance verifier. It registers no public endpoint, tool, ability or unrestricted write action; existing MCP adapter integrity, provider source verification, exact site-bound authorization, execution denial and plugin-update controls govern this internal service. An entirely new control would not represent a new authority boundary.",
+      "review_rationale": "Explicit source-pinned review of newly added internal service at Git blob fea6bd2d97892702b55305c6b7d13e4cca0d8553. Unrecognized official version may allow ordinary read/discovery while write-side recovery requires independent WordPress.org source-byte verification. Test regression covers dynamic status behavior and refusal of recovery when source evidence is absent; this entry neither grants OAuth credentials nor certifies a mixed-provider PHP runtime. Source CI coverage only; Staging live HTTP and Production release gates remain independent."
     }
   ],
   "lifecycle": [],
