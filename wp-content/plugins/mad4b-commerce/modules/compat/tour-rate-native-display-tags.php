@@ -136,19 +136,19 @@ add_action('elementor/frontend/container/before_render',static function($element
 },22);
 
 // Companion native Elementor data tags / widget for multi-part pricing and package info.
-require_once WPMU_PLUGIN_DIR.'/assets/tour-rate-structured-tags.inc.php';
-require_once WPMU_PLUGIN_DIR.'/assets/tour-rate-package-disclosure.inc.php';
+require_once __DIR__.'/assets/tour-rate-structured-tags.inc.php';
+require_once __DIR__.'/assets/tour-rate-package-disclosure.inc.php';
 add_action('wp_enqueue_scripts',static function(){
  if((!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || !MAD4B_COMMERCE_RUNTIME_ENABLED)||!is_singular('tours-and-activities'))return;
- $file=WPMU_PLUGIN_DIR.'/assets/tour-rate-centered-popover.js';
+ $file=dirname(__DIR__,2).'/assets/tour-rate-centered-popover.js';
  wp_enqueue_script('tour-rate-centered-popover',
-   content_url('mu-plugins/assets/tour-rate-centered-popover.js'),
+   plugins_url('assets/tour-rate-centered-popover.js',dirname(__DIR__,2).'/mad4b-commerce.php'),
    [],(string)filemtime($file),true);
 },22);
 
 
 // Editable native Elementor widget using the exact original price SVG path.
-require_once WPMU_PLUGIN_DIR.'/assets/tour-rate-original-price-svg.inc.php';
+require_once __DIR__.'/assets/tour-rate-original-price-svg.inc.php';
 
 // Matching native occupancy labels for each Tour Rate pricing row.
-require_once WPMU_PLUGIN_DIR.'/assets/tour-rate-occupancy-label.inc.php';
+require_once __DIR__.'/assets/tour-rate-occupancy-label.inc.php';
