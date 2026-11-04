@@ -188,6 +188,11 @@ final class Bootstrap {
         $ajaxPresentation=new AjaxPresentationEndpoint($this->builder,$this->presentation,$slots,$catalogProvider);
         add_action('rest_api_init',array($ajaxPresentation,'routes'));
         if($needsJetSmartFilters||$needsJetEngine||$previewJetSmartFilters||$previewJetEngine){add_action('wp_enqueue_scripts',array($ajaxPresentation,'assets'),30);}
+        // WPML owns translated URLs. This read-only adapter adds active JSF facets
+        // when switching languages, including an otherwise neutral archive.
+        if($compatibility->wpml()&&($needsJetSmartFilters||$previewJetSmartFilters||$needsJetEngine)){
+            add_action('wp_enqueue_scripts',array(new \DynamicFilterSEOBridge\WPML\ActiveFacetLanguageSwitcher(),'enqueue'),45);
+        }
 
         // Admin/read-only surfaces remain available while Global is OFF so an
         // operator can inspect, resolve migration state and prepare authority.
