@@ -1,0 +1,19 @@
+{
+  "site": "https://tours.dev.mad4b.com",
+  "date": "2026-11-05",
+  "scope": "staging_wpml_tour_translation_jobs",
+  "job_count": 54,
+  "by_language": {
+    "ar": 22,
+    "fr": 16,
+    "de": 16
+  },
+  "active_semantic_flight_revision": 2,
+  "obsolete_active_revision_1": 0,
+  "old_preexecution_supersession_receipts": 54,
+  "native_runtime_resolve_completed": 54,
+  "stage_work_waiting_executor": 54,
+  "written_translations": 0,
+  "production_changed": false,
+  "security_policy": "kept enabled; no bypass of authorization; exact zero-lease/zero-attempt preexecution original tasks only"
+}
