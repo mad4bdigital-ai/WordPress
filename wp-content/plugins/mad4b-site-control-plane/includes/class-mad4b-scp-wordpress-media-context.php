@@ -186,7 +186,7 @@ final class MAD4B_SCP_WordPress_Media_Context {
             wp_die( 'Choose one or more supported MIME types.', '', array( 'response' => 400 ) );
         $source = MAD4B_SCP_Context_Authority::upsert_source( array(
             'provider' => 'wordpress_media', 'mode' => 'governed',
-            'external_root_id' => 'site_media_library', 'label' => 'WordPress Media Library',
+            'external_root_id' => self::ROOT, 'label' => 'WordPress Media Library',
             'write_policy' => 'read_only', 'recursive' => false,
         ) );
         $result = is_wp_error( $source ) ? $source :
