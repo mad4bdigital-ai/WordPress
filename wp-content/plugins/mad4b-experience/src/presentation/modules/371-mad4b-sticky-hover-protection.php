@@ -9,6 +9,14 @@
 defined('ABSPATH') || exit;
 
 final class MAD4B_Sticky_Hover_Protection {
+    public static function filter_archive_scope(): bool {
+        return !is_admin()
+            && wp_get_environment_type() === 'staging'
+            && wp_parse_url(home_url('/'), PHP_URL_HOST) === 'tours.dev.mad4b.com'
+            && is_post_type_archive('tours-and-activities')
+            && MAD4B_Presentation_Experience::enabled('sticky-hover-protection');
+    }
+
     public static function enqueue(): void {
         if (is_admin() || !MAD4B_Presentation_Experience::enabled('sticky-hover-protection')
             || (!is_archive() && !is_singular())) {
@@ -25,6 +33,12 @@ final class MAD4B_Sticky_Hover_Protection {
             [],
             (string) filemtime($path)
         );
+        if (self::filter_archive_scope()) {
+            wp_add_inline_style('mad4b-sticky-hover-protection',
+                '@media (min-width:1025px){body.post-type-archive-tours-and-activities ' .
+                '.elementor-element-702cfb6c{position:sticky!important;top:90px;' .
+                'align-self:flex-start;z-index:99;}}');
+        }
     }
 
     public static function boot(): void {
