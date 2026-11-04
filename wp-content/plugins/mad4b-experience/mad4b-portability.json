@@ -1,0 +1,45 @@
+{
+  "contract": "mad4b.plugin-portability-profile.v1",
+  "plugin": "mad4b-experience",
+  "scope": "tenant-portable",
+  "activation_policy": "required_if_source_active",
+  "environment_policy": "any_registered_wordpress_environment",
+  "configuration_source": "per_site_wordpress_settings_api",
+  "feature_defaults": "preserve_existing_presentation_and_visitor_option_keys",
+  "features": [
+    "chatbotx-elementor-kit",
+    "mobile-scroll-action",
+    "tour-inquiry-sidebar",
+    "jetengine-count-locale",
+    "archive-mobile-dock",
+    "featured-listing-banner",
+    "city-visible-image",
+    "uael-critical-css",
+    "city-first-card-lcp",
+    "wpml-flag-preload-trim",
+    "fluent-phone-brand-and-dial",
+    "visitor-switchers-locale",
+    "city-card-intermediate-image",
+    "newsletter-image-css-sync",
+    "layout-switcher-compatibility",
+    "sticky-hover-protection"
+  ],
+  "groups": {
+    "presentation": 9,
+    "performance": 5,
+    "visitor": 2
+  },
+  "optional_provider_integrations": [
+    "elementor",
+    "fluentform",
+    "fluentformpro",
+    "jet-engine",
+    "jet-smart-filters",
+    "sitepress-multilingual-cms",
+    "woocommerce"
+  ],
+  "sensitive_central_authority_not_included": true,
+  "financial_or_customer_data_automatic_write": false,
+  "reconciliation": "source_file_sha256_and_exact_tenant_site_uuid_readback",
+  "tenant_installation_requires_original_authorized_site_write": true
+}
