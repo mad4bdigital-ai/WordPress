@@ -51,8 +51,22 @@ foreach(['tours-central','wayfatours'] as $company) {
     $checks[$company.'_catalog_compatible']=($catalog['company_owned_verified_count']??-1)===0
       &&($catalog['company_verified_distribution_count']??-1)===0
       &&($catalog['remote_or_local_writes']??-1)===0;
-    $checks[$company.'_blockers_exposed']=in_array('SOURCE_POST_RIGHTS_BINDING_NOT_CERTIFIED',
-      (array)($r['blockers']??[]),true);
+    $checks[$company.'_advisories_exposed']=in_array('SOURCE_POST_RIGHTS_BINDING_NOT_CERTIFIED',
+      (array)($r['advisories']??[]),true)
+      &&($r['blockers']??null)===[]
+      &&($r['operational_blockers']??null)===[];
+    $checks[$company.'_rights_optional_for_operations']=
+       ($r['rights_evidence_mode']??null)==='optional_advisory'
+       &&($r['rights_evidence_required_for_provisioning']??true)===false
+       &&($r['rights_evidence_required_for_schema_transfer']??true)===false
+       &&($r['rights_evidence_required_for_reconcile']??true)===false
+       &&($catalog['rights_review_required']??true)===false
+       &&($catalog['rights_documentation_optional']??false)===true
+       &&($catalog['rights_evidence_blocks_provisioning']??true)===false
+       &&($catalog['rights_evidence_blocks_schema_transfer']??true)===false
+       &&($catalog['rights_evidence_blocks_vendor_adapter']??true)===false
+       &&($catalog['rights_evidence_blocks_reconcile']??true)===false
+       &&($catalog['rights_review_recommended']??false)===true;
     $checks[$company.'_rights_no_publication']=($r['publication_performed']??true)===false
       &&($r['records_created']??-1)===0
       &&($catalog['publication_performed']??true)===false;
