@@ -50,6 +50,31 @@ final class MAD4B_SCP_Context_Authority {
  static function review_policy() { return self::$policy; }
  static function ai_review_policy_status() { return array( 'exact_grant_ready' => false ); }
  static function source_allows_write( $id, $operation ) { return 'update' === $operation && 'update_only' === self::$sources[ $id ]['write_policy']; }
+ // Mirror only the public read-only keys verified on live Central Staging.
+ // Archived foreign records remain independent from current-site ownership.
+ static function status() {
+  return array(
+   'ownership_reconciliation_lifecycle' => array(
+    'contract' => 'mad4b.context-ownership-lifecycle.v1',
+    'state' => 'RECYCLED_ARCHIVED_OWNER_RECONCILIATION_PENDING',
+    'quarantined_source_count' => 0,
+    'quarantined_asset_count' => 0,
+    'archived_source_count' => 2,
+    'archived_asset_count' => 9,
+    'read_only' => true,
+    'ownership_transfer_authorized' => false,
+   ),
+   'foreign_recycle_archive' => array(
+    'state' => 'ARCHIVED_FOREIGN_OWNER_UNRESOLVED',
+    'archived_sources' => 2, 'archived_assets' => 9,
+    'integrity_verified' => true,
+   ),
+   'quarantined_source_record_count' => 0,
+   'quarantined_asset_record_count' => 0,
+   'governed_source_count' => count( self::$sources ),
+   'task_source_count' => 0,
+  );
+ }
 }
 final class MAD4B_SCP_Staging_Write_Authority {
  static $current = false;
@@ -78,6 +103,14 @@ foreach ( array( 'managed_google', 'dedicated_google', 'custom_credentials' ) as
  check( ! empty( $form[1] ), 'Configured selected OAuth method has no primary connect form: ' . $mode );
  check( ( 'managed_google' === $mode ) === ( false !== strpos( $form[1], 'name="managed_signin"' ) ), 'Primary connect silently switched authentication method: ' . $mode );
 }
+// Source fixture must follow the *live* Context Authority status contract.
+$life = render( 'render_ownership_lifecycle' );
+check( false !== strpos( $life, 'RECYCLED_ARCHIVED_OWNER_RECONCILIATION_PENDING' ),
+ 'Archived foreign Context lifecycle must render without requiring an owner transfer' );
+check( false !== strpos( $life, '2 source(s)' ) && false !== strpos( $life, '9 asset(s)' ),
+ 'Archived lineage counts were lost from the live-compatible readback' );
+check( false === strpos( $life, 'AWAITING_LEGACY_OWNER_REVIEW' ),
+ 'Clean active registry must not be treated as still in live quarantine' );
 MAD4B_SCP_Google_Drive_Context::$mode = 'dedicated_google'; MAD4B_SCP_Google_Drive_Context::$dedicated = false;
 check( false === strpos( render( 'render_google_drive' ), 'class="mad4b-google-primary-signin-form"' ), 'Configured unrelated broker concealed missing Dedicated setup' );
 MAD4B_SCP_Google_Drive_Context::$dedicated = true;
