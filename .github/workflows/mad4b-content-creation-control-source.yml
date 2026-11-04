@@ -1,0 +1,38 @@
+name: MAD4B Content Creation Control — runtime source integrity
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-content-creation-control/**'
+      - '.github/workflows/mad4b-content-creation-control-source.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+env:
+  SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+jobs:
+  source-integrity:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.3', '8.5']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Verify source SHA256 inventory
+        run: |
+          cd wp-content/plugins/mad4b-content-creation-control
+          sha256sum -c source-files.sha256
+      - name: Verify PHP syntax for every tracked source file
+        run: |
+          find wp-content/plugins/mad4b-content-creation-control -type f -name '*.php' -print0 |
+            xargs -0 -n1 php -l
+      - name: Reject local backup enrollment
+        run: |
+          test -z "$(find wp-content/plugins/mad4b-content-creation-control -name '*.bak' -print -quit)"
