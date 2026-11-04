@@ -1,8 +1,6 @@
 <?php
 /** WooCommerce Settings tab — parameterized existing CPT rate drafts only. */
-if (!defined('ABSPATH') || !class_exists('Shared_Product_Rate_Generation')) return;
-$mad4b_rate_admin_runtime = (defined('MAD4B_COMMERCE_RUNTIME_ENABLED') && MAD4B_COMMERCE_RUNTIME_ENABLED===true);
-if (!$mad4b_rate_admin_runtime && wp_get_environment_type()!=='local') return;
+if (!defined('ABSPATH') || wp_get_environment_type()!=='local' || !class_exists('Shared_Product_Rate_Generation')) return;
 add_filter('woocommerce_settings_tabs_array',static function($tabs){
  $tabs['rate_generation']=__('Rate Generation','woocommerce');return $tabs;
 },82);
@@ -81,16 +79,6 @@ add_action('woocommerce_settings_tabs_rate_generation',static function(){
   'Explicit multipliers. Default 1 does not invent a different occupancy price.');
  $field('Package term ID (tour only)','<input name="package_term_id" type="number" min="1" step="1"/>',
   'Optional existing package_levels taxonomy term.');
- $namingGlobal=(string)get_option('mad4b_rate_naming_policy_v1','auto');
- $field('Rate naming · global default',
-  '<select name="global_rate_naming_policy"><option value="auto" '.selected($namingGlobal,'auto',false).'>Auto: localized package, date and unique Rate identifier</option><option value="source" '.selected($namingGlobal,'source',false).'>Use meaningful source title, otherwise localized Auto</option></select> <button type="submit" name="operation" value="save_naming_policy" formnovalidate class="button">Save global naming policy</button>',
-  'Naming changes presentation only; prices, Rate IDs, currency, fingerprints and existing post titles remain unchanged.');
- $field('New Tour Rate · naming policy',
-  '<select name="rate_naming_mode"><option value="inherit">Inherit Tour / Global policy</option><option value="auto">Auto localized name</option><option value="custom">Custom name</option><option value="source">Use original name with localized fallback</option></select>',
-  'Applies to a newly created draft only; existing Rates are never overwritten.');
- $field('New Tour Rate · custom display name',
-  '<input name="rate_custom_name" type="text" maxlength="160" style="width:420px;max-width:100%" placeholder="e.g. Gold · Deluxe stay"/>',
-  'Required only for Custom; the Rate can be translated independently through WPML.');
  $field('Generated Tour accommodation','<select name="accommodation_assignment_mode"><option value="auto">Discover eligible properties by city and country</option><option value="manual">Manual pricing only</option></select>','Multiple cities require an authored stage source. Discovery never confirms inventory.');
  $field('Accommodation stage source Rate ID','<input name="accommodation_stage_source_rate_id" type="number" min="1" step="1"/>','Optional published or draft Rate of the same Tour. Reuses authored geometry and refills eligible properties.');
  $scope='<select name="rate_scope"><option value="both">Both</option><option value="standalone">Standalone</option><option value="tour_component">Tour component</option></select>';
@@ -218,16 +206,9 @@ add_action('admin_init',static function(){
     ($_GET['tab']??'')!=='rate_generation'||!isset($_POST['operation']))return;
  if(!current_user_can('manage_woocommerce'))wp_die('Permission denied',403);
  check_admin_referer('shared_product_rate_generation','shared_rate_generation_nonce');
- if(wp_get_environment_type()!=='local' && (!defined('MAD4B_COMMERCE_RUNTIME_ENABLED') || MAD4B_COMMERCE_RUNTIME_ENABLED!==true))wp_die('Runtime grant required',403);
+ if(wp_get_environment_type()!=='local')wp_die('Not a Lab site',403);
  $raw=wp_unslash($_POST);
  $op=$raw['operation']??'';
- if($op==='save_naming_policy'){
-  $mode=sanitize_key((string)($raw['global_rate_naming_policy']??'auto'));
-  if(!in_array($mode,['auto','source'],true))wp_die('Invalid global naming mode',400);
-  update_option('mad4b_rate_naming_policy_v1',$mode,false);
-  set_transient('shared_product_generation_flash_'.get_current_user_id(),['message'=>'Global Rate naming policy saved: '.$mode],90);
-  wp_safe_redirect(admin_url('admin.php?page=wc-settings&tab=rate_generation'));exit;
- }
  if($op==='choice_preview'||$op==='choice_quote'){
   $kind=sanitize_key((string)($raw['choice_kind']??''));
   $candidate=['kind'=>$kind,'parent_id'=>$raw['choice_parent_id']??null,
@@ -289,34 +270,8 @@ add_action('admin_init',static function(){
    if(isset($raw[$field])&&$raw[$field]!=='')$payload[$field]=$raw[$field];
  }elseif($kind==='transport')$payload['rate_scope']=$raw['rate_scope']??'both';
  $op=$raw['operation']??'';
- if($kind==='tour' && $op==='create' &&
-    ($raw['rate_naming_mode']??'inherit')==='custom' &&
-    trim((string)($raw['rate_custom_name']??''))===''){
-  set_transient('shared_product_generation_flash_'.get_current_user_id(),
-   ['error'=>true,'message'=>'Custom Rate name is required for Custom naming mode.'],90);
-  wp_safe_redirect(admin_url('admin.php?page=wc-settings&tab=rate_generation'));exit;
- }
  $result=$op==='preview'?Shared_Product_Rate_Generation::prepare($payload):
    ($op==='create'?Shared_Product_Rate_Generation::create($payload):new WP_Error('rate_generator_action_invalid'));
- if($kind==='tour' && $op==='create' && is_array($result) &&
-    ($result['status']??'')==='created' && !empty($result['post_id'])){
-  $mode=sanitize_key((string)($raw['rate_naming_mode']??'inherit'));
-  if(!in_array($mode,['inherit','auto','custom','source'],true))$mode='inherit';
-  $created=(int)$result['post_id'];
-  if($mode!=='inherit')update_post_meta($created,'_mad4b_rate_naming_mode_v1',$mode);
-  if($mode==='custom'){
-   $custom=mb_substr(sanitize_text_field((string)($raw['rate_custom_name']??'')),0,160);
-   update_post_meta($created,'_mad4b_rate_custom_label_v1',$custom);
-   do_action('wpml_register_single_string','mad4b-rate-names','rate-'.$created,$custom);
-  }
-  // Localized draft title is written once. Never rename a reused or published Rate.
-  if(class_exists('MAD4B_Rate_Naming_And_Note_V1',false)){
-   $parent=absint($payload['parent_id']??0);
-   $name=MAD4B_Rate_Naming_And_Note_V1::name($created,$parent);
-   if($name!=='' && $name!==get_the_title($created))
-    wp_update_post(['ID'=>$created,'post_title'=>$name]);
-  }
- }
  $flash=is_wp_error($result)?['error'=>true,'message'=>$result->get_error_code()]:
   ($op==='preview'?['message'=>'Draft preview: '.($result['post_type']??'').' from '.
    ($result['parameters']['amount']??'').' '.($result['parameters']['currency']??'') .
