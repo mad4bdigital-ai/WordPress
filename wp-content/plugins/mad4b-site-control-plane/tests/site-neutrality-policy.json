@@ -224,6 +224,12 @@
         "api.github.com"
       ],
       "rationale": "Immutable public GitHub REST source-reader authority only, not a tenant or site default. This exact hostname pin rejects config drift to unreviewed providers; HTTPS, TLS, DNS and redirect checks remain governed by Egress Policy."
+    },
+    "includes/class-mad4b-scp-mcp-adapter-dynamic-integrity.php": {
+      "hosts": [
+        "downloads.wordpress.org"
+      ],
+      "rationale": "Reviewed official WordPress.org HTTPS plugin distribution endpoint, version-scoped to mcp-adapter release for exact read-only file provenance comparison; not a company/tenant URL and not an installation grant."
     }
   },
   "optional_named_tag_integrations": [

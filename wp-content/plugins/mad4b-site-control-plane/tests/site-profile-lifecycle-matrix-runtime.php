@@ -35,7 +35,7 @@ function wp_next_scheduled( $hook ) { return $GLOBALS['scheduled'][ $hook ] ?? f
 function wp_schedule_single_event( $when, $hook ) { $GLOBALS['scheduled'][ $hook ]=$when; return true; }
 function wp_clear_scheduled_hook( $hook ) { unset( $GLOBALS['scheduled'][ $hook ] ); }
 class MAD4B_SCP_MCP_Request_Scope { static function current_request_is_protocol_hotpath() { return $GLOBALS['protocol']; } static function current_request_is_endpoint_diagnostic_job() { return false; } }
-class MAD4B_SCP_Dependency_Manager { static function mcp_adapter_disk_integrity() { return array( 'ready' => $GLOBALS['integrity'] ); } }
+class MAD4B_SCP_Dependency_Manager { static function mcp_adapter_disk_integrity( $verify_official_release = false ) { return array( 'ready' => $GLOBALS['integrity'], 'source_verified' => $GLOBALS['integrity'], 'state' => $GLOBALS['integrity'] ? 'certified_disk_set' : 'integrity_mismatch' ); } }
 class MAD4B_SCP_Endpoint_Diagnostic { static function build_fingerprint() { return 'journey-build'; } }
 class MAD4B_SCP_Audit {
  static function storage_status() { return array( 'ready' => $GLOBALS['audit_ready'] ); }
@@ -164,4 +164,6 @@ foreach(array('shared_lease','foreign_lease','lease_lost','status_dropped','prof
  else {journey_check(is_wp_error($repair) && false===get_option(MAD4B_SCP_MCP_Runtime_Recovery::OPTION),'fault published armed result');if('foreign_lease'===$fault)journey_check(!file_exists($destination) && MAD4B_SCP_Runtime_Maintenance_Lease::owned($lease,'runtime_convergence'),'forged lease mutated runtime');}
  journey_check(!MAD4B_SCP_MCP_Runtime_Recovery::active(),'fault leaked active privilege');
 }
+if ( (int) $GLOBALS['assertions'] < 1 ) throw new RuntimeException('No lifecycle assertions executed');
+echo 'SUMMARY checks=' . (int) $GLOBALS['assertions'] . ' failures=0' . PHP_EOL;
 echo wp_json_encode(array('contract'=>'mad4b.site-profile-lifecycle-matrix.v1','enrollment_pairs'=>$journeys,'fault_cases'=>9,'assertions'=>$GLOBALS['assertions'],'result'=>'PASS')) . PHP_EOL;
