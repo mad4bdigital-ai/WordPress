@@ -170,7 +170,6 @@
    state.output.replaceChildren();
    const label=document.createElement('span');
    label.className='shared-price-amount';
-   label.setAttribute('dir','auto');
    label.textContent=amount(data.total,data.currency);
    state.output.append(label);
    const note=document.createElement('small');
