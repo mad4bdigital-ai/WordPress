@@ -57,15 +57,14 @@ final class MAD4B_Hub_Company_Rights_Evidence_V1 {
         // trusted Company binding; no positive ownership count can be inferred
         // from previews, WordPress publication, or generic usage policy options.
         $verifiedOwned=0;
-        $blockers=[];
-        if($licenseCount===0)$blockers[]='COMPANY_LICENSE_REGISTRY_MISSING';
-        if($approvedReleases===0)$blockers[]='COMPANY_APPROVED_RELEASE_MISSING';
-        if($publicationCount===0)$blockers[]='COMPANY_PUBLICATION_TARGET_MISSING';
-        if($verifiedDestinationCount===0)$blockers[]='DESTINATION_POST_PROOF_MISSING';
-        $blockers[]='SOURCE_POST_RIGHTS_BINDING_NOT_CERTIFIED';
-        $blockers[]='COMPANY_PROFILE_AND_VENDOR_RECEIPTS_UNVERIFIED';
+        $advisories=[];
+        if($licenseCount===0)$advisories[]='COMPANY_LICENSE_REGISTRY_MISSING';
+        if($approvedReleases===0)$advisories[]='COMPANY_APPROVED_RELEASE_MISSING';
+        if($publicationCount===0)$advisories[]='COMPANY_PUBLICATION_TARGET_MISSING';
+        if($verifiedDestinationCount===0)$advisories[]='DESTINATION_POST_PROOF_MISSING';
+        $advisories[]='SOURCE_POST_RIGHTS_BINDING_NOT_CERTIFIED';
         return [
-            'contract'=>self::CONTRACT,'state'=>'EVIDENCE_INCOMPLETE',
+            'contract'=>self::CONTRACT,'state'=>'EVIDENCE_OPTIONAL_UNVERIFIED',
             'company_code'=>$company,'company_site_uuid'=>$uuid,
             'canonical_company_content_states'=>$counts,
             'source_approved_release_records'=>$approvedReleases,
@@ -76,7 +75,15 @@ final class MAD4B_Hub_Company_Rights_Evidence_V1 {
             'certified_source_content_grants'=>0,
             'legal_reuse_permission'=>'not_determined_by_system',
             'full_distribution_authorized'=>false,
-            'blockers'=>$blockers,
+            // Optional evidence must never gate company provisioning, schema transfer or reconciliation.
+            // A missing proof is an advisory, not a certification or a permission grant.
+            'rights_evidence_mode'=>'optional_advisory',
+            'rights_evidence_required_for_provisioning'=>false,
+            'rights_evidence_required_for_reconcile'=>false,
+            'rights_evidence_required_for_schema_transfer'=>false,
+            'operational_blockers'=>[],
+            'blockers'=>[],
+            'advisories'=>$advisories,
             'records_created'=>0,'publication_performed'=>false
         ];
     }
