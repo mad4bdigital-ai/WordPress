@@ -32,12 +32,15 @@ $labels = [];
 foreach (['de' => [203, 'Reisepakete'], 'fr' => [741, 'Circuits combinés']] as $language=>$config) {
     [$id, $name] = $config;
     $term = get_term($id,'tour-types');
+    if (!$term || is_wp_error($term)) {
+        throw new RuntimeException('TERM_MISSING_'.$id);
+    }
     $row = $wpdb->get_row($wpdb->prepare(
         "SELECT language_code,trid FROM {$wpdb->prefix}icl_translations
          WHERE element_type='tax_tour-types' AND element_id=%d",
          $term->term_taxonomy_id
     ), ARRAY_A);
-    if (!$term || is_wp_error($term) || $term->name !== $name
+    if ($term->name !== $name
       || ($row['language_code'] ?? '') !== $language) {
         throw new RuntimeException('TERM_LABEL_PARITY_FAILED_'.$id);
     }
