@@ -108,7 +108,7 @@ final class MAD4B_Tour_Multilingual_Interface_V1 {
   }
   if(str_contains($html,'jet-ajax-search__field-wrapper'))
    $html=str_replace('>Search ...</label>','>'.esc_html(self::label('search',$lang)).'</label>',$html);
-  // Localize JetSmartFilters controls only when the owning filter field is present.
+  // Localize the exact JetSmartFilters controls, not arbitrary user text.
   if(str_contains($html,'name="related_package_term_id"'))
    $html=str_replace('Select Package',esc_html(self::label('choose_package',$lang)),$html);
   if(str_contains($html,'name="season"'))
