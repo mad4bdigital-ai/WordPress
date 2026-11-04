@@ -3605,6 +3605,49 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing MCP admission, platform identity, security, owner-scoped administrative rights and execution-denial controls cover these staging-only authorization surfaces, without granting Production execution or public access.",
       "review_rationale": "New surface ability:mad4b/staging-write-grant-reconcile-staging is source-pinned in the W1 authority integration and assessed with hermetic owner-browser, agent REST route, Site Profile, OAuth, replay, write grant, exact mapping and negative permission fixtures. This is only CI source review, not evidence that the route is registered, usable, or authorized in Production."
+    },
+    {
+      "id": "ability:mad4b/context-foreign-recycle-archive-cleanup",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-foreign-recycle-source-contract.py"
+      ],
+      "coverage_reuse_rationale": "Existing site-bound provider scoping, exact registry revision, signed executor admission, archive integrity and security controls cover this source-level operation string. No new Production or cross-owner authority is granted.",
+      "review_rationale": "Live Central Staging source inspection verified a foreign Context recycling audit string and archive-only flow with revision CAS, hash validation and protected retention. The source string is not by itself a registered MCP write Ability, approval, or owner transfer.",
+      "owner_role": "MAD4B Control Plane source reviewer, CI-only; exact original owner admission separately required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": []
+    },
+    {
+      "id": "ability:mad4b/context-source-onboarding-preflight",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-foreign-recycle-source-contract.py"
+      ],
+      "coverage_reuse_rationale": "Existing read-only provider discovery, site-profile identity, explicit owner binding and audit controls address the source onboarding preflight hint without claiming write grants or auto ownership transfer.",
+      "review_rationale": "Live Central Staging status() readback confirms the Context Source Onboarding Preflight string is a next-read hint, with zero live quarantine after archive; automatic_assignment=false and ownership_transfer_authorized=false are preserved.",
+      "owner_role": "MAD4B Control Plane source reviewer, CI-only; exact original owner admission separately required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "new_control_ids": []
     }
   ],
   "lifecycle": [],
@@ -11538,6 +11581,66 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The existing original Agent Registry exact grant, Staging-only provider review, site profile, mutation gate, owner approval, checkpoint, readback and audit safeguards govern this single diagnostic, without wildcard rights.",
       "review_rationale": "Exact source review allows a core grant to be considered only for mad4b/hub-queue-site-health-enqueue when the Ability is registered on the correct central Staging site. No grant is issued merely because this provider pair appears; broad hub-bulk-enqueue remains outside the reviewed policy and Production is not enabled."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-core-remote-recovery.php",
+      "source_blob_sha": "e77be1c405c0b6388b1c865ce812041d4ce47c36",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-foreign-recycle-source-contract.py"
+      ],
+      "owner_role": "MAD4B source-security reviewer; CI-only review, no deployment or external owner authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing named security, site-bound ownership, fail-closed source, administrator and archive verification controls cover this exact code change; source review does not authorize Production.",
+      "review_rationale": "Live source implements non-authorizing Brand Core remote recovery hints for foreign source lifecycle. Review of current Staging file and its exact Git blob confirms no automatic source reassignment or production promotion; regression asserts denial of transfer."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-admin-ui.php",
+      "source_blob_sha": "31cfe33bd54e588b6718e52b8e6c606b7ec0b5c4",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-foreign-recycle-source-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-admin-recovery-runtime.php"
+      ],
+      "owner_role": "MAD4B source-security reviewer; CI-only review, no deployment or external owner authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing named security, site-bound ownership, fail-closed source, administrator and archive verification controls cover this exact code change; source review does not authorize Production.",
+      "review_rationale": "Live source renders exact archived ownership lifecycle, with 2 archived sources, 9 archived assets and zero active quarantined records. Existing PHP runtime fixture now mirrors live status() response and safely handles missing status provider."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php",
+      "source_blob_sha": "0b89e6c2275aae58875e0db6cfe9f190de891181",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-foreign-recycle-source-contract.py"
+      ],
+      "owner_role": "MAD4B source-security reviewer; CI-only review, no deployment or external owner authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing named security, site-bound ownership, fail-closed source, administrator and archive verification controls cover this exact code change; source review does not authorize Production.",
+      "review_rationale": "Live Context Authority's foreign recycle flow requires exact registry revision and inventory SHA, registry lock, audit, archive SHA readback and no ownership reassignment. Verified Staging archive integrity and independent CI source contract."
     }
   ],
   "code_change_rules": {
