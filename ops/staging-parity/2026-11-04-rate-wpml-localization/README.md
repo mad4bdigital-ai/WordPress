@@ -22,7 +22,7 @@ Original diff inventory:
 - `quote-price-bidi.patch`: price amount direction attribute (no quote calculation changes).
 - `localized-term-details.patch`: read localized package term metadata, not source-language metadata.
 
-Three compatibility files (`fluent-rate-projection`, `rate-label-and-dates`, `localized-term-details`) are sourced from the live `mad4b-commerce` plugin / its MU include. The owning plugin's full runtime tree is **not currently tracked** in this repository; do not pretend its patch is an executable shared-core module. Enroll the owner and loader first and preserve exact module identity. The live Staging originals/backups remain on the authorized VPS.
+**Source ownership reconciled (2026-11-05):** the full active `mad4b-commerce` plugin source tree outside the mirrored `legacy-mu-tree` is now tracked under `wp-content/plugins/mad4b-commerce/` (89/89 exact original source blobs verified). The owner now contains `modules/compat/local-presentation-fluent-projection-v1.php`, `modules/commerce/tour-rates-dynamic-function.php`, and `modules/compat/tour-rate-native-display-tags.php`. Four dependent PHP assets and the popover JS have been enrolled under this same owner and its display-tag loader adjusted to use local paths. Original patches are preserved as historical diffs only, not queued runtime changes. Source checksum inventory `wp-content/plugins/mad4b-commerce/source-files.sha256` validates 94 owned runtime files. See `SOURCE-OWNERSHIP.md` and the dedicated Commerce Runtime source CI. The legacy core snapshot remains untouched.
 
 A separate WPML-equivalent age-policy patch is documented but **not deployed**; the Arabic Rate 422 is unresolved. PHP syntax alone is not a booking release proof.
 
@@ -49,7 +49,7 @@ A separate WPML-equivalent age-policy patch is documented but **not deployed**; 
 
 ## Pending gates
 - Resolve exact Content Jobs single-flight ownership and editorial dependencies; translate missing Tour pages and validate their WPML/JetEngine relations before publication.
-- Reconcile three untracked `mad4b-commerce` runtime modules into their owning, deployable source tree without duplicate callbacks.
-- Apply and verify the age-policy fix through an approved Staging release with positive and negative tests; do not relax cross-tour authorization.
-- Validate full AJAX/RTL/editor save/redeploy behaviour and release checks. The frozen snapshot checksum must stay unchanged.
+- [DONE on Staging] Enroll `mad4b-commerce` sources, move local Rate display assets into plugin ownership, and verify four PHP includes resolve exactly once from the owned path. New Commerce Runtime CI verifies source owner contract, 94 checksum entries, PHP 8.3/8.5 and JS syntax.
+- [SEPARATE BLOCKER] Apply and verify the age-policy fix through an approved Staging release with positive and negative tests; Arabic age-policy HTTP 422 remains unresolved, independent of source ownership. Do not relax cross-tour authorization.
+- [SEPARATE RELEASE GATES] Validate full AJAX/RTL/editor save/redeploy behaviour and release checks. The frozen snapshot checksum must stay unchanged. Basic mobile Playwright checks on Arabic/German Tour pages passed after source migration (HTTP 200, zero JavaScript page errors, zero horizontal overflow, Rate toggles opened).
 - This PR remains draft; no Production deployment or merge is authorized.
