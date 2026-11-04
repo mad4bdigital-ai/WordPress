@@ -224,6 +224,12 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 			$status['managed'] = true;
 			$status['integrity_before'] = true;
 			$status['ownership_source'] = 'current_source';
+			// A matching current source proves byte ownership, but a separate
+			// site-bound receipt may already exist. Report its real status
+			// instead of returning the default false fields.
+			$receipt = self::ownership_receipt_status( $status['destination_sha256_before'] );
+			$status['ownership_receipt_present'] = ! empty( $receipt['present'] );
+			$status['ownership_receipt_valid'] = ! empty( $receipt['ready'] );
 			$status['state'] = 'managed_mu_current';
 			return $status;
 		}
