@@ -11538,6 +11538,67 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The existing original Agent Registry exact grant, Staging-only provider review, site profile, mutation gate, owner approval, checkpoint, readback and audit safeguards govern this single diagnostic, without wildcard rights.",
       "review_rationale": "Exact source review allows a core grant to be considered only for mad4b/hub-queue-site-health-enqueue when the Ability is registered on the correct central Staging site. No grant is issued merely because this provider pair appears; broad hub-bulk-enqueue remains outside the reviewed policy and Production is not enabled."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dependency-manager.php",
+      "source_blob_sha": "f30190ac301dccc41b69ae5c9a91a69f2caa713b",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "UPDATES-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/dependency-certified-runtime-contract.py"
+      ],
+      "owner_role": "MAD4B repository CI-only source review; independent owner release approval remains required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP runtime, exact source, security, recovery and update controls cover these bounded changes while CI evidence and original production approval remain independent.",
+      "review_rationale": "Installed official release validation now separates stale preferred targets from actual runtime failures. CI sources and live Staging prove dynamic discovery remains available; mixed Rank Math class provenance remains a native-write gate."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-runtime-recovery.php",
+      "source_blob_sha": "521078cd447f1acea35c777da7484ac319c35b0e",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "RECOVERY-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-runtime-recovery-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-profile-lifecycle-matrix-runtime.php"
+      ],
+      "owner_role": "MAD4B repository CI-only source review; independent owner release approval remains required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP runtime, exact source, security, recovery and update controls cover these bounded changes while CI evidence and original production approval remain independent.",
+      "review_rationale": "Privileged runtime recovery requests exact official release proof on a maintenance lifecycle. Original scoped authorization, valid actor, lease and rollback remain mandatory; an absent source proof cannot arm recovery."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-adapter-dynamic-integrity.php",
+      "source_blob_sha": "fea6bd2d97892702b55305c6b7d13e4cca0d8553",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "UPDATES-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/dependency-certified-runtime-contract.py"
+      ],
+      "owner_role": "MAD4B repository CI-only source review; independent owner release approval remains required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP runtime, exact source, security, recovery and update controls cover these bounded changes while CI evidence and original production approval remain independent.",
+      "review_rationale": "New bounded official WordPress.org exact-version archive comparison returns only read readiness without a pre-registered baseline. Trusted source digests are verified separately from installed hashes and cannot grant any native MCP authority."
     }
   ],
   "code_change_rules": {
