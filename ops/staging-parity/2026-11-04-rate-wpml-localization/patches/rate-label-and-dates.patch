@@ -1,0 +1,42 @@
+--- a/wp-content/plugins/mad4b-commerce/modules/commerce/tour-rates-dynamic-function.php
++++ b/wp-content/plugins/mad4b-commerce/modules/commerce/tour-rates-dynamic-function.php
+@@ -114,6 +114,21 @@
+ 		return '';
+ 	}
+ 
++	// WPML changes get_locale(), but wp_date() may still use the English abbreviated month.
++	// Translate the native d M Y presentation without touching rate timestamps.
++	$lang = (string) apply_filters( 'wpml_current_language', 'en' );
++	$locales = array(
++		'ar' => 'ar_EG', 'fr' => 'fr_FR', 'de' => 'de_DE',
++		'es' => 'es_ES', 'it' => 'it_IT'
++	);
++	if ( isset( $locales[$lang] ) && $format === 'd M Y' && class_exists( 'IntlDateFormatter' ) ) {
++		$fmt = new IntlDateFormatter( $locales[$lang], IntlDateFormatter::NONE,
++			IntlDateFormatter::NONE, 'UTC', IntlDateFormatter::GREGORIAN, 'dd MMM yyyy' );
++		if ( $fmt ) {
++			$localized = $fmt->format( $timestamp );
++			if ( is_string( $localized ) && $localized !== '' ) return $localized;
++		}
++	}
+ 	return wp_date( $format, $timestamp );
+ }
+ }
+@@ -237,6 +252,17 @@
+ 	$separator    = isset( $settings['separator'] ) ? $settings['separator'] : ' | ';
+ 	$date_format  = isset( $settings['date_format'] ) ? $settings['date_format'] : 'd M Y';
+ 	$price_prefix = isset( $settings['price_prefix'] ) ? $settings['price_prefix'] : 'From ';
++	// In Elementor this label is authored as "From" in English for every WPML shell.
++	// Preserve explicit custom prefixes and financial parser's amount + ISO code.
++	if ( trim((string)$price_prefix) === 'From' ) {
++		$prefixes = [
++			'en'=>'From ', 'ar'=>'يبدأ من ', 'fr'=>'À partir de ',
++			'de'=>'Ab ', 'es'=>'Desde ', 'it'=>'Da '
++		];
++		$lang = (string)apply_filters('wpml_current_language','en');
++		$price_prefix = $prefixes[$lang] ?? $price_prefix;
++	}
++
+ 
+ 	$program = tk_trdf_get_term_name( get_post_meta( $post_id, 'related_program_term_id', true ) );
+ 	$package = tk_trdf_get_term_name( get_post_meta( $post_id, 'related_package_term_id', true ) );
