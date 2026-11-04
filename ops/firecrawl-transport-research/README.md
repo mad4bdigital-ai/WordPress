@@ -25,3 +25,11 @@ This folder preserves the **read-back verified** repair of the existing MAD4B Fi
 5. Never merge or promote this source package automatically from a staging patch. Production remains unchanged.
 
 **VPS backup and report path:** `/opt/mad4b-company-provisioning/reports/provider-onboarding-20261104/`. These operational files are not part of this public repository.
+
+## Follow-up: railway references and exact source-only candidate
+
+The railway draft remains bound to the original source `https://cairo.gov.eg/en/governorate-services/transportation-services/railway/`. The Staging research-quality meta now records two **additional review-only official Cairo Governorate references** and the WordPress editor renders their links. The updated patch includes the rendering; this is **not** a replacement of the original ContentJob URL, an approved timetable, or a new `scraped_page` Artifact.
+
+A root-owned VPS source-only candidate was also created at `/opt/mad4b-company-provisioning/source-candidates/firecrawl-transport-research-20261104/`. It contains the two exact current Staging PHP source files, a hashed manifest and a source-only ZIP, and it does not install or deploy them anywhere. See `source-candidate-manifest.json` for SHA-256 hashes and `runtime_auto_apply=false`. Both runtime PHP files are owned by the live Central Staging plugin tree; **GitHub master is not that tree**.
+
+Original agent exact grant and principal ledger were read back as valid, but the original signed transport scope remains disabled and expired. The original signed 305/313 workflow is unresolved and cannot be completed by claiming a WordPress CLI capture as a Broker receipt.
