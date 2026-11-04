@@ -12,32 +12,32 @@ final class MAD4B_Tour_Multilingual_Interface_V1 {
   'en'=>[
    'price_rates'=>'Tour prices','governorates'=>'Tour governorates','countries'=>'Tour countries',
    'important'=>'Important links for – ','results'=>'Results: ','tour_one'=>'Tour','tour_many'=>'Tours',
-   'all_tours'=>'Explore all tours','tips'=>'Tips','featured'=>'Featured','occupancy_single'=>'Per person in Single','occupancy_double'=>'Per person in Double','occupancy_triple'=>'Per person in Triple','price_on_request'=>'Price on request','package_details'=>'Show %s package details','subscribe'=>'Subscribe','subscription_form'=>'Subscription Form','search'=>'Search ...'
+   'all_tours'=>'Explore all tours','tips'=>'Tips','featured'=>'Featured','occupancy_single'=>'Per person in Single','occupancy_double'=>'Per person in Double','occupancy_triple'=>'Per person in Triple','price_on_request'=>'Price on request','package_details'=>'Show %s package details','subscribe'=>'Subscribe','subscription_form'=>'Subscription Form','search'=>'Search ...','choose_package'=>'Select Package','choose_season'=>'Select Season','check_availability'=>'Check Availability'
   ],
   'ar'=>[
    'price_rates'=>'أسعار الرحلة','governorates'=>'محافظات الرحلة','countries'=>'دول الرحلة',
    'important'=>'روابط مهمة للرحلة – ','results'=>'النتائج: ','tour_one'=>'رحلة','tour_many'=>'رحلات',
-   'all_tours'=>'استعرض جميع الرحلات','tips'=>'نصائح','featured'=>'مميزة','occupancy_single'=>'للشخص في غرفة فردية','occupancy_double'=>'للشخص في غرفة مزدوجة','occupancy_triple'=>'للشخص في غرفة ثلاثية','price_on_request'=>'السعر عند الطلب','package_details'=>'عرض تفاصيل باقة %s','subscribe'=>'اشترك','subscription_form'=>'نموذج الاشتراك','search'=>'بحث ...'
+   'all_tours'=>'استعرض جميع الرحلات','tips'=>'نصائح','featured'=>'مميزة','occupancy_single'=>'للشخص في غرفة فردية','occupancy_double'=>'للشخص في غرفة مزدوجة','occupancy_triple'=>'للشخص في غرفة ثلاثية','price_on_request'=>'السعر عند الطلب','package_details'=>'عرض تفاصيل باقة %s','subscribe'=>'اشترك','subscription_form'=>'نموذج الاشتراك','search'=>'بحث ...','choose_package'=>'اختر الباقة','choose_season'=>'اختر الموسم','check_availability'=>'تحقق من التوافر'
   ],
   'fr'=>[
    'price_rates'=>'Tarifs du circuit','governorates'=>'Gouvernorats visités','countries'=>'Pays visités',
    'important'=>'Liens utiles pour – ','results'=>'Résultats : ','tour_one'=>'circuit','tour_many'=>'circuits',
-   'all_tours'=>'Voir tous les circuits','tips'=>'Conseils','featured'=>'En vedette','occupancy_single'=>'Par personne en chambre individuelle','occupancy_double'=>'Par personne en chambre double','occupancy_triple'=>'Par personne en chambre triple','price_on_request'=>'Prix sur demande','package_details'=>'Afficher les détails de la formule %s','subscribe'=>'S’abonner','subscription_form'=>'Formulaire d’abonnement','search'=>'Rechercher ...'
+   'all_tours'=>'Voir tous les circuits','tips'=>'Conseils','featured'=>'En vedette','occupancy_single'=>'Par personne en chambre individuelle','occupancy_double'=>'Par personne en chambre double','occupancy_triple'=>'Par personne en chambre triple','price_on_request'=>'Prix sur demande','package_details'=>'Afficher les détails de la formule %s','subscribe'=>'S’abonner','subscription_form'=>'Formulaire d’abonnement','search'=>'Rechercher ...','choose_package'=>'Choisir la formule','choose_season'=>'Choisir la saison','check_availability'=>'Vérifier les disponibilités'
   ],
   'de'=>[
    'price_rates'=>'Reisepreise','governorates'=>'Besuchte Gouvernements','countries'=>'Bereiste Länder',
    'important'=>'Wichtige Links zu – ','results'=>'Ergebnisse: ','tour_one'=>'Reise','tour_many'=>'Reisen',
-   'all_tours'=>'Alle Reisen ansehen','tips'=>'Tipps','featured'=>'Empfohlen','occupancy_single'=>'Pro Person im Einzelzimmer','occupancy_double'=>'Pro Person im Doppelzimmer','occupancy_triple'=>'Pro Person im Dreibettzimmer','price_on_request'=>'Preis auf Anfrage','package_details'=>'Paketdetails für %s anzeigen','subscribe'=>'Abonnieren','subscription_form'=>'Anmeldeformular','search'=>'Suchen ...'
+   'all_tours'=>'Alle Reisen ansehen','tips'=>'Tipps','featured'=>'Empfohlen','occupancy_single'=>'Pro Person im Einzelzimmer','occupancy_double'=>'Pro Person im Doppelzimmer','occupancy_triple'=>'Pro Person im Dreibettzimmer','price_on_request'=>'Preis auf Anfrage','package_details'=>'Paketdetails für %s anzeigen','subscribe'=>'Abonnieren','subscription_form'=>'Anmeldeformular','search'=>'Suchen ...','choose_package'=>'Paket wählen','choose_season'=>'Saison wählen','check_availability'=>'Verfügbarkeit prüfen'
   ],
   'es'=>[
    'price_rates'=>'Precios del viaje','governorates'=>'Gobernaciones visitadas','countries'=>'Países visitados',
    'important'=>'Enlaces útiles de – ','results'=>'Resultados: ','tour_one'=>'viaje','tour_many'=>'viajes',
-   'all_tours'=>'Ver todos los viajes','tips'=>'Consejos','featured'=>'Destacado','occupancy_single'=>'Por persona en habitación individual','occupancy_double'=>'Por persona en habitación doble','occupancy_triple'=>'Por persona en habitación triple','price_on_request'=>'Precio a consultar','package_details'=>'Mostrar detalles del paquete %s','subscribe'=>'Suscribirse','subscription_form'=>'Formulario de suscripción','search'=>'Buscar ...'
+   'all_tours'=>'Ver todos los viajes','tips'=>'Consejos','featured'=>'Destacado','occupancy_single'=>'Por persona en habitación individual','occupancy_double'=>'Por persona en habitación doble','occupancy_triple'=>'Por persona en habitación triple','price_on_request'=>'Precio a consultar','package_details'=>'Mostrar detalles del paquete %s','subscribe'=>'Suscribirse','subscription_form'=>'Formulario de suscripción','search'=>'Buscar ...','choose_package'=>'Seleccionar paquete','choose_season'=>'Seleccionar temporada','check_availability'=>'Comprobar disponibilidad'
   ],
   'it'=>[
    'price_rates'=>'Prezzi del viaggio','governorates'=>'Governatorati visitati','countries'=>'Paesi visitati',
    'important'=>'Link utili per – ','results'=>'Risultati: ','tour_one'=>'viaggio','tour_many'=>'viaggi',
-   'all_tours'=>'Scopri tutti i viaggi','tips'=>'Consigli','featured'=>'In evidenza','occupancy_single'=>'A persona in camera singola','occupancy_double'=>'A persona in camera doppia','occupancy_triple'=>'A persona in camera tripla','price_on_request'=>'Prezzo su richiesta','package_details'=>'Mostra i dettagli del pacchetto %s','subscribe'=>'Iscriviti','subscription_form'=>'Modulo di iscrizione','search'=>'Cerca ...'
+   'all_tours'=>'Scopri tutti i viaggi','tips'=>'Consigli','featured'=>'In evidenza','occupancy_single'=>'A persona in camera singola','occupancy_double'=>'A persona in camera doppia','occupancy_triple'=>'A persona in camera tripla','price_on_request'=>'Prezzo su richiesta','package_details'=>'Mostra i dettagli del pacchetto %s','subscribe'=>'Iscriviti','subscription_form'=>'Modulo di iscrizione','search'=>'Cerca ...','choose_package'=>'Seleziona pacchetto','choose_season'=>'Seleziona stagione','check_availability'=>'Verifica disponibilità'
   ]
  ];
  static function lang():string {
@@ -108,6 +108,14 @@ final class MAD4B_Tour_Multilingual_Interface_V1 {
   }
   if(str_contains($html,'jet-ajax-search__field-wrapper'))
    $html=str_replace('>Search ...</label>','>'.esc_html(self::label('search',$lang)).'</label>',$html);
+  // Localize JetSmartFilters controls only when the owning filter field is present.
+  if(str_contains($html,'name="related_package_term_id"'))
+   $html=str_replace('Select Package',esc_html(self::label('choose_package',$lang)),$html);
+  if(str_contains($html,'name="season"'))
+   $html=str_replace('Select Season',esc_html(self::label('choose_season',$lang)),$html);
+  if(str_contains($html,'jet-date-range__submit-text'))
+   $html=str_replace(['Check Avilability','Check Availability'],
+    esc_html(self::label('check_availability',$lang)),$html);
   if($lang==='en')return $html;
   $occupancyIDs=[
     'occupancy_single'=>['4c96633','2846ad7'],
