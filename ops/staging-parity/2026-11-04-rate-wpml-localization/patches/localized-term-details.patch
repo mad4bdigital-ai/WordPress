@@ -1,0 +1,19 @@
+--- a/wp-content/mu-plugins/assets/tour-rate-package-disclosure.inc.php
++++ b/wp-content/mu-plugins/assets/tour-rate-package-disclosure.inc.php
+@@ -17,7 +17,15 @@
+     $rate=tour_rate_native_card_rate_id();
+     if(!$rate)return;
+     $term_id=absint(get_post_meta($rate,'related_package_term_id',true));
+-    $term=$term_id?get_term($term_id,'package_levels'):null;
++    if(!$term_id)return;
++    $lang=(string)apply_filters('wpml_current_language','en');
++    // The stored relationship is canonical. Resolve the localized term + metadata
++    // for display only; never update the Rate's package ID.
++    if($lang && $lang!=='en'){
++      $translated=(int)apply_filters('wpml_object_id',$term_id,'package_levels',false,$lang);
++      if($translated>0)$term_id=$translated;
++    }
++    $term=get_term($term_id,'package_levels');
+     if(!$term instanceof WP_Term)return;
+     $badge=trim((string)get_term_meta($term_id,'package_badge',true));
+     $subtitle=trim((string)get_term_meta($term_id,'package_sub_title',true));
