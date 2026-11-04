@@ -31,20 +31,24 @@ if ($violations) throw new RuntimeException('RAW_TERM_LANGUAGE_MISMATCH_COUNT_'.
 $labels = [];
 foreach (['de' => [203, 'Reisepakete'], 'fr' => [741, 'Circuits combinés']] as $language=>$config) {
     [$id, $name] = $config;
-    $term = get_term($id,'tour-types');
-    if (!$term || is_wp_error($term)) {
-        throw new RuntimeException('TERM_MISSING_'.$id);
-    }
-    $row = $wpdb->get_row($wpdb->prepare(
-        "SELECT language_code,trid FROM {$wpdb->prefix}icl_translations
-         WHERE element_type='tax_tour-types' AND element_id=%d",
-         $term->term_taxonomy_id
+    // WPML intercepts get_term() and may return the current-language object.
+    // Assert the raw taxonomy identity, not WPML's frontend remap.
+    $term = $wpdb->get_row($wpdb->prepare(
+        "SELECT t.term_id,t.name,t.slug,tr.language_code,tr.trid
+         FROM {$wpdb->terms} t
+         JOIN {$wpdb->term_taxonomy} tt ON tt.term_id=t.term_id
+             AND tt.taxonomy='tour-types'
+         JOIN {$wpdb->prefix}icl_translations tr
+             ON tr.element_id=tt.term_taxonomy_id
+             AND tr.element_type='tax_tour-types'
+         WHERE t.term_id=%d", $id
     ), ARRAY_A);
-    if ($term->name !== $name
-      || ($row['language_code'] ?? '') !== $language) {
+    if (!$term || $term['name'] !== $name
+      || $term['language_code'] !== $language
+      || !($term['trid'] ?? null)) {
         throw new RuntimeException('TERM_LABEL_PARITY_FAILED_'.$id);
     }
-    $labels[$language] = ['id'=>$id,'name'=>$name,'slug_preserved'=>$term->slug];
+    $labels[$language] = ['id'=>$id,'name'=>$name,'slug_preserved'=>$term['slug']];
 }
 $out = [
     'contract'=>'mad4b.wpml-taxonomy-parity.native-acceptance.v1',
