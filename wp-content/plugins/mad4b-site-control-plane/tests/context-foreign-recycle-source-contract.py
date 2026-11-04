@@ -47,12 +47,15 @@ class ContextRecycleSourceSafety(unittest.TestCase):
         self.assertIn("'ownership_transfer_authorized' => false", code)
         self.assertIn("'source_registry_modified' => false", code)
 
-    def test_admin_ui_handles_missing_status_provider(self):
+    def test_admin_ui_uses_actual_live_context_status_provider(self):
         code = source("class-mad4b-scp-context-admin-ui.php")
+        authority = source("class-mad4b-scp-context-authority.php")
         start = code.index("private static function ownership_lifecycle_snapshot()")
-        area = code[start:start + 600]
-        self.assertIn("method_exists( 'MAD4B_SCP_Context_Authority', 'status' )", area)
+        area = code[start:start + 900]
         self.assertIn("MAD4B_SCP_Context_Authority::status()", area)
+        self.assertIn("public static function status()", authority)
+        self.assertIn("ownership_reconciliation_lifecycle", authority)
+        self.assertIn("foreign_recycle_archive", authority)
 
     def test_recovery_context_does_not_mint_new_ownership(self):
         code = source("class-mad4b-scp-brand-core-remote-recovery.php")
