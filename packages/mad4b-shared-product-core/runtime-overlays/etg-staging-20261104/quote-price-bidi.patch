@@ -1,0 +1,10 @@
+--- a/wp-content/mu-plugins/shared-product-core/assets/presentation-fluent-quote-v1.js
++++ b/wp-content/mu-plugins/shared-product-core/assets/presentation-fluent-quote-v1.js
+@@ -204,6 +204,7 @@
+    state.output.replaceChildren();
+    const label=document.createElement('span');
+    label.className='shared-price-amount';
++   label.setAttribute('dir','auto');
+    label.textContent=amount(data.total,data.currency);
+    state.output.append(label);
+    const note=document.createElement('small');
