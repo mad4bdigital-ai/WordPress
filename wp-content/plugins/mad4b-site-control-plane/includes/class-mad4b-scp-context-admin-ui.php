@@ -1483,14 +1483,18 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '<td><form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 			wp_nonce_field( self::ACTION_SCAN_SOURCE );
 			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_SCAN_SOURCE ) . '"><input type="hidden" name="source_id" value="' . esc_attr( $source['source_id'] ) . '">';
+            // Preserve source ownership and nonce; Google scans use the bounded
+            // resumable planner instead of a 10-second whole-folder request.
+            if ( 'google_drive' === ( $source['provider'] ?? '' ) )
+                echo '<input type="hidden" name="resumable" value="1">';
             if ( 'wordpress_media' === ( $source['provider'] ?? '' ) ) {
                 echo '<input type="hidden" name="media_mime_scope" value="1">';
                 foreach ( array( 'application/pdf' => 'PDF', 'text/plain' => 'TXT', 'text/markdown' => 'Markdown', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => 'Excel XLSX', 'application/vnd.ms-excel.sheet.macroEnabled.12' => 'Excel XLSM', 'text/csv' => 'Excel CSV' ) as $mime => $caption )
                     echo ' <label><input type="checkbox" name="mime_types[]" value="' . esc_attr( $mime ) . '" checked> ' . esc_html( $caption ) . '</label>';
             }
-			submit_button( __( 'Scan now', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
-            if ( 'google_drive' === ( $source['provider'] ?? '' ) )
-			echo ' <button class="button" name="resumable" value="1" type="submit">' . esc_html__( 'Scan in bounded steps', 'mad4b-site-control-plane' ) . '</button>';
+            submit_button( 'google_drive' === ( $source['provider'] ?? '' )
+                ? __( 'Start / continue scan', 'mad4b-site-control-plane' )
+                : __( 'Scan now', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
 			echo '</form><details class="mad4b-context-remove"><summary>' . esc_html__( 'Remove', 'mad4b-site-control-plane' ) . '</summary><form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 			wp_nonce_field( self::ACTION_REMOVE_SOURCE );
 			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_REMOVE_SOURCE ) . '"><input type="hidden" name="source_id" value="' . esc_attr( $source['source_id'] ) . '">';
@@ -1812,6 +1816,8 @@ final class MAD4B_SCP_Context_Admin_UI {
 				echo '<form class="mad4b-context-source-repair-form" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 				wp_nonce_field( self::ACTION_SCAN_SOURCE );
 				echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_SCAN_SOURCE ) . '"><input type="hidden" name="source_id" value="' . esc_attr( $source['source_id'] ) . '"><input type="hidden" name="return_tab" value="review">';
+                if ( 'google_drive' === ( $source['provider'] ?? '' ) )
+                    echo '<input type="hidden" name="resumable" value="1">';
 				echo '<span class="mad4b-scp-muted">' . esc_html( isset( $source['label'] ) && $source['label'] ? (string) $source['label'] : __( 'Governed source', 'mad4b-site-control-plane' ) ) . '</span> ';
 				submit_button( __( 'Continue source scan', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
 				echo '</form>';
