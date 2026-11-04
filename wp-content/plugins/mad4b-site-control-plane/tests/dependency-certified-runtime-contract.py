@@ -20,7 +20,7 @@ for marker in (
     "$installed_certified = '' !== $installed_version ? self::certified_mcp_adapter( $installed_version ) : array();",
     "self::mcp_adapter_disk_integrity()",
     "MAD4B_SCP_MCP_Adapter_Dynamic_Integrity::inspect( $plugin_file, $version",
-    "'static_profile_missing_is_blocker' => false",
+    "$dynamic['static_profile_missing_is_blocker'] = false;",
     "'mcp_adapter_mixed_vendor_php_class_provenance'",
     "'mcp_adapter_official_source_unverified_for_native_write'",
     "'transition_supported' => $transition_supported",
