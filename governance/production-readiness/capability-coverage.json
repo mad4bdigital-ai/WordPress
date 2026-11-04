@@ -11604,7 +11604,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-admin-ui.php",
-      "source_blob_sha": "31cfe33bd54e588b6718e52b8e6c606b7ec0b5c4",
+      "source_blob_sha": "4d284296363922a20a505887cef5f8b252a070f1",
       "control_ids": [
         "ADMIN-01",
         "BROWSER-01",
@@ -11620,7 +11620,7 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing named security, site-bound ownership, fail-closed source, administrator and archive verification controls cover this exact code change; source review does not authorize Production.",
-      "review_rationale": "Live source renders exact archived ownership lifecycle, with 2 archived sources, 9 archived assets and zero active quarantined records. Existing PHP runtime fixture now mirrors live status() response and safely handles missing status provider."
+      "review_rationale": "The exact current Central Staging Context Admin UI invokes the live Context Authority::status() API, which exists and reports 2 archived foreign sources, 9 archived assets and no current quarantine. The PHP fixture previously lacked that API; CI now includes a live-compatible read-only status fixture and tests the same lifecycle without changing the actual runtime UI."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php",
