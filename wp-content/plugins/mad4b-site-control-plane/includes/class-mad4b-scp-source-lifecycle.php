@@ -99,7 +99,9 @@ final class MAD4B_SCP_Source_Lifecycle {
         $all=self::raw();
         $all[$archive_id]['state']='detached';
         $all[$archive_id]['detached_at']=gmdate('c');
-        self::save($all);
+        if(!self::save($all))
+            return new WP_Error('mad4b_source_archive_detach_receipt_pending',
+                'Source detached but archive state readback was not persisted. Use the prepared-snapshot recovery route before retrying.');
         return array('archive_id'=>$archive_id,'source_id'=>$source_id,'state'=>'detached',
             'archived_asset_count'=>count($plan['assets']),
             'external_files_deleted'=>false,'restorable_source_only'=>true,
@@ -109,9 +111,13 @@ final class MAD4B_SCP_Source_Lifecycle {
         if(!self::allowed())return new WP_Error('mad4b_source_restore_denied','Authorized administrator required.');
         $all=self::raw();
         $entry=$all[$archive_id]??null;
-        if(!is_array($entry)||($entry['state']??'')!=='detached')
-            return new WP_Error('mad4b_source_archive_not_detached','Exact detached archive required.');
+        if(!is_array($entry)||!in_array(($entry['state']??''),array('detached','prepared'),true))
+            return new WP_Error('mad4b_source_archive_not_detached','Exact detached or recoverable prepared archive required.');
         $source=$entry['source']??array();
+        $verified_digest=hash('sha256',wp_json_encode(array($source,(array)($entry['assets']??array()))));
+        if(!preg_match('/^[a-f0-9]{64}$/D',(string)($entry['snapshot_sha256']??''))||
+           !hash_equals($verified_digest,(string)$entry['snapshot_sha256']))
+            return new WP_Error('mad4b_source_archive_snapshot_drift','Archived source snapshot has changed; refuse restoration.');
         $profile=MAD4B_SCP_Context_Authority::profile();
         if(!is_array($profile)||
             !hash_equals((string)($entry['brand_id']??''),(string)($profile['brand_id']??'')) ||
@@ -119,6 +125,15 @@ final class MAD4B_SCP_Source_Lifecycle {
             return new WP_Error('mad4b_source_restore_scope_mismatch','Archive Site/Brand identity changed.');
         if(MAD4B_SCP_Context_Authority::source((string)$entry['source_id']))
             return new WP_Error('mad4b_source_restore_collision','Source already exists; rescan that source instead.');
+        // A prepared snapshot can be recovered only when the native source
+        // and its active assets are absent. This covers a crash after native
+        // removal but before the archive status write. It never revives prior
+        // content approval or asset records.
+        if(($entry['state']??'')==='prepared'){
+            foreach(MAD4B_SCP_Context_Authority::assets() as $a)
+                if((string)($a['source_id']??'')===(string)$entry['source_id'])
+                    return new WP_Error('mad4b_source_restore_prepared_assets_active','Prepared snapshot still has active assets; refuse recovery.');
+        }
         $restored=MAD4B_SCP_Context_Authority::upsert_source(array(
             'provider'=>(string)$source['provider'],'mode'=>(string)$source['mode'],
             'external_root_id'=>(string)$source['external_root_id'],
@@ -133,7 +148,9 @@ final class MAD4B_SCP_Source_Lifecycle {
         $all=self::raw();$all[$archive_id]['state']='restored_rescan_required';
         $all[$archive_id]['restored_at']=gmdate('c');
         $all[$archive_id]['restored_by']=get_current_user_id();
-        self::save($all);
+        if(!self::save($all))
+            return new WP_Error('mad4b_source_restore_receipt_pending',
+                'Source was re-enrolled but archive state readback failed. Verify the source and rescan; do not repeat blindly.');
         return array('archive_id'=>$archive_id,'source_id'=>$entry['source_id'],
             'state'=>'restored_rescan_required','old_assets_reapproved'=>false,
             'next_action'=>'rescan_provider_then_review_attachments');
