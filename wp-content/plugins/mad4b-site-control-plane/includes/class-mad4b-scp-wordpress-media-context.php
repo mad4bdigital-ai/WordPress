@@ -32,6 +32,10 @@ final class MAD4B_SCP_WordPress_Media_Context {
                 $status = !empty($r['ok']) ? 'PASS' : 'ERROR';
                 echo '<p>'.esc_html($status.' | '.($r['mime']??'').' | '.($r['code']??'').' | '.(string)($r['count']??0));
                 if(!empty($r['attachment_id'])) echo ' — '.esc_html('Attachment #'.$r['attachment_id']);
+                if(!empty($r['errors'])&&is_array($r['errors'])){
+                    foreach(array_slice($r['errors'],0,25) as $problem)
+                        echo '<span class="description">'.esc_html('Attachment #'.(int)($problem['attachment_id']??0).': '.sanitize_key((string)($problem['code']??'unknown'))).'</span> ';
+                }
                 echo '</p>';
             }
             echo '</div>';
@@ -55,7 +59,7 @@ final class MAD4B_SCP_WordPress_Media_Context {
                 echo '<input type="hidden" name="action" value="mad4b_context_wp_media_sync">';
                 echo '<input type="hidden" name="scan_session" value="'.esc_attr($session_id).'">';
                 echo '<input type="hidden" name="expected_scan_step" value="'.esc_attr((string)$processed).'">';
-                submit_button('Continue next MIME scope','secondary');
+                submit_button('Continue next bounded scan step','secondary');
                 echo '</form>';
             } else echo '<p>'.esc_html(($failed?'Scan finished with errors; ':'Scan complete; ').count(array_filter($session['results'],static fn($r)=>!empty($r['ok']))).' successful MIME scope(s). Approval remains separate.').'</p>';
         }
@@ -213,7 +217,7 @@ final class MAD4B_SCP_WordPress_Media_Context {
         $uploads_root = realpath( (string)( $uploads['basedir'] ?? '' ) );
         $actual_path = is_string( $path ) ? realpath( $path ) : false;
         if ( ! is_string($uploads_root) || ! is_string($actual_path)
-             || ! str_starts_with( $actual_path, rtrim($uploads_root,DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR ) )
+             || 0 !== strpos( $actual_path, rtrim($uploads_root,DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR ) )
             return new WP_Error( 'mad4b_media_context_path_outside_uploads', 'Attachment path is outside the authorized Uploads directory.' );
         // Read the bounded exact bytes again to catch races between metadata and file load.
         $binary = file_get_contents( $actual_path, false, null, 0, 10485761 );
@@ -332,7 +336,9 @@ final class MAD4B_SCP_WordPress_Media_Context {
         if ( ! self::allowed() ) return new WP_Error('mad4b_media_scan_denied','An authorized Media administrator is required.');
         $allowed = array('application/pdf','text/plain','text/markdown',
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'application/vnd.ms-excel.sheet.macroEnabled.12','text/csv');
+            'application/vnd.ms-excel.sheet.macroEnabled.12',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'text/csv');
         $types = array_values(array_unique(array_map('strval',$types)));
         if (!$types || array_diff($types,$allowed))return new WP_Error('mad4b_media_inventory_scope_invalid','Choose one or more supported MIME types.');
         $source = MAD4B_SCP_Context_Authority::upsert_source(array(
@@ -351,6 +357,42 @@ final class MAD4B_SCP_WordPress_Media_Context {
             return new WP_Error('mad4b_media_scan_checkpoint_failed','Could not create a resumable scan checkpoint.');
         return array('scan_session'=>$session_id,'next'=>0,'total'=>count($types));
     }
+    /** Non-destructive, bounded recovery when one attachment breaks a MIME scan.
+     * At most 25 exact IDs are examined per request; invalid items are logged
+     * individually, and only validated IDs are merged. No absence/deletion
+     * evidence or auto-approval may be generated from this partial recovery.
+     */
+    private static function recover_mime_page( $mime, $after_id = 0 ) {
+        global $wpdb;
+        if ( ! method_exists($wpdb,'get_col') )
+            return new WP_Error('mad4b_media_recovery_database_unavailable','Media recovery database reader unavailable.');
+        $query=$wpdb->prepare("SELECT ID FROM {$wpdb->posts}
+          WHERE post_type = 'attachment' AND post_status <> 'trash'
+          AND post_mime_type = %s AND ID > %d ORDER BY ID ASC LIMIT 26",
+          (string)$mime,max(0,(int)$after_id));
+        $rows=$wpdb->get_col($query);
+        if(!is_array($rows))
+            return new WP_Error('mad4b_media_recovery_list_failed','Unable to read bounded attachment IDs.');
+        $has_more=count($rows)>25;
+        if($has_more)array_pop($rows);
+        $valid=array();$errors=array();
+        foreach($rows as $raw_id){
+            $id=(int)$raw_id;
+            if($id<1)continue;
+            $record=self::attachment_record($id);
+            if(!is_wp_error($record))$record=self::normalize_attachment_record($record);
+            if(is_wp_error($record)){
+                $errors[]=array('attachment_id'=>$id,'code'=>$record->get_error_code());
+            }else $valid[]=$id;
+        }
+        if($valid){
+            $merged=self::sync_ids($valid);
+            if(is_wp_error($merged))return $merged;
+        }
+        return array('checked'=>count($rows),'recovered'=>count($valid),
+            'errors'=>$errors,'after_id'=>$rows?(int)end($rows):max(0,(int)$after_id),
+            'has_more'=>$has_more,'absence_proof'=>false,'automatic_approval'=>false);
+    }
     /** Scan one complete MIME scope per request, never treating partial scopes as global deletion proof. */
     public static function scan_step( $session_id, $expected_step ) {
         $s=self::scan_session($session_id);
@@ -366,17 +408,52 @@ final class MAD4B_SCP_WordPress_Media_Context {
             $s=self::scan_session($session_id);
             if(!is_array($s)||(int)$s['next']!==$step) return new WP_Error('mad4b_media_scan_step_stale','Step changed while acquiring the lock.');
             $mime=(string)$s['mime_types'][$step];
-            $result=MAD4B_SCP_Context_Source_Pipeline::scan_complete((string)$s['source_id'],array('mime_types'=>array($mime)));
+            $recovering=isset($s['recovery'])&&is_array($s['recovery'])
+                && (int)($s['recovery']['step']??-1)===$step;
+            $result=$recovering
+                ? new WP_Error('mad4b_media_partial_recovery_active','Continue bounded per-attachment recovery.')
+                : MAD4B_SCP_Context_Source_Pipeline::scan_complete((string)$s['source_id'],array('mime_types'=>array($mime)));
             if(is_wp_error($result)){
-                $e=(array)$result->get_error_data();
-                $s['results'][]=array('mime'=>$mime,'ok'=>false,'code'=>$result->get_error_code(),
-                    'attachment_id'=>isset($e['attachment_id'])?(int)$e['attachment_id']:0,
-                    'count'=>0,'retry'=>'repair_or_exclude_failed_mime_scope_then_retry');
+                $cursor=$recovering?(int)($s['recovery']['after_id']??0):0;
+                $before=$recovering?(int)($s['recovery']['checked']??0):0;
+                $page=self::recover_mime_page($mime,$cursor);
+                if(is_wp_error($page)||$before+($page['checked']??0)>1000){
+                    $code=is_wp_error($page)?$page->get_error_code():'mad4b_media_recovery_capacity';
+                    $e=is_wp_error($page)?(array)$page->get_error_data():array();
+                    // Preserve the original exact attachment diagnostic when
+                    // the bounded per-file recovery reader is unavailable.
+                    if(!$recovering && empty($e['attachment_id']))
+                        $e=array_merge($e,(array)$result->get_error_data());
+                    $s['results'][]=array('mime'=>$mime,'ok'=>false,'code'=>$code,
+                        'attachment_id'=>(int)($e['attachment_id']??0),
+                        'errors'=>array(),'count'=>0,'retry'=>'repair_then_rescan_scope');
+                    unset($s['recovery']);$s['next']=$step+1;
+                }else{
+                    $prior=$recovering?$s['recovery']:array('checked'=>0,'recovered'=>0,'errors'=>array(),'step'=>$step);
+                    $sum=array(
+                        'step'=>$step,'after_id'=>(int)$page['after_id'],
+                        'checked'=>(int)$prior['checked']+(int)$page['checked'],
+                        'recovered'=>(int)$prior['recovered']+(int)$page['recovered'],
+                        'errors'=>array_merge($prior['errors'],$page['errors'])
+                    );
+                    if(!empty($page['has_more'])){
+                        $s['recovery']=$sum;
+                        $s['results'][]=array('mime'=>$mime,'ok'=>false,'code'=>'bounded_partial_recovery',
+                            'count'=>$sum['recovered'],'errors'=>$page['errors'],
+                            'retry'=>'continue_same_mime_step','absence_proof'=>false);
+                    }else{
+                        unset($s['recovery']);
+                        $s['results'][]=array('mime'=>$mime,'ok'=>false,'code'=>'partial_recovery_needs_rescan',
+                            'count'=>$sum['recovered'],'errors'=>$sum['errors'],
+                            'retry'=>'repair_failed_attachments_and_rescan_scope','absence_proof'=>false);
+                        $s['next']=$step+1;
+                    }
+                }
             }else{
                 $s['results'][]=array('mime'=>$mime,'ok'=>true,'code'=>'complete',
                     'count'=>(int)($result['asset_count']??0));
+                $s['next']=$step+1;
             }
-            $s['next']=$step+1;
             $s['state']=$s['next']<count($s['mime_types'])?'PARTIAL':
                 (count(array_filter($s['results'],static fn($r)=>empty($r['ok'])))?'COMPLETE_WITH_ERRORS':'COMPLETE');
             $s['updated_at']=gmdate('c');
