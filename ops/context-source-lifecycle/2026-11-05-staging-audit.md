@@ -124,3 +124,19 @@ The previous "findings" above are preserved as the **pre-implementation diagnost
 - Production rollout, PR merge, and owner release attestation were not performed.
 
 **Operational verdict:** P0 readback and the verified P1/P2 scanning, retry, exact IDs, DOCX and source-only recycle paths are implemented on Staging and versioned in PR #760. This is **not yet a fully certified Production release**.
+
+
+## Post-recovery QA — unreadable TXT among five valid TXT files
+
+**Verified on Staging 2026-11-05; temporary fixture removed.**
+
+- Created temporary, site-local attachment ID \`68983\` with MIME \`text/plain\` and a root-restricted file/path to simulate an unreadable asset under the real PHP \`www-data\` identity.
+- \`attachment_record(68983)\` correctly refused the file with \`mad4b_media_file_unavailable\`.
+- A real bounded \`begin_scan(['text/plain']) → scan_step(session, 0)\` recovered the **five valid TXT files** and recorded exactly one per-file error for attachment \`68983\`.
+- Session state \`COMPLETE_WITH_ERRORS\`; \`complete=false\`, \`finished=true\`, no deletion/absence proof, and no asset creation for the failed fixture. Retry of old step 0 was rejected as \`mad4b_media_scan_step_stale\`; querying finished step 1 remained idempotent.
+- The temporary WP attachment record and file directory were removed. Readback confirmed **zero leftover fixture records and directories**, five original TXT attachments, **two Context sources, 34 unreviewed assets, zero approved assets**.
+- Once the fixture was removed, the same scoped scan correctly returned \`complete=true\`.
+- **Follow-up correctness fix:** the successful MIME step displayed \`count=34\` because it used the **cumulative source asset_count** rather than the **scope observed_asset_count**. The live \`WordPress_Media_Context::scan_step\` now displays \`count=5\` for TXT and exposes \`source_asset_count=34\` separately. Verified by live WordPress readback and PHP lint; Git blob \`5f09aa1df8b6336c641f8a7190187e19072cfc4d\` exactly matches the published Staging file.
+- Durable live test receipt held on authorized VPS at \`/root/mad4b-backups/context-lifecycle-v2-20261105/per-file-unreadable-TXT-live-qa-receipt.txt\` (not a downloadable client file).
+
+**Limits:** The older unreadable XLSX attachment \`66375\` is still an actionable access issue; no global chmod/chown was used. The resuming-source UI has not yet been accepted in a human Desktop/Mobile browser session, and PR merge/Production deployment/Release Verdict remain outside this test.
