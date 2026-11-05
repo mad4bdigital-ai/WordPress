@@ -16,7 +16,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 	const SCAN_PLAN_CONTRACT = 'mad4b.context-source-scan-plan.v1';
 	const MATERIALIZE_CONTRACT = 'mad4b.brand-context-materialization.v1';
 	const ROLLBACK_CONTRACT = 'mad4b.rollback.google-drive-brand-context-create.v1';
-	const BUILDER_SPEC_VERSION = '5';
+	const BUILDER_SPEC_VERSION = '6';
 	const DRAFT_PREFLIGHT_CONTRACT = 'mad4b.brand-draft-preflight.v1';
 	const MIN_NONEMPTY_SAMPLES = 12;
 	const MIN_PRIMARY_EXPRESSION_SAMPLES = 8;
@@ -1221,7 +1221,35 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		);
 	}
 
-	private static function find_existing_draft( $idempotency_key ) {
+	private static function draft_scoped_idempotency_key( $site_uuid, $trusted_brand_ref, $category, $evidence_digest ) {
+		return hash( 'sha256', (string) $site_uuid . '|' . (string) $trusted_brand_ref . '|' . (string) $category . '|' . (string) $evidence_digest . '|' . self::BUILDER_SPEC_VERSION );
+	}
+
+	private static function draft_result_matches_trusted_scope( $result, $trusted_brand_ref ) {
+		if ( ! is_array( $result ) || ! isset( $result['artifact'] ) || ! is_array( $result['artifact'] )
+			|| ! class_exists( 'MAD4B_SCP_Content_Jobs' ) || ! class_exists( 'MAD4B_SCP_Artifacts' ) )
+			return false;
+		$artifact = $result['artifact'];
+		$job_id = (string) ( $artifact['job_id'] ?? '' );
+		$artifact_id = (string) ( $artifact['artifact_id'] ?? '' );
+		if ( '' === $job_id || '' === $artifact_id || 'active' !== (string) ( $artifact['status'] ?? '' )
+			|| 'brand_context_draft' !== (string) ( $artifact['artifact_type'] ?? '' ) ) return false;
+		$job_read = MAD4B_SCP_Content_Jobs::get_job( array( 'job_id' => $job_id ) );
+		$artifact_read = MAD4B_SCP_Artifacts::get_artifact( array( 'artifact_id' => $artifact_id ) );
+		if ( is_wp_error( $job_read ) || is_wp_error( $artifact_read ) ) return false;
+		$job = (array) ( $job_read['job'] ?? array() );
+		$verified_artifact = (array) ( $artifact_read['artifact'] ?? array() );
+		return '' !== (string) $trusted_brand_ref
+			&& hash_equals( (string) $trusted_brand_ref, (string) ( $job['brand_id'] ?? '' ) )
+			&& hash_equals( (string) self::site_uuid(), (string) ( $job['site_uuid'] ?? '' ) )
+			&& hash_equals( $job_id, (string) ( $job['job_id'] ?? '' ) )
+			&& 'brand_context_generation' === (string) ( $job['content_type'] ?? '' )
+			&& hash_equals( $artifact_id, (string) ( $verified_artifact['artifact_id'] ?? '' ) )
+			&& hash_equals( $job_id, (string) ( $verified_artifact['job_id'] ?? '' ) )
+			&& 'active' === (string) ( $verified_artifact['status'] ?? '' );
+	}
+
+	private static function find_existing_draft( $idempotency_key, $trusted_brand_ref ) {
 		global $wpdb;
 		$idempotency_key = strtolower( trim( (string) $idempotency_key ) );
 		$index = self::draft_index();
@@ -1237,7 +1265,8 @@ final class MAD4B_SCP_Brand_Context_Builder {
 				if ( 'active' === ( isset( $artifact['status'] ) ? (string) $artifact['status'] : '' )
 					&& 'brand_context_draft' === ( isset( $artifact['artifact_type'] ) ? (string) $artifact['artifact_type'] : '' )
 					&& isset( $metadata['idempotency_key'] )
-					&& hash_equals( $idempotency_key, strtolower( (string) $metadata['idempotency_key'] ) ) ) return $result;
+					&& hash_equals( $idempotency_key, strtolower( (string) $metadata['idempotency_key'] ) )
+					&& self::draft_result_matches_trusted_scope( $result, $trusted_brand_ref ) ) return $result;
 			}
 			unset( $index[ $idempotency_key ] );
 			self::save_draft_index( $index );
@@ -1266,8 +1295,9 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			return array();
 		}
 		$result = MAD4B_SCP_Artifacts::get_artifact( array( 'artifact_id' => (string) $row['artifact_id'] ) );
-		if ( ! is_wp_error( $result ) ) self::index_draft_artifact( $idempotency_key, (string) $row['artifact_id'] );
-		return is_wp_error( $result ) ? array() : $result;
+		if ( is_wp_error( $result ) || ! self::draft_result_matches_trusted_scope( $result, $trusted_brand_ref ) ) return array();
+		self::index_draft_artifact( $idempotency_key, (string) $row['artifact_id'] );
+		return $result;
 	}
 
 	private static function idempotency_error_result( $error ) {
@@ -1362,11 +1392,30 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			return new WP_Error( 'mad4b_brand_draft_artifact_runtime_unavailable', 'Durable execution, ContentJob and Artifact runtime are required.' );
 		}
 
+		// ContentJobs are scoped to the trust registry's brand_ref, NOT the
+		// WordPress site UUID. Those identities are deliberately distinct on
+		// both deployed tourism sites. Check before consuming idempotency.
+		$integrity = class_exists( 'MAD4B_SCP_Operational_Integrity' )
+			? MAD4B_SCP_Operational_Integrity::capture()
+			: new WP_Error( 'mad4b_brand_draft_scope_authority_unavailable', 'Trusted brand scope is required.' );
+		if ( is_wp_error( $integrity ) ) return $integrity;
+		$scope = isset( $integrity['scope'] ) && is_array( $integrity['scope'] ) ? $integrity['scope'] : array();
+		$trusted_brand_ref = isset( $scope['brand_ref'] ) ? (string) $scope['brand_ref'] : '';
+		$trusted_site_uuid = isset( $scope['site_uuid'] ) ? (string) $scope['site_uuid'] : '';
+		if ( '' === $trusted_brand_ref || '' === $trusted_site_uuid
+			|| ! hash_equals( self::site_uuid(), $trusted_site_uuid ) ) {
+			return new WP_Error( 'mad4b_brand_draft_scope_identity_mismatch',
+				'Current trusted brand and site identities must match the enrolled ContentJob scope.' );
+		}
 		$draft_content_sha256 = hash( 'sha256', $content );
-		$idempotency_key = hash( 'sha256', self::site_uuid() . '|' . $category . '|' . $current_generation_evidence . '|' . self::BUILDER_SPEC_VERSION );
-		$scope_key = MAD4B_SCP_Durable_Execution::scope_key( self::site_uuid(), self::CONTRACT, 'append_draft', $category . '|' . $current_generation_evidence );
+		// Brand ref is the real ContentJob ownership boundary, not site UUID.
+		// Historical v5 claims can point to legacy jobs in another brand scope:
+		// do not reset them or mistake them for a valid replay on this brand.
+		$idempotency_key = self::draft_scoped_idempotency_key( self::site_uuid(), $trusted_brand_ref, $category, $current_generation_evidence );
+		$scope_key = MAD4B_SCP_Durable_Execution::scope_key( self::site_uuid(), self::CONTRACT, 'append_draft', $trusted_brand_ref . '|' . $category . '|' . $current_generation_evidence );
 		$request_sha256 = hash( 'sha256', self::stable_json( array(
 			'category' => $category,
+			'trusted_brand_ref' => $trusted_brand_ref,
 			'content_sha256' => $draft_content_sha256,
 			'plan_sha256' => (string) $plan['plan_sha256'],
 			'evidence_digest' => $current_generation_evidence,
@@ -1375,9 +1424,15 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		$claim = MAD4B_SCP_Durable_Execution::begin_idempotency( $scope_key, $idempotency_key, $request_sha256, 2592000 );
 		if ( is_wp_error( $claim ) ) return $claim;
 		$replay = self::replay_idempotency_result( $claim );
-		if ( null !== $replay ) return $replay;
+		if ( null !== $replay ) {
+			if ( is_wp_error( $replay ) ) return $replay;
+			if ( ! self::draft_result_matches_trusted_scope( $replay, $trusted_brand_ref ) )
+				return new WP_Error( 'mad4b_brand_draft_replay_scope_unverified',
+					'Completed draft replay did not pass a fresh brand-scoped ContentJob and Artifact readback; reconcile before retry.', array( 'blind_retry_allowed' => false, 'reconciliation_required' => true ) );
+			return $replay;
+		}
 
-		$existing = self::find_existing_draft( $idempotency_key );
+		$existing = self::find_existing_draft( $idempotency_key, $trusted_brand_ref );
 		if ( ! empty( $existing ) ) {
 			$existing['idempotent'] = true;
 			$existing['idempotency_key'] = $idempotency_key;
@@ -1390,13 +1445,13 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		$country = false !== strpos( $locale, '_' ) ? sanitize_key( substr( $locale, strrpos( $locale, '_' ) + 1 ) ) : 'global';
 		$job = MAD4B_SCP_Content_Jobs::create_job(
 			array(
-				'brand_id' => self::site_uuid(),
+				'brand_id' => $trusted_brand_ref,
 				'subject' => 'Generate missing Brand Context: ' . $category,
 				'language' => '' !== $language ? $language : 'en',
 				'country' => '' !== $country ? $country : 'global',
 				'content_type' => 'brand_context_generation',
 				'research_depth' => 'evidence_bound',
-				'automation_level' => 'review_gated',
+				'automation_level' => MAD4B_SCP_Content_Workflow_Modes::DEFAULT_MODE,
 				'reason' => 'Generate a missing Brand Core draft from exact live evidence.',
 			)
 		);
