@@ -160,6 +160,7 @@ final class MAD4B_SCP_Context_Provider_Gateway {
 	private static function provider_from_source( array $source ) {
 		$provider = sanitize_key( isset( $source['provider'] ) ? (string) $source['provider'] : '' );
 		if ( 'google_drive' === $provider && class_exists( 'MAD4B_SCP_Google_Drive_Context' ) ) return $provider;
+		if ( 'wordpress_media' === $provider && class_exists( 'MAD4B_SCP_WordPress_Media_Context' ) ) return $provider;
 		return new WP_Error(
 			'mad4b_context_provider_unsupported',
 			'Context source provider is not certified by the repository-owned provider gateway.',
@@ -171,6 +172,13 @@ final class MAD4B_SCP_Context_Provider_Gateway {
 		return array(
 			'contract' => self::CONTRACT,
 			'providers' => array(
+				'wordpress_media' => array(
+					'read_asset' => class_exists( 'MAD4B_SCP_WordPress_Media_Context' ) && method_exists( 'MAD4B_SCP_WordPress_Media_Context', 'read_context_asset' ),
+					'scan_source' => class_exists( 'MAD4B_SCP_WordPress_Media_Context' ) && method_exists( 'MAD4B_SCP_WordPress_Media_Context', 'inventory' ),
+					'create_asset' => false,
+					'create_brand_asset' => false,
+					'rollback_created_brand_asset' => false,
+				),
 				'google_drive' => array(
 					'read_asset' => class_exists( 'MAD4B_SCP_Google_Drive_Context' ) && method_exists( 'MAD4B_SCP_Google_Drive_Context', 'read_context_asset' ),
 					'scan_source' => class_exists( 'MAD4B_SCP_Google_Drive_Context' ) && method_exists( 'MAD4B_SCP_Google_Drive_Context', 'scan_folder' ),
@@ -205,6 +213,7 @@ final class MAD4B_SCP_Context_Provider_Gateway {
 		$provider = self::provider_from_source( $source );
 		if ( is_wp_error( $provider ) ) return $provider;
 		if ( 'google_drive' === $provider ) return MAD4B_SCP_Google_Drive_Context::read_context_asset( $asset_id );
+		if ( 'wordpress_media' === $provider ) return MAD4B_SCP_WordPress_Media_Context::read_context_asset( $asset_id );
 		return new WP_Error( 'mad4b_context_provider_read_unsupported', 'Context provider does not expose certified asset readback.' );
 	}
 

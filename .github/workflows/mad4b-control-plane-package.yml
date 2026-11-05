@@ -71,6 +71,12 @@ jobs:
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
           echo "Packaging exact source: $SOURCE_SHA"
 
+      - name: Verify static PHP loader source closure before packaging
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/static-required-source-closure.py
+
       - name: Verify release-evidence trigger symmetry
         shell: bash
         run: |

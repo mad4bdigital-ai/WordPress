@@ -30,6 +30,12 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
+      - name: Verify every required Control Plane PHP source exists in the package
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/static-required-source-closure.py
+
       - name: Verify certified MCP dependency disk integrity contract
         shell: bash
         run: |

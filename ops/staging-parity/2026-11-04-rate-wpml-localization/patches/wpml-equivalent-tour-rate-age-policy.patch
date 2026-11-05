@@ -1,0 +1,34 @@
+--- a/wp-content/plugins/mad4b-age-occupancy-registry/includes/fluent-age-policy.php
++++ b/wp-content/plugins/mad4b-age-occupancy-registry/includes/fluent-age-policy.php
+@@ -8,7 +8,30 @@
+   $post=$tour?get_post($tour):null;
+   if(!$post||$post->post_type!=='tours-and-activities'||$post->post_status!=='publish')return new WP_Error('age_tour_context_invalid');
+   if($post->post_password!==''&&!current_user_can('manage_woocommerce')&&post_password_required($post))return new WP_Error('age_tour_context_protected');
+-  if($rate){$r=get_post($rate);if(!$r||$r->post_type!=='tour-rates'||$r->post_status!=='publish'||(int)get_post_meta($rate,'related_tour_id',true)!==$tour)return new WP_Error('age_rate_context_invalid');if($r->post_password!==''&&!current_user_can('manage_woocommerce')&&post_password_required($r))return new WP_Error('age_rate_context_protected');}
++  if($rate){
++   $r=get_post($rate);
++   $linkedTour=(int)get_post_meta($rate,'related_tour_id',true);
++   $rateBelongs=$linkedTour===$tour;
++   if(!$rateBelongs && $linkedTour>0 && defined('ICL_SITEPRESS_VERSION')){
++    // A localized Tour may lawfully display a published source-language Rate
++    // when its own Rate translation is absent. Prove the two Tour IDs are
++    // exact WPML translations before admitting this presentation fallback.
++    $targetDetails=apply_filters('wpml_post_language_details',null,$tour);
++    $language=is_array($targetDetails)?(string)($targetDetails['language_code']??''):'';
++    $linked=get_post($linkedTour);
++    if($linked instanceof WP_Post && $linked->post_type==='tours-and-activities'
++       && $linked->post_status==='publish' && preg_match('/^[a-z]{2}$/D',$language)){
++      $srcTrid=(int)apply_filters('wpml_element_trid',0,$linkedTour,'post_tours-and-activities');
++      $dstTrid=(int)apply_filters('wpml_element_trid',0,$tour,'post_tours-and-activities');
++      $resolved=(int)apply_filters('wpml_object_id',$linkedTour,'tours-and-activities',false,$language);
++      $rateBelongs=$srcTrid>0 && $srcTrid===$dstTrid && $resolved===$tour;
++    }
++   }
++   if(!$r || $r->post_type!=='tour-rates' || $r->post_status!=='publish' || !$rateBelongs)
++     return new WP_Error('age_rate_context_invalid');
++   if($r->post_password!==''&&!current_user_can('manage_woocommerce')&&post_password_required($r))
++     return new WP_Error('age_rate_context_protected');
++  }
+   return ['domain'=>'tour','product_id'=>$tour,'rate_id'=>$rate];
+  }
+  public static function current_context(){

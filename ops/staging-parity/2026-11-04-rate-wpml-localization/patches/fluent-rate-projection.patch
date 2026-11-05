@@ -1,0 +1,20 @@
+--- a/wp-content/plugins/mad4b-commerce/modules/compat/local-presentation-fluent-projection-v1.php
++++ b/wp-content/plugins/mad4b-commerce/modules/compat/local-presentation-fluent-projection-v1.php
+@@ -136,7 +136,7 @@
+     $until=(int)get_post_meta($rid,'tour_rate_end_date',true);
+     if(!$until || $until<time()) continue;
+     $title=wp_strip_all_tags(get_the_title($rid));
+-    $rateChoices[]=['id'=>$rid,'label'=>preg_match('/^\d+$/D',$title)?'Rate #'.$rid:$title];
++    $rateChoices[]=['id'=>$rid,'label'=>class_exists('MAD4B_Rate_Naming_And_Note_V1',false)?MAD4B_Rate_Naming_And_Note_V1::name($rid,$tour): (preg_match('/^\d+$/D',$title)?'Rate #'.$rid:$title)];
+    }
+   }
+  }
+@@ -158,7 +158,7 @@
+    if(preg_match('/^\d+$/D',$name))$name='Rate #'.(int)$rid;
+    $from=get_post_meta($rid,'tour_rate_start_date',true);
+    $window=is_numeric($from)?gmdate('Y-m-d',(int)$from).' → '.gmdate('Y-m-d',(int)$until):'';
+-   $rateChoices[]=['id'=>(int)$rid,'label'=>trim(($level?$level.' · ':'').$name.($window?' · '.$window:''))];
++   $rateChoices[]=['id'=>(int)$rid,'label'=>class_exists('MAD4B_Rate_Naming_And_Note_V1',false)?MAD4B_Rate_Naming_And_Note_V1::name((int)$rid,$tour):trim(($level?$level.' · ':'').$name.($window?' · '.$window:''))];
+   }
+  }
+ 

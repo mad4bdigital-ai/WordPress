@@ -1,0 +1,86 @@
+{
+  "contract": "mad4b.rate-wpml-native-locale-readback.v1",
+  "site": "https://tours.dev.mad4b.com",
+  "environment": "staging",
+  "verified_local_catalogs": [
+    {
+      "tour_ar": 64947,
+      "tour_en": 60627,
+      "reason": "missing_locale_catalog_fallback_enabled",
+      "before": "source_default_rate_catalog",
+      "after": "localized_ar_rate_catalog",
+      "currency": "USD",
+      "pairs": [
+        [
+          61120,
+          68966
+        ],
+        [
+          61130,
+          68967
+        ],
+        [
+          61140,
+          68968
+        ],
+        [
+          61150,
+          68969
+        ]
+      ],
+      "rest_tests": "8/8 PASS",
+      "browser_test": "Arabic Fluent Form rate selector and age-policy HTTP 200"
+    },
+    {
+      "tour_ar": 64948,
+      "tour_en": 60629,
+      "reason": "missing_locale_catalog_fallback_enabled",
+      "before": "source_default_rate_catalog",
+      "after": "localized_ar_rate_catalog",
+      "currency": "USD",
+      "pairs": [
+        [
+          60800,
+          68974
+        ],
+        [
+          60810,
+          68975
+        ],
+        [
+          60820,
+          68976
+        ],
+        [
+          60830,
+          68977
+        ]
+      ],
+      "rest_tests": "8/8 PASS"
+    }
+  ],
+  "explicit_no_automatic_rate_creation": [
+    {
+      "tour_ar": 64944,
+      "tour_en": 60621,
+      "policy": "disabled",
+      "reason": "local catalog absent and fallback explicitly disabled"
+    },
+    {
+      "tour_ar": 64945,
+      "tour_en": 60623,
+      "policy": "disabled",
+      "reason": "local catalog absent and fallback explicitly disabled"
+    }
+  ],
+  "readback": {
+    "new_ar_rates": 8,
+    "all_linked_to_source_wpml_rate_trids": true,
+    "native_age_policy_code_unchanged": true,
+    "foreign_rates_rejected": true,
+    "amount_currency_date_fields_copied_from_source_without_repricing": true,
+    "original_en_rates_unmodified": true,
+    "production_mutation": false
+  },
+  "migration_note": "This is an exact Staging readback artifact, not a portable deployment migration; target IDs and pricing must be resolved through the correct Site/WPML context per future environment."
+}

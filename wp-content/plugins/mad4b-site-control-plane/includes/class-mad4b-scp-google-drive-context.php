@@ -35,6 +35,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 	const MANAGED_SITE_AUTH_CONTRACT = 'mad4b.google-managed-oauth-site-request-auth.v1';
 	const MANAGED_SITE_AUTH_SCHEME = 'MAD4B-GOOGLE-OAUTH-SITE-V1';
 	const MANAGED_SCOPE_PROFILE_FULL_OWNER = 'full_owner';
+	const MANAGED_SCOPE_PROFILE_SELECTED = 'site_selected_v1';
 
 	const AUTH_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth';
 	const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
@@ -352,10 +353,10 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$broker_requested_scopes = is_array( $token ) && isset( $token['broker_requested_scopes'] ) && is_array( $token['broker_requested_scopes'] )
 			? self::scope_items( implode( ' ', array_map( 'strval', $token['broker_requested_scopes'] ) ) )
 			: array();
-		$governed_requested_scopes = array_values( array_unique( array_merge( $scopes, $broker_requested_scopes ) ) );
+		$governed_requested_scopes = $scopes; // Previously granted broker capabilities cannot expand current selections.
 		$local_missing_scopes = self::uncovered_scopes( $scopes, $granted_scopes );
 		$broker_missing_scopes = self::uncovered_scopes( $broker_requested_scopes, $granted_scopes );
-		$missing_scopes = array_values( array_unique( array_merge( $local_missing_scopes, $broker_missing_scopes ) ) );
+		$missing_scopes = $local_missing_scopes; // Legacy broker-only scopes are not re-requested.
 		$supplemental_identity_scopes = self::provider_identity_scopes_from( $granted_scopes );
 		$extra_granted_scopes = self::uncovered_scopes( self::capability_scope_items( $granted_scopes ), $governed_requested_scopes );
 		return array(
@@ -780,6 +781,23 @@ final class MAD4B_SCP_Google_Drive_Context {
 		);
 	}
 
+	/**
+	 * A pending reconnection plan is stateless and indefinitely renewable.
+	 * Individual PKCE/state sessions MUST expire and are single-use.
+	 *
+	 * Local/Dedicated: 24-hour upper bound; Google authorization CODES
+	 * themselves are short-lived and must be redeemed immediately.
+	 * Managed: 10 minutes because the external broker owns its lifetime.
+	 */
+	const LOCAL_AUTHORIZATION_TTL_SECONDS = 86400;
+	const MANAGED_AUTHORIZATION_TTL_SECONDS = 600;
+
+	public static function authorization_session_ttl_seconds() {
+		return self::AUTH_MODE_MANAGED === self::auth_mode()
+			? self::MANAGED_AUTHORIZATION_TTL_SECONDS
+			: self::LOCAL_AUTHORIZATION_TTL_SECONDS;
+	}
+
 	public static function authorization_url( $access_mode = 'read_only' ) {
 		if ( ! in_array( self::auth_mode(), array( self::AUTH_MODE_CUSTOM, self::AUTH_MODE_DEDICATED ), true ) ) return new WP_Error( 'mad4b_google_drive_local_oauth_mode_inactive', 'Custom or Dedicated Site Google OAuth must be the active authentication mode.' );
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_google_drive_admin_required', 'Administrator capability is required to connect Google Drive.' );
@@ -795,6 +813,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( ! in_array( $access_mode, array( 'read_only', 'read_write' ), true ) ) return new WP_Error( 'mad4b_google_drive_access_mode_invalid', 'Google Drive access mode must be read_only or read_write.' );
 		$requested_scope = self::requested_scope_for_access_mode( $access_mode );
 		if ( is_wp_error( $requested_scope ) ) return $requested_scope;
+		$workspace_grant_sha256 = (string) ( self::workspace_grants_status()['grant_sha256'] ?? '' );
 		try {
 			$pkce_verifier = rtrim( strtr( base64_encode( random_bytes( 48 ) ), '+/', '-_' ), '=' );
 		} catch ( Exception $e ) {
@@ -815,10 +834,11 @@ final class MAD4B_SCP_Google_Drive_Context {
 				'site_uuid' => class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::site_uuid() : '',
 				'access_mode' => $access_mode,
 				'requested_scope' => $requested_scope,
+				'workspace_grant_sha256' => $workspace_grant_sha256,
 				'pkce_verifier' => $pkce_verifier,
 				'created_at' => time(),
 			),
-			10 * MINUTE_IN_SECONDS
+			self::LOCAL_AUTHORIZATION_TTL_SECONDS
 		);
 		return add_query_arg(
 			array(
@@ -827,7 +847,9 @@ final class MAD4B_SCP_Google_Drive_Context {
 				'response_type' => 'code',
 				'scope' => $requested_scope,
 				'access_type' => 'offline',
-				'include_granted_scopes' => 'true',
+				// Do not merge older consents (e.g. Gmail SMTP) with today's
+                // exact saved Workspace selections. Reconnect is explicit.
+                'include_granted_scopes' => 'false',
 				'prompt' => 'consent',
 				'code_challenge' => $pkce_challenge,
 				'code_challenge_method' => 'S256',
@@ -850,6 +872,13 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( empty( $stored['site_uuid'] ) || '' === $current_site_uuid || ! hash_equals( (string) $stored['site_uuid'], $current_site_uuid ) ) return new WP_Error( 'mad4b_google_drive_oauth_site_binding_changed', 'Site Profile binding changed during Google OAuth. Start the connection again.' );
 		if ( empty( $stored['auth_mode'] ) || ! hash_equals( (string) $stored['auth_mode'], self::auth_mode() ) ) return new WP_Error( 'mad4b_google_drive_oauth_mode_binding_changed', 'Google OAuth authentication mode changed during connection. Start again.' );
 		if ( empty( $stored['redirect_uri'] ) || ! hash_equals( (string) $stored['redirect_uri'], self::redirect_uri_for_mode( self::auth_mode() ) ) ) return new WP_Error( 'mad4b_google_drive_oauth_redirect_binding_changed', 'OAuth redirect binding changed during Google connection. Start the connection again.' );
+		// Consent started before the administrator changed per-app grants must
+		// not authorize a stale scope selection at callback time.
+		$current_grants = self::workspace_grants_status();
+		if ( empty( $stored['workspace_grant_sha256'] )
+			|| ! hash_equals( (string) $stored['workspace_grant_sha256'], (string) ( $current_grants['grant_sha256'] ?? '' ) ) ) {
+			return new WP_Error( 'mad4b_google_workspace_grants_changed_during_oauth', 'Google Workspace app permissions changed during authorization. Start Google connection again using the current selections.' );
+		}
 		$pkce_verifier = isset( $stored['pkce_verifier'] ) ? (string) $stored['pkce_verifier'] : '';
 		if ( ! preg_match( '/^[A-Za-z0-9._~-]{43,128}$/', $pkce_verifier ) ) return new WP_Error( 'mad4b_google_drive_oauth_pkce_invalid', 'Google OAuth PKCE verifier is missing, expired, or invalid.' );
 		$code = trim( (string) $code );
@@ -927,7 +956,9 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( ! in_array( $access_mode, array( 'read_only', 'read_write' ), true ) ) return new WP_Error( 'mad4b_google_drive_access_mode_invalid', 'Google Drive access mode must be read_only or read_write.' );
 		$requested_scope = self::requested_scope_for_access_mode( $access_mode );
 		if ( is_wp_error( $requested_scope ) ) return $requested_scope;
-		$scope_profile = 'read_write' === $access_mode ? self::MANAGED_SCOPE_PROFILE_FULL_OWNER : 'legacy';
+		$scope_profile = self::MANAGED_SCOPE_PROFILE_SELECTED;
+		$selected_scope_items = self::scope_items( $requested_scope );
+		$selected_grant_sha256 = (string) ( self::workspace_grants_status()['grant_sha256'] ?? '' );
 		try {
 			$verifier = rtrim( strtr( base64_encode( random_bytes( 48 ) ), '+/', '-_' ), '=' );
 		} catch ( Exception $e ) {
@@ -947,6 +978,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'callback_uri' => $callback,
 			'access_mode' => $access_mode,
 			'requested_scope' => $requested_scope,
+			'requested_scopes' => $selected_scope_items,
+			'workspace_grant_sha256' => $selected_grant_sha256,
 			'scope_profile' => $scope_profile,
 			'state' => $state,
 			'verifier_challenge' => $challenge,
@@ -963,8 +996,11 @@ final class MAD4B_SCP_Google_Drive_Context {
 			: array();
 		if ( '' === $authorization_url || '' === $session_id || strlen( $session_id ) > 255 ) return new WP_Error( 'mad4b_google_managed_session_response_invalid', 'Managed Google Sign-In broker returned an invalid authorization session.' );
 		if ( '' === $response_profile || ! hash_equals( $scope_profile, $response_profile ) ) return new WP_Error( 'mad4b_google_managed_scope_profile_mismatch', 'Managed Google Sign-In broker returned an unexpected scope profile.' );
-		if ( empty( $broker_requested_scopes ) || ! empty( self::uncovered_scopes( self::scope_items( $requested_scope ), $broker_requested_scopes ) ) ) {
-			return new WP_Error( 'mad4b_google_managed_scope_projection_invalid', 'Managed Google Sign-In broker did not project the locally reviewed scope baseline.' );
+		// Reject any broker expansion before presenting the Google consent URL.
+		// Identity/OIDC scopes are not Workspace capabilities.
+		if ( empty( $broker_requested_scopes )
+			|| ! self::scope_sets_equal( implode( ' ', self::capability_scope_items( $broker_requested_scopes ) ), $requested_scope ) ) {
+			return new WP_Error( 'mad4b_google_managed_scope_projection_not_exact', 'Managed Google Sign-In does not support the exact saved selection. Keep disabled apps off; use Dedicated OAuth or an exact-scope Managed broker.' );
 		}
 		set_transient(
 			self::managed_state_key( get_current_user_id() ),
@@ -977,13 +1013,14 @@ final class MAD4B_SCP_Google_Drive_Context {
 				'requested_scope' => $requested_scope,
 				'scope_profile' => $scope_profile,
 				'broker_requested_scopes' => $broker_requested_scopes,
+				'workspace_grant_sha256' => $selected_grant_sha256,
 				'verifier' => $verifier,
 				'session_id' => $session_id,
 				'broker_base_url' => (string) $broker,
 				'auth_mode' => self::auth_mode(),
 				'created_at' => time(),
 			),
-			10 * MINUTE_IN_SECONDS
+			self::MANAGED_AUTHORIZATION_TTL_SECONDS
 		);
 		return $authorization_url;
 	}
@@ -995,6 +1032,10 @@ final class MAD4B_SCP_Google_Drive_Context {
 		delete_transient( self::managed_state_key( get_current_user_id() ) );
 		$state = trim( (string) $state );
 		if ( ! is_array( $stored ) || empty( $stored['state'] ) || '' === $state || ! hash_equals( (string) $stored['state'], hash( 'sha256', $state ) ) ) return new WP_Error( 'mad4b_google_managed_oauth_state_invalid', 'Managed Google Sign-In state is missing, expired, or invalid.' );
+		$current_grants = self::workspace_grants_status();
+		if ( empty( $stored['workspace_grant_sha256'] )
+			|| ! hash_equals( (string) $stored['workspace_grant_sha256'], (string) ( $current_grants['grant_sha256'] ?? '' ) ) )
+			return new WP_Error( 'mad4b_google_managed_grants_changed_during_oauth', 'Google app choices changed during Managed authorization. Restart with the saved selection.' );
 		$current_site_uuid = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::site_uuid() : '';
 		$current_origin = self::canonical_origin();
 		if ( empty( $stored['site_uuid'] ) || '' === $current_site_uuid || ! hash_equals( (string) $stored['site_uuid'], $current_site_uuid ) ) return new WP_Error( 'mad4b_google_managed_site_binding_changed', 'Site Profile binding changed during Managed Google Sign-In.' );
@@ -1030,6 +1071,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$broker_requested_scopes = isset( $tokens['requested_scopes'] ) && is_array( $tokens['requested_scopes'] )
 			? self::scope_items( implode( ' ', array_map( 'strval', $tokens['requested_scopes'] ) ) )
 			: ( isset( $stored['broker_requested_scopes'] ) && is_array( $stored['broker_requested_scopes'] ) ? $stored['broker_requested_scopes'] : array() );
+		if ( ! self::scope_sets_equal( implode( ' ', self::capability_scope_items( $broker_requested_scopes ) ), (string) ( $stored['requested_scope'] ?? '' ) ) )
+			return new WP_Error( 'mad4b_google_managed_redeemed_scope_not_exact', 'Google Managed token redemption did not preserve the selected scopes.' );
 		$broker_previous_scopes = isset( $tokens['previously_granted_scopes'] ) && is_array( $tokens['previously_granted_scopes'] )
 			? self::scope_items( implode( ' ', array_map( 'strval', $tokens['previously_granted_scopes'] ) ) )
 			: array();
@@ -3592,8 +3635,15 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$broker_previous = is_array( $broker_scope_context ) && isset( $broker_scope_context['previously_granted_scopes'] ) && is_array( $broker_scope_context['previously_granted_scopes'] ) ? self::scope_items( implode( ' ', array_map( 'strval', $broker_scope_context['previously_granted_scopes'] ) ) ) : array();
 		$broker_allowed = array_values( array_unique( array_merge( $broker_requested, $broker_previous ) ) );
 		if ( '' !== $expected_scope ) {
+			// Google returns standard OIDC identity scopes alongside Workspace grants.
+			// The saved grant may include those scopes on the next refresh.  Treat
+			// only the exact known provider identity supplements as non-capability
+			// scopes; arbitrary/unknown Workspace scopes remain denied.
+			$reviewed_requested_scopes = array_values( array_unique( array_merge(
+				self::allowed_scope_items(), self::provider_identity_scope_items()
+			) ) );
 			foreach ( $requested_items as $requested_item ) {
-				if ( ! in_array( $requested_item, self::allowed_scope_items(), true ) ) return new WP_Error( 'mad4b_google_workspace_requested_scope_not_allowed', 'Requested Google scope is outside the governed Workspace grant catalog.' );
+				if ( ! in_array( $requested_item, $reviewed_requested_scopes, true ) ) return new WP_Error( 'mad4b_google_workspace_requested_scope_not_allowed', 'Requested Google scope is outside the governed Workspace grant catalog.' );
 			}
 			if ( self::AUTH_MODE_MANAGED === $auth_mode && ! empty( $broker_allowed ) ) {
 				if ( ! empty( self::uncovered_scopes( $requested_items, $broker_requested ) ) ) return new WP_Error( 'mad4b_google_managed_scope_projection_invalid', 'Managed Google broker scope projection no longer covers the locally reviewed scope baseline.' );
@@ -3607,6 +3657,18 @@ final class MAD4B_SCP_Google_Drive_Context {
 			return new WP_Error( 'mad4b_google_drive_scope_not_allowed', 'Google granted a scope set outside the governed Drive read/read-write contracts.' );
 		}
 
+		// Every auth mode rejects unselected Google capabilities, including
+		// Gmail and scopes retained by a previously broader Google consent.
+		if ( '' !== $expected_scope ) {
+			$unselected = self::unselected_workspace_scopes( $requested_items, $granted_items );
+			if ( ! empty( $unselected ) ) {
+				return self::scope_rejection_error(
+					'mad4b_google_workspace_unselected_scope_returned',
+					'Google returned permissions not selected for this site. Reconnect with the saved grants; revoke previous Google app consent if excess permissions persist.',
+					$requested_items, $granted_items, $requested_items, $auth_mode
+				);
+			}
+		}
 		$requested_mode = sanitize_key( (string) $requested_mode );
 		if ( ! self::scope_matches_requested_mode( $scope, $requested_mode ) ) {
 			if ( 'read_only' === $requested_mode && self::scope_allows_write( $scope ) ) return new WP_Error( 'mad4b_google_drive_readonly_scope_escalated', 'Google returned Drive write authority for a read-only connection. Revoke Google access and reconnect with Read-only to restore least privilege.' );
@@ -3732,6 +3794,11 @@ final class MAD4B_SCP_Google_Drive_Context {
 			if ( is_wp_error( $record[ $field ] ) ) return $record[ $field ];
 		}
 		return $record;
+	}
+
+	/** Capabilities returned by Google but not selected on this site. */
+	private static function unselected_workspace_scopes( array $requested, array $granted ) {
+		return self::uncovered_scopes( self::capability_scope_items( $granted ), $requested );
 	}
 
 	private static function scope_items( $scope ) {
@@ -3951,6 +4018,9 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$refresh_requested_scope = isset( $record['requested_scope'] ) && '' !== trim( (string) $record['requested_scope'] )
 			? (string) $record['requested_scope']
 			: ( isset( $record['scope'] ) ? (string) $record['scope'] : '' );
+		$current_grants = self::workspace_grants_status();
+		if ( ! self::scope_sets_equal( $refresh_requested_scope, implode( ' ', $current_grants['scopes'] ?? array() ) ) )
+			return new WP_Error( 'mad4b_google_managed_refresh_grants_changed', 'Cannot refresh a broader Google grant after disabling an app. Reconnect with the saved selection.' );
 		$request = array(
 			'contract' => 'mad4b.google-managed-oauth-refresh-request.v1',
 			'site_uuid' => class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::site_uuid() : '',
