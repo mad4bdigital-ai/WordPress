@@ -1,0 +1,116 @@
+{
+  "contract": "mad4b.company-tourism.legacy-demo-dependency-and-native-provenance.v1",
+  "observed_on": "2026-10-29",
+  "environment": "tours.dev.mad4b.com / Staging only",
+  "source_company": "tourism-almallahgroup",
+  "authority": {
+    "owner_confirmed_legacy_demo_source_ids": [
+      24900,
+      41909
+    ],
+    "signed_tourism_content_hub_authority": true,
+    "owner_confirmed_native_legacy_demo_post_ids": [
+      60617,
+      60745
+    ],
+    "owner_confirmation_is_not_historical_import_proof": true
+  },
+  "exact_mappings": [
+    {
+      "native_post_id": 60617,
+      "source_tour_id": 24900,
+      "hub_post_id": 67483,
+      "language": "en",
+      "native_status_preserved": "publish",
+      "dependency_review": "pending",
+      "findings": {
+        "booking_rendered_form_post_id": 30418,
+        "booking_rendered_form_post_type": "jet-engine-booking",
+        "exact_tour_id_occurrence_in_rendered_form": 1,
+        "booking_record_post_date": "2025-11-23",
+        "tour_native_post_date": "2026-05-02",
+        "other_published_references": [
+          {
+            "post_id": 25045,
+            "post_type": "page",
+            "slug": "favourites"
+          },
+          {
+            "post_id": 30778,
+            "post_type": "elementor_library",
+            "slug": "featured-tours-activities-listing-single-post-side-banners"
+          }
+        ],
+        "confirmed_real_booking_for_tour": false,
+        "dependency_still_needs_review": true
+      }
+    },
+    {
+      "native_post_id": 60745,
+      "source_tour_id": 41909,
+      "hub_post_id": 67484,
+      "language": "ar",
+      "native_status_preserved": "draft",
+      "dependency_review": "retained_draft",
+      "findings": {
+        "native_wpml_translation_row_confirmed": false,
+        "template_content_slug_mentions": 2,
+        "confirmed_real_booking_for_tour": false
+      }
+    }
+  ],
+  "extra_two_tour_collisions_not_owner_classified": [
+    {
+      "source_tour_id": 15081,
+      "native_candidate_post_id": 60433,
+      "source_title_slug_body_and_excerpt_identical": true,
+      "selected_itinerary_includes_excludes_match": true,
+      "accommodation_and_description_differ": true,
+      "owner_import_provenance_verified": false,
+      "decision": "review_hold_no_auto_merge"
+    },
+    {
+      "source_tour_id": 15941,
+      "native_candidate_post_id": 60435,
+      "source_title_slug_body_and_excerpt_identical": true,
+      "selected_itinerary_includes_excludes_match": true,
+      "accommodation_and_description_differ": true,
+      "owner_import_provenance_verified": false,
+      "decision": "review_hold_no_auto_merge"
+    }
+  ],
+  "staging_modification": {
+    "contract": "mad4b.content-hub.curated-legacy-demo.v1",
+    "implementation": "ops/central-company-rest/central/196-mad4b-curated-legacy-demo.php",
+    "operation": "apply_native_provenance_labels",
+    "exact_native_records": 2,
+    "provenance_only_meta_fields_added": 14,
+    "dry_run_before_fields_changing": 14,
+    "dry_run_after_fields_changing": 0,
+    "native_post_status_changed": false,
+    "native_post_body_changed": false,
+    "rates_or_bookings_changed": false,
+    "external_visibility_changed": false,
+    "reference_option_or_hub_content_changed": false,
+    "staging_private_pre_change_backup": "/opt/mad4b-company-release-prep/20261029/central-rest/ESMERADA-NATIVE-PRE-PROVENANCE-20261029.json",
+    "staging_private_change_receipt": "/opt/mad4b-company-release-prep/20261029/central-rest/ESMERADA-NATIVE-PROVENANCE-20261029.json"
+  },
+  "ci_on_prior_head": {
+    "head": "81e716bb43a957e2ec6cfa2f4bb2b5833d7655ff",
+    "success": [
+      "MAD4B Production Readiness Matrix",
+      "MAD4B Repository Governance",
+      "MAD4B ChatGPT Attachment Transfer",
+      "MAD4B Provider Behavioral Recertification"
+    ],
+    "failure": "MAD4B Release Verdict",
+    "failure_step": "Verify exact-head owner attestation",
+    "failure_reason": "No authorized OWNER_ATTEST_SINGLE_OWNER comment matches exact current PR head",
+    "production_release_ready": false
+  },
+  "limitations": [
+    "Metadata classification does not automatically hide an existing public demo page or prevent every legacy display widget from querying it",
+    "Published English native demo retains booking-form/template references pending dependency review",
+    "No deletion, native status change, Production deployment, or PR merge performed"
+  ]
+}

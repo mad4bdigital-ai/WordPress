@@ -1,0 +1,79 @@
+{
+  "contract": "mad4b.content-hub.owner-declared-demo-decision.v1",
+  "date": "2026-10-29",
+  "environment": "tours.dev.mad4b.com",
+  "source_company": "tourism-almallahgroup",
+  "origin": "tourism.almallahgroup-mg.com",
+  "decision_basis": "Owner explicitly identified pre-existing Esmerada native WordPress records as old demo data. This is an authorized classification decision, not proof of original import provenance.",
+  "classification": "owner_declared_legacy_demo",
+  "decisions": [
+    {
+      "source_tour_id": 24900,
+      "native_demo_post_id": 60617,
+      "hub_post_id": 67483,
+      "locale": "en",
+      "native_original_status": "publish",
+      "hub_resolution": "native_legacy_demo_source_authority",
+      "source_authoritative": "Tourism signed source",
+      "native_auto_merge_allowed": false,
+      "native_modification_allowed": false
+    },
+    {
+      "source_tour_id": 41909,
+      "native_demo_post_id": 60745,
+      "hub_post_id": 67484,
+      "locale": "ar",
+      "native_original_status": "draft",
+      "hub_resolution": "native_legacy_demo_source_authority",
+      "source_authoritative": "Tourism signed source",
+      "native_auto_merge_allowed": false,
+      "native_modification_allowed": false
+    }
+  ],
+  "observations": {
+    "native_excerpt_identical_first_two_collisions": true,
+    "esmerada_english_title_slug_identical": true,
+    "esmerada_arabic_title_slug_identical": true,
+    "esmerada_arabic_native_wpml_translation_record_missing": true,
+    "some_program_location_meta_differ": true,
+    "direct_rate_meta_reference_count_for_both_demo_posts": 0,
+    "complete_dependency_audit_performed": false
+  },
+  "scope": {
+    "classification_applies_to_two_exact_source_native_pairs": true,
+    "all_other_tour_slugs_not_classified_as_demo": true,
+    "native_wordpress_post_status_unchanged": true,
+    "native_post_content_unchanged": true,
+    "native_files_unchanged": true,
+    "native_terms_unchanged": true,
+    "hub_published_content_source": "tourism-almallahgroup",
+    "historical_rates_bookable": false,
+    "source_database_imported": false
+  },
+  "staging_reconciliation": {
+    "hub_records_total": 417,
+    "hub_metadata_reconciled": 35,
+    "hub_new_posts": 0,
+    "hub_content_rewritten": false,
+    "demo_classification_entries": 2,
+    "remaining_native_collision_review_holds": 2,
+    "remaining_review_source_ids": [
+      15081,
+      15941
+    ],
+    "native_source_post_modification_count": 0,
+    "rerun_unchanged_count": 417,
+    "rerun_created_count": 0,
+    "rerun_updated_count": 0,
+    "invalid_demo_claim_rejected": true,
+    "staging_home_http": 200,
+    "tourism_home_http": 200
+  },
+  "source_files": [
+    "ops/central-company-rest/central/196-mad4b-curated-legacy-demo.php",
+    "ops/central-company-rest/central/195-mad4b-hub-source-reuse-gate.php",
+    "ops/central-company-rest/central/190-mad4b-hub-nile-publisher.php"
+  ],
+  "release_status": "STAGING_APPLIED__PRODUCTION_NOT_MODIFIED__PR_DRAFT",
+  "pending": "Confirm whether the two other Luxor/Aswan native collisions are also demo, or explicitly attest their external source provenance; do not auto-merge."
+}

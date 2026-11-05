@@ -1,0 +1,130 @@
+{
+  "contract": "mad4b.hub.pricing-staging-acceptance.v1",
+  "date": "2026-10-30",
+  "central": "https://tours.dev.mad4b.com/",
+  "pr": 631,
+  "addon_version": "0.5.0",
+  "implemented": {
+    "price_adapters": [
+      "tours-and-activities",
+      "properties",
+      "transportations",
+      "product",
+      "JetEngine transport CCT",
+      "signed Tourism historic Nile rates"
+    ],
+    "provider_registry_reused": "MAD4B_Pricing_Source_Registry",
+    "native_starting_fields": [
+      "start_price",
+      "egyptians_start_price",
+      "prop_start_price",
+      "trans_start_price",
+      "trans_sale_start_price",
+      "_price",
+      "_regular_price"
+    ],
+    "native_rate_cpts": [
+      "tour-rates",
+      "property-rates",
+      "transport-rates"
+    ],
+    "cct_rate_provider": "wp_jet_cct_transport_rates",
+    "source_rate_key_examples": [
+      "post:66570",
+      "jet_cct_transport_rates:1",
+      "tourism-almallahgroup:nile-rate:<id>"
+    ],
+    "provider_extensions": "mad4b_hub_pricing_source_descriptors",
+    "original_rate_provenance_preserved": true,
+    "per_company_price_rule_modes": [
+      "inherit",
+      "fixed",
+      "percent_adjust",
+      "fixed_adjust",
+      "rate_generator"
+    ],
+    "context_dimensions": [
+      "language",
+      "market_id",
+      "channel",
+      "nationality_country",
+      "residence_country",
+      "date"
+    ],
+    "price_currency_conversion_automatic": false,
+    "policy_registry": "mad4b_hub_company_pricing_policies_v1",
+    "policy_revision_compare_and_swap": true,
+    "native_rate_generator_bridge": "Shared_Product_Rate_Generation::prepare",
+    "native_rate_generator_create_invoked": false,
+    "signed_source_starting_price_scope": "nile_starting_prices.read",
+    "source_starting_price_fields": [
+      "start_price",
+      "egyptians_start_price"
+    ],
+    "source_starting_price_scope_deployed_on_tourism": false,
+    "source_starting_price_scope_central_validation_staging": true,
+    "price_data_treatment": "reference_only_indicative_not_checkout",
+    "checkout_enabled": false
+  },
+  "real_staging_tests": {
+    "php_syntax": "PASS",
+    "local_tour_start_price_options": 1,
+    "local_transport_start_price_options": 2,
+    "local_transport_rates": 4,
+    "local_transport_rate_ids": [
+      "post:66570",
+      "post:66571",
+      "jet_cct_transport_rates:1",
+      "jet_cct_transport_rates:2"
+    ],
+    "tourism_historical_rate_reference_total": 364,
+    "example_source_tour_id": 24900,
+    "example_source_rate_count": 2,
+    "source_start_prices_signed_sync_present": false,
+    "synthetic_signed_start_price_input_test": "PASS_NO_WRITE",
+    "synthetic_bad_checkout_claim_test": "REJECTED",
+    "company_price_percent_adjust": "PASS",
+    "source_currency_preservation": "PASS",
+    "unverified_fx": "REJECTED",
+    "invalid_nationality_and_date": "REJECTED",
+    "wrong_source_product_policy": "REJECTED",
+    "native_rate_generator_draft_preview": "PASS",
+    "native_transport_rate_drafts_before": 2,
+    "native_transport_rate_drafts_after": 2,
+    "quote_checkout_ready": false,
+    "anon_pricing_rest_http": 401,
+    "admin_pricing_rest_http": 200,
+    "native_generator_rest_admin_http": 200,
+    "pricing_policy_create_revision_1": "PASS",
+    "pricing_policy_stale_revision_http": 409,
+    "pricing_policy_disable_revision_2": "PASS",
+    "pricing_policy_test_fixture_cleared": true,
+    "live_company_price_policies": 0,
+    "existing_hub_items": 417,
+    "staging_home_http": 200,
+    "public_hub_distribution_http": 403,
+    "production_sites_modified": false
+  },
+  "deployed_staging_sha256": {
+    "addon_main": "b962746f258662cf5447746b3810e4769a0bab00bf1865c349c821690150b5fa",
+    "pricing_source_adapter": "cb4b091d66b57b6458714daa9983c055c31722b60b997b6d9460df3deffe74db",
+    "company_pricing_rules": "03f2da67592a20b7f2f95fc74a46081134a17955c35c8ac0a7753994af102b5a",
+    "central_nile_signed_reference": "45aa74c788038ab8d3a60b0336dbfee3a22a550b9c08c7d5c0edcaf24e74bd33",
+    "control_plane_consumer": "8166e415779703480562e0ae1e01ce8f4a70c9a20593cb479003ce73043f3700"
+  },
+  "rollout_state": "STAGING_PROVIDER_REFERENCE_QUOTE_AND_RULE_POLICY_ACTIVE; REMOTE_SIGNED_STARTING_SOURCE_NOT_DEPLOYED; PUBLIC_PROVIDER_FEED_DENIED",
+  "pending": [
+    "Deploy the additive read-only Tourism source 180 adapter through governed source-site release; verify P256 signed new starting-price source scope and refresh central snapshot",
+    "Certify starting-price and native rate adapters for other companies through provider discovery; avoid guessing fields for unknown types",
+    "Connect validated source price fields/rates to existing JetEngine REST Query/Listing/SmartFilters under company-specific Selection Manifest",
+    "Use approved FX and original booking price eligibility/availability checks before any commercial quote",
+    "Enable remote consumer-native rate draft generation only via separately reviewed signed consumer operation, never by source rate sharing alone",
+    "Review exact PR HEAD CI, keep Production unmodified until approved"
+  ],
+  "evidence_paths": [
+    "wp-content/plugins/mad4b-jetengine-hub-addon/docs/COMPANY-PRICING-RATES-DYNAMIC-GENERATOR.md",
+    "ops/central-company-rest/tests/test-hub-company-pricing-staging.php",
+    "ops/central-company-rest/remote/180-mad4b-tourism-nile-source-read.php",
+    "ops/central-company-rest/central/180-mad4b-central-nile-reference.php"
+  ]
+}

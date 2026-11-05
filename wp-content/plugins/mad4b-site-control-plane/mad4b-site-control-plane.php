@@ -186,6 +186,9 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-market-context.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-market-preferences.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-season-calendar.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-source-hub.php';
+// Source-to-JetEngine REST contract: read-only preflight and fail-closed runtime admission.
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-hub-jetengine-consumer-governance.php';
+MAD4B_SCP_Hub_JetEngine_Consumer_Governance::boot();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-public-holidays.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connection-identity-resolver.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connection-doctor.php';

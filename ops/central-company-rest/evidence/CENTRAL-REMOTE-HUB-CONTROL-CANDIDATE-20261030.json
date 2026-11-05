@@ -1,0 +1,92 @@
+{
+  "contract": "mad4b.hub.centralized-remote-orchestration.v1",
+  "captured_on": "2026-10-30",
+  "central_site": "https://tours.dev.mad4b.com/",
+  "repo": "mad4bdigital-ai/WordPress",
+  "pr_number": 631,
+  "branch": "feature/central-company-rest-pairing-20261029",
+  "central_controller": "ops/central-company-rest/central/230-mad4b-central-hub-remote-control.php",
+  "source_agent": "ops/central-company-rest/remote/230-mad4b-company-hub-control-agent.php",
+  "ui_contract": "ops/central-company-rest/CENTRAL-REMOTE-HUB-ORCHESTRATION.md",
+  "cli_tests": "ops/central-company-rest/tests/test-hub-remote-control-cli.php",
+  "workflow": ".github/workflows/mad4b-hub-remote-control-contract.yml",
+  "source_sites": [
+    {
+      "id": "tourism-almallahgroup",
+      "host": "tourism.almallahgroup-mg.com"
+    },
+    {
+      "id": "all-royal-egypt",
+      "host": "www.allroyalegypt.com"
+    },
+    {
+      "id": "egypt-tour-gates",
+      "host": "egypttourgates.com"
+    }
+  ],
+  "implemented_contracts": {
+    "central_admin_routes": [
+      "GET /wp-json/mad4b-central/v1/hub-remote-control/status",
+      "POST /wp-json/mad4b-central/v1/hub-remote-control/plan",
+      "POST /wp-json/mad4b-central/v1/hub-remote-control/operator",
+      "POST /wp-json/mad4b-central/v1/hub-remote-control/dispatch"
+    ],
+    "remote_routes": [
+      "POST /wp-json/mad4b-company/v1/hub-control/delegation",
+      "POST /wp-json/mad4b-company/v1/hub-control"
+    ],
+    "command_phases": [
+      "plan",
+      "preflight",
+      "apply",
+      "revoke"
+    ],
+    "commands_allowed": [
+      "content_release_reference"
+    ],
+    "asymmetric_transport": "ECDSA P-256 existing central/source key trust",
+    "signature_binds": [
+      "HTTP method",
+      "fixed route",
+      "exact company",
+      "exact source host",
+      "timestamp",
+      "nonce",
+      "raw_body_sha256"
+    ],
+    "reference_only": true,
+    "checkout_enabled": false,
+    "nonautoload_source_grants": true,
+    "local_source_owner_delegation_required": true,
+    "central_operator_scope_required": true,
+    "duplicate_nonce_rejected": true,
+    "atomic_shared_registry_lock": true,
+    "response_source_signature_verified_by_central": true,
+    "selected_records_and_local_wpml_validated": true,
+    "raw_ssh_or_shell_command_execution": false,
+    "arbitrary_url_allowed": false,
+    "automatic_JetEngine_native_binding": false,
+    "live_content_distribution_enabled": false
+  },
+  "execution_status": {
+    "github_code_created": true,
+    "staging_install_done": false,
+    "remote_agent_installed_on_sources": false,
+    "end_to_end_signed_dispatch_tested": false,
+    "test_ci_state": "queued_or_not_yet_observed_at_latest_head",
+    "source_delegations_enrolled": false,
+    "central_operator_scopes_enrolled": false,
+    "production_mutated": false,
+    "reason": "VPS connector returned a safety-block response; do not infer runtime state from source code."
+  },
+  "next_acceptance": [
+    "php -l central and remote modules, run CLI contract tests",
+    "Deploy source agent and central module using governed Staging release path",
+    "Source-owner enrollment of exact allowed companies/actions/post types; central operator scope setup",
+    "Signed PRE-FLIGHT, tampered signature, stale nonce, concurrent idempotency and REVOKE testing",
+    "Source-signed license/consent proof integrated into existing may_publish=false catalog contract",
+    "Consumer-side remote JetEngine endpoint/query/listing/filter binding with exact change journal",
+    "Mobile/desktop filter, WPML, pagination, cache and price no-sale acceptance",
+    "Exact-head CI and owner approval before Production"
+  ]
+}

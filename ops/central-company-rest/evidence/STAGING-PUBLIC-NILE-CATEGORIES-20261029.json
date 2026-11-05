@@ -1,0 +1,93 @@
+{
+  "contract": "mad4b.tourism.public-content-hub-catalog-acceptance.v1",
+  "date": "2026-10-29",
+  "environment": "STAGING tours.dev.mad4b.com",
+  "source_company": "tourism-almallahgroup",
+  "source_authority": "Previously authenticated, signed, selective source snapshots in non-autoloaded Content Hub registry",
+  "source_post_type": "mad4b_hub_nile",
+  "public_hub_cpt_changed": false,
+  "previously_published_hub_records": 417,
+  "source_categories": {
+    "en": 9,
+    "ar": 9,
+    "total": 18,
+    "represent_bilingual_groups": 9,
+    "taxonomy_reuse": "existing target tour-types terms linked to source, no term insertion"
+  },
+  "source_tours": {
+    "en": 19,
+    "ar": 16,
+    "total": 35
+  },
+  "historical_rates": {
+    "records": 364,
+    "rendered_in_public_catalog": false,
+    "commerce_approved": false,
+    "checkout_enabled": false
+  },
+  "source_catalog_adapter": {
+    "path": "ops/central-company-rest/central/220-mad4b-tourism-nile-catalog.php",
+    "shortcode": "mad4b_tourism_nile_catalog",
+    "scope": "STAGING only, company-owner pinned, source payload hashes verified",
+    "public_html_generated_without_cpt_exposure": true,
+    "uses_brand_tokens_from_elementor_astra": true,
+    "mobile_responsive_columns": "2 category columns and 1 tour-card column <=600px; 4/3 category columns on desktop/tablet",
+    "category_filter": "nile_category URL query, strict whitelist of exact signed categories",
+    "tour_detail": "nile_tour URL query, exact signed source tour IDs",
+    "media_copied_from_tourism": false
+  },
+  "archive_pages": {
+    "en": {
+      "post_id": 67883,
+      "url": "https://tours.dev.mad4b.com/nile-cruises-catalog/",
+      "categories": 9,
+      "tour_cards": 19,
+      "http": 200
+    },
+    "ar": {
+      "post_id": 67884,
+      "url": "https://tours.dev.mad4b.com/ar/nile-cruises-catalog-ar/",
+      "categories": 9,
+      "tour_cards": 16,
+      "http": 200
+    },
+    "wpml_translation_group": 1219637,
+    "category_filter_test": {
+      "url_path": "/nile-cruises-catalog/?nile_category=deluxe-nile-cruises",
+      "http": 200,
+      "visible_tour_cards": 8
+    },
+    "detail_test": {
+      "url_path": "/nile-cruises-catalog/?nile_tour=24900",
+      "http": 200,
+      "detail_rendered": true
+    }
+  },
+  "homepage": {
+    "wordpress_page_id": 35138,
+    "elementor_widget_id": "b7a92de",
+    "widget_shortcode": "[mad4b_tourism_nile_catalog mode=\"home\" lang=\"en\"]",
+    "elementor_template_anchor": "Home Tours Section template 25917; inserted immediately after it",
+    "old_daytrip_template_preserved": true,
+    "other_elementor_templates_preserved": true,
+    "new_widgets": 1,
+    "source_categories_publicly_visible": 9,
+    "preview_tour_cards_publicly_visible": 6,
+    "source_owner_rendered": "tourism-almallahgroup",
+    "public_http": 200,
+    "cache_invalidation": "Elementor CSS cache cleared and LiteSpeed homepage purge requested",
+    "backup_private_path": "/opt/mad4b-company-release-prep/20261029/central-rest/HOME-35138-ELEMENTOR-PRE-NILE-20261029.json",
+    "backup_sha256": "d0b04f58cf0bb6f46c6d8a33cc43b11943d5cd2e4e623f8c76b2095ce545125e",
+    "verified_new_elementor_json_sha256": "d2b092338f60dcd4ec2241095808169b5f3f2d52c3287e056d18a621087a3d07"
+  },
+  "guardrails": [
+    "All 18 category references reused existing canonical taxonomies; no new terms",
+    "Company source owner validated per item with content SHA256",
+    "No public exposure of the Content Hub CPT or bulk database import",
+    "No historical price promotion to active sales or booking",
+    "No change to Production environment",
+    "Home Elementor original JSON backed up privately and other widgets preserved"
+  ],
+  "ci_merge_status": "GitHub PR #631 not merged; CI/owner exact HEAD attestation still required",
+  "verdict": "STAGING_PUBLIC_NILE_CATEGORIES_AND_TOURS_VISIBLE"
+}

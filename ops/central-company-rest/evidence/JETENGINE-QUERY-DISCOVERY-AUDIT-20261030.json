@@ -1,0 +1,138 @@
+{
+  "contract": "mad4b.jetengine-capability-query-audit.v1",
+  "date": "2026-10-30",
+  "environment": "tours.dev.mad4b.com",
+  "mode": "read_only_provider_inventory_no_runtime_or_addon_mutation",
+  "versions": {
+    "jet-engine": "3.8.15.2",
+    "jet-smart-filters": "3.8.5.1",
+    "jet-woo-builder": "2.3.3",
+    "jet-search": "3.6.3.1",
+    "elementor": "4.3.5",
+    "elementor-pro": "4.3.2",
+    "fluentform": "6.2.16",
+    "fluentformpro": "6.2.16",
+    "woocommerce": "11.2.1",
+    "mad4b-jetengine-hub-addon": "0.1.0"
+  },
+  "modules_enabled": [
+    "gallery-grid",
+    "gallery-slider",
+    "booking-forms",
+    "custom-content-types",
+    "profile-builder",
+    "dynamic-visibility",
+    "listing-injections",
+    "data-stores",
+    "calendar",
+    "rest-api-listings",
+    "qr-code",
+    "maps-listings"
+  ],
+  "query_builder": {
+    "registered_saved_count": 203,
+    "stored_type_counts": {
+      "posts": 94,
+      "terms": 67,
+      "repeater": 38,
+      "users": 3,
+      "merged-query": 1,
+      "rest_api": 0,
+      "sql": 0,
+      "wc_product": 0
+    },
+    "examples": {
+      "featured_home_tours_query": 193,
+      "nile_child_terms": 254,
+      "nile_post_query": 255,
+      "nile_rate_terms": 269,
+      "nile_cruise_runs_repeater": 308,
+      "cruise_type_tours": 104
+    },
+    "rest_api_module_enabled": true,
+    "rest_api_query_current_page_method_returns": 1,
+    "rest_api_query_total_pages_method_returns": 1,
+    "rest_api_query_page_size_method_returns": 0,
+    "merged_query_heterogeneous_rest_native_supported": false
+  },
+  "provider_definitions": {
+    "jet_smart_filters": 185,
+    "filter_types": {
+      "checkboxes": 123,
+      "select": 49,
+      "range": 6,
+      "date_range": 3,
+      "search": 2,
+      "color_image": 2
+    },
+    "elementor_library": 470,
+    "jet_engine_post_type_records": 332,
+    "jet_engine_options_pages": 11,
+    "jet_engine_relations": 44,
+    "jet_engine_glossaries": 20,
+    "fluent_forms": 10,
+    "jet_woo_builder_posts": 2,
+    "jet_form_builder_posts": 10,
+    "jet_engine_legacy_booking_form_posts": 5
+  },
+  "fluent_forms_provider_status": "active_independent_provider_requires_adapter",
+  "jet_form_builder_provider_status": "inactive_historical_post_data_present",
+  "jet_woo_builder_provider_status": "active_woocommerce_template_widgets_not_universal_forms",
+  "option_examples": {
+    "look_and_feel": {
+      "field_count": 54,
+      "tenant_value_policy": "do_not_distribute_values"
+    },
+    "contact_and_help_info": {
+      "field_count": 16
+    },
+    "calculate_booking_price": {
+      "field_count": 2
+    }
+  },
+  "native_support": [
+    "post_taxonomy_query",
+    "terms_query",
+    "repeater_query",
+    "relation_query",
+    "rest_api_listings",
+    "rest_api_query",
+    "native_jetsmartfilters_on_rest_query_with_correct_macro",
+    "meta_field_definitions",
+    "options_page_definitions",
+    "elementor_jetengine_listing_grids",
+    "woocommerce_product_query_if_enabled",
+    "dynamic_visibility",
+    "source_side_query_rest_endpoint_option"
+  ],
+  "requires_mad4b": [
+    "provider_capability_discovery_registry",
+    "company_scoped_selection_manifest",
+    "exact_record_selection_and_translation_mapping",
+    "query_plan_and_query_listings_filter_graph",
+    "signed_source_authority_and_credentials",
+    "meta_options_field_grants_without_tenant_value_copy",
+    "fluent_forms_provider_adapter",
+    "jet_woo_product_commerce_authority",
+    "heterogeneous_provider_federation_if_justified",
+    "remote_pagination_total_count_and_cache_partition",
+    "versioned_inheritance_policy",
+    "evidence_based_ai_mapping_recommendations_with_human_approval"
+  ],
+  "not_implemented": [
+    "general_provider_discovery",
+    "inheritance_policy_engine",
+    "AI_mapping_assistant",
+    "signed_live_hub_distribution_collection",
+    "JetEngine_native_endpoint_query_listing_approval"
+  ],
+  "references": [
+    "https://crocoblock.com/knowledge-base/features/query-builder-overview/",
+    "https://crocoblock.com/knowledge-base/jetengine/jetengine-query-builder-rest-api-query-type/",
+    "https://crocoblock.com/knowledge-base/jetengine/filtering-listing-based-on-rest-api-query-type/",
+    "https://crocoblock.com/knowledge-base/jetengine/query-builder-merged-query-overview/",
+    "https://crocoblock.com/knowledge-base/features/rest-api-overview/",
+    "https://crocoblock.com/knowledge-base/jetwoobuilder/jetwoobuilder-overview/",
+    "https://fluentforms.com/docs/how-to-integrate-webhook-with-fluent-forms/"
+  ]
+}
