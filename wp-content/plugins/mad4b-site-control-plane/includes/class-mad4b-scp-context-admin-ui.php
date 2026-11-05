@@ -1805,14 +1805,46 @@ final class MAD4B_SCP_Context_Admin_UI {
             submit_button( 'google_drive' === ( $source['provider'] ?? '' )
                 ? __( 'Start / continue scan', 'mad4b-site-control-plane' )
                 : __( 'Scan now', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
-			echo '</form><details class="mad4b-context-remove"><summary>' . esc_html__( 'Remove', 'mad4b-site-control-plane' ) . '</summary><form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
-			wp_nonce_field( self::ACTION_REMOVE_SOURCE );
-			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_REMOVE_SOURCE ) . '"><input type="hidden" name="source_id" value="' . esc_attr( $source['source_id'] ) . '">';
-			echo '<label><input type="checkbox" name="confirm_remove" value="1" required> ' . esc_html__( 'Remove this source and its indexed assets.', 'mad4b-site-control-plane' ) . '</label> ';
-			submit_button( __( 'Remove Source', 'mad4b-site-control-plane' ), 'delete small', 'submit', false );
-			echo '</form></details></td></tr>';
+            echo '</form>';
+            if ( class_exists('MAD4B_SCP_Source_Lifecycle') ) {
+                $plan=MAD4B_SCP_Source_Lifecycle::archive_plan((string)$source['source_id']);
+                echo '<details class="mad4b-context-remove"><summary>'.esc_html__('Archive / detach','mad4b-site-control-plane').'</summary>';
+                if (is_wp_error($plan)) echo '<p>'.esc_html($plan->get_error_code()).'</p>';
+                else {
+                    echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
+                    wp_nonce_field('mad4b_context_archive_source');
+                    echo '<input type="hidden" name="action" value="mad4b_context_archive_source">';
+                    echo '<input type="hidden" name="source_id" value="'.esc_attr($source['source_id']).'">';
+                    echo '<input type="hidden" name="plan_digest" value="'.esc_attr($plan['digest']).'">';
+                    echo '<label><input type="checkbox" name="confirm_archive" value="1" required> ';
+                    echo esc_html(sprintf(__('Keep an archival snapshot of this source and %d indexed assets, then detach it. External files remain untouched.','mad4b-site-control-plane'),count($plan['assets']))).'</label> ';
+                    submit_button(__('Archive Source','mad4b-site-control-plane'),'secondary small','submit',false);
+                    echo '</form>';
+                }
+                echo '</details>';
+            }
+            echo '</td></tr>';
 		}
-		echo '</tbody></table></div></div>';
+        echo '</tbody></table></div>';
+        if ( class_exists('MAD4B_SCP_Source_Lifecycle') ) {
+            $archives=MAD4B_SCP_Source_Lifecycle::archives();
+            if($archives) {
+                echo '<div class="mad4b-scp-panel"><h3>'.esc_html__('Archived sources','mad4b-site-control-plane').'</h3>';
+                foreach($archives as $a){
+                    echo '<p><strong>'.esc_html($a['label']).'</strong> — '.esc_html($a['state']).' ('.esc_html((string)$a['asset_count']).' historical assets)</p>';
+                    if('detached'!==$a['state'])continue;
+                    echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
+                    wp_nonce_field('mad4b_context_restore_source');
+                    echo '<input type="hidden" name="action" value="mad4b_context_restore_source">';
+                    echo '<input type="hidden" name="archive_id" value="'.esc_attr($a['archive_id']).'">';
+                    echo '<label><input type="checkbox" name="confirm_restore" value="1" required> '.esc_html__('Restore source as read-only; rescan and review assets again.','mad4b-site-control-plane').'</label>';
+                    submit_button(__('Restore source for rescan','mad4b-site-control-plane'),'secondary small','submit',false);
+                    echo '</form>';
+                }
+                echo '</div>';
+            }
+        }
+        echo '</div>';
 	}
 
 	private static function review_agent_options() {
