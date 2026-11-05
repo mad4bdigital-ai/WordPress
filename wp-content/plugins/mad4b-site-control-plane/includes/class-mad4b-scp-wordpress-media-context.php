@@ -399,7 +399,10 @@ final class MAD4B_SCP_WordPress_Media_Context {
         if(!is_array($s))return new WP_Error('mad4b_media_scan_session_invalid','Scan expired or belongs to another operator.');
         $step=(int)$s['next'];
         if($step!==(int)$expected_step)return new WP_Error('mad4b_media_scan_step_stale','Scan progress changed; reload the current checkpoint.');
-        if($step>=count($s['mime_types']))return array('scan_session'=>$session_id,'complete'=>true,'results'=>$s['results']);
+        if($step>=count($s['mime_types']))
+            return array('scan_session'=>$session_id,'complete'=>($s['state']??'')==='COMPLETE',
+                'finished'=>true,'has_errors'=>($s['state']??'')==='COMPLETE_WITH_ERRORS',
+                'results'=>$s['results']);
         global $wpdb;
         $mutex='mad4b_wp_media_scan_'.substr(hash('sha256',$session_id),0,32);
         if((int)$wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s,0)',$mutex))!==1)
