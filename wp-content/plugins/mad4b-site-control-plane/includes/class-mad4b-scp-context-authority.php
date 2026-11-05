@@ -24,6 +24,7 @@ final class MAD4B_SCP_Context_Authority {
 	const PROFILE_OPTION = 'mad4b_scp_brand_context_profile_v1';
 	const SOURCES_OPTION = 'mad4b_scp_context_sources_v1';
 	const ASSETS_OPTION = 'mad4b_scp_context_assets_v1';
+    const RECYCLE_ARCHIVE_OPTION = 'mad4b_scp_context_recycle_archive_v1';
 	const REGISTRY_REVISION_OPTION = 'mad4b_scp_context_registry_revision_v1';
 	const REGISTRY_LOCK_OPTION = 'mad4b_scp_context_registry_lock_v1';
 	const REGISTRY_LOCK_TTL = 45;
@@ -1166,6 +1167,226 @@ final class MAD4B_SCP_Context_Authority {
 			'read_only' => true, 'mutation_performed' => false,
 		);
 	}
+
+
+    /**
+     * Bounded, reversible lifecycle for foreign cloned Context references.
+     * Recycle means moving metadata out of this Site Profile's active registry
+     * into a protected WordPress option; NEVER deleting Google or Media files,
+     * changing another company's WordPress, or asserting foreign Brand ownership.
+     */
+    private static function foreign_recycle_inventory() {
+        if ( ! current_user_can('manage_options') )
+            return new WP_Error('mad4b_recycle_admin_required', 'Administrator required.');
+        $site = self::site_binding();
+        if ( is_wp_error($site) || 'staging' !== ($site['environment'] ?? '') )
+            return new WP_Error('mad4b_recycle_exact_staging_required', 'Exact Staging identity required.');
+        $scope = MAD4B_SCP_Operational_Scope_Guard::require_current();
+        if ( is_wp_error($scope) ) return $scope;
+        $profile = self::profile();
+        $brand = (string)($profile['brand_id'] ?? '');
+        if ( !preg_match('/^[a-f0-9]{32}$/D', $brand)
+            || !hash_equals((string)$scope['brand_ref'], $brand)
+            || !hash_equals((string)$scope['site_uuid'], (string)$site['site_uuid']) )
+            return new WP_Error('mad4b_recycle_scope_mismatch', 'Current Site/Brand identity is not exact.');
+        $sources = get_option(self::SOURCES_OPTION, array());
+        $assets = get_option(self::ASSETS_OPTION, array());
+        if ( !is_array($sources) || !is_array($assets)
+            || count($sources) > self::MAX_SOURCES || count($assets) > self::MAX_ASSETS )
+            return new WP_Error('mad4b_recycle_registry_malformed', 'Registry shape or capacity invalid.');
+        $keep_sources = array(); $foreign_sources = array();
+        foreach ($sources as $key => $source) {
+            if ( !self::valid_source($source) ||
+                !hash_equals((string)$key, (string)($source['source_id'] ?? '')) )
+                return new WP_Error('mad4b_recycle_source_not_canonical', 'Source registry entry is malformed.');
+            $record_site = (string)($source['site_uuid'] ?? '');
+            $record_brand = (string)($source['brand_id'] ?? '');
+            if ( ''===$record_site || ''===$record_brand )
+                return new WP_Error('mad4b_recycle_unbound_source_needs_review', 'Unbound source cannot be auto-recycled.');
+            if ( hash_equals((string)$site['site_uuid'], $record_site)
+                && hash_equals($brand, $record_brand) ) {
+                if ( !MAD4B_SCP_Operational_Scope_Guard::record_metadata_matches($source,$scope) )
+                    return new WP_Error('mad4b_recycle_local_source_metadata_conflict', 'Current source metadata requires review.');
+                $keep_sources[$key] = $source;
+            } elseif ( !hash_equals((string)$site['site_uuid'],$record_site)
+                && !hash_equals($brand,$record_brand) ) {
+                $foreign_sources[$key] = $source;
+            } else {
+                return new WP_Error('mad4b_recycle_partial_identity_conflict', 'Partial foreign identity requires independent review.');
+            }
+        }
+        $keep_assets = array(); $foreign_assets = array();
+        foreach ($assets as $key => $asset) {
+            if ( !self::valid_asset($asset)
+                || !hash_equals((string)$key, (string)($asset['asset_id'] ?? '')) )
+                return new WP_Error('mad4b_recycle_asset_not_canonical', 'Asset registry entry malformed.');
+            $source_id = (string)($asset['source_id'] ?? '');
+            $ref = $sources[$source_id] ?? null;
+            if ( !is_array($ref)
+                || !hash_equals((string)($asset['site_uuid'] ?? ''),(string)($ref['site_uuid'] ?? ''))
+                || !hash_equals((string)($asset['brand_id'] ?? ''),(string)($ref['brand_id'] ?? '')) )
+                return new WP_Error('mad4b_recycle_asset_ownership_mismatch', 'Orphan or mixed-owner asset cannot be recycled.');
+            if ( isset($foreign_sources[$source_id]) ) $foreign_assets[$key]=$asset;
+            elseif ( isset($keep_sources[$source_id]) ) $keep_assets[$key]=$asset;
+            else return new WP_Error('mad4b_recycle_unknown_asset_source','Asset source unrecognized.');
+        }
+        if ( !$foreign_sources && $foreign_assets )
+            return new WP_Error('mad4b_recycle_foreign_assets_orphaned','Foreign assets without matching sources.');
+        $revision=self::registry_revision();
+        $fingerprint=hash('sha256',serialize(array(
+            (string)$site['site_uuid'],$brand,$revision,$sources,$assets
+        )));
+        return array(
+            'sources'=>$sources,'assets'=>$assets,
+            'foreign_sources'=>$foreign_sources,'foreign_assets'=>$foreign_assets,
+            'keep_sources'=>$keep_sources,'keep_assets'=>$keep_assets,
+            'fingerprint'=>$fingerprint,'revision'=>$revision,
+            'site_uuid'=>(string)$site['site_uuid'], 'brand_id'=>$brand,
+        );
+    }
+
+    public static function foreign_recycle_plan() {
+        $inventory=self::foreign_recycle_inventory();
+        if ( is_wp_error($inventory) ) return $inventory;
+        return array(
+            'contract'=>'mad4b.context-foreign-recycle-plan.v1',
+            'state'=>count($inventory['foreign_sources'])>0
+                ? 'EXACT_FOREIGN_REFERENCES_READY_FOR_ARCHIVE' : 'NO_FOREIGN_REFERENCES',
+            'foreign_sources'=>count($inventory['foreign_sources']),
+            'foreign_assets'=>count($inventory['foreign_assets']),
+            'retained_current_sources'=>count($inventory['keep_sources']),
+            'retained_current_assets'=>count($inventory['keep_assets']),
+            'expected_registry_revision'=>$inventory['revision'],
+            'expected_inventory_sha256'=>$inventory['fingerprint'],
+            'archive_only'=>true, 'external_files_deleted'=>false,
+            'brand_ownership_asserted'=>false,'production_mutated'=>false,
+            'mutated'=>false
+        );
+    }
+
+    /** Privileged, idempotent archive+cleanup under existing registry lock/audit. */
+    public static function foreign_recycle_apply( array $input ) {
+        if ( array_diff(array_keys($input),array('expected_registry_revision','expected_inventory_sha256'))
+            || !isset($input['expected_registry_revision'],$input['expected_inventory_sha256'])
+            || !is_int($input['expected_registry_revision'])
+            || !is_string($input['expected_inventory_sha256'])
+            || !preg_match('/^[a-f0-9]{64}$/D',$input['expected_inventory_sha256']) )
+            return new WP_Error('mad4b_recycle_exact_plan_required','Exact read-only plan and revision required.');
+        return self::with_registry_lock('recycle_foreign_context',static function() use($input) {
+            $inventory=self::foreign_recycle_inventory();
+            if ( is_wp_error($inventory) ) return $inventory;
+            if ( $inventory['revision'] !== $input['expected_registry_revision']
+                || !hash_equals($inventory['fingerprint'],$input['expected_inventory_sha256']) )
+                return new WP_Error('mad4b_recycle_plan_stale','Context registry changed after recycle plan.');
+            if ( !$inventory['foreign_sources'] )
+                return new WP_Error('mad4b_recycle_nothing_to_archive','No foreign entries remain.');
+            $audit=self::audit_preflight();
+            if ( is_wp_error($audit) ) return $audit;
+            $vault=get_option(self::RECYCLE_ARCHIVE_OPTION,null);
+            if (null===$vault) $vault=array(
+                'contract'=>'mad4b.context-recycle-vault.v1','batches'=>array());
+            if ( !is_array($vault)
+                || ($vault['contract']??'')!=='mad4b.context-recycle-vault.v1'
+                || !is_array($vault['batches']??null)
+                || count($vault['batches'])>32 )
+                return new WP_Error('mad4b_recycle_archive_corrupt','Recycle archive integrity or capacity problem.');
+            $key=$inventory['fingerprint'];
+            $batch=array(
+                'contract'=>'mad4b.context-recycle-batch.v1',
+                'state'=>'ARCHIVED_FOREIGN_OWNER_UNRESOLVED',
+                'created_utc'=>gmdate('c'),
+                'origin_current_site_uuid'=>$inventory['site_uuid'],
+                'origin_current_brand_id'=>$inventory['brand_id'],
+                'previous_registry_revision'=>$inventory['revision'],
+                'snapshot_sha256'=>$key,
+                'sources_sha256'=>hash('sha256',serialize($inventory['foreign_sources'])),
+                'assets_sha256'=>hash('sha256',serialize($inventory['foreign_assets'])),
+                'source_count'=>count($inventory['foreign_sources']),
+                'asset_count'=>count($inventory['foreign_assets']),
+                'sources'=>$inventory['foreign_sources'],
+                'assets'=>$inventory['foreign_assets'],
+                'original_owner_not_assigned'=>true,
+                'external_files_deleted'=>false,
+                'production_mutated'=>false
+            );
+            if ( isset($vault['batches'][$key]) ) {
+                $old=$vault['batches'][$key];
+                if ( !is_array($old)
+                    || ($old['sources_sha256']??'')!==$batch['sources_sha256']
+                    || ($old['assets_sha256']??'')!==$batch['assets_sha256'] )
+                    return new WP_Error('mad4b_recycle_existing_batch_conflict','Previous archived snapshot differs.');
+            } else $vault['batches'][$key]=$batch;
+            $encoded=serialize($vault);
+            if ( strlen($encoded)>8*1024*1024 )
+                return new WP_Error('mad4b_recycle_vault_capacity','Archive exceeds bounded capacity.');
+            if ( !self::write_option(self::RECYCLE_ARCHIVE_OPTION,$vault) )
+                return new WP_Error('mad4b_recycle_archive_write_failed','Could not persist archive.');
+            $stored=get_option(self::RECYCLE_ARCHIVE_OPTION,null);
+            if ( !is_array($stored) || serialize($stored)!==serialize($vault) )
+                return new WP_Error('mad4b_recycle_archive_readback_failed','Archive could not be independently read back.');
+            if ( !self::write_option(self::SOURCES_OPTION,$inventory['keep_sources'])
+                || !self::write_option(self::ASSETS_OPTION,$inventory['keep_assets']) )
+                return new WP_Error('mad4b_recycle_active_cleanup_failed','Active registry cleanup failed; rollback is required.');
+            if ( serialize(self::raw_sources())!==serialize($inventory['keep_sources'])
+                || serialize(self::raw_assets())!==serialize($inventory['keep_assets']) )
+                return new WP_Error('mad4b_recycle_cleanup_readback_failed','Registry did not match retained current records.');
+            return self::audited_registry_result(
+                array(
+                    'contract'=>'mad4b.context-foreign-recycle-receipt.v1',
+                    'state'=>'ARCHIVED_AND_ACTIVE_REGISTRY_CLEAN',
+                    'archived_sources'=>count($inventory['foreign_sources']),
+                    'archived_assets'=>count($inventory['foreign_assets']),
+                    'retained_current_sources'=>count($inventory['keep_sources']),
+                    'retained_current_assets'=>count($inventory['keep_assets']),
+                    'batch_sha256'=>$key,'archive_verified'=>true,
+                    'external_files_deleted'=>false,'ownership_transferred'=>false,
+                    'production_mutated'=>false
+                ),
+                'mad4b/context-foreign-recycle-archive-cleanup',
+                array('batch_sha256'=>$key,
+                    'archived_sources'=>count($inventory['foreign_sources']),
+                    'archived_assets'=>count($inventory['foreign_assets']),
+                    'archive_readback_verified'=>true,
+                    'ownership_transferred'=>false,'external_files_deleted'=>false,
+                    'production_mutated'=>false),
+                'ok'
+            );
+        });
+    }
+
+    /** Public aggregate only; never expose archived foreign records or IDs. */
+    public static function foreign_recycle_archive_status() {
+        $vault=get_option(self::RECYCLE_ARCHIVE_OPTION,null);
+        if ( null===$vault ) return array(
+            'state'=>'NO_ARCHIVE','batches'=>0,'archived_sources'=>0,
+            'archived_assets'=>0,'integrity_verified'=>true);
+        if ( !is_array($vault)
+            || ($vault['contract']??'')!=='mad4b.context-recycle-vault.v1'
+            || !is_array($vault['batches']??null) )
+            return array('state'=>'ARCHIVE_INTEGRITY_FAILURE','integrity_verified'=>false);
+        $sources=0; $assets=0;
+        foreach ($vault['batches'] as $digest=>$batch) {
+            if (!is_array($batch)
+                || !preg_match('/^[a-f0-9]{64}$/D',(string)$digest)
+                || ($batch['snapshot_sha256']??'')!==(string)$digest
+                || !is_array($batch['sources']??null)
+                || !is_array($batch['assets']??null)
+                || hash('sha256',serialize($batch['sources']))!==($batch['sources_sha256']??'')
+                || hash('sha256',serialize($batch['assets']))!==($batch['assets_sha256']??'')
+                || count($batch['sources'])!==(int)($batch['source_count']??-1)
+                || count($batch['assets'])!==(int)($batch['asset_count']??-1) )
+                return array('state'=>'ARCHIVE_INTEGRITY_FAILURE','integrity_verified'=>false);
+            $sources+=count($batch['sources']);$assets+=count($batch['assets']);
+        }
+        return array(
+            'contract'=>'mad4b.context-foreign-recycle-archive-status.v1',
+            'state'=>'ARCHIVED_FOREIGN_OWNER_UNRESOLVED',
+            'batches'=>count($vault['batches']),
+            'archived_sources'=>$sources,'archived_assets'=>$assets,
+            'integrity_verified'=>true,'owner_reassignment_authorized'=>false,
+            'source_registry_mutated_by_read'=>false
+        );
+    }
 
 	private static function raw_sources() {
 		$records = get_option( self::SOURCES_OPTION, array() );
@@ -3418,6 +3639,10 @@ final class MAD4B_SCP_Context_Authority {
 					: ( $google_connection['refresh_required'] ? 'plan_existing_grant_refresh' : 'verify_exact_source_membership' );
 			}
 		}
+        $recycle_archive = self::foreign_recycle_archive_status();
+        if ( empty( $recycle_archive['integrity_verified'] ) ) {
+            $blockers[] = 'context_recycle_archive_integrity_failure';
+        }
 		$ready = empty( $blockers );
 		$state = $ready ? ( empty( $warnings ) ? 'ready' : 'ready_with_warnings' ) : ( empty( $profile ) ? 'unconfigured' : 'blocked' );
 		return array(
@@ -3437,6 +3662,39 @@ final class MAD4B_SCP_Context_Authority {
 			'quarantined_asset_record_count' => max( 0, count( $raw_assets ) - count( $assets ) ),
 			'ownership_review_required' => count( $raw_sources ) > count( $sources ) || count( $raw_assets ) > count( $assets ),
 			'ownership_migration_automatic' => false,
+            'foreign_recycle_archive' => $recycle_archive,
+            // One shared, read-only lifecycle projection for wp-admin, Context
+            // status APIs and MCP. A count does not authorize ownership transfer.
+            'ownership_reconciliation_lifecycle' => array(
+                'contract' => 'mad4b.context-ownership-lifecycle.v1',
+                'state' => empty($recycle_archive['integrity_verified'])
+                    ? 'RECYCLE_ARCHIVE_INTEGRITY_RECOVERY_REQUIRED'
+                    : ( ( count( $raw_sources ) > count( $sources )
+                        || count( $raw_assets ) > count( $assets ) )
+                        ? 'AWAITING_LEGACY_OWNER_REVIEW'
+                        : ( !empty($recycle_archive['archived_sources'])
+                            ? 'RECYCLED_ARCHIVED_OWNER_RECONCILIATION_PENDING'
+                            : 'NO_CURRENT_QUARANTINE' ) ),
+                'quarantined_source_count' => max( 0, count( $raw_sources ) - count( $sources ) ),
+                'quarantined_asset_count' => max( 0, count( $raw_assets ) - count( $assets ) ),
+                'archived_source_count' => max( 0, (int)($recycle_archive['archived_sources'] ?? 0) ),
+                'archived_asset_count' => max( 0, (int)($recycle_archive['archived_assets'] ?? 0) ),
+                'archive_integrity_verified' => !empty($recycle_archive['integrity_verified']),
+                'active_registry_recycled_clean' => count( $raw_sources ) === count( $sources )
+                    && count( $raw_assets ) === count( $assets ),
+                'original_owner_reconciliation_pending' => !empty($recycle_archive['archived_sources']),
+                'next_read_ability' => ( count( $raw_sources ) > count( $sources )
+                    || count( $raw_assets ) > count( $assets ) )
+                    ? 'context/legacy-owner-transfer-discover'
+                    : 'mad4b/context-source-onboarding-preflight',
+                'site_scope' => 'CURRENT_SITE_PROFILE_ONLY',
+                'review_required' => count( $raw_sources ) > count( $sources )
+                    || count( $raw_assets ) > count( $assets ),
+                'automatic_assignment' => false,
+                'ownership_transfer_authorized' => false,
+                'source_registry_modified' => false,
+                'read_only' => true,
+            ),
 			'source_registry_capacity_exceeded' => count( $raw_sources ) > self::MAX_SOURCES,
 			'asset_registry_capacity_exceeded' => count( $raw_assets ) > self::MAX_ASSETS,
 			'context_fingerprint' => self::context_fingerprint( $assets, $sources ),
@@ -3749,7 +4007,7 @@ final class MAD4B_SCP_Context_Authority {
         if ( ( $source['provider'] ?? '' ) === 'wordpress_media' ) {
             $attachment_id = ctype_digit( (string) $file_id ) ? (int) $file_id : 0;
             $post = $attachment_id ? get_post( $attachment_id ) : null;
-            if ( ! $post || 'attachment' !== $post->post_type || ! wp_attachment_is_image( $attachment_id ) && ! in_array( get_post_mime_type( $attachment_id ), array( 'text/plain', 'application/pdf', 'text/markdown', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel.sheet.macroEnabled.12', 'text/csv' ), true ) )
+            if ( ! $post || 'attachment' !== $post->post_type || ! wp_attachment_is_image( $attachment_id ) && ! in_array( get_post_mime_type( $attachment_id ), array( 'text/plain', 'application/pdf', 'text/markdown', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel.sheet.macroEnabled.12', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/csv' ), true ) )
                 return new WP_Error( 'mad4b_wp_media_attachment_invalid', 'WordPress media attachment must exist and have an allowed type.' );
             if ( (string) ( $asset['content_hash'] ?? '' ) !== hash_file( 'sha256', get_attached_file( $attachment_id ) ) )
                 return new WP_Error( 'mad4b_wp_media_hash_mismatch', 'Attachment content hash mismatch.' );
