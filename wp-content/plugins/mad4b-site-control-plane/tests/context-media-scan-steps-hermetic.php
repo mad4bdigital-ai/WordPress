@@ -51,6 +51,9 @@ $checks['first_complete']=is_array($step1)&&($step1['last']['ok']??false)===true
 $checks['failed_file_isolated']=is_array($step2)&&empty($step2['last']['ok'])&&$step2['last']['attachment_id']===66375;
 $checks['third_continues']=is_array($step3)&&($step3['last']['ok']??false)===true&&$step3['last']['count']===33;
 $checks['no_global_complete_on_error']=is_array($step3)&&empty($step3['complete'])&&!empty($step3['finished']);
+$terminal=MAD4B_SCP_WordPress_Media_Context::scan_step($id,3);
+$checks['completed_session_preserves_error_state']=is_array($terminal)
+ && empty($terminal['complete']) && !empty($terminal['finished']) && !empty($terminal['has_errors']);
 $checks['all_three_scopes_attempted']=MAD4B_SCP_Context_Source_Pipeline::$calls===$types;
 $session=MAD4B_SCP_WordPress_Media_Context::scan_session($id);
 $checks['checkpoint_has_errors']=is_array($session)&&$session['state']==='COMPLETE_WITH_ERRORS'&&count($session['results'])===3;
