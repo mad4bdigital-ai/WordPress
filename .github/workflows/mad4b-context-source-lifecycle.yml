@@ -50,6 +50,8 @@ jobs:
           done
       - name: Read-only local Media gateway checks
         run: php wp-content/plugins/mad4b-site-control-plane/tests/context-media-read-gateway-hermetic.php
+      - name: MIME scoped scan continuation and partial-failure isolation
+        run: php wp-content/plugins/mad4b-site-control-plane/tests/context-media-scan-steps-hermetic.php
       - name: Reversible archive and restore checks
         run: php wp-content/plugins/mad4b-site-control-plane/tests/context-source-recycle-hermetic.php
       - name: Local DOCX PDF XLSX normalization checks
