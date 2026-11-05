@@ -41,6 +41,21 @@ $checks['read_only_reenrollment']=is_array($b)&&$b['state']==='restored_rescan_r
  &&(MAD4B_SCP_Context_Authority::$source['write_policy']??'')==='read_only';
 $again=MAD4B_SCP_Source_Lifecycle::restore_source($a['archive_id']);
 $checks['double_restore_denied']=is_wp_error($again);
+// Recover a prepared snapshot after a verified interruption between native
+// removal and the detached-state archive update, without reviving old approvals.
+$source_snapshot=MAD4B_SCP_Context_Authority::$source;
+MAD4B_SCP_Context_Authority::$source=null;
+MAD4B_SCP_Context_Authority::$assets=[];
+$pending_id='22222222-2222-4222-8222-222222222222';
+$all=get_option(MAD4B_SCP_Source_Lifecycle::OPTION,array());
+$all[$pending_id]=array(
+ 'state'=>'prepared','source_id'=>str_repeat('a',64),'source'=>$source_snapshot,
+ 'assets'=>array(),'snapshot_sha256'=>hash('sha256',wp_json_encode(array($source_snapshot,array()))),
+ 'site_uuid'=>'site-verified','brand_id'=>'brand-verified','archived_at'=>gmdate('c'));
+update_option(MAD4B_SCP_Source_Lifecycle::OPTION,$all,false);
+$recovered=MAD4B_SCP_Source_Lifecycle::restore_source($pending_id);
+$checks['prepared_interruption_recoverable']=is_array($recovered)&&$recovered['state']==='restored_rescan_required'
+ && count(MAD4B_SCP_Context_Authority::assets())===0;
 foreach($checks as $name=>$ok)echo ($ok?'PASS':'FAIL')." $name\n";
 echo 'RESULT '.count(array_filter($checks)).'/'.count($checks)."\n";
 exit(count(array_filter($checks))===count($checks)?0:1);
