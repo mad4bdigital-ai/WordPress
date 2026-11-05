@@ -454,7 +454,8 @@ final class MAD4B_SCP_WordPress_Media_Context {
                 }
             }else{
                 $s['results'][]=array('mime'=>$mime,'ok'=>true,'code'=>'complete',
-                    'count'=>(int)($result['asset_count']??0));
+                    'count'=>(int)($result['observed_asset_count']??0),
+                    'source_asset_count'=>(int)($result['asset_count']??0));
                 $s['next']=$step+1;
             }
             $s['state']=$s['next']<count($s['mime_types'])?'PARTIAL':
