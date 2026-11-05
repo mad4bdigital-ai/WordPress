@@ -1832,7 +1832,8 @@ final class MAD4B_SCP_Context_Admin_UI {
                 echo '<div class="mad4b-scp-panel"><h3>'.esc_html__('Archived sources','mad4b-site-control-plane').'</h3>';
                 foreach($archives as $a){
                     echo '<p><strong>'.esc_html($a['label']).'</strong> — '.esc_html($a['state']).' ('.esc_html((string)$a['asset_count']).' historical assets)</p>';
-                    if('detached'!==$a['state'])continue;
+                    if(!in_array($a['state'],array('detached','prepared'),true))continue;
+                    if('prepared'===$a['state'] && MAD4B_SCP_Context_Authority::source((string)$a['source_id']))continue;
                     echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
                     wp_nonce_field('mad4b_context_restore_source');
                     echo '<input type="hidden" name="action" value="mad4b_context_restore_source">';
@@ -2871,76 +2872,4 @@ final class MAD4B_SCP_Context_Admin_UI {
 				try{
 					var response=await fetch(window.ajaxurl,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/x-www-form-urlencoded; charset=UTF-8","X-Requested-With":"XMLHttpRequest"},body:body.toString()});
 					var payload=await response.json();
-					if(!payload||!payload.success){var failure=new Error(payload&&payload.data&&payload.data.message?payload.data.message:"Context review could not be committed.");failure.mad4bCode=payload&&payload.data&&payload.data.code?payload.data.code:"mad4b_context_review_failed";throw failure;}
-					if(local){local.className="mad4b-context-review-inline-feedback is-success";local.textContent=payload.data&&payload.data.message?payload.data.message:"Review decision saved.";}
-					await refreshReviewPanels();
-				}catch(error){
-					if(local){local.className="mad4b-context-review-inline-feedback is-error";local.textContent=(error&&error.mad4bCode?error.mad4bCode+" · ":"")+(error&&error.message?error.message:"Context review failed.");}
-					try{await refreshReviewPanels();}catch(refreshError){}
-				}finally{form.removeAttribute("aria-busy");delete form.dataset.mad4bBusy;controls.forEach(function(control,index){control.disabled=priorDisabled[index];});}
-			});
-			document.addEventListener("submit",async function(event){
-				var form=event.target.closest(".mad4b-context-ajax-form");
-				if(!form)return;
-				event.preventDefault();
-				if(form.dataset.mad4bBusy==="1")return;
-				form.dataset.mad4bBusy="1";
-				form.setAttribute("aria-busy","true");
-				var body=new URLSearchParams(new FormData(form));
-				var controls=Array.prototype.slice.call(form.querySelectorAll("button,input,select,textarea"));
-				var priorDisabled=controls.map(function(control){return control.disabled;});
-				controls.forEach(function(control){control.disabled=true;});
-				feedback("Saving…",true,"");
-				try{
-					var response=await fetch(window.ajaxurl,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/x-www-form-urlencoded; charset=UTF-8","X-Requested-With":"XMLHttpRequest"},body:body.toString()});
-					var payload=await response.json();
-					if(!payload||!payload.success){
-						var failure=new Error(payload&&payload.data&&payload.data.message?payload.data.message:"Settings could not be saved.");
-						failure.mad4bCode=payload&&payload.data&&payload.data.code?payload.data.code:"mad4b_context_ajax_save_failed";
-						throw failure;
-					}
-					form.querySelectorAll("input[type=password]").forEach(function(input){input.value="";});
-					if(payload.data&&payload.data.refresh)await refreshPanels();
-					clearStatusQuery();
-					feedback(payload.data&&payload.data.message?payload.data.message:"Saved.",true,"");
-				}catch(error){
-					try{await refreshPanels();}catch(refreshError){}
-					feedback(error&&error.message?error.message:"Settings could not be saved.",false,error&&error.mad4bCode?error.mad4bCode:"");
-				}finally{
-					form.removeAttribute("aria-busy");
-					delete form.dataset.mad4bBusy;
-					controls.forEach(function(control,index){control.disabled=priorDisabled[index];});
-				}
-			});
-		})();
-		</script>';
-	}
-
-	private static function styles() {
-		echo '<style>
-		.mad4b-context-page .mad4b-context-folder-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:16px}
-		.mad4b-context-folder-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin:14px 0 22px}
-		.mad4b-context-folder{display:flex;align-items:center;gap:8px;background:#f6f7f7;border:1px solid #dcdcde;border-radius:5px;padding:12px;text-decoration:none;color:#1d2327}
-		.mad4b-context-folder:hover{background:#fff;border-color:#72aee6}.mad4b-context-folder .dashicons{color:#dba617}
-		.mad4b-context-source-mode{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin:12px 0}
-		.mad4b-google-ajax-feedback{margin:12px 0}.mad4b-google-grant-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:14px 0}.mad4b-google-grant-card{border:1px solid #dcdcde;border-radius:5px;background:#fff;padding:12px}.mad4b-google-grant-card select{width:100%;margin-top:7px}
-		.mad4b-google-primary-signin{border-left:4px solid #4285f4}.mad4b-google-signin-button{display:inline-flex!important;align-items:center;justify-content:center;min-height:42px;padding:0 20px!important;background:#fff!important;border:1px solid #dadce0!important;border-radius:4px!important;color:#3c4043!important;font-weight:600;box-shadow:0 1px 2px rgba(60,64,67,.15)!important}.mad4b-google-signin-button:hover{background:#f8faff!important;border-color:#c6dafc!important;color:#202124!important}.mad4b-google-advanced{margin:16px 0}.mad4b-google-advanced>summary{cursor:pointer;padding:12px 14px;border:1px solid #dcdcde;border-radius:5px;background:#f6f7f7}.mad4b-google-advanced[open]>summary{margin-bottom:12px}.mad4b-google-advanced>summary span{color:#646970;font-weight:400;margin-left:6px}
-		.mad4b-context-source-mode label{display:block;border:1px solid #dcdcde;border-radius:5px;padding:12px;background:#fff}.mad4b-context-source-mode label span{display:block;margin:5px 0 0 24px;color:#646970}
-		.mad4b-context-badge{display:inline-block;padding:3px 7px;border-radius:12px;background:#f0f0f1;font-size:12px}.mad4b-context-fingerprint{margin:18px 0;color:#646970}
-		.mad4b-context-repair-title{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.mad4b-context-repair-title h2{margin-top:0}.mad4b-context-repair-count{display:inline-flex;min-width:38px;height:38px;align-items:center;justify-content:center;border-radius:20px;background:#f0f0f1;font-weight:700;font-size:16px}
-		.mad4b-context-repair-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-top:14px}.mad4b-context-repair-card{border:1px solid #dcdcde;border-left-width:4px;border-radius:5px;background:#fff;padding:13px}.mad4b-context-repair-card.is-ready{border-left-color:#00a32a}.mad4b-context-repair-card.is-blocked{border-left-color:#dba617}.mad4b-context-repair-card-head{display:flex;justify-content:space-between;gap:8px}.mad4b-context-repair-card dl{display:grid;grid-template-columns:auto 1fr;gap:5px 10px}.mad4b-context-repair-card dt{font-weight:600}.mad4b-context-repair-card dd{margin:0;min-width:0;overflow-wrap:anywhere}
-		.mad4b-context-governance-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:14px 0}.mad4b-context-governance-cell{border:1px solid #dcdcde;border-radius:5px;padding:12px;background:#fff}.mad4b-context-governance-cell span{display:block;color:#646970;margin-bottom:5px}.mad4b-context-governance-cell strong{display:block}.mad4b-context-governance-cell.is-complete{border-left:4px solid #00a32a}.mad4b-context-governance-cell.is-attention{border-left:4px solid #dba617}.mad4b-context-governance-cell.is-pending{border-left:4px solid #8c8f94}
-		.mad4b-context-review-form{min-width:260px;padding:12px;background:#fff;border:1px solid #dcdcde;margin-top:8px}.mad4b-context-review-form label{display:block;margin:0 0 10px}.mad4b-context-review-form select,.mad4b-context-review-form input[type=number]{display:block;width:100%;margin-top:4px}.mad4b-context-quality-mode{border:0;padding:0;margin:0 0 12px}.mad4b-context-quality-mode label{padding:8px;border:1px solid #dcdcde;border-radius:4px}.mad4b-context-quality-mode label span{display:block;margin:4px 0 0 22px;color:#646970;font-weight:400}
-		.mad4b-context-filterbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0 16px}.mad4b-context-intelligence-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin:14px 0}.mad4b-context-intelligence-card{border:1px solid #dcdcde;border-radius:5px;background:#fff;padding:14px}.mad4b-context-intelligence-card h3{margin-top:0}.mad4b-context-intelligence-card label{display:block;margin:10px 0}.mad4b-context-intelligence-card select,.mad4b-context-intelligence-card input[type=text]{width:100%;margin-top:4px}.mad4b-context-conflict-card{border-left:4px solid #dba617;background:#fff8e5;padding:12px;margin:10px 0}.mad4b-context-folder-jump{margin:14px 0 18px}.mad4b-context-folder-jump label{display:block;margin-bottom:6px}.mad4b-context-filterbar select,.mad4b-context-filterbar input{max-width:220px}.mad4b-context-remove{margin-top:8px}.mad4b-context-remove form{margin-top:8px;max-width:280px}
-		.mad4b-context-review-feedback{margin:12px 0}.mad4b-context-review-title{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.mad4b-context-review-count{display:inline-flex;min-width:38px;height:38px;align-items:center;justify-content:center;border-radius:20px;background:#fff3cd;font-weight:700}.mad4b-context-review-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}.mad4b-context-review-card{display:flex;flex-direction:column;gap:6px;border:1px solid #dcdcde;border-left:4px solid #dba617;border-radius:5px;padding:12px;text-decoration:none;color:#1d2327;background:#fff}.mad4b-context-review-cell{position:sticky;right:0;background:#fff;min-width:190px;box-shadow:-8px 0 12px rgba(0,0,0,.04)}.mad4b-context-review-state{display:block;margin-bottom:7px;font-size:12px;font-weight:600}.mad4b-context-review-state.is-approved{color:#008a20}.mad4b-context-review-evidence{border:1px solid #dcdcde;background:#f6f7f7;padding:10px;margin-bottom:10px}.mad4b-context-review-evidence p{max-width:520px;line-height:1.5}.mad4b-context-review-evidence dl{display:grid;grid-template-columns:auto 1fr;gap:4px 8px}.mad4b-context-review-evidence dt{font-weight:600}.mad4b-context-review-evidence dd{margin:0;overflow-wrap:anywhere}.mad4b-context-required-confirm{border-left:3px solid #dba617!important;background:#fff8e5!important}.mad4b-context-review-inline-feedback{margin:8px 0;font-size:12px}.mad4b-context-review-inline-feedback.is-error{color:#b32d2e}.mad4b-context-review-inline-feedback.is-success{color:#008a20}.mad4b-context-review-form textarea{display:block;width:100%;margin-top:4px}.mad4b-context-review-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-		.mad4b-context-review-policy-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.mad4b-context-review-policy-head h2{margin-top:0}.mad4b-context-approval-mode-grid{display:grid;grid-template-columns:repeat(2,minmax(260px,1fr));gap:12px;margin:14px 0}.mad4b-context-approval-mode-card{display:block;border:1px solid #dcdcde;border-radius:6px;background:#fff;padding:14px}.mad4b-context-approval-mode-card strong{font-size:14px}.mad4b-context-approval-mode-card span{display:block;margin:6px 0 0 24px;color:#646970;line-height:1.45}.mad4b-context-ai-review-settings{border-top:1px solid #dcdcde;padding-top:14px}.mad4b-context-ai-review-settings>label{display:block;max-width:720px;margin-bottom:12px}.mad4b-context-ai-review-settings select{display:block;min-width:360px;max-width:100%;margin-top:5px}.mad4b-context-ai-review-status{display:flex;flex-wrap:wrap;gap:8px 16px;margin:10px 0 12px}.mad4b-context-review-policy-feedback{margin:8px 0;font-size:12px}.mad4b-context-review-policy-feedback.is-error{color:#b32d2e}.mad4b-context-review-policy-feedback.is-success{color:#008a20}
-		.mad4b-context-delegation-confirmation.is-hidden{display:none!important}.mad4b-context-advanced-governance{margin:12px 0;padding:10px 12px;border:1px solid #dcdcde;border-radius:5px;background:#f6f7f7}.mad4b-context-advanced-governance summary{cursor:pointer;font-weight:600}.mad4b-context-advanced-governance dl,.mad4b-context-asset-details dl{display:grid;grid-template-columns:auto 1fr;gap:5px 10px}.mad4b-context-advanced-governance dd,.mad4b-context-asset-details dd{margin:0;overflow-wrap:anywhere}
-		.mad4b-context-readiness-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:14px}.mad4b-context-readiness-card{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:14px;border:1px solid #dcdcde;border-left-width:4px;border-radius:6px;background:#fff}.mad4b-context-readiness-card.is-attention{border-left-color:#dba617}.mad4b-context-readiness-card.is-complete{border-left-color:#00a32a}.mad4b-context-blocker-details{margin-top:12px}.mad4b-context-source-repair-form{display:flex;flex-wrap:wrap;align-items:center;gap:6px}.mad4b-context-source-repair-form .submit{margin:0;padding:0}
-		.mad4b-context-inbox-item{border:1px solid #dcdcde;border-left:4px solid #8c8f94;border-radius:6px;padding:14px;margin:12px 0;background:#fff}.mad4b-context-inbox-item.is-required{border-left-color:#dba617}.mad4b-context-inbox-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.mad4b-context-inbox-meta{margin-top:5px;color:#646970}.mad4b-context-inbox-excerpt{max-width:900px;line-height:1.55}.mad4b-context-inbox-review-form{border:0;padding:0;margin-top:10px;min-width:0}.mad4b-context-inbox-note textarea{width:100%;max-width:900px}.mad4b-context-review-governance{margin:10px 0 12px;padding:10px 12px;border:1px solid #dcdcde;border-radius:5px;background:#f6f7f7}.mad4b-context-review-governance>summary{cursor:pointer;font-weight:600}.mad4b-context-review-governance-grid{display:grid;grid-template-columns:repeat(2,minmax(220px,1fr));gap:10px}.mad4b-context-review-governance-grid select{width:100%;margin-top:4px}.mad4b-context-ai-batch{display:flex;justify-content:space-between;gap:18px;align-items:center;padding:12px 14px;background:#f0f6fc;border-left:4px solid #2271b1;margin:12px 0}.mad4b-context-ai-batch p{margin:.35em 0 0;max-width:760px}.mad4b-context-optional-review>summary{cursor:pointer;font-size:14px;padding:4px 0}.mad4b-context-asset-details{margin-top:8px}.mad4b-context-asset-details summary{cursor:pointer}.mad4b-context-assets-panel table td{vertical-align:top}
-		@media(max-width:782px){.mad4b-context-folder-head{align-items:flex-start!important;flex-direction:column}.mad4b-context-approval-mode-grid,.mad4b-context-review-governance-grid{grid-template-columns:1fr}.mad4b-context-review-policy-head,.mad4b-context-ai-batch{flex-direction:column;align-items:flex-start}.mad4b-context-ai-review-settings select{min-width:0;width:100%}}
-		</style>';
-	}
-}
-
-// Routes are declared without booting menus or provider lifecycle on frontend requests.
-if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) ) MAD4B_SCP_Admin_Route_Registry::register( MAD4B_SCP_Context_Admin_UI::PAGE_SLUG, 'manage_options' );
+					if(!payload||!payload.success){var failure=new Error(payload&&payload.data&&payload.data.message?payload.data.message:"Context review could not be committed.");failure.mad4bCode=payload&&payload.data&&payload.data.code?payload
