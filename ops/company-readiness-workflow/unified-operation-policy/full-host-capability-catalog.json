@@ -1,0 +1,129 @@
+{
+  "contract": "mad4b.company.full-host-capability-template.v1",
+  "schema_version": 1,
+  "status": "NON_AUTHORIZING_PROVISIONING_CATALOG",
+  "applies_to": [
+    "staging",
+    "production"
+  ],
+  "provisioning_trigger": "company_site_host_enrollment_or_binding_change",
+  "default_capability_discovery": "all_declared_families",
+  "issuance_authority": "original_mad4b_core_registry_and_native_dispatcher",
+  "binding_required": [
+    "company",
+    "environment",
+    "site_uuid",
+    "canonical_origin",
+    "host_id",
+    "agent_public_id",
+    "server_id",
+    "provider",
+    "ability_name",
+    "command_sha256"
+  ],
+  "host_proof_required": true,
+  "company_delegation_required": true,
+  "production_runtime_gate_required": true,
+  "revocation_check_each_operation": true,
+  "capability_grants_created_by_catalog": false,
+  "execution_enabled_by_catalog": false,
+  "supported_channels": [
+    "oauth_mcp",
+    "vps_ssh_wpcli",
+    "signed_broker",
+    "ssh_fallback"
+  ],
+  "capabilities": [
+    {
+      "id": "host.shell",
+      "family": "host",
+      "intent": "shell",
+      "independent_principal": "root_or_named_operator",
+      "default_state": "DISCOVERABLE_NOT_GRANTED"
+    },
+    {
+      "id": "host.ssh",
+      "family": "host",
+      "intent": "ssh",
+      "independent_principal": "registered_host_operator",
+      "default_state": "DISCOVERABLE_NOT_GRANTED"
+    },
+    {
+      "id": "wordpress.wpcli",
+      "family": "wordpress",
+      "intent": "wp_cli",
+      "independent_principal": "wordpress_bound_operator",
+      "default_state": "DISCOVERABLE_NOT_GRANTED"
+    },
+    {
+      "id": "database.sql.read",
+      "family": "database",
+      "intent": "sql_read",
+      "independent_principal": "database_scoped_principal",
+      "default_state": "DISCOVERABLE_NOT_GRANTED"
+    },
+    {
+      "id": "database.sql.write",
+      "family": "database",
+      "intent": "sql_write",
+      "independent_principal": "database_scoped_principal",
+      "default_state": "DISCOVERABLE_NOT_GRANTED"
+    },
+    {
+      "id": "database.sql.schema",
+      "family": "database",
+      "intent": "sql_schema",
+      "independent_principal": "database_scoped_principal",
+      "default_state": "DISCOVERABLE_NOT_GRANTED"
+    },
+    {
+      "id": "native.install",
+      "family": "native_executor",
+      "intent": "install",
+      "independent_principal": "registered_native_executor",
+      "default_state": "DISCOVERABLE_NOT_GRANTED"
+    },
+    {
+      "id": "native.update",
+      "family": "native_executor",
+      "intent": "update",
+      "independent_principal": "registered_native_executor",
+      "default_state": "DISCOVERABLE_NOT_GRANTED"
+    },
+    {
+      "id": "native.deploy",
+      "family": "native_executor",
+      "intent": "deploy",
+      "independent_principal": "registered_native_executor",
+      "default_state": "DISCOVERABLE_NOT_GRANTED"
+    },
+    {
+      "id": "native.rollback",
+      "family": "native_executor",
+      "intent": "rollback",
+      "independent_principal": "registered_native_executor",
+      "default_state": "DISCOVERABLE_NOT_GRANTED"
+    },
+    {
+      "id": "broker.dispatch",
+      "family": "transport",
+      "intent": "broker",
+      "independent_principal": "signed_broker_job",
+      "default_state": "DISCOVERABLE_NOT_GRANTED"
+    },
+    {
+      "id": "mcp.dispatch",
+      "family": "transport",
+      "intent": "mcp",
+      "independent_principal": "oauth_mcp_subject",
+      "default_state": "DISCOVERABLE_NOT_GRANTED"
+    },
+    {
+      "id": "ssh.fallback",
+      "family": "transport",
+      "intent": "ssh_fallback",
+      "independent_principal": "registered_host_operator",
+      "default_state": "DISCOVERABLE_NOT_GRANTED"
+    }
+  ]
+}
