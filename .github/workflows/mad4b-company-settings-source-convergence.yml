@@ -118,3 +118,8 @@ jobs:
           php "$base/dynamic-hardening-pure-runtime.php"
           python3 "$base/dynamic-runtime-hardening-contract.py"
           python3 "$base/mcp-client-compatibility-contract.py"
+          python3 "$base/context-media-inventory-contract.py"
+          python3 "$base/admin-settings-persistence-contract.py"
+          php "$base/staging-write-candidate-binding-runtime.php"
+          php "$base/schema-migration-runtime-contract.php"
+          php "$base/undo-intent-fault-injection.php"

@@ -51,6 +51,9 @@ final class MAD4B_SCP_Identity_Context {
 	}
 }
 final class MAD4B_SCP_Agent_Registry {
+	public static function get_agent_by_slug( $slug ) {
+		return 'chatgpt-governed-write' === $slug ? self::resolve_agent( array() ) : false;
+	}
 	public static function resolve_agent( $identity ) {
 		return array(
 			'id' => 5,
@@ -99,6 +102,7 @@ final class MAD4B_SCP_Audit {
 }
 
 final class MAD4B_SCP_Staging_Write_Authority {
+	public static function is_exact_delegated_oauth_agent( $other, $user_id ) { return false; } // This fixture only enrolls canonical governed-write; no delegated subject.
 	const OPTION = 'mad4b_scp_staging_write_authority_v1';
 	const CANDIDATE_BINDING_CONTRACT = 'mad4b.governed-write-authority-candidate-binding.v2';
 	public static $reconcile_calls = 0;
