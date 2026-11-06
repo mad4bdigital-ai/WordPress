@@ -9,8 +9,18 @@ $collection=get_option('mad4b_perf_css_browser_evidence_v2',[]);
 $record=$collection['records'][0]??[];
 $plan=MAD4B_Company_Performance_Intelligence::adaptive_css_decisions_v2();
 $actual=$plan['decisions'][0]['evaluation']??[];
-$check('live_hold_lcp_regression',($actual['state']??'')==='hold_lcp_regression' && ($actual['decision']??'')==='native');
-$check('real_two_pairs_and_p75',($actual['pairs']??0)===2 && ($actual['lcp_post_ttfb_delta_p75_ms']??0)===412 && ($actual['fcp_post_ttfb_delta_p75_ms']??0)===-2528);
+$event=get_option('mad4b_lsc_css_drift_event_v1',[]);
+$hasConfigDrift=is_array($event) && ($event['contract']??'')==='mad4b.lsc.css-option-event.v1'
+    && (int)($event['observed_at']??0)>strtotime((string)($record['captured_at_utc']??''));
+if ($hasConfigDrift) {
+    $check('live_historic_evidence_invalidated',($actual['state']??'')==='hold'
+        && in_array('litespeed_css_changed_after_evidence',$actual['reason_codes']??[],true)
+        && ($actual['decision']??'')==='native');
+    $check('historic_browser_evidence_preserved',count($record['pairs']??[])===2);
+} else {
+    $check('live_hold_lcp_regression',($actual['state']??'')==='hold_lcp_regression' && ($actual['decision']??'')==='native');
+    $check('real_two_pairs_and_p75',($actual['pairs']??0)===2 && ($actual['lcp_post_ttfb_delta_p75_ms']??0)===412 && ($actual['fcp_post_ttfb_delta_p75_ms']??0)===-2528);
+}
 $check('real_coverage_gap',count($plan['languages_missing_css_plan']??[])===5);
 $ctx=['site_host'=>'tours.dev.mad4b.com','environment'=>'staging','path'=>'/','locale'=>'en','device'=>'mobile',
   'source_bundle_sha'=>$record['source_bundle_sha'],'elementor_doc_fingerprint'=>$record['elementor_doc_fingerprint'],

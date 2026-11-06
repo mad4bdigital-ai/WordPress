@@ -122,6 +122,41 @@ final class MAD4B_SCP_Admin_Query_Performance_UI {
         }
 
 		echo '</tbody></table>';
+        if (class_exists('MAD4B_LSC_Local_Provider_V1',false)
+            && method_exists('MAD4B_LSC_Local_Provider_V1','css_delivery_diagnostics_v2')) {
+            $d=MAD4B_LSC_Local_Provider_V1::css_delivery_diagnostics_v2();
+            echo '<h3>LiteSpeed Configured vs Effective CSS</h3>';
+            echo '<p>Saved switches may be dormant: the LiteSpeed-resolved option, service prerequisites and actual HTML observation are separate facts.</p>';
+            echo '<table class="widefat striped" style="max-width:900px"><thead><tr><th>Option</th><th>Configured</th><th>LiteSpeed resolved</th></tr></thead><tbody>';
+            foreach((array)($d['configured']??[]) as $key=>$on) {
+                echo '<tr><td>'.esc_html((string)$key).'</td><td>'.($on?'ON':'OFF').'</td><td>'.(!empty($d['resolved'][$key])?'ON':'OFF').'</td></tr>';
+            }
+            echo '</tbody></table>';
+            echo '<p><strong>Effective Async:</strong> '.esc_html((string)($d['effective_async']??'unknown'));
+            echo ' | <strong>Effective UCSS:</strong> '.esc_html((string)($d['effective_ucss']??'unknown'));
+            echo ' | <strong>QUIC activated:</strong> '.(!empty($d['quic_activated'])?'yes':'no').'</p>';
+            $codes=(array)($d['drift_codes']??[]);
+            echo '<p><strong>Detected dormant dependencies / drift:</strong> '.esc_html($codes?implode(', ',$codes):'none').'</p>';
+            $observations=(array)($d['observed_frontend']??[]);
+            echo '<p><strong>Recent anonymous HTML observations:</strong> '.count($observations).' (PHP/LiteSpeed misses only; not Nginx cache hits)</p>';
+            if ($observations) {
+                echo '<table class="widefat striped" style="max-width:900px"><thead><tr><th>Route / device</th><th>CSS bundle</th><th>LS CCSS</th><th>LS UCSS</th><th>MAD4B CCSS</th><th>Combined CSS</th></tr></thead><tbody>';
+                foreach($observations as $sample) {
+                    if (!is_array($sample))continue;
+                    echo '<tr><td>'.esc_html((string)($sample['id']??'?')).'</td><td>'.esc_html((string)($sample['bundle_file']??'unknown')).'</td><td>'.(!empty($sample['litespeed_ccss'])?'yes':'no').'</td><td>'.(!empty($sample['litespeed_ucss'])?'yes':'no').'</td><td>'.(!empty($sample['mad4b_ccss'])?'yes':'no').'</td><td>'.(!empty($sample['css_bundle'])?'yes':'no').'</td></tr>';
+                }
+                echo '</tbody></table>';
+            }
+            $bundleDrift=(array)($d['bundle_drift']??[]);
+            if ($bundleDrift)echo '<p><strong>CSS source bundle drift:</strong> '
+                .esc_html((string)($bundleDrift['path']??'')).' · '
+                .esc_html((string)($bundleDrift['locale']??'')).' · '
+                .esc_html((string)($bundleDrift['device']??'')).' — '
+                .esc_html((string)($bundleDrift['bundle_file']??''))
+                .'. Native CSS is preserved until an exact-source performance plan passes.</p>';
+            $event=(array)($d['last_event']??[]);
+            if ($event)echo '<p><strong>Last LiteSpeed CSS change:</strong> '.esc_html((string)($event['option']??'')) . ' at '.esc_html(gmdate('Y-m-d H:i:s',(int)($event['observed_at']??0))).' UTC</p>';
+        }
 		$routes=(array)($plan['routes'] ?? array());
 		if ($routes) {
 			echo '<table class="widefat striped" style="max-width:960px"><thead><tr><th>Route</th><th>Device</th><th>Gate</th><th>Baseline LCP</th><th>Async LCP</th><th>Critical gzip</th></tr></thead><tbody>';

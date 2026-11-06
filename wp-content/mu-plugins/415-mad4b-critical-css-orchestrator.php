@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: MAD4B Verified Critical CSS
- * Version: 0.3.12
+ * Version: 0.3.13
  * Description: Serve measured first-paint CSS only for exact live LiteSpeed CSS content hashes. Fail open on any mismatch.
  */
 defined('ABSPATH') || exit;
@@ -171,6 +171,10 @@ final class MAD4B_Predictive_CSS_Plan_V2 {
             || !empty($_SERVER['HTTP_X_GEO_COUNTRY'])
             || !empty($_SERVER['HTTP_CF_IPCOUNTRY'])
             || !empty($_SERVER['HTTP_X_FORWARDED_GEO_COUNTRY'])) return null;
+        // A resolved LiteSpeed UCSS or Async choice owns CSS delivery. Never
+        // allow MAD4B to inject a second optimization on the same request.
+        if (!class_exists('MAD4B_LSC_Local_Provider_V1',false)
+            || !MAD4B_LSC_Local_Provider_V1::local_css_eligible()) return null;
         $manifest=self::load();
         if (!$manifest) return null;
         // Release may certify one viewport without requiring the other viewport

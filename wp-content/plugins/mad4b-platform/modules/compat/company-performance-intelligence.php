@@ -5,6 +5,7 @@
  * No options, products, site content, server config, or presets are modified.
  */
 defined('ABSPATH') || exit;
+require_once __DIR__.'/adaptive-css-intelligence/adapter.php';
 final class MAD4B_Company_Performance_Intelligence {
     const ABILITY = 'mad4b/company-performance-scan-plan';
     const CONTRACT = 'mad4b.company-performance-intelligence.v1';
@@ -165,6 +166,17 @@ final class MAD4B_Company_Performance_Intelligence {
             && ($lcpTrial['verdict']??'')==='rejected_regression'
             && is_array($lcpTrial['results']??null)
             && count($lcpTrial['results'])>=2;
+        $lcpDiagnostics=get_option('mad4b_perf_lcp_diagnostics_v2',[]);
+        $lcpDiagnosticsValid=is_array($lcpDiagnostics)
+            && ($lcpDiagnostics['contract']??'')==='mad4b.lcp-diagnostics.v2'
+            && ($lcpDiagnostics['site_host']??'')===$host
+            && ($lcpDiagnostics['environment']??'')===wp_get_environment_type()
+            && ($lcpDiagnostics['route']??'')==='/'
+            && ($lcpDiagnostics['locale']??'')==='en'
+            && ($lcpDiagnostics['device']??'')==='mobile'
+            && ($lcpDiagnostics['conclusion']??'')==='no_safe_mobile_lcp_release_proven'
+            && is_array($lcpDiagnostics['tests']??null)
+            && count($lcpDiagnostics['tests'])===3;
         $modern=self::adaptive_css_decisions_v2();
         $modernRows=(array)($modern['decisions']??[]);
         $decisions=[];
@@ -264,6 +276,13 @@ final class MAD4B_Company_Performance_Intelligence {
                 $steps[2]['status']='next_required';
                 $steps[2]['action']='Next: isolate the first destination background dependencies inside the 530KB inline Critical CSS, reduce CSS needed before first card paint, and profile CSS/JS scheduling without deprioritizing the hero preload.';
             }
+            if ($device==='mobile' && $route==='/' && $locale==='en' && $lcpDiagnosticsValid) {
+                // Nine additional browser A/B variants ruled out previously
+                // proposed CSS priority, incomplete critical CSS and autoplay
+                // toggles. Preserve the measured native fallback; avoid loops.
+                $steps[2]['status']='render_sequence_analysis_required';
+                $steps[2]['action']='Measured LCP is the first JetEngine Swiper destination background in Elementor template 45927, not a large image download. CSS-only removal triggered CLS~0.16, CSS priority regressed LCP, and pausing autoplay was inconsistent. Next isolate above-fold Swiper/Elementor first-card rendering and cold TTFB/cache eligibility without caching currency, booking or visitor context. Repeat 5+ controlled A/B tests before any mobile activation.';
+            }
             $eligible=$sample_count>=5 && $fcp_wins===$sample_count
                 && $lcp_regressions===0 && !$release_blocked;
             $decisions[]=[
@@ -287,6 +306,10 @@ final class MAD4B_Company_Performance_Intelligence {
                 'measured_lcp_element'=>$row['measured_lcp']??null,
                 'verified_lcp_image'=>$lcp_image,
                 'lcp_preload_pilot'=>$device==='mobile' && $trialRejected ? 'rejected_and_rolled_back' : 'not_accepted',
+                'lcp_diagnostics_state'=>$device==='mobile' && $lcpDiagnosticsValid ?
+                    'no_safe_mobile_lcp_release_proven' : 'not_recorded',
+                'lcp_diagnostic_trials'=>$device==='mobile' && $lcpDiagnosticsValid ?
+                    array_sum(array_map('count',$lcpDiagnostics['tests'])) : 0,
                 'critical_css_gzip_bytes'=>(int)($row['critical_gzip_bytes']??0),
                 'next_steps'=>$steps,
             ];
@@ -342,6 +365,16 @@ final class MAD4B_Company_Performance_Intelligence {
         if (!$stamp || $stamp>time()+300 || $stamp<time()-72*3600) {
             $fail('evidence_stale_or_unclocked');return $out;
         }
+        // Native LiteSpeed CSS changes invalidate all prior browser evidence.
+        // Historic results remain readable, but they cannot certify delivery
+        // under a different CSS configuration.
+        $changed=get_option('mad4b_lsc_css_drift_event_v1',[]);
+        if (is_array($changed) && ($changed['contract']??'')==='mad4b.lsc.css-option-event.v1'
+            && (int)($changed['observed_at']??0)>0
+            && $stamp < (int)$changed['observed_at']) {
+            $fail('litespeed_css_changed_after_evidence');return $out;
+        }
+
         if (($record['source']??'')!=='staging_chromium_ab'
             || !in_array(($record['candidate']??''),['critical_async','ucss_async','ucss_inline'],true)) {
             $fail('unknown_experiment_source_or_strategy');return $out;
@@ -501,7 +534,10 @@ final class MAD4B_Company_Performance_Intelligence {
         if (!is_array($manifest))$manifest=[];
         $release=(string)($manifest['release_state']??'none');
         $now=time();$policies=[];$approved=0;
+        $ownerCompatible=class_exists('MAD4B_LSC_Local_Provider_V1',false)
+            && MAD4B_LSC_Local_Provider_V1::local_css_eligible();
         foreach((array)($analysis['decisions']??[]) as $entry) {
+            if (!$ownerCompatible) continue;
             $evaluation=$entry['evaluation']??[];
             if (!is_array($evaluation) || empty($evaluation['public_eligible'])
                 || ($evaluation['candidate']??'')!=='critical_async'
@@ -748,7 +784,7 @@ final class MAD4B_Company_Performance_Intelligence {
             return $p ?: strcmp($a['id'],$b['id']);
         });
 
-        return [
+        $report = [
             'contract'=>self::CONTRACT,'scope'=>'current_staging_company_only',
             'readonly'=>true,'mutation_performed'=>false,'auto_apply_allowed'=>false,
             'scan_snapshot_sha256'=>$digest,
@@ -771,6 +807,7 @@ final class MAD4B_Company_Performance_Intelligence {
                 'plans_are_not_owner_approval'=>true,
             ]
         ];
+        return MAD4B_Adaptive_CSS_WP_Report_Adapter::augment($report);
     }
 }
 MAD4B_Company_Performance_Intelligence::boot();
