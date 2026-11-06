@@ -11,6 +11,11 @@ on:
       - 'packages/mad4b-shared-product-core/mu-plugins/**'
       - 'ops/mad4b-company-live-convergence-20261106/**'
       - 'ops/company-readiness-workflow/original-native-schema-313-v1/**'
+      - 'ops/company-readiness-workflow/central-signed-wpcli-priority-v1/**'
+      - 'ops/company-readiness-workflow/host-provisioning-runtime-v1/systemd/mad4b-company-plugin-install-capability.timer'
+      - 'ops/company-readiness-workflow/host-provisioning-runtime-v1/tests/test_plugin_install_heartbeat_cadence.py'
+      - 'wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-native-plugin-install-handler.php'
+      - 'wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-native-plugin-install-provider.php'
       - '.github/workflows/mad4b-company-settings-source-convergence.yml'
   push:
     paths:
@@ -23,6 +28,11 @@ on:
       - 'packages/mad4b-shared-product-core/mu-plugins/**'
       - 'ops/mad4b-company-live-convergence-20261106/**'
       - 'ops/company-readiness-workflow/original-native-schema-313-v1/**'
+      - 'ops/company-readiness-workflow/central-signed-wpcli-priority-v1/**'
+      - 'ops/company-readiness-workflow/host-provisioning-runtime-v1/systemd/mad4b-company-plugin-install-capability.timer'
+      - 'ops/company-readiness-workflow/host-provisioning-runtime-v1/tests/test_plugin_install_heartbeat_cadence.py'
+      - 'wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-native-plugin-install-handler.php'
+      - 'wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-native-plugin-install-provider.php'
       - '.github/workflows/mad4b-company-settings-source-convergence.yml'
 concurrency:
   group: mad4b-company-settings-source-convergence-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
@@ -48,7 +58,15 @@ jobs:
           set -eu
           base=ops/company-readiness-workflow/original-native-schema-313-v1
           python3 "$base/test_schema_receipt_resume.py"
-          python3 "$base/test_schema_signed_authority_busy.py
+          python3 "$base/test_schema_signed_authority_busy.py"
+      - name: Verify original signed WP-CLI priority and five-minute readiness policy
+        run: |
+          set -eu
+          priority=ops/company-readiness-workflow/central-signed-wpcli-priority-v1
+          heartbeat=ops/company-readiness-workflow/host-provisioning-runtime-v1
+          python3 -B "$priority/test_wpcli_signed_priority.py"
+          python3 -B "$priority/wpcli-signed-priority.py" selftest
+          python3 -B "$heartbeat/tests/test_plugin_install_heartbeat_cadence.py"
   runtime-contracts:
     runs-on: ubuntu-latest
     permissions:

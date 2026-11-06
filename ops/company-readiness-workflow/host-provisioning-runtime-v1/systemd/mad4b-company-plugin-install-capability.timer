@@ -1,0 +1,13 @@
+[Unit]
+Description=Inspect signed plugin.install readiness or verified installed resource every 5m
+
+[Timer]
+OnBootSec=80s
+OnUnitInactiveSec=300s
+RandomizedDelaySec=5s
+AccuracySec=10s
+Persistent=false
+Unit=mad4b-company-plugin-install-capability.service
+
+[Install]
+WantedBy=timers.target

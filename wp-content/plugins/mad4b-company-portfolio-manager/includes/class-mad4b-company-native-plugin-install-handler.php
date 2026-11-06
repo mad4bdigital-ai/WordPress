@@ -5,6 +5,8 @@
  */
 defined('ABSPATH') || exit;
 final class MAD4B_Company_Native_Plugin_Install_Handler_V1 {
+ /** Signed capability readiness TTL; never an original 305 job authorization. */
+ public const MAX_AGE_SECONDS=600;
  const CONTRACT='mad4b.native-312-plugin-install-capability.v1';
  const OPTION='mad4b_company_native_plugin_install_handler_activation_v1';
  const PROVIDER='mad4b_company_plugin_install_exact_handler';
@@ -39,7 +41,7 @@ final class MAD4B_Company_Native_Plugin_Install_Handler_V1 {
    ||!preg_match('/^[a-f0-9]{64}$/D',$p['command_sha256'])
    ||!preg_match('/^[a-f0-9]{32}$/D',$p['nonce'])
    ||!is_int($p['heartbeat_epoch'])
-   ||$p['heartbeat_epoch']>$now+10 ||$p['heartbeat_epoch']<$now-180)
+   ||$p['heartbeat_epoch']>$now+10 ||$p['heartbeat_epoch']<$now-self::MAX_AGE_SECONDS)
     return self::denied('SIGNED_HEARTBEAT_SCOPE_OR_AGE_INVALID');
   foreach(['handler_ready','target_wpcli_verified','readback_supported','rollback_supported'] as $field)
    if($p[$field]!=='1')return self::denied('CAPABILITY_CHECK_NOT_READY');

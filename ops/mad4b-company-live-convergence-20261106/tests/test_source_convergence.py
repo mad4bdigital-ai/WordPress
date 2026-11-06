@@ -74,4 +74,40 @@ for file_name,checksum in schema_manifest['source_sha256'].items():
 worker=(schema_root/'claimed-job-worker.py').read_text()
 assert 'schema.readback.resume' in worker and 'if reserved:' in worker
 assert 'time.time()+360' in worker
+# Recent signed WP-CLI priority is a read-only scheduling hint, NOT a new
+# authority. The source snapshot has an immutable scoped readback manifest.
+priority_root=root/'ops/company-readiness-workflow/central-signed-wpcli-priority-v1'
+priority_manifest=json.loads((priority_root/'source-manifest.json').read_text())
+assert priority_manifest['contract']=='mad4b.central-signed-wpcli-priority-source.v1'
+assert priority_manifest['source_only'] is True
+assert priority_manifest['wpcli_concurrency_limit_unchanged']==2
+assert priority_manifest['original_305_312_313_grants_changed'] is False
+assert priority_manifest['original_313_job_certified_by_source_commit'] is False
+assert len(priority_manifest['live_sha256'])==4
+for name,digest in priority_manifest['live_sha256'].items():
+    assert '/' not in name and (priority_root/name).is_file(),name
+    assert hashlib.sha256((priority_root/name).read_bytes()).hexdigest()==digest,name
+scheduler=(priority_root/'wpcli-site-scheduler.py').read_text()
+assert 'len(SPECS)==11' in scheduler and 'if defer_if_signed_priority(args.unit):return 0' in scheduler
+assert 'if defer_if_signed_priority(args.unit):return 0' in scheduler.split('fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)',1)[1]
+# Heartbeat cadence must never outlive the *same native* readiness TTL. The
+# host timer does not itself issue 305 jobs or grant WordPress permissions.
+from configparser import ConfigParser
+heartbeat_root=root/'ops/company-readiness-workflow/host-provisioning-runtime-v1'
+config=ConfigParser(interpolation=None)
+assert config.read(heartbeat_root/'systemd/mad4b-company-plugin-install-capability.timer')
+sec=config['Timer']
+def unit_seconds(value):
+    assert value.endswith('s') and value[:-1].isdigit(),value
+    return int(value[:-1])
+period=unit_seconds(sec['OnUnitInactiveSec'])
+jitter=unit_seconds(sec['RandomizedDelaySec'])
+accuracy=unit_seconds(sec['AccuracySec'])
+handler=(root/'wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-native-plugin-install-handler.php').read_text()
+provider=(root/'wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-native-plugin-install-provider.php').read_text()
+assert 'public const MAX_AGE_SECONDS=600;' in handler
+assert "$p['heartbeat_epoch']<$now-self::MAX_AGE_SECONDS" in handler
+assert "$cap['heartbeat_epoch']<$now-$class::MAX_AGE_SECONDS" in provider
+assert period==300 and period+jitter+accuracy<600
+assert sec['Unit']=='mad4b-company-plugin-install-capability.service'
 print(json.dumps({'result':'PASS','fingerprints':len(manifest['sha256']),'skills':len(skills['skills']),'release':'2026-11-06-company-settings-live-convergence'}))

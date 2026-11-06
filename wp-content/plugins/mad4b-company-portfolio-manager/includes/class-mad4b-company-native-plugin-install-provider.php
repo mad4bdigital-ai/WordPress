@@ -73,7 +73,7 @@ final class MAD4B_Company_Native_Plugin_Install_Provider_V1 {
            || ($cap['rollback_supported']??null)!==true
            || !is_int($cap['heartbeat_epoch']??null)
            || $cap['heartbeat_epoch']>$now+10
-           || $cap['heartbeat_epoch']<$now-180)
+           || $cap['heartbeat_epoch']<$now-$class::MAX_AGE_SECONDS)
             return self::result('EXECUTOR_NOT_READY_OR_HEARTBEAT_STALE');
         return [
             'contract'=>self::EVIDENCE,
