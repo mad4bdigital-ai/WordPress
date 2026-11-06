@@ -70,6 +70,18 @@ class PriorityAdmission(unittest.TestCase):
   with patch.object(self.priority,'enrolled_database',return_value='db-test'):
    result=self.priority.live_jobs(now=1200,run=fake_run)
   self.assertEqual(len(result),1)
+ def test_optional_telemetry_gate_blocks_only_while_job_eligible(self):
+  import io,contextlib,sys
+  with patch.object(self.priority.os,'geteuid',return_value=0):
+   with patch.object(sys,'argv',['priority','optional-admit']),patch.object(self.priority,'live_jobs',return_value=[{'job_id':'a'*32}]),contextlib.redirect_stdout(io.StringIO()):
+    self.assertEqual(self.priority.main(),1)
+   with patch.object(sys,'argv',['priority','optional-admit']),patch.object(self.priority,'live_jobs',return_value=[]),contextlib.redirect_stdout(io.StringIO()):
+    self.assertEqual(self.priority.main(),0)
+ def test_optional_telemetry_db_outage_does_not_suspend_monitoring(self):
+  import io,contextlib,sys
+  with patch.object(self.priority.os,'geteuid',return_value=0),patch.object(sys,'argv',['priority','optional-admit']),patch.object(self.priority,'live_jobs',side_effect=RuntimeError('CENTRAL_JOB_PRIORITY_DB_READ_UNAVAILABLE')),contextlib.redirect_stdout(io.StringIO()) as out:
+   self.assertEqual(self.priority.main(),0)
+   self.assertIn('PRIORITY_PROBE_UNAVAILABLE',out.getvalue())
  def test_root_bounded_job_scan(self):
   self.assertLessEqual(self.priority.MAX_JOBS,64)
   self.assertIn('expires_epoch',self.priority.classify.__code__.co_consts)

@@ -143,12 +143,19 @@ def selftest():
 
 def main():
     parser=argparse.ArgumentParser()
-    parser.add_argument('action',choices=['status','selftest'])
+    parser.add_argument('action',choices=['status','selftest','optional-admit'])
     args=parser.parse_args()
     if args.action=='selftest':selftest();return 0
     if os.geteuid()!=0:raise RuntimeError('ROOT_READ_ONLY_SCOPE_REQUIRED')
     try:
         jobs=live_jobs()
+        if args.action=='optional-admit':
+            # systemd ExecCondition: 0 starts noncritical telemetry; 1 skips
+            # it while a time-eligible owner-created Job is in flight.
+            print(json.dumps({'contract':'mad4b.original-signed-wpcli-priority.v1',
+                'state':'DEFER_OPTIONAL_TELEMETRY' if jobs else 'ALLOW_OPTIONAL_TELEMETRY',
+                'jobs_detected':len(jobs),'no_authority_changed':True},sort_keys=True))
+            return 1 if jobs else 0
         print(json.dumps({'contract':'mad4b.original-signed-wpcli-priority.v1',
             'state':'SIGNED_JOB_PRIORITY_ACTIVE' if jobs else 'NO_ELIGIBLE_ORIGINAL_SIGNED_JOB',
             'defer_optional':bool(jobs),'jobs_detected':len(jobs),
@@ -160,6 +167,8 @@ def main():
             'state':'PRIORITY_PROBE_UNAVAILABLE','defer_optional':False,
             'reason':str(exc) if str(exc).isupper() else type(exc).__name__,
             'claims_created':0,'grant_issued':False},sort_keys=True))
-        return 2
+        # A failed *priority hint* is not permission to claim or execute
+        # anything. Do not accidentally disable monitoring on DB outages.
+        return 0 if args.action=='optional-admit' else 2
 
 if __name__=='__main__':sys.exit(main())

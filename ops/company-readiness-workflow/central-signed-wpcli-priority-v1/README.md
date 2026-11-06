@@ -29,3 +29,9 @@ systemctl show mad4b-company-original-313-worker.service -p Nice -p CPUWeight
 ## Limitations
 
 This prioritizes the 11 services already registered with the serial scheduler. Independent processes not using that scheduler may still consume slots. Do not claim a guaranteed empty slot or a signed 313 certificate without host and Central readback proof.
+
+## Independent telemetry admission (after first deployment)
+
+The original dispatch core triggers `mad4b-dispatch-telemetry.service`, which can run independent noncritical WP-CLI diagnostic commands outside the 11-service serial scheduler. The deployed systemd `ExecCondition` calls the same read-only bounded priority probe through its `optional-admit` subcommand. When an original owner-created time-eligible Job is present, it skips **starting** that optional telemetry service (exit code 1); it does not stop running work or affect the original Broker service. When no job is present, exit code 0 allows normal telemetry; if the priority DB probe fails, telemetry is also allowed (without granting any execution authority).
+
+The two added isolated tests cover deferral, resumption and DB-probe failure. Current tests: **14/14 PASS**. This mitigates telemetry contention but does not preempt all independently invoked WP-CLI commands.
