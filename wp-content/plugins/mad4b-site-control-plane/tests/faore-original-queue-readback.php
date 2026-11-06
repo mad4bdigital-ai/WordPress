@@ -1,12 +1,12 @@
 <?php
 declare(strict_types=1);
 define('ABSPATH','/test/');
-final class WP_Error {public function __construct(public string $code, public string $message, public array $data=[]) {}}
-final class WP_REST_Response {public array $headers=[];public function __construct(public array $data) {}public function header($k,$v):void{$this->headers[$k]=$v;}}
+final class WP_Error {public string $code;public string $message;public array $data;public function __construct(string $code,string $message,array $data=[]){$this->code=$code;$this->message=$message;$this->data=$data;}}
+final class WP_REST_Response {public array $headers=[];public array $data;public function __construct(array $data){$this->data=$data;}public function header($k,$v):void{$this->headers[$k]=$v;}}
 final class WP_REST_Request implements ArrayAccess {
-    public function __construct(private array $values) {}
+    private array $values;public function __construct(array $values){$this->values=$values;}
     public function offsetExists($key):bool{return isset($this->values[$key]);}
-    public function offsetGet($key):mixed{return $this->values[$key]??null;}
+    public function offsetGet($key){return $this->values[$key]??null;}
     public function offsetSet($key,$value):void{$this->values[$key]=$value;}
     public function offsetUnset($key):void{unset($this->values[$key]);}
 }

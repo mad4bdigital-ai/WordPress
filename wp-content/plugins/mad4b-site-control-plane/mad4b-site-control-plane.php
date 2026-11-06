@@ -624,6 +624,8 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-resource-writer.php
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-snapshot-identity.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-exporter.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-runtime-certification.php';
+require_once MAD4B_SCP_DIR . 'includes/class-external-skill-sources.php';
+require_once MAD4B_SCP_DIR . 'includes/class-skill-task-composition.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-abilities.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-remote-work-queue.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-remote-operation-parity.php';

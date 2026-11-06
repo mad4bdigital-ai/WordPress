@@ -27,3 +27,36 @@ jobs:
         run: python3 ops/mad4b-company-live-convergence-20261106/tests/test_source_convergence.py
       - name: Verify Experience footer coexistence patch and source SHA
         run: python3 ops/company-readiness-workflow/host-provisioning-runtime-v1/tests/test_experience_footer_coexistence_patch.py
+  runtime-contracts:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PHP runtime for native skill and source-contract checks
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Verify governed read-only Skill registration and QA20 source verification
+        run: |
+          set -eu
+          base=wp-content/plugins/mad4b-site-control-plane/tests
+          php "$base/skill-task-abilities-runtime.php"
+          php "$base/qa20-source-allowlist-rc118-runtime.php"
+          php "$base/projection-registration-lifecycle.php"
+          php "$base/faore-local-observability.php"
+          php "$base/faore-original-queue-readback.php"
+          php "$base/private-operations-behavioral-runtime.php"
+      - name: Verify exact v14 migration and existing governance contracts
+        run: |
+          set -eu
+          base=wp-content/plugins/mad4b-site-control-plane/tests
+          python3 "$base/schema-dbdelta-upgrade-contract.py"
+          python3 "$base/spec-consistency-contract.py"
+          python3 "$base/agent-governance-contract.py"
+          python3 "$base/approval-console-v2-contract.py"

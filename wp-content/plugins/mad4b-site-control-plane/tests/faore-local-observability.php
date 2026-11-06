@@ -1,9 +1,9 @@
 <?php
 define('ABSPATH','/test/');
-class WP_Error {public function __construct(public $code,public $message,public $data) {}}
+class WP_Error {public $code;public $message;public $data;public function __construct($code,$message,$data){$this->code=$code;$this->message=$message;$this->data=$data;}}
 class WP_REST_Response {
     public array $headers = [];
-    public function __construct(public $data) {}
+    public $data;public function __construct($data) {$this->data=$data;}
     public function header($key,$value):void {$this->headers[$key]=$value;}
 }
 function is_wp_error($x):bool {return $x instanceof WP_Error;}
