@@ -7,14 +7,18 @@
     "wpcli-site-scheduler.py": "/opt/mad4b-company-provisioning/bin/wpcli-site-scheduler.py",
     "test_wpcli_signed_priority.py": "/opt/mad4b-company-provisioning/bin/test_wpcli_signed_priority.py",
     "70-signed-wpcli-priority.conf": "/etc/systemd/system/mad4b-company-original-313-worker.service.d/70-signed-wpcli-priority.conf",
-    "50-original-signed-wpcli-priority.conf": "/etc/systemd/system/mad4b-dispatch-telemetry.service.d/50-original-signed-wpcli-priority.conf"
+    "50-original-signed-wpcli-priority.conf": "/etc/systemd/system/mad4b-dispatch-telemetry.service.d/50-original-signed-wpcli-priority.conf",
+    "vps-broker-poller.py": "/opt/mad4b-company-transport/broker-v1/vps-broker-poller.py",
+    "test_vps_broker_busy.py": "/opt/mad4b-company-transport/broker-v1/test_vps_broker_busy.py"
   },
   "live_sha256": {
     "wpcli-signed-priority.py": "87b0cc79823c528d88f37e7941ab26f919c50b57ef91dc954adf715a9d25f63e",
     "wpcli-site-scheduler.py": "e3a342bac6ebf44461bc9c2556a993b3699566387378ffbb4fc26e0220196edc",
     "test_wpcli_signed_priority.py": "0dcfda96ac5201eddd8e026501f7a399672ebc432b9b32e18e54614994272671",
     "70-signed-wpcli-priority.conf": "572e750c9adbbc48934537f972fde23697d36c1c0b581d1fef47607e67a527b2",
-    "50-original-signed-wpcli-priority.conf": "5fc96f847e924f076b88df96028c946c6368b4a8b1953de8e33cb06fd496d0d2"
+    "50-original-signed-wpcli-priority.conf": "5fc96f847e924f076b88df96028c946c6368b4a8b1953de8e33cb06fd496d0d2",
+    "vps-broker-poller.py": "b513f77575770273785bcda49fee577b5b8b05105c22de2ebe281c9c47a42a5c",
+    "test_vps_broker_busy.py": "d9d48b118bad9f8fa6aff9990ef4a59f24f1ef3a1bdff0e09134ad97fb645ce2"
   },
   "original_305_312_313_grants_changed": false,
   "original_313_job_certified_by_source_commit": false,

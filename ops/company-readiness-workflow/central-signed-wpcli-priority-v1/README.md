@@ -35,3 +35,11 @@ This prioritizes the 11 services already registered with the serial scheduler. I
 The original dispatch core triggers `mad4b-dispatch-telemetry.service`, which can run independent noncritical WP-CLI diagnostic commands outside the 11-service serial scheduler. The deployed systemd `ExecCondition` calls the same read-only bounded priority probe through its `optional-admit` subcommand. When an original owner-created time-eligible Job is present, it skips **starting** that optional telemetry service (exit code 1); it does not stop running work or affect the original Broker service. When no job is present, exit code 0 allows normal telemetry; if the priority DB probe fails, telemetry is also allowed (without granting any execution authority).
 
 The two added isolated tests cover deferral, resumption and DB-probe failure. Current tests: **14/14 PASS**. This mitigates telemetry contention but does not preempt all independently invoked WP-CLI commands.
+
+## Original Broker 306 capacity correction — 7 November 2026
+
+The live original `vps-broker-poller.py` previously only deferred on `returncode == 75` plus `STAGING_WPCLI_BUSY`, while WordPress's Docker/CLI wrapper sometimes returns code `1` with the same exact **stderr** guard message. The corrected poller defers only when an unsuccessful original WordPress command has a stderr line beginning with `STAGING_WPCLI_BUSY:`. Other errors, such as `CENTRAL_HOST_REQUIRED` or `OWNER_PERMISSION_DENIED`, continue to fail closed. The signed 306 heartbeat, claim verification, job scopes and two-slot guard are unchanged.
+
+`test_vps_broker_busy.py` provides 7/7 regressions covering both busy exit codes, real denials, fake stdout busy text, receipt typing, and missing JSON. A deferral **is not** a signed heartbeat or an Independent 313 certificate.
+
+The exact host private signing key is never included in this PR.
