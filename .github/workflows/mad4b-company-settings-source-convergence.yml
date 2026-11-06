@@ -104,3 +104,12 @@ jobs:
           python3 "$base/spec-consistency-contract.py"
           python3 "$base/agent-governance-contract.py"
           python3 "$base/approval-console-v2-contract.py"
+      - name: Verify governed Site Profile, exact Google scopes, and Context/Brand safety
+        run: |
+          set -eu
+          base=wp-content/plugins/mad4b-site-control-plane/tests
+          php "$base/site-profile-lifecycle-matrix-runtime.php"
+          php "$base/context-oauth-lifecycle-runtime.php"
+          php "$base/content-job-transaction-fault-runtime.php"
+          python3 "$base/context-managed-google-signin-contract.py"
+          python3 "$base/context-authority-contract.py"

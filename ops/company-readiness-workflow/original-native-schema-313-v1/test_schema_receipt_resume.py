@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Read-only safety regression for one-shot schema host receipt delivery."""
-import importlib.util,os,pathlib,stat,tempfile,types,unittest
+import importlib.util,os,pathlib,stat,sys,tempfile,types,unittest
 from unittest.mock import patch
 ROOT=pathlib.Path(__file__).resolve().parent
 
@@ -13,7 +13,15 @@ class SchemaReceiptRecoveryTests(unittest.TestCase):
  @classmethod
  def setUpClass(cls):
   cls.res=load('schema_receipt_recovery_test','schema-receipt-resume.py')
-  cls.exe=load('schema_original_execution_test','original-wpcli-executor.py')
+  # The VPS-only central_wpcli_runtime is intentionally absent on GitHub CI.
+  # Supply a fail-closed import-only adapter; all tested WP invocations remain
+  # explicit mocks, so any unexpected real WP-CLI call fails this fixture.
+  def forbid_unmocked_wpcli(*args, **kwargs):
+   raise AssertionError('HERMETIC_WPCLI_ACCESS_FORBIDDEN')
+  fixture=types.ModuleType('central_wpcli_runtime')
+  fixture.central_wp=forbid_unmocked_wpcli
+  with patch.dict(sys.modules,{'central_wpcli_runtime':fixture}):
+   cls.exe=load('schema_original_execution_test','original-wpcli-executor.py')
  def test_receipt_enforced_root_only(self):
   with tempfile.TemporaryDirectory() as d:
    p=pathlib.Path(d)/'receipt'
