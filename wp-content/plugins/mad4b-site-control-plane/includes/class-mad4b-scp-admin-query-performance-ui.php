@@ -109,6 +109,18 @@ final class MAD4B_SCP_Admin_Query_Performance_UI {
 		self::row('LiteSpeed Inline CSS Async Library', strtoupper($read('optm-css_async_inline')) . ($async === 'off' ? ' (inactive until Async is enabled)' : ''));
 		self::row('MAD4B Verified Critical CSS', strtoupper((string)get_option('mad4b_perf_critical_css_v1','off')));
 		self::row('MAD4B Predictive CSS plan', (string)($plan['release'] ?? 'none') . ' / ' . (string)($plan['runtime'] ?? 'off'));
+        $ucss = $plan['ucss_mobile_coverage'] ?? array();
+        if (is_array($ucss) && ($ucss['contract'] ?? '') === 'mad4b.mobile-css-qa.v1'
+            && ($ucss['site_host'] ?? '') === wp_parse_url(home_url('/'), PHP_URL_HOST)) {
+            self::row('Mobile CSS Async test', (string)($ucss['state'] ?? 'unknown'));
+            self::row('Mobile UCSS candidate', (int)($ucss['full_bundle_gzip_bytes'] ?? 0) .
+                ' → ' . (int)($ucss['candidate_ucss_gzip_bytes'] ?? 0) . ' gzip bytes (QA only)');
+            self::row('Local CSS rule coverage', (int)($ucss['css_coverage_used_range_bytes'] ?? 0) .
+                ' observed used-rule bytes; interaction review required');
+            self::row('Mobile Async delivery', !empty($ucss['mobile_async_enabled_public'])
+                ? 'enabled' : 'Canary enabled / public HOLD (LCP regression)');
+        }
+
 		echo '</tbody></table>';
 		$routes=(array)($plan['routes'] ?? array());
 		if ($routes) {
@@ -123,7 +135,46 @@ final class MAD4B_SCP_Admin_Query_Performance_UI {
 			}
 			echo '</tbody></table>';
 		}
-		echo '<p>UCSS and CCSS must be verified for every public language and device, including interactive JetEngine, Swiper and JetSmartFilters states. Never infer a CrUX Passed verdict from these lab samples.</p>';
+        if (class_exists('MAD4B_Company_Performance_Intelligence',false)
+            && method_exists('MAD4B_Company_Performance_Intelligence','predictive_css_decisions')) {
+            $intelligence=MAD4B_Company_Performance_Intelligence::predictive_css_decisions();
+            $decisions=(array)($intelligence['decisions']??array());
+            if ($decisions) {
+                echo '<h3>Performance Intelligence — preserve FCP, remediate LCP</h3>';
+                echo '<p>A first-paint improvement can be adopted as a Staging optimization candidate without promoting a regressing LCP to live visitors. Each device has its own release gate and remediation steps.</p>';
+                echo '<table class="widefat striped" style="max-width:1050px"><thead><tr><th>Device</th><th>Intelligence decision</th><th>Browser evidence</th><th>Live release</th></tr></thead><tbody>';
+                foreach ($decisions as $decision) {
+                    if (!is_array($decision)) continue;
+                    $name=(string)($decision['device']??'unknown');
+                    $samples=(int)($decision['evidence_samples']??0);
+                    $source=$samples
+                        ? 'FCP improved '.(int)($decision['fcp_improved_samples']??0).'/'.$samples
+                            .'; LCP regressed '.(int)($decision['lcp_regressed_samples']??0).'/'.$samples
+                        : 'Historical manifest only; new browser A/B required';
+                    echo '<tr><td>'.esc_html(ucfirst($name)).'</td><td>'.
+                        esc_html((string)($decision['recommendation']??'Review required')).'</td><td>'.
+                        esc_html($source).'</td><td>'.
+                        esc_html(!empty($decision['live_activation_eligible'])?'Eligible after acceptance':'Hold; native CSS preserved').
+                        '</td></tr>';
+                }
+                echo '</tbody></table>';
+                foreach ($decisions as $decision) {
+                    if (!is_array($decision) || ($decision['device']??'')!=='mobile') continue;
+                    echo '<h4>Mobile LCP recovery — ordered next steps</h4><ol style="max-width:1020px">';
+                    foreach ((array)($decision['next_steps']??array()) as $step) {
+                        if (!is_array($step)) continue;
+                        echo '<li><strong>'.esc_html((string)($step['status']??'pending')).'</strong>: '.esc_html((string)($step['action']??'')).'</li>';
+                    }
+                    echo '</ol>';
+                    if (!empty($decision['verified_lcp_image'])) echo '<p><strong>Observed LCP image:</strong> <code>'.
+                        esc_html(wp_parse_url((string)$decision['verified_lcp_image'],PHP_URL_PATH)).
+                        '</code></p>';
+                    break;
+                }
+                echo '<p><a href="'.esc_url(admin_url('tools.php?page=mad4b-company-performance-scan')).'">Open full Company Performance Intelligence plan</a></p>';
+            }
+        }
+        echo '<p>UCSS and CCSS must be verified for every public language and device, including interactive JetEngine, Swiper and JetSmartFilters states. Never infer a CrUX Passed verdict from these lab samples.</p>';
 	}
 
 	private static function row( $label, $value ) {
@@ -135,4 +186,3 @@ MAD4B_SCP_Admin_Query_Performance_UI::boot();
 
 // Routes are declared without booting menus or provider lifecycle on frontend requests.
 if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) ) MAD4B_SCP_Admin_Route_Registry::register( MAD4B_SCP_Admin_Query_Performance_UI::PAGE_SLUG, 'manage_options' );
-
