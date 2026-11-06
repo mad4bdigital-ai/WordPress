@@ -114,5 +114,7 @@ jobs:
           python3 "$base/context-managed-google-signin-contract.py"
           python3 "$base/context-authority-contract.py"
           php "$base/context-admin-recovery-runtime.php"
+          php "$base/mcp-runtime-recovery-runtime.php"
+          php "$base/dynamic-hardening-pure-runtime.php"
           python3 "$base/dynamic-runtime-hardening-contract.py"
           python3 "$base/mcp-client-compatibility-contract.py"
