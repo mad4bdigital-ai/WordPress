@@ -1,0 +1,19 @@
+{
+  "contract": "mad4b.plugin-portability-profile.v1",
+  "plugin": "mad4b-persistent-site-shell",
+  "scope": "tenant-portable",
+  "activation_policy": "required_if_source_active",
+  "environment_policy": "any_registered_wordpress_environment",
+  "configuration_source": "per_site_wordpress_settings_api",
+  "feature_defaults": {
+    "partial_navigation": "disabled_until_site_acceptance"
+  },
+  "same_origin_only": true,
+  "local_fragments_only": true,
+  "remote_services_required": false,
+  "source_company_settings_not_cloned": true,
+  "sensitive_central_authority_not_included": true,
+  "financial_or_customer_data_automatic_write": false,
+  "tenant_installation_requires_original_authorized_site_write": true,
+  "reconciliation": "source_file_sha256_and_tenant_uuid_readback"
+}
