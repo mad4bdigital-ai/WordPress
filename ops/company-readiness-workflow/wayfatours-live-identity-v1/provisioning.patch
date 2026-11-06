@@ -1,0 +1,234 @@
+--- a/bin/company-native-publication-plan.py
++++ b/bin/company-native-publication-plan.py
+@@ -404,2 +404,2 @@
+-          'site_uuid':'b0725ffa-87e1-47e3-b0c0-c4aa4eb8882b',
+-          'canonical_origin':'https://wayfatours.mad4b.com'},
++          'site_uuid':'11111111-2222-4333-8444-555555555555',
++          'canonical_origin':'https://wayfatours.com'},
+@@ -448 +448 @@
+-    assert good['company_public_routes']['admin_url']=='https://wayfatours.mad4b.com/wp-admin/'
++    assert good['company_public_routes']['admin_url']=='https://wayfatours.com/wp-admin/'
+--- a/bin/company-options-registry.py
++++ b/bin/company-options-registry.py
+@@ -18,2 +18,2 @@
+-CENTRAL="etg-commerce-staging-php"
+-TENANT="wayfatours-production-php"
++CENTRAL="php-wkgtkzta35wkkgouwt6ruljc"
++TENANT="php-guxhp9y6vgh7oouuw8plxrlr"
+@@ -79 +79 @@
+-    if tenant["host"]!="wayfatours.mad4b.com" or tenant["db"]!="wayfatours_production":
++    if tenant["host"]!="wayfatours.com" or tenant["db"]!="wayfa_rebuild_wp":
+@@ -114 +114 @@
+-    readiness={"contract":"mad4b.company-options-readiness.v1","site_uuid":"b0725ffa-87e1-47e3-b0c0-c4aa4eb8882b",
++    readiness={"contract":"mad4b.company-options-readiness.v1","site_uuid":"a3a7cc36-db7e-4a14-8456-b41857def05c",
+--- a/bin/company-readiness-workflow
++++ b/bin/company-readiness-workflow
+@@ -23 +23 @@
+-TENANT = "wayfatours-production-php"
++TENANT = "php-guxhp9y6vgh7oouuw8plxrlr"
+@@ -114,2 +114,2 @@
+-        and reg.get("canonical_origin") == "https://wayfatours.mad4b.com"
+-        and tenant.get("host") == "wayfatours.mad4b.com"
++        and reg.get("canonical_origin") == "https://wayfatours.com"
++        and tenant.get("host") == "wayfatours.com"
+@@ -246 +246 @@
+-            and language_policy.get("origin")=="https://wayfatours.mad4b.com")
++            and language_policy.get("origin")=="https://wayfatours.com")
+@@ -278 +278 @@
+-            ("tours.dev.mad4b.com","wayfatours.mad4b.com")}
++            ("tours.dev.mad4b.com","wayfatours.com")}
+@@ -288 +288 @@
+-    links = {p:https("https://wayfatours.mad4b.com"+p) for p in target_paths}
++    links = {p:https("https://wayfatours.com"+p) for p in target_paths}
+@@ -358 +358 @@
+-        plugin_policy.get("target")!="wayfatours.mad4b.com" or
++        plugin_policy.get("target")!="wayfatours.com" or
+@@ -362 +362 @@
+-    local_target_plugins=BASE.parent/"hostinger-migrations/hosting-3/wayfatours-production/site-copy/wp-content/plugins"
++    local_target_plugins=pathlib.Path("/opt/wayfa-rebuild-20261102/site-copy/wp-content/plugins")
+--- a/bin/company-required-plugin-dependency-preflight.py
++++ b/bin/company-required-plugin-dependency-preflight.py
+@@ -91,2 +91,2 @@
+-            'target':'wayfatours.mad4b.com',
+-            'site_uuid':'b0725ffa-87e1-47e3-b0c0-c4aa4eb8882b',
++            'target':'wayfatours.com',
++            'site_uuid':'a3a7cc36-db7e-4a14-8456-b41857def05c',
+--- a/bin/company-runtime-acceptance-v2.py
++++ b/bin/company-runtime-acceptance-v2.py
+@@ -11 +11 @@
+-if(DB_NAME!=='wayfatours_production'||wp_parse_url(home_url(),PHP_URL_HOST)!=='wayfatours.mad4b.com'||
++if(DB_NAME!=='wayfa_rebuild_wp'||wp_parse_url(home_url(),PHP_URL_HOST)!=='wayfatours.com'||
+@@ -68 +68 @@
+- p=subprocess.run(["docker","exec","-i","-u","33:33","wayfatours-production-php",
++ p=subprocess.run(["docker","exec","-i","-u","33:33","php-guxhp9y6vgh7oouuw8plxrlr",
+--- a/bin/company-runtime-registry-v2.py
++++ b/bin/company-runtime-registry-v2.py
+@@ -6 +6 @@
+-         "wayfatours":("wayfatours-production-php","wayfatours.mad4b.com","wayfatours_production")}
++         "wayfatours":("php-guxhp9y6vgh7oouuw8plxrlr","wayfatours.com","wayfa_rebuild_wp")}
+@@ -125 +125 @@
+-if(!in_array($host,['tours.dev.mad4b.com','wayfatours.mad4b.com'],true))WP_CLI::error('HOST_UNTRUSTED');
++if(!in_array($host,['tours.dev.mad4b.com','wayfatours.com'],true))WP_CLI::error('HOST_UNTRUSTED');
+@@ -127 +127 @@
+-   ($host==='wayfatours.mad4b.com'&&DB_NAME!=='wayfatours_production'))
++   ($host==='wayfatours.com'&&DB_NAME!=='wayfa_rebuild_wp'))
+--- a/bin/company-user-bootstrap-gates.py
++++ b/bin/company-user-bootstrap-gates.py
+@@ -10 +10 @@
+- source=eval_wp('etg-commerce-staging-php',"""
++ source=eval_wp('php-wkgtkzta35wkkgouwt6ruljc',"""
+@@ -16 +16 @@
+- central=eval_wp('etg-commerce-staging-php',"""
++ central=eval_wp('php-wkgtkzta35wkkgouwt6ruljc',"""
+@@ -23 +23 @@
+- target=eval_wp('wayfatours-production-php',"""
++ target=eval_wp('php-guxhp9y6vgh7oouuw8plxrlr',"""
+@@ -39 +39 @@
+- target_uuid='b0725ffa-87e1-47e3-b0c0-c4aa4eb8882b'
++ target_uuid='a3a7cc36-db7e-4a14-8456-b41857def05c'
+@@ -45 +45 @@
+-  'target_identity':target.get('host')=='wayfatours.mad4b.com',
++  'target_identity':target.get('host')=='wayfatours.com',
+--- a/bin/run-wayfatours-launch-readiness.py
++++ b/bin/run-wayfatours-launch-readiness.py
+@@ -7 +7 @@
+-TARGET='wayfatours.mad4b.com'
++TARGET='wayfatours.com'
+@@ -31 +31 @@
+-admin=probe_wp('etg-commerce-staging-php',
++admin=probe_wp('php-wkgtkzta35wkkgouwt6ruljc',
+@@ -49 +49 @@
+-staging=probe_wp('etg-commerce-staging-php',
++staging=probe_wp('php-wkgtkzta35wkkgouwt6ruljc',
+@@ -57 +57 @@
+-target=probe_wp('wayfatours-production-php',
++target=probe_wp('php-guxhp9y6vgh7oouuw8plxrlr',
+@@ -67 +67 @@
+-    '--php-container','wayfatours-production-php',
++    '--php-container','php-guxhp9y6vgh7oouuw8plxrlr',
+@@ -71 +71 @@
+-    '--expected-db','wayfatours_production',
++    '--expected-db','wayfa_rebuild_wp',
+--- a/bin/test_config_compatibility.py
++++ b/bin/test_config_compatibility.py
+@@ -21 +21 @@
+-                    "jet-smart-filters":True},
++                    "jet-smart-filters":True,"jet-form-builder":True},
+@@ -25,2 +25,2 @@
+-    target["origin"]="https://wayfatours.mad4b.com"
+-    target["database"]="wayfatours_production"
++    target["origin"]="https://wayfatours.com"
++    target["database"]="wayfa_rebuild_wp"
+--- a/bin/test_governed_runtime_gates.py
++++ b/bin/test_governed_runtime_gates.py
+@@ -9,2 +9,2 @@
+-cfg={"company_code":"wayfatours","site_host":"wayfatours.mad4b.com",
+- "site_uuid":"test-uuid","database":"wayfatours_production","company_name":"Wayfatours",
++cfg={"company_code":"wayfatours","site_host":"wayfatours.com",
++ "site_uuid":"test-uuid","database":"wayfa_rebuild_wp","company_name":"Wayfatours",
+@@ -13,2 +13,2 @@
+-site={"company":"wayfatours","host":"wayfatours.mad4b.com",
+- "site_uuid":"test-uuid","database":"wayfatours_production",
++site={"company":"wayfatours","host":"wayfatours.com",
++ "site_uuid":"test-uuid","database":"wayfa_rebuild_wp",
+--- a/bin/wayfa-design-activate.py
++++ b/bin/wayfa-design-activate.py
+@@ -19 +19 @@
+-SITE="wayfatours-production-php"
++SITE="php-guxhp9y6vgh7oouuw8plxrlr"
+@@ -145 +145 @@
+-    if plan.get("state")!="DESIGN_ACTIVATION_PLAN" or plan.get("site_uuid")!="b0725ffa-87e1-47e3-b0c0-c4aa4eb8882b":
++    if plan.get("state")!="DESIGN_ACTIVATION_PLAN" or plan.get("site_uuid")!="a3a7cc36-db7e-4a14-8456-b41857def05c":
+--- a/bin/wayfa-design-lifecycle.py
++++ b/bin/wayfa-design-lifecycle.py
+@@ -49 +49 @@
+-                          "site":"wayfatours.mad4b.com",
++                          "site":"wayfatours.com",
+@@ -61 +61 @@
+-                          "site":"wayfatours.mad4b.com",
++                          "site":"wayfatours.com",
+@@ -76 +76 @@
+-                          "site":"wayfatours.mad4b.com",
++                          "site":"wayfatours.com",
+@@ -117 +117 @@
+-         "site":"wayfatours.mad4b.com",
++         "site":"wayfatours.com",
+--- a/bin/wayfa-jet-config-autoload.py
++++ b/bin/wayfa-jet-config-autoload.py
+@@ -54 +54 @@
+-    c+=["wayfatours-production-php","php","-d","memory_limit=768M",
++    c+=["php-guxhp9y6vgh7oouuw8plxrlr","php","-d","memory_limit=768M",
+--- a/bin/wayfa-schema-compatibility.py
++++ b/bin/wayfa-schema-compatibility.py
+@@ -14,2 +14,2 @@
+-SOURCE="etg-commerce-staging-php"
+-TARGET="wayfatours-production-php"
++SOURCE="php-wkgtkzta35wkkgouwt6ruljc"
++TARGET="php-guxhp9y6vgh7oouuw8plxrlr"
+@@ -78 +78 @@
+-    if target["origin"]!="https://wayfatours.mad4b.com" or target["database"]!="wayfatours_production":
++    if target["origin"]!="https://wayfatours.com" or target["database"]!="wayfa_rebuild_wp":
+--- a/bin/wayfa-template-diff-resolver.py
++++ b/bin/wayfa-template-diff-resolver.py
+@@ -39 +39 @@
+-            "mode":"on-difference","site":"wayfatours.mad4b.com",
++            "mode":"on-difference","site":"wayfatours.com",
+--- a/bin/wayfa-wpml-resolve.py
++++ b/bin/wayfa-wpml-resolve.py
+@@ -9 +9 @@
+-CONTAINER="wayfatours-production-php"
++CONTAINER="php-guxhp9y6vgh7oouuw8plxrlr"
+--- a/bootstrap/company-access-channel-doctor.py
++++ b/bootstrap/company-access-channel-doctor.py
+@@ -11 +11 @@
+-EXPECTED_SITE='b0725ffa-87e1-47e3-b0c0-c4aa4eb8882b'
++EXPECTED_SITE='a3a7cc36-db7e-4a14-8456-b41857def05c'
+@@ -42 +42 @@
+-    central=wp('etg-commerce-staging-php',"""
++    central=wp('php-wkgtkzta35wkkgouwt6ruljc',"""
+@@ -46 +46 @@
+-    tenant=wp('wayfatours-production-php',"""
++    tenant=wp('php-guxhp9y6vgh7oouuw8plxrlr',"""
+--- a/policies/company-governed-runtime-contract-v1.json
++++ b/policies/company-governed-runtime-contract-v1.json
+@@ -5,4 +5,4 @@
+-  "site_host": "wayfatours.mad4b.com",
+-  "site_uuid": "b0725ffa-87e1-47e3-b0c0-c4aa4eb8882b",
+-  "database": "wayfatours_production",
+-  "wordpress_container": "wayfatours-production-php",
++  "site_host": "wayfatours.com",
++  "site_uuid": "a3a7cc36-db7e-4a14-8456-b41857def05c",
++  "database": "wayfa_rebuild_wp",
++  "wordpress_container": "php-guxhp9y6vgh7oouuw8plxrlr",
+--- a/policies/wayfatours-public-languages-v1.json
++++ b/policies/wayfatours-public-languages-v1.json
+@@ -4 +4 @@
+-  "origin": "https://wayfatours.mad4b.com",
++  "origin": "https://wayfatours.com",
+--- a/provider-activation/company-manifest.json
++++ b/provider-activation/company-manifest.json
+@@ -4,5 +4,5 @@
+-  "host": "wayfatours.mad4b.com",
+-  "db": "wayfatours_production",
+-  "site_uuid": "b0725ffa-87e1-47e3-b0c0-c4aa4eb8882b",
+-  "source_container": "etg-commerce-staging-php",
+-  "target_container": "wayfatours-production-php",
++  "host": "wayfatours.com",
++  "db": "wayfa_rebuild_wp",
++  "site_uuid": "a3a7cc36-db7e-4a14-8456-b41857def05c",
++  "source_container": "php-wkgtkzta35wkkgouwt6ruljc",
++  "target_container": "php-guxhp9y6vgh7oouuw8plxrlr",
+--- a/provider-activation/full-plugin-sync-policy-v2.json
++++ b/provider-activation/full-plugin-sync-policy-v2.json
+@@ -5,3 +5,3 @@
+-  "target": "wayfatours.mad4b.com",
+-  "source_container": "etg-commerce-staging-php",
+-  "target_container": "wayfatours-production-php",
++  "target": "wayfatours.com",
++  "source_container": "php-wkgtkzta35wkkgouwt6ruljc",
++  "target_container": "php-guxhp9y6vgh7oouuw8plxrlr",
+@@ -9,2 +9,2 @@
+-  "target_db": "wayfatours_production",
+-  "target_site_uuid": "b0725ffa-87e1-47e3-b0c0-c4aa4eb8882b",
++  "target_db": "wayfa_rebuild_wp",
++  "target_site_uuid": "a3a7cc36-db7e-4a14-8456-b41857def05c",

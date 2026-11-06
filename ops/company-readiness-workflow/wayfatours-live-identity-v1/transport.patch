@@ -1,0 +1,36 @@
+--- a/broker-v1/broker-config.json
++++ b/broker-v1/broker-config.json
+@@ -1 +1,12 @@
+-{"contract":"mad4b.vps-broker-poller.v1","host_id":"srv2030908","companies":{"wayfatours":{"site_uuid":"b0725ffa-87e1-47e3-b0c0-c4aa4eb8882b","environment":"production","canonical_origin":"https://wayfatours.mad4b.com","allow_claim":true}}}
++{
++  "contract": "mad4b.vps-broker-poller.v1",
++  "host_id": "srv2030908",
++  "companies": {
++    "wayfatours": {
++      "site_uuid": "a3a7cc36-db7e-4a14-8456-b41857def05c",
++      "environment": "production",
++      "canonical_origin": "https://wayfatours.com",
++      "allow_claim": true
++    }
++  }
++}
+--- a/broker-v1/vps-broker-fixed-diagnostic.py
++++ b/broker-v1/vps-broker-fixed-diagnostic.py
+@@ -31 +31,16 @@
+-SITE = 'b0725ffa-87e1-47e3-b0c0-c4aa4eb8882b'
++def current_company_site_uuid():
++    # Read the current enrolled tenant identity, not a pre-rebuild UUID.
++    # Diagnostic execution remains bound to the exact same Broker policy.
++    identity=json.loads(Path('/opt/wayfa-rebuild-20261102/config/site-identity.json').read_text())
++    broker=json.loads((BASE/'broker-config.json').read_text())
++    entry=broker.get('companies',{}).get('wayfatours',{})
++    if (identity.get('company')!='wayfatours'
++        or identity.get('environment')!='production'
++        or identity.get('canonical_origin')!='https://wayfatours.com'
++        or entry.get('environment')!='production'
++        or entry.get('canonical_origin')!=identity['canonical_origin']
++        or entry.get('site_uuid')!=identity.get('site_uuid')
++        or entry.get('allow_claim') is not True):
++        raise RuntimeError('CURRENT_WAYFATOURS_SITE_SCOPE_NOT_VERIFIED')
++    return identity['site_uuid']
++SITE = current_company_site_uuid()

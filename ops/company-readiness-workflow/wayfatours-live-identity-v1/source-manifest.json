@@ -1,0 +1,136 @@
+{
+  "contract": "mad4b.wayfatours-live-identity-source-patches.v1",
+  "generated_utc": "2026-11-06",
+  "source_only": true,
+  "historical_receipts_untouched": true,
+  "original_313_certified": false,
+  "roots": {
+    "provisioning": {
+      "root": "/opt/mad4b-company-provisioning",
+      "files": [
+        {
+          "path": "bin/company-native-publication-plan.py",
+          "before_sha256": "0c170ad535d5268a82179d9c9b68f64a544c8c80f0ba1f27f6392a7a664c785a",
+          "after_sha256": "5bd77437130fd998c6f0eb9856bd5bc9925a95d98ced0cd7e79726f2f55e88d9"
+        },
+        {
+          "path": "bin/company-options-registry.py",
+          "before_sha256": "86bff06d3f1cce6ab29ce7ca2b8b103a7f8fc2d98edbbc479c7dba4b30b3f4c1",
+          "after_sha256": "2967184eff324340357147567de09ba7d5c43dee56851b0f50851ff5ecb0f31d"
+        },
+        {
+          "path": "bin/company-readiness-workflow",
+          "before_sha256": "f10395e91535e06d31d6164c12b9be028a7339df3e94ab0d9d757d28fd81d012",
+          "after_sha256": "4d3939cf8275b657fafe087be80d43f4f46ef7d42a5c0486c8d3de80a708ed51"
+        },
+        {
+          "path": "bin/company-required-plugin-dependency-preflight.py",
+          "before_sha256": "15468150362f0174620fae396f6971998e8bcbfc8770144cdf341b7a3d0b0e2c",
+          "after_sha256": "7891d491fbea99fcfb9c5ddf218396496cb757c4266bbc716a18cbebe057729c"
+        },
+        {
+          "path": "bin/company-runtime-acceptance-v2.py",
+          "before_sha256": "7738c084fcfc9beca412aa7be500718b201d05b56c0009cb41431237e10e92c1",
+          "after_sha256": "23271775335479ac997fe057d475522cc0bfd8c9b11c91b1da85d90da7ffce4e"
+        },
+        {
+          "path": "bin/company-runtime-registry-v2.py",
+          "before_sha256": "5c743b92c51540663970ac3d0a51d15ff6b79c813fced19a0b2feca6b12451ce",
+          "after_sha256": "cc96fbf15573b01773e2d9c2ad9d8a419c034afb61d5b6750c3b8c6d6caab927"
+        },
+        {
+          "path": "bin/company-user-bootstrap-gates.py",
+          "before_sha256": "b29740c5b9f4bff7bf5fd5e1513b9458bbb8186cf95485dd13204cc18c656ba0",
+          "after_sha256": "ccdf9389b7d12b8bf981b964cf92ce435de1928731b5a04733a32d00da806f06"
+        },
+        {
+          "path": "bin/run-wayfatours-launch-readiness.py",
+          "before_sha256": "bac5935180d81329512c3a4ca364727c937e1f296926191ef4a67e44920e0285",
+          "after_sha256": "cee98dcbf1929263d446096f8ca9bf225d7c2c8b4912ccc343413f67a79280b2"
+        },
+        {
+          "path": "bin/test_config_compatibility.py",
+          "before_sha256": "65c84e6400054988194c73e416a170f5f6668eef2b9e60eee45de11dd2187412",
+          "after_sha256": "aa99a227f3e72024e0629f06c3e375d5ee5c2494b03f10d45cf7db0dc8fb17dc"
+        },
+        {
+          "path": "bin/test_governed_runtime_gates.py",
+          "before_sha256": "28604679baed366fc3bdcdf719281ccfa140150a2ce31cbbdd40030b17582c24",
+          "after_sha256": "eeaab740755033920b5101cafc90397f12bdb24d2a98ab7949cae62fdef424b5"
+        },
+        {
+          "path": "bin/wayfa-design-activate.py",
+          "before_sha256": "fd014adec0bd17346b096c3ea027aef8ccb19facd654c88e3cd6c5bc11e14275",
+          "after_sha256": "20e1164e191b7f9378362f4b94ab8fd352e81d004296db0c47c011ecc6dcb4ef"
+        },
+        {
+          "path": "bin/wayfa-design-lifecycle.py",
+          "before_sha256": "d60c591d2bd028e4c32c3b012bd5302774dedfcd4346b4d9435956591ccb2620",
+          "after_sha256": "c725498531858185d2ca86acb49c863b8651c2e8db86c1b50e56b24cad306e91"
+        },
+        {
+          "path": "bin/wayfa-jet-config-autoload.py",
+          "before_sha256": "fea4a7312d421d792df7f56471809b7e9ae8a59498a9bc191c902e633f5d9610",
+          "after_sha256": "d281ca5754e268cba37899f269b20ad03c991ea4a4fa2cbc5ef622c130e81253"
+        },
+        {
+          "path": "bin/wayfa-schema-compatibility.py",
+          "before_sha256": "52ab9f0da3fff37571d9c060c507c566c20d92265724eb0a328a41dc56465639",
+          "after_sha256": "d5c518c1c5ab680d9d2bbd4a5b0ae022ad2253d741c49468c2a0618b49d86782"
+        },
+        {
+          "path": "bin/wayfa-template-diff-resolver.py",
+          "before_sha256": "3e726b31c2f787e1bea7cdd98cc63c315c7e03a4a2b887cfe2b73b80302bde8b",
+          "after_sha256": "780ed7d87a0e85b878a3511655d866e12e8ba0d70e5bf7fbaf1d143af11ed35b"
+        },
+        {
+          "path": "bin/wayfa-wpml-resolve.py",
+          "before_sha256": "674c49a2cf59dae761b424839af876b41af1de34459f1e8607de035dc9cad57c",
+          "after_sha256": "dd2954078d977a95e88e4735d9f159b3e6e97aebe9a9ed36d2ec113013d5003d"
+        },
+        {
+          "path": "bootstrap/company-access-channel-doctor.py",
+          "before_sha256": "e55aa3cacf55b9bbf1c63b172e8d9a4e836feff4033bc4a16c6e5a3986cc537d",
+          "after_sha256": "a481ce0bdf118521bc9127937c5cf17f63413e41f729e41d41ade0afc52623e2"
+        },
+        {
+          "path": "policies/company-governed-runtime-contract-v1.json",
+          "before_sha256": "486f620b60864f0874e28caecc66d4afc5cf38dc933ffebf52a4eae8523297a5",
+          "after_sha256": "13d327672829ec38328449fab06806f748a72efa2cc54c8b1189c011bb43c6ba"
+        },
+        {
+          "path": "policies/wayfatours-public-languages-v1.json",
+          "before_sha256": "fb1a3e25b510c661016d6100408bb215492328aa2cef22997c276c236e09ab2d",
+          "after_sha256": "3fde2bed7dcd5035fff4d05dbaf20ef8f44547ce97fd8687251423563ff8dcaf"
+        },
+        {
+          "path": "provider-activation/company-manifest.json",
+          "before_sha256": "d98fa5bd7922ebba093dcb77668744cc2708ac43842d3f5899e5d32c7dbb3489",
+          "after_sha256": "41a1a8e426ce1f6c3ee0871f50806a4961320e0bb4c96667e36a955446c1904a"
+        },
+        {
+          "path": "provider-activation/full-plugin-sync-policy-v2.json",
+          "before_sha256": "af556b0f9942465d404584ec8991a87b54b1161c4decb8685200ceececb8d085",
+          "after_sha256": "aecdbc2f7a4b670d08e41cd781cd59ebeeb5d2bb5563389efebe89e468d17f34"
+        }
+      ],
+      "patch_sha256": "ea324a156f7f6f4db656a2ea491d8ea4d57ea8ceb553da3f470d21fb0e418e73"
+    },
+    "transport": {
+      "root": "/opt/mad4b-company-transport",
+      "files": [
+        {
+          "path": "broker-v1/broker-config.json",
+          "before_sha256": "a46f890986628a9259182e7bc6529f624d28bf65894ab07acaa0dc1d542210d0",
+          "after_sha256": "83d76ce8e15852fd005c94d27fed55e7c07f8d177cf02aff2171ee27c3052ee1"
+        },
+        {
+          "path": "broker-v1/vps-broker-fixed-diagnostic.py",
+          "before_sha256": "e144241cce2df75e8e54fb18a08d81b96f3b5aa3bacb77e2165e9af482201599",
+          "after_sha256": "b10ff8efb00725ff8874ed8c0f80d9acbab2df09476e58c423b0f1776c783043"
+        }
+      ],
+      "patch_sha256": "f7a4fe7281e7a38f5531ac218d31d5a91bc0bfd7075c489ddedc0c1f4bac1762"
+    }
+  }
+}
