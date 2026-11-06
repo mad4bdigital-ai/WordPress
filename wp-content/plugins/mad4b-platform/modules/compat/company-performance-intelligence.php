@@ -783,4 +783,11 @@ add_action('update_option_mad4b_perf_predictive_css_v2',
     ['MAD4B_Company_Performance_Intelligence','refresh_css_policy_receipt_v2'],20,0);
 add_action('mad4b/performance/css_plan_updated',
     ['MAD4B_Company_Performance_Intelligence','refresh_css_policy_receipt_v2'],20,0);
+// Material CSS source changes and pending discovery invalidate old evidence
+// immediately, even when no administrator opens the Performance page.
+add_action('update_option_mad4b_css_ai_epoch_v1',
+    ['MAD4B_Company_Performance_Intelligence','refresh_css_policy_receipt_v2'],20,0);
+add_action('update_option_mad4b_adaptive_presentation_scan_needed_v1',
+    ['MAD4B_Company_Performance_Intelligence','refresh_css_policy_receipt_v2'],20,0);
+
 
