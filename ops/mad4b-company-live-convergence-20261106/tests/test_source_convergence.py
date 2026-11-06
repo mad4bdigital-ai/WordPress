@@ -57,4 +57,21 @@ exp_patch=exp_root/'patches/mad4b-experience-footer-coexistence-20261106.patch'
 exp_test=exp_root/'tests/test_experience_footer_coexistence_patch.py'
 assert hashlib.sha256(exp_source.read_bytes()).hexdigest()=='470b00846323ee5b22f1634991b752196d92f38942983b3c4210b556452a0061'
 assert exp_patch.is_file() and exp_test.is_file()
+# Original Native Schema 313 is an immutable source snapshot of the deployed
+# Worker/Broker code. Tests were made repository-relative, without modifying
+# executable runtime source or loosening independent 312/313 verification.
+schema_root=root/'ops/company-readiness-workflow/original-native-schema-313-v1'
+schema_manifest=json.loads((schema_root/'source-manifest.json').read_text())
+assert schema_manifest['contract']=='mad4b.original-native-schema-313-source-snapshot.v1'
+assert schema_manifest['source_only'] is True
+assert schema_manifest['original_313_certified_by_commit'] is False
+assert len(schema_manifest['source_sha256'])==9
+for file_name,checksum in schema_manifest['source_sha256'].items():
+    assert '/' not in file_name and '\\' not in file_name and file_name.endswith('.py')
+    candidate=schema_root/file_name
+    assert candidate.is_file() and not candidate.is_symlink(),file_name
+    assert hashlib.sha256(candidate.read_bytes()).hexdigest()==checksum,file_name
+worker=(schema_root/'claimed-job-worker.py').read_text()
+assert 'schema.readback.resume' in worker and 'if reserved:' in worker
+assert 'time.time()+360' in worker
 print(json.dumps({'result':'PASS','fingerprints':len(manifest['sha256']),'skills':len(skills['skills']),'release':'2026-11-06-company-settings-live-convergence'}))

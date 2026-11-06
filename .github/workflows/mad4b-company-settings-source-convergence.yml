@@ -10,6 +10,7 @@ on:
       - 'wp-content/plugins/mad4b-company-portfolio-manager/mad4b-company-portfolio-manager.php'
       - 'packages/mad4b-shared-product-core/mu-plugins/**'
       - 'ops/mad4b-company-live-convergence-20261106/**'
+      - 'ops/company-readiness-workflow/original-native-schema-313-v1/**'
       - '.github/workflows/mad4b-company-settings-source-convergence.yml'
   push:
     paths:
@@ -21,6 +22,7 @@ on:
       - 'wp-content/plugins/mad4b-company-portfolio-manager/mad4b-company-portfolio-manager.php'
       - 'packages/mad4b-shared-product-core/mu-plugins/**'
       - 'ops/mad4b-company-live-convergence-20261106/**'
+      - 'ops/company-readiness-workflow/original-native-schema-313-v1/**'
       - '.github/workflows/mad4b-company-settings-source-convergence.yml'
 concurrency:
   group: mad4b-company-settings-source-convergence-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
@@ -39,6 +41,14 @@ jobs:
         run: python3 ops/mad4b-company-live-convergence-20261106/tests/test_source_convergence.py
       - name: Verify Experience footer coexistence patch and source SHA
         run: python3 ops/company-readiness-workflow/host-provisioning-runtime-v1/tests/test_experience_footer_coexistence_patch.py
+      - name: Install pinned signature-verification test dependency
+        run: python3 -m pip install --disable-pip-version-check 'cryptography==46.0.3'
+      - name: Verify original Schema 313 receipt-only and signed authority regressions
+        run: |
+          set -eu
+          base=ops/company-readiness-workflow/original-native-schema-313-v1
+          python3 "$base/test_schema_receipt_resume.py"
+          python3 "$base/test_schema_signed_authority_busy.py
   runtime-contracts:
     runs-on: ubuntu-latest
     permissions:

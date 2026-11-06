@@ -4,7 +4,7 @@
   "source_control": "mad4bdigital-ai/WordPress",
   "environment_overlay": "wayfatours-production + tours-dev-staging",
   "sha256": {
-    "ops/mad4b-company-live-convergence-20261106/README.md": "36c548f995a329929303913a2095ec8114d21b137e2b37d448065ddc9dea4886",
+    "ops/mad4b-company-live-convergence-20261106/README.md": "b69d31691351e3afa950e3a0d368256b9254dc82bfebdd24f484401ddf3c04be",
     "ops/mad4b-company-live-convergence-20261106/host-cache/mad4b-wayfa-tour-rate-cache-purge.path": "ff0485c0c32eb2f3e9ca33db1dc42558954ff118b152b71063e3a804f6d794a9",
     "ops/mad4b-company-live-convergence-20261106/host-cache/mad4b-wayfa-tour-rate-cache-purge.service": "514ed80836015f92beb00c6dd86ae4a03eb641bde1b8baf050bb7bdb15299a80",
     "ops/mad4b-company-live-convergence-20261106/host-cache/purge-wayfa-tour-rate-public-cache.py": "1a627d89e7d43fa0155b00fe138f1c45abc783ebbccfcd77105414632d7de179",
@@ -12,7 +12,7 @@
     "ops/mad4b-company-live-convergence-20261106/overlays/wayfatours-control-plane-main.php": "942a0e6f386da4ed927fde398a9af0ddc58aeec239b6b02153bc57907ea8337a",
     "ops/mad4b-company-live-convergence-20261106/tests/company-wpml-native-switcher-readiness.py": "f77db95b01b6ee7ab400732079d4c1b88e26c9847cd359e869e14955b81e7765",
     "ops/mad4b-company-live-convergence-20261106/tests/settings-lifecycle-cross-site-qa-20261106.php": "3b3a9ac9d7f3b542b8c7459c9dd6e9f50f1db853622a75de975d15df98e02104",
-    "ops/mad4b-company-live-convergence-20261106/tests/test_source_convergence.py": "cf16e27b2bf2dc69c7346fb71f709ec97a67f35367bffe53f87cdb97885d36f6",
+    "ops/mad4b-company-live-convergence-20261106/tests/test_source_convergence.py": "ecfa44ad345a54a74ef2d420fc0fe30f74fdf6e619a018df0b25b08061a72243",
     "packages/mad4b-shared-product-core/mu-plugins/local-tour-rate-filter-provider-router.php": "9b18e4cc3f46d9f44447fb79cd46195608b2dbcad44d4ad1f351613987b90c53",
     "packages/mad4b-shared-product-core/mu-plugins/shared-product-core/adapters/presentation-context-v1.php": "fb649ab27d29c38aa82542e2daca1886f94236df1abaa36c092d37d85b0c1f8b",
     "wp-content/mu-plugins/003-mad4b-lifecycle-access.php": "9df0dba40678ccfb1de13d81ed3c31e7a70ffe030370c6f6e81d5ff1953703b1",
@@ -38,7 +38,7 @@
     "wp-content/plugins/mad4b-site-control-plane/skill-seeds/wordpress-site-diagnostics/SKILL.md": "0c5cfb095889f41252ba8039076304ef8fb99cdffb97c03136f6b01158b0e9eb",
     "packages/mad4b-shared-product-core/source-files.sha256": "4ae412f48753bb168354c9cfe055b4bbb9b0e2892d6635b3f22222c10ae66fc9",
     "wp-content/plugins/mad4b-site-control-plane/config/egress-policy.json": "706b936f81e5d56bca491e2f792bb03b278f68eb7bac03a3757622192a5eb32d",
-    ".github/workflows/mad4b-company-settings-source-convergence.yml": "dd9d65d3f678f55d000ecf1809f268851b1316711c4dd2d39868bd4f95fdcd1e",
+    ".github/workflows/mad4b-company-settings-source-convergence.yml": "2400904a29ea934b86ecad9593227cccacccce296b316c710d4ecd29cc712d5b",
     "ops/company-readiness-workflow/host-provisioning-runtime-v1/patches/mad4b-experience-footer-coexistence-20261106.patch": "c1fd00228a3adec7fff2500498aab10ce919c1f672e85f95579f09fe14ec28b0",
     "ops/company-readiness-workflow/host-provisioning-runtime-v1/patches/README-experience-footer-coexistence-20261106.md": "558f5f206336cfd6cd210d8af8931d36c828492c4bd5f9ac361d97be602fbd18",
     "ops/company-readiness-workflow/host-provisioning-runtime-v1/live-only-module-snapshots/mad4b-experience/src/presentation/bootstrap.php": "470b00846323ee5b22f1634991b752196d92f38942983b3c4210b556452a0061",
@@ -66,6 +66,17 @@
     "wp-content/plugins/mad4b-site-control-plane/tests/full-staging-authority-contract.py": "79b7a0191f5a950f29f6bd28bd19d3e46ccf2d51fe3e2c5b2f50f7c1c3a9f8b3",
     "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-experience-install-owner-launch.php": "13823b0944169acf47d14b8e917aa38990f815482d2c21a39f9f2b41c3388754",
     "wp-content/plugins/mad4b-company-portfolio-manager/tests/experience-owner-job-rotation-regression-20261106.php": "09d8963c8e202be1d7472910bd7a85da698e9a693f6cca88e61c9e30f079f17c",
-    "wp-content/plugins/mad4b-company-portfolio-manager/mad4b-company-portfolio-manager.php": "4e4b750e3e1254a67e6c01f16572542b05b849ace4cec1f20c923016838df5ff"
+    "wp-content/plugins/mad4b-company-portfolio-manager/mad4b-company-portfolio-manager.php": "4e4b750e3e1254a67e6c01f16572542b05b849ace4cec1f20c923016838df5ff",
+    "ops/company-readiness-workflow/original-native-schema-313-v1/independent-readback.py": "dd72e9f7c53fc02e8501a70a721c0fb1c8d73168cfe775cd6e0f9abf1612d994",
+    "ops/company-readiness-workflow/original-native-schema-313-v1/schema-contract.py": "78cef9e2a9364f4836ec032606836ae379e8a6083ac124dfd3aebeb900b439ac",
+    "ops/company-readiness-workflow/original-native-schema-313-v1/test_schema_signed_authority_busy.py": "73223552ac174a1f0f7f8e85f6c297b89dc9aea472d980dda1880128ce7d7a6f",
+    "ops/company-readiness-workflow/original-native-schema-313-v1/README.md": "f4d49d07d750e8742d53f034f24b4ec70fd5f7b5f748239a1fdf22022a378df1",
+    "ops/company-readiness-workflow/original-native-schema-313-v1/source-manifest.json": "9633079e8373ae5a303243e2a0bbeee94e9b640330cf9a73ef255a767988ca99",
+    "ops/company-readiness-workflow/original-native-schema-313-v1/native-vps-client-principal.py": "ebb4971efef114e5b984a9c9ea60d46b5fe7250db9991b5d94cd61708651dc26",
+    "ops/company-readiness-workflow/original-native-schema-313-v1/claimed-job-worker.py": "1741014be1d88c322218770d64818ecd62c56757d096af8d89b6b1ebef981b00",
+    "ops/company-readiness-workflow/original-native-schema-313-v1/original-wpcli-executor.py": "fa2de819b07123594b324c1ea1107cb96fd3cf8332fd705d96aa7cb8f8f0ba8b",
+    "ops/company-readiness-workflow/original-native-schema-313-v1/vps-broker-exact-authority.py": "bd8351579353dd53b2eaa42a5baab76a7991938d3853d492e5652a8f22fdfb75",
+    "ops/company-readiness-workflow/original-native-schema-313-v1/schema-receipt-resume.py": "db38334ce0fe9451b0c00cf0ba265ace96b47ad94c55bc82761346c5162c4642",
+    "ops/company-readiness-workflow/original-native-schema-313-v1/test_schema_receipt_resume.py": "204439f0b8766f3d38164b692654f8252946dc357b46dcd9040ccde216481cfa"
   }
 }
