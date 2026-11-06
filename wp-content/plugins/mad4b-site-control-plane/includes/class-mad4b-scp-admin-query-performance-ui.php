@@ -174,6 +174,32 @@ final class MAD4B_SCP_Admin_Query_Performance_UI {
                 echo '<p><a href="'.esc_url(admin_url('tools.php?page=mad4b-company-performance-scan')).'">Open full Company Performance Intelligence plan</a></p>';
             }
         }
+        if (class_exists('MAD4B_Company_Performance_Intelligence',false)
+            && method_exists('MAD4B_Company_Performance_Intelligence','adaptive_css_decisions_v2')) {
+            $adaptive=MAD4B_Company_Performance_Intelligence::adaptive_css_decisions_v2();
+            $receipt=get_option('mad4b_perf_css_policy_receipt_v2',[]);
+            echo '<h3>Adaptive CSS policy v2 — source-aware, device-specific</h3>';
+            echo '<p>Evidence is compared after removing TTFB from each sample. Candidate selection requires current CSS and Elementor fingerprints, cold/warm coverage, low CLS and verified interactive states. No external approval, signing or certificate step.</p>';
+            echo '<p><strong>Runtime release:</strong> '.esc_html((string)($receipt['state']??'native_hold'));
+            echo ' &nbsp; <strong>Approved device/route variants:</strong> '.(int)($receipt['approved_count']??0).'</p>';
+            echo '<table class="widefat striped" style="max-width:1100px"><thead><tr><th>Route / locale</th><th>Device</th><th>Actual decision</th><th>Pairs</th><th>FCP after TTFB (p75)</th><th>LCP after TTFB (p75)</th><th>Reason codes</th></tr></thead><tbody>';
+            foreach ((array)($adaptive['decisions']??[]) as $entry) {
+                if (!is_array($entry))continue;
+                $x=(array)($entry['evaluation']??[]);
+                $f=$x['fcp_post_ttfb_delta_p75_ms']??null;
+                $l=$x['lcp_post_ttfb_delta_p75_ms']??null;
+                $values=[(string)($entry['path']??''). ' · '.(string)($entry['locale']??''),
+                    (string)($entry['device']??''),(string)($x['state']??'unknown'),
+                    (string)($x['pairs']??0),$f===null?'—':(string)$f.' ms',
+                    $l===null?'—':(string)$l.' ms',
+                    implode(', ',array_slice((array)($x['reason_codes']??[]),0,8))];
+                echo '<tr>';foreach($values as $value)echo '<td>'.esc_html($value).'</td>';echo '</tr>';
+            }
+            echo '</tbody></table>';
+            $missing=(array)($adaptive['languages_missing_css_plan']??[]);
+            if ($missing)echo '<p><strong>WPML locales without tested CSS plan:</strong> '.esc_html(implode(', ',$missing)).'. These remain native and are not assumed to be equivalent to English.</p>';
+            echo '<p>Release contract: at least 6 same-source paired browser samples (3 cold + 3 warm), two mobile widths, LCP p75 non-regression, CLS delta ≤ 0.02, zero JS errors, visual and interaction parity, and exact current source SHA. A failed or expired condition returns native CSS.</p>';
+        }
         echo '<p>UCSS and CCSS must be verified for every public language and device, including interactive JetEngine, Swiper and JetSmartFilters states. Never infer a CrUX Passed verdict from these lab samples.</p>';
 	}
 

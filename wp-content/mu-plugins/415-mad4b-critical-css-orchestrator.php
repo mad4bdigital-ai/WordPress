@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: MAD4B Verified Critical CSS
- * Version: 0.3.10
+ * Version: 0.3.12
  * Description: Serve measured first-paint CSS only for exact live LiteSpeed CSS content hashes. Fail open on any mismatch.
  */
 defined('ABSPATH') || exit;
@@ -162,6 +162,15 @@ final class MAD4B_Predictive_CSS_Plan_V2 {
             || !MAD4B_Shared_First_Paint_Performance::home_view()) return null;
         $query = (string)($_SERVER['QUERY_STRING']??'');
         $probe = ($query === 'mad4b_predictive_css_probe=1');
+        // No visitor-facing QA backdoor on any Production company.
+        if ($probe && wp_get_environment_type() !== 'staging') return null;
+        // CSS variants are independent of visitor pricing, but never modify
+        // commerce or private request contexts, and keep cache segregation.
+        if (!empty($_SERVER['HTTP_AUTHORIZATION']) || !empty($_SERVER['PHP_AUTH_USER'])
+            || !empty($_SERVER['HTTP_X_MAD4B_CURRENCY'])
+            || !empty($_SERVER['HTTP_X_GEO_COUNTRY'])
+            || !empty($_SERVER['HTTP_CF_IPCOUNTRY'])
+            || !empty($_SERVER['HTTP_X_FORWARDED_GEO_COUNTRY'])) return null;
         $manifest=self::load();
         if (!$manifest) return null;
         // Release may certify one viewport without requiring the other viewport
@@ -179,6 +188,11 @@ final class MAD4B_Predictive_CSS_Plan_V2 {
         if ($path === '' || $canonical === '' || $path !== $canonical) return null;
         $locale=apply_filters('wpml_current_language',null);
         if (!is_string($locale) || !preg_match('/^[a-z]{2}(?:-[a-z]{2})?$/iD',$locale)) return null;
+        // Reuse MAD4B's existing market/cookie protection; this blocks
+        // WooCommerce cart/session, logged-in, and unknown personalization.
+        if (!class_exists('MAD4B_LSC_Local_Provider_V1',false)
+            || !MAD4B_LSC_Local_Provider_V1::safe_cookie_header(
+                (string)($_SERVER['HTTP_COOKIE']??''),$locale)) return null;
         $policy=$manifest['routes'][$path.'|'.$locale]??null;
         if (!is_array($policy) || ($policy['page_id']??null)!==$id
             || (!$probe && ($policy['css_epoch']??null)!==(int)get_option('mad4b_css_ai_epoch_v1',0))) return null;
@@ -269,6 +283,29 @@ final class MAD4B_Predictive_CSS_Plan_V2 {
             $sourceSha=(string)($policy['bundle_sha']??'');
         }
         if (!preg_match('/^[a-f0-9]{64}$/D',$sourceSha)) return $html;
+        // A public release must also have fresh, route/device/variant-matched
+        // measured evidence. The receipt is deterministic data from the native
+        // Performance Intelligence engine: no certificates, approvals or new
+        // external broker. A stale/missing receipt restores native CSS.
+        $isProbe=(string)($_SERVER['QUERY_STRING']??'')==='mad4b_predictive_css_probe=1';
+        if (!$isProbe) {
+            $rec=get_option('mad4b_perf_css_policy_receipt_v2',[]);
+            $host=(string)wp_parse_url(home_url('/'),PHP_URL_HOST);
+            $criticalHash=(string)($plan['critical_sha']??'');
+            $fingerprint=hash('sha256',implode('|',[$host,(string)($policy['path']??''),
+                (string)apply_filters('wpml_current_language',''),$device,$sourceSha,
+                (string)($policy['elementor_doc_fingerprint']??''),$criticalHash,
+                (string)(int)($policy['css_epoch']??-1)]));
+            $rule=is_array($rec)?($rec['policies'][$fingerprint]??null):null;
+            if (!is_array($rec) || ($rec['contract']??'')!=='mad4b.css-runtime-policy.v2'
+                || ($rec['site_host']??'')!==$host
+                || ($rec['environment']??'')!==wp_get_environment_type()
+                || !is_array($rule) || ($rule['decision']??'')!=='passed_evidence'
+                || ($rule['device']??'')!==$device
+                || (int)($rule['expires_at_epoch']??0)<=time()
+                || (int)($rec['evaluated_at_epoch']??0)>time()+300) return $html;
+        }
+
         $root=realpath(WP_CONTENT_DIR.'/litespeed/css');
         $css=$root?realpath($root.'/'.$bundle):false;
         if (!$root || !$css || !str_starts_with($css,$root.'/') || !is_file($css)
