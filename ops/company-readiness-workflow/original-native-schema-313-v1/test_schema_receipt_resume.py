@@ -41,6 +41,33 @@ class SchemaReceiptRecoveryTests(unittest.TestCase):
   with patch.object(self.exe,'WP',return_value=['wp']),patch.object(self.exe.subprocess,'run',return_value=outcome):
    with self.assertRaisesRegex(RuntimeError,'WPCLI_RECEIPT_ALREADY_EXISTS'):
     self.exe.wp_json(['mad4b','broker-remote-ssh','wpcli-receipt'])
+ def test_expired_receipt_denied_before_target_access(self):
+  import json,time
+  job='1'*32
+  host='srv2030908';digest='a'*64;readback='b'*64
+  record={'contract':'mad4b.native-original-313-execution.v1','job_id':job,
+    'company':'wayfatours','environment':'production','origin':'https://wayfatours.com',
+    'target_id':host,'command_sha256':digest,'exit_code':0,'job_mutating':False,
+    'state':'EXECUTED_PENDING_INDEPENDENT_READBACK',
+    'schema_readback_type':'jet_engine_meta_boxes','output_sha256':readback,
+    'expected_readback_sha256':readback,'schema_readback_sha256':readback}
+  verifier=types.SimpleNamespace(verify=lambda *args:{'verified':True,'eligible':True,
+    'owner_enrolled_wpcli':True,'operation':'company.remote.wpcli.full',
+    'target_scope':'wordpress','expires_epoch':int(time.time())-10})
+  target_access=unittest.mock.Mock()
+  engine=types.SimpleNamespace(HOST=host,DIGEST=digest,
+    original_module=lambda *args:verifier,pinned_target=target_access)
+  def locked(path,max_bytes=16000):
+   if path.suffix=='.reserved':return b'reserved-for-one-exact-original-312-job\n'
+   return json.dumps(record).encode()
+  with patch.object(self.res,'module',return_value=engine),patch.object(self.res,'root_bytes',side_effect=locked):
+   with self.assertRaisesRegex(RuntimeError,'EXPIRED_OR_INSUFFICIENT_ORIGINAL_312_WINDOW_NO_REPLAY'):
+    self.res.resume(job)
+  target_access.assert_not_called()
+ def test_preflight_uses_enrolled_actor_not_unauthenticated_wpcli(self):
+  source=(ROOT/'original-wpcli-executor.py').read_text()
+  self.assertIn("lane=wp_json(['--user='+str(preflight_actor)",source)
+  self.assertIn('preflight_actor=resolve_actor()',source)
  def test_resume_code_cannot_reexecute_schema_command(self):
   source=(ROOT/'schema-receipt-resume.py').read_text()
   self.assertNotIn("'option','get','jet_engine_meta_boxes'",source)

@@ -92,7 +92,9 @@ def run(job):
  # Check availability of the *same* registered central 313 receipt endpoint
  # before reserving the one-use target command. A busy slot defers without
  # creating an uncertain host execution; final authority still checks 312.
- lane=wp_json(['mad4b','broker-remote-ssh','status'],25)
+ from wpcli_dynamic_actor import resolve_actor
+ preflight_actor=resolve_actor()  # Read-only enrolled actor lookup, not a grant.
+ lane=wp_json(['--user='+str(preflight_actor),'mad4b','broker-remote-ssh','status'],25)
  if lane.get('registered') is not True:
   raise RuntimeError('ORIGINAL_313_RECEIPT_LANE_NOT_READY')
  lock=RESERVED/(job+'.reserved')
