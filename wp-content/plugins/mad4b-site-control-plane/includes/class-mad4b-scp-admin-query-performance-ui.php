@@ -42,6 +42,9 @@ final class MAD4B_SCP_Admin_Query_Performance_UI {
 		if ( ! empty( $status['maintenance_job_health']['reconciliation_required'] ) ) echo '<div class="notice notice-warning"><p>' . esc_html__( 'The maintenance worker exceeded its lease. Reconciliation is required before another attempt; refreshing this page does not retry the operation.', 'mad4b-site-control-plane' ) . '</p></div>';
 		echo '<p><a class="button" href="' . esc_url( admin_url( 'admin.php?page=' . self::PAGE_SLUG ) ) . '">' . esc_html__( 'Refresh persisted status', 'mad4b-site-control-plane' ) . '</a></p>';
 
+		if ( class_exists( 'MAD4B_SCP_Core_Web_Vitals', false ) ) MAD4B_SCP_Core_Web_Vitals::render_admin_section();
+		self::render_selective_cache_release();
+
 		$indexes = isset( $status['indexes'] ) && is_array( $status['indexes'] ) ? $status['indexes'] : array();
 		if ( $indexes ) {
 			echo '<h2>' . esc_html__( 'Index status', 'mad4b-site-control-plane' ) . '</h2>';
@@ -62,6 +65,31 @@ final class MAD4B_SCP_Admin_Query_Performance_UI {
 			echo '</form>';
 		}
 		echo '</div>';
+	}
+
+	/** Read-only accepted release evidence, independent from Google CrUX. */
+	private static function render_selective_cache_release() {
+		$receipt = get_option('mad4b_scp_render_cache_release_v1', array());
+		$receipt = is_array($receipt) && ($receipt['contract'] ?? '') === 'mad4b.performance-release-verified.v1' ? $receipt : array();
+		$policy = array();
+		$file = WPMU_PLUGIN_DIR . '/mad4b-selective-render-policy.json';
+		if (is_readable($file) && !is_link($file)) {
+			$decoded = json_decode((string)file_get_contents($file), true);
+			if (is_array($decoded) && ($decoded['contract'] ?? '') === 'mad4b.render-query.public-fragments.v1'
+				&& ($decoded['site_host'] ?? '') === wp_parse_url(home_url('/'), PHP_URL_HOST)
+				&& ($decoded['environment'] ?? '') === wp_get_environment_type()) $policy = $decoded;
+		}
+		echo '<h2>Selective Render Cache — source acceptance</h2>';
+		echo '<p>Public JetEngine term fragments use the Query Governor and Redis. Visitor pricing, bookings and filtered results are excluded. Core Web Vitals uses independent, rolling 28-day Google field data.</p>';
+		echo '<table class="widefat striped" style="max-width:960px"><tbody>';
+		self::row('Enabled', (string)get_option('mad4b_render_public_fragments_enabled', '0') === '1' ? 'yes' : 'no');
+		self::row('Policy', (string)($policy['status'] ?? 'not configured'));
+		self::row('Eligible templates', (string)count((array)($policy['templates'] ?? array())));
+		self::row('TTL seconds', (string)($policy['ttl_seconds'] ?? '—'));
+		self::row('Last accepted release', (string)($receipt['verified_at_utc'] ?? 'not recorded'));
+		self::row('WPML stale term links corrected', isset($receipt['wpml_links_repaired']) ? (int)$receipt['wpml_links_repaired'] : '—');
+		self::row('HTML and interaction tests', (string)($receipt['parity_state'] ?? 'not recorded'));
+		echo '</tbody></table>';
 	}
 
 	private static function row( $label, $value ) {
