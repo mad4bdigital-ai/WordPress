@@ -4,7 +4,7 @@
   "source_control": "mad4bdigital-ai/WordPress",
   "environment_overlay": "wayfatours-production + tours-dev-staging",
   "sha256": {
-    "ops/mad4b-company-live-convergence-20261106/README.md": "33e53fb6ce324c74a570e7ef937faec11ad71cbf2dfb1e976c68337fe09012df",
+    "ops/mad4b-company-live-convergence-20261106/README.md": "1336e91bdce512378ffcd0b6ae7f45867766aa468515fee23edcd043c9ebd280",
     "ops/mad4b-company-live-convergence-20261106/host-cache/mad4b-wayfa-tour-rate-cache-purge.path": "ff0485c0c32eb2f3e9ca33db1dc42558954ff118b152b71063e3a804f6d794a9",
     "ops/mad4b-company-live-convergence-20261106/host-cache/mad4b-wayfa-tour-rate-cache-purge.service": "514ed80836015f92beb00c6dd86ae4a03eb641bde1b8baf050bb7bdb15299a80",
     "ops/mad4b-company-live-convergence-20261106/host-cache/purge-wayfa-tour-rate-public-cache.py": "1a627d89e7d43fa0155b00fe138f1c45abc783ebbccfcd77105414632d7de179",
@@ -38,7 +38,7 @@
     "wp-content/plugins/mad4b-site-control-plane/skill-seeds/wordpress-site-diagnostics/SKILL.md": "0c5cfb095889f41252ba8039076304ef8fb99cdffb97c03136f6b01158b0e9eb",
     "packages/mad4b-shared-product-core/source-files.sha256": "4ae412f48753bb168354c9cfe055b4bbb9b0e2892d6635b3f22222c10ae66fc9",
     "wp-content/plugins/mad4b-site-control-plane/config/egress-policy.json": "706b936f81e5d56bca491e2f792bb03b278f68eb7bac03a3757622192a5eb32d",
-    ".github/workflows/mad4b-company-settings-source-convergence.yml": "23d34ac4669516b0345f95ddcb79e94b1b8d927dd640647f15e16f2fbaf4e6bf",
+    ".github/workflows/mad4b-company-settings-source-convergence.yml": "624f9b31d92e33b182b5f49b5fa60c4d05300113f0ddc77a14cf673f35ce93ee",
     "ops/company-readiness-workflow/host-provisioning-runtime-v1/patches/mad4b-experience-footer-coexistence-20261106.patch": "c1fd00228a3adec7fff2500498aab10ce919c1f672e85f95579f09fe14ec28b0",
     "ops/company-readiness-workflow/host-provisioning-runtime-v1/patches/README-experience-footer-coexistence-20261106.md": "558f5f206336cfd6cd210d8af8931d36c828492c4bd5f9ac361d97be602fbd18",
     "ops/company-readiness-workflow/host-provisioning-runtime-v1/live-only-module-snapshots/mad4b-experience/src/presentation/bootstrap.php": "470b00846323ee5b22f1634991b752196d92f38942983b3c4210b556452a0061",
@@ -71,13 +71,13 @@
     "ops/company-readiness-workflow/original-native-schema-313-v1/schema-contract.py": "78cef9e2a9364f4836ec032606836ae379e8a6083ac124dfd3aebeb900b439ac",
     "ops/company-readiness-workflow/original-native-schema-313-v1/test_schema_signed_authority_busy.py": "73223552ac174a1f0f7f8e85f6c297b89dc9aea472d980dda1880128ce7d7a6f",
     "ops/company-readiness-workflow/original-native-schema-313-v1/README.md": "f4d49d07d750e8742d53f034f24b4ec70fd5f7b5f748239a1fdf22022a378df1",
-    "ops/company-readiness-workflow/original-native-schema-313-v1/source-manifest.json": "9624701c72e96e2953cc6a88dd3f8dd30ae8e1584987db754d9298b0d21203e4",
+    "ops/company-readiness-workflow/original-native-schema-313-v1/source-manifest.json": "2ebad808075f681bfbbf28a9d404cff7212d66f11dd6b0632781761f37018116",
     "ops/company-readiness-workflow/original-native-schema-313-v1/native-vps-client-principal.py": "ebb4971efef114e5b984a9c9ea60d46b5fe7250db9991b5d94cd61708651dc26",
     "ops/company-readiness-workflow/original-native-schema-313-v1/claimed-job-worker.py": "1741014be1d88c322218770d64818ecd62c56757d096af8d89b6b1ebef981b00",
     "ops/company-readiness-workflow/original-native-schema-313-v1/original-wpcli-executor.py": "fa2de819b07123594b324c1ea1107cb96fd3cf8332fd705d96aa7cb8f8f0ba8b",
     "ops/company-readiness-workflow/original-native-schema-313-v1/vps-broker-exact-authority.py": "bd8351579353dd53b2eaa42a5baab76a7991938d3853d492e5652a8f22fdfb75",
     "ops/company-readiness-workflow/original-native-schema-313-v1/schema-receipt-resume.py": "db38334ce0fe9451b0c00cf0ba265ace96b47ad94c55bc82761346c5162c4642",
-    "ops/company-readiness-workflow/original-native-schema-313-v1/test_schema_receipt_resume.py": "3d436998d39f1a67a620d646f1e965609887c75ca794090578d9903105a90ea2",
+    "ops/company-readiness-workflow/original-native-schema-313-v1/test_schema_receipt_resume.py": "c14bc974e6492f80111f985d6d1aed33102fc77c871421912c0387222bdd909d",
     "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-native-plugin-install-handler.php": "b1325f093caba035169479fb9690f170c826b8227954df9ae3418006871128e1",
     "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-native-plugin-install-provider.php": "86e0c07105beca7c4b2ea4b2bd80976a47cffb44538c4a130ab6bc7140a3ccee",
     "ops/company-readiness-workflow/central-signed-wpcli-priority-v1/wpcli-signed-priority.py": "a31a84f39c5c4f6db1d44a91d2f5ed29fe18f5ca1f9fec8d7fd2f24a7cec7eb5",
@@ -93,6 +93,9 @@
     "wp-content/plugins/mad4b-site-control-plane/tests/context-managed-google-signin-contract.py": "091336fd396d65d1edab563a5dd47833d6828a2b9a0724d1906fcfe03c8e94f7",
     "wp-content/plugins/mad4b-site-control-plane/tests/context-oauth-lifecycle-runtime.php": "72a85877a3649a6fd2f34bdba0a89d9a504b3906f6ec0795af8a455a7b9c1868",
     "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-contract.py": "9569f1f201cd5d606933ef293ec235805f13c45b098662f90efb0e1554ee33c2",
-    "wp-content/plugins/mad4b-site-control-plane/tests/content-job-transaction-fault-runtime.php": "847b8adec15d69962aa5b5b9811c671d41d6ccb433ab39686166583af3958014"
+    "wp-content/plugins/mad4b-site-control-plane/tests/content-job-transaction-fault-runtime.php": "847b8adec15d69962aa5b5b9811c671d41d6ccb433ab39686166583af3958014",
+    "wp-content/plugins/mad4b-site-control-plane/tests/context-admin-recovery-runtime.php": "211bd4cd08e3d269e1195037d9ebb28e420be5ad70ddc9b44e6718ecb79035eb",
+    "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-runtime-hardening-contract.py": "9ab2f17f317ab5c9d054464154ed77b869d4b3033f028d1425b6b9ac4f12791a",
+    "wp-content/plugins/mad4b-site-control-plane/tests/mcp-client-compatibility-contract.py": "aebb5bbd47a0c72f1c718a99ee4d8534edc9183effe8a0045ca6900364867ee7"
   }
 }

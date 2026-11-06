@@ -23,20 +23,27 @@ class SchemaReceiptRecoveryTests(unittest.TestCase):
   with patch.dict(sys.modules,{'central_wpcli_runtime':fixture}):
    cls.exe=load('schema_original_execution_test','original-wpcli-executor.py')
  def test_receipt_enforced_root_only(self):
-  with tempfile.TemporaryDirectory() as d:
-   p=pathlib.Path(d)/'receipt'
-   p.write_bytes(b'authentic-receipt-must-stay-immutable')
-   p.chmod(0o600)
-   self.assertEqual(self.res.root_bytes(p),b'authentic-receipt-must-stay-immutable')
-   p.chmod(0o644)
+  # Simulate root-owned metadata without requiring a root CI runner.
+  blob=b'authentic-receipt-must-stay-immutable'
+  def owned(mode,uid=0):
+   return types.SimpleNamespace(
+    lstat=lambda:types.SimpleNamespace(st_mode=stat.S_IFREG | mode,st_uid=uid,st_size=len(blob)),
+    is_symlink=lambda:False,read_bytes=lambda:blob)
+  self.assertEqual(self.res.root_bytes(owned(0o600)),blob)
+  for candidate in [owned(0o644),owned(0o600,uid=1001)]:
    with self.assertRaisesRegex(RuntimeError,'ROOT_ONLY'):
-    self.res.root_bytes(p)
+    self.res.root_bytes(candidate)
  def test_symlink_rejected(self):
   with tempfile.TemporaryDirectory() as d:
    p=pathlib.Path(d)/'real';p.write_bytes(b'xyz');p.chmod(0o600)
    alias=pathlib.Path(d)/'alias';alias.symlink_to(p)
    with self.assertRaisesRegex(RuntimeError,'ROOT_ONLY'):
     self.res.root_bytes(alias)
+ def test_unprivileged_resume_denied_before_host_access(self):
+  with patch.object(self.res.os,'geteuid',return_value=1001),patch.object(self.res,'module') as host_module:
+   with self.assertRaisesRegex(RuntimeError,'ROOT_AND_EXACT_JOB_REQUIRED'):
+    self.res.resume('1'*32)
+   host_module.assert_not_called()
  def test_scope_mismatch_denied(self):
   self.assertFalse(self.res.matching({'job_id':'old'}, {'job_id':'new'}, ['job_id']))
  def test_central_slot_exhaustion_classified(self):
@@ -73,7 +80,7 @@ class SchemaReceiptRecoveryTests(unittest.TestCase):
   def locked(path,max_bytes=16000):
    if path.suffix=='.reserved':return b'reserved-for-one-exact-original-312-job\n'
    return json.dumps(record).encode()
-  with patch.object(self.res,'module',return_value=engine),patch.object(self.res,'root_bytes',side_effect=locked):
+  with patch.object(self.res,'module',return_value=engine),patch.object(self.res,'root_bytes',side_effect=locked),patch.object(self.res.os,'geteuid',return_value=0):
    with self.assertRaisesRegex(RuntimeError,'EXPIRED_OR_INSUFFICIENT_ORIGINAL_312_WINDOW_NO_REPLAY'):
     self.res.resume(job)
   target_access.assert_not_called()

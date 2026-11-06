@@ -57,8 +57,8 @@ jobs:
         run: |
           set -eu
           base=ops/company-readiness-workflow/original-native-schema-313-v1
-          python3 "$base/test_schema_receipt_resume.py"
-          python3 "$base/test_schema_signed_authority_busy.py"
+          python3 -I -B "$base/test_schema_receipt_resume.py"
+          python3 -I -B "$base/test_schema_signed_authority_busy.py"
       - name: Verify original signed WP-CLI priority and five-minute readiness policy
         run: |
           set -eu
@@ -113,3 +113,6 @@ jobs:
           php "$base/content-job-transaction-fault-runtime.php"
           python3 "$base/context-managed-google-signin-contract.py"
           python3 "$base/context-authority-contract.py"
+          php "$base/context-admin-recovery-runtime.php"
+          python3 "$base/dynamic-runtime-hardening-contract.py"
+          python3 "$base/mcp-client-compatibility-contract.py"
