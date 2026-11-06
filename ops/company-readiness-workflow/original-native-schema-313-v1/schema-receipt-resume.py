@@ -28,7 +28,7 @@ def existing_central(job,engine):
  script=('$p=get_option("mad4b_broker_remote_wpcli_receipt_v1_'+   job+'",false);$v=get_option("mad4b_native_313_independent_proof_v1_'+   job+'",false);echo wp_json_encode(["pending"=>$p,"proof"=>$v]);')
  proc=subprocess.run(engine.WP()+['eval',script],capture_output=True,text=True,timeout=30,check=False)
  if proc.returncode:
-  if proc.returncode==75 and 'STAGING_WPCLI_BUSY' in proc.stderr:
+  if 'STAGING_WPCLI_BUSY' in proc.stderr:
    raise RuntimeError('CENTRAL_WPCLI_SLOT_BUSY_DEFERRED')
   raise RuntimeError('CENTRAL_RECEIPT_RECORD_READBACK_UNAVAILABLE')
  try:return json.loads(proc.stdout.strip().splitlines()[-1])

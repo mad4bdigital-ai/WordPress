@@ -50,7 +50,7 @@ def wp_json(args,timeout=30):
  if p.returncode!=0:
   # Capacity is retryable. Never mistake a full two-slot WordPress pool for
   # a revoked signed 305/312 authority or expose signed arguments in logs.
-  if p.returncode==75 and 'STAGING_WPCLI_BUSY' in (p.stderr or ''):
+  if 'STAGING_WPCLI_BUSY' in (p.stderr or ''):
    raise RuntimeError('CENTRAL_WPCLI_SLOT_BUSY_DEFERRED')
   for code in ('WPCLI_RECEIPT_ALREADY_EXISTS','OWNER_WPCLI_GRANT_OR_CLAIM_NOT_ELIGIBLE',
                'WPCLI_RECEIPT_SCOPE_INVALID','INVALID_WPCLI_BROKER_SIGNATURE'):

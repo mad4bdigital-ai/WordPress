@@ -36,6 +36,11 @@ class SchemaReceiptRecoveryTests(unittest.TestCase):
   with patch.object(self.exe,'WP',return_value=['wp']), patch.object(self.exe.subprocess,'run',return_value=outcome):
    with self.assertRaisesRegex(RuntimeError,'CENTRAL_WPCLI_SLOT_BUSY_DEFERRED'):
     self.exe.wp_json(['mad4b','broker-remote-ssh','status'])
+ def test_wpcli_busy_with_nonstandard_exit_code_deferred(self):
+  outcome=types.SimpleNamespace(returncode=1,stdout='',stderr='STAGING_WPCLI_BUSY: two active WordPress CLI sessions')
+  with patch.object(self.exe,'WP',return_value=['wp']), patch.object(self.exe.subprocess,'run',return_value=outcome):
+   with self.assertRaisesRegex(RuntimeError,'CENTRAL_WPCLI_SLOT_BUSY_DEFERRED'):
+    self.exe.wp_json(['mad4b','broker-remote-ssh','status'])
  def test_original_receipt_conflict_is_not_ignored(self):
   outcome=types.SimpleNamespace(returncode=1,stdout='',stderr='Error: WPCLI_RECEIPT_ALREADY_EXISTS')
   with patch.object(self.exe,'WP',return_value=['wp']),patch.object(self.exe.subprocess,'run',return_value=outcome):
