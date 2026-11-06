@@ -26,3 +26,14 @@ Prerequisites: the already enrolled original host transport, central WordPress b
 `python3 -m unittest discover -s . -p 'test_schema_receipt_resume.py' -v`
 
 Unit tests are not proof of a new signed 313; runtime proof must be produced by a fresh, valid original owner-authorized Job. Production prices, tour post meta, Orders and Grants are out of scope.
+
+
+## Original signed Broker dependencies and transient capacity handling
+
+- \`vps-broker-exact-authority.py\` is deployed under \`/opt/mad4b-company-transport/broker-v1/\` and performs the original signed 312 authority verification.
+- \`native-vps-client-principal.py\` is deployed in the same Broker directory and checks the WordPress-pinned Ed25519 public key (private key bytes are never included here).
+- A full WordPress WP-CLI pool is classified as retryable only when the response contains \`STAGING_WPCLI_BUSY\`, regardless of process exit status. All other errors fail closed; signatures and scopes are still verified live.
+- \`test_schema_signed_authority_busy.py\` tests signed-authority success-after-busy, busy exhaustion, and true-denial preservation with ephemeral in-memory test keys.
+- These changes do **not** complete or extend an expired Job and do not override the minimum remaining lifetime before one-shot execution.
+
+These source-only files are not a new host enrollment, owner Grant, or 313 certificate.

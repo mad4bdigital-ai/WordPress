@@ -206,9 +206,13 @@ def main():
 
 if __name__=='__main__':
  try:main()
- except TransientCentralReadBusy:
-  print(json.dumps({'state':'CENTRAL_WPCLI_BUSY_DEFERRED',
-   'jobs_claimed':0,'jobs_executed':0,'grants_created':0,
-   'production_mutated':False}))
  except Exception as exc:
+  if isinstance(exc,TransientCentralReadBusy) or (isinstance(exc,RuntimeError)
+      and str(exc)=='CENTRAL_WPCLI_SLOT_BUSY_DEFERRED'):
+   print(json.dumps({'state':'CENTRAL_WPCLI_BUSY_DEFERRED',
+    'jobs_claimed':0,'jobs_executed':0,'grants_created':0,
+    'production_mutated':False,'receipt_certified':False}))
+   sys.exit(0)
+  # All other errors remain explicit denials, never converted into busy.
+
   print('CLAIMED_NATIVE_313_WORKER_DENIED:'+str(exc),file=sys.stderr);sys.exit(2)
