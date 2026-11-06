@@ -739,6 +739,8 @@ if (wp_get_environment_type() === 'staging') {
     require_once __DIR__ . '/includes/class-mad4b-company-presentation-option-ownership.php';
     require_once __DIR__ . '/includes/class-mad4b-company-native-plugin-install-handler.php';
     require_once __DIR__ . '/includes/class-mad4b-company-native-plugin-install-provider.php';
+    // Exact owner-authenticated Original 305; job rotation remains package-hash bound.
+    require_once __DIR__ . '/includes/class-mad4b-company-experience-install-owner-launch.php';
 }
 
 // Original, read-only Start Company completeness projection: belongs to

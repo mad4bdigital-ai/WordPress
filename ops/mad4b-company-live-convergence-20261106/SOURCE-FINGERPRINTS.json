@@ -4,7 +4,7 @@
   "source_control": "mad4bdigital-ai/WordPress",
   "environment_overlay": "wayfatours-production + tours-dev-staging",
   "sha256": {
-    "ops/mad4b-company-live-convergence-20261106/README.md": "8aa936985051bfd410191dc0b6695522b44b92e17bb54602b96308fba3b7ba37",
+    "ops/mad4b-company-live-convergence-20261106/README.md": "36c548f995a329929303913a2095ec8114d21b137e2b37d448065ddc9dea4886",
     "ops/mad4b-company-live-convergence-20261106/host-cache/mad4b-wayfa-tour-rate-cache-purge.path": "ff0485c0c32eb2f3e9ca33db1dc42558954ff118b152b71063e3a804f6d794a9",
     "ops/mad4b-company-live-convergence-20261106/host-cache/mad4b-wayfa-tour-rate-cache-purge.service": "514ed80836015f92beb00c6dd86ae4a03eb641bde1b8baf050bb7bdb15299a80",
     "ops/mad4b-company-live-convergence-20261106/host-cache/purge-wayfa-tour-rate-public-cache.py": "1a627d89e7d43fa0155b00fe138f1c45abc783ebbccfcd77105414632d7de179",
@@ -38,7 +38,7 @@
     "wp-content/plugins/mad4b-site-control-plane/skill-seeds/wordpress-site-diagnostics/SKILL.md": "0c5cfb095889f41252ba8039076304ef8fb99cdffb97c03136f6b01158b0e9eb",
     "packages/mad4b-shared-product-core/source-files.sha256": "4ae412f48753bb168354c9cfe055b4bbb9b0e2892d6635b3f22222c10ae66fc9",
     "wp-content/plugins/mad4b-site-control-plane/config/egress-policy.json": "706b936f81e5d56bca491e2f792bb03b278f68eb7bac03a3757622192a5eb32d",
-    ".github/workflows/mad4b-company-settings-source-convergence.yml": "6246a65bfad4fa8cd3bc7ce67e4919e002aeb4b70a737e98dada032fcfb4ab04",
+    ".github/workflows/mad4b-company-settings-source-convergence.yml": "dd9d65d3f678f55d000ecf1809f268851b1316711c4dd2d39868bd4f95fdcd1e",
     "ops/company-readiness-workflow/host-provisioning-runtime-v1/patches/mad4b-experience-footer-coexistence-20261106.patch": "c1fd00228a3adec7fff2500498aab10ce919c1f672e85f95579f09fe14ec28b0",
     "ops/company-readiness-workflow/host-provisioning-runtime-v1/patches/README-experience-footer-coexistence-20261106.md": "558f5f206336cfd6cd210d8af8931d36c828492c4bd5f9ac361d97be602fbd18",
     "ops/company-readiness-workflow/host-provisioning-runtime-v1/live-only-module-snapshots/mad4b-experience/src/presentation/bootstrap.php": "470b00846323ee5b22f1634991b752196d92f38942983b3c4210b556452a0061",
@@ -63,6 +63,9 @@
     "wp-content/plugins/mad4b-site-control-plane/tests/gateway-regression-runtime.php": "f8b14624a4152d63e131a1ce67e9d1f2b8d5ec170ef16fea98c2c513e5d02cf7",
     "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py": "2f9252ee559dca99e6537ce4c5081e7a1c790fa5e6336ce6af005ef3fc9b0124",
     "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-full-staging-authority.php": "d662b9b96c7c2e64cdef9d813b58c13988d51ad2b5b788381ae20d101289a662",
-    "wp-content/plugins/mad4b-site-control-plane/tests/full-staging-authority-contract.py": "79b7a0191f5a950f29f6bd28bd19d3e46ccf2d51fe3e2c5b2f50f7c1c3a9f8b3"
+    "wp-content/plugins/mad4b-site-control-plane/tests/full-staging-authority-contract.py": "79b7a0191f5a950f29f6bd28bd19d3e46ccf2d51fe3e2c5b2f50f7c1c3a9f8b3",
+    "wp-content/plugins/mad4b-company-portfolio-manager/includes/class-mad4b-company-experience-install-owner-launch.php": "13823b0944169acf47d14b8e917aa38990f815482d2c21a39f9f2b41c3388754",
+    "wp-content/plugins/mad4b-company-portfolio-manager/tests/experience-owner-job-rotation-regression-20261106.php": "09d8963c8e202be1d7472910bd7a85da698e9a693f6cca88e61c9e30f079f17c",
+    "wp-content/plugins/mad4b-company-portfolio-manager/mad4b-company-portfolio-manager.php": "4e4b750e3e1254a67e6c01f16572542b05b849ace4cec1f20c923016838df5ff"
   }
 }
