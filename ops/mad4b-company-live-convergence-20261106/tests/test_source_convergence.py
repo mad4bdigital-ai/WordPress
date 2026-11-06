@@ -25,7 +25,10 @@ skills=json.loads((root/'wp-content/plugins/mad4b-site-control-plane/config/skil
 assert skills['seed_version']==17
 assert any(x['name']=='wordpress-settings-lifecycle' and x['enabled'] for x in skills['skills'])
 for skill in skills['skills']:
-    assert (root/'wp-content/plugins/mad4b-site-control-plane/skill-seeds'/skill['name']/'SKILL.md').is_file()
+    canonical=root/'wp-content/plugins/mad4b-site-control-plane/skill-seeds'/skill['name']/'SKILL.md'
+    portable=root/'plugins/mad4b-wordpress/skills'/skill['name']/'SKILL.md'
+    assert canonical.is_file() and portable.is_file(),skill['name']
+    assert canonical.read_bytes()==portable.read_bytes(), 'Portable Skill seed drift: '+skill['name']
 rate=(root/'wp-content/mu-plugins/141-mad4b-tour-rate-view-inheritance.php').read_text()
 assert "add_action('admin_init',[__CLASS__,'register_tour_editor']" not in rate
 assert rate.count("add_action('elementor/frontend/widget/before_render',[__CLASS__,'before_widget'],50);")==1

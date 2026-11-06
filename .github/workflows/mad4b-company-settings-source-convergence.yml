@@ -52,6 +52,7 @@ jobs:
           php "$base/faore-local-observability.php"
           php "$base/faore-original-queue-readback.php"
           php "$base/private-operations-behavioral-runtime.php"
+          php "$base/native-plugin-management-menu-runtime.php"
       - name: Verify exact v14 migration and existing governance contracts
         run: |
           set -eu

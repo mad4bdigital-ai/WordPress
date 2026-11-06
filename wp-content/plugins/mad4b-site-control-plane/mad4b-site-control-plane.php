@@ -43,7 +43,8 @@ if ( function_exists( 'is_admin' ) && is_admin() ) {
 // Production without Company Portfolio Manager must retain native company
 // notification routing instead of silently falling back to stale Woo settings.
 // The active Portfolio Manager remains the canonical owner when available.
-if ( 'production' === wp_get_environment_type()
+if ( function_exists( 'wp_get_environment_type' ) && function_exists( 'get_option' )
+    && 'production' === wp_get_environment_type()
     && ! in_array( 'mad4b-company-portfolio-manager/mad4b-company-portfolio-manager.php',
         (array) get_option( 'active_plugins', array() ), true ) ) {
     require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-company-communication.php';
