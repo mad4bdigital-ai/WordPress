@@ -25,8 +25,18 @@ foreach((array)($manifest['routes']['/|en']['bundle_variants']??[]) as $v) {
     if (($v['bundle_sha']??null)===$selected)$known=$v;
 }
 if ($known && ($known['devices']['mobile']['state']??'')==='canary') {
-    $check('known_css_variant_no_false_unknown_drift',
-        !in_array('CSS_BUNDLE_NOT_IN_CERTIFIED_MANIFEST',$d['drift_codes'],true));
+    // An independently observed *desktop* source drift may remain active
+    // even when the selected mobile variant is now known. Keep the warning.
+    $active=(array)($d['bundle_drift']??[]);
+    $selectedIsFalseDrift=$active && ($active['path']??'')==='/'
+        && ($active['locale']??'')==='en'
+        && ($active['device']??'')==='mobile'
+        && (($manifest['routes']['/|en']['bundle_variants'][$active['bundle_file']??'']['bundle_sha']??null)===$selected);
+    $check('known_mobile_variant_no_false_unknown_drift',!$selectedIsFalseDrift);
+    $warningIsValid=!$active ||
+        (!isset($manifest['routes'][($active['path']??'').'|'.($active['locale']??'')]['bundle_variants'][$active['bundle_file']??''])
+         && in_array('CSS_BUNDLE_NOT_IN_CERTIFIED_MANIFEST',$d['drift_codes'],true));
+    $check('independent_desktop_drift_preserved',$warningIsValid);
     $check('known_canary_not_published',($manifest['release_state']??'')==='canary_only'
         && ($known['devices']['mobile']['performance_gate']['status']??'')==='pending_current_bundle_lcp'
         && (int)(get_option('mad4b_perf_css_policy_receipt_v2',[])['approved_count']??-1)===0);
