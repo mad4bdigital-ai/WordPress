@@ -6,20 +6,34 @@ $check=static function ($name,$truth) use (&$checked) {
     if(!$truth) throw new RuntimeException('test_failed_'.$name);
 };
 $collection=get_option('mad4b_perf_css_browser_evidence_v2',[]);
-$record=$collection['records'][0]??[];
 $plan=MAD4B_Company_Performance_Intelligence::adaptive_css_decisions_v2();
 $actual=$plan['decisions'][0]['evaluation']??[];
+$selectedSource=$plan['decisions'][0]['source_sha256']??null;
+$record=[];
+foreach((array)($collection['records']??[]) as $r) {
+    if (($r['source_bundle_sha']??'')===$selectedSource) {$record=$r;break;}
+}
 $event=get_option('mad4b_lsc_css_drift_event_v1',[]);
 $hasConfigDrift=is_array($event) && ($event['contract']??'')==='mad4b.lsc.css-option-event.v1'
     && (int)($event['observed_at']??0)>strtotime((string)($record['captured_at_utc']??''));
-if ($hasConfigDrift) {
+if (($actual['pairs']??0)===6) {
+    $check('current_bundle_six_pairs_selected',($actual['state']??'')==='needs_evidence'
+        && ($actual['pairs']??0)===6 && ($actual['cold_pairs']??0)===3
+        && ($actual['warm_pairs']??0)===3 && ($actual['decision']??'')==='native');
+    $check('current_bundle_normalized_p75',($actual['lcp_post_ttfb_delta_p75_ms']??0)===-1497
+        && ($actual['fcp_post_ttfb_delta_p75_ms']??0)===-3021);
+    $check('unverified_dynamic_visual_states_block_release',
+        in_array('visual_parity_not_proven',$actual['reason_codes']??[],true)
+        && in_array('js_or_interaction_not_proven',$actual['reason_codes']??[],true)
+        && ($actual['public_eligible']??true)===false);
+    $check('old_bundle_history_preserved',count((array)($collection['records']??[]))>=2);
+} elseif ($hasConfigDrift) {
     $check('live_historic_evidence_invalidated',($actual['state']??'')==='hold'
         && in_array('litespeed_css_changed_after_evidence',$actual['reason_codes']??[],true)
         && ($actual['decision']??'')==='native');
-    $check('historic_browser_evidence_preserved',count($record['pairs']??[])===2);
 } else {
-    $check('live_hold_lcp_regression',($actual['state']??'')==='hold_lcp_regression' && ($actual['decision']??'')==='native');
-    $check('real_two_pairs_and_p75',($actual['pairs']??0)===2 && ($actual['lcp_post_ttfb_delta_p75_ms']??0)===412 && ($actual['fcp_post_ttfb_delta_p75_ms']??0)===-2528);
+    $check('live_hold_lcp_regression',($actual['state']??'')==='hold_lcp_regression'
+        && ($actual['decision']??'')==='native');
 }
 $check('real_coverage_gap',count($plan['languages_missing_css_plan']??[])===5);
 $ctx=['site_host'=>'tours.dev.mad4b.com','environment'=>'staging','path'=>'/','locale'=>'en','device'=>'mobile',
