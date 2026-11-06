@@ -25,3 +25,5 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate canonical sources, Skills v17, policies, and host-cache scope
         run: python3 ops/mad4b-company-live-convergence-20261106/tests/test_source_convergence.py
+      - name: Verify Experience footer coexistence patch and source SHA
+        run: python3 ops/company-readiness-workflow/host-provisioning-runtime-v1/tests/test_experience_footer_coexistence_patch.py

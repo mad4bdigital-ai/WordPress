@@ -37,4 +37,21 @@ assert "wayfatours.com" in signal and "signal('look-and-feel-rate-policy'" in si
 watcher=(bundle/'host-cache/purge-wayfa-tour-rate-public-cache.py').read_text()
 assert 'wayfa-public-v3' in watcher and 'tours-and-activities/' in watcher
 assert 'wp-content/cache' not in watcher
+# Snapshot manifests and governed Skill discovery must remain aligned with live-source changes.
+shared_root=root/'packages/mad4b-shared-product-core'
+rows=(shared_root/'source-files.sha256').read_text().splitlines()
+expected={rel:digest for digest,rel in (line.split('  ',1) for line in rows)}
+for rel in ['local-tour-rate-filter-provider-router.php','shared-product-core/adapters/presentation-context-v1.php']:
+    assert expected[rel]==hashlib.sha256((shared_root/'mu-plugins'/rel).read_bytes()).hexdigest(),rel
+egress=json.loads((root/'wp-content/plugins/mad4b-site-control-plane/config/egress-policy.json').read_text())
+source=egress['purposes']['skill_source_discovery']
+assert all([source['require_https'] is True,source['sslverify_required'] is True,source['max_redirects']==0,source['reject_unsafe_urls'] is True])
+# The separate Experience Footer bootstrap checkpoint must remain only a source
+# snapshot plus an independently testable patch, never a complete plugin payload.
+exp_root=root/'ops/company-readiness-workflow/host-provisioning-runtime-v1'
+exp_source=exp_root/'live-only-module-snapshots/mad4b-experience/src/presentation/bootstrap.php'
+exp_patch=exp_root/'patches/mad4b-experience-footer-coexistence-20261106.patch'
+exp_test=exp_root/'tests/test_experience_footer_coexistence_patch.py'
+assert hashlib.sha256(exp_source.read_bytes()).hexdigest()=='470b00846323ee5b22f1634991b752196d92f38942983b3c4210b556452a0061'
+assert exp_patch.is_file() and exp_test.is_file()
 print(json.dumps({'result':'PASS','fingerprints':len(manifest['sha256']),'skills':len(skills['skills']),'release':'2026-11-06-company-settings-live-convergence'}))

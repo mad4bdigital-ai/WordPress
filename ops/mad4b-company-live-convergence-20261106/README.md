@@ -39,3 +39,11 @@
 ## Open operational items
 
 Wayfatours Skill Site Profile (origin and ChatGPT App ID) still requires legitimate company profile enrollment; the bundled Skill must not silently flip Production editor or grant privileges. Outbound email transport and commercial checkout readiness have separate incomplete company data and are not fixed by copying settings. Source capture does not automatically alter existing WordPress DB options or publish a new company.
+
+## CI source-contract follow-up
+
+The consolidated rate-view adapters intentionally change two files in the shared-product-core frozen source archive. Update `packages/mad4b-shared-product-core/source-files.sha256` with their exact new hashes and keep `tests/verify-snapshot.py` strict. Restore the certified `skill_source_discovery` egress purpose from the original master configuration; it requires HTTPS, TLS verification, zero redirects and unsafe-URL rejection. These changes restore tests rather than relaxing them.
+
+## Existing `mad4b-experience` live-only footer coexistence snapshot
+
+The exact Staging-bootstrap snapshot, reversible patch, SHA-256 checks and two-part independent test were included from source commit `89ce66f7225ca397958642c87f2ba3daa1847b89` (cherry-picked into this branch as its own commit). Read `ops/company-readiness-workflow/host-provisioning-runtime-v1/patches/README-experience-footer-coexistence-20261106.md`. The code skips Footer class declaration while `mad4b-footer-bridge` is active or the class already exists; it does not enable `mad4b-experience`, install plugins, run job 305/313, or modify Wayfatours Production. The full live-only `mad4b-experience` plugin is **not** added to Git; deployment requires a separate, verified package and original authorization.
