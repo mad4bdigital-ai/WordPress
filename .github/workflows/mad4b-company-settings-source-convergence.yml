@@ -16,6 +16,10 @@ on:
       - 'packages/mad4b-shared-product-core/mu-plugins/**'
       - 'ops/mad4b-company-live-convergence-20261106/**'
       - '.github/workflows/mad4b-company-settings-source-convergence.yml'
+concurrency:
+  group: mad4b-company-settings-source-convergence-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
 jobs:
   static-convergence:
     runs-on: ubuntu-latest
@@ -23,6 +27,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Validate canonical sources, Skills v17, policies, and host-cache scope
         run: python3 ops/mad4b-company-live-convergence-20261106/tests/test_source_convergence.py
       - name: Verify Experience footer coexistence patch and source SHA
@@ -37,6 +43,8 @@ jobs:
         php: ['7.4', '8.3']
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Install PHP runtime for native skill and source-contract checks
         uses: shivammathur/setup-php@v2
         with:
