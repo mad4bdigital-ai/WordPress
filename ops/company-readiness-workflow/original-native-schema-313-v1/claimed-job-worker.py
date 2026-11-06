@@ -45,7 +45,7 @@ def safe_capability_error(exc):
 
 def safe_executor_failure(returncode, stderr):
  """Expose only a bounded machine error code, never a signed payload."""
- match=re.search(r'(ORIGINAL_NATIVE_313_STOPPED|INDEPENDENT_313_READBACK_DENIED):([A-Z][A-Z0-9_]{3,96})',str(stderr or ''))
+ match=re.search(r'(ORIGINAL_NATIVE_313_STOPPED|ORIGINAL_SCHEMA_RECEIPT_ONLY_STOPPED|INDEPENDENT_313_READBACK_DENIED):([A-Z][A-Z0-9_]{3,96})',str(stderr or ''))
  reason=match.group(2) if match else 'NO_MACHINE_REASON_REPORTED'
  return 'ORIGINAL_EXECUTOR_EXIT_'+str(int(returncode))+'_RECEIPT_RECONCILIATION_REQUIRED:'+reason
 
@@ -157,6 +157,10 @@ def main():
   # Starting a new target operation needs a longer original authority window.
   if int(row.get('expires_epoch') or 0)<time.time()+360:continue
   work.append((job,operation))
+ # A previously executed schema read is important, but cannot starve a
+ # currently authorized one-shot operation. Only receipt delivery is retried;
+ # never reexecute a reserved target command.
+ work.sort(key=lambda item: item[1]=='schema.readback.resume')
  if not work:
   # The signed plugin.install capability heartbeat is owned by the
   # independent root-only capability timer, NOT the original Job worker.

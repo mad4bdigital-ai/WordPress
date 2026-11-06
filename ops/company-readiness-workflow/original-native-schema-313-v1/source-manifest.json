@@ -10,6 +10,6 @@
     "independent-readback.py": "dd72e9f7c53fc02e8501a70a721c0fb1c8d73168cfe775cd6e0f9abf1612d994",
     "schema-receipt-resume.py": "db38334ce0fe9451b0c00cf0ba265ace96b47ad94c55bc82761346c5162c4642",
     "test_schema_receipt_resume.py": "014775e772fc8de62cd2f66d4c64ba9cd7b4c0ceee515278b12113e81f493e69",
-    "claimed-job-worker.py": "b3131ec91c1cb8b15398fdd163d535654b3813aeae3cfaffae2f373c2540e2d4"
+    "claimed-job-worker.py": "8305989542c5052f32ae282118aa4c9c8c472c2c9f8f4144fafc1b918ead60ee"
   }
 }
