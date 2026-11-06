@@ -219,8 +219,7 @@ final class MAD4B_Predictive_CSS_Plan_V2 {
         // route. For explicit one-request canaries ONLY, rely on the exact
         // rendered Elementor document set + source CSS SHA checks below.
         // Public release must still have an up-to-date discovery snapshot.
-        if (!$probe && ((int)get_option('mad4b_adaptive_presentation_scan_needed_v1',0)
-                > (int)($discovery['scanned_at']??0)
+        if (!$probe && ((int)get_option('mad4b_adaptive_presentation_scan_needed_v1',0)!==0
             || !hash_equals($policy['discovery_digest'],$discovery['published_graph_digest']))) return null;
         $row=$policy['devices'][$device]??null;
         if (!is_array($row) || ($row['strategy']??'')!=='critical_inline_then_native_async'

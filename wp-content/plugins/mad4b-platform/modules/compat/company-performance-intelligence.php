@@ -486,7 +486,7 @@ final class MAD4B_Company_Performance_Intelligence {
         $disc=get_option('mad4b_adaptive_presentation_discovery_v1',[]);
         $fresh=is_array($disc) && ($disc['state']??'')==='observed'
             && !empty($disc['published_graph_digest']) && empty($disc['truncated'])
-            && (int)get_option('mad4b_adaptive_presentation_scan_needed_v1',0)<=(int)($disc['scanned_at']??0);
+            && (int)get_option('mad4b_adaptive_presentation_scan_needed_v1',0)===0;
         $runtime=(string)$result['runtime'];
         foreach($manifest['routes'] as $route) {
             if (!is_array($route) || !is_string($route['path']??null)
