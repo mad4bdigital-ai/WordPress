@@ -497,11 +497,21 @@ final class MAD4B_Company_Performance_Intelligence {
             if (!$variants && is_string($route['bundle_sha']??null))$variants=[$route['bundle_sha']];
             foreach(['mobile','desktop'] as $device) {
                 if (!is_array($route['devices'][$device]??null)) continue;
+                // Multiple CSS revisions can have browser evidence for the
+                // same route/locale/device. Never allow an older first record
+                // to hide newer exact-source, document-graph and epoch proof.
                 $record=null;
                 foreach($records as $r) {
-                    if (is_array($r) && ($r['path']??'')===$route['path']
-                        && ($r['locale']??'')===$route['language']
-                        && ($r['device']??'')===$device) {$record=$r;break;}
+                    if (!is_array($r) || ($r['path']??'')!==$route['path']
+                        || ($r['locale']??'')!==$route['language']
+                        || ($r['device']??'')!==$device
+                        || !in_array((string)($r['source_bundle_sha']??''),$variants,true)
+                        || ($r['elementor_doc_fingerprint']??'')!==$sha
+                        || (int)($r['css_epoch']??-1)!==(int)($route['css_epoch']??-1))continue;
+                    $ts=strtotime((string)($r['captured_at_utc']??''))?:0;
+                    $previous=is_array($record)
+                        ?(strtotime((string)($record['captured_at_utc']??''))?:0):-1;
+                    if ($ts>$previous)$record=$r;
                 }
                 $ctx=['site_host'=>$host,'environment'=>wp_get_environment_type(),
                     'path'=>$route['path'],'locale'=>$route['language'],'device'=>$device,
