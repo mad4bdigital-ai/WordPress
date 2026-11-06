@@ -18,8 +18,23 @@ $private=false;
 foreach($d['observed_frontend'] as $row)if(str_contains((string)($row['id']??''),'/.well-known/'))$private=true;
 $check('no_protocol_endpoint_in_observer',!$private);
 $check('native_option_hooks',has_action('update_option_litespeed.conf.optm-ucss')!==false && has_action('update_option_litespeed.conf.optm-css_async')!==false);
-$check('css_manifest_bundle_drift_detected',in_array('CSS_BUNDLE_NOT_IN_CERTIFIED_MANIFEST',$d['drift_codes'],true));
-$check('bundle_drift_has_source',($d['bundle_drift']['site_host']??'')===wp_parse_url((string)get_option('home'),PHP_URL_HOST));
+$manifest=json_decode((string)file_get_contents(WP_CONTENT_DIR.'/mad4b-predictive-css-v2/manifest.json'),true);
+$selected=MAD4B_Company_Performance_Intelligence::adaptive_css_decisions_v2()['decisions'][0]['source_sha256']??null;
+$known=[];
+foreach((array)($manifest['routes']['/|en']['bundle_variants']??[]) as $v) {
+    if (($v['bundle_sha']??null)===$selected)$known=$v;
+}
+if ($known && ($known['devices']['mobile']['state']??'')==='canary') {
+    $check('known_css_variant_no_false_unknown_drift',
+        !in_array('CSS_BUNDLE_NOT_IN_CERTIFIED_MANIFEST',$d['drift_codes'],true));
+    $check('known_canary_not_published',($manifest['release_state']??'')==='canary_only'
+        && ($known['devices']['mobile']['performance_gate']['status']??'')==='pending_current_bundle_lcp'
+        && (int)(get_option('mad4b_perf_css_policy_receipt_v2',[])['approved_count']??-1)===0);
+} else {
+    $check('css_manifest_bundle_drift_detected',
+        in_array('CSS_BUNDLE_NOT_IN_CERTIFIED_MANIFEST',$d['drift_codes'],true));
+    $check('bundle_drift_has_source',($d['bundle_drift']['site_host']??'')===wp_parse_url((string)get_option('home'),PHP_URL_HOST));
+}
 $oldEligibility=MAD4B_LSC_Local_Provider_V1::local_css_eligible();
 $filter=static fn($v)=>true;
 add_filter('litespeed_conf_load_option_optm-css_async',$filter,999);
