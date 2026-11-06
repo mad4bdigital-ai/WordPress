@@ -1,0 +1,15 @@
+{
+  "contract": "mad4b.original-native-schema-313-source-snapshot.v1",
+  "observed_utc": "2026-11-06",
+  "source_only": true,
+  "production_mutated_by_git_commit": false,
+  "original_313_certified_by_commit": false,
+  "source_sha256": {
+    "schema-contract.py": "78cef9e2a9364f4836ec032606836ae379e8a6083ac124dfd3aebeb900b439ac",
+    "original-wpcli-executor.py": "1b153d4df5c399354ee681ec7bb0b93fa4b0b3641920d55ba9900dd0b99d3ea3",
+    "independent-readback.py": "dd72e9f7c53fc02e8501a70a721c0fb1c8d73168cfe775cd6e0f9abf1612d994",
+    "schema-receipt-resume.py": "128917ce07674ced85d2598c69836c763076f7d1d6935b079313cf2925718799",
+    "test_schema_receipt_resume.py": "e0fd9ec0acb2e0a53fdca483d9a48ea4034c05a0846568e30f4ff2d601dddc3e",
+    "claimed-job-worker.py": "b3131ec91c1cb8b15398fdd163d535654b3813aeae3cfaffae2f373c2540e2d4"
+  }
+}
